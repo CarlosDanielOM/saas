@@ -3,6 +3,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import {
   AiUsageApiService,
+  UsageAdjustmentTotal,
   UsageCategory,
   UsageSummary,
   UsageTransaction,
@@ -23,6 +24,18 @@ const CATEGORIES: UsageCategory[] = [
 ];
 
 type Tone = 'ok' | 'warn' | 'live' | 'muted';
+
+/** Plain names for adjustment receipts: `group` for totals, `row` for one entry. */
+const ADJUSTMENTS: Record<string, { group: string; row: string }> = {
+  native_grant: { group: 'Granted in Polar', row: 'Credits granted in Polar' },
+  manual_grant: { group: 'Admin grants', row: 'Admin credit grant' },
+  monthly_reset: { group: 'Monthly resets', row: 'Monthly reset' },
+  purchased_pack: { group: 'Credit packs', row: 'Credit pack' },
+  refund: { group: 'Refunds', row: 'Refund' },
+  correction: { group: 'Corrections', row: 'Balance correction' },
+  activation: { group: 'Activation credits', row: 'Activation credits' },
+  other: { group: 'Other adjustments', row: 'Credit adjustment' },
+};
 
 @Component({
   selector: 'app-channel-usage',
@@ -54,6 +67,12 @@ export class ChannelUsageComponent {
   readonly customRange = signal(false);
   readonly maxDaily = computed(() =>
     Math.max(1, ...(this.summary()?.analytics.daily.map((day) => day.credits) ?? [])),
+  );
+  /** Grants and other balance adjustments, largest first. */
+  readonly adjustments = computed<UsageAdjustmentTotal[]>(() =>
+    [...(this.summary()?.analytics.adjustments ?? [])]
+      .filter((item) => item.transactionCount > 0)
+      .sort((a, b) => b.grantedCredits + b.debitedCredits - (a.grantedCredits + a.debitedCredits)),
   );
   readonly usedPercent = computed(() => {
     const credits = this.summary()?.credits;
@@ -136,7 +155,7 @@ export class ChannelUsageComponent {
       ai_agent: 'AI agent',
       memory: 'Memory',
       clip_recommendation: 'Clip recommendations',
-      credit_adjustment: 'Credit adjustments',
+      credit_adjustment: 'Grants & adjustments',
       other: 'Other',
       uncategorized: 'Uncategorized',
     }[category];
@@ -164,8 +183,38 @@ export class ChannelUsageComponent {
       day: 'numeric',
     });
   }
+  /** Only negative credits add to the balance; positive adjustments are debits. */
   isCredit(item: UsageTransaction): boolean {
-    return item.entryKind === 'adjustment' || item.credits < 0;
+    return item.credits < 0;
+  }
+  adjustmentGroup(type: string): string {
+    return (ADJUSTMENTS[type] ?? ADJUSTMENTS['other']).group;
+  }
+  /** Rows say what happened to the balance; the raw operation stays secondary. */
+  describe(item: UsageTransaction): { title: string; meta: string; raw: string | null } {
+    if (item.entryKind !== 'adjustment') {
+      return {
+        title: this.label(item.category),
+        meta: item.model ? `${item.operation} · ${item.model}` : item.operation,
+        raw: null,
+      };
+    }
+    const added = this.isCredit(item);
+    if (item.adjustmentType === 'native_grant' && added) {
+      if (item.operation === 'permanent_credit_grant')
+        return { title: 'Permanent credits granted', meta: 'Polar · carries over until used', raw: item.operation };
+      if (item.operation === 'period_credit_grant')
+        return { title: 'Period credits granted', meta: 'Polar · ends at the period reset', raw: item.operation };
+    }
+    return {
+      title: (ADJUSTMENTS[item.adjustmentType || 'other'] ?? ADJUSTMENTS['other']).row,
+      meta: added ? 'Added to balance' : 'Removed from balance',
+      raw: item.operation,
+    };
+  }
+  /** Spent plus debits minus grants; negative means more was granted than used. */
+  net(value: number): string {
+    return value < 0 ? `${this.compact(-value)} more granted than used` : `${this.compact(value)} net used`;
   }
   onFrom(event: Event): void {
     this.from.set((event.target as HTMLInputElement).value);

@@ -1,0 +1,23 @@
+{
+  "NODE_OPTIONS": "--import=/tmp/saas-fixtures/providers.mjs",
+  "MONGO_URI": "mongodb://mongo:27017/saas_ops_native_credit_reports",
+  "DRAGONFLY_HOST": "redis",
+  "DRAGONFLY_PORT": "6379",
+  "QDRANT_HOST": "qdrant.test",
+  "QDRANT_PORT": "6333",
+  "QDRANT_API_KEY": "dummy",
+  "POLARSH_OAT": "dummy-report-token",
+  "OTEL_SDK_DISABLED": "true",
+  "SECRET_KEY": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "INTERNAL_API_URL": "http://127.0.0.1:3000",
+  "TWITCH_EVENTSUB_SECRET": "native-report-test-secret",
+  "CLIENT_ID": "native-report-test-client",
+  "DOMAIN_EVENTS_WAKEUPS_ENABLED": "false",
+  "EVENTSUB_RECONCILIATION_ENABLED": "false",
+  "FREE_CREDIT_RESET_ENABLED": "false",
+  "AI_USAGE_RECEIPTS_ENABLED": "false",
+  "AI_USAGE_BACKFILL_ENABLED": "true",
+  "AI_USAGE_BACKFILL_RUN_ON_START": "false",
+  "AI_USAGE_BACKFILL_QUEUE_WAIT_SECONDS": "1",
+  "AI_USAGE_BACKFILL_REQUEST_DELAY_MS": "250"
+}

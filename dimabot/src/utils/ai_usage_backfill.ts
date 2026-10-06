@@ -1,7 +1,7 @@
 import type { RedisClientType } from 'redis';
 
 import type { AiUsageBackfillJob } from './ai_usage_backfill_queue.js';
-import { backfillAiUsageLedger, getAiUsageLedgerState, getAiUsageRetentionDays } from './ai_usage_ledger.js';
+import { AI_USAGE_REPORT_VERSION, backfillAiUsageLedger, getAiUsageLedgerState, getAiUsageRetentionDays } from './ai_usage_ledger.js';
 import { fetchAiUsageTransactions, type AiUsageWindow } from './ai_usage_receipts.js';
 
 const DAY_MS = 86_400_000;
@@ -25,8 +25,10 @@ export async function syncAiUsageBackfillJob(
     const retentionFloor = new Date(now.getTime() - getAiUsageRetentionDays(job.planTier) * DAY_MS);
     const coverageStart = requestedStart > retentionFloor ? requestedStart : retentionFloor;
     const state = await getAiUsageLedgerState({ channelID: job.channelID, customerId: job.customerId });
-    const needsEarlierCoverage = !state || state.coverageStart.getTime() > coverageStart.getTime();
-    const isFresh = state && now.getTime() - state.backfilledAt.getTime() < FRESHNESS_MS;
+    const needsReportUpgrade = !state || state.reportVersion < AI_USAGE_REPORT_VERSION;
+    const needsEarlierCoverage = needsReportUpgrade || !state || state.coverageStart.getTime() > coverageStart.getTime();
+    const freshness = job.reason === 'api_request' ? 60_000 : FRESHNESS_MS;
+    const isFresh = state && now.getTime() - state.backfilledAt.getTime() < freshness;
     if (!needsEarlierCoverage && isFresh) {
         return {
             status: 'fresh', channelID: job.channelID,

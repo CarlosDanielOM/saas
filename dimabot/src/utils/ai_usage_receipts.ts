@@ -11,7 +11,7 @@ import {
 import { classifyAdjustment } from './ai_usage_classification.js';
 import { enqueueAiUsageBackfill } from './ai_usage_backfill_queue.js';
 import type { AiUsageCategory, AiUsageEntryKind, AiUsageResourceType, AiUsageUnit } from './ai_usage_event.js';
-import type { AiCreditsData } from './billing.js';
+import { AI_CREDITS_METER_ID, type AiCreditsData } from './billing.js';
 
 export const AI_USAGE_RECEIPT_SCHEMA_VERSION = 1 as const;
 export const AI_USAGE_ITEMIZATION_STARTED_AT = '2026-09-18T19:30:00.000Z';
@@ -163,7 +163,7 @@ interface PolarCustomerStateLike {
 export type PolarUsageEventsList = (request: {
   customerId: string;
   name: string;
-  source: 'user';
+  source: 'user' | 'system';
   startTimestamp: Date;
   endTimestamp: Date;
   page: number;
@@ -638,6 +638,26 @@ function transactionOrder(left: AiUsageTransaction, right: AiUsageTransaction): 
   return byTimestamp || right.id.localeCompare(left.id);
 }
 
+/** Reporting only: Polar already applied these credits. Never ingest this as usage. */
+export function normalizePolarCreditEvent(event: PolarUsageEventLike): AiUsageTransaction | null {
+  if (event.name !== 'meter.credited' || event.source !== 'system') return null;
+  const id = optionalSafeText(event.id);
+  const timestamp = event.timestamp instanceof Date ? event.timestamp : new Date(String(event.timestamp || ''));
+  const metadata = event.metadata && typeof event.metadata === 'object'
+    ? event.metadata as Record<string, unknown> : {};
+  if (!id || Number.isNaN(timestamp.getTime()) || (metadata.meterId ?? metadata.meter_id) !== AI_CREDITS_METER_ID
+    || typeof metadata.units !== 'number' || !Number.isFinite(metadata.units) || metadata.units <= 0
+    || typeof metadata.rollover !== 'boolean') return null;
+  return {
+    id: `polar-credit:${id}`, requestId: null, occurredAt: timestamp.toISOString(),
+    entryKind: 'adjustment', category: 'credit_adjustment',
+    operation: metadata.rollover ? 'permanent_credit_grant' : 'period_credit_grant',
+    source: 'polar_meter_credit', adjustmentType: 'native_grant', provider: 'polar',
+    model: null, quantity: null, unit: null, credits: -metadata.units,
+    resourceType: null, resourceId: null, itemized: true,
+  };
+}
+
 export async function fetchAiUsageTransactions(
   customerId: string,
   window: AiUsageWindow,
@@ -649,33 +669,43 @@ export async function fetchAiUsageTransactions(
   });
   const transactions = new Map<string, AiUsageTransaction>();
 
-  for (let page = 1; page <= AI_USAGE_MAX_POLAR_PAGES; page += 1) {
-    const result = await list({
-      customerId,
-      name: 'ai_usage',
-      source: 'user',
-      startTimestamp: window.startTimestamp,
-      endTimestamp: window.endTimestampExclusive,
-      page,
-      limit: AI_USAGE_PAGE_SIZE,
-      sorting: ['-timestamp'],
-    });
-    const items = Array.isArray(result.items) ? result.items : [];
-    for (const item of items) {
-      const normalized = normalizePolarUsageEvent(item);
-      if (normalized) transactions.set(normalized.id, normalized);
-    }
+  for (const stream of [
+    { name: 'ai_usage', source: 'user' as const, normalize: normalizePolarUsageEvent },
+    { name: 'meter.credited', source: 'system' as const, normalize: normalizePolarCreditEvent },
+  ]) {
+    let complete = false;
+    for (let page = 1; page <= AI_USAGE_MAX_POLAR_PAGES; page += 1) {
+      const result = await list({
+        customerId,
+        name: stream.name,
+        source: stream.source,
+        startTimestamp: window.startTimestamp,
+        endTimestamp: window.endTimestampExclusive,
+        page,
+        limit: AI_USAGE_PAGE_SIZE,
+        sorting: ['-timestamp'],
+      });
+      const items = Array.isArray(result.items) ? result.items : [];
+      for (const item of items) {
+        const normalized = stream.normalize(item);
+        if (normalized && new Date(normalized.occurredAt) >= window.startTimestamp
+          && new Date(normalized.occurredAt) < window.endTimestampExclusive) {
+          transactions.set(normalized.id, normalized);
+        }
+      }
 
-    const pagination = result.pagination || {};
-    const hasAnotherPage = typeof pagination.maxPage === 'number'
-      ? page < pagination.maxPage
-      : pagination.hasNextPage === true || items.length === AI_USAGE_PAGE_SIZE;
-    if (!hasAnotherPage) {
-      return [...transactions.values()].sort(transactionOrder);
+      const pagination = result.pagination || {};
+      const hasAnotherPage = typeof pagination.maxPage === 'number'
+        ? page < pagination.maxPage
+        : pagination.hasNextPage === true || items.length === AI_USAGE_PAGE_SIZE;
+      if (!hasAnotherPage) {
+        complete = true;
+        break;
+      }
     }
+    if (!complete) throw new AiUsageReceiptLimitError('Usage history is too large for this date range');
   }
-
-  throw new AiUsageReceiptLimitError('Usage history is too large for this date range');
+  return [...transactions.values()].sort(transactionOrder);
 }
 
 export function buildAiUsageSummary(

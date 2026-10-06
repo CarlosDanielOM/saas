@@ -8,7 +8,8 @@ import { getDragonflyClient } from './databases/dragonfly.database.js';
 
 export async function usageLedgerStatus(input: { channelID: string; customerId: string; planTier: string; window: AiUsageWindow }) {
     const ledger = await getAiUsageLedgerStatus({ ...input, startsAt: input.window.startTimestamp });
-    if (ledger.status === 'pending') {
+    if (ledger.status === 'pending' || !ledger.lastSyncedAt
+        || Date.now() - Date.parse(ledger.lastSyncedAt) >= 60_000) {
         const cache = await getDragonflyClient('AiUsageRead');
         await enqueueAiUsageBackfill(cache, input);
     }

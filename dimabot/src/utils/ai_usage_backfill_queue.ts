@@ -1,7 +1,7 @@
 import type { RedisClientType } from 'redis';
 import { randomUUID } from 'node:crypto';
 
-import { getAiUsageRetentionDays } from './ai_usage_ledger.js';
+import { AI_USAGE_REPORT_VERSION, getAiUsageRetentionDays } from './ai_usage_ledger.js';
 
 export const AI_USAGE_BACKFILL_QUEUE_KEY = 'cron:ai-usage-backfills:queue';
 export const AI_USAGE_BACKFILL_PROCESSING_KEY = 'cron:ai-usage-backfills:processing';
@@ -89,7 +89,7 @@ export async function enqueueAiUsageBackfill(
     if (!channelID || !customerId) throw new Error('AI usage backfill requires channel and customer IDs');
     const planTier = normalizeTier(input.planTier);
     const coverageStart = input.coverageStart || getAiUsageDesiredCoverageStart(planTier, now);
-    const dedupeKey = `${DEDUPE_PREFIX}:${channelID}:${customerId}`;
+    const dedupeKey = `${DEDUPE_PREFIX}:v${AI_USAGE_REPORT_VERSION}:${channelID}:${customerId}`;
     const job: AiUsageBackfillJob = {
         id: randomUUID(),
         channelID,

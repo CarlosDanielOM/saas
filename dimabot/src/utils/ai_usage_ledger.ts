@@ -10,6 +10,7 @@ import type { AiUsageTransaction, AiUsageWindow } from './ai_usage_receipts.js';
 
 export const AI_USAGE_RECEIPT_QUEUE_KEY = 'cron:ai-usage-receipts:queue';
 export const AI_USAGE_RECEIPT_PROCESSING_KEY = 'cron:ai-usage-receipts:processing';
+export const AI_USAGE_REPORT_VERSION = 2;
 
 const RETENTION_DAYS: Record<AiUsageRetentionTier, number> = {
     free: 30,
@@ -241,7 +242,7 @@ export async function backfillAiUsageLedger(input: {
         { channelID: input.channelID, customerId: input.customerId },
         {
             $min: { coverageStart: input.coverageStart },
-            $set: { backfilledAt: now },
+            $set: { backfilledAt: now, reportVersion: AI_USAGE_REPORT_VERSION },
             $setOnInsert: { channelID: input.channelID, customerId: input.customerId }
         },
         { upsert: true }
@@ -306,7 +307,8 @@ export async function hasAiUsageLedgerCoverage(input: {
     return Boolean(await AiUsageLedgerStateSchema.exists({
         channelID: input.channelID,
         customerId: input.customerId,
-        coverageStart: { $lte: input.startsAt }
+        coverageStart: { $lte: input.startsAt },
+        reportVersion: { $gte: AI_USAGE_REPORT_VERSION }
     }));
 }
 
@@ -318,8 +320,9 @@ export async function getAiUsageLedgerStatus(input: {
     const state = await AiUsageLedgerStateSchema.findOne({
         channelID: input.channelID,
         customerId: input.customerId
-    }).select('coverageStart backfilledAt').lean().exec();
-    const ready = Boolean(state && state.coverageStart.getTime() <= input.startsAt.getTime());
+    }).select('coverageStart backfilledAt reportVersion').lean().exec();
+    const ready = Boolean(state && state.coverageStart.getTime() <= input.startsAt.getTime()
+        && (state.reportVersion || 0) >= AI_USAGE_REPORT_VERSION);
     return {
         status: ready ? 'ready' : 'pending',
         coverageStart: state?.coverageStart?.toISOString() || null,
@@ -331,10 +334,10 @@ export async function getAiUsageLedgerStatus(input: {
 export async function getAiUsageLedgerState(input: {
     channelID: string;
     customerId: string;
-}): Promise<{ coverageStart: Date; backfilledAt: Date } | null> {
+}): Promise<{ coverageStart: Date; backfilledAt: Date; reportVersion: number } | null> {
     const state = await AiUsageLedgerStateSchema.findOne({ channelID: input.channelID, customerId: input.customerId })
-        .select('coverageStart backfilledAt').lean().exec();
-    return state ? { coverageStart: state.coverageStart, backfilledAt: state.backfilledAt } : null;
+        .select('coverageStart backfilledAt reportVersion').lean().exec();
+    return state ? { coverageStart: state.coverageStart, backfilledAt: state.backfilledAt, reportVersion: state.reportVersion || 0 } : null;
 }
 
 export async function loadAiUsagePacingHistory(input: {

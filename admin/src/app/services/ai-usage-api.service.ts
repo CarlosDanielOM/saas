@@ -6,6 +6,18 @@ import { AiCreditsData } from './channel-api.service';
 export type UsageCategory = 'tts' | 'ai_chat' | 'ai_agent' | 'memory' | 'clip_recommendation'
   | 'credit_adjustment' | 'other' | 'uncategorized';
 
+/** Why an adjustment receipt exists. Unknown future values fall back to generic copy. */
+export type UsageAdjustmentType = 'native_grant' | 'manual_grant' | 'monthly_reset' | 'purchased_pack'
+  | 'refund' | 'correction' | 'activation' | 'other';
+
+/** Credits are signed like charges: negative adds to the balance, positive removes from it. */
+export interface UsageAdjustmentTotal {
+  type: UsageAdjustmentType | string;
+  grantedCredits: number;
+  debitedCredits: number;
+  transactionCount: number;
+}
+
 export interface UsagePeriod {
   source: string;
   from: string;
@@ -18,7 +30,8 @@ export interface UsageSummary {
   planTier: 'free' | 'premium' | 'pro';
   credits: AiCreditsData;
   billingPeriod: UsagePeriod;
-  ledger: { status: 'ready' | 'pending'; coverageStart: string | null } | null;
+  /** `pending`: older usage or Polar credit grants are still being imported. */
+  ledger: { status: 'ready' | 'pending'; coverageStart: string | null; lastSyncedAt?: string | null } | null;
   pacing: {
     status: 'no_usage' | 'within_pace' | 'over_pace' | 'exhausted' | string;
     averageDailyCredits: number;
@@ -34,6 +47,7 @@ export interface UsageSummary {
     grantedCredits: number;
     netConsumedCredits: number;
     transactionCount: number;
+    adjustments?: UsageAdjustmentTotal[];
     daily: { date: string; credits: number; transactionCount: number }[];
     categories: { category: UsageCategory; credits: number; transactionCount: number; percentage: number }[];
   };
@@ -45,6 +59,8 @@ export interface UsageTransaction {
   entryKind: 'usage' | 'adjustment';
   category: UsageCategory;
   operation: string;
+  source?: string | null;
+  adjustmentType?: UsageAdjustmentType | string | null;
   provider: string;
   model: string | null;
   quantity: number | null;

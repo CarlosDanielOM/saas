@@ -373,6 +373,7 @@ test('Polar event fetching follows pagination and deduplicates stable entry IDs'
   });
   const requestedPages: number[] = [];
   const transactions = await fetchAiUsageTransactions('customer-1', window, async (request) => {
+    if (request.source === 'system') return { items: [], pagination: { maxPage: 1 } };
     requestedPages.push(request.page);
     return request.page === 1
       ? {

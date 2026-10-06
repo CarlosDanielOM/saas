@@ -732,9 +732,9 @@ try {
   assert.equal(await page.locator(".usage-transactions li").count(), 25);
   await page.getByRole("button", { name: "Load more" }).click();
   await until(async () => (await page.locator(".usage-transactions li").count()) === 30, "load more");
-  await page.getByRole("group", { name: "Filter charges by category" }).getByRole("button", { name: "Credit adjustments" }).click();
+  await page.getByRole("group", { name: "Filter credit activity by category" }).getByRole("button", { name: "Grants & adjustments" }).click();
   await until(async () => (await page.locator(".usage-transactions li").count()) === 1, "filter");
-  await page.locator(".us-amount.is-credit").waitFor();
+  await page.locator(".usage-transactions .us-amount.is-credit").waitFor();
   await noOverflow("Usage 390");
   await screenshot("usage-dark-390");
 

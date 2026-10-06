@@ -5,7 +5,7 @@
       <div class="lf-head__row">
         <div class="us-intro">
           <h1 class="lf-title">AI credit usage</h1>
-          <p class="lf-sub">{{ channelName() ? channelName() + "'s" : 'This channel’s' }} balance, what it's spent on, and every charge.</p>
+          <p class="lf-sub">{{ channelName() ? channelName() + "'s" : 'This channel’s' }} balance, what it's spent on, and every charge and grant.</p>
         </div>
         <div class="lf-head__actions">
           <button type="button" class="lf-btn lf-btn--sm" (click)="load()" [disabled]="loading()">
@@ -23,7 +23,7 @@
             <span class="lf-chip lf-chip--accent">Custom range</span>
           }
           @if (data.ledger?.status === 'pending') {
-            <span class="lf-chip lf-chip--warn">Older activity still loading</span>
+            <span class="lf-chip lf-chip--warn">Credit history still syncing</span>
           }
         </div>
       }
@@ -81,6 +81,17 @@
         </div>
       }
 
+      @if (data.ledger?.status === 'pending') {
+        <p class="lf-notice us-sync usage-sync" role="status">
+          <span>
+            Still importing older usage and Polar credit grants, so totals, the forecast and the activity list may be missing entries.
+            @if (data.ledger?.lastSyncedAt) {
+              Last synced {{ date(data.ledger!.lastSyncedAt!) }}.
+            }
+          </span>
+        </p>
+      }
+
       <section class="lf-metrics usage-metrics" aria-label="Credit totals">
         <article class="lf-metric">
           <span class="lf-metric__label">Credits left</span>
@@ -98,7 +109,7 @@
         <article class="lf-metric">
           <span class="lf-metric__label">Spent {{ customRange() ? 'in range' : 'this period' }}</span>
           <strong class="lf-metric__value">{{ compact(data.analytics.totalSpentCredits) }}</strong>
-          <span class="lf-metric__note">≈ {{ format(data.analytics.averageDailySpentCredits) }} a day</span>
+          <span class="lf-metric__note">≈ {{ format(data.analytics.averageDailySpentCredits) }} a day · {{ format(data.analytics.transactionCount) }} charges</span>
         </article>
         <article class="lf-metric">
           <span class="lf-metric__label">Projected by reset</span>
@@ -111,9 +122,9 @@
           }
         </article>
         <article class="lf-metric">
-          <span class="lf-metric__label">Charges</span>
-          <strong class="lf-metric__value">{{ format(data.analytics.transactionCount) }}</strong>
-          <span class="lf-metric__note">{{ compact(data.analytics.grantedCredits) }} granted · {{ compact(data.analytics.netConsumedCredits) }} net</span>
+          <span class="lf-metric__label">Granted {{ customRange() ? 'in range' : 'this period' }}</span>
+          <strong class="lf-metric__value us-amount usage-granted" [class.is-credit]="data.analytics.grantedCredits > 0">{{ data.analytics.grantedCredits > 0 ? '+' : '' }}{{ compact(data.analytics.grantedCredits) }}</strong>
+          <span class="lf-metric__note">{{ net(data.analytics.netConsumedCredits) }}</span>
         </article>
       </section>
 
@@ -154,31 +165,69 @@
           }
         </section>
 
-        <section class="lf-tile" aria-labelledby="categories-heading">
-          <div class="lf-tile__head"><h2 class="lf-h2" id="categories-heading"><app-icon name="sparkles" />Where it goes</h2></div>
-          @if (data.analytics.categories.length) {
-            <ul class="us-cats">
-              @for (item of data.analytics.categories; track item.category) {
-                <li class="usage-category">
-                  <div class="us-cats__row">
-                    <span>{{ label(item.category) }}</span>
-                    <strong>{{ format(item.credits) }} <small>{{ item.percentage }}%</small></strong>
-                  </div>
-                  <div class="lf-bar" aria-hidden="true"><span [style.width.%]="item.percentage"></span></div>
-                </li>
+        <div class="lf-col">
+          <section class="lf-tile" aria-labelledby="categories-heading">
+            <div class="lf-tile__head"><h2 class="lf-h2" id="categories-heading"><app-icon name="sparkles" />Where it goes</h2></div>
+            @if (data.analytics.categories.length) {
+              <ul class="us-cats">
+                @for (item of data.analytics.categories; track item.category) {
+                  <li class="usage-category">
+                    <div class="us-cats__row">
+                      <span>{{ label(item.category) }}</span>
+                      <strong>{{ format(item.credits) }} <small>{{ item.percentage }}%</small></strong>
+                    </div>
+                    <div class="lf-bar" aria-hidden="true"><span [style.width.%]="item.percentage"></span></div>
+                  </li>
+                }
+              </ul>
+            } @else {
+              <p class="lf-empty">Nothing spent in this range.</p>
+            }
+          </section>
+
+          @if (adjustments().length || data.analytics.grantedCredits > 0) {
+            <section class="lf-tile usage-grants" aria-labelledby="grants-heading">
+              <div class="lf-tile__head">
+                <h2 class="lf-h2" id="grants-heading"><app-icon name="gift" />Grants &amp; adjustments</h2>
+                @if (data.analytics.grantedCredits > 0) {
+                  <strong class="us-amount is-credit">+{{ format(data.analytics.grantedCredits) }}</strong>
+                }
+              </div>
+              @if (adjustments().length) {
+                <ul class="us-grants">
+                  @for (item of adjustments(); track item.type) {
+                    <li class="usage-adjustment">
+                      <div class="us-grants__name">
+                        <span>{{ adjustmentGroup(item.type) }}</span>
+                        <span class="lf-note">{{ item.transactionCount }} {{ item.transactionCount === 1 ? 'entry' : 'entries' }}</span>
+                      </div>
+                      <div class="us-grants__amounts">
+                        @if (item.grantedCredits > 0) {
+                          <strong class="us-amount is-credit">+{{ format(item.grantedCredits) }}</strong>
+                        }
+                        @if (item.debitedCredits > 0) {
+                          <strong class="us-amount">−{{ format(item.debitedCredits) }}</strong>
+                        }
+                      </div>
+                    </li>
+                  }
+                </ul>
               }
-            </ul>
-          } @else {
-            <p class="lf-empty">Nothing spent in this range.</p>
+              <p class="lf-note us-grants__help">
+                <strong>Permanent</strong> credits carry over until used; <strong>period</strong> credits end at the next reset.
+                Polar grants don't record who paid or why, so match gifts to orders in Polar.
+              </p>
+            </section>
           }
-        </section>
+        </div>
       </div>
 
       <section class="lf-tile lf-tile--flush usage-ledger" aria-labelledby="ledger-heading">
         <div class="lf-tile__head">
-          <h2 class="lf-h2" id="ledger-heading"><app-icon name="history" />Every charge</h2>
+          <h2 class="lf-h2" id="ledger-heading"><app-icon name="history" />Credit activity</h2>
+          <span class="lf-note">Charges and grants, newest first</span>
         </div>
-        <div class="us-filters usage-filters" role="group" aria-label="Filter charges by category">
+        <div class="us-filters usage-filters" role="group" aria-label="Filter credit activity by category">
           <button type="button" class="lf-chip" [attr.aria-pressed]="category() === null" (click)="selectCategory(null)">All</button>
           @for (item of categories; track item) {
             <button type="button" class="lf-chip" [attr.aria-pressed]="category() === item" (click)="selectCategory(item)">{{ label(item) }}</button>
@@ -190,20 +239,21 @@
             <button type="button" class="lf-btn lf-btn--sm" (click)="loadTransactions(true)">Retry</button>
           </div>
         } @else if (transactionsLoading() && !transactions().length) {
-          <div class="us-inset" role="status" aria-label="Loading charges">
+          <div class="us-inset" role="status" aria-label="Loading credit activity">
             @for (i of [1, 2, 3]; track i) {
               <app-skeleton height="2.75rem" />
             }
           </div>
         } @else if (!transactions().length) {
-          <p class="lf-empty">No charges {{ category() ? 'in this category' : 'in this range' }}.</p>
+          <p class="lf-empty">{{ category() ? 'Nothing in this category for these dates.' : 'No charges or grants in this range.' }}</p>
         } @else {
           <ul class="lf-rows usage-transactions">
             @for (item of transactions(); track item.id) {
-              <li class="lf-row">
+              @let row = describe(item);
+              <li class="lf-row" [class.us-tx--adjustment]="item.entryKind === 'adjustment'">
                 <div class="lf-row__main">
-                  <span class="lf-row__title">{{ label(item.category) }}</span>
-                  <span class="lf-row__meta">{{ item.operation }}@if (item.model) { · {{ item.model }} }</span>
+                  <span class="lf-row__title">{{ row.title }}</span>
+                  <span class="lf-row__meta">{{ row.meta }}@if (row.raw) { · <code class="us-raw">{{ row.raw }}</code> }</span>
                 </div>
                 <div class="us-tx__end">
                   <strong class="us-amount" [class.is-credit]="isCredit(item)">{{ isCredit(item) ? '+' : '−' }}{{ format(item.credits < 0 ? -item.credits : item.credits) }}</strong>
