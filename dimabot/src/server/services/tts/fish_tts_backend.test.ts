@@ -32,7 +32,7 @@ mock.module('./piper_tts.service.js', { namedExports: {
 process.env.FISH_AUDIO_API_KEY = 'test-only';
 const { fishTtsService } = await import('./fish_tts.service.js');
 
-test('Fish speech tries pro, then pro-free, before returning an error for Piper', async () => {
+test('Fish speech tries Drama 3 preview, then pro-free, before returning an error for Piper', async () => {
   try {
     const request = {
       channelID: 'channel', speechID: 'speech', mode: 'clone', provider: 'fish',
@@ -41,19 +41,19 @@ test('Fish speech tries pro, then pro-free, before returning an error for Piper'
 
     let result = await fishTtsService.synthesize(request);
     assert.equal(result.error, false);
-    assert.deepEqual(backends, ['s2.1-pro']);
+    assert.deepEqual(backends, ['drama-3-preview']);
 
     backends.length = 0;
-    failedBackends = new Set(['s2.1-pro']);
+    failedBackends = new Set(['drama-3-preview']);
     result = await fishTtsService.synthesize({ ...request, speechID: 'fallback' });
     assert.equal(result.error, false);
-    assert.deepEqual(backends, ['s2.1-pro', 's2.1-pro-free']);
+    assert.deepEqual(backends, ['drama-3-preview', 's2.1-pro-free']);
 
     backends.length = 0;
     failedBackends.add('s2.1-pro-free');
     result = await fishTtsService.synthesize({ ...request, speechID: 'piper' });
     assert.equal(result.error, true);
-    assert.deepEqual(backends, ['s2.1-pro', 's2.1-pro-free']);
+    assert.deepEqual(backends, ['drama-3-preview', 's2.1-pro-free']);
   } finally {
     await fs.rm(outputDir, { recursive: true, force: true });
   }
