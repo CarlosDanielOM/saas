@@ -205,6 +205,8 @@ for (const exhausted of [false, true]) {
         assert.equal((await generateMiyulootInsult(options.streamer, 'TestViewer')).error, false);
         const request = JSON.parse(String(provider.mock.calls[0].arguments[1].body));
         assert.equal(request.model, 'deepseek/deepseek-v4.1-flash');
+        assert.equal(Object.hasOwn(request, 'max_tokens'), false);
+        assert.equal(Object.hasOwn(request, 'reasoning'), false);
         assert.match(request.messages[0].content, /metáforas macabras/);
         assert.equal(executeTool.mock.callCount(), 0);
     });

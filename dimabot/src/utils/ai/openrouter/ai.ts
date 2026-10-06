@@ -474,7 +474,7 @@ async function callOpenRouter(
   tools: any[],
   channelID: string,
   streamer: IStreamerData,
-  maxTokens: number,
+  maxTokens: number | undefined,
   sessionId: string,
   traceId: string,
   extraOptions: Record<string, any> = {},
@@ -711,7 +711,7 @@ export async function generateStandaloneText(
   streamer: IStreamerData,
   messages: Array<{ role: 'system' | 'user'; content: string }>,
   reason: string,
-  options: { model?: string } = {},
+  options: { model?: string; maxTokens?: number | null } = {},
 ): Promise<IRouterResponse> {
   const channelID = streamer.user_id;
   if (!channelID) return { error: true, message: 'Channel context unavailable' };
@@ -722,8 +722,11 @@ export async function generateStandaloneText(
     const model = options.model ?? selectChatModel(streamer, isExhausted);
     const sessionID = generateUUIDv7();
     const traceID = generateUUIDv7();
+    // A null limit leaves the output budget to the provider, including reasoning.
+    const maxTokens = options.maxTokens === null ? undefined
+      : options.maxTokens ?? Math.min(getTokenLimit(model), 2048);
     const data = await callOpenRouter(model, messages, [], channelID, streamer,
-      Math.min(getTokenLimit(model), 2048), sessionID, traceID);
+      maxTokens, sessionID, traceID);
     if (data.error) {
       const extracted = extractOpenRouterError(data);
       return { error: true, message: extracted.message, status: extracted.status, type: extracted.type };

@@ -21,6 +21,6 @@ export async function generateMiyulootInsult(streamer: IStreamerData, displayNam
     const result = await generateStandaloneText(streamer, [
         { role: 'system', content: ROAST_INSTRUCTIONS },
         { role: 'user', content: JSON.stringify({ player: displayName, prize: 'Insulto' }) }
-    ], 'miyuloot_insult', { model: MIYULOOT_MODEL });
+    ], 'miyuloot_insult', { model: MIYULOOT_MODEL, maxTokens: null });
     return { ...result, message: sanitizeOutput(result.message || '') };
 }
