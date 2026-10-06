@@ -115,7 +115,7 @@ await cooldown(); fs.writeFileSync('/tmp/saas-fixtures/state.json', JSON.stringi
 const spent = await redis.hGet(`${channel}:tts:usage`, 'fish_credits');
 const failCount = synthCount();
 assert.equal((await socket.send({ voiceId: 'b'.repeat(32), language: 'en' })).code, 'synthesis_failed');
-assert.deepEqual(calls().filter(c => c.synthesis).slice(failCount).map(c => c.model), ['drama-3-preview', 's2.1-pro-free'], 'failure must try drama-3-preview then fall back to s2.1-pro-free');
+assert.deepEqual(calls().filter(c => c.synthesis).slice(failCount).map(c => c.model), ['drama-3-preview', 's2.1-pro'], 'failure must try drama-3-preview then fall back to s2.1-pro');
 assert.equal(await redis.hGet(`${channel}:tts:usage`, 'fish_credits'), spent);
 await cooldown();
 assert.equal((await socket.send({ voiceId: '0'.repeat(32), language: 'en' })).code, 'voice_unavailable');
@@ -149,10 +149,10 @@ const fallbackStart = synthCount();
 assert.equal((await request('/speech/' + channel, 'POST', {
   mode: 'clone', text: '[happy] Hello <whisper>secret<whisper>.', language: 'en',
 })).status, 200);
-await finishSpeech('b'.repeat(32), 's2.1-pro-free');
+await finishSpeech('b'.repeat(32), 's2.1-pro');
 assert.deepEqual(calls().filter(c => c.synthesis).slice(fallbackStart).map(c => ({ model: c.model, text: c.synthesis.text })), [
   { model: 'drama-3-preview', text: '[happy] Hello <whisper>secret<whisper>.' },
-  { model: 's2.1-pro-free', text: '[happy] [happy] Hello <whisper>secret<whisper>.' },
+  { model: 's2.1-pro', text: '[happy] [happy] Hello <whisper>secret<whisper>.' },
 ]);
 fs.writeFileSync('/tmp/saas-fixtures/state.json', '{}');
 for (const mode of ['speak', 'clone']) {
