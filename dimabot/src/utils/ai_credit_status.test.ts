@@ -12,7 +12,7 @@ import { MODELS, selectChatModel } from './ai/constants.js';
 
 test('credit snapshot becomes exhausted exactly when usage reaches the limit', () => {
     const before = buildAiCreditsDataFromMeter(
-        { meter_id: AI_CREDITS_METER_ID, consumed_units: 24_999, balance: -24_999 },
+        { meter_id: AI_CREDITS_METER_ID, consumed_units: -1, balance: 1 },
         'free',
         '2026-09-09T00:00:00.000Z',
     );
@@ -42,12 +42,12 @@ test('meter snapshot is exhausted when Polar usage already equals the limit', ()
 });
 
 test('Piper consumption can exceed the available balance and stays exhausted', () => {
-    const before = buildAiCreditsDataFromMeter({ consumed_units: 25_000, balance: -25_000 }, 'free');
+    const before = buildAiCreditsDataFromMeter({ consumed_units: 0, balance: 0 }, 'free');
     const after = applyAiCreditUsageToSnapshot(before, 2);
     assert.equal(after.balance, -2);
     assert.equal(after.used, 25_002);
     assert.equal(after.status, 'exhausted');
-    const refreshed = buildAiCreditsDataFromMeter({ consumed_units: 25_002, balance: -25_002 }, 'free');
+    const refreshed = buildAiCreditsDataFromMeter({ consumed_units: 2, balance: -2 }, 'free');
     assert.equal(refreshed.balance, -2);
     assert.equal(refreshed.status, 'exhausted');
 });
@@ -59,7 +59,7 @@ test('exhausted chat uses the dedicated exhausted model', () => {
 
 test('credit status check repairs missing exhaustion flags from an exhausted snapshot', async t => {
     const exhaustedSnapshot = buildAiCreditsDataFromMeter(
-        { meter_id: AI_CREDITS_METER_ID, consumed_units: 25_000, balance: -25_000 },
+        { meter_id: AI_CREDITS_METER_ID, consumed_units: 0, balance: 0 },
         'free',
     );
     const cache = {
@@ -101,4 +101,32 @@ test('accepted usage atomically updates the snapshot and persistent exhaustion f
     assert.match(script, /data\.balance <= 0 and 'exhausted' or 'available'/);
     assert.match(script, /redis\.call\('SET', KEYS\[2\], 'true'\)/);
     assert.match(script, /redis\.call\('SET', KEYS\[3\], 'true'\)/);
+});
+
+test('Free credit grants use the actual funded balance as it falls below the plan allowance', () => {
+    for (const remaining of [25_000, 16_362, 1, 0, -2]) {
+        const snapshot = buildAiCreditsDataFromMeter({
+            consumed_units: -remaining, credited_units: 0, balance: remaining,
+        }, 'free');
+        assert.equal(snapshot.balance, remaining);
+        assert.equal(snapshot.used, 25_000 - remaining);
+        assert.equal(snapshot.status, remaining <= 0 ? 'exhausted' : 'available');
+    }
+});
+
+test('a funded paid meter cannot acquire extra credits from a larger local plan allowance', () => {
+    const snapshot = buildAiCreditsDataFromMeter({
+        consumed_units: 199_999, credited_units: 200_000, balance: 1,
+    }, 'pro');
+    assert.equal(snapshot.balance, 1);
+    assert.equal(snapshot.limit, 200_000);
+    assert.equal(snapshot.used, 199_999);
+});
+
+test('Moon-style grants and earlier spending preserve the actual paid balance', () => {
+    const snapshot = buildAiCreditsDataFromMeter({
+        consumed_units: 18_912, credited_units: 800_000, balance: 781_088,
+    }, 'pro');
+    assert.equal(snapshot.balance, 781_088);
+    assert.equal(snapshot.used, 18_912);
 });

@@ -1,3 +1,4 @@
+import { AI_CREDITS_CACHE_SCHEMA_VERSION } from '/app/dist/utils/billing.js';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -74,7 +75,7 @@ if (!process.env.TTS_OVERLAY_HTML) {
     });
   try {
     await redis.hSet(`accounts:twitch:${channel}:data`, { id: channel, name: 'test', polar_sh_customer_id: 'test-customer', plan_tier: 'premium' });
-    await redis.set(`twitch:${channel}:ai:credits`, JSON.stringify({ version: 3, used: 0, limit: 10000, balance: 10000, available: true, status: 'available' }));
+    await redis.set(`twitch:${channel}:ai:credits`, JSON.stringify({ version: AI_CREDITS_CACHE_SCHEMA_VERSION, used: 0, limit: 10000, balance: 10000, available: true, status: 'available' }));
     await wait(() => redis.exists(`twitch:${channel}:tts:connected`), 'overlay connection');
     const request = async text => {
       const response = await fetch(`http://127.0.0.1:3000/speech/${channel}`, {

@@ -1,3 +1,4 @@
+import { AI_CREDITS_CACHE_SCHEMA_VERSION } from '/app/dist/utils/billing.js';
 // Runs the candidate's actual moderation handler/worker against disposable data.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -31,7 +32,7 @@ async function seed(channel, tier = 'free', protection = { enabled: true, review
     await Settings.create({ channelID: channel, channel, enabled: true, spamProtection: protection, rules: [], settingsVersion: 1 });
     await mongo.connection.db.collection('users').insertOne({ accounts: [{ type: 'twitch', id: channel, name: channel }], plan_tier: tier, polar_sh_customer_id: `customer-${channel}` });
     await redis.hSet(`accounts:twitch:${channel}:data`, { id: channel, name: channel, plan_tier: tier });
-    await redis.set(`twitch:${channel}:ai:credits`, JSON.stringify({ version: 3, used: 0, limit: 1000, balance: 1000, available: true, status: 'available' }));
+    await redis.set(`twitch:${channel}:ai:credits`, JSON.stringify({ version: AI_CREDITS_CACHE_SCHEMA_VERSION, used: 0, limit: 1000, balance: 1000, available: true, status: 'available' }));
 }
 let worker;
 if (process.env.SAAS_TARGET !== 'cron') worker = spawn(process.execPath, ['dist/workers/semantic_moderation.worker.js'], { stdio: ['ignore', 'inherit', 'inherit'], env: process.env });
@@ -39,7 +40,7 @@ try {
     await redis.hSet('accounts:twitch:698614112:data', { id: '698614112', access_token: 'dummy', expires_at: String(Math.floor(Date.now() / 1000) + 36000) });
     // Even an exhausted free account gets its first review, without any billing writes.
     await seed('spam-free');
-    const exhausted = JSON.stringify({ version: 3, used: 1000, limit: 1000, balance: 0, available: true, status: 'exhausted' });
+    const exhausted = JSON.stringify({ version: AI_CREDITS_CACHE_SCHEMA_VERSION, used: 1000, limit: 1000, balance: 0, available: true, status: 'exhausted' });
     await redis.set('twitch:spam-free:ai:credits', exhausted);
     await redis.set('twitch:spam-free:ai:credits:exhausted', '1');
     assert.equal((await review('spam-free', 'first-ad', 'Want to buy more viewers? Visit viewerbuy . com!', 'advertiser')).actionTaken, true);
@@ -135,7 +136,7 @@ try {
 
     // The last paid review exhausts credits; all subsequent checks use Lite.
     await seed('tier-switch', 'premium', { enabled: true, reviewAllMessages: true });
-    await redis.set('twitch:tier-switch:ai:credits', JSON.stringify({ version: 3, used: 999, limit: 1000, balance: 1, available: true, status: 'available' }));
+    await redis.set('twitch:tier-switch:ai:credits', JSON.stringify({ version: AI_CREDITS_CACHE_SCHEMA_VERSION, used: 999, limit: 1000, balance: 1, available: true, status: 'available' }));
     await review('tier-switch', 'last-paid', 'Hello everyone!');
     await until(async () => (await decision('last-paid'))?.charge.status === 'recorded', 'last credit charged');
     assert.equal((await decision('last-paid')).model, 'typesafe/jev-1.13');
@@ -148,7 +149,7 @@ try {
         assert.equal(row.charge.credits, 0);
         assert.equal(row.verdict, 'allow');
     }
-    await redis.set('twitch:tier-switch:ai:credits', JSON.stringify({ version: 3, used: 0, limit: 1000, balance: 1000, available: true, status: 'available' }));
+    await redis.set('twitch:tier-switch:ai:credits', JSON.stringify({ version: AI_CREDITS_CACHE_SCHEMA_VERSION, used: 0, limit: 1000, balance: 1000, available: true, status: 'available' }));
     await redis.del(['twitch:tier-switch:ai:exhaust', 'tier-switch:ai:exhaust']);
     await review('tier-switch', 'recharged', 'Want to buy viewers? UNCERTAIN');
     assert.equal((await decision('recharged')).verdict, 'uncertain');

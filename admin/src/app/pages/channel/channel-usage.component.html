@@ -85,11 +85,12 @@
         <article class="lf-metric">
           <span class="lf-metric__label">Credits left</span>
           @if (data.credits.available) {
-            <strong class="lf-metric__value">{{ compact(data.credits.balance) }}</strong>
-            <div class="lf-bar us-mini-bar" role="progressbar" aria-label="Credits used this period" [attr.aria-valuenow]="usedPercent()" aria-valuemin="0" aria-valuemax="100">
+            <strong class="lf-metric__value">{{ format(data.credits.balance) }}</strong>
+            <div class="lf-bar us-mini-bar" role="progressbar" aria-label="Credits used after credit additions" [attr.aria-valuenow]="usedPercent()" aria-valuemin="0" aria-valuemax="100">
               <span [style.width.%]="usedPercent()"></span>
             </div>
-            <span class="lf-metric__note">{{ format(data.credits.used) }} used of {{ format(data.credits.limit) }}</span>
+            <span class="lf-metric__note">{{ format(data.credits.used) }} net used of {{ format(data.credits.limit) }}</span>
+            <span class="lf-metric__note">Balance includes earlier activity and credit additions.</span>
           } @else {
             <strong class="lf-metric__value">—</strong>
             <span class="lf-metric__note">No credit account yet</span>
@@ -97,7 +98,8 @@
         </article>
         <article class="lf-metric">
           <span class="lf-metric__label">Spent {{ customRange() ? 'in range' : 'this period' }}</span>
-          <strong class="lf-metric__value">{{ compact(data.analytics.totalSpentCredits) }}</strong>
+          <strong class="lf-metric__value">{{ format(data.analytics.totalSpentCredits) }}</strong>
+          <span class="lf-metric__note">Every charge in these dates, before credit additions.</span>
           <span class="lf-metric__note">≈ {{ format(data.analytics.averageDailySpentCredits) }} a day</span>
         </article>
         <article class="lf-metric">

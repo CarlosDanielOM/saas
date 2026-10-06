@@ -1,3 +1,4 @@
+import { AI_CREDITS_CACHE_SCHEMA_VERSION } from '/app/dist/utils/billing.js';
 // Use kokoro-fixtures/api-env.json with disposable Mongo/Redis through saas-ops.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -60,7 +61,7 @@ try {
       id: channel, name: 'fixture', plan_tier: scenario.plan, polar_sh_customer_id: customer,
     });
     await redis.del([`twitch:${channel}:ai:exhaust`, `${channel}:ai:exhaust`]);
-    await redis.set(`twitch:${channel}:ai:credits`, JSON.stringify({ version: 3,
+    await redis.set(`twitch:${channel}:ai:credits`, JSON.stringify({ version: AI_CREDITS_CACHE_SCHEMA_VERSION,
       used: scenario.available ? 0 : 10000, limit: 10000, balance: scenario.available ? 10000 : 0,
       available: true, status: scenario.available ? 'available' : 'exhausted' }), { EX: 300 });
     fs.writeFileSync('/tmp/saas-fixtures/state.json', JSON.stringify({ fail: !!scenario.fail }));

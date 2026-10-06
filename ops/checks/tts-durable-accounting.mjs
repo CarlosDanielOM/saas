@@ -1,3 +1,4 @@
+import { AI_CREDITS_CACHE_SCHEMA_VERSION } from '/app/dist/utils/billing.js';
 import assert from 'node:assert/strict';
 
 import { getDragonflyClient } from '/app/dist/utils/databases/dragonfly.database.js';
@@ -9,7 +10,7 @@ const entryId = 'tts-durable-entry';
 const redis = await getDragonflyClient('tts-durable-accounting-check');
 
 await redis.set(`twitch:${channelID}:ai:credits`, JSON.stringify({
-  version: 3,
+  version: AI_CREDITS_CACHE_SCHEMA_VERSION,
   used: 0,
   limit: 1_000,
   balance: 1_000,

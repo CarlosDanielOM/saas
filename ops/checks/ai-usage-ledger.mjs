@@ -1,3 +1,4 @@
+import { AI_CREDITS_CACHE_SCHEMA_VERSION } from '/app/dist/utils/billing.js';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
@@ -54,7 +55,7 @@ await UsersSchema.create({
 });
 await redis.hSet('token:ledger-token', { id: 'ledger-pro', login: 'ledger-pro', display_name: 'Ledger Pro' });
 await redis.set('twitch:ledger-pro:ai:credits', JSON.stringify({
-  version: 3, used: 200, limit: 800000, balance: 799800,
+  version: AI_CREDITS_CACHE_SCHEMA_VERSION, used: 200, limit: 800000, balance: 799800,
   meterId: '5103e79b-fd74-4ba8-a287-f95574f9addf', updatedAt: new Date().toISOString(),
   available: true, status: 'available',
 }));

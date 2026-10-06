@@ -118,7 +118,7 @@ export const AI_CREDIT_LIMITS = {
 } as const;
 
 export const AI_CREDITS_CACHE_TTL_SECONDS = 5 * 60;
-export const AI_CREDITS_CACHE_SCHEMA_VERSION = 3;
+export const AI_CREDITS_CACHE_SCHEMA_VERSION = 4;
 const CREDIT_PACK_BILLING_CONTEXT_CACHE_TTL_SECONDS = 2 * 60;
 const CREDIT_PACK_BILLING_CONTEXT_CACHE_VERSION = 1;
 
@@ -174,12 +174,34 @@ export function buildAiCreditsDataFromMeter(
     const creditedUnits = toFiniteNumber(meter?.credited_units, 0);
     const planLimit = getAiCreditLimitForPlan(planTier);
 
-    // Polar active_meters payload for the current credit meter exposes:
-    // - consumed_units: total credits spent in the period
-    // - balance: negative of consumed units when no explicit credits are loaded in Polar
-    // For the dashboard, source-of-truth usage is consumed_units, not balance.
+    // Free credits are funded by negative usage events (including monthly resets),
+    // so consumed_units is net of grants, rather than gross spending. Paid
+    // benefits fund credited_units. In both cases the actual balance must win:
+    // adding the plan allowance again silently restores credits after spending.
     const consumedUnits = toFiniteNumber(meter?.consumed_units, Number.NaN);
-    const balanceValue = toFiniteNumber(meter?.balance, Number.NaN);
+    const balanceValue = meter?.balance == null ? Number.NaN : toFiniteNumber(meter.balance, Number.NaN);
+
+    if (Number.isFinite(balanceValue) && (planTier === 'free' || creditedUnits > 0 || balanceValue > 0)) {
+        const limit = Math.max(0, Math.round(Math.max(
+            creditedUnits > 0 ? creditedUnits : planLimit,
+            polarLimit,
+            balanceValue
+        )));
+        const balance = Math.round(balanceValue);
+        return {
+            version: AI_CREDITS_CACHE_SCHEMA_VERSION,
+            used: Math.max(0, limit - balance),
+            limit,
+            balance,
+            meterId: AI_CREDITS_METER_ID,
+            updatedAt,
+            available: true,
+            status: balance <= 0 ? 'exhausted' : 'available'
+        };
+    }
+
+    // Older paid meters have no explicit funding and report balance=-usage.
+    // Preserve their virtual plan allowance until a funded balance is present.
 
     let used = 0;
     if (Number.isFinite(consumedUnits) && consumedUnits > 0) {

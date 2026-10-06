@@ -177,7 +177,7 @@ export class ChannelDetailComponent implements OnInit {
   });
   readonly aiCreditsLabel = computed(
     () =>
-      `${this.formatCredits(this.aiCreditsUsed())} / ${this.formatCredits(this.aiCreditsLimit())}`,
+      `${this.formatExact(this.aiCreditsUsed())} / ${this.formatExact(this.aiCreditsLimit())}`,
   );
   readonly planTier = computed(() => this.overview()?.user?.plan_tier ?? 'free');
   /** Can't grant without a billing (Polar) account; null credits = unknown, so allow it. */

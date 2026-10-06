@@ -1,3 +1,4 @@
+import { AI_CREDITS_CACHE_SCHEMA_VERSION } from '/app/dist/utils/billing.js';
 // Runs only in saas-ops' disposable Mongo/Redis network with provider mocks.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -35,7 +36,7 @@ async function seed(channel, rule, tier = 'premium') {
     await Settings.create({ channelID: channel, channel, enabled: true, spamProtection: { enabled: false, reviewAllMessages: false }, rules: [rule], settingsVersion: 2 });
     await mongo.connection.db.collection('users').insertOne({ accounts: [{ type: 'twitch', id: channel, name: channel }], plan_tier: tier, polar_sh_customer_id: `customer-${channel}` });
     await redis.hSet(`accounts:twitch:${channel}:data`, { id: channel, name: channel, plan_tier: tier });
-    await redis.set(`twitch:${channel}:ai:credits`, JSON.stringify({ version: 3, used: 0, limit: 1000, balance: 1000, available: true, status: 'available' }));
+    await redis.set(`twitch:${channel}:ai:credits`, JSON.stringify({ version: AI_CREDITS_CACHE_SCHEMA_VERSION, used: 0, limit: 1000, balance: 1000, available: true, status: 'available' }));
 }
 try {
     await redis.hSet('accounts:twitch:698614112:data', { id: '698614112', access_token: 'dummy', expires_at: String(Math.floor(Date.now() / 1000) + 36000) });

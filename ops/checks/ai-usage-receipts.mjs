@@ -1,3 +1,4 @@
+import { AI_CREDITS_CACHE_SCHEMA_VERSION } from '/app/dist/utils/billing.js';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
@@ -55,7 +56,7 @@ async function seedUser(id, planTier, token) {
     profile_image_url: ''
   });
   await redis.set(`twitch:${id}:ai:credits`, JSON.stringify({
-    version: 3,
+    version: AI_CREDITS_CACHE_SCHEMA_VERSION,
     used: 255,
     limit: planTier === 'pro' ? 800000 : planTier === 'premium' ? 200000 : 25000,
     balance: planTier === 'pro' ? 799745 : planTier === 'premium' ? 199745 : 24745,

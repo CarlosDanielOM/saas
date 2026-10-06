@@ -613,6 +613,7 @@ try {
   await page.getByRole("searchbox").fill("example.test");
   await page.getByRole("button", { name: "Search", exact: true }).click();
   await visible(".user-identity");
+  await until(async () => (await page.locator('.user-card').count()) === 3, 'search results finish rendering');
   assert.equal(await page.locator(".user-card").count(), 3, "Search keeps all matches");
   assert.match(page.url(), /q=example\.test/);
   await page.getByRole("button", { name: "Clear search" }).click();
@@ -634,6 +635,11 @@ try {
   // ---------- Channel ----------
   await page.getByRole("link", { name: "Open channel for pixelpilot" }).click();
   await visible(".credit-usage__progress");
+  assert.equal(
+    (await page.locator('.credit-usage__label').textContent()).trim(),
+    '162,500 left',
+    'Channel balance must show every credit rather than a rounded K value',
+  );
   await page.getByText("Twitch access is out of date.").waitFor({ state: "attached" }).catch(() => {});
   assert.equal(
     await page.getByRole("progressbar").getAttribute("aria-valuenow"),
@@ -668,7 +674,7 @@ try {
     JSON.parse(requests.filter((r) => r.path.endsWith("/ai-credits/grant")).at(-1).body).credits,
     25000,
   );
-  await page.getByText("187.5K left", { exact: true }).waitFor();
+  await page.getByText("187,500 left", { exact: true }).waitFor();
 
   // Channel with problems answers in plain words.
   await page.goto(`${base}/channels/9003`);
@@ -719,6 +725,22 @@ try {
   await page.getByText("On pace to run out in ~12 days").waitFor();
   await page.getByText("that's 5 days before the period resets", { exact: false }).waitFor();
   await page.getByRole("heading", { name: "AI credit usage" }).waitFor();
+  const balanceMetric = page.locator('.usage-metrics article').first();
+  assert.equal((await balanceMetric.locator('.lf-metric__value').textContent()).trim(), '162,500');
+  usageSummary.credits.balance -= 1;
+  usageSummary.credits.used += 1;
+  await page.getByRole('button', { name: 'Refresh', exact: true }).click();
+  await until(async () => (await balanceMetric.locator('.lf-metric__value').textContent())?.trim() === '162,499', 'single-credit deduction becomes visible after refresh');
+  usageSummary.credits.used = 0;
+  await page.getByRole('button', { name: 'Refresh', exact: true }).click();
+  await page.getByText('0 net used of 200,000', { exact: true }).waitFor();
+  await page.getByText('Balance includes earlier activity and credit additions.', { exact: true }).waitFor();
+  assert.equal((await page.locator('.usage-metrics article').nth(1).locator('.lf-metric__value').textContent()).trim(), '117,000', 'Actual spending remains visible even when grants offset net usage');
+  usageSummary.credits.balance += 1;
+  usageSummary.credits.used = 37500;
+  await page.getByRole('button', { name: 'Refresh', exact: true }).click();
+  await until(async () => (await balanceMetric.locator('.lf-metric__value').textContent())?.trim() === '162,500', 'restored fixture');
+  await until(async () => (await page.locator('.usage-transactions li').count()) === 25, 'refreshed transactions finish rendering');
   assert.equal(await page.locator(".usage-transactions li").count(), 25);
   await page.getByRole("button", { name: "Load more" }).click();
   await until(async () => (await page.locator(".usage-transactions li").count()) === 30, "load more");

@@ -1,3 +1,4 @@
+import { AI_CREDITS_CACHE_SCHEMA_VERSION } from '/app/dist/utils/billing.js';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
@@ -77,7 +78,7 @@ await UsersSchema.create({
 
 for (const [channel, used] of [['due-channel', 5_000], ['baseline-channel', 7_000]]) {
   await redis.set(`twitch:${channel}:ai:credits`, JSON.stringify({
-    version: 3, used, limit: 25_000, balance: 25_000 - used,
+    version: AI_CREDITS_CACHE_SCHEMA_VERSION, used, limit: 25_000, balance: 25_000 - used,
     meterId: '5103e79b-fd74-4ba8-a287-f95574f9addf', updatedAt: now.toISOString(),
     available: true, status: 'available',
   }));

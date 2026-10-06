@@ -33,7 +33,13 @@ globalThis.fetch = async (input, options = {}) => {
         log({ piper: JSON.parse(options.body) });
         return new Response(fs.readFileSync(`${directory}/sample.wav`), { headers: { 'Content-Type': 'audio/wav' } });
     }
-    if (url.hostname === 'api.polar.sh') return json({ events: [], inserted: 1, duplicates: 0 });
+    if (url.hostname === 'api.polar.sh') {
+        if (url.pathname.startsWith('/v1/customers/') && url.pathname.endsWith('/state')
+            && fs.existsSync(`${directory}/credit-balance-state.json`)) {
+            return json(JSON.parse(fs.readFileSync(`${directory}/credit-balance-state.json`)));
+        }
+        return json({ events: [], inserted: 1, duplicates: 0 });
+    }
     if (url.hostname === 'id.twitch.tv') return json({ access_token: 'app-token', expires_in: 3600 });
     if (url.hostname === 'api.twitch.tv') {
         if (url.pathname === '/helix/chat/messages') {

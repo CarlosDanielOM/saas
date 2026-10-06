@@ -17,7 +17,7 @@ type Dependencies = NonNullable<Parameters<typeof applyPolarPlanDomainEvent>[1]>
 const ownerId = new Types.ObjectId('0123456789abcdef01234567');
 const occurredAt = new Date('2026-09-04T10:00:00Z');
 const legacyMeterId = '01d90c16-87d0-4e31-880a-4045a8da90cd';
-const meters = [{ meter_id: AI_CREDITS_METER_ID, consumed_units: 30, balance: -30 }];
+const meters = [{ meter_id: AI_CREDITS_METER_ID, consumed_units: -24970, balance: 24970 }];
 
 function event(type: string, payload: Partial<PolarBillingPayload> = {}): DomainEventEnvelope {
     return {
@@ -246,7 +246,7 @@ for (const [used, legacyBalance, exhaustion] of [[30, -100, '0'], [25000, 100, '
         const f = fixture(t, ['twitch-owner']);
         const currentMeters = [
             { meter_id: legacyMeterId, balance: legacyBalance },
-            { meter_id: AI_CREDITS_METER_ID, consumed_units: used, balance: -used },
+            { meter_id: AI_CREDITS_METER_ID, consumed_units: used - 25000, balance: 25000 - used },
         ];
         f.state.updated!.polar_credit_snapshot!.meters = currentMeters;
         await applyPolarCreditsDomainEvent(event('billing.customer.state.changed', { meters: currentMeters }), f.deps);

@@ -1,3 +1,4 @@
+import { AI_CREDITS_CACHE_SCHEMA_VERSION } from '/app/dist/utils/billing.js';
 // Runs against task-owned databases and mocked external providers only.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -14,7 +15,7 @@ const customer = '11111111-1111-4111-8111-111111111111';
 const credits = async balance => {
   await redis.del([`twitch:${channel}:ai:exhaust`,`${channel}:ai:exhaust`]);
   return redis.set(`twitch:${channel}:ai:credits`, JSON.stringify({
-  version: 3, used: 0, limit: 10000, balance, available: true, status: balance > 0 ? 'available' : 'exhausted'
+  version: AI_CREDITS_CACHE_SCHEMA_VERSION, used: 0, limit: 10000, balance, available: true, status: balance > 0 ? 'available' : 'exhausted'
 }), { EX: 300 });
 };
 await Users.create({ name: 'existing', accounts: [{type:'twitch',id:channel,name:'existing'}] });

@@ -113,22 +113,23 @@
             </div>
             @if (aiCredits() && aiCreditsAvailable()) {
               <p class="ch-credits__line">
-                <strong class="credit-usage__label">{{ formatCredits(aiCreditsBalance()) }} left</strong>
-                <span class="lf-note">of {{ formatCredits(aiCreditsLimit()) }} · {{ aiCreditsPercent() }}% used</span>
+                <strong class="credit-usage__label">{{ formatExact(aiCreditsBalance()) }} left</strong>
+                <span class="lf-note">of {{ formatExact(aiCreditsLimit()) }} · {{ aiCreditsPercent() }}% net used</span>
               </p>
               <div
                 class="lf-bar credit-usage__progress"
                 [class.lf-bar--gold]="planTier() !== 'free' && !aiCreditsExhausted()"
                 [class.lf-bar--live]="aiCreditsExhausted()"
                 role="progressbar"
-                aria-label="AI credits used"
+                aria-label="AI credits used after credit additions"
                 [attr.aria-valuemin]="0"
                 [attr.aria-valuemax]="100"
                 [attr.aria-valuenow]="aiCreditsPercent()"
-                [attr.aria-valuetext]="aiCreditsLabel() + ' used'"
+                [attr.aria-valuetext]="aiCreditsLabel() + ' net used'"
               >
                 <span [style.width.%]="aiCreditsPercent()"></span>
               </div>
+              <p class="lf-note">Balance includes earlier activity and credit additions. View usage for spending this period.</p>
               @if (aiCreditsExhausted()) {
                 <p class="lf-error">No credits left — AI features are paused for this channel.</p>
               }

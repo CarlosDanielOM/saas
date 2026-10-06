@@ -1,3 +1,4 @@
+import { AI_CREDITS_CACHE_SCHEMA_VERSION } from '/app/dist/utils/billing.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
@@ -12,7 +13,7 @@ const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application
 await redis.hSet(`token:${token}`, { id: channel, login: 'test', display_name: 'Test' });
 await redis.hSet(`token:${token}-other`, { id: '999992', login: 'other', display_name: 'Other' });
 await redis.hSet(`accounts:twitch:${channel}:data`, { id: channel, name: 'test', polar_sh_customer_id: '11111111-1111-4111-8111-111111111111', plan_tier: 'premium' });
-const setCredits = async balance => redis.set(`twitch:${channel}:ai:credits`, JSON.stringify({ version: 3, used: 0, limit: balance, balance, available: true, status: balance > 0 ? 'available' : 'exhausted' }));
+const setCredits = async balance => redis.set(`twitch:${channel}:ai:credits`, JSON.stringify({ version: AI_CREDITS_CACHE_SCHEMA_VERSION, used: 0, limit: balance, balance, available: true, status: balance > 0 ? 'available' : 'exhausted' }));
 await setCredits(10000);
 const request = async (path, method = 'GET', body, auth = headers) => {
   const response = await fetch(root + path, { method, headers: auth, ...(body ? { body: JSON.stringify(body) } : {}) });
@@ -202,7 +203,7 @@ assert.equal(resolveFishVoice('constructor'), null);
 const previewCredits = async (balance, available = true) => {
   await redis.del([`twitch:${channel}:ai:exhaust`, `${channel}:ai:exhaust`]);
   await redis.set(`twitch:${channel}:ai:credits`, JSON.stringify({
-    version: 3, used: 0, limit: 10000, balance, available,
+    version: AI_CREDITS_CACHE_SCHEMA_VERSION, used: 0, limit: 10000, balance, available,
     status: available ? balance > 0 ? 'available' : 'exhausted' : 'unavailable'
   }));
 };
