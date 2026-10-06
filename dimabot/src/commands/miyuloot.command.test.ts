@@ -8,10 +8,10 @@ mock.module('../functions/moderation/index.js', { namedExports: { ban } });
 mock.module('../utils/databases/dragonfly.database.js', { namedExports: { getDragonflyClient } });
 const streamer = { id: 'test-channel', name: 'miyu', plan_tier: 'pro' as const };
 const generatedInsult = 'TestViewer, hasta tu mala suerte pidió cambiar de streamer.';
-const executeAiCommand = mock.fn(async (..._args: unknown[]) => ({ error: false, message: generatedInsult }));
+const generateMiyulootInsult = mock.fn(async (..._args: unknown[]) => ({ error: false, message: generatedInsult }));
 const getTwitchAccountById = mock.fn(async (_id: string): Promise<typeof streamer | null> => streamer);
 mock.module('../classes/twitch_streamers.class.js', { defaultExport: { getTwitchAccountById } });
-mock.module('../utils/ai/openrouter/command.ai.js', { namedExports: { executeAiCommand } });
+mock.module('../utils/ai/openrouter/miyuloot.ai.js', { namedExports: { generateMiyulootInsult } });
 const { miyulootCommand } = await import('./miyuloot.command.js');
 
 const tags = { username: 'testviewer', 'display-name': 'TestViewer', 'user-id': 'test-user' };
@@ -31,7 +31,7 @@ const total = prizes.reduce((sum, prize) => sum + prize.weight, 0);
 const starts = prizes.map((_, index) => prizes.slice(0, index).reduce((sum, prize) => sum + prize.weight, 0));
 
 test.beforeEach(() => {
-    executeAiCommand.mock.mockImplementation(async () => ({ error: false, message: generatedInsult }));
+    generateMiyulootInsult.mock.mockImplementation(async () => ({ error: false, message: generatedInsult }));
     getTwitchAccountById.mock.mockImplementation(async () => streamer);
 });
 
@@ -39,7 +39,7 @@ test.afterEach(() => {
     mock.restoreAll(); // Restore Math.random even after an assertion fails.
     ban.mock.resetCalls();
     getDragonflyClient.mock.resetCalls();
-    executeAiCommand.mock.resetCalls();
+    generateMiyulootInsult.mock.resetCalls();
     getTwitchAccountById.mock.resetCalls();
 });
 
@@ -50,16 +50,11 @@ async function expectPrize(context: test.TestContext, rng: number, index: number
     const result = await miyulootCommand(channelID, tags);
     assert.deepEqual(result, { error: false, message: prizes[index].message, status: 200, type: 'Miyu' });
     assert.equal(draws, 1);
-    assert.equal(executeAiCommand.mock.callCount(), index === 0 ? 1 : 0);
+    assert.equal(generateMiyulootInsult.mock.callCount(), index === 0 ? 1 : 0);
     assert.deepEqual(getTwitchAccountById.mock.calls.map(call => call.arguments), index === 0 ? [[channelID]] : []);
     if (index === 0) {
-        const [account, user, prompt, reason, options] = executeAiCommand.mock.calls[0].arguments;
-        assert.deepEqual(account, { ...streamer, user_id: channelID });
-        assert.deepEqual(user, { username: tags['display-name'], userLevel: 1 });
-        assert.match(String(prompt), /TestViewer/);
-        assert.match(String(prompt), /humor negro/);
-        assert.equal(reason, 'miyuloot');
-        assert.deepEqual(options, { disableTools: true });
+        assert.deepEqual(generateMiyulootInsult.mock.calls[0].arguments,
+            [{ ...streamer, user_id: channelID }, tags['display-name']]);
     }
     assert.deepEqual(getDragonflyClient.mock.calls.map(call => call.arguments), [['miyulootCommand']]);
     assert.deepEqual(ban.mock.calls.map(call => call.arguments), index === 5
@@ -114,9 +109,9 @@ const fallbackInsults = [
     'Y tu premio es valer verga, no te preocupes, es pura verga',
 ];
 
-for (const failure of ['error', 'empty', 'disabled', 'throws', 'missing streamer', 'lookup throws']) {
+for (const failure of ['error', 'empty', 'status message', 'throws', 'missing streamer', 'lookup throws']) {
     test(`AI ${failure} preserves the static insult fallback`, async context => {
-        executeAiCommand.mock.mockImplementation(async () => {
+        generateMiyulootInsult.mock.mockImplementation(async () => {
             if (failure === 'throws') throw new Error('Mock provider unavailable');
             return { error: failure === 'error', message: failure === 'empty' ? '  ' : '[AI: Chat responses disabled]' };
         });
@@ -130,7 +125,7 @@ for (const failure of ['error', 'empty', 'disabled', 'throws', 'missing streamer
         assert.deepEqual(await miyulootCommand(channelID, tags), {
             error: false, message: fallbackInsults[4], status: 200, type: 'Miyu'
         });
-        assert.equal(executeAiCommand.mock.callCount(), failure === 'missing streamer' || failure === 'lookup throws' ? 0 : 1);
+        assert.equal(generateMiyulootInsult.mock.callCount(), failure === 'missing streamer' || failure === 'lookup throws' ? 0 : 1);
         assert.equal(getTwitchAccountById.mock.callCount(), 1);
         assert.equal(draws, 2);
         assert.equal(ban.mock.callCount(), 0);
@@ -138,19 +133,19 @@ for (const failure of ['error', 'empty', 'disabled', 'throws', 'missing streamer
 }
 
 test('AI insult is trimmed to one chat line', async context => {
-    executeAiCommand.mock.mockImplementation(async () => ({ error: false, message: '  TestViewer,\n tu suerte apesta.  ' }));
+    generateMiyulootInsult.mock.mockImplementation(async () => ({ error: false, message: '  TestViewer,\n tu suerte apesta.  ' }));
     context.mock.method(Math, 'random', () => 0);
     assert.equal((await miyulootCommand(channelID, tags)).message, 'TestViewer, tu suerte apesta.');
 });
 test('AI insult stays within 400 Unicode characters', async context => {
-    executeAiCommand.mock.mockImplementation(async () => ({ error: false, message: '🐸'.repeat(450) }));
+    generateMiyulootInsult.mock.mockImplementation(async () => ({ error: false, message: '🐸'.repeat(450) }));
     context.mock.method(Math, 'random', () => 0);
     assert.equal((await miyulootCommand(channelID, tags)).message, '🐸'.repeat(400));
 });
 test('fallback still selects the last of the eight original insults', async context => {
-    executeAiCommand.mock.mockImplementation(async () => ({ error: true, message: 'Unavailable' }));
+    generateMiyulootInsult.mock.mockImplementation(async () => ({ error: true, message: 'Unavailable' }));
     let draws = 0;
     context.mock.method(Math, 'random', () => draws++ === 0 ? 0 : 1 - Number.EPSILON / 2);
     assert.equal((await miyulootCommand(channelID, tags)).message, fallbackInsults[7]);
-    assert.equal(executeAiCommand.mock.callCount(), 1);
+    assert.equal(generateMiyulootInsult.mock.callCount(), 1);
 });

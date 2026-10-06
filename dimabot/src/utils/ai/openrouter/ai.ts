@@ -706,6 +706,39 @@ async function trackUsage(
 // MAIN HARNESS
 // ============================================================================
 
+/** One-off text generation with caller-owned instructions and no channel chat settings or tools. */
+export async function generateStandaloneText(
+  streamer: IStreamerData,
+  messages: Array<{ role: 'system' | 'user'; content: string }>,
+  reason: string,
+): Promise<IRouterResponse> {
+  const channelID = streamer.user_id;
+  if (!channelID) return { error: true, message: 'Channel context unavailable' };
+
+  try {
+    const cache = await getDragonflyClient('StandaloneAI');
+    const isExhausted = await isAiCreditsExhausted(channelID, cache);
+    const model = selectChatModel(streamer, isExhausted);
+    const sessionID = generateUUIDv7();
+    const traceID = generateUUIDv7();
+    const data = await callOpenRouter(model, messages, [], channelID, streamer,
+      Math.min(getTokenLimit(model), 2048), sessionID, traceID);
+    if (data.error) {
+      const extracted = extractOpenRouterError(data);
+      return { error: true, message: extracted.message, status: extracted.status, type: extracted.type };
+    }
+
+    await trackUsage(channelID, streamer, data.usage, model, reason, traceID, sessionID);
+    // Ignore unsolicited tool calls; only return text, stripping any DSML tool markup.
+    const content = data.choices?.[0]?.message?.content;
+    return { error: false, message: typeof content === 'string' ? stripDsmlMarkup(content) : '' };
+  } catch (err) {
+    await error({ function: 'generateStandaloneText', reason,
+      error: err instanceof Error ? err.message : String(err) }, { channelId: channelID, destination: 'both' });
+    return { error: true, message: 'AI generation unavailable' };
+  }
+}
+
 const MAX_TOOL_CALLS = 5; // Prevent infinite loops
 
 /**
