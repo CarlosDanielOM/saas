@@ -711,6 +711,7 @@ export async function generateStandaloneText(
   streamer: IStreamerData,
   messages: Array<{ role: 'system' | 'user'; content: string }>,
   reason: string,
+  options: { model?: string } = {},
 ): Promise<IRouterResponse> {
   const channelID = streamer.user_id;
   if (!channelID) return { error: true, message: 'Channel context unavailable' };
@@ -718,7 +719,7 @@ export async function generateStandaloneText(
   try {
     const cache = await getDragonflyClient('StandaloneAI');
     const isExhausted = await isAiCreditsExhausted(channelID, cache);
-    const model = selectChatModel(streamer, isExhausted);
+    const model = options.model ?? selectChatModel(streamer, isExhausted);
     const sessionID = generateUUIDv7();
     const traceID = generateUUIDv7();
     const data = await callOpenRouter(model, messages, [], channelID, streamer,

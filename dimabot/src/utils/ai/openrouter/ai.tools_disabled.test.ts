@@ -196,3 +196,16 @@ test('real Miyuloot command falls back when standalone generation returns only a
     assert.equal(provider.mock.callCount(), 1);
     assert.equal(executeTool.mock.callCount(), 0);
 });
+
+for (const exhausted of [false, true]) {
+    test(`Miyuloot pins DeepSeek V4.1 Flash when credits exhausted=${exhausted}`, async () => {
+        isAiCreditsExhausted.mock.mockImplementation(async () => exhausted);
+        assistantMessage = { role: 'assistant', content: 'A fresh roast' };
+        const { generateMiyulootInsult } = await import('./miyuloot.ai.js');
+        assert.equal((await generateMiyulootInsult(options.streamer, 'TestViewer')).error, false);
+        const request = JSON.parse(String(provider.mock.calls[0].arguments[1].body));
+        assert.equal(request.model, 'deepseek/deepseek-v4.1-flash');
+        assert.match(request.messages[0].content, /metáforas macabras/);
+        assert.equal(executeTool.mock.callCount(), 0);
+    });
+}
