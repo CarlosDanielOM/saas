@@ -13,12 +13,15 @@ interface MiyulootResponse {
 function weightedRandom(array: string[], weights: number[]): string {
     const total = weights.reduce((sum, weight) => sum + weight, 0);
     const r = Math.random() * total;
+    let cumulative = 0;
     for (let i = 0; i < weights.length; i++) {
-        if (r < weights[i]) {
+        cumulative += weights[i];
+        if (r < cumulative) {
             return array[i];
         }
     }
-    return array[0];
+    // Keep floating-point rounding at the upper endpoint in the final interval.
+    return array[array.length - 1];
 }
 
 export async function miyulootCommand(channelID: string, tags: { username: string; 'display-name': string; 'user-id': string }): Promise<MiyulootResponse> {
@@ -86,7 +89,7 @@ export async function miyulootCommand(channelID: string, tags: { username: strin
             case '10 Cofres':
                 message = `${tags['display-name']} ganó 10 Cofres de StreamLoots!`;
                 break;
-            case 'Miyu  Arriesgada':
+            case 'Miyu Arriesgada':
                 message = `Miyu ${tags['display-name']} ganó la miyu arriesgada!`;
                 break;
             default:
