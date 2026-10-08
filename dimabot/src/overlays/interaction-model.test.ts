@@ -47,3 +47,13 @@ test('invalid counts, choices, timestamps, status and winner are rejected', () =
   assert.throws(() => parse('channel.prediction.end', { ...prediction, status: 'resolved', winning_outcome_id: 'missing', ended_at: poll.ends_at }));
   assert.throws(() => parse('channel.poll.end', { ...poll, status: 'active', ended_at: poll.ends_at }));
 });
+
+test('poll total includes channel-point votes without double-counting across all phases', () => {
+  for (const type of ['channel.poll.begin', 'channel.poll.progress', 'channel.poll.end']) {
+    const state = parse(type, { ...poll, status: 'completed', ended_at: poll.ends_at, choices: [{ ...poll.choices[0], votes: 20, channel_points_votes: 12 }, { ...poll.choices[1], votes: 10, channel_points_votes: 10 }] });
+    assert.deepEqual(state.choices.map(choice => [choice.votes, choice.channelPointsVotes]), [[20, 12], [10, 10]]);
+    assert.equal(state.choices.reduce((sum, choice) => sum + choice.votes, 0), 30);
+  }
+  assert.equal(parse('channel.poll.progress', poll).choices[0].channelPointsVotes, 0, 'legacy payloads retain their total');
+  for (const value of [-1, 4.5, 21]) assert.throws(() => parse('channel.poll.progress', { ...poll, choices: [{ ...poll.choices[0], votes: 20, channel_points_votes: value }, poll.choices[1]] }));
+});

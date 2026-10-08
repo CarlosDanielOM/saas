@@ -51,7 +51,7 @@ async function send(type,event,receipt=crypto.randomUUID(),forged=false){const t
 async function complete(receipt){const event=await DomainEventSchema.findOne({sourceEventId:receipt}).lean();assert(event);if(target==='cron')await until(async()=> (await DomainEventDeliverySchema.findOne({eventKey:event.eventKey,consumer:'overlay-interactions-v1'}).lean())?.status==='succeeded','real cron projection '+receipt);else await applyInteractionEvent(event);return event;}
 for(const [type,data] of [['channel.poll.begin',poll],['channel.prediction.begin',prediction]]){const r=await send(type,data);assert.equal(r.status,204);await complete(r.receipt);}
 let state=await interactionSnapshot(channel);assert.deepEqual(state.poll.choices.map(c=>c.votes),[0,0]);assert(!JSON.stringify(state).includes('private-user'));
-poll.choices[0].votes=20;poll.choices[1].votes=10;let sent=await send('channel.poll.progress',poll,'duplicate-progress');assert.equal(sent.status,204);await complete(sent.receipt);const revision=(await interactionSnapshot(channel)).poll.revision;
+poll.choices[0].votes=20;poll.choices[0].channel_points_votes=12;poll.choices[1].votes=10;let sent=await send('channel.poll.progress',poll,'duplicate-progress');assert.equal(sent.status,204);await complete(sent.receipt);const projected=(await interactionSnapshot(channel)).poll;assert.deepEqual(projected.choices.map(c=>[c.votes,c.channelPointsVotes]),[[20,12],[10,0]]);const revision=projected.revision;
 assert.equal((await send('channel.poll.progress',poll,'duplicate-progress')).status,204);assert.equal(await DomainEventSchema.countDocuments({sourceEventId:'duplicate-progress'}),1);assert.equal((await interactionSnapshot(channel)).poll.revision,revision);
 prediction.outcomes[0].channel_points=1000;prediction.outcomes[0].users=5;sent=await send('channel.prediction.progress',prediction);assert.equal(sent.status,204);await complete(sent.receipt);
 sent=await send('channel.prediction.lock',{...prediction,locked_at:new Date().toISOString()});assert.equal(sent.status,204);await complete(sent.receipt);
@@ -64,16 +64,17 @@ assert.equal((await interactionSnapshot(other)).poll,null);
 console.log(`PASS ${target} signed ingestion/projection: seven events, zero/progress, duplicates, lock/end monotonicity, privacy, owner isolation and malformed/signature rejection${target==='cron'?' through the real cron consumer':''}.`);
 // State is durable without a browser source. Helix recovery supplies a resource begun during downtime.
 const newer={...prediction,id:'prediction-2',status:'LOCKED',started_at:new Date().toISOString(),locked_at:new Date().toISOString()};write('prediction-recovery',[newer]);await resyncInteractions(channel,['prediction']);assert.equal((await interactionSnapshot(channel)).prediction.id,'prediction-2');assert.equal((await interactionSnapshot(channel)).prediction.phase,'locked');
+write('poll-recovery',[{...poll,id:'poll-recovered',status:'ACTIVE',started_at:new Date().toISOString()}]);await resyncInteractions(channel,['poll']);assert.equal((await interactionSnapshot(channel)).poll.choices[0].channelPointsVotes,12);
 if(target==='api'){
  const saved=await load(channel),publicId=saved.scenes[0].publicId;
- const publicResponse=await fetch('http://127.0.0.1:3000/overlay-studio/public/'+publicId);const publicData=(await publicResponse.json()).data;assert.equal(publicData.interactions.prediction.id,'prediction-2');assert(!JSON.stringify(publicData).includes('private-user'));
+ const publicResponse=await fetch('http://127.0.0.1:3000/overlay-studio/public/'+publicId);const publicData=(await publicResponse.json()).data;assert.equal(publicData.interactions.poll.choices[0].channelPointsVotes,12);assert.equal(publicData.interactions.prediction.id,'prediction-2');assert(!JSON.stringify(publicData).includes('private-user'));
  const sockets=[];
  async function connect(base,clientId=crypto.randomUUID()){
   const ws=new WebSocket(base.replace('http:','ws:')+'/socket.io/?EIO=4&transport=websocket'),messages=[],ns='/overlay-studio/'+publicId;sockets.push(ws);
   ws.addEventListener('message',event=>{const message=String(event.data);if(message.startsWith('0'))ws.send(`40${ns},${JSON.stringify({clientId})}`);else if(message==='2')ws.send('3');else if(message.startsWith('42'))messages.push(JSON.parse(message.slice(message.indexOf(',')+1)));});
   await until(()=>messages.some(m=>m[0]==='overlay-state'),'socket hydration');return {ws,messages,clientId};
  }
- const a=await connect('http://127.0.0.1:3000');assert.equal(a.messages.find(m=>m[0]==='overlay-state')[1].interactions.prediction.id,'prediction-2');
+ const a=await connect('http://127.0.0.1:3000');assert.equal(a.messages.find(m=>m[0]==='overlay-state')[1].interactions.prediction.id,'prediction-2');assert.equal(a.messages.find(m=>m[0]==='overlay-state')[1].interactions.poll.choices[0].channelPointsVotes,12);
  const nextPoll={...poll,id:'poll-2',started_at:new Date(Date.now()+1000).toISOString()};sent=await send('channel.poll.begin',nextPoll);await complete(sent.receipt);await until(()=>a.messages.some(m=>m[0]==='overlay-interactions'&&m[1].poll?.id==='poll-2'),'socket live state');
  a.ws.close();const b=await connect('http://127.0.0.1:3000',a.clientId);assert.equal(b.messages.find(m=>m[0]==='overlay-state')[1].interactions.poll.id,'poll-2');
  // A fresh controller (API restart) reconstructs state from Mongo, not peer memory.

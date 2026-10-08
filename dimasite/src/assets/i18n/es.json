@@ -5614,6 +5614,8 @@
     "interactionPreview_result": "Resultados",
     "interactionPreview_tie": "Empate",
     "interactionPreview_canceled": "Cancelada / finalizada antes",
+    "interactionRegularVotes": "Votos normales",
+    "interactionChannelPointVotes": "Votos con puntos del canal",
     "interactionVotes": "votos",
     "interactionPoints": "puntos",
     "interactionParticipants": "participantes",

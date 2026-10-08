@@ -1,5 +1,5 @@
 export type InteractionKind = 'poll' | 'prediction';
-export interface InteractionChoice { id: string; title: string; votes: number; users: number; points: number; color?: string }
+export interface InteractionChoice { id: string; title: string; votes: number; channelPointsVotes?: number; users: number; points: number; color?: string }
 export interface InteractionState {
   kind: InteractionKind; id: string; title: string; phase: 'active' | 'locked' | 'completed' | 'terminated' | 'archived' | 'resolved' | 'canceled';
   choices: InteractionChoice[]; startedAt: string; deadline: string | null; endedAt: string | null;
@@ -14,7 +14,7 @@ export function sampleInteraction(kind: InteractionKind, stage: InteractionPrevi
   const phase = ended ? kind === 'poll' ? stage === 'canceled' ? 'terminated' : 'completed' : stage === 'canceled' ? 'canceled' : 'resolved' : stage === 'locked' && kind === 'prediction' ? 'locked' : 'active';
   const labels = kind === 'poll' ? ['pollSampleOne', 'pollSampleTwo', 'pollSampleThree'] : ['predictionSampleOne', 'predictionSampleTwo'];
   return { kind, id: 'preview-' + kind, title: t(kind + 'SampleTitle'), phase,
-    choices: labels.map((label, index) => ({ id: String(index), title: t(label), votes: beginning ? 0 : stage === 'tie' ? 42 : [42, 28, 10][index],
+    choices: labels.map((label, index) => ({ id: String(index), title: t(label), votes: beginning ? 0 : stage === 'tie' ? 42 : [42, 28, 10][index], channelPointsVotes: kind === 'poll' && !beginning ? [12, 8, 0][index] : 0,
       points: beginning ? 0 : [12400, 7600][index] ?? 0, users: beginning ? 0 : [24, 18][index] ?? 0, color: index === 1 ? 'pink' : 'blue' })),
     startedAt: now, deadline: ended || phase === 'locked' ? null : new Date(Date.now() + 90_000).toISOString(), endedAt: ended ? now : null,
     winnerId: phase === 'resolved' ? '0' : null, occurredAt: now, receipt: 'preview', revision: 1 };

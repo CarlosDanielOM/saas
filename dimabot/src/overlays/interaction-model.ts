@@ -1,7 +1,7 @@
 /** Public aggregate data only: never expose predictor identities to browser sources. */
 export type InteractionKind = 'poll' | 'prediction';
 export type InteractionPhase = 'active' | 'locked' | 'completed' | 'terminated' | 'archived' | 'resolved' | 'canceled';
-export interface InteractionChoice { id: string; title: string; votes: number; users: number; points: number; color?: string }
+export interface InteractionChoice { id: string; title: string; votes: number; channelPointsVotes?: number; users: number; points: number; color?: string }
 export interface InteractionState {
   kind: InteractionKind; id: string; title: string; phase: InteractionPhase; choices: InteractionChoice[];
   startedAt: string; deadline: string | null; endedAt: string | null; winnerId: string | null;
@@ -44,8 +44,12 @@ export function parseInteraction(type: string, event: Record<string, unknown>, o
   const choices = raw.map((raw): InteractionChoice => {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('Invalid interaction choice');
     const choice = raw as Record<string, unknown>;
+    const votes = kind === 'poll' ? count(choice.votes ?? (beginning ? 0 : undefined)) : 0;
+    // Twitch's votes includes Channel Points votes; preserve the subset separately.
+    const channelPointsVotes = kind === 'poll' ? count(choice.channel_points_votes ?? 0) : 0;
+    if (channelPointsVotes > votes) throw new Error('Channel Points votes exceed total votes');
     return { id: text(choice.id, 100), title: text(choice.title),
-      votes: kind === 'poll' ? count(choice.votes ?? (beginning ? 0 : undefined)) : 0,
+      votes, ...(kind === 'poll' ? { channelPointsVotes } : {}),
       users: kind === 'prediction' ? count(choice.users ?? (beginning ? 0 : undefined)) : 0,
       points: kind === 'prediction' ? count(choice.channel_points ?? (beginning ? 0 : undefined)) : 0,
       ...(kind === 'prediction' && typeof choice.color === 'string' ? { color: choice.color === 'pink' ? 'pink' : 'blue' } : {}) };
