@@ -1,0 +1,12 @@
+{
+  "NODE_OPTIONS": "--import=/tmp/saas-fixtures/cron-boot.mjs",
+  "MONGO_URI": "mongodb://mongo:27017/saas_ops_pro_referral_test",
+  "SECRET_KEY": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "OTEL_SDK_DISABLED": "true",
+  "DOMAIN_EVENTS_WAKEUPS_ENABLED": "false",
+  "DOMAIN_EVENTS_POLL_INTERVAL_MS": "250",
+  "EVENTSUB_RECONCILIATION_ENABLED": "false",
+  "FREE_CREDIT_RESET_ENABLED": "false",
+  "AI_USAGE_RECEIPTS_ENABLED": "false",
+  "AI_USAGE_BACKFILL_ENABLED": "false"
+}

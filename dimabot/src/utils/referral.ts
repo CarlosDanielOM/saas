@@ -30,8 +30,8 @@ const BOT_SUBSCRIPTION_REWARDS: Record<Exclude<PlanType, 'FREE'>, Record<Subscri
         yearly: 500
     },
     PRO: {
-        monthly: 125,
-        yearly: 1250
+        monthly: 100,
+        yearly: 1000
     }
 };
 

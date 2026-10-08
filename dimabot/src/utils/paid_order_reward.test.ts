@@ -250,9 +250,9 @@ test('different paid orders each earn a reward and retain both receipts', async 
 
 for (const [productId, cadence, amount] of [
     [PRODUCT_IDS.PREMIUM, 'monthly', 50], [PRODUCT_IDS.PREMIUM, 'yearly', 500],
-    [PRODUCT_IDS.PRO, 'monthly', 125], [PRODUCT_IDS.PRO, 'yearly', 1250],
+    [PRODUCT_IDS.PRO, 'monthly', 100], [PRODUCT_IDS.PRO, 'yearly', 1000],
 ] as const) {
-    test(`preserves ${productId} ${cadence} reward amount ${amount}`, async t => {
+    test(`awards ${productId} ${cadence} reward amount ${amount}`, async t => {
         const { state, input } = fixture(t);
         state.owner.referrerId = state.referrer._id;
         state.owner.referralCodeUsed = 'campaign';
@@ -260,6 +260,30 @@ for (const [productId, cadence, amount] of [
         state.users.delete(state.bot._id.toString());
         await applyPaidOrderReward({ ...input, productId, cadence });
         assert.equal(state.referrer.token_balance, 20 + amount);
+    });
+}
+
+for (const applied of [true, false]) {
+    test(`historical 125-credit Pro reward stays intact when replayed (applied=${applied})`, async t => {
+        const { state, calls, input } = fixture(t);
+        const receiptId = new Types.ObjectId();
+        state.referrer.token_balance = applied ? 125 : 0;
+        if (applied) state.referrer.applied_credit_transaction_ids.push(receiptId);
+        state.reservations.set('polar:paid-order:order-1', {
+            _id: receiptId, idempotencyKey: 'polar:paid-order:order-1',
+            user: state.referrer._id, type: TRANSACTION_TYPES.SUBSCRIPTION_REWARD,
+            amount: 125, balanceAfter: applied ? 125 : null,
+            ...(applied ? { appliedAt: new Date() } : {}),
+            metadata: { subscriptionId: input.orderId, planId: PRODUCT_IDS.PRO, rewardTargetType: 'referrer' },
+        });
+        const proOrder = { ...input, productId: PRODUCT_IDS.PRO };
+        await applyPaidOrderReward(proOrder);
+        await applyPaidOrderReward(proOrder);
+        assert.equal(state.referrer.token_balance, 125);
+        assert.equal(state.reservations.get('polar:paid-order:order-1')!.amount, 125);
+        assert.equal(calls.reserve.mock.callCount(), 0);
+        assert.equal(calls.credit.mock.callCount(), applied ? 0 : 1);
+        assert.equal(state.referrer.applied_credit_transaction_ids.length, 1);
     });
 }
 
