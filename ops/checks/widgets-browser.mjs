@@ -67,6 +67,7 @@ async function fixture({width=1280,tier='pro',theme='dark',lang='en',owner=true}
 }
 const axeClean=async(page,include)=>{const result=await new AxeBuilder({page}).include(include).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();assert.deepEqual(result.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>n.target)})),[]);};
 const overflow=async page=>assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'no horizontal overflow');
+const rouletteFits=async page=>assert(await page.locator('app-roulette-display .display').evaluateAll(displays=>displays.every(display=>{const outer=display.getBoundingClientRect();return [...display.querySelectorAll('.top,.wheel svg')].every(el=>{const inner=el.getBoundingClientRect();return inner.x>=outer.x-1&&inner.right<=outer.right+1;});})),'shared roulette title and full wheel fit inside their display');
 try{
  for(const width of process.env.SAAS_WIDGET_POLL_ONLY ? [] : [320,390,1280])for(const theme of ['light','dark']){
   const f=await fixture({width,theme});const {page}=f;await page.getByTestId('dbd-killer-perks').waitFor();
@@ -77,7 +78,7 @@ try{
   await axeClean(page,'dialog');await page.getByRole('button',{name:'Cancel',exact:true}).click();assert.equal(f.writes(),before);
   await page.getByRole('button',{name:'Start widget',exact:true}).click();await page.getByRole('button',{name:'Start on stream',exact:true}).click();
   await page.getByText('Your result is ready',{exact:true}).waitFor({timeout:10000});assert.equal(f.state.run.perkIds.length,1);
-  await page.locator('app-roulette-display .display[data-design="wheel"][data-state="done"]').waitFor();assert.equal(await page.locator('app-roulette-display .display').getAttribute('data-winner'),f.state.run.draw.itemId);assert.equal(await page.locator('app-roulette-display path.seg').count(),f.state.run.draw.poolIds.length);assert.equal(await page.locator('.wheel-wrap').count(),0);await axeClean(page,'[data-testid="widgets-page"]');
+  await page.locator('app-roulette-display .display[data-design="wheel"][data-state="done"]').waitFor();assert.equal(await page.locator('app-roulette-display .display').getAttribute('data-winner'),f.state.run.draw.itemId);assert.equal(await page.locator('app-roulette-display path.seg').count(),f.state.run.draw.poolIds.length);assert.equal(await page.locator('.wheel-wrap').count(),0);await rouletteFits(page);await axeClean(page,'[data-testid="widgets-page"]');
   if(shots)await page.screenshot({path:`${shots}/shared-wheel-${width}-${theme}.png`,fullPage:true});
   await page.getByRole('button',{name:'Create OBS link',exact:true}).click();await page.getByRole('button',{name:'Copy',exact:true}).waitFor();assert((await page.getByLabel('OBS browser source',{exact:true}).inputValue()).includes('#'+'a'.repeat(43)));
   await page.locator('.entry-picker summary').click();await page.getByPlaceholder('Search names in English or Spanish').fill('bond');
@@ -118,7 +119,7 @@ try{
   await wheel.page.goto(base+'/overlays/widgets/991801#'+'a'.repeat(43));
   const display=wheel.page.locator('app-roulette-display .display');await display.locator('.wheel svg').waitFor();assert.equal(await display.locator('path.seg').count(),ids.length);assert.equal(await wheel.page.locator('.wheel-wrap').count(),0);
   await display.locator('.result-label').getByText(winner.spanish,{exact:true}).waitFor({timeout:5000});assert.equal(await display.getAttribute('data-winner'),winner.id);assert.equal(await display.locator('path.seg--win').count(),1);assert(await display.locator('path.seg').nth(3).evaluate(e=>e.classList.contains('seg--win')),'frozen pool order determines winner segment');await display.getByText('Ganador',{exact:true}).waitFor();
-  await overflow(wheel.page);await axeClean(wheel.page,'.stage');if(shots)await wheel.page.screenshot({path:`${shots}/obs-shared-wheel-${role}-${width}.png`,fullPage:true});
+  await overflow(wheel.page);await rouletteFits(wheel.page);await axeClean(wheel.page,'.stage');if(shots)await wheel.page.screenshot({path:`${shots}/obs-shared-wheel-${role}-${width}.png`,fullPage:true});
   // A late-joining OBS source immediately displays the server-selected winner.
   await wheel.page.reload();await display.locator('.result-label').getByText(winner.spanish,{exact:true}).waitFor();assert.equal(await display.getAttribute('data-winner'),winner.id);
   wheel.state.packId=`dbd-${role}-challenge`;wheel.state.run.characterId=catalog.entries.find(e=>e.role===role&&e.kind==='character').id;wheel.state.run.perkCount=4;wheel.state.run.perkIds=[winner.id];

@@ -10,6 +10,8 @@
 .display {
   position: relative;
   display: grid;
+  /* Long pack names must not force the wheel wider than its OBS container. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 4px;
   overflow: hidden;
   min-height: 240px;
