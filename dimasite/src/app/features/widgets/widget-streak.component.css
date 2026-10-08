@@ -1,0 +1,123 @@
+:host { display:block; --size:48px; --gap:calc(var(--size) * .22); min-width:0 }
+.streak { display:flex; flex-wrap:nowrap; gap:var(--gap); align-items:flex-end }
+.icon { position:relative; flex:none; width:var(--size); height:var(--size); font-size:var(--size); display:block }
+.icon i { display:block; font-style:normal }
+
+/* ───────── Killer: skulls forged in fire ───────── */
+.skull { position:absolute; inset:0; width:100%; height:100%; overflow:visible; z-index:2 }
+.bone { fill:#2b2731; stroke:rgba(255,255,255,.22); stroke-width:1.6; transition:fill .4s }
+.socket { fill:#120f15 }
+.crack,.teeth { fill:none; stroke:#120f15; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; opacity:.8 }
+.empty .skull { opacity:.72 }
+.earned .bone,.fresh .bone,.flare .bone { fill:#efe5d2; stroke:#fff6e6; stroke-width:.8 }
+.earned .socket,.fresh .socket,.flare .socket { fill:#ff3b1f; animation:ember-eyes 2.6s ease-in-out infinite; animation-delay:calc(var(--i) * -.37s) }
+.earned .crack,.earned .teeth,.fresh .crack,.fresh .teeth,.flare .crack,.flare .teeth { stroke:#3a1d16 }
+.earned .skull,.fresh .skull,.flare .skull { filter:drop-shadow(0 0 calc(var(--size) * .1) rgba(255,90,31,.55)) }
+.killer .icon:not(.empty):not(.lost)::before { content:''; position:absolute; left:-15%; right:-15%; bottom:-14%; height:45%; border-radius:50%; background:radial-gradient(closest-side,rgba(255,110,30,.55),rgba(255,40,20,.18) 60%,transparent); animation:ember-bed 2.2s ease-in-out infinite; animation-delay:calc(var(--i) * -.53s) }
+@keyframes ember-eyes { 0%,100% { fill:#ff3b1f } 45% { fill:#ff8a3d } 60% { fill:#d91d12 } }
+@keyframes ember-bed { 0%,100% { opacity:.75; transform:scaleX(1) } 50% { opacity:1; transform:scaleX(1.12) } }
+
+/* A new win: the skull is forged in a burst of fire, then cools to bone. */
+.fresh .skull { animation:skull-forge 1.9s cubic-bezier(.2,.8,.25,1) both }
+.flare .skull { animation:skull-flare 1.6s ease-out both; animation-delay:calc(var(--i) * 110ms) }
+@keyframes skull-forge {
+  0% { opacity:0; transform:translateY(38%) scale(.35); filter:brightness(3) sepia(1) saturate(8) hue-rotate(-18deg) blur(3px) }
+  30% { opacity:.6; transform:translateY(8%) scale(.8); filter:brightness(2.4) sepia(1) saturate(7) hue-rotate(-18deg) blur(1px) }
+  55% { opacity:1; transform:translateY(-10%) scale(1.22); filter:brightness(1.8) sepia(.9) saturate(5) hue-rotate(-14deg) drop-shadow(0 0 12px #ff6a1a) }
+  75% { transform:translateY(2%) scale(.94); filter:brightness(1.2) sepia(.3) saturate(2) drop-shadow(0 0 8px #ff6a1a) }
+  100% { opacity:1; transform:none; filter:drop-shadow(0 0 calc(var(--size) * .1) rgba(255,90,31,.55)) }
+}
+@keyframes skull-flare { 0%,100% { transform:none } 35% { transform:translateY(-8%) scale(1.14); filter:brightness(1.6) sepia(.6) saturate(4) drop-shadow(0 0 10px #ff6a1a) } }
+
+.fire { position:absolute; left:50%; bottom:-8%; width:160%; height:205%; transform:translateX(-50%); transform-origin:50% 100%; pointer-events:none; z-index:1 }
+.fire svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; filter:drop-shadow(0 0 calc(var(--size) * .1) rgba(255,90,20,.8)) }
+.fresh .fire { animation:fire-life 2.3s ease-out both; z-index:3 }
+.flare .fire { height:150%; width:130%; animation:fire-life 1.9s ease-out both; animation-delay:calc(var(--i) * 110ms) }
+.flame { transform-box:fill-box; transform-origin:50% 100% }
+.f1 { fill:#e8320c; animation:flicker-a .34s ease-in-out infinite alternate }
+.f2 { fill:#ff8a1f; animation:flicker-b .27s ease-in-out infinite alternate }
+.f3 { fill:#ffe7a3; animation:flicker-c .21s ease-in-out infinite alternate }
+@keyframes flicker-a { from { transform:scale(1,1) skewX(0) } to { transform:scale(1.06,.9) skewX(-4deg) } }
+@keyframes flicker-b { from { transform:scale(.96,1) skewX(3deg) } to { transform:scale(1.05,1.12) skewX(-3deg) } }
+@keyframes flicker-c { from { transform:scale(1,.9) } to { transform:scale(.9,1.15) skewX(4deg) } }
+@keyframes fire-life {
+  0% { opacity:0; transform:translateX(-50%) scale(.5,.05) }
+  12% { opacity:1; transform:translateX(-50%) scale(1.1,1.25) }
+  30% { opacity:1; transform:translateX(-50%) scale(1,1) }
+  62% { opacity:.95; transform:translateX(-50%) scale(.8,.62) }
+  100% { opacity:0; transform:translateX(-50%) scale(.5,.2) }
+}
+.spark { position:absolute; bottom:12%; left:calc(22% + var(--s) * 9%); width:calc(var(--size) * .07); height:calc(var(--size) * .07); border-radius:50%; background:#ffd27a; box-shadow:0 0 calc(var(--size) * .08) #ff7a1a; opacity:0; animation:spark-rise 1.5s ease-out both; animation-delay:calc(.15s + var(--s) * 90ms) }
+.flare .spark { animation-delay:calc(var(--i) * 110ms + var(--s) * 70ms) }
+@keyframes spark-rise { 0% { opacity:0; transform:translate(0,0) scale(1) } 15% { opacity:1 } 100% { opacity:0; transform:translate(calc((var(--s) - 3) * 9%),-260%) scale(.3) } }
+
+/* Undo: the fire goes out and the skull crumbles back to stone. */
+.lost .skull { animation:skull-crumble 1.1s ease-in both }
+@keyframes skull-crumble {
+  0% { opacity:1; transform:none; filter:drop-shadow(0 0 6px rgba(255,90,31,.55)) }
+  15% { transform:translateX(-7%) rotate(-7deg) }
+  30% { transform:translateX(6%) rotate(6deg) }
+  45% { transform:translateX(-3%) rotate(-2deg); filter:grayscale(1) brightness(.6) }
+  100% { opacity:.72; transform:none; filter:none }
+}
+.lost .bone { animation:bone-cool 1.1s ease-in both }
+@keyframes bone-cool { 0% { fill:#efe5d2 } 100% { fill:#2b2731 } }
+.smoke,.dust { position:absolute; inset:-20% -10% 30%; pointer-events:none; z-index:3 }
+.smoke i,.dust i { position:absolute; bottom:0; width:45%; height:45%; border-radius:50%; background:radial-gradient(closest-side,rgba(170,165,180,.55),rgba(120,115,130,0)); opacity:0; animation:smoke-up 1.4s ease-out both }
+.smoke i:nth-child(1),.dust i:nth-child(1) { left:5% } .smoke i:nth-child(2),.dust i:nth-child(2) { left:30%; animation-delay:.12s } .smoke i:nth-child(3),.dust i:nth-child(3) { left:55%; animation-delay:.24s }
+@keyframes smoke-up { 0% { opacity:0; transform:translateY(40%) scale(.5) } 30% { opacity:.9 } 100% { opacity:0; transform:translateY(-90%) scale(1.6) } }
+
+/* ───────── Survivor: hatches that open on a win ───────── */
+.hatch { position:absolute; inset:0; perspective:2.2em; perspective-origin:50% -60%; z-index:2 }
+.ground { position:absolute; left:4%; right:4%; bottom:4%; height:84%; transform-origin:50% 100%; transform:rotateX(52deg); transform-style:preserve-3d; border-radius:.1em; background:linear-gradient(#3a3f47,#23272d); box-shadow:0 0 0 .035em #59606b inset,0 .06em .1em rgba(0,0,0,.6) }
+.pit { position:absolute; inset:12%; border-radius:.05em; background:#06080b; box-shadow:inset 0 .05em .1em #000 }
+.lid { position:absolute; inset:9%; transform-origin:50% 0; transform:translateZ(.01em); transform-style:preserve-3d }
+.lid::before,.lid::after { content:''; position:absolute; inset:0; border-radius:.06em; backface-visibility:hidden }
+.lid::before { background:radial-gradient(circle at 14% 14%,#9aa3ad 0 3.5%,transparent 4.5%),radial-gradient(circle at 86% 14%,#9aa3ad 0 3.5%,transparent 4.5%),radial-gradient(circle at 14% 86%,#9aa3ad 0 3.5%,transparent 4.5%),radial-gradient(circle at 86% 86%,#9aa3ad 0 3.5%,transparent 4.5%),repeating-linear-gradient(45deg,rgba(0,0,0,.35) 0 .03em,transparent .03em .11em),repeating-linear-gradient(-45deg,rgba(0,0,0,.35) 0 .03em,transparent .03em .11em),linear-gradient(160deg,#7d858f,#4b525b 55%,#3a4048); box-shadow:0 0 0 .03em #2a2e34 inset }
+/* Underside, lit by the open hatch. */
+.lid::after { transform:rotateX(180deg); background:linear-gradient(to bottom,#8fb6d6,#46596b 45%,#2a3139); box-shadow:0 0 0 .03em #1d2329 inset }
+.rivet { position:absolute; backface-visibility:hidden; left:50%; top:50%; width:22%; height:22%; margin:-11% 0 0 -11%; border-radius:50%; background:radial-gradient(circle at 40% 35%,#c2c9d1,#5d646d 60%,#30353b); box-shadow:0 .02em .04em rgba(0,0,0,.6) }
+.empty .hatch { filter:saturate(.6) brightness(.8) }
+.earned .lid,.fresh .lid,.flare .lid { transform:rotateX(108deg) }
+.earned .rivet,.fresh .rivet,.flare .rivet { opacity:.35 }
+.earned .pit,.fresh .pit,.flare .pit { background:radial-gradient(closest-side,#ffffff,#cfeaff 30%,#5fb6ff 62%,#0e2a44); box-shadow:0 0 .2em .06em rgba(120,200,255,.75); animation:pit-breathe 2.4s ease-in-out infinite; animation-delay:calc(var(--i) * -.41s) }
+.survivor .icon:not(.empty):not(.lost)::before { content:''; position:absolute; left:-10%; right:-10%; bottom:-6%; height:70%; border-radius:50%; background:radial-gradient(closest-side,rgba(130,205,255,.42),rgba(80,160,255,.12) 60%,transparent); animation:ember-bed 2.4s ease-in-out infinite; animation-delay:calc(var(--i) * -.41s) }
+@keyframes pit-breathe { 0%,100% { filter:brightness(1) } 50% { filter:brightness(1.25) } }
+
+.fresh .lid { animation:lid-open 1.5s cubic-bezier(.3,.7,.2,1) both }
+.fresh .pit { animation:pit-wake 1.5s ease-out both, pit-breathe 2.4s 1.5s ease-in-out infinite }
+.flare .pit { animation:pit-wake 1.2s ease-out both; animation-delay:calc(var(--i) * 110ms) }
+@keyframes lid-open {
+  0% { transform:translateZ(.01em) rotateX(0) }
+  10% { transform:translateZ(.01em) rotateX(8deg) }
+  18% { transform:translateZ(.01em) rotateX(1deg) }
+  26% { transform:translateZ(.01em) rotateX(11deg) }
+  34% { transform:translateZ(.01em) rotateX(2deg) }
+  72% { transform:rotateX(118deg) }
+  86% { transform:rotateX(102deg) }
+  100% { transform:rotateX(108deg) }
+}
+@keyframes pit-wake { 0%,30% { background:#06080b; box-shadow:none } 45% { filter:brightness(2.2) } 100% { filter:brightness(1) } }
+.light { position:absolute; left:50%; bottom:20%; width:110%; height:320%; transform:translateX(-50%); pointer-events:none; z-index:3; mix-blend-mode:screen }
+.beam { position:absolute; left:20%; right:20%; bottom:0; height:100%; border-radius:50% 50% 30% 30% / 20% 20% 10% 10%; background:linear-gradient(to top,rgba(235,248,255,.95),rgba(150,210,255,.55) 40%,rgba(120,190,255,0)); filter:blur(calc(var(--size) * .06)); transform-origin:50% 100%; opacity:0; animation:beam 2.2s ease-out .45s both }
+.flare .beam { animation-delay:calc(var(--i) * 110ms) }
+@keyframes beam { 0% { opacity:0; transform:scale(.4,0) } 20% { opacity:1; transform:scale(1.15,1) } 60% { opacity:.7; transform:scale(.9,.85) } 100% { opacity:0; transform:scale(.6,.6) } }
+.wind { position:absolute; bottom:calc(4% + var(--s) * 3%); left:calc(18% + var(--s) * 10%); width:calc(var(--size) * .03); height:calc(var(--size) * (.18 + var(--s) * .03)); filter:blur(.5px); border-radius:999px; background:linear-gradient(to top,rgba(220,240,255,0),rgba(220,240,255,.95)); opacity:0; animation:wind-rise 1.4s ease-out both; animation-delay:calc(.55s + var(--s) * 80ms) }
+.flare .wind { animation-delay:calc(var(--i) * 110ms + var(--s) * 60ms) }
+@keyframes wind-rise { 0% { opacity:0; transform:translate(0,0) } 20% { opacity:1 } 100% { opacity:0; transform:translate(calc((var(--s) - 3) * 12%),-230%) } }
+
+.lost .lid { animation:lid-slam .7s cubic-bezier(.6,0,.9,.4) both }
+.lost .hatch { animation:hatch-thud .9s ease-out both }
+@keyframes lid-slam { 0% { transform:rotateX(108deg) } 80% { transform:translateZ(.01em) rotateX(0) } 90% { transform:translateZ(.01em) rotateX(7deg) } 100% { transform:translateZ(.01em) rotateX(0) } }
+@keyframes hatch-thud { 0%,70% { transform:none } 78% { transform:translateY(4%) } 88% { transform:translateY(-2%) } 100% { transform:none } }
+.dust i { animation-delay:.55s; background:radial-gradient(closest-side,rgba(150,160,170,.55),rgba(110,120,130,0)) }
+.dust i:nth-child(2) { animation-delay:.6s } .dust i:nth-child(3) { animation-delay:.65s }
+
+/* Goal reached: the whole row stays lit. */
+:host(.complete.killer) .streak { filter:drop-shadow(0 0 calc(var(--size) * .12) rgba(255,80,30,.35)) }
+:host(.complete.survivor) .streak { filter:drop-shadow(0 0 calc(var(--size) * .12) rgba(120,200,255,.35)) }
+
+@media (prefers-reduced-motion:reduce) {
+  .icon *,.icon::before { animation:none !important; transition:none !important }
+  .fire,.light,.smoke,.dust { display:none }
+}

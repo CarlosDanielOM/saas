@@ -6325,7 +6325,7 @@
     "title": "Widgets",
     "alpha": "Alfa",
     "back": "Módulos",
-    "subtitle": "Retos de juegos con una sola escena y un único centro de control.",
+    "subtitle": "Lleva un reto de Dead by Daylight en directo desde una sola página: personaje al azar, ventajas votadas por el chat y una racha de victorias en vivo.",
     "gallery": "Packs de retos",
     "galleryHint": "Retos de juegos preparados, sorteos individuales y encuestas.",
     "presetCount": "{{n}} widgets",
@@ -6349,9 +6349,10 @@
     "poolCount": "{{characters}} personajes · {{perks}} ventajas disponibles",
     "flow": {
       "character": "Elegir personaje",
-      "vote": "Encuesta de Twitch",
+      "vote": "Votación del chat",
       "reveal": "Revelar carta",
-      "perks": "Elegir ventajas"
+      "perks": "Ruleta de ventajas",
+      "play": "Jugar la partida"
     },
     "rules": "Cinco cartas ocultas contienen de 0 a 4 ventajas, mezcladas en cada ronda. Twitch elige la carta; los empates (incluso sin votos) se resuelven al azar. Las ventajas no se repiten en un reto.",
     "proRequired": "Widgets Alfa requiere Pro",
@@ -6370,12 +6371,12 @@
     "saving": "Guardando…",
     "save": "Guardar ajustes",
     "start": "Iniciar widget",
-    "running": "Reto en curso…",
+    "running": "Ronda en curso…",
     "reset": "Reiniciar reto",
     "show": "Mostrar en stream",
     "hide": "Ocultar del stream",
-    "visible": "Visible en las fuentes OBS conectadas",
-    "hidden": "Oculto en OBS",
+    "visible": "En directo",
+    "hidden": "Oculto del directo",
     "keepRunning": "Ocultar el overlay no detiene el reto. Sigue funcionando si cierras esta página.",
     "waitBeforeSwitch": "Espera a que termine el reto para cambiar de widget.",
     "pollError": "Revisa tu encuesta de Twitch.",
@@ -6389,7 +6390,7 @@
     "linkReady": "Enlace OBS listo.",
     "copyError": "Selecciona el enlace y cópialo manualmente.",
     "pollOverlayHint": "Este widget incluye la encuesta de Twitch, los votos en directo y la carta ganadora en la misma fuente de OBS.",
-    "settings": "Ajustes del widget",
+    "settings": "Configuración de la ronda",
     "language": "Idioma del overlay",
     "characterDesign": "Estilo de ruleta de personajes",
     "characterCards": "Cartas",
@@ -6492,22 +6493,20 @@
     "voteBreakdown": "{{regular}} normales · {{points}} con puntos",
     "extraVotesHint": "Un voto gratis por espectador. Cada voto extra cuesta {{points}} puntos del canal. Vota en la encuesta de Twitch.",
     "freeVotesHint": "Un voto gratis por espectador. Vota en la encuesta de Twitch.",
-    "oneWidget": "Pack de reto",
-    "unifiedHint": "Elige el rol actual, inicia una secuencia o usa un selector o una encuesta por separado.",
+    "oneWidget": "Reto de equipamiento al azar",
     "currentRound": "Ronda actual",
-    "startSequence": "Iniciar secuencia",
-    "individualTitle": "Acciones individuales",
-    "individualHint": "Elige un personaje, inicia la votación de cartas ocultas o añade una ventaja sin iniciar la secuencia.",
+    "startSequence": "Iniciar ronda",
+    "individualTitle": "O ejecuta una parte por separado",
     "drawCharacter": "Elegir personaje",
     "startPoll": "Iniciar encuesta de cartas",
     "drawPerk": "Elegir una ventaja",
-    "canvasHint": "1920 × 1080 · overlay transparente. Las guías de cámara solo aparecen en esta vista previa.",
-    "gameplayPreview": "Previsualizar durante la partida",
-    "progressTitle": "Progreso del reto",
-    "manualProgressHint": "Registra cada victoria aquí. Cambiar de rol o iniciar una ronda conserva tu progreso.",
+    "canvasHint": "1920 × 1080 · fondo transparente. La guía de cámara solo aparece aquí.",
+    "gameplayPreview": "En partida",
+    "progressTitle": "Racha de victorias",
+    "manualProgressHint": "Después de cada partida que ganes, pulsa Añadir victoria. Las victorias de asesino arden como calaveras y las de superviviente abren una trampilla, en directo en tu overlay.",
     "addWin": "Añadir victoria",
     "undoWin": "Deshacer victoria",
-    "layoutTitle": "Diseño del overlay",
+    "layoutTitle": "Cámara y diseño",
     "cameraResizeHint": "Arrastra los controles de la guía de cámara o indica su tamaño abajo. Los cambios aparecen en la vista previa; guarda para aplicarlos en directo.",
     "cameraCorner": "Esquina de cámara / VTuber",
     "cameraWidth": "Ancho de cámara (320–800 px)",
@@ -6538,7 +6537,7 @@
     "layoutInvalid": "Usa un ancho de 320–800 px y un alto de 180–640 px, en píxeles enteros.",
     "roundReady": "Listo para jugar",
     "recordWinHint": "Juega la ronda y registra tu victoria en el centro de control.",
-    "goalRemaining": "{{n}} victorias más para alcanzar tu objetivo",
+    "goalRemaining": "Faltan {{n}} victorias para la meta",
     "waitingCharacter": "Esperando a tu personaje",
     "loadoutTitle": "Tu equipamiento",
     "emptyPerk": "Espacio vacío",
@@ -6552,6 +6551,91 @@
       "top-right": "Arriba a la derecha",
       "bottom-left": "Abajo a la izquierda",
       "bottom-right": "Abajo a la derecha"
-    }
+    },
+    "chooseRole": "¿Con quién juegas?",
+    "winsOf": "{{wins}} de {{target}} victorias",
+    "nextRound": "Iniciar la siguiente ronda",
+    "saveFirst": "Guarda tus ajustes de abajo antes de iniciar una ronda.",
+    "howTitle": "Cómo funciona la votación de cartas ocultas",
+    "stepNow": "(ahora)",
+    "stepsLabel": "Pasos de la ronda",
+    "stepDetail": {
+      "character": "Ruleta al azar en directo",
+      "vote": "El chat elige una carta oculta: 0–4 ventajas",
+      "perksVoted": "Una tirada de ruleta por ventaja",
+      "play": "Pulsa Añadir victoria si ganas"
+    },
+    "status": {
+      "idle": {
+        "title": "Listo para una ronda de {{role}}",
+        "detail": "Pulsa Iniciar ronda desde el lobby. Cada paso de abajo avanza solo y se ve en tu overlay."
+      },
+      "characterSpin": {
+        "title": "Eligiendo tu {{role}}…",
+        "detail": "La ruleta está girando en directo."
+      },
+      "characterResult": {
+        "title": "Juegas con {{name}}",
+        "detail": "El siguiente paso empieza en un momento."
+      },
+      "pollStarting": {
+        "title": "Iniciando la encuesta de Twitch…",
+        "detail": "Tarda unos segundos."
+      },
+      "polling": {
+        "title": "El chat está votando · quedan {{seconds}} s",
+        "detail": "{{n}} votos por ahora. La carta oculta ganadora decide cuántas ventajas tendrás (0–4)."
+      },
+      "pollError": {
+        "title": "La encuesta de Twitch necesita atención",
+        "detail": "Revisa Twitch (las encuestas requieren Afiliado o Partner) y reintenta la encuesta o reinicia la ronda."
+      },
+      "reveal": {
+        "title": "Gana la carta {{card}}: {{n}} ventajas",
+        "detail": "Ahora empieza la ruleta de ventajas."
+      },
+      "perkSpin": {
+        "title": "Girando la ventaja {{i}} de {{n}}…",
+        "detail": "La ruleta está girando en directo."
+      },
+      "perkResult": {
+        "title": "Ventaja {{i}} de {{n}}: {{name}}",
+        "detail": "La siguiente tirada empieza en un momento."
+      },
+      "complete": {
+        "title": "Equipamiento listo, ¡a jugar!",
+        "detail": "Cuando acabe la partida, pulsa Añadir victoria si ganaste. Inicia la siguiente ronda desde el lobby."
+      },
+      "pickedCharacter": {
+        "title": "Elegido: {{name}}",
+        "detail": "Se muestra en directo. Inicia una ronda o vuelve a elegir cuando quieras."
+      },
+      "pickedPerk": {
+        "title": "Ventaja añadida: {{name}}",
+        "detail": "Se muestra en tu equipamiento en directo."
+      },
+      "pickedCount": {
+        "title": "El chat eligió {{n}} ventajas",
+        "detail": "Usa Elegir una ventaja para girarlas de una en una."
+      }
+    },
+    "goalDone": "Completado",
+    "streakLabel": "{{role}}: {{wins}} de {{target}} victorias",
+    "previewWin": "Vista previa",
+    "previewWinFor": "Ver la animación de victoria de {{role}}",
+    "previewWinHint": "La vista previa reproduce la animación de la siguiente victoria solo en esta página. No se registra nada ni se muestra en directo.",
+    "goalRemainingOne": "Falta 1 victoria para la meta",
+    "goalReached": "¡Meta cumplida!",
+    "goodLuck": "¡Suerte en la Prueba!",
+    "introHint": "Gana {{target}} partidas con un equipamiento al azar · llevas {{wins}}",
+    "loadoutSummary": "{{name}} · {{n}} ventajas",
+    "previewMode": "Modo de vista previa",
+    "previewChoosing": "Eligiendo equipamiento",
+    "partsTitle": "Mostrar u ocultar partes del overlay",
+    "settingsHint": "Elige los pasos de cada rol, el aspecto del overlay y tus metas de victorias.",
+    "lookTitle": "Aspecto y tiempos",
+    "votingTitle": "Votación del chat",
+    "goalsTitle": "Metas de victorias",
+    "cardsHint": "Cada carta oculta tiene de 0 a 4 ventajas. Gana la carta más votada; los empates se deciden al azar."
   }
 }

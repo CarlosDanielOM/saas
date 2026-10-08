@@ -6,8 +6,8 @@ import { LinksService } from '../../services/links.service';
 import { WidgetCatalog, WidgetState, normalizeWidgetState } from './widgets-api.service';
 import { WidgetDisplayComponent } from './widget-display.component';
 @Component({ selector: 'app-widgets-overlay', imports: [WidgetDisplayComponent], changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `@if (catalog(); as catalog) { @if (state(); as state) { @if (state.visible) { <app-widget-display [catalog]="catalog" [state]="state" /> } } }`,
-  styles: `:host { display:block; width:100%; max-width:1920px; margin:0; padding:0; box-sizing:border-box; }` })
+  template: `@if (catalog(); as catalog) { @if (state(); as state) { @if (state.visible) { <app-widget-display animate.leave="widget-leave" [catalog]="catalog" [state]="state" /> } } }`,
+  styles: `:host { display:block; width:100%; max-width:1920px; margin:0; padding:0; box-sizing:border-box; } .widget-leave { animation:widget-leave .45s ease-in both; } @keyframes widget-leave { to { opacity:0; transform:translateY(16px); } } @media (prefers-reduced-motion:reduce) { .widget-leave { animation:none; } }` })
 export class WidgetsOverlayComponent {
   readonly state = signal<WidgetState | null>(null);
   readonly catalog = signal<WidgetCatalog | null>(null);

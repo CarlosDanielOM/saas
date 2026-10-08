@@ -6325,7 +6325,7 @@
     "title": "Widgets",
     "alpha": "Alpha",
     "back": "Modules",
-    "subtitle": "Game challenges with one overlay and one control center.",
+    "subtitle": "Run a Dead by Daylight challenge on stream from one page: random character, chat-voted perks, and a live win streak.",
     "gallery": "Challenge packs",
     "galleryHint": "Handmade game challenges, individual draws, and polls.",
     "presetCount": "{{n}} presets",
@@ -6349,9 +6349,10 @@
     "poolCount": "{{characters}} characters · {{perks}} perks enabled",
     "flow": {
       "character": "Draw character",
-      "vote": "Twitch poll",
+      "vote": "Chat vote",
       "reveal": "Reveal card",
-      "perks": "Draw perks"
+      "perks": "Perk wheel",
+      "play": "Play the match"
     },
     "rules": "Five hidden cards contain 0–4 perks, shuffled each round. Twitch votes pick a card; ties (including no votes) are random. Perks never repeat within a challenge.",
     "proRequired": "Widgets Alpha requires Pro",
@@ -6370,12 +6371,12 @@
     "saving": "Saving…",
     "save": "Save settings",
     "start": "Start widget",
-    "running": "Challenge running…",
+    "running": "Round running…",
     "reset": "Reset challenge",
     "show": "Show on stream",
     "hide": "Hide from stream",
-    "visible": "Visible in connected OBS sources",
-    "hidden": "Hidden from OBS",
+    "visible": "On stream",
+    "hidden": "Hidden from stream",
     "keepRunning": "Hiding the overlay does not stop the challenge. It keeps running if you close this page.",
     "waitBeforeSwitch": "Wait for the current challenge to finish before switching widgets.",
     "pollError": "Check your Twitch poll.",
@@ -6389,7 +6390,7 @@
     "linkReady": "OBS link ready.",
     "copyError": "Select the link and copy it manually.",
     "pollOverlayHint": "This widget includes the Twitch poll, live card votes, and the winning-card reveal in the same OBS source.",
-    "settings": "Widget settings",
+    "settings": "Round setup",
     "language": "Overlay language",
     "characterDesign": "Character roulette style",
     "characterCards": "Cards",
@@ -6492,22 +6493,20 @@
     "voteBreakdown": "{{regular}} regular · {{points}} with points",
     "extraVotesHint": "One free vote per viewer. Extra votes cost {{points}} Channel Points each. Vote in the Twitch poll.",
     "freeVotesHint": "One free vote per viewer. Vote in the Twitch poll.",
-    "oneWidget": "Challenge pack",
-    "unifiedHint": "Choose the current role, run a sequence, or use a picker or poll on its own.",
+    "oneWidget": "Random loadout challenge",
     "currentRound": "Current round",
-    "startSequence": "Start sequence",
-    "individualTitle": "Individual actions",
-    "individualHint": "Draw a character, run the hidden-card vote, or add one perk without starting the sequence.",
+    "startSequence": "Start round",
+    "individualTitle": "Or run one part on its own",
     "drawCharacter": "Draw character",
     "startPoll": "Start card poll",
     "drawPerk": "Draw one perk",
-    "canvasHint": "1920 × 1080 · transparent overlay. Camera guides appear only in this preview.",
-    "gameplayPreview": "Preview gameplay layout",
-    "progressTitle": "Challenge progress",
-    "manualProgressHint": "Record each win here. Switching roles or starting a round keeps your progress.",
+    "canvasHint": "1920 × 1080 · transparent background. The camera guide only appears here.",
+    "gameplayPreview": "In game",
+    "progressTitle": "Win streak",
+    "manualProgressHint": "After each match you win, tap Add win. Killer wins burn in as skulls and survivor wins open a hatch, live on your overlay.",
     "addWin": "Add win",
     "undoWin": "Undo win",
-    "layoutTitle": "Overlay layout",
+    "layoutTitle": "Camera & layout",
     "cameraResizeHint": "Drag the camera guide handles or set its size below. Changes appear in the preview; save to apply them on stream.",
     "cameraCorner": "Camera / VTuber corner",
     "cameraWidth": "Camera width (320–800 px)",
@@ -6538,7 +6537,7 @@
     "layoutInvalid": "Use a width of 320–800 px and a height of 180–640 px, in whole pixels.",
     "roundReady": "Ready to play",
     "recordWinHint": "Play the round, then record your win in the control center.",
-    "goalRemaining": "{{n}} more wins to reach your goal",
+    "goalRemaining": "{{n}} more wins to reach the goal",
     "waitingCharacter": "Waiting for your character",
     "loadoutTitle": "Your loadout",
     "emptyPerk": "Empty slot",
@@ -6552,6 +6551,91 @@
       "top-right": "Top right",
       "bottom-left": "Bottom left",
       "bottom-right": "Bottom right"
-    }
+    },
+    "chooseRole": "Who are you playing?",
+    "winsOf": "{{wins}} of {{target}} wins",
+    "nextRound": "Start next round",
+    "saveFirst": "Save your settings below before starting a round.",
+    "howTitle": "How the hidden-card vote works",
+    "stepNow": "(happening now)",
+    "stepsLabel": "Round steps",
+    "stepDetail": {
+      "character": "Random roulette on stream",
+      "vote": "Chat picks a hidden card: 0–4 perks",
+      "perksVoted": "One wheel spin per perk",
+      "play": "Tap Add win if you win"
+    },
+    "status": {
+      "idle": {
+        "title": "Ready for a {{role}} round",
+        "detail": "Press Start round from the lobby. Each step below runs by itself and shows on your overlay."
+      },
+      "characterSpin": {
+        "title": "Drawing your {{role}}…",
+        "detail": "The roulette is spinning on stream."
+      },
+      "characterResult": {
+        "title": "You're playing {{name}}",
+        "detail": "The next step starts in a moment."
+      },
+      "pollStarting": {
+        "title": "Starting the Twitch poll…",
+        "detail": "This takes a few seconds."
+      },
+      "polling": {
+        "title": "Chat is voting · {{seconds}}s left",
+        "detail": "{{n}} votes so far. The winning hidden card decides how many perks you get (0–4)."
+      },
+      "pollError": {
+        "title": "The Twitch poll needs attention",
+        "detail": "Check Twitch (polls need Affiliate or Partner), then retry the poll or reset the round."
+      },
+      "reveal": {
+        "title": "Card {{card}} wins: {{n}} perks",
+        "detail": "The perk wheel starts next."
+      },
+      "perkSpin": {
+        "title": "Spinning perk {{i}} of {{n}}…",
+        "detail": "The wheel is spinning on stream."
+      },
+      "perkResult": {
+        "title": "Perk {{i}} of {{n}}: {{name}}",
+        "detail": "The next spin starts in a moment."
+      },
+      "complete": {
+        "title": "Loadout ready, go play!",
+        "detail": "When the match ends, tap Add win if you won. Start the next round from the lobby."
+      },
+      "pickedCharacter": {
+        "title": "Picked: {{name}}",
+        "detail": "Shown on stream. Start a round or draw again whenever you like."
+      },
+      "pickedPerk": {
+        "title": "Added perk: {{name}}",
+        "detail": "Shown in your loadout on stream."
+      },
+      "pickedCount": {
+        "title": "Chat picked {{n}} perks",
+        "detail": "Use Draw one perk to spin them one at a time."
+      }
+    },
+    "goalDone": "Complete",
+    "streakLabel": "{{role}}: {{wins}} of {{target}} wins",
+    "previewWin": "Preview",
+    "previewWinFor": "Preview the {{role}} win animation",
+    "previewWinHint": "Preview plays the next win's animation on this page only. Nothing is recorded or shown on stream.",
+    "goalRemainingOne": "1 more win to reach the goal",
+    "goalReached": "Goal reached!",
+    "goodLuck": "Good luck in the Trial!",
+    "introHint": "Win {{target}} matches with a random loadout · {{wins}} so far",
+    "loadoutSummary": "{{name}} · {{n}} perks",
+    "previewMode": "Preview mode",
+    "previewChoosing": "Choosing loadout",
+    "partsTitle": "Show or hide parts of the overlay",
+    "settingsHint": "Choose each role's steps, how the overlay looks, and your win goals.",
+    "lookTitle": "Look & timing",
+    "votingTitle": "Chat voting",
+    "goalsTitle": "Win goals",
+    "cardsHint": "Each hidden card holds 0–4 perks. The most-voted card wins; ties are random."
   }
 }

@@ -1,0 +1,28 @@
+<div class="streak" [attr.role]="label() ? 'img' : null" [attr.aria-label]="label() || null" [attr.aria-hidden]="label() ? null : 'true'">
+  @for (icon of icons(); track icon.key) {
+    <span class="icon" [class]="icon.state" [style.--i]="icon.i" [attr.data-state]="icon.state">
+      @if (role() === 'killer') {
+        @if (icon.state === 'fresh' || icon.state === 'flare') {
+          <span class="fire" aria-hidden="true">
+            <svg viewBox="0 0 100 140" preserveAspectRatio="xMidYMax meet"><g class="flame f1"><path d="M50 2c6 24 36 44 36 84 0 26-17 46-36 46S14 112 14 86c0-20 10-32 18-44 2 12 6 18 12 22 0-22 0-40 6-62Z" /></g><g class="flame f2"><path d="M52 40c4 18 22 30 22 54 0 18-10 30-24 30S26 112 26 94c0-12 6-20 12-28 2 8 5 12 9 14-1-14 0-26 5-40Z" /></g><g class="flame f3"><path d="M50 74c3 10 13 16 13 30 0 10-6 17-13 17s-13-7-13-17c0-8 4-12 7-17 1 4 3 6 5 7 0-8 0-14 1-20Z" /></g></svg>
+            @for (s of sparks; track s) { <i class="spark" [style.--s]="s"></i> }
+          </span>
+        }
+        @if (icon.state === 'lost') { <span class="smoke" aria-hidden="true"><i></i><i></i><i></i></span> }
+        <svg class="skull" viewBox="0 0 64 64" aria-hidden="true">
+          <path class="bone" d="M32 5C19.8 5 11 13.9 11 25.6c0 6.4 2.6 11.3 6.5 14.2l1 6.7c.2 1.8 1.5 3 3.3 3h1.7v5c0 1.9 1.5 3.5 3.5 3.5h10c2 0 3.5-1.6 3.5-3.5v-5h1.7c1.8 0 3.1-1.2 3.3-3l1-6.7c3.9-2.9 6.5-7.8 6.5-14.2C53 13.9 44.2 5 32 5Z" />
+          <path class="crack" d="M39 6.5 36.6 12l3 2.6-2.4 5.4" />
+          <path class="socket" d="M16.5 28.5c.5-5 5.5-7 11-4.3 1.1.6 1.5 1.8 1.1 3-1 4.4-4.4 6.8-8 6.4-2.6-.3-4.3-2.4-4.1-5.1ZM47.5 28.5c-.5-5-5.5-7-11-4.3-1.1.6-1.5 1.8-1.1 3 1 4.4 4.4 6.8 8 6.4 2.6-.3 4.3-2.4 4.1-5.1Z" />
+          <path class="socket nose" d="m32 35.5-3 6.5c-.3.8.3 1.5 1.1 1.3l1.9-.7 1.9.7c.8.2 1.4-.5 1.1-1.3Z" />
+          <path class="teeth" d="M27.8 50v6.2M32 50v6.8M36.2 50v6.2M23.5 51h17" />
+        </svg>
+      } @else {
+        @if (icon.state === 'fresh' || icon.state === 'flare') {
+          <span class="light" aria-hidden="true"><i class="beam"></i>@for (s of sparks; track s) { <i class="wind" [style.--s]="s"></i> }</span>
+        }
+        @if (icon.state === 'lost') { <span class="dust" aria-hidden="true"><i></i><i></i><i></i></span> }
+        <span class="hatch" aria-hidden="true"><span class="ground"><span class="pit"></span><span class="lid"><i class="rivet"></i></span></span></span>
+      }
+    </span>
+  }
+</div>

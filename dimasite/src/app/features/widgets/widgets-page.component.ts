@@ -10,9 +10,11 @@ import { UpgradeService } from '../../services/upgrade.service';
 import { getRouteParam } from '../../shared/utils/route-param.util';
 import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 import { WidgetDisplayComponent } from './widget-display.component';
+import { WidgetStreakComponent } from './widget-streak.component';
+import { challengeSteps } from './widget-steps';
 import { WidgetsApi, WidgetAction, WidgetCatalog, WidgetConfig, WidgetEntry, WidgetState, WidgetRole, WidgetMode, WidgetLayout, widgetDefaultLayout } from './widgets-api.service';
 
-@Component({ selector: 'app-widgets-page', imports: [ReactiveFormsModule, RouterLink, LfIconComponent, NgOptimizedImage, WidgetDisplayComponent], templateUrl: './widgets-page.component.html', styleUrl: './widgets-page.component.css', changeDetection: ChangeDetectionStrategy.OnPush })
+@Component({ selector: 'app-widgets-page', imports: [ReactiveFormsModule, RouterLink, LfIconComponent, NgOptimizedImage, WidgetDisplayComponent, WidgetStreakComponent], templateUrl: './widgets-page.component.html', styleUrl: './widgets-page.component.css', changeDetection: ChangeDetectionStrategy.OnPush })
 export class WidgetsPageComponent {
   private readonly api = inject(WidgetsApi);
   private readonly auth = inject(SessionAuthService);
@@ -26,8 +28,12 @@ export class WidgetsPageComponent {
   readonly catalog = signal<WidgetCatalog | null>(null);
   readonly state = signal<WidgetState | null>(null);
   readonly roles: WidgetRole[] = ['killer', 'survivor'];
+  readonly corners: WidgetLayout['cameraCorner'][] = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
   readonly role = computed<WidgetRole>(() => this.state()?.packId.includes('-survivor-') ? 'survivor' : 'killer');
   readonly gameplayPreview = signal(false);
+  readonly celebrate = signal<{role: WidgetRole; tick: number} | null>(null);
+  readonly now = signal(Date.now());
+  private serverOffset = 0;
   private startMode: WidgetMode = 'challenge';
   readonly loading = signal(true);
   readonly busy = signal(false);
@@ -58,10 +64,44 @@ export class WidgetsPageComponent {
     return state ? {...state, config: {...state.config, layout: this.layoutForm.valid ? this.layoutForm.getRawValue() : state.config.layout}} : null;
   });
   readonly canStart = computed(() => { this.formValue(); return !this.locked() && !this.form.dirty && !this.exclusionsDirty(); });
-  readonly sequenceSteps = computed(() => {
-    const sequence = this.state()?.config.sequences[this.role()];
-    if (!sequence) return [];
-    return [this.t(sequence.character ? 'flow.character' : 'fixedCharacter'), this.t(sequence.poll ? 'flow.vote' : 'fixedPerkCount', {n: sequence.perkCount}), ...(sequence.poll ? [this.t('flow.reveal')] : []), ...(sequence.perks ? [this.t('flow.perks')] : [])];
+  readonly entriesById = computed(() => new Map((this.catalog()?.entries ?? []).map(e => [e.id, e])));
+  /** Where the round is, with a short detail under each step. */
+  readonly steps = computed(() => {
+    const state = this.state(); if (!state) return [];
+    const sequence = state.run?.sequence ?? state.config.sequences[this.role()], fixed = this.entriesById().get(sequence.fixedCharacterId ?? '');
+    const details: Record<string, string> = {
+      character: this.t('stepDetail.character'),
+      vote: this.t('stepDetail.vote'),
+      perks: sequence.poll ? this.t('stepDetail.perksVoted') : this.t('fixedPerkCount', {n: sequence.perkCount}),
+      play: this.t('stepDetail.play'),
+    };
+    const steps = challengeSteps(state, this.role()).map(step => ({...step, label: this.t('flow.' + step.key), detail: details[step.key]}));
+    return !sequence.character && fixed && steps.length ? [{key: 'fixed', status: steps.some(step => step.status !== 'todo') ? 'done' : 'todo', label: this.label(fixed), detail: this.t('fixedCharacter')}, ...steps] : steps;
+  });
+  readonly countdown = computed(() => Math.max(0, Math.ceil(((this.state()?.run?.pollEndsAt ?? 0) - this.now() - this.serverOffset) / 1000)));
+  /** One plain-language answer to "what is happening and what do I do next?" */
+  readonly status = computed(() => {
+    const state = this.state(); if (!state) return null;
+    const run = state.run, role = this.t('role.' + this.role()).toLowerCase(), mode = run?.operation ?? 'challenge';
+    const name = (id: string | null | undefined) => { const entry = this.entriesById().get(id ?? ''); return entry ? this.label(entry) : ''; };
+    const perkTotal = run?.perkCount ?? (run?.sequence?.poll === false ? run.sequence.perkCount : 4), perkIndex = (run?.perkIds.length ?? 0) + 1;
+    const line = (key: string, tone: 'idle' | 'live' | 'ok' | 'error', params: Record<string, string | number> = {}) => ({tone, title: this.t('status.' + key + '.title', params), detail: this.t('status.' + key + '.detail', params)});
+    switch (state.phase) {
+      case 'idle': return line('idle', 'idle', {role});
+      case 'character-spin': return line('characterSpin', 'live', {role});
+      case 'character-result': return line('characterResult', 'live', {name: name(run?.characterId)});
+      case 'poll-starting': return line('pollStarting', 'live');
+      case 'polling': return line('polling', 'live', {seconds: this.countdown(), n: run?.votes.reduce((a, b) => a + b, 0) ?? 0});
+      case 'poll-error': return line('pollError', 'error');
+      case 'reveal': return line('reveal', 'live', {card: (run?.winningCard ?? 0) + 1, n: run?.perkCount ?? 0});
+      case 'perk-spin': return line('perkSpin', 'live', {i: perkIndex, n: perkTotal});
+      case 'perk-result': return line('perkResult', 'live', {i: perkIndex - 1, n: perkTotal, name: name(run?.perkIds.at(-1))});
+      default:
+        if (mode === 'characters') return line('pickedCharacter', 'ok', {name: name(run?.characterId)});
+        if (mode === 'perks') return line('pickedPerk', 'ok', {name: name(run?.perkIds.at(-1))});
+        if (mode === 'poll') return line('pickedCount', 'ok', {n: run?.perkCount ?? 0});
+        return line('complete', 'ok', {role});
+    }
   });
   readonly entries = computed(() => {
     const role = this.role(), query = this.query().toLowerCase().trim();
@@ -82,7 +122,8 @@ export class WidgetsPageComponent {
     this.destroy.onDestroy(() => { this.stopped = true; });
     if (this.pro()) void this.load(); else this.loading.set(false);
     const timer = setInterval(() => { if (this.pro() && this.state() && !this.busy() && !this.pending) void this.refresh(); }, 1500);
-    this.destroy.onDestroy(() => clearInterval(timer));
+    const clock = setInterval(() => this.now.set(Date.now()), 1000);
+    this.destroy.onDestroy(() => { clearInterval(timer); clearInterval(clock); });
     try { this.overlayUrl.set(sessionStorage.getItem('widgets-overlay-' + this.channel) ?? ''); } catch { /* Link stays usable without storage. */ }
   }
   t(key: string, params?: Record<string, string | number>): string { return this.language.translate('widgets.' + key, params); }
@@ -91,6 +132,8 @@ export class WidgetsPageComponent {
   characters(role: WidgetRole): WidgetEntry[] { return this.catalog()?.entries.filter(e => e.role === role && e.kind === 'character') ?? []; }
   chooseRole(role: WidgetRole): void { if (role !== this.role()) { this.query.set(''); this.entryLimit.set(30); void this.act('role', {role}); } }
   sequenceValue(role: WidgetRole) { this.formValue(); return this.sequenceForms[role].getRawValue(); }
+  /** Plays the next win's animation in this page only; nothing is recorded or sent to OBS. */
+  previewWin(role: WidgetRole): void { this.celebrate.update(c => ({role, tick: (c?.tick ?? 0) + 1})); }
   onResize(layout: WidgetLayout): void { this.layoutForm.patchValue(layout); this.layoutForm.markAsDirty(); }
   saveLayout(): void { this.layoutForm.markAllAsTouched(); if (this.layoutForm.valid) void this.act('layout', this.layoutForm.getRawValue()); }
   start(mode: WidgetMode): void {
@@ -116,6 +159,7 @@ export class WidgetsPageComponent {
   }
   private accept(state: WidgetState): void {
     if (this.state() && state.revision < this.state()!.revision) return;
+    this.serverOffset = state.serverTime - Date.now();
     this.state.set(state);
     if (!this.layoutForm.dirty) this.layoutForm.patchValue(state.config.layout);
     if (!this.form.dirty && !this.exclusionsDirty()) { this.form.patchValue({...state.config, sequences: {killer: {...state.config.sequences.killer, fixedCharacterId: state.config.sequences.killer.fixedCharacterId ?? ''}, survivor: {...state.config.sequences.survivor, fixedCharacterId: state.config.sequences.survivor.fixedCharacterId ?? ''}}}); this.excludedIds.set([...state.config.excludedIds]); }

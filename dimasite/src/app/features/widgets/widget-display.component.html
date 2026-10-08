@@ -1,60 +1,101 @@
-<div #frame class="frame" [class.editor]="editor()" data-testid="widget-canvas">
+<div #frame class="frame" [class.editor]="editor()" [attr.data-role]="role()" data-testid="widget-canvas">
   <div class="canvas" [style.transform]="'scale(' + scale() + ')'">
     @if (state().config.layout.showActive && !(gameplay() && state().config.layout.hideActiveDuringGameplay)) {
       <section class="active panel" [ngStyle]="rect(geometry().active)" [attr.aria-label]="title()" data-testid="widget-active">
-        <header class="stage-head"><span>DEAD BY DAYLIGHT</span><span class="stage-role">{{ t('role.' + role()) }}</span></header>
-        <h2>{{ title() }}</h2><p class="phase" aria-live="polite">{{ t(gameplay() ? 'roundReady' : 'phase.' + state().phase) }}</p>
-        @if (voteStage() && state().run; as run) {
-          <section class="widget-poll" [attr.aria-label]="t('pollTitle')" data-testid="widget-poll">
-            <div class="poll-meta"><span>{{ t(run.winningCard !== null ? 'pollClosed' : state().phase === 'polling' ? 'pollLive' : state().phase === 'poll-error' ? 'pollFailed' : 'pollPreparing') }}</span>@if (state().phase === 'polling') { <span class="poll-timer">{{ t('pollTimeLeft', {seconds: countdown()}) }}</span> }</div>
-            <div class="mystery-cards" [class.revealed]="run.winningCard !== null">
-              @for (value of run.cards; track $index) {
-                <div class="mystery" [class.winning]="run.winningCard === $index">
-                  <span>{{ t('card', {n: $index + 1}) }}</span><strong>{{ value === null ? '?' : value }}</strong>
-                  @if (value !== null) { <small>{{ t('perkCount', {n: value}) }}</small> }
-                  <div class="vote-meter" aria-hidden="true"><span [style.width.%]="voteShare($index)"></span></div>
-                  <span class="vote-percent">{{ voteShare($index) }}%</span><small>{{ t('votes', {n: run.votes[$index]}) }}</small>
-                </div>
-              }
-            </div>
-            <div class="poll-footer"><span>{{ t('votes', {n: totalVotes()}) }}</span><span>{{ state().config.channelPointsVoting ? t('extraVotesHint', {points: state().config.channelPointsPerVote}) : t('freeVotesHint') }}</span></div>
-            @if (state().phase === 'polling') { <p class="vote-hint">{{ countdown() > 0 ? t('voteHint', {seconds: countdown()}) : t('waitingTwitch') }}</p> }
-            @if (run.winningCard !== null) { <p class="reveal-result">{{ t('revealResult', {card: run.winningCard + 1, n: run.perkCount ?? 0}) }}</p> }
-          </section>
-        } @else if (gameplay()) { <div class="ready"><strong>{{ t('roundReady') }}</strong><span>{{ t('recordWinHint') }}</span></div>
-        } @else {
-          <div class="roulette-viewport"><div #rouletteBody class="roulette-body" [style.transform]="'translateX(-50%) scale(' + rouletteScale() + ')'">
-            @if (pool().length) { <app-roulette-display [roulette]="roulette().roulette" [draw]="roulette().draw" [serverTime]="state().serverTime" [locale]="state().config.language" /> }
-            @else { <p>{{ t('emptyPool') }}</p> }
-          </div></div>
+        <div class="fog" aria-hidden="true"></div>
+        <header class="stage-head">
+          <span class="brand">DEAD BY DAYLIGHT</span>
+          @if (steps().length) {
+            <ol class="steps" [attr.aria-label]="t('stepsLabel')">
+              @for (step of steps(); track step.key) { <li [class]="step.status"><span class="dot" aria-hidden="true">@if (step.status === 'done') { ✓ } @else { {{ $index + 1 }} }</span>{{ step.label }}</li> }
+            </ol>
+          }
+          <span class="stage-role">{{ t('role.' + role()) }}</span>
+        </header>
+        @for (key of [stageKey()]; track key) {
+          <div class="stage-title"><h2>{{ title() }}</h2><p class="phase" aria-live="polite">{{ phaseText() }}</p></div>
         }
+        <div #stage class="stage">
+          @if (voteStage() && state().run; as run) {
+            <section class="widget-poll" [attr.aria-label]="t('pollTitle')" data-testid="widget-poll">
+              <div class="poll-meta">
+                <span class="poll-state" [class.live]="state().phase === 'polling'">{{ t(run.winningCard !== null ? 'pollClosed' : state().phase === 'polling' ? 'pollLive' : state().phase === 'poll-error' ? 'pollFailed' : 'pollPreparing') }}</span>
+                <span class="poll-total">{{ t('votes', {n: totalVotes()}) }}</span>
+                @if (state().phase === 'polling') {
+                  <span class="poll-timer"><svg viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="19" /><circle class="left" cx="22" cy="22" r="19" [style.stroke-dashoffset]="119.4 * (1 - timeShare())" /></svg>{{ t('pollTimeLeft', {seconds: countdown()}) }}</span>
+                }
+              </div>
+              <div class="mystery-cards" [class.revealed]="run.winningCard !== null" [class.live]="state().phase === 'polling'">
+                @for (value of run.cards; track $index) {
+                  <div class="mystery" [class.winning]="run.winningCard === $index" [class.losing]="run.winningCard !== null && run.winningCard !== $index" [style.--n]="$index">
+                    <span class="card-label">{{ t('card', {n: $index + 1}) }}</span>
+                    <strong>{{ value === null ? '?' : value }}</strong>
+                    @if (value !== null) { <small>{{ t('perkCount', {n: value}) }}</small> }
+                    <div class="vote-meter" aria-hidden="true"><span [style.width.%]="voteShare($index)"></span></div>
+                    <span class="vote-percent">{{ voteShare($index) }}%</span><small class="vote-count">{{ t('votes', {n: run.votes[$index]}) }}</small>
+                  </div>
+                }
+              </div>
+              @if (run.winningCard !== null) { <p class="reveal-result">{{ t('revealResult', {card: run.winningCard + 1, n: run.perkCount ?? 0}) }}</p> }
+              @else { <p class="vote-hint">{{ state().phase === 'polling' && countdown() === 0 ? t('waitingTwitch') : t('cardsHint') }}</p> }
+            </section>
+          } @else if (gameplay()) {
+            <div class="ready">
+              <app-widget-streak class="emblem" [role]="role()" [wins]="1" [target]="1" />
+              <strong>{{ t('roundReady') }}</strong><span>{{ t('goodLuck') }}</span>
+            </div>
+          } @else if (intro()) {
+            <div class="intro">
+              <app-widget-streak class="emblem" [role]="role()" [wins]="1" [target]="1" />
+              <div><strong>{{ t('pack.' + role() + '.challenge.title') }}</strong><span>{{ t('introHint', {wins: state().wins[role()], target: state().config.targets[role()]}) }}</span></div>
+            </div>
+          } @else {
+            <div class="roulette-viewport"><div #rouletteBody class="roulette-body" [style.transform]="'translateX(-50%) scale(' + rouletteScale() + ')'">
+              @if (pool().length) { <app-roulette-display [roulette]="roulette().roulette" [draw]="roulette().draw" [serverTime]="state().serverTime" [locale]="state().config.language" /> }
+              @else { <p class="empty-pool">{{ t('emptyPool') }}</p> }
+            </div></div>
+          }
+        </div>
       </section>
     }
     @if (state().config.layout.showInfo) {
       <aside class="info panel" [class.compact]="geometry().compact" [ngStyle]="rect(geometry().info)" [attr.aria-label]="t('loadoutTitle')" data-testid="widget-info">
+        <div class="fog" aria-hidden="true"></div>
         <div #infoBody class="info-body" [style.transform]="'translateX(-50%) scale(' + infoScale() + ')'">
-          <span class="eyebrow">{{ t('role.' + role()) }}</span>
+          <span class="eyebrow">{{ t('role.' + role()) }} · {{ t('loadoutTitle') }}</span>
           <div class="character">
-            @if (character(); as entry) { @if (!failedImages().has(entry.id)) { <img class="portrait" [ngSrc]="entry.image_url" width="456" height="190" alt="" (error)="imageFailed(entry)" /> }<div><strong>{{ label(entry) }}</strong><span>{{ t('goalRemaining', {n: state().config.targets[role()] - state().wins[role()]}) }}</span></div> }
-            @else { <strong>{{ t('waitingCharacter') }}</strong> }
+            @for (entry of characterList(); track entry.id) {
+              <div class="portrait-frame">@if (!failedImages().has(entry.id)) { <img class="portrait" [ngSrc]="entry.image_url" width="456" height="190" alt="" (error)="imageFailed(entry)" /> }</div>
+              <div class="who"><strong>{{ label(entry) }}</strong><span>{{ goalLine() }}</span></div>
+            } @empty {
+              <div class="portrait-frame waiting" aria-hidden="true">?</div>
+              <div class="who"><strong>{{ t('waitingCharacter') }}</strong><span>{{ goalLine() }}</span></div>
+            }
           </div>
-          <div class="loadout-head"><strong>{{ t('loadoutTitle') }}</strong><span>{{ t('phase.' + state().phase) }}</span></div>
           <div class="loadout-perks">
             @for (entry of perkSlots(); track $index) {
-              <div class="perk-slot" [attr.title]="entry ? label(entry) : t('emptyPerk')">
-                <div class="perk-icon">@if (entry && !failedImages().has(entry.id)) { <img [ngSrc]="entry.image_url" width="64" height="64" [alt]="label(entry)" (error)="imageFailed(entry)" /> } @else { <span aria-hidden="true">{{ entry ? '◆' : '?' }}</span> }</div>
-                <span class="perk-name">{{ entry ? label(entry) : t('emptyPerk') }}</span>
+              <div class="perk-slot" [class.filled]="entry" [attr.title]="entry ? label(entry) : t('emptyPerk')">
+                @for (item of entry ? [entry] : []; track item.id) {
+                  <div class="perk-icon"><i class="diamond" aria-hidden="true"></i>@if (!failedImages().has(item.id)) { <img [ngSrc]="item.image_url" width="64" height="64" [alt]="label(item)" (error)="imageFailed(item)" /> } @else { <span class="initials" aria-hidden="true">{{ initials(item) }}</span> }</div>
+                  <span class="perk-name">{{ label(item) }}</span>
+                } @empty {
+                  <div class="perk-icon"><i class="diamond" aria-hidden="true"></i><span aria-hidden="true">?</span></div>
+                  <span class="perk-name">{{ t('emptyPerk') }}</span>
+                }
               </div>
             }
           </div>
-          <p class="info-hint">{{ t(state().run?.perkCount === 0 ? 'noPerks' : 'recordWinHint') }}</p>
+          <p class="info-hint">{{ t(state().run?.perkCount === 0 ? 'noPerks' : gameplay() ? 'recordWinHint' : 'phase.' + state().phase) }}</p>
         </div>
       </aside>
     }
     @if (state().config.layout.showProgress) {
       <section class="progress" [class.bar]="state().config.layout.progressStyle === 'bar'" [ngStyle]="rect(geometry().progress)" [attr.aria-label]="t('progressTitle')" data-testid="widget-progress">
-        @for (role of roles; track role) {
-          <div class="badge"><div><strong>{{ t('role.' + role) }}</strong><span>{{ state().wins[role] }} / {{ state().config.targets[role] }}</span></div><div class="stars" aria-hidden="true">@for (index of stars(role); track index) { <svg viewBox="0 0 24 24" [class.earned]="index < state().wins[role]"><path d="m12 2 3 6.3 7 .9-5 5 .9 7-5.9-3.3L6.1 21l.9-6.8-5-5 7-.9Z" /></svg> }</div></div>
+        @for (r of roles; track r) {
+          <div class="badge" [class.current]="r === role()" [class.done]="state().wins[r] >= state().config.targets[r]" [attr.data-role]="r">
+            <div class="badge-head"><strong>{{ t('role.' + r) }}</strong>@if (state().wins[r] >= state().config.targets[r]) { <em>{{ t('goalDone') }}</em> }<span class="count">{{ state().wins[r] }}<small> / {{ state().config.targets[r] }}</small></span></div>
+            <app-widget-streak [role]="r" [wins]="state().wins[r]" [target]="state().config.targets[r]" [celebrate]="celebrateTick(r)" [label]="t('streakLabel', {role: t('role.' + r), wins: state().wins[r], target: state().config.targets[r]})" [style.--size.px]="iconSize(r)" />
+          </div>
         }
       </section>
     }

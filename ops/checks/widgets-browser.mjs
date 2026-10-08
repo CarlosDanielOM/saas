@@ -118,6 +118,9 @@ const canvasGeometry=async page=>page.getByTestId('widget-canvas').evaluate(fram
  return {active:rect('[data-testid=widget-active]'),info:rect('[data-testid=widget-info]'),camera:rect('[data-testid=widget-camera]'),progress:rect('[data-testid=widget-progress]')};
 });
 const close=(a,b)=>assert(Math.abs(a-b)<2,`${a} ≈ ${b}`);
+const cornerNames={'top-left':'Top left','top-right':'Top right','bottom-left':'Bottom left','bottom-right':'Bottom right'};
+const until=async(check,message,timeout=4000)=>{const end=Date.now()+timeout;while(!(await check())){if(Date.now()>end)throw new Error(message);await new Promise(r=>setTimeout(r,50));}};
+const icons=(page,scope,role,state)=>page.locator(`${scope} app-widget-streak.${role} [data-state=${state}]`).count();
 try{
  for(const width of [320,390,1280])for(const theme of ['light','dark']){
   const f=await fixture({width,theme}),{page}=f;await page.getByTestId('start-sequence').waitFor();
@@ -147,9 +150,9 @@ try{
  }
  // Layout moves around every corner; compact keeps the detailed panel's anchor.
  for(const corner of ['top-left','top-right','bottom-left','bottom-right'])for(const [width,height] of [[512,288],[384,600],[800,640],[320,180]]){
-  await page.getByLabel('Camera / VTuber corner',{exact:true}).selectOption(corner);await page.getByLabel('Camera width (320–800 px)').fill(String(width));await page.getByLabel('Camera height (180–640 px)').fill(String(height));
-  await page.getByLabel('Loadout view',{exact:true}).selectOption('detailed');await page.waitForTimeout(60);const detailed=await canvasGeometry(page);
-  await page.getByLabel('Loadout view',{exact:true}).selectOption('compact');await page.waitForTimeout(60);const compact=await canvasGeometry(page);
+  await page.getByRole('radio',{name:cornerNames[corner],exact:true}).check();await page.getByLabel('Camera width (320–800 px)').fill(String(width));await page.getByLabel('Camera height (180–640 px)').fill(String(height));
+  await page.getByRole('radio',{name:'Detailed',exact:true}).check();await page.waitForTimeout(60);const detailed=await canvasGeometry(page);
+  await page.getByRole('radio',{name:'Compact',exact:true}).check();await page.waitForTimeout(60);const compact=await canvasGeometry(page);
   close(compact.info.x,detailed.info.x);close(compact.info.y,detailed.info.y);close(compact.camera.width,width);close(compact.camera.height,height);
   close(compact.active.x,corner.endsWith('left')?96+width:64);close(compact.info.y,corner.startsWith('top')?96+height:64);
   for(const r of Object.values(compact)){assert(r.x>=0&&r.y>=0&&r.right<=1921&&r.bottom<=1081,'canvas contains every region');}
@@ -161,9 +164,22 @@ try{
  await page.getByRole('button',{name:'Resize camera width',exact:true}).focus();await page.keyboard.press('ArrowRight');await page.getByRole('button',{name:'Save layout',exact:true}).click();await page.waitForTimeout(250);assert.equal(f.state.config.layout.cameraWidth,oldWidth+16);
  await page.getByRole('button',{name:'Resize camera height',exact:true}).scrollIntoViewIfNeeded();const handle=await page.getByRole('button',{name:'Resize camera height',exact:true}).boundingBox(),canvas=await page.getByTestId('widget-canvas').boundingBox(),oldHeight=f.state.config.layout.cameraHeight;
  await page.mouse.move(handle.x+handle.width/2,handle.y+handle.height/2);await page.mouse.down();await page.mouse.move(handle.x+handle.width/2,handle.y+handle.height/2-60*canvas.width/1920);await page.mouse.up();await page.getByRole('button',{name:'Save layout',exact:true}).click();await page.waitForTimeout(250);close(f.state.config.layout.cameraHeight,oldHeight+60);
- await page.getByLabel('Progress style',{exact:true}).selectOption('bar');await page.waitForTimeout(60);let g=await canvasGeometry(page);close(g.progress.width,g.active.width);close(g.progress.x,g.active.x);
- await page.getByLabel('Show active area',{exact:true}).uncheck();await page.getByTestId('widget-active').waitFor({state:'hidden'});assert.equal(await page.getByTestId('widget-active').count(),0);await page.getByLabel('Show active area',{exact:true}).check();
+ await page.getByRole('radio',{name:'Bar',exact:true}).check();await page.waitForTimeout(60);let g=await canvasGeometry(page);close(g.progress.width,g.active.width);close(g.progress.x,g.active.x);
+ await page.locator('details.more').evaluate(d=>{d.open=true;});await page.getByLabel('Show active area',{exact:true}).uncheck();await page.getByTestId('widget-active').waitFor({state:'hidden'});assert.equal(await page.getByTestId('widget-active').count(),0);await page.getByLabel('Show active area',{exact:true}).check();
+ // Win streak: no animation on load; a recorded win forges a skull (and the goal flare) in the tile and the preview.
+ assert.equal(await page.locator('app-widget-streak [data-state=fresh],app-widget-streak [data-state=lost]').count(),0);
  await page.getByTestId('win-killer').click();await wait(page);assert.equal(f.state.wins.killer,3);
+ for(const scope of ['.wins','[data-testid=widget-progress]']){await until(async()=>await icons(page,scope,'killer','fresh')===1,`fresh skull in ${scope}`);assert.equal(await page.locator(`${scope} app-widget-streak.killer [data-state=fresh] .fire`).count(),1);}
+ assert(await page.locator('.wins app-widget-streak.killer').evaluate(e=>e.classList.contains('complete')&&e.classList.contains('finale')));
+ assert.equal(await page.locator('.wins app-widget-streak.killer [data-state=flare]').count(),2);
+ await page.locator('.win-row[data-role=killer]').getByRole('button',{name:'Undo win',exact:true}).click();await wait(page);assert.equal(f.state.wins.killer,2);
+ await until(async()=>await icons(page,'.wins','killer','lost')===1,'crumbling skull after undo');assert.equal(await page.locator('.wins app-widget-streak.killer [data-state=lost] .smoke').count(),1);
+ await page.getByTestId('win-killer').click();await wait(page);assert.equal(f.state.wins.killer,3);
+ // Preview plays the survivor hatch locally, records nothing, then closes it again.
+ const quiet=f.writes();await page.getByRole('button',{name:'Preview the Survivor win animation',exact:true}).click();
+ for(const scope of ['.wins','[data-testid=widget-progress]'])await until(async()=>await page.locator(`${scope} app-widget-streak.survivor [data-state=fresh] .light`).count()===1,`hatch preview in ${scope}`);
+ assert.equal(f.writes(),quiet);assert.equal(f.state.wins.survivor,0);
+ await until(async()=>await icons(page,'.wins','survivor','lost')===1&&await icons(page,'.wins','survivor','fresh')===0,'preview hatch closes',5000);assert.equal(f.writes(),quiet);
  await page.getByRole('button',{name:'Create OBS link',exact:true}).click();await page.getByRole('button',{name:'Copy',exact:true}).waitFor();
  const link=await page.getByLabel('OBS browser source',{exact:true}).inputValue();assert(link.includes('/overlays/widgets/991801#'));
  await page.getByTestId('role-survivor').click();await wait(page);assert.equal(await page.getByLabel('OBS browser source',{exact:true}).inputValue(),link);assert.equal(f.state.wins.killer,3);
@@ -174,10 +190,14 @@ try{
  // An accepted draw with a lost HTTP response retries the original key and mode.
  f.state.phase='complete';f.state.nextAt=null;await wait(page);f.setLost();await page.getByTestId('draw-perk').click();await page.getByRole('alert').waitFor();await page.getByRole('button',{name:'Retry',exact:true}).click();await page.getByRole('alert').waitFor({state:'hidden'});const retry=f.actions.slice(-2);assert.equal(retry[0].key,retry[1].key);assert.deepEqual(retry[0].body,{mode:'perks'});
  // OBS source uses the whole canvas, has no camera guides, and follows visibility.
- await page.goto(base+'/overlays/widgets/991801#'+'a'.repeat(43));await page.getByTestId('widget-canvas').waitFor();assert.equal(await page.getByTestId('widget-camera').count(),0);const frame=await page.getByTestId('widget-canvas').boundingBox();close(frame.width,1280);close(frame.height,720);
+ await page.goto(base+'/overlays/widgets/991801#'+'a'.repeat(43));await page.getByTestId('widget-canvas').waitFor();assert.equal(await page.getByTestId('widget-camera').count(),0);
+ assert.equal(await page.locator('app-widget-streak [data-state=fresh],app-widget-streak [data-state=lost]').count(),0,'a freshly loaded OBS source does not replay old wins');
+ f.state.wins.survivor=1;f.publish();await until(async()=>await page.locator('[data-testid=widget-progress] app-widget-streak.survivor [data-state=fresh] .hatch').count()===1,'OBS opens a hatch for a new survivor win');
+ await page.emulateMedia({reducedMotion:'reduce'});f.state.wins.survivor=2;f.publish();await until(async()=>await icons(page,'[data-testid=widget-progress]','survivor','fresh')===1&&await page.locator('[data-testid=widget-progress] app-widget-streak.survivor').getAttribute('data-wins')==='2','reduced-motion win');
+ assert.deepEqual(await page.locator('[data-testid=widget-progress] app-widget-streak.survivor [data-state=fresh]').evaluate(e=>[getComputedStyle(e.querySelector('.light')).display,getComputedStyle(e.querySelector('.lid')).animationName]),['none','none']);await page.emulateMedia({reducedMotion:'no-preference'});const frame=await page.getByTestId('widget-canvas').boundingBox();close(frame.width,1280);close(frame.height,720);
  f.state.visible=false;f.publish();await page.getByTestId('widget-canvas').waitFor({state:'hidden'});f.state.visible=true;f.publish();await page.getByTestId('widget-canvas').waitFor();
  if(shots)await page.screenshot({path:`${shots}/obs-source.png`,fullPage:true});assert.deepEqual(f.errors,[]);await f.context.close();
  for(const tier of ['free','premium']){const gated=await fixture({tier});await gated.page.getByText('Widgets Alpha requires Pro',{exact:true}).waitFor();assert.equal(gated.reads(),0);await gated.context.close();}
- const spanish=await fixture({lang:'es',width:390});await spanish.page.getByRole('button',{name:'Iniciar secuencia',exact:true}).waitFor();await overflow(spanish.page);await axeClean(spanish.page,'[data-testid="widgets-page"]');assert.deepEqual(spanish.errors,[]);await spanish.context.close();
- console.log('PASS unified DBD browser: one control center, per-role fixed character/skip settings, standalone actions, four existing roulette styles, result holds, every camera corner/size, compact alignment, progress, single OBS link, hidden cards, poll confirmation, uncertain-response replay, visibility, Pro gate, EN/ES, light/dark, mobile/desktop, AXE');
+ const spanish=await fixture({lang:'es',width:390});await spanish.page.getByRole('button',{name:'Iniciar ronda',exact:true}).waitFor();await overflow(spanish.page);await axeClean(spanish.page,'[data-testid="widgets-page"]');assert.deepEqual(spanish.errors,[]);await spanish.context.close();
+ console.log('PASS unified DBD browser: plain-language round status and step track, skull/hatch win animations (control, preview, OBS, undo, local preview, reduced motion), one control center, per-role fixed character/skip settings, standalone actions, four existing roulette styles, result holds, every camera corner/size, compact alignment, progress, single OBS link, hidden cards, poll confirmation, uncertain-response replay, visibility, Pro gate, EN/ES, light/dark, mobile/desktop, AXE');
 }finally{await browser.close();}

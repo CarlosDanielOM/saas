@@ -5,17 +5,23 @@ import { widgetText } from './widget-text';
 import { RouletteDisplayComponent } from '../roulette/roulette-display.component';
 import { widgetRoulette } from './widget-roulette';
 import { widgetGeometry, WidgetRect } from './widget-layout';
+import { WidgetStreakComponent } from './widget-streak.component';
+import { challengeSteps } from './widget-steps';
 
-@Component({ selector: 'app-widget-display', imports: [NgOptimizedImage, NgStyle, RouletteDisplayComponent], templateUrl: './widget-display.component.html', styleUrl: './widget-display.component.css', changeDetection: ChangeDetectionStrategy.OnPush })
+@Component({ selector: 'app-widget-display', imports: [NgOptimizedImage, NgStyle, RouletteDisplayComponent, WidgetStreakComponent], templateUrl: './widget-display.component.html', styleUrl: './widget-display.component.css', changeDetection: ChangeDetectionStrategy.OnPush })
 export class WidgetDisplayComponent {
   readonly catalog = input.required<WidgetCatalog>();
   readonly state = input.required<WidgetState>();
   readonly editor = input(false);
   readonly gameplayPreview = input(false);
+  /** Replays a role's next-win animation locally (control center preview only). */
+  readonly celebrate = input<{role: WidgetRole; tick: number} | null>(null);
   readonly layoutChange = output<WidgetLayout>();
   readonly frame = viewChild<ElementRef<HTMLElement>>('frame');
   readonly infoBody = viewChild<ElementRef<HTMLElement>>('infoBody');
   readonly rouletteBody = viewChild<ElementRef<HTMLElement>>('rouletteBody');
+  readonly stageEl = viewChild<ElementRef<HTMLElement>>('stage');
+  readonly stageSize = signal({width: 1000, height: 560});
   readonly scale = signal(1);
   readonly infoHeight = signal(500);
   readonly rouletteHeight = signal(540);
@@ -34,26 +40,44 @@ export class WidgetDisplayComponent {
     return ids ? ids.flatMap(id => { const entry = this.entriesById().get(id); return entry ? [entry] : []; }) : this.catalog().entries.filter(e => e.kind === kind && e.role === this.role() && (state.config.includeUnavailable || e.available) && !state.config.excludedIds.includes(e.id));
   });
   readonly character = computed(() => this.entriesById().get(this.state().run?.characterId ?? this.state().loadouts[this.role()].characterId ?? '') ?? null);
+  /** A one-item list re-creates the portrait when the character changes, replaying its entrance. */
+  readonly characterList = computed(() => { const entry = this.character(); return entry ? [entry] : []; });
   readonly perks = computed(() => (this.state().run?.perkIds ?? this.state().loadouts[this.role()].perkIds).flatMap(id => { const entry = this.entriesById().get(id); return entry ? [entry] : []; }));
   readonly perkSlots = computed(() => Array.from({length: 4}, (_, i) => this.perks()[i] ?? null));
   readonly roulette = computed(() => widgetRoulette(this.state(), this.pool(), this.title()));
-  readonly rouletteScale = computed(() => Math.min(1.06, (this.geometry().active.width - 96) / 760, 576 / this.rouletteHeight()));
+  readonly rouletteScale = computed(() => Math.min(1.06, this.stageSize().width / 760, this.stageSize().height / this.rouletteHeight()));
   readonly infoScale = computed(() => Math.min(1, (this.geometry().info.width - 52) / 456, (this.geometry().info.height - 52) / this.infoHeight()));
   readonly voteStage = computed(() => ['poll-starting', 'polling', 'poll-error', 'reveal'].includes(this.state().phase) || this.mode() === 'poll' && this.state().phase === 'complete');
   readonly countdown = computed(() => Math.max(0, Math.ceil(((this.state().run?.pollEndsAt ?? 0) - this.now() - this.offset) / 1000)));
+  readonly timeShare = computed(() => Math.min(1, this.countdown() / Math.max(1, this.state().config.pollSeconds)));
   readonly totalVotes = computed(() => this.state().run?.votes.reduce((total, votes) => total + votes, 0) ?? 0);
-  readonly title = computed(() => this.voteStage() ? this.t('pollTitle') : this.gameplay() ? this.t('roundReady') : this.t('pack.' + this.role() + '.' + (this.state().run?.draw?.kind === 'perk' || this.mode() === 'perks' ? 'perks' : 'characters') + '.title'));
+  readonly intro = computed(() => this.state().phase === 'idle');
+  /** The challenge's steps, so viewers can follow along. */
+  readonly steps = computed(() => challengeSteps(this.state(), this.role()).map(step => ({...step, label: this.t('flow.' + step.key)})));
+  readonly goalLine = computed(() => {
+    const left = this.state().config.targets[this.role()] - this.state().wins[this.role()];
+    return left <= 0 ? this.t('goalReached') : this.t(left === 1 ? 'goalRemainingOne' : 'goalRemaining', {n: left});
+  });
+  readonly title = computed(() => this.voteStage() ? this.t('pollTitle') : this.gameplay() ? this.t('roundReady') : this.intro() ? this.t('pack.' + this.role() + '.challenge.title') : this.t('pack.' + this.role() + '.' + (this.state().run?.draw?.kind === 'perk' || this.mode() === 'perks' ? 'perks' : 'characters') + '.title'));
+  readonly phaseText = computed(() => {
+    const character = this.character();
+    if (this.gameplay()) return character ? this.t('loadoutSummary', {name: this.label(character), n: this.perks().length}) : this.t('roundReady');
+    if (this.state().phase === 'polling') return this.state().config.channelPointsVoting ? this.t('extraVotesHint', {points: this.state().config.channelPointsPerVote}) : this.t('freeVotesHint');
+    return this.t('phase.' + this.state().phase);
+  });
+  readonly stageKey = computed(() => this.title() + '|' + this.phaseText());
   readonly roles: WidgetRole[] = ['killer','survivor'];
   constructor() {
     effect(() => { this.offset = this.state().serverTime - Date.now(); });
     effect(onCleanup => {
-      const frame = this.frame()?.nativeElement, info = this.infoBody()?.nativeElement, roulette = this.rouletteBody()?.nativeElement;
+      const frame = this.frame()?.nativeElement, info = this.infoBody()?.nativeElement, roulette = this.rouletteBody()?.nativeElement, stage = this.stageEl()?.nativeElement;
       const observer = new ResizeObserver(() => {
         if (frame) this.scale.set(frame.clientWidth / 1920);
         if (info) this.infoHeight.set(Math.max(1, info.offsetHeight));
         if (roulette) this.rouletteHeight.set(Math.max(1, roulette.offsetHeight));
+        if (stage) this.stageSize.set({width: Math.max(1, stage.clientWidth), height: Math.max(1, stage.clientHeight)});
       });
-      if (frame) observer.observe(frame); if (info) observer.observe(info); if (roulette) observer.observe(roulette);
+      for (const element of [frame, info, roulette, stage]) if (element) observer.observe(element);
       onCleanup(() => observer.disconnect());
     });
     const timer = setInterval(() => this.now.set(Date.now()), 1000);
@@ -64,7 +88,14 @@ export class WidgetDisplayComponent {
   label(entry: WidgetEntry): string { return this.state().config.language === 'es' ? entry.spanish : entry.english; }
   imageFailed(entry: WidgetEntry): void { this.failedImages.update(ids => new Set([...ids, entry.id])); }
   voteShare(index: number): number { return this.totalVotes() ? Math.round((this.state().run!.votes[index] ?? 0) / this.totalVotes() * 100) : 0; }
-  stars(role: WidgetRole): number[] { return Array.from({length: Math.min(10, this.state().config.targets[role])}, (_, i) => i); }
+  initials(entry: WidgetEntry): string { return this.label(entry).split(/[\s-]+/).filter(Boolean).slice(0, 2).map(word => word[0]).join('').toUpperCase(); }
+  celebrateTick(role: WidgetRole): number { const celebrate = this.celebrate(); return celebrate?.role === role ? celebrate.tick : 0; }
+  /** Fit up to ten streak icons in one badge row of the 118 px progress band. */
+  iconSize(role: WidgetRole): number {
+    const progress = this.geometry().progress, bar = this.state().config.layout.progressStyle === 'bar';
+    const available = (bar ? progress.width / 2 : (progress.width - 24) / 2) - 48, count = Math.min(10, this.state().config.targets[role]);
+    return Math.max(16, Math.min(52, Math.floor(available / (count + .22 * (count - 1)))));
+  }
   resize(event: PointerEvent, axis: 'width' | 'height' | 'both'): void {
     if (!this.editor()) return;
     event.preventDefault(); this.drag?.abort(); const abort = this.drag = new AbortController(), layout = {...this.state().config.layout};
