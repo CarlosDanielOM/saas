@@ -8,9 +8,12 @@
     @if (showReferralPromo()) {
       <div class="lf-referral">
         <app-referral-promo-banner
-          [title]="referralPromoTitle()"
-          [message]="referralPromoMessage()"
-          [cta]="referralPromoCta()"
+          [kicker]="t('dashboard.referralPromo.kicker')"
+          [title]="t('dashboard.referralPromo.title')"
+          [message]="t('dashboard.referralPromo.message')"
+          [rewards]="referralPromoRewards()"
+          [rewardsNote]="t('dashboard.referralPromo.yearlyNote')"
+          [cta]="t('dashboard.referralPromo.cta')"
           [ctaLink]="referralPromoLink()"
           [dismissLabel]="t('dashboard.referralPromo.dismiss')"
           (dismissed)="dismissReferralPromo()"

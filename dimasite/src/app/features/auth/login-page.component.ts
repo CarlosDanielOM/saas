@@ -1,7 +1,19 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import {
+  afterRenderEffect,
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  DestroyRef,
+  effect,
+  ElementRef,
+  inject,
+  OnInit,
+  signal,
+  viewChild
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
-import { LucideAngularModule, Moon, Sun } from 'lucide-angular';
+import { Check, LucideAngularModule, Moon, Sun, X } from 'lucide-angular';
 import { firstValueFrom } from 'rxjs';
 
 import { DashboardApiService } from '../../services/dashboard-api.service';
@@ -24,6 +36,19 @@ type LoginStage =
   | 'dashboard'
   | 'redirecting'
   | 'error';
+
+type LoginStep = Exclude<LoginStage, 'idle' | 'error'>;
+
+const LOGIN_STEPS: readonly LoginStep[] = ['validating', 'syncing', 'permissions', 'dashboard', 'redirecting'];
+
+interface LoginLogEntry {
+  time: string;
+  text: string;
+  tone: 'ok' | 'error' | null;
+}
+
+const LOG_ERROR_PATTERN = /\b(fail(ed|ure)?|error|mismatch|invalid|cleared|denied|allowed=false|valid=false)\b/i;
+const LOG_OK_PATTERN = /\b(success|allowed=true|valid=true)\b/i;
 
 const LOGIN_RESET_REDIRECT_DELAY_MS = 3000;
 const LOGIN_RESET_TOAST_DURATION_MS = LOGIN_RESET_REDIRECT_DELAY_MS + 200;
@@ -54,6 +79,9 @@ export class LoginPageComponent implements OnInit {
 
   readonly sunIcon = Sun;
   readonly moonIcon = Moon;
+  readonly checkIcon = Check;
+  readonly failIcon = X;
+  readonly steps = LOGIN_STEPS;
 
   readonly stage = signal<LoginStage>('idle');
   readonly errorMessage = signal<string | null>(null);
@@ -84,7 +112,54 @@ export class LoginPageComponent implements OnInit {
     return current !== 'idle' && current !== 'error';
   });
 
+  /** Last step reached, so an error can show where sign-in stopped. */
+  private readonly lastStep = signal<LoginStep | null>(null);
+  readonly stepIndex = computed(() => {
+    const step = this.lastStep();
+    return step ? LOGIN_STEPS.indexOf(step) : -1;
+  });
+  readonly isDone = computed(() => this.stage() === 'redirecting');
+  readonly stepCaption = computed(() => {
+    const params = { current: this.stepIndex() + 1, total: LOGIN_STEPS.length };
+    if (this.stage() === 'error') {
+      return this.t('login.progress.stoppedAt', params);
+    }
+    return this.isDone() ? this.t('login.progress.done') : this.t('login.progress.step', params);
+  });
+
+  readonly logEntries = computed<LoginLogEntry[]>(() =>
+    this.debugLines().map((line) => {
+      const text = this.extractContent(line);
+      return {
+        time: this.extractTimestamp(line),
+        text,
+        tone: LOG_ERROR_PATTERN.test(text) ? 'error' : LOG_OK_PATTERN.test(text) ? 'ok' : null
+      };
+    })
+  );
+
+  private readonly logList = viewChild<ElementRef<HTMLElement>>('logList');
+
   constructor() {
+    effect(() => {
+      const current = this.stage();
+      if (current === 'idle') {
+        this.lastStep.set(null);
+      } else if (current !== 'error') {
+        this.lastStep.set(current);
+      }
+    });
+
+    // Keep the newest console line in view, like a tailing terminal.
+    afterRenderEffect(() => {
+      this.logEntries();
+      this.stage();
+      const list = this.logList()?.nativeElement;
+      if (list) {
+        list.scrollTop = list.scrollHeight;
+      }
+    });
+
     this.destroyRef.onDestroy(() => {
       this.cancelPendingLoginReset();
     });
@@ -142,9 +217,9 @@ export class LoginPageComponent implements OnInit {
     this.sessionAuth.startTwitchLoginWithState(`admin-${returnTo}`);
   }
 
-  t(key: string): string {
+  t(key: string, params?: Record<string, string | number>): string {
     this.languageService.currentLanguage();
-    return this.languageService.translate(key);
+    return this.languageService.translate(key, params);
   }
 
   languageLabel(): string {

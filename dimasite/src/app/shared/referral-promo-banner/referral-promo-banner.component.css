@@ -1,16 +1,15 @@
 :host {
   display: block;
-  --bg: #f4f5f8;
   --tile: #ffffff;
   --fg: #14151a;
-  --muted: #667085;
+  --muted: #596273;
   --line: rgba(15, 17, 21, 0.08);
   --accent: #7c3aed;
   --accent-soft: rgba(124, 58, 237, 0.12);
-  --gold: #b45309;
+  --gold: #92400e;
+  --gold-deco: #b45309;
   --gold-soft: rgba(180, 83, 9, 0.12);
   --btn: #eef0f5;
-  --btn-border: rgba(15, 17, 21, 0.1);
   --kicker: #6d28d9;
   --radius: 1.25rem;
   --shadow: 0 10px 28px rgba(15, 15, 20, 0.08);
@@ -18,85 +17,150 @@
 }
 
 :host-context(html.dark) {
-  --bg: #0f1115;
   --tile: #171a21;
   --fg: #f5f7fb;
-  --muted: #9aa3b5;
+  --muted: #a7b0c2;
   --line: rgba(255, 255, 255, 0.07);
   --accent: #8b5cf6;
   --accent-soft: rgba(139, 92, 246, 0.16);
   --gold: #fbbf24;
+  --gold-deco: #fbbf24;
   --gold-soft: rgba(251, 191, 36, 0.14);
   --btn: #1d2230;
-  --btn-border: rgba(255, 255, 255, 0.07);
   --kicker: #c4b5fd;
   --shadow: 0 14px 36px rgba(0, 0, 0, 0.35);
 }
 
 .lf-promo {
   position: relative;
+  isolation: isolate;
+  overflow: hidden;
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto minmax(0, 1fr);
   grid-template-areas:
-    'icon text'
+    'art body'
+    'rewards rewards'
     'cta cta';
   align-items: start;
-  gap: 0.75rem 0.85rem;
-  padding: 1rem 3.25rem 1rem 1rem;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--fg) 3%, transparent), transparent 42%), var(--tile);
-  border: 1px solid var(--line);
+  gap: 0.85rem 0.9rem;
+  padding: 1rem;
+  background:
+    radial-gradient(320px 160px at 0% 0%, var(--accent-soft), transparent 70%),
+    radial-gradient(280px 140px at 100% 100%, var(--gold-soft), transparent 70%),
+    var(--tile);
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--line));
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   color: var(--fg);
   font-family: var(--font);
-  animation: lf-promo-in 220ms ease-out;
+  animation: lf-promo-in 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* One soft sheen sweep after the banner lands. */
+.lf-promo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    105deg,
+    transparent 35%,
+    color-mix(in srgb, var(--accent) 10%, transparent) 48%,
+    color-mix(in srgb, var(--gold-deco) 8%, transparent) 54%,
+    transparent 66%
+  );
+  transform: translateX(-100%);
+  animation: lf-promo-sheen 1.6s ease 0.45s 1 both;
+  pointer-events: none;
 }
 
 .lf-promo--exiting {
   opacity: 0;
-  transform: translateY(-6px);
+  transform: translateY(-6px) scale(0.985);
   pointer-events: none;
-  transition: opacity 180ms ease, transform 180ms ease;
+  transition: opacity 220ms ease, transform 220ms ease;
 }
 
-.lf-promo__icon {
-  grid-area: icon;
+.lf-promo__art {
+  grid-area: art;
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 999px;
-  background: var(--accent-soft);
-  color: var(--kicker);
-  flex-shrink: 0;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 1rem;
+  background: linear-gradient(140deg, #a78bfa, #7c3aed 55%, #5b21b6);
+  box-shadow:
+    0 8px 18px rgba(124, 58, 237, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  color: #fff;
 }
 
-.lf-promo__icon-svg,
-.lf-promo__close-icon {
+.lf-promo__gift {
   display: inline-flex;
-  width: 1.15rem;
-  height: 1.15rem;
+  width: 1.4rem;
+  height: 1.4rem;
+  animation: lf-promo-bob 3.4s ease-in-out 0.6s infinite;
 }
 
-.lf-promo__icon-svg svg,
-.lf-promo__close-icon svg {
+.lf-promo__gift svg,
+.lf-promo__close-icon svg,
+.lf-promo__cta-icon svg {
   width: 100%;
   height: 100%;
   display: block;
 }
 
-.lf-promo__text {
-  grid-area: text;
+.lf-promo__spark {
+  position: absolute;
+  width: 0.45rem;
+  height: 0.45rem;
+  background: var(--gold-deco);
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  animation: lf-promo-twinkle 2.6s ease-in-out infinite;
+}
+
+:host-context(html.dark) .lf-promo__spark {
+  background: #fde68a;
+}
+
+.lf-promo__spark--a {
+  top: -0.2rem;
+  right: -0.25rem;
+}
+
+.lf-promo__spark--b {
+  bottom: 0.1rem;
+  left: -0.3rem;
+  width: 0.32rem;
+  height: 0.32rem;
+  animation-delay: 1.3s;
+}
+
+.lf-promo__body {
+  grid-area: body;
   min-width: 0;
   display: grid;
   gap: 0.2rem;
+  /* Keep the title clear of the close button. */
+  padding-right: 2rem;
+}
+
+.lf-promo__kicker {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--kicker);
 }
 
 .lf-promo__title {
   margin: 0;
-  font-size: 0.95rem;
-  font-weight: 700;
+  font-size: 1rem;
+  font-weight: 780;
+  letter-spacing: -0.01em;
   line-height: 1.3;
   color: var(--fg);
 }
@@ -109,39 +173,106 @@
   color: var(--muted);
 }
 
+.lf-promo__rewards {
+  grid-area: rewards;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.lf-promo__reward {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  min-height: 1.85rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--gold-deco) 26%, transparent);
+  background: var(--gold-soft);
+  color: var(--gold);
+  font-size: 0.78rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  animation: lf-promo-pop 360ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: 220ms;
+}
+
+.lf-promo__reward--pro {
+  border-color: color-mix(in srgb, var(--gold-deco) 50%, transparent);
+  background: color-mix(in srgb, var(--gold-deco) 20%, transparent);
+  animation-delay: 300ms;
+}
+
+.lf-promo__reward-plan {
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.lf-promo__reward-amount {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.lf-promo__note {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
 .lf-promo__cta {
   grid-area: cta;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.45rem;
   min-height: 44px;
-  padding: 0.65rem 1.05rem;
+  padding: 0.65rem 1.15rem;
   border-radius: 999px;
-  background: var(--accent);
-  border: 1px solid var(--accent);
+  background: #7c3aed;
+  border: 1px solid #7c3aed;
   color: #fff;
   font: inherit;
   font-size: 0.9rem;
-  font-weight: 650;
+  font-weight: 700;
   text-decoration: none;
-  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 6px 16px rgba(124, 58, 237, 0.28);
   transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
 }
 
-.lf-promo__cta:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow);
+.lf-promo__cta-icon {
+  display: inline-flex;
+  width: 1rem;
+  height: 1rem;
+  transition: transform 180ms ease;
 }
 
-.lf-promo__cta:focus-visible {
+.lf-promo__cta:hover {
+  background: #6d28d9;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(124, 58, 237, 0.34);
+}
+
+.lf-promo__cta:hover .lf-promo__cta-icon {
+  transform: translateX(3px);
+}
+
+.lf-promo__cta:focus-visible,
+.lf-promo__close:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
 .lf-promo__close {
   position: absolute;
-  top: 0.35rem;
-  right: 0.35rem;
+  top: 0.3rem;
+  right: 0.3rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -152,60 +283,135 @@
   background: transparent;
   color: var(--muted);
   cursor: pointer;
-  transition: background 160ms ease, color 160ms ease;
+  transition: background 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.lf-promo__close-icon {
+  display: inline-flex;
+  width: 1.1rem;
+  height: 1.1rem;
 }
 
 .lf-promo__close:hover {
   background: var(--btn);
   color: var(--fg);
-}
-
-.lf-promo__close:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  transform: rotate(90deg);
 }
 
 :host-context([data-plan='premium']) .lf-promo,
 :host-context(html[data-plan-tier='premium']) .lf-promo {
-  border-color: color-mix(in srgb, var(--gold) 32%, var(--line));
+  border-color: color-mix(in srgb, var(--gold-deco) 32%, var(--line));
 }
 
 :host-context([data-plan='pro']) .lf-promo,
 :host-context(html[data-plan-tier='pro']) .lf-promo {
-  border-color: color-mix(in srgb, var(--gold) 48%, var(--line));
-  box-shadow: var(--shadow), 0 0 0 1px color-mix(in srgb, var(--gold) 18%, transparent);
+  border-color: color-mix(in srgb, var(--gold-deco) 48%, var(--line));
+  box-shadow: var(--shadow), 0 0 0 1px color-mix(in srgb, var(--gold-deco) 18%, transparent);
 }
 
 @keyframes lf-promo-in {
   from {
     opacity: 0;
-    transform: translateY(-8px);
+    transform: translateY(-10px) scale(0.985);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
+  }
+}
+
+@keyframes lf-promo-sheen {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes lf-promo-pop {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes lf-promo-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0);
+  }
+  12% {
+    transform: translateY(-2px) rotate(-8deg);
+  }
+  24% {
+    transform: translateY(0) rotate(6deg);
+  }
+  34% {
+    transform: translateY(0) rotate(0);
+  }
+}
+
+@keyframes lf-promo-twinkle {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.4) rotate(0);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1) rotate(45deg);
   }
 }
 
 @media (min-width: 640px) {
   .lf-promo {
-    grid-template-columns: auto 1fr auto;
-    grid-template-areas: 'icon text cta';
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      'art body cta'
+      'art rewards cta';
     align-items: center;
-    padding: 0.95rem 3.4rem 0.95rem 1rem;
+    gap: 0.5rem 1.1rem;
+    padding: 1.05rem 3.4rem 1.05rem 1.1rem;
   }
 
-  .lf-promo__cta {
-    width: auto;
+  .lf-promo__body {
+    padding-right: 0;
+    align-self: end;
+  }
+
+  .lf-promo__rewards {
+    align-self: start;
+  }
+
+  .lf-promo__art {
+    width: 3.4rem;
+    height: 3.4rem;
+    align-self: center;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .lf-promo,
+  .lf-promo::after,
   .lf-promo--exiting,
-  .lf-promo__cta {
+  .lf-promo__gift,
+  .lf-promo__spark,
+  .lf-promo__reward,
+  .lf-promo__cta,
+  .lf-promo__cta-icon,
+  .lf-promo__close {
     animation: none;
     transition: none;
     transform: none;
+  }
+
+  .lf-promo::after {
+    display: none;
+  }
+
+  .lf-promo__spark {
+    opacity: 0.8;
   }
 }

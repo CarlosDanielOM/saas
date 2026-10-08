@@ -2465,9 +2465,14 @@
       "toolsRest": "cuando quieras saludos, una voz, clips o un filtro de chat."
     },
     "referralPromo": {
-      "title": "Gana con Referencias",
-      "message": "Recibe 50 creditos por referencias Premium y 100 creditos por referencias Pro!",
-      "cta": "Gestionar Referencias",
+      "kicker": "Referidos",
+      "title": "Invita a un streamer y gana créditos",
+      "message": "Comparte tu enlace de referido. Recibes créditos cada vez que alguien que invitaste paga un plan.",
+      "premium": "Premium",
+      "pro": "Pro",
+      "perMonth": "+{{credits}} créditos / mes",
+      "yearlyNote": "Los planes anuales dan 10× de una vez",
+      "cta": "Obtener mi enlace",
       "dismiss": "Cerrar el aviso de referencias"
     },
     "loading": "Cargando tu panel...",
@@ -2985,7 +2990,20 @@
       "label": "Actividad",
       "live": "En vivo",
       "standby": "En espera",
-      "stopped": "Detenido"
+      "stopped": "Detenido",
+      "done": "Listo"
+    },
+    "progress": {
+      "step": "Paso {{current}} de {{total}}",
+      "stoppedAt": "Se detuvo en el paso {{current}} de {{total}}",
+      "done": "Todo listo"
+    },
+    "steps": {
+      "validating": "Twitch",
+      "syncing": "Cuenta",
+      "permissions": "Acceso",
+      "dashboard": "Panel",
+      "redirecting": "Abrir"
     },
     "stages": {
       "idle": "Listo para autenticar",

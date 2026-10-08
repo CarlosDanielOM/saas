@@ -33,7 +33,10 @@ import { getRouteParam, watchRouteParam } from '../../shared/utils/route-param.u
 import { StreamHealthStatus } from './components/stream-health.component';
 import { AverageToggleComponent, type AverageMode } from './components/average-toggle.component';
 import { LoadingIndicatorComponent } from '../../components/loading';
-import { ReferralPromoBannerComponent } from '../../shared/referral-promo-banner/referral-promo-banner.component';
+import {
+  ReferralPromoBannerComponent,
+  ReferralPromoReward
+} from '../../shared/referral-promo-banner/referral-promo-banner.component';
 import { environment } from '../../../environments/environment';
 
 type TimeRange = '7d' | '15d' | '30d';
@@ -346,10 +349,20 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private readonly REFERRAL_PROMO_DISMISS_KEY = 'dimasite.referral_promo.dismissed_at';
   private readonly REFERRAL_PROMO_DISMISS_TTL_MS = 7 * 24 * 60 * 60 * 1000;
   readonly showReferralPromo = signal(false);
-  readonly referralPromoTitle = signal('');
-  readonly referralPromoMessage = signal('');
-  readonly referralPromoCta = signal('');
-  readonly referralPromoLink = signal('');
+  readonly referralPromoLink = computed(() => `/${this.streamer()}/modules/referrals`);
+  // Mirrors BOT_SUBSCRIPTION_REWARDS (monthly) in dimabot/src/utils/referral.ts.
+  readonly referralPromoRewards = computed<ReferralPromoReward[]>(() => [
+    {
+      plan: 'premium',
+      label: this.t('dashboard.referralPromo.premium'),
+      amount: this.t('dashboard.referralPromo.perMonth', { credits: 50 })
+    },
+    {
+      plan: 'pro',
+      label: this.t('dashboard.referralPromo.pro'),
+      amount: this.t('dashboard.referralPromo.perMonth', { credits: 100 })
+    }
+  ]);
 
   constructor() {
     effect(() => {
@@ -1394,12 +1407,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (!this.shouldShowReferralPromo()) {
       return;
     }
-
-    const streamer = this.streamer();
-    this.referralPromoTitle.set(this.t('dashboard.referralPromo.title'));
-    this.referralPromoMessage.set(this.t('dashboard.referralPromo.message'));
-    this.referralPromoCta.set(this.t('dashboard.referralPromo.cta'));
-    this.referralPromoLink.set(`/${streamer}/modules/referrals`);
 
     this.showReferralPromo.set(true);
   }

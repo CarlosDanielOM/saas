@@ -45,64 +45,120 @@
             {{ mockLoginEnabled ? 'Continue with mock login' : t('login.actions.continue') }}
           </button>
           <p class="lf-note">{{ t('login.privacyNote') }}</p>
-        } @else if (stage() === 'error') {
-          <div class="lf-alert" role="alert">
-            <p class="lf-alert__title">{{ t('login.stages.error') }}</p>
-            <p class="lf-alert__copy">{{ errorMessage() }}</p>
-          </div>
-          <button type="button" class="lf-btn lf-btn--primary lf-btn--block" (click)="loginWithTwitch()">
-            {{ t('login.actions.tryAgain') }}
-          </button>
-          <a class="lf-link" routerLink="/">{{ t('login.actions.home') }}</a>
         } @else {
-          <div class="lf-loading" role="status">
-            <div class="lf-ring" aria-hidden="true">
-              <svg viewBox="0 0 48 48">
-                <circle class="lf-ring__track" cx="24" cy="24" r="18" />
-                <circle
-                  class="lf-ring__value"
-                  cx="24"
-                  cy="24"
-                  r="18"
-                  [style.stroke-dashoffset]="113 - (113 * progress()) / 100"
-                />
-              </svg>
-            </div>
-            <div class="lf-loading__meta">
-              <p class="lf-loading__label">{{ stageLabel() }}</p>
-              <div class="lf-progress" aria-hidden="true">
-                <div class="lf-progress__bar" [style.width.%]="progress()"></div>
+          @if (stage() === 'error') {
+            <div class="lf-alert" role="alert">
+              <span class="lf-alert__icon" aria-hidden="true">
+                <lucide-icon [name]="failIcon" [size]="16" />
+              </span>
+              <div>
+                <p class="lf-alert__title">{{ t('login.stages.error') }}</p>
+                <p class="lf-alert__copy">{{ errorMessage() }}</p>
               </div>
             </div>
-          </div>
+          }
+
+          @if (stage() !== 'error' || stepIndex() >= 0) {
+            <div
+              class="lf-run"
+              [class.lf-run--error]="stage() === 'error'"
+              [class.lf-run--done]="isDone()"
+              [attr.role]="stage() === 'error' ? null : 'status'"
+            >
+              @if (stage() !== 'error') {
+                <div class="lf-run__head">
+                  <span class="lf-run__badge" aria-hidden="true">
+                    @if (isDone()) {
+                      <lucide-icon [name]="checkIcon" [size]="18" />
+                    } @else {
+                      <span class="lf-run__spinner"></span>
+                    }
+                  </span>
+                  <div class="lf-run__meta">
+                    <!-- Re-create the label per stage so its enter animation replays. -->
+                    @for (current of [stage()]; track current) {
+                      <p class="lf-run__label">{{ stageLabel() }}</p>
+                    }
+                    <p class="lf-run__caption">{{ stepCaption() }}</p>
+                  </div>
+                </div>
+              } @else {
+                <p class="lf-run__caption lf-run__caption--error">{{ stepCaption() }}</p>
+              }
+
+              <ol class="lf-steps" aria-hidden="true">
+                @for (step of steps; track step; let i = $index) {
+                  <li
+                    class="lf-steps__item"
+                    [class.is-done]="i < stepIndex() || isDone()"
+                    [class.is-active]="i === stepIndex() && !isDone() && stage() !== 'error'"
+                    [class.is-failed]="i === stepIndex() && stage() === 'error'"
+                  >
+                    <span class="lf-steps__track"><span class="lf-steps__fill"></span></span>
+                    <span class="lf-steps__label">{{ t('login.steps.' + step) }}</span>
+                  </li>
+                }
+              </ol>
+            </div>
+          }
+
+          @if (stage() === 'error') {
+            <button type="button" class="lf-btn lf-btn--primary lf-btn--block" (click)="loginWithTwitch()">
+              {{ t('login.actions.tryAgain') }}
+            </button>
+            <a class="lf-link" routerLink="/">{{ t('login.actions.home') }}</a>
+          }
         }
 
-        @if (debugLines().length) {
-          <section class="lf-log" [attr.aria-label]="t('login.activity.label')">
-            <div class="lf-log__head">
-              <span class="lf-log__title">{{ t('login.activity.label') }}</span>
-              <span
-                class="lf-chip"
-                [class.lf-chip--live]="isBusy()"
-                [class.lf-chip--muted]="!isBusy()"
-              >
+        @if (logEntries().length) {
+          <section
+            class="lf-term"
+            [class.lf-term--busy]="isBusy() && !isDone()"
+            [class.lf-term--error]="stage() === 'error'"
+            [attr.aria-label]="t('login.activity.label')"
+          >
+            <header class="lf-term__bar">
+              <span class="lf-term__lights" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span class="lf-term__title">{{ t('login.activity.label') }}</span>
+              <span class="lf-term__state">
+                <span class="lf-term__state-dot" aria-hidden="true"></span>
                 {{
-                  isBusy()
-                    ? t('login.activity.live')
-                    : stage() === 'error'
-                      ? t('login.activity.stopped')
-                      : t('login.activity.standby')
+                  stage() === 'error'
+                    ? t('login.activity.stopped')
+                    : isDone()
+                      ? t('login.activity.done')
+                      : isBusy()
+                        ? t('login.activity.live')
+                        : t('login.activity.standby')
                 }}
               </span>
-            </div>
-            <ul class="lf-log__list">
-              @for (line of debugLines(); track $index) {
-                <li>
-                  <time>{{ extractTimestamp(line) }}</time>
-                  <span>{{ extractContent(line) }}</span>
+            </header>
+            <ol class="lf-term__list" #logList>
+              @for (entry of logEntries(); track $index) {
+                <li
+                  class="lf-term__line"
+                  [class.lf-term__line--ok]="entry.tone === 'ok'"
+                  [class.lf-term__line--error]="entry.tone === 'error'"
+                >
+                  <time class="lf-term__time">{{ entry.time }}</time>
+                  <span class="lf-term__prompt" aria-hidden="true">›</span>
+                  <span class="lf-term__text">{{ entry.text }}</span>
                 </li>
               }
-            </ul>
+              @if (stage() === 'error' && errorMessage()) {
+                <li class="lf-term__line lf-term__line--error">
+                  <time class="lf-term__time">--:--:--</time>
+                  <span class="lf-term__prompt" aria-hidden="true">✕</span>
+                  <span class="lf-term__text">{{ errorMessage() }}</span>
+                </li>
+              } @else if (isBusy() && !isDone()) {
+                <li class="lf-term__line lf-term__line--cursor" aria-hidden="true">
+                  <span class="lf-term__time"></span>
+                  <span class="lf-term__prompt">›</span>
+                  <span class="lf-term__caret"></span>
+                </li>
+              }
+            </ol>
           </section>
         }
       </article>

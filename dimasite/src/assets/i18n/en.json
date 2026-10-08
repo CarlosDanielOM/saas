@@ -2465,9 +2465,14 @@
       "toolsRest": "when you want greetings, a voice, clips, or a chat filter."
     },
     "referralPromo": {
-      "title": "Earn with Referrals",
-      "message": "Get 50 credits for Premium referrals and 100 credits for Pro referrals!",
-      "cta": "Manage Referrals",
+      "kicker": "Referrals",
+      "title": "Invite a streamer, earn credits",
+      "message": "Share your referral link. You get credits every time someone you invited pays for a plan.",
+      "premium": "Premium",
+      "pro": "Pro",
+      "perMonth": "+{{credits}} credits / month",
+      "yearlyNote": "Yearly plans earn 10× at once",
+      "cta": "Get my link",
       "dismiss": "Dismiss referral banner"
     },
     "loading": "Loading your dashboard...",
@@ -2985,7 +2990,20 @@
       "label": "Activity",
       "live": "Live",
       "standby": "Standby",
-      "stopped": "Stopped"
+      "stopped": "Stopped",
+      "done": "Done"
+    },
+    "progress": {
+      "step": "Step {{current}} of {{total}}",
+      "stoppedAt": "Stopped at step {{current}} of {{total}}",
+      "done": "All set"
+    },
+    "steps": {
+      "validating": "Twitch",
+      "syncing": "Account",
+      "permissions": "Access",
+      "dashboard": "Dashboard",
+      "redirecting": "Open"
     },
     "stages": {
       "idle": "Ready to authenticate",
