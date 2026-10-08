@@ -95,8 +95,13 @@ function buildCondition(
       };
     case "stream.online":
     case "stream.offline":
+    case "channel.poll.begin":
     case "channel.poll.progress":
+    case "channel.poll.end":
+    case "channel.prediction.begin":
     case "channel.prediction.progress":
+    case "channel.prediction.lock":
+    case "channel.prediction.end":
     case "channel.hype_train.begin":
     case "channel.hype_train.progress":
     case "channel.hype_train.end":
@@ -371,8 +376,22 @@ function buildEventData(
         ...base,
       };
 
+    case "channel.poll.begin":
     case "channel.poll.progress":
+    case "channel.poll.end":
+      return { broadcaster_user_id: channelID, broadcaster_user_login: "teststreamer", broadcaster_user_name: "TestStreamer",
+        id: "test-poll", title: "What should we play?", started_at: new Date(Date.now() - 30000).toISOString(), ends_at: new Date(Date.now() + 30000).toISOString(),
+        ...(type.endsWith(".end") ? { status: "completed", ended_at: new Date().toISOString() } : {}),
+        choices: [{ id: "one", title: "Adventure", votes: 12 }, { id: "two", title: "Racing", votes: 8 }] };
+    case "channel.prediction.begin":
     case "channel.prediction.progress":
+    case "channel.prediction.lock":
+    case "channel.prediction.end":
+      return { broadcaster_user_id: channelID, broadcaster_user_login: "teststreamer", broadcaster_user_name: "TestStreamer",
+        id: "test-prediction", title: "Will we win?", started_at: new Date(Date.now() - 30000).toISOString(), locks_at: new Date(Date.now() + 30000).toISOString(),
+        ...(type.endsWith(".lock") ? { locked_at: new Date().toISOString() } : {}),
+        ...(type.endsWith(".end") ? { status: "resolved", ended_at: new Date().toISOString(), winning_outcome_id: "one" } : {}),
+        outcomes: [{ id: "one", title: "Yes", users: 12, channel_points: 1200, color: "blue" }, { id: "two", title: "No", users: 8, channel_points: 800, color: "pink" }] };
     case "channel.update":
     case "channel.hype_train.begin":
     case "channel.hype_train.progress":

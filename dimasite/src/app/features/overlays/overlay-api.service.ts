@@ -1,3 +1,4 @@
+import type { InteractionKind, InteractionReadinessSnapshot } from './overlay-interaction.model';
 import type { QueueStatus, OverlayAction, OverlayScope } from './overlay-queue.model';
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
@@ -23,6 +24,8 @@ export class OverlayApi {
     return firstValueFrom(this.http.request<{ data: T }>(method, `${this.base}/overlay-studio/${path}`, { body }).pipe(timeout(timeoutMs), map(r => r.data)));
   }
   load(channel: string) { return this.request<StudioState>('GET', channel); }
+  twitchEvents(channel: string) { return this.request<InteractionReadinessSnapshot>('GET', `${channel}/twitch-events`); }
+  activateTwitchEvents(channel: string, kind: InteractionKind) { return this.request<InteractionReadinessSnapshot>('POST', `${channel}/twitch-events/${kind}`, {}, 60000); }
   connections(channel: string) { return this.request<OverlayConnections>('GET', `${channel}/connections`); }
   queue(channel: string) { return this.request<QueueStatus>('GET', `${channel}/queue`); }
   control(channel: string, action: OverlayAction, platform: OverlayScope) { return this.request<QueueStatus>('POST', `${channel}/queue`, { action, platform }); }

@@ -1,3 +1,5 @@
+import { OverlayInteractionComponent } from './overlay-interaction.component';
+import type { InteractionSnapshot, InteractionState } from './overlay-interaction.model';
 import { OverlayImageCache, type PreparedImage } from './overlay-image-cache';
 import { OverlaySoundComponent } from './overlay-sound.component';
 import type { QueueState, QueueCommand, OverlayPlatform } from './overlay-queue.model';
@@ -21,11 +23,14 @@ const retryDelay = (attempt: number) => Math.min(1000 * 2 ** Math.min(attempt, 5
 const retryable = (error: unknown) => error instanceof TimeoutError || error instanceof HttpErrorResponse && (error.status === 0 || error.status === 408 || error.status === 429 || error.status >= 500);
 interface Playing { images: Map<string, PreparedImage>; event: Event; widgets: OverlayWidget[]; snapshot: Snapshot; pending: Set<string>; timers: Map<string, ReturnType<typeof setTimeout>> }
 @Component({
-  selector: 'app-overlay-runtime', imports: [OverlaySoundComponent, OverlayMediaComponent, OverlayLayerComponent, OverlayClipComponent], changeDetection: ChangeDetectionStrategy.OnPush,
+  selector: 'app-overlay-runtime', imports: [OverlayInteractionComponent, OverlaySoundComponent, OverlayMediaComponent, OverlayLayerComponent, OverlayClipComponent], changeDetection: ChangeDetectionStrategy.OnPush,
   template: `@if (snapshot(); as scene) {
     <div class="canvas" [style.width.px]="scene.width" [style.height.px]="scene.height">
       @for (w of scene.widgets; track w.id) { @if (w.visible && ['image','video','text','shape'].includes(w.kind)) {
         <div class="placement art" [style.left.px]="w.x" [style.top.px]="w.y" [style.width.px]="w.width" [style.height.px]="w.height" [style.z-index]="scene.widgets.indexOf(w)"><app-overlay-layer [publicId]="publicId" [layer]="w" (failed)="reportIssue('media')" /></div>
+      } }
+      @for (w of scene.widgets; track w.id) { @if (w.visible && (w.kind === 'poll' || w.kind === 'prediction')) {
+        <div class="placement interaction" [attr.data-interaction]="w.kind" [style.left.px]="w.x" [style.top.px]="w.y" [style.width.px]="w.width" [style.height.px]="w.height" [style.z-index]="scene.widgets.indexOf(w)"><app-overlay-interaction [state]="interactionFor(w.kind)" [design]="w.interactionDesign ?? 'card'" [clockOffset]="clockOffset()" /></div>
       } }
       @for (job of playing(); track job.event.id) {
         @for (sound of soundsFor(job); track sound.id) { <app-overlay-sound [sound]="sound.config" [duration]="sound.duration" [playbackKey]="job.event.id" [publicId]="publicId" (failed)="reportIssue('media')" (playbackBlocked)="reportIssue('autoplay')" (started)="soundStarted()" /> }
@@ -55,6 +60,15 @@ interface Playing { images: Map<string, PreparedImage>; event: Event; widgets: O
 })
 export class OverlayRuntimeComponent {
   readonly snapshot = signal<Snapshot | null>(null);
+  readonly interactions = signal<InteractionSnapshot | null>(null);
+  readonly clockOffset = signal(0);
+  interactionFor(kind: string): InteractionState | null { return kind === 'poll' ? this.interactions()?.poll ?? null : this.interactions()?.prediction ?? null; }
+  private acceptInteractions(data?: InteractionSnapshot): void {
+    if (!data) return;
+    const old = this.interactions();
+    this.interactions.set({ ...data, poll: data.poll && old?.poll && data.poll.revision < old.poll.revision ? old.poll : data.poll, prediction: data.prediction && old?.prediction && data.prediction.revision < old.prediction.revision ? old.prediction : data.prediction });
+    if (Number.isFinite(data.serverTime)) this.clockOffset.set(data.serverTime - Date.now());
+  }
   readonly playing = signal<Playing[]>([]);
   private readonly api = inject(OverlayApi);
   private readonly imageCache = new OverlayImageCache();
@@ -86,6 +100,7 @@ export class OverlayRuntimeComponent {
     doc.body.style.background = 'transparent'; doc.documentElement.style.background = 'transparent';
     const referrer = doc.createElement('meta'); referrer.name = 'referrer'; referrer.content = 'no-referrer'; doc.head.append(referrer);
     this.socket.on('overlay-state', state => {
+      this.acceptInteractions(state.interactions);
       this.batching = true;
       if (state.revision >= this.revision) { this.revision = state.revision; this.snapshot.set(state.snapshot); this.warmImages(state.snapshot); this.snapshotRecovered(); }
       if (Array.isArray(state.pendingIds)) {
@@ -96,6 +111,7 @@ export class OverlayRuntimeComponent {
       for (const command of state.commands ?? []) this.applyControl(command);
       this.batching = false; this.next(); this.reportHealth(); this.reportPlayback();
     });
+    this.socket.on('overlay-interactions', (state: InteractionSnapshot) => this.acceptInteractions(state));
     this.socket.on('overlay-queue-state', (state: QueueState) => this.applyQueueState(state));
     this.socket.on('overlay-control', (command: QueueCommand) => this.applyControl(command));
     this.socket.on('overlay-updated', (state?: { revision: number }) => {
@@ -157,9 +173,10 @@ export class OverlayRuntimeComponent {
     const generation = this.generation;
     let shouldRetry = true;
     try {
-      const state = await this.api.request<{ revision: number; snapshot: Snapshot }>('GET', `public/${this.publicId}`);
+      const state = await this.api.request<{ revision: number; snapshot: Snapshot; interactions?: InteractionSnapshot }>('GET', `public/${this.publicId}`);
       if (this.disposed || generation !== this.generation) return;
       if (state.revision >= this.revision) {
+        this.acceptInteractions(state.interactions);
         this.revision = state.revision; this.snapshot.set(state.snapshot); this.warmImages(state.snapshot);
         this.snapshotRecovered(); this.reportHealth();
       }
@@ -310,5 +327,5 @@ export class OverlayRuntimeComponent {
     if (this.active === id) this.active = null;
     this.next(); this.reportPlayback();
   }
-  private clear() { this.generation++; this.imageCache.clear(); this.playing().forEach(p => p.images.forEach(image => image.release())); clearTimeout(this.snapshotRetry.timer); this.snapshotRetry = { attempts: 0 }; this.targetRevision = -1; this.refreshing = false; this.eventRetries.forEach(retry => clearTimeout(retry.timer)); this.eventRetries.clear(); this.playing().forEach(p => p.timers.forEach(clearTimeout)); this.playing.set([]); this.queue = []; this.inFlight.clear(); this.active = null; this.snapshot.set(null); }
+  private clear() { this.interactions.set(null); this.generation++; this.imageCache.clear(); this.playing().forEach(p => p.images.forEach(image => image.release())); clearTimeout(this.snapshotRetry.timer); this.snapshotRetry = { attempts: 0 }; this.targetRevision = -1; this.refreshing = false; this.eventRetries.forEach(retry => clearTimeout(retry.timer)); this.eventRetries.clear(); this.playing().forEach(p => p.timers.forEach(clearTimeout)); this.playing.set([]); this.queue = []; this.inFlight.clear(); this.active = null; this.snapshot.set(null); }
 }

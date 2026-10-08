@@ -9,6 +9,12 @@ const twitchSources = { $in: ['twitch-eventsub', 'twitch-eventsub-test'] };
 
 export const DOMAIN_EVENT_CONSUMERS: readonly DomainEventConsumerDefinition[] = [
     {
+        consumer: 'overlay-interactions-v1', topics: ['channel'], schemaVersions: [1], adminReplay: false,
+        maxEventAgeMs: 86_400_000,
+        eventFilter: { source: 'twitch-eventsub', type: { $in: ['channel.poll.began', 'channel.poll.updated', 'channel.poll.ended', 'channel.prediction.began', 'channel.prediction.updated', 'channel.prediction.locked', 'channel.prediction.ended'] } },
+        handler: async event => (await import('../overlays/interactions.js')).applyInteractionEvent(event)
+    },
+    {
         consumer: 'follow-defense-v1',
         adminReplay: false,
         maxEventAgeMs: 300_000,

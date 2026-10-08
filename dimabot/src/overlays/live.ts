@@ -1,3 +1,5 @@
+import { interactionSnapshot, resyncInteractions } from './interactions.js';
+import type { InteractionKind, InteractionSnapshot } from './interaction-model.js';
 import { selectAlertLayout } from './model.js';
 import { OVERLAY_ACTIONS, OVERLAY_PLATFORMS, initialQueueState, platformMatches, type OverlayPlatform, type OverlayScope, type OverlayAction, type QueueState, type QueueCommand } from './controls.js';
 import { registerStudioBridge } from './bridge.js';
@@ -17,7 +19,7 @@ export interface LiveEvent { platform: OverlayPlatform; id: string; kind: EventK
 type Public = Awaited<ReturnType<typeof publicState>>;
 type RuntimeIssue = 'snapshot' | 'event' | 'media' | 'autoplay';
 interface Health { revision: number; issue: RuntimeIssue | null; reportedAt: number; issueAt: number | null }
-interface Peer { commands: QueueCommand[]; playback?: { active: string[]; queued: string[] }; connectedAt: number; health?: Health; activationFailed?: boolean; activationRetryAt?: number; dropped?: number; stateFailed?: boolean; key: string; publicId: string; channel: string; socket?: Socket; disconnectedAt?: number; state: Public; since: number }
+interface Peer { interactionVersion?: string; commands: QueueCommand[]; playback?: { active: string[]; queued: string[] }; connectedAt: number; health?: Health; activationFailed?: boolean; activationRetryAt?: number; dropped?: number; stateFailed?: boolean; key: string; publicId: string; channel: string; socket?: Socket; disconnectedAt?: number; state: Public; since: number }
 interface Pending { event: LiveEvent; channel: string; recipients: Set<string>; mediaId?: string; bytes?: number; expiresAt: Date; mime?: string; raw?: Record<string, unknown> }
 const peers = new Map<string, Peer>();
 let pollingFailed = false;
@@ -65,7 +67,7 @@ export function studioConnections(channel: string, scenes: OverlayScene[]) {
   const now = Date.now();
   return { checkedAt: now, pollingFailed, scenes: scenes.map(scene => ({
     id: scene.id, published: !!scene.published, revision: scene.revision, width: scene.published?.width ?? scene.width, height: scene.published?.height ?? scene.height,
-    receives: EVENT_KINDS.filter(kind => scene.published?.widgets.some(w => w.visible && (w.kind === kind && (kind !== 'trigger' || w.triggerIds === undefined || w.triggerIds.length > 0) || w.kind === 'alert' && w.events?.includes(kind as AlertEvent)))),
+    receives: [...EVENT_KINDS.filter(kind => scene.published?.widgets.some(w => w.visible && (w.kind === kind && (kind !== 'trigger' || w.triggerIds === undefined || w.triggerIds.length > 0) || w.kind === 'alert' && w.events?.includes(kind as AlertEvent)))), ...(scene.published ? interactionKinds(scene.published) : [])],
     sources: [...peers.values()].filter(p => p.channel === channel && p.publicId === scene.publicId).map(p => ({
       connected: !!p.socket?.connected, connectedAt: p.connectedAt, disconnectedAt: p.disconnectedAt ?? null,
       lastReportAt: p.health?.reportedAt ?? null, revision: p.health?.revision ?? null,
@@ -215,6 +217,13 @@ export async function controlStudio(channel: string, rawAction: unknown, rawPlat
   return queueStatus(channel);
 }
 
+export function interactionKinds(scene: { widgets: { visible: boolean; kind: string }[] }): InteractionKind[] {
+  return (['poll', 'prediction'] as const).filter(kind => scene.widgets.some(widget => widget.visible && widget.kind === kind));
+}
+export async function interactionsFor(state: Public): Promise<InteractionSnapshot> {
+  const kinds = interactionKinds(state.snapshot), snapshot = await interactionSnapshot(state.channel);
+  return { poll: kinds.includes('poll') ? snapshot.poll : null, prediction: kinds.includes('prediction') ? snapshot.prediction : null, serverTime: snapshot.serverTime };
+}
 export function registerStudio(io: Server): void {
   const pattern = /^\/overlay-studio\/[a-f0-9]{48}$/;
   io.on('new_namespace', child => { if (pattern.test(child.name)) child.adapter.persistSession = () => {}; });
@@ -242,7 +251,9 @@ export function registerStudio(io: Server): void {
     await savePeer(peer);
     if (!socket.connected) { peer.socket = undefined; peer.disconnectedAt = Date.now(); await savePeer(peer); return; }
     if (!channels.has(peer.channel)) channels.set(peer.channel, { after: Types.ObjectId.createFromTime(Math.floor(Date.now() / 1000)), busy: false });
-    socket.emit('overlay-state', { publicId: state.publicId, revision: state.revision, snapshot: state.snapshot, controls: state.controls, commands: peer.commands, pendingIds: [...pending.values()].filter(item => item.recipients.has(key)).map(item => item.event.id) });
+    const interactions = await interactionsFor(state);
+    peer.interactionVersion = JSON.stringify([interactions.poll?.revision, interactions.prediction?.revision]);
+    socket.emit('overlay-state', { interactions, publicId: state.publicId, revision: state.revision, snapshot: state.snapshot, controls: state.controls, commands: peer.commands, pendingIds: [...pending.values()].filter(item => item.recipients.has(key)).map(item => item.event.id) });
     for (const item of pending.values()) if (item.recipients.has(key)) socket.emit('overlay-event', item.event);
     socket.on('overlay-control-ack', (id: unknown) => {
       if (peers.get(key) === peer && typeof id === 'string') { peer.commands = peer.commands.filter(command => command.id !== id); void savePeer(peer); }
@@ -271,6 +282,7 @@ export function registerStudio(io: Server): void {
     });
     socket.on('disconnect', () => { if (peers.get(key)?.socket === socket) { peer.socket = undefined; peer.disconnectedAt = Date.now(); void savePeer(peer); } });
     void ensureSources(peer);
+    void resyncInteractions(peer.channel, interactionKinds(state.snapshot)).catch(() => { peer.stateFailed = true; });
   }
   let busy = false, lastSweep = 0;
   const timer = setInterval(() => { void (async () => {
@@ -303,6 +315,22 @@ export function registerStudio(io: Server): void {
           else peer.stateFailed = true;
           // A transient database failure keeps the current version and queue.
         }
+      }
+      const interactionStates = new Map<string, InteractionSnapshot>();
+      for (const peer of peers.values()) {
+        if (!peer.socket?.connected) continue;
+        if (!interactionKinds(peer.state.snapshot).length) {
+          if (peer.interactionVersion !== '[null,null]') { peer.socket.emit('overlay-interactions', { poll: null, prediction: null, serverTime: Date.now() }); peer.interactionVersion = '[null,null]'; }
+          continue;
+        }
+        let snapshot = interactionStates.get(peer.channel);
+        if (!snapshot) { snapshot = await interactionSnapshot(peer.channel); interactionStates.set(peer.channel, snapshot); }
+        const kinds = interactionKinds(peer.state.snapshot);
+        const overdue = kinds.filter(kind => { const state = snapshot![kind]; return state?.phase === 'active' && !!state.deadline && Date.parse(state.deadline) + 5000 < Date.now(); });
+        if (overdue.length) void resyncInteractions(peer.channel, overdue).catch(() => { peer.stateFailed = true; });
+        const filtered = { poll: kinds.includes('poll') ? snapshot.poll : null, prediction: kinds.includes('prediction') ? snapshot.prediction : null, serverTime: snapshot.serverTime };
+        const version = JSON.stringify([filtered.poll?.revision, filtered.prediction?.revision]);
+        if (version !== peer.interactionVersion) { peer.socket.emit('overlay-interactions', filtered); peer.interactionVersion = version; }
       }
       const cache = await getDragonflyClient('overlay-presence');
       for (const [channel, cursor] of channels) {

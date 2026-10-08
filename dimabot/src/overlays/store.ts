@@ -29,7 +29,7 @@ function canvas(v: Record<string, unknown>) { return { width: number(v.width, 10
 function widgets(value: unknown, nested: boolean): OverlayWidget[] {
   return unique(list(value, 60).map(raw => {
     const w = object(raw); const kind = string(w.kind) as OverlayWidget['kind'];
-    if (!(nested ? ['text', 'image', 'video', 'animation', 'shape'] : ['tts', 'clip', 'trigger', 'alert', 'text', 'image', 'video', 'shape']).includes(kind)) throw new OverlayError('Invalid layer type');
+    if (!(nested ? ['text', 'image', 'video', 'animation', 'shape'] : ['poll', 'prediction', 'tts', 'clip', 'trigger', 'alert', 'text', 'image', 'video', 'shape']).includes(kind)) throw new OverlayError('Invalid layer type');
     const item: OverlayWidget = { id: id(w.id), kind, x: number(w.x, -16000, 16000), y: number(w.y, -16000, 16000), width: number(w.width, 20, 16000), height: number(w.height, 20, 16000), visible: boolean(w.visible), locked: boolean(w.locked) };
     if (w.keyframes !== undefined) {
       if (!nested || !validKeyframes(w.keyframes)) throw new OverlayError('Invalid object keyframes');
@@ -47,6 +47,10 @@ function widgets(value: unknown, nested: boolean): OverlayWidget[] {
     if (w.showTtsText !== undefined) {
       if (kind !== 'tts') throw new OverlayError('Spoken text settings require a TTS widget');
       item.showTtsText = boolean(w.showTtsText);
+    }
+    if (w.interactionDesign !== undefined) {
+      if (!['poll', 'prediction'].includes(kind) || !['card', 'compact'].includes(String(w.interactionDesign))) throw new OverlayError('Invalid poll or prediction design');
+      item.interactionDesign = w.interactionDesign as OverlayWidget['interactionDesign'];
     }
     if (w.clipDesign !== undefined) {
       if (kind !== 'clip' || !CLIP_DESIGN_VARIANTS.includes(w.clipDesign as never)) throw new OverlayError('Invalid clip design');

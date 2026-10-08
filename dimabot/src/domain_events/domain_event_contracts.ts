@@ -1,3 +1,4 @@
+import { INTERACTION_EVENT_TYPES, parseInteraction } from '../overlays/interaction-model.js';
 import type { IChatNotification } from '../interfaces/twitch/eventsub.interface.js';
 import type { JournalDomainEventInput } from './domain_event.types.js';
 import { DOMAIN_EVENT_RETENTION_SECONDS } from './domain_event.types.js';
@@ -13,6 +14,7 @@ export class DomainEventContractError extends Error {
 }
 
 export const TWITCH_DOMAIN_EVENT_TYPES = {
+    ...INTERACTION_EVENT_TYPES,
     'channel.bits.use': 'channel.bits.received',
     'channel.cheer': 'channel.bits.received',
     'channel.bit.use': 'channel.bits.received',
@@ -238,6 +240,10 @@ export function validateDomainEventContract(input: JournalDomainEventInput, mode
                 record(event.modiversary, 'event.modiversary');
                 count(event.modiversary.months, 'event.modiversary.months', 1);
             }
+        }
+        if (typeof original === 'string' && Object.hasOwn(INTERACTION_EVENT_TYPES, original)) {
+            try { parseInteraction(original, event, String(metadata.messageTimestamp || input.occurredAt), input.sourceEventId); }
+            catch (error) { throw new DomainEventContractError((error as Error).message); }
         }
         if (original === 'channel.raid') {
             text(event.from_broadcaster_user_id, 'event.from_broadcaster_user_id');

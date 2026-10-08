@@ -1,3 +1,4 @@
+import { INTERACTION_SUBSCRIPTIONS } from '../overlays/interaction-model.js';
 import { getTwitchStreamerHeaderById, type TwitchHeaderResult } from './header.js';
 import { getTwitchHelixUrl } from './links.js';
 import { getAppToken } from './tokens.js';
@@ -201,20 +202,7 @@ export const SUBSCRIPTION_TYPES: SubscriptionType[] = [
             clipEnabled: true
         }
     },
-    {
-        type: 'channel.poll.progress',
-        version: '1',
-        condition: {
-            broadcaster_user_id: '698614112'
-        }
-    },
-    {
-        type: 'channel.prediction.progress',
-        version: '1',
-        condition: {
-            broadcaster_user_id: '698614112'
-        }
-    },
+    ...Object.values(INTERACTION_SUBSCRIPTIONS).flatMap(types => types.map(type => ({ type, version: '1', condition: { broadcaster_user_id: '698614112' } }))),
     {
         type: 'channel.hype_train.begin',
         version: '2',
