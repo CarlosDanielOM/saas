@@ -5,7 +5,7 @@ import {readFileSync,mkdirSync} from 'node:fs';
 const require=createRequire(`${process.env.SAAS_BROWSER_TOOLS||'/tmp/saas-cooldown-browser'}/package.json`);
 const {chromium}=require('playwright'),AxeBuilder=require('@axe-core/playwright').default;
 const base=process.env.SAAS_PREVIEW_URL;assert(base);
-const catalog={...JSON.parse(readFileSync(new URL('../../dimabot/src/widgets/dbd.json',import.meta.url),'utf8')),packs:['killer','survivor'].flatMap(role=>['challenge','characters','perks'].map(mode=>({id:`dbd-${role}-${mode}`,game:'Dead by Daylight',role,mode})))};
+const catalog={...JSON.parse(readFileSync('dimabot/src/widgets/dbd.json','utf8')),packs:['killer','survivor'].flatMap(role=>['challenge','characters','perks'].map(mode=>({id:`dbd-${role}-${mode}`,game:'Dead by Daylight',role,mode})))};
 const browser=await chromium.launch({args:['--no-sandbox']});
 const shots=process.env.SAAS_SCREENSHOT_DIR; if(shots)mkdirSync(shots,{recursive:true});
 const keys=(obj,p='')=>Object.entries(obj).flatMap(([k,v])=>v&&typeof v==='object'?keys(v,p+k+'.'):[p+k]);
