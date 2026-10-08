@@ -368,6 +368,9 @@
     transform 260ms ease,
     filter 260ms ease;
 }
+.chip.has-image { min-width: 0; max-width: 100%; min-height: 30px; padding: 3px 8px; gap: 6px; font-size: 12px; }
+.chip.has-image img { flex: none; object-fit: contain; }
+.chip-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .chip-dot {
   flex-shrink: 0;
   width: 10px;

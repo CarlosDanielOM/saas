@@ -14,7 +14,7 @@ export class WidgetDisplayComponent {
   readonly failedImages = signal<ReadonlySet<string>>(new Set());
   readonly pack = computed(() => this.catalog().packs.find(p => p.id === this.state().packId)!);
   readonly pool = computed(() => {
-    const state = this.state(), kind = this.pack().mode === 'perks' || state.phase === 'perk-spin' ? 'perk' : 'character';
+    const state = this.state(), kind = this.pack().mode === 'perks' || ['perk-spin', 'perk-result'].includes(state.phase) ? 'perk' : 'character';
     const ids = state.run?.draw?.kind === kind ? state.run.draw.poolIds : null;
     return ids ? ids.flatMap(id => { const entry = this.entriesById().get(id); return entry ? [entry] : []; }) : this.catalog().entries.filter(e => e.kind === kind && e.role === this.pack().role && (state.config.includeUnavailable || e.available) && !state.config.excludedIds.includes(e.id));
   });

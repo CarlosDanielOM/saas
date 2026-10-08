@@ -78,13 +78,14 @@
             @for (slot of slots(); track slot.key; let i = $index) {
               <span
                 class="chip"
+                [class.has-image]="!!slot.imageUrl"
                 [class.out]="out().has(i)"
                 [class.final]="drawing() && !out().has(i) && remaining() <= 3"
                 [class.winner]="done() && i === winnerIndex()"
                 [style.--prize]="color(i)"
                 [style.--ink]="ink(i)"
               >
-                <span class="chip-dot"></span>{{ slot.label }}
+                @if (slot.imageUrl; as url) { @if (!failedImages().has(url)) { <img [ngSrc]="url" width="20" height="20" alt="" (error)="imageFailed(url)" /> } } @else { <span class="chip-dot"></span> }<span class="chip-label">{{ slot.label }}</span>
               </span>
             }
           </div>

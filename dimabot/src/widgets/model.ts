@@ -3,9 +3,10 @@ import { catalog, type Entry, type Pack } from './catalog.js';
 export { RouletteError as WidgetError, fail, integer, object, text } from '../roulette/model.js';
 import { fail, integer, object } from '../roulette/model.js';
 
-export interface Config { language: 'en' | 'es'; characterDesign: 'cards' | 'reel'; spinSeconds: number; pollSeconds: number; channelPointsVoting: boolean; channelPointsPerVote: number; includeUnavailable: boolean; excludedIds: string[] }
-export type Phase = 'idle' | 'character-spin' | 'poll-starting' | 'polling' | 'poll-error' | 'reveal' | 'perk-spin' | 'complete';
-export interface Draw { id: string; kind: 'character' | 'perk'; design?: 'cards' | 'reel' | 'wheel'; itemId: string; poolIds: string[]; startedAt: number; endsAt: number }
+export type CharacterDesign = 'cards' | 'reel' | 'wheel' | 'elimination';
+export interface Config { language: 'en' | 'es'; characterDesign: CharacterDesign; spinSeconds: number; pollSeconds: number; channelPointsVoting: boolean; channelPointsPerVote: number; includeUnavailable: boolean; excludedIds: string[] }
+export type Phase = 'idle' | 'character-spin' | 'character-result' | 'poll-starting' | 'polling' | 'poll-error' | 'reveal' | 'perk-spin' | 'perk-result' | 'complete';
+export interface Draw { id: string; kind: 'character' | 'perk'; design?: CharacterDesign; itemId: string; poolIds: string[]; startedAt: number; endsAt: number }
 export interface Run {
   id: string; characterId: string | null; perkIds: string[]; draw: Draw | null;
   cards: number[]; votes: number[]; channelPointsVotes: number[]; winningCard: number | null; perkCount: number | null;
@@ -24,11 +25,11 @@ export function config(input: unknown): Config {
   const data = object(input);
   if (Object.keys(data).some(k => !['language', 'characterDesign', 'spinSeconds', 'pollSeconds', 'channelPointsVoting', 'channelPointsPerVote', 'includeUnavailable', 'excludedIds'].includes(k))) fail('invalid', 'Unknown widget setting');
   if (data.language !== 'en' && data.language !== 'es') fail('invalid', 'Choose English or Spanish');
-  if (data.characterDesign !== undefined && data.characterDesign !== 'cards' && data.characterDesign !== 'reel') fail('invalid', 'Choose cards or reel for the character roulette');
+  if (data.characterDesign !== undefined && !['cards', 'reel', 'wheel', 'elimination'].includes(data.characterDesign as string)) fail('invalid', 'Choose cards, reel, wheel, or last one standing for the character roulette');
   if (typeof data.includeUnavailable !== 'boolean') fail('invalid', 'includeUnavailable must be a boolean');
   if (data.channelPointsVoting !== undefined && typeof data.channelPointsVoting !== 'boolean') fail('invalid', 'channelPointsVoting must be a boolean');
   if (!Array.isArray(data.excludedIds) || data.excludedIds.length > catalog.entries.length || data.excludedIds.some(id => typeof id !== 'string' || !catalog.entries.some(e => e.id === id))) fail('invalid', 'Unknown excluded entry');
-  return { language: data.language as Config['language'], characterDesign: data.characterDesign === 'reel' ? 'reel' : 'cards', spinSeconds: integer(data.spinSeconds, 'spinSeconds', 1, 15), pollSeconds: integer(data.pollSeconds, 'pollSeconds', 15, 180), channelPointsVoting: data.channelPointsVoting === true, channelPointsPerVote: integer(data.channelPointsPerVote === undefined ? 100 : data.channelPointsPerVote, 'channelPointsPerVote', 1, 1000000), includeUnavailable: data.includeUnavailable as boolean, excludedIds: [...new Set(data.excludedIds as string[])] };
+  return { language: data.language as Config['language'], characterDesign: (data.characterDesign ?? 'cards') as CharacterDesign, spinSeconds: integer(data.spinSeconds, 'spinSeconds', 1, 15), pollSeconds: integer(data.pollSeconds, 'pollSeconds', 15, 180), channelPointsVoting: data.channelPointsVoting === true, channelPointsPerVote: integer(data.channelPointsPerVote === undefined ? 100 : data.channelPointsPerVote, 'channelPointsPerVote', 1, 1000000), includeUnavailable: data.includeUnavailable as boolean, excludedIds: [...new Set(data.excludedIds as string[])] };
 }
 export function active(state: State): boolean { return !['idle', 'complete', 'poll-error'].includes(state.phase); }
 export function idle(state: State): void { if (active(state) || state.phase === 'poll-error') fail('busy', 'Finish or reset the challenge first', 409); }
@@ -54,11 +55,16 @@ export function settle(state: State, now: number): boolean {
   const run = state.run, mode = pack(state.packId).mode;
   if (state.phase === 'character-spin') {
     run.characterId = run.draw!.itemId;
-    state.phase = mode === 'challenge' ? 'poll-starting' : 'complete';
-    state.nextAt = mode === 'challenge' ? now + 30000 : null;
+    state.phase = mode === 'challenge' ? 'character-result' : 'complete';
+    state.nextAt = mode === 'challenge' ? now + 3000 : null;
+  } else if (state.phase === 'character-result') {
+    state.phase = 'poll-starting'; state.nextAt = now + 30000;
   } else if (state.phase === 'perk-spin') {
     run.perkIds.push(run.draw!.itemId);
-    if (mode === 'challenge' && run.perkIds.length < run.perkCount!) draw(state, 'perk', now);
+    state.phase = mode === 'challenge' ? 'perk-result' : 'complete';
+    state.nextAt = mode === 'challenge' ? now + 3000 : null;
+  } else if (state.phase === 'perk-result') {
+    if (run.perkIds.length < run.perkCount!) draw(state, 'perk', now);
     else { state.phase = 'complete'; state.nextAt = null; }
   } else if (state.phase === 'reveal') {
     if (run.perkCount === 0) { state.phase = 'complete'; state.nextAt = null; }
@@ -75,5 +81,8 @@ export function reveal(state: State, votes: number[], now: number): void {
 /** The card values stay server-only until the poll has completed, including owner responses. */
 export function publicState(state: State) {
   const run = state.run ? { ...state.run, cards: state.run.winningCard === null ? state.run.cards.map(() => null) : state.run.cards, choiceIds: undefined } : null;
-  return { ...state, config: { ...initial().config, ...state.config }, run: run ? { ...run, channelPointsVotes: run.channelPointsVotes ?? [0, 0, 0, 0, 0] } : null };
+  // Already-open OBS sources understand spin phases and stop animating at draw.endsAt.
+  // Keep that contract while newer clients can label the persisted result stage.
+  const resultPhase = state.phase === 'character-result' || state.phase === 'perk-result' ? state.phase : undefined;
+  return { ...state, phase: resultPhase === 'character-result' ? 'character-spin' : resultPhase === 'perk-result' ? 'perk-spin' : state.phase, resultPhase, config: { ...initial().config, ...state.config }, run: run ? { ...run, channelPointsVotes: run.channelPointsVotes ?? [0, 0, 0, 0, 0] } : null };
 }

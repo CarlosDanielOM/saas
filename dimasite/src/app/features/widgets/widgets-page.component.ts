@@ -42,7 +42,7 @@ export class WidgetsPageComponent {
   readonly excludedIds = signal<string[]>([]);
   readonly exclusionsDirty = signal(false);
   readonly failedImages = signal<ReadonlySet<string>>(new Set());
-  readonly form = this.fb.group({ language: this.fb.control<'en' | 'es'>('en'), characterDesign: this.fb.control<'cards' | 'reel'>('cards'), spinSeconds: [4, [Validators.required, Validators.min(1), Validators.max(15), Validators.pattern(/^\d+$/)]], pollSeconds: [30, [Validators.required, Validators.min(15), Validators.max(180), Validators.pattern(/^\d+$/)]], channelPointsVoting: false, channelPointsPerVote: [100, [Validators.required, Validators.min(1), Validators.max(1000000), Validators.pattern(/^\d+$/)]], includeUnavailable: false });
+  readonly form = this.fb.group({ language: this.fb.control<'en' | 'es'>('en'), characterDesign: this.fb.control<'cards' | 'reel' | 'wheel' | 'elimination'>('cards'), spinSeconds: [4, [Validators.required, Validators.min(1), Validators.max(15), Validators.pattern(/^\d+$/)]], pollSeconds: [30, [Validators.required, Validators.min(15), Validators.max(180), Validators.pattern(/^\d+$/)]], channelPointsVoting: false, channelPointsPerVote: [100, [Validators.required, Validators.min(1), Validators.max(1000000), Validators.pattern(/^\d+$/)]], includeUnavailable: false });
   readonly channelPointsVoting = toSignal(this.form.controls.channelPointsVoting.valueChanges, { initialValue: false });
   readonly selected = computed(() => this.catalog()?.packs.find(p => p.id === this.selectedId()) ?? null);
   readonly packs = computed(() => this.catalog()?.packs.filter(p => this.roleFilter() === 'all' || p.role === this.roleFilter()) ?? []);

@@ -6394,6 +6394,8 @@
     "characterDesign": "Estilo de ruleta de personajes",
     "characterCards": "Cartas",
     "characterReel": "Carrete",
+    "characterWheel": "Rueda",
+    "characterElimination": "Último en pie",
     "spinSeconds": "Segundos por giro (1–15)",
     "pollSeconds": "Duración de encuesta (15–180 segundos)",
     "spinValidation": "Introduce un número entero de 1 a 15.",
@@ -6419,11 +6421,13 @@
     "phase": {
       "idle": "Listo para empezar",
       "character-spin": "Eligiendo un personaje…",
+      "character-result": "Personaje seleccionado",
       "poll-starting": "Iniciando la encuesta de Twitch…",
       "polling": "Elige una carta oculta en Twitch",
       "poll-error": "La encuesta necesita atención",
       "reveal": "La carta ganadora se ha revelado",
       "perk-spin": "Eligiendo una ventaja…",
+      "perk-result": "Ventaja seleccionada",
       "complete": "Tu resultado está listo"
     },
     "confirm": {
@@ -6453,7 +6457,7 @@
         },
         "characters": {
           "title": "Selector de asesino",
-          "description": "Elige un personaje con la ruleta de cartas o de carrete."
+          "description": "Elige un personaje con cartas, carrete, rueda o último en pie."
         },
         "perks": {
           "title": "Ruleta de ventajas de asesino",
@@ -6467,7 +6471,7 @@
         },
         "characters": {
           "title": "Selector de superviviente",
-          "description": "Elige un personaje con la ruleta de cartas o de carrete."
+          "description": "Elige un personaje con cartas, carrete, rueda o último en pie."
         },
         "perks": {
           "title": "Ruleta de ventajas de superviviente",

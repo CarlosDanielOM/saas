@@ -34,7 +34,7 @@ if(process.env.SAAS_TARGET!=='api'){
 }
 const root='/widgets/'+channel;
 async function request(method,path,body,status=200,token='widgets-owner',headers={}){
- const response=await fetch(base+path,{method,headers:{...(token?{Authorization:'Bearer '+token}:{}),'Content-Type':'application/json',...headers},...(body===undefined?{}:{body:JSON.stringify(body)})});const value=await response.json();assert.equal(response.status,status,JSON.stringify(value));return value.data;
+ const response=await fetch(base+path,{method,headers:{...(token?{Authorization:'Bearer '+token}:{}),'Content-Type':'application/json',...headers},...(body===undefined?{}:{body:JSON.stringify(body)})});const value=await response.json();assert.equal(response.status,status,JSON.stringify(value));const data=value.data;if(data?.resultPhase){assert.equal(data.phase,data.resultPhase==='character-result'?'character-spin':'perk-spin','legacy OBS keeps the correct roulette');return {...data,phase:data.resultPhase};}return data;
 }
 await request('GET',root,undefined,401,'');await request('GET',root,undefined,403,'widgets-other');
 await request('GET','/widgets/'+other,undefined,403,'widgets-other');
@@ -46,14 +46,14 @@ async function waitPollClaim(){
  // Read Mongo directly so this wait cannot advance the challenge itself.
  for(let i=0;i<225;i++){
   const doc=await svc.WidgetChannel.findById(channel).lean();
-  if(doc.state.phase!=='poll-starting')return;
+  if(!['character-spin','character-result','poll-starting'].includes(doc.state.phase))return;
   await new Promise(resolve=>setTimeout(resolve,200));
  }
  throw new Error('The worker did not finish its poll claim within 45 seconds');
 }
 await action('configure',{...state.config,spinSeconds:1,pollSeconds:15});
 assert.equal(state.config.characterDesign,'cards');
-for(const characterDesign of ['wheel','elimination','invalid',null,42])await action('configure',{...state.config,characterDesign},400);
+for(const characterDesign of ['invalid',null,42])await action('configure',{...state.config,characterDesign},400);
 assert.equal(state.config.channelPointsVoting,false);assert.equal(state.config.channelPointsPerVote,100);
 for(const channelPointsPerVote of [0,-1,1.5,1000001])await action('configure',{...state.config,channelPointsVoting:true,channelPointsPerVote},400);
 await action('configure',{...state.config,channelPointsVoting:'true'},400);
@@ -61,7 +61,7 @@ await action('configure',{...state.config,spinSeconds:1.5},400);
 await action('configure',{...state.config,excludedIds:['fake-id']},400);
 await action('configure',{...state.config,unexpected:true},400);
 await action('select',{packId:'fake'},400);await action('show',{},409,crypto.randomUUID(),0);
-for(const role of ['killer','survivor'])for(const mode of ['characters','perks'])for(const design of mode==='characters'?['cards','reel']:['cards']){
+for(const role of ['killer','survivor'])for(const mode of ['characters','perks'])for(const design of mode==='characters'?['cards','reel','wheel','elimination']:['cards']){
  await action('select',{packId:`dbd-${role}-${mode}`});
  await action('configure',{...state.config,characterDesign:design});
  state=await request('GET',root);assert.equal(state.config.characterDesign,design,'choice survives a fresh snapshot');
@@ -100,6 +100,9 @@ await request('POST',root+'/actions/hide',{},401,token,{'Idempotency-Key':'overl
 // Complete character using the real worker, even with no readers/OBS clients.
 await new Promise(r=>setTimeout(r,1200));
 execFileSync('node',['/app/dist/workers/widgets.worker.js','--once'],{encoding:'utf8'});
+state=await request('GET',root);assert.equal(state.phase,'character-result');assert.equal(state.run.draw.id,raw.state.run.draw.id);assert(state.nextAt>Date.now(),'character result remains on screen');
+await action('configure',{...state.config,characterDesign:'wheel'},409);
+await new Promise(r=>setTimeout(r,3100));execFileSync('node',['/app/dist/workers/widgets.worker.js','--once'],{encoding:'utf8'});
 await waitPollClaim();
 state=await request('GET',root);assert.equal(state.phase,'polling',state.run.error);assert(state.run.pollId);assert.deepEqual(state.run.cards,[null,null,null,null,null]);
 let store=JSON.parse(readFileSync('/tmp/saas-fixtures/polls.json','utf8'));assert.equal(store.creates,1,'one poll AST executed');
@@ -116,13 +119,23 @@ await svc.WidgetChannel.updateOne({_id:channel},{$set:{'state.nextAt':0,dueAt:0}
 state=await request('GET',root);assert.equal(state.phase,'reveal');assert.equal(state.run.perkCount,4);assert.equal(state.run.winningCard,four);assert.deepEqual([...state.run.cards].sort(),[0,1,2,3,4]);
 assert.equal(state.run.channelPointsVotes[four],20,'winner includes paid extra votes, not just regular votes');
 await new Promise(r=>setTimeout(r,3600));execFileSync('node',['/app/dist/workers/widgets.worker.js','--once'],{encoding:'utf8'});
-for(let i=0;i<4;i++){await new Promise(r=>setTimeout(r,1150));execFileSync('node',['/app/dist/workers/widgets.worker.js','--once'],{encoding:'utf8'});}
+// Observe persisted deadlines rather than sleeping through multiple supervisor transitions.
+for(let i=1;i<=4;i++){
+ const deadline=Date.now()+15000;
+ do{state=await request('GET',root);if(state.phase==='perk-result'&&state.run.perkIds.length===i)break;await new Promise(r=>setTimeout(r,100));}while(Date.now()<deadline);
+ assert.equal(state.phase,'perk-result');assert.equal(state.run.perkIds.length,i);assert.equal(state.run.draw.kind,'perk');
+ assert(state.nextAt>=state.run.draw.endsAt+3000,'perk result deadline includes the three-second hold');
+ const drawId=state.run.draw.id;
+ if(state.nextAt-Date.now()>2200){await new Promise(r=>setTimeout(r,2000));state=await request('GET',root);assert.equal(state.phase,'perk-result');assert.equal(state.run.draw.id,drawId);}
+ if(i===4){await new Promise(r=>setTimeout(r,Math.max(0,state.nextAt-Date.now())+50));}
+}
+
 state=await request('GET',root);assert.equal(state.phase,'complete');assert.equal(state.run.perkIds.length,4);assert.equal(new Set(state.run.perkIds).size,4);
 // Zero and tie behavior are domain tests using the real shuffled private values.
 for(const target of [0,1,2,3,4]){const s=domain.initial();domain.start(s,1000);const slot=s.run.cards.indexOf(target);domain.reveal(s,s.run.cards.map((_,i)=>i===slot?10:0),2000);assert.equal(s.run.perkCount,target);domain.settle(s,6000);assert.equal(s.phase,target===0?'complete':'perk-spin');}
 for(let i=0;i<100;i++){const s=domain.initial();domain.start(s,1000);domain.reveal(s,[0,0,0,0,0],2000);assert(s.run.winningCard>=0&&s.run.winningCard<5);}
 // Poll failure never leaks cards or silently chooses a perk count.
-await action('reset');writeFileSync('/tmp/saas-fixtures/fail-poll','fail');await action('start');await new Promise(r=>setTimeout(r,1100));state=await request('GET',root);await waitPollClaim();state=await request('GET',root);assert.equal(state.phase,'poll-error');assert.deepEqual(state.run.cards,[null,null,null,null,null]);unlinkSync('/tmp/saas-fixtures/fail-poll');
+await action('reset');writeFileSync('/tmp/saas-fixtures/fail-poll','fail');await action('start');await new Promise(r=>setTimeout(r,1100));state=await request('GET',root);assert.equal(state.phase,'character-result');await new Promise(r=>setTimeout(r,3100));state=await request('GET',root);await waitPollClaim();state=await request('GET',root);assert.equal(state.phase,'poll-error');assert.deepEqual(state.run.cards,[null,null,null,null,null]);unlinkSync('/tmp/saas-fixtures/fail-poll');
 await action('retry-poll');assert.equal(state.phase,'polling');
 // Accepted-poll recovery does not POST a duplicate, including after a process interruption.
 const before=JSON.parse(readFileSync('/tmp/saas-fixtures/polls.json','utf8')).creates;
@@ -143,6 +156,6 @@ for(const suffix of ['',';0',';1',';1000000']){
 const creates=store.creates;
 for(const value of ['-1','1.5','1000001','abc','true','100;extra']){const result=await parseSpecialCommands('$(start.poll "Invalid;One/Two;15;'+value+'")',ctx);assert(result.parsedText.trim());assert.equal(JSON.parse(readFileSync('/tmp/saas-fixtures/polls.json','utf8')).creates,creates,'invalid cost causes no native poll creation');}
 const legacy=domain.initial();delete legacy.config.characterDesign;assert.equal(domain.publicState(legacy).config.characterDesign,'cards');domain.start(legacy,Date.now());assert.equal(legacy.run.draw.design,'cards');delete legacy.config.channelPointsVoting;delete legacy.config.channelPointsPerVote;assert.equal(domain.publicState(legacy).config.channelPointsVoting,false);assert.equal(domain.publicState(legacy).config.channelPointsPerVote,100);
-execFileSync(process.execPath,['--experimental-test-module-mocks','--test','/app/dist/utils/ast_parser/channel_actions.test.js','/app/dist/utils/ast_parser/poll_prediction_actions.test.js','/app/dist/utils/ast_parser/permission_gate_authored.test.js'],{stdio:'inherit',timeout:30000});
-console.log('PASS widgets: 419 entries, 6 presets, Pro/owner/token access, validation, persistence, idempotency, hidden cards, native poll AST, Channel Points settings and live counts, legacy free polls, paid-vote winner, recovery, distinct perks, supervised worker, token revocation');
+execFileSync(process.execPath,['--experimental-test-module-mocks','--test','/app/dist/widgets/model.test.js','/app/dist/utils/ast_parser/channel_actions.test.js','/app/dist/utils/ast_parser/poll_prediction_actions.test.js','/app/dist/utils/ast_parser/permission_gate_authored.test.js'],{stdio:'inherit',timeout:30000});
+console.log('PASS widgets: three-second result pauses, all four character styles, deterministic partial/no-vote ties, 419 entries, 6 presets, Pro/owner/token access, validation, persistence, idempotency, hidden cards, native poll AST, Channel Points settings and live counts, legacy free polls, paid-vote winner, recovery, distinct perks, supervised worker, token revocation');
 io?.close();testServer?.close();process.exit(0);

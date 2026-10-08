@@ -31,7 +31,7 @@
       <app-roulette-display [roulette]="roulette().roulette" [draw]="roulette().draw" [serverTime]="state().serverTime" [locale]="state().config.language" />
     } @else { <p>{{ t('emptyPool') }}</p> }
   }
-  @if (state().run && pack().mode === 'challenge' && !voteStage()) {
+  @if (state().run && pack().mode === 'challenge' && !voteStage() && state().phase !== 'character-spin' && state().phase !== 'character-result') {
     <footer class="loadout" aria-live="polite">
       @if (state().phase !== 'complete') { @if (character(); as entry) { <strong>{{ label(entry) }}</strong> } }
       <div class="loadout-perks">

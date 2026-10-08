@@ -6394,6 +6394,8 @@
     "characterDesign": "Character roulette style",
     "characterCards": "Cards",
     "characterReel": "Reel",
+    "characterWheel": "Wheel",
+    "characterElimination": "Last One Standing",
     "spinSeconds": "Seconds per spin (1–15)",
     "pollSeconds": "Poll duration (15–180 seconds)",
     "spinValidation": "Enter a whole number from 1 to 15.",
@@ -6419,11 +6421,13 @@
     "phase": {
       "idle": "Ready when you are",
       "character-spin": "Drawing a character…",
+      "character-result": "Character selected",
       "poll-starting": "Starting the Twitch poll…",
       "polling": "Choose a hidden card in Twitch",
       "poll-error": "The poll needs attention",
       "reveal": "The winning card is revealed",
       "perk-spin": "Drawing a perk…",
+      "perk-result": "Perk selected",
       "complete": "Your result is ready"
     },
     "confirm": {
@@ -6453,7 +6457,7 @@
         },
         "characters": {
           "title": "Killer picker",
-          "description": "Pick a character with the shared cards or reel roulette."
+          "description": "Pick a character with cards, reel, wheel, or last one standing."
         },
         "perks": {
           "title": "Killer perk wheel",
@@ -6467,7 +6471,7 @@
         },
         "characters": {
           "title": "Survivor picker",
-          "description": "Pick a character with the shared cards or reel roulette."
+          "description": "Pick a character with cards, reel, wheel, or last one standing."
         },
         "perks": {
           "title": "Survivor perk wheel",

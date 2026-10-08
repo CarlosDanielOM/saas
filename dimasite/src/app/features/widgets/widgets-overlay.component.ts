@@ -3,7 +3,7 @@ import { DOCUMENT } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { io } from 'socket.io-client';
 import { LinksService } from '../../services/links.service';
-import { WidgetCatalog, WidgetState } from './widgets-api.service';
+import { WidgetCatalog, WidgetState, normalizeWidgetState } from './widgets-api.service';
 import { WidgetDisplayComponent } from './widget-display.component';
 @Component({ selector: 'app-widgets-overlay', imports: [WidgetDisplayComponent], changeDetection: ChangeDetectionStrategy.OnPush,
   template: `@if (catalog(); as catalog) { @if (state(); as state) { @if (state.visible) { <app-widget-display [catalog]="catalog" [state]="state" /> } } }`,
@@ -18,7 +18,7 @@ export class WidgetsOverlayComponent {
     const channel = route.paramMap.get('channelID') ?? '', token = route.fragment ?? '';
     const socket = /^[0-9]{1,30}$/.test(channel) && /^[\w-]{43}$/.test(token) ? io(`${inject(LinksService).getApiUrl()}/overlays/widgets/${channel}`, { auth: { token }, transports: ['websocket'], reconnection: true }) : null;
     socket?.on('widgets-catalog', (catalog: WidgetCatalog) => this.catalog.set(catalog));
-    socket?.on('widgets-state', (state: WidgetState) => this.state.set(state));
+    socket?.on('widgets-state', (state: WidgetState) => this.state.set(normalizeWidgetState(state)));
     socket?.on('disconnect', () => this.state.set(null)); socket?.on('connect_error', () => this.state.set(null)); socket?.on('widgets-error', () => this.state.set(null));
     inject(DestroyRef).onDestroy(() => { socket?.disconnect(); doc.body.style.background = oldBody; doc.documentElement.style.background = oldRoot; });
   }
