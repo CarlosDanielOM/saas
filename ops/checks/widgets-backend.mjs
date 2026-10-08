@@ -12,10 +12,11 @@ const {getMongoDBConnection}=await import('/app/dist/utils/databases/mongodb.dat
 const {getDragonflyClient}=await import('/app/dist/utils/databases/dragonfly.database.js');
 await getMongoDBConnection('widgets-test');const redis=await getDragonflyClient('widgets-test');
 const {default:Users}=await import('/app/dist/schemas/users.schema.js');
+const {encrypt}=await import('/app/dist/utils/crypto.js');
 await svc.WidgetChannel.init();
 assert.equal(catalog.entries.length,419);assert.equal(catalog.packs.length,6);
 const channel='991801',other='991802';
-await Users.collection.insertOne({accounts:[{id:channel,type:'twitch'}],plan_tier:'pro'});
+await Users.collection.insertOne({accounts:[{id:channel,type:'twitch',name:'widgetfixture',has_permissions:true,up_to_date_permissions:true,actived:true,chat_enabled:false,access_token:encrypt('fixture'),refresh_token:encrypt('fixture-refresh'),access_token_expires_at:Math.floor(Date.now()/1000)+3600}],plan_tier:'pro'});
 await Users.collection.insertOne({accounts:[{id:other,type:'twitch'}],plan_tier:'premium'});
 await redis.hSet('token:widgets-owner',{id:channel,login:'widgetfixture',display_name:'Widget Fixture'});
 await redis.hSet('token:widgets-other',{id:other,login:'other',display_name:'Other'});
@@ -36,6 +37,16 @@ await request('GET','/widgets/'+other,undefined,403,'widgets-other');
 await request('GET',root+'/catalog');
 let state=await request('GET',root);assert.equal(state.phase,'idle');
 async function action(name,body={},status=200,key=crypto.randomUUID(),revision=state.revision){const result=await request('POST',root+'/actions/'+name,body,status,'widgets-owner',{'Idempotency-Key':key,'If-Match':String(revision)});if(status===200)state=result;return result;}
+async function waitPollClaim(){
+ // The supervised worker can own the claim while its first AST import finishes.
+ // Read Mongo directly so this wait cannot advance the challenge itself.
+ for(let i=0;i<225;i++){
+  const doc=await svc.WidgetChannel.findById(channel).lean();
+  if(doc.state.phase!=='poll-starting')return;
+  await new Promise(resolve=>setTimeout(resolve,200));
+ }
+ throw new Error('The worker did not finish its poll claim within 45 seconds');
+}
 await action('configure',{...state.config,spinSeconds:1,pollSeconds:15});
 await action('configure',{...state.config,spinSeconds:1.5},400);
 await action('configure',{...state.config,excludedIds:['fake-id']},400);
@@ -75,7 +86,8 @@ await request('POST',root+'/actions/hide',{},401,token,{'Idempotency-Key':'overl
 // Complete character using the real worker, even with no readers/OBS clients.
 await new Promise(r=>setTimeout(r,1200));
 execFileSync('node',['/app/dist/workers/widgets.worker.js','--once'],{encoding:'utf8'});
-state=await request('GET',root);assert.equal(state.phase,'polling');assert(state.run.pollId);assert.deepEqual(state.run.cards,[null,null,null,null,null]);
+await waitPollClaim();
+state=await request('GET',root);assert.equal(state.phase,'polling',state.run.error);assert(state.run.pollId);assert.deepEqual(state.run.cards,[null,null,null,null,null]);
 let store=JSON.parse(readFileSync('/tmp/saas-fixtures/polls.json','utf8'));assert.equal(store.creates,1,'one poll AST executed');
 assert.deepEqual(store.polls[0].choices.map(c=>c.title),['Card 1','Card 2','Card 3','Card 4','Card 5']);
 assert(store.polls[0].title.includes(id.slice(0,8)));
@@ -91,7 +103,7 @@ state=await request('GET',root);assert.equal(state.phase,'complete');assert.equa
 for(const target of [0,1,2,3,4]){const s=domain.initial();domain.start(s,1000);const slot=s.run.cards.indexOf(target);domain.reveal(s,s.run.cards.map((_,i)=>i===slot?10:0),2000);assert.equal(s.run.perkCount,target);domain.settle(s,6000);assert.equal(s.phase,target===0?'complete':'perk-spin');}
 for(let i=0;i<100;i++){const s=domain.initial();domain.start(s,1000);domain.reveal(s,[0,0,0,0,0],2000);assert(s.run.winningCard>=0&&s.run.winningCard<5);}
 // Poll failure never leaks cards or silently chooses a perk count.
-await action('reset');writeFileSync('/tmp/saas-fixtures/fail-poll','fail');await action('start');await new Promise(r=>setTimeout(r,1100));state=await request('GET',root);assert.equal(state.phase,'poll-error');assert.deepEqual(state.run.cards,[null,null,null,null,null]);unlinkSync('/tmp/saas-fixtures/fail-poll');
+await action('reset');writeFileSync('/tmp/saas-fixtures/fail-poll','fail');await action('start');await new Promise(r=>setTimeout(r,1100));state=await request('GET',root);await waitPollClaim();state=await request('GET',root);assert.equal(state.phase,'poll-error');assert.deepEqual(state.run.cards,[null,null,null,null,null]);unlinkSync('/tmp/saas-fixtures/fail-poll');
 await action('retry-poll');assert.equal(state.phase,'polling');
 // Accepted-poll recovery does not POST a duplicate, including after a process interruption.
 const before=JSON.parse(readFileSync('/tmp/saas-fixtures/polls.json','utf8')).creates;
