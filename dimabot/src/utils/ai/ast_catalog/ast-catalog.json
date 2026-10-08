@@ -1424,11 +1424,12 @@
     },
     {
       "name": "start.poll",
-      "description": "Starts a chat poll. Options are separated by / and the three parts (title, options, seconds) by ;. Requires 2-5 options. The whole argument must be wrapped in double quotes because ; is reserved syntax.",
-      "syntax": "start.poll \"title;option1/option2;seconds\"",
+      "description": "Starts a native Twitch poll with 2-5 slash-separated options. Separate title, options, seconds, and optional Channel Points cost by semicolons inside double quotes. Omit the cost or use 0 for one free vote per viewer; 1-1000000 enables paid extra votes.",
+      "syntax": "start.poll \"title;option1/option2;seconds[;channelPointsPerVote]\"",
       "category": "channel",
       "examples": [
-        "start.poll \"Best map?;Nuke/Mirage/Inferno;120\""
+        "start.poll \"Best map?;Nuke/Mirage/Inferno;120\"",
+        "start.poll \"Choose a card;Card 1/Card 2/Card 3/Card 4/Card 5;30;100\""
       ],
       "aliases": [],
       "minUserLevel": 7,

@@ -6388,8 +6388,7 @@
     "copied": "Enlace OBS copiado.",
     "linkReady": "Enlace OBS listo.",
     "copyError": "Selecciona el enlace y cópialo manualmente.",
-    "pollOverlayHint": "Muestra los votos de Twitch en otro overlay con el widget de encuestas de Overlay Studio.",
-    "openPollOverlay": "Abrir Overlay Studio",
+    "pollOverlayHint": "Este widget incluye la encuesta de Twitch, los votos en directo y la carta ganadora en la misma fuente de OBS.",
     "settings": "Ajustes del widget",
     "language": "Idioma del overlay",
     "spinSeconds": "Segundos por giro (1–15)",
@@ -6472,6 +6471,19 @@
           "description": "Gira la ruleta para elegir una ventaja entre las activadas."
         }
       }
-    }
+    },
+    "channelPointsVoting": "Permitir votos extra con puntos del canal",
+    "channelPointsHint": "Cada espectador tiene un voto gratis. Activa esta opción para permitir votos adicionales con puntos del canal.",
+    "channelPointsPerVote": "Puntos del canal por voto extra",
+    "channelPointsValidation": "Introduce un número entero entre 1 y 1.000.000.",
+    "pollTitle": "Elige una carta oculta",
+    "pollLive": "ENCUESTA EN DIRECTO",
+    "pollClosed": "ENCUESTA CERRADA",
+    "pollFailed": "ENCUESTA NO DISPONIBLE",
+    "pollPreparing": "PREPARANDO ENCUESTA",
+    "pollTimeLeft": "Quedan {{seconds}}s",
+    "voteBreakdown": "{{regular}} normales · {{points}} con puntos",
+    "extraVotesHint": "Un voto gratis por espectador. Cada voto extra cuesta {{points}} puntos del canal. Vota en la encuesta de Twitch.",
+    "freeVotesHint": "Un voto gratis por espectador. Vota en la encuesta de Twitch."
   }
 }

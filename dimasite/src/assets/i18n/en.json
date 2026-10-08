@@ -6388,8 +6388,7 @@
     "copied": "OBS link copied.",
     "linkReady": "OBS link ready.",
     "copyError": "Select the link and copy it manually.",
-    "pollOverlayHint": "Show Twitch voting in a separate overlay with Overlay Studio’s poll preset.",
-    "openPollOverlay": "Open Overlay Studio",
+    "pollOverlayHint": "This widget includes the Twitch poll, live card votes, and the winning-card reveal in the same OBS source.",
     "settings": "Widget settings",
     "language": "Overlay language",
     "spinSeconds": "Seconds per spin (1–15)",
@@ -6472,6 +6471,19 @@
           "description": "Spin the wheel to pick a perk from your enabled pool."
         }
       }
-    }
+    },
+    "channelPointsVoting": "Allow extra votes with Channel Points",
+    "channelPointsHint": "Each viewer gets one free vote. Enable this to let viewers spend Channel Points for additional votes.",
+    "channelPointsPerVote": "Channel Points per extra vote",
+    "channelPointsValidation": "Enter a whole number from 1 to 1,000,000.",
+    "pollTitle": "Choose a hidden card",
+    "pollLive": "LIVE POLL",
+    "pollClosed": "POLL CLOSED",
+    "pollFailed": "POLL UNAVAILABLE",
+    "pollPreparing": "PREPARING POLL",
+    "pollTimeLeft": "{{seconds}}s left",
+    "voteBreakdown": "{{regular}} regular · {{points}} with points",
+    "extraVotesHint": "One free vote per viewer. Extra votes cost {{points}} Channel Points each. Vote in the Twitch poll.",
+    "freeVotesHint": "One free vote per viewer. Vote in the Twitch poll."
   }
 }

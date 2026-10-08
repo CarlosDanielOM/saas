@@ -13,6 +13,10 @@ const {getDragonflyClient}=await import('/app/dist/utils/databases/dragonfly.dat
 await getMongoDBConnection('widgets-test');const redis=await getDragonflyClient('widgets-test');
 const {default:Users}=await import('/app/dist/schemas/users.schema.js');
 const {encrypt}=await import('/app/dist/utils/crypto.js');
+if(process.env.SAAS_TARGET==='bot'){
+ const response=await fetch('http://127.0.0.1:3333/eventsub',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+ assert.equal(response.status,403,'normal bot entrypoint rejects unsigned events');
+}
 await svc.WidgetChannel.init();
 assert.equal(catalog.entries.length,419);assert.equal(catalog.packs.length,6);
 const channel='991801',other='991802';
@@ -36,7 +40,7 @@ await request('GET',root,undefined,401,'');await request('GET',root,undefined,40
 await request('GET','/widgets/'+other,undefined,403,'widgets-other');
 await request('GET',root+'/catalog');
 let state=await request('GET',root);assert.equal(state.phase,'idle');
-async function action(name,body={},status=200,key=crypto.randomUUID(),revision=state.revision){const result=await request('POST',root+'/actions/'+name,body,status,'widgets-owner',{'Idempotency-Key':key,'If-Match':String(revision)});if(status===200)state=result;return result;}
+async function action(name,body={},status=200,key=crypto.randomUUID(),revision=state.revision){if(status===200&&arguments.length<5){state=await request('GET',root);revision=state.revision;}const result=await request('POST',root+'/actions/'+name,body,status,'widgets-owner',{'Idempotency-Key':key,'If-Match':String(revision)});if(status===200)state=result;return result;}
 async function waitPollClaim(){
  // The supervised worker can own the claim while its first AST import finishes.
  // Read Mongo directly so this wait cannot advance the challenge itself.
@@ -48,6 +52,9 @@ async function waitPollClaim(){
  throw new Error('The worker did not finish its poll claim within 45 seconds');
 }
 await action('configure',{...state.config,spinSeconds:1,pollSeconds:15});
+assert.equal(state.config.channelPointsVoting,false);assert.equal(state.config.channelPointsPerVote,100);
+for(const channelPointsPerVote of [0,-1,1.5,1000001])await action('configure',{...state.config,channelPointsVoting:true,channelPointsPerVote},400);
+await action('configure',{...state.config,channelPointsVoting:'true'},400);
 await action('configure',{...state.config,spinSeconds:1.5},400);
 await action('configure',{...state.config,excludedIds:['fake-id']},400);
 await action('configure',{...state.config,unexpected:true},400);
@@ -65,7 +72,7 @@ for(const role of ['killer','survivor'])for(const mode of ['characters','perks']
 await action('select',{packId:'dbd-killer-challenge'});
 const excluded=catalog.entries.filter(e=>e.role==='killer'&&e.kind==='perk').slice(3).map(e=>e.id);
 await action('configure',{...state.config,excludedIds:excluded});await action('start',{},400);
-await action('configure',{...state.config,excludedIds:[]});
+await action('configure',{...state.config,excludedIds:[],channelPointsVoting:true,channelPointsPerVote:250});
 const revision=state.revision;
 const starts=await Promise.all(Array.from({length:4},(_,i)=>fetch(base+root+'/actions/start',{method:'POST',headers:{Authorization:'Bearer widgets-owner','Content-Type':'application/json','Idempotency-Key':'race-'+i,'If-Match':String(revision)},body:'{}'}).then(r=>r.status)));
 assert.equal(starts.filter(status=>status===200).length,1);assert.equal(starts.filter(status=>status===409).length,3);
@@ -89,13 +96,18 @@ execFileSync('node',['/app/dist/workers/widgets.worker.js','--once'],{encoding:'
 await waitPollClaim();
 state=await request('GET',root);assert.equal(state.phase,'polling',state.run.error);assert(state.run.pollId);assert.deepEqual(state.run.cards,[null,null,null,null,null]);
 let store=JSON.parse(readFileSync('/tmp/saas-fixtures/polls.json','utf8'));assert.equal(store.creates,1,'one poll AST executed');
+assert.equal(store.polls[0].channel_points_voting_enabled,true);assert.equal(store.polls[0].channel_points_per_vote,250,'widget cost reaches native Twitch via the AST');
 assert.deepEqual(store.polls[0].choices.map(c=>c.title),['Card 1','Card 2','Card 3','Card 4','Card 5']);
 assert(store.polls[0].title.includes(id.slice(0,8)));
 await action('hide');assert.equal(state.visible,false);await action('show');
 const stored=await svc.WidgetChannel.findById(channel).lean();const four=stored.state.run.cards.indexOf(4);
-store.polls[0].status='COMPLETED';store.polls[0].choices.forEach((c,i)=>c.votes=i===four?25:0);writeFileSync('/tmp/saas-fixtures/polls.json',JSON.stringify(store));
+store.polls[0].choices.forEach((c,i)=>{c.votes=i===four?25:10;c.channel_points_votes=i===four?20:0;});writeFileSync('/tmp/saas-fixtures/polls.json',JSON.stringify(store));
+await svc.WidgetChannel.updateOne({_id:channel},{$set:{'state.nextAt':0,dueAt:0}});state=await request('GET',root);
+assert.equal(state.phase,'polling');assert.deepEqual(state.run.cards,[null,null,null,null,null]);assert.equal(state.run.votes[four],25);assert.equal(state.run.channelPointsVotes[four],20,'paid vote breakdown reaches the widget while cards stay hidden');
+store.polls[0].status='COMPLETED';writeFileSync('/tmp/saas-fixtures/polls.json',JSON.stringify(store));
 await svc.WidgetChannel.updateOne({_id:channel},{$set:{'state.nextAt':0,dueAt:0}});
 state=await request('GET',root);assert.equal(state.phase,'reveal');assert.equal(state.run.perkCount,4);assert.equal(state.run.winningCard,four);assert.deepEqual([...state.run.cards].sort(),[0,1,2,3,4]);
+assert.equal(state.run.channelPointsVotes[four],20,'winner includes paid extra votes, not just regular votes');
 await new Promise(r=>setTimeout(r,3600));execFileSync('node',['/app/dist/workers/widgets.worker.js','--once'],{encoding:'utf8'});
 for(let i=0;i<4;i++){await new Promise(r=>setTimeout(r,1150));execFileSync('node',['/app/dist/workers/widgets.worker.js','--once'],{encoding:'utf8'});}
 state=await request('GET',root);assert.equal(state.phase,'complete');assert.equal(state.run.perkIds.length,4);assert.equal(new Set(state.run.perkIds).size,4);
@@ -112,5 +124,18 @@ const revocationSocket=connectWidget(token);await revocationSocket.waitPacket(te
 const replacement=(await request('POST',root+'/overlay-token',{})).token;await request('GET',root+'/overlay',undefined,401,token);await revocationSocket.waitPacket(text=>text.startsWith('41'));revocationSocket.ws.close();await request('GET',root+'/overlay',undefined,200,replacement);
 await Users.updateOne({'accounts.id':channel},{$set:{plan_tier:'free'}});await request('GET',root,undefined,403);await request('GET',root+'/overlay',undefined,401,replacement);
 await svc.settleDue();assert((await svc.WidgetChannel.findById(channel).lean()).dueAt>Date.now(),'downgraded channels do not monopolize indexed deadlines');
-console.log('PASS widgets: 419 entries, 6 presets, Pro/owner/token access, validation, persistence, idempotency, concurrent start, hidden cards, native poll AST, recovery, 0–4 distinct perks, real worker, and token revocation');
+// Existing three-part poll commands remain free; optional fourth part enables extra votes.
+const {parseSpecialCommands}=await import('/app/dist/handlers/special_parser.handler.js');
+const ctx={channelID:channel,scopeType:'widgets',scopeName:'poll-options-test',userPlan:'pro',userLevel:10,literalArguments:true};
+store=JSON.parse(readFileSync('/tmp/saas-fixtures/polls.json','utf8'));store.polls.forEach(p=>p.status='COMPLETED');writeFileSync('/tmp/saas-fixtures/polls.json',JSON.stringify(store));
+for(const suffix of ['',';0',';1',';1000000']){
+ const result=await parseSpecialCommands('$(start.poll "Compatibility;One/Two;15'+suffix+'")',ctx);assert.equal(result.parsedText.trim(),'');
+ store=JSON.parse(readFileSync('/tmp/saas-fixtures/polls.json','utf8'));const expected=Number(suffix.slice(1)||0);assert.equal(store.polls[0].channel_points_voting_enabled,expected>0);assert.equal(store.polls[0].channel_points_per_vote,expected);
+ store.polls[0].status='COMPLETED';writeFileSync('/tmp/saas-fixtures/polls.json',JSON.stringify(store));
+}
+const creates=store.creates;
+for(const value of ['-1','1.5','1000001','abc','true','100;extra']){const result=await parseSpecialCommands('$(start.poll "Invalid;One/Two;15;'+value+'")',ctx);assert(result.parsedText.trim());assert.equal(JSON.parse(readFileSync('/tmp/saas-fixtures/polls.json','utf8')).creates,creates,'invalid cost causes no native poll creation');}
+const legacy=domain.initial();delete legacy.config.channelPointsVoting;delete legacy.config.channelPointsPerVote;assert.equal(domain.publicState(legacy).config.channelPointsVoting,false);assert.equal(domain.publicState(legacy).config.channelPointsPerVote,100);
+execFileSync(process.execPath,['--experimental-test-module-mocks','--test','/app/dist/utils/ast_parser/channel_actions.test.js','/app/dist/utils/ast_parser/poll_prediction_actions.test.js','/app/dist/utils/ast_parser/permission_gate_authored.test.js'],{stdio:'inherit',timeout:30000});
+console.log('PASS widgets: 419 entries, 6 presets, Pro/owner/token access, validation, persistence, idempotency, hidden cards, native poll AST, Channel Points settings and live counts, legacy free polls, paid-vote winner, recovery, distinct perks, supervised worker, token revocation');
 io?.close();testServer?.close();process.exit(0);

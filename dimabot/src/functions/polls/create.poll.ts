@@ -29,8 +29,11 @@ interface CreatePollResponse {
     channel?: string;
 }
 
-export async function createPoll(channelID: string, title: string, choices: { title: string }[], duration: string | number, cache: boolean = false): Promise<CreatePollResponse> {
+export async function createPoll(channelID: string, title: string, choices: { title: string }[], duration: string | number, cache: boolean = false, channelPointsPerVote: number = 0): Promise<CreatePollResponse> {
     try {
+        if (!Number.isInteger(channelPointsPerVote) || channelPointsPerVote < 0 || channelPointsPerVote > 1000000) {
+            return { error: true, message: 'Channel Points per vote must be a whole number from 0 to 1000000', status: 400, type: 'validation_error' };
+        }
         const cacheClient = await getDragonflyClient('createPoll');
 
         const streamerHeaderResult = await getTwitchStreamerHeaderById(channelID);
@@ -50,7 +53,8 @@ export async function createPoll(channelID: string, title: string, choices: { ti
             broadcaster_id: channelID,
             title: title,
             choices: choices,
-            duration: Number(duration)
+            duration: Number(duration),
+            ...(channelPointsPerVote > 0 ? { channel_points_voting_enabled: true, channel_points_per_vote: channelPointsPerVote } : {})
         };
 
         const response = await fetch(getTwitchHelixUrl('polls'), {

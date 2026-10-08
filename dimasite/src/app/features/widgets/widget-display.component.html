@@ -6,17 +6,26 @@
     @if (character(); as entry) { <div class="challenge-character">@if (!failedImages().has(entry.id)) { <img [ngSrc]="entry.image_url" width="140" height="160" alt="" (error)="imageFailed(entry)" /> }<strong>{{ label(entry) }}</strong></div> }
   } @else if (voteStage() && state().run; as run) {
     @if (character(); as entry) { <p class="selected-character">{{ label(entry) }}</p> }
+    <section class="widget-poll" [attr.aria-label]="t('pollTitle')" data-testid="widget-poll">
+    <header class="poll-head"><h3>{{ t('pollTitle') }}</h3><span class="poll-status">{{ t(run.winningCard !== null ? 'pollClosed' : state().phase === 'polling' ? 'pollLive' : state().phase === 'poll-error' ? 'pollFailed' : 'pollPreparing') }}</span></header>
+    <div class="poll-meta"><span>{{ t('votes', {n: totalVotes()}) }}</span>@if (state().phase === 'polling') { <span class="poll-timer">{{ t('pollTimeLeft', {seconds: countdown()}) }}</span> }</div>
     <div class="mystery-cards" [class.revealed]="run.winningCard !== null">
       @for (value of run.cards; track $index) {
         <div class="mystery" [class.winning]="run.winningCard === $index">
           <span>{{ t('card', {n: $index + 1}) }}</span>
           <strong>{{ value === null ? '?' : value }}</strong>
-          <small>{{ value === null ? t('votes', {n: run.votes[$index]}) : t('perkCount', {n: value}) }}</small>
+          @if (value !== null) { <small>{{ t('perkCount', {n: value}) }}</small> }
+          <div class="vote-meter" aria-hidden="true"><span [style.width.%]="voteShare($index)"></span></div>
+          <span class="vote-percent">{{ voteShare($index) }}%</span>
+          <small>{{ t('votes', {n: run.votes[$index]}) }}</small>
+          @if (state().config.channelPointsVoting) { <small class="vote-breakdown">{{ t('voteBreakdown', {regular: regularVotes($index), points: pointsVotes()[$index]}) }}</small> }
         </div>
       }
     </div>
     @if (state().phase === 'polling') { <p class="vote-hint">{{ countdown() > 0 ? t('voteHint', {seconds: countdown()}) : t('waitingTwitch') }}</p> }
+    @if (state().phase === 'polling') { <p class="poll-cost">{{ state().config.channelPointsVoting ? t('extraVotesHint', {points: state().config.channelPointsPerVote}) : t('freeVotesHint') }}</p> }
     @if (run.winningCard !== null) { <p class="reveal-result">{{ t('revealResult', {card: run.winningCard + 1, n: run.perkCount ?? 0}) }}</p> }
+    </section>
   } @else {
     @if (wheel()) {
       <div class="wheel-wrap">

@@ -6,6 +6,7 @@ interface PollChoice {
     id: string;
     title: string;
     votes: number;
+    channelPointsVotes: number;
 }
 
 interface PollData {
@@ -94,7 +95,8 @@ export async function getPoll(channelID: string, pollID: string | null = null, c
             return {
                 id: choice.id,
                 title: choice.title,
-                votes: choice.votes
+                votes: choice.votes,
+                channelPointsVotes: choice.channel_points_votes ?? 0
             };
         });
 

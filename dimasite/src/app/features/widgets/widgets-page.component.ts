@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { NgOptimizedImage } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -41,7 +42,8 @@ export class WidgetsPageComponent {
   readonly excludedIds = signal<string[]>([]);
   readonly exclusionsDirty = signal(false);
   readonly failedImages = signal<ReadonlySet<string>>(new Set());
-  readonly form = this.fb.group({ language: this.fb.control<'en' | 'es'>('en'), spinSeconds: [4, [Validators.required, Validators.min(1), Validators.max(15), Validators.pattern(/^\d+$/)]], pollSeconds: [30, [Validators.required, Validators.min(15), Validators.max(180), Validators.pattern(/^\d+$/)]], includeUnavailable: false });
+  readonly form = this.fb.group({ language: this.fb.control<'en' | 'es'>('en'), spinSeconds: [4, [Validators.required, Validators.min(1), Validators.max(15), Validators.pattern(/^\d+$/)]], pollSeconds: [30, [Validators.required, Validators.min(15), Validators.max(180), Validators.pattern(/^\d+$/)]], channelPointsVoting: false, channelPointsPerVote: [100, [Validators.required, Validators.min(1), Validators.max(1000000), Validators.pattern(/^\d+$/)]], includeUnavailable: false });
+  readonly channelPointsVoting = toSignal(this.form.controls.channelPointsVoting.valueChanges, { initialValue: false });
   readonly selected = computed(() => this.catalog()?.packs.find(p => p.id === this.selectedId()) ?? null);
   readonly packs = computed(() => this.catalog()?.packs.filter(p => this.roleFilter() === 'all' || p.role === this.roleFilter()) ?? []);
   readonly active = computed(() => !['idle', 'complete', 'poll-error'].includes(this.state()?.phase ?? 'idle'));
@@ -124,7 +126,9 @@ export class WidgetsPageComponent {
   hasPending(): boolean { return this.pending !== null; }
   useSelected(): void { if (this.selected()) void this.act('select', { packId: this.selectedId() }); }
   saveSettings(): void {
-    this.form.markAllAsTouched(); if (this.form.invalid) return;
+    this.form.markAllAsTouched();
+    if (!this.form.controls.channelPointsVoting.value) this.form.controls.channelPointsPerVote.setValue(this.state()?.config.channelPointsPerVote ?? 100, { emitEvent: false });
+    if (this.form.invalid) return;
     const config: WidgetConfig = { ...this.form.getRawValue(), excludedIds: this.excludedIds() };
     void this.act('configure', config);
   }

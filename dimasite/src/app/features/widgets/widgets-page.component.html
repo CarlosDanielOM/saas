@@ -39,7 +39,7 @@
                 @else { <button class="primary" (click)="openConfirm('start')" [disabled]="busy() || active() || stale() || hasPending() || form.dirty || exclusionsDirty()">{{ active() ? t('running') : t('start') }}</button> }
                 <button (click)="act(state()?.visible ? 'hide' : 'show')" [disabled]="busy() || stale() || hasPending()">{{ state()?.visible ? t('hide') : t('show') }}</button>
               </div>
-              <p class="hint">{{ t('keepRunning') }}</p><p class="hint">{{ t('pollOverlayHint') }} <a [routerLink]="['/', streamer, 'modules', 'overlays']">{{ t('openPollOverlay') }}</a></p>
+              <p class="hint">{{ t('keepRunning') }}</p>@if (pack.mode === 'challenge') { <p class="hint">{{ t('pollOverlayHint') }}</p> }
             } @else { <button class="primary use" (click)="useSelected()" [disabled]="busy() || active() || state()?.phase === 'poll-error' || stale() || hasPending()">{{ t('useWidget') }}</button>@if (active()) { <p class="hint">{{ t('waitBeforeSwitch') }}</p> } }
           </section>
         }
@@ -56,6 +56,15 @@
               <label>{{ t('language') }}<select formControlName="language"><option value="en">English</option><option value="es">Español</option></select></label>
               <label>{{ t('spinSeconds') }}<input type="number" min="1" max="15" step="1" formControlName="spinSeconds" />@if (form.controls.spinSeconds.touched && form.controls.spinSeconds.invalid) { <small class="invalid">{{ t('spinValidation') }}</small> }</label>
               @if (selected()?.mode === 'challenge') { <label>{{ t('pollSeconds') }}<input type="number" min="15" max="180" step="1" formControlName="pollSeconds" />@if (form.controls.pollSeconds.touched && form.controls.pollSeconds.invalid) { <small class="invalid">{{ t('pollValidation') }}</small> }</label> }
+              @if (selected()?.mode === 'challenge') {
+                <div class="points-settings"><label class="checkbox"><input type="checkbox" formControlName="channelPointsVoting" />{{ t('channelPointsVoting') }}</label><p class="hint">{{ t('channelPointsHint') }}</p>
+                  @if (channelPointsVoting()) {
+                    <div class="points-cost"><label for="widget-poll-points">{{ t('channelPointsPerVote') }}</label><input id="widget-poll-points" type="number" min="1" max="1000000" step="1" formControlName="channelPointsPerVote" [attr.aria-invalid]="form.controls.channelPointsPerVote.touched && form.controls.channelPointsPerVote.invalid" [attr.aria-describedby]="form.controls.channelPointsPerVote.touched && form.controls.channelPointsPerVote.invalid ? 'points-validation' : null" />
+                      @if (form.controls.channelPointsPerVote.touched && form.controls.channelPointsPerVote.invalid) { <small id="points-validation" class="invalid">{{ t('channelPointsValidation') }}</small> }
+                    </div>
+                  }
+                </div>
+              }
               <label class="checkbox"><input type="checkbox" formControlName="includeUnavailable" />{{ t('unavailable') }}</label>
             </div>
             <details class="entry-picker"><summary>{{ t('customPool') }}</summary><p class="hint">{{ t('customPoolHint') }}</p>
@@ -74,6 +83,7 @@
 <dialog #confirmDialog class="lf-dialog" (cancel)="closeConfirm()" aria-labelledby="confirm-title">
   @if (confirm(); as action) {
     <h2 id="confirm-title">{{ t('confirm.' + action + '.title') }}</h2><p>{{ action === 'start' && selected()?.mode !== 'challenge' ? t('confirm.drawHint') : t('confirm.' + action + '.hint') }}</p>
+    @if (action === 'start' && selected()?.mode === 'challenge') { <p>{{ state()?.config?.channelPointsVoting ? t('extraVotesHint', {points: state()!.config.channelPointsPerVote}) : t('freeVotesHint') }}</p> }
     <footer><button (click)="closeConfirm()">{{ t('cancel') }}</button><button class="primary" (click)="confirmAction()">{{ t('confirm.' + action + '.button') }}</button></footer>
   }
 </dialog>

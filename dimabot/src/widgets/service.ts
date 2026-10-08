@@ -79,7 +79,8 @@ async function launchPoll(id: string, state: State, create: boolean): Promise<vo
       const { parseSpecialCommands } = await import('../handlers/special_parser.handler.js');
       const label = state.config.language === 'es' ? 'Carta' : 'Card';
       const options = [1, 2, 3, 4, 5].map(n => `${label} ${n}`).join('/');
-      const source = `$(start.poll ${JSON.stringify(`${run.pollTitle};${options};${state.config.pollSeconds}`)})`;
+      const points = state.config.channelPointsVoting ? state.config.channelPointsPerVote : 0;
+      const source = `$(start.poll ${JSON.stringify(`${run.pollTitle};${options};${state.config.pollSeconds};${points}`)})`;
       const result = await parseSpecialCommands(source, { channelID: id, scopeType: 'widgets', scopeName: state.packId, userPlan: 'pro', userLevel: 10, literalArguments: true });
       if (result.parsedText.trim()) throw new Error(result.parsedText.slice(0, 300));
       poll = await getPoll(id, null, false);
@@ -105,9 +106,9 @@ async function advance(id: string): Promise<void> {
       else if (['COMPLETED', 'ARCHIVED'].includes(result.data.status)) {
         const votes = state.run!.choiceIds.map(choice => result.data!.choices.find(c => c.id === choice)?.votes ?? 0);
         if (result.data.id !== state.run!.pollId || state.run!.choiceIds.some(choice => !result.data!.choices.some(c => c.id === choice))) { state.phase = 'poll-error'; state.run!.error = 'Unexpected Twitch poll result. No card was revealed.'; state.nextAt = null; }
-        else domain.reveal(state, votes, now);
+        else { state.run!.channelPointsVotes = state.run!.choiceIds.map(choice => result.data!.choices.find(c => c.id === choice)?.channelPointsVotes ?? 0); domain.reveal(state, votes, now); }
       } else if (result.data.status === 'TERMINATED') { state.phase = 'poll-error'; state.run!.error = 'The Twitch poll was canceled. No card was revealed.'; state.nextAt = null; }
-      else { state.run!.votes = state.run!.choiceIds.map(choice => result.data!.choices.find(c => c.id === choice)?.votes ?? 0); state.run!.error = null; state.nextAt = now + 3000; }
+      else { state.run!.votes = state.run!.choiceIds.map(choice => result.data!.choices.find(c => c.id === choice)?.votes ?? 0); state.run!.channelPointsVotes = state.run!.choiceIds.map(choice => result.data!.choices.find(c => c.id === choice)?.channelPointsVotes ?? 0); state.run!.error = null; state.nextAt = now + 3000; }
     } else {
       if (!domain.settle(state, now)) return;
       launch = (state as State).phase === 'poll-starting';

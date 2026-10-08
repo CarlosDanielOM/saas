@@ -212,7 +212,8 @@ const startPollHandler: FunctionHandler = async (args, ctx) => {
         return 'Usage: $(start.poll "title;option1/option2;seconds") — the whole argument must be wrapped in double quotes because ; is reserved syntax';
     }
 
-    const [title = '', optionsRaw = '', durationRaw = ''] = rawInput.split(';').map(part => part.trim());
+    const parts = rawInput.split(';').map(part => part.trim());
+    const [title = '', optionsRaw = '', durationRaw = '', pointsRaw = '0'] = parts;
     const options = optionsRaw
         .split('/')
         .map(option => option.trim())
@@ -220,11 +221,15 @@ const startPollHandler: FunctionHandler = async (args, ctx) => {
         .map(option => ({ title: option }));
     const duration = Number(durationRaw);
 
-    if (!title || options.length < 2 || isNaN(duration) || duration <= 0) {
+    if (parts.length < 3 || parts.length > 4 || !title || options.length < 2 || isNaN(duration) || duration <= 0) {
         return 'Invalid poll format. Use: $(start.poll "title;option1/option2;seconds") — the whole argument must be wrapped in double quotes because ; is reserved syntax';
     }
 
-    const result = await createPoll(ctx.broadcasterId, title, options, duration);
+    const points = Number(pointsRaw);
+    if (!/^\d+$/.test(pointsRaw) || !Number.isInteger(points) || points < 0 || points > 1000000) {
+        return 'Channel Points per vote must be a whole number from 0 to 1000000. Use 0 or omit the fourth part to disable extra votes.';
+    }
+    const result = await createPoll(ctx.broadcasterId, title, options, duration, false, points);
     return result.error ? `Error starting poll: ${result.message}` : '';
 };
 
@@ -376,10 +381,10 @@ export function registerChannelFunctions(): void {
         keywords: ['cancel prediction', 'refund prediction', 'cancelar prediccion']
     });
     registerFunction('start.poll', startPollHandler, {
-        description: 'Starts a chat poll. Options are separated by / and the three parts (title, options, seconds) by ;. Requires 2-5 options. The whole argument must be wrapped in double quotes because ; is reserved syntax.',
-        syntax: 'start.poll "title;option1/option2;seconds"',
+        description: 'Starts a native Twitch poll with 2-5 slash-separated options. Separate title, options, seconds, and optional Channel Points cost by semicolons inside double quotes. Omit the cost or use 0 for one free vote per viewer; 1-1000000 enables paid extra votes.',
+        syntax: 'start.poll "title;option1/option2;seconds[;channelPointsPerVote]"',
         category: 'channel',
-        examples: ['start.poll "Best map?;Nuke/Mirage/Inferno;120"'],
+        examples: ['start.poll "Best map?;Nuke/Mirage/Inferno;120"', 'start.poll "Choose a card;Card 1/Card 2/Card 3/Card 4/Card 5;30;100"'],
         minUserLevel: 7,
         keywords: ['poll', 'encuesta', 'vote', 'votar', 'votacion']
     });
