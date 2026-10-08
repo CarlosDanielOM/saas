@@ -182,6 +182,7 @@ The `dimabot-site` nginx container bind-mounts `dimasite/dist/dimasite/browser/`
 
 - Plan-tier styling: use `plan_tier` (`free|premium|pro`) as source of truth. Premium = subtle gold, Pro = stronger gold treatment.
 - **Responsive priority**: All site projects (`dimasite/`, `admin/`, `dimadocs/`) follow a **mobile-first** approach. Design for 320–480px base, then enhance for tablet/desktop. Use `min-width` media queries. Test on real mobile devices or emulation before finalizing desktop.
+- **Theme priority: dark mode first**: Dark mode is a first-class citizen and the priority theme for all UI surfaces (`dimasite/`, `admin/`, `dimadocs/`, `dimafx/`). Design, review and polish in dark first; light mode must still be correct and AA-compliant, but dark is the reference look. Every visual check covers both themes, starting with dark. (DimaFX still follows the theme Twitch reports.)
 - **Visual verification**: When checking frontend design or layout, agents may use Playwright through its MCP tools or CLI to inspect the running application at desktop and mobile viewports.
 
 ## Styling Policy (Updated – Hybrid Approach)
