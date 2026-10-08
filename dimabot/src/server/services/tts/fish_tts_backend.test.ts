@@ -34,7 +34,7 @@ mock.module('./piper_tts.service.js', { namedExports: {
 process.env.FISH_AUDIO_API_KEY = 'test-only';
 const { fishTtsService } = await import('./fish_tts.service.js');
 
-test('Fish speech tries Drama 3 preview, then pro, before returning an error for Piper', async () => {
+test('Fish speech uses s2.1-pro and never calls the disabled Drama backend, including on failure', async () => {
   try {
     const request = {
       channelID: 'channel', speechID: 'speech', mode: 'clone', provider: 'fish',
@@ -43,22 +43,28 @@ test('Fish speech tries Drama 3 preview, then pro, before returning an error for
 
     let result = await fishTtsService.synthesize(request);
     assert.equal(result.error, false);
-    assert.deepEqual(backends, ['drama-3-preview']);
-    assert.deepEqual(texts, [request.text]);
+    assert.deepEqual(backends, ['s2.1-pro']);
+    assert.deepEqual(texts, ['[happy] [happy] Hello <whisper>chat<whisper>']);
+    assert.match(result.message, /\(s2\.1-pro\)/);
+    assert.deepEqual(await fs.readFile(result.outputPath!), Buffer.from([1, 2, 3]));
 
     backends.length = 0;
     texts.length = 0;
     failedBackends = new Set(['drama-3-preview']);
-    result = await fishTtsService.synthesize({ ...request, speechID: 'fallback' });
+    result = await fishTtsService.synthesize({ ...request, speechID: 'drama-disabled' });
     assert.equal(result.error, false);
-    assert.deepEqual(backends, ['drama-3-preview', 's2.1-pro']);
-    assert.deepEqual(texts, [request.text, '[happy] [happy] Hello <whisper>chat<whisper>']);
+    assert.deepEqual(backends, ['s2.1-pro']);
+    assert.deepEqual(texts, ['[happy] [happy] Hello <whisper>chat<whisper>']);
 
     backends.length = 0;
-    failedBackends.add('s2.1-pro');
+    texts.length = 0;
+    failedBackends = new Set(['s2.1-pro']);
     result = await fishTtsService.synthesize({ ...request, speechID: 'piper' });
     assert.equal(result.error, true);
-    assert.deepEqual(backends, ['drama-3-preview', 's2.1-pro']);
+    assert.deepEqual(backends, ['s2.1-pro']);
+    assert.match(result.message, /all enabled backends: s2\.1-pro: s2\.1-pro unavailable/);
+    assert.equal(result.outputPath, undefined);
+    await assert.rejects(fs.access(path.join(outputDir, 'channel', 'piper.mp3')), { code: 'ENOENT' });
   } finally {
     await fs.rm(outputDir, { recursive: true, force: true });
   }

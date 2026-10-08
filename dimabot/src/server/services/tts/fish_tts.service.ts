@@ -19,7 +19,10 @@ export const FISH_VOICE_NAMES = Object.keys(FISH_VOICES) as string[];
 
 export const DEFAULT_FISH_TTS_REFERENCE_ID = FISH_VOICES['gojo'];
 
-const FISH_TTS_BACKENDS = ['drama-3-preview', 's2.1-pro'] as const;
+const FISH_TTS_BACKENDS = [
+    's2.1-pro',
+    // 'drama-3-preview', // Temporarily disabled due to synthesis reliability issues.
+] as const;
 const FISH_ATTEMPT_TIMEOUT_MS = 20_000;
 
 function getFishApiKey(): string | null {
@@ -115,7 +118,7 @@ class FishTtsService implements TtsProvider {
             if (!audio || !usedBackend) {
                 return {
                     error: true,
-                    message: `Fish Audio TTS failed on both backends: ${failures.join('; ')}`
+                    message: `Fish Audio TTS failed on all enabled backends: ${failures.join('; ')}`
                 };
             }
 
