@@ -12,6 +12,7 @@ export function capacityFor(design: RouletteDesign, cardSize: 'large' | 'medium'
 }
 export interface RouletteItem {
   action?: string;
+  imageUrl?: string;
   id: string;
   label: string;
   multiplier: number;
@@ -19,6 +20,7 @@ export interface RouletteItem {
   copies: string[];
 }
 export interface RouletteSlot {
+  imageUrl?: string;
   key: string;
   itemId: string;
   label: string;
@@ -93,6 +95,7 @@ export function slotsFor(r: Roulette): RouletteSlot[] {
               weight: item.weight,
               copy: i + 1,
               multiplier: item.multiplier,
+              ...(item.imageUrl ? { imageUrl: item.imageUrl } : {}),
             },
           ] as const,
       ),

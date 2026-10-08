@@ -8,6 +8,7 @@ import {
   signal,
 } from '@angular/core';
 import { LanguageService, SupportedLanguage } from '../../services/language.service';
+import { NgOptimizedImage } from '@angular/common';
 import {
   cardSequence,
   cardHighlight,
@@ -32,6 +33,7 @@ export function inkFor(color: string): string {
 /** Both dashboard and OBS render the same server-selected, frozen draw. */
 @Component({
   selector: 'app-roulette-display',
+  imports: [NgOptimizedImage],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './roulette-display.component.html',
   styleUrl: './roulette-display.component.css',
@@ -43,6 +45,7 @@ export class RouletteDisplayComponent {
   /** OBS packs can use their saved language independently of the dashboard language. */
   readonly locale = input<SupportedLanguage | undefined>(undefined);
   readonly progress = signal(0);
+  readonly failedImages = signal<ReadonlySet<string>>(new Set());
   readonly language = inject(LanguageService);
   readonly slots = computed(
     () => this.draw()?.slots ?? (this.roulette() ? slotsFor(this.roulette()!) : []),
@@ -173,6 +176,9 @@ export class RouletteDisplayComponent {
   color(i: number): string {
     const colors = this.colors();
     return colors[i % colors.length];
+  }
+  imageFailed(url: string): void {
+    this.failedImages.update(urls => new Set([...urls, url]));
   }
   ink(i: number): string {
     return inkFor(this.color(i));

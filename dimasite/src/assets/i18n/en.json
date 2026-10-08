@@ -6340,7 +6340,7 @@
     },
     "mode": {
       "challenge": "Challenge pack",
-      "characters": "Card roulette",
+      "characters": "Character roulette",
       "perks": "Perk wheel"
     },
     "filter": "Filter widgets",
@@ -6391,6 +6391,9 @@
     "pollOverlayHint": "This widget includes the Twitch poll, live card votes, and the winning-card reveal in the same OBS source.",
     "settings": "Widget settings",
     "language": "Overlay language",
+    "characterDesign": "Character roulette style",
+    "characterCards": "Cards",
+    "characterReel": "Reel",
     "spinSeconds": "Seconds per spin (1–15)",
     "pollSeconds": "Poll duration (15–180 seconds)",
     "spinValidation": "Enter a whole number from 1 to 15.",
@@ -6449,8 +6452,8 @@
           "description": "Character draw, hidden-card vote, and a complete perk loadout."
         },
         "characters": {
-          "title": "Killer cards",
-          "description": "Draw a character from the portrait cards for your next match."
+          "title": "Killer picker",
+          "description": "Pick a character with the shared cards or reel roulette."
         },
         "perks": {
           "title": "Killer perk wheel",
@@ -6463,8 +6466,8 @@
           "description": "Character draw, hidden-card vote, and a complete perk loadout."
         },
         "characters": {
-          "title": "Survivor cards",
-          "description": "Draw a character from the portrait cards for your next match."
+          "title": "Survivor picker",
+          "description": "Pick a character with the shared cards or reel roulette."
         },
         "perks": {
           "title": "Survivor perk wheel",

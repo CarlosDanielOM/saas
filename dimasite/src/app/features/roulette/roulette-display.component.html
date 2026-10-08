@@ -24,12 +24,14 @@
           @for (cell of reel(); track cell.key) {
             <div
               class="reel-card"
+              [class.has-image]="!!cell.slot.imageUrl"
               [class.winner]="done() && cell.slot.key === draw()?.winner?.key && cell.offset === 0"
               [class.dim]="done() && cell.offset !== 0"
               [style.transform]="'translateX(' + cell.offset + 'px)'"
               [style.--prize]="cell.color"
               [style.--ink]="cell.ink"
             >
+              @if (cell.slot.imageUrl; as url) { @if (!failedImages().has(url)) { <img [ngSrc]="url" width="80" height="80" alt="" (error)="imageFailed(url)" /> } }
               <strong>{{ cell.slot.label }}</strong>
               @if (cell.slot.multiplier > 1) {
                 <span class="copy">{{ cell.slot.copy }} / {{ cell.slot.multiplier }}</span>
@@ -50,11 +52,13 @@
           @for (slot of slots(); track slot.key; let i = $index) {
             <div
               class="card"
+              [class.has-image]="!!slot.imageUrl"
               [class.highlight]="!!draw() && highlight() === i"
               [class.winner]="done() && i === winnerIndex()"
               [style.--prize]="color(i)"
               [style.--ink]="ink(i)"
             >
+              @if (slot.imageUrl; as url) { @if (!failedImages().has(url)) { <img [ngSrc]="url" width="40" height="40" alt="" (error)="imageFailed(url)" /> } }
               <strong>{{ slot.label }}</strong>
               @if (slot.multiplier > 1) {
                 <small>{{ slot.copy }} / {{ slot.multiplier }}</small>
@@ -136,6 +140,7 @@
     @if (done()) {
       <div class="result result--win" role="status">
         <span class="result-kicker">{{ t('winner') }}</span>
+        @if (draw()?.winner?.imageUrl; as url) { @if (!failedImages().has(url)) { <img class="result-image" [ngSrc]="url" width="56" height="56" alt="" (error)="imageFailed(url)" /> } }
         <strong class="result-label">{{ draw()?.winner?.label }}</strong>
       </div>
     } @else {

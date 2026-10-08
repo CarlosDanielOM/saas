@@ -27,26 +27,9 @@
     @if (run.winningCard !== null) { <p class="reveal-result">{{ t('revealResult', {card: run.winningCard + 1, n: run.perkCount ?? 0}) }}</p> }
     </section>
   } @else {
-    @if (wheel()) {
+    @if (pool().length) {
       <app-roulette-display [roulette]="roulette().roulette" [draw]="roulette().draw" [serverTime]="state().serverTime" [locale]="state().config.language" />
-    } @else {
-      <div class="character-cards" aria-hidden="true">
-        @for (entry of cards(); track entry.id; let i = $index) {
-          <div class="character-card" [class.chosen]="highlight() === i">
-            @if (!failedImages().has(entry.id)) { <img [ngSrc]="entry.image_url" width="100" height="120" alt="" (error)="imageFailed(entry)" /> }
-            <span>{{ label(entry) }}</span>
-          </div>
-        }
-      </div>
-    }
-    @if (!wheel() || !spinning()) {
-    @if (current(); as entry) {
-      <div class="draw-result" [class.draw-result--settled]="!spinning()" [attr.aria-live]="spinning() ? 'off' : 'polite'">
-        @if (!failedImages().has(entry.id)) { <img [ngSrc]="entry.image_url" width="68" height="68" alt="" (error)="imageFailed(entry)" /> }
-        <div><small>{{ state().run ? t(spinning() ? 'drawing' : 'selected') : t('preview') }}</small><strong>{{ label(entry) }}</strong></div>
-      </div>
     } @else { <p>{{ t('emptyPool') }}</p> }
-    }
   }
   @if (state().run && pack().mode === 'challenge' && !voteStage()) {
     <footer class="loadout" aria-live="polite">

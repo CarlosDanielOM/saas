@@ -5,17 +5,6 @@
 .stage-role { border:1px solid #65546e; padding:5px 8px; border-radius:999px; }
 h2 { margin:14px 0 4px; font-size:19px; text-align:center; font-weight:800; }
 .phase { text-align:center; font-size:12px; color:#c5bed0; margin:0 0 18px; }
-.character-cards { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; max-width:430px; margin:0 auto; }
-.character-card { min-width:0; background:#21212b; border:2px solid #444051; border-radius:10px; overflow:hidden; opacity:.68; }
-.character-card img { width:100%; height:65px; object-fit:contain; }
-.character-card span { display:block; font-size:9px; line-height:1.2; padding:5px 3px; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.character-card.chosen { opacity:1; border-color:#dfb76d; box-shadow:0 0 15px #dfb76d40; }
-.draw-result { display:flex; align-items:center; gap:12px; border:1px solid #66547f; border-radius:12px; padding:10px 12px; background:#23202e; max-width:430px; margin:14px auto 0; min-height:90px; }
-.draw-result img { object-fit:contain; flex:none; }
-.draw-result div { display:grid; gap:4px; min-width:0; }
-.draw-result small { color:#ccc3d9; font-size:11px; }
-.draw-result strong { font-size:17px; overflow-wrap:anywhere; }
-.draw-result--settled { border-color:#c1a46e; }
 .selected-character { text-align:center; font-weight:800; font-size:18px; margin:4px 0 18px; }
 .mystery-cards { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; max-width:570px; margin:0 auto; }
 .mystery:last-child { grid-column:1/-1; width:calc(50% - 4px); justify-self:center; }
@@ -24,7 +13,7 @@ h2 { margin:14px 0 4px; font-size:19px; text-align:center; font-weight:800; }
 .mystery.winning { background:#493620; border-color:#e5c686; box-shadow:0 0 18px #d7bb8230; }
 .vote-hint,.reveal-result { text-align:center; font-size:12px; color:#e5c686; margin:18px 0; }
 .loadout { border-top:1px solid #444051; margin-top:16px; padding-top:14px; text-align:center; }.loadout>strong { font-size:14px; }.loadout-perks { display:flex; flex-wrap:wrap; justify-content:center; gap:10px; margin-top:10px; }.loadout-perks>div { width:90px; display:grid; justify-items:center; gap:4px; font-size:10px; }.loadout-perks img { object-fit:contain; }
-@media(min-width:560px) { .stage { padding:24px; }.character-card img { height:92px; }.character-card span { font-size:11px; }.mystery-cards { grid-template-columns:repeat(5,minmax(0,1fr)); gap:5px; }.mystery:last-child { grid-column:auto; width:auto; justify-self:stretch; }.mystery { min-height:175px; }.mystery span { font-size:12px; }.mystery small { font-size:11px; } }
+@media(min-width:560px) { .stage { padding:24px; }.mystery-cards { grid-template-columns:repeat(5,minmax(0,1fr)); gap:5px; }.mystery:last-child { grid-column:auto; width:auto; justify-self:stretch; }.mystery { min-height:175px; }.mystery span { font-size:12px; }.mystery small { font-size:11px; } }
 
 .challenge-character { display:grid; justify-items:center; gap:12px; margin:20px auto; }.challenge-character img { object-fit:contain; }.challenge-character strong { font-size:20px; text-align:center; }
 .widget-poll { max-width:570px; margin:0 auto; }

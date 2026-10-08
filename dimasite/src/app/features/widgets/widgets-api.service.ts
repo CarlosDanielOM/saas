@@ -7,8 +7,8 @@ export type WidgetMode = 'challenge' | 'characters' | 'perks';
 export interface WidgetEntry { id: string; english: string; spanish: string; image_url: string; role: WidgetRole; kind: 'character' | 'perk'; available: boolean }
 export interface WidgetPack { id: string; game: string; role: WidgetRole; mode: WidgetMode }
 export interface WidgetCatalog { packs: WidgetPack[]; entries: WidgetEntry[]; researchedAt: string }
-export interface WidgetConfig { language: 'en' | 'es'; spinSeconds: number; pollSeconds: number; channelPointsVoting: boolean; channelPointsPerVote: number; includeUnavailable: boolean; excludedIds: string[] }
-export interface WidgetDraw { id: string; kind: 'character' | 'perk'; itemId: string; poolIds: string[]; startedAt: number; endsAt: number }
+export interface WidgetConfig { language: 'en' | 'es'; characterDesign: 'cards' | 'reel'; spinSeconds: number; pollSeconds: number; channelPointsVoting: boolean; channelPointsPerVote: number; includeUnavailable: boolean; excludedIds: string[] }
+export interface WidgetDraw { id: string; kind: 'character' | 'perk'; design?: 'cards' | 'reel' | 'wheel'; itemId: string; poolIds: string[]; startedAt: number; endsAt: number }
 export type WidgetPhase = 'idle' | 'character-spin' | 'poll-starting' | 'polling' | 'poll-error' | 'reveal' | 'perk-spin' | 'complete';
 export interface WidgetState {
   revision: number; serverTime: number; packId: string; config: WidgetConfig; visible: boolean; phase: WidgetPhase; nextAt: number | null;

@@ -88,6 +88,13 @@
   line-height: 1.15;
   text-shadow: 0 0 24px rgba(246, 196, 83, 0.45);
 }
+.result-image { object-fit: contain; }
+.reel-card.has-image { gap: 6px; }
+.reel-card.has-image img { width: 80px; height: 80px; object-fit: contain; }
+.reel-card.has-image strong { font-size: 14px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.card.has-image { padding: 6px 4px; gap: 3px; }
+.card.has-image img { width: 100%; height: 40px; object-fit: contain; }
+.card.has-image strong { font-size: 10px; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 @keyframes pop {
   from {
     opacity: 0;

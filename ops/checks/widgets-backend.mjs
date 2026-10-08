@@ -52,6 +52,8 @@ async function waitPollClaim(){
  throw new Error('The worker did not finish its poll claim within 45 seconds');
 }
 await action('configure',{...state.config,spinSeconds:1,pollSeconds:15});
+assert.equal(state.config.characterDesign,'cards');
+for(const characterDesign of ['wheel','elimination','invalid',null,42])await action('configure',{...state.config,characterDesign},400);
 assert.equal(state.config.channelPointsVoting,false);assert.equal(state.config.channelPointsPerVote,100);
 for(const channelPointsPerVote of [0,-1,1.5,1000001])await action('configure',{...state.config,channelPointsVoting:true,channelPointsPerVote},400);
 await action('configure',{...state.config,channelPointsVoting:'true'},400);
@@ -59,25 +61,30 @@ await action('configure',{...state.config,spinSeconds:1.5},400);
 await action('configure',{...state.config,excludedIds:['fake-id']},400);
 await action('configure',{...state.config,unexpected:true},400);
 await action('select',{packId:'fake'},400);await action('show',{},409,crypto.randomUUID(),0);
-for(const role of ['killer','survivor'])for(const mode of ['characters','perks']){
+for(const role of ['killer','survivor'])for(const mode of ['characters','perks'])for(const design of mode==='characters'?['cards','reel']:['cards']){
  await action('select',{packId:`dbd-${role}-${mode}`});
+ await action('configure',{...state.config,characterDesign:design});
+ state=await request('GET',root);assert.equal(state.config.characterDesign,design,'choice survives a fresh snapshot');
  const key=crypto.randomUUID(),rev=state.revision;await action('start',{},200,key,rev);const draw=state.run.draw;
+ assert.equal(draw.design,mode==='perks'?'wheel':design);
  assert(draw.poolIds.every(id=>catalog.entries.find(e=>e.id===id).role===role));
  assert(draw.poolIds.every(id=>catalog.entries.find(e=>e.id===id).kind===(mode==='perks'?'perk':'character')));
  await action('start',{},200,key,rev);assert.equal(state.run.draw.id,draw.id,'same key cannot reroll');
  await action('hide',{},409,key,state.revision);
+ await action('configure',{...state.config,characterDesign:design==='cards'?'reel':'cards'},409);
  await action('start',{},409);await action('select',{packId:'dbd-killer-challenge'},409);
  await new Promise(r=>setTimeout(r,1100));state=await request('GET',root);assert.equal(state.phase,'complete');
+ await action('configure',{...state.config,characterDesign:design==='cards'?'reel':'cards'});assert.equal(state.run.draw.design,draw.design,'finished draw keeps its frozen design');
 }
 await action('select',{packId:'dbd-killer-challenge'});
 const excluded=catalog.entries.filter(e=>e.role==='killer'&&e.kind==='perk').slice(3).map(e=>e.id);
 await action('configure',{...state.config,excludedIds:excluded});await action('start',{},400);
-await action('configure',{...state.config,excludedIds:[],channelPointsVoting:true,channelPointsPerVote:250});
+await action('configure',{...state.config,excludedIds:[],characterDesign:'reel',channelPointsVoting:true,channelPointsPerVote:250});
 const revision=state.revision;
 const starts=await Promise.all(Array.from({length:4},(_,i)=>fetch(base+root+'/actions/start',{method:'POST',headers:{Authorization:'Bearer widgets-owner','Content-Type':'application/json','Idempotency-Key':'race-'+i,'If-Match':String(revision)},body:'{}'}).then(r=>r.status)));
 assert.equal(starts.filter(status=>status===200).length,1);assert.equal(starts.filter(status=>status===409).length,3);
 // Every other contender must fail via conflict; winner ordering can vary.
-state=await request('GET',root);assert.equal(state.phase,'character-spin');const id=state.run.id;
+state=await request('GET',root);assert.equal(state.phase,'character-spin');assert.equal(state.run.draw.design,'reel');const id=state.run.id;
 const raw=await svc.WidgetChannel.findById(channel).lean();assert.deepEqual([...raw.state.run.cards].sort(),[0,1,2,3,4]);assert.deepEqual(state.run.cards,[null,null,null,null,null]);
 const token=(await request('POST',root+'/overlay-token',{})).token;
 const overlay=(await request('GET',root+'/overlay',undefined,200,token)).state;
@@ -135,7 +142,7 @@ for(const suffix of ['',';0',';1',';1000000']){
 }
 const creates=store.creates;
 for(const value of ['-1','1.5','1000001','abc','true','100;extra']){const result=await parseSpecialCommands('$(start.poll "Invalid;One/Two;15;'+value+'")',ctx);assert(result.parsedText.trim());assert.equal(JSON.parse(readFileSync('/tmp/saas-fixtures/polls.json','utf8')).creates,creates,'invalid cost causes no native poll creation');}
-const legacy=domain.initial();delete legacy.config.channelPointsVoting;delete legacy.config.channelPointsPerVote;assert.equal(domain.publicState(legacy).config.channelPointsVoting,false);assert.equal(domain.publicState(legacy).config.channelPointsPerVote,100);
+const legacy=domain.initial();delete legacy.config.characterDesign;assert.equal(domain.publicState(legacy).config.characterDesign,'cards');domain.start(legacy,Date.now());assert.equal(legacy.run.draw.design,'cards');delete legacy.config.channelPointsVoting;delete legacy.config.channelPointsPerVote;assert.equal(domain.publicState(legacy).config.channelPointsVoting,false);assert.equal(domain.publicState(legacy).config.channelPointsPerVote,100);
 execFileSync(process.execPath,['--experimental-test-module-mocks','--test','/app/dist/utils/ast_parser/channel_actions.test.js','/app/dist/utils/ast_parser/poll_prediction_actions.test.js','/app/dist/utils/ast_parser/permission_gate_authored.test.js'],{stdio:'inherit',timeout:30000});
 console.log('PASS widgets: 419 entries, 6 presets, Pro/owner/token access, validation, persistence, idempotency, hidden cards, native poll AST, Channel Points settings and live counts, legacy free polls, paid-vote winner, recovery, distinct perks, supervised worker, token revocation');
 io?.close();testServer?.close();process.exit(0);

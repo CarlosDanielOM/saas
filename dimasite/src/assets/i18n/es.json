@@ -6340,7 +6340,7 @@
     },
     "mode": {
       "challenge": "Pack de reto",
-      "characters": "Ruleta de cartas",
+      "characters": "Ruleta de personajes",
       "perks": "Ruleta de ventajas"
     },
     "filter": "Filtrar widgets",
@@ -6391,6 +6391,9 @@
     "pollOverlayHint": "Este widget incluye la encuesta de Twitch, los votos en directo y la carta ganadora en la misma fuente de OBS.",
     "settings": "Ajustes del widget",
     "language": "Idioma del overlay",
+    "characterDesign": "Estilo de ruleta de personajes",
+    "characterCards": "Cartas",
+    "characterReel": "Carrete",
     "spinSeconds": "Segundos por giro (1–15)",
     "pollSeconds": "Duración de encuesta (15–180 segundos)",
     "spinValidation": "Introduce un número entero de 1 a 15.",
@@ -6449,8 +6452,8 @@
           "description": "Personaje al azar, voto de carta oculta y conjunto de ventajas."
         },
         "characters": {
-          "title": "Cartas de asesinos",
-          "description": "Sortea un personaje entre las cartas para tu próxima partida."
+          "title": "Selector de asesino",
+          "description": "Elige un personaje con la ruleta de cartas o de carrete."
         },
         "perks": {
           "title": "Ruleta de ventajas de asesino",
@@ -6463,8 +6466,8 @@
           "description": "Personaje al azar, voto de carta oculta y conjunto de ventajas."
         },
         "characters": {
-          "title": "Cartas de supervivientes",
-          "description": "Sortea un personaje entre las cartas para tu próxima partida."
+          "title": "Selector de superviviente",
+          "description": "Elige un personaje con la ruleta de cartas o de carrete."
         },
         "perks": {
           "title": "Ruleta de ventajas de superviviente",

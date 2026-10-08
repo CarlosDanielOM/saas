@@ -3,9 +3,9 @@ import { catalog, type Entry, type Pack } from './catalog.js';
 export { RouletteError as WidgetError, fail, integer, object, text } from '../roulette/model.js';
 import { fail, integer, object } from '../roulette/model.js';
 
-export interface Config { language: 'en' | 'es'; spinSeconds: number; pollSeconds: number; channelPointsVoting: boolean; channelPointsPerVote: number; includeUnavailable: boolean; excludedIds: string[] }
+export interface Config { language: 'en' | 'es'; characterDesign: 'cards' | 'reel'; spinSeconds: number; pollSeconds: number; channelPointsVoting: boolean; channelPointsPerVote: number; includeUnavailable: boolean; excludedIds: string[] }
 export type Phase = 'idle' | 'character-spin' | 'poll-starting' | 'polling' | 'poll-error' | 'reveal' | 'perk-spin' | 'complete';
-export interface Draw { id: string; kind: 'character' | 'perk'; itemId: string; poolIds: string[]; startedAt: number; endsAt: number }
+export interface Draw { id: string; kind: 'character' | 'perk'; design?: 'cards' | 'reel' | 'wheel'; itemId: string; poolIds: string[]; startedAt: number; endsAt: number }
 export interface Run {
   id: string; characterId: string | null; perkIds: string[]; draw: Draw | null;
   cards: number[]; votes: number[]; channelPointsVotes: number[]; winningCard: number | null; perkCount: number | null;
@@ -13,7 +13,7 @@ export interface Run {
   error: string | null;
 }
 export interface State { packId: string; config: Config; visible: boolean; phase: Phase; run: Run | null; nextAt: number | null }
-export const initial = (): State => ({ packId: 'dbd-killer-challenge', config: { language: 'en', spinSeconds: 4, pollSeconds: 30, channelPointsVoting: false, channelPointsPerVote: 100, includeUnavailable: false, excludedIds: [] }, visible: false, phase: 'idle', run: null, nextAt: null });
+export const initial = (): State => ({ packId: 'dbd-killer-challenge', config: { language: 'en', characterDesign: 'cards', spinSeconds: 4, pollSeconds: 30, channelPointsVoting: false, channelPointsPerVote: 100, includeUnavailable: false, excludedIds: [] }, visible: false, phase: 'idle', run: null, nextAt: null });
 export const pick = <T>(items: T[]): T => items[randomInt(items.length)];
 export function shuffle<T>(items: T[]): T[] { const out = [...items]; for (let n = out.length - 1; n > 0; n--) { const i = randomInt(n + 1); [out[n], out[i]] = [out[i], out[n]]; } return out; }
 export function pack(id: string): Pack { const result = catalog.packs.find(p => p.id === id); if (!result) return fail('invalid', 'Unknown widget pack'); return result; }
@@ -22,19 +22,20 @@ export function pool(state: State, kind: Entry['kind']): Entry[] {
 }
 export function config(input: unknown): Config {
   const data = object(input);
-  if (Object.keys(data).some(k => !['language', 'spinSeconds', 'pollSeconds', 'channelPointsVoting', 'channelPointsPerVote', 'includeUnavailable', 'excludedIds'].includes(k))) fail('invalid', 'Unknown widget setting');
+  if (Object.keys(data).some(k => !['language', 'characterDesign', 'spinSeconds', 'pollSeconds', 'channelPointsVoting', 'channelPointsPerVote', 'includeUnavailable', 'excludedIds'].includes(k))) fail('invalid', 'Unknown widget setting');
   if (data.language !== 'en' && data.language !== 'es') fail('invalid', 'Choose English or Spanish');
+  if (data.characterDesign !== undefined && data.characterDesign !== 'cards' && data.characterDesign !== 'reel') fail('invalid', 'Choose cards or reel for the character roulette');
   if (typeof data.includeUnavailable !== 'boolean') fail('invalid', 'includeUnavailable must be a boolean');
   if (data.channelPointsVoting !== undefined && typeof data.channelPointsVoting !== 'boolean') fail('invalid', 'channelPointsVoting must be a boolean');
   if (!Array.isArray(data.excludedIds) || data.excludedIds.length > catalog.entries.length || data.excludedIds.some(id => typeof id !== 'string' || !catalog.entries.some(e => e.id === id))) fail('invalid', 'Unknown excluded entry');
-  return { language: data.language as Config['language'], spinSeconds: integer(data.spinSeconds, 'spinSeconds', 1, 15), pollSeconds: integer(data.pollSeconds, 'pollSeconds', 15, 180), channelPointsVoting: data.channelPointsVoting === true, channelPointsPerVote: integer(data.channelPointsPerVote === undefined ? 100 : data.channelPointsPerVote, 'channelPointsPerVote', 1, 1000000), includeUnavailable: data.includeUnavailable as boolean, excludedIds: [...new Set(data.excludedIds as string[])] };
+  return { language: data.language as Config['language'], characterDesign: data.characterDesign === 'reel' ? 'reel' : 'cards', spinSeconds: integer(data.spinSeconds, 'spinSeconds', 1, 15), pollSeconds: integer(data.pollSeconds, 'pollSeconds', 15, 180), channelPointsVoting: data.channelPointsVoting === true, channelPointsPerVote: integer(data.channelPointsPerVote === undefined ? 100 : data.channelPointsPerVote, 'channelPointsPerVote', 1, 1000000), includeUnavailable: data.includeUnavailable as boolean, excludedIds: [...new Set(data.excludedIds as string[])] };
 }
 export function active(state: State): boolean { return !['idle', 'complete', 'poll-error'].includes(state.phase); }
 export function idle(state: State): void { if (active(state) || state.phase === 'poll-error') fail('busy', 'Finish or reset the challenge first', 409); }
 function draw(state: State, kind: Draw['kind'], now: number): void {
   const options = pool(state, kind).filter(e => !state.run!.perkIds.includes(e.id));
   if (!options.length) fail('empty_pool', 'Select more entries before starting');
-  state.run!.draw = { id: randomUUID(), kind, itemId: pick(options).id, poolIds: options.map(e => e.id), startedAt: now, endsAt: now + state.config.spinSeconds * 1000 };
+  state.run!.draw = { id: randomUUID(), kind, design: kind === 'perk' ? 'wheel' : state.config.characterDesign ?? 'cards', itemId: pick(options).id, poolIds: options.map(e => e.id), startedAt: now, endsAt: now + state.config.spinSeconds * 1000 };
   state.phase = kind === 'character' ? 'character-spin' : 'perk-spin'; state.nextAt = state.run!.draw.endsAt;
 }
 export function start(state: State, now: number): void {
