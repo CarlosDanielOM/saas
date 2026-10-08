@@ -7,7 +7,7 @@ import { WidgetCatalog, WidgetState, normalizeWidgetState } from './widgets-api.
 import { WidgetDisplayComponent } from './widget-display.component';
 @Component({ selector: 'app-widgets-overlay', imports: [WidgetDisplayComponent], changeDetection: ChangeDetectionStrategy.OnPush,
   template: `@if (catalog(); as catalog) { @if (state(); as state) { @if (state.visible) { <app-widget-display [catalog]="catalog" [state]="state" /> } } }`,
-  styles: `:host { display:block; width:min(100%,760px); margin:auto; padding:16px; box-sizing:border-box; }` })
+  styles: `:host { display:block; width:100%; max-width:1920px; margin:0; padding:0; box-sizing:border-box; }` })
 export class WidgetsOverlayComponent {
   readonly state = signal<WidgetState | null>(null);
   readonly catalog = signal<WidgetCatalog | null>(null);

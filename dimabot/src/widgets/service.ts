@@ -26,9 +26,9 @@ async function load(id: string): Promise<Stored> {
     catch (error) { if ((error as { code?: number }).code !== 11000) throw error; }
     doc = await WidgetChannel.findById(id).lean();
   }
-  return doc!;
+  domain.normalize(doc!.state); return doc!;
 }
-export type Action = 'select' | 'configure' | 'start' | 'show' | 'hide' | 'reset' | 'retry-poll';
+export type Action = 'select' | 'configure' | 'start' | 'show' | 'hide' | 'reset' | 'retry-poll' | 'role' | 'layout' | 'progress';
 export async function execute(id: string, action: Action, body: unknown, key: string, revision: number) {
   await requirePro(id);
   domain.text(key, 'Idempotency-Key', 128); domain.integer(revision, 'If-Match', 0);
@@ -39,14 +39,28 @@ export async function execute(id: string, action: Action, body: unknown, key: st
     if (receipt) { if (receipt.fingerprint !== fingerprint) domain.fail('idempotency_conflict', 'Key already used for a different action', 409); return { replayed: true }; }
     if (revision !== doc.revision) domain.fail('revision_conflict', 'Widget changed; refresh before trying again', 409);
     const state = doc.state;
-    if (action !== 'select' && action !== 'configure' && Object.keys(data).length) domain.fail('invalid', 'This action does not accept settings');
+    if (!['select','configure','start','role','layout','progress'].includes(action) && Object.keys(data).length) domain.fail('invalid', 'This action does not accept settings');
     switch (action) {
       case 'select':
         domain.idle(state);
         if (Object.keys(data).some(k => k !== 'packId')) domain.fail('invalid', 'Unknown field');
         state.packId = domain.pack(domain.text(data.packId, 'packId')).id; state.phase = 'idle'; state.run = null; state.nextAt = null; break;
-      case 'configure': domain.idle(state); state.config = domain.config(data); break;
-      case 'start': domain.start(state, now); break;
+      case 'configure':
+        domain.idle(state); state.config = domain.config({...state.config, ...data});
+        for (const role of ['killer','survivor'] as const) state.wins![role] = Math.min(state.wins![role], state.config.targets![role]); break;
+      case 'role':
+        domain.idle(state);
+        if (Object.keys(data).some(k => k !== 'role') || !['killer','survivor'].includes(data.role as string)) domain.fail('invalid', 'Choose killer or survivor');
+        state.packId = `dbd-${data.role}-challenge`; state.phase = 'idle'; state.run = null; state.nextAt = null; break;
+      case 'layout': state.config.layout = domain.layout(data); break;
+      case 'progress': {
+        if (Object.keys(data).some(k => !['role','delta'].includes(k)) || !['killer','survivor'].includes(data.role as string) || ![-1,1].includes(data.delta as number)) domain.fail('invalid', 'Invalid progress change');
+        const role = data.role as 'killer' | 'survivor';
+        state.wins![role] = Math.max(0, Math.min(state.config.targets![role], state.wins![role] + (data.delta as number))); break;
+      }
+      case 'start':
+        if (Object.keys(data).some(k => k !== 'mode') || (data.mode !== undefined && !['challenge','characters','perks','poll'].includes(data.mode as string))) domain.fail('invalid', 'Unknown widget operation');
+        domain.start(state, now, data.mode as domain.Operation | undefined); break;
       case 'show': state.visible = true; break;
       case 'hide': state.visible = false; break;
       case 'reset':
@@ -60,7 +74,7 @@ export async function execute(id: string, action: Action, body: unknown, key: st
     const receipts = [...doc.receipts.filter(r => now - r.at < 86400000), { key: receiptKey, fingerprint, at: now }].slice(-200);
     const saved = await WidgetChannel.updateOne({ _id: id, revision: doc.revision }, { $set: { state, dueAt: state.nextAt, receipts }, $inc: { revision: 1 } });
     if (saved.modifiedCount) {
-      if (action === 'retry-poll') await launchPoll(id, state, true);
+      if ((action === 'start' || action === 'retry-poll') && state.phase === 'poll-starting') await launchPoll(id, state, true);
       return { replayed: false };
     }
   }

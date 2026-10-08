@@ -1,90 +1,60 @@
 <div class="lf" data-plan="pro"><main class="lf-main" data-testid="widgets-page">
-  <header class="lf-head">
-    <div><a class="back" [routerLink]="['/', streamer, 'modules']"><app-lf-icon name="back" />{{ t('back') }}</a><h1>{{ t('title') }} <span class="chip alpha">{{ t('alpha') }}</span><span class="chip gold">Pro</span></h1><p>{{ t('subtitle') }}</p></div>
-  </header>
+  <header class="lf-head"><div><a class="back" [routerLink]="['/', streamer, 'modules']"><app-lf-icon name="back" />{{ t('back') }}</a><h1>{{ t('title') }} <span class="chip alpha">{{ t('alpha') }}</span><span class="chip gold">Pro</span></h1><p>{{ t('subtitle') }}</p></div></header>
   @if (!pro()) {
     <section class="lf-tile gate"><app-lf-icon name="lock" /><h2>{{ t('proRequired') }}</h2><p>{{ t('proDescription') }}</p><button class="primary" (click)="promptUpgrade()">{{ t('upgrade') }}</button></section>
   } @else {
     @if (error()) { <div class="message error" role="alert"><span>{{ error() }}</span><button (click)="hasPending() ? sendPending() : state() ? refresh() : load()" [disabled]="busy()">{{ t('retry') }}</button></div> }
     @if (notice()) { <p class="notice" role="status">{{ notice() }}</p> }
     @if (loading() && !catalog()) { <section class="lf-tile" role="status">{{ t('loading') }}</section> }
-    @if (catalog(); as catalog) {
-      <div class="lf-panels">
-        <section class="lf-tile gallery" aria-labelledby="gallery-title">
-          <div class="section-head"><div><h2 id="gallery-title">{{ t('gallery') }}</h2><p>{{ t('galleryHint') }}</p></div><span class="chip">{{ t('presetCount', {n: catalog.packs.length}) }}</span></div>
-          <nav class="filters" [attr.aria-label]="t('filter')">@for (role of ['all', 'killer', 'survivor']; track role) { <button [attr.aria-pressed]="roleFilter() === role" (click)="roleFilter.set(role)">{{ t('role.' + role) }}</button> }</nav>
-          <div class="pack-grid">
-            @for (pack of packs(); track pack.id) {
-              <button class="pack" [class.selected]="selectedId() === pack.id" [attr.aria-pressed]="selectedId() === pack.id" (click)="choose(pack)" [attr.data-testid]="pack.id">
-                <div class="pack-art" [class.pack-art--wheel]="pack.mode === 'perks'">
-                  @if (thumbnail(pack); as entry) { @if (!failedImages().has(entry.id)) { <img [ngSrc]="entry.image_url" width="130" height="120" alt="" (error)="imageFailed(entry)" /> } }
-                  <span class="art-tag">{{ t('mode.' + pack.mode) }}</span>
-                </div>
-                <div class="pack-info"><span class="game-name">DEAD BY DAYLIGHT</span><h3>{{ packTitle(pack) }}</h3><p>{{ packDescription(pack) }}</p><span class="pack-status">{{ state()?.packId === pack.id ? t('inUse') : t('viewWidget') }} <span aria-hidden="true">↗</span></span></div>
-              </button>
-            } @empty { <p>{{ t('noWidgets') }}</p> }
+    @if (catalog(); as catalog) { @if (state(); as state) {
+      <section class="lf-tile challenge-control" data-testid="dbd-challenge">
+        <div class="section-head"><div><span class="eyebrow">{{ t('oneWidget') }}</span><h2>Dead by Daylight</h2><p>{{ t('unifiedHint') }}</p></div><span class="chip">{{ t('phase.' + state.phase) }}</span></div>
+        <div class="control-grid"><div>
+          <h3>{{ t('currentRound') }}</h3><div class="filters" [attr.aria-label]="t('currentRound')">@for (role of roles; track role) { <button [attr.aria-pressed]="role === this.role()" [disabled]="locked() || hasPending()" (click)="chooseRole(role)" [attr.data-testid]="'role-' + role">{{ t('role.' + role) }}</button> }</div>
+          <ol class="flow">@for (step of sequenceSteps(); track $index) { <li>{{ step }}</li> }</ol>
+          <div class="actions">
+            @if (state.phase === 'poll-error') { <button class="primary" (click)="openConfirm('retry-poll')" [disabled]="busy() || stale() || hasPending()">{{ t('retryPoll') }}</button><button (click)="act('reset')" [disabled]="busy() || stale() || hasPending()">{{ t('reset') }}</button> }
+            @else { <button class="primary" (click)="start('challenge')" [disabled]="!canStart() || hasPending()" data-testid="start-sequence">{{ active() ? t('running') : t('startSequence') }}</button> }
+            <button (click)="act(state.visible ? 'hide' : 'show')" [disabled]="busy() || stale() || hasPending()">{{ state.visible ? t('hide') : t('show') }}</button>
           </div>
-        </section>
-        @if (selected(); as pack) {
-          <section #previewPanel class="lf-tile preview-panel" aria-labelledby="preview-title">
-            <div class="section-head"><div><span class="eyebrow">{{ t('preview') }}</span><h2 id="preview-title">{{ packTitle(pack) }}</h2></div></div>
-            @if (preview(); as preview) { <app-widget-display [catalog]="catalog" [state]="preview" /> }
-            <p class="pool-count">{{ t('poolCount', poolCounts()) }}</p>
-            @if (pack.mode === 'challenge') { <ol class="flow"><li>{{ t('flow.character') }}</li><li>{{ t('flow.vote') }}</li><li>{{ t('flow.reveal') }}</li><li>{{ t('flow.perks') }}</li></ol><p class="rules">{{ t('rules') }}</p> }
-            @if (isSelected()) {
-              <p class="live-status"><span class="dot" [class.on]="state()?.visible"></span>{{ state()?.visible ? t('visible') : t('hidden') }}</p>
-              @if (state()?.run?.error) { <p class="message error" role="status">{{ t('pollError') }} <span>{{ state()?.run?.error }}</span></p> }
-              <div class="actions">
-                @if (state()?.phase === 'poll-error') { <button class="primary" (click)="openConfirm('retry-poll')" [disabled]="busy() || stale() || hasPending()">{{ t('retryPoll') }}</button><button (click)="act('reset')" [disabled]="busy() || hasPending()">{{ t('reset') }}</button> }
-                @else { <button class="primary" (click)="openConfirm('start')" [disabled]="busy() || active() || stale() || hasPending() || form.dirty || exclusionsDirty()">{{ active() ? t('running') : t('start') }}</button> }
-                <button (click)="act(state()?.visible ? 'hide' : 'show')" [disabled]="busy() || stale() || hasPending()">{{ state()?.visible ? t('hide') : t('show') }}</button>
-              </div>
-              <p class="hint">{{ t('keepRunning') }}</p>@if (pack.mode === 'challenge') { <p class="hint">{{ t('pollOverlayHint') }}</p> }
-            } @else { <button class="primary use" (click)="useSelected()" [disabled]="busy() || active() || state()?.phase === 'poll-error' || stale() || hasPending()">{{ t('useWidget') }}</button>@if (active()) { <p class="hint">{{ t('waitBeforeSwitch') }}</p> } }
-          </section>
-        }
-      </div>
-      <section class="lf-tile lf-setup">
-        <div><h2>{{ t('obsTitle') }}</h2><p>{{ t('obsHint') }}</p></div>
-        @if (overlayUrl()) { <div class="link-controls"><input [value]="overlayUrl()" readonly [attr.aria-label]="t('obsTitle')" /><button (click)="copyLink()">{{ t('copy') }}</button><button (click)="openConfirm('rotate')" [disabled]="busy() || hasPending()">{{ t('newLink') }}</button></div> }
-        @else { <button class="primary" (click)="makeLink()" [disabled]="busy() || hasPending()">{{ t('makeLink') }}</button> }
+          <p class="hint">{{ t('keepRunning') }}</p><p class="rules">{{ t('rules') }}</p>
+          @if (state.run?.error) { <p class="message error" role="status">{{ t('pollError') }} <span>{{ state.run?.error }}</span></p> }
+        </div><div class="individual">
+          <h3>{{ t('individualTitle') }}</h3><p>{{ t('individualHint') }}</p><div class="actions"><button (click)="start('characters')" [disabled]="!canStart() || hasPending()" data-testid="draw-character">{{ t('drawCharacter') }}</button><button (click)="start('poll')" [disabled]="!canStart() || hasPending()" data-testid="start-poll">{{ t('startPoll') }}</button><button (click)="start('perks')" [disabled]="!canStart() || hasPending()" data-testid="draw-perk">{{ t('drawPerk') }}</button></div>
+          <p class="pool-count">{{ t('poolCount', poolCounts()) }}</p><p class="live-status"><span class="dot" [class.on]="state.visible"></span>{{ state.visible ? t('visible') : t('hidden') }}</p>
+        </div></div>
       </section>
-      @if (isSelected()) {
-        <section class="lf-tile settings"><h2>{{ t('settings') }}</h2>
-          <form [formGroup]="form" (ngSubmit)="saveSettings()">
-            <fieldset [disabled]="active() || state()?.phase === 'poll-error' || busy() || hasPending()"><div class="settings-grid">
-              <label>{{ t('language') }}<select formControlName="language"><option value="en">English</option><option value="es">Español</option></select></label>
-              <label>{{ t('spinSeconds') }}<input type="number" min="1" max="15" step="1" formControlName="spinSeconds" />@if (form.controls.spinSeconds.touched && form.controls.spinSeconds.invalid) { <small class="invalid">{{ t('spinValidation') }}</small> }</label>
-              @if (selected()?.mode !== 'perks') { <label><span id="widget-character-design">{{ t('characterDesign') }}</span><select formControlName="characterDesign" aria-labelledby="widget-character-design"><option value="cards">{{ t('characterCards') }}</option><option value="reel">{{ t('characterReel') }}</option><option value="wheel">{{ t('characterWheel') }}</option><option value="elimination">{{ t('characterElimination') }}</option></select></label> }
-              @if (selected()?.mode === 'challenge') { <label>{{ t('pollSeconds') }}<input type="number" min="15" max="180" step="1" formControlName="pollSeconds" />@if (form.controls.pollSeconds.touched && form.controls.pollSeconds.invalid) { <small class="invalid">{{ t('pollValidation') }}</small> }</label> }
-              @if (selected()?.mode === 'challenge') {
-                <div class="points-settings"><label class="checkbox"><input type="checkbox" formControlName="channelPointsVoting" />{{ t('channelPointsVoting') }}</label><p class="hint">{{ t('channelPointsHint') }}</p>
-                  @if (channelPointsVoting()) {
-                    <div class="points-cost"><label for="widget-poll-points">{{ t('channelPointsPerVote') }}</label><input id="widget-poll-points" type="number" min="1" max="1000000" step="1" formControlName="channelPointsPerVote" [attr.aria-invalid]="form.controls.channelPointsPerVote.touched && form.controls.channelPointsPerVote.invalid" [attr.aria-describedby]="form.controls.channelPointsPerVote.touched && form.controls.channelPointsPerVote.invalid ? 'points-validation' : null" />
-                      @if (form.controls.channelPointsPerVote.touched && form.controls.channelPointsPerVote.invalid) { <small id="points-validation" class="invalid">{{ t('channelPointsValidation') }}</small> }
-                    </div>
-                  }
-                </div>
-              }
-              <label class="checkbox"><input type="checkbox" formControlName="includeUnavailable" />{{ t('unavailable') }}</label>
-            </div>
-            <details class="entry-picker"><summary>{{ t('customPool') }}</summary><p class="hint">{{ t('customPoolHint') }}</p>
-              <div class="entry-tools"><div class="filters">@if (selected()?.mode !== 'perks') { <button type="button" [attr.aria-pressed]="entryKind() === 'character'" (click)="entryKind.set('character'); entryLimit.set(30)">{{ t('characters') }}</button> }@if (selected()?.mode !== 'characters') { <button type="button" [attr.aria-pressed]="entryKind() === 'perk'" (click)="entryKind.set('perk'); entryLimit.set(30)">{{ t('perks') }}</button> }</div><input type="search" [value]="query()" (input)="onQuery($event)" [attr.aria-label]="t('search')" [placeholder]="t('search')" /></div>
-              <div class="entry-tools"><button type="button" (click)="setAll(true)">{{ t('enableMatching') }}</button><button type="button" (click)="setAll(false)">{{ t('disableMatching') }}</button></div>
-              <div class="entries">@for (entry of shownEntries(); track entry.id) { <label class="entry"><input type="checkbox" [checked]="!excludedIds().includes(entry.id)" (change)="toggleEntry(entry)" />@if (!failedImages().has(entry.id)) { <img [ngSrc]="entry.image_url" width="32" height="38" alt="" (error)="imageFailed(entry)" /> }<span>{{ label(entry) }}@if (!entry.available) { <small>{{ t('ownedOnly') }}</small> }</span></label> } @empty { <p>{{ t('noMatches') }}</p> }</div>
-              @if (entries().length > shownEntries().length) { <button type="button" (click)="entryLimit.update(addThirty)">{{ t('loadMore') }}</button> }
-            </details></fieldset>
-            <div class="save-row"><span>{{ form.dirty || exclusionsDirty() ? t('unsaved') : t('allSaved') }}</span><button class="primary" type="submit" [disabled]="active() || state()?.phase === 'poll-error' || busy() || stale() || hasPending() || (!form.dirty && !exclusionsDirty())">{{ busy() ? t('saving') : t('save') }}</button></div>
-          </form>
-        </section>
-      }
-    }
+      <section class="lf-tile preview-panel" #previewPanel>
+        <div class="section-head"><div><h2>{{ t('preview') }}</h2><p>{{ t('canvasHint') }}</p></div><button [attr.aria-pressed]="gameplayPreview()" (click)="gameplayPreview.set(!gameplayPreview())">{{ t('gameplayPreview') }}</button></div>
+        @if (preview(); as preview) { <app-widget-display [catalog]="catalog" [state]="preview" [editor]="true" [gameplayPreview]="gameplayPreview()" (layoutChange)="onResize($event)" /> }
+      </section>
+      <section class="lf-tile progress-controls"><div><h2>{{ t('progressTitle') }}</h2><p>{{ t('manualProgressHint') }}</p></div><div class="progress-buttons">@for (role of roles; track role) { <div><strong>{{ t('role.' + role) }} <span>{{ state.wins[role] }} / {{ state.config.targets[role] }}</span></strong><div class="actions"><button (click)="act('progress', {role, delta: 1})" [disabled]="busy() || stale() || hasPending() || state.wins[role] >= state.config.targets[role]" [attr.data-testid]="'win-' + role">{{ t('addWin') }}</button><button (click)="act('progress', {role, delta: -1})" [disabled]="busy() || stale() || hasPending() || state.wins[role] === 0">{{ t('undoWin') }}</button></div></div> }</div></section>
+      <section class="lf-tile lf-setup"><div><h2>{{ t('obsTitle') }}</h2><p>{{ t('obsHint') }}</p></div>@if (overlayUrl()) { <div class="link-controls"><input [value]="overlayUrl()" readonly [attr.aria-label]="t('obsTitle')" /><button (click)="copyLink()">{{ t('copy') }}</button><button (click)="openConfirm('rotate')" [disabled]="busy() || hasPending()">{{ t('newLink') }}</button></div> } @else { <button class="primary" (click)="makeLink()" [disabled]="busy() || hasPending()">{{ t('makeLink') }}</button> }</section>
+      <section class="lf-tile settings"><h2>{{ t('layoutTitle') }}</h2><p>{{ t('cameraResizeHint') }}</p>
+        <form [formGroup]="layoutForm" (ngSubmit)="saveLayout()"><fieldset [disabled]="busy() || stale() || hasPending()"><div class="settings-grid">
+          <label>{{ t('cameraCorner') }}<select formControlName="cameraCorner" [attr.aria-label]="t('cameraCorner')">@for (corner of ['top-left','top-right','bottom-left','bottom-right']; track corner) { <option [value]="corner">{{ t('corner.' + corner) }}</option> }</select></label>
+          <label>{{ t('cameraWidth') }}<input type="number" min="320" max="800" step="1" formControlName="cameraWidth" /></label><label>{{ t('cameraHeight') }}<input type="number" min="180" max="640" step="1" formControlName="cameraHeight" /></label>
+          <label>{{ t('loadoutMode') }}<select formControlName="loadoutMode" [attr.aria-label]="t('loadoutMode')"><option value="detailed">{{ t('detailed') }}</option><option value="compact">{{ t('compact') }}</option></select></label>
+          <label>{{ t('progressStyle') }}<select formControlName="progressStyle" [attr.aria-label]="t('progressStyle')"><option value="badges">{{ t('badges') }}</option><option value="bar">{{ t('bar') }}</option></select></label>
+          <label class="checkbox"><input type="checkbox" formControlName="autoCompact" />{{ t('autoCompact') }}</label><label class="checkbox"><input type="checkbox" formControlName="showActive" />{{ t('showActive') }}</label><label class="checkbox"><input type="checkbox" formControlName="showInfo" />{{ t('showInfo') }}</label><label class="checkbox"><input type="checkbox" formControlName="showProgress" />{{ t('showProgress') }}</label><label class="checkbox"><input type="checkbox" formControlName="hideActiveDuringGameplay" />{{ t('hideActiveDuringGameplay') }}</label>
+        </div></fieldset>@if (layoutForm.invalid && layoutForm.touched) { <p class="invalid" role="alert">{{ t('layoutInvalid') }}</p> }<div class="save-row"><span>{{ layoutForm.dirty ? t('unsaved') : t('allSaved') }}</span><button class="primary" type="submit" [disabled]="busy() || stale() || hasPending() || !layoutForm.dirty || layoutForm.invalid">{{ t('saveLayout') }}</button></div></form>
+      </section>
+      <section class="lf-tile settings"><h2>{{ t('settings') }}</h2>
+        <form [formGroup]="form" (ngSubmit)="saveSettings()"><fieldset [disabled]="locked() || hasPending()">
+          <div formGroupName="sequences" class="sequence-grid">@for (role of roles; track role) { <div [formGroupName]="role" class="sequence-card"><h3>{{ t('role.' + role) }} · {{ t('sequenceTitle') }}</h3><label class="checkbox"><input type="checkbox" formControlName="character" />{{ t('drawCharacterStep') }}</label>
+            @if (!sequenceValue(role).character) { <label>{{ t('fixedCharacter') }}<select [attr.aria-label]="t('fixedCharacter')" formControlName="fixedCharacterId" [attr.data-testid]="'fixed-' + role"><option value="">{{ t('chooseCharacter') }}</option>@for (entry of characters(role); track entry.id) { <option [value]="entry.id">{{ label(entry) }}</option> }</select></label> }
+            <label class="checkbox"><input type="checkbox" formControlName="poll" />{{ t('pollStep') }}</label>@if (!sequenceValue(role).poll) { <label>{{ t('perkAmount') }}<input type="number" min="0" max="4" step="1" formControlName="perkCount" /></label> }
+            <label class="checkbox"><input type="checkbox" formControlName="perks" />{{ t('perksStep') }}</label>
+          </div> }</div>
+          <div class="settings-grid"><label>{{ t('language') }}<select formControlName="language" [attr.aria-label]="t('language')"><option value="en">English</option><option value="es">Español</option></select></label><label>{{ t('spinSeconds') }}<input type="number" min="1" max="15" step="1" formControlName="spinSeconds" /></label><label>{{ t('characterDesign') }}<select formControlName="characterDesign" [attr.aria-label]="t('characterDesign')"><option value="cards">{{ t('characterCards') }}</option><option value="reel">{{ t('characterReel') }}</option><option value="wheel">{{ t('characterWheel') }}</option><option value="elimination">{{ t('characterElimination') }}</option></select></label><label>{{ t('pollSeconds') }}<input type="number" min="15" max="180" step="1" formControlName="pollSeconds" /></label>
+            <div class="points-settings"><label class="checkbox"><input type="checkbox" formControlName="channelPointsVoting" />{{ t('channelPointsVoting') }}</label><p class="hint">{{ t('channelPointsHint') }}</p>@if (channelPointsVoting()) { <label class="points-cost">{{ t('channelPointsPerVote') }}<input type="number" min="1" max="1000000" step="1" formControlName="channelPointsPerVote" /></label> }</div>
+            <div formGroupName="targets" class="target-settings">@for (role of roles; track role) { <label>{{ t('winTarget', {role: t('role.' + role)}) }}<input type="number" min="1" max="20" step="1" [formControlName]="role" /></label> }</div>
+            <label class="checkbox"><input type="checkbox" formControlName="includeUnavailable" />{{ t('unavailable') }}</label>
+          </div>
+          <details class="entry-picker"><summary>{{ t('customPool') }}</summary><p class="hint">{{ t('customPoolHint') }}</p><div class="entry-tools"><div class="filters"><button type="button" [attr.aria-pressed]="entryKind() === 'character'" (click)="entryKind.set('character'); entryLimit.set(30)">{{ t('characters') }}</button><button type="button" [attr.aria-pressed]="entryKind() === 'perk'" (click)="entryKind.set('perk'); entryLimit.set(30)">{{ t('perks') }}</button></div><input type="search" [value]="query()" (input)="onQuery($event)" [attr.aria-label]="t('search')" [placeholder]="t('search')" /></div><div class="entry-tools"><button type="button" (click)="setAll(true)">{{ t('enableMatching') }}</button><button type="button" (click)="setAll(false)">{{ t('disableMatching') }}</button></div><div class="entries">@for (entry of shownEntries(); track entry.id) { <label class="entry"><input type="checkbox" [checked]="!excludedIds().includes(entry.id)" (change)="toggleEntry(entry)" />@if (!failedImages().has(entry.id)) { <img [ngSrc]="entry.image_url" width="32" height="38" alt="" (error)="imageFailed(entry)" /> }<span>{{ label(entry) }}@if (!entry.available) { <small>{{ t('ownedOnly') }}</small> }</span></label> } @empty { <p>{{ t('noMatches') }}</p> }</div>@if (entries().length > shownEntries().length) { <button type="button" (click)="entryLimit.update(addThirty)">{{ t('loadMore') }}</button> }</details>
+        </fieldset><div class="save-row"><span>{{ form.dirty || exclusionsDirty() ? t('unsaved') : t('allSaved') }}</span><button class="primary" type="submit" [disabled]="locked() || hasPending() || (!form.dirty && !exclusionsDirty())">{{ busy() ? t('saving') : t('save') }}</button></div></form>
+      </section>
+    } }
   }
 </main></div>
-<dialog #confirmDialog class="lf-dialog" (cancel)="closeConfirm()" aria-labelledby="confirm-title">
-  @if (confirm(); as action) {
-    <h2 id="confirm-title">{{ t('confirm.' + action + '.title') }}</h2><p>{{ action === 'start' && selected()?.mode !== 'challenge' ? t('confirm.drawHint') : t('confirm.' + action + '.hint') }}</p>
-    @if (action === 'start' && selected()?.mode === 'challenge') { <p>{{ state()?.config?.channelPointsVoting ? t('extraVotesHint', {points: state()!.config.channelPointsPerVote}) : t('freeVotesHint') }}</p> }
-    <footer><button (click)="closeConfirm()">{{ t('cancel') }}</button><button class="primary" (click)="confirmAction()">{{ t('confirm.' + action + '.button') }}</button></footer>
-  }
-</dialog>
+<dialog #confirmDialog class="lf-dialog" (cancel)="closeConfirm()" aria-labelledby="confirm-title">@if (confirm(); as action) { <h2 id="confirm-title">{{ t('confirm.' + action + '.title') }}</h2><p>{{ t('confirm.' + action + '.hint') }}</p>@if (action === 'start') { <p>{{ state()?.config?.channelPointsVoting ? t('extraVotesHint', {points: state()!.config.channelPointsPerVote}) : t('freeVotesHint') }}</p> }<footer><button (click)="closeConfirm()">{{ t('cancel') }}</button><button class="primary" (click)="confirmAction()">{{ t('confirm.' + action + '.button') }}</button></footer> }</dialog>

@@ -86,3 +86,66 @@ test('with no votes each of the five cards is eligible and a zero-perk reveal ne
   }
   choice = 0;
 });
+
+test('survivor can use a fixed character while killer retains the full sequence', () => {
+  const state = domain.initial(), fixed = domain.pool({...state, packId: 'dbd-survivor-challenge'}, 'character')[0].id;
+  state.config = domain.config({...state.config, sequences: {killer: domain.defaultSequence(), survivor: {...domain.defaultSequence(), character: false, fixedCharacterId: fixed}}});
+  state.packId = 'dbd-survivor-challenge'; domain.start(state, 1000, 'challenge');
+  assert.equal(state.phase, 'poll-starting'); assert.equal(state.run!.draw, null); assert.equal(state.run!.characterId, fixed);
+  assert.equal(state.loadouts!.survivor.characterId, fixed);
+  assert.equal(state.config.sequences!.killer.character, true);
+  state.phase = 'complete'; state.nextAt = null; state.packId = 'dbd-killer-challenge'; domain.start(state, 2000, 'challenge');
+  assert.equal(state.phase, 'character-spin'); assert.equal(domain.pack(state.packId).role, 'killer');
+  assert.equal(state.loadouts!.survivor.characterId, fixed);
+});
+
+test('sequences can skip polls, perks, or both, with three-second result holds', () => {
+  for (const character of [true,false]) for (const poll of [true,false]) for (const perks of [true,false]) for (const perkCount of [0,2,4]) {
+    const state = domain.initial(), fixed = domain.pool(state,'character')[0].id;
+    state.config.sequences!.killer = {character, fixedCharacterId: fixed, poll, perks, perkCount};
+    domain.start(state, 1000, 'challenge');
+    if (character) { domain.settle(state,state.nextAt!); assert.equal(state.phase,'character-result'); domain.settle(state,state.nextAt!); }
+    assert.equal(state.phase,poll?'poll-starting':perks&&perkCount>0?'perk-spin':'complete');
+    if (poll) { state.run!.cards=[0,1,2,3,4]; domain.reveal(state,[0,0,0,0,1],10000); domain.settle(state,13500); }
+    const count = perks ? poll ? 4 : perkCount : 0;
+    for (let i=0;i<count;i++) { assert.equal(state.phase,'perk-spin'); domain.settle(state,state.nextAt!); assert.equal(state.phase,'perk-result'); domain.settle(state,state.nextAt!); }
+    assert.equal(state.phase,'complete'); assert.equal(state.run!.perkIds.length,count); assert.equal(new Set(state.run!.perkIds).size,count);
+  }
+});
+
+test('standalone polls reveal without starting a wheel and individual draws share the loadout', () => {
+  const state=domain.initial(); domain.start(state,1000,'characters'); domain.settle(state,state.nextAt!);
+  const character=state.run!.characterId;
+  domain.start(state,6000,'perks'); domain.settle(state,state.nextAt!); const perk=state.run!.perkIds[0];
+  assert.equal(state.run!.characterId,character);
+  domain.start(state,11000,'poll'); assert.equal(state.phase,'poll-starting'); assert.equal(state.run!.draw,null);
+  state.run!.cards=[0,1,2,3,4]; domain.reveal(state,[0,0,0,0,100],12000); domain.settle(state,15500);
+  assert.equal(state.phase,'complete'); assert.equal(state.run!.perkCount,4); assert.deepEqual(state.run!.perkIds,[perk]);
+  assert.equal(state.loadouts!.killer.characterId,character);
+  domain.start(state,16000,'perks'); domain.settle(state,state.nextAt!); assert.equal(state.run!.perkIds.length,2); assert.equal(new Set(state.run!.perkIds).size,2);
+});
+
+test('invalid cross-role fixed characters and malformed layout or sequence settings are rejected', () => {
+  const state=domain.initial(), fixed=domain.pool(state,'character')[0].id;
+  const invalid=[{...state.config,sequences:{killer:domain.defaultSequence(),survivor:{...domain.defaultSequence(),character:false,fixedCharacterId:fixed}}}, {...state.config,sequences:{killer:{...domain.defaultSequence(),character:false},survivor:domain.defaultSequence()}}, {...state.config,sequences:{killer:{...domain.defaultSequence(),poll:'yes'},survivor:domain.defaultSequence()}}, {...state.config,layout:{...domain.defaultLayout(),cameraWidth:801}}, {...state.config,layout:{...domain.defaultLayout(),cameraHeight:179}}, {...state.config,layout:{...domain.defaultLayout(),unexpected:true}}, {...state.config,targets:{killer:0,survivor:4}}];
+  for (const config of invalid) assert.throws(()=>domain.config(config),{code:'invalid'});
+  state.config.sequences!.killer={...domain.defaultSequence(),character:false,fixedCharacterId:fixed}; state.config.excludedIds=[fixed];
+  assert.throws(()=>domain.start(state,1000,'challenge'),{code:'empty_pool'});
+});
+
+test('saved sequence settings are frozen in a run and legacy documents keep active draws', () => {
+  const state=domain.initial(); domain.start(state,1000,'challenge'); const draw=state.run!.draw!;
+  state.config.sequences!.killer.poll=false; assert.equal(state.run!.sequence!.poll,true);
+  domain.settle(state,draw.endsAt); domain.settle(state,state.nextAt!); assert.equal(state.phase,'poll-starting');
+  const legacy=domain.initial(); delete legacy.config.layout; delete legacy.config.sequences; delete legacy.config.targets; delete legacy.wins; delete legacy.loadouts;
+  domain.start(legacy,1000); delete legacy.run!.operation; delete legacy.run!.sequence;
+  const id=legacy.run!.draw!.id; domain.normalize(legacy); assert.equal(legacy.run!.draw!.id,id); assert.equal(legacy.packId,'dbd-killer-challenge');
+  domain.settle(legacy,legacy.nextAt!); domain.settle(legacy,legacy.nextAt!); assert.equal(legacy.phase,'poll-starting');
+});
+
+test('legacy completed loadouts survive normalization before changing the current role', () => {
+  const state=domain.initial();domain.start(state,1000,'characters');domain.settle(state,state.nextAt!);
+  const character=state.run!.characterId;delete state.loadouts;domain.normalize(state);
+  assert.equal(state.loadouts!.killer.characterId,character);
+  assert.throws(()=>domain.layout({...domain.defaultLayout(),toString:'unknown'}),{code:'invalid'});
+});

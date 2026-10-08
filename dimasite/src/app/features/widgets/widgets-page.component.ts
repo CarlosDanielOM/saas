@@ -10,7 +10,7 @@ import { UpgradeService } from '../../services/upgrade.service';
 import { getRouteParam } from '../../shared/utils/route-param.util';
 import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 import { WidgetDisplayComponent } from './widget-display.component';
-import { WidgetsApi, WidgetAction, WidgetCatalog, WidgetConfig, WidgetEntry, WidgetPack, WidgetState } from './widgets-api.service';
+import { WidgetsApi, WidgetAction, WidgetCatalog, WidgetConfig, WidgetEntry, WidgetState, WidgetRole, WidgetMode, WidgetLayout, widgetDefaultLayout } from './widgets-api.service';
 
 @Component({ selector: 'app-widgets-page', imports: [ReactiveFormsModule, RouterLink, LfIconComponent, NgOptimizedImage, WidgetDisplayComponent], templateUrl: './widgets-page.component.html', styleUrl: './widgets-page.component.css', changeDetection: ChangeDetectionStrategy.OnPush })
 export class WidgetsPageComponent {
@@ -25,8 +25,10 @@ export class WidgetsPageComponent {
   readonly channel = this.auth.session()?.appUser.twitch_user_id ?? '';
   readonly catalog = signal<WidgetCatalog | null>(null);
   readonly state = signal<WidgetState | null>(null);
-  readonly selectedId = signal('');
-  readonly roleFilter = signal('all');
+  readonly roles: WidgetRole[] = ['killer', 'survivor'];
+  readonly role = computed<WidgetRole>(() => this.state()?.packId.includes('-survivor-') ? 'survivor' : 'killer');
+  readonly gameplayPreview = signal(false);
+  private startMode: WidgetMode = 'challenge';
   readonly loading = signal(true);
   readonly busy = signal(false);
   readonly stale = signal(false);
@@ -42,24 +44,33 @@ export class WidgetsPageComponent {
   readonly excludedIds = signal<string[]>([]);
   readonly exclusionsDirty = signal(false);
   readonly failedImages = signal<ReadonlySet<string>>(new Set());
-  readonly form = this.fb.group({ language: this.fb.control<'en' | 'es'>('en'), characterDesign: this.fb.control<'cards' | 'reel' | 'wheel' | 'elimination'>('cards'), spinSeconds: [4, [Validators.required, Validators.min(1), Validators.max(15), Validators.pattern(/^\d+$/)]], pollSeconds: [30, [Validators.required, Validators.min(15), Validators.max(180), Validators.pattern(/^\d+$/)]], channelPointsVoting: false, channelPointsPerVote: [100, [Validators.required, Validators.min(1), Validators.max(1000000), Validators.pattern(/^\d+$/)]], includeUnavailable: false });
-  readonly channelPointsVoting = toSignal(this.form.controls.channelPointsVoting.valueChanges, { initialValue: false });
-  readonly selected = computed(() => this.catalog()?.packs.find(p => p.id === this.selectedId()) ?? null);
-  readonly packs = computed(() => this.catalog()?.packs.filter(p => this.roleFilter() === 'all' || p.role === this.roleFilter()) ?? []);
+  private sequenceForm() { return this.fb.group({character: true, fixedCharacterId: '', poll: true, perks: true, perkCount: [4, [Validators.required, Validators.min(0), Validators.max(4), Validators.pattern(/^\d+$/)]]}); }
+  readonly sequenceForms = {killer: this.sequenceForm(), survivor: this.sequenceForm()};
+  readonly form = this.fb.group({ language: this.fb.control<'en' | 'es'>('en'), characterDesign: this.fb.control<'cards' | 'reel' | 'wheel' | 'elimination'>('cards'), spinSeconds: [4, [Validators.required, Validators.min(1), Validators.max(15), Validators.pattern(/^\d+$/)]], pollSeconds: [30, [Validators.required, Validators.min(15), Validators.max(180), Validators.pattern(/^\d+$/)]], channelPointsVoting: false, channelPointsPerVote: [100, [Validators.required, Validators.min(1), Validators.max(1000000), Validators.pattern(/^\d+$/)]], includeUnavailable: false, sequences: this.fb.group(this.sequenceForms), targets: this.fb.group({killer: [3, [Validators.required, Validators.min(1), Validators.max(20), Validators.pattern(/^\d+$/)]], survivor: [4, [Validators.required, Validators.min(1), Validators.max(20), Validators.pattern(/^\d+$/)]]}) });
+  readonly layoutForm = this.fb.group({...widgetDefaultLayout(), cameraWidth: [512,[Validators.required,Validators.min(320),Validators.max(800),Validators.pattern(/^\d+$/)]], cameraHeight: [288,[Validators.required,Validators.min(180),Validators.max(640),Validators.pattern(/^\d+$/)]]});
+  readonly formValue = toSignal(this.form.valueChanges, {initialValue: this.form.getRawValue()});
+  readonly layoutValue = toSignal(this.layoutForm.valueChanges, {initialValue: this.layoutForm.getRawValue()});
+  readonly channelPointsVoting = computed(() => this.formValue().channelPointsVoting === true);
   readonly active = computed(() => !['idle', 'complete', 'poll-error'].includes(this.state()?.phase ?? 'idle'));
-  readonly isSelected = computed(() => this.selectedId() === this.state()?.packId);
+  readonly locked = computed(() => this.active() || this.state()?.phase === 'poll-error' || this.busy() || this.stale());
   readonly preview = computed<WidgetState | null>(() => {
-    const state = this.state(); if (!state || !this.selected()) return null;
-    return this.isSelected() ? state : { ...state, packId: this.selectedId(), phase: 'idle', run: null };
+    const state = this.state(); this.layoutValue();
+    return state ? {...state, config: {...state.config, layout: this.layoutForm.valid ? this.layoutForm.getRawValue() : state.config.layout}} : null;
+  });
+  readonly canStart = computed(() => { this.formValue(); return !this.locked() && !this.form.dirty && !this.exclusionsDirty(); });
+  readonly sequenceSteps = computed(() => {
+    const sequence = this.state()?.config.sequences[this.role()];
+    if (!sequence) return [];
+    return [this.t(sequence.character ? 'flow.character' : 'fixedCharacter'), this.t(sequence.poll ? 'flow.vote' : 'fixedPerkCount', {n: sequence.perkCount}), ...(sequence.poll ? [this.t('flow.reveal')] : []), ...(sequence.perks ? [this.t('flow.perks')] : [])];
   });
   readonly entries = computed(() => {
-    const pack = this.selected(), query = this.query().toLowerCase().trim();
-    return this.catalog()?.entries.filter(e => e.role === pack?.role && e.kind === this.entryKind() && (!query || e.english.toLowerCase().includes(query) || e.spanish.toLowerCase().includes(query))) ?? [];
+    const role = this.role(), query = this.query().toLowerCase().trim();
+    return this.catalog()?.entries.filter(e => e.role === role && e.kind === this.entryKind() && (!query || e.english.toLowerCase().includes(query) || e.spanish.toLowerCase().includes(query))) ?? [];
   });
   readonly shownEntries = computed(() => this.entries().slice(0, this.entryLimit()));
   readonly poolCounts = computed(() => {
-    const pack = this.selected(), config = this.state()?.config;
-    const rows = this.catalog()?.entries.filter(e => e.role === pack?.role && (config?.includeUnavailable || e.available) && !config?.excludedIds.includes(e.id)) ?? [];
+    const role = this.role(), config = this.state()?.config;
+    const rows = this.catalog()?.entries.filter(e => e.role === role && (config?.includeUnavailable || e.available) && !config?.excludedIds.includes(e.id)) ?? [];
     return { characters: rows.filter(e => e.kind === 'character').length, perks: rows.filter(e => e.kind === 'perk').length };
   });
   onQuery(event: Event): void { this.query.set((event.target as HTMLInputElement).value); this.entryLimit.set(30); }
@@ -75,13 +86,17 @@ export class WidgetsPageComponent {
     try { this.overlayUrl.set(sessionStorage.getItem('widgets-overlay-' + this.channel) ?? ''); } catch { /* Link stays usable without storage. */ }
   }
   t(key: string, params?: Record<string, string | number>): string { return this.language.translate('widgets.' + key, params); }
-  packTitle(pack: WidgetPack): string { return this.t(`pack.${pack.role}.${pack.mode}.title`); }
-  packDescription(pack: WidgetPack): string { return this.t(`pack.${pack.role}.${pack.mode}.description`); }
   label(entry: WidgetEntry): string { return this.language.currentLanguage() === 'es' ? entry.spanish : entry.english; }
-  thumbnail(pack: WidgetPack): WidgetEntry | undefined { return this.catalog()?.entries.find(e => e.role === pack.role && e.kind === (pack.mode === 'perks' ? 'perk' : 'character')); }
   imageFailed(entry: WidgetEntry): void { this.failedImages.update(ids => new Set([...ids, entry.id])); }
-  choose(pack: WidgetPack): void { this.selectedId.set(pack.id); this.query.set(''); this.entryLimit.set(30); this.entryKind.set(pack.mode === 'perks' ? 'perk' : 'character');
-    if (matchMedia('(max-width: 1023px)').matches) requestAnimationFrame(() => this.previewPanel()?.nativeElement.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' }));
+  characters(role: WidgetRole): WidgetEntry[] { return this.catalog()?.entries.filter(e => e.role === role && e.kind === 'character') ?? []; }
+  chooseRole(role: WidgetRole): void { if (role !== this.role()) { this.query.set(''); this.entryLimit.set(30); void this.act('role', {role}); } }
+  sequenceValue(role: WidgetRole) { this.formValue(); return this.sequenceForms[role].getRawValue(); }
+  onResize(layout: WidgetLayout): void { this.layoutForm.patchValue(layout); this.layoutForm.markAsDirty(); }
+  saveLayout(): void { this.layoutForm.markAllAsTouched(); if (this.layoutForm.valid) void this.act('layout', this.layoutForm.getRawValue()); }
+  start(mode: WidgetMode): void {
+    this.startMode = mode;
+    if (mode === 'poll' || mode === 'challenge' && this.state()?.config.sequences[this.role()].poll) this.openConfirm('start');
+    else void this.act('start', {mode});
   }
   promptUpgrade(): void { void this.upgrade.promptUpgradeForModule({ moduleId: 'widgets', source: 'widgets_page' }); }
   async load(): Promise<void> {
@@ -89,7 +104,7 @@ export class WidgetsPageComponent {
     try {
       const [catalog, state] = await Promise.all([this.api.catalog(this.channel), this.api.read(this.channel)]);
       if (this.stopped) return;
-      this.catalog.set(catalog); this.accept(state); this.selectedId.set(state.packId); this.entryKind.set(catalog.packs.find(p => p.id === state.packId)?.mode === 'perks' ? 'perk' : 'character'); this.stale.set(false);
+      this.catalog.set(catalog); this.accept(state); this.stale.set(false);
     } catch (e) { this.handleError(e); this.stale.set(true); }
     finally { this.loading.set(false); }
   }
@@ -102,7 +117,8 @@ export class WidgetsPageComponent {
   private accept(state: WidgetState): void {
     if (this.state() && state.revision < this.state()!.revision) return;
     this.state.set(state);
-    if (!this.form.dirty && !this.exclusionsDirty()) { this.form.patchValue(state.config); this.excludedIds.set([...state.config.excludedIds]); }
+    if (!this.layoutForm.dirty) this.layoutForm.patchValue(state.config.layout);
+    if (!this.form.dirty && !this.exclusionsDirty()) { this.form.patchValue({...state.config, sequences: {killer: {...state.config.sequences.killer, fixedCharacterId: state.config.sequences.killer.fixedCharacterId ?? ''}, survivor: {...state.config.sequences.survivor, fixedCharacterId: state.config.sequences.survivor.fixedCharacterId ?? ''}}}); this.excludedIds.set([...state.config.excludedIds]); }
   }
   async act(action: WidgetAction, body: unknown = {}): Promise<void> {
     if (this.busy() || this.stale() || this.pending || !this.state()) return;
@@ -116,6 +132,7 @@ export class WidgetsPageComponent {
       const state = await this.api.action(this.channel, pending.action, pending.body, pending.revision, pending.key);
       this.pending = null;
       if (pending.action === 'configure') { this.form.markAsPristine(); this.exclusionsDirty.set(false); }
+      if (pending.action === 'layout') this.layoutForm.markAsPristine();
       this.accept(state); this.stale.set(false); this.notice.set(this.t('saved'));
     } catch (e) {
       // A network/5xx response can hide an accepted draw. Retry exactly the same operation/key.
@@ -124,12 +141,13 @@ export class WidgetsPageComponent {
     } finally { this.busy.set(false); }
   }
   hasPending(): boolean { return this.pending !== null; }
-  useSelected(): void { if (this.selected()) void this.act('select', { packId: this.selectedId() }); }
   saveSettings(): void {
     this.form.markAllAsTouched();
-    if (!this.form.controls.channelPointsVoting.value) this.form.controls.channelPointsPerVote.setValue(this.state()?.config.channelPointsPerVote ?? 100, { emitEvent: false });
-    if (this.form.invalid) return;
-    const config: WidgetConfig = { ...this.form.getRawValue(), excludedIds: this.excludedIds() };
+    if (!this.form.controls.channelPointsVoting.value) this.form.controls.channelPointsPerVote.setValue(this.state()?.config.channelPointsPerVote ?? 100);
+    if (this.form.invalid) { this.error.set(this.t('settingsInvalid')); return; }
+    const value = this.form.getRawValue();
+    for (const role of this.roles) if (!value.sequences[role].character && !value.sequences[role].fixedCharacterId) { this.error.set(this.t('fixedCharacterRequired')); return; }
+    const config: WidgetConfig = {...value, sequences: {killer: {...value.sequences.killer, fixedCharacterId: value.sequences.killer.fixedCharacterId || null}, survivor: {...value.sequences.survivor, fixedCharacterId: value.sequences.survivor.fixedCharacterId || null}}, excludedIds: this.excludedIds(), layout: this.state()!.config.layout};
     void this.act('configure', config);
   }
   toggleEntry(entry: WidgetEntry): void { this.excludedIds.update(ids => ids.includes(entry.id) ? ids.filter(id => id !== entry.id) : [...ids, entry.id]); this.exclusionsDirty.set(true); }
@@ -139,7 +157,7 @@ export class WidgetsPageComponent {
   }
   openConfirm(kind: 'start' | 'retry-poll' | 'rotate'): void { this.confirm.set(kind); this.dialog()?.nativeElement.showModal(); }
   closeConfirm(): void { this.dialog()?.nativeElement.close(); this.confirm.set(null); }
-  confirmAction(): void { const action = this.confirm(); this.closeConfirm(); if (action === 'rotate') void this.makeLink(); else if (action) void this.act(action); }
+  confirmAction(): void { const action = this.confirm(); this.closeConfirm(); if (action === 'rotate') void this.makeLink(); else if (action) void this.act(action, action === 'start' ? {mode: this.startMode} : {}); }
   async makeLink(): Promise<void> {
     if (this.busy()) return; this.busy.set(true); this.error.set('');
     try {

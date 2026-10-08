@@ -23,7 +23,7 @@ widgetsRoute.get('/:channelID', wrap(async (req, res) => ok(res, await snapshot(
 widgetsRoute.post('/:channelID/overlay-token', wrap(async (req, res) => ok(res, { token: await rotateToken(channel(req)) })));
 widgetsRoute.post('/:channelID/actions/:action', wrap(async (req, res) => {
   const action = text(req.params.action, 'action');
-  if (!['select', 'configure', 'start', 'show', 'hide', 'reset', 'retry-poll'].includes(action)) fail('invalid', 'Unknown widget action');
+  if (!['select', 'configure', 'start', 'show', 'hide', 'reset', 'retry-poll', 'role', 'layout', 'progress'].includes(action)) fail('invalid', 'Unknown widget action');
   await execute(channel(req), action as Action, req.body ?? {}, text(req.header('Idempotency-Key'), 'Idempotency-Key', 128), integer(Number(req.header('If-Match')), 'If-Match', 0));
   return ok(res, await snapshot(channel(req)));
 }));

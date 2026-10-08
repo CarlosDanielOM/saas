@@ -109,6 +109,11 @@ let store=JSON.parse(readFileSync('/tmp/saas-fixtures/polls.json','utf8'));asser
 assert.equal(store.polls[0].channel_points_voting_enabled,true);assert.equal(store.polls[0].channel_points_per_vote,250,'widget cost reaches native Twitch via the AST');
 assert.deepEqual(store.polls[0].choices.map(c=>c.title),['Card 1','Card 2','Card 3','Card 4','Card 5']);
 assert(store.polls[0].title.includes(id.slice(0,8)));
+const activeRunId=state.run.id, activeDrawId=state.run.draw.id;
+await action('layout',{...state.config.layout,cameraCorner:'top-left',cameraWidth:800,cameraHeight:640,loadoutMode:'compact'});
+assert.equal(state.config.layout.cameraCorner,'top-left');assert.equal(state.run.id,activeRunId);assert.equal(state.run.draw.id,activeDrawId);
+await action('progress',{role:'killer',delta:1});const winRevision=state.revision,winKey=crypto.randomUUID();await action('progress',{role:'killer',delta:1},200,winKey,winRevision);await action('progress',{role:'killer',delta:1},200,winKey,winRevision);assert.equal(state.wins.killer,2,'replayed win is counted once');
+await action('progress',{role:'survivor',delta:0},400);await action('progress',{role:'killer',delta:1,extra:true},400);await action('role',{role:'survivor'},409);
 await action('hide');assert.equal(state.visible,false);await action('show');
 const stored=await svc.WidgetChannel.findById(channel).lean();const four=stored.state.run.cards.indexOf(4);
 store.polls[0].choices.forEach((c,i)=>{c.votes=i===four?25:10;c.channel_points_votes=i===four?20:0;});writeFileSync('/tmp/saas-fixtures/polls.json',JSON.stringify(store));
@@ -134,6 +139,33 @@ state=await request('GET',root);assert.equal(state.phase,'complete');assert.equa
 // Zero and tie behavior are domain tests using the real shuffled private values.
 for(const target of [0,1,2,3,4]){const s=domain.initial();domain.start(s,1000);const slot=s.run.cards.indexOf(target);domain.reveal(s,s.run.cards.map((_,i)=>i===slot?10:0),2000);assert.equal(s.run.perkCount,target);domain.settle(s,6000);assert.equal(s.phase,target===0?'complete':'perk-spin');}
 for(let i=0;i<100;i++){const s=domain.initial();domain.start(s,1000);domain.reveal(s,[0,0,0,0,0],2000);assert(s.run.winningCard>=0&&s.run.winningCard<5);}
+// One control center: role-specific skips, fixed loadout, manual progress and standalone poll.
+const survivorFixed=catalog.entries.find(e=>e.role==='survivor'&&e.kind==='character'&&e.available).id;
+const fullKiller=structuredClone(state.config.sequences.killer);
+await action('role',{role:'survivor'});
+await action('configure',{...state.config,sequences:{...state.config.sequences,survivor:{character:false,fixedCharacterId:survivorFixed,poll:false,perks:true,perkCount:2}}});
+await action('role',{role:'banana'},400);await action('layout',{...state.config.layout,cameraWidth:801},400);
+await action('configure',{...state.config,sequences:{...state.config.sequences,survivor:{...state.config.sequences.survivor,fixedCharacterId:catalog.entries.find(e=>e.role==='killer'&&e.kind==='character').id}}},400);
+const createsBeforeSkips=JSON.parse(readFileSync('/tmp/saas-fixtures/polls.json','utf8')).creates;
+await action('start',{mode:'challenge'});assert.equal(state.phase,'perk-spin');assert.equal(state.run.characterId,survivorFixed);assert.equal(state.run.draw.kind,'perk');
+for(let i=0;i<4;i++) { await svc.WidgetChannel.updateOne({_id:channel},{$set:{'state.nextAt':0,dueAt:0}});state=await request('GET',root); }
+assert.equal(state.phase,'complete');assert.equal(state.run.perkIds.length,2);assert.equal(new Set(state.run.perkIds).size,2);assert.equal(state.loadouts.survivor.characterId,survivorFixed);
+assert.deepEqual(state.config.sequences.killer,fullKiller);assert.equal(JSON.parse(readFileSync('/tmp/saas-fixtures/polls.json','utf8')).creates,createsBeforeSkips,'skipped poll never invokes Twitch');
+await action('progress',{role:'survivor',delta:1});await action('progress',{role:'survivor',delta:-1});assert.equal(state.wins.survivor,0);assert.equal(state.wins.killer,2);
+const previousPerks=[...state.run.perkIds],postsBefore=JSON.parse(readFileSync('/tmp/saas-fixtures/poll-posts.json','utf8'));
+writeFileSync('/tmp/saas-fixtures/delay-poll','delay');
+const startPollRequest=request('POST',root+'/actions/start',{mode:'poll'},200,'widgets-owner',{'Idempotency-Key':crypto.randomUUID(),'If-Match':String(state.revision)});
+for(let i=0;i<100;i++){if(JSON.parse(readFileSync('/tmp/saas-fixtures/poll-posts.json','utf8'))>postsBefore)break;await new Promise(resolve=>setTimeout(resolve,50));}
+state=await request('GET',root);assert.equal(state.phase,'poll-starting');
+await action('layout',{...state.config.layout,loadoutMode:'detailed'});await action('hide');await action('show');
+await startPollRequest;unlinkSync('/tmp/saas-fixtures/delay-poll');state=await request('GET',root);
+assert.equal(JSON.parse(readFileSync('/tmp/saas-fixtures/poll-posts.json','utf8')),postsBefore+1,'layout/visibility changes during poll creation do not invoke the poll AST again');
+assert.equal(state.phase,'polling');assert.equal(state.run.operation,'poll');assert.equal(state.run.draw,null);assert.deepEqual(state.run.cards,[null,null,null,null,null]);
+store=JSON.parse(readFileSync('/tmp/saas-fixtures/polls.json','utf8'));store.polls[0].status='COMPLETED';store.polls[0].choices.forEach((c,i)=>c.votes=i===0?100:0);writeFileSync('/tmp/saas-fixtures/polls.json',JSON.stringify(store));
+await svc.WidgetChannel.updateOne({_id:channel},{$set:{'state.nextAt':0,dueAt:0}});state=await request('GET',root);assert.equal(state.phase,'reveal');
+await svc.WidgetChannel.updateOne({_id:channel},{$set:{'state.nextAt':0,dueAt:0}});state=await request('GET',root);assert.equal(state.phase,'complete');assert.equal(state.run.draw,null,'standalone poll never draws perks');assert.deepEqual(state.run.perkIds,previousPerks);
+await action('role',{role:'killer'});assert.equal(state.wins.killer,2);assert.equal(state.loadouts.survivor.characterId,survivorFixed);assert.deepEqual(state.config.sequences.killer,fullKiller);
+await action('start',{mode:'unexpected'},400);
 // Poll failure never leaks cards or silently chooses a perk count.
 await action('reset');writeFileSync('/tmp/saas-fixtures/fail-poll','fail');await action('start');await new Promise(r=>setTimeout(r,1100));state=await request('GET',root);assert.equal(state.phase,'character-result');await new Promise(r=>setTimeout(r,3100));state=await request('GET',root);await waitPollClaim();state=await request('GET',root);assert.equal(state.phase,'poll-error');assert.deepEqual(state.run.cards,[null,null,null,null,null]);unlinkSync('/tmp/saas-fixtures/fail-poll');
 await action('retry-poll');assert.equal(state.phase,'polling');
@@ -157,5 +189,5 @@ const creates=store.creates;
 for(const value of ['-1','1.5','1000001','abc','true','100;extra']){const result=await parseSpecialCommands('$(start.poll "Invalid;One/Two;15;'+value+'")',ctx);assert(result.parsedText.trim());assert.equal(JSON.parse(readFileSync('/tmp/saas-fixtures/polls.json','utf8')).creates,creates,'invalid cost causes no native poll creation');}
 const legacy=domain.initial();delete legacy.config.characterDesign;assert.equal(domain.publicState(legacy).config.characterDesign,'cards');domain.start(legacy,Date.now());assert.equal(legacy.run.draw.design,'cards');delete legacy.config.channelPointsVoting;delete legacy.config.channelPointsPerVote;assert.equal(domain.publicState(legacy).config.channelPointsVoting,false);assert.equal(domain.publicState(legacy).config.channelPointsPerVote,100);
 execFileSync(process.execPath,['--experimental-test-module-mocks','--test','/app/dist/widgets/model.test.js','/app/dist/utils/ast_parser/channel_actions.test.js','/app/dist/utils/ast_parser/poll_prediction_actions.test.js','/app/dist/utils/ast_parser/permission_gate_authored.test.js'],{stdio:'inherit',timeout:30000});
-console.log('PASS widgets: three-second result pauses, all four character styles, deterministic partial/no-vote ties, 419 entries, 6 presets, Pro/owner/token access, validation, persistence, idempotency, hidden cards, native poll AST, Channel Points settings and live counts, legacy free polls, paid-vote winner, recovery, distinct perks, supervised worker, token revocation');
+console.log('PASS widgets: three-second result pauses, all four character styles, deterministic partial/no-vote ties, 419 entries, legacy aliases, unified role controls, role-specific sequences, fixed characters, standalone polls, camera layout, progress, Pro/owner/token access, validation, persistence, idempotency, hidden cards, native poll AST, Channel Points settings and live counts, legacy free polls, paid-vote winner, recovery, distinct perks, supervised worker, token revocation');
 io?.close();testServer?.close();process.exit(0);
