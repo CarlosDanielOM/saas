@@ -7,7 +7,7 @@ import {
   input,
   signal,
 } from '@angular/core';
-import { LanguageService } from '../../services/language.service';
+import { LanguageService, SupportedLanguage } from '../../services/language.service';
 import {
   cardSequence,
   cardHighlight,
@@ -40,6 +40,8 @@ export class RouletteDisplayComponent {
   readonly roulette = input<Roulette | null>(null);
   readonly draw = input<RouletteDraw | null>(null);
   readonly serverTime = input(0);
+  /** OBS packs can use their saved language independently of the dashboard language. */
+  readonly locale = input<SupportedLanguage | undefined>(undefined);
   readonly progress = signal(0);
   readonly language = inject(LanguageService);
   readonly slots = computed(
@@ -176,6 +178,6 @@ export class RouletteDisplayComponent {
     return inkFor(this.color(i));
   }
   t(key: string, params?: Record<string, string | number>): string {
-    return this.language.translate(`roulette.stage.${key}`, params);
+    return this.language.translate(`roulette.stage.${key}`, params, this.locale());
   }
 }

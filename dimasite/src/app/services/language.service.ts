@@ -40,9 +40,9 @@ export class LanguageService {
     });
   }
 
-  translate(key: string, params?: Record<string, string | number>): string {
+  translate(key: string, params?: Record<string, string | number>, language?: SupportedLanguage): string {
     const dictionaries = this.dictionaries();
-    const activeLanguage = this.currentLanguage();
+    const activeLanguage = language ?? this.currentLanguage();
     const active = this.resolveKey(dictionaries[activeLanguage], key);
     const fallback = this.resolveKey(dictionaries[this.defaultLanguage], key);
     const raw = active ?? fallback ?? key;

@@ -28,17 +28,7 @@
     </section>
   } @else {
     @if (wheel()) {
-      <div class="wheel-wrap">
-        <span class="pointer" aria-hidden="true"></span>
-        <div class="wheel" [style.background]="wheelGradient()" [style.transform]="'rotate(' + wheelRotation() + 'deg)'" aria-hidden="true">
-          @for (entry of wheelIcons(); track entry.id; let i = $index) {
-            <div class="wheel-icon" [style.transform]="'rotate(' + (i * 360 / wheelIcons().length + 15) + 'deg) translateY(-108px)'">
-              @if (!failedImages().has(entry.id)) { <img [ngSrc]="entry.image_url" width="34" height="34" alt="" (error)="imageFailed(entry)" /> }
-            </div>
-          }
-        </div>
-        <div class="wheel-hub"><strong>{{ pool().length }}</strong><span>{{ t('perks') }}</span></div>
-      </div>
+      <app-roulette-display [roulette]="roulette().roulette" [draw]="roulette().draw" [serverTime]="state().serverTime" [locale]="state().config.language" />
     } @else {
       <div class="character-cards" aria-hidden="true">
         @for (entry of cards(); track entry.id; let i = $index) {
@@ -49,12 +39,14 @@
         }
       </div>
     }
+    @if (!wheel() || !spinning()) {
     @if (current(); as entry) {
       <div class="draw-result" [class.draw-result--settled]="!spinning()" [attr.aria-live]="spinning() ? 'off' : 'polite'">
         @if (!failedImages().has(entry.id)) { <img [ngSrc]="entry.image_url" width="68" height="68" alt="" (error)="imageFailed(entry)" /> }
         <div><small>{{ state().run ? t(spinning() ? 'drawing' : 'selected') : t('preview') }}</small><strong>{{ label(entry) }}</strong></div>
       </div>
     } @else { <p>{{ t('emptyPool') }}</p> }
+    }
   }
   @if (state().run && pack().mode === 'challenge' && !voteStage()) {
     <footer class="loadout" aria-live="polite">

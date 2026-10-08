@@ -2,8 +2,10 @@ import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, injec
 import { NgOptimizedImage } from '@angular/common';
 import { WidgetCatalog, WidgetEntry, WidgetState } from './widgets-api.service';
 import { widgetText } from './widget-text';
+import { RouletteDisplayComponent } from '../roulette/roulette-display.component';
+import { widgetRoulette } from './widget-roulette';
 
-@Component({ selector: 'app-widget-display', imports: [NgOptimizedImage], templateUrl: './widget-display.component.html', styleUrl: './widget-display.component.css', changeDetection: ChangeDetectionStrategy.OnPush })
+@Component({ selector: 'app-widget-display', imports: [NgOptimizedImage, RouletteDisplayComponent], templateUrl: './widget-display.component.html', styleUrl: './widget-display.component.css', changeDetection: ChangeDetectionStrategy.OnPush })
 export class WidgetDisplayComponent {
   readonly catalog = input.required<WidgetCatalog>();
   readonly state = input.required<WidgetState>();
@@ -14,7 +16,7 @@ export class WidgetDisplayComponent {
   readonly pool = computed(() => {
     const state = this.state(), kind = this.pack().mode === 'perks' || state.phase === 'perk-spin' ? 'perk' : 'character';
     const ids = state.run?.draw?.kind === kind ? state.run.draw.poolIds : null;
-    return this.catalog().entries.filter(e => ids ? ids.includes(e.id) : e.kind === kind && e.role === this.pack().role && (state.config.includeUnavailable || e.available) && !state.config.excludedIds.includes(e.id));
+    return ids ? ids.flatMap(id => { const entry = this.entriesById().get(id); return entry ? [entry] : []; }) : this.catalog().entries.filter(e => e.kind === kind && e.role === this.pack().role && (state.config.includeUnavailable || e.available) && !state.config.excludedIds.includes(e.id));
   });
   readonly spinning = computed(() => ['character-spin', 'perk-spin'].includes(this.state().phase));
   readonly progress = computed(() => {
@@ -31,17 +33,7 @@ export class WidgetDisplayComponent {
   readonly character = computed(() => this.entriesById().get(this.state().run?.characterId ?? '') ?? null);
   readonly perks = computed(() => (this.state().run?.perkIds ?? []).flatMap(id => { const entry = this.entriesById().get(id); return entry ? [entry] : []; }));
   readonly wheel = computed(() => this.pack().mode === 'perks' || this.state().phase === 'perk-spin');
-  readonly wheelGradient = computed(() => {
-    const colors = ['#7c3aed', '#342052', '#a34861', '#223c47'], length = Math.max(1, this.pool().length);
-    return `conic-gradient(${Array.from({ length }, (_, i) => `${colors[i % colors.length]} ${i * 360 / length}deg ${(i + 1) * 360 / length}deg`).join(',')})`;
-  });
-  readonly wheelRotation = computed(() => {
-    const draw = this.state().run?.draw;
-    if (!draw || draw.kind !== 'perk') return 0;
-    const index = this.pool().findIndex(e => e.id === draw.itemId), end = 2160 + 360 - (index + 0.5) * 360 / Math.max(1, this.pool().length);
-    return end * (1 - Math.pow(1 - this.progress(), 3));
-  });
-  readonly wheelIcons = computed(() => this.pool().filter((_, i) => i % Math.max(1, Math.ceil(this.pool().length / 12)) === 0).slice(0, 12));
+  readonly roulette = computed(() => widgetRoulette(this.state(), this.pool(), this.title()));
   readonly cards = computed(() => {
     const pool = this.pool(), winner = this.entriesById().get(this.state().run?.draw?.itemId ?? '');
     const items = pool.slice(0, 8); if (winner && !items.includes(winner)) items.push(winner);
