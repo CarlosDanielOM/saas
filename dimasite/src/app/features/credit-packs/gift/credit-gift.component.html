@@ -38,12 +38,18 @@
                 autocapitalize="none"
                 spellcheck="false"
                 enterkeyhint="search"
+                role="combobox"
+                aria-autocomplete="list"
+                [attr.aria-controls]="matches().length ? 'gift-matches' : null"
+                [attr.aria-expanded]="matches().length > 0"
+                [attr.aria-activedescendant]="activeMatch() >= 0 ? 'gift-match-' + activeMatch() : null"
                 maxlength="80"
                 [placeholder]="t('creditGift.who.placeholder')"
                 [value]="loginDraft()"
                 [attr.aria-invalid]="lookupState() === 'invalid' || lookupState() === 'not_found' || lookupState() === 'self'"
                 aria-describedby="gift-login-status gift-login-hint"
                 (input)="onLoginInput($any($event.target).value)"
+                (keydown)="onLoginKeydown($event)"
               />
             </div>
             <button type="submit" class="gbtn gbtn--primary gfind__btn" [disabled]="lookupState() === 'searching' || !loginDraft().trim()">
@@ -57,7 +63,27 @@
             </button>
           </div>
 
+          @if (matches().length) {
+          <div id="gift-matches" class="gfind" role="listbox" [attr.aria-label]="t('creditGift.who.inputLabel')">
+            @for (person of matches(); track person.id; let index = $index) {
+              <button type="button" class="gbtn" [class.gbtn--ghost]="activeMatch() !== index" [class.gbtn--primary]="activeMatch() === index"
+                role="option" [id]="'gift-match-' + index" [attr.aria-selected]="activeMatch() === index" tabindex="-1"
+                (mousedown)="$event.preventDefault()" (click)="selectMatch(person)">
+                &#64;{{ person.login }}
+              </button>
+            }
+          </div>
+          }
           <div id="gift-login-status" class="gfind__status" aria-live="polite">
+            @if (matchState() === 'searching') {
+              <p class="gmsg"><span class="gspin" aria-hidden="true"></span> {{ t('creditGift.who.searching') }}</p>
+            } @else if (matchState() === 'empty') {
+              <p class="gmsg gmsg--warn"><app-lf-icon name="alert" [size]="16" /> <span>{{ t('creditGift.who.noMatches') }}</span></p>
+            } @else if (matchState() === 'error') {
+              <p class="gmsg gmsg--warn"><app-lf-icon name="alert" [size]="16" />
+                <span>{{ t('creditGift.who.error') }} <button type="button" class="glink" (click)="onLoginInput(loginDraft())">{{ t('creditGift.who.retry') }}</button></span>
+              </p>
+            }
             @switch (lookupState()) {
               @case ('invalid') {
                 <p class="gmsg gmsg--warn"><app-lf-icon name="alert" [size]="16" /> <span>{{ t('creditGift.who.invalid') }}</span></p>

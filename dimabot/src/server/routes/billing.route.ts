@@ -24,7 +24,7 @@ import { getAiUsageRetentionDays } from '../../utils/ai_usage_ledger.js';
 
 import { getAiUsageDashboard } from '../../utils/ai_usage_dashboard.js';
 import { queryAiUsageTransactions, usageLedgerStatus } from '../../utils/ai_usage_queries.js';
-import { createCreditGiftCheckout, CreditGiftRequestError, findGiftRecipient, getCreditGift } from '../../utils/credit_gifts.js';
+import { createCreditGiftCheckout, CreditGiftRequestError, findGiftRecipient, searchGiftRecipients, getCreditGift } from '../../utils/credit_gifts.js';
 import { getGiftPackCatalog } from '../../utils/credit_gift_provider.js';
 
 type TargetPlan = 'premium' | 'pro';
@@ -221,6 +221,10 @@ router.get('/gift-packs', authMiddleware as any, async (req: Request, res: Respo
 
 router.get('/gift-packs/recipient', authMiddleware as any, async (req: Request, res: Response) => {
     return giftRoute(req, res, async () => findGiftRecipient(getStringQueryParam(req.query.login)));
+});
+
+router.get('/gift-packs/recipients', authMiddleware as any, async (req: Request, res: Response) => {
+    return giftRoute(req, res, async user => searchGiftRecipients(getStringQueryParam(req.query.query), user));
 });
 
 router.post('/gift-packs/checkout', authMiddleware as any, async (req: Request, res: Response) => {

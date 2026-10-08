@@ -38,6 +38,18 @@ export async function findGiftRecipient(login: string): Promise<GiftRecipient> {
     return recipientView(user);
 }
 
+export async function searchGiftRecipients(query: string, buyer: IUsers): Promise<GiftRecipient[]> {
+    const normalized = query.trim().replace(/^@/, '').toLowerCase();
+    if (!/^[a-z0-9_]{3,25}$/.test(normalized)) {
+        throw new CreditGiftRequestError('Enter at least 3 characters of a Twitch channel name');
+    }
+    const users = await UsersSchema.find({
+        _id: { $ne: buyer._id },
+        accounts: { $elemMatch: { type: 'twitch', id: { $nin: [null, ''] }, name: { $regex: normalized, $options: 'i' } } },
+    }).select('accounts.type accounts.id accounts.name').sort({ 'accounts.name': 1 }).limit(15).lean().maxTimeMS(5_000);
+    return users.map(recipientView);
+}
+
 function giftView(gift: ICreditGift) {
     return {
         id: gift._id, status: gift.status,

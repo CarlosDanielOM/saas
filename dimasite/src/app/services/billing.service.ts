@@ -176,6 +176,13 @@ export class BillingService {
     );
   }
 
+  searchGiftRecipients(query: string): Observable<ApiEnvelope<GiftRecipient[]>> {
+    return this.http.get<ApiEnvelope<GiftRecipient[]>>(
+      `${this.linksService.getApiUrl()}/billing/gift-packs/recipients`,
+      { params: { query } }
+    );
+  }
+
   findGiftRecipient(login: string): Observable<ApiEnvelope<GiftRecipient>> {
     return this.http.get<ApiEnvelope<GiftRecipient>>(
       `${this.linksService.getApiUrl()}/billing/gift-packs/recipient`,

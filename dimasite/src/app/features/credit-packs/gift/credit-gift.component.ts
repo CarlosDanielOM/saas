@@ -95,6 +95,9 @@ export class CreditGiftComponent {
   readonly loginDraft = signal('');
   readonly lookupState = signal<LookupState>('idle');
   readonly recipient = signal<GiftRecipient | null>(null);
+  readonly matches = signal<GiftRecipient[]>([]);
+  readonly matchState = signal<'idle' | 'searching' | 'found' | 'empty' | 'error'>('idle');
+  readonly activeMatch = signal(-1);
   /** Twitch profile image for the confirmed recipient; letter avatar until (or unless) it loads. */
   readonly avatarUrl = signal<string | null>(null);
   readonly avatarFailed = signal(false);
@@ -171,6 +174,8 @@ export class CreditGiftComponent {
   /** One idempotency key per (pack, recipient) intent; retries reuse it. */
   private requestId: { key: string; id: string } | null = null;
   private lookupSeq = 0;
+  private matchSeq = 0;
+  private matchTimer?: ReturnType<typeof setTimeout>;
   private returnFocus: HTMLElement | null = null;
   private suggestionApplied = false;
 
@@ -184,7 +189,11 @@ export class CreditGiftComponent {
       this.loginDraft.set(suggestion);
     });
 
-    this.destroyRef.onDestroy(() => this.unlockScroll());
+    this.destroyRef.onDestroy(() => {
+      this.clearMatches();
+      this.lookupSeq++;
+      this.unlockScroll();
+    });
   }
 
   t(key: string, params?: Record<string, string | number>): string {
@@ -201,14 +210,67 @@ export class CreditGiftComponent {
   }
 
   onLoginInput(value: string): void {
+    this.clearMatches();
     this.loginDraft.set(value);
     // Editing abandons any lookup still in flight: its answer is for a name that's no longer typed.
     if (this.lookupState() === 'searching') this.lookupSeq++;
     this.lookupState.set('idle');
+    const query = normalizeChannelLogin(value);
+    if (!query || query.length < 3) return;
+    const seq = this.matchSeq;
+    this.matchTimer = setTimeout(() => void this.searchMatches(query, seq), 300);
+  }
+
+  private async searchMatches(query: string, seq: number): Promise<void> {
+    this.matchState.set('searching');
+    try {
+      const response = await firstValueFrom(this.billingService.searchGiftRecipients(query));
+      if (seq !== this.matchSeq) return;
+      if (response.error || !response.data) throw new Error('recipient search unavailable');
+      const matches = response.data.filter(person => person.login.toLowerCase() !== this.buyerLogin());
+      this.matches.set(matches);
+      this.matchState.set(matches.length ? 'found' : 'empty');
+    } catch {
+      if (seq === this.matchSeq) this.matchState.set('error');
+    }
+  }
+
+  selectMatch(person: GiftRecipient): void {
+    this.loginDraft.set(person.login);
+    // Recheck the exact account before it can be used in a paid gift.
+    void this.lookup();
+  }
+
+  onLoginKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.clearMatches();
+    } else if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && this.matches().length) {
+      event.preventDefault();
+      const count = this.matches().length;
+      const current = this.activeMatch();
+      this.activeMatch.set(current < 0 ? (event.key === 'ArrowDown' ? 0 : count - 1)
+        : (current + (event.key === 'ArrowDown' ? 1 : -1) + count) % count);
+    } else if (event.key === 'Enter' && this.activeMatch() >= 0) {
+      const person = this.matches()[this.activeMatch()];
+      if (person) {
+        event.preventDefault();
+        this.selectMatch(person);
+      }
+    }
+  }
+
+  private clearMatches(): void {
+    clearTimeout(this.matchTimer);
+    this.matchSeq++;
+    this.matches.set([]);
+    this.activeMatch.set(-1);
+    this.matchState.set('idle');
   }
 
   async lookup(event?: Event): Promise<void> {
     event?.preventDefault();
+    this.clearMatches();
     const login = normalizeChannelLogin(this.loginDraft());
     if (!login) {
       this.lookupState.set('invalid');
@@ -245,6 +307,7 @@ export class CreditGiftComponent {
   }
 
   changeRecipient(): void {
+    this.clearMatches();
     this.lookupSeq++;
     this.recipient.set(null);
     this.avatarUrl.set(null);

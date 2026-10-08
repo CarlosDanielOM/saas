@@ -25,6 +25,7 @@ const offers = [
 ];
 const byId = Object.fromEntries(offers.map(offer => [offer.id, offer]));
 const luna = { id: '64f000000000000000000001', login: 'luna_tv', displayName: 'Luna_TV', avatarUrl: null };
+const lunar = { id: '64f000000000000000000004', login: 'lunar', displayName: 'Lunar', avatarUrl: null };
 const nova = { id: '64f000000000000000000002', login: 'nova', displayName: 'Nova', avatarUrl: 'https://static-cdn.example/nova.svg' };
 const slow = { id: '64f000000000000000000003', login: 'slowpoke', displayName: 'Slowpoke', avatarUrl: null };
 const GIFT_ID = 'a'.repeat(56) + 'b1c2d3e4';
@@ -63,7 +64,7 @@ async function newContext(browser, options = {}) {
   })), { twitch, app });
 
   const state = {
-    checkouts: [], ownCheckouts: [], lookups: [], profiles: [], giftPolls: {}, blocked: [], polarVisits: [],
+    checkouts: [], ownCheckouts: [], lookups: [], searches: [], profiles: [], giftPolls: {}, blocked: [], polarVisits: [],
     failures: [...checkoutFailures], catalogDown: giftCatalogDown, catalogRequests: 0
   };
   const ok = (route, data, status = 200) => route.fulfill({ status, json: { error: false, status, data } });
@@ -111,6 +112,16 @@ async function newContext(browser, options = {}) {
       state.catalogRequests++;
       if (state.catalogDown) return fail(route, 502, 'Gifting is temporarily unavailable.');
       return ok(route, { offers: giftOffers });
+    }
+    if (path === '/billing/gift-packs/recipients') {
+      const query = url.searchParams.get('query');
+      state.searches.push(query);
+      if (query === 'slow') {
+        await sleep(1500);
+        return ok(route, [slow]);
+      }
+      if (query === 'boom') return fail(route, 502, 'Unavailable');
+      return ok(route, [luna, lunar, nova].filter(person => person.login.includes(query)));
     }
     if (path === '/billing/gift-packs/recipient') {
       const login = url.searchParams.get('login');
@@ -202,6 +213,85 @@ const results = [];
 const blockedOrigins = [];
 const pass = name => { results.push(name); console.log(`ok - ${name}`); };
 try {
+  // Gift recipient autocomplete uses the existing store styling and requires an explicit selection.
+  {
+    const { context, state } = await newContext(browser);
+    const page = await context.newPage();
+    const gift = await openGift(page);
+    await setTheme(page, 'light');
+    const input = gift.locator('#gift-login');
+    const option = gift.getByRole('option', { name: '@luna_tv', exact: true });
+    await input.fill('lu');
+    await sleep(450);
+    assert.deepEqual(state.searches, [], 'short queries never search');
+    await input.fill('l');
+    await input.fill('lun');
+    await option.waitFor();
+    assert.equal(await gift.getByRole('option').count(), 2, 'partial query returns possible channels');
+    assert.deepEqual(state.searches, ['lun'], 'typing is debounced');
+    assert.equal(await gift.getByTestId('gift-review').isDisabled(), true, 'search does not confirm a recipient');
+    assert.equal(await input.inputValue(), 'lun');
+    assert.equal(await input.getAttribute('aria-expanded'), 'true');
+    await axe(page, 'gift suggestions 390 light');
+    await noOverflow(page, 'gift suggestions 390 light');
+    await fullShot(page, `${shots}/gift-search-390-light.png`);
+
+    await input.press('ArrowDown');
+    await until(async () => (await option.getAttribute('aria-selected')) === 'true', 'ArrowDown selects a match');
+    await input.press('ArrowUp');
+    await until(async () => (await gift.getByRole('option', { name: '@lunar', exact: true }).getAttribute('aria-selected')) === 'true', 'ArrowUp wraps to the last match');
+    await input.press('ArrowDown');
+    await until(async () => (await option.getAttribute('aria-selected')) === 'true', 'ArrowDown wraps to the first match');
+    assert.equal(await input.getAttribute('aria-activedescendant'), 'gift-match-0');
+    await input.press('Enter');
+    await gift.locator('.gwho__name').getByText('Luna_TV', { exact: true }).waitFor();
+    assert.deepEqual(state.lookups, ['luna_tv'], 'selection revalidates the full name');
+    await gift.getByRole('button', { name: 'Change', exact: true }).click();
+
+    await input.fill('slow');
+    await until(() => state.searches.includes('slow'), 'slow search starts');
+    await input.fill('@LUN');
+    await option.waitFor();
+    await sleep(1600);
+    assert.equal(await gift.getByRole('option', { name: '@slowpoke' }).count(), 0, 'stale response ignored');
+    await input.press('Escape');
+    await until(async () => (await gift.getByRole('option').count()) === 0, 'Escape dismisses suggestions');
+
+    await input.fill('zzz');
+    await gift.getByText('No matching DomDimaBot channels.', { exact: false }).waitFor();
+    await input.fill('boom');
+    await gift.getByText("We couldn't look up that channel right now.").waitFor();
+    await gift.getByRole('button', { name: 'Try again', exact: true }).click();
+    await until(() => state.searches.filter(query => query === 'boom').length === 2, 'retry repeats search');
+    await input.fill('slow');
+    await until(() => state.searches.filter(query => query === 'slow').length === 2, 'second slow search starts');
+    await input.fill('lu');
+    await sleep(1600);
+    assert.equal(await gift.getByRole('option').count(), 0, 'shortening the query ignores an outstanding response');
+
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await setTheme(page, 'dark');
+    await input.fill('lun');
+    await option.waitFor();
+    await axe(page, 'gift suggestions 1280 dark');
+    await noOverflow(page, 'gift suggestions 1280 dark');
+    await fullShot(page, `${shots}/gift-search-1280-dark.png`);
+    for (const width of [320, 390, 1280]) {
+      await page.setViewportSize({ width, height: 900 });
+      for (const theme of ['light', 'dark']) {
+        await setTheme(page, theme);
+        await axe(page, `gift suggestions ${width} ${theme}`);
+        await noOverflow(page, `gift suggestions ${width} ${theme}`);
+      }
+    }
+    await option.click();
+    await gift.locator('.gwho__name').getByText('Luna_TV', { exact: true }).waitFor();
+    assert.equal(state.checkouts.length, 0, 'autocomplete never purchases a gift');
+    await context.close();
+    pass('gift recipient autocomplete: minimum, debounce, keyboard/click selection, stale responses, empty/error/retry, existing styles');
+  }
+
+  if (process.env.SAAS_GIFT_SEARCH_ONLY !== '1') {
   // 1 · Purchase mode tabs near the header; legacy own store stays the default and keeps working.
   {
     const { context, state } = await newContext(browser);
@@ -691,6 +781,7 @@ try {
     await context.close();
   }
   pass('es copy + 320/390/1280 light/dark layouts (self, gift, confirm), no overflow, axe');
+  }
 
   console.log(`Blocked (aborted) remote origins: ${[...new Set(blockedOrigins)].join(', ') || 'none'}`);
   console.log(`PASS credit gift redesign (${results.length} groups). Screenshots: ${shots}`);

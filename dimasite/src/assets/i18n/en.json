@@ -2852,7 +2852,7 @@
       "title": "Who's it for?",
       "inputLabel": "Their Twitch channel",
       "placeholder": "channel name or twitch.tv link",
-      "hint": "Type their exact channel name or paste their Twitch link. Only channels that use DomDimaBot can receive gifts.",
+      "hint": "Type at least 3 letters to find their channel, or paste their Twitch link. Only channels that use DomDimaBot can receive gifts.",
       "suggested": "Filled in from the channel you're viewing. Press Find to confirm it's the right one.",
       "find": "Find",
       "searching": "Finding…",
@@ -2861,6 +2861,7 @@
       "invalid": "That doesn't look like a Twitch channel name. Use letters, numbers and underscores only.",
       "self": "That's your own channel. Gifts go to someone else.",
       "selfAction": "Buy credits for me instead",
+      "noMatches": "No matching DomDimaBot channels. Try another channel name.",
       "notFound": "No DomDimaBot channel has that exact name. Check the spelling: gifts only go to channels that use the bot.",
       "error": "We couldn't look up that channel right now.",
       "retry": "Try again"

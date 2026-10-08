@@ -2852,7 +2852,7 @@
       "title": "¿Para quién es?",
       "inputLabel": "Su canal de Twitch",
       "placeholder": "nombre del canal o enlace de twitch.tv",
-      "hint": "Escribe el nombre exacto del canal o pega su enlace de Twitch. Solo los canales que usan DomDimaBot pueden recibir regalos.",
+      "hint": "Escribe al menos 3 letras para encontrar su canal o pega su enlace de Twitch. Solo los canales que usan DomDimaBot pueden recibir regalos.",
       "suggested": "Rellenado con el canal que estás viendo. Pulsa Buscar para confirmar que es el correcto.",
       "find": "Buscar",
       "searching": "Buscando…",
@@ -2861,6 +2861,7 @@
       "invalid": "Eso no parece un nombre de canal de Twitch. Usa solo letras, números y guiones bajos.",
       "self": "Ese es tu propio canal. Los regalos son para otra persona.",
       "selfAction": "Mejor comprar créditos para mí",
+      "noMatches": "No hay canales de DomDimaBot que coincidan. Prueba con otro nombre de canal.",
       "notFound": "Ningún canal de DomDimaBot tiene ese nombre exacto. Revisa cómo se escribe: los regalos solo llegan a canales que usan el bot.",
       "error": "No pudimos buscar ese canal ahora mismo.",
       "retry": "Reintentar"
