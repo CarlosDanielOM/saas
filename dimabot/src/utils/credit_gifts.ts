@@ -147,7 +147,7 @@ export async function createCreditGiftCheckout(request: {
         throw new CreditGiftRequestError('A gift request cannot change recipient or pack; start a new gift', 409);
     }
     const response = (checkoutUrl: string) => ({ giftId: id, checkoutId: gift!.checkoutId, checkoutUrl, offer: {
-        id: gift!.productId, name: 'Sample gift pack', credits: gift!.credits, rollover: true,
+        id: gift!.productId, name: pair.offer.name, credits: gift!.credits, rollover: true,
         priceAmount: gift!.priceAmount, priceCurrency: gift!.priceCurrency,
     } satisfies GiftOffer, recipient: { id: gift!.recipientId.toString(), login: gift!.recipientLogin, displayName: gift!.recipientName } });
     if (gift.paidAt) throw new CreditGiftRequestError('This gift has already been paid for', 409);

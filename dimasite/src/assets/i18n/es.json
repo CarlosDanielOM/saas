@@ -2834,65 +2834,94 @@
     }
   },
   "creditGift": {
-    "title": "Regala créditos a otro canal",
-    "subtitle": "Compra un paquete de créditos permanentes para un streamer que usa DomDimaBot. Los créditos nunca caducan y te damos las gracias por tu nombre en su chat de Twitch.",
-    "headerLink": "¿Compras para otra persona? Regala créditos",
-    "headerLinkFor": "Mejor regala créditos a @{{streamer}}",
-    "sizes": {
-      "sample": "Paquete de regalo de prueba"
+    "page": {
+      "title": "Regala créditos de IA",
+      "subtitle": "Elige un streamer que use DomDimaBot y un paquete. Recibe créditos de IA permanentes y te damos las gracias por tu nombre en su chat de Twitch."
+    },
+    "mode": {
+      "label": "¿Para quién compras?",
+      "self": "Para mí",
+      "selfHint": "Créditos para @{{login}}",
+      "selfHintGeneric": "Créditos para tu canal",
+      "gift": "Regalar",
+      "giftHint": "Envía créditos a un streamer",
+      "giftHintFor": "Envía créditos a @{{streamer}}"
     },
     "who": {
-      "title": "¿Quién recibe el regalo?",
-      "inputLabel": "Nombre del canal de Twitch",
+      "title": "¿Para quién es?",
+      "inputLabel": "Su canal de Twitch",
       "placeholder": "nombre del canal o enlace de twitch.tv",
-      "hint": "Escribe el nombre exacto del canal o pega su enlace de Twitch. Solo los canales que ya usan DomDimaBot pueden recibir regalos.",
+      "hint": "Escribe el nombre exacto del canal o pega su enlace de Twitch. Solo los canales que usan DomDimaBot pueden recibir regalos.",
+      "suggested": "Rellenado con el canal que estás viendo. Pulsa Buscar para confirmar que es el correcto.",
       "find": "Buscar",
       "searching": "Buscando…",
       "usesBot": "Usa DomDimaBot",
       "change": "Cambiar",
       "invalid": "Eso no parece un nombre de canal de Twitch. Usa solo letras, números y guiones bajos.",
-      "self": "Ese es tu propio canal. Compra un paquete arriba para añadir créditos a tu cuenta.",
+      "self": "Ese es tu propio canal. Los regalos son para otra persona.",
+      "selfAction": "Mejor comprar créditos para mí",
       "notFound": "Ningún canal de DomDimaBot tiene ese nombre exacto. Revisa cómo se escribe: los regalos solo llegan a canales que usan el bot.",
-      "error": "No pudimos buscar ese canal ahora mismo. Inténtalo de nuevo en un momento."
+      "error": "No pudimos buscar ese canal ahora mismo.",
+      "retry": "Reintentar"
     },
     "pack": {
-      "title": "Elige un paquete",
+      "title": "Elige un regalo",
       "loading": "Cargando paquetes de regalo",
       "error": "No se pudieron cargar los paquetes de regalo.",
       "retry": "Reintentar",
       "none": "Ahora mismo no hay paquetes de regalo a la venta.",
       "credits": "créditos de IA",
-      "permanent": "Permanentes, nunca caducan"
+      "permanent": "Permanentes, nunca caducan",
+      "rate": "{{credits}} créditos por {{unit}}",
+      "more": "+{{percent}} % más por {{unit}}"
+    },
+    "perks": {
+      "neverExpire": "Los créditos nunca caducan",
+      "thanks": "Te damos las gracias por tu nombre en su chat",
+      "secure": "Pago único y seguro"
+    },
+    "summary": {
+      "title": "Tu regalo",
+      "ready": "{{name}} recibe {{credits}} créditos de IA permanentes de tu parte.",
+      "needPack": "Ahora elige un regalo para {{name}}.",
+      "needWho": "{{credits}} créditos de IA elegidos. Ahora elige para quién es.",
+      "needBoth": "Elige para quién es y un regalo.",
+      "to": "Para",
+      "gift": "Regalo",
+      "pay": "Pagas",
+      "notYet": "Sin elegir",
+      "taxNote": "Pago único. Los impuestos, si los hay, se muestran en el pago."
     },
     "review": {
-      "title": "Revisar y pagar",
       "button": "Revisar regalo",
       "buttonPrice": "Revisar regalo · {{price}}",
-      "needRecipient": "Primero busca el canal. Revisarás cada detalle antes de pagar.",
-      "next": "Después confirmarás quién lo recibe y el precio, y pagarás en el pago seguro de Polar."
+      "needBoth": "Revisarás cada detalle antes de pagar.",
+      "next": "Después revisarás cada detalle y pagarás en el pago seguro de Polar."
     },
     "confirm": {
       "title": "Confirma tu regalo",
       "close": "Cerrar",
-      "lede": "Revisa estos datos antes de pagar. No se pueden cambiar después del pago.",
+      "lede": "Revisa cada detalle. El destinatario y el paquete no se pueden cambiar después de pagar.",
       "to": "Para",
-      "gift": "Regalo",
       "credits": "{{credits}} créditos de IA",
       "price": "Precio",
-      "priceNote": "Pago único en el pago seguro de Polar",
+      "priceNote": "Pago único. Los impuestos, si los hay, se añaden en el pago antes de pagar.",
       "from": "De",
-      "fromNote": "aparece en el agradecimiento del chat",
+      "fromNote": "aparece en el agradecimiento público",
       "termRecipient": "Solo {{name}} puede recibir estos créditos. El destinatario no se puede cambiar después del pago.",
-      "termRefund": "Los regalos no se reembolsan automáticamente. Puedes pedirlo a soporte, pero la solicitud puede ser rechazada.",
-      "termAnnounce": "Cuando lleguen los créditos, publicaremos un agradecimiento con tu nombre (@{{buyer}}) en el chat de Twitch de @{{login}}, aunque no esté en directo.",
+      "termRefund": "Los regalos no se reembolsan automáticamente. Puedes solicitar un reembolso a soporte, pero la solicitud puede ser rechazada.",
+      "termAnnounce": "Cuando lleguen los créditos, publicaremos un agradecimiento público de tu parte (@{{buyer}}) en el chat de Twitch de @{{login}}, aunque no esté en directo.",
       "ack": "Entiendo que no hay reembolsos automáticos y que el destinatario no se puede cambiar después del pago.",
-      "cancel": "Cancelar",
+      "cancel": "Volver",
       "pay": "Pagar {{price}} en Polar",
       "opening": "Abriendo el pago…"
     },
     "errors": {
-      "checkout": "No se pudo iniciar el pago. No se ha cobrado nada. Inténtalo de nuevo.",
-      "mismatch": "El pago volvió con datos distintos a los que confirmaste, así que lo detuvimos. No se ha cobrado nada. Inténtalo de nuevo."
+      "checkout": "No se pudo abrir el pago. Inténtalo de nuevo con los mismos datos del regalo.",
+      "mismatch": "El pago devolvió datos distintos a los que confirmaste. Detuvimos la redirección; inténtalo de nuevo.",
+      "recipientGone": "Este canal no puede recibir regalos ahora. Vuelve atrás y elige otro canal.",
+      "account": "No se puede abrir el pago de este regalo. Si ya pagaste, consulta el estado del regalo o contacta con soporte.",
+      "rejected": "No se pudo abrir el pago de este regalo. Vuelve atrás, revisa los datos e inténtalo de nuevo."
     },
     "status": {
       "checkingTitle": "Comprobando tu regalo…",
@@ -2903,9 +2932,9 @@
       "deliveringBody": "Añadiendo {{credits}} créditos al saldo de {{name}}.",
       "deliveredTitle": "Regalo entregado",
       "deliveredBody": "{{name}} (@{{login}}) ahora tiene {{credits}} créditos permanentes más.",
-      "announced": "Estamos publicando un agradecimiento con tu nombre (@{{buyer}}) en el chat de Twitch de @{{login}}.",
+      "announced": "Después de la entrega, enviamos un agradecimiento público al chat de Twitch de @{{login}}.",
       "supportTitle": "Tu regalo necesita ayuda de soporte",
-      "supportBodyPaid": "Tu pago se completó, pero los créditos no se pudieron añadir automáticamente. Contacta con soporte con la referencia del regalo y lo resolveremos.",
+      "supportBodyPaid": "El pago se completó, pero no pudimos añadir los créditos automáticamente. Contacta con soporte con la referencia del regalo y lo resolveremos.",
       "supportBody": "Algo salió mal con este regalo. Contacta con soporte con la referencia del regalo.",
       "forbiddenTitle": "No podemos mostrar este regalo",
       "forbiddenBody": "Solo la cuenta que compró un regalo puede ver su estado. Inicia sesión con esa cuenta para comprobarlo.",
@@ -2918,7 +2947,7 @@
       "slowDelivering": "Está tardando más de lo normal. La entrega sigue en segundo plano, así que puedes salir de esta página y comprobarlo más tarde.",
       "checkAgain": "Comprobar de nuevo",
       "reference": "Referencia del regalo",
-      "copyRef": "Copiar referencia del regalo {{id}}",
+      "copyRef": "Copiar referencia del regalo",
       "support": "Contactar con soporte",
       "dismiss": "Cerrar estado del regalo",
       "progress": "Progreso del regalo",
@@ -2932,7 +2961,13 @@
         "current": "en curso",
         "todo": "pendiente",
         "problem": "necesita atención"
-      }
+      },
+      "receiptTo": "Para",
+      "receiptGift": "Regalo",
+      "receiptFrom": "De",
+      "receiptCredits": "{{credits}} créditos de IA",
+      "another": "Enviar otro regalo",
+      "copied": "Copiada"
     }
   },
   "login": {

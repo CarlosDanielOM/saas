@@ -42,21 +42,32 @@ const pay = checkoutId => {
     const id = randomUUID();
     modify(s => { const c = s.checkouts[checkoutId]; c.status = 'succeeded'; s.orders[id] = {
         id, paid: true, status: 'paid', product_id: c.product_id, checkout_id: c.id, customer_id: c.customer_id,
-        customer: s.customers[c.customer_id], net_amount: 100, total_amount: 108, refunded_amount: 0, discount_amount: 0,
+        customer: s.customers[c.customer_id], net_amount: c.amount, total_amount: c.amount + 8, refunded_amount: 0, discount_amount: 0,
         currency: 'usd', subscription_id: null, metadata: c.metadata,
     }; });
     return id;
 };
-assert.equal(validateGiftPair(...products).offer.credits, 40000);
+assert.equal(validateGiftPair(...products.slice(0, 2)).offer.credits, 40000);
+for (const pair of GIFT_PACK_PAIRS) {
+    const paid = products.find(p => p.id === pair.productId), free = products.find(p => p.id === pair.fulfillmentProductId);
+    const validated = validateGiftPair(paid, free);
+    assert.equal(validated.offer.credits, pair.credits);
+    assert.equal(validated.offer.name, paid.name);
+    assert.equal(validated.offer.rollover, true);
+    assert.throws(() => validateGiftPair(paid, products.find(p => p.id !== pair.fulfillmentProductId && p.benefits.length)));
+}
 for (const mutate of [p => p[0].benefits.push(p[1].benefits[0]), p => p[1].prices[0].price_amount = 100,
     p => p[1].benefits[0].properties.rollover = false, p => p[1].benefits[0].properties.units = 123]) {
-    const p = structuredClone(products); mutate(p); assert.throws(() => validateGiftPair(...p));
+    const p = structuredClone(products.slice(0, 2)); mutate(p); assert.throws(() => validateGiftPair(...p));
 }
-assert.ok(DOMAIN_EVENT_CONSUMERS.find(c => c.consumer === 'polar-gifts-v1' && c.adminReplay));
+const giftConsumer = DOMAIN_EVENT_CONSUMERS.find(c => c.consumer === 'polar-gifts-v1' && c.adminReplay);
+assert.ok(giftConsumer);
+assert.deepEqual(giftConsumer.eventFilter['payload.productId'].$in, GIFT_PACK_PAIRS.map(pair => pair.productId));
 console.log('PASS configuration: paid product has no benefit; free counterpart matches exact permanent meter credits');
 if (process.env.SAAS_TARGET === 'api') {
     const catalog = await (await request('giftbuyer', '/gift-packs')).json();
-    assert.equal(catalog.data.offers.length, 1); assert.equal(catalog.data.offers[0].priceAmount, 100);
+    assert.equal(catalog.data.offers.length, 3);
+    assert.deepEqual(catalog.data.offers.map(o => [o.priceAmount, o.credits]), [[100, 40000], [500, 250000], [1000, 550000]]);
     assert.equal(catalog.data.offers[0].id, GIFT_PACK_PAIRS[0].productId);
     assert.equal(JSON.stringify(catalog).includes(GIFT_PACK_PAIRS[0].fulfillmentProductId), false);
     assert.equal((await request('invalid', '/gift-packs')).status, 401);
@@ -151,19 +162,58 @@ await applyCreditGiftDomainEvent({ source: 'polar-webhook', type: 'billing.order
 await advance(recovered.giftId);
 assert.equal(read().grants.length, 1); assert.equal(calls().filter(c => c.chat).length, 1);
 console.log(`PASS ${process.env.SAAS_TARGET}: $1 buyer order -> one free recipient order -> confirmed 40k native rollover grant -> one offline chat announcement`);
+// Exercise both real-size packs through the same payment, fulfillment and native-grant path.
+for (const pair of GIFT_PACK_PAIRS.slice(1)) {
+    const intent = { ...giftRequest(), productId: pair.productId };
+    const checkout = await createCreditGiftCheckout(intent);
+    assert.equal(checkout.offer.credits, pair.credits);
+    const paidOrderId = pay(checkout.checkoutId);
+    if (process.env.SAAS_TARGET === 'cron') {
+        const journal = await ingestDomainEvent(polarWebhookProducer, { webhookId: `gift-${pair.credits}-paid`, event: {
+            type: 'order.paid', timestamp: new Date(), data: { id: paidOrderId, customerId: buyerCustomer,
+                customer: { id: buyerCustomer, externalId: buyer._id.toString() }, status: 'paid', paid: true,
+                totalAmount: read().orders[paidOrderId].total_amount, productId: pair.productId },
+        } });
+        await until(async () => (await Deliveries.findOne({ eventKey: journal.event.eventKey, consumer: 'polar-gifts-v1' }).lean())?.status === 'succeeded', 'new pack paid webhook dispatch');
+    } else {
+        await applyCreditGiftDomainEvent({ source: 'polar-webhook', type: 'billing.order.paid', payload: { productId: pair.productId, orderId: paidOrderId, paid: true } });
+    }
+    await acceptCreditGiftPaidOrder(paidOrderId);
+    if (process.env.SAAS_TARGET === 'cron') {
+        await Gifts.updateOne({ _id: checkout.giftId }, { $set: { nextAttemptAt: new Date(0) } });
+        await until(async () => Boolean((await Gifts.findById(checkout.giftId).lean())?.announcedAt), 'supervised worker delivers new pack');
+    } else {
+        for (let stage = 0; stage < 8; stage++) {
+            await advance(checkout.giftId);
+            if ((await Gifts.findById(checkout.giftId).lean()).announcedAt) break;
+        }
+    }
+    const finished = await Gifts.findById(checkout.giftId).lean();
+    assert.equal(finished.status, 'delivered'); assert.ok(finished.announcedAt);
+    const creations = calls().filter(c => c.method === 'POST' && c.body?.metadata?.source === 'dimabot_gift_fulfillment' && c.body.metadata.gift_id === checkout.giftId);
+    assert.equal(creations.length, 1); assert.equal(creations[0].body.products[0], pair.fulfillmentProductId);
+    const grant = read().grants.find(g => g.id === finished.grantId);
+    assert.equal(grant.order_id, finished.fulfillmentOrderId); assert.equal(grant.properties.last_credited_units, pair.credits);
+    assert.equal(grant.benefit.properties.rollover, true); assert.equal(grant.customer_id, recipientCustomer);
+    await acceptCreditGiftPaidOrder(paidOrderId); await advance(checkout.giftId);
+    assert.equal(read().grants.filter(g => g.order_id === finished.fulfillmentOrderId).length, 1);
+}
+console.log('PASS $5/$10: exact 250k/550k permanent grants, correct paid/free products, duplicate payment protection and announcements');
+
 if (process.env.SAAS_TARGET === 'api') {
     // Chat failures retry without refulfilling; moderation holds do not spam.
+    const completedGrantCount = read().grants.length, completedChatCount = calls().filter(c => c.chat).length;
     const chatGift = { ...delivered, _id: 'a'.repeat(64), announcedAt: undefined, announcementAttempts: 0, nextAttemptAt: new Date(0) };
     delete chatGift.announcementMessageId; delete chatGift.leaseToken; delete chatGift.leaseUntil;
     await Gifts.create(chatGift);
     modify(s => s.controls.chatFail = true);
     await advance(chatGift._id);
     assert.equal((await Gifts.findById(chatGift._id)).status, 'delivered');
-    assert.equal(read().grants.length, 1);
+    assert.equal(read().grants.length, completedGrantCount);
     modify(s => { delete s.controls.chatFail; s.controls.chatHeld = true; });
     await advance(chatGift._id); await advance(chatGift._id);
     assert.ok((await Gifts.findById(chatGift._id)).announcementStoppedAt);
-    assert.equal(calls().filter(c => c.chat).length, 3);
+    assert.equal(calls().filter(c => c.chat).length, completedChatCount + 2);
     modify(s => delete s.controls.chatHeld);
     // Two concurrent stage claims only issue one benefit-bearing create.
     const concurrent = await createCreditGiftCheckout(giftRequest()); pay(concurrent.checkoutId);

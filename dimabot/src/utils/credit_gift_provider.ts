@@ -4,6 +4,14 @@ export const GIFT_PACK_PAIRS = [{
     productId: '6e0c530d-affc-44be-a51b-e11453ef1fa7',
     fulfillmentProductId: 'f14a61f4-a572-4c05-bf4e-1b013d0dc77a',
     credits: 40_000,
+}, {
+    productId: '815d0efe-1d23-4fca-8762-ae3a9253b0bc',
+    fulfillmentProductId: '019b6291-80a0-4b31-bb09-feaaa9afe5eb',
+    credits: 250_000,
+}, {
+    productId: '7d0d5f0e-102a-4255-abf3-6f379e2da4ce',
+    fulfillmentProductId: '3f6010b6-4108-4bf9-ab83-b035eeed6962',
+    credits: 550_000,
 }] as const;
 
 export interface GiftOffer {
@@ -108,7 +116,7 @@ export function validateGiftPair(paid: GiftProduct, free: GiftProduct) {
         || benefit.properties?.meter_id !== AI_CREDITS_METER_ID || benefit.properties.rollover !== true
         || benefit.properties.units !== pair.credits) throw new Error('Gift pack must grant the configured permanent credits');
     const offer: GiftOffer = {
-        id: paid.id, name: 'Sample gift pack', credits: pair.credits, rollover: true,
+        id: paid.id, name: paid.name?.trim() || 'Gift credits', credits: pair.credits, rollover: true,
         priceAmount: purchasePrices[0]!.price_amount!, priceCurrency: purchasePrices[0]!.price_currency!.toLowerCase(),
     };
     return { offer, fulfillmentProductId: free.id, benefitId: benefit.id };

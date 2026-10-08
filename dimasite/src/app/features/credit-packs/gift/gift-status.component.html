@@ -25,10 +25,6 @@
           @case ('delivered') {
             <h2 id="gift-status-title" class="gs__title">{{ t('creditGift.status.deliveredTitle') }}</h2>
             <p>{{ t('creditGift.status.deliveredBody', { credits: credits(), name: recipientName(), login: gift()?.recipient?.login ?? '' }) }}</p>
-            <p class="gs__announce">
-              <app-lf-icon name="chat" [size]="14" />
-              {{ t('creditGift.status.announced', { login: gift()?.recipient?.login ?? '', buyer: buyerLogin() }) }}
-            </p>
           }
           @case ('support') {
             <h2 id="gift-status-title" class="gs__title">{{ t('creditGift.status.supportTitle') }}</h2>
@@ -56,10 +52,26 @@
       </button>
     </div>
 
+    @if (gift(); as current) {
+      <dl class="gs__receipt">
+        <div>
+          <dt>{{ t('creditGift.status.receiptTo') }}</dt>
+          <dd><strong>{{ recipientName() }}</strong> <span>&#64;{{ current.recipient.login }}</span></dd>
+        </div>
+        <div>
+          <dt>{{ t('creditGift.status.receiptGift') }}</dt>
+          <dd><strong>{{ t('creditGift.status.receiptCredits', { credits: credits() }) }}</strong></dd>
+        </div>
+      </dl>
+    }
+
     @if (showSteps()) {
       <ol class="gs__steps" [attr.aria-label]="t('creditGift.status.progress')">
         @for (step of steps(); track step.key) {
           <li [class]="'gs__step gs__step--' + step.state" [attr.aria-current]="step.state === 'current' ? 'step' : null">
+            <span class="gs__dot" aria-hidden="true">
+              @if (step.state === 'done') { <app-lf-icon name="check" [size]="12" /> }
+            </span>
             <span>{{ t('creditGift.status.steps.' + step.key) }}</span>
             <span class="visually-hidden">{{ t('creditGift.status.stepState.' + step.state) }}</span>
           </li>
@@ -67,21 +79,33 @@
       </ol>
     }
 
-    @if (view() === 'support' || view() === 'missing' || view() === 'forbidden' || stalled() || (view() === 'error' && !polling())) {
+    @if (view() === 'delivered') {
+      <p class="gs__announce">
+        <app-lf-icon name="chat" [size]="16" />
+        <span>{{ t('creditGift.status.announced', { login: gift()?.recipient?.login ?? '' }) }}</span>
+      </p>
+    }
+
+    @if (view() === 'delivered' || view() === 'support' || view() === 'missing' || view() === 'forbidden' || stalled() || (view() === 'error' && !polling())) {
       <div class="gs__actions">
+        @if (view() === 'delivered') {
+          <button type="button" class="gs__btn gs__btn--primary" (click)="sendAnother()">
+            <app-lf-icon name="gift" /> {{ t('creditGift.status.another') }}
+          </button>
+        }
         @if (stalled() || (view() === 'error' && !polling())) {
           <button type="button" class="gs__btn gs__btn--primary" (click)="checkAgain()">
             <app-lf-icon name="refresh" /> {{ t('creditGift.status.checkAgain') }}
           </button>
         }
         @if (giftId() && (view() === 'support' || stalled())) {
-          <button type="button" class="gs__btn gs__ref" (click)="copyReference()" [attr.aria-label]="t('creditGift.status.copyRef', { id: giftId()! })">
+          <button type="button" class="gs__btn gs__ref" (click)="copyReference()" [attr.aria-label]="t('creditGift.status.copyRef')">
             <app-lf-icon [name]="copied() ? 'check' : 'copy'" />
-            <span class="gs__ref-label">{{ t('creditGift.status.reference') }}</span>
-            <code>{{ giftId() }}</code>
+            <span class="gs__ref-label">{{ copied() ? t('creditGift.status.copied') : t('creditGift.status.reference') }}</span>
+            <code>{{ shortRef() }}</code>
           </button>
         }
-        @if (view() !== 'forbidden') {
+        @if (view() !== 'forbidden' && view() !== 'delivered') {
           <a class="gs__btn" [href]="discordUrl" target="_blank" rel="noopener noreferrer">
             <app-lf-icon name="chat" /> {{ t('creditGift.status.support') }}
           </a>

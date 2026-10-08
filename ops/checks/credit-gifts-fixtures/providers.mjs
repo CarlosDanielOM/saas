@@ -20,6 +20,16 @@ export const products = [
     { id: paidProduct, name: 'Sample Gift Credit Pack', is_recurring: false, visibility: 'private', prices: [{ type: 'one_time', amount_type: 'fixed', price_amount: 100, price_currency: 'usd' }], benefits: [] },
     { id: freeProduct, name: 'Paid Sample Gift Credit Pack', is_recurring: false, visibility: 'private', prices: [{ type: 'one_time', amount_type: 'fixed', price_amount: 0, price_currency: 'usd' }], benefits: [benefit] },
 ];
+const extraPairs = [
+    ['815d0efe-1d23-4fca-8762-ae3a9253b0bc', '019b6291-80a0-4b31-bb09-feaaa9afe5eb', '91cc7d43-192a-4167-8c69-26972ff4403c', 500, 250000, 'Starter'],
+    ['7d0d5f0e-102a-4255-abf3-6f379e2da4ce', '3f6010b6-4108-4bf9-ab83-b035eeed6962', 'a70b4707-269e-4557-bd16-d5421b4f0550', 1000, 550000, 'Medium'],
+];
+for (const [paid, free, id, price, units, name] of extraPairs) {
+    products.push(
+        { id: paid, name: `${name} Gift Credits Pack`, is_recurring: false, visibility: 'private', prices: [{ type: 'one_time', amount_type: 'fixed', price_amount: price, price_currency: 'usd' }], benefits: [] },
+        { id: free, name: `Paid ${name} Gift Credits Pack`, is_recurring: false, visibility: 'private', prices: [{ type: 'one_time', amount_type: 'fixed', price_amount: 0, price_currency: 'usd' }], benefits: [{ id, type: 'meter_credit', properties: { meter_id: meter, rollover: true, units } }] },
+    );
+}
 const originalFetch = globalThis.fetch;
 globalThis.fetch = async (input, options = {}) => {
     const url = new URL(typeof input === 'string' || input instanceof URL ? input : input.url);
@@ -55,11 +65,13 @@ globalThis.fetch = async (input, options = {}) => {
         return customer ? json(customer) : json({}, 404);
     }
     if (path === '/v1/checkouts' && method === 'POST') {
-        const free = body.products[0] === freeProduct;
+        const product = products.find(p => p.id === body.products[0]);
+        if (!product) return json({}, 404);
+        const free = product.prices[0].price_amount === 0;
         const customer = state.customers[body.customer_id];
         if (!customer || customer.external_id !== body.external_customer_id) return json({}, 422);
         if (state.controls.rejectCreate) return json({}, 422);
-        const id = randomUUID(), amount = free ? 0 : 100;
+        const id = randomUUID(), amount = product.prices[0].price_amount;
         const checkout = { id, url: `https://polar.sh/checkout/${id}`, client_secret: `polar_c_${id}`, status: 'open',
             product_id: body.products[0], customer_id: body.customer_id, customer_external_id: body.external_customer_id,
             amount, discount_amount: 0, total_amount: amount, currency: 'usd', metadata: body.metadata };
@@ -81,10 +93,11 @@ globalThis.fetch = async (input, options = {}) => {
         state.orders[orderId] = { id: orderId, paid: true, status: 'paid', product_id: checkout.product_id, checkout_id: checkout.id,
             customer_id: checkout.customer_id, customer: state.customers[checkout.customer_id], subscription_id: null,
             net_amount: 0, total_amount: 0, refunded_amount: 0, discount_amount: 0, currency: 'usd', metadata: checkout.metadata };
-        state.grants.push({ id: randomUUID(), order_id: orderId, customer_id: checkout.customer_id, benefit_id: benefitId,
-            granted_at: new Date().toISOString(), benefit,
+        const creditBenefit = products.find(p => p.id === checkout.product_id).benefits[0];
+        state.grants.push({ id: randomUUID(), order_id: orderId, customer_id: checkout.customer_id, benefit_id: creditBenefit.id,
+            granted_at: new Date().toISOString(), benefit: creditBenefit,
             is_granted: !state.controls.holdGrant, is_revoked: false, properties: {
-                last_credited_meter_id: meter, last_credited_units: 40000, last_credited_at: new Date().toISOString(),
+                last_credited_meter_id: meter, last_credited_units: creditBenefit.properties.units, last_credited_at: new Date().toISOString(),
             } });
         const lost = state.controls.loseConfirmResponse;
         delete state.controls.loseConfirmResponse; save(state);

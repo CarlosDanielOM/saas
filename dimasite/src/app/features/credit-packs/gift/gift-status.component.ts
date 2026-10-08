@@ -12,7 +12,6 @@ import { firstValueFrom } from 'rxjs';
 import { BillingService, type GiftStatusData } from '../../../services/billing.service';
 import { LanguageService } from '../../../services/language.service';
 import { LinksService } from '../../../services/links.service';
-import { SessionAuthService } from '../../../services/session-auth.service';
 import { LfIconComponent } from '../../../shared/lf-icon/lf-icon.component';
 import { GIFT_POLL_DELAYS_MS, PENDING_GIFT_STORAGE_KEY, readApiError } from './gift.util';
 
@@ -29,9 +28,10 @@ type ViewState =
 type StepState = 'done' | 'current' | 'todo' | 'problem';
 
 /**
- * Banner shown after Polar redirects back with `?gift=return`. A redirect only
- * means checkout closed, so this polls the gift (bounded) and reports what the
- * server says: never "delivered" until the server does.
+ * Gift receipt shown after Polar redirects back with `?gift=return`. A redirect
+ * only means checkout closed, so this polls the gift (bounded) and reports what
+ * the server says: never "delivered" until the server does. The API has no chat
+ * announcement state, so the thank-you is only ever described as upcoming.
  */
 @Component({
   selector: 'app-gift-status',
@@ -43,7 +43,6 @@ type StepState = 'done' | 'current' | 'todo' | 'problem';
 export class GiftStatusComponent {
   private readonly billingService = inject(BillingService);
   private readonly languageService = inject(LanguageService);
-  private readonly sessionAuth = inject(SessionAuthService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
@@ -58,12 +57,14 @@ export class GiftStatusComponent {
   readonly polling = signal(false);
   readonly copied = signal(false);
 
-  readonly buyerLogin = computed(
-    () => (this.sessionAuth.session()?.twitchUser.login ?? '').trim().toLowerCase()
-  );
   readonly recipientName = computed(() => {
     const recipient = this.gift()?.recipient;
     return recipient ? recipient.displayName || recipient.login : '';
+  });
+  /** Short, readable form of the gift reference; the copy button copies all of it. */
+  readonly shortRef = computed(() => {
+    const id = this.giftId() ?? '';
+    return id.length > 14 ? `${id.slice(0, 8)}…${id.slice(-4)}`.toUpperCase() : id;
   });
   readonly credits = computed(() =>
     new Intl.NumberFormat(this.locale()).format(this.gift()?.credits ?? 0)
@@ -143,7 +144,12 @@ export class GiftStatusComponent {
     }
   }
 
-  dismiss(): void {
+  /** Closes the receipt and opens the gift form again. */
+  sendAnother(): void {
+    this.dismiss('gift');
+  }
+
+  dismiss(fragment?: string): void {
     this.stop();
     this.visible.set(false);
     try {
@@ -155,6 +161,7 @@ export class GiftStatusComponent {
       relativeTo: this.route,
       queryParams: { gift: null, gift_id: null, checkout_id: null },
       queryParamsHandling: 'merge',
+      fragment,
       replaceUrl: true
     });
   }

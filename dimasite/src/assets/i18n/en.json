@@ -2834,65 +2834,94 @@
     }
   },
   "creditGift": {
-    "title": "Gift credits to another channel",
-    "subtitle": "Buy a permanent credit pack for a streamer who uses DomDimaBot. The credits never expire, and we thank you by name in their Twitch chat.",
-    "headerLink": "Buying for someone else? Gift credits",
-    "headerLinkFor": "Gift credits to @{{streamer}} instead",
-    "sizes": {
-      "sample": "Sample gift pack"
+    "page": {
+      "title": "Gift AI credits",
+      "subtitle": "Pick a streamer who uses DomDimaBot and a pack. They get permanent AI credits, and we thank you by name in their Twitch chat."
+    },
+    "mode": {
+      "label": "Who are you buying for?",
+      "self": "For me",
+      "selfHint": "Credits for @{{login}}",
+      "selfHintGeneric": "Credits for your channel",
+      "gift": "Gift someone",
+      "giftHint": "Send credits to a streamer",
+      "giftHintFor": "Send credits to @{{streamer}}"
     },
     "who": {
-      "title": "Who gets the gift?",
-      "inputLabel": "Twitch channel name",
+      "title": "Who's it for?",
+      "inputLabel": "Their Twitch channel",
       "placeholder": "channel name or twitch.tv link",
-      "hint": "Type their exact channel name or paste their Twitch link. Only channels that already use DomDimaBot can receive gifts.",
+      "hint": "Type their exact channel name or paste their Twitch link. Only channels that use DomDimaBot can receive gifts.",
+      "suggested": "Filled in from the channel you're viewing. Press Find to confirm it's the right one.",
       "find": "Find",
       "searching": "Finding…",
       "usesBot": "Uses DomDimaBot",
       "change": "Change",
       "invalid": "That doesn't look like a Twitch channel name. Use letters, numbers and underscores only.",
-      "self": "That's your own channel. Buy a pack above to add credits to your account.",
+      "self": "That's your own channel. Gifts go to someone else.",
+      "selfAction": "Buy credits for me instead",
       "notFound": "No DomDimaBot channel has that exact name. Check the spelling: gifts only go to channels that use the bot.",
-      "error": "We couldn't look up that channel right now. Try again in a moment."
+      "error": "We couldn't look up that channel right now.",
+      "retry": "Try again"
     },
     "pack": {
-      "title": "Pick a pack",
+      "title": "Choose a gift",
       "loading": "Loading gift packs",
       "error": "Gift packs couldn't load.",
       "retry": "Try again",
       "none": "No gift packs are on sale right now.",
       "credits": "AI credits",
-      "permanent": "Permanent, never expires"
+      "permanent": "Permanent, never expire",
+      "rate": "{{credits}} credits per {{unit}}",
+      "more": "+{{percent}}% more per {{unit}}"
+    },
+    "perks": {
+      "neverExpire": "Credits never expire",
+      "thanks": "We thank you by name in their chat",
+      "secure": "Secure one-time checkout"
+    },
+    "summary": {
+      "title": "Your gift",
+      "ready": "{{name}} gets {{credits}} permanent AI credits from you.",
+      "needPack": "Now pick a gift for {{name}}.",
+      "needWho": "{{credits}} AI credits picked. Now choose who it's for.",
+      "needBoth": "Choose who it's for and pick a gift.",
+      "to": "To",
+      "gift": "Gift",
+      "pay": "You pay",
+      "notYet": "Not chosen yet",
+      "taxNote": "One-time. Any tax is shown at checkout."
     },
     "review": {
-      "title": "Review and pay",
       "button": "Review gift",
       "buttonPrice": "Review gift · {{price}}",
-      "needRecipient": "Find the channel first. You'll check every detail before paying.",
-      "next": "Next you'll confirm who gets it and the price, then pay on Polar's secure checkout."
+      "needBoth": "You'll check every detail before paying.",
+      "next": "Next you'll check every detail, then pay on Polar's secure checkout."
     },
     "confirm": {
       "title": "Confirm your gift",
       "close": "Close",
-      "lede": "Check these details before you pay. They can't be changed after checkout.",
+      "lede": "Check every detail. The recipient and pack can't be changed after you pay.",
       "to": "To",
-      "gift": "Gift",
       "credits": "{{credits}} AI credits",
       "price": "Price",
-      "priceNote": "One-time payment on Polar's secure checkout",
+      "priceNote": "One-time payment. Any tax is added at checkout before you pay.",
       "from": "From",
-      "fromNote": "named in the chat thank-you",
+      "fromNote": "named in the public thank-you",
       "termRecipient": "Only {{name}} can receive these credits. The recipient can't be changed after checkout.",
       "termRefund": "Gifts aren't refunded automatically. You can ask support, but refund requests may be declined.",
-      "termAnnounce": "Once the credits arrive, we post a thank-you naming you (@{{buyer}}) in @{{login}}'s Twitch chat, even if they're offline.",
+      "termAnnounce": "When the credits arrive, we post a public thank-you from you (@{{buyer}}) in @{{login}}'s Twitch chat, even if they're offline.",
       "ack": "I understand there are no automatic refunds and the recipient can't be changed after checkout.",
-      "cancel": "Cancel",
+      "cancel": "Back",
       "pay": "Pay {{price}} on Polar",
       "opening": "Opening checkout…"
     },
     "errors": {
-      "checkout": "Checkout couldn't start. Nothing was charged. Please try again.",
-      "mismatch": "Checkout came back with different details than you confirmed, so we stopped. Nothing was charged. Please try again."
+      "checkout": "Checkout couldn't open. Please try again with the same gift details.",
+      "mismatch": "Checkout returned different details from your confirmation. We stopped the redirect; please try again.",
+      "recipientGone": "This channel can't receive gifts right now. Go back and choose another channel.",
+      "account": "This gift can't be opened for payment. If you've already paid, check your gift status or contact support.",
+      "rejected": "This gift couldn't be opened for payment. Go back, check the details and try again."
     },
     "status": {
       "checkingTitle": "Checking your gift…",
@@ -2903,9 +2932,9 @@
       "deliveringBody": "Adding {{credits}} credits to {{name}}'s balance.",
       "deliveredTitle": "Gift delivered",
       "deliveredBody": "{{name}} (@{{login}}) now has {{credits}} more permanent credits.",
-      "announced": "We're posting a thank-you naming you (@{{buyer}}) in @{{login}}'s Twitch chat.",
+      "announced": "After delivery, we send a public thank-you in @{{login}}'s Twitch chat.",
       "supportTitle": "Your gift needs help from support",
-      "supportBodyPaid": "Your payment went through, but the credits couldn't be added automatically. Contact support with the gift reference below and we'll sort it out.",
+      "supportBodyPaid": "Payment went through, but the credits couldn't be added automatically. Contact support with the gift reference below and we'll sort it out.",
       "supportBody": "Something went wrong with this gift. Contact support with the gift reference below.",
       "forbiddenTitle": "We can't show this gift",
       "forbiddenBody": "Only the account that bought a gift can see its status. Sign in with that account to check it.",
@@ -2918,7 +2947,7 @@
       "slowDelivering": "This is taking longer than usual. Delivery continues in the background, so you can leave this page and check again later.",
       "checkAgain": "Check again",
       "reference": "Gift reference",
-      "copyRef": "Copy gift reference {{id}}",
+      "copyRef": "Copy gift reference",
       "support": "Contact support",
       "dismiss": "Dismiss gift status",
       "progress": "Gift progress",
@@ -2932,7 +2961,13 @@
         "current": "in progress",
         "todo": "not yet",
         "problem": "needs attention"
-      }
+      },
+      "receiptTo": "To",
+      "receiptGift": "Gift",
+      "receiptFrom": "From",
+      "receiptCredits": "{{credits}} AI credits",
+      "another": "Send another gift",
+      "copied": "Copied"
     }
   },
   "login": {

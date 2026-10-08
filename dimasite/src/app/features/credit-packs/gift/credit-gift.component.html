@@ -1,39 +1,34 @@
-<section #section id="gift" class="gift" tabindex="-1" aria-labelledby="gift-title">
-  <header class="gift__head">
-    <span class="gift__badge" aria-hidden="true"><app-lf-icon name="gift" [size]="20" /></span>
-    <div>
-      <h2 id="gift-title" class="gift__title">{{ t('creditGift.title') }}</h2>
-      <p class="gift__copy">{{ t('creditGift.subtitle') }}</p>
-    </div>
-  </header>
+<section #section id="gift" class="gift" tabindex="-1" [attr.aria-label]="t('creditGift.page.title')">
+  <div class="gift__main">
+    <!-- Who -->
+    <section class="gcard" aria-labelledby="gift-who">
+      <h2 class="gcard__title" id="gift-who">{{ t('creditGift.who.title') }}</h2>
 
-  <ol class="gift__steps">
-    <!-- 1 · Who -->
-    <li class="gift__step">
-      <span class="gift__num" aria-hidden="true">1</span>
-      <div class="gift__body">
-        <h3 class="gift__label" id="gift-who">{{ t('creditGift.who.title') }}</h3>
-
-        @if (recipient(); as person) {
-          <div class="gift__person" aria-labelledby="gift-who">
-            @if (person.avatarUrl && !avatarFailed()) {
-              <img class="gift__avatar" [src]="person.avatarUrl" alt="" width="44" height="44" (error)="avatarFailed.set(true)" />
+      @if (recipient(); as person) {
+        <div class="gwho" role="group" aria-labelledby="gift-who">
+          <span class="gwho__avatar">
+            @if (avatarUrl() && !avatarFailed()) {
+              <img class="gavatar" [src]="avatarUrl()" alt="" width="56" height="56" (error)="avatarFailed.set(true)" />
             } @else {
-              <span class="gift__avatar gift__avatar--letter" aria-hidden="true">{{ recipientInitial() }}</span>
+              <span class="gavatar gavatar--letter" aria-hidden="true">{{ recipientInitial() }}</span>
             }
-            <span class="gift__person-text">
-              <strong>{{ person.displayName || person.login }}</strong>
-              <span>&#64;{{ person.login }} · {{ t('creditGift.who.usesBot') }}</span>
-            </span>
-            <button type="button" class="gift-btn gift-btn--ghost" (click)="changeRecipient()">
-              {{ t('creditGift.who.change') }}
-            </button>
-          </div>
-        } @else {
-          <form class="gift__find" (submit)="lookup($event)" novalidate>
-            <label class="visually-hidden" for="gift-login">{{ t('creditGift.who.inputLabel') }}</label>
-            <div class="gift__field" [class.gift__field--invalid]="lookupState() === 'invalid'">
-              <span class="gift__at" aria-hidden="true">&#64;</span>
+            <span class="gwho__tick" aria-hidden="true"><app-lf-icon name="check" [size]="12" /></span>
+          </span>
+          <span class="gwho__text">
+            <strong class="gwho__name">{{ recipientName() }}</strong>
+            <span class="gwho__login">&#64;{{ person.login }}</span>
+            <span class="gwho__ok"><app-lf-icon name="check" [size]="14" /> {{ t('creditGift.who.usesBot') }}</span>
+          </span>
+          <button type="button" class="gbtn gbtn--ghost gwho__change" (click)="changeRecipient()">
+            {{ t('creditGift.who.change') }}
+          </button>
+        </div>
+      } @else {
+        <form class="gfind" (submit)="lookup($event)" novalidate>
+          <label class="gfind__label" for="gift-login">{{ t('creditGift.who.inputLabel') }}</label>
+          <div class="gfind__row">
+            <div class="gfind__field" [class.gfind__field--invalid]="lookupState() === 'invalid' || lookupState() === 'not_found' || lookupState() === 'self'">
+              <span class="gfind__at" aria-hidden="true">&#64;</span>
               <input
                 #loginInput
                 id="gift-login"
@@ -47,109 +42,195 @@
                 [placeholder]="t('creditGift.who.placeholder')"
                 [value]="loginDraft()"
                 [attr.aria-invalid]="lookupState() === 'invalid' || lookupState() === 'not_found' || lookupState() === 'self'"
-                aria-describedby="gift-login-hint gift-login-status"
+                aria-describedby="gift-login-status gift-login-hint"
                 (input)="onLoginInput($any($event.target).value)"
               />
-              <button type="submit" class="gift-btn gift-btn--find" [disabled]="lookupState() === 'searching' || !loginDraft().trim()">
-                @if (lookupState() === 'searching') {
-                  <span class="gift__spinner" aria-hidden="true"></span>
-                  {{ t('creditGift.who.searching') }}
-                } @else {
-                  <app-lf-icon name="search" />
-                  {{ t('creditGift.who.find') }}
-                }
-              </button>
             </div>
-            <p id="gift-login-hint" class="gift__hint">{{ t('creditGift.who.hint') }}</p>
-            <p id="gift-login-status" class="gift__msg" aria-live="polite"
-              [class.gift__msg--warn]="lookupState() !== 'searching'">
-              @switch (lookupState()) {
-                @case ('invalid') { <app-lf-icon name="alert" [size]="14" /> {{ t('creditGift.who.invalid') }} }
-                @case ('self') { <app-lf-icon name="alert" [size]="14" /> {{ t('creditGift.who.self') }} }
-                @case ('not_found') { <app-lf-icon name="alert" [size]="14" /> {{ t('creditGift.who.notFound') }} }
-                @case ('error') { <app-lf-icon name="alert" [size]="14" /> {{ t('creditGift.who.error') }} }
+            <button type="submit" class="gbtn gbtn--primary gfind__btn" [disabled]="lookupState() === 'searching' || !loginDraft().trim()">
+              @if (lookupState() === 'searching') {
+                <span class="gspin" aria-hidden="true"></span>
+                {{ t('creditGift.who.searching') }}
+              } @else {
+                <app-lf-icon name="search" />
+                {{ t('creditGift.who.find') }}
               }
-            </p>
-          </form>
-        }
-      </div>
-    </li>
-
-    <!-- 2 · What -->
-    <li class="gift__step">
-      <span class="gift__num" aria-hidden="true">2</span>
-      <div class="gift__body">
-        @if (offersLoading()) {
-          <h3 class="gift__label">{{ t('creditGift.pack.title') }}</h3>
-          <div class="gift__skel" aria-busy="true" [attr.aria-label]="t('creditGift.pack.loading')"></div>
-        } @else if (offersError()) {
-          <h3 class="gift__label">{{ t('creditGift.pack.title') }}</h3>
-          <div class="gift__msg gift__msg--warn gift__msg--row" role="alert">
-            <span><app-lf-icon name="alert" [size]="14" /> {{ t('creditGift.pack.error') }}</span>
-            <button type="button" class="gift-btn gift-btn--ghost" (click)="retryOffers()">
-              <app-lf-icon name="refresh" /> {{ t('creditGift.pack.retry') }}
             </button>
           </div>
-        } @else if (!offers()?.length) {
-          <h3 class="gift__label">{{ t('creditGift.pack.title') }}</h3>
-          <p class="gift__hint">{{ t('creditGift.pack.none') }}</p>
-        } @else {
-          <fieldset class="gift__offers">
-            <legend class="gift__label">{{ t('creditGift.pack.title') }}</legend>
-            @for (offer of offers(); track offer.id) {
-              <label class="gift__offer" [class.gift__offer--on]="offer.id === selectedOfferId()">
+
+          <div id="gift-login-status" class="gfind__status" aria-live="polite">
+            @switch (lookupState()) {
+              @case ('invalid') {
+                <p class="gmsg gmsg--warn"><app-lf-icon name="alert" [size]="16" /> <span>{{ t('creditGift.who.invalid') }}</span></p>
+              }
+              @case ('self') {
+                <p class="gmsg gmsg--warn">
+                  <app-lf-icon name="alert" [size]="16" />
+                  <span>
+                    {{ t('creditGift.who.self') }}
+                    <button type="button" class="glink" (click)="buyForSelf.emit()">{{ t('creditGift.who.selfAction') }}</button>
+                  </span>
+                </p>
+              }
+              @case ('not_found') {
+                <p class="gmsg gmsg--warn"><app-lf-icon name="alert" [size]="16" /> <span>{{ t('creditGift.who.notFound') }}</span></p>
+              }
+              @case ('error') {
+                <p class="gmsg gmsg--warn">
+                  <app-lf-icon name="alert" [size]="16" />
+                  <span>
+                    {{ t('creditGift.who.error') }}
+                    <button type="button" class="glink" (click)="retryLookup()">{{ t('creditGift.who.retry') }}</button>
+                  </span>
+                </p>
+              }
+            }
+          </div>
+          <p id="gift-login-hint" class="gnote">
+            @if (showSuggestionHint()) {
+              {{ t('creditGift.who.suggested') }}
+            } @else {
+              {{ t('creditGift.who.hint') }}
+            }
+          </p>
+        </form>
+      }
+    </section>
+
+    <!-- What -->
+    <section class="gcard" aria-labelledby="gift-what">
+      @if (offersLoading()) {
+        <h2 class="gcard__title" id="gift-what">{{ t('creditGift.pack.title') }}</h2>
+        <div class="gpacks" aria-busy="true" [attr.aria-label]="t('creditGift.pack.loading')">
+          @for (item of [1, 2, 3]; track item) {
+            <span class="gpack gpack--skel" aria-hidden="true">
+              <span class="gskel gskel--icon"></span>
+              <span class="gskel gskel--lg"></span>
+              <span class="gskel"></span>
+            </span>
+          }
+        </div>
+      } @else if (offersError()) {
+        <h2 class="gcard__title" id="gift-what">{{ t('creditGift.pack.title') }}</h2>
+        <div class="gempty" role="alert">
+          <app-lf-icon name="alert" [size]="20" />
+          <p>{{ t('creditGift.pack.error') }}</p>
+          <button type="button" class="gbtn gbtn--ghost" (click)="retryOffers()">
+            <app-lf-icon name="refresh" /> {{ t('creditGift.pack.retry') }}
+          </button>
+        </div>
+      } @else if (!packs().length) {
+        <h2 class="gcard__title" id="gift-what">{{ t('creditGift.pack.title') }}</h2>
+        <div class="gempty">
+          <app-lf-icon name="gift" [size]="20" />
+          <p>{{ t('creditGift.pack.none') }}</p>
+        </div>
+      } @else {
+        <fieldset class="gpacks-set">
+          <legend class="gcard__title" id="gift-what">{{ t('creditGift.pack.title') }}</legend>
+          <div class="gpacks">
+            @for (pack of packs(); track pack.offer.id) {
+              <label
+                class="gpack"
+                [class.gpack--on]="pack.offer.id === selectedOfferId()"
+                [attr.data-scale]="pack.scale"
+                data-testid="gift-pack"
+              >
                 <input
                   type="radio"
+                  class="gpack__radio"
                   name="gift-offer"
-                  [value]="offer.id"
-                  [checked]="offer.id === selectedOfferId()"
-                  (change)="selectOffer(offer.id)"
+                  [value]="pack.offer.id"
+                  [checked]="pack.offer.id === selectedOfferId()"
+                  (change)="selectOffer(pack.offer.id)"
                 />
-                <span class="gift__offer-main">
-                  <span class="gift__offer-name">{{ offerName(offer) }}</span>
-                  <span class="gift__offer-credits">
-                    {{ formatCreditsExact(offer.credits) }} <span>{{ t('creditGift.pack.credits') }}</span>
+                <span class="gpack__icon" aria-hidden="true"><app-lf-icon name="gift" [size]="pack.scale === 'lg' ? 24 : pack.scale === 'md' ? 20 : 16" /></span>
+                <span class="gpack__body">
+                  <span class="gpack__credits">
+                    <strong>{{ formatCreditsExact(pack.offer.credits) }}</strong>
+                    <span>{{ t('creditGift.pack.credits') }}</span>
                   </span>
-                  <span class="gift__offer-fact"><app-lf-icon name="check" [size]="14" /> {{ t('creditGift.pack.permanent') }}</span>
+                  <span class="gpack__rate">{{ rateLabel(pack) }}</span>
+                  @if (pack.morePercent > 0) {
+                    <span class="gpack__more">{{ moreLabel(pack) }}</span>
+                  }
                 </span>
-                <span class="gift__offer-price">{{ formatPrice(offer) }}</span>
+                <span class="gpack__price">{{ formatPrice(pack.offer) }}</span>
+                <span class="gpack__check" aria-hidden="true"><app-lf-icon name="check" [size]="14" /></span>
               </label>
             }
-          </fieldset>
-        }
-      </div>
-    </li>
+          </div>
+        </fieldset>
+      }
 
-    <!-- 3 · Review -->
-    <li class="gift__step gift__step--last">
-      <span class="gift__num" aria-hidden="true">3</span>
-      <div class="gift__body">
-        <h3 class="visually-hidden">{{ t('creditGift.review.title') }}</h3>
-        <button
-          #reviewButton
-          type="button"
-          class="gift-btn gift-btn--primary gift__review"
-          [disabled]="!canReview()"
-          aria-haspopup="dialog"
-          (click)="openReview()"
-        >
-          <app-lf-icon name="gift" />
-          @if (selectedOffer(); as offer) {
-            {{ t('creditGift.review.buttonPrice', { price: formatPrice(offer) }) }}
+      <ul class="gperks">
+        <li><app-lf-icon name="check" [size]="16" /> {{ t('creditGift.perks.neverExpire') }}</li>
+        <li><app-lf-icon name="chat" [size]="16" /> {{ t('creditGift.perks.thanks') }}</li>
+        <li><app-lf-icon name="lock" [size]="16" /> {{ t('creditGift.perks.secure') }}</li>
+      </ul>
+    </section>
+  </div>
+
+  <!-- Summary -->
+  <aside class="gsum" aria-labelledby="gift-sum-title">
+    <h2 class="gsum__title" id="gift-sum-title">{{ t('creditGift.summary.title') }}</h2>
+    <p class="gsum__line" aria-live="polite">{{ summaryLine() }}</p>
+    <dl class="gsum__rows">
+      <div>
+        <dt>{{ t('creditGift.summary.to') }}</dt>
+        <dd>
+          @if (recipient(); as person) {
+            &#64;{{ person.login }}
           } @else {
-            {{ t('creditGift.review.button') }}
+            <span class="gsum__todo">{{ t('creditGift.summary.notYet') }}</span>
           }
-        </button>
-        <p class="gift__hint">
-          @if (!recipient()) {
-            {{ t('creditGift.review.needRecipient') }}
-          } @else {
-            {{ t('creditGift.review.next') }}
-          }
-        </p>
+        </dd>
       </div>
-    </li>
-  </ol>
+      <div>
+        <dt>{{ t('creditGift.summary.gift') }}</dt>
+        <dd>
+          @if (selectedOffer(); as offer) {
+            {{ t('creditGift.confirm.credits', { credits: formatCreditsExact(offer.credits) }) }}
+          } @else {
+            <span class="gsum__todo">{{ t('creditGift.summary.notYet') }}</span>
+          }
+        </dd>
+      </div>
+      <div>
+        <dt>{{ t('creditGift.summary.pay') }}</dt>
+        <dd>
+          @if (selectedOffer(); as offer) {
+            <strong>{{ formatPrice(offer) }}</strong>
+            <span class="gsum__sub">{{ t('creditGift.summary.taxNote') }}</span>
+          } @else {
+            <span class="gsum__todo">{{ t('creditGift.summary.notYet') }}</span>
+          }
+        </dd>
+      </div>
+    </dl>
+    <button
+      #reviewButton
+      type="button"
+      class="gbtn gbtn--primary gsum__cta gift__review"
+      data-testid="gift-review"
+      [disabled]="!canReview()"
+      aria-haspopup="dialog"
+      (click)="openReview()"
+    >
+      <app-lf-icon name="gift" />
+      @if (canReview() && selectedOffer(); as offer) {
+        {{ t('creditGift.review.buttonPrice', { price: formatPrice(offer) }) }}
+      } @else {
+        {{ t('creditGift.review.button') }}
+      }
+    </button>
+    <p class="gsum__hint">
+      @if (canReview()) {
+        {{ t('creditGift.review.next') }}
+      } @else {
+        {{ t('creditGift.review.needBoth') }}
+      }
+    </p>
+  </aside>
 </section>
 
 @if (dialogOpen()) {
@@ -164,11 +245,10 @@
       aria-labelledby="gift-dialog-title"
       aria-describedby="gift-dialog-lede"
       (click)="$event.stopPropagation()"
-      (keydown)="trapFocus($event)"
     >
       <header class="gift-dialog__head">
         <h2 #dialogTitle id="gift-dialog-title" class="gift-dialog__title" tabindex="-1">{{ t('creditGift.confirm.title') }}</h2>
-        <button type="button" class="gift-icon-btn" [attr.aria-label]="t('creditGift.confirm.close')" [disabled]="submitting()" (click)="closeReview()">
+        <button type="button" class="gicon-btn" [attr.aria-label]="t('creditGift.confirm.close')" [disabled]="submitting()" (click)="closeReview()">
           <app-lf-icon name="close" [size]="18" />
         </button>
       </header>
@@ -177,60 +257,59 @@
         <div class="gift-dialog__scroll">
           <p id="gift-dialog-lede" class="gift-dialog__lede">{{ t('creditGift.confirm.lede') }}</p>
 
-          <dl class="gift-sum">
-            <div class="gift-sum__row">
-              <dt>{{ t('creditGift.confirm.to') }}</dt>
-              <dd class="gift-sum__person">
-                @if (person.avatarUrl && !avatarFailed()) {
-                  <img class="gift__avatar gift__avatar--sm" [src]="person.avatarUrl" alt="" width="32" height="32" />
-                } @else {
-                  <span class="gift__avatar gift__avatar--sm gift__avatar--letter" aria-hidden="true">{{ recipientInitial() }}</span>
-                }
-                <span>
-                  <strong data-testid="gift-confirm-recipient">{{ person.displayName || person.login }}</strong>
-                  <span class="gift-sum__sub">&#64;{{ person.login }}</span>
-                </span>
-              </dd>
-            </div>
-            <div class="gift-sum__row">
-              <dt>{{ t('creditGift.confirm.gift') }}</dt>
-              <dd>
+          <div class="gticket">
+            <div class="gticket__hero">
+              @if (avatarUrl() && !avatarFailed()) {
+                <img class="gavatar gavatar--lg" [src]="avatarUrl()" alt="" width="56" height="56" />
+              } @else {
+                <span class="gavatar gavatar--lg gavatar--letter" aria-hidden="true">{{ recipientInitial() }}</span>
+              }
+              <p class="gticket__amount">
                 <strong data-testid="gift-confirm-credits">{{ t('creditGift.confirm.credits', { credits: formatCreditsExact(offer.credits) }) }}</strong>
-                <span class="gift-sum__sub">{{ offerName(offer) }} · {{ t('creditGift.pack.permanent') }}</span>
-              </dd>
+                <span>{{ t('creditGift.pack.permanent') }}</span>
+              </p>
             </div>
-            <div class="gift-sum__row">
-              <dt>{{ t('creditGift.confirm.price') }}</dt>
-              <dd>
-                <strong data-testid="gift-confirm-price">{{ formatExactPrice(offer) }}</strong>
-                <span class="gift-sum__sub">{{ t('creditGift.confirm.priceNote') }}</span>
-              </dd>
-            </div>
-            <div class="gift-sum__row">
-              <dt>{{ t('creditGift.confirm.from') }}</dt>
-              <dd>
-                <strong>{{ buyerName() }}</strong>
-                <span class="gift-sum__sub">&#64;{{ buyerLogin() }} · {{ t('creditGift.confirm.fromNote') }}</span>
-              </dd>
-            </div>
-          </dl>
+            <dl class="gticket__rows">
+              <div class="gticket__row">
+                <dt>{{ t('creditGift.confirm.to') }}</dt>
+                <dd>
+                  <strong data-testid="gift-confirm-recipient">{{ recipientName() }}</strong>
+                  <span class="gticket__sub">&#64;{{ person.login }} · {{ t('creditGift.who.usesBot') }}</span>
+                </dd>
+              </div>
+              <div class="gticket__row">
+                <dt>{{ t('creditGift.confirm.price') }}</dt>
+                <dd>
+                  <strong data-testid="gift-confirm-price">{{ formatExactPrice(offer) }}</strong>
+                  <span class="gticket__sub">{{ t('creditGift.confirm.priceNote') }}</span>
+                </dd>
+              </div>
+              <div class="gticket__row">
+                <dt>{{ t('creditGift.confirm.from') }}</dt>
+                <dd>
+                  <strong data-testid="gift-confirm-buyer">{{ buyerName() }}</strong>
+                  <span class="gticket__sub">&#64;{{ buyerLogin() }} · {{ t('creditGift.confirm.fromNote') }}</span>
+                </dd>
+              </div>
+            </dl>
+          </div>
 
-          <ul class="gift-terms">
+          <ul class="gterms">
             <li>
               <app-lf-icon name="lock" [size]="16" />
-              <span>{{ t('creditGift.confirm.termRecipient', { name: person.displayName || person.login }) }}</span>
+              <span>{{ t('creditGift.confirm.termRecipient', { name: recipientName() }) }}</span>
             </li>
             <li>
               <app-lf-icon name="alert" [size]="16" />
               <span>{{ t('creditGift.confirm.termRefund') }}</span>
             </li>
-            <li class="gift-terms__info">
+            <li>
               <app-lf-icon name="chat" [size]="16" />
               <span>{{ t('creditGift.confirm.termAnnounce', { login: person.login, buyer: buyerLogin() }) }}</span>
             </li>
           </ul>
 
-          <label class="gift-ack">
+          <label class="gack">
             <input
               type="checkbox"
               data-testid="gift-ack"
@@ -242,25 +321,27 @@
           </label>
 
           @if (submitError(); as message) {
-            <p class="gift__msg gift__msg--warn gift-dialog__error" role="alert">
-              <app-lf-icon name="alert" [size]="14" /> {{ message }}
-            </p>
+            <div class="gmsg gmsg--warn gmsg--box" role="alert" data-testid="gift-pay-error">
+              <app-lf-icon name="alert" [size]="16" />
+              <span>{{ message }}</span>
+            </div>
           }
         </div>
 
         <footer class="gift-dialog__foot">
-          <button type="button" class="gift-btn gift-btn--ghost" [disabled]="submitting()" (click)="closeReview()">
+          <button type="button" class="gbtn gbtn--ghost" [disabled]="submitting()" (click)="closeReview()">
             {{ t('creditGift.confirm.cancel') }}
           </button>
           <button
             type="button"
-            class="gift-btn gift-btn--primary"
+            class="gbtn gbtn--primary"
             data-testid="gift-pay"
             [disabled]="!acknowledged() || submitting()"
+            [attr.aria-busy]="submitting()"
             (click)="confirmCheckout()"
           >
             @if (submitting()) {
-              <span class="gift__spinner" aria-hidden="true"></span>
+              <span class="gspin" aria-hidden="true"></span>
               {{ t('creditGift.confirm.opening') }}
             } @else {
               {{ t('creditGift.confirm.pay', { price: formatPrice(offer) }) }}

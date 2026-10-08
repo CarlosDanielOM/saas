@@ -1,6 +1,18 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { firstValueFrom } from 'rxjs';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  effect,
+  inject,
+  signal,
+  viewChild
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, NavigationEnd, Router, RouterLink } from '@angular/router';
+import { filter, firstValueFrom } from 'rxjs';
 
 import type { AiUsageSummaryData } from '../../models/usage.model';
 import {
@@ -18,6 +30,11 @@ import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 import { getRouteParam } from '../../shared/utils/route-param.util';
 import { CreditGiftComponent } from './gift/credit-gift.component';
 import { GiftStatusComponent } from './gift/gift-status.component';
+
+/** Who the purchase is for: the signed-in account's own store, or a gift for another channel. */
+export type PurchaseMode = 'self' | 'gift';
+
+const MODES: readonly PurchaseMode[] = ['self', 'gift'];
 
 /** Credits per smallest currency unit, the basis for every value comparison on this page. */
 function packRate(pack: CreditPackOffer): number {
@@ -40,6 +57,10 @@ export class CreditPacksPageComponent {
   private readonly toastService = inject(ToastService);
   private readonly upgradeService = inject(UpgradeService);
   private readonly usageApi = inject(UsageApiService);
+  private readonly injector = inject(Injector);
+
+  private readonly giftPanel = viewChild(CreditGiftComponent);
+  private readonly modeTabs = viewChild<ElementRef<HTMLElement>>('modeTabs');
 
   readonly recommendedId = this.route.snapshot.queryParamMap.get('recommended');
 
@@ -51,6 +72,12 @@ export class CreditPacksPageComponent {
   readonly selectedKind = signal<CreditPackKind>('credits');
   readonly purchaseCompleted = signal(
     this.route.snapshot.queryParamMap.get('credits') === 'success'
+  );
+  /** `#gift` (navbar entry, shared links) and gift checkout returns open the gift side. */
+  readonly mode = signal<PurchaseMode>(
+    this.route.snapshot.fragment === 'gift' || this.route.snapshot.queryParamMap.get('gift') === 'return'
+      ? 'gift'
+      : 'self'
   );
 
   readonly streamer = computed(
@@ -190,6 +217,7 @@ export class CreditPacksPageComponent {
   });
 
   private usageRequested = false;
+  private fragmentFromTab = false;
 
   constructor() {
     if (this.purchaseCompleted()) {
@@ -201,6 +229,21 @@ export class CreditPacksPageComponent {
       });
     }
     void this.loadCatalog();
+
+    // A `#gift` link (navbar, shared link, "Send another gift") always lands on the gift
+    // side with the cursor in the channel field; a tab click only mirrors the choice into
+    // the URL and keeps focus on the tab. NavigationEnd also covers /a/credits#gift →
+    // /b/credits#gift, where the component is reused and the fragment doesn't change.
+    if (this.route.snapshot.fragment === 'gift') this.openGiftFromLink();
+    this.router.events
+      .pipe(filter((event) => event instanceof NavigationEnd), takeUntilDestroyed())
+      .subscribe(() => {
+        if (this.fragmentFromTab) {
+          this.fragmentFromTab = false;
+          return;
+        }
+        if (this.router.parseUrl(this.router.url).fragment === 'gift') this.openGiftFromLink();
+      });
 
     // Purchases always land on the signed-in account, so show that account's balance.
     effect(() => {
@@ -217,6 +260,48 @@ export class CreditPacksPageComponent {
 
   usageLink(): string[] {
     return ['/', this.streamer(), 'usage'];
+  }
+
+  selectMode(mode: PurchaseMode): void {
+    if (this.mode() === mode) return;
+    this.mode.set(mode);
+    const fragment = mode === 'gift' ? 'gift' : undefined;
+    if ((this.route.snapshot.fragment ?? undefined) === fragment) return;
+    this.fragmentFromTab = mode === 'gift';
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      fragment,
+      queryParamsHandling: 'preserve',
+      replaceUrl: true
+    });
+  }
+
+  /** Arrow/Home/End move between the two purchase modes (WAI-ARIA tabs pattern). */
+  onModeKeydown(event: KeyboardEvent): void {
+    const index = MODES.indexOf(this.mode());
+    let next: PurchaseMode | null = null;
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') next = MODES[(index + 1) % MODES.length];
+    else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') next = MODES[(index + MODES.length - 1) % MODES.length];
+    else if (event.key === 'Home') next = MODES[0];
+    else if (event.key === 'End') next = MODES[MODES.length - 1];
+    if (!next) return;
+    event.preventDefault();
+    this.selectMode(next);
+    this.modeTabs()?.nativeElement.querySelector<HTMLElement>(`#purchase-tab-${next}`)?.focus();
+  }
+
+  private openGiftFromLink(): void {
+    this.mode.set('gift');
+    afterNextRender(() => this.giftPanel()?.reveal(), { injector: this.injector });
+  }
+
+  /** From the gift side ("that's your own channel"): switch to the own store. */
+  buyForSelf(): void {
+    this.selectMode('self');
+    afterNextRender(
+      () => this.modeTabs()?.nativeElement.querySelector<HTMLElement>('#purchase-tab-self')?.focus(),
+      { injector: this.injector }
+    );
   }
 
   selectKind(kind: CreditPackKind): void {

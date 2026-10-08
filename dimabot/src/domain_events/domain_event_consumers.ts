@@ -1,4 +1,5 @@
 import type { DomainEventConsumerOptions } from '../utils/domain_event_consumer.js';
+import { GIFT_PACK_PAIRS } from '../utils/credit_gift_provider.js';
 
 export interface DomainEventConsumerDefinition extends DomainEventConsumerOptions {
     schemaVersions: readonly number[];
@@ -94,7 +95,7 @@ export const DOMAIN_EVENT_CONSUMERS: readonly DomainEventConsumerDefinition[] = 
     {
         consumer: 'polar-gifts-v1', topics: ['domain'], schemaVersions: [1],
         adminReplay: true,
-        eventFilter: { source: 'polar-webhook', type: 'billing.order.paid', 'payload.productId': '6e0c530d-affc-44be-a51b-e11453ef1fa7' },
+        eventFilter: { source: 'polar-webhook', type: 'billing.order.paid', 'payload.productId': { $in: GIFT_PACK_PAIRS.map(pair => pair.productId) } },
         handler: async (event) => (await import('./credit_gift_events.js')).applyCreditGiftDomainEvent(event)
     }
 ];

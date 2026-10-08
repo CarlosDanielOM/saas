@@ -1,3 +1,4 @@
+import { HttpClient } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -9,11 +10,10 @@ import {
   effect,
   inject,
   input,
+  output,
   signal,
   viewChild
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 
 import {
@@ -22,6 +22,7 @@ import {
   type GiftRecipient
 } from '../../../services/billing.service';
 import { LanguageService } from '../../../services/language.service';
+import { LinksService } from '../../../services/links.service';
 import { SessionAuthService } from '../../../services/session-auth.service';
 import { LfIconComponent } from '../../../shared/lf-icon/lf-icon.component';
 import {
@@ -33,13 +34,28 @@ import {
 
 type LookupState = 'idle' | 'searching' | 'found' | 'invalid' | 'self' | 'not_found' | 'error';
 
+/** One pack as the buyer sees it: exact amounts plus value maths derived from the catalog. */
+export interface GiftPackView {
+  offer: GiftPackOffer;
+  /** Credits per one major currency unit (per $1). */
+  perUnit: number;
+  /** Extra credits per unit vs. the lowest-rate pack in the same currency; 0 when none. */
+  morePercent: number;
+  /** Relative size among the packs on sale, for the icon scale only. */
+  scale: 'sm' | 'md' | 'lg';
+}
+
+/** The checkout came back for something other than what the buyer confirmed. */
+class GiftMismatchError extends Error {}
+
 const FOCUSABLE =
   'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /**
- * "Gift credits" on the credit store: the signed-in buyer pays for a permanent
- * pack that lands on another DomDimaBot channel. Checkout is Polar's hosted page;
- * delivery is reported by GiftStatusComponent after the redirect back.
+ * "Gift someone" side of the credit store: the signed-in buyer picks a verified
+ * channel and a permanent pack, reviews an exact confirmation, then pays on
+ * Polar's hosted page. Delivery is reported by GiftStatusComponent after the
+ * redirect back.
  */
 @Component({
   selector: 'app-credit-gift',
@@ -48,19 +64,23 @@ const FOCUSABLE =
   styleUrl: './credit-gift.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
-    '(document:keydown.escape)': 'onEscape()'
+    '(document:keydown.escape)': 'onEscape()',
+    '(document:keydown)': 'trapFocus($event)'
   }
 })
 export class CreditGiftComponent {
   private readonly billingService = inject(BillingService);
   private readonly languageService = inject(LanguageService);
   private readonly sessionAuth = inject(SessionAuthService);
-  private readonly route = inject(ActivatedRoute);
+  private readonly http = inject(HttpClient);
+  private readonly links = inject(LinksService);
   private readonly injector = inject(Injector);
   private readonly destroyRef = inject(DestroyRef);
 
-  /** Channel to suggest (e.g. the channel an admin is viewing). Never auto-submitted. */
+  /** Channel to suggest (e.g. the channel an admin is viewing). A draft only: never auto-submitted. */
   readonly suggestedLogin = input('');
+  /** The buyer typed their own channel and wants the "For me" store instead. */
+  readonly buyForSelf = output<void>();
 
   private readonly section = viewChild<ElementRef<HTMLElement>>('section');
   private readonly loginInput = viewChild<ElementRef<HTMLInputElement>>('loginInput');
@@ -75,6 +95,8 @@ export class CreditGiftComponent {
   readonly loginDraft = signal('');
   readonly lookupState = signal<LookupState>('idle');
   readonly recipient = signal<GiftRecipient | null>(null);
+  /** Twitch profile image for the confirmed recipient; letter avatar until (or unless) it loads. */
+  readonly avatarUrl = signal<string | null>(null);
   readonly avatarFailed = signal(false);
   readonly selectedOfferId = signal<string | null>(null);
 
@@ -99,9 +121,52 @@ export class CreditGiftComponent {
   readonly canReview = computed(
     () => Boolean(this.recipient() && this.selectedOffer() && this.buyerLogin())
   );
-  readonly recipientInitial = computed(
-    () => (this.recipient()?.displayName || this.recipient()?.login || '?').charAt(0).toUpperCase()
+  readonly recipientName = computed(
+    () => this.recipient()?.displayName || this.recipient()?.login || ''
   );
+  readonly recipientInitial = computed(
+    () => (this.recipientName() || '?').charAt(0).toUpperCase()
+  );
+  /** The prefilled suggestion is still untouched and unconfirmed. */
+  readonly showSuggestionHint = computed(() => {
+    const suggestion = this.suggestedLogin().trim().toLowerCase();
+    return Boolean(suggestion) && !this.recipient() && this.lookupState() === 'idle'
+      && this.loginDraft().trim().toLowerCase() === suggestion;
+  });
+
+  readonly packs = computed<GiftPackView[]>(() => {
+    const offers = this.offers() ?? [];
+    const minRate = new Map<string, number>();
+    for (const offer of offers) {
+      const rate = offer.credits / offer.priceAmount;
+      const currency = offer.priceCurrency.toLowerCase();
+      minRate.set(currency, Math.min(minRate.get(currency) ?? rate, rate));
+    }
+    const bySize = [...offers].sort((a, b) => a.credits - b.credits);
+    return offers.map((offer) => {
+      const rate = offer.credits / offer.priceAmount;
+      const lowest = minRate.get(offer.priceCurrency.toLowerCase()) ?? rate;
+      const rank = bySize.indexOf(offer);
+      return {
+        offer,
+        perUnit: Math.round(rate * 100),
+        morePercent: offers.length > 1 ? Math.max(0, Math.floor((rate / lowest - 1) * 100)) : 0,
+        scale: offers.length < 2 ? 'md' : rank === 0 ? 'sm' : rank === offers.length - 1 ? 'lg' : 'md'
+      };
+    });
+  });
+
+  /** One plain sentence answering "who gets what" for the summary card. */
+  readonly summaryLine = computed(() => {
+    const offer = this.selectedOffer();
+    const name = this.recipientName();
+    if (offer && name) {
+      return this.t('creditGift.summary.ready', { name, credits: this.formatCreditsExact(offer.credits) });
+    }
+    if (name) return this.t('creditGift.summary.needPack', { name });
+    if (offer) return this.t('creditGift.summary.needWho', { credits: this.formatCreditsExact(offer.credits) });
+    return this.t('creditGift.summary.needBoth');
+  });
 
   /** One idempotency key per (pack, recipient) intent; retries reuse it. */
   private requestId: { key: string; id: string } | null = null;
@@ -119,12 +184,6 @@ export class CreditGiftComponent {
       this.loginDraft.set(suggestion);
     });
 
-    this.route.fragment.pipe(takeUntilDestroyed()).subscribe((fragment) => {
-      if (fragment === 'gift') {
-        afterNextRender(() => this.reveal(), { injector: this.injector });
-      }
-    });
-
     this.destroyRef.onDestroy(() => this.unlockScroll());
   }
 
@@ -132,7 +191,7 @@ export class CreditGiftComponent {
     return this.languageService.translate(key, params);
   }
 
-  /** Scrolls the gift section into view and puts the cursor in the channel field. */
+  /** Brings the gift form into view and puts the cursor in the channel field (or the form when it's done). */
   reveal(): void {
     const section = this.section()?.nativeElement;
     if (!section) return;
@@ -143,9 +202,9 @@ export class CreditGiftComponent {
 
   onLoginInput(value: string): void {
     this.loginDraft.set(value);
-    if (this.lookupState() !== 'searching' && this.lookupState() !== 'found') {
-      this.lookupState.set('idle');
-    }
+    // Editing abandons any lookup still in flight: its answer is for a name that's no longer typed.
+    if (this.lookupState() === 'searching') this.lookupSeq++;
+    this.lookupState.set('idle');
   }
 
   async lookup(event?: Event): Promise<void> {
@@ -174,9 +233,11 @@ export class CreditGiftComponent {
         return;
       }
       this.avatarFailed.set(false);
+      this.avatarUrl.set(safeImageUrl(response.data.avatarUrl));
       this.recipient.set(response.data);
       this.loginDraft.set(response.data.login);
       this.lookupState.set('found');
+      if (!this.avatarUrl()) void this.loadAvatar(response.data.login, seq);
     } catch (error) {
       if (seq !== this.lookupSeq) return;
       this.lookupState.set(readApiError(error).status === 404 ? 'not_found' : 'error');
@@ -186,6 +247,7 @@ export class CreditGiftComponent {
   changeRecipient(): void {
     this.lookupSeq++;
     this.recipient.set(null);
+    this.avatarUrl.set(null);
     this.lookupState.set('idle');
     afterNextRender(() => this.loginInput()?.nativeElement.select(), { injector: this.injector });
   }
@@ -218,15 +280,19 @@ export class CreditGiftComponent {
 
   /** Keeps Tab inside the open dialog. */
   trapFocus(event: KeyboardEvent): void {
-    if (event.key !== 'Tab') return;
+    if (event.key !== 'Tab' || event.altKey || event.ctrlKey || event.metaKey || !this.dialogOpen()) return;
     const dialog = this.dialog()?.nativeElement;
     if (!dialog) return;
     const items = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE));
-    if (!items.length) return;
+    if (!items.length) {
+      event.preventDefault();
+      this.dialogTitle()?.nativeElement.focus();
+      return;
+    }
     const first = items[0];
     const last = items[items.length - 1];
     const active = document.activeElement;
-    if (event.shiftKey && (active === first || !dialog.contains(active))) {
+    if (event.shiftKey && (active === first || !items.some((item) => item === active))) {
       event.preventDefault();
       last.focus();
     } else if (!event.shiftKey && active === last) {
@@ -256,14 +322,14 @@ export class CreditGiftComponent {
       );
       const data = response.data;
       if (response.error || !data?.checkoutUrl) {
-        throw new Error(response.message || this.t('creditGift.errors.checkout'));
+        throw { status: response.status ?? null, error: response };
       }
       // Never send the buyer to pay for something other than what they just confirmed.
       if (data.recipient?.id !== recipient.id || data.offer?.id !== offer.id
         || data.offer.priceAmount !== offer.priceAmount
         || data.offer.priceCurrency !== offer.priceCurrency
         || data.offer.credits !== offer.credits || data.offer.rollover !== true) {
-        throw new Error(this.t('creditGift.errors.mismatch'));
+        throw new GiftMismatchError();
       }
       try {
         sessionStorage.setItem(PENDING_GIFT_STORAGE_KEY, data.giftId);
@@ -272,10 +338,7 @@ export class CreditGiftComponent {
       }
       window.location.assign(data.checkoutUrl);
     } catch (error) {
-      const message = error instanceof Error
-        ? error.message
-        : readApiError(error).message ?? this.t('creditGift.errors.checkout');
-      this.submitError.set(message);
+      this.submitError.set(this.checkoutErrorMessage(error));
       this.submitting.set(false);
     }
   }
@@ -284,8 +347,8 @@ export class CreditGiftComponent {
     void this.loadOffers();
   }
 
-  offerName(offer: GiftPackOffer): string {
-    return /sample/i.test(offer.name) ? this.t('creditGift.sizes.sample') : offer.name;
+  retryLookup(): void {
+    void this.lookup();
   }
 
   formatCreditsExact(value: number): string {
@@ -293,12 +356,22 @@ export class CreditGiftComponent {
   }
 
   formatPrice(offer: GiftPackOffer): string {
-    return new Intl.NumberFormat(this.locale(), {
-      style: 'currency',
-      currency: offer.priceCurrency.toUpperCase(),
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2
-    }).format(offer.priceAmount / 100);
+    return this.formatMoney(offer.priceAmount, offer.priceCurrency);
+  }
+
+  /** "50,000 credits per $1", derived from the pack's real price. */
+  rateLabel(pack: GiftPackView): string {
+    return this.t('creditGift.pack.rate', {
+      credits: this.formatCreditsExact(pack.perUnit),
+      unit: this.formatMoney(100, pack.offer.priceCurrency)
+    });
+  }
+
+  moreLabel(pack: GiftPackView): string {
+    return this.t('creditGift.pack.more', {
+      percent: pack.morePercent,
+      unit: this.formatMoney(100, pack.offer.priceCurrency)
+    });
   }
 
   /** Unambiguous price for the confirmation: "$1.00 USD" / "1,00 $ USD". */
@@ -312,6 +385,46 @@ export class CreditGiftComponent {
       maximumFractionDigits: 2
     }).format(offer.priceAmount / 100);
     return `${amount} ${currency}`;
+  }
+
+  /** Plain-language, localized reason; never raw server or provider text. */
+  private checkoutErrorMessage(error: unknown): string {
+    if (error instanceof GiftMismatchError) return this.t('creditGift.errors.mismatch');
+    switch (readApiError(error).status) {
+      case 404:
+        return this.t('creditGift.errors.recipientGone');
+      case 409:
+        return this.t('creditGift.errors.account');
+      case 400:
+        return this.t('creditGift.errors.rejected');
+      default:
+        return this.t('creditGift.errors.checkout');
+    }
+  }
+
+  private async loadAvatar(login: string, seq: number): Promise<void> {
+    try {
+      const response = await firstValueFrom(
+        this.http.get<{ error?: boolean; data?: { profile_image_url?: string } }>(
+          `${this.links.getApiUrl()}/users?username=${encodeURIComponent(login)}`
+        )
+      );
+      const url = safeImageUrl(response.data?.profile_image_url);
+      if (seq === this.lookupSeq && url && this.recipient()?.login === login) {
+        this.avatarUrl.set(url);
+      }
+    } catch {
+      // The letter avatar stays; the photo is a nicety.
+    }
+  }
+
+  private formatMoney(amount: number, currency: string): string {
+    return new Intl.NumberFormat(this.locale(), {
+      style: 'currency',
+      currency: currency.toUpperCase(),
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
+    }).format(amount / 100);
   }
 
   private requestIdFor(productId: string, recipientId: string): string {
@@ -328,11 +441,13 @@ export class CreditGiftComponent {
     try {
       const response = await firstValueFrom(this.billingService.getGiftPacks());
       if (response.error || !response.data) throw new Error('gift catalog unavailable');
-      const offers = response.data.offers.filter((offer) => offer.credits > 0 && offer.priceAmount > 0);
+      const offers = response.data.offers
+        .filter((offer) => offer.credits > 0 && offer.priceAmount > 0)
+        .sort((a, b) => a.priceAmount - b.priceAmount || a.credits - b.credits);
       this.offers.set(offers);
       if (!offers.some((offer) => offer.id === this.selectedOfferId())) {
-        // A lone pack is the only choice, so there is nothing to pre-select against.
-        this.selectedOfferId.set(offers.length === 1 ? offers[0].id : null);
+        // Every paid pack requires an explicit choice, including a one-pack catalog.
+        this.selectedOfferId.set(null);
       }
     } catch {
       this.offers.set(null);
@@ -353,4 +468,10 @@ export class CreditGiftComponent {
   private locale(): string {
     return this.languageService.currentLanguage() === 'es' ? 'es-ES' : 'en-US';
   }
+}
+
+/** Only https image URLs are used as avatars. */
+function safeImageUrl(value: string | null | undefined): string | null {
+  const url = value?.trim();
+  return url && /^https:\/\//i.test(url) ? url : null;
 }
