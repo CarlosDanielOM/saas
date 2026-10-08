@@ -10,7 +10,7 @@ import type { AiUsageTransaction, AiUsageWindow } from './ai_usage_receipts.js';
 
 export const AI_USAGE_RECEIPT_QUEUE_KEY = 'cron:ai-usage-receipts:queue';
 export const AI_USAGE_RECEIPT_PROCESSING_KEY = 'cron:ai-usage-receipts:processing';
-export const AI_USAGE_REPORT_VERSION = 2;
+export const AI_USAGE_REPORT_VERSION = 3;
 
 const RETENTION_DAYS: Record<AiUsageRetentionTier, number> = {
     free: 30,

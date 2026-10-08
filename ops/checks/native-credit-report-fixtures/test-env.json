@@ -1,6 +1,6 @@
 {
   "NODE_OPTIONS": "--import=/tmp/saas-fixtures/providers.mjs",
-  "MONGO_URI": "mongodb://mongo:27017/saas_ops_native_credit_reports",
+  "MONGO_URI": "mongodb://mongo:27017/saas_ops_native_credit_reports?maxPoolSize=2",
   "DRAGONFLY_HOST": "redis",
   "DRAGONFLY_PORT": "6379",
   "QDRANT_HOST": "qdrant.test",

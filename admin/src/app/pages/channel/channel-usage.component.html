@@ -215,7 +215,9 @@
               }
               <p class="lf-note us-grants__help">
                 <strong>Permanent</strong> credits carry over until used; <strong>period</strong> credits end at the next reset.
-                Polar grants don't record who paid or why, so match gifts to orders in Polar.
+                @if (hasUnclassifiedCredits()) {
+                  Unclassified credits could not be matched to a subscription, purchase, or gift.
+                }
               </p>
             </section>
           }

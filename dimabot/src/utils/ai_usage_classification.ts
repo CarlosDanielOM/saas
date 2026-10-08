@@ -1,4 +1,4 @@
-export const ADJUSTMENT_TYPES = ['manual_grant', 'monthly_reset', 'purchased_pack', 'native_grant', 'refund', 'correction', 'activation', 'other'] as const;
+export const ADJUSTMENT_TYPES = ['manual_grant', 'monthly_reset', 'subscription_credits', 'purchased_pack', 'gifted_credits', 'native_grant', 'refund', 'correction', 'activation', 'other'] as const;
 export function classifyAdjustment(input: { entryKind?: unknown; operation?: unknown; source?: unknown; reason?: unknown; adjustmentType?: unknown }): string | null {
     if (input.entryKind !== 'adjustment') return null;
     if (ADJUSTMENT_TYPES.includes(input.adjustmentType as any)) return String(input.adjustmentType);

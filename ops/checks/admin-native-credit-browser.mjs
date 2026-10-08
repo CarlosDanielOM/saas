@@ -3,8 +3,8 @@
  * call is mocked and every other remote request is aborted, so no grant,
  * payment, chat message or live API read can happen. No live credentials.
  *
- * Covers: granted totals + per-type breakdown, "Permanent/Period credits
- * granted" rows instead of raw operations, positive adjustments shown as
+ * Covers: separate subscription/purchase/gift/unclassified totals and activity,
+ * permanent/period lifetimes, positive adjustments shown as
  * debits (never "+"), credit-activity copy/filters/empty state, pending
  * credit-history sync notice, no inferred gift buyer, axe + no overflow at
  * 320/390/1280 in dark and light.
@@ -79,9 +79,9 @@ const summary = () => ({
     itemizationStartedAt: "2026-09-18T19:30:00.000Z",
     totalSpentCredits: mode === "pending" ? 117000 : 3800,
     averageDailySpentCredits: mode === "pending" ? 9000 : 292,
-    grantedCredits: 65000,
+    grantedCredits: 316000,
     adjustmentDebitedCredits: 1200,
-    netConsumedCredits: mode === "pending" ? 53200 : -60000,
+    netConsumedCredits: mode === "pending" ? -197800 : -311000,
     transactionCount: 26,
     daily: Array.from({ length: 13 }, (_, i) => ({
       date: new Date(Date.UTC(2026, 8, 20 + i)).toISOString().slice(0, 10),
@@ -95,7 +95,10 @@ const summary = () => ({
     adjustments: [
       { type: "correction", grantedCredits: 0, debitedCredits: 1200, transactionCount: 1 },
       { type: "manual_grant", grantedCredits: 5000, debitedCredits: 0, transactionCount: 1 },
-      { type: "native_grant", grantedCredits: 60000, debitedCredits: 0, transactionCount: 2 },
+      { type: "subscription_credits", grantedCredits: 20000, debitedCredits: 0, transactionCount: 1 },
+      { type: "purchased_pack", grantedCredits: 250000, debitedCredits: 0, transactionCount: 1 },
+      { type: "gifted_credits", grantedCredits: 40000, debitedCredits: 0, transactionCount: 1 },
+      { type: "native_grant", grantedCredits: 1000, debitedCredits: 0, transactionCount: 1 },
     ],
   },
 });
@@ -114,14 +117,20 @@ const transactions = [
   adjustment("polar-credit:6f1c2d3e-0000-4000-8000-000000000001", "2026-10-02T15:00:00.000Z", {
     operation: "permanent_credit_grant",
     source: "polar_meter_credit",
-    adjustmentType: "native_grant",
+    adjustmentType: "gifted_credits",
     credits: -40000,
   }),
   adjustment("polar-credit:6f1c2d3e-0000-4000-8000-000000000002", "2026-10-02T14:00:00.000Z", {
     operation: "period_credit_grant",
     source: "polar_meter_credit",
-    adjustmentType: "native_grant",
+    adjustmentType: "subscription_credits",
     credits: -20000,
+  }),
+  adjustment("purchase-1", "2026-10-02T13:45:00.000Z", {
+    operation: "permanent_credit_grant", source: "polar_meter_credit", adjustmentType: "purchased_pack", credits: -250000,
+  }),
+  adjustment("unclassified-1", "2026-10-02T13:30:00.000Z", {
+    operation: "permanent_credit_grant", source: "polar_meter_credit", adjustmentType: "native_grant", credits: -1000,
   }),
   adjustment("adm-grant-1", "2026-10-02T13:00:00.000Z", {
     operation: "grant",
@@ -258,35 +267,41 @@ try {
 
   // Granted totals are visible next to spending.
   const granted = page.locator(".lf-metric").filter({ hasText: "Granted this period" });
-  assert.equal((await granted.locator(".lf-metric__value").textContent()).trim(), "+65K");
-  await granted.getByText("53.2K net used").waitFor();
+  assert.equal((await granted.locator(".lf-metric__value").textContent()).trim(), "+316K");
+  await granted.getByText("197.8K more granted than used").waitFor();
   await page.locator(".lf-metric").filter({ hasText: "Spent this period" }).getByText("26 charges").waitFor();
 
   // Per-type breakdown: grants add, corrections remove (never "+").
   const grants = page.locator(".usage-grants");
   await grants.getByRole("heading", { name: "Grants & adjustments" }).waitFor();
   const group = (name) => grants.locator(".usage-adjustment").filter({ hasText: name });
-  assert.equal((await group("Granted in Polar").locator(".us-amount").textContent()).trim(), "+60,000");
+  assert.equal((await group("Subscription credits").locator(".us-amount").textContent()).trim(), "+20,000");
+  assert.equal((await group("Purchased credits").locator(".us-amount").textContent()).trim(), "+250,000");
+  assert.equal((await group("Gifted credits").locator(".us-amount").textContent()).trim(), "+40,000");
+  assert.equal((await group("Unclassified credits").locator(".us-amount").textContent()).trim(), "+1,000");
   assert.equal((await group("Admin grants").locator(".us-amount").textContent()).trim(), "+5,000");
   assert.equal((await group("Corrections").locator(".us-amount").textContent()).trim(), "−1,200");
-  await group("Granted in Polar").getByText("2 entries").waitFor();
+  await group("Gifted credits").getByText("1 entry").waitFor();
   assert.equal(
     (await grants.locator(".us-grants__name > span").first().textContent()).trim(),
-    "Granted in Polar",
+    "Purchased credits",
     "largest adjustment first",
   );
   await grants.getByText("credits carry over until used", { exact: false }).waitFor();
-  await grants.getByText("don't record who paid or why", { exact: false }).waitFor();
+  await grants.getByText("could not be matched to a subscription, purchase, or gift", { exact: false }).waitFor();
+  assert.equal(await page.getByText("Granted in Polar", { exact: true }).count(), 0);
 
-  // Rows read as what happened, raw operation secondary.
-  const permanent = row("Permanent credits granted");
+  // Rows identify the credit source, with its lifetime and operation secondary.
+  const permanent = row("Gifted credits");
   assert.equal(await permanent.count(), 1);
   assert.equal((await permanent.locator(".us-amount").textContent()).trim(), "+40,000");
-  await permanent.getByText("Polar · carries over until used").waitFor();
+  await permanent.getByText("Carries over until used").waitFor();
   assert.equal((await permanent.locator("code.us-raw").textContent()).trim(), "permanent_credit_grant");
-  const period = row("Period credits granted");
+  const period = row("Subscription credits");
   assert.equal((await period.locator(".us-amount").textContent()).trim(), "+20,000");
-  await period.getByText("Polar · ends at the period reset").waitFor();
+  await period.getByText("Ends at the period reset").waitFor();
+  assert.equal((await row("Purchased credits").locator(".us-amount").textContent()).trim(), "+250,000");
+  await row("Unclassified credit grant").getByText("Permanent · source not matched").waitFor();
   const admin = row("Admin credit grant");
   assert.equal((await admin.locator(".us-amount").textContent()).trim(), "+5,000");
   await admin.getByText("Added to balance").waitFor();
@@ -315,9 +330,9 @@ try {
   // Filters, load more and empty copy include grants.
   const filters = page.getByRole("group", { name: "Filter credit activity by category" });
   await page.getByRole("button", { name: "Load more" }).click();
-  await until(async () => (await rows.count()) === 30, "load more");
+  await until(async () => (await rows.count()) === 32, "load more");
   await filters.getByRole("button", { name: "Grants & adjustments" }).click();
-  await until(async () => (await rows.count()) === 4, "grants filter");
+  await until(async () => (await rows.count()) === 6, "grants filter");
   assert.equal(
     requests.filter((r) => r.path.endsWith("/transactions") && r.query.includes("category=credit_adjustment")).length,
     1,
@@ -330,7 +345,7 @@ try {
   // Ready ledger + more granted than used.
   mode = "ready";
   await page.getByRole("button", { name: "Refresh" }).click();
-  await page.locator(".lf-metric").filter({ hasText: "60K more granted than used" }).waitFor();
+  await page.locator(".lf-metric").filter({ hasText: "311K more granted than used" }).waitFor();
   await until(async () => (await page.locator(".usage-sync").count()) === 0, "sync notice gone");
   assert.equal(await page.getByText("Credit history still syncing").count(), 0);
   mode = "pending";
@@ -352,7 +367,7 @@ try {
   assert.ok(requests.every((r) => r.method === "GET"), "read-only API traffic");
   assert.deepEqual(failures, []);
   console.log(
-    `PASS: admin native credit grants — granted totals/breakdown, Permanent/Period rows, debits never "+", credit-activity filters/empty, pending credit-history notice, no gift-buyer inference, axe + no overflow at 320/390/1280 dark/light. Screenshots: ${artifacts}`,
+    `PASS: separate subscription/purchased/gifted/unclassified totals and activity, debits, filters/load more, pending sync, no buyer inference, axe + no overflow at 320/390/1280 dark/light. Screenshots: ${artifacts}`,
   );
 } catch (error) {
   console.error(error);

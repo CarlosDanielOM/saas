@@ -9,6 +9,7 @@ import {
   type AiUsagePacingHistory,
 } from './ai_usage_ledger.js';
 import { classifyAdjustment } from './ai_usage_classification.js';
+import { classifyPolarCreditSources, CREDIT_SOURCE_MATCH_MS, type CreditSourceReads } from './ai_credit_sources.js';
 import { enqueueAiUsageBackfill } from './ai_usage_backfill_queue.js';
 import type { AiUsageCategory, AiUsageEntryKind, AiUsageResourceType, AiUsageUnit } from './ai_usage_event.js';
 import { AI_CREDITS_METER_ID, type AiCreditsData } from './billing.js';
@@ -662,16 +663,20 @@ export async function fetchAiUsageTransactions(
   customerId: string,
   window: AiUsageWindow,
   listEvents?: PolarUsageEventsList,
+  creditSourceReads?: CreditSourceReads,
 ): Promise<AiUsageTransaction[]> {
   const list = listEvents || (async (request) => {
     const client = await getPolarShClient('fetchAiUsageTransactions');
     return await client.events.list(request as any) as PolarEventsPageLike;
   });
   const transactions = new Map<string, AiUsageTransaction>();
+  const sourceEvents = new Map<string, PolarUsageEventLike>();
 
   for (const stream of [
     { name: 'ai_usage', source: 'user' as const, normalize: normalizePolarUsageEvent },
     { name: 'meter.credited', source: 'system' as const, normalize: normalizePolarCreditEvent },
+    { name: 'benefit.granted', source: 'system' as const, normalize: () => null },
+    { name: 'benefit.cycled', source: 'system' as const, normalize: () => null },
   ]) {
     let complete = false;
     for (let page = 1; page <= AI_USAGE_MAX_POLAR_PAGES; page += 1) {
@@ -679,14 +684,15 @@ export async function fetchAiUsageTransactions(
         customerId,
         name: stream.name,
         source: stream.source,
-        startTimestamp: window.startTimestamp,
-        endTimestamp: window.endTimestampExclusive,
+        startTimestamp: stream.source === 'system' ? new Date(window.startTimestamp.getTime() - CREDIT_SOURCE_MATCH_MS) : window.startTimestamp,
+        endTimestamp: stream.source === 'system' ? new Date(window.endTimestampExclusive.getTime() + CREDIT_SOURCE_MATCH_MS) : window.endTimestampExclusive,
         page,
         limit: AI_USAGE_PAGE_SIZE,
         sorting: ['-timestamp'],
       });
       const items = Array.isArray(result.items) ? result.items : [];
       for (const item of items) {
+        if (stream.source === 'system' && typeof item.id === 'string') sourceEvents.set(item.id, item);
         const normalized = stream.normalize(item);
         if (normalized && new Date(normalized.occurredAt) >= window.startTimestamp
           && new Date(normalized.occurredAt) < window.endTimestampExclusive) {
@@ -704,6 +710,11 @@ export async function fetchAiUsageTransactions(
       }
     }
     if (!complete) throw new AiUsageReceiptLimitError('Usage history is too large for this date range');
+  }
+  const creditSources = await classifyPolarCreditSources(customerId, [...sourceEvents.values()], creditSourceReads);
+  for (const [eventId, type] of creditSources) {
+    const receipt = transactions.get(`polar-credit:${eventId}`);
+    if (receipt) receipt.adjustmentType = type;
   }
   return [...transactions.values()].sort(transactionOrder);
 }

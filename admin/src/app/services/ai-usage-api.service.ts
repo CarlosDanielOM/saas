@@ -8,7 +8,7 @@ export type UsageCategory = 'tts' | 'ai_chat' | 'ai_agent' | 'memory' | 'clip_re
 
 /** Why an adjustment receipt exists. Unknown future values fall back to generic copy. */
 export type UsageAdjustmentType = 'native_grant' | 'manual_grant' | 'monthly_reset' | 'purchased_pack'
-  | 'refund' | 'correction' | 'activation' | 'other';
+  | 'subscription_credits' | 'gifted_credits' | 'refund' | 'correction' | 'activation' | 'other';
 
 /** Credits are signed like charges: negative adds to the balance, positive removes from it. */
 export interface UsageAdjustmentTotal {

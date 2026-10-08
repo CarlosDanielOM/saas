@@ -41,7 +41,8 @@ test('both event streams paginate, deduplicate, respect the date window, and iso
             : [{ id: 'usage', name: 'ai_usage', source: 'user', timestamp: '2026-10-06T20:00:00Z', metadata: { credits: 110 } }];
         return { items: events, pagination: { maxPage: request.source === 'system' ? 2 : 1 } };
     });
-    assert.deepEqual(requests, ['ai_usage:user:1', 'meter.credited:system:1', 'meter.credited:system:2']);
+    assert.deepEqual(requests, ['ai_usage:user:1', 'meter.credited:system:1', 'meter.credited:system:2',
+        'benefit.granted:system:1', 'benefit.granted:system:2', 'benefit.cycled:system:1', 'benefit.cycled:system:2']);
     assert.equal(records.length, 2);
     const summary = buildAiUsageSummary(records, window);
     assert.equal(summary.grantedCredits, 40_000);

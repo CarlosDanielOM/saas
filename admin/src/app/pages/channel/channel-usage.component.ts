@@ -27,10 +27,12 @@ type Tone = 'ok' | 'warn' | 'live' | 'muted';
 
 /** Plain names for adjustment receipts: `group` for totals, `row` for one entry. */
 const ADJUSTMENTS: Record<string, { group: string; row: string }> = {
-  native_grant: { group: 'Granted in Polar', row: 'Credits granted in Polar' },
+  native_grant: { group: 'Unclassified credits', row: 'Unclassified credit grant' },
+  subscription_credits: { group: 'Subscription credits', row: 'Subscription credits' },
+  gifted_credits: { group: 'Gifted credits', row: 'Gifted credits' },
   manual_grant: { group: 'Admin grants', row: 'Admin credit grant' },
   monthly_reset: { group: 'Monthly resets', row: 'Monthly reset' },
-  purchased_pack: { group: 'Credit packs', row: 'Credit pack' },
+  purchased_pack: { group: 'Purchased credits', row: 'Purchased credits' },
   refund: { group: 'Refunds', row: 'Refund' },
   correction: { group: 'Corrections', row: 'Balance correction' },
   activation: { group: 'Activation credits', row: 'Activation credits' },
@@ -79,6 +81,7 @@ export class ChannelUsageComponent {
     if (!credits?.available || !credits.limit) return 0;
     return Math.min(100, Math.max(0, Math.round((credits.used / credits.limit) * 100)));
   });
+  readonly hasUnclassifiedCredits = computed(() => this.adjustments().some(item => item.type === 'native_grant'));
 
   /** The page's answer: will this channel run out, and when? */
   readonly forecast = computed<{ tone: Tone; title: string; text: string } | null>(() => {
@@ -200,11 +203,16 @@ export class ChannelUsageComponent {
       };
     }
     const added = this.isCredit(item);
+    if (['subscription_credits', 'purchased_pack', 'gifted_credits'].includes(item.adjustmentType || '') && added) {
+      const lifetime = item.operation === 'permanent_credit_grant' ? 'Carries over until used'
+        : item.operation === 'period_credit_grant' ? 'Ends at the period reset' : 'Added to balance';
+      return { title: ADJUSTMENTS[item.adjustmentType!].row, meta: lifetime, raw: item.operation };
+    }
     if (item.adjustmentType === 'native_grant' && added) {
       if (item.operation === 'permanent_credit_grant')
-        return { title: 'Permanent credits granted', meta: 'Polar · carries over until used', raw: item.operation };
+        return { title: 'Unclassified credit grant', meta: 'Permanent · source not matched', raw: item.operation };
       if (item.operation === 'period_credit_grant')
-        return { title: 'Period credits granted', meta: 'Polar · ends at the period reset', raw: item.operation };
+        return { title: 'Unclassified credit grant', meta: 'Period · source not matched', raw: item.operation };
     }
     return {
       title: (ADJUSTMENTS[item.adjustmentType || 'other'] ?? ADJUSTMENTS['other']).row,
