@@ -1,12 +1,12 @@
-<div class="lf" data-plan="pro" [attr.data-role]="role()"><main class="lf-main" data-testid="widgets-page">
+<div class="lf" data-plan="premium" [attr.data-role]="role()"><main class="lf-main" data-testid="widgets-page">
   <header class="lf-head">
-    <a class="back" [routerLink]="['/', streamer, 'modules']"><app-lf-icon name="back" />{{ t('back') }}</a>
-    <h1>{{ t('title') }} <span class="chip alpha">{{ t('alpha') }}</span><span class="chip gold">Pro</span></h1>
-    <p>{{ t('subtitle') }}</p>
+    <a class="back" [routerLink]="['/', streamer, 'modules', 'widgets']"><app-lf-icon name="back" />{{ t('backToWidgets') }}</a>
+    <h1>{{ t('dbdTitle') }} <span class="chip alpha">{{ t('alpha') }}</span><span class="chip gold">{{ t('premium') }}</span></h1>
+    <p>{{ t('dbdSubtitle') }}</p>
     @if (state(); as state) { <div class="head-chips"><span class="chip" [class.on-air]="state.visible"><span class="dot" [class.on]="state.visible"></span>{{ state.visible ? t('visible') : t('hidden') }}</span><span class="chip">{{ t('poolCount', poolCounts()) }}</span></div> }
   </header>
-  @if (!pro()) {
-    <section class="lf-tile gate"><app-lf-icon name="lock" /><h2>{{ t('proRequired') }}</h2><p>{{ t('proDescription') }}</p><button class="primary" (click)="promptUpgrade()">{{ t('upgrade') }}</button></section>
+  @if (!premium()) {
+    <section class="lf-tile gate"><app-lf-icon name="lock" /><h2>{{ t('premiumRequired') }}</h2><p>{{ t('premiumDescription') }}</p><button class="primary" (click)="promptUpgrade()">{{ t('upgradePremium') }}</button></section>
   } @else {
     @if (error()) { <div class="message error" role="alert"><span>{{ error() }}</span><button (click)="hasPending() ? sendPending() : state() ? refresh() : load()" [disabled]="busy()">{{ t('retry') }}</button></div> }
     @if (notice()) { <p class="notice" role="status">{{ notice() }}</p> }

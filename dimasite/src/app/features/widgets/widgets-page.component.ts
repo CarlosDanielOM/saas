@@ -5,6 +5,7 @@ import { NgOptimizedImage } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { LanguageService } from '../../services/language.service';
+import { MODULE_TIER_REQUIREMENTS, isModuleAccessible } from '../modules/module-tier.model';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { UpgradeService } from '../../services/upgrade.service';
 import { getRouteParam } from '../../shared/utils/route-param.util';
@@ -23,7 +24,7 @@ export class WidgetsPageComponent {
   private readonly fb = inject(FormBuilder).nonNullable;
   private readonly destroy = inject(DestroyRef);
   readonly streamer = getRouteParam(inject(ActivatedRoute), 'streamer') ?? '';
-  readonly pro = computed(() => this.auth.getPlanTierForStreamer(this.streamer) === 'pro');
+  readonly premium = computed(() => isModuleAccessible(MODULE_TIER_REQUIREMENTS.widgets, this.auth.getPlanTierForStreamer(this.streamer)));
   readonly channel = this.auth.session()?.appUser.twitch_user_id ?? '';
   readonly catalog = signal<WidgetCatalog | null>(null);
   readonly state = signal<WidgetState | null>(null);
@@ -120,8 +121,8 @@ export class WidgetsPageComponent {
   private pending: { action: WidgetAction; body: unknown; revision: number; key: string } | null = null;
   constructor() {
     this.destroy.onDestroy(() => { this.stopped = true; });
-    if (this.pro()) void this.load(); else this.loading.set(false);
-    const timer = setInterval(() => { if (this.pro() && this.state() && !this.busy() && !this.pending) void this.refresh(); }, 1500);
+    if (this.premium()) void this.load(); else this.loading.set(false);
+    const timer = setInterval(() => { if (this.premium() && this.state() && !this.busy() && !this.pending) void this.refresh(); }, 1500);
     const clock = setInterval(() => this.now.set(Date.now()), 1000);
     this.destroy.onDestroy(() => { clearInterval(timer); clearInterval(clock); });
     try { this.overlayUrl.set(sessionStorage.getItem('widgets-overlay-' + this.channel) ?? ''); } catch { /* Link stays usable without storage. */ }
@@ -214,6 +215,6 @@ export class WidgetsPageComponent {
   async copyLink(): Promise<void> { try { await navigator.clipboard.writeText(this.overlayUrl()); this.notice.set(this.t('copied')); } catch { this.error.set(this.t('copyError')); } }
   private handleError(e: unknown): void {
     const code = e instanceof HttpErrorResponse ? e.error?.code : '';
-    this.error.set(this.t(code === 'pro_required' ? 'proRequired' : code === 'revision_conflict' || code === 'busy' ? 'conflict' : code === 'empty_pool' ? 'emptyPool' : 'loadError'));
+    this.error.set(this.t(code === 'premium_required' ? 'premiumRequired' : code === 'revision_conflict' || code === 'busy' ? 'conflict' : code === 'empty_pool' ? 'emptyPool' : 'loadError'));
   }
 }

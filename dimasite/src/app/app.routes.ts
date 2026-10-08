@@ -819,7 +819,8 @@ export const routes: Routes = [
           {
             path: 'overlays', loadComponent: () => import('./features/overlays/overlay-editor.component').then(m => m.OverlayEditorComponent), canActivate: [permissionGuard, channelOwnerGuard], canDeactivate: [overlayDraftGuard], data: { permission: 'dashboard:view' }, title: 'Overlay Studio Alpha | DomDimaBot'
           },
-          { path: 'widgets', loadComponent: () => import('./features/widgets/widgets-page.component').then(m => m.WidgetsPageComponent), canActivate: [permissionGuard, channelOwnerGuard], data: { permission: 'dashboard:view' }, title: 'Widgets Alpha | DomDimaBot' },
+          { path: 'widgets', loadComponent: () => import('./features/widgets/widgets-hub.component').then(m => m.WidgetsHubComponent), canActivate: [permissionGuard, channelOwnerGuard], data: { permission: 'dashboard:view' }, title: 'Widgets Alpha | DomDimaBot' },
+          { path: 'widgets/dbd', loadComponent: () => import('./features/widgets/widgets-page.component').then(m => m.WidgetsPageComponent), canActivate: [permissionGuard, channelOwnerGuard], data: { permission: 'dashboard:view' }, title: 'Dead by Daylight Widget Alpha | DomDimaBot' },
           {
             path: 'roulette',
             loadComponent: () => import('./features/roulette/roulette-page.component').then(m => m.RoulettePageComponent),

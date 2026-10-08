@@ -13,11 +13,11 @@ schema.index({ dueAt: 1 });
 export const WidgetChannel = model<Stored>('WidgetChannel', schema);
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
 function channel(id: string): string { if (!/^[0-9]{1,30}$/.test(id)) domain.fail('invalid', 'Invalid channel ID'); return id; }
-export async function hasPro(id: string): Promise<boolean> {
+export async function hasPremium(id: string): Promise<boolean> {
   channel(id); await getMongoDBConnection('widget-entitlement');
-  return !!await Users.exists({ accounts: { $elemMatch: { type: 'twitch', id } }, plan_tier: 'pro' });
+  return !!await Users.exists({ accounts: { $elemMatch: { type: 'twitch', id } }, plan_tier: { $in: ['premium', 'pro'] } });
 }
-export async function requirePro(id: string): Promise<void> { if (!await hasPro(id)) domain.fail('pro_required', 'Widgets Alpha requires Pro', 403); }
+export async function requirePremium(id: string): Promise<void> { if (!await hasPremium(id)) domain.fail('premium_required', 'Widgets Alpha requires Premium', 403); }
 async function load(id: string): Promise<Stored> {
   channel(id); await getMongoDBConnection('widgets');
   let doc = await WidgetChannel.findById(id).lean();
@@ -30,7 +30,7 @@ async function load(id: string): Promise<Stored> {
 }
 export type Action = 'select' | 'configure' | 'start' | 'show' | 'hide' | 'reset' | 'retry-poll' | 'role' | 'layout' | 'progress';
 export async function execute(id: string, action: Action, body: unknown, key: string, revision: number) {
-  await requirePro(id);
+  await requirePremium(id);
   domain.text(key, 'Idempotency-Key', 128); domain.integer(revision, 'If-Match', 0);
   const data = domain.object(body), fingerprint = hash(JSON.stringify({ action, data })), receiptKey = hash(key);
   for (let n = 0; n < 20; n++) {
@@ -86,7 +86,7 @@ async function savePoll(id: string, state: State, patch: Record<string, unknown>
 async function launchPoll(id: string, state: State, create: boolean): Promise<void> {
   const run = state.run!;
   try {
-    if (!await hasPro(id)) return;
+    if (!await hasPremium(id)) return;
     // Recover an accepted poll after response loss without ever automatically creating a second one.
     let poll = await getPoll(id, null, false);
     if ((poll.data?.title !== run.pollTitle || poll.data.status === 'TERMINATED') && create) {
@@ -111,7 +111,7 @@ async function advance(id: string): Promise<void> {
   for (let n = 0; n < 10; n++) {
     const doc = await load(id), state = doc.state, now = Date.now();
     if (state.nextAt === null || state.nextAt > now) return;
-    if (!await hasPro(id)) { await WidgetChannel.updateOne({ _id: id, revision: doc.revision }, { $set: { dueAt: now + 60000 } }); return; }
+    if (!await hasPremium(id)) { await WidgetChannel.updateOne({ _id: id, revision: doc.revision }, { $set: { dueAt: now + 60000 } }); return; }
     let launch = false;
     if (state.phase === 'poll-starting') { await launchPoll(id, state, false); return; }
     if (state.phase === 'polling') {
@@ -142,11 +142,11 @@ export async function settleDue(): Promise<void> {
   for (const row of rows) await advance(row._id);
 }
 export async function rotateToken(id: string): Promise<string> {
-  await requirePro(id); await load(id);
+  await requirePremium(id); await load(id);
   const token = randomBytes(32).toString('base64url');
   await WidgetChannel.updateOne({ _id: id }, { $set: { tokenHash: hash(token) }, $inc: { revision: 1 } }); return token;
 }
 export async function authorizeOverlay(id: string, token: unknown): Promise<boolean> {
   if (typeof token !== 'string' || !/^[\w-]{43}$/.test(token) || !/^[0-9]{1,30}$/.test(id)) return false;
-  return await hasPro(id) && !!await WidgetChannel.exists({ _id: id, tokenHash: hash(token) });
+  return await hasPremium(id) && !!await WidgetChannel.exists({ _id: id, tokenHash: hash(token) });
 }

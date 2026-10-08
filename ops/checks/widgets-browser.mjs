@@ -22,7 +22,7 @@ async function portrait(route){
  })());
  try{await route.fulfill(await portraitCache.get(url));}catch{await route.fulfill({status:404,body:''});}
 }
-async function fixture({width=1280,tier='pro',theme='dark',lang='en',owner=true}={}){
+async function fixture({width=1280,tier='pro',theme='dark',lang='en',owner=true,path='/modules/widgets/dbd'}={}){
  const context=await browser.newContext({viewport:{width,height:1000},permissions:['clipboard-read','clipboard-write']});
  const user={id:'991801',login:'widgetfixture',display_name:'Widget Fixture'};
  const app={name:'Widget Fixture',email:'test@example.invalid',language:lang,plan_tier:tier,actived:true,chat_enabled:true,twitch_user_id:user.id,has_permissions:true,up_to_date_permissions:true,administrating:owner?[]:[{channelID:'991802',channelName:'other'}]};
@@ -70,7 +70,7 @@ async function fixture({width=1280,tier='pro',theme='dark',lang='en',owner=true}
   else if(url.pathname.startsWith('/auth/access/'))data={allowed:true};
   else if(url.pathname.includes('/live-status'))data={isLive:false,currentViewers:0};
   else if(url.pathname.startsWith('/widgets/')){
-   widgetReads++;if(tier!=='pro')return route.fulfill({status:403,json:{error:true,code:'pro_required'}});
+   widgetReads++;if(!['premium','pro'].includes(tier))return route.fulfill({status:403,json:{error:true,code:'premium_required'}});
    if(failRead&&req.method()==='GET')return route.fulfill({status:503,json:{error:true}});
    finish();state.serverTime=Date.now();
    if(req.method()==='GET')data=url.pathname.endsWith('/catalog')?catalog:structuredClone(wireState());
@@ -106,7 +106,7 @@ async function fixture({width=1280,tier='pro',theme='dark',lang='en',owner=true}
   return route.fulfill({json:{error:false,status:200,data}});
  });
  const page=await context.newPage();const errors=[];page.on('pageerror',error=>errors.push(error.message));
- await page.goto(base+`/${owner?'widgetfixture':'other'}/modules/widgets`);
+ await page.goto(base+`/${owner?'widgetfixture':'other'}${path}`);
  return {context,page,state,writes:()=>writes,reads:()=>widgetReads,errors,actions:actionLog,setLost:()=>lostResponse=true,publish:()=>{manualDraw=true;state.serverTime=Date.now();state.revision++;widgetSocket.send('42/overlays/widgets/991801,'+JSON.stringify(['widgets-state',wireState()]));},setConflict:()=>conflict=true,setFail:v=>failRead=v};
 }
 const axeClean=async(page,include)=>{const result=await new AxeBuilder({page}).include(include).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();assert.deepEqual(result.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>n.target)})),[]);};
@@ -197,7 +197,10 @@ try{
  assert.deepEqual(await page.locator('[data-testid=widget-progress] app-widget-streak.survivor [data-state=fresh]').evaluate(e=>[getComputedStyle(e.querySelector('.light')).display,getComputedStyle(e.querySelector('.lid')).animationName]),['none','none']);await page.emulateMedia({reducedMotion:'no-preference'});const frame=await page.getByTestId('widget-canvas').boundingBox();close(frame.width,1280);close(frame.height,720);
  f.state.visible=false;f.publish();await page.getByTestId('widget-canvas').waitFor({state:'hidden'});f.state.visible=true;f.publish();await page.getByTestId('widget-canvas').waitFor();
  if(shots)await page.screenshot({path:`${shots}/obs-source.png`,fullPage:true});assert.deepEqual(f.errors,[]);await f.context.close();
- for(const tier of ['free','premium']){const gated=await fixture({tier});await gated.page.getByText('Widgets Alpha requires Pro',{exact:true}).waitFor();assert.equal(gated.reads(),0);await gated.context.close();}
+ const hub=await fixture({path:'/modules/widgets'});await hub.page.getByTestId('widget-dbd').click();await hub.page.waitForURL(/\/modules\/widgets\/dbd$/);await hub.page.getByTestId('widgets-page').waitFor();assert.deepEqual(hub.errors,[]);await hub.context.close();
+ const hubFree=await fixture({tier:'free',path:'/modules/widgets'});await hubFree.page.getByText('Widgets Alpha requires Premium',{exact:true}).waitFor();assert.equal(await hubFree.page.getByTestId('widget-dbd').count(),0);await axeClean(hubFree.page,'[data-testid="widgets-hub"]');await hubFree.context.close();
+ const freeGate=await fixture({tier:'free'});await freeGate.page.getByText('Widgets Alpha requires Premium',{exact:true}).waitFor();assert.equal(freeGate.reads(),0);await freeGate.context.close();
+ const premium=await fixture({tier:'premium'});await premium.page.getByTestId('role-survivor').waitFor();assert(premium.reads()>0);assert.deepEqual(premium.errors,[]);await premium.context.close();
  const spanish=await fixture({lang:'es',width:390});await spanish.page.getByRole('button',{name:'Iniciar ronda',exact:true}).waitFor();await overflow(spanish.page);await axeClean(spanish.page,'[data-testid="widgets-page"]');assert.deepEqual(spanish.errors,[]);await spanish.context.close();
  console.log('PASS unified DBD browser: plain-language round status and step track, skull/hatch win animations (control, preview, OBS, undo, local preview, reduced motion), one control center, per-role fixed character/skip settings, standalone actions, four existing roulette styles, result holds, every camera corner/size, compact alignment, progress, single OBS link, hidden cards, poll confirmation, uncertain-response replay, visibility, Pro gate, EN/ES, light/dark, mobile/desktop, AXE');
 }finally{await browser.close();}

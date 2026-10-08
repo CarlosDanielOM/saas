@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { Server, Socket } from 'socket.io';
-import { authorizeOverlay, hasPro, snapshot, WidgetChannel } from '../../widgets/service.js';
+import { authorizeOverlay, hasPremium, snapshot, WidgetChannel } from '../../widgets/service.js';
 import { catalog } from '../../widgets/catalog.js';
 
 /** Database revisions recover missed events across API/bot/cron without lossy pubsub. */
@@ -32,7 +32,7 @@ export function registerWidgetOverlay(io: Server): void {
       const poll = async () => {
         if (owned.busy) return; owned.busy = true;
         try {
-          if (!await hasPro(channelId)) { for (const client of owned.sockets) client.disconnect(true); return; }
+          if (!await hasPremium(channelId)) { for (const client of owned.sockets) client.disconnect(true); return; }
           const version = await WidgetChannel.findById(channelId, { revision: 1, dueAt: 1, tokenHash: 1 }).lean();
           for (const client of owned.sockets) {
             if (!version || client.data.widgetsTokenHash !== version.tokenHash) { client.disconnect(true); continue; }

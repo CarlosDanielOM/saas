@@ -1,0 +1,19 @@
+<div class="lf" data-plan="premium"><main class="lf-main" data-testid="widgets-hub">
+  <header class="lf-head">
+    <a class="back" [routerLink]="['/', streamer, 'modules']"><app-lf-icon name="back" />{{ t('back') }}</a>
+    <h1>{{ t('title') }} <span class="chip alpha">{{ t('alpha') }}</span><span class="chip gold">{{ t('premium') }}</span></h1>
+    <p>{{ t('subtitle') }}</p>
+  </header>
+  @if (!premium()) {
+    <section class="lf-tile gate"><app-lf-icon name="lock" /><h2>{{ t('premiumRequired') }}</h2><p>{{ t('premiumDescription') }}</p><button class="primary" (click)="promptUpgrade()">{{ t('upgradePremium') }}</button></section>
+  } @else {
+    <section class="games" aria-labelledby="games-title">
+      <h2 id="games-title">{{ t('gamesTitle') }}</h2>
+      <a class="lf-tile game" data-testid="widget-dbd" [routerLink]="['/', streamer, 'modules', 'widgets', 'dbd']">
+        <span class="game-icon"><app-lf-icon name="monitor" /></span>
+        <span class="game-copy"><strong>{{ t('dbdTitle') }}</strong><small>{{ t('dbdSubtitle') }}</small></span>
+        <span class="game-open">{{ t('openWidget') }}<app-lf-icon name="forward" /></span>
+      </a>
+    </section>
+  }
+</main></div>
