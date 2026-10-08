@@ -1,0 +1,60 @@
+<section class="stage" [attr.aria-label]="title()">
+  <header class="stage-head"><span>DEAD BY DAYLIGHT</span><span class="stage-role">{{ t('role.' + pack().role) }}</span></header>
+  <h2>{{ title() }}</h2>
+  <p class="phase" aria-live="polite">{{ t('phase.' + state().phase) }}</p>
+  @if (state().phase === 'complete' && pack().mode === 'challenge') {
+    @if (character(); as entry) { <div class="challenge-character">@if (!failedImages().has(entry.id)) { <img [ngSrc]="entry.image_url" width="140" height="160" alt="" (error)="imageFailed(entry)" /> }<strong>{{ label(entry) }}</strong></div> }
+  } @else if (voteStage() && state().run; as run) {
+    @if (character(); as entry) { <p class="selected-character">{{ label(entry) }}</p> }
+    <div class="mystery-cards" [class.revealed]="run.winningCard !== null">
+      @for (value of run.cards; track $index) {
+        <div class="mystery" [class.winning]="run.winningCard === $index">
+          <span>{{ t('card', {n: $index + 1}) }}</span>
+          <strong>{{ value === null ? '?' : value }}</strong>
+          <small>{{ value === null ? t('votes', {n: run.votes[$index]}) : t('perkCount', {n: value}) }}</small>
+        </div>
+      }
+    </div>
+    @if (state().phase === 'polling') { <p class="vote-hint">{{ countdown() > 0 ? t('voteHint', {seconds: countdown()}) : t('waitingTwitch') }}</p> }
+    @if (run.winningCard !== null) { <p class="reveal-result">{{ t('revealResult', {card: run.winningCard + 1, n: run.perkCount ?? 0}) }}</p> }
+  } @else {
+    @if (wheel()) {
+      <div class="wheel-wrap">
+        <span class="pointer" aria-hidden="true"></span>
+        <div class="wheel" [style.background]="wheelGradient()" [style.transform]="'rotate(' + wheelRotation() + 'deg)'" aria-hidden="true">
+          @for (entry of wheelIcons(); track entry.id; let i = $index) {
+            <div class="wheel-icon" [style.transform]="'rotate(' + (i * 360 / wheelIcons().length + 15) + 'deg) translateY(-108px)'">
+              @if (!failedImages().has(entry.id)) { <img [ngSrc]="entry.image_url" width="34" height="34" alt="" (error)="imageFailed(entry)" /> }
+            </div>
+          }
+        </div>
+        <div class="wheel-hub"><strong>{{ pool().length }}</strong><span>{{ t('perks') }}</span></div>
+      </div>
+    } @else {
+      <div class="character-cards" aria-hidden="true">
+        @for (entry of cards(); track entry.id; let i = $index) {
+          <div class="character-card" [class.chosen]="highlight() === i">
+            @if (!failedImages().has(entry.id)) { <img [ngSrc]="entry.image_url" width="100" height="120" alt="" (error)="imageFailed(entry)" /> }
+            <span>{{ label(entry) }}</span>
+          </div>
+        }
+      </div>
+    }
+    @if (current(); as entry) {
+      <div class="draw-result" [class.draw-result--settled]="!spinning()" [attr.aria-live]="spinning() ? 'off' : 'polite'">
+        @if (!failedImages().has(entry.id)) { <img [ngSrc]="entry.image_url" width="68" height="68" alt="" (error)="imageFailed(entry)" /> }
+        <div><small>{{ state().run ? t(spinning() ? 'drawing' : 'selected') : t('preview') }}</small><strong>{{ label(entry) }}</strong></div>
+      </div>
+    } @else { <p>{{ t('emptyPool') }}</p> }
+  }
+  @if (state().run && pack().mode === 'challenge' && !voteStage()) {
+    <footer class="loadout" aria-live="polite">
+      @if (state().phase !== 'complete') { @if (character(); as entry) { <strong>{{ label(entry) }}</strong> } }
+      <div class="loadout-perks">
+        @for (entry of perks(); track entry.id) {
+          <div>@if (!failedImages().has(entry.id)) { <img [ngSrc]="entry.image_url" width="42" height="42" alt="" (error)="imageFailed(entry)" /> }<span>{{ label(entry) }}</span></div>
+        } @empty { @if (state().phase === 'complete') { <span>{{ t('noPerks') }}</span> } }
+      </div>
+    </footer>
+  }
+</section>

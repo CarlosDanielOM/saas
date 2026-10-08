@@ -91,6 +91,7 @@ const CORE_MODULE_IDS: readonly ModuleId[] = [
 const MODULE_GOALS: Readonly<Record<ModuleId, Goal>> = {
   overlays: 'stream',
   roulette: 'stream',
+  widgets: 'stream',
   clips: 'stream',
   triggers: 'stream',
   dimafx: 'stream',
@@ -123,6 +124,7 @@ const RECENT_STORAGE_PREFIX = 'dimasite.modules.recent.';
 const MODULE_VIEW_PERMISSIONS: Readonly<Record<ModuleId, string | null>> = {
   overlays: null,
   roulette: null,
+  widgets: null,
   clips: 'clips:view',
   'chat-events': 'eventsubs:view',
   triggers: 'triggers:view',
@@ -143,6 +145,7 @@ const MODULE_VIEW_PERMISSIONS: Readonly<Record<ModuleId, string | null>> = {
 
 const MODULE_ICONS: Record<ModuleId, LucideIconData> = {
   roulette: Dices,
+  widgets: MonitorPlay,
   overlays: Layers,
   'chat-events': MessagesSquare,
   moderation: Hammer,
@@ -214,6 +217,7 @@ export class ModulesPageComponent {
 
     return [
       this.buildModule('overlays', this.t('overlayStudio.studio'), 'overlayStudio.description', streamerName, userPlanTier),
+      this.buildModule('widgets', this.t('widgets.title'), 'widgets.subtitle', streamerName, userPlanTier),
       this.buildModule('roulette', this.t('roulette.title'), 'roulette.subtitle', streamerName, userPlanTier),
       this.buildModule('clips', 'Clips', 'modules.clips.description', streamerName, userPlanTier),
       this.buildModule(

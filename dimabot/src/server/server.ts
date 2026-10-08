@@ -1,3 +1,4 @@
+import { widgetsRoute } from './routes/widgets.route.js';
 import { overlayStudioRoute } from './routes/overlay-studio.route.js';
 import { assetLibraryRoute } from './routes/asset-library.route.js';
 import { rouletteRoute } from './routes/roulette.route.js';
@@ -122,6 +123,7 @@ export const server = async (): Promise<Express.Application> => {
         // Setup timers routes
         app.use('/timers', timerRoute);
         app.use('/roulettes', rouletteRoute);
+        app.use('/widgets', widgetsRoute);
         app.use('/overlay-studio', overlayStudioRoute);
         app.use('/asset-library', assetLibraryRoute);
 

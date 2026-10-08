@@ -1,3 +1,4 @@
+import { registerWidgetOverlay } from './services/widgets-overlay.service.js';
 import { registerStudio, studioHasSource } from '../overlays/live.js';
 import { registerRouletteOverlay } from './services/roulette-overlay.service.js';
 import { Server as SocketIOServer } from "socket.io";
@@ -44,6 +45,7 @@ export const websocket = async (app: any): Promise<HttpServer | null> => {
 
         registerVoicePreview(io);
         registerRouletteOverlay(io);
+        registerWidgetOverlay(io);
         registerDimafxOverlay(io);
         registerStudio(io);
 

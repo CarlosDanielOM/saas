@@ -1,0 +1,104 @@
+// Run only with saas-ops, disposable Mongo/Redis, and widgets-fixtures.
+import assert from 'node:assert/strict';
+import {createRequire} from 'node:module';
+import {createServer} from 'node:http';
+import {readFileSync,writeFileSync,unlinkSync} from 'node:fs';
+import {execFileSync} from 'node:child_process';
+const require=createRequire('/app/package.json');
+const svc=await import('/app/dist/widgets/service.js');
+const domain=await import('/app/dist/widgets/model.js');
+const {catalog}=await import('/app/dist/widgets/catalog.js');
+const {getMongoDBConnection}=await import('/app/dist/utils/databases/mongodb.database.js');
+const {getDragonflyClient}=await import('/app/dist/utils/databases/dragonfly.database.js');
+await getMongoDBConnection('widgets-test');const redis=await getDragonflyClient('widgets-test');
+const {default:Users}=await import('/app/dist/schemas/users.schema.js');
+await svc.WidgetChannel.init();
+assert.equal(catalog.entries.length,419);assert.equal(catalog.packs.length,6);
+const channel='991801',other='991802';
+await Users.collection.insertOne({accounts:[{id:channel,type:'twitch'}],plan_tier:'pro'});
+await Users.collection.insertOne({accounts:[{id:other,type:'twitch'}],plan_tier:'premium'});
+await redis.hSet('token:widgets-owner',{id:channel,login:'widgetfixture',display_name:'Widget Fixture'});
+await redis.hSet('token:widgets-other',{id:other,login:'other',display_name:'Other'});
+await redis.hSet('accounts:twitch:'+channel+':data',{id:channel,name:'widgetfixture',has_permissions:'true',access_token:'fixture',expires_at:String(Math.floor(Date.now()/1000)+3600),userPlan:'pro'});
+let base='http://127.0.0.1:3000',testServer,io;
+if(process.env.SAAS_TARGET!=='api'){
+ const express=require('express');const app=express();app.use(express.json());app.use('/widgets',(await import('/app/dist/server/routes/widgets.route.js')).widgetsRoute);
+ testServer=createServer(app);io=new (require('socket.io').Server)(testServer,{connectionStateRecovery:{}});
+ (await import('/app/dist/server/services/widgets-overlay.service.js')).registerWidgetOverlay(io);
+ await new Promise(resolve=>testServer.listen(3210,'127.0.0.1',resolve));base='http://127.0.0.1:3210';
+}
+const root='/widgets/'+channel;
+async function request(method,path,body,status=200,token='widgets-owner',headers={}){
+ const response=await fetch(base+path,{method,headers:{...(token?{Authorization:'Bearer '+token}:{}),'Content-Type':'application/json',...headers},...(body===undefined?{}:{body:JSON.stringify(body)})});const value=await response.json();assert.equal(response.status,status,JSON.stringify(value));return value.data;
+}
+await request('GET',root,undefined,401,'');await request('GET',root,undefined,403,'widgets-other');
+await request('GET','/widgets/'+other,undefined,403,'widgets-other');
+await request('GET',root+'/catalog');
+let state=await request('GET',root);assert.equal(state.phase,'idle');
+async function action(name,body={},status=200,key=crypto.randomUUID(),revision=state.revision){const result=await request('POST',root+'/actions/'+name,body,status,'widgets-owner',{'Idempotency-Key':key,'If-Match':String(revision)});if(status===200)state=result;return result;}
+await action('configure',{...state.config,spinSeconds:1,pollSeconds:15});
+await action('configure',{...state.config,spinSeconds:1.5},400);
+await action('configure',{...state.config,excludedIds:['fake-id']},400);
+await action('configure',{...state.config,unexpected:true},400);
+await action('select',{packId:'fake'},400);await action('show',{},409,crypto.randomUUID(),0);
+for(const role of ['killer','survivor'])for(const mode of ['characters','perks']){
+ await action('select',{packId:`dbd-${role}-${mode}`});
+ const key=crypto.randomUUID(),rev=state.revision;await action('start',{},200,key,rev);const draw=state.run.draw;
+ assert(draw.poolIds.every(id=>catalog.entries.find(e=>e.id===id).role===role));
+ assert(draw.poolIds.every(id=>catalog.entries.find(e=>e.id===id).kind===(mode==='perks'?'perk':'character')));
+ await action('start',{},200,key,rev);assert.equal(state.run.draw.id,draw.id,'same key cannot reroll');
+ await action('hide',{},409,key,state.revision);
+ await action('start',{},409);await action('select',{packId:'dbd-killer-challenge'},409);
+ await new Promise(r=>setTimeout(r,1100));state=await request('GET',root);assert.equal(state.phase,'complete');
+}
+await action('select',{packId:'dbd-killer-challenge'});
+const excluded=catalog.entries.filter(e=>e.role==='killer'&&e.kind==='perk').slice(3).map(e=>e.id);
+await action('configure',{...state.config,excludedIds:excluded});await action('start',{},400);
+await action('configure',{...state.config,excludedIds:[]});
+const revision=state.revision;
+const starts=await Promise.all(Array.from({length:4},(_,i)=>fetch(base+root+'/actions/start',{method:'POST',headers:{Authorization:'Bearer widgets-owner','Content-Type':'application/json','Idempotency-Key':'race-'+i,'If-Match':String(revision)},body:'{}'}).then(r=>r.status)));
+assert.equal(starts.filter(status=>status===200).length,1);assert.equal(starts.filter(status=>status===409).length,3);
+// Every other contender must fail via conflict; winner ordering can vary.
+state=await request('GET',root);assert.equal(state.phase,'character-spin');const id=state.run.id;
+const raw=await svc.WidgetChannel.findById(channel).lean();assert.deepEqual([...raw.state.run.cards].sort(),[0,1,2,3,4]);assert.deepEqual(state.run.cards,[null,null,null,null,null]);
+const token=(await request('POST',root+'/overlay-token',{})).token;
+const overlay=(await request('GET',root+'/overlay',undefined,200,token)).state;
+function connectWidget(overlayToken){
+ const ws=new WebSocket(base.replace('http:','ws:')+'/socket.io/?EIO=4&transport=websocket'),packets=[];
+ ws.addEventListener('message',event=>{const text=String(event.data);if(text.startsWith('0'))ws.send('40/overlays/widgets/'+channel+','+JSON.stringify({token:overlayToken}));else if(text==='2')ws.send('3');else packets.push(text);});
+ async function waitPacket(check){for(let i=0;i<100;i++){const found=packets.find(check);if(found)return found;await new Promise(r=>setTimeout(r,50));}throw new Error('Widget socket timeout '+JSON.stringify(packets));}
+ return {ws,packets,waitPacket};
+}
+const initialSocket=connectWidget(token);const firstPacket=await initialSocket.waitPacket(text=>text.includes('widgets-state'));const socketState=JSON.parse(firstPacket.slice(firstPacket.indexOf(',')+1))[1];assert.deepEqual(socketState.run.cards,[null,null,null,null,null]);await initialSocket.waitPacket(text=>text.includes('widgets-catalog'));initialSocket.ws.close();
+assert.deepEqual(overlay.run.cards,[null,null,null,null,null]);assert.equal(overlay.tokenHash,undefined);
+await request('POST',root+'/actions/hide',{},401,token,{'Idempotency-Key':'overlay-write','If-Match':String(state.revision)});
+// Complete character using the real worker, even with no readers/OBS clients.
+await new Promise(r=>setTimeout(r,1200));
+execFileSync('node',['/app/dist/workers/widgets.worker.js','--once'],{encoding:'utf8'});
+state=await request('GET',root);assert.equal(state.phase,'polling');assert(state.run.pollId);assert.deepEqual(state.run.cards,[null,null,null,null,null]);
+let store=JSON.parse(readFileSync('/tmp/saas-fixtures/polls.json','utf8'));assert.equal(store.creates,1,'one poll AST executed');
+assert.deepEqual(store.polls[0].choices.map(c=>c.title),['Card 1','Card 2','Card 3','Card 4','Card 5']);
+assert(store.polls[0].title.includes(id.slice(0,8)));
+await action('hide');assert.equal(state.visible,false);await action('show');
+const stored=await svc.WidgetChannel.findById(channel).lean();const four=stored.state.run.cards.indexOf(4);
+store.polls[0].status='COMPLETED';store.polls[0].choices.forEach((c,i)=>c.votes=i===four?25:0);writeFileSync('/tmp/saas-fixtures/polls.json',JSON.stringify(store));
+await svc.WidgetChannel.updateOne({_id:channel},{$set:{'state.nextAt':0,dueAt:0}});
+state=await request('GET',root);assert.equal(state.phase,'reveal');assert.equal(state.run.perkCount,4);assert.equal(state.run.winningCard,four);assert.deepEqual([...state.run.cards].sort(),[0,1,2,3,4]);
+await new Promise(r=>setTimeout(r,3600));execFileSync('node',['/app/dist/workers/widgets.worker.js','--once'],{encoding:'utf8'});
+for(let i=0;i<4;i++){await new Promise(r=>setTimeout(r,1150));execFileSync('node',['/app/dist/workers/widgets.worker.js','--once'],{encoding:'utf8'});}
+state=await request('GET',root);assert.equal(state.phase,'complete');assert.equal(state.run.perkIds.length,4);assert.equal(new Set(state.run.perkIds).size,4);
+// Zero and tie behavior are domain tests using the real shuffled private values.
+for(const target of [0,1,2,3,4]){const s=domain.initial();domain.start(s,1000);const slot=s.run.cards.indexOf(target);domain.reveal(s,s.run.cards.map((_,i)=>i===slot?10:0),2000);assert.equal(s.run.perkCount,target);domain.settle(s,6000);assert.equal(s.phase,target===0?'complete':'perk-spin');}
+for(let i=0;i<100;i++){const s=domain.initial();domain.start(s,1000);domain.reveal(s,[0,0,0,0,0],2000);assert(s.run.winningCard>=0&&s.run.winningCard<5);}
+// Poll failure never leaks cards or silently chooses a perk count.
+await action('reset');writeFileSync('/tmp/saas-fixtures/fail-poll','fail');await action('start');await new Promise(r=>setTimeout(r,1100));state=await request('GET',root);assert.equal(state.phase,'poll-error');assert.deepEqual(state.run.cards,[null,null,null,null,null]);unlinkSync('/tmp/saas-fixtures/fail-poll');
+await action('retry-poll');assert.equal(state.phase,'polling');
+// Accepted-poll recovery does not POST a duplicate, including after a process interruption.
+const before=JSON.parse(readFileSync('/tmp/saas-fixtures/polls.json','utf8')).creates;
+await svc.WidgetChannel.updateOne({_id:channel},{$set:{'state.phase':'poll-starting','state.nextAt':0,dueAt:0}});state=await request('GET',root);assert.equal(state.phase,'polling');assert.equal(JSON.parse(readFileSync('/tmp/saas-fixtures/polls.json','utf8')).creates,before);
+const revocationSocket=connectWidget(token);await revocationSocket.waitPacket(text=>text.includes('widgets-state'));
+const replacement=(await request('POST',root+'/overlay-token',{})).token;await request('GET',root+'/overlay',undefined,401,token);await revocationSocket.waitPacket(text=>text.startsWith('41'));revocationSocket.ws.close();await request('GET',root+'/overlay',undefined,200,replacement);
+await Users.updateOne({'accounts.id':channel},{$set:{plan_tier:'free'}});await request('GET',root,undefined,403);await request('GET',root+'/overlay',undefined,401,replacement);
+await svc.settleDue();assert((await svc.WidgetChannel.findById(channel).lean()).dueAt>Date.now(),'downgraded channels do not monopolize indexed deadlines');
+console.log('PASS widgets: 419 entries, 6 presets, Pro/owner/token access, validation, persistence, idempotency, concurrent start, hidden cards, native poll AST, recovery, 0–4 distinct perks, real worker, and token revocation');
+io?.close();testServer?.close();process.exit(0);

@@ -11,6 +11,7 @@ import { overlayDraftGuard } from './features/overlays/overlay-draft.guard';
 
 export const routes: Routes = [
   { path: 'overlays/:publicId', loadComponent: () => import('./features/overlays/overlay-runtime.component').then(m => m.OverlayRuntimeComponent), title: 'Overlay Studio' },
+  { path: 'overlays/widgets/:channelID', loadComponent: () => import('./features/widgets/widgets-overlay.component').then(m => m.WidgetsOverlayComponent), title: 'Widgets Overlay' },
   { path: 'overlays/roulette/:channelID', loadComponent: () => import('./features/roulette/roulette-overlay.component').then(m => m.RouletteOverlayComponent), title: 'Roulette Overlay' },
   {
     path: '',
@@ -818,6 +819,7 @@ export const routes: Routes = [
           {
             path: 'overlays', loadComponent: () => import('./features/overlays/overlay-editor.component').then(m => m.OverlayEditorComponent), canActivate: [permissionGuard, channelOwnerGuard], canDeactivate: [overlayDraftGuard], data: { permission: 'dashboard:view' }, title: 'Overlay Studio Alpha | DomDimaBot'
           },
+          { path: 'widgets', loadComponent: () => import('./features/widgets/widgets-page.component').then(m => m.WidgetsPageComponent), canActivate: [permissionGuard, channelOwnerGuard], data: { permission: 'dashboard:view' }, title: 'Widgets Alpha | DomDimaBot' },
           {
             path: 'roulette',
             loadComponent: () => import('./features/roulette/roulette-page.component').then(m => m.RoulettePageComponent),

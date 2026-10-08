@@ -1291,7 +1291,8 @@
       "moderation": "Filter spam, links, caps and blocked words",
       "stream-summaries": "AI recaps and metrics for past streams",
       "clip-recommendations": "AI finds clip-worthy moments in your VODs",
-      "library": "Upload and manage the media your tools use"
+      "library": "Upload and manage the media your tools use",
+      "widgets": "Ready-made game overlays and challenge packs"
     }
   },
   "streamSummaries": {
@@ -6317,5 +6318,158 @@
     "pickedLabel": "Selected: {{name}}",
     "pickPrompt": "Choose an asset to continue.",
     "done": "Done"
+  },
+  "widgets": {
+    "title": "Widgets",
+    "alpha": "Alpha",
+    "back": "Modules",
+    "subtitle": "Handmade overlays for your games and challenges. Pick a pack, preview it, and put it on stream.",
+    "gallery": "Widget gallery",
+    "galleryHint": "Start with Dead by Daylight. Each preset comes with its own look and actions.",
+    "presetCount": "{{n}} presets",
+    "preview": "Preview",
+    "inUse": "Selected for your stream",
+    "viewWidget": "View widget",
+    "useWidget": "Use this widget",
+    "role": {
+      "all": "All widgets",
+      "killer": "Killer",
+      "survivor": "Survivor"
+    },
+    "mode": {
+      "challenge": "Challenge pack",
+      "characters": "Card roulette",
+      "perks": "Perk wheel"
+    },
+    "filter": "Filter widgets",
+    "characters": "Characters",
+    "perks": "Perks",
+    "poolCount": "{{characters}} characters · {{perks}} perks enabled",
+    "flow": {
+      "character": "Draw character",
+      "vote": "Twitch poll",
+      "reveal": "Reveal card",
+      "perks": "Draw perks"
+    },
+    "rules": "Five hidden cards contain 0–4 perks, shuffled each round. Twitch votes pick a card; ties (including no votes) are random. Perks never repeat within a challenge.",
+    "proRequired": "Widgets Alpha requires Pro",
+    "proDescription": "Get game-specific overlays with ready-made challenge flows and live viewer votes.",
+    "upgrade": "Upgrade to Pro",
+    "loading": "Loading widgets…",
+    "loadError": "Could not load the widgets. Try again.",
+    "retry": "Retry",
+    "noWidgets": "No widgets match this filter.",
+    "conflict": "The widget changed or a challenge is running. Check the refreshed state and try again.",
+    "emptyPool": "Enable at least one character and four perks for a challenge, or one entry for a standalone roulette.",
+    "uncertain": "The response was interrupted. Retry this same action to recover its result without starting another draw.",
+    "saved": "Widget updated.",
+    "allSaved": "All changes saved",
+    "unsaved": "Unsaved changes",
+    "saving": "Saving…",
+    "save": "Save settings",
+    "start": "Start widget",
+    "running": "Challenge running…",
+    "reset": "Reset challenge",
+    "show": "Show on stream",
+    "hide": "Hide from stream",
+    "visible": "Visible in connected OBS sources",
+    "hidden": "Hidden from OBS",
+    "keepRunning": "Hiding the overlay does not stop the challenge. It keeps running if you close this page.",
+    "waitBeforeSwitch": "Wait for the current challenge to finish before switching widgets.",
+    "pollError": "Check your Twitch poll.",
+    "retryPoll": "Retry Twitch poll",
+    "obsTitle": "OBS browser source",
+    "obsHint": "Add this link in OBS at 760 × 900. One source follows your selected widget. Keep the link private.",
+    "makeLink": "Create OBS link",
+    "newLink": "Replace link",
+    "copy": "Copy",
+    "copied": "OBS link copied.",
+    "linkReady": "OBS link ready.",
+    "copyError": "Select the link and copy it manually.",
+    "pollOverlayHint": "Show Twitch voting in a separate overlay with Overlay Studio’s poll preset.",
+    "openPollOverlay": "Open Overlay Studio",
+    "settings": "Widget settings",
+    "language": "Overlay language",
+    "spinSeconds": "Seconds per spin (1–15)",
+    "pollSeconds": "Poll duration (15–180 seconds)",
+    "spinValidation": "Enter a whole number from 1 to 15.",
+    "pollValidation": "Enter a whole number from 15 to 180.",
+    "unavailable": "Include characters already owned but no longer sold",
+    "ownedOnly": "Existing owners only",
+    "customPool": "Choose your characters and perks",
+    "customPoolHint": "Turn off DLC or perks you do not own. The enabled pool is shared across this game’s presets.",
+    "search": "Search names in English or Spanish",
+    "enableMatching": "Enable matching",
+    "disableMatching": "Disable matching",
+    "noMatches": "No matching entries.",
+    "loadMore": "Show more",
+    "card": "Card {{n}}",
+    "votes": "{{n}} votes",
+    "perkCount": "{{n}} perks",
+    "drawing": "Drawing…",
+    "selected": "Selected",
+    "voteHint": "Vote in the Twitch poll · {{seconds}}s left",
+    "waitingTwitch": "Waiting for Twitch to finish the poll…",
+    "revealResult": "Card {{card}} revealed: {{n}} perks",
+    "noPerks": "No perks this round",
+    "phase": {
+      "idle": "Ready when you are",
+      "character-spin": "Drawing a character…",
+      "poll-starting": "Starting the Twitch poll…",
+      "polling": "Choose a hidden card in Twitch",
+      "poll-error": "The poll needs attention",
+      "reveal": "The winning card is revealed",
+      "perk-spin": "Drawing a perk…",
+      "complete": "Your result is ready"
+    },
+    "confirm": {
+      "start": {
+        "title": "Start this widget?",
+        "hint": "This shows the widget in your connected OBS sources, draws a character, and automatically starts a native Twitch poll with five hidden cards. Its result draws 0–4 perks. Twitch polls require an Affiliate or Partner channel and poll permissions.",
+        "button": "Start on stream"
+      },
+      "drawHint": "This shows the widget in your connected OBS sources and draws one random result.",
+      "retry-poll": {
+        "title": "Retry the Twitch poll?",
+        "hint": "Check Twitch first. This recovers this round’s poll if it exists, or runs its poll AST again. The same hidden card values are kept.",
+        "button": "Retry poll"
+      },
+      "rotate": {
+        "title": "Replace the OBS link?",
+        "hint": "Every source using the previous widget link will disconnect. Paste the new link into OBS to reconnect it.",
+        "button": "Replace link"
+      }
+    },
+    "cancel": "Cancel",
+    "pack": {
+      "killer": {
+        "challenge": {
+          "title": "Killer challenge",
+          "description": "Character draw, hidden-card vote, and a complete perk loadout."
+        },
+        "characters": {
+          "title": "Killer cards",
+          "description": "Draw a character from the portrait cards for your next match."
+        },
+        "perks": {
+          "title": "Killer perk wheel",
+          "description": "Spin the wheel to pick a perk from your enabled pool."
+        }
+      },
+      "survivor": {
+        "challenge": {
+          "title": "Survivor challenge",
+          "description": "Character draw, hidden-card vote, and a complete perk loadout."
+        },
+        "characters": {
+          "title": "Survivor cards",
+          "description": "Draw a character from the portrait cards for your next match."
+        },
+        "perks": {
+          "title": "Survivor perk wheel",
+          "description": "Spin the wheel to pick a perk from your enabled pool."
+        }
+      }
+    }
   }
 }

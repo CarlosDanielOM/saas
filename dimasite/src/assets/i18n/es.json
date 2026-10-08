@@ -1291,7 +1291,8 @@
       "moderation": "Filtra spam, enlaces, mayúsculas y palabras bloqueadas",
       "stream-summaries": "Resúmenes con IA y métricas de streams pasados",
       "clip-recommendations": "La IA encuentra momentos clipeables en tus VODs",
-      "library": "Sube y gestiona la media que usan tus herramientas"
+      "library": "Sube y gestiona la media que usan tus herramientas",
+      "widgets": "Overlays y packs de retos para juegos"
     }
   },
   "streamSummaries": {
@@ -6317,5 +6318,158 @@
     "pickedLabel": "Seleccionado: {{name}}",
     "pickPrompt": "Elige un recurso para continuar.",
     "done": "Listo"
+  },
+  "widgets": {
+    "title": "Widgets",
+    "alpha": "Alfa",
+    "back": "Módulos",
+    "subtitle": "Overlays preparados para tus juegos y retos. Elige un pack, previsualízalo y úsalo en tu stream.",
+    "gallery": "Galería de widgets",
+    "galleryHint": "Empieza con Dead by Daylight. Cada widget incluye su diseño y acciones.",
+    "presetCount": "{{n}} widgets",
+    "preview": "Vista previa",
+    "inUse": "Seleccionado para tu stream",
+    "viewWidget": "Ver widget",
+    "useWidget": "Usar este widget",
+    "role": {
+      "all": "Todos",
+      "killer": "Asesino",
+      "survivor": "Superviviente"
+    },
+    "mode": {
+      "challenge": "Pack de reto",
+      "characters": "Ruleta de cartas",
+      "perks": "Ruleta de ventajas"
+    },
+    "filter": "Filtrar widgets",
+    "characters": "Personajes",
+    "perks": "Ventajas",
+    "poolCount": "{{characters}} personajes · {{perks}} ventajas disponibles",
+    "flow": {
+      "character": "Elegir personaje",
+      "vote": "Encuesta de Twitch",
+      "reveal": "Revelar carta",
+      "perks": "Elegir ventajas"
+    },
+    "rules": "Cinco cartas ocultas contienen de 0 a 4 ventajas, mezcladas en cada ronda. Twitch elige la carta; los empates (incluso sin votos) se resuelven al azar. Las ventajas no se repiten en un reto.",
+    "proRequired": "Widgets Alfa requiere Pro",
+    "proDescription": "Usa overlays para juegos con retos preparados y votaciones en directo.",
+    "upgrade": "Mejorar a Pro",
+    "loading": "Cargando widgets…",
+    "loadError": "No se pudieron cargar los widgets. Inténtalo de nuevo.",
+    "retry": "Reintentar",
+    "noWidgets": "No hay widgets con este filtro.",
+    "conflict": "El widget cambió o hay un reto en curso. Revisa el estado actualizado e inténtalo de nuevo.",
+    "emptyPool": "Activa al menos un personaje y cuatro ventajas para un reto, o una opción para una ruleta individual.",
+    "uncertain": "La respuesta se interrumpió. Reintenta la misma acción para recuperar el resultado sin iniciar otro sorteo.",
+    "saved": "Widget actualizado.",
+    "allSaved": "Cambios guardados",
+    "unsaved": "Cambios sin guardar",
+    "saving": "Guardando…",
+    "save": "Guardar ajustes",
+    "start": "Iniciar widget",
+    "running": "Reto en curso…",
+    "reset": "Reiniciar reto",
+    "show": "Mostrar en stream",
+    "hide": "Ocultar del stream",
+    "visible": "Visible en las fuentes OBS conectadas",
+    "hidden": "Oculto en OBS",
+    "keepRunning": "Ocultar el overlay no detiene el reto. Sigue funcionando si cierras esta página.",
+    "waitBeforeSwitch": "Espera a que termine el reto para cambiar de widget.",
+    "pollError": "Revisa tu encuesta de Twitch.",
+    "retryPoll": "Reintentar encuesta",
+    "obsTitle": "Fuente de navegador OBS",
+    "obsHint": "Añade este enlace en OBS a 760 × 900. Una fuente muestra tu widget seleccionado. Mantén el enlace privado.",
+    "makeLink": "Crear enlace OBS",
+    "newLink": "Reemplazar enlace",
+    "copy": "Copiar",
+    "copied": "Enlace OBS copiado.",
+    "linkReady": "Enlace OBS listo.",
+    "copyError": "Selecciona el enlace y cópialo manualmente.",
+    "pollOverlayHint": "Muestra los votos de Twitch en otro overlay con el widget de encuestas de Overlay Studio.",
+    "openPollOverlay": "Abrir Overlay Studio",
+    "settings": "Ajustes del widget",
+    "language": "Idioma del overlay",
+    "spinSeconds": "Segundos por giro (1–15)",
+    "pollSeconds": "Duración de encuesta (15–180 segundos)",
+    "spinValidation": "Introduce un número entero de 1 a 15.",
+    "pollValidation": "Introduce un número entero de 15 a 180.",
+    "unavailable": "Incluir personajes que ya tienes y ya no se venden",
+    "ownedOnly": "Solo si ya lo tienes",
+    "customPool": "Elige tus personajes y ventajas",
+    "customPoolHint": "Desactiva los DLC o ventajas que no tienes. Las opciones activadas se comparten entre los widgets de este juego.",
+    "search": "Buscar nombres en inglés o español",
+    "enableMatching": "Activar resultados",
+    "disableMatching": "Desactivar resultados",
+    "noMatches": "No hay resultados.",
+    "loadMore": "Mostrar más",
+    "card": "Carta {{n}}",
+    "votes": "{{n}} votos",
+    "perkCount": "{{n}} ventajas",
+    "drawing": "Sorteando…",
+    "selected": "Elegido",
+    "voteHint": "Vota en la encuesta de Twitch · quedan {{seconds}}s",
+    "waitingTwitch": "Esperando a que Twitch termine la encuesta…",
+    "revealResult": "Carta {{card}} revelada: {{n}} ventajas",
+    "noPerks": "Sin ventajas en esta ronda",
+    "phase": {
+      "idle": "Listo para empezar",
+      "character-spin": "Eligiendo un personaje…",
+      "poll-starting": "Iniciando la encuesta de Twitch…",
+      "polling": "Elige una carta oculta en Twitch",
+      "poll-error": "La encuesta necesita atención",
+      "reveal": "La carta ganadora se ha revelado",
+      "perk-spin": "Eligiendo una ventaja…",
+      "complete": "Tu resultado está listo"
+    },
+    "confirm": {
+      "start": {
+        "title": "¿Iniciar este widget?",
+        "hint": "Mostrará el widget en tus fuentes OBS, elegirá un personaje e iniciará automáticamente una encuesta de Twitch con cinco cartas ocultas. El resultado sorteará de 0 a 4 ventajas. Las encuestas requieren un canal Afiliado o Partner y permisos de encuestas.",
+        "button": "Iniciar en stream"
+      },
+      "drawHint": "Mostrará el widget en tus fuentes OBS y sorteará un resultado al azar.",
+      "retry-poll": {
+        "title": "¿Reintentar la encuesta de Twitch?",
+        "hint": "Revisa Twitch primero. Recuperará la encuesta de esta ronda si existe, o ejecutará de nuevo su AST. Se conservarán los mismos valores ocultos.",
+        "button": "Reintentar encuesta"
+      },
+      "rotate": {
+        "title": "¿Reemplazar el enlace OBS?",
+        "hint": "Todas las fuentes con el enlace anterior se desconectarán. Pega el nuevo enlace en OBS para conectarlas.",
+        "button": "Reemplazar enlace"
+      }
+    },
+    "cancel": "Cancelar",
+    "pack": {
+      "killer": {
+        "challenge": {
+          "title": "Reto de asesino",
+          "description": "Personaje al azar, voto de carta oculta y conjunto de ventajas."
+        },
+        "characters": {
+          "title": "Cartas de asesinos",
+          "description": "Sortea un personaje entre las cartas para tu próxima partida."
+        },
+        "perks": {
+          "title": "Ruleta de ventajas de asesino",
+          "description": "Gira la ruleta para elegir una ventaja entre las activadas."
+        }
+      },
+      "survivor": {
+        "challenge": {
+          "title": "Reto de superviviente",
+          "description": "Personaje al azar, voto de carta oculta y conjunto de ventajas."
+        },
+        "characters": {
+          "title": "Cartas de supervivientes",
+          "description": "Sortea un personaje entre las cartas para tu próxima partida."
+        },
+        "perks": {
+          "title": "Ruleta de ventajas de superviviente",
+          "description": "Gira la ruleta para elegir una ventaja entre las activadas."
+        }
+      }
+    }
   }
 }
