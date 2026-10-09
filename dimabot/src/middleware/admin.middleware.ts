@@ -147,6 +147,71 @@ export async function getChannelAccessContext(
     return { allowed: false, role: 'none' };
 }
 
+export const MAX_ACCESS_PERMISSIONS = 20;
+const PERMISSION_NAME_PATTERN = /^[a-z0-9_*:-]{1,64}$/i;
+
+/** null when the query has no `permissions` param; [] when it is present but invalid. */
+export function parsePermissionList(raw: unknown): string[] | null {
+    if (raw === undefined) {
+        return null;
+    }
+    const values = (Array.isArray(raw) ? raw : [raw])
+        .flatMap((value) => (typeof value === 'string' ? value.split(',') : []))
+        .map((value) => value.trim())
+        .filter(Boolean);
+    const unique = [...new Set(values)];
+    if (unique.length === 0 || unique.length > MAX_ACCESS_PERMISSIONS || !unique.every((value) => PERMISSION_NAME_PATTERN.test(value))) {
+        return [];
+    }
+    return unique;
+}
+
+/** Which of the requested permissions a channel admin's granted list covers (legacy grants included). */
+export function resolveGrantedPermissions(granted: string[], requested: string[]): Record<string, boolean> {
+    const grantedSet = new Set(granted);
+    return Object.fromEntries(requested.map((permission) => [
+        permission,
+        expandChannelPermissionChecks(permission).some((candidate) => grantedSet.has(candidate))
+    ]));
+}
+
+export interface ChannelAccessDecisions {
+    role: 'owner' | 'admin' | 'none';
+    permissions: Record<string, boolean>;
+}
+
+/**
+ * Per-permission variant of getChannelAccessContext: resolves several permissions for
+ * one channel with a single admin lookup, instead of one request per permission.
+ */
+export async function getChannelAccessDecisions(
+    requesterID: string | undefined | null,
+    targetChannelID: string | undefined | null,
+    permissions: string[]
+): Promise<ChannelAccessDecisions> {
+    const all = (allowed: boolean) => Object.fromEntries(permissions.map((permission) => [permission, allowed]));
+
+    if (!requesterID || !targetChannelID) {
+        return { role: 'none', permissions: all(false) };
+    }
+
+    if (requesterID === targetChannelID || await hasGlobalChannelOwnerAccess(requesterID, targetChannelID)) {
+        return { role: 'owner', permissions: all(true) };
+    }
+
+    const rows = await AdminSchema.find({
+        channelID: targetChannelID,
+        adminID: requesterID,
+        actived: true
+    })
+        .select('permissions')
+        .lean();
+
+    const decisions = resolveGrantedPermissions(rows.flatMap((row) => row.permissions ?? []), permissions);
+    const anyAllowed = Object.values(decisions).some(Boolean);
+    return { role: anyAllowed ? 'admin' : 'none', permissions: decisions };
+}
+
 export async function adminMiddleware(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     console.log('adminMiddleware');
     try {

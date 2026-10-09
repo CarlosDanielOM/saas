@@ -93,6 +93,8 @@
                     [class.is-done]="i < stepIndex() || isDone()"
                     [class.is-active]="i === stepIndex() && !isDone() && stage() !== 'error'"
                     [class.is-failed]="i === stepIndex() && stage() === 'error'"
+                    [class.has-fill]="step === 'permissions' && accessFill() !== null"
+                    [style.--fill]="step === 'permissions' ? accessFill() : null"
                   >
                     <span class="lf-steps__track"><span class="lf-steps__fill"></span></span>
                     <span class="lf-steps__label">{{ t('login.steps.' + step) }}</span>
@@ -133,7 +135,7 @@
                 }}
               </span>
             </header>
-            <ol class="lf-term__list" #logList>
+            <ol class="lf-term__list" #logList tabindex="0">
               @for (entry of logEntries(); track $index) {
                 <li
                   class="lf-term__line"
@@ -142,7 +144,15 @@
                 >
                   <time class="lf-term__time">{{ entry.time }}</time>
                   <span class="lf-term__prompt" aria-hidden="true">›</span>
-                  <span class="lf-term__text">{{ entry.text }}</span>
+                  <span class="lf-term__text">
+                    @if (entry.channel) {
+                      <span
+                        class="lf-term__id"
+                        [class.lf-term__id--denied]="!entry.channel.granted"
+                      >{{ entry.channel.granted ? '✓' : '✕' }} {{ entry.channel.id }}</span>
+                    }
+                    {{ entry.text }}
+                  </span>
                 </li>
               }
               @if (stage() === 'error' && errorMessage()) {

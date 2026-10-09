@@ -2995,6 +2995,7 @@
     },
     "progress": {
       "step": "Paso {{current}} de {{total}}",
+      "channels": "{{done}} de {{total}} canales revisados",
       "stoppedAt": "Se detuvo en el paso {{current}} de {{total}}",
       "done": "Todo listo"
     },

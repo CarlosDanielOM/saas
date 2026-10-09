@@ -45,7 +45,11 @@ interface LoginLogEntry {
   time: string;
   text: string;
   tone: 'ok' | 'error' | null;
+  /** Channel access result: the id renders as a green (granted) or red (denied) tag. */
+  channel?: { id: string; granted: boolean };
 }
+
+const ACCESS_PERMISSIONS = ['dashboard:view', 'commands:view', 'settings:view'];
 
 const LOG_ERROR_PATTERN = /\b(fail(ed|ure)?|error|mismatch|invalid|cleared|denied|allowed=false|valid=false)\b/i;
 const LOG_OK_PATTERN = /\b(success|allowed=true|valid=true)\b/i;
@@ -85,7 +89,10 @@ export class LoginPageComponent implements OnInit {
 
   readonly stage = signal<LoginStage>('idle');
   readonly errorMessage = signal<string | null>(null);
-  readonly debugLines = signal<string[]>([]);
+  readonly logEntries = signal<LoginLogEntry[]>([]);
+  /** Channels whose access request has returned, out of the total being checked. */
+  readonly accessChecked = signal(0);
+  readonly accessTotal = signal(0);
   readonly mockLoginEnabled = this.sessionAuth.isMockLoginEnabled();
 
   readonly progress = computed(() => {
@@ -124,19 +131,21 @@ export class LoginPageComponent implements OnInit {
     if (this.stage() === 'error') {
       return this.t('login.progress.stoppedAt', params);
     }
-    return this.isDone() ? this.t('login.progress.done') : this.t('login.progress.step', params);
+    if (this.isDone()) {
+      return this.t('login.progress.done');
+    }
+    const step = this.t('login.progress.step', params);
+    if (this.stage() === 'permissions' && this.accessTotal() > 0) {
+      return `${step} · ${this.t('login.progress.channels', { done: this.accessChecked(), total: this.accessTotal() })}`;
+    }
+    return step;
   });
 
-  readonly logEntries = computed<LoginLogEntry[]>(() =>
-    this.debugLines().map((line) => {
-      const text = this.extractContent(line);
-      return {
-        time: this.extractTimestamp(line),
-        text,
-        tone: LOG_ERROR_PATTERN.test(text) ? 'error' : LOG_OK_PATTERN.test(text) ? 'ok' : null
-      };
-    })
-  );
+  /** Fill of the Access step: grows as each channel's access request returns. */
+  readonly accessFill = computed(() => {
+    const total = this.accessTotal();
+    return total > 0 ? Math.max(0.08, this.accessChecked() / total) : null;
+  });
 
   private readonly logList = viewChild<ElementRef<HTMLElement>>('logList');
 
@@ -410,18 +419,26 @@ export class LoginPageComponent implements OnInit {
         .map((channel) => this.normalizeChannelID(channel))
         .filter((channel): channel is string => channel !== null);
       const uniqueChannels = [...new Set(channels)];
-      this.pushDebug(`Checking permissions for channels=[${uniqueChannels.join(', ')}]`);
-      const permissions = ['dashboard:view', 'commands:view', 'settings:view'];
+      this.pushDebug(`Checking access for ${uniqueChannels.length} channel(s)`);
+      this.accessChecked.set(0);
+      this.accessTotal.set(uniqueChannels.length);
+      const administrating = loginResult.data.administrating;
 
-      for (const channel of uniqueChannels) {
-        for (const permission of permissions) {
-          await firstValueFrom(this.sessionAuth.checkPermission(channel, permission));
-        }
-      }
-
-      const canOpenDashboard = await firstValueFrom(
-        this.sessionAuth.checkPermission(primaryChannel, 'dashboard:view')
+      // One request per channel (all permissions at once), in parallel; each answer fills the Access step.
+      const decisions = await Promise.all(
+        uniqueChannels.map(async (channel) => {
+          const result = await firstValueFrom(this.sessionAuth.checkPermissions(channel, ACCESS_PERMISSIONS));
+          const granted = ACCESS_PERMISSIONS.filter((permission) => result[permission]).length;
+          this.accessChecked.update((count) => count + 1);
+          this.pushDebug(
+            `${this.channelLabel(channel, primaryChannel, primaryStreamerLogin, administrating)} · ${granted}/${ACCESS_PERMISSIONS.length} permissions`,
+            { id: channel, granted: granted > 0 }
+          );
+          return [channel, result] as const;
+        })
       );
+
+      const canOpenDashboard = decisions.find(([channel]) => channel === primaryChannel)?.[1]['dashboard:view'] === true;
       this.pushDebug(`Primary dashboard:view allowed=${String(canOpenDashboard)}`);
 
       if (!canOpenDashboard) {
@@ -633,11 +650,24 @@ export class LoginPageComponent implements OnInit {
     );
   }
 
-  private pushDebug(line: string): void {
-    this.debugLines.update((lines) => [
-      ...lines,
-      `[${new Date().toISOString()}] ${line}`
-    ]);
+  private channelLabel(
+    channel: string,
+    primaryChannel: string,
+    primaryLogin: string,
+    administrating: ReadonlyArray<{ channelID: string; channelName: string }>
+  ): string {
+    if (channel === primaryChannel) {
+      return primaryLogin;
+    }
+    return administrating.find((entry) => entry.channelID === channel)?.channelName?.trim() || 'channel';
+  }
+
+  private pushDebug(text: string, channel?: LoginLogEntry['channel']): void {
+    const tone = channel
+      ? channel.granted ? 'ok' : 'error'
+      : LOG_ERROR_PATTERN.test(text) ? 'error' : LOG_OK_PATTERN.test(text) ? 'ok' : null;
+    const time = new Date().toISOString().split('T')[1]?.split('.')[0] ?? '';
+    this.logEntries.update((entries) => [...entries, { time, text, tone, channel }]);
   }
 
   private applyGuardFailure(debug: string): void {
@@ -762,12 +792,4 @@ export class LoginPageComponent implements OnInit {
     return normalized;
   }
 
-  extractTimestamp(line: string): string {
-    const match = line.match(/^\[([^\]]+)\]/);
-    return match ? match[1].split('T')[1]?.split('.')[0] || match[1] : '';
-  }
-
-  extractContent(line: string): string {
-    return line.replace(/^\[[^\]]+\]\s*/, '');
-  }
 }

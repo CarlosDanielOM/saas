@@ -2995,6 +2995,7 @@
     },
     "progress": {
       "step": "Step {{current}} of {{total}}",
+      "channels": "{{done}} of {{total}} channels checked",
       "stoppedAt": "Stopped at step {{current}} of {{total}}",
       "done": "All set"
     },

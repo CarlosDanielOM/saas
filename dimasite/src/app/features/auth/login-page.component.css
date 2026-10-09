@@ -393,6 +393,12 @@
     lf-shimmer 1.3s linear infinite;
 }
 
+/* Access step: fill tracks how many channel checks have returned. */
+.is-active.has-fill .lf-steps__fill {
+  transform: scaleX(var(--fill, 0.08));
+  animation: lf-shimmer 1.3s linear infinite;
+}
+
 .is-failed .lf-steps__fill {
   transform: scaleX(1);
   background: #dc2626;
@@ -541,6 +547,11 @@
   scrollbar-color: #2a2f3c transparent;
 }
 
+.lf-term__list:focus-visible {
+  outline: 2px solid #a78bfa;
+  outline-offset: -2px;
+}
+
 .lf-term__line {
   display: grid;
   grid-template-columns: 4.1rem 0.8rem minmax(0, 1fr);
@@ -572,6 +583,34 @@
 .lf-term__line--error .lf-term__prompt,
 .lf-term__line--error .lf-term__text {
   color: var(--term-err);
+}
+
+.lf-term__id {
+  display: inline-block;
+  margin-right: 0.35rem;
+  padding: 0 0.4rem;
+  border-radius: 0.35rem;
+  background: rgba(134, 239, 172, 0.12);
+  color: var(--term-ok);
+  font-weight: 700;
+  animation: lf-id-flash 900ms ease-out both;
+}
+
+.lf-term__id--denied {
+  background: rgba(252, 165, 165, 0.12);
+  color: var(--term-err);
+  animation: none;
+}
+
+@keyframes lf-id-flash {
+  0% {
+    background: rgba(134, 239, 172, 0.42);
+    box-shadow: 0 0 0 3px rgba(134, 239, 172, 0.18);
+  }
+  100% {
+    background: rgba(134, 239, 172, 0.12);
+    box-shadow: 0 0 0 0 transparent;
+  }
 }
 
 .lf-term__caret {
@@ -673,6 +712,7 @@
   .lf-steps__fill,
   .lf-term,
   .lf-term__line,
+  .lf-term__id,
   .lf-term__state-dot,
   .lf-term__caret {
     animation: none !important;

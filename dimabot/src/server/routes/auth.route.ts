@@ -20,7 +20,12 @@ import { RedemptionRewardSchema } from "../../schemas/redemption_reward.schema.j
 import { CommandUserVariablesSchema } from "../../schemas/command_user_variables.schema.js";
 import { timingSafeEqual } from "node:crypto";
 import { authMiddleware } from "../../middleware/auth.middleware.js";
-import { getChannelAccessContext } from "../../middleware/admin.middleware.js";
+import {
+    getChannelAccessContext,
+    getChannelAccessDecisions,
+    MAX_ACCESS_PERMISSIONS,
+    parsePermissionList
+} from "../../middleware/admin.middleware.js";
 import { CHANNEL_WEBSITE_ACCESS_PERMISSIONS } from "../../middleware/channel_permissions.js";
 import { ensureReservedCommands } from "../services/command_defaults.service.js";
 import { seedDefaultModerationSettings } from '../../utils/moderation/defaults.js';
@@ -852,6 +857,42 @@ router.get('/access/:channelID', authMiddleware as any, async (req: any, res: Re
                 message: 'Unauthorized',
                 status: 401
             });
+        }
+
+        // Batch form: ?permissions=a,b,c answers every permission for this channel in one request.
+        const batch = parsePermissionList(req.query.permissions);
+        if (batch !== null) {
+            if (batch.length === 0) {
+                return res.status(400).json({
+                    error: true,
+                    message: `permissions must list 1-${MAX_ACCESS_PERMISSIONS} permission names`,
+                    status: 400
+                });
+            }
+
+            try {
+                const decisions = await getChannelAccessDecisions(requesterID, channelIdStr, batch);
+                return res.status(200).json({
+                    error: false,
+                    message: 'Access resolved',
+                    status: 200,
+                    data: {
+                        allowed: Object.values(decisions.permissions).every(Boolean),
+                        role: decisions.role,
+                        channelID: channelIdStr,
+                        permissions: decisions.permissions
+                    }
+                });
+            } catch (error) {
+                console.error('Error in GET /auth/access/:channelID (batch):', {
+                    requesterID,
+                    channelID: channelIdStr,
+                    permissions: batch,
+                    error: error instanceof Error ? error.message : String(error),
+                    timestamp: new Date().toISOString()
+                });
+                return res.status(500).json({ error: true, message: 'Internal server error', status: 500 });
+            }
         }
 
         try {

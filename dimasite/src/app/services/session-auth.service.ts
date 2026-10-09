@@ -1,7 +1,7 @@
 import { isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, PLATFORM_ID, computed, inject, signal } from '@angular/core';
-import { catchError, map, Observable, of, tap, throwError } from 'rxjs';
+import { catchError, forkJoin, map, Observable, of, switchMap, tap, throwError } from 'rxjs';
 
 import { environment } from '../../environments/environment';
 import { CheckoutIntentService } from './checkout-intent.service';
@@ -328,6 +328,33 @@ export class SessionAuthService {
       );
   }
 
+  /**
+   * Resolves several permissions for one channel in a single request
+   * (`?permissions=a,b,c`) and caches every decision.
+   */
+  checkPermissions(channelID: string, permissions: string[]): Observable<Record<string, boolean>> {
+    return this.http
+      .get<ApiEnvelope<{ allowed: boolean; permissions?: Record<string, boolean> }>>(
+        `${this.linksService.getApiUrl()}/auth/access/${channelID}?permissions=${encodeURIComponent(permissions.join(','))}`
+      )
+      .pipe(
+        switchMap((response) => {
+          const granted = response.data?.permissions;
+          if (response.error || !granted) {
+            // Older API without batch support: fall back to one check per permission.
+            return forkJoin(permissions.map((permission) => this.checkPermission(channelID, permission))).pipe(
+              map((results) => Object.fromEntries(permissions.map((permission, i) => [permission, results[i]])))
+            );
+          }
+          const decisions = Object.fromEntries(
+            permissions.map((permission) => [permission, granted[permission] === true])
+          );
+          this.cachePermissionDecisions(channelID, decisions);
+          return of(decisions);
+        })
+      );
+  }
+
   resolveChannelID(streamerParam: string): Observable<string | null> {
     const normalizedParam = streamerParam.trim().toLowerCase();
     if (!normalizedParam) {
@@ -510,6 +537,22 @@ export class SessionAuthService {
   private persistSession(session: StoredSession): void {
     this.session.set(session);
     localStorage.setItem(this.storageKey, JSON.stringify(session));
+  }
+
+  private cachePermissionDecisions(channelID: string, decisions: Record<string, boolean>): void {
+    const existing = this.session();
+    if (!existing) {
+      return;
+    }
+
+    const entries = Object.entries(decisions).map(([permission, allowed]) => [`${channelID}:${permission}`, allowed]);
+    this.persistSession({
+      ...existing,
+      permissions: {
+        ...existing.permissions,
+        ...Object.fromEntries(entries)
+      }
+    });
   }
 
   private cachePermissionDecision(key: string, allowed: boolean): void {

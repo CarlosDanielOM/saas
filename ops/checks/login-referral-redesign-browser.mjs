@@ -7,6 +7,9 @@
  *    Spanish strings when the account language is es;
  *  - login callback: segmented 5-step bar advances (active step + caption), terminal
  *    console tails lines with ok tone and a caret while busy, then reaches the dashboard;
+ *  - per-channel access: an admin of 5 channels sends exactly 6 access requests (one per
+ *    channel, all permissions via ?permissions=), no per-permission requests; the Access step
+ *    fill, "N of 6 channels checked" caption and green/red channel ids advance per response;
  *  - login failure: failed step marked, alert + error line in console, "Stopped" state,
  *    Try again button;
  *  - axe (wcag2a/2aa/21aa) clean and no horizontal overflow at 320/390/1280, dark + light.
@@ -51,13 +54,17 @@ async function until(fn, label, timeout = 8000) {
 }
 
 /** Mocks the API. `gate` holds /auth/login until released; `failLogin` returns 500. */
-async function newContext(browser, { width, height, dark, language = 'en', session = true, failLogin = false, reduced = false }) {
+async function newContext(browser, {
+  width, height, dark, language = 'en', session = true, failLogin = false, reduced = false,
+  administrating = [], deniedChannels = [], holdAccess = false
+}) {
   const context = await browser.newContext({
     viewport: { width, height },
     colorScheme: dark ? 'dark' : 'light',
     reducedMotion: reduced ? 'reduce' : 'no-preference'
   });
-  const app = appUser(language);
+  const app = { ...appUser(language), administrating };
+  const heldAccess = [];
   await context.addInitScript(({ twitch, app, dark, session }) => {
     localStorage.setItem('theme', dark ? 'dark' : 'light');
     if (session && !sessionStorage.getItem('check.sessionSeeded')) {
@@ -79,8 +86,18 @@ async function newContext(browser, { width, height, dark, language = 'en', sessi
     calls.push(`${route.request().method()} ${url.pathname}`);
     let data = {};
     if (url.pathname === '/auth/session') data = { twitch: TWITCH, app };
-    else if (url.pathname.startsWith('/auth/access/')) data = { allowed: true, role: 'owner' };
-    else if (/^\/dashboard\/[^/]+\/bootstrap$/.test(url.pathname)) data = BOOT;
+    else if (url.pathname.startsWith('/auth/access/')) {
+      const channel = url.pathname.split('/').pop();
+      const denied = deniedChannels.includes(channel);
+      const batch = url.searchParams.get('permissions');
+      if (batch) {
+        if (holdAccess) await new Promise((resolve) => heldAccess.push(resolve));
+        const permissions = Object.fromEntries(batch.split(',').map((permission) => [permission, !denied]));
+        data = { allowed: !denied, role: denied ? 'none' : channel === ID ? 'owner' : 'admin', channelID: channel, permissions };
+      } else {
+        data = { allowed: !denied, role: 'owner' };
+      }
+    } else if (/^\/dashboard\/[^/]+\/bootstrap$/.test(url.pathname)) data = BOOT;
     else if (/^\/dashboard\/[^/]+\/access$/.test(url.pathname)) {
       data = { allowed: true, role: 'owner', channelID: ID, channelName: 'Test Streamer', planTier: 'free' };
     } else if (/^\/dashboard\/[^/]+\/live-status$/.test(url.pathname)) {
@@ -95,7 +112,7 @@ async function newContext(browser, { width, height, dark, language = 'en', sessi
     } else if (url.pathname === '/billing/context') data = { scenario: 'none' };
     return route.fulfill({ status: 200, json: env(data) });
   });
-  return { context, release, calls };
+  return { context, release, calls, heldAccess };
 }
 
 async function axe(page, selector, label) {
@@ -216,6 +233,76 @@ try {
     }
   }
 
+  // ---------- Per-channel access checks ----------
+  for (const dark of [true, false]) {
+    const label = `access ${dark ? 'dark' : 'light'}`;
+    const administrating = [1, 2, 3, 4, 5].map((n) => ({ channelID: `90000000${n}`, channelName: `admin_channel_${n}` }));
+    const { context, release, calls, heldAccess } = await newContext(browser, {
+      width: 390, height: 844, dark, session: false, administrating,
+      deniedChannels: ['900000003'], holdAccess: true
+    });
+    const page = await context.newPage();
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+    await page.goto(`${base}/login?code=test-code&state=test-state`);
+    await page.locator('.lf-run').waitFor({ timeout: 20000 });
+    release();
+
+    await until(() => heldAccess.length === 6, 'six channel access requests in flight');
+    await page.waitForTimeout(250);
+    const accessCalls = () => calls.filter((call) => call.includes('/auth/access/'));
+    assert.equal(accessCalls().length, 6, `${label}: exactly one access request per channel`);
+    const access = page.locator('.lf-steps__item').nth(2);
+    assert.ok((await access.getAttribute('class')).includes('is-active'), `${label}: Access step active`);
+    assert.match(await page.locator('.lf-run__caption').textContent(), /0 of 6 channels checked/);
+
+    const fillWidth = () => access.locator('.lf-steps__fill').evaluate((el) => el.getBoundingClientRect().width);
+    let previous = await fillWidth();
+    for (let n = 1; n <= 6; n++) {
+      heldAccess.shift()();
+      await until(async () => (await page.locator('.lf-term__id').count()) === n
+        || (n === 6 && page.url().includes('/test/dashboard')), `channel ${n} logged`);
+      if (n === 6) break;
+      assert.match(await page.locator('.lf-run__caption').textContent(), new RegExp(`${n} of 6 channels checked`));
+      await page.waitForTimeout(500);
+      const width = await fillWidth();
+      assert.ok(width > previous + 1, `${label}: Access fill grows after response ${n} (${previous} -> ${width})`);
+      previous = width;
+      if (shots && n === 3) await page.screenshot({ path: `${shots}/login-access-${dark ? 'dark' : 'light'}.png` });
+    }
+
+    await page.waitForURL(/\/test\/dashboard/, { timeout: 15000 });
+    const loginAccess = calls.slice(0, calls.findIndex((call) => call.includes('/bootstrap')))
+      .filter((call) => call.includes('/auth/access/'));
+    assert.equal(loginAccess.length, 6, `${label}: no extra per-permission requests during login`);
+    assert.ok(loginAccess.every((call) => /\/auth\/access\/\d+$/.test(call)), `${label}: access calls are per channel`);
+    assert.deepEqual(errors, [], `${label}: page errors`);
+    await context.close();
+  }
+
+  // Console tags: green for granted channels, red for a denied one. Denying the primary
+  // channel stops login (no dashboard access), so every tag stays on screen.
+  {
+    const administrating = [1, 2].map((n) => ({ channelID: `90000000${n}`, channelName: `admin_channel_${n}` }));
+    const { context, release } = await newContext(browser, {
+      width: 1280, height: 900, dark: true, session: false, administrating, deniedChannels: [ID]
+    });
+    const page = await context.newPage();
+    await page.goto(`${base}/login?code=test-code&state=test-state`);
+    await page.locator('.lf-run').waitFor({ timeout: 20000 });
+    release();
+    await page.locator('.lf-alert').waitFor({ timeout: 10000 });
+    assert.equal(await page.locator('.lf-term__id').count(), 3, 'one tag per channel');
+    assert.equal(await page.locator('.lf-term__id:not(.lf-term__id--denied)').count(), 2, 'granted tags green');
+    assert.equal(await page.locator('.lf-term__id--denied').count(), 1, 'denied tag red');
+    assert.match(await page.locator('.lf-term__id--denied').textContent(), new RegExp(ID));
+    assert.ok((await page.locator('.lf-steps__item').nth(2).getAttribute('class')).includes('is-failed'), 'Access step failed');
+    await page.addStyleTag({ content: '*,*::before,*::after{animation:none!important;transition:none!important}' });
+    await axe(page, 'app-login-page', 'access tags axe');
+    if (shots) await page.screenshot({ path: `${shots}/login-access-denied.png` });
+    await context.close();
+  }
+
   // ---------- Login failure ----------
   for (const dark of [false, true]) {
     const label = `login error ${dark ? 'dark' : 'light'}`;
@@ -242,7 +329,7 @@ try {
     await context.close();
   }
 
-  console.log('PASS referral banner (rewards, CTA, dismiss persists, es) + login step bar, tailing console, error state; axe + overflow at 320/390/1280 dark/light');
+  console.log('PASS referral banner (rewards, CTA, dismiss persists, es) + login step bar, one access request per channel with per-response fill + channel tags, tailing console, error state; axe + overflow at 320/390/1280 dark/light');
 } finally {
   await browser.close();
 }
