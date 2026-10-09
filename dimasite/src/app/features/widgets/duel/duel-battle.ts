@@ -5,8 +5,8 @@ export type DuelMove = 'normal' | 'heavy' | 'special';
 export type DuelCharacter = 'knight' | 'ronin' | 'mage';
 /**
  * Offsets are milliseconds from the start of the duel; hitAt is when damage (or healing)
- * lands. raw is the base roll, crit doubles it, a defense skill then reduces it; damage
- * is what landed. A 'heal' turn restores `heal` HP to the acting fighter instead.
+ * lands. raw is the base roll, crit doubles it, a defense skill then reduces it (specials
+ * break through a defense); damage is what landed. A 'heal' turn restores `heal` HP to the acting fighter instead.
  */
 export interface DuelTurn { at: number; hitAt: number; attacker: DuelSide; move: DuelMove | 'heal'; damage: number; raw?: number; crit?: boolean; defended?: boolean; heal?: number; bonus: boolean }
 export interface DuelBattle { fighters: Record<DuelSide, DuelCharacter>; turns: DuelTurn[]; winner: DuelSide; duration: number }
@@ -19,7 +19,7 @@ const EXTRA_TURN_LEAD_MS = 250;
 const DEFENSE_PERCENT = 15;
 const HEAVY_DEFENDED_RATIO = 0.2;
 const CRIT_PERCENT = 10;
-export const HEAL = { percent: 12, threshold: 60, min: 15, max: 25, perFighter: 3, windup: 900, duration: 1500 };
+export const HEAL = { percent: 12, threshold: 60, min: 20, max: 35, perFighter: 3, windup: 900, duration: 1500 };
 const SKILL_TURN_LIMIT = 24;
 export const MOVES: Record<DuelMove, { chance: number; min: number; max: number; windup: number; duration: number }> = {
   normal: { chance: 68, min: 10, max: 16, windup: 280, duration: 800 },
@@ -49,8 +49,9 @@ export function simulateBattle(random: () => number = Math.random): DuelBattle {
       const chance = roll(100), move: DuelMove = chance < MOVES.special.chance ? 'special' : chance < MOVES.special.chance + MOVES.heavy.chance ? 'heavy' : 'normal';
       const spec = MOVES[move], raw = spec.min + roll(spec.max - spec.min + 1);
       const critical = roll(100) < CRIT_PERCENT, hit = critical ? raw * 2 : raw;
-      const defended = move !== 'special' && skills && roll(100) < DEFENSE_PERCENT;
-      const damage = !defended ? hit : move === 'heavy' ? Math.round(hit * HEAVY_DEFENDED_RATIO) : 0;
+      // Specials still roll the skill, but break through it at full damage.
+      const defended = skills && roll(100) < DEFENSE_PERCENT;
+      const damage = !defended || move === 'special' ? hit : move === 'heavy' ? Math.round(hit * HEAVY_DEFENDED_RATIO) : 0;
       hp[defender] = Math.max(0, hp[defender] - damage);
       turns.push({ at, hitAt: at + spec.windup, attacker, move, damage, raw, crit: critical && damage > 0, defended, heal: 0, bonus });
       if (hp[defender] === 0) return { fighters, turns, winner: attacker, duration: at + spec.windup + KNOCKOUT_MS };

@@ -9,8 +9,8 @@ export type DuelMove = 'normal' | 'heavy' | 'special';
 export type DuelCharacter = 'knight' | 'ronin' | 'mage';
 /**
  * Offsets are milliseconds from run.startedAt; hitAt is when damage (or healing) lands.
- * raw is the base roll, crit doubles it, a defense skill then reduces it; damage is
- * what landed. A 'heal' turn restores `heal` HP to the acting fighter instead.
+ * raw is the base roll, crit doubles it, a defense skill then reduces it (specials break
+ * through a defense); damage is what landed. A 'heal' turn restores `heal` HP to the acting fighter instead.
  */
 export interface DuelTurn { at: number; hitAt: number; attacker: DuelSide; move: DuelMove | 'heal'; damage: number; raw: number; crit: boolean; defended: boolean; heal: number; bonus: boolean }
 export interface DuelBattle { fighters: Record<DuelSide, DuelCharacter>; turns: DuelTurn[]; winner: DuelSide; duration: number }
@@ -40,14 +40,14 @@ export const MAX_HP = 100;
 export const FIGHT_START_MS = 3700;
 export const KNOCKOUT_MS = 1900;
 export const EXTRA_TURN_PERCENT = 15;
-// When hit by a normal or heavy attack the defender may use its skill:
-// normals are fully avoided, heavies lose 80% of their damage.
+// When hit the defender may use its skill: normals are fully avoided, heavies
+// lose 80% of their damage, and specials shatter the skill at full damage.
 export const DEFENSE_PERCENT = 15;
 export const HEAVY_DEFENDED_RATIO = 0.2;
 // Every attack may crit for double damage, specials included.
 export const CRIT_PERCENT = 10;
 // A hurt fighter may heal instead of attacking, at most three times per fight.
-export const HEAL = { percent: 12, threshold: 60, min: 15, max: 25, perFighter: 3, windup: 900, duration: 1500 };
+export const HEAL = { percent: 12, threshold: 60, min: 20, max: 35, perFighter: 3, windup: 900, duration: 1500 };
 // Defenses and heals stop after this many turns so every fight ends.
 const SKILL_TURN_LIMIT = 24;
 const EXTRA_TURN_LEAD_MS = 250;
@@ -78,8 +78,9 @@ export function simulateBattle(roll: (max: number) => number = randomInt): DuelB
       const chance = roll(100), move: DuelMove = chance < MOVES.special.chance ? 'special' : chance < MOVES.special.chance + MOVES.heavy.chance ? 'heavy' : 'normal';
       const spec = MOVES[move], raw = spec.min + roll(spec.max - spec.min + 1);
       const critical = roll(100) < CRIT_PERCENT, hit = critical ? raw * 2 : raw;
-      const defended = move !== 'special' && skills && roll(100) < DEFENSE_PERCENT;
-      const damage = !defended ? hit : move === 'heavy' ? Math.round(hit * HEAVY_DEFENDED_RATIO) : 0;
+      // Specials still roll the skill, but break through it at full damage.
+      const defended = skills && roll(100) < DEFENSE_PERCENT;
+      const damage = !defended || move === 'special' ? hit : move === 'heavy' ? Math.round(hit * HEAVY_DEFENDED_RATIO) : 0;
       hp[defender] = Math.max(0, hp[defender] - damage);
       // A fully blocked crit is just a block.
       turns.push({ at, hitAt: at + spec.windup, attacker, move, damage, raw, crit: critical && damage > 0, defended, heal: 0, bonus });
@@ -113,6 +114,10 @@ function highlight(turn: DuelTurn, names: Record<DuelSide, string>, fighters: Du
   const attacker = `@${names[turn.attacker]}`, defender = `@${names[other(turn.attacker)]}`;
   if (turn.move === 'heal') return healLines[language][fighters[turn.attacker]](attacker, turn.heal);
   const crit = turn.crit ? (language === 'es' ? ' ¡CRÍTICO!' : ' CRITICAL!') : '';
+  if (turn.move === 'special' && turn.defended) {
+    const skill = skills[language][fighters[other(turn.attacker)]], special = specials[language][fighters[turn.attacker]];
+    return language === 'es' ? `¡${defender} usa ${skill}, pero ${special} de ${attacker} lo destroza! (-${turn.damage} HP)${crit}` : `${defender} raises ${skill}, but ${attacker}'s ${special} shatters it! (-${turn.damage} HP)${crit}`;
+  }
   if (turn.move === 'special') return language === 'es' ? `¡${attacker} desata ${specials.es[fighters[turn.attacker]]} contra ${defender}! (-${turn.damage} HP)${crit}` : `${attacker} unleashes ${specials.en[fighters[turn.attacker]]} on ${defender}! (-${turn.damage} HP)${crit}`;
   if (turn.crit && !turn.defended) return language === 'es' ? `¡GOLPE CRÍTICO! ${attacker} duplica el daño a ${defender} (-${turn.damage} HP)` : `CRITICAL HIT! ${attacker} deals double damage to ${defender} (-${turn.damage} HP)`;
   if (turn.defended) {

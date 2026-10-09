@@ -72,8 +72,9 @@ export class DuelArenaComponent {
     if (!turn) return 'idle';
     if (turn.attacker === side) return turn.move === 'heal' ? 'heal' : 'attack';
     if (turn.move === 'heal') return 'idle';
-    // A defender with a skill reacts during the attacker's windup.
-    if (turn.defended && this.elapsed() >= turn.at + (turn.hitAt - turn.at) * .4) return 'defend';
+    // A defender with a skill reacts during the attacker's windup; a special
+    // breaks through, so the defender is hit when it lands.
+    if (turn.defended && this.elapsed() >= turn.at + (turn.hitAt - turn.at) * .4 && (turn.move !== 'special' || this.elapsed() < turn.hitAt)) return 'defend';
     return this.elapsed() >= turn.hitAt ? 'hit' : 'idle';
   }
   /** Changes whenever a one-shot animation must restart (e.g. two attacks in a row). */
@@ -90,7 +91,11 @@ export class DuelArenaComponent {
   attacking(side: DuelSide): boolean { return this.phase() === 'fight' && this.currentTurn()?.attacker === side; }
   target(turn: DuelTurn): DuelSide { return otherSide(turn.attacker); }
   /** Defended normal hits shake nothing; everything else shakes by move weight. */
-  readonly shake = computed(() => { const hit = this.impact(); return !hit || hit.defended || hit.move === 'heal' ? null : hit.crit ? 'crit' : hit.move; });
+  readonly shake = computed(() => { const hit = this.impact(); return !hit || this.held(hit) || hit.move === 'heal' ? null : hit.crit ? 'crit' : hit.move; });
+  /** The defender's skill held (normal/heavy); against a special it shatters instead. */
+  held(turn: DuelTurn): boolean { return !!turn.defended && turn.move !== 'special'; }
+  shattered(turn: DuelTurn): boolean { return !!turn.defended && turn.move === 'special'; }
+  brokenResult(turn: DuelTurn): string { return this.t('skillBroken.' + this.battle().fighters[this.target(turn)]); }
   /** Green flash on the HP bar of a fighter that has just healed. */
   healing(side: DuelSide): boolean { const turn = this.impact(); return turn?.move === 'heal' && turn.attacker === side; }
   skillName(turn: DuelTurn): string { return this.t('skill.' + this.battle().fighters[this.target(turn)]); }

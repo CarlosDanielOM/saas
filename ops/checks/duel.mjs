@@ -63,11 +63,13 @@ try {
   await page.locator('.arena[data-phase="fight"]').waitFor();
   await page.locator('app-duel-fighter[data-action="attack"]').waitFor();
   await page.locator('.hit-spark').first().waitFor();
-  // Math.random()=0.05 rolls Knight vs Ronin, left first, critical undefendable specials and an extra turn every time.
+  // Math.random()=0.05 rolls Knight vs Ronin, left first, critical specials that shatter the Ronin's
+  // Ghost Step, and an extra turn every time.
   assert.equal(await page.locator('app-duel-fighter[data-side="left"]').getAttribute('data-character'), 'knight');
   assert.equal(await page.locator('app-duel-fighter[data-side="right"]').getAttribute('data-character'), 'ronin');
   await page.locator('.move-callout', { hasText: 'Holy Smite' }).first().waitFor();
   await page.locator('.damage.crit', { hasText: /critical/i }).waitFor();
+  await page.locator('.broken-label', { hasText: 'Ghost Step failed!' }).waitFor();
   await page.locator('.extra-turn', { hasText: 'Extra turn!' }).waitFor();
   await page.locator('.arena-footer', { hasText: /Turn \d+/ }).waitFor();
   await page.screenshot({ path: `${evidence}/fight.png`, fullPage: true });
@@ -80,9 +82,9 @@ try {
   await page.waitForTimeout(800);
   await page.screenshot({ path: `${evidence}/victory.png`, fullPage: true });
   assert.equal(await page.getByRole('button', { name: 'Pause', exact: true }).isDisabled(), true);
-  // mulberry32 seed 8 (70 rolls) lets the Knight's Shield Wall block a normal attack at 4.5s.
+  // mulberry32 seed 8 (54 rolls) lets the Knight's Shield Wall block a normal attack at 4.5s.
   // Only the battle's own rolls are seeded so other page code cannot shift the sequence.
-  await page.evaluate(() => { let a = 8, n = 0; const original = Math.random; Math.random = () => { if (n++ >= 70) return original(); a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; });
+  await page.evaluate(() => { let a = 8, n = 0; const original = Math.random; Math.random = () => { if (n++ >= 54) return original(); a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; });
   await page.locator('.playback .primary').click();
   await page.locator('.skill-callout', { hasText: 'Shield Wall' }).waitFor({ timeout: 15000 });
   await page.locator('app-duel-fighter[data-character="knight"][data-action="defend"]').waitFor();
@@ -131,5 +133,5 @@ try {
   assert.notEqual(await page.evaluate(() => getComputedStyle(document.body).backgroundColor), 'rgba(0, 0, 0, 0)', 'Navigation restores body background');
   assert.deepEqual(errors, [], 'No JavaScript runtime errors');
   assert.deepEqual(apiRequests, [], 'The mock must not request production APIs');
-  console.log('PASS: turn-based RNG battles (characters, special callouts, crits, defense skills, extra turns, turn counter), both winners, combat effects, HP, pause/resume, replay/reset, transparent overlay, random result, English/Spanish, reduced motion, 320/390/1280 dark/light, zero axe violations or runtime errors.');
+  console.log('PASS: turn-based RNG battles (characters, special callouts, crits, defense skills and shattered defenses, extra turns, turn counter), both winners, combat effects, HP, pause/resume, replay/reset, transparent overlay, random result, English/Spanish, reduced motion, 320/390/1280 dark/light, zero axe violations or runtime errors.');
 } finally { await browser.close(); }

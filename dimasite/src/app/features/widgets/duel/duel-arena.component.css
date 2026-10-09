@@ -116,6 +116,15 @@
 .impact-fx[data-move="special"] .damage.crit { font-size:9.6cqw }
 .damage b { display:block; font-size:.4em; letter-spacing:.14em; text-transform:uppercase; color:#ffe27a; text-shadow:0 2px 0 #3a0a12 }
 .crit-flash { position:absolute; inset:-5%; z-index:3; background:radial-gradient(circle at var(--def) 45%,#ff5f6d77,transparent 55%); animation:ko-flash .45s ease-out both }
+/* A special shatters the defender's skill: shards fly out and the callout cracks. */
+.impact-fx[data-target="left"] { --shard:#d6c7ff }
+.impact-fx[data-target="right"] { --shard:#ffe1a0 }
+.impact-fx[data-broken="knight"] { --shard:#fff6c8 }
+.shatter { position:absolute; z-index:5; top:46%; left:var(--def); width:0; height:0 }
+.shatter i { position:absolute; width:3cqw; height:1.6cqw; margin:-.8cqw -1.5cqw; background:var(--shard); box-shadow:0 0 10px var(--shard); clip-path:polygon(0 0,100% 35%,55% 100%); animation:shard .75s cubic-bezier(.2,.7,.4,1) both; --a:calc(var(--n) * 36deg + 8deg) }
+.shatter i:nth-child(odd) { width:2cqw; height:2.4cqw; clip-path:polygon(50% 0,100% 100%,0 70%) }
+.broken-label { position:absolute; z-index:6; top:64%; left:var(--def); translate:-50% 0; white-space:nowrap; font-size:3cqw; font-weight:900; font-style:italic; text-transform:uppercase; color:#ffd2d6; text-shadow:0 2px 0 #3a0a12,0 0 12px #ff5f6d; animation:blocked .75s ease-out both }
+.skill-callout.broken { animation-name:skill-broken }
 .hit-spark { position:absolute; top:40%; left:var(--def); width:12cqw; aspect-ratio:1; margin-left:-6cqw; animation:impact .3s ease-out both }
 .impact-fx[data-move="heavy"] .hit-spark { width:17cqw; margin-left:-8.5cqw; top:36% }
 .impact-fx[data-move="special"] .hit-spark { width:24cqw; margin-left:-12cqw; top:31% }
@@ -165,6 +174,8 @@
 @keyframes heal-beam { 0%,25% { opacity:0; transform:scaleX(.2) } 45% { opacity:.8; transform:scaleX(1) } 60% { opacity:1; transform:scaleX(1.15) } 85%,100% { opacity:0; transform:scaleX(.6) } }
 @keyframes angel { 0% { opacity:0; transform:translateY(-70%) } 30% { opacity:1; transform:translateY(0) } 45% { transform:translateY(-6%) } 60% { transform:translateY(0) } 75% { opacity:1; transform:translateY(-4%) } 100% { opacity:0; transform:translateY(-70%) } }
 @keyframes glyph { 0%,35% { opacity:0; transform:translateY(30%) scale(.6) } 50% { opacity:1; transform:translateY(0) scale(1) } 85% { opacity:.9 } 100% { opacity:0; transform:translateY(-280%) scale(1.1) } }
+@keyframes shard { 0% { opacity:1; transform:rotate(var(--a)) translateX(0) } 100% { opacity:0; transform:rotate(var(--a)) translateX(12cqw) rotate(220deg) } }
+@keyframes skill-broken { 0%,12% { opacity:0; transform:translateY(8px) scale(.6); border-color:var(--defc); text-decoration:none } 18% { opacity:1; transform:scale(1.12) } 24%,51% { opacity:1; transform:scale(1); border-color:var(--defc); box-shadow:0 0 16px var(--defc); text-decoration:none } 53% { transform:translateX(-6px) rotate(-6deg); border-color:#ff5f6d; box-shadow:0 0 18px #ff5f6d } 57% { transform:translateX(6px) rotate(4deg) } 65% { opacity:1; transform:translateY(4px) rotate(-8deg); text-decoration:line-through; border-color:#ff5f6d } 100% { opacity:0; transform:translateY(24px) rotate(-14deg); text-decoration:line-through; border-color:#ff5f6d } }
 @keyframes skill { 0%,12% { opacity:0; transform:translateY(8px) scale(.6) } 18% { opacity:1; transform:scale(1.12) } 24%,72% { opacity:1; transform:scale(1) } 100% { opacity:0; transform:translateY(-10px) } }
 @keyframes extra { 0% { opacity:0; transform:translateY(10px) scale(.6) } 12% { opacity:1; transform:translateY(0) scale(1.15) } 20%,60% { opacity:1; transform:scale(1) } 100% { opacity:0; transform:translateY(-12px) } }
 @keyframes bolt { 0%,20% { opacity:0; left:var(--att); transform:scale(.3) } 27% { opacity:1; left:var(--att); transform:scale(1) } 35% { opacity:1; left:var(--def) } 45%,100% { left:var(--def); opacity:0; transform:scale(1.6) } }
@@ -184,4 +195,4 @@
 @keyframes winner { from { opacity:0; transform:translateY(14px) } to { opacity:1; transform:translateY(0) } }
 @keyframes confetti { from { opacity:0; transform:translateY(-40px) rotate(0deg) } 20% { opacity:1 } to { opacity:0; transform:translateY(180px) rotate(240deg) } }
 @media(min-width:640px){.arena{aspect-ratio:16/9;--fighter-size:25%;--fight-spread:13%}.arena[data-phase="winner"] .fighter-slot:not([data-action="defeated"]){--fighter-size:20%}.health-label{font-size:2.3cqw}}
-@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}.confetti,.hit-spark,.shock-ring,.special-dim,.projectile,.pillar,.crescent,.ko-flash,.turn-ring{display:none}.damage,.move-callout,.extra-turn,.skill-callout,.heal-number{opacity:1}.heal-beam,.glyphs,.angel,.crit-flash{display:none}.move-callout{transform:translateX(-50%)}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}.confetti,.hit-spark,.shock-ring,.special-dim,.projectile,.pillar,.crescent,.ko-flash,.turn-ring{display:none}.damage,.move-callout,.extra-turn,.skill-callout,.heal-number{opacity:1}.heal-beam,.glyphs,.angel,.crit-flash,.shatter{display:none}.broken-label{opacity:1}.move-callout{transform:translateX(-50%)}}

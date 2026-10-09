@@ -102,6 +102,8 @@ import { DuelCharacter, DuelMove } from './duel-battle';
     /* Defense skills (arena remounts on 'defend'); the blow lands at ~28%. */
     :host { --def-dur:700ms }
     :host([data-move="heavy"]) { --def-dur:880ms }
+    /* Against a special the guard is up for the long windup, then the arena remounts as 'hit'. */
+    :host([data-move="special"]) { --def-dur:1800ms }
     .guard { opacity:0; transform-box:fill-box; transform-origin:center }
     .barrier { filter:drop-shadow(0 0 8px var(--fighter-light)) }
     :host([data-action="defend"]) .body { animation:brace var(--def-dur) ease both }

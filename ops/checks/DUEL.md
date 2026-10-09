@@ -15,9 +15,9 @@ heavy 24%, special 8%, each with its own damage range) and a 15% chance to steal
 the opponent's next turn. When hit by a normal or heavy attack, the defender rolls a
 15% chance to use its skill (Knight Shield Wall, Ronin Ghost Step, Mage Arcane
 Ward): normals deal 0, heavies lose 80% (`raw` keeps the rolled damage). Specials
-cannot be defended. Every attack (specials included) has a 10% crit chance that
+still roll the skill but shatter it at full damage. Every attack (specials included) has a 10% crit chance that
 doubles the rolled damage before any defense. Instead of attacking, a fighter at
-60 HP or less has a 12% chance to heal 15–25 HP (Knight: angel, Ronin: potion, Mage:
+60 HP or less has a 12% chance to heal 20–35 HP (Knight: angel, Ronin: potion, Mage:
 green glyphs), at most 3 times per fight; the HUD shows the remaining heal charges.
 Defenses and heals stop after 24 turns so every fight ends. The first fighter at 0 HP loses. The stored turns drive
 the overlay animation and the deadline (last hit + 1.9 s knockout, typically 13–18 s).
