@@ -10,9 +10,10 @@ export type DuelCharacter = 'knight' | 'ronin' | 'mage';
 /**
  * Offsets are milliseconds from run.startedAt; hitAt is when damage (or healing) lands.
  * raw is the base roll, crit doubles it, a defense skill then reduces it (specials break
- * through a defense); damage is what landed. A 'heal' turn restores `heal` HP to the acting fighter instead.
+ * through a defense); damage is what landed. A 'heal' turn restores `heal` HP to the acting
+ * fighter instead. comboHeal is HP the defender regains right after blocking.
  */
-export interface DuelTurn { at: number; hitAt: number; attacker: DuelSide; move: DuelMove | 'heal'; damage: number; raw: number; crit: boolean; defended: boolean; heal: number; bonus: boolean }
+export interface DuelTurn { at: number; hitAt: number; attacker: DuelSide; move: DuelMove | 'heal'; damage: number; raw: number; crit: boolean; defended: boolean; heal: number; comboHeal: number; bonus: boolean }
 export interface DuelBattle { fighters: Record<DuelSide, DuelCharacter>; turns: DuelTurn[]; winner: DuelSide; duration: number }
 export interface DuelChallenge { id: string; challenger: string; opponent: string; expiresAt: number }
 export interface DuelRun {
@@ -46,8 +47,11 @@ export const DEFENSE_PERCENT = 15;
 export const HEAVY_DEFENDED_RATIO = 0.2;
 // Every attack may crit for double damage, specials included.
 export const CRIT_PERCENT = 10;
-// A hurt fighter may heal instead of attacking, at most three times per fight.
-export const HEAL = { percent: 12, threshold: 60, min: 20, max: 35, perFighter: 3, windup: 900, duration: 1500 };
+// A hurt fighter may heal instead of attacking, at most five times per fight.
+export const HEAL = { percent: 20, threshold: 60, min: 25, max: 40, perFighter: 5, windup: 900, duration: 1500 };
+// Blocking a normal or heavy attack may chain into a heal (it uses a heal charge).
+// The heal lands `delay` ms after the block and the turn runs `extra` ms longer.
+export const COMBO_HEAL = { percent: 35, delay: 350, extra: 700 };
 // Defenses and heals stop after this many turns so every fight ends.
 const SKILL_TURN_LIMIT = 24;
 const EXTRA_TURN_LEAD_MS = 250;
@@ -72,7 +76,7 @@ export function simulateBattle(roll: (max: number) => number = randomInt): DuelB
     if (skills && hp[attacker] <= HEAL.threshold && heals[attacker] < HEAL.perFighter && roll(100) < HEAL.percent) {
       const heal = Math.min(MAX_HP - hp[attacker], HEAL.min + roll(HEAL.max - HEAL.min + 1));
       hp[attacker] += heal; heals[attacker]++;
-      turns.push({ at, hitAt: at + HEAL.windup, attacker, move: 'heal', damage: 0, raw: 0, crit: false, defended: false, heal, bonus });
+      turns.push({ at, hitAt: at + HEAL.windup, attacker, move: 'heal', damage: 0, raw: 0, crit: false, defended: false, heal, comboHeal: 0, bonus });
       at += HEAL.duration;
     } else {
       const chance = roll(100), move: DuelMove = chance < MOVES.special.chance ? 'special' : chance < MOVES.special.chance + MOVES.heavy.chance ? 'heavy' : 'normal';
@@ -82,10 +86,19 @@ export function simulateBattle(roll: (max: number) => number = randomInt): DuelB
       const defended = skills && roll(100) < DEFENSE_PERCENT;
       const damage = !defended || move === 'special' ? hit : move === 'heavy' ? Math.round(hit * HEAVY_DEFENDED_RATIO) : 0;
       hp[defender] = Math.max(0, hp[defender] - damage);
+      if (hp[defender] === 0) {
+        turns.push({ at, hitAt: at + spec.windup, attacker, move, damage, raw, crit: critical, defended, heal: 0, comboHeal: 0, bonus });
+        return { fighters, turns, winner: attacker, duration: at + spec.windup + KNOCKOUT_MS };
+      }
+      // Specials break the block, so they never trigger the combo.
+      let comboHeal = 0;
+      if (defended && move !== 'special' && hp[defender] < MAX_HP && heals[defender] < HEAL.perFighter && roll(100) < COMBO_HEAL.percent) {
+        comboHeal = Math.min(MAX_HP - hp[defender], HEAL.min + roll(HEAL.max - HEAL.min + 1));
+        hp[defender] += comboHeal; heals[defender]++;
+      }
       // A fully blocked crit is just a block.
-      turns.push({ at, hitAt: at + spec.windup, attacker, move, damage, raw, crit: critical && damage > 0, defended, heal: 0, bonus });
-      if (hp[defender] === 0) return { fighters, turns, winner: attacker, duration: at + spec.windup + KNOCKOUT_MS };
-      at += spec.duration;
+      turns.push({ at, hitAt: at + spec.windup, attacker, move, damage, raw, crit: critical && damage > 0, defended, heal: 0, comboHeal, bonus });
+      at += spec.duration + (comboHeal ? COMBO_HEAL.extra : 0);
     }
     // After a turn the attacker may steal the opponent's turn and strike again.
     bonus = roll(100) < EXTRA_TURN_PERCENT;
@@ -94,7 +107,7 @@ export function simulateBattle(roll: (max: number) => number = randomInt): DuelB
 }
 export function remainingHp(turns: DuelTurn[], side: DuelSide): number {
   let hp = MAX_HP;
-  for (const turn of turns) hp = turn.attacker === side ? Math.min(MAX_HP, hp + (turn.heal ?? 0)) : Math.max(0, hp - turn.damage);
+  for (const turn of turns) hp = turn.attacker === side ? Math.min(MAX_HP, hp + (turn.heal ?? 0)) : Math.min(MAX_HP, Math.max(0, hp - turn.damage) + (turn.comboHeal ?? 0));
   return hp;
 }
 const skills: Record<'en' | 'es', Record<DuelCharacter, string>> = {
@@ -120,6 +133,10 @@ function highlight(turn: DuelTurn, names: Record<DuelSide, string>, fighters: Du
   }
   if (turn.move === 'special') return language === 'es' ? `¡${attacker} desata ${specials.es[fighters[turn.attacker]]} contra ${defender}! (-${turn.damage} HP)${crit}` : `${attacker} unleashes ${specials.en[fighters[turn.attacker]]} on ${defender}! (-${turn.damage} HP)${crit}`;
   if (turn.crit && !turn.defended) return language === 'es' ? `¡GOLPE CRÍTICO! ${attacker} duplica el daño a ${defender} (-${turn.damage} HP)` : `CRITICAL HIT! ${attacker} deals double damage to ${defender} (-${turn.damage} HP)`;
+  if (turn.comboHeal) {
+    const skill = skills[language][fighters[other(turn.attacker)]];
+    return language === 'es' ? `¡COMBO! ${defender} bloquea con ${skill} y se cura (+${turn.comboHeal} HP)` : `COMBO! ${defender} blocks with ${skill} and heals (+${turn.comboHeal} HP)`;
+  }
   if (turn.defended) {
     const skill = skills[language][fighters[other(turn.attacker)]];
     if (turn.move === 'heavy') return language === 'es' ? `¡${defender} usa ${skill}: el golpe pesado de ${attacker} solo hace ${turn.damage} de daño!` : `${defender} uses ${skill}: ${attacker}'s heavy blow only deals ${turn.damage} damage!`;
@@ -131,7 +148,7 @@ function highlight(turn: DuelTurn, names: Record<DuelSide, string>, fighters: Du
 export function createRun(challenge: DuelChallenge, config: DuelSettings, overlay: boolean, now: number): DuelRun {
   const battle = simulateBattle(), names = { left: challenge.challenger, right: challenge.opponent };
   const startedAt = now + 750; // Give connected sources one polling interval to receive the fight.
-  const rank = (turn: DuelTurn) => turn.move === 'special' ? 5 : turn.move === 'heal' ? 4 : turn.crit || turn.defended ? 3 : turn.bonus ? 2 : turn.move === 'heavy' ? 1 : 0;
+  const rank = (turn: DuelTurn) => turn.move === 'special' ? 5 : turn.move === 'heal' || turn.comboHeal ? 4 : turn.crit || turn.defended ? 3 : turn.bonus ? 2 : turn.move === 'heavy' ? 1 : 0;
   const notable = battle.turns.filter(turn => rank(turn) > 0).sort((a, b) => rank(b) - rank(a) || a.at - b.at).slice(0, 3);
   const phrases = notable.map(turn => ({ at: startedAt + turn.hitAt, text: highlight(turn, names, battle.fighters, config.language) }));
   // Quiet fights still get some flavour, spread across the battle.

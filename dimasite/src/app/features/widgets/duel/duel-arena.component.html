@@ -15,7 +15,7 @@
             </div>
             <div class="fight-space" aria-hidden="true">
               @for (side of sides; track side) {
-                <div class="fighter-slot" [class.fighter-right]="side === 'right'" [attr.data-action]="action(side)">
+                <div class="fighter-slot" [class.fighter-right]="side === 'right'" [attr.data-action]="action(side)" [attr.data-combo]="comboOn(side) ? '' : null">
                   @if (attacking(side)) { <div class="turn-ring"></div> }
                   @for (key of [actionKey(side)]; track key) {
                     <div class="fighter-motion" [attr.data-action]="action(side)" [attr.data-move]="move(side)" [attr.data-character]="battle().fighters[side]">
@@ -60,6 +60,11 @@
                     @if (shattered(hit)) { <span class="broken-label">{{ brokenResult(hit) }}</span><div class="shatter">@for (n of [0,1,2,3,4,5,6,7,8,9]; track n) { <i [style.--n]="n"></i> }</div> }
                   </div>
                   }
+                }
+              }
+              @if (comboImpact(); as combo) {
+                @for (index of [turnIndex()]; track index) {
+                  <div class="impact-fx combo-fx" [attr.data-target]="target(combo)"><span class="heal-number">+{{ combo.comboHeal }} <small>HP</small></span><span class="combo-label">{{ t('comboHeal') }}</span><div class="glyphs">@for (n of [0,1,2,3,4,5]; track n) { <i [style.--n]="n">✚</i> }</div></div>
                 }
               }
             </div>

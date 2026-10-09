@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { LanguageService } from '../../../services/language.service';
 import { DuelFighterComponent } from './duel-fighter.component';
-import { DuelBattle, DuelMove, DuelSide, DuelTurn, HEAL, MAX_HP, legacyBattle, otherSide, timing } from './duel-battle';
+import { COMBO_HEAL, DuelBattle, DuelMove, DuelSide, DuelTurn, HEAL, MAX_HP, legacyBattle, otherSide, turnLength } from './duel-battle';
 type Phase = 'ready' | 'entrance' | 'countdown' | 'fight' | 'knockout' | 'winner';
 /** How long the damage number, sparks and screen shake stay after a hit lands. */
 const IMPACT_MS = 650;
@@ -39,26 +39,38 @@ export class DuelArenaComponent {
   /** The turn being animated, until its attacker has recovered. */
   readonly currentTurn = computed<DuelTurn | null>(() => {
     const turn = this.battle().turns[this.turnIndex()];
-    return turn && this.elapsed() < turn.at + timing(turn.move).duration ? turn : null;
+    return turn && this.elapsed() < turn.at + turnLength(turn) ? turn : null;
   });
   readonly impact = computed(() => {
     const turn = this.currentTurn(), time = this.elapsed();
     return turn && time >= turn.hitAt && time < turn.hitAt + IMPACT_MS ? turn : null;
+  });
+  /** A block that chains into a heal: shown right after the block lands. */
+  readonly comboImpact = computed(() => {
+    const turn = this.currentTurn(), time = this.elapsed(), at = turn ? turn.hitAt + COMBO_HEAL.delay : 0;
+    return turn?.comboHeal && time >= at && time < at + COMBO_HEAL.extra + 200 ? turn : null;
   });
   readonly health = computed(() => {
     const health = { left: MAX_HP, right: MAX_HP };
     if (this.started()) for (const turn of this.battle().turns) {
       if (this.elapsed() < turn.hitAt) break;
       if (turn.move === 'heal') health[turn.attacker] = Math.min(MAX_HP, health[turn.attacker] + (turn.heal ?? 0));
-      else health[otherSide(turn.attacker)] = Math.max(0, health[otherSide(turn.attacker)] - turn.damage);
+      else {
+        const defender = otherSide(turn.attacker);
+        health[defender] = Math.max(0, health[defender] - turn.damage);
+        if (turn.comboHeal && this.elapsed() >= turn.hitAt + COMBO_HEAL.delay) health[defender] = Math.min(MAX_HP, health[defender] + turn.comboHeal);
+      }
     }
     return health;
   });
   readonly charges = Array.from({ length: HEAL.perFighter }, (_, index) => index);
-  /** A heal charge is spent as soon as the fighter starts healing. */
+  /** A heal charge is spent as soon as the fighter starts healing, or when its block chains into a heal. */
   readonly healsLeft = computed(() => {
     const left = { left: HEAL.perFighter, right: HEAL.perFighter }, time = this.elapsed();
-    if (this.started()) for (const turn of this.battle().turns) if (turn.move === 'heal' && turn.at <= time) left[turn.attacker]--;
+    if (this.started()) for (const turn of this.battle().turns) {
+      if (turn.move === 'heal' && turn.at <= time) left[turn.attacker]--;
+      if (turn.comboHeal && turn.hitAt <= time) left[otherSide(turn.attacker)]--;
+    }
     return left;
   });
   readonly winnerName = computed(() => this.names()[this.winner()]);
@@ -97,7 +109,11 @@ export class DuelArenaComponent {
   shattered(turn: DuelTurn): boolean { return !!turn.defended && turn.move === 'special'; }
   brokenResult(turn: DuelTurn): string { return this.t('skillBroken.' + this.battle().fighters[this.target(turn)]); }
   /** Green flash on the HP bar of a fighter that has just healed. */
-  healing(side: DuelSide): boolean { const turn = this.impact(); return turn?.move === 'heal' && turn.attacker === side; }
+  comboOn(side: DuelSide): boolean { const combo = this.comboImpact(); return !!combo && this.target(combo) === side; }
+  healing(side: DuelSide): boolean {
+    const turn = this.impact();
+    return turn?.move === 'heal' && turn.attacker === side || this.comboOn(side);
+  }
   skillName(turn: DuelTurn): string { return this.t('skill.' + this.battle().fighters[this.target(turn)]); }
   defenseResult(turn: DuelTurn): string { return this.t('defenseResult.' + this.battle().fighters[this.target(turn)]); }
   /** Healing signs rising around the fighter: runes for the Mage, crosses otherwise. */

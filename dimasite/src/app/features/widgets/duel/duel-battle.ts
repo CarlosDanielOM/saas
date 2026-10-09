@@ -6,9 +6,10 @@ export type DuelCharacter = 'knight' | 'ronin' | 'mage';
 /**
  * Offsets are milliseconds from the start of the duel; hitAt is when damage (or healing)
  * lands. raw is the base roll, crit doubles it, a defense skill then reduces it (specials
- * break through a defense); damage is what landed. A 'heal' turn restores `heal` HP to the acting fighter instead.
+ * break through a defense); damage is what landed. A 'heal' turn restores `heal` HP to the
+ * acting fighter instead. comboHeal is HP the defender regains right after blocking.
  */
-export interface DuelTurn { at: number; hitAt: number; attacker: DuelSide; move: DuelMove | 'heal'; damage: number; raw?: number; crit?: boolean; defended?: boolean; heal?: number; bonus: boolean }
+export interface DuelTurn { at: number; hitAt: number; attacker: DuelSide; move: DuelMove | 'heal'; damage: number; raw?: number; crit?: boolean; defended?: boolean; heal?: number; comboHeal?: number; bonus: boolean }
 export interface DuelBattle { fighters: Record<DuelSide, DuelCharacter>; turns: DuelTurn[]; winner: DuelSide; duration: number }
 
 export const MAX_HP = 100;
@@ -19,7 +20,8 @@ const EXTRA_TURN_LEAD_MS = 250;
 const DEFENSE_PERCENT = 15;
 const HEAVY_DEFENDED_RATIO = 0.2;
 const CRIT_PERCENT = 10;
-export const HEAL = { percent: 12, threshold: 60, min: 20, max: 35, perFighter: 3, windup: 900, duration: 1500 };
+export const HEAL = { percent: 20, threshold: 60, min: 25, max: 40, perFighter: 5, windup: 900, duration: 1500 };
+export const COMBO_HEAL = { percent: 35, delay: 350, extra: 700 };
 const SKILL_TURN_LIMIT = 24;
 export const MOVES: Record<DuelMove, { chance: number; min: number; max: number; windup: number; duration: number }> = {
   normal: { chance: 68, min: 10, max: 16, windup: 280, duration: 800 },
@@ -29,6 +31,8 @@ export const MOVES: Record<DuelMove, { chance: number; min: number; max: number;
 export const CHARACTERS: DuelCharacter[] = ['knight', 'ronin', 'mage'];
 /** Windup/duration for any turn, heals included. */
 export const timing = (move: DuelMove | 'heal') => move === 'heal' ? HEAL : MOVES[move];
+/** How long a turn stays on screen, including a combo heal after a block. */
+export const turnLength = (turn: DuelTurn) => timing(turn.move).duration + (turn.comboHeal ? COMBO_HEAL.extra : 0);
 export const otherSide = (side: DuelSide): DuelSide => side === 'left' ? 'right' : 'left';
 
 export function simulateBattle(random: () => number = Math.random): DuelBattle {
@@ -43,7 +47,7 @@ export function simulateBattle(random: () => number = Math.random): DuelBattle {
     if (skills && hp[attacker] <= HEAL.threshold && heals[attacker] < HEAL.perFighter && roll(100) < HEAL.percent) {
       const heal = Math.min(MAX_HP - hp[attacker], HEAL.min + roll(HEAL.max - HEAL.min + 1));
       hp[attacker] += heal; heals[attacker]++;
-      turns.push({ at, hitAt: at + HEAL.windup, attacker, move: 'heal', damage: 0, raw: 0, crit: false, defended: false, heal, bonus });
+      turns.push({ at, hitAt: at + HEAL.windup, attacker, move: 'heal', damage: 0, raw: 0, crit: false, defended: false, heal, comboHeal: 0, bonus });
       at += HEAL.duration;
     } else {
       const chance = roll(100), move: DuelMove = chance < MOVES.special.chance ? 'special' : chance < MOVES.special.chance + MOVES.heavy.chance ? 'heavy' : 'normal';
@@ -53,9 +57,17 @@ export function simulateBattle(random: () => number = Math.random): DuelBattle {
       const defended = skills && roll(100) < DEFENSE_PERCENT;
       const damage = !defended || move === 'special' ? hit : move === 'heavy' ? Math.round(hit * HEAVY_DEFENDED_RATIO) : 0;
       hp[defender] = Math.max(0, hp[defender] - damage);
-      turns.push({ at, hitAt: at + spec.windup, attacker, move, damage, raw, crit: critical && damage > 0, defended, heal: 0, bonus });
-      if (hp[defender] === 0) return { fighters, turns, winner: attacker, duration: at + spec.windup + KNOCKOUT_MS };
-      at += spec.duration;
+      if (hp[defender] === 0) {
+        turns.push({ at, hitAt: at + spec.windup, attacker, move, damage, raw, crit: critical, defended, heal: 0, comboHeal: 0, bonus });
+        return { fighters, turns, winner: attacker, duration: at + spec.windup + KNOCKOUT_MS };
+      }
+      let comboHeal = 0;
+      if (defended && move !== 'special' && hp[defender] < MAX_HP && heals[defender] < HEAL.perFighter && roll(100) < COMBO_HEAL.percent) {
+        comboHeal = Math.min(MAX_HP - hp[defender], HEAL.min + roll(HEAL.max - HEAL.min + 1));
+        hp[defender] += comboHeal; heals[defender]++;
+      }
+      turns.push({ at, hitAt: at + spec.windup, attacker, move, damage, raw, crit: critical && damage > 0, defended, heal: 0, comboHeal, bonus });
+      at += spec.duration + (comboHeal ? COMBO_HEAL.extra : 0);
     }
     bonus = roll(100) < EXTRA_TURN_PERCENT;
     if (bonus) at += EXTRA_TURN_LEAD_MS; else attacker = defender;

@@ -82,9 +82,9 @@ try {
   await page.waitForTimeout(800);
   await page.screenshot({ path: `${evidence}/victory.png`, fullPage: true });
   assert.equal(await page.getByRole('button', { name: 'Pause', exact: true }).isDisabled(), true);
-  // mulberry32 seed 8 (54 rolls) lets the Knight's Shield Wall block a normal attack at 4.5s.
+  // mulberry32 seed 19 (59 rolls) lets the Knight's Shield Wall block a normal attack at 6.1s.
   // Only the battle's own rolls are seeded so other page code cannot shift the sequence.
-  await page.evaluate(() => { let a = 8, n = 0; const original = Math.random; Math.random = () => { if (n++ >= 54) return original(); a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; });
+  await page.evaluate(() => { let a = 19, n = 0; const original = Math.random; Math.random = () => { if (n++ >= 59) return original(); a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; });
   await page.locator('.playback .primary').click();
   await page.locator('.skill-callout', { hasText: 'Shield Wall' }).waitFor({ timeout: 15000 });
   await page.locator('app-duel-fighter[data-character="knight"][data-action="defend"]').waitFor();
@@ -125,7 +125,8 @@ try {
   assert.equal(await page.locator('.controls-tile').count(), 0);
   assert.equal(await page.evaluate(() => getComputedStyle(document.body).backgroundColor), 'rgba(0, 0, 0, 0)');
   await page.getByRole('button', { name: 'Play duel', exact: true }).click();
-  await page.locator('.winner-reveal').waitFor({ timeout: 25000 });
+  // Random fights can run past 40 s when both fighters keep healing.
+  await page.locator('.winner-reveal').waitFor({ timeout: 60000 });
   assert(['Dima', 'ChatChampion'].includes(await page.locator('.winner-reveal strong').innerText()), 'Random outcome must be one fighter');
   await page.screenshot({ path: `${evidence}/overlay-only.png`, omitBackground: true });
   await page.goto(base + '/mocks/dev');

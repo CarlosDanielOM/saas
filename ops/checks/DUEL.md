@@ -17,8 +17,10 @@ the opponent's next turn. When hit by a normal or heavy attack, the defender rol
 Ward): normals deal 0, heavies lose 80% (`raw` keeps the rolled damage). Specials
 still roll the skill but shatter it at full damage. Every attack (specials included) has a 10% crit chance that
 doubles the rolled damage before any defense. Instead of attacking, a fighter at
-60 HP or less has a 12% chance to heal 20–35 HP (Knight: angel, Ronin: potion, Mage:
-green glyphs), at most 3 times per fight; the HUD shows the remaining heal charges.
+60 HP or less has a 20% chance to heal 25–40 HP (Knight: angel, Ronin: potion, Mage:
+green glyphs). Blocking a normal or heavy attack has a 35% chance to chain a combo heal
+(same amount, never after a special). Both kinds share 5 charges per fighter, shown under
+each HP bar. About 3 in 4 fights last 15–35 s (median ~20 s, ~19% end sooner).
 Defenses and heals stop after 24 turns so every fight ends. The first fighter at 0 HP loses. The stored turns drive
 the overlay animation and the deadline (last hit + 1.9 s knockout, typically 13–18 s).
 The dimasite preview mirrors those numbers in `duel-battle.ts`; keep them in step.

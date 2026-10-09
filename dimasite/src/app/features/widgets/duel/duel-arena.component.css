@@ -35,9 +35,9 @@
 .health-meta { display:flex; justify-content:space-between; align-items:center; gap:4px; margin-top:6px }
 .health-right .health-meta { flex-direction:row-reverse }
 /* Heal charges: full green crosses, spent ones turn into dashed empty slots. */
-.heal-charges { display:flex; gap:.6cqw; flex-shrink:0 }
+.heal-charges { display:flex; gap:.45cqw; flex-shrink:0 }
 .health-right .heal-charges { flex-direction:row-reverse }
-.heal-charges i { display:grid; place-items:center; width:2.4cqw; min-width:12px; aspect-ratio:1; border-radius:50%; font-style:normal; font-size:1.4cqw; line-height:1; color:#0f3a22; background:#5dff9a; box-shadow:0 0 8px #5dff9a99; transition:background .3s,box-shadow .3s,transform .3s }
+.heal-charges i { display:grid; place-items:center; width:2.2cqw; min-width:10px; aspect-ratio:1; border-radius:50%; font-style:normal; font-size:1.3cqw; line-height:1; color:#0f3a22; background:#5dff9a; box-shadow:0 0 8px #5dff9a99; transition:background .3s,box-shadow .3s,transform .3s }
 .heal-charges i.used { color:#b6accb; background:transparent; box-shadow:none; outline:1px dashed #b6accb; outline-offset:-1px; transform:scale(.85) }
 .fighter-role { display:block; color:#ada6bf; font-size:1.7cqw; letter-spacing:.09em; text-transform:uppercase }
 .fight-space { position:absolute; inset:0 }
@@ -90,6 +90,11 @@
 .heal-fx[data-character="mage"] .glyphs i { font-size:3.6cqw }
 .heal-number { position:absolute; top:30%; left:var(--def); z-index:6; translate:-50% 0; white-space:nowrap; font-size:5.4cqw; font-weight:900; color:#7dffae; text-shadow:0 2px 0 #0f3a22,0 0 14px #3dff8a; animation:blocked .65s ease-out both }
 .heal-number small { font-size:.45em }
+/* Block → heal combo: quicker crosses, a green label and a glow on the defender. */
+.combo-fx { --dur:1000ms; --heal:#5dff9a }
+.combo-fx .glyphs { left:var(--def); top:36% }
+.combo-label { position:absolute; z-index:6; top:64%; left:var(--def); translate:-50% 0; white-space:nowrap; font-size:2.6cqw; font-weight:900; font-style:italic; text-transform:uppercase; color:#b8ffd2; text-shadow:0 2px 0 #0f3a22,0 0 12px #3dff8a; animation:blocked .9s ease-out both }
+.fighter-slot[data-combo] .fighter-facing { animation:combo-glow .9s ease both }
 .health.healing .fill { background:linear-gradient(90deg,var(--hp-color),#7dffae); box-shadow:0 0 12px #5dff9a }
 .health.healing .health-track { box-shadow:0 0 0 2px #5dff9a,0 0 16px #5dff9a }
 .move-callout { position:absolute; bottom:9%; left:50%; z-index:5; padding:.5cqw 1.8cqw; white-space:nowrap; font-size:3.2cqw; font-weight:950; font-style:italic; letter-spacing:-.02em; text-transform:uppercase; color:#fff7e0; background:linear-gradient(90deg,transparent,#14101fee 12%,#14101fee 88%,transparent); border-block:2px solid var(--fx); text-shadow:0 0 12px var(--fx); animation:callout var(--dur) ease both }
@@ -176,6 +181,7 @@
 @keyframes glyph { 0%,35% { opacity:0; transform:translateY(30%) scale(.6) } 50% { opacity:1; transform:translateY(0) scale(1) } 85% { opacity:.9 } 100% { opacity:0; transform:translateY(-280%) scale(1.1) } }
 @keyframes shard { 0% { opacity:1; transform:rotate(var(--a)) translateX(0) } 100% { opacity:0; transform:rotate(var(--a)) translateX(12cqw) rotate(220deg) } }
 @keyframes skill-broken { 0%,12% { opacity:0; transform:translateY(8px) scale(.6); border-color:var(--defc); text-decoration:none } 18% { opacity:1; transform:scale(1.12) } 24%,51% { opacity:1; transform:scale(1); border-color:var(--defc); box-shadow:0 0 16px var(--defc); text-decoration:none } 53% { transform:translateX(-6px) rotate(-6deg); border-color:#ff5f6d; box-shadow:0 0 18px #ff5f6d } 57% { transform:translateX(6px) rotate(4deg) } 65% { opacity:1; transform:translateY(4px) rotate(-8deg); text-decoration:line-through; border-color:#ff5f6d } 100% { opacity:0; transform:translateY(24px) rotate(-14deg); text-decoration:line-through; border-color:#ff5f6d } }
+@keyframes combo-glow { 30%,70% { filter:drop-shadow(0 0 4px #5dff9a) drop-shadow(0 0 14px #5dff9a) brightness(1.12) } }
 @keyframes skill { 0%,12% { opacity:0; transform:translateY(8px) scale(.6) } 18% { opacity:1; transform:scale(1.12) } 24%,72% { opacity:1; transform:scale(1) } 100% { opacity:0; transform:translateY(-10px) } }
 @keyframes extra { 0% { opacity:0; transform:translateY(10px) scale(.6) } 12% { opacity:1; transform:translateY(0) scale(1.15) } 20%,60% { opacity:1; transform:scale(1) } 100% { opacity:0; transform:translateY(-12px) } }
 @keyframes bolt { 0%,20% { opacity:0; left:var(--att); transform:scale(.3) } 27% { opacity:1; left:var(--att); transform:scale(1) } 35% { opacity:1; left:var(--def) } 45%,100% { left:var(--def); opacity:0; transform:scale(1.6) } }
@@ -195,4 +201,4 @@
 @keyframes winner { from { opacity:0; transform:translateY(14px) } to { opacity:1; transform:translateY(0) } }
 @keyframes confetti { from { opacity:0; transform:translateY(-40px) rotate(0deg) } 20% { opacity:1 } to { opacity:0; transform:translateY(180px) rotate(240deg) } }
 @media(min-width:640px){.arena{aspect-ratio:16/9;--fighter-size:25%;--fight-spread:13%}.arena[data-phase="winner"] .fighter-slot:not([data-action="defeated"]){--fighter-size:20%}.health-label{font-size:2.3cqw}}
-@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}.confetti,.hit-spark,.shock-ring,.special-dim,.projectile,.pillar,.crescent,.ko-flash,.turn-ring{display:none}.damage,.move-callout,.extra-turn,.skill-callout,.heal-number{opacity:1}.heal-beam,.glyphs,.angel,.crit-flash,.shatter{display:none}.broken-label{opacity:1}.move-callout{transform:translateX(-50%)}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}.confetti,.hit-spark,.shock-ring,.special-dim,.projectile,.pillar,.crescent,.ko-flash,.turn-ring{display:none}.damage,.move-callout,.extra-turn,.skill-callout,.heal-number{opacity:1}.heal-beam,.glyphs,.angel,.crit-flash,.shatter{display:none}.broken-label,.combo-label{opacity:1}.move-callout{transform:translateX(-50%)}}

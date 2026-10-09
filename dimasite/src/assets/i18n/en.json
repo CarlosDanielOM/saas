@@ -6948,7 +6948,8 @@
       "knight": "Shield shattered!",
       "ronin": "Ghost Step failed!",
       "mage": "Ward shattered!"
-    }
+    },
+    "comboHeal": "Combo heal!"
   },
   "duelWidget": {
     "back": "All widgets",
@@ -6992,7 +6993,7 @@
     "how": "How a duel works",
     "stepChallenge": "A viewer challenges someone:",
     "stepAccept": "The challenged viewer accepts within 3 minutes:",
-    "stepWinner": "Fighters take turns: usually a normal attack, sometimes a heavy one, rarely a special, and any hit can crit for double damage. Sometimes the defender's skill (Shield Wall, Ghost Step or Arcane Ward) stops a normal attack or cuts a heavy one by 80%; specials shatter it at full damage. Hurt fighters may heal up to 3 times, and anyone can strike twice in a row. The first to 0 HP loses, and chat gets the winner.",
+    "stepWinner": "Fighters take turns: usually a normal attack, sometimes a heavy one, rarely a special, and any hit can crit for double damage. Sometimes the defender's skill (Shield Wall, Ghost Step or Arcane Ward) stops a normal attack or cuts a heavy one by 80%; specials shatter it at full damage. Fighters may heal up to 5 times, and blocking can chain into a combo heal, and anyone can strike twice in a row. The first to 0 HP loses, and chat gets the winner.",
     "fallback": "With the overlay connected, chat stays quiet until the winner. Without it, chat narrates the battle.",
     "challengeTitle": "@{{name}}, you have been challenged!",
     "challengeFrom": "@{{name}} is waiting in the arena. Accept within 3 minutes.",

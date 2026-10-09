@@ -6948,7 +6948,8 @@
       "knight": "¡Escudo destrozado!",
       "ronin": "¡Paso Fantasma fallido!",
       "mage": "¡Barrera destrozada!"
-    }
+    },
+    "comboHeal": "¡Curación combo!"
   },
   "duelWidget": {
     "back": "Todos los widgets",
@@ -6992,7 +6993,7 @@
     "how": "Cómo funciona un duelo",
     "stepChallenge": "Un espectador desafía a otro:",
     "stepAccept": "El espectador desafiado acepta en 3 minutos:",
-    "stepWinner": "Los luchadores se turnan: casi siempre un ataque normal, a veces uno fuerte, rara vez uno especial, y cualquier golpe puede ser crítico y hacer el doble de daño. A veces la habilidad del defensor (Muro de Escudo, Paso Fantasma o Barrera Arcana) detiene un ataque normal o reduce uno fuerte un 80 %; los especiales la destrozan con todo su daño. Un luchador herido puede curarse hasta 3 veces y cualquiera puede atacar dos veces seguidas. Pierde quien llegue a 0 HP y el chat recibe al ganador.",
+    "stepWinner": "Los luchadores se turnan: casi siempre un ataque normal, a veces uno fuerte, rara vez uno especial, y cualquier golpe puede ser crítico y hacer el doble de daño. A veces la habilidad del defensor (Muro de Escudo, Paso Fantasma o Barrera Arcana) detiene un ataque normal o reduce uno fuerte un 80 %; los especiales la destrozan con todo su daño. Cada luchador puede curarse hasta 5 veces, y un bloqueo puede encadenar una curación combo y cualquiera puede atacar dos veces seguidas. Pierde quien llegue a 0 HP y el chat recibe al ganador.",
     "fallback": "Con el overlay conectado, el chat permanece en silencio hasta el ganador. Sin él, el chat narra la batalla.",
     "challengeTitle": "¡@{{name}}, te han desafiado!",
     "challengeFrom": "@{{name}} te espera en la arena. Acepta en 3 minutos.",
