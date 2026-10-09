@@ -4,7 +4,7 @@ import { getMongoDBConnection } from '../utils/databases/mongodb.database.js';
 import { getDragonflyClient } from '../utils/databases/dragonfly.database.js';
 import { requirePremium, hasPremium } from '../widgets/service.js';
 import { fail, integer, text } from '../roulette/model.js';
-import { defaultSettings, settings, createRun, nextDeadline, type DuelSettings, type DuelChallenge, type DuelRun } from './model.js';
+import { defaultSettings, settings, createRun, nextDeadline, type DuelSettings, type DuelChallenge, type DuelRun, type DuelSide } from './model.js';
 
 interface Receipt { key: string; fingerprint: string; at: number }
 export interface DuelDocument { _id: string; revision: number; settings: DuelSettings; challenge: DuelChallenge | null; run: DuelRun | null; tokenHash: string | null; dueAt: number | null; leaseUntil: number; receipts: Receipt[] }
@@ -39,7 +39,7 @@ export async function duelSnapshot(id: string) {
   const run = doc.run;
   return { revision: doc.revision, settings: doc.settings, serverTime: now, connected: await overlayActive(doc),
     challenge: doc.challenge && doc.challenge.expiresAt > now ? doc.challenge : null,
-    run: run ? { id: run.id, challenger: run.challenger, opponent: run.opponent, winner: run.winner, fighters: run.fighters, turns: run.turns, mode: run.mode, startedAt: run.startedAt, endsAt: run.endsAt, completedAt: run.completedAt, announcementError: run.announcementError, timeoutError: run.timeoutError } : null };
+    run: run ? { id: run.id, challenger: run.challenger, opponent: run.opponent, winner: run.winner, fighters: run.fighters, turns: run.turns, enraged: run.enraged ?? null, mode: run.mode, startedAt: run.startedAt, endsAt: run.endsAt, completedAt: run.completedAt, announcementError: run.announcementError, timeoutError: run.timeoutError } : null };
 }
 export async function configureDuel(id: string, input: unknown, revision: number, key: string): Promise<void> {
   await requirePremium(id); integer(revision, 'If-Match', 0); text(key, 'Idempotency-Key', 128);
@@ -61,14 +61,25 @@ export async function authorizeDuelOverlay(id: string, token: unknown): Promise<
   if (!/^[0-9]{1,30}$/.test(id) || typeof token !== 'string' || !/^[\w-]{43}$/.test(token)) return false;
   return await hasPremium(id) && !!await DuelChannel.exists({ _id: id, tokenHash: tokenHash(token) });
 }
-export async function challengeDuel(id: string, challenger: string, opponent: string): Promise<boolean> {
+export async function challengeDuel(id: string, challenger: string, opponent: string, enraged: DuelSide | null = null): Promise<boolean> {
   for (let attempt = 0; attempt < 10; attempt++) {
     const doc = await loadDuel(id), now = Date.now();
     if (doc.run && doc.run.completedAt === null || doc.challenge && doc.challenge.expiresAt > now) fail('busy', 'A duel is already waiting or fighting in this channel', 409);
     const overlay = await overlayActive(doc);
-    const challenge: DuelChallenge = { id: randomUUID(), challenger, opponent, expiresAt: now + 180000 };
+    const challenge: DuelChallenge = { id: randomUUID(), challenger, opponent, expiresAt: now + 180000, enraged };
     const saved = await DuelChannel.updateOne({ _id: id, revision: doc.revision }, { $set: { challenge, run: null, dueAt: challenge.expiresAt, leaseUntil: 0 }, $inc: { revision: 1 } });
     if (saved.modifiedCount) return overlay;
+  }
+  return fail('busy', 'Duel is busy; try again', 409);
+}
+/** Challenging the streamer skips the accept step: the enraged streamer always fights. */
+export async function fightStreamer(id: string, challenger: string, streamer: string): Promise<DuelRun> {
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const doc = await loadDuel(id), now = Date.now();
+    if (doc.run && doc.run.completedAt === null || doc.challenge && doc.challenge.expiresAt > now) fail('busy', 'A duel is already waiting or fighting in this channel', 409);
+    const run = createRun({ id: randomUUID(), challenger, opponent: streamer, expiresAt: now, enraged: 'right' }, doc.settings, await overlayActive(doc), now);
+    const saved = await DuelChannel.updateOne({ _id: id, revision: doc.revision }, { $set: { challenge: null, run, dueAt: nextDeadline(run), leaseUntil: 0 }, $inc: { revision: 1 } });
+    if (saved.modifiedCount) return run;
   }
   return fail('busy', 'Duel is busy; try again', 409);
 }

@@ -72,6 +72,11 @@ import { DuelCharacter, DuelMove } from './duel-battle';
     .slash { opacity:0; transform-origin:130px 105px }
     .orb { filter:drop-shadow(0 0 6px var(--fighter-light)); transform-box:fill-box; transform-origin:center }
     .eyes { filter:drop-shadow(0 0 3px var(--fighter-light)) }
+    /* Enraged streamer: red pulsing aura and red eyes (move/heal auras still take over). */
+    :host([data-enraged="true"]) .aura { fill:#ff3b3b; animation:rage-aura 1s ease-in-out infinite }
+    :host([data-enraged="true"]) path.eyes { stroke:#ff4d4d }
+    :host([data-enraged="true"]) .eyes rect { fill:#ff4d4d }
+    :host([data-enraged="true"]) .eyes { filter:drop-shadow(0 0 5px #ff3b3b) }
     :host([data-low="true"][data-action="idle"]) .body { animation:pant .9s ease-in-out infinite }
     :host([data-low="true"]) svg { filter:drop-shadow(0 0 6px #ff4d5a88) }
 
@@ -134,6 +139,7 @@ import { DuelCharacter, DuelMove } from './duel-battle';
     :host([data-action="victory"]) .aura { opacity:.18 }
     :host([data-paused="true"]) * { animation-play-state:paused !important }
 
+    @keyframes rage-aura { 0%,100% { opacity:.2; transform:scale(.96) } 50% { opacity:.38; transform:scale(1.04) } }
     @keyframes breathe { 50% { transform:translateY(-3px) rotate(-1deg) } }
     @keyframes pant { 50% { transform:translateY(4px) rotate(4deg) } }
     @keyframes cloth { 50% { transform:rotate(5deg) } }
@@ -181,7 +187,7 @@ import { DuelCharacter, DuelMove } from './duel-battle';
       :host([data-action="defend"]) .guard { opacity:.8 }
     }
   `,
-  host: { '[attr.data-side]': 'side()', '[attr.data-character]': 'character()', '[attr.data-action]': 'action()', '[attr.data-move]': 'move()', '[attr.data-low]': 'low()', '[attr.data-paused]': 'paused()' },
+  host: { '[attr.data-side]': 'side()', '[attr.data-character]': 'character()', '[attr.data-action]': 'action()', '[attr.data-move]': 'move()', '[attr.data-low]': 'low()', '[attr.data-enraged]': 'enraged()', '[attr.data-paused]': 'paused()' },
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class DuelFighterComponent {
@@ -190,5 +196,6 @@ export class DuelFighterComponent {
   readonly action = input('idle');
   readonly move = input<DuelMove>('normal');
   readonly low = input(false);
+  readonly enraged = input(false);
   readonly paused = input(false);
 }

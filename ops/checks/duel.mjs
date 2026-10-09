@@ -90,6 +90,15 @@ try {
   await page.locator('app-duel-fighter[data-character="knight"][data-action="defend"]').waitFor();
   await page.locator('.damage.blocked', { hasText: 'Blocked!' }).waitFor();
   await page.screenshot({ path: `${evidence}/shield-wall.png`, fullPage: true });
+  // A fight against the streamer: enraged cue, badge, flames and red eyes on the opponent only.
+  await page.getByLabel('Opponent is the streamer (enraged)', { exact: true }).check();
+  await page.locator('.playback .primary').click();
+  await page.locator('.enrage-cue', { hasText: 'The streamer is enraged!' }).waitFor();
+  assert.equal(await page.locator('.health[data-side="right"] .rage-badge').count(), 1);
+  assert.equal(await page.locator('.health[data-side="left"] .rage-badge').count(), 0);
+  assert.equal(await page.locator('app-duel-fighter[data-side="right"]').getAttribute('data-enraged'), 'true');
+  await page.screenshot({ path: `${evidence}/enraged.png`, fullPage: true });
+  await page.getByLabel('Opponent is the streamer (enraged)', { exact: true }).uncheck();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.evaluate(() => { Math.random = () => 0.9; });
   await page.locator('.playback .primary').click();
@@ -134,5 +143,5 @@ try {
   assert.notEqual(await page.evaluate(() => getComputedStyle(document.body).backgroundColor), 'rgba(0, 0, 0, 0)', 'Navigation restores body background');
   assert.deepEqual(errors, [], 'No JavaScript runtime errors');
   assert.deepEqual(apiRequests, [], 'The mock must not request production APIs');
-  console.log('PASS: turn-based RNG battles (characters, special callouts, crits, defense skills and shattered defenses, extra turns, turn counter), both winners, combat effects, HP, pause/resume, replay/reset, transparent overlay, random result, English/Spanish, reduced motion, 320/390/1280 dark/light, zero axe violations or runtime errors.');
+  console.log('PASS: turn-based RNG battles (characters, special callouts, crits, defense skills and shattered defenses, enraged streamer, extra turns, turn counter), both winners, combat effects, HP, pause/resume, replay/reset, transparent overlay, random result, English/Spanish, reduced motion, 320/390/1280 dark/light, zero axe violations or runtime errors.');
 } finally { await browser.close(); }

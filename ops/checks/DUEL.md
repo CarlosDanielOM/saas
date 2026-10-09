@@ -6,7 +6,11 @@ The token lives in the URL fragment. Rotating the link revokes existing sources.
 A source counts as active after its authenticated client acknowledges readiness;
 presence expires after five seconds if the API/source stops refreshing it.
 
-`!duel @viewer` creates a three-minute challenge. Only that viewer can accept or
+`!duel @viewer` creates a three-minute challenge. `!duel @streamer` skips the accept step and
+starts at once; the streamer may also challenge viewers (normal accept). The streamer's side
+fights enraged (`run.enraged`): doubled heavy/special, crit and defense chances, winning about
+83% of fights, with an enraged overlay look. A losing streamer is never timed out and no
+moderation lookups happen. Only that viewer can accept or
 decline. One challenge/battle runs per channel. There is no predetermined winner:
 on accept the backend simulates a turn-based battle (`simulateBattle` in
 `dimabot/src/duel/model.ts`) with two distinct characters (Knight, Ronin, Mage),

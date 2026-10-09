@@ -14,11 +14,12 @@ export type DuelCharacter = 'knight' | 'ronin' | 'mage';
  * fighter instead. comboHeal is HP the defender regains right after blocking.
  */
 export interface DuelTurn { at: number; hitAt: number; attacker: DuelSide; move: DuelMove | 'heal'; damage: number; raw: number; crit: boolean; defended: boolean; heal: number; comboHeal: number; bonus: boolean }
-export interface DuelBattle { fighters: Record<DuelSide, DuelCharacter>; turns: DuelTurn[]; winner: DuelSide; duration: number }
-export interface DuelChallenge { id: string; challenger: string; opponent: string; expiresAt: number }
+export interface DuelBattle { fighters: Record<DuelSide, DuelCharacter>; turns: DuelTurn[]; winner: DuelSide; duration: number; enraged: DuelSide | null }
+/** enraged marks the streamer's side: the channel owner fights with doubled odds. */
+export interface DuelChallenge { id: string; challenger: string; opponent: string; expiresAt: number; enraged?: DuelSide | null }
 export interface DuelRun {
   id: string; challenger: string; opponent: string; winner: DuelSide; mode: 'overlay' | 'chat';
-  fighters: Record<DuelSide, DuelCharacter>; turns: DuelTurn[];
+  fighters: Record<DuelSide, DuelCharacter>; turns: DuelTurn[]; enraged: DuelSide | null;
   startedAt: number; endsAt: number; timeoutEnabled: boolean; timeoutSeconds: number; language: 'en' | 'es';
   phrases: { at: number; text: string }[]; phraseIndex: number;
   announcementAttempted: boolean; timeoutAttempted: boolean; completedAt: number | null;
@@ -64,7 +65,9 @@ export const MOVES: Record<DuelMove, { chance: number; min: number; max: number;
 export const CHARACTERS: DuelCharacter[] = ['knight', 'ronin', 'mage'];
 const other = (side: DuelSide): DuelSide => side === 'left' ? 'right' : 'left';
 /** Turn-based fight with no predetermined winner: whoever reaches 0 HP first loses. */
-export function simulateBattle(roll: (max: number) => number = randomInt): DuelBattle {
+// The enraged streamer doubles its heavy/special, crit and defense chances.
+export const ENRAGE_MULTIPLIER = 2;
+export function simulateBattle(roll: (max: number) => number = randomInt, enraged: DuelSide | null = null): DuelBattle {
   const left = CHARACTERS[roll(CHARACTERS.length)], rest = CHARACTERS.filter(character => character !== left);
   const fighters = { left, right: rest[roll(rest.length)] };
   const hp: Record<DuelSide, number> = { left: MAX_HP, right: MAX_HP }, turns: DuelTurn[] = [];
@@ -79,16 +82,17 @@ export function simulateBattle(roll: (max: number) => number = randomInt): DuelB
       turns.push({ at, hitAt: at + HEAL.windup, attacker, move: 'heal', damage: 0, raw: 0, crit: false, defended: false, heal, comboHeal: 0, bonus });
       at += HEAL.duration;
     } else {
-      const chance = roll(100), move: DuelMove = chance < MOVES.special.chance ? 'special' : chance < MOVES.special.chance + MOVES.heavy.chance ? 'heavy' : 'normal';
+      const boost = attacker === enraged ? ENRAGE_MULTIPLIER : 1, special = MOVES.special.chance * boost, heavy = MOVES.heavy.chance * boost;
+      const chance = roll(100), move: DuelMove = chance < special ? 'special' : chance < special + heavy ? 'heavy' : 'normal';
       const spec = MOVES[move], raw = spec.min + roll(spec.max - spec.min + 1);
-      const critical = roll(100) < CRIT_PERCENT, hit = critical ? raw * 2 : raw;
+      const critical = roll(100) < CRIT_PERCENT * boost, hit = critical ? raw * 2 : raw;
       // Specials still roll the skill, but break through it at full damage.
-      const defended = skills && roll(100) < DEFENSE_PERCENT;
+      const defended = skills && roll(100) < DEFENSE_PERCENT * (defender === enraged ? ENRAGE_MULTIPLIER : 1);
       const damage = !defended || move === 'special' ? hit : move === 'heavy' ? Math.round(hit * HEAVY_DEFENDED_RATIO) : 0;
       hp[defender] = Math.max(0, hp[defender] - damage);
       if (hp[defender] === 0) {
         turns.push({ at, hitAt: at + spec.windup, attacker, move, damage, raw, crit: critical, defended, heal: 0, comboHeal: 0, bonus });
-        return { fighters, turns, winner: attacker, duration: at + spec.windup + KNOCKOUT_MS };
+        return { fighters, turns, winner: attacker, duration: at + spec.windup + KNOCKOUT_MS, enraged };
       }
       // Specials break the block, so they never trigger the combo.
       let comboHeal = 0;
@@ -146,7 +150,7 @@ function highlight(turn: DuelTurn, names: Record<DuelSide, string>, fighters: Du
   return language === 'es' ? `¡${attacker} conecta un golpe pesado a ${defender}! (-${turn.damage} HP)` : `${attacker} lands a heavy blow on ${defender}! (-${turn.damage} HP)`;
 }
 export function createRun(challenge: DuelChallenge, config: DuelSettings, overlay: boolean, now: number): DuelRun {
-  const battle = simulateBattle(), names = { left: challenge.challenger, right: challenge.opponent };
+  const enraged = challenge.enraged ?? null, battle = simulateBattle(randomInt, enraged), names = { left: challenge.challenger, right: challenge.opponent };
   const startedAt = now + 750; // Give connected sources one polling interval to receive the fight.
   const rank = (turn: DuelTurn) => turn.move === 'special' ? 5 : turn.move === 'heal' || turn.comboHeal ? 4 : turn.crit || turn.defended ? 3 : turn.bonus ? 2 : turn.move === 'heavy' ? 1 : 0;
   const notable = battle.turns.filter(turn => rank(turn) > 0).sort((a, b) => rank(b) - rank(a) || a.at - b.at).slice(0, 3);
@@ -154,7 +158,7 @@ export function createRun(challenge: DuelChallenge, config: DuelSettings, overla
   // Quiet fights still get some flavour, spread across the battle.
   const available = [...flavour[config.language]];
   for (let index = phrases.length; index < 2; index++) phrases.push({ at: startedAt + Math.floor(battle.duration * (index + 1) / 3), text: available.splice(randomInt(available.length), 1)[0] });
-  return { ...challenge, winner: battle.winner, fighters: battle.fighters, turns: battle.turns, mode: overlay ? 'overlay' : 'chat', startedAt, endsAt: startedAt + battle.duration,
+  return { ...challenge, enraged, winner: battle.winner, fighters: battle.fighters, turns: battle.turns, mode: overlay ? 'overlay' : 'chat', startedAt, endsAt: startedAt + battle.duration,
     timeoutEnabled: config.timeoutEnabled, timeoutSeconds: config.timeoutSeconds, language: config.language,
     phrases: overlay ? [] : phrases.sort((a, b) => a.at - b.at),
     phraseIndex: 0, announcementAttempted: false, timeoutAttempted: false, completedAt: null };
@@ -164,6 +168,8 @@ export const loserLogin = (run: DuelRun) => run.winner === 'left' ? run.opponent
 export function winnerMessage(run: DuelRun): string {
   // Runs accepted before turn-based battles have no turns to count HP from.
   const hp = run.turns?.length ? remainingHp(run.turns, run.winner) : null;
+  const upset = run.enraged && run.enraged !== run.winner, remaining = hp === null ? '' : run.language === 'es' ? ` con ${hp} HP restantes` : ` with ${hp} HP left`;
+  if (upset) return run.language === 'es' ? `¡IMPOSIBLE! @${winnerLogin(run)} ha derrotado al streamer enfurecido @${loserLogin(run)}${remaining}!` : `UNBELIEVABLE! @${winnerLogin(run)} has defeated the enraged streamer @${loserLogin(run)}${remaining}!`;
   if (run.language === 'es') return `@${winnerLogin(run)} ha ganado el duelo contra @${loserLogin(run)}${hp === null ? '.' : ` con ${hp} HP restantes.`}`;
   return `@${winnerLogin(run)} has won the duel against @${loserLogin(run)}${hp === null ? '.' : ` with ${hp} HP left.`}`;
 }

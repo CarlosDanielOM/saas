@@ -6,8 +6,8 @@ import { DuelCharacter, DuelSide, DuelTurn } from './duel-battle';
 export interface DuelSettings { enabled:boolean; timeoutEnabled:boolean; timeoutSeconds:number; language:'en'|'es' }
 export interface DuelState {
   revision:number; serverTime:number; connected:boolean; settings:DuelSettings;
-  challenge:{id:string;challenger:string;opponent:string;expiresAt:number}|null;
-  run:{id:string;challenger:string;opponent:string;winner:DuelSide;fighters?:Record<DuelSide,DuelCharacter>;turns?:DuelTurn[];mode:'overlay'|'chat';startedAt:number;endsAt:number;completedAt:number|null;announcementError?:string;timeoutError?:string}|null;
+  challenge:{id:string;challenger:string;opponent:string;expiresAt:number;enraged?:DuelSide|null}|null;
+  run:{id:string;challenger:string;opponent:string;winner:DuelSide;fighters?:Record<DuelSide,DuelCharacter>;turns?:DuelTurn[];enraged?:DuelSide|null;mode:'overlay'|'chat';startedAt:number;endsAt:number;completedAt:number|null;announcementError?:string;timeoutError?:string}|null;
 }
 @Injectable({providedIn:'root'})
 export class DuelApi {

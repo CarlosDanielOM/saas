@@ -6949,7 +6949,11 @@
       "ronin": "Ghost Step failed!",
       "mage": "Ward shattered!"
     },
-    "comboHeal": "Combo heal!"
+    "comboHeal": "Combo heal!",
+    "streamer": "Streamer",
+    "enraged": "Enraged",
+    "enrageCue": "The streamer is enraged!",
+    "streamerFight": "Opponent is the streamer (enraged)"
   },
   "duelWidget": {
     "back": "All widgets",
@@ -7004,6 +7008,9 @@
     "linkError": "Could not create the overlay link. Try again.",
     "copyError": "Copy the private link from the field above.",
     "timeoutFailed": "The last duel finished, but Twitch could not apply the loser timeout. Check the bot’s moderation permissions.",
-    "announcementFailed": "A chat message for the last duel could not be sent. Check the bot’s chat permissions."
+    "announcementFailed": "A chat message for the last duel could not be sent. Check the bot’s chat permissions.",
+    "streamerFight": "Fight the streamer",
+    "enragedChallenge": "The enraged streamer challenges you!",
+    "stepStreamer": "Viewers can also fight you. It starts instantly, you fight enraged (double heavy/special, crit and shield chances, about 5 in 6 wins) and you are never timed out:"
   }
 }

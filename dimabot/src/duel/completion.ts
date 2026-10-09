@@ -21,6 +21,8 @@ export const DuelModeratorRestore = model<Restore>('DuelModeratorRestore', resto
 async function timeoutLoser(channel: string, run: DuelRun): Promise<void> {
   // Turning timeouts off takes effect immediately, including an accepted battle.
   if (!(await loadDuel(channel)).settings.timeoutEnabled || !run.timeoutEnabled) return;
+  // The enraged streamer is the channel owner and is never timed out.
+  if (run.enraged && run.enraged !== run.winner) return;
   const login = loserLogin(run), cache = await getDragonflyClient('duel-timeout');
   if (await isEditorLoginCached(cache, channel, login)) return;
   const user = await getTwitchUserByLogin(login);

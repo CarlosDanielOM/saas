@@ -10,7 +10,8 @@ export type DuelCharacter = 'knight' | 'ronin' | 'mage';
  * acting fighter instead. comboHeal is HP the defender regains right after blocking.
  */
 export interface DuelTurn { at: number; hitAt: number; attacker: DuelSide; move: DuelMove | 'heal'; damage: number; raw?: number; crit?: boolean; defended?: boolean; heal?: number; comboHeal?: number; bonus: boolean }
-export interface DuelBattle { fighters: Record<DuelSide, DuelCharacter>; turns: DuelTurn[]; winner: DuelSide; duration: number }
+/** enraged is the streamer's side, which fights with doubled odds. */
+export interface DuelBattle { fighters: Record<DuelSide, DuelCharacter>; turns: DuelTurn[]; winner: DuelSide; duration: number; enraged?: DuelSide | null }
 
 export const MAX_HP = 100;
 export const FIGHT_START_MS = 3700;
@@ -35,7 +36,8 @@ export const timing = (move: DuelMove | 'heal') => move === 'heal' ? HEAL : MOVE
 export const turnLength = (turn: DuelTurn) => timing(turn.move).duration + (turn.comboHeal ? COMBO_HEAL.extra : 0);
 export const otherSide = (side: DuelSide): DuelSide => side === 'left' ? 'right' : 'left';
 
-export function simulateBattle(random: () => number = Math.random): DuelBattle {
+const ENRAGE_MULTIPLIER = 2;
+export function simulateBattle(random: () => number = Math.random, enraged: DuelSide | null = null): DuelBattle {
   const roll = (max: number) => Math.min(max - 1, Math.floor(random() * max));
   const left = CHARACTERS[roll(CHARACTERS.length)], rest = CHARACTERS.filter(character => character !== left);
   const fighters = { left, right: rest[roll(rest.length)] };
@@ -50,16 +52,17 @@ export function simulateBattle(random: () => number = Math.random): DuelBattle {
       turns.push({ at, hitAt: at + HEAL.windup, attacker, move: 'heal', damage: 0, raw: 0, crit: false, defended: false, heal, comboHeal: 0, bonus });
       at += HEAL.duration;
     } else {
-      const chance = roll(100), move: DuelMove = chance < MOVES.special.chance ? 'special' : chance < MOVES.special.chance + MOVES.heavy.chance ? 'heavy' : 'normal';
+      const boost = attacker === enraged ? ENRAGE_MULTIPLIER : 1, special = MOVES.special.chance * boost, heavy = MOVES.heavy.chance * boost;
+      const chance = roll(100), move: DuelMove = chance < special ? 'special' : chance < special + heavy ? 'heavy' : 'normal';
       const spec = MOVES[move], raw = spec.min + roll(spec.max - spec.min + 1);
-      const critical = roll(100) < CRIT_PERCENT, hit = critical ? raw * 2 : raw;
+      const critical = roll(100) < CRIT_PERCENT * boost, hit = critical ? raw * 2 : raw;
       // Specials still roll the skill, but break through it at full damage.
-      const defended = skills && roll(100) < DEFENSE_PERCENT;
+      const defended = skills && roll(100) < DEFENSE_PERCENT * (defender === enraged ? ENRAGE_MULTIPLIER : 1);
       const damage = !defended || move === 'special' ? hit : move === 'heavy' ? Math.round(hit * HEAVY_DEFENDED_RATIO) : 0;
       hp[defender] = Math.max(0, hp[defender] - damage);
       if (hp[defender] === 0) {
         turns.push({ at, hitAt: at + spec.windup, attacker, move, damage, raw, crit: critical, defended, heal: 0, comboHeal: 0, bonus });
-        return { fighters, turns, winner: attacker, duration: at + spec.windup + KNOCKOUT_MS };
+        return { fighters, turns, winner: attacker, duration: at + spec.windup + KNOCKOUT_MS, enraged };
       }
       let comboHeal = 0;
       if (defended && move !== 'special' && hp[defender] < MAX_HP && heals[defender] < HEAL.perFighter && roll(100) < COMBO_HEAL.percent) {

@@ -109,6 +109,8 @@ export class DuelArenaComponent {
   shattered(turn: DuelTurn): boolean { return !!turn.defended && turn.move === 'special'; }
   brokenResult(turn: DuelTurn): string { return this.t('skillBroken.' + this.battle().fighters[this.target(turn)]); }
   /** Green flash on the HP bar of a fighter that has just healed. */
+  /** The streamer's side fights enraged (doubled odds, flames, red eyes). */
+  enraged(side: DuelSide): boolean { return this.battle().enraged === side; }
   comboOn(side: DuelSide): boolean { const combo = this.comboImpact(); return !!combo && this.target(combo) === side; }
   healing(side: DuelSide): boolean {
     const turn = this.impact();

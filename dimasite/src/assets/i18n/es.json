@@ -6949,7 +6949,11 @@
       "ronin": "¡Paso Fantasma fallido!",
       "mage": "¡Barrera destrozada!"
     },
-    "comboHeal": "¡Curación combo!"
+    "comboHeal": "¡Curación combo!",
+    "streamer": "Streamer",
+    "enraged": "Enfurecido",
+    "enrageCue": "¡El streamer está enfurecido!",
+    "streamerFight": "El oponente es el streamer (enfurecido)"
   },
   "duelWidget": {
     "back": "Todos los widgets",
@@ -7004,6 +7008,9 @@
     "linkError": "No se pudo crear el enlace del overlay. Inténtalo de nuevo.",
     "copyError": "Copia el enlace privado del campo anterior.",
     "timeoutFailed": "El último duelo terminó, pero Twitch no pudo aplicar el timeout al perdedor. Revisa los permisos de moderación del bot.",
-    "announcementFailed": "No se pudo enviar un mensaje del último duelo. Revisa los permisos del bot para el chat."
+    "announcementFailed": "No se pudo enviar un mensaje del último duelo. Revisa los permisos del bot para el chat.",
+    "streamerFight": "Pelear contra el streamer",
+    "enragedChallenge": "¡El streamer enfurecido te desafía!",
+    "stepStreamer": "Tus espectadores también pueden pelear contra ti. Empieza al instante, peleas enfurecido (doble probabilidad de golpe fuerte/especial, crítico y escudo, unas 5 de cada 6 victorias) y nunca recibes timeout:"
   }
 }

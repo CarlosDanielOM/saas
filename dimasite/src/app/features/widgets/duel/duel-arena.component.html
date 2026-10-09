@@ -4,10 +4,10 @@
             <div class="hud">
               @for (side of sides; track side) {
                 <div class="health" [class.health-right]="side === 'right'" [class.active]="attacking(side)" [class.low]="low(side)" [class.healing]="healing(side)" [attr.data-side]="side">
-                  <div class="health-label"><strong>{{ names()[side] }}</strong><span>{{ health()[side] }} <small>HP</small></span></div>
+                  <div class="health-label"><strong>{{ names()[side] }}</strong>@if (enraged(side)) { <em class="rage-badge">{{ t('enraged') }}</em> }<span>{{ health()[side] }} <small>HP</small></span></div>
                   <div class="health-track" role="progressbar" [attr.aria-label]="t('health', {name: names()[side]})" [attr.aria-valuenow]="health()[side]" aria-valuemin="0" aria-valuemax="100"><div class="trail" [style.width.%]="health()[side]"></div><div class="fill" [style.width.%]="health()[side]"></div></div>
                   <div class="health-meta">
-                    <span class="fighter-role">{{ t(side === 'left' ? 'challenger' : 'opponent') }} · {{ t('character.' + battle().fighters[side]) }}</span>
+                    <span class="fighter-role">{{ t(enraged(side) ? 'streamer' : side === 'left' ? 'challenger' : 'opponent') }} · {{ t('character.' + battle().fighters[side]) }}</span>
                     <span class="heal-charges" role="img" [attr.aria-label]="t('healsLeft', {n: healsLeft()[side]})">@for (charge of charges; track charge) { <i [class.used]="charge >= healsLeft()[side]" aria-hidden="true">✚</i> }</span>
                   </div>
                 </div>
@@ -15,11 +15,12 @@
             </div>
             <div class="fight-space" aria-hidden="true">
               @for (side of sides; track side) {
-                <div class="fighter-slot" [class.fighter-right]="side === 'right'" [attr.data-action]="action(side)" [attr.data-combo]="comboOn(side) ? '' : null">
+                <div class="fighter-slot" [class.fighter-right]="side === 'right'" [attr.data-action]="action(side)" [attr.data-combo]="comboOn(side) ? '' : null" [attr.data-enraged]="enraged(side) ? '' : null">
+                  @if (enraged(side)) { <div class="rage-flames">@for (n of [0,1,2,3,4,5]; track n) { <i [style.--n]="n"></i> }</div> }
                   @if (attacking(side)) { <div class="turn-ring"></div> }
                   @for (key of [actionKey(side)]; track key) {
                     <div class="fighter-motion" [attr.data-action]="action(side)" [attr.data-move]="move(side)" [attr.data-character]="battle().fighters[side]">
-                      <div class="fighter-facing"><app-duel-fighter [side]="side" [character]="battle().fighters[side]" [action]="action(side)" [move]="move(side)" [low]="low(side)" [paused]="paused()" /></div>
+                      <div class="fighter-facing"><app-duel-fighter [side]="side" [character]="battle().fighters[side]" [action]="action(side)" [move]="move(side)" [low]="low(side)" [enraged]="enraged(side)" [paused]="paused()" /></div>
                     </div>
                   }
                 </div>
@@ -70,7 +71,7 @@
             </div>
             <div class="center-cue" aria-hidden="true">
               @if (phase() === 'ready') { <span class="vs">VS</span><small>{{ t('ready') }}</small> }
-              @if (phase() === 'entrance') { <span class="challenge-cue">{{ t('challenge') }}</span> }
+              @if (phase() === 'entrance') { @if (battle().enraged) { <span class="challenge-cue enrage-cue">{{ t('enrageCue') }}</span> } @else { <span class="challenge-cue">{{ t('challenge') }}</span> } }
               @if (phase() === 'countdown') { @for (n of [countdown()]; track n) { <span class="countdown">{{ n }}</span> } }
               @if (phase() === 'fight' && elapsed() < 3950) { <span class="fight-cue">{{ t('fight') }}</span> }
               @if (phase() === 'knockout') { <span class="ko">K.O.</span> }

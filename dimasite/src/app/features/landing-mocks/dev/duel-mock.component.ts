@@ -25,7 +25,8 @@ export class DuelMockComponent {
   readonly form = new FormGroup({
     left: new FormControl('Dima', { nonNullable: true }),
     right: new FormControl('ChatChampion', { nonNullable: true }),
-    winner: new FormControl('random', { nonNullable: true })
+    winner: new FormControl('random', { nonNullable: true }),
+    streamer: new FormControl(false, { nonNullable: true })
   });
   readonly names = signal({ left: 'Dima', right: 'ChatChampion' });
   readonly battle = signal(simulateBattle());
@@ -71,7 +72,7 @@ export class DuelMockComponent {
     this.stopTimer();
     const values = this.form.getRawValue();
     this.names.set({ left: values.left.trim().slice(0, 24) || 'Dima', right: values.right.trim().slice(0, 24) || 'ChatChampion' });
-    this.battle.set(simulateBattle());
+    this.battle.set(simulateBattle(Math.random, values.streamer ? 'right' : null));
     this.elapsed.set(0);
     this.started.set(true);
     this.paused.set(false);
