@@ -40,8 +40,9 @@ scripts/saas-ops verify site-<run> --check ops/checks/fish-web.mjs
 
 The script defaults to port 4207 for development and uses `SAAS_PREVIEW_URL` when run
 by the helper against the exact production bundle. It covers mobile/desktop layouts,
-modal positioning, internal scrolling, keyboard focus and dismissal, WCAG checks, filters, saving/reloading, preview playback, free
-replay, failure states and read-only access. Screenshots are written under `/tmp`.
+modal positioning, internal scrolling, keyboard focus and dismissal, WCAG checks, chip filters (opening on the
+channel's TTS language), "Show more voices", free Fish samples (CDN mocked, no paid preview), expandable voice
+details, saving/reloading, paid preview playback, free replay, failure states and read-only access. Screenshots are written under `/tmp`.
 The helper sanitizes inherited environment; the default tooling location is
 `/tmp/saas-fish-browser-tools`. The check also detects locally extracted Chromium libraries and fonts in
 `/tmp/saas-fish-browser-libs` (override with `SAAS_BROWSER_LIBS` outside the helper).
@@ -52,6 +53,9 @@ The helper sanitizes inherited environment; the default tooling location is
   language, license, page filters. Fish's `licensed=false` means all voices, so
   unlicensed results are explicitly filtered per provider page. Unknown licensing
   stays unknown. Empty filtered pages can still have a next page.
+  Each result also carries Fish's description, style tags, use count, a 128px cover
+  URL and its free sample clip. Only Fish CDN cover/sample paths pass through; the
+  browser plays samples straight from Fish without spending credits.
 - `PUT /speech/settings/:channelID`: owners save a preset alias or public Fish model
   ID in the existing `voices.cloneDefault` field. New custom IDs are checked against
   Fish. No schema migration is needed.

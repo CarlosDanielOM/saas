@@ -70,6 +70,12 @@ export interface FishVoice {
   languages: string[];
   gender: 'female' | 'male' | null;
   licensed: boolean | null;
+  description?: string;
+  tags?: string[];
+  coverUrl?: string | null;
+  /** Fish's own sample clip: free to play, no credits. */
+  sample?: { url: string; text: string } | null;
+  uses?: number | null;
 }
 export interface FishVoiceFavorite { id: string; name: string; alias: string; }
 export interface FishVoiceResults { items: FishVoice[]; page: number; hasMore: boolean; }

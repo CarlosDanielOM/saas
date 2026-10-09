@@ -9,6 +9,11 @@ export interface FishVoice {
     languages: string[];
     gender: 'female' | 'male' | null;
     licensed: boolean | null;
+    description: string;
+    tags: string[];
+    coverUrl: string | null;
+    sample: { url: string; text: string } | null;
+    uses: number | null;
 }
 export interface FishVoiceSearch {
     name: string;
@@ -54,6 +59,21 @@ async function fishGet(endpoint: string): Promise<unknown> {
     cache.set(endpoint, { until: Date.now() + 60000, value });
     return value;
 }
+// Browsers load these straight from Fish's CDN, so only its own cover/sample paths pass through.
+const FISH_COVER_PATH = /^coverimage\/[a-f\d]{32}$/i;
+const FISH_SAMPLE_URL = /^https:\/\/platform\.r2\.fish\.audio\/tasks?\/(?:\d{4}-\d{2}-\d{2}\/)?[a-f\d]{32}\.(?:mp3|wav|opus)$/i;
+const NON_STYLE_TAGS = new Set(['female', 'male', 'english', 'spanish']);
+function fishSample(samples: unknown): FishVoice['sample'] {
+    if (!Array.isArray(samples)) return null;
+    for (const sample of samples) {
+        if (!sample || typeof sample !== 'object') continue;
+        const { audio, text } = sample as Record<string, unknown>;
+        if (typeof audio === 'string' && FISH_SAMPLE_URL.test(audio)) {
+            return { url: audio, text: typeof text === 'string' ? text.trim().slice(0, 400) : '' };
+        }
+    }
+    return null;
+}
 export function normalizeFishVoice(raw: unknown): FishVoice | null {
     if (!raw || typeof raw !== 'object') return null;
     const v = raw as Record<string, unknown>;
@@ -64,7 +84,13 @@ export function normalizeFishVoice(raw: unknown): FishVoice | null {
     return { id: v._id, name: v.title.slice(0, 200),
         languages: Array.isArray(v.languages) ? v.languages.filter((l): l is string => typeof l === 'string') : [],
         gender: tags.includes('female') ? 'female' : tags.includes('male') ? 'male' : null,
-        licensed: typeof v.licensed === 'boolean' ? v.licensed : null };
+        licensed: typeof v.licensed === 'boolean' ? v.licensed : null,
+        description: typeof v.description === 'string' ? v.description.trim().slice(0, 300) : '',
+        tags: [...new Set(tags.filter(t => /^[a-z][a-z-]{1,23}$/.test(t) && !NON_STYLE_TAGS.has(t)))].slice(0, 6),
+        coverUrl: typeof v.cover_image === 'string' && FISH_COVER_PATH.test(v.cover_image)
+            ? `https://public-platform.r2.fish.audio/cdn-cgi/image/width=128/${v.cover_image}` : null,
+        sample: fishSample(v.samples),
+        uses: typeof v.task_count === 'number' && Number.isFinite(v.task_count) && v.task_count >= 0 ? Math.floor(v.task_count) : null };
 }
 export async function getFishVoice(id: string): Promise<FishVoice> {
     if (!/^[a-f\d]{32}$/i.test(id)) throw new VoiceRequestError(400, 'invalid_voice', 'Invalid voice ID');

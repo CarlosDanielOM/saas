@@ -5,6 +5,7 @@ import {
   ArrowRight,
   ArrowUp,
   Check,
+  ChevronDown,
   ChevronsUpDown,
   Copy,
   Eye,
@@ -63,6 +64,7 @@ export type LfIconName =
   | 'sort-asc'
   | 'sort-desc'
   | 'sort'
+  | 'chevron-down'
   | 'search'
   | 'chat'
   | 'trend'
@@ -101,6 +103,7 @@ const ICONS: Record<LfIconName, LucideIconData> = {
   'sort-asc': ArrowUp,
   'sort-desc': ArrowDown,
   sort: ChevronsUpDown,
+  'chevron-down': ChevronDown,
   search: Search,
   chat: MessageSquare,
   trend: TrendingUp,

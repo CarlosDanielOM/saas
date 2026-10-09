@@ -25,7 +25,11 @@ globalThis.fetch = async (input, options = {}) => {
     if (url.pathname === '/model') {
       if (url.searchParams.get('title') === 'outage') return json({}, 503);
       return json({ total: 40, has_more: url.searchParams.get('page_number') !== '2', items: [
-        voice('a'.repeat(32), 'Alice', true), voice('b'.repeat(32), 'Bea', false),
+        { ...voice('a'.repeat(32), 'Alice', true, ['female', 'Calm', 'english', 'narration', 'calm', 'bad tag!']),
+          description: '  A calm narrator.  ', cover_image: 'coverimage/' + 'a'.repeat(32), task_count: 2133484,
+          samples: [{ audio: 'https://evil.test/x.mp3', text: 'Bad' }, { audio: `https://platform.r2.fish.audio/tasks/2026-08-30/${'1'.repeat(32)}.mp3`, text: ' Hello chat. ' }] },
+        { ...voice('b'.repeat(32), 'Bea', false), cover_image: 'https://evil.test/cover.png', task_count: -1,
+          samples: [{ audio: 'http://platform.r2.fish.audio/task/' + '2'.repeat(32) + '.mp3', text: 'Insecure' }] },
         voice('c'.repeat(32), 'Carlos', false, ['male'], ['es']),
         { ...voice('d'.repeat(32), 'Removed'), dmca_taken_down: true },
         { ...voice('e'.repeat(32), 'Private'), visibility: 'private' },

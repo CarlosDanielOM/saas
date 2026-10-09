@@ -25,8 +25,14 @@ assert.equal((await request(catalog + '?page=0')).status, 400);
 assert.equal((await request(catalog + '?gender=invalid')).status, 400);
 let result = await request(catalog + '?name=Alice&gender=female&language=en&license=licensed');
 assert.equal(result.status, 200); assert.deepEqual(result.body.data.items.map(v => v.id), ['a'.repeat(32)]);
+assert.deepEqual(result.body.data.items[0], { id: 'a'.repeat(32), name: 'Alice', languages: ['en'], gender: 'female', licensed: true,
+  description: 'A calm narrator.', tags: ['calm', 'narration'], uses: 2133484,
+  coverUrl: `https://public-platform.r2.fish.audio/cdn-cgi/image/width=128/coverimage/${'a'.repeat(32)}`,
+  sample: { url: `https://platform.r2.fish.audio/tasks/2026-08-30/${'1'.repeat(32)}.mp3`, text: 'Hello chat.' } }, 'free sample and cover come only from Fish CDN');
 result = await request(catalog + '?gender=female&language=en&license=unlicensed');
 assert.deepEqual(result.body.data.items.map(v => v.id), ['b'.repeat(32)]);
+assert.equal(result.body.data.items[0].coverUrl, null); assert.equal(result.body.data.items[0].sample, null);
+assert.equal(result.body.data.items[0].uses, null); assert.deepEqual(result.body.data.items[0].tags, []);
 result = await request(catalog + '?gender=male&language=es');
 assert.deepEqual(result.body.data.items.map(v => v.id), ['c'.repeat(32)]);
 result = await request(catalog + '?page=2'); assert.equal(result.body.data.hasMore, false);
