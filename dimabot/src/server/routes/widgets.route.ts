@@ -3,6 +3,7 @@ import { authMiddleware } from '../../middleware/auth.middleware.js';
 import { getChannelAccessContext } from '../../middleware/admin.middleware.js';
 import type { AuthRequest } from '../../middleware/types.js';
 import { catalog } from '../../widgets/catalog.js';
+import { duelWidgetRoute } from './duel-widget.route.js';
 import { WidgetError, fail, integer, text } from '../../widgets/model.js';
 import { execute, requirePremium, snapshot, rotateToken, authorizeOverlay, widgetEventSettings, type Action } from '../../widgets/service.js';
 export const widgetsRoute = express.Router();
@@ -26,6 +27,7 @@ widgetsRoute.use('/:channelID', (req: AuthRequest, res, next) => {
   })().catch(next);
 });
 widgetsRoute.get('/:channelID/catalog', wrap(async (_req, res) => ok(res, catalog)));
+widgetsRoute.use('/:channelID/duel', duelWidgetRoute);
 widgetsRoute.get('/:channelID/events', wrap(async (req, res) => ok(res, await widgetEventSettings(channel(req)))));
 widgetsRoute.get('/:channelID', wrap(async (req, res) => ok(res, await snapshot(channel(req)))));
 widgetsRoute.post('/:channelID/overlay-token', wrap(async (req, res) => ok(res, { token: await rotateToken(channel(req)) })));

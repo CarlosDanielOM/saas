@@ -30,9 +30,9 @@
   "rouletteAstra": {
     "cardSize": "Tamaño de tarjeta y capacidad",
     "cardSizes": {
-        "large": "Grande",
-        "medium": "Mediana",
-        "small": "Pequeña"
+      "large": "Grande",
+      "medium": "Mediana",
+      "small": "Pequeña"
     },
     "cardLimitTitle": "La lista supera este tamaño de tarjeta",
     "cardLimitError": "Esta lista tiene {{count}} casillas; el tamaño elegido admite {{max}}. Elige tarjetas más pequeñas o reduce la lista o los multiplicadores. No se ha eliminado nada.",
@@ -74,10 +74,10 @@
     "capacityNote": "Admite hasta 10.000 casillas. Usa enteros positivos para los pesos y multiplicadores.",
     "needTwoSlots": "Añade al menos dos casillas para sortear.",
     "invalid": {
-        "number": "Introduce un entero positivo dentro del rango numérico seguro. Se conservó el valor anterior.",
-        "capacity": "Esto superaría las 10.000 casillas. Reduce la cantidad o los multiplicadores; no se cambió nada.",
-        "total": "El peso total es demasiado grande para calcularlo exactamente. Reduce los pesos o multiplicadores; no se cambió nada.",
-        "format": "Usa un nombre por línea (hasta 120 caracteres), seguido opcionalmente de peso y multiplicador separados por tabulaciones. No se importó nada."
+      "number": "Introduce un entero positivo dentro del rango numérico seguro. Se conservó el valor anterior.",
+      "capacity": "Esto superaría las 10.000 casillas. Reduce la cantidad o los multiplicadores; no se cambió nada.",
+      "total": "El peso total es demasiado grande para calcularlo exactamente. Reduce los pesos o multiplicadores; no se cambió nada.",
+      "format": "Usa un nombre por línea (hasta 120 caracteres), seguido opcionalmente de peso y multiplicador separados por tabulaciones. No se importó nada."
     },
     "grid": "Tarjetas",
     "gridKicker": "04 / Otra forma de sortear",
@@ -149,8 +149,17 @@
     "prize5": "Comodín"
   },
   "rouletteMock": {
-    "stage": {"ready": "Listos para elegir", "theWheel": "La ruleta está lista", "odds": "Probabilidades de hoy"},
-    "compact": {"entries": "Opciones", "totalWeight": "Peso total", "pointer": "Flecha", "oddsBoard": "Probabilidades de un vistazo"},
+    "stage": {
+      "ready": "Listos para elegir",
+      "theWheel": "La ruleta está lista",
+      "odds": "Probabilidades de hoy"
+    },
+    "compact": {
+      "entries": "Opciones",
+      "totalWeight": "Peso total",
+      "pointer": "Flecha",
+      "oddsBoard": "Probabilidades de un vistazo"
+    },
     "back": "Todos los mocks",
     "playground": "laboratorio",
     "localOnly": "Mock local",
@@ -1431,7 +1440,9 @@
     "badge": "Proteccion",
     "title": "Follow Defense",
     "subtitle": "Protege tu canal de inundaciones de follows y hate raids.",
-    "permission": { "readOnly": "Puedes ver la defensa contra seguidores, pero necesitas permiso de Gestión de moderación para cambiarla." },
+    "permission": {
+      "readOnly": "Puedes ver la defensa contra seguidores, pero necesitas permiso de Gestión de moderación para cambiarla."
+    },
     "backToModules": "Volver a modulos",
     "enabled": "Habilitar Follow Defense",
     "enabledDescription": "Desactiva esto si usas otro sistema de proteccion o no quieres que DimaBot interfiera con alertas/moderacion de follows.",
@@ -3697,10 +3708,24 @@
         "saveFailed": "No se pudieron guardar los permisos.",
         "cancel": "Cancelar",
         "categories": {
-          "dashboard": "Dashboard", "analytics": "Analiticas", "billing": "Uso y creditos de IA", "referrals": "Referidos", "summaries": "Resumenes de stream", "clips": "Recomendaciones de clips",
-          "commands": "Comandos y temporizadores", "triggers": "Triggers y medios", "settings": "Configuracion del bot", "tts": "Texto a voz",
-          "moderation": "Moderacion y defensa contra follows", "eventsubs": "Suscripciones de eventos", "rewards": "Recompensas y canjes",
-          "ai": "Personalidad de IA", "memories": "Memorias de IA", "dimafx": "DimaFX", "admins": "Lista de admins", "chat": "Rol admin en el chat"
+          "dashboard": "Dashboard",
+          "analytics": "Analiticas",
+          "billing": "Uso y creditos de IA",
+          "referrals": "Referidos",
+          "summaries": "Resumenes de stream",
+          "clips": "Recomendaciones de clips",
+          "commands": "Comandos y temporizadores",
+          "triggers": "Triggers y medios",
+          "settings": "Configuracion del bot",
+          "tts": "Texto a voz",
+          "moderation": "Moderacion y defensa contra follows",
+          "eventsubs": "Suscripciones de eventos",
+          "rewards": "Recompensas y canjes",
+          "ai": "Personalidad de IA",
+          "memories": "Memorias de IA",
+          "dimafx": "DimaFX",
+          "admins": "Lista de admins",
+          "chat": "Rol admin en el chat"
         }
       },
       "subtitle": "Administra quien puede ayudar a gestionar este canal. Los admins actuales aparecen aqui y el owner puede agregar mas desde el directorio de usuarios registrados.",
@@ -4091,7 +4116,9 @@
       "stream": "Tu stream",
       "streamHint": "Mensajes al iniciar o terminar tu transmisión y en pausas publicitarias."
     },
-    "permission": { "readOnly": "Puedes ver los eventos del chat, pero necesitas permiso de Gestión de eventos para cambiarlos." },
+    "permission": {
+      "readOnly": "Puedes ver los eventos del chat, pero necesitas permiso de Gestión de eventos para cambiarlos."
+    },
     "heroBadge": "Automatizacion de Interaccion",
     "backToModules": "Volver a Modulos",
     "loading": "Cargando eventos de chat...",
@@ -4952,7 +4979,8 @@
       "answerLive": "{{viewers}} viéndote ahora mismo.",
       "answerLiveRest": "Todo lo que pide una reacción aparece abajo.",
       "answerReady": "Estás listo para transmitir.",
-      "answerAlmost": "Casi listo: 1 cosa por revisar antes de transmitir.", "answerAlmostMany": "Casi listo: {{count}} cosas por revisar antes de transmitir.",
+      "answerAlmost": "Casi listo: 1 cosa por revisar antes de transmitir.",
+      "answerAlmostMany": "Casi listo: {{count}} cosas por revisar antes de transmitir.",
       "answerAlmostRest": "Todo lo demás está bien.",
       "readyTitle": "¿Listo para transmitir?",
       "readyCount": "{{done}} de {{total}} listos",
@@ -5766,7 +5794,6 @@
     "sampleTier": "Nivel de prueba",
     "variantMatches": "Esta prueba reproduce: {{name}}",
     "previewMatchingVariant": "Cambiar a {{name}} y probar",
-
     "timelineTitle": "Línea de tiempo",
     "timelineHint": "Arrastra ↔ para cambiar cuándo empieza cada objeto y el sonido. Los tiempos exactos están en Tiempos y velocidad del objeto.",
     "timelinePlay": "Reproducir línea de tiempo",
@@ -6883,5 +6910,60 @@
     },
     "indexTitle": "Duelo · Overlay de combate",
     "indexDescription": "Dos luchadores con espadas, efectos de impacto, barras de vida, golpe final y anuncio del ganador. Repite con cualquier ganador o un fondo transparente."
+  },
+  "duelWidget": {
+    "back": "Todos los widgets",
+    "widget": "Widget",
+    "title": "Arena de duelos",
+    "subtitle": "Que tus espectadores se enfrenten en la arena. Dos luchadores, un ganador al azar.",
+    "cardSubtitle": "Batallas animadas de !duel con un ganador al azar.",
+    "premiumRequired": "Los widgets de duelo requieren Premium",
+    "upgrade": "Obtener Premium",
+    "loading": "Cargando tu widget de duelo…",
+    "preview": "Vista previa de la arena",
+    "surprise": "Sorpréndeme · Aleatorio",
+    "play": "Ver un duelo",
+    "replay": "Repetir vista previa",
+    "previewHint": "Vista previa local. Sin mensajes de chat ni timeouts.",
+    "settings": "Ajustes del duelo",
+    "enabled": "Mostrar batallas en el overlay",
+    "enabledHint": "Cuando está conectado, la arena muestra el desafío y la batalla.",
+    "timeout": "Aplicar timeout al perdedor",
+    "timeoutHint": "Desactívalo para duelos solo visuales. Los editores y el streamer están protegidos.",
+    "duration": "Duración del timeout (segundos)",
+    "durationHint": "1–1.209.600 segundos. Por defecto: 60 segundos.",
+    "durationError": "Introduce un número entero entre 1 y 1.209.600.",
+    "language": "Idioma del overlay y del ganador",
+    "save": "Guardar ajustes",
+    "saving": "Guardando…",
+    "saved": "Ajustes del duelo guardados.",
+    "obs": "Conectar a OBS",
+    "connected": "Overlay conectado",
+    "offline": "Modo chat",
+    "obsHint": "Añade el enlace privado como fuente de navegador de OBS, 1920 × 1080. El widget permanece transparente hasta recibir un desafío.",
+    "createLink": "Crear enlace del overlay",
+    "replaceLink": "Reemplazar enlace del overlay",
+    "replaceWarning": "Reemplazar el enlace desconecta las fuentes existentes. Actualiza OBS con el nuevo enlace.",
+    "confirmReplace": "Reemplazar enlace ahora",
+    "cancel": "Cancelar",
+    "privateLink": "Enlace privado del overlay",
+    "copy": "Copiar enlace",
+    "copied": "Enlace del overlay copiado.",
+    "connectionHint": "Mantén cargada la fuente de navegador. Si se desconecta o desactivas el overlay, los nuevos duelos se narran en el chat.",
+    "how": "Cómo funciona un duelo",
+    "stepChallenge": "Un espectador desafía a otro:",
+    "stepAccept": "El espectador desafiado acepta en 3 minutos:",
+    "stepWinner": "Los luchadores se enfrentan y al final se anuncia un ganador al azar en el chat.",
+    "fallback": "Con el overlay conectado, el chat permanece en silencio hasta el ganador. Sin él, el chat narra la batalla.",
+    "challengeTitle": "¡@{{name}}, te han desafiado!",
+    "challengeFrom": "@{{name}} te espera en la arena. Acepta en 3 minutos.",
+    "loadError": "No se pudo cargar el widget de duelo. Vuelve a cargarlo.",
+    "saveError": "No se pudo confirmar el guardado. Inténtalo de nuevo.",
+    "conflict": "Los ajustes del duelo cambiaron. Recarga para revisar los ajustes actuales antes de guardar.",
+    "reload": "Recargar ajustes",
+    "linkError": "No se pudo crear el enlace del overlay. Inténtalo de nuevo.",
+    "copyError": "Copia el enlace privado del campo anterior.",
+    "timeoutFailed": "El último duelo terminó, pero Twitch no pudo aplicar el timeout al perdedor. Revisa los permisos de moderación del bot.",
+    "announcementFailed": "No se pudo enviar un mensaje del último duelo. Revisa los permisos del bot para el chat."
   }
 }

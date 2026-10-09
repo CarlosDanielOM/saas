@@ -49,7 +49,8 @@ try {
   await page.getByRole('button', { name: 'Dark', exact: true }).click();
   await page.getByLabel('Challenger', { exact: true }).fill('VioletKnight');
   await page.getByLabel('Opponent', { exact: true }).fill('GoldenKnight');
-  await page.getByLabel('Challenger wins', { exact: true }).check();
+  await page.evaluate(() => { Math.random = () => 0.1; });
+  assert.equal(await page.locator('.winner-options input').count(), 1);
   await page.locator('.playback .primary').click();
   await page.locator('.arena[data-phase="entrance"]').waitFor();
   await page.locator('.arena[data-phase="countdown"]').waitFor();
@@ -72,7 +73,7 @@ try {
   await page.screenshot({ path: `${evidence}/victory.png`, fullPage: true });
   assert.equal(await page.getByRole('button', { name: 'Pause', exact: true }).isDisabled(), true);
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.getByLabel('Opponent wins', { exact: true }).check();
+  await page.evaluate(() => { Math.random = () => 0.9; });
   await page.locator('.playback .primary').click();
   await page.locator('.arena[data-phase="entrance"]').waitFor();
   assert.equal(await page.locator('.health[data-side="right"] [role="progressbar"]').getAttribute('aria-valuenow'), '100');

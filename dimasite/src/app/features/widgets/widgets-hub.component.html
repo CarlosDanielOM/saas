@@ -9,6 +9,7 @@
   } @else {
     <section class="games" aria-labelledby="games-title">
       <h2 id="games-title">{{ t('gamesTitle') }}</h2>
+      <a class="lf-tile game" data-testid="widget-duel" [routerLink]="['/', streamer, 'modules', 'widgets', 'duel']"><span class="game-icon"><app-lf-icon name="monitor" /></span><span class="game-copy"><strong>{{ language.translate('duelWidget.title') }}</strong><small>{{ language.translate('duelWidget.cardSubtitle') }}</small></span><span class="game-open">{{ t('openWidget') }}<app-lf-icon name="forward" /></span></a>
       <a class="lf-tile game" data-testid="widget-dbd" [routerLink]="['/', streamer, 'modules', 'widgets', 'dbd']">
         <span class="game-icon"><app-lf-icon name="monitor" /></span>
         <span class="game-copy"><strong>{{ t('dbdTitle') }}</strong><small>{{ t('dbdSubtitle') }}</small></span>

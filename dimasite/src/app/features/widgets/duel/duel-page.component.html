@@ -1,0 +1,31 @@
+<div class="lf" data-plan="premium"><main class="lf-main" data-testid="duel-widget">
+  <header><a class="back" [routerLink]="['/',streamer,'modules','widgets']">← {{ t('back') }}</a><p class="lf-kicker">!duel · {{ t('widget') }}</p><h1>{{ t('title') }}</h1><p>{{ t('subtitle') }}</p></header>
+  @if (!premium()) { <section class="lf-tile"><h2>{{ t('premiumRequired') }}</h2><button class="primary" (click)="promptUpgrade()">{{ t('upgrade') }}</button></section> }
+  @else if (loading()) { <p role="status">{{ t('loading') }}</p> }
+  @else {
+    @if (error()) { <p class="message error" role="alert">{{ error() }}</p><button (click)="reload()" [disabled]="busy()">{{ t('reload') }}</button> }
+    @if (notice()) { <p class="message" role="status">{{ notice() }}</p> }
+    @if (state(); as current) {
+      <div class="lf-bento">
+        <section class="lf-tile preview"><div class="tile-head"><h2>{{ t('preview') }}</h2><span>{{ t('surprise') }}</span></div><app-duel-arena [elapsed]="elapsed()" [started]="started()" [chosenWinner]="winner()" [locale]="language.currentLanguage()" /><div class="preview-tools"><button class="primary" (click)="preview()">{{ t(started()?'replay':'play') }} ▶</button><p>{{ t('previewHint') }}</p></div></section>
+        <section class="lf-tile settings"><h2>{{ t('settings') }}</h2><form [formGroup]="form" (ngSubmit)="save()">
+          <fieldset [disabled]="busy() || uncertainSave()"><label class="switch"><span>{{ t('enabled') }}<small>{{ t('enabledHint') }}</small></span><input type="checkbox" formControlName="enabled" /></label>
+          <label class="switch"><span>{{ t('timeout') }}<small>{{ t('timeoutHint') }}</small></span><input type="checkbox" formControlName="timeoutEnabled" /></label>
+          <label for="duel-duration">{{ t('duration') }}</label><input id="duel-duration" type="number" min="1" max="1209600" step="1" formControlName="timeoutSeconds" [readOnly]="!form.controls.timeoutEnabled.value" aria-describedby="duration-help" /><small id="duration-help">{{ t('durationHint') }}</small>
+          @if (form.controls.timeoutSeconds.invalid && form.controls.timeoutSeconds.touched) { <p class="error" role="alert">{{ t('durationError') }}</p> }
+          <label for="duel-language">{{ t('language') }}</label><select id="duel-language" formControlName="language"><option value="en">English</option><option value="es">Español</option></select>
+          </fieldset><button class="primary save" type="submit" [disabled]="!form.dirty || busy()">{{ t(busy()?'saving':'save') }}</button></form>
+        </section>
+        <section class="lf-tile connection"><div class="tile-head"><h2>{{ t('obs') }}</h2><span class="status" [class.connected]="current.connected">{{ t(current.connected?'connected':'offline') }}</span></div><p>{{ t('obsHint') }}</p><button (click)="createLink()" [disabled]="busy()">{{ t(overlayUrl()?'replaceLink':'createLink') }}</button>
+          @if (rotateConfirm()) { <div class="confirm" role="group" [attr.aria-label]="t('replaceLink')"><p>{{ t('replaceWarning') }}</p><button (click)="createLink()" [disabled]="busy()">{{ t('confirmReplace') }}</button><button (click)="rotateConfirm.set(false)">{{ t('cancel') }}</button></div> }
+          @if (overlayUrl()) { <label for="duel-link">{{ t('privateLink') }}</label><input id="duel-link" type="text" readonly [value]="overlayUrl()" /><button (click)="copyLink()">{{ t('copy') }}</button> }
+          <p class="hint">{{ t('connectionHint') }}</p>
+        </section>
+        <section class="lf-tile how"><h2>{{ t('how') }}</h2><ol><li>{{ t('stepChallenge') }} <code>!duel &#64;viewer</code></li><li>{{ t('stepAccept') }} <code>!duel accept</code></li><li>{{ t('stepWinner') }}</li></ol><p>{{ t('fallback') }}</p>
+          @if (current.run?.timeoutError) { <p class="error" role="status">{{ t('timeoutFailed') }}</p> }
+          @if (current.run?.announcementError) { <p class="error" role="status">{{ t('announcementFailed') }}</p> }
+        </section>
+      </div>
+    }
+  }
+</main></div>

@@ -10,7 +10,7 @@ interface RemoveModeratorResponse {
     type?: string;
 }
 
-export async function removeChannelModerator(channelID: string, userID: string): Promise<RemoveModeratorResponse> {
+export async function removeChannelModerator(channelID: string, userID: string, signal?: AbortSignal): Promise<RemoveModeratorResponse> {
     try {
         const streamerHeaderResult = await getTwitchStreamerHeaderById(channelID);
 
@@ -31,6 +31,7 @@ export async function removeChannelModerator(channelID: string, userID: string):
 
         const response = await fetch(getTwitchHelixUrl('moderation/moderators', params.toString()), {
             method: 'DELETE',
+            signal,
             headers: {
                 'Client-Id': streamerHeader['Client-Id'],
                 'Authorization': streamerHeader.Authorization,

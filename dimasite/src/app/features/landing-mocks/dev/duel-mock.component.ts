@@ -4,16 +4,15 @@ import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { LanguageService } from '../../../services/language.service';
 import { ThemeService } from '../../../services/theme.service';
-import { DuelFighterComponent } from './duel-fighter.component';
+import { DuelArenaComponent } from '../../widgets/duel/duel-arena.component';
 
 type Side = 'left' | 'right';
 type Phase = 'ready' | 'entrance' | 'countdown' | 'fight' | 'knockout' | 'winner';
-interface Hit { at: number; attacker: Side; damage: number }
 const END = 11400;
 
 @Component({
   selector: 'app-duel-mock',
-  imports: [RouterLink, ReactiveFormsModule, DuelFighterComponent],
+  imports: [RouterLink, ReactiveFormsModule, DuelArenaComponent],
   templateUrl: './duel-mock.component.html',
   styleUrl: './duel-mock.component.css',
   host: { '[class.overlay-only]': 'overlayOnly' },
@@ -27,7 +26,7 @@ export class DuelMockComponent {
   readonly form = new FormGroup({
     left: new FormControl('Dima', { nonNullable: true }),
     right: new FormControl('ChatChampion', { nonNullable: true }),
-    winner: new FormControl<'random' | Side>('random', { nonNullable: true })
+    winner: new FormControl('random', { nonNullable: true })
   });
   readonly names = signal({ left: 'Dima', right: 'ChatChampion' });
   readonly chosenWinner = signal<Side>('left');
@@ -49,30 +48,6 @@ export class DuelMockComponent {
   });
   readonly active = computed(() => this.started() && this.elapsed() < END);
   readonly countdown = computed(() => Math.max(1, 3 - Math.floor((this.elapsed() - 1300) / 700)));
-  readonly hits = computed<Hit[]>(() => {
-    const winner = this.chosenWinner();
-    const loser: Side = winner === 'left' ? 'right' : 'left';
-    return [
-      { at: 3600, attacker: winner, damage: 18 },
-      { at: 4650, attacker: loser, damage: 22 },
-      { at: 5700, attacker: winner, damage: 24 },
-      { at: 6750, attacker: loser, damage: 19 },
-      { at: 7800, attacker: winner, damage: 26 },
-      { at: 9050, attacker: winner, damage: 32 }
-    ];
-  });
-  readonly currentHit = computed(() => this.hits().find(hit => this.elapsed() >= hit.at && this.elapsed() < hit.at + 700));
-  readonly impact = computed(() => {
-    const hit = this.currentHit();
-    return hit && this.elapsed() >= hit.at + 280 && this.elapsed() < hit.at + 620 ? hit : null;
-  });
-  readonly health = computed(() => {
-    const health = { left: 100, right: 100 };
-    if (this.started()) for (const hit of this.hits()) {
-      if (this.elapsed() >= hit.at + 280) health[hit.attacker === 'left' ? 'right' : 'left'] -= hit.damage;
-    }
-    return health;
-  });
   readonly winnerName = computed(() => this.names()[this.chosenWinner()]);
   readonly progress = computed(() => this.elapsed() / END * 100);
 
@@ -92,21 +67,11 @@ export class DuelMockComponent {
     return this.language.translate(`duelMock.${key}`, params);
   }
 
-  action(side: Side): string {
-    if (!this.started()) return 'idle';
-    if (this.health()[side] === 0) return 'defeated';
-    if (this.phase() === 'winner' && side === this.chosenWinner()) return 'victory';
-    const hit = this.currentHit();
-    if (!hit) return 'idle';
-    if (hit.attacker === side) return 'attack';
-    return this.elapsed() >= hit.at + 280 ? 'hit' : 'idle';
-  }
-
   play(): void {
     this.stopTimer();
     const values = this.form.getRawValue();
     this.names.set({ left: values.left.trim().slice(0, 24) || 'Dima', right: values.right.trim().slice(0, 24) || 'ChatChampion' });
-    this.chosenWinner.set(values.winner === 'random' ? (Math.random() < .5 ? 'left' : 'right') : values.winner);
+    this.chosenWinner.set(Math.random() < .5 ? 'left' : 'right');
     this.elapsed.set(0);
     this.started.set(true);
     this.paused.set(false);

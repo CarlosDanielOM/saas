@@ -10,6 +10,7 @@ import { overlayDraftGuard } from './features/overlays/overlay-draft.guard';
 
 export const routes: Routes = [
   { path: 'overlays/:publicId', loadComponent: () => import('./features/overlays/overlay-runtime.component').then(m => m.OverlayRuntimeComponent), title: 'Overlay Studio' },
+  { path: 'overlays/duel/:channelID', loadComponent: () => import('./features/widgets/duel/duel-overlay.component').then(m => m.DuelOverlayComponent), title: 'Duel Overlay' },
   { path: 'overlays/widgets/:channelID', loadComponent: () => import('./features/widgets/widgets-overlay.component').then(m => m.WidgetsOverlayComponent), title: 'Widgets Overlay' },
   { path: 'overlays/roulette/:channelID', loadComponent: () => import('./features/roulette/roulette-overlay.component').then(m => m.RouletteOverlayComponent), title: 'Roulette Overlay' },
   {
@@ -807,6 +808,7 @@ export const routes: Routes = [
             path: 'overlays', loadComponent: () => import('./features/overlays/overlay-editor.component').then(m => m.OverlayEditorComponent), canActivate: [permissionGuard, channelOwnerGuard], canDeactivate: [overlayDraftGuard], data: { permission: 'dashboard:view' }, title: 'Overlay Studio Alpha | DomDimaBot'
           },
           { path: 'widgets', loadComponent: () => import('./features/widgets/widgets-hub.component').then(m => m.WidgetsHubComponent), canActivate: [permissionGuard], data: { permission: '*' }, title: 'Widgets Alpha | DomDimaBot' },
+          { path: 'widgets/duel', loadComponent: () => import('./features/widgets/duel/duel-page.component').then(m => m.DuelPageComponent), canActivate: [permissionGuard], data: { permission: '*' }, title: 'Duel Widget | DomDimaBot' },
           { path: 'widgets/dbd', loadComponent: () => import('./features/widgets/widgets-page.component').then(m => m.WidgetsPageComponent), canActivate: [permissionGuard], data: { permission: '*' }, title: 'Dead by Daylight Widget Alpha | DomDimaBot' },
           {
             path: 'roulette',

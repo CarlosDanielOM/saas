@@ -30,9 +30,9 @@
   "rouletteAstra": {
     "cardSize": "Card size and board capacity",
     "cardSizes": {
-        "large": "Large",
-        "medium": "Medium",
-        "small": "Small"
+      "large": "Large",
+      "medium": "Medium",
+      "small": "Small"
     },
     "cardLimitTitle": "This list is too large for this card size",
     "cardLimitError": "This list has {{count}} slots; the selected card size allows {{max}}. Choose a smaller card size or reduce the list or multipliers. Nothing has been discarded.",
@@ -74,10 +74,10 @@
     "capacityNote": "Supports up to 10,000 total slots. Use positive whole numbers for weights and multipliers.",
     "needTwoSlots": "Add at least two slots to draw.",
     "invalid": {
-        "number": "Enter a positive whole number within the safe numeric range. The previous value was kept.",
-        "capacity": "This would exceed 10,000 total slots. Reduce the item count or multipliers; nothing was changed.",
-        "total": "The combined weight is too large to calculate exactly. Reduce the weights or multipliers; nothing was changed.",
-        "format": "Use one name per line (up to 120 characters), optionally followed by tab-separated weight and multiplier. Nothing was imported."
+      "number": "Enter a positive whole number within the safe numeric range. The previous value was kept.",
+      "capacity": "This would exceed 10,000 total slots. Reduce the item count or multipliers; nothing was changed.",
+      "total": "The combined weight is too large to calculate exactly. Reduce the weights or multipliers; nothing was changed.",
+      "format": "Use one name per line (up to 120 characters), optionally followed by tab-separated weight and multiplier. Nothing was imported."
     },
     "grid": "Card grid",
     "gridKicker": "04 / A different kind of draw",
@@ -149,8 +149,17 @@
     "prize5": "Wild card"
   },
   "rouletteMock": {
-    "stage": {"ready": "Ready to draw", "theWheel": "The wheel is live", "odds": "Tonight’s odds"},
-    "compact": {"entries": "Entries", "totalWeight": "Total weight", "pointer": "Pointer", "oddsBoard": "Odds at a glance"},
+    "stage": {
+      "ready": "Ready to draw",
+      "theWheel": "The wheel is live",
+      "odds": "Tonight’s odds"
+    },
+    "compact": {
+      "entries": "Entries",
+      "totalWeight": "Total weight",
+      "pointer": "Pointer",
+      "oddsBoard": "Odds at a glance"
+    },
     "back": "All mocks",
     "playground": "playground",
     "localOnly": "Local mock",
@@ -1431,7 +1440,9 @@
     "badge": "Protection",
     "title": "Follow Defense",
     "subtitle": "Protect your channel from follow floods and hate raids.",
-    "permission": { "readOnly": "You can view follow defense, but need Manage permission for moderation to change it." },
+    "permission": {
+      "readOnly": "You can view follow defense, but need Manage permission for moderation to change it."
+    },
     "backToModules": "Back to modules",
     "enabled": "Enable Follow Defense",
     "enabledDescription": "Turn this off if you use another protection system or do not want DimaBot to interfere with follow alerts/moderation.",
@@ -3697,10 +3708,24 @@
         "saveFailed": "Could not save permissions.",
         "cancel": "Cancel",
         "categories": {
-          "dashboard": "Dashboard", "analytics": "Analytics", "billing": "AI usage and credits", "referrals": "Referrals", "summaries": "Stream summaries", "clips": "Clip recommendations",
-          "commands": "Commands and timers", "triggers": "Triggers and media", "settings": "Bot settings", "tts": "Text to Speech",
-          "moderation": "Moderation and Follow Defense", "eventsubs": "Event subscriptions", "rewards": "Rewards and redemptions",
-          "ai": "AI personality", "memories": "AI memories", "dimafx": "DimaFX", "admins": "Admin list", "chat": "Admin chat role"
+          "dashboard": "Dashboard",
+          "analytics": "Analytics",
+          "billing": "AI usage and credits",
+          "referrals": "Referrals",
+          "summaries": "Stream summaries",
+          "clips": "Clip recommendations",
+          "commands": "Commands and timers",
+          "triggers": "Triggers and media",
+          "settings": "Bot settings",
+          "tts": "Text to Speech",
+          "moderation": "Moderation and Follow Defense",
+          "eventsubs": "Event subscriptions",
+          "rewards": "Rewards and redemptions",
+          "ai": "AI personality",
+          "memories": "AI memories",
+          "dimafx": "DimaFX",
+          "admins": "Admin list",
+          "chat": "Admin chat role"
         }
       },
       "subtitle": "Manage who can help run this channel. Current admins are listed here, and owners can add more from the registered user directory.",
@@ -4091,7 +4116,9 @@
       "stream": "Your stream",
       "streamHint": "Messages tied to your broadcast starting, ending and ad breaks."
     },
-    "permission": { "readOnly": "You can view chat events, but need Manage permission for events to change them." },
+    "permission": {
+      "readOnly": "You can view chat events, but need Manage permission for events to change them."
+    },
     "heroBadge": "Engagement Automation",
     "backToModules": "Back to Modules",
     "loading": "Loading chat events...",
@@ -4952,7 +4979,8 @@
       "answerLive": "{{viewers}} watching right now.",
       "answerLiveRest": "Everything that needs a reaction shows up in the feed below.",
       "answerReady": "You're ready to go live.",
-      "answerAlmost": "Almost ready: 1 thing to check before you go live.", "answerAlmostMany": "Almost ready: {{count}} things to check before you go live.",
+      "answerAlmost": "Almost ready: 1 thing to check before you go live.",
+      "answerAlmostMany": "Almost ready: {{count}} things to check before you go live.",
       "answerAlmostRest": "Everything else is set.",
       "readyTitle": "Ready to go live?",
       "readyCount": "{{done}} of {{total}} ready",
@@ -5766,7 +5794,6 @@
     "sampleTier": "Sample subscription tier",
     "variantMatches": "This sample plays: {{name}}",
     "previewMatchingVariant": "Switch to {{name}} & preview",
-
     "timelineTitle": "Alert timeline",
     "timelineHint": "Drag ↔ to change when each object and the sound start. Exact times are in the object's Timing & speed.",
     "timelinePlay": "Play timeline",
@@ -6883,5 +6910,60 @@
     },
     "indexTitle": "Duel · Fighting overlay",
     "indexDescription": "Two animated sword fighters, hit effects, health bars, knockout and winner reveal. Replay with either winner or a transparent background."
+  },
+  "duelWidget": {
+    "back": "All widgets",
+    "widget": "Widget",
+    "title": "Duel arena",
+    "subtitle": "Let your viewers settle it in the arena. Two fighters, one random winner.",
+    "cardSubtitle": "Animated !duel battles with a random winner.",
+    "premiumRequired": "Duel widgets require Premium",
+    "upgrade": "Get Premium",
+    "loading": "Loading your duel widget…",
+    "preview": "Arena preview",
+    "surprise": "Surprise me · Random",
+    "play": "Preview a duel",
+    "replay": "Replay preview",
+    "previewHint": "A local preview. No chat messages or timeouts.",
+    "settings": "Duel settings",
+    "enabled": "Show battles on the overlay",
+    "enabledHint": "When connected, the arena carries the challenge and battle.",
+    "timeout": "Timeout the loser",
+    "timeoutHint": "Turn off to keep duels purely visual. Editors and the streamer are protected.",
+    "duration": "Timeout duration (seconds)",
+    "durationHint": "1–1,209,600 seconds. Default: 60 seconds.",
+    "durationError": "Enter a whole number from 1 to 1,209,600.",
+    "language": "Overlay and winner language",
+    "save": "Save settings",
+    "saving": "Saving…",
+    "saved": "Duel settings saved.",
+    "obs": "Connect to OBS",
+    "connected": "Overlay connected",
+    "offline": "Chat mode",
+    "obsHint": "Add the private link as an OBS Browser Source, 1920 × 1080. The widget stays transparent until a challenge arrives.",
+    "createLink": "Create overlay link",
+    "replaceLink": "Replace overlay link",
+    "replaceWarning": "Replacing the link disconnects existing sources. Update OBS with the new link.",
+    "confirmReplace": "Replace link now",
+    "cancel": "Cancel",
+    "privateLink": "Private overlay link",
+    "copy": "Copy link",
+    "copied": "Overlay link copied.",
+    "connectionHint": "Keep the Browser Source loaded. If it disconnects or this switch is off, new duels use chat narration.",
+    "how": "How a duel works",
+    "stepChallenge": "A viewer challenges someone:",
+    "stepAccept": "The challenged viewer accepts within 3 minutes:",
+    "stepWinner": "The fighters battle and a random winner is announced in chat at the end.",
+    "fallback": "With the overlay connected, chat stays quiet until the winner. Without it, chat narrates the battle.",
+    "challengeTitle": "@{{name}}, you have been challenged!",
+    "challengeFrom": "@{{name}} is waiting in the arena. Accept within 3 minutes.",
+    "loadError": "Could not load the duel widget. Try reloading.",
+    "saveError": "Could not confirm the save. Try saving again.",
+    "conflict": "The duel settings changed. Reload to review the latest settings before saving.",
+    "reload": "Reload settings",
+    "linkError": "Could not create the overlay link. Try again.",
+    "copyError": "Copy the private link from the field above.",
+    "timeoutFailed": "The last duel finished, but Twitch could not apply the loser timeout. Check the bot’s moderation permissions.",
+    "announcementFailed": "A chat message for the last duel could not be sent. Check the bot’s chat permissions."
   }
 }
