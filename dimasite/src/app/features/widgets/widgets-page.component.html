@@ -3,7 +3,7 @@
     <a class="back" [routerLink]="['/', streamer, 'modules', 'widgets']"><app-lf-icon name="back" />{{ t('backToWidgets') }}</a>
     <h1>{{ t('dbdTitle') }} <span class="chip alpha">{{ t('alpha') }}</span><span class="chip gold">{{ t('premium') }}</span></h1>
     <p>{{ t('dbdSubtitle') }}</p>
-    @if (state(); as state) { <div class="head-chips"><span class="chip" [class.on-air]="state.visible"><span class="dot" [class.on]="state.visible"></span>{{ state.visible ? t('visible') : t('hidden') }}</span><span class="chip">{{ t('poolCount', poolCounts()) }}</span></div> }
+    @if (state(); as state) { <div class="head-chips"><span class="chip" [class.on-air]="state.visible"><span class="dot" [class.on]="state.visible"></span>{{ state.visible ? t('visible') : t('hidden') }}</span><span class="chip">{{ t('poolCount', poolCounts()) }}</span>@if (eventSettings(); as events) { <span class="chip" [class.gold]="events.enabled && events.active"><span class="dot" [class.on]="events.enabled && events.active"></span>{{ events.enabled && events.active ? t('bits.chipOn') : t('bits.chipOff') }}</span> }</div> }
   </header>
   @if (!premium()) {
     <section class="lf-tile gate"><app-lf-icon name="lock" /><h2>{{ t('premiumRequired') }}</h2><p>{{ t('premiumDescription') }}</p><button class="primary" (click)="promptUpgrade()">{{ t('upgradePremium') }}</button></section>
@@ -42,7 +42,7 @@
             }
             <button class="visibility" [attr.aria-pressed]="state.visible" (click)="act(state.visible ? 'hide' : 'show')" [disabled]="busy() || stale() || hasPending()">{{ state.visible ? t('hide') : t('show') }}</button>
           </div>
-          @if (form.dirty || exclusionsDirty()) { <p class="hint warn">{{ t('saveFirst') }}</p> } @else { <p class="hint">{{ t('keepRunning') }}</p> }
+          @if (form.dirty || poolDirty()) { <p class="hint warn">{{ t('saveFirst') }}</p> } @else { <p class="hint">{{ t('keepRunning') }}</p> }
           <div class="solo">
             <span>{{ t('individualTitle') }}</span>
             <div class="actions"><button (click)="start('characters')" [disabled]="!canStart() || hasPending()" data-testid="draw-character">{{ t('drawCharacter') }}</button><button (click)="start('poll')" [disabled]="!canStart() || hasPending()" data-testid="start-poll">{{ t('startPoll') }}</button><button (click)="start('perks')" [disabled]="!canStart() || hasPending()" data-testid="draw-perk">{{ t('drawPerk') }}</button></div>
@@ -66,6 +66,7 @@
         @if (overlayUrl()) { <div class="link-controls"><input [value]="overlayUrl()" readonly [attr.aria-label]="t('obsTitle')" /><button (click)="copyLink()">{{ t('copy') }}</button><button (click)="openConfirm('rotate')" [disabled]="busy() || hasPending()">{{ t('newLink') }}</button></div> }
         @else { <button class="primary" (click)="makeLink()" [disabled]="busy() || hasPending()">{{ t('makeLink') }}</button> }
       </section>
+      <app-widget-bits [catalog]="catalog" [state]="state" [settings]="eventSettings()" [disabled]="busy() || stale() || hasPending()" [error]="error()" (save)="saveEvents($event)" />
       <section class="lf-tile preview-panel" #previewPanel>
         <div class="section-head"><div><h2>{{ t('preview') }}</h2><p>{{ t('canvasHint') }}</p></div>
           <div class="seg" role="group" [attr.aria-label]="t('previewMode')"><button [attr.aria-pressed]="!gameplayPreview()" (click)="gameplayPreview.set(false)">{{ t('previewChoosing') }}</button><button [attr.aria-pressed]="gameplayPreview()" (click)="gameplayPreview.set(true)">{{ t('gameplayPreview') }}</button></div>
@@ -82,6 +83,7 @@
           <details class="more"><summary>{{ t('partsTitle') }}</summary><div class="checks"><label class="checkbox"><input type="checkbox" formControlName="showActive" />{{ t('showActive') }}</label><label class="checkbox"><input type="checkbox" formControlName="showInfo" />{{ t('showInfo') }}</label><label class="checkbox"><input type="checkbox" formControlName="showProgress" />{{ t('showProgress') }}</label><label class="checkbox"><input type="checkbox" formControlName="hideActiveDuringGameplay" />{{ t('hideActiveDuringGameplay') }}</label><label class="checkbox"><input type="checkbox" formControlName="autoCompact" />{{ t('autoCompact') }}</label></div></details>
         </fieldset>@if (layoutForm.invalid && layoutForm.touched) { <p class="invalid" role="alert">{{ t('layoutInvalid') }}</p> }<div class="save-row"><span>{{ layoutForm.dirty ? t('unsaved') : t('allSaved') }}</span><button class="primary" type="submit" [disabled]="busy() || stale() || hasPending() || !layoutForm.dirty || layoutForm.invalid">{{ t('saveLayout') }}</button></div></form>
       </section>
+      <app-widget-pool [catalog]="catalog" [config]="state.config" [role]="role()" [disabled]="locked() || hasPending()" (save)="savePool($event)" />
       <section class="lf-tile settings"><h2>{{ t('settings') }}</h2><p>{{ t('settingsHint') }}</p>
         <form [formGroup]="form" (ngSubmit)="saveSettings()"><fieldset [disabled]="locked() || hasPending()">
           <div formGroupName="sequences" class="sequence-grid">@for (r of roles; track r) { <div [formGroupName]="r" class="sequence-card" [attr.data-role]="r"><h3>{{ t('role.' + r) }} · {{ t('sequenceTitle') }}</h3>
@@ -96,8 +98,7 @@
           <div class="points-settings"><label class="checkbox"><input type="checkbox" formControlName="channelPointsVoting" />{{ t('channelPointsVoting') }}</label><p class="hint">{{ t('channelPointsHint') }}</p>@if (channelPointsVoting()) { <label class="points-cost">{{ t('channelPointsPerVote') }}<input type="number" min="1" max="1000000" step="1" formControlName="channelPointsPerVote" /></label> }</div>
           <h3>{{ t('goalsTitle') }}</h3>
           <div formGroupName="targets" class="target-settings">@for (r of roles; track r) { <label>{{ t('winTarget', {role: t('role.' + r)}) }}<input type="number" min="1" max="20" step="1" [formControlName]="r" /></label> }</div>
-          <details class="entry-picker"><summary>{{ t('customPool') }} <span class="summary-count">{{ t('poolCount', poolCounts()) }}</span></summary><p class="hint">{{ t('customPoolHint') }}</p><label class="checkbox"><input type="checkbox" formControlName="includeUnavailable" />{{ t('unavailable') }}</label><div class="entry-tools"><div class="filters"><button type="button" [attr.aria-pressed]="entryKind() === 'character'" (click)="entryKind.set('character'); entryLimit.set(30)">{{ t('characters') }}</button><button type="button" [attr.aria-pressed]="entryKind() === 'perk'" (click)="entryKind.set('perk'); entryLimit.set(30)">{{ t('perks') }}</button></div><input type="search" [value]="query()" (input)="onQuery($event)" [attr.aria-label]="t('search')" [placeholder]="t('search')" /></div><div class="entry-tools"><button type="button" (click)="setAll(true)">{{ t('enableMatching') }}</button><button type="button" (click)="setAll(false)">{{ t('disableMatching') }}</button></div><div class="entries">@for (entry of shownEntries(); track entry.id) { <label class="entry"><input type="checkbox" [checked]="!excludedIds().includes(entry.id)" (change)="toggleEntry(entry)" />@if (!failedImages().has(entry.id)) { <img [ngSrc]="entry.image_url" width="32" height="38" alt="" (error)="imageFailed(entry)" /> }<span>{{ label(entry) }}@if (!entry.available) { <small>{{ t('ownedOnly') }}</small> }</span></label> } @empty { <p>{{ t('noMatches') }}</p> }</div>@if (entries().length > shownEntries().length) { <button type="button" (click)="entryLimit.update(addThirty)">{{ t('loadMore') }}</button> }</details>
-        </fieldset><div class="save-row lf-save-bar"><span>{{ form.dirty || exclusionsDirty() ? t('unsaved') : t('allSaved') }}</span><button class="primary" type="submit" [disabled]="locked() || hasPending() || (!form.dirty && !exclusionsDirty())">{{ busy() ? t('saving') : t('save') }}</button></div></form>
+        </fieldset><div class="save-row lf-save-bar"><span>{{ form.dirty ? t('unsaved') : t('allSaved') }}</span><button class="primary" type="submit" [disabled]="locked() || hasPending() || !form.dirty">{{ busy() ? t('saving') : t('save') }}</button></div></form>
       </section>
     } }
   }

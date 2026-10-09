@@ -1,7 +1,6 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { NgOptimizedImage } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { LanguageService } from '../../services/language.service';
@@ -12,10 +11,12 @@ import { getRouteParam } from '../../shared/utils/route-param.util';
 import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 import { WidgetDisplayComponent } from './widget-display.component';
 import { WidgetStreakComponent } from './widget-streak.component';
+import { WidgetBitsComponent } from './widget-bits.component';
+import { WidgetPoolComponent, WidgetPool } from './widget-pool.component';
 import { challengeSteps } from './widget-steps';
-import { WidgetsApi, WidgetAction, WidgetCatalog, WidgetConfig, WidgetEntry, WidgetState, WidgetRole, WidgetMode, WidgetLayout, widgetDefaultLayout } from './widgets-api.service';
+import { WidgetsApi, WidgetAction, WidgetCatalog, WidgetConfig, WidgetEntry, WidgetEventSettings, WidgetState, WidgetRole, WidgetMode, WidgetLayout, widgetDefaultLayout } from './widgets-api.service';
 
-@Component({ selector: 'app-widgets-page', imports: [ReactiveFormsModule, RouterLink, LfIconComponent, NgOptimizedImage, WidgetDisplayComponent, WidgetStreakComponent], templateUrl: './widgets-page.component.html', styleUrl: './widgets-page.component.css', changeDetection: ChangeDetectionStrategy.OnPush })
+@Component({ selector: 'app-widgets-page', imports: [ReactiveFormsModule, RouterLink, LfIconComponent, WidgetDisplayComponent, WidgetStreakComponent, WidgetBitsComponent, WidgetPoolComponent], templateUrl: './widgets-page.component.html', styleUrls: ['./widgets-base.css', './widgets-page.component.css'], changeDetection: ChangeDetectionStrategy.OnPush })
 export class WidgetsPageComponent {
   private readonly api = inject(WidgetsApi);
   private readonly auth = inject(SessionAuthService);
@@ -45,15 +46,12 @@ export class WidgetsPageComponent {
   readonly confirm = signal<'start' | 'retry-poll' | 'rotate' | null>(null);
   readonly dialog = viewChild<ElementRef<HTMLDialogElement>>('confirmDialog');
   readonly previewPanel = viewChild<ElementRef<HTMLElement>>('previewPanel');
-  readonly query = signal('');
-  readonly entryKind = signal<'character' | 'perk'>('character');
-  readonly entryLimit = signal(30);
-  readonly excludedIds = signal<string[]>([]);
-  readonly exclusionsDirty = signal(false);
-  readonly failedImages = signal<ReadonlySet<string>>(new Set());
+  readonly eventSettings = signal<WidgetEventSettings | null>(null);
+  readonly poolEditor = viewChild(WidgetPoolComponent);
+  readonly poolDirty = computed(() => this.poolEditor()?.dirty() ?? false);
   private sequenceForm() { return this.fb.group({character: true, fixedCharacterId: '', poll: true, perks: true, perkCount: [4, [Validators.required, Validators.min(0), Validators.max(4), Validators.pattern(/^\d+$/)]]}); }
   readonly sequenceForms = {killer: this.sequenceForm(), survivor: this.sequenceForm()};
-  readonly form = this.fb.group({ language: this.fb.control<'en' | 'es'>('en'), characterDesign: this.fb.control<'cards' | 'reel' | 'wheel' | 'elimination'>('cards'), spinSeconds: [4, [Validators.required, Validators.min(1), Validators.max(15), Validators.pattern(/^\d+$/)]], pollSeconds: [30, [Validators.required, Validators.min(15), Validators.max(180), Validators.pattern(/^\d+$/)]], channelPointsVoting: false, channelPointsPerVote: [100, [Validators.required, Validators.min(1), Validators.max(1000000), Validators.pattern(/^\d+$/)]], includeUnavailable: false, sequences: this.fb.group(this.sequenceForms), targets: this.fb.group({killer: [3, [Validators.required, Validators.min(1), Validators.max(20), Validators.pattern(/^\d+$/)]], survivor: [4, [Validators.required, Validators.min(1), Validators.max(20), Validators.pattern(/^\d+$/)]]}) });
+  readonly form = this.fb.group({ language: this.fb.control<'en' | 'es'>('en'), characterDesign: this.fb.control<'cards' | 'reel' | 'wheel' | 'elimination'>('cards'), spinSeconds: [4, [Validators.required, Validators.min(1), Validators.max(15), Validators.pattern(/^\d+$/)]], pollSeconds: [30, [Validators.required, Validators.min(15), Validators.max(180), Validators.pattern(/^\d+$/)]], channelPointsVoting: false, channelPointsPerVote: [100, [Validators.required, Validators.min(1), Validators.max(1000000), Validators.pattern(/^\d+$/)]], sequences: this.fb.group(this.sequenceForms), targets: this.fb.group({killer: [3, [Validators.required, Validators.min(1), Validators.max(20), Validators.pattern(/^\d+$/)]], survivor: [4, [Validators.required, Validators.min(1), Validators.max(20), Validators.pattern(/^\d+$/)]]}) });
   readonly layoutForm = this.fb.group({...widgetDefaultLayout(), cameraWidth: [512,[Validators.required,Validators.min(320),Validators.max(800),Validators.pattern(/^\d+$/)]], cameraHeight: [288,[Validators.required,Validators.min(180),Validators.max(640),Validators.pattern(/^\d+$/)]]});
   readonly formValue = toSignal(this.form.valueChanges, {initialValue: this.form.getRawValue()});
   readonly layoutValue = toSignal(this.layoutForm.valueChanges, {initialValue: this.layoutForm.getRawValue()});
@@ -64,7 +62,7 @@ export class WidgetsPageComponent {
     const state = this.state(); this.layoutValue();
     return state ? {...state, config: {...state.config, layout: this.layoutForm.valid ? this.layoutForm.getRawValue() : state.config.layout}} : null;
   });
-  readonly canStart = computed(() => { this.formValue(); return !this.locked() && !this.form.dirty && !this.exclusionsDirty(); });
+  readonly canStart = computed(() => { this.formValue(); return !this.locked() && !this.form.dirty && !this.poolDirty(); });
   readonly entriesById = computed(() => new Map((this.catalog()?.entries ?? []).map(e => [e.id, e])));
   /** Where the round is, with a short detail under each step. */
   readonly steps = computed(() => {
@@ -104,18 +102,11 @@ export class WidgetsPageComponent {
         return line('complete', 'ok', {role});
     }
   });
-  readonly entries = computed(() => {
-    const role = this.role(), query = this.query().toLowerCase().trim();
-    return this.catalog()?.entries.filter(e => e.role === role && e.kind === this.entryKind() && (!query || e.english.toLowerCase().includes(query) || e.spanish.toLowerCase().includes(query))) ?? [];
-  });
-  readonly shownEntries = computed(() => this.entries().slice(0, this.entryLimit()));
   readonly poolCounts = computed(() => {
     const role = this.role(), config = this.state()?.config;
     const rows = this.catalog()?.entries.filter(e => e.role === role && (config?.includeUnavailable || e.available) && !config?.excludedIds.includes(e.id)) ?? [];
     return { characters: rows.filter(e => e.kind === 'character').length, perks: rows.filter(e => e.kind === 'perk').length };
   });
-  onQuery(event: Event): void { this.query.set((event.target as HTMLInputElement).value); this.entryLimit.set(30); }
-  readonly addThirty = (n: number) => n + 30;
   private refreshing = false;
   private stopped = false;
   private pending: { action: WidgetAction; body: unknown; revision: number; key: string } | null = null;
@@ -129,9 +120,8 @@ export class WidgetsPageComponent {
   }
   t(key: string, params?: Record<string, string | number>): string { return this.language.translate('widgets.' + key, params); }
   label(entry: WidgetEntry): string { return this.language.currentLanguage() === 'es' ? entry.spanish : entry.english; }
-  imageFailed(entry: WidgetEntry): void { this.failedImages.update(ids => new Set([...ids, entry.id])); }
   characters(role: WidgetRole): WidgetEntry[] { return this.catalog()?.entries.filter(e => e.role === role && e.kind === 'character') ?? []; }
-  chooseRole(role: WidgetRole): void { if (role !== this.role()) { this.query.set(''); this.entryLimit.set(30); void this.act('role', {role}); } }
+  chooseRole(role: WidgetRole): void { if (role !== this.role()) void this.act('role', {role}); }
   sequenceValue(role: WidgetRole) { this.formValue(); return this.sequenceForms[role].getRawValue(); }
   /** Plays the next win's animation in this page only; nothing is recorded or sent to OBS. */
   previewWin(role: WidgetRole): void { this.celebrate.update(c => ({role, tick: (c?.tick ?? 0) + 1})); }
@@ -146,9 +136,9 @@ export class WidgetsPageComponent {
   async load(): Promise<void> {
     this.loading.set(true); this.error.set('');
     try {
-      const [catalog, state] = await Promise.all([this.api.catalog(this.channel), this.api.read(this.channel)]);
+      const [catalog, state, events] = await Promise.all([this.api.catalog(this.channel), this.api.read(this.channel), this.api.events(this.channel)]);
       if (this.stopped) return;
-      this.catalog.set(catalog); this.accept(state); this.stale.set(false);
+      this.catalog.set(catalog); this.accept(state); this.eventSettings.set(events.settings); this.stale.set(false);
     } catch (e) { this.handleError(e); this.stale.set(true); }
     finally { this.loading.set(false); }
   }
@@ -163,7 +153,7 @@ export class WidgetsPageComponent {
     this.serverOffset = state.serverTime - Date.now();
     this.state.set(state);
     if (!this.layoutForm.dirty) this.layoutForm.patchValue(state.config.layout);
-    if (!this.form.dirty && !this.exclusionsDirty()) { this.form.patchValue({...state.config, sequences: {killer: {...state.config.sequences.killer, fixedCharacterId: state.config.sequences.killer.fixedCharacterId ?? ''}, survivor: {...state.config.sequences.survivor, fixedCharacterId: state.config.sequences.survivor.fixedCharacterId ?? ''}}}); this.excludedIds.set([...state.config.excludedIds]); }
+    if (!this.form.dirty) { this.form.patchValue({...state.config, sequences: {killer: {...state.config.sequences.killer, fixedCharacterId: state.config.sequences.killer.fixedCharacterId ?? ''}, survivor: {...state.config.sequences.survivor, fixedCharacterId: state.config.sequences.survivor.fixedCharacterId ?? ''}}}); }
   }
   async act(action: WidgetAction, body: unknown = {}): Promise<void> {
     if (this.busy() || this.stale() || this.pending || !this.state()) return;
@@ -176,9 +166,13 @@ export class WidgetsPageComponent {
     try {
       const state = await this.api.action(this.channel, pending.action, pending.body, pending.revision, pending.key);
       this.pending = null;
-      if (pending.action === 'configure') { this.form.markAsPristine(); this.exclusionsDirty.set(false); }
+      this.accept(state);
+      // Pool and settings save separately so neither overwrites the other (or a Bits change to the wheel).
+      if (pending.action === 'configure' && 'excludedIds' in (pending.body as object)) this.poolEditor()?.markSaved();
+      else if (pending.action === 'configure') this.form.markAsPristine();
       if (pending.action === 'layout') this.layoutForm.markAsPristine();
-      this.accept(state); this.stale.set(false); this.notice.set(this.t('saved'));
+      if (pending.action === 'events') this.eventSettings.set((await this.api.events(this.channel)).settings);
+      this.stale.set(false); this.notice.set(this.t('saved'));
     } catch (e) {
       // A network/5xx response can hide an accepted draw. Retry exactly the same operation/key.
       if (e instanceof HttpErrorResponse && (e.status === 0 || e.status >= 500)) this.error.set(this.t('uncertain'));
@@ -192,14 +186,12 @@ export class WidgetsPageComponent {
     if (this.form.invalid) { this.error.set(this.t('settingsInvalid')); return; }
     const value = this.form.getRawValue();
     for (const role of this.roles) if (!value.sequences[role].character && !value.sequences[role].fixedCharacterId) { this.error.set(this.t('fixedCharacterRequired')); return; }
-    const config: WidgetConfig = {...value, sequences: {killer: {...value.sequences.killer, fixedCharacterId: value.sequences.killer.fixedCharacterId || null}, survivor: {...value.sequences.survivor, fixedCharacterId: value.sequences.survivor.fixedCharacterId || null}}, excludedIds: this.excludedIds(), layout: this.state()!.config.layout};
+    // The server merges missing fields, so the roulette pool saved elsewhere stays untouched.
+    const config: Omit<WidgetConfig, 'includeUnavailable' | 'excludedIds' | 'perkTuning'> = {...value, sequences: {killer: {...value.sequences.killer, fixedCharacterId: value.sequences.killer.fixedCharacterId || null}, survivor: {...value.sequences.survivor, fixedCharacterId: value.sequences.survivor.fixedCharacterId || null}}, layout: this.state()!.config.layout};
     void this.act('configure', config);
   }
-  toggleEntry(entry: WidgetEntry): void { this.excludedIds.update(ids => ids.includes(entry.id) ? ids.filter(id => id !== entry.id) : [...ids, entry.id]); this.exclusionsDirty.set(true); }
-  setAll(enabled: boolean): void {
-    const ids = new Set(this.entries().map(e => e.id));
-    this.excludedIds.update(excluded => enabled ? excluded.filter(id => !ids.has(id)) : [...new Set([...excluded, ...ids])]); this.exclusionsDirty.set(true);
-  }
+  savePool(pool: WidgetPool): void { void this.act('configure', pool); }
+  saveEvents(settings: Omit<WidgetEventSettings, 'activeSince'>): void { void this.act('events', settings); }
   openConfirm(kind: 'start' | 'retry-poll' | 'rotate'): void { this.confirm.set(kind); this.dialog()?.nativeElement.showModal(); }
   closeConfirm(): void { this.dialog()?.nativeElement.close(); this.confirm.set(null); }
   confirmAction(): void { const action = this.confirm(); this.closeConfirm(); if (action === 'rotate') void this.makeLink(); else if (action) void this.act(action, action === 'start' ? {mode: this.startMode} : {}); }

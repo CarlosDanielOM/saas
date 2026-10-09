@@ -1,6 +1,3 @@
-:host { display:block; --bg:#f4f5f8; --tile:#fff; --fg:#14151a; --muted:#596273; --line:rgba(15,17,21,.1); --accent:#7c3aed; --accent-soft:rgba(124,58,237,.1); --live:#ef4444; --live-soft:rgba(239,68,68,.12); --ok:#166534; --gold:#92400e; --gold-soft:rgba(180,83,9,.12); --radius:1.25rem; --shadow:0 15px 35px rgba(15,17,21,.06); --font:'Plus Jakarta Sans','Segoe UI',system-ui,sans-serif; --btn:#eef0f5; --danger:#b91c1c; --killer:#b91c1c; --killer-soft:rgba(220,38,38,.1); --survivor:#1d5fa8; --survivor-soft:rgba(37,99,235,.1); --stage:#15131b }
-:host-context(html.dark) { --bg:#0f1115; --tile:#171a21; --fg:#f5f7fb; --muted:#a7b0c2; --line:rgba(255,255,255,.1); --accent:#a78bfa; --accent-soft:rgba(139,92,246,.16); --live-soft:rgba(239,68,68,.14); --ok:#86efac; --gold:#fbbf24; --gold-soft:rgba(251,191,36,.14); --btn:#1d2230; --danger:#fca5a5; --killer:#fca5a5; --killer-soft:rgba(239,68,68,.14); --survivor:#93c5fd; --survivor-soft:rgba(96,165,250,.14) }
-* { box-sizing:border-box }
 .lf { background:radial-gradient(circle at 0 0,var(--accent-soft),transparent 35rem); min-height:100dvh; color:var(--fg); font-family:var(--font) }
 [data-role=killer] { --role:var(--killer); --role-soft:var(--killer-soft) }
 [data-role=survivor] { --role:var(--survivor); --role-soft:var(--survivor-soft) }
@@ -8,34 +5,11 @@
 .back { display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); text-decoration:none; min-height:44px }
 .back app-lf-icon { width:16px }
 h1 { display:flex; gap:9px; align-items:center; flex-wrap:wrap; margin:0 0 4px; font-size:25px; font-weight:800; letter-spacing:-.03em }
-h2 { margin:0; font-size:16px; font-weight:800 }
-h3 { font-size:14px; font-weight:800; margin:22px 0 10px }
-p { color:var(--muted); margin:6px 0 0; font-size:13px; line-height:1.55 }
 .lf-head>p { margin:0 }
 .head-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px }
-.chip { display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:5px 10px; background:var(--btn); color:var(--muted); font-size:11px; white-space:nowrap; font-weight:700; letter-spacing:0 }
 .chip.on-air { color:var(--fg); background:var(--live-soft) }
-.alpha { color:var(--accent); background:var(--accent-soft) }
-.gold { color:var(--gold); background:var(--gold-soft) }
-.dot { width:7px; height:7px; background:var(--muted); border-radius:50%; flex:none }
-.dot.on { background:var(--live); box-shadow:0 0 0 3px var(--live-soft); animation:pulse 1.8s ease-in-out infinite }
-@keyframes pulse { 50% { box-shadow:0 0 0 6px transparent } }
 .eyebrow { font-size:10px; font-weight:800; text-transform:uppercase; color:var(--accent); letter-spacing:.09em }
-.lf-tile { min-width:0; border:1px solid var(--line); border-radius:var(--radius); background:var(--tile); padding:16px; box-shadow:var(--shadow) }
-.sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap }
-button { min-height:44px; padding:10px 14px; font-size:12px; font-weight:750; font-family:inherit; color:var(--fg); background:var(--btn); border:1px solid var(--line); border-radius:10px; cursor:pointer; transition:transform .15s,background .2s,border-color .2s }
-button:active:not(:disabled) { transform:scale(.97) }
-button:disabled { opacity:.5; cursor:not-allowed }
-.primary { background:#7c3aed; color:#fff; border-color:#7c3aed }
-.primary:hover:not(:disabled) { background:#6d28d9 }
-.ghost { background:transparent }
-button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible,.pill:has(input:focus-visible) { outline:3px solid var(--accent); outline-offset:3px }
 .actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px }
-.hint { font-size:11px }
-.hint.warn { color:var(--gold) }
-.filters { display:flex; flex-wrap:wrap; gap:6px }
-.filters button { padding:7px 12px }
-.filters button[aria-pressed=true],.seg button[aria-pressed=true] { background:#7c3aed; color:#fff; border-color:#7c3aed }
 
 /* Round tile: role, plain status, step track, one big Start. */
 .top-grid { display:grid; gap:14px; min-width:0 }
@@ -66,7 +40,6 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,su
 .track li { display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:12px; border:1px solid transparent; transition:background .3s,border-color .3s }
 .track strong { display:block; font-size:13px }
 .track small { display:block; font-size:11px; color:var(--muted) }
-.num { display:grid; place-items:center; flex:none; width:26px; height:26px; border-radius:50%; background:var(--btn); color:var(--muted); font-size:12px; font-weight:800; border:1px solid var(--line) }
 .track .current { background:var(--role-soft); border-color:var(--role) }
 .track .current .num { background:#7c3aed; border-color:#7c3aed; color:#fff; animation:ring 1.6s ease-in-out infinite }
 .track .done .num { background:var(--accent-soft); color:var(--accent); border-color:transparent }
@@ -105,34 +78,18 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,su
 .lf-setup.needs-link { border-color:color-mix(in srgb,var(--gold) 45%,transparent); background:linear-gradient(var(--gold-soft),var(--gold-soft)),var(--tile) }
 .link-controls { display:flex; flex-wrap:wrap; gap:8px; width:100% }
 .link-controls input { width:100%; font-size:12px }
-input:not([type=checkbox]):not([type=radio]),select { min-height:44px; min-width:0; max-width:100%; font-size:16px; color:var(--fg); background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:10px 12px; font-family:inherit }
-input[type=checkbox] { accent-color:#7c3aed; width:18px; height:18px; flex:none }
 
 /* Preview + layout */
 .preview-panel { scroll-margin-top:80px }
 .section-head { display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap; margin-bottom:14px }
 .section-head p { font-size:12px }
-.seg { display:inline-flex; padding:3px; gap:3px; border-radius:12px; background:var(--btn); border:1px solid var(--line) }
-.seg button { border:0; background:transparent; min-height:38px; padding:8px 12px }
 .preview-panel app-widget-display { display:block; width:100% }
 .layout-form h3 { margin-top:18px }
 .layout-form>fieldset>.hint { margin:-4px 0 12px }
-fieldset { padding:0; margin:0; border:0; min-width:0 }
-legend { padding:0; font-size:12px; font-weight:700; margin-bottom:7px }
 .layout-grid { display:grid; gap:14px }
-.chip-row { display:flex; flex-wrap:wrap; gap:6px }
-.pill { position:relative; display:inline-flex; align-items:center; min-height:44px; padding:0 14px; border-radius:999px; border:1px solid var(--line); background:var(--btn); font-size:12px; font-weight:700; cursor:pointer }
-.pill input { position:absolute; inset:0; width:100%; height:100%; margin:0; opacity:0; cursor:pointer }
-.pill:has(input:checked) { background:#7c3aed; color:#fff; border-color:#7c3aed }
 .size-row { display:grid; grid-template-columns:1fr 1fr; gap:10px }
 .size-row label,.settings-grid label,.target-settings label,.points-cost,.sub { display:grid; gap:7px; font-size:12px; font-weight:700 }
 .checks { display:grid; gap:2px; padding-bottom:4px }
-.checkbox { display:flex; align-items:center; gap:8px; min-height:44px; font-size:12px; font-weight:500; cursor:pointer }
-.invalid { font-size:11px; color:var(--danger) }
-.save-row { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:16px; border-top:1px solid var(--line); padding-top:14px }
-.save-row>span { font-size:12px; color:var(--muted) }
-.save-row .primary { min-width:110px }
-.lf-save-bar { position:sticky; bottom:.75rem; z-index:5; background:var(--tile); border:1px solid var(--line); border-radius:14px; padding:10px 12px; box-shadow:var(--shadow) }
 
 /* Settings */
 .settings>h2+p { margin-bottom:12px }
@@ -156,16 +113,9 @@ legend { padding:0; font-size:12px; font-weight:700; margin-bottom:7px }
 .entry span { font-size:12px }
 .entry small { display:block; font-size:10px; color:var(--muted) }
 
-.message { display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between; padding:12px; border-radius:10px; font-size:12px }
-.error { background:color-mix(in srgb,var(--danger) 8%,var(--tile)); color:var(--danger); border:1px solid color-mix(in srgb,var(--danger) 25%,transparent) }
-.notice { color:var(--accent); font-size:12px; margin:0 }
 .gate { padding:28px }
 .gate h2 { margin-top:8px }
 .gate button { margin-top:18px }
-.lf-dialog { font-family:var(--font); color:var(--fg); background:var(--tile); border:1px solid var(--line); border-radius:20px 20px 0 0; width:calc(100% - 16px); max-width:460px; padding:24px; position:fixed; margin:auto auto 0; max-height:92dvh }
-.lf-dialog::backdrop { background:rgba(0,0,0,.62) }
-.lf-dialog p { margin-top:12px }
-.lf-dialog footer { display:flex; justify-content:flex-end; gap:8px; margin-top:24px }
 
 @media(min-width:560px) {
   .lf-main { padding:24px }
@@ -173,7 +123,6 @@ legend { padding:0; font-size:12px; font-weight:700; margin-bottom:7px }
   .layout-grid,.settings-grid,.sequence-grid,.target-settings { grid-template-columns:repeat(2,minmax(0,1fr)) }
   .checks { grid-template-columns:repeat(2,minmax(0,1fr)); column-gap:16px }
   .entries { grid-template-columns:repeat(2,minmax(0,1fr)); column-gap:16px }
-  .lf-dialog { margin:auto; border-radius:20px }
   .win-streak { --size:40px }
 }
 @media(min-width:960px) {

@@ -1,0 +1,110 @@
+.bits { display:grid; gap:14px }
+.bits-head { display:flex; flex-wrap:wrap; gap:12px; align-items:flex-start; justify-content:space-between }
+.bits-head>div { flex:1 1 16rem; min-width:0 }
+.bits-head h2 { display:flex; align-items:center; gap:8px }
+.bits-head h2 app-lf-icon { color:var(--gold) }
+
+/* One switch = one behaviour; solid violet when on in both themes. */
+.lf-switch { display:inline-flex; align-items:center; gap:10px; min-height:44px; padding:6px 14px 6px 8px; border-radius:999px }
+.lf-switch.bare { padding:6px; background:transparent; border-color:transparent }
+.switch-track { position:relative; width:40px; height:24px; flex:none; border-radius:999px; background:var(--line); box-shadow:inset 0 0 0 1px var(--line); transition:background .2s }
+.switch-thumb { position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.3); transition:transform .2s }
+.lf-switch[aria-checked=true] .switch-track { background:#7c3aed; box-shadow:none }
+.lf-switch[aria-checked=true] .switch-thumb { transform:translateX(16px) }
+.lf-switch:not(.bare)[aria-checked=true] { border-color:#7c3aed }
+
+.bits-status { display:flex; gap:12px; align-items:flex-start; padding:12px 14px; border-radius:14px; background:var(--bg); border:1px solid var(--line) }
+.bits-status strong { display:block; font-size:14px; line-height:1.35 }
+.bits-status p { margin-top:2px; font-size:12px }
+.status-dot { width:10px; height:10px; margin-top:4px; border-radius:50%; flex:none; background:var(--muted) }
+.tone-live { border-color:color-mix(in srgb,var(--live) 35%,transparent) }
+.tone-live .status-dot { background:var(--live); box-shadow:0 0 0 4px var(--live-soft); animation:pulse 1.4s ease-in-out infinite }
+.tone-warn { border-color:color-mix(in srgb,var(--gold) 45%,transparent) }
+.tone-warn .status-dot { background:var(--gold) }
+
+.bits-pill { display:inline-flex; align-items:center; gap:5px; width:max-content; padding:4px 10px; border-radius:999px; background:var(--gold-soft); color:var(--gold); font-size:12px; font-weight:800; font-variant-numeric:tabular-nums; white-space:nowrap }
+
+/* Rules: dense rows. Phone: pill + sentence, tools on the second line. */
+.rules { list-style:none; margin:0; padding:0; display:grid; gap:8px }
+.rule { display:grid; grid-template-columns:minmax(0,1fr); gap:8px; padding:10px 12px; border-radius:14px; border:1px solid var(--line); background:var(--bg); transition:border-color .2s,background .2s }
+.rule.off { border-style:dashed; background:transparent }
+.rule.off .rule-text strong { color:var(--muted); font-weight:650 }
+.rule.off .bits-pill { background:var(--btn); color:var(--muted) }
+.rule.hit { border-color:color-mix(in srgb,var(--gold) 70%,transparent); background:linear-gradient(var(--gold-soft),var(--gold-soft)),var(--bg) }
+.rule-text { display:flex; flex-wrap:wrap; align-items:center; gap:6px; min-width:0 }
+.rule-text strong { font-size:13px; line-height:1.4; overflow-wrap:anywhere }
+.rule-tools { display:flex; align-items:center; gap:6px; justify-content:flex-end }
+.icon { display:inline-grid; place-items:center; min-width:44px; padding:8px }
+.danger { color:var(--danger) }
+.danger.confirm { background:#b91c1c; border-color:#b91c1c; color:#fff; padding:8px 12px }
+.list-foot { display:flex; flex-wrap:wrap; align-items:center; gap:10px }
+.list-foot .hint { margin:0; flex:1 1 14rem }
+.add { display:inline-flex; align-items:center; justify-content:center; gap:6px }
+
+.empty { display:grid; gap:10px; padding:14px; border-radius:14px; border:1px dashed var(--line); background:var(--bg) }
+.empty>p { margin:0 }
+.ideas { display:grid; gap:8px }
+.idea { display:flex; flex-wrap:wrap; align-items:center; gap:8px; text-align:left; background:var(--tile); font-weight:650 }
+
+.trial { display:grid; gap:8px; padding:12px; border-radius:14px; border:1px solid var(--line) }
+.trial>label { font-size:12px; font-weight:800 }
+.trial-input { display:flex; align-items:center; gap:8px }
+.trial-input input { width:9rem }
+.trial-input span { font-size:12px; font-weight:700; color:var(--muted) }
+.trial-result p { margin:0; font-size:12px }
+.trial-result ol { margin:6px 0 0; padding-left:20px; display:grid; gap:4px; font-size:13px; font-weight:650 }
+.trial-result li .chip { margin-left:6px }
+.trial-result .hint { margin-top:6px }
+
+.bits-more summary { cursor:pointer; font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center }
+.bits-more .hint { margin:0 0 6px }
+
+/* Editor dialog: bottom sheet on phones, scrolling body, sticky summary + actions. */
+.rule-dialog { max-width:600px; padding:0; overflow:hidden }
+.rule-dialog[open] { display:flex }
+.rule-dialog form { display:flex; flex-direction:column; width:100%; max-height:92dvh }
+.dialog-head { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:14px 16px 10px; border-bottom:1px solid var(--line) }
+.dialog-body { overflow-y:auto; padding:4px 16px 16px; overscroll-behavior:contain }
+.step h3 { display:flex; align-items:center; gap:8px; margin:16px 0 10px }
+.step h3 .num { width:24px; height:24px; background:#7c3aed; border-color:#7c3aed; color:#fff }
+.bits-inputs { display:grid; grid-template-columns:repeat(auto-fit,minmax(8rem,1fr)); gap:10px; margin-top:10px }
+.bits-inputs label { display:grid; gap:6px; font-size:12px; font-weight:700 }
+.choice-group { margin-top:6px }
+.choice-group+.choice-group { margin-top:12px }
+.choices { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px }
+.choice { position:relative; display:grid; gap:2px; padding:10px 12px; min-height:56px; border-radius:12px; border:1px solid var(--line); background:var(--bg); cursor:pointer }
+.choice input { position:absolute; inset:0; width:100%; height:100%; margin:0; opacity:0; cursor:pointer }
+.choice strong { font-size:13px }
+.choice small { font-size:11px; color:var(--muted); line-height:1.4 }
+.choice.on { border-color:#7c3aed; background:var(--accent-soft); box-shadow:inset 0 0 0 1px #7c3aed }
+.choice:has(input:focus-visible) { outline:3px solid var(--accent); outline-offset:2px }
+.step fieldset { margin-top:12px }
+.amount { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; margin-top:12px; font-size:12px; font-weight:700 }
+.stepper { display:inline-flex; align-items:center; gap:6px }
+.stepper button { min-width:44px; font-size:18px; padding:6px }
+.stepper input { width:4.5rem; text-align:center }
+.step .hint { margin-top:8px }
+.picker { display:grid; gap:8px; margin-top:10px }
+.chosen { list-style:none; margin:0; padding:0; display:flex; flex-wrap:wrap; gap:6px }
+.chosen li { display:inline-flex; align-items:center; gap:2px; padding-left:12px; border-radius:999px; background:var(--accent-soft); font-size:12px; font-weight:700 }
+.chosen .icon { min-height:36px; min-width:36px; padding:4px; border:0 }
+.picker .hint { margin:0 }
+.picker-tools { display:flex; flex-wrap:wrap; gap:8px }
+.picker-tools input { flex:1 1 12rem }
+.perk-list { display:grid; max-height:15rem; overflow-y:auto; border:1px solid var(--line); border-radius:12px; padding:2px 8px }
+.perk { display:flex; align-items:center; gap:10px; min-height:46px; font-size:12px; border-bottom:1px solid var(--line); cursor:pointer }
+.perk:last-child { border-bottom:0 }
+.perk img { object-fit:contain; flex:none }
+.rule-dialog .dialog-foot { display:grid; justify-content:stretch; gap:8px; margin:0; padding:12px 16px; border-top:1px solid var(--line); background:var(--tile) }
+.summary { margin:0; font-size:12px; display:flex; flex-wrap:wrap; align-items:center; gap:4px 6px }
+.summary strong { color:var(--fg) }
+.foot-actions { display:flex; justify-content:flex-end; gap:8px }
+.foot-actions .primary { min-width:8rem }
+
+@media(min-width:560px) {
+  .rule { grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:12px }
+  .ideas { grid-template-columns:repeat(2,minmax(0,1fr)) }
+  .trial { grid-template-columns:auto auto minmax(0,1fr); align-items:center; column-gap:14px }
+  .perk-list { grid-template-columns:repeat(2,minmax(0,1fr)); column-gap:12px }
+  .perk:nth-last-child(2):nth-child(odd) { border-bottom:0 }
+}

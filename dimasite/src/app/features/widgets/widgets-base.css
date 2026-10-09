@@ -1,0 +1,53 @@
+/* Shared by the DBD widget page and its child sections: LF tokens and controls. */
+:host { display:block; --bg:#f4f5f8; --tile:#fff; --fg:#14151a; --muted:#596273; --line:rgba(15,17,21,.1); --accent:#7c3aed; --accent-soft:rgba(124,58,237,.1); --live:#ef4444; --live-soft:rgba(239,68,68,.12); --ok:#166534; --gold:#92400e; --gold-soft:rgba(180,83,9,.12); --radius:1.25rem; --shadow:0 15px 35px rgba(15,17,21,.06); --font:'Plus Jakarta Sans','Segoe UI',system-ui,sans-serif; --btn:#eef0f5; --danger:#b91c1c; --killer:#b91c1c; --killer-soft:rgba(220,38,38,.1); --survivor:#1d5fa8; --survivor-soft:rgba(37,99,235,.1); --stage:#15131b }
+:host-context(html.dark) { --bg:#0f1115; --tile:#171a21; --fg:#f5f7fb; --muted:#a7b0c2; --line:rgba(255,255,255,.1); --accent:#a78bfa; --accent-soft:rgba(139,92,246,.16); --live-soft:rgba(239,68,68,.14); --ok:#86efac; --gold:#fbbf24; --gold-soft:rgba(251,191,36,.14); --btn:#1d2230; --danger:#fca5a5; --killer:#fca5a5; --killer-soft:rgba(239,68,68,.14); --survivor:#93c5fd; --survivor-soft:rgba(96,165,250,.14) }
+* { box-sizing:border-box }
+h2 { margin:0; font-size:16px; font-weight:800 }
+h3 { font-size:14px; font-weight:800; margin:22px 0 10px }
+p { color:var(--muted); margin:6px 0 0; font-size:13px; line-height:1.55 }
+.chip { display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:5px 10px; background:var(--btn); color:var(--muted); font-size:11px; white-space:nowrap; font-weight:700; letter-spacing:0 }
+.alpha { color:var(--accent); background:var(--accent-soft) }
+.gold { color:var(--gold); background:var(--gold-soft) }
+.dot { width:7px; height:7px; background:var(--muted); border-radius:50%; flex:none }
+.dot.on { background:var(--live); box-shadow:0 0 0 3px var(--live-soft); animation:pulse 1.8s ease-in-out infinite }
+@keyframes pulse { 50% { box-shadow:0 0 0 6px transparent } }
+.lf-tile { min-width:0; border:1px solid var(--line); border-radius:var(--radius); background:var(--tile); padding:16px; box-shadow:var(--shadow) }
+.sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap }
+button { min-height:44px; padding:10px 14px; font-size:12px; font-weight:750; font-family:inherit; color:var(--fg); background:var(--btn); border:1px solid var(--line); border-radius:10px; cursor:pointer; transition:transform .15s,background .2s,border-color .2s }
+button:active:not(:disabled) { transform:scale(.97) }
+button:disabled { opacity:.5; cursor:not-allowed }
+.primary { background:#7c3aed; color:#fff; border-color:#7c3aed }
+.primary:hover:not(:disabled) { background:#6d28d9 }
+.ghost { background:transparent }
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible,.pill:has(input:focus-visible) { outline:3px solid var(--accent); outline-offset:3px }
+.hint { font-size:11px }
+.hint.warn { color:var(--gold) }
+.filters { display:flex; flex-wrap:wrap; gap:6px }
+.filters button { padding:7px 12px }
+.filters button[aria-pressed=true],.seg button[aria-pressed=true] { background:#7c3aed; color:#fff; border-color:#7c3aed }
+.num { display:grid; place-items:center; flex:none; width:26px; height:26px; border-radius:50%; background:var(--btn); color:var(--muted); font-size:12px; font-weight:800; border:1px solid var(--line) }
+input:not([type=checkbox]):not([type=radio]),select { min-height:44px; min-width:0; max-width:100%; font-size:16px; color:var(--fg); background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:10px 12px; font-family:inherit }
+input[type=checkbox] { accent-color:#7c3aed; width:18px; height:18px; flex:none }
+.seg { display:inline-flex; padding:3px; gap:3px; border-radius:12px; background:var(--btn); border:1px solid var(--line) }
+.seg button { border:0; background:transparent; min-height:38px; padding:8px 12px }
+fieldset { padding:0; margin:0; border:0; min-width:0 }
+legend { padding:0; font-size:12px; font-weight:700; margin-bottom:7px }
+.chip-row { display:flex; flex-wrap:wrap; gap:6px }
+.pill { position:relative; display:inline-flex; align-items:center; min-height:44px; padding:0 14px; border-radius:999px; border:1px solid var(--line); background:var(--btn); font-size:12px; font-weight:700; cursor:pointer }
+.pill input { position:absolute; inset:0; width:100%; height:100%; margin:0; opacity:0; cursor:pointer }
+.pill:has(input:checked) { background:#7c3aed; color:#fff; border-color:#7c3aed }
+.checkbox { display:flex; align-items:center; gap:8px; min-height:44px; font-size:12px; font-weight:500; cursor:pointer }
+.invalid { font-size:11px; color:var(--danger) }
+.save-row { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:16px; border-top:1px solid var(--line); padding-top:14px }
+.save-row>span { font-size:12px; color:var(--muted) }
+.save-row .primary { min-width:110px }
+.lf-save-bar { position:sticky; bottom:.75rem; z-index:5; background:var(--tile); border:1px solid var(--line); border-radius:14px; padding:10px 12px; box-shadow:var(--shadow) }
+.message { display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between; padding:12px; border-radius:10px; font-size:12px }
+.error { background:color-mix(in srgb,var(--danger) 8%,var(--tile)); color:var(--danger); border:1px solid color-mix(in srgb,var(--danger) 25%,transparent) }
+.notice { color:var(--accent); font-size:12px; margin:0 }
+.lf-dialog { font-family:var(--font); color:var(--fg); background:var(--tile); border:1px solid var(--line); border-radius:20px 20px 0 0; width:calc(100% - 16px); max-width:460px; padding:24px; position:fixed; margin:auto auto 0; max-height:92dvh }
+.lf-dialog::backdrop { background:rgba(0,0,0,.62) }
+.lf-dialog p { margin-top:12px }
+.lf-dialog footer { display:flex; justify-content:flex-end; gap:8px; margin-top:24px }
+@media(min-width:560px) { .lf-dialog { margin:auto; border-radius:20px } }
+@media(prefers-reduced-motion:reduce) { * { animation:none!important; transition:none!important } }

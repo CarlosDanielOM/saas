@@ -153,6 +153,48 @@ await configure({ ...settings, rules: [
 await seedWins(); const targetChange = await makeEvent(500); await deliver(targetChange);
 assert.equal((await svc.WidgetChannel.findById(channel).lean()).state.config.targets.survivor, 8);
 const reset = await makeEvent(1000); await deliver(reset); assert.deepEqual(await readWins(), { killer: 0, survivor: 0 });
+// Perk wheel + goal actions run through the same durable consumer and show up in OBS state.
+const { catalog: widgetCatalog } = await import('/app/dist/widgets/catalog.js');
+const killerPerks = widgetCatalog.entries.filter(e => e.role === 'killer' && e.kind === 'perk' && e.available).map(e => e.id);
+const action = async (name, body) => request('POST', root + '/actions/' + name, body, 200, 'widget-events-owner', { 'Idempotency-Key': crypto.randomUUID(), 'If-Match': String((await request('GET', root)).revision) });
+await action('role', { role: 'killer' });
+// The pool saves alone: a partial configure keeps every other setting.
+const designBefore = (await request('GET', root)).config.characterDesign;
+await action('configure', { includeUnavailable: false, excludedIds: killerPerks.slice(0, 3), perkTuning: { [killerPerks[10]]: { copies: 3, weight: 2 } } });
+let current = (await request('GET', root)).config;
+assert.equal(current.characterDesign, designBefore); assert.deepEqual(current.excludedIds, killerPerks.slice(0, 3));
+await configure({ ...settings, rules: [
+  { ...removal, id: 'goal', minBits: 200, maxBits: 200, action: { type: 'add-win-target', role: 'current', amount: 2 } },
+  { ...removal, id: 'add-random', minBits: 300, maxBits: 300, action: { type: 'add-perks', role: 'current', amount: 2, perkIds: [] } },
+  { ...removal, id: 'add-chosen', minBits: 400, maxBits: 400, action: { type: 'add-perks', role: 'survivor', amount: 1, perkIds: [killerPerks[10], killerPerks[0]] } },
+  { ...removal, id: 'remove-random', minBits: 600, maxBits: null, action: { type: 'remove-perks', role: 'killer', amount: 10, perkIds: [] } }
+] });
+await Users.updateOne({ 'accounts.id': channel }, { $set: { plan_tier: 'premium' } });
+const targetBefore = (await svc.WidgetChannel.findById(channel).lean()).state.config.targets.killer;
+await deliver(await makeEvent(200)); current = (await svc.WidgetChannel.findById(channel).lean()).state.config;
+assert.equal(current.targets.killer, Math.min(20, targetBefore + 2), 'raise the goal');
+await deliver(await makeEvent(300)); current = (await svc.WidgetChannel.findById(channel).lean()).state.config;
+assert.equal(killerPerks.slice(0, 3).filter(id => current.excludedIds.includes(id)).length, 1, 'two random off perks came back');
+await deliver(await makeEvent(400)); current = (await svc.WidgetChannel.findById(channel).lean()).state.config;
+assert.deepEqual(current.perkTuning[killerPerks[10]], { copies: 4, weight: 2 }, 'chosen perk gains a slot, weight kept, rule role ignored');
+assert(!current.excludedIds.includes(killerPerks[0]), 'chosen off perk turned on');
+const onBefore = killerPerks.filter(id => !current.excludedIds.includes(id)).length;
+await deliver(await makeEvent(5000)); current = (await svc.WidgetChannel.findById(channel).lean()).state.config;
+assert.equal(killerPerks.filter(id => !current.excludedIds.includes(id)).length, onBefore - 10, 'random removal');
+const rendered2 = await request('GET', root);
+assert.deepEqual(rendered2.config.excludedIds, current.excludedIds, 'owner/OBS snapshot shows the changed wheel');
+// A perk draw spreads the tuned perk's slots and records the exact winning slot.
+await action('reset', {});
+const tuned = killerPerks.find(id => !current.excludedIds.includes(id) && id !== killerPerks[10]);
+await action('configure', { includeUnavailable: false, excludedIds: current.excludedIds.filter(id => id !== killerPerks[10]), perkTuning: { [killerPerks[10]]: { copies: 4, weight: 2 }, [tuned]: { copies: 2, weight: 1 } } });
+const started = await action('start', { mode: 'perks' }), drawn = started.run.draw;
+assert.equal(drawn.poolIds.filter(id => id === killerPerks[10]).length, 4); assert.equal(drawn.poolIds.filter(id => id === tuned).length, 2);
+assert.equal(drawn.poolIds[drawn.slot], drawn.itemId, 'winning slot matches the drawn perk');
+for (let i = 1; i < drawn.poolIds.length; i++) assert.notEqual(drawn.poolIds[i], drawn.poolIds[i - 1], 'copies never adjacent');
+await configure({ ...settings, rules: [{ ...removal, action: { type: 'add-perks', role: 'killer', amount: 1, perkIds: [widgetCatalog.entries.find(e => e.kind === 'character').id] } }] }, 400);
+await configure({ ...settings, rules: [{ ...removal, action: { type: 'remove-perks', role: 'killer', amount: 11, perkIds: [] } }] }, 400);
+await action('configure', { perkTuning: { [killerPerks[1]]: { copies: 6, weight: 1 } } }).catch(() => null);
+assert.equal((await svc.WidgetChannel.findById(channel).lean()).state.config.perkTuning[killerPerks[1]], undefined, 'out-of-range slots rejected');
 await seedWins(); await Users.updateOne({ 'accounts.id': channel }, { $set: { plan_tier: 'free' } });
 const downgraded = await makeEvent(1000); await deliver(downgraded); assert.equal((await readWins()).killer, 3);
 await request('GET', root + '/events', undefined, 403);
@@ -169,5 +211,5 @@ assert.equal(evaluations, 100);
 execFileSync(process.execPath, ['--experimental-test-module-mocks', '--test',
   '/app/dist/widgets/events.test.js', '/app/dist/widgets/event-model.test.js', '/app/dist/widgets/model.test.js',
   '/app/dist/domain_events/domain_event_consumers.test.js', '/app/dist/domain_events/domain_event_producers.test.js'], { stdio: 'inherit', timeout: 30_000 });
-console.log('PASS widget events: shared stateless routing, 100 targets, inactive/disabled gates, no historical catch-up, explicit injection opt-in, atomic receipts, concurrent/restart dedupe, deactivation race, owner-only API, revision/idempotency, exact bits/ranges, win actions, entitlements, OBS state updates');
+console.log('PASS widget events: shared stateless routing, 100 targets, inactive/disabled gates, no historical catch-up, explicit injection opt-in, atomic receipts, concurrent/restart dedupe, deactivation race, owner-only API, revision/idempotency, exact bits/ranges, win actions, goal raises, random/chosen perk adds and floor-limited removals, separate pool saves, weighted slot draws, entitlements, OBS state updates');
 io?.close(); localServer?.close(); process.exit(0);

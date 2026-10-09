@@ -6353,8 +6353,6 @@
     "pollValidation": "Introduce un número entero de 15 a 180.",
     "unavailable": "Incluir personajes que ya tienes y ya no se venden",
     "ownedOnly": "Solo si ya lo tienes",
-    "customPool": "Elige tus personajes y ventajas",
-    "customPoolHint": "Desactiva los personajes o ventajas que no tengas. Ambos roles y todas las acciones comparten la selección habilitada.",
     "search": "Buscar nombres en inglés o español",
     "enableMatching": "Activar resultados",
     "disableMatching": "Desactivar resultados",
@@ -6586,7 +6584,183 @@
     "lookTitle": "Aspecto y tiempos",
     "votingTitle": "Votación del chat",
     "goalsTitle": "Metas de victorias",
-    "cardsHint": "Cada carta oculta tiene de 0 a 4 ventajas. Gana la carta más votada; los empates se deciden al azar."
+    "cardsHint": "Cada carta oculta tiene de 0 a 4 ventajas. Gana la carta más votada; los empates se deciden al azar.",
+    "bits": {
+      "title": "Acciones con Bits",
+      "subtitle": "Deja que los Bits de tus espectadores cambien tu reto: quitar victorias, subir la meta o cambiar la ruleta de perks.",
+      "listen": "Escuchar Bits",
+      "chipOn": "Bits: escuchando",
+      "chipOff": "Bits: apagado",
+      "status": {
+        "off": {
+          "title": "Los Bits no cambian nada ahora",
+          "detail": "Activa Escuchar Bits cuando empieces el directo. Los Bits anteriores nunca cuentan."
+        },
+        "none": {
+          "title": "Escuchando, pero todas las acciones están apagadas",
+          "detail": "Activa una acción abajo o crea una nueva."
+        },
+        "on": {
+          "title": "Escuchando Bits desde las {{time}}",
+          "detail": "{{n}} acciones activas. Los cambios se ven en OBS al momento, incluso a mitad de ronda.",
+          "detailOne": "1 acción activa. Los cambios se ven en OBS al momento, incluso a mitad de ronda."
+        }
+      },
+      "listLabel": "Acciones con Bits",
+      "empty": "Aún no hay acciones con Bits. Empieza con una idea y ajústala:",
+      "add": "Añadir acción con Bits",
+      "order": "Si unos Bits encajan con varias acciones, se ejecutan todas, de arriba abajo.",
+      "limit": "Llegaste al límite de {{n}} acciones.",
+      "ruleOn": "{{rule}} activa",
+      "editButton": "Editar",
+      "editAria": "Editar: {{rule}}",
+      "deleteAria": "Eliminar: {{rule}}",
+      "deleteConfirm": "¿Eliminar?",
+      "deleteConfirmAria": "Toca otra vez para eliminar",
+      "try": {
+        "label": "Prueba una cantidad",
+        "some": "Con {{n}} Bits:",
+        "none": "Con {{n}} Bits no pasa nada.",
+        "off": "La escucha está apagada, así que ahora no pasaría nada."
+      },
+      "moreTitle": "Pruebas y tiempos",
+      "testEvents": "Reaccionar también a los Bits de prueba de la página de Eventos",
+      "testHint": "Los Bits de prueba cambian tus victorias y tu ruleta reales, igual que los de verdad. Desactívalo cuando termines de probar.",
+      "window": "Solo cuentan los Bits enviados después de activar la escucha (o de guardar un cambio). Si unos Bits nos llegan con más de 5 minutos de retraso, se ignoran.",
+      "more": "+{{n}} más",
+      "cond": {
+        "exact": "{{n}} Bits",
+        "between": "{{min}}–{{max}} Bits",
+        "atLeast": "{{n}}+ Bits",
+        "atMost": "Hasta {{n}} Bits"
+      },
+      "match": {
+        "exact": "Exactamente",
+        "between": "Entre",
+        "atLeast": "Al menos",
+        "atMost": "Como máximo"
+      },
+      "role": {
+        "current": "Rol actual",
+        "killer": "Asesino",
+        "survivor": "Superviviente",
+        "both": "Ambos roles"
+      },
+      "do": {
+        "removeWins": "Quitar {{n}} victorias",
+        "removeWinsOne": "Quitar 1 victoria",
+        "resetWins": "Reiniciar victorias a 0",
+        "addWinTarget": "Subir la meta {{n}} victorias",
+        "addWinTargetOne": "Subir la meta 1 victoria",
+        "setWinTarget": "Poner la meta en {{n}}",
+        "addRandom": "Añadir {{n}} perks al azar a la ruleta",
+        "addRandomOne": "Añadir 1 perk al azar a la ruleta",
+        "addChosen": "Añadir {{names}} a la ruleta",
+        "addChosenSlots": "Añadir {{names}} a la ruleta (+{{n}} espacios cada uno)",
+        "removeRandom": "Quitar {{n}} perks al azar de la ruleta",
+        "removeRandomOne": "Quitar 1 perk al azar de la ruleta",
+        "removeChosen": "Quitar {{names}} de la ruleta"
+      },
+      "act": {
+        "remove-wins": {
+          "name": "Quitar victorias",
+          "copy": "Los espectadores te hacen retroceder."
+        },
+        "reset-wins": {
+          "name": "Reiniciar victorias",
+          "copy": "De vuelta a cero."
+        },
+        "add-win-target": {
+          "name": "Subir la meta",
+          "copy": "Necesitarás más victorias de forma permanente."
+        },
+        "set-win-target": {
+          "name": "Fijar la meta",
+          "copy": "Cambia cuántas victorias necesitas."
+        },
+        "add-perks": {
+          "name": "Añadir perks",
+          "copy": "Pon perks en la ruleta o dales más espacios."
+        },
+        "remove-perks": {
+          "name": "Quitar perks",
+          "copy": "Saca perks de la ruleta."
+        }
+      },
+      "amount": {
+        "remove-wins": "Victorias a quitar",
+        "add-win-target": "Victorias que se suman a la meta",
+        "set-win-target": "Nueva meta",
+        "random": "Cuántos perks",
+        "chosen": "Espacios que gana cada perk"
+      },
+      "edit": {
+        "newTitle": "Nueva acción con Bits",
+        "editTitle": "Editar acción con Bits",
+        "when": "Cuando alguien envíe",
+        "then": "Entonces",
+        "details": "Detalles",
+        "bits": "Bits",
+        "from": "Desde",
+        "to": "Hasta",
+        "invalidBits": "Usa números enteros desde 1.",
+        "invalidRange": "«Hasta» debe ser mayor que «Desde».",
+        "invalidAmount": "Usa un número entero de {{min}} a {{max}}.",
+        "group": {
+          "wins": "Victorias",
+          "perks": "Ruleta de perks"
+        },
+        "whichPerks": "Qué perks",
+        "pick": {
+          "random": "Perks al azar",
+          "chosen": "Elegir perks"
+        },
+        "role": "Rol",
+        "less": "Uno menos",
+        "more": "Uno más",
+        "removeHint": "La ruleta siempre conserva al menos {{n}} perks, así que puede quitar menos de los pedidos.",
+        "randomAddHint": "Solo pueden volver los perks que apagaste. Ahora hay {{killer}} perks de asesino y {{survivor}} de superviviente apagados.",
+        "pickHint": "Los perks apagados se encienden. Los que ya están en la ruleta ganan espacios extra, hasta 5.",
+        "chosenLabel": "Perks elegidos",
+        "unpick": "Quitar {{name}}",
+        "pickCount": "{{n}} de {{max}} elegidos",
+        "search": "Buscar perks",
+        "noneChosen": "Elige al menos un perk.",
+        "summary": "Cuando alguien envíe {{bits}}:",
+        "save": "Guardar acción"
+      }
+    },
+    "pool": {
+      "title": "Qué entra en la ruleta",
+      "subtitle": "Elige qué personajes y perks pueden salir. Los perks también pueden ocupar más espacios en la ruleta o tener más suerte.",
+      "tabsLabel": "Listas de la ruleta",
+      "tab": {
+        "killers": "Asesinos",
+        "survivors": "Supervivientes",
+        "killerPerks": "Perks de asesino",
+        "survivorPerks": "Perks de superviviente"
+      },
+      "tooFew": "Hay pocos perks de {{role}} activos. Deja al menos {{n}}, o no se podrá sortear un equipamiento completo.",
+      "tune": "Espacios y peso",
+      "tuneHint": "Espacios: cuántas veces aparece un perk en la ruleta. Peso: suerte extra por espacio, sin ocupar más sitio.",
+      "resetTuning": "Restablecer espacios y peso",
+      "slots": "Espacios",
+      "weight": "Peso",
+      "slotsChip": "{{n}} espacios",
+      "weightChip": "{{n}}× suerte",
+      "chanceAria": "{{pct}} de probabilidad en el primer giro",
+      "less": "{{what}} −1: {{name}}",
+      "more": "{{what}} +1: {{name}}",
+      "slotsOf": "{{name}}: {{n}} espacios",
+      "weightOf": "{{name}}: peso {{n}}",
+      "howTitle": "Cómo funcionan las probabilidades",
+      "how": "Probabilidad = (espacios × peso) ÷ la suma de todos los perks de ese rol. Los perks que ya salieron en la ronda no vuelven a girar, así que los siguientes giros cambian un poco. Las acciones con Bits nunca dejan una ruleta con menos de {{n}} perks.",
+      "changedElsewhere": "Una acción con Bits cambió la ruleta mientras editabas. Si guardas, se reemplaza con tu versión.",
+      "discard": "Descartar",
+      "oddsShort": "Espacios {{slots}} · Peso {{weight}}",
+      "tuneAria": "Espacios y peso: {{name}}, {{pct}} de probabilidad",
+      "save": "Guardar ruleta"
+    }
   },
   "errors": {
     "codeLabel": "Error {{code}}",

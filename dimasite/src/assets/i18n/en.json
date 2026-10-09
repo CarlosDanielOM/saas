@@ -6353,8 +6353,6 @@
     "pollValidation": "Enter a whole number from 15 to 180.",
     "unavailable": "Include characters already owned but no longer sold",
     "ownedOnly": "Existing owners only",
-    "customPool": "Choose your characters and perks",
-    "customPoolHint": "Turn off characters or perks you do not own. The enabled pool is shared by both roles and all actions.",
     "search": "Search names in English or Spanish",
     "enableMatching": "Enable matching",
     "disableMatching": "Disable matching",
@@ -6586,7 +6584,183 @@
     "lookTitle": "Look & timing",
     "votingTitle": "Chat voting",
     "goalsTitle": "Win goals",
-    "cardsHint": "Each hidden card holds 0–4 perks. The most-voted card wins; ties are random."
+    "cardsHint": "Each hidden card holds 0–4 perks. The most-voted card wins; ties are random.",
+    "bits": {
+      "title": "Bits actions",
+      "subtitle": "Let viewers' Bits change your challenge: take wins away, raise the goal or change the perk wheel.",
+      "listen": "Listen for Bits",
+      "chipOn": "Bits: listening",
+      "chipOff": "Bits: off",
+      "status": {
+        "off": {
+          "title": "Bits don't change anything right now",
+          "detail": "Turn on Listen for Bits when you go live. Cheers from before that never count."
+        },
+        "none": {
+          "title": "Listening, but every action is off",
+          "detail": "Turn an action on below, or add a new one."
+        },
+        "on": {
+          "title": "Listening for Bits since {{time}}",
+          "detail": "{{n}} actions are on. Changes show in OBS right away, even mid-round.",
+          "detailOne": "1 action is on. Changes show in OBS right away, even mid-round."
+        }
+      },
+      "listLabel": "Bits actions",
+      "empty": "No Bits actions yet. Start from an idea and adjust it:",
+      "add": "Add Bits action",
+      "order": "If a cheer matches several actions, they all run, top to bottom.",
+      "limit": "You've reached the limit of {{n}} actions.",
+      "ruleOn": "{{rule}} on",
+      "editButton": "Edit",
+      "editAria": "Edit: {{rule}}",
+      "deleteAria": "Delete: {{rule}}",
+      "deleteConfirm": "Delete?",
+      "deleteConfirmAria": "Tap again to delete",
+      "try": {
+        "label": "Try an amount",
+        "some": "{{n}} Bits would:",
+        "none": "Nothing happens for {{n}} Bits.",
+        "off": "Listening is off, so nothing would happen right now."
+      },
+      "moreTitle": "Testing and timing",
+      "testEvents": "Also react to test Bits from the Events page",
+      "testHint": "Test Bits change your real wins and wheel, just like real ones. Turn this off again when you're done testing.",
+      "window": "Only cheers after you turn listening on (or save a change) count. A cheer that reaches us more than 5 minutes late is skipped.",
+      "more": "+{{n}} more",
+      "cond": {
+        "exact": "{{n}} Bits",
+        "between": "{{min}}–{{max}} Bits",
+        "atLeast": "{{n}}+ Bits",
+        "atMost": "Up to {{n}} Bits"
+      },
+      "match": {
+        "exact": "Exactly",
+        "between": "Between",
+        "atLeast": "At least",
+        "atMost": "At most"
+      },
+      "role": {
+        "current": "Current role",
+        "killer": "Killer",
+        "survivor": "Survivor",
+        "both": "Both roles"
+      },
+      "do": {
+        "removeWins": "Remove {{n}} wins",
+        "removeWinsOne": "Remove 1 win",
+        "resetWins": "Reset wins to 0",
+        "addWinTarget": "Raise the win goal by {{n}}",
+        "addWinTargetOne": "Raise the win goal by 1",
+        "setWinTarget": "Set the win goal to {{n}}",
+        "addRandom": "Add {{n}} random perks to the wheel",
+        "addRandomOne": "Add 1 random perk to the wheel",
+        "addChosen": "Add {{names}} to the wheel",
+        "addChosenSlots": "Add {{names}} to the wheel (+{{n}} slots each)",
+        "removeRandom": "Remove {{n}} random perks from the wheel",
+        "removeRandomOne": "Remove 1 random perk from the wheel",
+        "removeChosen": "Remove {{names}} from the wheel"
+      },
+      "act": {
+        "remove-wins": {
+          "name": "Remove wins",
+          "copy": "Viewers knock your streak back."
+        },
+        "reset-wins": {
+          "name": "Reset wins",
+          "copy": "Back to zero."
+        },
+        "add-win-target": {
+          "name": "Raise the goal",
+          "copy": "You permanently need more wins."
+        },
+        "set-win-target": {
+          "name": "Set the goal",
+          "copy": "Change how many wins you need."
+        },
+        "add-perks": {
+          "name": "Add perks",
+          "copy": "Put perks on the wheel or give them more slots."
+        },
+        "remove-perks": {
+          "name": "Remove perks",
+          "copy": "Take perks off the wheel."
+        }
+      },
+      "amount": {
+        "remove-wins": "Wins to remove",
+        "add-win-target": "Wins to add to the goal",
+        "set-win-target": "New win goal",
+        "random": "How many perks",
+        "chosen": "Slots each perk gains"
+      },
+      "edit": {
+        "newTitle": "New Bits action",
+        "editTitle": "Edit Bits action",
+        "when": "When someone cheers",
+        "then": "Then",
+        "details": "Details",
+        "bits": "Bits",
+        "from": "From",
+        "to": "To",
+        "invalidBits": "Use whole numbers from 1 up.",
+        "invalidRange": "“To” must be more than “From”.",
+        "invalidAmount": "Use a whole number from {{min}} to {{max}}.",
+        "group": {
+          "wins": "Wins",
+          "perks": "Perk wheel"
+        },
+        "whichPerks": "Which perks",
+        "pick": {
+          "random": "Random perks",
+          "chosen": "Pick perks"
+        },
+        "role": "Role",
+        "less": "One less",
+        "more": "One more",
+        "removeHint": "The wheel always keeps at least {{n}} perks, so a removal may take away fewer than asked.",
+        "randomAddHint": "Only perks you turned off can come back. Right now {{killer}} killer and {{survivor}} survivor perks are off.",
+        "pickHint": "Perks that are off get turned on. Perks already on get extra slots, up to 5.",
+        "chosenLabel": "Picked perks",
+        "unpick": "Remove {{name}}",
+        "pickCount": "{{n}} of {{max}} picked",
+        "search": "Search perks",
+        "noneChosen": "Pick at least one perk.",
+        "summary": "When someone cheers {{bits}}:",
+        "save": "Save action"
+      }
+    },
+    "pool": {
+      "title": "What's on the roulette",
+      "subtitle": "Choose which characters and perks can be drawn. Perks can also take extra slots on the wheel or get extra luck.",
+      "tabsLabel": "Roulette lists",
+      "tab": {
+        "killers": "Killers",
+        "survivors": "Survivors",
+        "killerPerks": "Killer perks",
+        "survivorPerks": "Survivor perks"
+      },
+      "tooFew": "Only a few {{role}} perks are on. Keep at least {{n}} on, or a full loadout can't be drawn.",
+      "tune": "Slots & weight",
+      "tuneHint": "Slots: how many times a perk appears on the wheel. Weight: extra luck per slot, without taking more space.",
+      "resetTuning": "Reset slots & weight",
+      "slots": "Slots",
+      "weight": "Weight",
+      "slotsChip": "{{n}} slots",
+      "weightChip": "{{n}}× luck",
+      "chanceAria": "{{pct}} chance on the first spin",
+      "less": "{{what}} −1: {{name}}",
+      "more": "{{what}} +1: {{name}}",
+      "slotsOf": "{{name}}: {{n}} slots",
+      "weightOf": "{{name}}: weight {{n}}",
+      "howTitle": "How chances work",
+      "how": "Chance = (slots × weight) ÷ everyone's (slots × weight) for that role. Perks already drawn this round sit out, so later spins shift a little. Bits actions can never take a wheel below {{n}} perks.",
+      "changedElsewhere": "A Bits action changed the roulette while you were editing. Saving replaces it with your version.",
+      "discard": "Discard",
+      "oddsShort": "Slots {{slots}} · Weight {{weight}}",
+      "tuneAria": "Slots and weight: {{name}}, {{pct}} chance",
+      "save": "Save roulette"
+    }
   },
   "errors": {
     "codeLabel": "Error {{code}}",

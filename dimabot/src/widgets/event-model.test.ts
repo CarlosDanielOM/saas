@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { Types } from 'mongoose';
 import { initial, start } from './model.js';
-import { applyDbdEventRules, defaultEventSettings, eventSettings } from './event-model.js';
+import { applyDbdEventRules, defaultEventSettings, eventSettings, MIN_WHEEL_PERKS } from './event-model.js';
+import { catalog } from './catalog.js';
 import type { DomainEventEnvelope } from '../domain_events/domain_event.types.js';
 
 const rule = { id: 'remove', enabled: true, event: 'channel.bits.received', minBits: 100, maxBits: 100, action: { type: 'remove-wins', role: 'current', amount: 1 } };
@@ -58,4 +59,63 @@ test('invalid actions, duplicate IDs, unsafe amounts and unknown settings are re
   ];
   for (const value of invalid) assert.throws(() => eventSettings(value, 1000), { code: 'invalid' });
   for (const bits of [0, -1, 1.5, '100', NaN, Number.MAX_SAFE_INTEGER + 1]) assert.equal(applyDbdEventRules(initial(), eventSettings(config(), 1000).rules, event(bits)), false);
+});
+
+const perkIds = (role: 'killer' | 'survivor') => catalog.entries.filter(e => e.kind === 'perk' && e.role === role && e.available).map(e => e.id);
+const run = (action: Record<string, unknown>, state = initial(), bits = 100) => {
+  applyDbdEventRules(state, eventSettings({ ...config(), rules: [{ ...rule, action }] }, 1000).rules, event(bits)); return state;
+};
+
+test('random perk adds bring back only perks that are off, for the requested role', () => {
+  const killer = perkIds('killer'), state = initial();
+  state.config.excludedIds = killer.slice(0, 3);
+  run({ type: 'add-perks', role: 'current', amount: 2, perkIds: [] }, state);
+  assert.equal(state.config.excludedIds.length, 1);
+  run({ type: 'add-perks', role: 'killer', amount: 5, perkIds: [] }, state);
+  assert.deepEqual(state.config.excludedIds, []);
+  assert.deepEqual(state.config.perkTuning, {});
+});
+
+test('chosen perk adds turn a perk on, then add wheel slots up to the limit regardless of rule role', () => {
+  const [perk] = perkIds('survivor'), state = initial();
+  state.config.excludedIds = [perk];
+  run({ type: 'add-perks', role: 'current', amount: 1, perkIds: [perk] }, state);
+  assert.deepEqual(state.config.excludedIds, []); assert.equal(state.config.perkTuning?.[perk], undefined);
+  run({ type: 'add-perks', role: 'killer', amount: 2, perkIds: [perk] }, state);
+  assert.deepEqual(state.config.perkTuning?.[perk], { copies: 3, weight: 1 });
+  run({ type: 'add-perks', role: 'both', amount: 5, perkIds: [perk] }, state);
+  assert.deepEqual(state.config.perkTuning?.[perk], { copies: 5, weight: 1 });
+});
+
+test('perk removals keep at least four perks on the wheel and clear extra slots', () => {
+  const killer = perkIds('killer'), state = initial();
+  state.config.perkTuning = { [killer[0]]: { copies: 3, weight: 2 } };
+  run({ type: 'remove-perks', role: 'killer', amount: 1, perkIds: [killer[0]] }, state);
+  assert.deepEqual(state.config.excludedIds, [killer[0]]);
+  assert.deepEqual(state.config.perkTuning, { [killer[0]]: { copies: 1, weight: 2 } }, 'weight survives, slots reset');
+  state.config.excludedIds = killer.slice(6);
+  run({ type: 'remove-perks', role: 'current', amount: 10, perkIds: [] }, state);
+  assert.equal(killer.filter(id => !state.config.excludedIds.includes(id)).length, MIN_WHEEL_PERKS);
+  run({ type: 'remove-perks', role: 'killer', amount: 1, perkIds: killer.slice(0, 4) }, state);
+  assert.equal(killer.filter(id => !state.config.excludedIds.includes(id)).length, MIN_WHEEL_PERKS);
+});
+
+test('added win requirements stack up to twenty and keep current wins', () => {
+  const state = initial(); state.wins = { killer: 2, survivor: 1 };
+  run({ type: 'add-win-target', role: 'both', amount: 2 }, state);
+  assert.deepEqual(state.config.targets, { killer: 5, survivor: 6 });
+  run({ type: 'add-win-target', role: 'killer', amount: 20 }, state);
+  assert.equal(state.config.targets!.killer, 20); assert.deepEqual(state.wins, { killer: 2, survivor: 1 });
+});
+
+test('perk actions reject non-perk IDs, too many perks and out-of-range amounts', () => {
+  const character = catalog.entries.find(e => e.kind === 'character')!.id, perk = perkIds('killer')[0];
+  for (const action of [
+    { type: 'add-perks', role: 'killer', amount: 1, perkIds: [character] },
+    { type: 'add-perks', role: 'killer', amount: 1, perkIds: perkIds('killer').slice(0, 21) },
+    { type: 'add-perks', role: 'killer', amount: 6, perkIds: [perk] },
+    { type: 'remove-perks', role: 'killer', amount: 11, perkIds: [] },
+    { type: 'remove-perks', role: 'killer', amount: 1 },
+    { type: 'add-win-target', role: 'killer', amount: 0 }
+  ]) assert.throws(() => eventSettings({ ...config(), rules: [{ ...rule, action }] }, 1000), { code: 'invalid' });
 });

@@ -1,0 +1,156 @@
+<section class="lf-tile bits" aria-labelledby="bits-title" data-testid="bits-actions">
+  <div class="bits-head">
+    <div><h2 id="bits-title"><app-lf-icon name="bits" />{{ t('bits.title') }}</h2><p>{{ t('bits.subtitle') }}</p></div>
+    <button type="button" class="lf-switch" role="switch" [attr.aria-checked]="listening()" (click)="toggleListening()" [disabled]="disabled() || !settings()" data-testid="bits-listen"><span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>{{ t('bits.listen') }}</button>
+  </div>
+  @if (settings()) {
+    <div class="bits-status" [class]="'bits-status tone-' + status().tone" aria-live="polite"><span class="status-dot" aria-hidden="true"></span><div><strong>{{ status().title }}</strong><p>{{ status().detail }}</p></div></div>
+  }
+  @if (rules().length) {
+    <ul class="rules" [attr.aria-label]="t('bits.listLabel')">
+      @for (rule of rules(); track rule.id) {
+        <li class="rule" [class.off]="!rule.enabled" [class.hit]="trialMatches().includes(rule)" data-testid="bits-rule">
+          <span class="bits-pill"><app-lf-icon name="bits" [size]="14" />{{ condition(rule) }}</span>
+          <span class="rule-text"><strong>{{ describe(rule) }}</strong>@if (roleChip(rule); as role) { <span class="chip">{{ role }}</span> }</span>
+          <span class="rule-tools">
+            <button type="button" class="lf-switch bare" role="switch" [attr.aria-checked]="rule.enabled" [attr.aria-label]="t('bits.ruleOn', {rule: condition(rule) + ': ' + describe(rule)})" (click)="toggleRule(rule)" [disabled]="disabled()"><span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span></button>
+            <button type="button" (click)="openEdit(rule)" [disabled]="disabled()" [attr.aria-label]="t('bits.editAria', {rule: condition(rule) + ': ' + describe(rule)})">{{ t('bits.editButton') }}</button>
+            <button type="button" class="icon danger" [class.confirm]="confirmDelete() === rule.id" (click)="remove(rule)" [disabled]="disabled()" [attr.aria-label]="confirmDelete() === rule.id ? t('bits.deleteConfirmAria') : t('bits.deleteAria', {rule: condition(rule) + ': ' + describe(rule)})">@if (confirmDelete() === rule.id) { {{ t('bits.deleteConfirm') }} } @else { <app-lf-icon name="trash" /> }</button>
+          </span>
+        </li>
+      }
+    </ul>
+    <div class="list-foot">
+      <button type="button" class="add" (click)="openNew()" [disabled]="disabled() || rules().length >= maxRules" data-testid="bits-add"><app-lf-icon name="plus" />{{ t('bits.add') }}</button>
+      <p class="hint">{{ rules().length >= maxRules ? t('bits.limit', {n: maxRules}) : t('bits.order') }}</p>
+    </div>
+  } @else if (settings()) {
+    <div class="empty">
+      <p>{{ t('bits.empty') }}</p>
+      <div class="ideas">
+        @for (item of ideas(); track $index) {
+          <button type="button" class="idea" (click)="openNew(item.idea)" [disabled]="disabled()"><span class="bits-pill"><app-lf-icon name="bits" [size]="14" />{{ condition(item.rule) }}</span><span>{{ describe(item.rule) }}</span></button>
+        }
+      </div>
+      <button type="button" class="primary add" (click)="openNew()" [disabled]="disabled()" data-testid="bits-add"><app-lf-icon name="plus" />{{ t('bits.add') }}</button>
+    </div>
+  }
+  @if (rules().length) {
+    <div class="trial">
+      <label for="bits-trial">{{ t('bits.try.label') }}</label>
+      <div class="trial-input"><input id="bits-trial" type="number" min="1" step="1" inputmode="numeric" [value]="trial()" (input)="onTrial($event)" data-testid="bits-trial" /><span>Bits</span></div>
+      <div class="trial-result" aria-live="polite">
+        @if (trialMatches().length) {
+          <p>{{ t('bits.try.some', {n: trial().toLocaleString()}) }}</p>
+          <ol>@for (rule of trialMatches(); track rule.id) { <li>{{ describe(rule) }}@if (roleChip(rule); as role) { <span class="chip">{{ role }}</span> }</li> }</ol>
+          @if (!listening()) { <p class="hint warn">{{ t('bits.try.off') }}</p> }
+        } @else {
+          <p>{{ t('bits.try.none', {n: (trial() || 0).toLocaleString()}) }}</p>
+        }
+      </div>
+    </div>
+  }
+  @if (settings(); as settings) {
+    <details class="bits-more"><summary>{{ t('bits.moreTitle') }}</summary>
+      <label class="checkbox"><input type="checkbox" [checked]="settings.allowTestEvents" (change)="toggleTestEvents()" [disabled]="disabled()" />{{ t('bits.testEvents') }}</label>
+      <p class="hint">{{ t('bits.testHint') }}</p>
+      <p class="hint">{{ t('bits.window') }}</p>
+    </details>
+  }
+</section>
+
+<dialog #ruleDialog class="lf-dialog rule-dialog" (cancel)="closeEditor()" aria-labelledby="rule-title">
+  @if (draft(); as d) {
+    <form (submit)="$event.preventDefault(); submit()" novalidate>
+      <header class="dialog-head"><h2 id="rule-title">{{ editing() ? t('bits.edit.editTitle') : t('bits.edit.newTitle') }}</h2><button type="button" class="icon ghost" (click)="closeEditor()" [attr.aria-label]="t('cancel')"><app-lf-icon name="close" /></button></header>
+      <div class="dialog-body">
+        <section class="step">
+          <h3><span class="num" aria-hidden="true">1</span>{{ t('bits.edit.when') }}</h3>
+          <div class="chip-row" role="radiogroup" [attr.aria-label]="t('bits.edit.when')">
+            @for (m of matches; track m) { <label class="pill"><input type="radio" name="bits-match" [checked]="d.match === m" (change)="patch({match: m})" />{{ t('bits.match.' + m) }}</label> }
+          </div>
+          <div class="bits-inputs">
+            @if (d.match === 'between') {
+              <label>{{ t('bits.edit.from') }}<input type="number" min="1" step="1" inputmode="numeric" [value]="d.from" (input)="patch({from: num($event)})" [attr.aria-invalid]="submitted() && !!errors()['bits']" /></label>
+              <label>{{ t('bits.edit.to') }}<input type="number" min="1" step="1" inputmode="numeric" [value]="d.to" (input)="patch({to: num($event)})" [attr.aria-invalid]="submitted() && !!errors()['bits']" /></label>
+            } @else {
+              <label>{{ t('bits.edit.bits') }}<input type="number" min="1" step="1" inputmode="numeric" [value]="d.from" (input)="patch({from: num($event)})" [attr.aria-invalid]="submitted() && !!errors()['bits']" data-testid="bits-amount" /></label>
+            }
+          </div>
+          @if (submitted() && errors()['bits']) { <p class="invalid" role="alert">{{ errors()['bits'] }}</p> }
+        </section>
+        <section class="step">
+          <h3><span class="num" aria-hidden="true">2</span>{{ t('bits.edit.then') }}</h3>
+          @for (group of actionGroups; track group.group) {
+            <fieldset class="choice-group"><legend>{{ t('bits.edit.group.' + group.group) }}</legend>
+              <div class="choices">
+                @for (a of group.items; track a.type) {
+                  <label class="choice" [class.on]="d.type === a.type"><input type="radio" name="bits-action" [checked]="d.type === a.type" (change)="chooseType(a.type)" [attr.data-testid]="'bits-action-' + a.type" /><strong>{{ t('bits.act.' + a.type + '.name') }}</strong><small>{{ t('bits.act.' + a.type + '.copy') }}</small></label>
+                }
+              </div>
+            </fieldset>
+          }
+        </section>
+        <section class="step">
+          <h3><span class="num" aria-hidden="true">3</span>{{ t('bits.edit.details') }}</h3>
+          @if (perkAction()) {
+            <div class="chip-row" role="radiogroup" [attr.aria-label]="t('bits.edit.whichPerks')">
+              <label class="pill"><input type="radio" name="bits-pick" [checked]="d.pick === 'random'" (change)="choosePick('random')" />{{ t('bits.edit.pick.random') }}</label>
+              <label class="pill"><input type="radio" name="bits-pick" [checked]="d.pick === 'chosen'" (change)="choosePick('chosen')" data-testid="bits-pick-chosen" />{{ t('bits.edit.pick.chosen') }}</label>
+            </div>
+          }
+          @if (showRole()) {
+            <fieldset><legend>{{ t('bits.edit.role') }}</legend>
+              <div class="chip-row">@for (r of roles; track r) { <label class="pill"><input type="radio" name="bits-role" [checked]="d.role === r" (change)="patch({role: r})" />{{ t('bits.role.' + r) }}</label> }</div>
+            </fieldset>
+          }
+          @if (needsAmount()) {
+            <div class="amount">
+              <span id="bits-amount-label">{{ t('bits.amount.' + (perkAction() ? d.pick : d.type)) }}</span>
+              <div class="stepper">
+                <button type="button" (click)="step(-1)" [disabled]="d.amount <= amountRange().min" [attr.aria-label]="t('bits.edit.less')">−</button>
+                <input type="number" step="1" inputmode="numeric" [min]="amountRange().min" [max]="amountRange().max" [value]="d.amount" (input)="patch({amount: num($event)})" aria-labelledby="bits-amount-label" [attr.aria-invalid]="submitted() && !!errors()['amount']" />
+                <button type="button" (click)="step(1)" [disabled]="d.amount >= amountRange().max" [attr.aria-label]="t('bits.edit.more')">+</button>
+              </div>
+            </div>
+            @if (submitted() && errors()['amount']) { <p class="invalid" role="alert">{{ errors()['amount'] }}</p> }
+          }
+          @if (d.type === 'remove-perks') { <p class="hint">{{ t('bits.edit.removeHint', {n: minWheel}) }}</p> }
+          @if (d.type === 'add-perks' && d.pick === 'random') { <p class="hint">{{ t('bits.edit.randomAddHint', offCounts()) }}</p> }
+          @if (d.type === 'add-perks' && d.pick === 'chosen') { <p class="hint">{{ t('bits.edit.pickHint') }}</p> }
+          @if (perkAction() && d.pick === 'chosen') {
+            <div class="picker">
+              @if (chosenPerks().length) {
+                <ul class="chosen" [attr.aria-label]="t('bits.edit.chosenLabel')">
+                  @for (entry of chosenPerks(); track entry.id) { <li><span>{{ label(entry) }}</span><button type="button" class="icon ghost" (click)="togglePerk(entry)" [attr.aria-label]="t('bits.edit.unpick', {name: label(entry)})"><app-lf-icon name="close" [size]="14" /></button></li> }
+                </ul>
+              }
+              <p class="hint">{{ t('bits.edit.pickCount', {n: d.perkIds.length, max: maxChosen}) }}</p>
+              <div class="picker-tools">
+                <div class="filters" role="group" [attr.aria-label]="t('bits.edit.role')">
+                  <button type="button" [attr.aria-pressed]="perkRole() === 'killer'" (click)="choosePerkRole('killer')">{{ t('pool.tab.killerPerks') }}</button>
+                  <button type="button" [attr.aria-pressed]="perkRole() === 'survivor'" (click)="choosePerkRole('survivor')">{{ t('pool.tab.survivorPerks') }}</button>
+                </div>
+                <input type="search" [value]="perkQuery()" (input)="onPerkQuery($event)" [attr.aria-label]="t('bits.edit.search')" [placeholder]="t('bits.edit.search')" />
+              </div>
+              <div class="perk-list">
+                @for (entry of shownPerks(); track entry.id) {
+                  <label class="perk"><input type="checkbox" [checked]="d.perkIds.includes(entry.id)" [disabled]="!d.perkIds.includes(entry.id) && d.perkIds.length >= maxChosen" (change)="togglePerk(entry)" />@if (!failedImages().has(entry.id)) { <img [ngSrc]="entry.image_url" width="32" height="32" alt="" (error)="imageFailed(entry)" /> }<span>{{ label(entry) }}</span></label>
+                } @empty { <p class="hint">{{ t('noMatches') }}</p> }
+              </div>
+              @if (perkMatches().length > shownPerks().length) { <button type="button" (click)="morePerks()">{{ t('loadMore') }}</button> }
+              @if (submitted() && errors()['perks']) { <p class="invalid" role="alert">{{ errors()['perks'] }}</p> }
+            </div>
+          }
+        </section>
+      </div>
+      <footer class="dialog-foot">
+        @if (draftRule(); as rule) {
+          @if (!errors()['bits']) { <p class="summary" aria-live="polite"><span>{{ t('bits.edit.summary', {bits: condition(rule)}) }}</span> <strong>{{ describe(rule) }}</strong>@if (roleChip(rule); as role) { <span class="chip">{{ role }}</span> }</p> }
+        }
+        @if (error() && submitted()) { <p class="invalid" role="alert">{{ error() }}</p> }
+        <div class="foot-actions"><button type="button" (click)="closeEditor()">{{ t('cancel') }}</button><button class="primary" type="submit" [disabled]="disabled()" data-testid="bits-save">{{ awaitingSave() ? t('saving') : t('bits.edit.save') }}</button></div>
+      </footer>
+    </form>
+  }
+</dialog>

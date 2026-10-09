@@ -1,0 +1,56 @@
+<section class="lf-tile pool" aria-labelledby="pool-title" data-testid="roulette-pool">
+  <div><h2 id="pool-title">{{ t('pool.title') }}</h2><p>{{ t('pool.subtitle') }}</p></div>
+  <div class="tabs" role="group" [attr.aria-label]="t('pool.tabsLabel')">
+    @for (tab of tabs; track tab.id) {
+      <button type="button" [attr.aria-pressed]="activeTab().id === tab.id" (click)="chooseTab(tab.id)" [attr.data-testid]="'pool-tab-' + tab.id"><span>{{ t('pool.tab.' + tab.key) }}</span><span class="count">{{ counts()[tab.id].on }}/{{ counts()[tab.id].total }}</span></button>
+    }
+  </div>
+  @for (role of tooFewPerks(); track role) { <p class="warn-line" role="status">{{ t('pool.tooFew', {role: t('role.' + role), n: minWheel}) }}</p> }
+  <fieldset [disabled]="disabled()">
+    <div class="tools">
+      <input type="search" [value]="query()" (input)="onQuery($event)" [attr.aria-label]="t('search')" [placeholder]="t('search')" />
+      <div class="tool-buttons">
+        <button type="button" (click)="setAll(true)">{{ t('enableMatching') }}</button>
+        <button type="button" (click)="setAll(false)">{{ t('disableMatching') }}</button>
+        @if (isPerkTab()) { <button type="button" class="tune-toggle" [attr.aria-pressed]="tuning()" (click)="toggleTuning()" data-testid="pool-tune">{{ t('pool.tune') }}</button> }
+      </div>
+    </div>
+    @if (isPerkTab() && tuning()) {
+      <div class="tune-help"><p class="hint">{{ t('pool.tuneHint') }}</p>@if (tunedCount()) { <button type="button" class="ghost" (click)="resetTuning()">{{ t('pool.resetTuning') }}</button> }</div>
+    }
+    <ul class="entries" [class.perks]="isPerkTab()" [class.tuning]="isPerkTab() && tuning()">
+      @for (entry of shown(); track entry.id) {
+        <li class="entry" [class.off]="!on(entry)" data-testid="pool-entry">
+          <label class="entry-main"><input type="checkbox" [checked]="on(entry)" (change)="toggle(entry)" />@if (!failedImages().has(entry.id)) { <img [ngSrc]="entry.image_url" width="32" height="38" alt="" (error)="imageFailed(entry)" /> }<span class="name">{{ label(entry) }}@if (!entry.available) { <small>{{ t('ownedOnly') }}</small> }</span></label>
+          @if (isPerkTab() && on(entry)) {
+            @if (tuning() && !wide()) {
+              <button type="button" class="odds odds-btn" [attr.aria-expanded]="expanded() === entry.id" (click)="toggleExpanded(entry)" [attr.aria-label]="t('pool.tuneAria', {name: label(entry), pct: chance(entry)})" data-testid="pool-odds">
+                <span class="chance">{{ chance(entry) }}</span><span class="odds-detail">{{ t('pool.oddsShort', {slots: copies(entry), weight: weight(entry)}) }}</span><app-lf-icon name="chevron-down" [size]="14" />
+              </button>
+            } @else {
+              <span class="odds">
+                @if (copies(entry) > 1) { <span class="chip">{{ t('pool.slotsChip', {n: copies(entry)}) }}</span> }
+                @if (weight(entry) > 1) { <span class="chip gold">{{ t('pool.weightChip', {n: weight(entry)}) }}</span> }
+                <span class="chance"><span aria-hidden="true">{{ chance(entry) }}</span><span class="sr-only">{{ t('pool.chanceAria', {pct: chance(entry)}) }}</span></span>
+              </span>
+            }
+            @if (showTuners(entry)) {
+              <span class="tuners">
+                <span class="tuner"><span class="tuner-label">{{ t('pool.slots') }}</span><button type="button" (click)="tune(entry, 'copies', -1)" [disabled]="copies(entry) <= 1" [attr.aria-label]="t('pool.less', {what: t('pool.slots'), name: label(entry)})">−</button><output [attr.aria-label]="t('pool.slotsOf', {name: label(entry), n: copies(entry)})">{{ copies(entry) }}</output><button type="button" (click)="tune(entry, 'copies', 1)" [disabled]="copies(entry) >= maxCopies" [attr.aria-label]="t('pool.more', {what: t('pool.slots'), name: label(entry)})" data-testid="pool-more-slots">+</button></span>
+                <span class="tuner"><span class="tuner-label">{{ t('pool.weight') }}</span><button type="button" (click)="tune(entry, 'weight', -1)" [disabled]="weight(entry) <= 1" [attr.aria-label]="t('pool.less', {what: t('pool.weight'), name: label(entry)})">−</button><output [attr.aria-label]="t('pool.weightOf', {name: label(entry), n: weight(entry)})">{{ weight(entry) }}</output><button type="button" (click)="tune(entry, 'weight', 1)" [disabled]="weight(entry) >= maxWeight" [attr.aria-label]="t('pool.more', {what: t('pool.weight'), name: label(entry)})" data-testid="pool-more-weight">+</button></span>
+              </span>
+            }
+          }
+        </li>
+      } @empty { <li class="hint">{{ t('noMatches') }}</li> }
+    </ul>
+    @if (entries().length > shown().length) { <button type="button" class="load-more" (click)="more()">{{ t('loadMore') }}</button> }
+    <label class="checkbox"><input type="checkbox" [checked]="pool().includeUnavailable" (change)="setIncludeUnavailable(!pool().includeUnavailable)" />{{ t('unavailable') }}</label>
+  </fieldset>
+  <details class="pool-how"><summary>{{ t('pool.howTitle') }}</summary><p>{{ t('pool.how', {n: minWheel}) }}</p></details>
+  @if (changedElsewhere()) { <p class="warn-line" role="alert">{{ t('pool.changedElsewhere') }}</p> }
+  <div class="save-row lf-save-bar">
+    <span>{{ dirty() ? t('unsaved') : t('allSaved') }}</span>
+    <span class="save-actions">@if (dirty()) { <button type="button" class="ghost" (click)="discard()" [disabled]="disabled()">{{ t('pool.discard') }}</button> }<button type="button" class="primary" (click)="submit()" [disabled]="disabled() || !dirty()" data-testid="pool-save">{{ t('pool.save') }}</button></span>
+  </div>
+</section>

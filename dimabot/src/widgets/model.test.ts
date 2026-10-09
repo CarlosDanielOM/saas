@@ -149,3 +149,31 @@ test('legacy completed loadouts survive normalization before changing the curren
   assert.equal(state.loadouts!.killer.characterId,character);
   assert.throws(()=>domain.layout({...domain.defaultLayout(),toString:'unknown'}),{code:'invalid'});
 });
+
+test('perk slots spread evenly and each slot wins with its perk weight', () => {
+  const state = domain.initial();
+  const perks = domain.pool(state, 'perk').slice(0, 3).map(e => e.id);
+  state.config = domain.config({ ...state.config, perkTuning: { [perks[0]]: { copies: 5, weight: 1 }, [perks[1]]: { copies: 1, weight: 4 }, [perks[2]]: { copies: 1, weight: 1 } } });
+  assert.deepEqual(state.config.perkTuning, { [perks[0]]: { copies: 5, weight: 1 }, [perks[1]]: { copies: 1, weight: 4 } }, 'defaults stay implicit');
+  const slots = domain.slots(state, domain.pool(state, 'perk')), total = domain.pool(state, 'perk').length + 4;
+  assert.equal(slots.length, total);
+  assert.equal(slots.filter(id => id === perks[0]).length, 5);
+  for (let i = 0; i < slots.length; i++) assert.notEqual(slots[i], slots[(i + 1) % slots.length], 'copies never touch, even across the wrap');
+  // Ticket space is the sum of slot weights: the weighted perk owns 4 tickets, the 5-slot perk owns 5.
+  const won = new Map<string, number>();
+  for (let ticket = 0; ticket < total + 3; ticket++) {
+    const fresh = domain.initial(); fresh.config = state.config; choice = ticket;
+    domain.start(fresh, 1000, 'perks');
+    const draw = fresh.run!.draw!;
+    assert.equal(randomBound, total + 3); assert.equal(draw.poolIds[draw.slot!], draw.itemId);
+    won.set(draw.itemId, (won.get(draw.itemId) ?? 0) + 1);
+  }
+  assert.equal(won.get(perks[0]), 5); assert.equal(won.get(perks[1]), 4); assert.equal(won.get(perks[2]), 1);
+  choice = 0;
+});
+
+test('perk tuning is limited to known perks and sane slot and weight ranges', () => {
+  const state = domain.initial(), perk = domain.pool(state, 'perk')[0].id, character = domain.pool(state, 'character')[0].id;
+  for (const perkTuning of [{ [character]: { copies: 2, weight: 1 } }, { unknown: { copies: 2, weight: 1 } }, { [perk]: { copies: 6, weight: 1 } }, { [perk]: { copies: 1, weight: 11 } }, { [perk]: { copies: 1, weight: 1, odds: 2 } }])
+    assert.throws(() => domain.config({ ...state.config, perkTuning }), { code: 'invalid' });
+});

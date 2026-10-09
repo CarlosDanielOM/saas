@@ -22,21 +22,26 @@ async function portrait(route){
  })());
  try{await route.fulfill(await portraitCache.get(url));}catch{await route.fulfill({status:404,body:''});}
 }
-async function fixture({width=1280,tier='pro',theme='dark',lang='en',owner=true,path='/modules/widgets/dbd'}={}){
+async function fixture({width=1280,tier='pro',theme='dark',lang='en',owner=true,path='/modules/widgets/dbd',seedEvents=null}={}){
  const context=await browser.newContext({viewport:{width,height:1000},permissions:['clipboard-read','clipboard-write']});
  const user={id:'991801',login:'widgetfixture',display_name:'Widget Fixture'};
  const app={name:'Widget Fixture',email:'test@example.invalid',language:lang,plan_tier:tier,actived:true,chat_enabled:true,twitch_user_id:user.id,has_permissions:true,up_to_date_permissions:true,administrating:owner?[]:[{channelID:'991802',channelName:'other'}]};
  await context.addInitScript(({user,app,theme,lang})=>{localStorage.setItem('dimasite.session.v1',JSON.stringify({version:2,token:'fixture',createdAt:new Date().toISOString(),expiresAt:new Date(Date.now()+3e6).toISOString(),twitchUser:user,appUser:app,permissions:{}}));localStorage.setItem('userLanguage',lang);localStorage.setItem('dimasite.theme',theme);document.addEventListener('DOMContentLoaded',()=>document.documentElement.classList.toggle('dark',theme==='dark'));},{user,app,theme,lang});
  const sequence=()=>({character:true,fixedCharacterId:null,poll:true,perks:true,perkCount:4});
  const layout={cameraCorner:'bottom-right',cameraWidth:512,cameraHeight:288,loadoutMode:'detailed',autoCompact:true,progressStyle:'badges',showActive:true,showInfo:true,showProgress:true,hideActiveDuringGameplay:true};
- const state={wins:{killer:2,survivor:0},loadouts:{killer:{characterId:null,perkIds:[]},survivor:{characterId:null,perkIds:[]}},revision:1,serverTime:Date.now(),packId:'dbd-killer-challenge',visible:false,config:{language:lang,characterDesign:'cards',spinSeconds:1,pollSeconds:15,channelPointsVoting:false,channelPointsPerVote:100,includeUnavailable:false,excludedIds:[],sequences:{killer:sequence(),survivor:sequence()},layout,targets:{killer:3,survivor:4}},phase:'idle',run:null,nextAt:null};
+ const state={wins:{killer:2,survivor:0},loadouts:{killer:{characterId:null,perkIds:[]},survivor:{characterId:null,perkIds:[]}},revision:1,serverTime:Date.now(),packId:'dbd-killer-challenge',visible:false,config:{language:lang,characterDesign:'cards',spinSeconds:1,pollSeconds:15,channelPointsVoting:false,channelPointsPerVote:100,includeUnavailable:false,excludedIds:[],perkTuning:{},sequences:{killer:sequence(),survivor:sequence()},layout,targets:{killer:3,survivor:4}},phase:'idle',run:null,nextAt:null};
  const wireState=()=>({...state,phase:state.phase==='character-result'?'character-spin':state.phase==='perk-result'?'perk-spin':state.phase,resultPhase:['character-result','perk-result'].includes(state.phase)?state.phase:undefined});
  const actionLog=[],receipts=new Map();
+ let events=seedEvents??{enabled:false,active:false,activeSince:null,allowTestEvents:false,rules:[]};
  let writes=0,widgetReads=0,conflict=false,failRead=false,lostResponse=false,manualDraw=false,widgetSocket;
  const role=()=>state.packId.includes('-survivor-')?'survivor':'killer';
  const draw=(kind)=>{
   const pool=catalog.entries.filter(e=>e.role===role()&&e.kind===kind&&e.available&&!state.config.excludedIds.includes(e.id)&&!state.run.perkIds.includes(e.id));
-  state.run.draw={id:crypto.randomUUID(),kind,design:kind==='perk'?'wheel':state.config.characterDesign,itemId:pool.at(-1).id,poolIds:pool.map(e=>e.id),startedAt:Date.now(),endsAt:Date.now()+1000};
+  // Same slot order as the server: extra perk slots round-robin; the winner is a later copy when one exists.
+  const copies=e=>kind==='perk'?state.config.perkTuning?.[e.id]?.copies??1:1,poolIds=[];
+  for(let c=1;c<=Math.max(1,...pool.map(copies));c++)for(const e of pool)if(c<=copies(e))poolIds.push(e.id);
+  const slot=poolIds.lastIndexOf(kind==='perk'?(pool.find(e=>copies(e)>1)??pool.at(-1)).id:pool.at(-1).id);
+  state.run.draw={id:crypto.randomUUID(),kind,design:kind==='perk'?'wheel':state.config.characterDesign,itemId:poolIds[slot],poolIds,slot,startedAt:Date.now(),endsAt:Date.now()+1000};
   state.phase=kind==='perk'?'perk-spin':'character-spin';state.nextAt=state.run.draw.endsAt;
  };
  const afterCharacter=()=>{
@@ -73,7 +78,7 @@ async function fixture({width=1280,tier='pro',theme='dark',lang='en',owner=true,
    widgetReads++;if(!['premium','pro'].includes(tier))return route.fulfill({status:403,json:{error:true,code:'premium_required'}});
    if(failRead&&req.method()==='GET')return route.fulfill({status:503,json:{error:true}});
    finish();state.serverTime=Date.now();
-   if(req.method()==='GET')data=url.pathname.endsWith('/catalog')?catalog:structuredClone(wireState());
+   if(req.method()==='GET')data=url.pathname.endsWith('/catalog')?catalog:url.pathname.endsWith('/events')?{revision:state.revision,settings:structuredClone(events)}:structuredClone(wireState());
    else{
     const body=req.postDataJSON()||{};
     if(url.pathname.endsWith('/overlay-token')){state.revision++;data={token:'a'.repeat(43)};}
@@ -86,7 +91,9 @@ async function fixture({width=1280,tier='pro',theme='dark',lang='en',owner=true,
      if(receipts.has(key))return route.fulfill({json:{error:false,status:200,data:structuredClone(wireState())}});
      receipts.set(key,true);
      if(action==='role'){state.packId=`dbd-${body.role}-challenge`;state.run=null;state.phase='idle';}
-     if(action==='configure')state.config=body;
+     // The server merges partial config saves (pool and settings save separately).
+     if(action==='configure')state.config={...state.config,...body};
+     if(action==='events')events={...body,activeSince:body.enabled&&body.active?Date.now():null};
      if(action==='layout')state.config.layout=body;
      if(action==='progress')state.wins[body.role]=Math.max(0,Math.min(state.config.targets[body.role],state.wins[body.role]+body.delta));
      if(action==='hide')state.visible=false;if(action==='show')state.visible=true;
@@ -107,9 +114,9 @@ async function fixture({width=1280,tier='pro',theme='dark',lang='en',owner=true,
  });
  const page=await context.newPage();const errors=[];page.on('pageerror',error=>errors.push(error.message));
  await page.goto(base+`/${owner?'widgetfixture':'other'}${path}`);
- return {context,page,state,writes:()=>writes,reads:()=>widgetReads,errors,actions:actionLog,setLost:()=>lostResponse=true,publish:()=>{manualDraw=true;state.serverTime=Date.now();state.revision++;widgetSocket.send('42/overlays/widgets/991801,'+JSON.stringify(['widgets-state',wireState()]));},setConflict:()=>conflict=true,setFail:v=>failRead=v};
+ return {context,page,state,events:()=>events,writes:()=>writes,reads:()=>widgetReads,errors,actions:actionLog,setLost:()=>lostResponse=true,publish:()=>{manualDraw=true;state.serverTime=Date.now();state.revision++;widgetSocket.send('42/overlays/widgets/991801,'+JSON.stringify(['widgets-state',wireState()]));},setConflict:()=>conflict=true,setFail:v=>failRead=v};
 }
-const axeClean=async(page,include)=>{const result=await new AxeBuilder({page}).include(include).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();assert.deepEqual(result.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>n.target)})),[]);};
+const axeClean=async(page,include)=>{const result=await new AxeBuilder({page}).include(include).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();if(process.env.AXE_DEBUG)for(const v of result.violations)for(const n of v.nodes)console.log(v.id,n.target,n.failureSummary);assert.deepEqual(result.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>n.target)})),[]);};
 const overflow=async page=>assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'no horizontal overflow');
 const wait=async(page)=>page.waitForTimeout(1750);
 const canvasGeometry=async page=>page.getByTestId('widget-canvas').evaluate(frame=>{
@@ -197,10 +204,93 @@ try{
  assert.deepEqual(await page.locator('[data-testid=widget-progress] app-widget-streak.survivor [data-state=fresh]').evaluate(e=>[getComputedStyle(e.querySelector('.light')).display,getComputedStyle(e.querySelector('.lid')).animationName]),['none','none']);await page.emulateMedia({reducedMotion:'no-preference'});const frame=await page.getByTestId('widget-canvas').boundingBox();close(frame.width,1280);close(frame.height,720);
  f.state.visible=false;f.publish();await page.getByTestId('widget-canvas').waitFor({state:'hidden'});f.state.visible=true;f.publish();await page.getByTestId('widget-canvas').waitFor();
  if(shots)await page.screenshot({path:`${shots}/obs-source.png`,fullPage:true});assert.deepEqual(f.errors,[]);await f.context.close();
+
+ // Bits actions + roulette pool: every save is checked on the wire; nothing leaves the mock.
+ {
+  const killerPerks=catalog.entries.filter(e=>e.role==='killer'&&e.kind==='perk'&&e.available),survivors=catalog.entries.filter(e=>e.role==='survivor'&&e.kind==='character'&&e.available);
+  const b=await fixture(),{page}=b,bits=page.getByTestId('bits-actions'),dialog=page.locator('dialog.rule-dialog');
+  const eventWrites=()=>b.actions.filter(a=>a.action==='events').length,lastEvents=()=>b.actions.filter(a=>a.action==='events').at(-1).body;
+  await page.getByTestId('start-sequence').waitFor();
+  await bits.getByText("Bits don't change anything right now",{exact:true}).waitFor();
+  assert.equal(await bits.locator('.idea').count(),4);
+  await bits.locator('.idea').first().click();await dialog.waitFor();await axeClean(page,'dialog.rule-dialog');
+  assert.equal(await dialog.getByTestId('bits-amount').inputValue(),'100');
+  await dialog.getByRole('radio',{name:'Between',exact:true}).check();await dialog.getByLabel('From',{exact:true}).fill('100');await dialog.getByLabel('To',{exact:true}).fill('50');
+  await dialog.getByTestId('bits-save').click();await dialog.getByText('“To” must be more than “From”.',{exact:true}).waitFor();assert.equal(eventWrites(),0,'invalid range never saves');
+  await dialog.getByLabel('To',{exact:true}).fill('499');
+  await dialog.getByTestId('bits-action-remove-perks').check();await dialog.getByTestId('bits-pick-chosen').check();
+  await dialog.getByTestId('bits-save').click();await dialog.getByText('Pick at least one perk.',{exact:true}).waitFor();assert.equal(eventWrites(),0);
+  await dialog.locator('.perk input').nth(0).check();await dialog.locator('.perk input').nth(1).check();
+  await until(async()=>(await dialog.locator('.summary').innerText()).includes('When someone cheers 100–499 Bits:'),'live summary');
+  await dialog.getByTestId('bits-save').click();await dialog.waitFor({state:'hidden'});
+  let rules=lastEvents().rules;assert.equal(rules.length,1);assert.deepEqual([rules[0].minBits,rules[0].maxBits,rules[0].action.type,rules[0].action.amount,rules[0].action.perkIds.length],[100,499,'remove-perks',1,2]);
+  assert.deepEqual(rules[0].action.perkIds,killerPerks.slice(0,2).map(e=>e.id));
+  await bits.getByTestId('bits-add').click();await dialog.waitFor();
+  await dialog.getByRole('radio',{name:'At least',exact:true}).check();await dialog.getByTestId('bits-amount').fill('1000');
+  await dialog.getByTestId('bits-action-add-win-target').check();await dialog.getByRole('radio',{name:'Both roles',exact:true}).check();await dialog.getByRole('button',{name:'One more',exact:true}).click();
+  await dialog.getByTestId('bits-save').click();await dialog.waitFor({state:'hidden'});
+  rules=lastEvents().rules;assert.equal(rules.length,2);assert.deepEqual({min:rules[1].minBits,max:rules[1].maxBits,action:rules[1].action},{min:1000,max:null,action:{type:'add-win-target',role:'both',amount:2}});
+  await bits.getByText('Raise the win goal by 2',{exact:true}).waitFor();assert.equal(await bits.getByTestId('bits-rule').count(),2);
+  // Simulator answers "what would N Bits do?" from the saved rules.
+  await bits.getByTestId('bits-trial').fill('1200');await until(async()=>await bits.locator('.rule.hit').count()===1,'1200 matches the 1000+ rule');await bits.getByText('1,200 Bits would:',{exact:true}).waitFor();
+  await bits.getByTestId('bits-trial').fill('50');await bits.getByText('Nothing happens for 50 Bits.',{exact:true}).waitFor();assert.equal(await bits.locator('.rule.hit').count(),0);
+  await bits.getByTestId('bits-listen').click();await until(()=>b.events().enabled&&b.events().active,'listening saved');
+  await bits.getByText(/^Listening for Bits since /).waitFor();await page.locator('.head-chips').getByText('Bits: listening',{exact:true}).waitFor();
+  await bits.getByRole('switch',{name:/^100–499 Bits: .* on$/}).click();await until(()=>b.events().rules[0].enabled===false,'rule switch saved');assert.equal(b.events().rules.length,2);
+  const beforeDelete=eventWrites(),trash=bits.getByRole('button',{name:/^Delete: 1,000\+ Bits/});
+  await trash.click();await bits.getByRole('button',{name:'Tap again to delete',exact:true}).waitFor();assert.equal(eventWrites(),beforeDelete,'first tap only arms delete');
+  await bits.getByRole('button',{name:'Tap again to delete',exact:true}).click();await until(()=>b.events().rules.length===1,'second tap deletes');
+  await bits.getByRole('button',{name:/^Edit: 100–499 Bits/}).click();await dialog.getByText('Edit Bits action',{exact:true}).waitFor();assert.equal(await dialog.locator('.chosen li').count(),2);
+  const quietEdit=eventWrites();await dialog.getByRole('button',{name:'Cancel',exact:true}).last().click();await dialog.waitFor({state:'hidden'});assert.equal(eventWrites(),quietEdit);
+  // Pool: perk slots + weight save on their own, without the settings form.
+  const pool=page.getByTestId('roulette-pool');
+  await pool.getByTestId('pool-tab-killer-perk').click();await pool.getByTestId('pool-tune').click();
+  const row=pool.getByTestId('pool-entry').first(),before=await row.locator('.chance').innerText();
+  await row.getByTestId('pool-more-slots').click();await row.getByTestId('pool-more-slots').click();await row.getByTestId('pool-more-weight').click();
+  await row.getByText('3 slots',{exact:true}).waitFor();await row.getByText('2× luck',{exact:true}).waitFor();assert.notEqual(await row.locator('.chance').innerText(),before,'chance follows slots × weight');
+  assert(await page.getByTestId('start-sequence').isDisabled(),'unsaved pool blocks starting');
+  await pool.getByTestId('pool-save').click();await until(async()=>!(await pool.getByTestId('pool-save').isEnabled()),'pool saved');
+  let configure=b.actions.filter(a=>a.action==='configure').at(-1).body;assert.deepEqual(Object.keys(configure).sort(),['excludedIds','includeUnavailable','perkTuning']);
+  assert.deepEqual(configure.perkTuning,{[killerPerks[0].id]:{copies:3,weight:2}});
+  await pool.getByTestId('pool-tab-survivor-character').click();await pool.getByTestId('pool-entry').first().locator('input[type=checkbox]').uncheck();await pool.getByTestId('pool-save').click();
+  await until(()=>b.state.config.excludedIds.includes(survivors[0].id),'survivor excluded');assert.deepEqual(b.state.config.perkTuning,{[killerPerks[0].id]:{copies:3,weight:2}});
+  await page.getByLabel('Character roulette style',{exact:true}).selectOption('reel');await page.getByRole('button',{name:'Save settings',exact:true}).click();
+  await until(()=>b.state.config.characterDesign==='reel','settings saved');configure=b.actions.filter(a=>a.action==='configure').at(-1).body;
+  assert(!('excludedIds' in configure)&&!('perkTuning' in configure),'settings never resend the pool');assert(b.state.config.excludedIds.includes(survivors[0].id));
+  // A Bits change to the wheel while editing is called out instead of silently lost.
+  await pool.getByTestId('pool-tab-killer-perk').click();await pool.getByTestId('pool-entry').nth(2).locator('input[type=checkbox]').uncheck();
+  b.state.config={...b.state.config,excludedIds:[...b.state.config.excludedIds,killerPerks[5].id]};b.state.revision++;
+  await pool.getByText('A Bits action changed the roulette while you were editing. Saving replaces it with your version.',{exact:true}).waitFor({timeout:6000});
+  await pool.getByRole('button',{name:'Discard',exact:true}).click();await pool.getByText('All changes saved',{exact:true}).waitFor();
+  // OBS wheel: a perk with 3 slots appears 3 times and lands on the exact winning slot.
+  await page.getByTestId('draw-perk').click();await page.locator('app-roulette-display .display[data-design=wheel][data-state=done]').waitFor({timeout:7000});
+  const drawn=b.state.run.draw;assert.equal(drawn.poolIds.filter(id=>id===killerPerks[0].id).length,3);assert.equal(drawn.itemId,killerPerks[0].id);
+  assert.equal(await page.locator('app-roulette-display .display').getAttribute('data-winner'),`${drawn.itemId}~3`,'lands on the third copy the server picked');
+  await overflow(page);assert.deepEqual(b.errors,[]);await b.context.close();console.log('PASS Bits actions + roulette pool behaviour');
+  const seedEvents={enabled:true,active:true,activeSince:Date.now()-3600_000,allowTestEvents:false,rules:[
+   {id:'r1',enabled:true,event:'channel.bits.received',minBits:100,maxBits:100,action:{type:'remove-wins',role:'current',amount:1}},
+   {id:'r2',enabled:true,event:'channel.bits.received',minBits:500,maxBits:999,action:{type:'add-perks',role:'current',amount:2,perkIds:killerPerks.slice(0,4).map(e=>e.id)}},
+   {id:'r3',enabled:false,event:'channel.bits.received',minBits:1,maxBits:99,action:{type:'remove-perks',role:'both',amount:2,perkIds:[]}},
+   {id:'r4',enabled:true,event:'channel.bits.received',minBits:5000,maxBits:null,action:{type:'reset-wins',role:'both'}}]};
+  for(const [width,theme,lang] of [[320,'dark','en'],[390,'dark','en'],[390,'light','es'],[1280,'dark','en'],[1280,'light','en']]){
+   const v=await fixture({width,theme,lang,seedEvents}),vp=v.page;await vp.getByTestId('bits-rule').first().waitFor();
+   const vpool=vp.getByTestId('roulette-pool');await vpool.getByTestId('pool-tab-killer-perk').click();await vpool.getByTestId('pool-tune').click();
+   // Phones open one perk's steppers at a time; desktop shows them inline on every row.
+   if(width<960){assert.equal(await vpool.locator('.tuners').count(),0);await vpool.getByTestId('pool-entry').first().getByTestId('pool-odds').click();await until(async()=>await vpool.locator('.tuners').count()===1,'one perk opens');}
+   else await until(async()=>await vpool.locator('.tuners').count()>10,'desktop steppers inline');
+   await vpool.getByTestId('pool-entry').first().getByTestId('pool-more-slots').click();
+   await overflow(vp);await axeClean(vp,'[data-testid="widgets-page"]');
+   if(shots){await vp.getByTestId('bits-actions').screenshot({path:`${shots}/bits-${width}-${theme}-${lang}.png`});await vpool.screenshot({path:`${shots}/pool-${width}-${theme}-${lang}.png`});}
+   await vp.getByTestId('bits-rule').nth(1).getByRole('button',{name:lang==='es'?'Editar':'Edit'}).click();await vp.locator('dialog.rule-dialog').waitFor();
+   await axeClean(vp,'dialog.rule-dialog');await overflow(vp);
+   if(shots)await vp.screenshot({path:`${shots}/bits-dialog-${width}-${theme}-${lang}.png`});
+   assert.deepEqual(v.errors,[]);await v.context.close();console.log(`PASS Bits + pool visuals ${width}px ${theme} ${lang}`);
+  }
+ }
  const hub=await fixture({path:'/modules/widgets'});await hub.page.getByTestId('widget-dbd').click();await hub.page.waitForURL(/\/modules\/widgets\/dbd$/);await hub.page.getByTestId('widgets-page').waitFor();assert.deepEqual(hub.errors,[]);await hub.context.close();
  const hubFree=await fixture({tier:'free',path:'/modules/widgets'});await hubFree.page.getByText('Widgets Alpha requires Premium',{exact:true}).waitFor();assert.equal(await hubFree.page.getByTestId('widget-dbd').count(),0);await axeClean(hubFree.page,'[data-testid="widgets-hub"]');await hubFree.context.close();
  const freeGate=await fixture({tier:'free'});await freeGate.page.getByText('Widgets Alpha requires Premium',{exact:true}).waitFor();assert.equal(freeGate.reads(),0);await freeGate.context.close();
  const premium=await fixture({tier:'premium'});await premium.page.getByTestId('role-survivor').waitFor();assert(premium.reads()>0);assert.deepEqual(premium.errors,[]);await premium.context.close();
  const spanish=await fixture({lang:'es',width:390});await spanish.page.getByRole('button',{name:'Iniciar ronda',exact:true}).waitFor();await overflow(spanish.page);await axeClean(spanish.page,'[data-testid="widgets-page"]');assert.deepEqual(spanish.errors,[]);await spanish.context.close();
- console.log('PASS unified DBD browser: plain-language round status and step track, skull/hatch win animations (control, preview, OBS, undo, local preview, reduced motion), one control center, per-role fixed character/skip settings, standalone actions, four existing roulette styles, result holds, every camera corner/size, compact alignment, progress, single OBS link, hidden cards, poll confirmation, uncertain-response replay, visibility, Pro gate, EN/ES, light/dark, mobile/desktop, AXE');
+ console.log('PASS unified DBD browser: Bits actions (ideas, ranges, validation, chosen/random perks, goal raise, simulator, listen switch, rule switch, two-tap delete), roulette pool (four tabs, slots/weight/chance, separate save, remote-change warning, weighted OBS wheel), plain-language round status and step track, skull/hatch win animations (control, preview, OBS, undo, local preview, reduced motion), one control center, per-role fixed character/skip settings, standalone actions, four existing roulette styles, result holds, every camera corner/size, compact alignment, progress, single OBS link, hidden cards, poll confirmation, uncertain-response replay, visibility, Pro gate, EN/ES, light/dark, mobile/desktop, AXE');
 }finally{await browser.close();}
