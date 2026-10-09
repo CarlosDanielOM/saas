@@ -6887,7 +6887,7 @@
     "setup": "Prepara la escena",
     "fighters": "Los luchadores",
     "outcome": "¿Quién gana?",
-    "outcomeHint": "Sin ganador predeterminado: cada turno sortea el tipo de ataque, el daño, la habilidad del defensor y la opción de atacar otra vez.",
+    "outcomeHint": "Sin ganador predeterminado: cada turno sortea el tipo de ataque, el daño, los golpes críticos, la habilidad del defensor, las curaciones y la opción de atacar otra vez.",
     "applyHint": "Los cambios de nombre se aplican al repetir. Cada repetición es un combate nuevo.",
     "choice": {
       "random": "Sorpréndeme",
@@ -6909,7 +6909,7 @@
       "winner": "Tenemos un ganador"
     },
     "indexTitle": "Duelo · Overlay de combate",
-    "indexDescription": "Combate por turnos entre dos de tres luchadores animados: ataques normales, fuertes y especiales, habilidades defensivas, turnos extra, barras de vida con daño residual, golpe final y anuncio del ganador.",
+    "indexDescription": "Combate por turnos entre dos de tres luchadores animados: ataques normales, fuertes y especiales, golpes críticos, habilidades defensivas, curaciones, turnos extra, barras de vida con daño residual, golpe final y anuncio del ganador.",
     "turn": "Turno {{n}}",
     "extraTurn": "¡Turno extra!",
     "move": {
@@ -6936,7 +6936,14 @@
       "knight": "¡Bloqueado!",
       "ronin": "¡Esquivado!",
       "mage": "¡Absorbido!"
-    }
+    },
+    "heal": {
+      "knight": "Bendición del Ángel",
+      "ronin": "Poción Curativa",
+      "mage": "Glifos de Vida"
+    },
+    "crit": "Crítico",
+    "healsLeft": "{{n}} curaciones restantes"
   },
   "duelWidget": {
     "back": "Todos los widgets",
@@ -6980,7 +6987,7 @@
     "how": "Cómo funciona un duelo",
     "stepChallenge": "Un espectador desafía a otro:",
     "stepAccept": "El espectador desafiado acepta en 3 minutos:",
-    "stepWinner": "Los luchadores se turnan: casi siempre un ataque normal, a veces uno fuerte, rara vez uno especial, con una pequeña probabilidad de volver a atacar. A veces la habilidad del defensor (Muro de Escudo, Paso Fantasma o Barrera Arcana) detiene un ataque normal o reduce uno fuerte un 80 %; los especiales no se pueden defender. Pierde quien llegue a 0 HP y el chat recibe al ganador.",
+    "stepWinner": "Los luchadores se turnan: casi siempre un ataque normal, a veces uno fuerte, rara vez uno especial, y cualquier golpe puede ser crítico y hacer el doble de daño. A veces la habilidad del defensor (Muro de Escudo, Paso Fantasma o Barrera Arcana) detiene un ataque normal o reduce uno fuerte un 80 %; los especiales no se pueden defender. Un luchador herido puede curarse hasta 3 veces y cualquiera puede atacar dos veces seguidas. Pierde quien llegue a 0 HP y el chat recibe al ganador.",
     "fallback": "Con el overlay conectado, el chat permanece en silencio hasta el ganador. Sin él, el chat narra la batalla.",
     "challengeTitle": "¡@{{name}}, te han desafiado!",
     "challengeFrom": "@{{name}} te espera en la arena. Acepta en 3 minutos.",

@@ -32,7 +32,14 @@
 .health-right.active .health-label strong::before { content:'◆ '; color:var(--hp-color) }
 .health.low { --hp-color:#ff5f6d }
 .health.low .fill { animation:low-hp .8s steps(2) infinite }
-.fighter-role { display:block; margin-top:6px; color:#ada6bf; font-size:1.7cqw; letter-spacing:.09em; text-transform:uppercase }
+.health-meta { display:flex; justify-content:space-between; align-items:center; gap:4px; margin-top:6px }
+.health-right .health-meta { flex-direction:row-reverse }
+/* Heal charges: full green crosses, spent ones turn into dashed empty slots. */
+.heal-charges { display:flex; gap:.6cqw; flex-shrink:0 }
+.health-right .heal-charges { flex-direction:row-reverse }
+.heal-charges i { display:grid; place-items:center; width:2.4cqw; min-width:12px; aspect-ratio:1; border-radius:50%; font-style:normal; font-size:1.4cqw; line-height:1; color:#0f3a22; background:#5dff9a; box-shadow:0 0 8px #5dff9a99; transition:background .3s,box-shadow .3s,transform .3s }
+.heal-charges i.used { color:#b6accb; background:transparent; box-shadow:none; outline:1px dashed #b6accb; outline-offset:-1px; transform:scale(.85) }
+.fighter-role { display:block; color:#ada6bf; font-size:1.7cqw; letter-spacing:.09em; text-transform:uppercase }
 .fight-space { position:absolute; inset:0 }
 .fighter-slot { position:absolute; width:var(--fighter-size); left:calc(50% - var(--fight-spread) - var(--fighter-size) / 2); bottom:21%; transition:left .75s ease }
 .fighter-right { left:calc(50% + var(--fight-spread) - var(--fighter-size) / 2) }
@@ -73,6 +80,18 @@
 .fx[data-attacker="right"] { --defc:var(--violet) }
 /* The defender's skill name pops over it as it reacts. */
 .skill-callout { position:absolute; top:32%; left:var(--def); z-index:5; translate:-50% 0; padding:.4cqw 1.2cqw; border-radius:6px; white-space:nowrap; font-size:2.3cqw; font-weight:900; text-transform:uppercase; letter-spacing:.06em; color:#fff; background:#14101fee; border:2px solid var(--defc); box-shadow:0 0 16px var(--defc); animation:skill var(--dur) ease both }
+.fx[data-move="heal"] { --dur:1500ms; --heal:#5dff9a }
+/* Heals: the Knight's angel and light beam, rising crosses or Mage runes, then +HP. */
+.heal-fx { position:absolute; inset:0; pointer-events:none }
+.heal-beam { position:absolute; z-index:1; top:-5%; bottom:20%; left:var(--att); width:16cqw; translate:-50% 0; background:linear-gradient(180deg,#fff6c8,#fff3b0aa 40%,#9dffc433 90%,transparent); filter:blur(4px); animation:heal-beam var(--dur) ease both }
+.angel { position:absolute; z-index:2; top:13%; left:var(--att); width:13cqw; translate:-50% 0; overflow:visible; filter:drop-shadow(0 0 14px #fff6c8); animation:angel var(--dur) ease both }
+.glyphs { position:absolute; z-index:5; top:34%; left:var(--att); width:22cqw; height:30%; translate:-50% 0 }
+.glyphs i { position:absolute; bottom:0; left:calc(var(--n) * 16%); font-style:normal; font-size:2.6cqw; font-weight:900; color:var(--heal); text-shadow:0 0 10px var(--heal); opacity:0; animation:glyph var(--dur) ease-out both; animation-delay:calc(var(--n) * 60ms) }
+.heal-fx[data-character="mage"] .glyphs i { font-size:3.6cqw }
+.heal-number { position:absolute; top:30%; left:var(--def); z-index:6; translate:-50% 0; white-space:nowrap; font-size:5.4cqw; font-weight:900; color:#7dffae; text-shadow:0 2px 0 #0f3a22,0 0 14px #3dff8a; animation:blocked .65s ease-out both }
+.heal-number small { font-size:.45em }
+.health.healing .fill { background:linear-gradient(90deg,var(--hp-color),#7dffae); box-shadow:0 0 12px #5dff9a }
+.health.healing .health-track { box-shadow:0 0 0 2px #5dff9a,0 0 16px #5dff9a }
 .move-callout { position:absolute; bottom:9%; left:50%; z-index:5; padding:.5cqw 1.8cqw; white-space:nowrap; font-size:3.2cqw; font-weight:950; font-style:italic; letter-spacing:-.02em; text-transform:uppercase; color:#fff7e0; background:linear-gradient(90deg,transparent,#14101fee 12%,#14101fee 88%,transparent); border-block:2px solid var(--fx); text-shadow:0 0 12px var(--fx); animation:callout var(--dur) ease both }
 .fx[data-move="special"] .move-callout { font-size:4.2cqw }
 .extra-turn { position:absolute; top:32%; left:var(--att); z-index:5; translate:-50% 0; padding:.4cqw 1.2cqw; border-radius:99px; white-space:nowrap; font-size:2.3cqw; font-weight:900; text-transform:uppercase; letter-spacing:.06em; color:#14101f; background:var(--fx); box-shadow:0 0 18px var(--fx); animation:extra var(--dur) ease both }
@@ -93,6 +112,10 @@
 /* Defended hits: a cool clang for shield/ward, no contact at all for a dodge. */
 .impact-fx[data-defended] .hit-spark { width:9cqw; margin-left:-4.5cqw; top:40%; filter:hue-rotate(180deg) saturate(.6) }
 .impact-fx[data-defended="ronin"] .hit-spark { display:none }
+.damage.crit { font-size:7.4cqw; color:#ff5f6d; text-shadow:0 3px 0 #3a0a12,0 0 18px #ff2d4a; text-align:center }
+.impact-fx[data-move="special"] .damage.crit { font-size:9.6cqw }
+.damage b { display:block; font-size:.4em; letter-spacing:.14em; text-transform:uppercase; color:#ffe27a; text-shadow:0 2px 0 #3a0a12 }
+.crit-flash { position:absolute; inset:-5%; z-index:3; background:radial-gradient(circle at var(--def) 45%,#ff5f6d77,transparent 55%); animation:ko-flash .45s ease-out both }
 .hit-spark { position:absolute; top:40%; left:var(--def); width:12cqw; aspect-ratio:1; margin-left:-6cqw; animation:impact .3s ease-out both }
 .impact-fx[data-move="heavy"] .hit-spark { width:17cqw; margin-left:-8.5cqw; top:36% }
 .impact-fx[data-move="special"] .hit-spark { width:24cqw; margin-left:-12cqw; top:31% }
@@ -103,7 +126,7 @@
 .shock-ring { position:absolute; top:34%; left:var(--def); width:20cqw; aspect-ratio:1; margin-left:-10cqw; border-radius:50%; border:.7cqw solid #fff1c9; box-shadow:0 0 22px #ffbd5b; animation:shock .55s ease-out both }
 .impact-fx[data-move="special"] .shock-ring { width:34cqw; margin-left:-17cqw; top:22% }
 .arena[data-shake="heavy"] .fight-space,.arena[data-shake="heavy"] .scenery { animation:shake .3s linear both }
-.arena[data-shake="special"] .fight-space,.arena[data-shake="special"] .scenery { animation:shake-big .5s linear both }
+.arena[data-shake="special"] .fight-space,.arena[data-shake="special"] .scenery,.arena[data-shake="crit"] .fight-space,.arena[data-shake="crit"] .scenery { animation:shake-big .5s linear both }
 .arena[data-phase="knockout"] .fight-space { animation:ko-zoom 1.9s ease both }
 .ko-flash { position:absolute; inset:0; z-index:6; background:#fff; animation:ko-flash .5s ease-out both; pointer-events:none }
 .center-cue { position:absolute; top:30%; left:0; width:100%; display:grid; justify-items:center; gap:4px; pointer-events:none; z-index:5 }
@@ -139,6 +162,9 @@
 @keyframes dim { 0% { opacity:0 } 12%,50% { opacity:1 } 53% { opacity:1; background-color:#fff6 } 58% { background-color:transparent } 100% { opacity:0 } }
 @keyframes callout { 0% { opacity:0; transform:translateX(-50%) scale(1.6) } 8% { opacity:1; transform:translateX(-50%) scale(1) } 68% { opacity:1; transform:translateX(-50%) scale(1) } 100% { opacity:0; transform:translateX(-50%) scale(.95) } }
 @keyframes blocked { 0% { opacity:0; transform:scale(1.8) } 15% { opacity:1; transform:scale(.95) } 25%,75% { opacity:1; transform:scale(1) } 100% { opacity:0; transform:translateY(-10px) } }
+@keyframes heal-beam { 0%,25% { opacity:0; transform:scaleX(.2) } 45% { opacity:.8; transform:scaleX(1) } 60% { opacity:1; transform:scaleX(1.15) } 85%,100% { opacity:0; transform:scaleX(.6) } }
+@keyframes angel { 0% { opacity:0; transform:translateY(-70%) } 30% { opacity:1; transform:translateY(0) } 45% { transform:translateY(-6%) } 60% { transform:translateY(0) } 75% { opacity:1; transform:translateY(-4%) } 100% { opacity:0; transform:translateY(-70%) } }
+@keyframes glyph { 0%,35% { opacity:0; transform:translateY(30%) scale(.6) } 50% { opacity:1; transform:translateY(0) scale(1) } 85% { opacity:.9 } 100% { opacity:0; transform:translateY(-280%) scale(1.1) } }
 @keyframes skill { 0%,12% { opacity:0; transform:translateY(8px) scale(.6) } 18% { opacity:1; transform:scale(1.12) } 24%,72% { opacity:1; transform:scale(1) } 100% { opacity:0; transform:translateY(-10px) } }
 @keyframes extra { 0% { opacity:0; transform:translateY(10px) scale(.6) } 12% { opacity:1; transform:translateY(0) scale(1.15) } 20%,60% { opacity:1; transform:scale(1) } 100% { opacity:0; transform:translateY(-12px) } }
 @keyframes bolt { 0%,20% { opacity:0; left:var(--att); transform:scale(.3) } 27% { opacity:1; left:var(--att); transform:scale(1) } 35% { opacity:1; left:var(--def) } 45%,100% { left:var(--def); opacity:0; transform:scale(1.6) } }
@@ -158,4 +184,4 @@
 @keyframes winner { from { opacity:0; transform:translateY(14px) } to { opacity:1; transform:translateY(0) } }
 @keyframes confetti { from { opacity:0; transform:translateY(-40px) rotate(0deg) } 20% { opacity:1 } to { opacity:0; transform:translateY(180px) rotate(240deg) } }
 @media(min-width:640px){.arena{aspect-ratio:16/9;--fighter-size:25%;--fight-spread:13%}.arena[data-phase="winner"] .fighter-slot:not([data-action="defeated"]){--fighter-size:20%}.health-label{font-size:2.3cqw}}
-@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}.confetti,.hit-spark,.shock-ring,.special-dim,.projectile,.pillar,.crescent,.ko-flash,.turn-ring{display:none}.damage,.move-callout,.extra-turn,.skill-callout{opacity:1}.move-callout{transform:translateX(-50%)}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}.confetti,.hit-spark,.shock-ring,.special-dim,.projectile,.pillar,.crescent,.ko-flash,.turn-ring{display:none}.damage,.move-callout,.extra-turn,.skill-callout,.heal-number{opacity:1}.heal-beam,.glyphs,.angel,.crit-flash{display:none}.move-callout{transform:translateX(-50%)}}

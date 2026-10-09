@@ -3,10 +3,13 @@
             <div class="arena-label"><span>!duel</span><span>{{ t('arena') }} / 01</span></div>
             <div class="hud">
               @for (side of sides; track side) {
-                <div class="health" [class.health-right]="side === 'right'" [class.active]="attacking(side)" [class.low]="low(side)" [attr.data-side]="side">
+                <div class="health" [class.health-right]="side === 'right'" [class.active]="attacking(side)" [class.low]="low(side)" [class.healing]="healing(side)" [attr.data-side]="side">
                   <div class="health-label"><strong>{{ names()[side] }}</strong><span>{{ health()[side] }} <small>HP</small></span></div>
                   <div class="health-track" role="progressbar" [attr.aria-label]="t('health', {name: names()[side]})" [attr.aria-valuenow]="health()[side]" aria-valuemin="0" aria-valuemax="100"><div class="trail" [style.width.%]="health()[side]"></div><div class="fill" [style.width.%]="health()[side]"></div></div>
-                  <span class="fighter-role">{{ t(side === 'left' ? 'challenger' : 'opponent') }} · {{ t('character.' + battle().fighters[side]) }}</span>
+                  <div class="health-meta">
+                    <span class="fighter-role">{{ t(side === 'left' ? 'challenger' : 'opponent') }} · {{ t('character.' + battle().fighters[side]) }}</span>
+                    <span class="heal-charges" role="img" [attr.aria-label]="t('healsLeft', {n: healsLeft()[side]})">@for (charge of charges; track charge) { <i [class.used]="charge >= healsLeft()[side]" aria-hidden="true">✚</i> }</span>
+                  </div>
                 </div>
               }
             </div>
@@ -28,7 +31,16 @@
                     @if (turn.bonus) { <span class="extra-turn">{{ t('extraTurn') }}</span> }
                     @if (turn.defended) { <span class="skill-callout">{{ skillName(turn) }}</span> }
                     @if (turn.move !== 'normal') { <span class="move-callout">{{ moveName(turn) }}</span> }
-                    @if (battle().fighters[turn.attacker] === 'mage') { <div class="projectile"></div> }
+                    @if (turn.move === 'heal') {
+                      <div class="heal-fx" [attr.data-character]="battle().fighters[turn.attacker]">
+                        @if (battle().fighters[turn.attacker] === 'knight') {
+                          <div class="heal-beam"></div>
+                          <svg class="angel" viewBox="0 0 120 120" aria-hidden="true"><ellipse cx="60" cy="16" rx="16" ry="5" fill="none" stroke="#ffe27a" stroke-width="4"/><path d="M52 50Q18 26 4 44Q22 52 14 66Q34 62 52 64Z" fill="#fff" stroke="#c9d6ff" stroke-width="3"/><path d="M68 50Q102 26 116 44Q98 52 106 66Q86 62 68 64Z" fill="#fff" stroke="#c9d6ff" stroke-width="3"/><circle cx="60" cy="34" r="11" fill="#ffe9cf" stroke="#c9d6ff" stroke-width="3"/><path d="M46 48Q60 42 74 48L84 112H36Z" fill="#fff" stroke="#c9d6ff" stroke-width="3"/><path d="M48 62L36 82M72 62L84 82" stroke="#ffe9cf" stroke-width="6" stroke-linecap="round"/></svg>
+                        }
+                        <div class="glyphs">@for (glyph of glyphs(turn); track $index) { <i [style.--n]="$index">{{ glyph }}</i> }</div>
+                      </div>
+                    }
+                    @else if (battle().fighters[turn.attacker] === 'mage') { <div class="projectile"></div> }
                     @else if (turn.move === 'special' && battle().fighters[turn.attacker] === 'knight') { <div class="pillar"></div> }
                     @else if (turn.move === 'special') { <div class="crescent"><i></i><i></i></div> }
                   </div>
@@ -36,13 +48,17 @@
               }
               @if (impact(); as hit) {
                 @for (index of [turnIndex()]; track index) {
+                  @if (hit.move === 'heal') { <div class="impact-fx heal-impact" [attr.data-target]="hit.attacker"><span class="heal-number">+{{ hit.heal }} <small>HP</small></span></div> }
+                  @else {
                   <div class="impact-fx" [attr.data-target]="target(hit)" [attr.data-move]="hit.move" [attr.data-defended]="hit.defended ? battle().fighters[target(hit)] : null">
-                    @if (!hit.defended) { <span class="damage">−{{ hit.damage }}</span> }
+                    @if (!hit.defended) { <span class="damage" [class.crit]="hit.crit">@if (hit.crit) { <b>{{ t('crit') }}</b> }−{{ hit.damage }}</span> }
                     @else if (hit.damage > 0) { <span class="damage">−{{ hit.damage }} <small>−80%</small></span> }
                     @else { <span class="damage blocked">{{ defenseResult(hit) }}</span> }
                     <div class="hit-spark"><i></i><i></i><i></i><i></i></div>
-                    @if (hit.move !== 'normal' && !hit.defended) { <div class="shock-ring"></div> }
+                    @if ((hit.move !== 'normal' || hit.crit) && !hit.defended) { <div class="shock-ring"></div> }
+                    @if (hit.crit && !hit.defended) { <div class="crit-flash"></div> }
                   </div>
+                  }
                 }
               }
             </div>

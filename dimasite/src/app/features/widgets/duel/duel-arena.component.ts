@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { LanguageService } from '../../../services/language.service';
 import { DuelFighterComponent } from './duel-fighter.component';
-import { DuelBattle, DuelMove, DuelSide, DuelTurn, MAX_HP, MOVES, legacyBattle, otherSide } from './duel-battle';
+import { DuelBattle, DuelMove, DuelSide, DuelTurn, HEAL, MAX_HP, legacyBattle, otherSide, timing } from './duel-battle';
 type Phase = 'ready' | 'entrance' | 'countdown' | 'fight' | 'knockout' | 'winner';
 /** How long the damage number, sparks and screen shake stay after a hit lands. */
 const IMPACT_MS = 650;
@@ -39,7 +39,7 @@ export class DuelArenaComponent {
   /** The turn being animated, until its attacker has recovered. */
   readonly currentTurn = computed<DuelTurn | null>(() => {
     const turn = this.battle().turns[this.turnIndex()];
-    return turn && this.elapsed() < turn.at + MOVES[turn.move].duration ? turn : null;
+    return turn && this.elapsed() < turn.at + timing(turn.move).duration ? turn : null;
   });
   readonly impact = computed(() => {
     const turn = this.currentTurn(), time = this.elapsed();
@@ -48,9 +48,18 @@ export class DuelArenaComponent {
   readonly health = computed(() => {
     const health = { left: MAX_HP, right: MAX_HP };
     if (this.started()) for (const turn of this.battle().turns) {
-      if (this.elapsed() >= turn.hitAt) health[otherSide(turn.attacker)] = Math.max(0, health[otherSide(turn.attacker)] - turn.damage);
+      if (this.elapsed() < turn.hitAt) break;
+      if (turn.move === 'heal') health[turn.attacker] = Math.min(MAX_HP, health[turn.attacker] + (turn.heal ?? 0));
+      else health[otherSide(turn.attacker)] = Math.max(0, health[otherSide(turn.attacker)] - turn.damage);
     }
     return health;
+  });
+  readonly charges = Array.from({ length: HEAL.perFighter }, (_, index) => index);
+  /** A heal charge is spent as soon as the fighter starts healing. */
+  readonly healsLeft = computed(() => {
+    const left = { left: HEAL.perFighter, right: HEAL.perFighter }, time = this.elapsed();
+    if (this.started()) for (const turn of this.battle().turns) if (turn.move === 'heal' && turn.at <= time) left[turn.attacker]--;
+    return left;
   });
   readonly winnerName = computed(() => this.names()[this.winner()]);
 
@@ -61,7 +70,8 @@ export class DuelArenaComponent {
     if (this.phase() === 'winner' && side === this.winner()) return 'victory';
     const turn = this.currentTurn();
     if (!turn) return 'idle';
-    if (turn.attacker === side) return 'attack';
+    if (turn.attacker === side) return turn.move === 'heal' ? 'heal' : 'attack';
+    if (turn.move === 'heal') return 'idle';
     // A defender with a skill reacts during the attacker's windup.
     if (turn.defended && this.elapsed() >= turn.at + (turn.hitAt - turn.at) * .4) return 'defend';
     return this.elapsed() >= turn.hitAt ? 'hit' : 'idle';
@@ -69,21 +79,27 @@ export class DuelArenaComponent {
   /** Changes whenever a one-shot animation must restart (e.g. two attacks in a row). */
   actionKey(side: DuelSide): string {
     const action = this.action(side);
-    return action === 'attack' || action === 'hit' || action === 'defend' ? `${action}-${this.turnIndex()}` : action;
+    return action === 'attack' || action === 'hit' || action === 'defend' || action === 'heal' ? `${action}-${this.turnIndex()}` : action;
   }
   move(side: DuelSide): DuelMove {
     // An attacker shows its own move; a defender reacts to the incoming one.
-    return this.currentTurn()?.move ?? (this.health()[side] === 0 ? this.battle().turns.at(-1)?.move ?? 'normal' : 'normal');
+    const move = this.currentTurn()?.move ?? (this.health()[side] === 0 ? this.battle().turns.at(-1)?.move ?? 'normal' : 'normal');
+    return move === 'heal' ? 'normal' : move;
   }
   low(side: DuelSide): boolean { return this.started() && this.health()[side] > 0 && this.health()[side] <= 30; }
   attacking(side: DuelSide): boolean { return this.phase() === 'fight' && this.currentTurn()?.attacker === side; }
   target(turn: DuelTurn): DuelSide { return otherSide(turn.attacker); }
   /** Defended normal hits shake nothing; everything else shakes by move weight. */
-  readonly shake = computed(() => { const hit = this.impact(); return hit && !hit.defended ? hit.move : null; });
+  readonly shake = computed(() => { const hit = this.impact(); return !hit || hit.defended || hit.move === 'heal' ? null : hit.crit ? 'crit' : hit.move; });
+  /** Green flash on the HP bar of a fighter that has just healed. */
+  healing(side: DuelSide): boolean { const turn = this.impact(); return turn?.move === 'heal' && turn.attacker === side; }
   skillName(turn: DuelTurn): string { return this.t('skill.' + this.battle().fighters[this.target(turn)]); }
   defenseResult(turn: DuelTurn): string { return this.t('defenseResult.' + this.battle().fighters[this.target(turn)]); }
+  /** Healing signs rising around the fighter: runes for the Mage, crosses otherwise. */
+  glyphs(turn: DuelTurn): string[] { return this.battle().fighters[turn.attacker] === 'mage' ? ['ᚱ','✚','ᛉ','✚','ᛟ','✚'] : ['✚','✚','✚','✚','✚','✚']; }
   /** Callout for heavy and special moves; specials are named per character. */
   moveName(turn: DuelTurn): string {
-    return turn.move === 'special' ? this.t('special.' + this.battle().fighters[turn.attacker]) : this.t('move.' + turn.move);
+    const character = this.battle().fighters[turn.attacker];
+    return turn.move === 'special' ? this.t('special.' + character) : turn.move === 'heal' ? this.t('heal.' + character) : this.t('move.' + turn.move);
   }
 }

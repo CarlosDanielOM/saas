@@ -25,6 +25,7 @@ import { DuelCharacter, DuelMove } from './duel-battle';
             <path d="M74 136H138V150H74Z" fill="#232738"/><path d="M122 140L134 158M126 140L120 160" stroke="var(--fighter-deep)" stroke-width="5" stroke-linecap="round"/>
             <g class="head"><path d="M84 62Q84 44 106 44 128 44 128 62V80Q118 92 106 92 94 92 84 80Z" fill="#2a2f42" stroke="#171724" stroke-width="5"/><path d="M95 66H103M115 66H123" class="eyes" stroke="var(--fighter-light)" stroke-width="5" stroke-linecap="round"/><path d="M86 74Q106 82 126 74" fill="none" stroke="var(--fighter-deep)" stroke-width="5"/><path d="M48 52L106 16 164 52Q106 64 48 52Z" fill="#d8b36a" stroke="#171724" stroke-width="5" stroke-linejoin="round"/><path d="M72 42Q106 32 140 42M106 18V30" fill="none" stroke="#a8823f" stroke-width="3"/></g>
             <g class="weapon-arm"><path d="M128 100L150 118" stroke="var(--fighter-color)" stroke-width="20" stroke-linecap="round"/><g class="weapon"><path d="M161 108L198 28 203 24 202 33 167 112Z" fill="#f1f5fc" stroke="#171724" stroke-width="3.5"/><path d="M190 42L166 100" stroke="#9baac4" stroke-width="2.5"/><path d="M146 128L158 112" stroke="#6e4b32" stroke-width="9" stroke-linecap="round"/><ellipse cx="160" cy="110" rx="9" ry="5" transform="rotate(-62 160 110)" fill="#ffe2a5" stroke="#171724" stroke-width="3"/><circle cx="152" cy="121" r="9" fill="#2a2f42" stroke="#171724" stroke-width="3"/></g></g>
+            <g class="potion"><rect x="84" y="128" width="8" height="9" rx="2" fill="#a8823f" stroke="#171724" stroke-width="2.5"/><path d="M82 137H94V141Q101 145 100 153 98 162 88 162 78 162 76 153 75 145 82 141Z" fill="#5dff9a" stroke="#171724" stroke-width="3"/><path d="M81 148Q83 144 86 144" stroke="#fff" stroke-width="2.5" stroke-linecap="round" fill="none"/></g>
           }
           @case ('mage') {
             <path class="cloth" d="M82 118Q50 168 38 208H92Z" fill="var(--fighter-deep)" stroke="#171724" stroke-width="5" stroke-linejoin="round"/>
@@ -109,6 +110,19 @@ import { DuelCharacter, DuelMove } from './duel-battle';
     :host([data-action="defend"][data-character="ronin"]) .body { animation:ghost-step var(--def-dur) ease both }
     :host([data-action="defend"][data-character="ronin"]) svg { filter:drop-shadow(22px 0 0 color-mix(in srgb,var(--fighter-light) 45%,transparent)) drop-shadow(44px 0 0 color-mix(in srgb,var(--fighter-light) 22%,transparent)) }
     :host([data-action="defend"][data-move="heavy"]) svg { animation:hit-flash .3s steps(2) calc(var(--def-dur) * .28) }
+    /* Heals (1.5 s, HP lands at 60%): green glow for all, then per-character poses. */
+    .potion { opacity:0; transform-box:fill-box; transform-origin:center }
+    :host([data-action="heal"]) svg { animation:heal-glow 1.5s ease both }
+    :host([data-action="heal"]) .aura { fill:#5dff9a; animation:aura-heal 1.5s ease both }
+    :host([data-action="heal"][data-character="knight"]) .body { animation:pray 1.5s ease both }
+    :host([data-action="heal"][data-character="knight"]) .weapon-arm { animation:lower 1.5s ease both }
+    :host([data-action="heal"][data-character="knight"]) .head { animation:bow 1.5s ease both }
+    :host([data-action="heal"][data-character="ronin"]) .potion { animation:drink 1.5s ease both }
+    :host([data-action="heal"][data-character="ronin"]) .head { animation:tilt-back 1.5s ease both }
+    :host([data-action="heal"][data-character="ronin"]) .back-arm { animation:lift 1.5s ease both }
+    :host([data-action="heal"][data-character="mage"]) .weapon-arm { animation:raise-staff 1.5s ease both }
+    :host([data-action="heal"][data-character="mage"]) .orb { fill:#9dffc4; filter:drop-shadow(0 0 12px #5dff9a) }
+    :host([data-action="heal"][data-character="mage"]) .eyes { filter:drop-shadow(0 0 6px #5dff9a) }
     :host([data-action="defeated"]) .body { animation:fall 1.1s cubic-bezier(.3,.6,.4,1) forwards }
     :host([data-action="defeated"]) .weapon-arm { animation:drop 1.1s ease forwards }
     :host([data-action="victory"]) .body { animation:celebrate 1.2s ease-in-out infinite }
@@ -146,6 +160,15 @@ import { DuelCharacter, DuelMove } from './duel-battle';
     @keyframes guard { 0%,8% { opacity:0; transform:scale(.4) } 20% { opacity:.9; transform:scale(1) } 28% { opacity:1; transform:scale(1.08); filter:brightness(1.8) drop-shadow(0 0 14px #fff) } 36%,72% { opacity:.85; transform:scale(1) } 100% { opacity:0; transform:scale(1.1) } }
     @keyframes shield-up { 18%,75% { transform:translate(88px,-14px) rotate(6deg) } 28% { transform:translate(80px,-12px) rotate(2deg) } 100% { transform:none } }
     @keyframes ghost-step { 0% { transform:none; opacity:1 } 18%,70% { transform:translateX(-52px) skewX(-8deg); opacity:.55 } 100% { transform:none; opacity:1 } }
+    @keyframes heal-glow { 0%,40% { filter:none } 58%,78% { filter:drop-shadow(0 0 4px #5dff9a) drop-shadow(0 0 14px #5dff9a) brightness(1.15) } 100% { filter:none } }
+    @keyframes aura-heal { 0%,25% { opacity:0; transform:scale(.7) } 60% { opacity:.55; transform:scale(1.05) } 78% { opacity:.35 } 100% { opacity:0; transform:scale(1.15) } }
+    @keyframes pray { 15%,80% { transform:translateY(8px) rotate(3deg) } 100% { transform:none } }
+    @keyframes lower { 15%,80% { transform:rotate(48deg) } 100% { transform:none } }
+    @keyframes bow { 15%,45% { transform:rotate(10deg) } 60%,80% { transform:rotate(-8deg) } 100% { transform:none } }
+    @keyframes drink { 0% { opacity:0; transform:none } 12% { opacity:1; transform:none } 35%,60% { opacity:1; transform:translate(22px,-64px) rotate(-130deg) } 75% { opacity:1; transform:translate(4px,-10px) rotate(-20deg) } 88%,100% { opacity:0; transform:none } }
+    @keyframes tilt-back { 30%,60% { transform:rotate(-14deg) } 100% { transform:none } }
+    @keyframes lift { 30%,60% { transform:rotate(-30deg) } 100% { transform:none } }
+    @keyframes raise-staff { 15%,80% { transform:rotate(-16deg) translateY(-14px) } 100% { transform:none } }
     @keyframes fall { 18% { transform:translate(-30px,-10px) rotate(-22deg) } 100% { transform:translate(-20px,14px) rotate(-82deg) } }
     @keyframes drop { 100% { transform:rotate(60deg) } }
     @keyframes celebrate { 50% { transform:translateY(-13px) rotate(-3deg) } }

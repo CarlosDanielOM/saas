@@ -6887,7 +6887,7 @@
     "setup": "Set the scene",
     "fighters": "The fighters",
     "outcome": "Who wins?",
-    "outcomeHint": "No predetermined winner: every turn rolls the attack type, damage, the defender's skill and a chance to strike again.",
+    "outcomeHint": "No predetermined winner: every turn rolls the attack type, damage, critical hits, the defender's skill, heals and a chance to strike again.",
     "applyHint": "Name changes apply on the next replay. Every replay is a new fight.",
     "choice": {
       "random": "Surprise me",
@@ -6909,7 +6909,7 @@
       "winner": "We have a winner"
     },
     "indexTitle": "Duel · Fighting overlay",
-    "indexDescription": "Turn-based battle between two of three animated fighters: normal, heavy and special attacks, defense skills, extra turns, chip-damage health bars, knockout and winner reveal.",
+    "indexDescription": "Turn-based battle between two of three animated fighters: normal, heavy and special attacks, critical hits, defense skills, heals, extra turns, chip-damage health bars, knockout and winner reveal.",
     "turn": "Turn {{n}}",
     "extraTurn": "Extra turn!",
     "move": {
@@ -6936,7 +6936,14 @@
       "knight": "Blocked!",
       "ronin": "Miss!",
       "mage": "Absorbed!"
-    }
+    },
+    "heal": {
+      "knight": "Angel's Blessing",
+      "ronin": "Healing Potion",
+      "mage": "Life Glyphs"
+    },
+    "crit": "Critical",
+    "healsLeft": "{{n}} heals left"
   },
   "duelWidget": {
     "back": "All widgets",
@@ -6980,7 +6987,7 @@
     "how": "How a duel works",
     "stepChallenge": "A viewer challenges someone:",
     "stepAccept": "The challenged viewer accepts within 3 minutes:",
-    "stepWinner": "Fighters take turns: usually a normal attack, sometimes a heavy one, rarely a special, with a small chance to strike again. Sometimes the defender's skill (Shield Wall, Ghost Step or Arcane Ward) stops a normal attack or cuts a heavy one by 80%; specials can't be defended. The first to 0 HP loses, and chat gets the winner.",
+    "stepWinner": "Fighters take turns: usually a normal attack, sometimes a heavy one, rarely a special, and any hit can crit for double damage. Sometimes the defender's skill (Shield Wall, Ghost Step or Arcane Ward) stops a normal attack or cuts a heavy one by 80%; specials can't be defended. Hurt fighters may heal up to 3 times, and anyone can strike twice in a row. The first to 0 HP loses, and chat gets the winner.",
     "fallback": "With the overlay connected, chat stays quiet until the winner. Without it, chat narrates the battle.",
     "challengeTitle": "@{{name}}, you have been challenged!",
     "challengeFrom": "@{{name}} is waiting in the arena. Accept within 3 minutes.",
