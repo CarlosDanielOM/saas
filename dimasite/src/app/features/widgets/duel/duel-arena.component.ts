@@ -62,12 +62,14 @@ export class DuelArenaComponent {
     const turn = this.currentTurn();
     if (!turn) return 'idle';
     if (turn.attacker === side) return 'attack';
+    // A defender with a skill reacts during the attacker's windup.
+    if (turn.defended && this.elapsed() >= turn.at + (turn.hitAt - turn.at) * .4) return 'defend';
     return this.elapsed() >= turn.hitAt ? 'hit' : 'idle';
   }
   /** Changes whenever a one-shot animation must restart (e.g. two attacks in a row). */
   actionKey(side: DuelSide): string {
     const action = this.action(side);
-    return action === 'attack' || action === 'hit' ? `${action}-${this.turnIndex()}` : action;
+    return action === 'attack' || action === 'hit' || action === 'defend' ? `${action}-${this.turnIndex()}` : action;
   }
   move(side: DuelSide): DuelMove {
     // An attacker shows its own move; a defender reacts to the incoming one.
@@ -76,6 +78,10 @@ export class DuelArenaComponent {
   low(side: DuelSide): boolean { return this.started() && this.health()[side] > 0 && this.health()[side] <= 30; }
   attacking(side: DuelSide): boolean { return this.phase() === 'fight' && this.currentTurn()?.attacker === side; }
   target(turn: DuelTurn): DuelSide { return otherSide(turn.attacker); }
+  /** Defended normal hits shake nothing; everything else shakes by move weight. */
+  readonly shake = computed(() => { const hit = this.impact(); return hit && !hit.defended ? hit.move : null; });
+  skillName(turn: DuelTurn): string { return this.t('skill.' + this.battle().fighters[this.target(turn)]); }
+  defenseResult(turn: DuelTurn): string { return this.t('defenseResult.' + this.battle().fighters[this.target(turn)]); }
   /** Callout for heavy and special moves; specials are named per character. */
   moveName(turn: DuelTurn): string {
     return turn.move === 'special' ? this.t('special.' + this.battle().fighters[turn.attacker]) : this.t('move.' + turn.move);

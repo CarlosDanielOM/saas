@@ -35,6 +35,7 @@ import { DuelCharacter, DuelMove } from './duel-battle';
             <path d="M106 96V204" stroke="var(--fighter-light)" stroke-width="7"/><path d="M70 140Q106 152 142 140" fill="none" stroke="#232738" stroke-width="9"/>
             <circle cx="88" cy="176" r="5" fill="var(--fighter-light)"/><circle cx="126" cy="176" r="5" fill="var(--fighter-light)"/><path d="M94 112L100 122M118 112L112 122" stroke="var(--fighter-deep)" stroke-width="4" stroke-linecap="round"/>
             <g class="head"><path d="M76 72Q74 30 108 18Q118 14 126 4Q126 30 140 50Q146 66 138 86Q122 100 106 100Q88 100 76 86Z" fill="var(--fighter-deep)" stroke="#171724" stroke-width="5" stroke-linejoin="round"/><path d="M88 64Q90 48 108 48 126 48 128 64V80Q118 90 108 90 96 90 88 80Z" fill="#14121f"/><g class="eyes"><rect x="96" y="63" width="8" height="5" rx="2" fill="var(--fighter-light)"/><rect x="114" y="63" width="8" height="5" rx="2" fill="var(--fighter-light)"/></g><path d="M84 40Q96 26 112 24" fill="none" stroke="var(--fighter-light)" stroke-width="4" stroke-linecap="round" opacity=".6"/></g>
+            <g class="guard ward"><circle cx="106" cy="122" r="100" fill="var(--fighter-light)" fill-opacity=".14" stroke="var(--fighter-light)" stroke-width="4"/><path d="M106 22L193 72V172L106 222 19 172V72Z" fill="none" stroke="var(--fighter-light)" stroke-width="2.5" stroke-opacity=".6"/><path d="M40 90Q106 60 172 90" fill="none" stroke="#fff" stroke-width="3" stroke-opacity=".5" stroke-linecap="round"/></g>
             <g class="weapon-arm"><path d="M130 100L152 124" stroke="var(--fighter-color)" stroke-width="20" stroke-linecap="round"/><g class="weapon"><path d="M154 212L164 42" stroke="#6e4b32" stroke-width="8" stroke-linecap="round"/><path d="M164 44Q172 24 156 16" fill="none" stroke="#6e4b32" stroke-width="7" stroke-linecap="round"/><circle class="orb" cx="161" cy="30" r="13" fill="var(--fighter-light)" stroke="#171724" stroke-width="4"/><circle cx="157" cy="26" r="4" fill="#fff"/><circle cx="158" cy="126" r="9" fill="var(--fighter-light)" stroke="#171724" stroke-width="3"/></g></g>
           }
           @default {
@@ -48,6 +49,7 @@ import { DuelCharacter, DuelMove } from './duel-battle';
             <g class="back-arm"><path d="M77 104L56 128" stroke="var(--fighter-light)" stroke-width="22" stroke-linecap="round"/><path d="M32 120L58 110 83 120 79 151 58 170 36 151Z" fill="var(--fighter-deep)" stroke="#171724" stroke-width="5"/><path d="M43 128L58 122 72 128 69 145 58 156 47 145Z" fill="var(--fighter-color)"/><path d="M58 128V149M49 137H67" stroke="var(--fighter-light)" stroke-width="4"/></g>
             <g class="head"><path class="plume" d="M97 32Q89 13 109 7 129 9 131 26L115 43Z" fill="var(--fighter-color)" stroke="#171724" stroke-width="5"/><path d="M71 59Q71 27 105 27 140 27 142 60V85Q124 101 105 101 85 99 70 84Z" fill="#e0e6ef" stroke="#171724" stroke-width="5"/><path d="M74 63H143L138 86 105 94 74 84Z" fill="#30364b"/><path d="M108 33V60H143" fill="none" stroke="#a1b0c9" stroke-width="6"/><path class="eyes" d="M94 70H101M122 70H129" stroke="var(--fighter-light)" stroke-width="5" stroke-linecap="round"/><path d="M108 77V88" stroke="#65748e" stroke-width="4"/><path d="M75 45Q84 32 101 33" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"/></g>
             <g class="weapon-arm"><path d="M131 104L153 121" stroke="var(--fighter-light)" stroke-width="22" stroke-linecap="round"/><g class="weapon"><path d="M155 118L174 42 184 22 188 45 168 121Z" fill="#f1f5fc" stroke="#171724" stroke-width="4"/><path d="M174 48L163 107" stroke="#9baac4" stroke-width="3"/><path d="M147 112L177 120" stroke="#ffe2a5" stroke-width="9" stroke-linecap="round"/><path d="M159 119L153 139" stroke="#6e4b32" stroke-width="8" stroke-linecap="round"/><circle cx="154" cy="124" r="11" fill="var(--fighter-color)" stroke="#171724" stroke-width="4"/></g></g>
+            <path class="guard barrier" d="M176 64Q214 128 176 196" fill="none" stroke="var(--fighter-light)" stroke-width="9" stroke-linecap="round"/>
           }
         }
       </g>
@@ -96,6 +98,17 @@ import { DuelCharacter, DuelMove } from './duel-battle';
     :host([data-action="hit"][data-move="heavy"]) .body { animation:recoil-heavy .65s ease both }
     :host([data-action="hit"][data-move="special"]) .body { animation:recoil-special .85s ease both }
     :host([data-action="hit"]) svg { animation:hit-flash .36s steps(2) }
+    /* Defense skills (arena remounts on 'defend'); the blow lands at ~28%. */
+    :host { --def-dur:700ms }
+    :host([data-move="heavy"]) { --def-dur:880ms }
+    .guard { opacity:0; transform-box:fill-box; transform-origin:center }
+    .barrier { filter:drop-shadow(0 0 8px var(--fighter-light)) }
+    :host([data-action="defend"]) .body { animation:brace var(--def-dur) ease both }
+    :host([data-action="defend"]) .guard { animation:guard var(--def-dur) ease both }
+    :host([data-action="defend"][data-character="knight"]) .back-arm { animation:shield-up var(--def-dur) ease both }
+    :host([data-action="defend"][data-character="ronin"]) .body { animation:ghost-step var(--def-dur) ease both }
+    :host([data-action="defend"][data-character="ronin"]) svg { filter:drop-shadow(22px 0 0 color-mix(in srgb,var(--fighter-light) 45%,transparent)) drop-shadow(44px 0 0 color-mix(in srgb,var(--fighter-light) 22%,transparent)) }
+    :host([data-action="defend"][data-move="heavy"]) svg { animation:hit-flash .3s steps(2) calc(var(--def-dur) * .28) }
     :host([data-action="defeated"]) .body { animation:fall 1.1s cubic-bezier(.3,.6,.4,1) forwards }
     :host([data-action="defeated"]) .weapon-arm { animation:drop 1.1s ease forwards }
     :host([data-action="victory"]) .body { animation:celebrate 1.2s ease-in-out infinite }
@@ -129,6 +142,10 @@ import { DuelCharacter, DuelMove } from './duel-battle';
     @keyframes recoil-heavy { 25% { transform:translate(-30px,-6px) rotate(-20deg) } 60% { transform:translateX(-16px) rotate(-8deg) } }
     @keyframes recoil-special { 18% { transform:translate(-44px,-18px) rotate(-30deg) } 40% { transform:translate(-30px,0) rotate(-16deg) } 55% { transform:translateX(-24px) rotate(-12deg) } 75% { transform:translateX(-10px) rotate(-4deg) } }
     @keyframes hit-flash { 50% { filter:brightness(2.4) saturate(.4) } }
+    @keyframes brace { 20%,70% { transform:translateX(-5px) rotate(-3deg) } 30% { transform:translateX(-12px) rotate(-5deg) } 100% { transform:none } }
+    @keyframes guard { 0%,8% { opacity:0; transform:scale(.4) } 20% { opacity:.9; transform:scale(1) } 28% { opacity:1; transform:scale(1.08); filter:brightness(1.8) drop-shadow(0 0 14px #fff) } 36%,72% { opacity:.85; transform:scale(1) } 100% { opacity:0; transform:scale(1.1) } }
+    @keyframes shield-up { 18%,75% { transform:translate(88px,-14px) rotate(6deg) } 28% { transform:translate(80px,-12px) rotate(2deg) } 100% { transform:none } }
+    @keyframes ghost-step { 0% { transform:none; opacity:1 } 18%,70% { transform:translateX(-52px) skewX(-8deg); opacity:.55 } 100% { transform:none; opacity:1 } }
     @keyframes fall { 18% { transform:translate(-30px,-10px) rotate(-22deg) } 100% { transform:translate(-20px,14px) rotate(-82deg) } }
     @keyframes drop { 100% { transform:rotate(60deg) } }
     @keyframes celebrate { 50% { transform:translateY(-13px) rotate(-3deg) } }
@@ -136,6 +153,7 @@ import { DuelCharacter, DuelMove } from './duel-battle';
       * { animation:none !important }
       :host([data-action="defeated"]) .body { opacity:.45; transform:rotate(-15deg) }
       :host([data-action="hit"]) .body { opacity:.65 }
+      :host([data-action="defend"]) .guard { opacity:.8 }
     }
   `,
   host: { '[attr.data-side]': 'side()', '[attr.data-character]': 'character()', '[attr.data-action]': 'action()', '[attr.data-move]': 'move()', '[attr.data-low]': 'low()', '[attr.data-paused]': 'paused()' },

@@ -39,7 +39,7 @@ async function config(patch){const s=await request('GET',root);return request('P
 // damage within the move's range, and the first fighter to reach 0 HP loses.
 function checkBattle(run){
  const hp={left:100,right:100};assert(run.turns.length>0);assert.notEqual(run.fighters.left,run.fighters.right);
- run.turns.forEach((t,i)=>{const spec=domain.MOVES[t.move];assert(spec,'known move');assert(t.damage>=spec.min&&t.damage<=spec.max,'damage range');assert.equal(t.hitAt-t.at,spec.windup);
+ run.turns.forEach((t,i)=>{const spec=domain.MOVES[t.move];assert(spec,'known move');assert(t.raw>=spec.min&&t.raw<=spec.max,'damage range');if(t.defended){assert.notEqual(t.move,'special','specials cannot be defended');assert.equal(t.damage,t.move==='normal'?0:Math.round(t.raw*domain.HEAVY_DEFENDED_RATIO),'normal blocked, heavy -80%');}else assert.equal(t.damage,t.raw);assert.equal(t.hitAt-t.at,spec.windup);
   if(i){const prev=run.turns[i-1];assert.equal(t.attacker===prev.attacker,t.bonus,'extra turn keeps the attacker');assert(t.at>=prev.at+domain.MOVES[prev.move].duration);}
   const defender=t.attacker==='left'?'right':'left';assert(hp.left>0&&hp.right>0,'no turns after a knockout');hp[defender]=Math.max(0,hp[defender]-t.damage);});
  const loser=run.winner==='left'?'right':'left';assert.equal(hp[loser],0);assert(hp[run.winner]>0);assert.equal(run.turns.at(-1).attacker,run.winner);
@@ -106,7 +106,9 @@ const replacement=(await request('POST',root+'/overlay-token',{})).token;assert.
 const runs=Array.from({length:2000},()=>domain.createRun({id:'test',challenger:'alice',opponent:'bob',expiresAt:Date.now()},domain.defaultSettings(),true,Date.now()));runs.forEach(checkBattle);
 assert.deepEqual([...new Set(runs.map(r=>r.winner))].sort(),['left','right']);const share=runs.filter(r=>r.winner==='left').length/runs.length;assert(share>.43&&share<.57,'no side is favoured: '+share);
 const moves=runs.flatMap(r=>r.turns.map(t=>t.move)),count=m=>moves.filter(x=>x===m).length;assert(count('normal')>count('heavy')&&count('heavy')>count('special')&&count('special')>0,'normal > heavy > special');
-assert(runs.some(r=>r.turns.some(t=>t.bonus)),'extra turns happen');assert.deepEqual([...new Set(runs.flatMap(r=>[r.fighters.left,r.fighters.right]))].sort(),['knight','mage','ronin']);
+assert(runs.some(r=>r.turns.some(t=>t.bonus)),'extra turns happen');
+const defendable=runs.flatMap(r=>r.turns.filter(t=>t.move!=='special')),defended=defendable.filter(t=>t.defended);assert(defended.length/defendable.length>.11&&defended.length/defendable.length<.19,'small defense chance');assert(defended.some(t=>t.move==='normal')&&defended.some(t=>t.move==='heavy'));
+const narrated=Array.from({length:300},()=>domain.createRun({id:'test',challenger:'alice',opponent:'bob',expiresAt:Date.now()},domain.defaultSettings(),false,Date.now())).flatMap(r=>r.phrases.map(p=>p.text));assert(narrated.some(t=>/uses (Shield Wall|Ghost Step|Arcane Ward)/.test(t)),'chat narrates defenses');assert.deepEqual([...new Set(runs.flatMap(r=>[r.fighters.left,r.fighters.right]))].sort(),['knight','mage','ronin']);
 const chatRun=domain.createRun({id:'test',challenger:'alice',opponent:'bob',expiresAt:Date.now()},{...domain.defaultSettings(),language:'es'},false,Date.now());assert(chatRun.phrases.every(p=>p.at>chatRun.startedAt&&p.at<chatRun.endsAt));assert.match(domain.winnerMessage(chatRun),/ha ganado el duelo contra @\w+ con \d+ HP restantes\.$/);
 assert.equal(domain.winnerMessage({...chatRun,turns:undefined}),'@'+domain.winnerLogin(chatRun)+' ha ganado el duelo contra @'+domain.loserLogin(chatRun)+'.','legacy runs keep the old message');
 if(io)await new Promise(resolve=>io.close(resolve));

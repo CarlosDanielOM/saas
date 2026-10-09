@@ -1,4 +1,4 @@
-          <div class="arena" [class.transparent]="transparent()" [class.paused]="paused()" [attr.data-phase]="phase()" [attr.data-winner]="winner()" [attr.data-shake]="impact()?.move">
+          <div class="arena" [class.transparent]="transparent()" [class.paused]="paused()" [attr.data-phase]="phase()" [attr.data-winner]="winner()" [attr.data-shake]="shake()">
             <div class="scenery" aria-hidden="true"><div class="moon"></div><div class="mountain mountain-one"></div><div class="mountain mountain-two"></div><div class="grid-floor"></div><div class="floor-ring"></div></div>
             <div class="arena-label"><span>!duel</span><span>{{ t('arena') }} / 01</span></div>
             <div class="hud">
@@ -26,6 +26,7 @@
                   <div class="fx" [attr.data-attacker]="turn.attacker" [attr.data-move]="turn.move" [attr.data-character]="battle().fighters[turn.attacker]">
                     @if (turn.move === 'special') { <div class="special-dim"></div> }
                     @if (turn.bonus) { <span class="extra-turn">{{ t('extraTurn') }}</span> }
+                    @if (turn.defended) { <span class="skill-callout">{{ skillName(turn) }}</span> }
                     @if (turn.move !== 'normal') { <span class="move-callout">{{ moveName(turn) }}</span> }
                     @if (battle().fighters[turn.attacker] === 'mage') { <div class="projectile"></div> }
                     @else if (turn.move === 'special' && battle().fighters[turn.attacker] === 'knight') { <div class="pillar"></div> }
@@ -35,10 +36,12 @@
               }
               @if (impact(); as hit) {
                 @for (index of [turnIndex()]; track index) {
-                  <div class="impact-fx" [attr.data-target]="target(hit)" [attr.data-move]="hit.move">
-                    <span class="damage">−{{ hit.damage }}</span>
+                  <div class="impact-fx" [attr.data-target]="target(hit)" [attr.data-move]="hit.move" [attr.data-defended]="hit.defended ? battle().fighters[target(hit)] : null">
+                    @if (!hit.defended) { <span class="damage">−{{ hit.damage }}</span> }
+                    @else if (hit.damage > 0) { <span class="damage">−{{ hit.damage }} <small>−80%</small></span> }
+                    @else { <span class="damage blocked">{{ defenseResult(hit) }}</span> }
                     <div class="hit-spark"><i></i><i></i><i></i><i></i></div>
-                    @if (hit.move !== 'normal') { <div class="shock-ring"></div> }
+                    @if (hit.move !== 'normal' && !hit.defended) { <div class="shock-ring"></div> }
                   </div>
                 }
               }

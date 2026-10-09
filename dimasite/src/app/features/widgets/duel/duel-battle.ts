@@ -3,8 +3,9 @@
 export type DuelSide = 'left' | 'right';
 export type DuelMove = 'normal' | 'heavy' | 'special';
 export type DuelCharacter = 'knight' | 'ronin' | 'mage';
-/** Offsets are milliseconds from the start of the duel. hitAt is when damage lands. */
-export interface DuelTurn { at: number; hitAt: number; attacker: DuelSide; move: DuelMove; damage: number; bonus: boolean }
+/** Offsets are milliseconds from the start of the duel. hitAt is when damage lands.
+ * damage is what landed; raw is the roll before the defender's skill. */
+export interface DuelTurn { at: number; hitAt: number; attacker: DuelSide; move: DuelMove; damage: number; raw?: number; defended?: boolean; bonus: boolean }
 export interface DuelBattle { fighters: Record<DuelSide, DuelCharacter>; turns: DuelTurn[]; winner: DuelSide; duration: number }
 
 export const MAX_HP = 100;
@@ -12,6 +13,9 @@ export const FIGHT_START_MS = 3700;
 export const KNOCKOUT_MS = 1900;
 const EXTRA_TURN_PERCENT = 15;
 const EXTRA_TURN_LEAD_MS = 250;
+const DEFENSE_PERCENT = 15;
+const HEAVY_DEFENDED_RATIO = 0.2;
+const DEFENSE_TURN_LIMIT = 24;
 export const MOVES: Record<DuelMove, { chance: number; min: number; max: number; windup: number; duration: number }> = {
   normal: { chance: 68, min: 10, max: 16, windup: 280, duration: 800 },
   heavy: { chance: 24, min: 18, max: 26, windup: 450, duration: 1050 },
@@ -28,9 +32,11 @@ export function simulateBattle(random: () => number = Math.random): DuelBattle {
   let attacker: DuelSide = roll(2) === 0 ? 'left' : 'right', at = FIGHT_START_MS, bonus = false;
   for (;;) {
     const chance = roll(100), move: DuelMove = chance < MOVES.special.chance ? 'special' : chance < MOVES.special.chance + MOVES.heavy.chance ? 'heavy' : 'normal';
-    const spec = MOVES[move], damage = spec.min + roll(spec.max - spec.min + 1), defender = otherSide(attacker);
+    const spec = MOVES[move], raw = spec.min + roll(spec.max - spec.min + 1), defender = otherSide(attacker);
+    const defended = move !== 'special' && turns.length < DEFENSE_TURN_LIMIT && roll(100) < DEFENSE_PERCENT;
+    const damage = !defended ? raw : move === 'heavy' ? Math.round(raw * HEAVY_DEFENDED_RATIO) : 0;
     hp[defender] = Math.max(0, hp[defender] - damage);
-    turns.push({ at, hitAt: at + spec.windup, attacker, move, damage, bonus });
+    turns.push({ at, hitAt: at + spec.windup, attacker, move, damage, raw, defended, bonus });
     if (hp[defender] === 0) return { fighters, turns, winner: attacker, duration: at + spec.windup + KNOCKOUT_MS };
     at += spec.duration;
     bonus = roll(100) < EXTRA_TURN_PERCENT;

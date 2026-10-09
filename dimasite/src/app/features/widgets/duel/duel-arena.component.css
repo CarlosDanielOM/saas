@@ -69,6 +69,10 @@
 .impact-fx { z-index:4 }
 .special-dim { position:absolute; inset:-5%; z-index:1; background:radial-gradient(ellipse at 50% 60%,transparent 20%,#05040cdd 75%); animation:dim var(--dur) ease both }
 .transparent .special-dim { background:radial-gradient(ellipse at 50% 60%,transparent 30%,#05040c88 80%) }
+.fx[data-attacker="left"] { --defc:var(--amber) }
+.fx[data-attacker="right"] { --defc:var(--violet) }
+/* The defender's skill name pops over it as it reacts. */
+.skill-callout { position:absolute; top:32%; left:var(--def); z-index:5; translate:-50% 0; padding:.4cqw 1.2cqw; border-radius:6px; white-space:nowrap; font-size:2.3cqw; font-weight:900; text-transform:uppercase; letter-spacing:.06em; color:#fff; background:#14101fee; border:2px solid var(--defc); box-shadow:0 0 16px var(--defc); animation:skill var(--dur) ease both }
 .move-callout { position:absolute; bottom:9%; left:50%; z-index:5; padding:.5cqw 1.8cqw; white-space:nowrap; font-size:3.2cqw; font-weight:950; font-style:italic; letter-spacing:-.02em; text-transform:uppercase; color:#fff7e0; background:linear-gradient(90deg,transparent,#14101fee 12%,#14101fee 88%,transparent); border-block:2px solid var(--fx); text-shadow:0 0 12px var(--fx); animation:callout var(--dur) ease both }
 .fx[data-move="special"] .move-callout { font-size:4.2cqw }
 .extra-turn { position:absolute; top:32%; left:var(--att); z-index:5; translate:-50% 0; padding:.4cqw 1.2cqw; border-radius:99px; white-space:nowrap; font-size:2.3cqw; font-weight:900; text-transform:uppercase; letter-spacing:.06em; color:#14101f; background:var(--fx); box-shadow:0 0 18px var(--fx); animation:extra var(--dur) ease both }
@@ -83,6 +87,12 @@
 .damage { position:absolute; top:30%; left:var(--def); translate:-50% 0; font-size:5cqw; font-weight:900; color:#ffe3a2; text-shadow:0 2px 0 #35191b,0 0 10px #0008; animation:damage .65s ease-out both; z-index:6 }
 .impact-fx[data-move="heavy"] .damage { font-size:6.6cqw; color:#ffb35c }
 .impact-fx[data-move="special"] .damage { font-size:8.6cqw; color:#fff; text-shadow:0 3px 0 #8b1f2b,0 0 18px #ff5f6d }
+.damage small { font-size:.45em; color:#cfe6ff; vertical-align:middle }
+.impact-fx[data-defended] .damage { top:44%; animation:blocked .65s ease-out both }
+.damage.blocked { font-size:4.4cqw; font-style:italic; color:#e6f1ff; text-shadow:0 3px 0 #1b2a4a,0 0 16px #7fb4ff }
+/* Defended hits: a cool clang for shield/ward, no contact at all for a dodge. */
+.impact-fx[data-defended] .hit-spark { width:9cqw; margin-left:-4.5cqw; top:40%; filter:hue-rotate(180deg) saturate(.6) }
+.impact-fx[data-defended="ronin"] .hit-spark { display:none }
 .hit-spark { position:absolute; top:40%; left:var(--def); width:12cqw; aspect-ratio:1; margin-left:-6cqw; animation:impact .3s ease-out both }
 .impact-fx[data-move="heavy"] .hit-spark { width:17cqw; margin-left:-8.5cqw; top:36% }
 .impact-fx[data-move="special"] .hit-spark { width:24cqw; margin-left:-12cqw; top:31% }
@@ -128,6 +138,8 @@
 @keyframes levitate { 15%,48% { transform:translateY(-14%) } 56% { transform:translate(calc(var(--dir) * 6%),-10%) } 100% { transform:none } }
 @keyframes dim { 0% { opacity:0 } 12%,50% { opacity:1 } 53% { opacity:1; background-color:#fff6 } 58% { background-color:transparent } 100% { opacity:0 } }
 @keyframes callout { 0% { opacity:0; transform:translateX(-50%) scale(1.6) } 8% { opacity:1; transform:translateX(-50%) scale(1) } 68% { opacity:1; transform:translateX(-50%) scale(1) } 100% { opacity:0; transform:translateX(-50%) scale(.95) } }
+@keyframes blocked { 0% { opacity:0; transform:scale(1.8) } 15% { opacity:1; transform:scale(.95) } 25%,75% { opacity:1; transform:scale(1) } 100% { opacity:0; transform:translateY(-10px) } }
+@keyframes skill { 0%,12% { opacity:0; transform:translateY(8px) scale(.6) } 18% { opacity:1; transform:scale(1.12) } 24%,72% { opacity:1; transform:scale(1) } 100% { opacity:0; transform:translateY(-10px) } }
 @keyframes extra { 0% { opacity:0; transform:translateY(10px) scale(.6) } 12% { opacity:1; transform:translateY(0) scale(1.15) } 20%,60% { opacity:1; transform:scale(1) } 100% { opacity:0; transform:translateY(-12px) } }
 @keyframes bolt { 0%,20% { opacity:0; left:var(--att); transform:scale(.3) } 27% { opacity:1; left:var(--att); transform:scale(1) } 35% { opacity:1; left:var(--def) } 45%,100% { left:var(--def); opacity:0; transform:scale(1.6) } }
 @keyframes bolt-heavy { 0%,26% { opacity:0; left:var(--att); transform:scale(.3) } 34% { opacity:1; left:var(--att); transform:scale(1.1) } 43% { opacity:1; left:var(--def) } 52%,100% { left:var(--def); opacity:0; transform:scale(1.8) } }
@@ -146,4 +158,4 @@
 @keyframes winner { from { opacity:0; transform:translateY(14px) } to { opacity:1; transform:translateY(0) } }
 @keyframes confetti { from { opacity:0; transform:translateY(-40px) rotate(0deg) } 20% { opacity:1 } to { opacity:0; transform:translateY(180px) rotate(240deg) } }
 @media(min-width:640px){.arena{aspect-ratio:16/9;--fighter-size:25%;--fight-spread:13%}.arena[data-phase="winner"] .fighter-slot:not([data-action="defeated"]){--fighter-size:20%}.health-label{font-size:2.3cqw}}
-@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}.confetti,.hit-spark,.shock-ring,.special-dim,.projectile,.pillar,.crescent,.ko-flash,.turn-ring{display:none}.damage,.move-callout,.extra-turn{opacity:1}.move-callout{transform:translateX(-50%)}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}.confetti,.hit-spark,.shock-ring,.special-dim,.projectile,.pillar,.crescent,.ko-flash,.turn-ring{display:none}.damage,.move-callout,.extra-turn,.skill-callout{opacity:1}.move-callout{transform:translateX(-50%)}}

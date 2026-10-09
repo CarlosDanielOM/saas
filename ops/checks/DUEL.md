@@ -12,12 +12,15 @@ on accept the backend simulates a turn-based battle (`simulateBattle` in
 `dimabot/src/duel/model.ts`) with two distinct characters (Knight, Ronin, Mage),
 a coin flip for the first attacker, and per-turn rolls for the move (normal 68%,
 heavy 24%, special 8%, each with its own damage range) and a 15% chance to steal
-the opponent's next turn. The first fighter at 0 HP loses. The stored turns drive
+the opponent's next turn. When hit by a normal or heavy attack, the defender rolls a
+15% chance to use its skill (Knight Shield Wall, Ronin Ghost Step, Mage Arcane
+Ward): normals deal 0, heavies lose 80% (`raw` keeps the rolled damage). Specials
+cannot be defended; defenses stop after 24 turns so every fight ends. The first fighter at 0 HP loses. The stored turns drive
 the overlay animation and the deadline (last hit + 1.9 s knockout, typically 13–18 s).
 The dimasite preview mirrors those numbers in `duel-battle.ts`; keep them in step.
 Connected overlays carry the prompt and fight; chat receives only the winner (with
 remaining HP) at the deadline. New duels without an enabled, ready source retain
-chat prompts and narrate the fight's real specials, stolen turns and heavy blows.
+chat prompts and narrate the fight's real specials, defenses, stolen turns and heavy blows.
 Runs accepted before turn-based battles (no `turns`) still render and announce. Accepted battles finish even if OBS or
 the bot disconnects. The cron supervisor runs `duel.worker` independently.
 
