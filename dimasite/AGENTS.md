@@ -238,6 +238,13 @@ location / {
 - `/` resolves to the prerendered `index.html` via `$uri/index.html`.
 - Static assets (chunks, fonts, `robots.txt`, `sitemap.xml`, `og-image.jpg`) resolve via `$uri`.
 - Everything else falls back to `index.csr.html` and bootstraps as CSR.
+- The error routes `/401`, `/403`, `/404`, `/500`, `/503` have exact `location`
+  blocks that `return` their real status and serve `index.csr.html` through
+  `@error_shell` (with `X-Robots-Tag: noindex`). Unknown app URLs still get 200
+  and the Angular router redirects them to `/404`, which then answers 404.
+  Keep this list in sync when adding an error route.
+- Edit the bind-mounted `nginx.conf` in place (same inode); tools that replace
+  the file (e.g. `sed -i`) leave the container reading the old copy.
 
 `dimasite/nginx.conf` is bind-mounted into the `dimabot-site` container
 (`nginx:alpine`, stock image — there is no custom image to rebuild) as
