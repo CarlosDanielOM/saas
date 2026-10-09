@@ -1,136 +1,364 @@
-<div class="lf">
-  <aside class="mock-bar" aria-label="Mock controls">
+<div class="lf" [attr.data-tab]="mobileTab()" [class.has-selection]="!!store.selectedNode()" [class.lib-open]="libraryOpen()">
+  <aside class="mock-bar" aria-label="Prototype notice">
     <a routerLink="/mocks/dev" class="mock-bar__back">← Dev mocks</a>
-    <span class="mock-bar__chip">Interactive prototype</span>
+    <span class="mock-bar__chip"><span class="mock-bar__dot" aria-hidden="true"></span>Prototype · nothing is sent to Twitch</span>
   </aside>
 
-  <header class="lf-nav">
-    <a class="lf-brand" routerLink="/">
-      <span class="lf-brand__live" aria-hidden="true"></span>
-      DomDimaBot
-    </a>
-    <button type="button" class="lf-btn lf-btn--ghost lf-btn--tool" (click)="toggleTheme()"
-      [attr.aria-label]="isDarkMode() ? 'Switch to light theme' : 'Switch to dark theme'">
-      <lucide-icon [name]="isDarkMode() ? moonIcon : sunIcon" [size]="16" aria-hidden="true" />
-      <span>{{ isDarkMode() ? 'Dark' : 'Light' }}</span>
-    </button>
+  <header class="head">
+    <div class="head__row">
+      <div class="head__titles">
+        <h1 class="head__title">Command builder</h1>
+        <p class="head__sub">Snap blocks together. The bot's reply updates as you build.</p>
+      </div>
+      <div class="head__tools" role="group" aria-label="Edit history">
+        <button type="button" class="icon-btn" (click)="store.undo()" [disabled]="!store.canUndo()" aria-label="Undo" title="Undo (Ctrl+Z)">
+          <lucide-icon [name]="icons.undo" [size]="18" aria-hidden="true" />
+        </button>
+        <button type="button" class="icon-btn" (click)="store.redo()" [disabled]="!store.canRedo()" aria-label="Redo" title="Redo (Ctrl+Shift+Z)">
+          <lucide-icon [name]="icons.redo" [size]="18" aria-hidden="true" />
+        </button>
+        <button type="button" class="icon-btn" (click)="toggleTheme()" [attr.aria-label]="isDarkMode() ? 'Switch to light theme' : 'Switch to dark theme'">
+          <lucide-icon [name]="isDarkMode() ? icons.moon : icons.sun" [size]="18" aria-hidden="true" />
+        </button>
+      </div>
+    </div>
+    <div class="starters" role="group" aria-label="Start from an example">
+      <span class="starters__label">Start from</span>
+      <div class="starters__list">
+        @for (starter of starters; track starter.id) {
+          <button
+            type="button"
+            class="chip"
+            [class.is-on]="activeStarter() === starter.id"
+            [attr.aria-pressed]="activeStarter() === starter.id"
+            [attr.title]="starter.blurb"
+            (click)="loadStarter(starter.id)"
+          >{{ starter.label }}</button>
+        }
+        <button type="button" class="chip chip--quiet" (click)="clearAll()" [disabled]="store.isEmpty()">
+          <lucide-icon [name]="icons.trash" [size]="14" aria-hidden="true" />
+          Blank
+        </button>
+      </div>
+    </div>
   </header>
 
-  <main class="lf-main">
-    <section class="lf-tile intro" aria-labelledby="studio-title">
-      <div class="intro__copy">
-        <p class="lf-kicker">Command builder · prototype</p>
-        <h1 id="studio-title">Build a command, block by block.</h1>
-        <p class="intro__description">Pick an example, add blocks, and see the command text update as you build.</p>
-        <span class="intro__safety"><span class="intro__safety-dot" aria-hidden="true"></span> Safe to explore · Nothing is sent to Twitch</span>
+  <div class="studio">
+    <!-- ================= Library ================= -->
+    <aside class="lib" id="block-library" aria-labelledby="lib-title">
+      <div class="lib__head">
+        <h2 id="lib-title" class="tile-title">Blocks</h2>
+        <span class="lib__count">{{ functionCount }} functions</span>
+        <button type="button" class="icon-btn lib__close" (click)="closeLibrary()" aria-label="Close block library">
+          <lucide-icon [name]="icons.close" [size]="18" aria-hidden="true" />
+        </button>
       </div>
-      <div class="intro__controls">
-        <div class="sample-row" role="group" aria-label="Example commands">
-          <span class="sample-row__label">Start with an example</span>
-          <div class="sample-row__options">
-            @for (sample of samples; track sample.id) {
-              <button type="button" class="lf-chip" [class.is-active]="activeSampleId() === sample.id"
-                [attr.aria-pressed]="activeSampleId() === sample.id" (click)="loadSample(sample.id)">{{ sample.label }}</button>
+      <p class="lib__where">Adds <strong>{{ cursorLabel() }}</strong></p>
+      <label class="search">
+        <lucide-icon [name]="icons.search" [size]="16" aria-hidden="true" />
+        <span class="sr-only">Search blocks</span>
+        <input type="search" placeholder="Search: ban, random, tts, poll…" [value]="query()" (input)="onQuery($event)" />
+        @if (query()) {
+          <button type="button" class="search__clear" (click)="clearQuery()" aria-label="Clear search">
+            <lucide-icon [name]="icons.close" [size]="15" aria-hidden="true" />
+          </button>
+        }
+      </label>
+      @if (!query()) {
+        <div class="lib__sections" role="group" aria-label="Block groups">
+          <button type="button" class="chip chip--sm" [attr.aria-pressed]="section() === 'all'" (click)="section.set('all')">All</button>
+          @for (s of sections; track s.id) {
+            <button type="button" class="chip chip--sm" [attr.data-tone]="s.tone" [attr.aria-pressed]="section() === s.id" (click)="section.set(s.id)">{{ s.label }}</button>
+          }
+        </div>
+      }
+
+      <ng-template #itemTpl let-item>
+        <li>
+          <button
+            type="button"
+            class="item"
+            [attr.data-tone]="item.tone"
+            draggable="true"
+            (dragstart)="onLibraryDrag($event, item)"
+            (dragend)="store.endDrag()"
+            (click)="addItem(item)"
+          >
+            <span class="item__main">
+              <span class="item__title" [class.is-code]="item.id.startsWith('fn:')">{{ item.title }}</span>
+              <span class="item__hint">{{ item.hint }}</span>
+            </span>
+            <span class="item__tags">
+              @if (item.level) {
+                <span class="tag tag--warn">{{ item.level }}</span>
+              }
+              @if (item.destructive) {
+                <span class="tag tag--danger" title="Changes things for real">
+                  <lucide-icon [name]="icons.warn" [size]="12" aria-hidden="true" />
+                  <span class="sr-only">Changes things for real</span>
+                </span>
+              }
+              <lucide-icon class="item__plus" [name]="icons.plus" [size]="16" aria-hidden="true" />
+            </span>
+          </button>
+        </li>
+      </ng-template>
+
+      <div class="lib__list">
+        @if (grouped(); as groups) {
+          @for (group of groups; track group.section.id) {
+            <section class="lib__group" [attr.aria-label]="group.section.label">
+              <h3 class="lib__group-title" [attr.data-tone]="group.section.tone">{{ group.section.label }} <span>{{ group.section.hint }}</span></h3>
+              <ul class="lib__items">
+                @for (item of group.items; track item.id) {
+                  <ng-container *ngTemplateOutlet="itemTpl; context: { $implicit: item }" />
+                }
+              </ul>
+            </section>
+          }
+        } @else {
+          <p class="lib__results" aria-live="polite">{{ results().length }} {{ results().length === 1 ? 'block' : 'blocks' }}</p>
+          <ul class="lib__items">
+            @for (item of results(); track item.id) {
+              <ng-container *ngTemplateOutlet="itemTpl; context: { $implicit: item }" />
+            } @empty {
+              <li class="lib__empty">No block matches “{{ query() }}”. Try another word, like “timeout” or “sound”.</li>
             }
-          </div>
-        </div>
-        <div class="lf-actions" role="group" aria-label="Command actions">
-          <button type="button" class="lf-btn lf-btn--primary" (click)="runPreview()">Run preview</button>
-          <button type="button" class="lf-btn" (click)="store.undo()" [disabled]="!store.canUndo()">Undo</button>
-          <button type="button" class="lf-btn" (click)="store.redo()" [disabled]="!store.canRedo()">Redo</button>
-          <button type="button" class="lf-btn lf-btn--quiet" (click)="clearAll()" [disabled]="store.root().children.length === 0">Clear all</button>
-        </div>
+          </ul>
+        }
       </div>
-    </section>
+    </aside>
+    @if (libraryOpen()) {
+      <div class="scrim" (click)="closeLibrary()" aria-hidden="true"></div>
+    }
 
-    <nav class="lf-mobile-tabs" aria-label="Editor sections">
-      <button type="button" class="lf-segment__btn" [class.is-on]="panel() === 'palette'" [attr.aria-pressed]="panel() === 'palette'" (click)="setPanel('palette')">1 · Blocks</button>
-      <button type="button" class="lf-segment__btn" [class.is-on]="panel() === 'canvas'" [attr.aria-pressed]="panel() === 'canvas'" (click)="setPanel('canvas')">2 · Canvas</button>
-      <button type="button" class="lf-segment__btn" [class.is-on]="panel() === 'output'" [attr.aria-pressed]="panel() === 'output'" (click)="setPanel('output')">3 · Preview</button>
-    </nav>
-
-    <div class="lf-bento ast-bento">
-      <aside class="lf-tile ast-palette" [class.is-open]="panel() === 'palette'" aria-labelledby="palette-title">
-        <div class="panel-head">
-          <span class="panel-head__eyebrow">01 · Build</span>
-          <h2 id="palette-title">Block library</h2>
-          <p>Tap to add a block. Drag it to choose where it goes.</p>
+    <!-- ================= Canvas + code ================= -->
+    <main class="work">
+      <section class="tile canvas-tile" aria-labelledby="canvas-title">
+        <div class="tile-head">
+          <div>
+            <h2 id="canvas-title" class="tile-title">Your command</h2>
+            <p class="tile-sub">
+              {{ store.blockCount() }} {{ store.blockCount() === 1 ? 'block' : 'blocks' }} ·
+              <span class="cursor-hint"><span class="cursor-hint__bar" aria-hidden="true"></span>adding {{ cursorLabel() }}</span>
+            </p>
+          </div>
+          <button type="button" class="btn btn--primary add-btn" (click)="openLibrary()" aria-controls="block-library" [attr.aria-expanded]="libraryOpen()">
+            <lucide-icon [name]="icons.plus" [size]="17" aria-hidden="true" />
+            Add block
+          </button>
         </div>
-        @for (cat of categories; track cat.id) {
-          <section class="palette-section" [attr.aria-label]="cat.label">
-            <h3 class="palette-section__title">{{ cat.label }}</h3>
-            <div class="palette-grid">
-              @for (item of itemsFor(cat.id); track item.id) {
-                <button type="button" class="pal" [attr.data-cat]="item.category" draggable="true"
-                  (dragstart)="onPaletteDrag($event, item)" (dragend)="store.endDrag()" (click)="placePalette(item)">
-                  {{ item.label }}
-                </button>
+
+        <div
+          class="canvas"
+          [class.is-drag]="store.draggingNow()"
+          (click)="onCanvasClick()"
+          (dragover)="onCanvasDragOver($event)"
+          (drop)="onCanvasDrop($event)"
+        >
+          @for (child of store.root().children; track child.id; let i = $index) {
+            <button
+              type="button"
+              class="slot"
+              tabindex="-1"
+              [class.is-cursor]="isCursor(i)"
+              [class.is-hot]="isHot(i)"
+              [attr.aria-label]="'Insert before block ' + (i + 1)"
+              (click)="setRootCursor($event, i)"
+              (dragover)="onSlotDragOver($event, i)"
+              (drop)="onCanvasDrop($event, i)"
+            ></button>
+            <app-command-ast-block [node]="child" />
+          }
+          @if (!store.isEmpty()) {
+            <button
+              type="button"
+              class="slot slot--end"
+              tabindex="-1"
+              [class.is-cursor]="isCursor(store.root().children.length)"
+              [class.is-hot]="isHot(store.root().children.length)"
+              aria-label="Add at the end"
+              (click)="setRootCursor($event, store.root().children.length)"
+              (dragover)="onSlotDragOver($event, store.root().children.length)"
+              (drop)="onCanvasDrop($event, store.root().children.length)"
+            ></button>
+          } @else {
+            <div class="canvas__empty">
+              <span class="canvas__empty-icon" aria-hidden="true">
+                <lucide-icon [name]="icons.build" [size]="26" />
+              </span>
+              <p class="canvas__empty-title">Start with a block</p>
+              <p class="canvas__empty-copy">Add text and values like <code>user</code>, or pick an example above. You can also paste command text in the code box.</p>
+              <button type="button" class="btn btn--primary" (click)="openLibrary()">
+                <lucide-icon [name]="icons.plus" [size]="17" aria-hidden="true" />
+                Add your first block
+              </button>
+            </div>
+          }
+        </div>
+        <p class="canvas__tip">Tap a block to change it · tap between blocks to choose where the next one goes · drag to move</p>
+      </section>
+
+      <section class="tile code-tile" aria-labelledby="code-title">
+        <div class="tile-head">
+          <div>
+            <h2 id="code-title" class="tile-title">Command text</h2>
+            <p class="tile-sub">What gets saved. Edit or paste here and the blocks follow.</p>
+          </div>
+          <button type="button" class="btn" (click)="copySource()">
+            <lucide-icon [name]="copied() ? icons.check : icons.copy" [size]="16" aria-hidden="true" />
+            {{ copied() ? 'Copied' : 'Copy' }}
+          </button>
+        </div>
+        <label class="sr-only" for="command-source">Command text</label>
+        <textarea
+          id="command-source"
+          class="code"
+          rows="4"
+          spellcheck="false"
+          autocapitalize="off"
+          [value]="sourceValue()"
+          (input)="onSourceInput($event)"
+          (blur)="onSourceBlur()"
+          [attr.aria-invalid]="store.parseError() ? 'true' : null"
+          aria-describedby="code-status"
+        ></textarea>
+        <p id="code-status" class="code-status" [class.is-error]="!!store.parseError()" aria-live="polite">
+          @if (store.parseError()) {
+            {{ store.parseError() }} · your blocks are unchanged
+          } @else if (sourceDraft() !== null) {
+            Updating blocks…
+          } @else {
+            In sync with the blocks
+          }
+        </p>
+      </section>
+    </main>
+
+    <!-- ================= Inspector + live test ================= -->
+    <aside class="side">
+      <div class="tile insp-tile" [class.is-empty]="!store.selectedNode()">
+        @if (store.selectedNode()) {
+          <app-command-ast-inspector />
+        } @else {
+          <p class="tile-title">Block details</p>
+          <p class="tile-sub">Tap any block to see what it does, fill its inputs and move it.</p>
+        }
+      </div>
+
+      <section class="tile test-tile" aria-labelledby="test-title">
+        <div class="tile-head">
+          <div>
+            <h2 id="test-title" class="tile-title">Try it</h2>
+            <p class="tile-sub">Live: updates with every change. Nothing is sent.</p>
+          </div>
+          <button type="button" class="icon-btn" (click)="store.rerun()" aria-label="Run again (re-rolls random values)" title="Run again">
+            <lucide-icon [name]="icons.dice" [size]="18" aria-hidden="true" />
+          </button>
+        </div>
+
+        <div class="test-ctx">
+          <label class="mini-field">
+            <span>Chatter</span>
+            <input [value]="store.context().user" (input)="patchContext('user', $event)" autocapitalize="off" />
+          </label>
+          <label class="mini-field">
+            <span>Typed after the command</span>
+            <input [value]="store.context().argument" (input)="patchContext('argument', $event)" autocapitalize="off" />
+          </label>
+          <div class="mini-field">
+            <span id="role-label">Their role</span>
+            <div class="seg" role="group" aria-labelledby="role-label">
+              @for (role of roles; track role.id) {
+                <button type="button" class="seg__btn" [attr.aria-pressed]="store.context().role === role.id" (click)="setRole(role.id)">{{ role.label }}</button>
               }
             </div>
-          </section>
-        }
-      </aside>
-
-      <section class="lf-tile ast-canvas" [class.is-open]="panel() === 'canvas'" aria-labelledby="canvas-title">
-        <div class="panel-head panel-head--split">
-          <div>
-            <span class="panel-head__eyebrow">02 · Arrange</span>
-            <h2 id="canvas-title">Your command</h2>
-            <p>{{ store.root().children.length }} top-level {{ store.root().children.length === 1 ? 'block' : 'blocks' }} · Select a block to edit or move it</p>
           </div>
-          <button type="button" class="lf-btn lf-btn--quiet canvas__delete" [disabled]="!store.selectedId()" (click)="store.removeSelected()">Delete selected</button>
         </div>
-        <div class="canvas" [class.is-drag]="store.draggingNow()" (dragover)="onCanvasDragOver($event)" (drop)="onCanvasDrop($event)">
-          @for (child of store.root().children; track child.id; let i = $index) {
-            @if (ghostAt(i)) { <div class="canvas__ghost" aria-hidden="true">drop here</div> }
-            <div class="canvas__row" (dragover)="onRowDragOver($event, i)" (drop)="onRowDrop($event, i)">
-              <app-command-ast-block [node]="child" />
-            </div>
-          }
-          @if (ghostAt(store.root().children.length)) { <div class="canvas__ghost" aria-hidden="true">drop here</div> }
-          @if (store.root().children.length === 0) {
-            <div class="canvas__empty">
-              <span class="canvas__empty-icon" aria-hidden="true">+</span>
-              <h3>Start with a block</h3>
-              <p>Choose one from the library or paste command text in Preview.</p>
-              <button type="button" class="lf-btn lf-btn--primary" (click)="setPanel('palette')">Browse blocks</button>
-            </div>
-          }
-        </div>
-        <button type="button" class="lf-btn canvas__add" (click)="setPanel('palette')">+ Add a block</button>
-      </section>
 
-      <section class="lf-tile ast-out" [class.is-open]="panel() === 'output'" aria-labelledby="preview-title">
-        <div class="panel-head">
-          <span class="panel-head__eyebrow">03 · Test</span>
-          <h2 id="preview-title">Text &amp; preview</h2>
-          <p>Edit the command text or try it with sample chat details.</p>
-        </div>
-        <div class="out-section">
-          <label class="out-section__label" for="command-source">Command text</label>
-          <textarea id="command-source" class="code" rows="5" [value]="sourceValue()" (input)="onSourceInput($event)"
-            aria-describedby="source-help" [attr.aria-invalid]="store.parseError() ? 'true' : null"></textarea>
-          <p id="source-help" class="lf-note">Changes to this text update the blocks when you select “Make blocks”.</p>
-          <button type="button" class="lf-btn lf-btn--text" (click)="applySource()" [disabled]="sourceDraft() === null">Make blocks</button>
-          @if (store.parseError()) { <p class="lf-alert" role="alert">{{ store.parseError() }}</p> }
-        </div>
-        <div class="out-section">
-          <h3>Sample chat</h3>
-          <label class="field"><span>Who is chatting</span><input [value]="store.context().user" (input)="patchUser($event)" /></label>
-          <label class="field"><span>Target / argument</span><input [value]="store.context().argument" (input)="patchArg($event)" /></label>
-        </div>
-        <div class="out-section out-section--result" aria-live="polite">
-          <h3>What chat would see</h3>
-          @if (store.runError()) {
-            <p class="lf-alert" role="alert">{{ store.runError() }}</p>
-          } @else if (store.runOutput()) {
-            <pre class="code code--out">{{ store.runOutput() }}</pre>
+        <div class="chat" aria-live="polite" aria-label="Chat preview">
+          <div class="msg msg--user">
+            <span class="msg__who">{{ store.context().user || 'Viewer' }}</span>
+            <span class="msg__text">!yourcommand {{ store.context().argument }}</span>
+          </div>
+          @if (run().error; as error) {
+            <div class="msg msg--error">
+              <lucide-icon [name]="icons.warn" [size]="15" aria-hidden="true" />
+              <span>{{ error }}</span>
+            </div>
           } @else {
-            <p class="lf-note">Select “Run preview” to see a sample response.</p>
+            @if (run().result.chat) {
+              <div class="msg msg--bot">
+                <span class="msg__who">DomDimaBot</span>
+                <span class="msg__text">{{ run().result.chat }}</span>
+              </div>
+            } @else {
+              <p class="msg msg--silent">The bot doesn't reply in chat.</p>
+            }
+            @for (line of run().result.extraLines; track $index) {
+              <div class="msg msg--bot msg--extra">
+                <span class="msg__who">DomDimaBot</span>
+                <span class="msg__text">{{ line }}</span>
+              </div>
+            }
           }
-          <button type="button" class="lf-btn lf-btn--primary out-section__run" (click)="runPreview()">Run preview</button>
         </div>
+
+        @if (run().result.actions.length) {
+          <div class="effects">
+            <p class="effects__title">Also does</p>
+            <ul class="effects__list">
+              @for (action of run().result.actions; track $index) {
+                <li class="effect" [class.is-blocked]="!!action.blocked" [class.is-destructive]="action.destructive && !action.blocked">
+                  <lucide-icon [name]="action.blocked ? icons.shield : icons.zap" [size]="15" aria-hidden="true" />
+                  <code class="effect__name">{{ action.name }}</code>
+                  @if (action.args) {
+                    <span class="effect__args">{{ action.args }}</span>
+                  }
+                  @if (action.blocked) {
+                    <span class="tag tag--warn">Skipped · {{ action.blocked }}</span>
+                  }
+                </li>
+              }
+            </ul>
+          </div>
+        }
+
+        @if (run().result.variables.length) {
+          <div class="effects">
+            <p class="effects__title">Remembers</p>
+            <ul class="effects__list">
+              @for (v of run().result.variables; track v.name) {
+                <li class="effect effect--var">
+                  <code class="effect__name">{{ v.name }}</code>
+                  <span class="effect__args">= {{ v.value || '(empty)' }}</span>
+                </li>
+              }
+            </ul>
+          </div>
+        }
       </section>
-    </div>
-  </main>
+    </aside>
+  </div>
+
+  <!-- ================= Phone bottom bar ================= -->
+  <nav class="tabbar" aria-label="Builder sections">
+    <button type="button" class="tabbar__btn" [attr.aria-current]="mobileTab() === 'build' ? 'page' : null" (click)="setTab('build')">
+      <lucide-icon [name]="icons.build" [size]="19" aria-hidden="true" />
+      Build
+    </button>
+    <button type="button" class="tabbar__btn" [attr.aria-current]="mobileTab() === 'test' ? 'page' : null" (click)="setTab('test')">
+      <lucide-icon [name]="icons.test" [size]="19" aria-hidden="true" />
+      Try it
+      @if (run().result.actions.length) {
+        <span class="tabbar__badge">{{ run().result.actions.length }}</span>
+      }
+    </button>
+    <button type="button" class="tabbar__btn" [attr.aria-current]="mobileTab() === 'code' ? 'page' : null" (click)="setTab('code')">
+      <lucide-icon [name]="icons.code" [size]="19" aria-hidden="true" />
+      Text
+    </button>
+  </nav>
+
+  <p class="sr-only" aria-live="polite">{{ store.announcement() }}</p>
 </div>

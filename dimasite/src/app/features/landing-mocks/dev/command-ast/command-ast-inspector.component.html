@@ -1,0 +1,183 @@
+@if (node(); as n) {
+  <section class="insp" [attr.data-tone]="tone()" aria-labelledby="insp-title">
+    <header class="insp__head">
+      <span class="insp__dot" aria-hidden="true"></span>
+      <div class="insp__titles">
+        <p class="insp__kicker">Selected block</p>
+        <h2 id="insp-title" class="insp__title" [class.is-code]="n.type === 'function'">{{ title() }}</h2>
+      </div>
+      <button type="button" class="insp__close" (click)="store.select(null); closed.emit()" aria-label="Close block details">
+        <lucide-icon [name]="closeIcon" [size]="18" aria-hidden="true" />
+      </button>
+    </header>
+
+    <p class="insp__help">{{ help() }}</p>
+
+    @if (n.type === 'function') {
+      @if (level() || entry()?.destructive || entry()?.plan) {
+        <ul class="insp__notes">
+          @if (level()) {
+            <li class="insp__note">
+              <lucide-icon [name]="shieldIcon" [size]="15" aria-hidden="true" />
+              <span><strong>{{ level() }}.</strong> For other chatters it is skipped and the rest of the command still runs.</span>
+            </li>
+          }
+          @if (entry()?.destructive) {
+            <li class="insp__note insp__note--danger">
+              <lucide-icon [name]="warnIcon" [size]="15" aria-hidden="true" />
+              <span><strong>Changes things for real.</strong> Test it with a friend's account before using it on stream.</span>
+            </li>
+          }
+        </ul>
+      }
+      @if (entry(); as e) {
+        <p class="insp__syntax"><code>{{ e.syntax }}</code></p>
+      }
+
+      @if (holes().length) {
+        <div class="insp__fields">
+          @for (hole of holes(); track $index; let i = $index) {
+            <div class="field">
+              <label class="field__label" [for]="'arg-' + i">{{ hole.label }}</label>
+              <div class="field__row">
+                <input
+                  class="field__input"
+                  [id]="'arg-' + i"
+                  [value]="argSummary(hole.nodes)"
+                  [placeholder]="hole.optional ? 'Leave empty to skip' : 'Type a value'"
+                  (change)="setArgText(i, $event)"
+                />
+                <button
+                  type="button"
+                  class="field__pick"
+                  [attr.aria-label]="'Put a block in ' + hole.label"
+                  (click)="setArgCursor(hole.target)"
+                >
+                  <lucide-icon [name]="cursorIcon" [size]="16" aria-hidden="true" />
+                </button>
+              </div>
+            </div>
+          }
+          <p class="insp__tip">Type a value, or tap <lucide-icon [name]="cursorIcon" [size]="13" aria-hidden="true" /> and pick a block such as <code>user</code>.</p>
+        </div>
+      }
+
+      @if (entry()?.examples?.length && holes().length) {
+        <div class="insp__examples">
+          <p class="insp__label">Examples</p>
+          @for (example of entry()!.examples!; track example) {
+            <button type="button" class="insp__example" (click)="useExample(example)">
+              <code>{{ example }}</code>
+              <span>Use</span>
+            </button>
+          }
+        </div>
+      }
+    }
+
+    @if (n.type === 'literal') {
+      <div class="field">
+        <label class="field__label" for="insp-text">Text</label>
+        <textarea id="insp-text" class="field__input field__input--area" rows="2" [value]="n.value" (input)="patchField('value', $event)"></textarea>
+      </div>
+    }
+
+    @if (n.type === 'getVar' || n.type === 'setVar' || n.type === 'exists' || n.type === 'deleteVar') {
+      <div class="field">
+        <label class="field__label" for="insp-name">Variable name</label>
+        <input id="insp-name" class="field__input field__input--mono" [value]="n.name" (input)="patchField('name', $event)" autocapitalize="off" spellcheck="false" />
+      </div>
+      <fieldset class="choice">
+        <legend class="field__label">How long it's remembered</legend>
+        @for (opt of storageOptions; track opt.id) {
+          <label class="choice__opt" [class.is-on]="n.storage === opt.id">
+            <input type="radio" name="insp-storage" [checked]="n.storage === opt.id" (change)="setStorage(opt.id)" />
+            <span class="choice__text">
+              <span class="choice__title">{{ opt.label }}</span>
+              <span class="choice__hint">{{ opt.hint }}</span>
+            </span>
+          </label>
+        }
+      </fieldset>
+      @if (n.type === 'getVar') {
+        <fieldset class="seg">
+          <legend class="field__label">Use</legend>
+          <div class="seg__row">
+            <button type="button" class="seg__btn" [attr.aria-pressed]="!n.accessor" (click)="setAccessor('value')">The value</button>
+            <button type="button" class="seg__btn" [attr.aria-pressed]="n.accessor?.type === 'index'" (click)="setAccessor('index')">One item</button>
+            <button type="button" class="seg__btn" [attr.aria-pressed]="n.accessor?.type === 'random'" (click)="setAccessor('random')">Random item</button>
+            <button type="button" class="seg__btn" [attr.aria-pressed]="n.accessor?.type === 'length'" (click)="setAccessor('length')">List size</button>
+          </div>
+        </fieldset>
+        @if (n.accessor?.type === 'index') {
+          <div class="field">
+            <label class="field__label" for="insp-index">Position (0 = first, -1 = last)</label>
+            <input
+              id="insp-index"
+              class="field__input field__input--num"
+              inputmode="numeric"
+              [value]="indexValue()"
+              (change)="patchIndex($event)"
+            />
+          </div>
+        }
+      }
+    }
+
+    @if (n.type === 'binary') {
+      <div class="field">
+        <label class="field__label" for="insp-op">{{ title() === 'Math' ? 'Operation' : 'Check' }}</label>
+        <select id="insp-op" class="field__input" (change)="patchField('operator', $event)">
+          @for (op of operators(n.operator); track op) {
+            <option [value]="op" [selected]="op === n.operator">{{ opLabel[op] }} ({{ op }})</option>
+          }
+        </select>
+      </div>
+      <p class="insp__tip">Fill each side by typing in the block or putting a block in it.</p>
+    }
+
+    @if (n.type === 'ternary') {
+      <p class="insp__tip">{{ branchCount() }} {{ branchCount() === 1 ? 'check' : 'checks' }} · the first one that's true wins; otherwise the last branch runs.</p>
+      <button type="button" class="lf-btn lf-btn--sm" (click)="addElseIf()">+ Add “else if”</button>
+    }
+
+    @if (n.type === 'forLoop' && n.mode === 'range') {
+      <div class="field">
+        <label class="field__label" for="insp-repeat">Times (up to 25)</label>
+        <input id="insp-repeat" class="field__input field__input--num" inputmode="numeric" [value]="repeatCount()" (change)="patchRepeat($event)" />
+      </div>
+      <div class="field">
+        <label class="field__label" for="insp-loopvar">Counter name</label>
+        <input id="insp-loopvar" class="field__input field__input--mono" [value]="n.loopVar" (input)="patchField('loopVar', $event)" />
+      </div>
+    }
+
+    @if (n.type === 'commandRef') {
+      <div class="field">
+        <label class="field__label" for="insp-cmd">Command name</label>
+        <input id="insp-cmd" class="field__input field__input--mono" [value]="n.commandName" (input)="patchField('commandName', $event)" autocapitalize="off" />
+      </div>
+    }
+
+    <details class="insp__code">
+      <summary>Text for this block</summary>
+      <code>{{ code() }}</code>
+    </details>
+
+    <div class="insp__actions" role="group" aria-label="Block actions">
+      <button type="button" class="icon-btn" [disabled]="!canMoveEarlier()" (click)="store.moveBy(n.id, -1)" aria-label="Move earlier" title="Move earlier (Alt + ←)">
+        <lucide-icon [name]="leftIcon" [size]="17" aria-hidden="true" />
+      </button>
+      <button type="button" class="icon-btn" [disabled]="!canMoveLater()" (click)="store.moveBy(n.id, 1)" aria-label="Move later" title="Move later (Alt + →)">
+        <lucide-icon [name]="rightIcon" [size]="17" aria-hidden="true" />
+      </button>
+      <button type="button" class="icon-btn" [disabled]="!inList()" (click)="store.duplicate(n.id)" aria-label="Duplicate" title="Duplicate">
+        <lucide-icon [name]="copyIcon" [size]="17" aria-hidden="true" />
+      </button>
+      <button type="button" class="lf-btn lf-btn--sm insp__after" [disabled]="!inList()" (click)="addAfter()">Add after this</button>
+      <button type="button" class="icon-btn icon-btn--danger" (click)="remove()" aria-label="Delete block" title="Delete (Del)">
+        <lucide-icon [name]="trashIcon" [size]="17" aria-hidden="true" />
+      </button>
+    </div>
+  </section>
+}

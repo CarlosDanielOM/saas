@@ -1,7 +1,5 @@
 export type MockVarStorage = 'memory' | 'cache' | 'cacheUser' | 'db' | 'dbUser';
 export type MockBinaryOp = '+' | '-' | '*' | '/' | '%' | '==' | '!=' | '>' | '<' | '>=' | '<=' | '~=';
-export type MockPanel = 'palette' | 'canvas' | 'output';
-export type PaletteCategory = 'say' | 'value' | 'var' | 'logic' | 'action' | 'flow';
 
 export interface MockLiteral {
   id: string;
@@ -162,21 +160,6 @@ export type DropTarget =
   | { kind: 'list'; parentId: string; slot: ListSlot; index: number }
   | { kind: 'single'; parentId: string; slot: SingleSlot };
 
-export interface PaletteItem {
-  id: string;
-  label: string;
-  hint: string;
-  category: PaletteCategory;
-  factory: () => MockChildNode;
-}
-
-export interface SampleRecipe {
-  id: string;
-  label: string;
-  blurb: string;
-  build: () => MockRoot;
-}
-
 let seq = 0;
 
 export function nid(prefix = 'b'): string {
@@ -215,12 +198,12 @@ export function say(parts: MockNode[]): MockTemplate {
   return { id: nid('say'), type: 'template', parts };
 }
 
-export const STORAGE_OPTIONS: { id: MockVarStorage; mark: string; label: string }[] = [
-  { id: 'memory', mark: 'tmp', label: 'Temporary (this command)' },
-  { id: 'cache', mark: '#', label: 'Cache (this stream)' },
-  { id: 'cacheUser', mark: '##', label: 'Cache per user' },
-  { id: 'db', mark: '*', label: 'Saved (channel)' },
-  { id: 'dbUser', mark: '**', label: 'Saved per user' }
+export const STORAGE_OPTIONS: { id: MockVarStorage; mark: string; label: string; short: string; hint: string }[] = [
+  { id: 'memory', mark: 'tmp', label: 'Just this run', short: 'this run', hint: 'Forgotten as soon as the command finishes.' },
+  { id: 'cache', mark: '#', label: 'Until the stream ends', short: 'this stream', hint: 'Shared by everyone in chat, cleared after the stream.' },
+  { id: 'cacheUser', mark: '##', label: 'Per viewer, this stream', short: 'per viewer', hint: 'Each viewer gets their own value until the stream ends.' },
+  { id: 'db', mark: '*', label: 'Saved for the channel', short: 'saved', hint: 'Kept across streams, e.g. a death counter.' },
+  { id: 'dbUser', mark: '**', label: 'Saved per viewer', short: 'saved per viewer', hint: 'Kept across streams for each viewer, e.g. points.' }
 ];
 
 export function arrayLit(items: MockNode[]): MockArrayLiteral {
@@ -303,14 +286,6 @@ export function rootOf(...children: MockNode[]): MockRoot {
   return { id: nid('root'), type: 'root', children };
 }
 
-export const STORAGE_LABEL: Record<MockVarStorage, string> = {
-  memory: '%(name)',
-  cache: '%(#name)',
-  cacheUser: '%(##name)',
-  db: '%(*name)',
-  dbUser: '%(**name)'
-};
-
 export const BINARY_OPS: MockBinaryOp[] = [
   '==',
   '!=',
@@ -325,266 +300,6 @@ export const BINARY_OPS: MockBinaryOp[] = [
   '/',
   '%'
 ];
-
-export const PALETTE: PaletteItem[] = [
-  {
-    id: 'text',
-    label: 'Text',
-    hint: 'Plain chat text',
-    category: 'say',
-    factory: () => lit('Hello ')
-  },
-  {
-    id: 'stack',
-    label: 'Stack',
-    hint: 'Group blocks together',
-    category: 'say',
-    factory: () => group([lit('Hi '), fn('user')])
-  },
-  {
-    id: 'user',
-    label: 'user',
-    hint: '$(user)',
-    category: 'value',
-    factory: () => fn('user')
-  },
-  {
-    id: 'touser',
-    label: 'touser',
-    hint: '$(touser)',
-    category: 'value',
-    factory: () => fn('touser')
-  },
-  {
-    id: 'randomuser',
-    label: 'randomuser',
-    hint: '$(randomuser)',
-    category: 'value',
-    factory: () => fn('randomuser')
-  },
-  {
-    id: 'count',
-    label: 'count',
-    hint: '$(count)',
-    category: 'value',
-    factory: () => fn('count')
-  },
-  {
-    id: 'followage',
-    label: 'followage',
-    hint: '$(followage)',
-    category: 'value',
-    factory: () => fn('followage')
-  },
-  {
-    id: 'twitch.title',
-    label: 'twitch.title',
-    hint: '$(twitch.title)',
-    category: 'value',
-    factory: () => fn('twitch.title')
-  },
-  {
-    id: 'twitch.game',
-    label: 'twitch.game',
-    hint: '$(twitch.game)',
-    category: 'value',
-    factory: () => fn('twitch.game')
-  },
-  {
-    id: 'twitch.viewers',
-    label: 'twitch.viewers',
-    hint: '$(twitch.viewers)',
-    category: 'value',
-    factory: () => fn('twitch.viewers')
-  },
-  {
-    id: 'upper',
-    label: 'upper',
-    hint: '$(upper …)',
-    category: 'value',
-    factory: () => fn('upper', [fn('user')])
-  },
-  {
-    id: 'random',
-    label: 'random',
-    hint: '$(random 1 10)',
-    category: 'value',
-    factory: () => fn('random', [lit('1'), lit('10')])
-  },
-  {
-    id: 'getVar',
-    label: 'Get var',
-    hint: '%(name)',
-    category: 'var',
-    factory: () => getVar('target')
-  },
-  {
-    id: 'setVar',
-    label: 'Set var',
-    hint: '%(name value)',
-    category: 'var',
-    factory: () => setVar('target', fn('touser'))
-  },
-  {
-    id: 'setList',
-    label: 'Set list',
-    hint: '%(name[] %[...])',
-    category: 'var',
-    factory: () =>
-      setVar('list', arrayLit([lit('one'), lit('two'), lit('three')]), 'memory', { type: 'append' })
-  },
-  {
-    id: 'getItem',
-    label: 'Item of list',
-    hint: '%(name[0])',
-    category: 'var',
-    factory: () => getVar('list', 'memory', { type: 'index', index: lit('0') })
-  },
-  {
-    id: 'exists',
-    label: 'Exists',
-    hint: '^(name)',
-    category: 'var',
-    factory: () => existsVar('target')
-  },
-  {
-    id: 'deleteVar',
-    label: 'Delete var',
-    hint: '%del(name)',
-    category: 'var',
-    factory: () => deleteVar('target')
-  },
-  {
-    id: 'compare',
-    label: 'Compare',
-    hint: '*(a == b)',
-    category: 'logic',
-    factory: () => binary(fn('user'), '==', lit('cdom201'))
-  },
-  {
-    id: 'if',
-    label: 'If / else',
-    hint: '*(test ? a : b)',
-    category: 'logic',
-    factory: () =>
-      ternary(binary(fn('user'), '==', lit('cdom201')), lit('Welcome back, boss'), group([lit('Hi '), fn('user')]))
-  },
-  {
-    id: 'ban',
-    label: 'ban',
-    hint: '$(ban user seconds)',
-    category: 'action',
-    factory: () => fn('ban', [fn('touser'), lit('600')])
-  },
-  {
-    id: 'vip',
-    label: 'vip',
-    hint: '$(vip user)',
-    category: 'action',
-    factory: () => fn('vip', [fn('touser')])
-  },
-  {
-    id: 'chat.send',
-    label: 'chat.send',
-    hint: '$(chat.send …)',
-    category: 'action',
-    factory: () => fn('chat.send', [lit('Hello chat')])
-  },
-  {
-    id: 'tts',
-    label: 'tts',
-    hint: '$(tts …)',
-    category: 'action',
-    factory: () => fn('tts', [lit('Hello'), fn('user')])
-  },
-  {
-    id: 'delay',
-    label: 'delay',
-    hint: '$(delay ms)',
-    category: 'action',
-    factory: () => fn('delay', [lit('1000')])
-  },
-  {
-    id: 'for',
-    label: 'For loop',
-    hint: '*(for #i … { })',
-    category: 'flow',
-    factory: () => forRange('i')
-  },
-  {
-    id: 'cmd',
-    label: 'Command',
-    hint: '#(other)',
-    category: 'flow',
-    factory: () => commandRef('so', [fn('touser')])
-  },
-  {
-    id: 'fn',
-    label: 'Function',
-    hint: '$(name …)',
-    category: 'flow',
-    factory: () => fn('user')
-  }
-];
-
-export const PALETTE_CATEGORIES: { id: PaletteCategory; label: string }[] = [
-  { id: 'say', label: 'Say' },
-  { id: 'value', label: 'Values' },
-  { id: 'var', label: 'Variables' },
-  { id: 'logic', label: 'Logic' },
-  { id: 'action', label: 'Actions' },
-  { id: 'flow', label: 'Flow' }
-];
-
-export const SAMPLES: SampleRecipe[] = [
-  {
-    id: 'hello',
-    label: 'Hello user',
-    blurb: 'Hello $(user)!',
-    build: () => rootOf(lit('Hello '), fn('user'), lit('!'))
-  },
-  {
-    id: 'ban',
-    label: 'Ban target',
-    blurb: '%(target $(touser)) $(ban %(target) 600)',
-    build: () => rootOf(setVar('target', fn('touser')), fn('ban', [getVar('target'), lit('600')]))
-  },
-  {
-    id: 'followage',
-    label: 'Followage',
-    blurb: '$(user) has followed for $(followage)',
-    build: () => rootOf(fn('user'), lit(' has followed for '), fn('followage'))
-  },
-  {
-    id: 'if',
-    label: 'If / else',
-    blurb: 'Boss vs everyone else',
-    build: () =>
-      rootOf(
-        ternary(
-          binary(fn('user'), '==', lit('cdom201')),
-          lit('Welcome back, boss'),
-          group([lit('Hi '), fn('user')])
-        )
-      )
-  },
-  {
-    id: 'count',
-    label: 'Use count',
-    blurb: 'Used $(count) times',
-    build: () => rootOf(lit('This command has been used '), fn('count'), lit(' times'))
-  },
-  {
-    id: 'loop',
-    label: 'Range loop',
-    blurb: '*(for #i …)',
-    build: () => rootOf(forRange('i'))
-  }
-];
-
-export function paletteById(id: string): PaletteItem | undefined {
-  return PALETTE.find((item) => item.id === id);
-}
 
 export function isRoot(node: MockNode): node is MockRoot {
   return node.type === 'root';
@@ -895,39 +610,61 @@ export function moveNode(root: MockRoot, nodeId: string, target: DropTarget): Mo
   return insertNode(stripped, target, found);
 }
 
-export function blockTone(type: MockNode['type']): string {
-  switch (type) {
-    case 'literal':
-    case 'template':
-      return 'text';
-    case 'function':
-      return 'fn';
-    case 'getVar':
-    case 'setVar':
-    case 'exists':
-    case 'deleteVar':
-    case 'arrayLiteral':
-      return 'var';
-    case 'binary':
-    case 'ternary':
-      return 'logic';
-    case 'commandRef':
-    case 'forLoop':
-    case 'loopVar':
-    case 'group':
-      return 'flow';
-    default:
-      return 'text';
-  }
+
+export interface ParentSlot {
+  parentId: string;
+  slot: ListSlot | SingleSlot;
+  /** Position inside a list slot; -1 for single slots. */
+  index: number;
+  length: number;
 }
 
-export type BlockShape = 'stack' | 'oval' | 'hex' | 'c';
-
-export function blockShape(node: MockNode, inset: boolean): BlockShape {
-  if (node.type === 'forLoop' || node.type === 'ternary' || node.type === 'group') return 'c';
-  if (node.type === 'arrayLiteral' || (node.type === 'setVar' && isListSet(node))) return 'c';
-  if (node.type === 'template') return inset ? 'oval' : 'stack';
-  if (node.type === 'binary') return 'hex';
-  if (inset) return 'oval';
-  return 'stack';
+/** Where a node lives: its parent and the list/slot that holds it. */
+export function findParent(root: MockRoot, id: string): ParentSlot | null {
+  const visit = (node: MockNode): ParentSlot | null => {
+    const lists: [ListSlot, MockNode[]][] = [];
+    const singles: [SingleSlot, MockNode | null | undefined][] = [];
+    switch (node.type) {
+      case 'root':
+      case 'group':
+        lists.push(['children', node.children]);
+        break;
+      case 'function':
+      case 'commandRef':
+        lists.push(['args', node.args]);
+        break;
+      case 'arrayLiteral':
+        lists.push(['items', node.items]);
+        break;
+      case 'forLoop':
+        lists.push(['body', node.body]);
+        singles.push(['init', node.init], ['condition', node.condition], ['update', node.update], ['iterable', node.iterable]);
+        break;
+      case 'setVar':
+        if (node.value?.type === 'arrayLiteral') lists.push(['items', node.value.items]);
+        else singles.push(['value', node.value]);
+        break;
+      case 'binary':
+        singles.push(['left', node.left], ['right', node.right]);
+        break;
+      case 'ternary':
+        singles.push(['test', node.test], ['consequent', node.consequent], ['alternate', node.alternate]);
+        break;
+      default:
+        break;
+    }
+    for (const [slot, list] of lists) {
+      const index = list.findIndex((child) => child.id === id);
+      if (index >= 0) return { parentId: node.id, slot, index, length: list.length };
+    }
+    for (const [slot, child] of singles) {
+      if (child?.id === id) return { parentId: node.id, slot, index: -1, length: 1 };
+    }
+    for (const child of childNodes(node)) {
+      const hit = visit(child);
+      if (hit) return hit;
+    }
+    return null;
+  };
+  return visit(root);
 }

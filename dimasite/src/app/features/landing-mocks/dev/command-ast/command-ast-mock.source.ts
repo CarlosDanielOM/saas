@@ -18,7 +18,7 @@ function storagePrefix(storage: MockVarStorage): string {
 function joinParts(nodes: MockNode[]): string {
   let out = '';
   for (let i = 0; i < nodes.length; i++) {
-    const src = toSource(nodes[i], false);
+    const src = toSource(nodes[i]);
     if (i === 0) {
       out = src;
       continue;
@@ -38,11 +38,24 @@ function wrapCompute(inner: string, wrap: boolean): string {
   return `*(${inner})`;
 }
 
+function quoteLiteral(value: string): string {
+  return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+}
+
+/** Operand inside a *( ) expression: no extra *( ), quote text with spaces. */
 function computeAtom(node: MockNode): string {
-  if (node.type === 'literal' && /[\s?:]/.test(node.value)) {
-    return `"${node.value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+  if (node.type === 'literal' && /[\s?:]/.test(node.value)) return quoteLiteral(node.value);
+  // Several blocks in a branch become one quoted piece.
+  if (node.type === 'group') {
+    return quoteLiteral(node.children.map((child) => (child.type === 'literal' ? child.value : toSource(child))).join(''));
   }
   return toSource(node, false);
+}
+
+/** Value outside an expression (variable value, list item): expressions keep their *( ). */
+function valueAtom(node: MockNode): string {
+  if (node.type === 'literal' && /[\s?:]/.test(node.value)) return quoteLiteral(node.value);
+  return toSource(node);
 }
 
 function selectorSource(selector: MockNode | null | undefined): string {
@@ -74,7 +87,7 @@ export function toSource(node: MockNode, wrapComputeExpr = true): string {
     case 'loopVar':
       return `#${node.name}`;
     case 'function': {
-      const args = node.args.map((arg) => toSource(arg, false)).join(' ');
+      const args = node.args.map((arg) => toSource(arg)).join(' ');
       return args ? `$(${node.name} ${args})` : `$(${node.name})`;
     }
     case 'getVar': {
@@ -83,15 +96,15 @@ export function toSource(node: MockNode, wrapComputeExpr = true): string {
     }
     case 'setVar': {
       const acc = accessorSource(node.accessor, true);
-      const value = node.value ? ` ${computeAtom(node.value)}` : '';
+      const value = node.value ? ` ${valueAtom(node.value)}` : '';
       return `%(${storagePrefix(node.storage)}${node.name}${selectorSource(node.userSelector)}${acc}${value})`;
     }
     case 'template': {
-      const inner = node.parts.map((part) => (part.type === 'literal' ? part.value : toSource(part, false))).join('');
+      const inner = node.parts.map((part) => (part.type === 'literal' ? part.value : toSource(part))).join('');
       return `"${inner.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
     }
     case 'arrayLiteral': {
-      const items = node.items.map((item) => computeAtom(item)).join(', ');
+      const items = node.items.map((item) => valueAtom(item)).join(', ');
       return `%[${items}]`;
     }
     case 'exists':
@@ -110,7 +123,7 @@ export function toSource(node: MockNode, wrapComputeExpr = true): string {
       return wrapCompute(`${test} ? ${yes} : ${no}`, wrapComputeExpr);
     }
     case 'commandRef': {
-      const args = node.args.map((arg) => toSource(arg, false)).join(' ');
+      const args = node.args.map((arg) => toSource(arg)).join(' ');
       return args ? `#(${node.commandName} ${args})` : `#(${node.commandName})`;
     }
     case 'forLoop': {
@@ -119,60 +132,18 @@ export function toSource(node: MockNode, wrapComputeExpr = true): string {
         const iterable = node.iterable ? toSource(node.iterable, false) : '%(items[])';
         return wrapCompute(`for #${node.loopVar} in ${iterable} { ${body} }`, wrapComputeExpr);
       }
-      const init = node.init ? toSource(node.init, false) : `#${node.loopVar} = 0`;
-      const condition = node.condition ? toSource(node.condition, false) : `#${node.loopVar} < 3`;
-      const update = node.update ? toSource(node.update, false) : `#${node.loopVar}++`;
+      // Real bot syntax: for #i = 0; #i < 3; #i++ { … }
+      const v = `#${node.loopVar}`;
+      const start = node.init?.type === 'binary' && node.init.right ? computeAtom(node.init.right) : '0';
+      const condition = node.condition ? toSource(node.condition, false) : `${v} < 3`;
+      const step = node.update?.type === 'binary' && node.update.right ? computeAtom(node.update.right) : '1';
+      const init = `${v} = ${start}`;
+      const update = step === '1' ? `${v}++` : `${v} = ${v} + ${step}`;
       return wrapCompute(`for ${init}; ${condition}; ${update} { ${body} }`, wrapComputeExpr);
     }
     case 'group':
       return joinParts(node.children);
     case 'root':
       return joinParts(node.children);
-  }
-}
-
-export function astPreview(root: MockRoot): string {
-  return JSON.stringify(stripIds(root), null, 2);
-}
-
-function stripIds(node: MockNode): unknown {
-  const { id: _id, ...rest } = node;
-  switch (node.type) {
-    case 'function':
-    case 'commandRef':
-      return { ...rest, args: node.args.map(stripIds) };
-    case 'setVar':
-      return { ...rest, value: node.value ? stripIds(node.value) : null };
-    case 'arrayLiteral':
-      return { ...rest, items: node.items.map(stripIds) };
-    case 'binary':
-      return {
-        ...rest,
-        left: node.left ? stripIds(node.left) : null,
-        right: node.right ? stripIds(node.right) : null
-      };
-    case 'ternary':
-      return {
-        ...rest,
-        test: node.test ? stripIds(node.test) : null,
-        consequent: node.consequent ? stripIds(node.consequent) : null,
-        alternate: node.alternate ? stripIds(node.alternate) : null
-      };
-    case 'forLoop':
-      return {
-        ...rest,
-        init: node.init ? stripIds(node.init) : null,
-        condition: node.condition ? stripIds(node.condition) : null,
-        update: node.update ? stripIds(node.update) : null,
-        iterable: node.iterable ? stripIds(node.iterable) : null,
-        body: node.body.map(stripIds)
-      };
-    case 'template':
-      return { ...rest, parts: node.parts.map(stripIds) };
-    case 'group':
-    case 'root':
-      return { ...rest, children: node.children.map(stripIds) };
-    default:
-      return rest;
   }
 }

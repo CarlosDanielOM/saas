@@ -211,10 +211,10 @@ export class DevMockIndexComponent {
     },
     {
       id: 'command-ast',
-      title: 'Command AST blocks',
+      title: 'Command builder (AST blocks)',
       badge: 'Local playground',
       description:
-        'Visual coding blocks for command AST. Snap, nest, preview source, mock-run with fake chat. No command API.'
+        'Block builder for command AST with all 107 real bot functions, labelled inputs, block details, live chat + actions preview and two-way command text. No command API.'
     },
     {
       id: 'lf-status',

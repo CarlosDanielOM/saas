@@ -20,6 +20,34 @@ import {
 } from './command-ast-mock.model';
 
 const STARTS = ['%del(', '$(', '%(', '*(', '^(', '#('] as const;
+
+/** Loop counters in scope while parsing a loop body, so "#i" becomes a counter block. */
+const loopScope: string[] = [];
+
+function pushText(nodes: MockNode[], text: string): void {
+  if (!text) return;
+  if (!loopScope.length) {
+    nodes.push(lit(text));
+    return;
+  }
+  const pattern = new RegExp(`#(${loopScope.map((name) => name.replace(/\W/g, '')).join('|')})(?![\\w])`, 'g');
+  let last = 0;
+  for (const match of text.matchAll(pattern)) {
+    if (match.index! > last) nodes.push(lit(text.slice(last, match.index)));
+    nodes.push(loopVar(match[1]));
+    last = match.index! + match[0].length;
+  }
+  if (last < text.length) nodes.push(lit(text.slice(last)));
+}
+
+function withLoopVar<T>(name: string, run: () => T): T {
+  loopScope.push(name);
+  try {
+    return run();
+  } finally {
+    loopScope.pop();
+  }
+}
 const OPS: MockBinaryOp[] = ['==', '!=', '>=', '<=', '~=', '>', '<', '+', '-', '*', '/', '%'];
 
 export interface ParseSourceResult {
@@ -66,12 +94,11 @@ function parseSequence(input: string): MockNode[] {
     const text = input.slice(i, nextStart);
     const cut = nextQuote(text);
     if (cut >= 0) {
-      const before = text.slice(0, cut);
-      if (before) nodes.push(lit(before));
+      pushText(nodes, text.slice(0, cut));
       i += cut;
       continue;
     }
-    if (text) nodes.push(lit(text));
+    pushText(nodes, text);
     i = nextStart;
   }
   return nodes.filter((node) => node.type !== 'literal' || node.value.trim() !== '');
@@ -212,6 +239,11 @@ function parseVarParts(inner: string): {
 function parseVarInner(inner: string): MockNode {
   const { name, storage, userSelector, indexRaw, rest } = parseVarParts(inner);
 
+  // Reads: %(list[]) whole list, %(list[].length) size, %(list[random]) random item.
+  if (indexRaw === '' && rest === '.length') return getVar(name, storage, { type: 'length' }, userSelector);
+  if (indexRaw === '' && !rest) return getVar(name, storage, { type: 'array' }, userSelector);
+  if (indexRaw === 'random' && !rest) return getVar(name, storage, { type: 'random' }, userSelector);
+
   if (indexRaw !== null && indexRaw === '' && rest) {
     return setVar(name, parseValue(rest), storage, { type: 'append' }, userSelector);
   }
@@ -333,23 +365,27 @@ function parseFor(inner: string): MockNode | null {
       condition: null,
       update: null,
       iterable: parseOneOrGroup(foreach[2].trim()),
-      body: parseSequence(foreach[3].trim())
+      body: withLoopVar(foreach[1], () => parseSequence(foreach[3].trim()))
     };
   }
   const range = inner.match(/^for\s+([\s\S]+?);\s*([\s\S]+?);\s*([\s\S]+?)\s*\{([\s\S]*)\}\s*$/i);
   if (!range) return null;
   const initText = range[1].trim();
   const loopVarName = /^#([A-Za-z_][\w]*)/.exec(initText)?.[1] ?? 'i';
+  const start = /^#[A-Za-z_][\w]*\s*=\s*([\s\S]+)$/.exec(initText)?.[1] ?? '0';
+  const updateText = range[3].trim();
+  const step = /\+\+$/.test(updateText) ? '1' : /\+\s*([\s\S]+)$/.exec(updateText)?.[1]?.trim() ?? '1';
+  // Kept as "#i == start" / "#i + step" internally; printed back as #i = start / #i++.
   return {
     id: nid('for'),
     type: 'forLoop',
     loopVar: loopVarName,
     mode: 'range',
-    init: parseOneOrGroup(initText),
-    condition: parseOneOrGroup(range[2].trim()),
-    update: parseOneOrGroup(range[3].trim()),
+    init: binary(loopVar(loopVarName), '==', parsePrimary(start)),
+    condition: parseExpr(range[2].trim()),
+    update: binary(loopVar(loopVarName), '+', parsePrimary(step)),
     iterable: null,
-    body: parseSequence(range[4].trim())
+    body: withLoopVar(loopVarName, () => parseSequence(range[4].trim()))
   };
 }
 
