@@ -6,10 +6,11 @@ import { LinksService } from '../../../services/links.service';
 import { LanguageService } from '../../../services/language.service';
 import { DuelState } from './duel-api.service';
 import { DuelArenaComponent } from './duel-arena.component';
+import { DuelBattle, legacyBattle } from './duel-battle';
 @Component({selector:'app-duel-overlay',imports:[DuelArenaComponent],changeDetection:ChangeDetectionStrategy.OnPush,
   template:`@if (visible(); as current) {
     @if (current.challenge; as challenge) { <section class="challenge" role="status"><span>!duel</span><h1>{{ t('challengeTitle', {name:challenge.opponent}) }}</h1><p>{{ t('challengeFrom', {name:challenge.challenger}) }}</p><strong>!duel accept · !duel decline</strong></section> }
-    @else if (current.run; as run) { <app-duel-arena [names]="{left:run.challenger,right:run.opponent}" [chosenWinner]="run.winner" [elapsed]="elapsed()" [started]="true" [transparent]="true" [locale]="current.settings.language" /> }
+    @else if (current.run; as run) { <app-duel-arena [names]="{left:run.challenger,right:run.opponent}" [battle]="battle()" [elapsed]="elapsed()" [started]="true" [transparent]="true" [locale]="current.settings.language" /> }
   }`,
   styles:`:host{display:block;width:100%;max-width:1920px}.challenge{box-sizing:border-box;margin:8% auto;padding:3rem;max-width:800px;text-align:center;background:#11101de8;color:#fff;border:1px solid #aa91ff;border-radius:24px;font-family:system-ui}.challenge span{color:#c6b3ff}.challenge h1{font-size:clamp(24px,4vw,48px);overflow-wrap:anywhere}.challenge p{color:#dbd5ee}.challenge strong{display:block;margin-top:24px;color:#ffd68e}@media(max-width:480px){.challenge{padding:24px;margin:16px}}`})
 export class DuelOverlayComponent {
@@ -17,7 +18,9 @@ export class DuelOverlayComponent {
   readonly now=signal(Date.now());
   private offset=0;
   private readonly language=inject(LanguageService);
-  readonly elapsed=computed(()=>Math.max(0,Math.min(11400,this.now()+this.offset-(this.state()?.run?.startedAt??0))));
+  // Runs accepted before turn-based battles carry only a winner.
+  readonly battle=computed<DuelBattle>(()=>{const run=this.state()?.run;if(!run)return legacyBattle('left');return run.fighters&&run.turns?.length?{fighters:run.fighters,turns:run.turns,winner:run.winner,duration:run.endsAt-run.startedAt}:legacyBattle(run.winner);});
+  readonly elapsed=computed(()=>Math.max(0,Math.min(this.battle().duration,this.now()+this.offset-(this.state()?.run?.startedAt??0))));
   readonly visible=computed(()=>{const s=this.state();if(!s?.settings.enabled)return null;const now=this.now()+this.offset;if(s.challenge&&s.challenge.expiresAt>now)return s;return s.run?.mode==='overlay'&&now<s.run.endsAt+6000?s:null;});
   t(key:string,params?:Record<string,string|number>):string {return this.language.translate('duelWidget.'+key,params,this.state()?.settings.language??'en');}
   constructor(){

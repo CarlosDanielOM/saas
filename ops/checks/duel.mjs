@@ -63,10 +63,17 @@ try {
   await page.locator('.arena[data-phase="fight"]').waitFor();
   await page.locator('app-duel-fighter[data-action="attack"]').waitFor();
   await page.locator('.hit-spark').first().waitFor();
+  // Math.random()=0.1 rolls Knight vs Ronin, left first, heavy attacks and an extra turn every time.
+  assert.equal(await page.locator('app-duel-fighter[data-side="left"]').getAttribute('data-character'), 'knight');
+  assert.equal(await page.locator('app-duel-fighter[data-side="right"]').getAttribute('data-character'), 'ronin');
+  await page.locator('.move-callout', { hasText: 'Heavy attack' }).first().waitFor();
+  await page.locator('.extra-turn', { hasText: 'Extra turn!' }).waitFor();
+  await page.locator('.arena-footer', { hasText: /Turn \d+/ }).waitFor();
   await page.screenshot({ path: `${evidence}/fight.png`, fullPage: true });
   await page.locator('.arena[data-phase="knockout"]').waitFor({ timeout: 15000 });
   await page.locator('.winner-reveal').waitFor();
   assert.equal(await page.locator('.winner-reveal strong').innerText(), 'VioletKnight');
+  assert.equal(await page.locator('.winner-reveal').getByText('wins the duel with 100 HP left').count(), 1);
   assert.equal(await page.locator('.health[data-side="right"] [role="progressbar"]').getAttribute('aria-valuenow'), '0');
   assert.equal(await page.locator('app-duel-fighter[data-side="right"]').getAttribute('data-action'), 'defeated');
   await page.waitForTimeout(800);
@@ -77,7 +84,7 @@ try {
   await page.locator('.playback .primary').click();
   await page.locator('.arena[data-phase="entrance"]').waitFor();
   assert.equal(await page.locator('.health[data-side="right"] [role="progressbar"]').getAttribute('aria-valuenow'), '100');
-  await page.locator('.winner-reveal').waitFor({ timeout: 18000 });
+  await page.locator('.winner-reveal').waitFor({ timeout: 25000 });
   assert.equal(await page.locator('.winner-reveal strong').innerText(), 'GoldenKnight');
   assert.equal(await page.locator('.health[data-side="left"] [role="progressbar"]').getAttribute('aria-valuenow'), '0');
   await page.waitForTimeout(800);
@@ -107,7 +114,7 @@ try {
   assert.equal(await page.locator('.controls-tile').count(), 0);
   assert.equal(await page.evaluate(() => getComputedStyle(document.body).backgroundColor), 'rgba(0, 0, 0, 0)');
   await page.getByRole('button', { name: 'Play duel', exact: true }).click();
-  await page.locator('.winner-reveal').waitFor({ timeout: 18000 });
+  await page.locator('.winner-reveal').waitFor({ timeout: 25000 });
   assert(['Dima', 'ChatChampion'].includes(await page.locator('.winner-reveal strong').innerText()), 'Random outcome must be one fighter');
   await page.screenshot({ path: `${evidence}/overlay-only.png`, omitBackground: true });
   await page.goto(base + '/mocks/dev');
@@ -115,5 +122,5 @@ try {
   assert.notEqual(await page.evaluate(() => getComputedStyle(document.body).backgroundColor), 'rgba(0, 0, 0, 0)', 'Navigation restores body background');
   assert.deepEqual(errors, [], 'No JavaScript runtime errors');
   assert.deepEqual(apiRequests, [], 'The mock must not request production APIs');
-  console.log('PASS: both winners, combat effects, HP, pause/resume, replay/reset, transparent overlay, random result, English/Spanish, reduced motion, 320/390/1280 dark/light, zero axe violations or runtime errors.');
+  console.log('PASS: turn-based RNG battles (characters, heavy callouts, extra turns, turn counter), both winners, combat effects, HP, pause/resume, replay/reset, transparent overlay, random result, English/Spanish, reduced motion, 320/390/1280 dark/light, zero axe violations or runtime errors.');
 } finally { await browser.close(); }

@@ -6861,7 +6861,7 @@
     "dark": "Oscuro",
     "kicker": "Overlays de comandos / Duelo",
     "title": "Que el chat se enfrente",
-    "subtitle": "Dos contrincantes. Un golpe final. Un primer vistazo a un duelo animado para tu stream.",
+    "subtitle": "Dos contrincantes intercambian golpes por turnos. Ataques normales, fuertes y especiales poco comunes, y el azar decide quién cae primero.",
     "local": "Vista previa local",
     "preview": "Vista previa del overlay",
     "silent": "Sin sonido",
@@ -6873,7 +6873,7 @@
     "challenge": "Desafío aceptado",
     "fight": "¡A LUCHAR!",
     "victory": "Victoria",
-    "wins": "gana el duelo",
+    "wins": "gana el duelo con {{hp}} HP restantes",
     "round": "Ronda 01 / 01",
     "play": "Iniciar duelo",
     "replay": "Repetir duelo",
@@ -6887,8 +6887,8 @@
     "setup": "Prepara la escena",
     "fighters": "Los luchadores",
     "outcome": "¿Quién gana?",
-    "outcomeHint": "Elige un resultado para probar ambas animaciones de victoria.",
-    "applyHint": "Los cambios de nombre y ganador se aplican al repetir.",
+    "outcomeHint": "Sin ganador predeterminado: cada turno sortea el tipo de ataque, el daño y la opción de atacar otra vez.",
+    "applyHint": "Los cambios de nombre se aplican al repetir. Cada repetición es un combate nuevo.",
     "choice": {
       "random": "Sorpréndeme",
       "left": "Gana el retador",
@@ -6898,7 +6898,7 @@
     "transparent": "Fondo transparente",
     "overlayOnly": "Abrir solo el overlay",
     "mockNote": "Solo un duelo de prueba. Sin mensajes en el chat, acciones de moderación ni conexión al comando real.",
-    "footer": "Luchadores vectoriales originales · Entrada → combate → golpe final → victoria",
+    "footer": "Luchadores vectoriales originales · Caballero, Ronin y Mago · por turnos, pierde quien llegue a 0 HP",
     "winnerAnnouncement": "{{name}} gana el duelo.",
     "phase": {
       "ready": "Esperando un desafío",
@@ -6909,19 +6909,36 @@
       "winner": "Tenemos un ganador"
     },
     "indexTitle": "Duelo · Overlay de combate",
-    "indexDescription": "Dos luchadores con espadas, efectos de impacto, barras de vida, golpe final y anuncio del ganador. Repite con cualquier ganador o un fondo transparente."
+    "indexDescription": "Combate por turnos entre dos de tres luchadores animados: ataques normales, fuertes y especiales, turnos extra, barras de vida con daño residual, golpe final y anuncio del ganador.",
+    "turn": "Turno {{n}}",
+    "extraTurn": "¡Turno extra!",
+    "move": {
+      "normal": "Ataque",
+      "heavy": "Ataque fuerte",
+      "special": "Ataque especial"
+    },
+    "special": {
+      "knight": "Castigo Sagrado",
+      "ronin": "Tajo de Luna Creciente",
+      "mage": "Tormenta de Meteoros"
+    },
+    "character": {
+      "knight": "Caballero",
+      "ronin": "Ronin",
+      "mage": "Mago"
+    }
   },
   "duelWidget": {
     "back": "Todos los widgets",
     "widget": "Widget",
     "title": "Arena de duelos",
-    "subtitle": "Que tus espectadores se enfrenten en la arena. Dos luchadores, un ganador al azar.",
-    "cardSubtitle": "Batallas animadas de !duel con un ganador al azar.",
+    "subtitle": "Que tus espectadores se enfrenten en la arena. Combates por turnos donde el azar elige al ganador.",
+    "cardSubtitle": "Batallas animadas de !duel por turnos. Sin ganador predeterminado.",
     "premiumRequired": "Los widgets de duelo requieren Premium",
     "upgrade": "Obtener Premium",
     "loading": "Cargando tu widget de duelo…",
     "preview": "Vista previa de la arena",
-    "surprise": "Sorpréndeme · Aleatorio",
+    "surprise": "Un combate al azar cada vez",
     "play": "Ver un duelo",
     "replay": "Repetir vista previa",
     "previewHint": "Vista previa local. Sin mensajes de chat ni timeouts.",
@@ -6953,7 +6970,7 @@
     "how": "Cómo funciona un duelo",
     "stepChallenge": "Un espectador desafía a otro:",
     "stepAccept": "El espectador desafiado acepta en 3 minutos:",
-    "stepWinner": "Los luchadores se enfrentan y al final se anuncia un ganador al azar en el chat.",
+    "stepWinner": "Los luchadores se turnan: casi siempre un ataque normal, a veces uno fuerte, rara vez uno especial, con una pequeña probabilidad de volver a atacar. Pierde quien llegue a 0 HP y el chat recibe al ganador.",
     "fallback": "Con el overlay conectado, el chat permanece en silencio hasta el ganador. Sin él, el chat narra la batalla.",
     "challengeTitle": "¡@{{name}}, te han desafiado!",
     "challengeFrom": "@{{name}} te espera en la arena. Acepta en 3 minutos.",

@@ -10,6 +10,7 @@ import { getRouteParam } from '../../../shared/utils/route-param.util';
 import { MODULE_TIER_REQUIREMENTS, isModuleAccessible } from '../../modules/module-tier.model';
 import { DuelApi, DuelSettings, DuelState } from './duel-api.service';
 import { DuelArenaComponent } from './duel-arena.component';
+import { simulateBattle } from './duel-battle';
 @Component({selector:'app-duel-page',imports:[ReactiveFormsModule,RouterLink,DuelArenaComponent],templateUrl:'./duel-page.component.html',styleUrls:['../widgets-base.css','./duel-page.component.css'],changeDetection:ChangeDetectionStrategy.OnPush})
 export class DuelPageComponent {
   private readonly auth=inject(SessionAuthService);
@@ -23,11 +24,11 @@ export class DuelPageComponent {
   private pending:{settings:DuelSettings;revision:number;key:string}|null=null;
   private readonly fb=inject(FormBuilder).nonNullable;
   readonly form=this.fb.group({enabled:true,timeoutEnabled:true,timeoutSeconds:[60,[Validators.required,Validators.min(1),Validators.max(1209600),Validators.pattern(/^\d+$/)]],language:this.fb.control<'en'|'es'>('en')});
-  readonly elapsed=signal(0);readonly started=signal(false);readonly winner=signal<'left'|'right'>('left');private previewStarted=0;
+  readonly elapsed=signal(0);readonly started=signal(false);readonly battle=signal(simulateBattle());private previewStarted=0;
   constructor(){
     const destroy=inject(DestroyRef);destroy.onDestroy(()=>{this.stopped=true;});
     void this.load();const poll=setInterval(()=>{if(this.channel&&!this.busy())void this.refresh();},1500);
-    const clock=setInterval(()=>{if(this.started())this.elapsed.set(Math.min(11400,performance.now()-this.previewStarted));},40);
+    const clock=setInterval(()=>{if(this.started())this.elapsed.set(Math.min(this.battle().duration,performance.now()-this.previewStarted));},40);
     destroy.onDestroy(()=>{clearInterval(poll);clearInterval(clock);});
   }
   t(key:string,params?:Record<string,string|number>):string{return this.language.translate('duelWidget.'+key,params);}
@@ -42,5 +43,5 @@ export class DuelPageComponent {
   async reload():Promise<void>{this.pending=null;this.uncertainSave.set(false);this.form.markAsPristine();this.error.set('');await this.refresh();}
   async createLink():Promise<void>{if(this.busy())return;if(this.overlayUrl()&&!this.rotateConfirm()){this.rotateConfirm.set(true);return;}this.busy.set(true);this.error.set('');try{const token=await this.api.token(this.channel);const url=location.origin+'/overlays/duel/'+this.channel+'#'+token;this.overlayUrl.set(url);this.rotateConfirm.set(false);try{sessionStorage.setItem('duel-overlay-'+this.channel,url);}catch{}await this.refresh();}catch{this.error.set(this.t('linkError'));}finally{this.busy.set(false);}}
   async copyLink():Promise<void>{try{await navigator.clipboard.writeText(this.overlayUrl());this.notice.set(this.t('copied'));}catch{this.error.set(this.t('copyError'));}}
-  preview():void{this.winner.set(Math.random()<.5?'left':'right');this.elapsed.set(0);this.previewStarted=performance.now();this.started.set(true);}
+  preview():void{this.battle.set(simulateBattle());this.elapsed.set(0);this.previewStarted=performance.now();this.started.set(true);}
 }

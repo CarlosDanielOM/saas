@@ -6861,7 +6861,7 @@
     "dark": "Dark",
     "kicker": "Command overlays / Duel",
     "title": "Let chat battle it out",
-    "subtitle": "Two challengers. One final blow. A first look at an animated duel for your stream.",
+    "subtitle": "Two challengers trade blows turn by turn. Normal, heavy and rare special attacks, and the RNG decides who falls first.",
     "local": "Local preview",
     "preview": "Overlay preview",
     "silent": "Silent",
@@ -6873,7 +6873,7 @@
     "challenge": "Challenge accepted",
     "fight": "FIGHT!",
     "victory": "Victory",
-    "wins": "wins the duel",
+    "wins": "wins the duel with {{hp}} HP left",
     "round": "Round 01 / 01",
     "play": "Play duel",
     "replay": "Replay duel",
@@ -6887,8 +6887,8 @@
     "setup": "Set the scene",
     "fighters": "The fighters",
     "outcome": "Who wins?",
-    "outcomeHint": "Pick an outcome to preview both victory animations.",
-    "applyHint": "Name and winner changes apply on the next replay.",
+    "outcomeHint": "No predetermined winner: every turn rolls the attack type, damage and a chance to strike again.",
+    "applyHint": "Name changes apply on the next replay. Every replay is a new fight.",
     "choice": {
       "random": "Surprise me",
       "left": "Challenger wins",
@@ -6898,7 +6898,7 @@
     "transparent": "Transparent background",
     "overlayOnly": "Open overlay only",
     "mockNote": "Mock battle only. No chat messages, moderation actions or live command connection.",
-    "footer": "Original vector fighters · Entrance → fight → knockout → victory",
+    "footer": "Original vector fighters · Knight, Ronin and Mage · turn-based, first to 0 HP loses",
     "winnerAnnouncement": "{{name}} wins the duel.",
     "phase": {
       "ready": "Waiting for a challenge",
@@ -6909,19 +6909,36 @@
       "winner": "We have a winner"
     },
     "indexTitle": "Duel · Fighting overlay",
-    "indexDescription": "Two animated sword fighters, hit effects, health bars, knockout and winner reveal. Replay with either winner or a transparent background."
+    "indexDescription": "Turn-based battle between two of three animated fighters: normal, heavy and special attacks, extra turns, chip-damage health bars, knockout and winner reveal.",
+    "turn": "Turn {{n}}",
+    "extraTurn": "Extra turn!",
+    "move": {
+      "normal": "Attack",
+      "heavy": "Heavy attack",
+      "special": "Special attack"
+    },
+    "special": {
+      "knight": "Holy Smite",
+      "ronin": "Crescent Moon Slash",
+      "mage": "Meteor Storm"
+    },
+    "character": {
+      "knight": "Knight",
+      "ronin": "Ronin",
+      "mage": "Mage"
+    }
   },
   "duelWidget": {
     "back": "All widgets",
     "widget": "Widget",
     "title": "Duel arena",
-    "subtitle": "Let your viewers settle it in the arena. Two fighters, one random winner.",
-    "cardSubtitle": "Animated !duel battles with a random winner.",
+    "subtitle": "Let your viewers settle it in the arena. Turn-based fights where the RNG picks the winner.",
+    "cardSubtitle": "Animated turn-based !duel battles. No predetermined winner.",
     "premiumRequired": "Duel widgets require Premium",
     "upgrade": "Get Premium",
     "loading": "Loading your duel widget…",
     "preview": "Arena preview",
-    "surprise": "Surprise me · Random",
+    "surprise": "New random fight every time",
     "play": "Preview a duel",
     "replay": "Replay preview",
     "previewHint": "A local preview. No chat messages or timeouts.",
@@ -6953,7 +6970,7 @@
     "how": "How a duel works",
     "stepChallenge": "A viewer challenges someone:",
     "stepAccept": "The challenged viewer accepts within 3 minutes:",
-    "stepWinner": "The fighters battle and a random winner is announced in chat at the end.",
+    "stepWinner": "Fighters take turns: usually a normal attack, sometimes a heavy one, rarely a special, with a small chance to strike again. The first to 0 HP loses, and chat gets the winner.",
     "fallback": "With the overlay connected, chat stays quiet until the winner. Without it, chat narrates the battle.",
     "challengeTitle": "@{{name}}, you have been challenged!",
     "challengeFrom": "@{{name}} is waiting in the arena. Accept within 3 minutes.",

@@ -7,10 +7,18 @@ A source counts as active after its authenticated client acknowledges readiness;
 presence expires after five seconds if the API/source stops refreshing it.
 
 `!duel @viewer` creates a three-minute challenge. Only that viewer can accept or
-decline. One challenge/battle runs per channel. The backend randomly chooses the
-winner. Connected overlays carry the prompt and 11.4-second fight; chat receives
-only the winner at the deadline. New duels without an enabled, ready source retain
-chat prompts and random battle narration. Accepted battles finish even if OBS or
+decline. One challenge/battle runs per channel. There is no predetermined winner:
+on accept the backend simulates a turn-based battle (`simulateBattle` in
+`dimabot/src/duel/model.ts`) with two distinct characters (Knight, Ronin, Mage),
+a coin flip for the first attacker, and per-turn rolls for the move (normal 68%,
+heavy 24%, special 8%, each with its own damage range) and a 15% chance to steal
+the opponent's next turn. The first fighter at 0 HP loses. The stored turns drive
+the overlay animation and the deadline (last hit + 1.9 s knockout, typically 13–18 s).
+The dimasite preview mirrors those numbers in `duel-battle.ts`; keep them in step.
+Connected overlays carry the prompt and fight; chat receives only the winner (with
+remaining HP) at the deadline. New duels without an enabled, ready source retain
+chat prompts and narrate the fight's real specials, stolen turns and heavy blows.
+Runs accepted before turn-based battles (no `turns`) still render and announce. Accepted battles finish even if OBS or
 the bot disconnects. The cron supervisor runs `duel.worker` independently.
 
 Loser timeouts default to enabled for 60 seconds, preserving existing behavior.
@@ -36,7 +44,8 @@ scripts/saas-ops verify site-RUN --check ops/checks/duel-widget.sh
 The backend check exercises command acceptance, quiet overlays, real-time
 winner deadlines, fallback narration, settings validation/concurrency, private
 OBS authorization/readiness/revocation, no-timeout mode, configured duration,
-moderator restoration in a fresh worker, and provider failure handling. All
+moderator restoration in a fresh worker, provider failure handling, and battle
+invariants/odds over 2,000 simulated fights. All
 provider requests are intercepted; no production data or Twitch messages are used.
 The browser checks cover dark/light at 320/390/1280 pixels, English/Spanish,
 WCAG AA, Premium gating, full-access admins, uncertain-save retries, conflicts,

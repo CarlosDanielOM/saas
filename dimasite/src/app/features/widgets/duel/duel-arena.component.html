@@ -1,37 +1,61 @@
-          <div class="arena" [class.transparent]="transparent()" [class.paused]="paused()" [attr.data-phase]="phase()" [attr.data-winner]="chosenWinner()">
+          <div class="arena" [class.transparent]="transparent()" [class.paused]="paused()" [attr.data-phase]="phase()" [attr.data-winner]="winner()" [attr.data-shake]="impact()?.move">
             <div class="scenery" aria-hidden="true"><div class="moon"></div><div class="mountain mountain-one"></div><div class="mountain mountain-two"></div><div class="grid-floor"></div><div class="floor-ring"></div></div>
             <div class="arena-label"><span>!duel</span><span>{{ t('arena') }} / 01</span></div>
             <div class="hud">
               @for (side of sides; track side) {
-                <div class="health" [class.health-right]="side === 'right'" [attr.data-side]="side">
+                <div class="health" [class.health-right]="side === 'right'" [class.active]="attacking(side)" [class.low]="low(side)" [attr.data-side]="side">
                   <div class="health-label"><strong>{{ names()[side] }}</strong><span>{{ health()[side] }} <small>HP</small></span></div>
-                  <div class="health-track" role="progressbar" [attr.aria-label]="t('health', {name: names()[side]})" [attr.aria-valuenow]="health()[side]" aria-valuemin="0" aria-valuemax="100"><div [style.width.%]="health()[side]"></div></div>
-                  <span class="fighter-role">{{ t(side === 'left' ? 'challenger' : 'opponent') }}</span>
+                  <div class="health-track" role="progressbar" [attr.aria-label]="t('health', {name: names()[side]})" [attr.aria-valuenow]="health()[side]" aria-valuemin="0" aria-valuemax="100"><div class="trail" [style.width.%]="health()[side]"></div><div class="fill" [style.width.%]="health()[side]"></div></div>
+                  <span class="fighter-role">{{ t(side === 'left' ? 'challenger' : 'opponent') }} · {{ t('character.' + battle().fighters[side]) }}</span>
                 </div>
               }
             </div>
             <div class="fight-space" aria-hidden="true">
               @for (side of sides; track side) {
                 <div class="fighter-slot" [class.fighter-right]="side === 'right'" [attr.data-action]="action(side)">
-                  <div class="fighter-facing"><app-duel-fighter [side]="side" [action]="action(side)" [paused]="paused()" /></div>
-                  @if (impact(); as hit) {
-                    @if (hit.attacker !== side) { <span class="damage">−{{ hit.damage }}</span><div class="hit-spark"><i></i><i></i><i></i><i></i></div> }
+                  @if (attacking(side)) { <div class="turn-ring"></div> }
+                  @for (key of [actionKey(side)]; track key) {
+                    <div class="fighter-motion" [attr.data-action]="action(side)" [attr.data-move]="move(side)" [attr.data-character]="battle().fighters[side]">
+                      <div class="fighter-facing"><app-duel-fighter [side]="side" [character]="battle().fighters[side]" [action]="action(side)" [move]="move(side)" [low]="low(side)" [paused]="paused()" /></div>
+                    </div>
                   }
                 </div>
+              }
+              @if (currentTurn(); as turn) {
+                @for (index of [turnIndex()]; track index) {
+                  <div class="fx" [attr.data-attacker]="turn.attacker" [attr.data-move]="turn.move" [attr.data-character]="battle().fighters[turn.attacker]">
+                    @if (turn.move === 'special') { <div class="special-dim"></div> }
+                    @if (turn.bonus) { <span class="extra-turn">{{ t('extraTurn') }}</span> }
+                    @if (turn.move !== 'normal') { <span class="move-callout">{{ moveName(turn) }}</span> }
+                    @if (battle().fighters[turn.attacker] === 'mage') { <div class="projectile"></div> }
+                    @else if (turn.move === 'special' && battle().fighters[turn.attacker] === 'knight') { <div class="pillar"></div> }
+                    @else if (turn.move === 'special') { <div class="crescent"><i></i><i></i></div> }
+                  </div>
+                }
+              }
+              @if (impact(); as hit) {
+                @for (index of [turnIndex()]; track index) {
+                  <div class="impact-fx" [attr.data-target]="target(hit)" [attr.data-move]="hit.move">
+                    <span class="damage">−{{ hit.damage }}</span>
+                    <div class="hit-spark"><i></i><i></i><i></i><i></i></div>
+                    @if (hit.move !== 'normal') { <div class="shock-ring"></div> }
+                  </div>
+                }
               }
             </div>
             <div class="center-cue" aria-hidden="true">
               @if (phase() === 'ready') { <span class="vs">VS</span><small>{{ t('ready') }}</small> }
               @if (phase() === 'entrance') { <span class="challenge-cue">{{ t('challenge') }}</span> }
-              @if (phase() === 'countdown') { <span class="countdown">{{ countdown() }}</span> }
+              @if (phase() === 'countdown') { @for (n of [countdown()]; track n) { <span class="countdown">{{ n }}</span> } }
               @if (phase() === 'fight' && elapsed() < 3950) { <span class="fight-cue">{{ t('fight') }}</span> }
               @if (phase() === 'knockout') { <span class="ko">K.O.</span> }
             </div>
+            @if (phase() === 'knockout') { <div class="ko-flash" aria-hidden="true"></div> }
             @if (phase() === 'winner') {
               <div class="winner-reveal">
                 <div class="confetti" aria-hidden="true">@for (n of [0,1,2,3,4,5,6,7,8,9,10,11]; track n) { <i [style.--n]="n"></i> }</div>
-                <span class="winner-kicker">✦ {{ t('victory') }} ✦</span><strong>{{ winnerName() }}</strong><span>{{ t('wins') }}</span>
+                <span class="winner-kicker">✦ {{ t('victory') }} ✦</span><strong>{{ winnerName() }}</strong><span>{{ t('wins', {hp: health()[winner()]}) }}</span>
               </div>
             }
-            <div class="arena-footer"><span>{{ t('phase.' + phase()) }}</span><span>{{ t('round') }}</span></div>
+            <div class="arena-footer"><span>{{ t('phase.' + phase()) }}</span><span>{{ turnIndex() < 0 ? t('round') : t('turn', {n: turnIndex() + 1}) }}</span></div>
           </div>

@@ -5,10 +5,9 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { LanguageService } from '../../../services/language.service';
 import { ThemeService } from '../../../services/theme.service';
 import { DuelArenaComponent } from '../../widgets/duel/duel-arena.component';
+import { DuelSide, simulateBattle } from '../../widgets/duel/duel-battle';
 
-type Side = 'left' | 'right';
 type Phase = 'ready' | 'entrance' | 'countdown' | 'fight' | 'knockout' | 'winner';
-const END = 11400;
 
 @Component({
   selector: 'app-duel-mock',
@@ -22,14 +21,15 @@ export class DuelMockComponent {
   readonly language = inject(LanguageService);
   readonly theme = inject(ThemeService);
   readonly overlayOnly = inject(ActivatedRoute).snapshot.queryParamMap.get('overlay') === '1';
-  readonly sides: Side[] = ['left', 'right'];
+  readonly sides: DuelSide[] = ['left', 'right'];
   readonly form = new FormGroup({
     left: new FormControl('Dima', { nonNullable: true }),
     right: new FormControl('ChatChampion', { nonNullable: true }),
     winner: new FormControl('random', { nonNullable: true })
   });
   readonly names = signal({ left: 'Dima', right: 'ChatChampion' });
-  readonly chosenWinner = signal<Side>('left');
+  readonly battle = signal(simulateBattle());
+  readonly duration = computed(() => this.battle().duration);
   readonly elapsed = signal(0);
   readonly started = signal(false);
   readonly paused = signal(false);
@@ -42,14 +42,14 @@ export class DuelMockComponent {
     if (!this.started()) return 'ready';
     if (time < 1300) return 'entrance';
     if (time < 3400) return 'countdown';
-    if (time < 9500) return 'fight';
-    if (time < END) return 'knockout';
+    if (time < (this.battle().turns.at(-1)?.hitAt ?? 0)) return 'fight';
+    if (time < this.duration()) return 'knockout';
     return 'winner';
   });
-  readonly active = computed(() => this.started() && this.elapsed() < END);
+  readonly active = computed(() => this.started() && this.elapsed() < this.duration());
   readonly countdown = computed(() => Math.max(1, 3 - Math.floor((this.elapsed() - 1300) / 700)));
-  readonly winnerName = computed(() => this.names()[this.chosenWinner()]);
-  readonly progress = computed(() => this.elapsed() / END * 100);
+  readonly winnerName = computed(() => this.names()[this.battle().winner]);
+  readonly progress = computed(() => this.elapsed() / this.duration() * 100);
 
   constructor() {
     const destroyRef = inject(DestroyRef);
@@ -71,7 +71,7 @@ export class DuelMockComponent {
     this.stopTimer();
     const values = this.form.getRawValue();
     this.names.set({ left: values.left.trim().slice(0, 24) || 'Dima', right: values.right.trim().slice(0, 24) || 'ChatChampion' });
-    this.chosenWinner.set(Math.random() < .5 ? 'left' : 'right');
+    this.battle.set(simulateBattle());
     this.elapsed.set(0);
     this.started.set(true);
     this.paused.set(false);
@@ -80,8 +80,8 @@ export class DuelMockComponent {
       const now = performance.now();
       const delta = now - this.lastTick;
       this.lastTick = now;
-      if (!this.paused()) this.elapsed.update(time => Math.min(END, time + Math.min(delta, 100)));
-      if (this.elapsed() >= END) this.stopTimer();
+      if (!this.paused()) this.elapsed.update(time => Math.min(this.duration(), time + Math.min(delta, 100)));
+      if (this.elapsed() >= this.duration()) this.stopTimer();
     }, 40);
   }
 

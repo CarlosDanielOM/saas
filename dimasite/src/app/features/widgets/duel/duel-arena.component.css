@@ -20,14 +20,37 @@
 .health-label>span { color:var(--hp-color); font-size:2.1cqw; font-weight:800; white-space:nowrap }
 .health-label small { font-size:.65em; opacity:.75 }
 .health-right .health-label { flex-direction:row-reverse }
-.health-track { height:1.1cqw; min-height:4px; background:#ffffff15; border-radius:20px; overflow:hidden }
-.health-track>div { height:100%; background:var(--hp-color); border-radius:20px; transition:width .25s ease }
-.health-right .health-track>div { margin-left:auto }
+.health-track { position:relative; height:1.1cqw; min-height:4px; background:#ffffff15; border-radius:20px; overflow:hidden; transition:box-shadow .2s }
+.health-track>div { position:absolute; top:0; bottom:0; left:0; border-radius:20px }
+.health-track .fill { background:var(--hp-color); transition:width .2s ease }
+/* Fighting-game chip damage: a pale bar drains after the real one. */
+.health-track .trail { background:#fff3d6; transition:width .55s ease .35s }
+.health-right .health-track>div { left:auto; right:0 }
+.health.active .health-track { box-shadow:0 0 0 2px var(--hp-color),0 0 16px var(--hp-color) }
+.health.active .health-label strong::after { content:' ◆'; color:var(--hp-color) }
+.health-right.active .health-label strong::after { content:none }
+.health-right.active .health-label strong::before { content:'◆ '; color:var(--hp-color) }
+.health.low { --hp-color:#ff5f6d }
+.health.low .fill { animation:low-hp .8s steps(2) infinite }
 .fighter-role { display:block; margin-top:6px; color:#ada6bf; font-size:1.7cqw; letter-spacing:.09em; text-transform:uppercase }
 .fight-space { position:absolute; inset:0 }
 .fighter-slot { position:absolute; width:var(--fighter-size); left:calc(50% - var(--fight-spread) - var(--fighter-size) / 2); bottom:21%; transition:left .75s ease }
 .fighter-right { left:calc(50% + var(--fight-spread) - var(--fighter-size) / 2) }
+.fighter-slot { --dir:1 }
+.fighter-right { --dir:-1 }
+.fighter-motion { position:relative; z-index:2; --dur:800ms }
+.fighter-motion[data-move="heavy"] { --dur:1050ms }
+.fighter-motion[data-move="special"] { --dur:1600ms }
 .fighter-facing { transform-origin:50% 90% }
+.turn-ring { position:absolute; left:12%; right:12%; bottom:2%; height:9%; border-radius:50%; border:2px solid var(--ring); box-shadow:0 0 18px var(--ring),inset 0 0 12px var(--ring); animation:ring 1s ease-in-out infinite; --ring:var(--violet) }
+.fighter-right .turn-ring { --ring:var(--amber) }
+/* Melee fighters dash into range; the strike lands at 35% / 43% / 53%. */
+.fighter-motion[data-action="attack"] { animation:dash var(--dur) ease both }
+.fighter-motion[data-action="attack"][data-move="heavy"] { animation-name:dash-heavy }
+.fighter-motion[data-action="attack"][data-move="special"][data-character="knight"] { animation-name:leap }
+.fighter-motion[data-action="attack"][data-move="special"][data-character="ronin"] { animation-name:dash-through; z-index:3 }
+.fighter-motion[data-action="attack"][data-character="mage"] { animation-name:step }
+.fighter-motion[data-action="attack"][data-character="mage"][data-move="special"] { animation-name:levitate }
 .fighter-right .fighter-facing { transform:scaleX(-1) }
 .arena[data-phase="ready"] { --fight-spread:23% }
 .arena[data-phase="entrance"] .fighter-facing { animation:enter-left 1s cubic-bezier(.2,.7,.3,1) both }
@@ -36,20 +59,50 @@
 .arena[data-phase="winner"][data-winner="right"] .fighter-right { left:calc(50% - var(--fighter-size) / 2) }
 .arena[data-phase="winner"] .fighter-slot[data-action="defeated"] { opacity:.25 }
 .arena[data-phase="winner"] .fighter-slot:not([data-action="defeated"]) { --fighter-size:24% }
-.damage { position:absolute; left:45%; top:5%; font-size:5cqw; font-weight:900; color:#ffe3a2; text-shadow:0 2px 0 #35191b; animation:damage .35s ease-out both; z-index:4 }
-.hit-spark { position:absolute; top:38%; left:20%; width:35%; aspect-ratio:1; animation:impact .3s ease-out both }
-.fighter-slot:not(.fighter-right) .hit-spark { left:60% }
+.fx,.impact-fx { position:absolute; inset:0; pointer-events:none; --dur:800ms }
+.fx[data-move="heavy"] { --dur:1050ms }
+.fx[data-move="special"] { --dur:1600ms }
+.fx[data-attacker="left"] { --att:calc(50% - var(--fight-spread)); --def:calc(50% + var(--fight-spread)); --dir:1; --fx:var(--violet) }
+.fx[data-attacker="right"] { --att:calc(50% + var(--fight-spread)); --def:calc(50% - var(--fight-spread)); --dir:-1; --fx:var(--amber) }
+.impact-fx[data-target="right"] { --def:calc(50% + var(--fight-spread)) }
+.impact-fx[data-target="left"] { --def:calc(50% - var(--fight-spread)) }
+.impact-fx { z-index:4 }
+.special-dim { position:absolute; inset:-5%; z-index:1; background:radial-gradient(ellipse at 50% 60%,transparent 20%,#05040cdd 75%); animation:dim var(--dur) ease both }
+.transparent .special-dim { background:radial-gradient(ellipse at 50% 60%,transparent 30%,#05040c88 80%) }
+.move-callout { position:absolute; bottom:9%; left:50%; z-index:5; padding:.5cqw 1.8cqw; white-space:nowrap; font-size:3.2cqw; font-weight:950; font-style:italic; letter-spacing:-.02em; text-transform:uppercase; color:#fff7e0; background:linear-gradient(90deg,transparent,#14101fee 12%,#14101fee 88%,transparent); border-block:2px solid var(--fx); text-shadow:0 0 12px var(--fx); animation:callout var(--dur) ease both }
+.fx[data-move="special"] .move-callout { font-size:4.2cqw }
+.extra-turn { position:absolute; top:32%; left:var(--att); z-index:5; translate:-50% 0; padding:.4cqw 1.2cqw; border-radius:99px; white-space:nowrap; font-size:2.3cqw; font-weight:900; text-transform:uppercase; letter-spacing:.06em; color:#14101f; background:var(--fx); box-shadow:0 0 18px var(--fx); animation:extra var(--dur) ease both }
+/* Mage spells fly from the staff; the special rains from above. */
+.projectile { position:absolute; z-index:4; top:46%; left:var(--att); width:4cqw; aspect-ratio:1; margin:-2cqw; border-radius:50%; background:radial-gradient(circle at 40% 40%,#fff,var(--fx) 45%,transparent 70%); box-shadow:0 0 22px var(--fx),0 0 40px var(--fx); animation:bolt var(--dur) linear both }
+.fx[data-move="heavy"] .projectile { width:6.5cqw; margin:-3.25cqw; animation-name:bolt-heavy }
+.fx[data-move="special"] .projectile { width:10cqw; margin:-5cqw; animation-name:meteor; background:radial-gradient(circle at 40% 40%,#fff,#ffb35c 35%,#ff5f3a 55%,transparent 72%); box-shadow:0 0 40px #ff7a3a,0 0 80px #ff5f3a }
+.pillar { position:absolute; z-index:4; top:-10%; bottom:18%; left:var(--def); width:14cqw; translate:-50% 0; background:linear-gradient(90deg,transparent,#fff8dc 30%,#fff 50%,#fff8dc 70%,transparent); box-shadow:0 0 60px #fff3c4; border-radius:0 0 50% 50%; animation:pillar var(--dur) ease both }
+.crescent { position:absolute; z-index:4; top:22%; left:var(--def); width:26cqw; aspect-ratio:1; translate:-50% 0 }
+.crescent i { position:absolute; inset:0; border-radius:50%; border-top:1.4cqw solid #fff; box-shadow:0 -10px 20px -8px var(--fx); animation:crescent var(--dur) ease both; rotate:-35deg }
+.crescent i+i { rotate:145deg; animation-delay:calc(var(--dur) * .04) }
+.damage { position:absolute; top:30%; left:var(--def); translate:-50% 0; font-size:5cqw; font-weight:900; color:#ffe3a2; text-shadow:0 2px 0 #35191b,0 0 10px #0008; animation:damage .65s ease-out both; z-index:6 }
+.impact-fx[data-move="heavy"] .damage { font-size:6.6cqw; color:#ffb35c }
+.impact-fx[data-move="special"] .damage { font-size:8.6cqw; color:#fff; text-shadow:0 3px 0 #8b1f2b,0 0 18px #ff5f6d }
+.hit-spark { position:absolute; top:40%; left:var(--def); width:12cqw; aspect-ratio:1; margin-left:-6cqw; animation:impact .3s ease-out both }
+.impact-fx[data-move="heavy"] .hit-spark { width:17cqw; margin-left:-8.5cqw; top:36% }
+.impact-fx[data-move="special"] .hit-spark { width:24cqw; margin-left:-12cqw; top:31% }
 .hit-spark i { position:absolute; width:100%; height:9%; top:45%; background:#fff0bf; box-shadow:0 0 12px #ffbd5b; transform:rotate(0deg) }
 .hit-spark i:nth-child(2) { transform:rotate(45deg) }
 .hit-spark i:nth-child(3) { transform:rotate(90deg) }
 .hit-spark i:nth-child(4) { transform:rotate(135deg) }
+.shock-ring { position:absolute; top:34%; left:var(--def); width:20cqw; aspect-ratio:1; margin-left:-10cqw; border-radius:50%; border:.7cqw solid #fff1c9; box-shadow:0 0 22px #ffbd5b; animation:shock .55s ease-out both }
+.impact-fx[data-move="special"] .shock-ring { width:34cqw; margin-left:-17cqw; top:22% }
+.arena[data-shake="heavy"] .fight-space,.arena[data-shake="heavy"] .scenery { animation:shake .3s linear both }
+.arena[data-shake="special"] .fight-space,.arena[data-shake="special"] .scenery { animation:shake-big .5s linear both }
+.arena[data-phase="knockout"] .fight-space { animation:ko-zoom 1.9s ease both }
+.ko-flash { position:absolute; inset:0; z-index:6; background:#fff; animation:ko-flash .5s ease-out both; pointer-events:none }
 .center-cue { position:absolute; top:30%; left:0; width:100%; display:grid; justify-items:center; gap:4px; pointer-events:none; z-index:5 }
 .vs { font-size:9cqw; font-weight:900; font-style:italic; letter-spacing:-.08em; color:#e2d8fb; text-shadow:3px 3px 0 #6036a6 }
 .center-cue small { color:#b6accb; font-size:1.8cqw; text-transform:uppercase; letter-spacing:.14em }
 .challenge-cue { margin-top:8%; font-size:3cqw; font-weight:850; padding:8px 15px; background:#211a33e8; border:1px solid #8b5cf650; border-radius:8px; animation:cue .3s ease both }
-.countdown { font-size:14cqw; line-height:1; font-weight:900; color:#f2e9ff; text-shadow:4px 4px 0 #7440bd }
+.countdown { font-size:14cqw; line-height:1; font-weight:900; color:#f2e9ff; text-shadow:4px 4px 0 #7440bd; animation:count .7s ease-out both }
 .fight-cue,.ko { margin-top:10%; font-size:10cqw; line-height:1; font-weight:950; font-style:italic; letter-spacing:-.04em; color:#ffe8b2; text-shadow:4px 4px 0 #8b441f; animation:cue .3s cubic-bezier(.2,1.5,.5,1) both }
-.ko { font-size:14cqw }
+.ko { font-size:14cqw; position:relative }
 .winner-reveal { position:absolute; top:22%; left:6%; right:6%; display:grid; text-align:center; justify-items:center; gap:2px; z-index:5; animation:winner .6s ease both }
 .winner-kicker { color:#ffe0a0; font-size:1.9cqw; font-weight:800; letter-spacing:.25em; text-transform:uppercase }
 .winner-reveal strong { font-size:4.6cqw; max-width:100%; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; font-weight:900; letter-spacing:-.045em; text-shadow:0 3px 14px #000 }
@@ -60,13 +113,37 @@
 .arena-footer { position:absolute; bottom:5%; left:5%; right:5%; display:flex; justify-content:space-between; color:#b6accb; font-size:1.8cqw; letter-spacing:.08em; text-transform:uppercase }
 .transparent { background:transparent }
 .transparent .scenery,.transparent .arena-label,.transparent .arena-footer { visibility:hidden }
+.transparent .ko-flash { animation-name:ko-flash-soft }
 .paused * { animation-play-state:paused !important }
 @keyframes enter-left { from { transform:translateX(-160%) } to { transform:translateX(0) } }
 @keyframes enter-right { from { transform:translateX(160%) scaleX(-1) } to { transform:translateX(0) scaleX(-1) } }
-@keyframes damage { from { opacity:1; transform:translateY(15px) scale(.8) } to { opacity:0; transform:translateY(-30px) scale(1.15) } }
+@keyframes damage { 0% { opacity:0; transform:translateY(15px) scale(.6) } 15% { opacity:1; transform:translateY(0) scale(1.25) } 30% { transform:scale(1) } 100% { opacity:0; transform:translateY(-14px) scale(1.05) } }
+@keyframes low-hp { 50% { filter:brightness(1.6) } }
+@keyframes ring { 50% { opacity:.45; transform:scale(.92) } }
+@keyframes dash { 25% { transform:translateX(calc(var(--dir) * -6%)) } 35%,55% { transform:translateX(calc(var(--dir) * 52%)) } 100% { transform:none } }
+@keyframes dash-heavy { 34% { transform:translateX(calc(var(--dir) * -12%)) } 43%,64% { transform:translateX(calc(var(--dir) * 60%)) } 100% { transform:none } }
+@keyframes leap { 20% { transform:translateY(4%) } 42% { transform:translate(calc(var(--dir) * 34%),-26%) } 53%,74% { transform:translateX(calc(var(--dir) * 58%)) } 100% { transform:none } }
+@keyframes dash-through { 40%,47% { transform:translateX(calc(var(--dir) * -14%)); opacity:1 } 53% { transform:translateX(calc(var(--dir) * 170%)); filter:blur(2px) } 58%,74% { transform:translateX(calc(var(--dir) * 170%)); filter:none; opacity:1 } 82% { opacity:0 } 88% { transform:none; opacity:0 } 100% { opacity:1 } }
+@keyframes step { 30% { transform:translateX(calc(var(--dir) * -5%)) } 45% { transform:translateX(calc(var(--dir) * 6%)) } 100% { transform:none } }
+@keyframes levitate { 15%,48% { transform:translateY(-14%) } 56% { transform:translate(calc(var(--dir) * 6%),-10%) } 100% { transform:none } }
+@keyframes dim { 0% { opacity:0 } 12%,50% { opacity:1 } 53% { opacity:1; background-color:#fff6 } 58% { background-color:transparent } 100% { opacity:0 } }
+@keyframes callout { 0% { opacity:0; transform:translateX(-50%) scale(1.6) } 8% { opacity:1; transform:translateX(-50%) scale(1) } 68% { opacity:1; transform:translateX(-50%) scale(1) } 100% { opacity:0; transform:translateX(-50%) scale(.95) } }
+@keyframes extra { 0% { opacity:0; transform:translateY(10px) scale(.6) } 12% { opacity:1; transform:translateY(0) scale(1.15) } 20%,60% { opacity:1; transform:scale(1) } 100% { opacity:0; transform:translateY(-12px) } }
+@keyframes bolt { 0%,20% { opacity:0; left:var(--att); transform:scale(.3) } 27% { opacity:1; left:var(--att); transform:scale(1) } 35% { opacity:1; left:var(--def) } 45%,100% { left:var(--def); opacity:0; transform:scale(1.6) } }
+@keyframes bolt-heavy { 0%,26% { opacity:0; left:var(--att); transform:scale(.3) } 34% { opacity:1; left:var(--att); transform:scale(1.1) } 43% { opacity:1; left:var(--def) } 52%,100% { left:var(--def); opacity:0; transform:scale(1.8) } }
+@keyframes meteor { 0%,30% { opacity:0; left:calc(var(--def) - var(--dir) * 18%); top:-15% } 36% { opacity:1 } 53% { left:var(--def); top:44%; opacity:1; transform:scale(1) } 60%,100% { left:var(--def); top:44%; opacity:0; transform:scale(2.2) } }
+@keyframes pillar { 0%,40% { opacity:0; transform:scaleX(.1) } 50% { opacity:.9; transform:scaleX(.25) } 54% { opacity:1; transform:scaleX(1.1) } 70% { opacity:.7; transform:scaleX(.8) } 85%,100% { opacity:0; transform:scaleX(.2) } }
+@keyframes crescent { 0%,50% { opacity:0; transform:scale(.4) } 54% { opacity:1; transform:scale(1) } 80%,100% { opacity:0; transform:scale(1.25) } }
+@keyframes shock { from { opacity:1; transform:scale(.2) } to { opacity:0; transform:scale(1.3) } }
+@keyframes shake { 20% { transform:translate(-1.2%,.6%) } 40% { transform:translate(1%,-.6%) } 60% { transform:translate(-.6%,.4%) } 80% { transform:translate(.4%,0) } }
+@keyframes shake-big { 10% { transform:translate(-2.4%,1.2%) } 25% { transform:translate(2%,-1.2%) } 40% { transform:translate(-1.6%,.8%) } 55% { transform:translate(1.2%,-.6%) } 75% { transform:translate(-.6%,.3%) } }
+@keyframes ko-zoom { 0% { transform:scale(1.08) } 30% { transform:scale(1.08) } 100% { transform:none } }
+@keyframes ko-flash { from { opacity:.85 } to { opacity:0 } }
+@keyframes ko-flash-soft { from { opacity:.35 } to { opacity:0 } }
+@keyframes count { from { opacity:0; transform:scale(1.8) } 30% { opacity:1; transform:scale(1) } to { opacity:.85 } }
 @keyframes impact { from { opacity:1; transform:scale(.3) rotate(-15deg) } to { opacity:0; transform:scale(1.3) rotate(15deg) } }
 @keyframes cue { from { opacity:0; transform:scale(1.5) } to { opacity:1; transform:scale(1) } }
 @keyframes winner { from { opacity:0; transform:translateY(14px) } to { opacity:1; transform:translateY(0) } }
 @keyframes confetti { from { opacity:0; transform:translateY(-40px) rotate(0deg) } 20% { opacity:1 } to { opacity:0; transform:translateY(180px) rotate(240deg) } }
 @media(min-width:640px){.arena{aspect-ratio:16/9;--fighter-size:25%;--fight-spread:13%}.arena[data-phase="winner"] .fighter-slot:not([data-action="defeated"]){--fighter-size:20%}.health-label{font-size:2.3cqw}}
-@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}.confetti,.hit-spark{display:none}.damage{opacity:1}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}.confetti,.hit-spark,.shock-ring,.special-dim,.projectile,.pillar,.crescent,.ko-flash,.turn-ring{display:none}.damage,.move-callout,.extra-turn{opacity:1}.move-callout{transform:translateX(-50%)}}

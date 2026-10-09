@@ -2,11 +2,12 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { LinksService } from '../../../services/links.service';
+import { DuelCharacter, DuelSide, DuelTurn } from './duel-battle';
 export interface DuelSettings { enabled:boolean; timeoutEnabled:boolean; timeoutSeconds:number; language:'en'|'es' }
 export interface DuelState {
   revision:number; serverTime:number; connected:boolean; settings:DuelSettings;
   challenge:{id:string;challenger:string;opponent:string;expiresAt:number}|null;
-  run:{id:string;challenger:string;opponent:string;winner:'left'|'right';mode:'overlay'|'chat';startedAt:number;endsAt:number;completedAt:number|null;announcementError?:string;timeoutError?:string}|null;
+  run:{id:string;challenger:string;opponent:string;winner:DuelSide;fighters?:Record<DuelSide,DuelCharacter>;turns?:DuelTurn[];mode:'overlay'|'chat';startedAt:number;endsAt:number;completedAt:number|null;announcementError?:string;timeoutError?:string}|null;
 }
 @Injectable({providedIn:'root'})
 export class DuelApi {

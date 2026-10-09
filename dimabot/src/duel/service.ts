@@ -39,7 +39,7 @@ export async function duelSnapshot(id: string) {
   const run = doc.run;
   return { revision: doc.revision, settings: doc.settings, serverTime: now, connected: await overlayActive(doc),
     challenge: doc.challenge && doc.challenge.expiresAt > now ? doc.challenge : null,
-    run: run ? { id: run.id, challenger: run.challenger, opponent: run.opponent, winner: run.winner, mode: run.mode, startedAt: run.startedAt, endsAt: run.endsAt, completedAt: run.completedAt, announcementError: run.announcementError, timeoutError: run.timeoutError } : null };
+    run: run ? { id: run.id, challenger: run.challenger, opponent: run.opponent, winner: run.winner, fighters: run.fighters, turns: run.turns, mode: run.mode, startedAt: run.startedAt, endsAt: run.endsAt, completedAt: run.completedAt, announcementError: run.announcementError, timeoutError: run.timeoutError } : null };
 }
 export async function configureDuel(id: string, input: unknown, revision: number, key: string): Promise<void> {
   await requirePremium(id); integer(revision, 'If-Match', 0); text(key, 'Idempotency-Key', 128);

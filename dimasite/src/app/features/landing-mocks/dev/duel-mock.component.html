@@ -22,14 +22,14 @@
           <div class="tile-head"><span>{{ t('preview') }}</span><span class="dimension">16:9 · {{ t('silent') }}</span></div>
         }
         <div class="stage-frame" [class.checkerboard]="transparent() && !overlayOnly">
-          <app-duel-arena [names]="names()" [chosenWinner]="chosenWinner()" [elapsed]="elapsed()" [started]="started()" [paused]="paused()" [transparent]="transparent()" [locale]="language.currentLanguage()" />
+          <app-duel-arena [names]="names()" [battle]="battle()" [elapsed]="elapsed()" [started]="started()" [paused]="paused()" [transparent]="transparent()" [locale]="language.currentLanguage()" />
         </div>
         @if (!overlayOnly) {
           <div class="playback">
             <button class="primary" type="button" (click)="play()">{{ t(started() ? 'replay' : 'play') }} <span aria-hidden="true">▶</span></button>
             <button type="button" (click)="togglePause()" [disabled]="!active()">{{ t(paused() ? 'resume' : 'pause') }}</button>
             <button class="reset" type="button" (click)="reset()">{{ t('reset') }}</button>
-            <span class="time">{{ (elapsed() / 1000).toFixed(1) }} / 11.4s</span>
+            <span class="time">{{ (elapsed() / 1000).toFixed(1) }} / {{ (duration() / 1000).toFixed(1) }}s</span>
           </div>
           <div class="timeline" aria-hidden="true"><div [style.width.%]="progress()"></div></div>
           <div class="sequence"><span [class.current]="phase() === 'entrance' || phase() === 'countdown'">01 <b>{{ t('entry') }}</b></span><span [class.current]="phase() === 'fight'">02 <b>{{ t('combat') }}</b></span><span [class.current]="phase() === 'knockout'">03 <b>{{ t('knockout') }}</b></span><span [class.current]="phase() === 'winner'">04 <b>{{ t('result') }}</b></span></div>
