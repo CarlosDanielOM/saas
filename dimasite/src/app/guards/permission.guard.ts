@@ -4,6 +4,7 @@ import { catchError, map, of, switchMap } from 'rxjs';
 
 import { SessionAuthService } from '../services/session-auth.service';
 import { getRouteParamFromSnapshot } from '../shared/utils/route-param.util';
+import { errorPageForRequest } from './error-route';
 
 export const permissionGuard: CanActivateFn = (route, state) => {
   const sessionAuth = inject(SessionAuthService);
@@ -46,8 +47,9 @@ export const permissionGuard: CanActivateFn = (route, state) => {
         )
       );
     }),
-    catchError(() =>
+    catchError((error: unknown) =>
       of(
+        errorPageForRequest(router, error, state.url) ??
         router.createUrlTree(['/login'], {
           queryParams: {
             debug: 'permission_check_error',

@@ -223,6 +223,16 @@ export class AnalyticsService {
       return 'referral';
     }
 
+    const errorPages: Record<string, string> = {
+      '/401': 'unauthorized',
+      '/500': 'server_error',
+      '/503': 'unavailable'
+    };
+    const errorPage = errorPages[url.split('?')[0]];
+    if (errorPage) {
+      return errorPage;
+    }
+
     if (url.startsWith('/403')) {
       return 'forbidden';
     }

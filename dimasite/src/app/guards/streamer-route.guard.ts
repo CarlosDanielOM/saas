@@ -5,6 +5,7 @@ import { catchError, map, of } from 'rxjs';
 
 import { LinksService } from '../services/links.service';
 import { SessionAuthService } from '../services/session-auth.service';
+import { errorPageForRequest } from './error-route';
 
 interface ApiEnvelope<T> {
   error: boolean;
@@ -19,7 +20,9 @@ const KNOWN_STREAMER_CHILDREN = new Set([
   'modules',
   'settings',
   'admin-hub',
-  'profile'
+  'profile',
+  // Embedded 403 inside the app shell (permissionGuard / channelOwnerGuard redirect here).
+  '403'
 ]);
 const MODULE_CHILDREN = new Map<string, ReadonlySet<string> | null>([
   ['roulette', null],
@@ -90,7 +93,7 @@ export const streamerRouteShapeGuard: CanMatchFn = (_route, segments) => {
   return hasKnownStreamerPathShape(segments);
 };
 
-export const validStreamerGuard: CanActivateFn = (route) => {
+export const validStreamerGuard: CanActivateFn = (route, state) => {
   const http = inject(HttpClient);
   const router = inject(Router);
   const linksService = inject(LinksService);
@@ -110,12 +113,12 @@ export const validStreamerGuard: CanActivateFn = (route) => {
             ? true
             : router.createUrlTree(['/404'])
         ),
-        catchError(() => of(router.createUrlTree(['/404'])))
+        catchError((error: unknown) => of(errorPageForRequest(router, error, state.url) ?? router.createUrlTree(['/404'])))
       );
   }
 
   return sessionAuth.resolveChannelID(streamer).pipe(
     map((channelID) => (channelID ? true : router.createUrlTree(['/404']))),
-    catchError(() => of(router.createUrlTree(['/404'])))
+    catchError((error: unknown) => of(errorPageForRequest(router, error, state.url) ?? router.createUrlTree(['/404'])))
   );
 };

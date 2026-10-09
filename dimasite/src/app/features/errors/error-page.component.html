@@ -1,0 +1,146 @@
+<div class="lf" [attr.data-code]="code()" [class.lf--embedded]="isEmbedded()">
+  @if (!isEmbedded()) {
+    <header class="lf-nav">
+      <a class="lf-brand" routerLink="/" aria-label="DomDimaBot home">
+        <app-brand-logo />
+      </a>
+      <div class="lf-nav__actions">
+        <button
+          type="button"
+          class="lf-btn lf-btn--ghost lf-btn--tool"
+          (click)="toggleLanguage()"
+          [attr.aria-label]="t('commands.public.languageToggle')"
+        >
+          {{ languageLabel() }}
+        </button>
+        <button
+          type="button"
+          class="lf-btn lf-btn--ghost lf-btn--tool lf-btn--theme"
+          (click)="toggleTheme()"
+          [attr.aria-label]="isDarkMode() ? t('landing.theme.darkActive') : t('landing.theme.lightActive')"
+        >
+          <lucide-icon [name]="isDarkMode() ? moonIcon : sunIcon" [size]="16" aria-hidden="true" />
+          <span class="lf-btn__label">{{ isDarkMode() ? t('landing.theme.dark') : t('landing.theme.light') }}</span>
+        </button>
+      </div>
+    </header>
+  }
+
+  <main class="lf-main">
+    <section class="lf-err" aria-labelledby="error-title">
+      <!-- Decorative "stream screen" for each error state. -->
+      <div class="lf-screen" aria-hidden="true">
+        <div class="lf-screen__bar">
+          <span class="lf-screen__chip"><span class="lf-screen__dot"></span>{{ tk('screen') }}</span>
+          <span class="lf-screen__code">{{ code() }}</span>
+        </div>
+
+        @switch (code()) {
+          @case ('404') {
+            <div class="lf-bars">
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            </div>
+            <div class="lf-static"></div>
+            <p class="lf-screen__label">{{ tk('screenTitle') }}</p>
+          }
+          @case ('503') {
+            <div class="lf-brb">
+              <p class="lf-brb__title">{{ tk('screenTitle') }}</p>
+              <div class="lf-eq"><i></i><i></i><i></i><i></i><i></i></div>
+            </div>
+          }
+          @case ('500') {
+            <div class="lf-glitch">
+              <span class="lf-glitch__text" data-text="500">500</span>
+              <span class="lf-glitch__slice"></span>
+            </div>
+          }
+          @case ('403') {
+            <div class="lf-faux">
+              <i></i><i></i><i></i><i></i>
+            </div>
+            <span class="lf-badge lf-badge--lock">
+              <lucide-icon [name]="lockIcon" [size]="30" />
+            </span>
+          }
+          @default {
+            <div class="lf-faux lf-faux--dim">
+              <i></i><i></i><i></i><i></i>
+            </div>
+            <span class="lf-ring"></span>
+            <span class="lf-badge lf-badge--key">
+              <lucide-icon [name]="keyIcon" [size]="28" />
+            </span>
+          }
+        }
+        <div class="lf-scanlines"></div>
+      </div>
+
+      <div class="lf-err__body">
+        <p class="lf-err__kicker">
+          <span class="lf-err__code">{{ t('errors.codeLabel', { code: code() }) }}</span>
+          <span>{{ tk('kicker') }}</span>
+        </p>
+        <h1 id="error-title" class="lf-err__title">{{ title() }}</h1>
+        <p class="lf-err__copy">{{ message() }}</p>
+
+        @if (code() === '403' && (permissionArea() || from())) {
+          <dl class="lf-err__facts">
+            @if (permissionArea(); as area) {
+              <div>
+                <dt>{{ t('errors.e403.needs') }}</dt>
+                <dd>
+                  <span class="lf-err__tag">{{ area.label }}</span>
+                  <span class="lf-err__level">· {{ area.level }}</span>
+                </dd>
+              </div>
+            }
+            @if (from()) {
+              <div>
+                <dt>{{ t('errors.page') }}</dt>
+                <dd><code>{{ from() }}</code></dd>
+              </div>
+            }
+          </dl>
+        }
+
+        @if (code() === '503' && retryIn() !== null) {
+          <div class="lf-err__retry" role="status">
+            <span class="lf-err__retry-bar" aria-hidden="true">
+              <span [style.width.%]="((retryIn() ?? 0) / autoRetrySeconds) * 100"></span>
+            </span>
+            <span>{{ t('errors.e503.autoRetry', { seconds: retryIn() ?? 0 }) }}</span>
+            <button type="button" class="lf-err__stop" (click)="stopAutoRetry()">
+              {{ t('errors.e503.stop') }}
+            </button>
+          </div>
+        }
+
+        <div class="lf-err__actions">
+          @if (primary(); as action) {
+            @if (action.link) {
+              <a class="lf-btn lf-btn--primary" [routerLink]="action.link">
+                @if (action.icon) {
+                  <lucide-icon [name]="action.icon" [size]="17" aria-hidden="true" />
+                }
+                {{ action.label }}
+              </a>
+            } @else {
+              <button type="button" class="lf-btn lf-btn--primary" (click)="run(action)">
+                @if (action.icon) {
+                  <lucide-icon [name]="action.icon" [size]="17" aria-hidden="true" />
+                }
+                {{ action.label }}
+              </button>
+            }
+          }
+          @if (secondary(); as action) {
+            <a class="lf-btn" [routerLink]="action.link">{{ action.label }}</a>
+          }
+        </div>
+
+        <p class="lf-err__hint">{{ tk('hint') }}</p>
+      </div>
+    </section>
+  </main>
+</div>

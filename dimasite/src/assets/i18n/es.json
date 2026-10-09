@@ -3038,85 +3038,6 @@
       "emailDeniedMessage": "DomDimaBot necesita acceso a tu correo electronico para configurar tu cuenta. Intenta iniciar sesion de nuevo y approve el permiso de correo electronico."
     }
   },
-  "notFound": {
-    "eyebrow": "Senal perdida",
-    "title": "Esta pagina no esta en el mapa",
-    "message": "La ruta no existe o no encontramos ese canal. Revisa la URL o vuelve a un lugar conocido.",
-    "messageAuthenticated": "La ruta no existe o no encontramos ese canal. Abre tu panel y elige una pagina valida.",
-    "messageAdminAuthenticated": "La ruta no existe o no encontramos ese canal. Vuelve al ultimo canal que gestionabas o abre tu propio panel.",
-    "tipsTitle": "Que puedes hacer",
-    "tips": {
-      "0": "Revisa el slug del streamer en la URL",
-      "1": "Abre tu ultimo panel desde el menu",
-      "2": "Vuelve al inicio y navega desde ahi"
-    },
-    "actions": {
-      "login": "Iniciar sesion",
-      "home": "Volver al inicio",
-      "dashboard": "Ir al panel",
-      "dashboardNamed": "Ir al panel de {{name}}",
-      "lastViewedDashboard": "Ultimo panel visto",
-      "lastViewedDashboardNamed": "Ultimo visto: {{name}}",
-      "myDashboard": "Mi panel",
-      "myDashboardNamed": "Mi panel: {{name}}"
-    }
-  },
-  "forbidden": {
-    "eyebrow": "Acceso denegado",
-    "badge": "Permiso",
-    "title": "No tienes permiso aqui",
-    "message": "Esta zona necesita un rol o plan que no tienes en este canal. Pide acceso al dueno o abre una pagina que si puedas gestionar.",
-    "messageAdminAuthenticated": "Esta zona necesita un rol que no tienes en este canal. Vuelve al ultimo canal que gestionabas o abre tu propio panel.",
-    "requestedRoute": "Ruta",
-    "tipsTitle": "Que puedes hacer",
-    "tips": {
-      "0": "Confirma que estas en el canal correcto",
-      "1": "Pide al dueno el permiso que falta",
-      "2": "Usa las paginas que tu rol ya permite"
-    },
-    "actions": {
-      "dashboard": "Abrir panel",
-      "dashboardNamed": "Abrir panel de {{name}}",
-      "home": "Volver al inicio",
-      "login": "Iniciar sesion",
-      "lastViewedDashboard": "Ultimo panel visto",
-      "lastViewedDashboardNamed": "Ultimo visto: {{name}}",
-      "myDashboard": "Mi panel",
-      "myDashboardNamed": "Mi panel: {{name}}"
-    }
-  },
-  "status500": {
-    "eyebrow": "Fallo del servidor",
-    "title": "Algo se rompio de nuestro lado",
-    "message": "Hubo un error inesperado. Los datos de tu canal estan a salvo — intenta de nuevo en un momento. Si se repite, avisa a soporte.",
-    "tipsTitle": "Que puedes hacer",
-    "tips": {
-      "0": "Reintenta en unos segundos",
-      "1": "Recarga fuerte si la app se queda trabada",
-      "2": "Reportalo si se repite"
-    },
-    "actions": {
-      "retry": "Intentar de nuevo",
-      "home": "Volver al inicio",
-      "login": "Iniciar sesion"
-    }
-  },
-  "status503": {
-    "eyebrow": "Temporalmente fuera",
-    "title": "Estamos tomando aire",
-    "message": "DomDimaBot no esta disponible ahora — mantenimiento o mucha carga. Vuelve en un rato.",
-    "tipsTitle": "Que puedes hacer",
-    "tips": {
-      "0": "Espera un poco y recarga",
-      "1": "Sigue el estado en Discord / redes",
-      "2": "Vuelve cuando estemos en verde"
-    },
-    "actions": {
-      "retry": "Recargar",
-      "home": "Volver al inicio",
-      "login": "Iniciar sesion"
-    }
-  },
   "commands": {
     "title": "Comandos",
     "subtitle": "Todo lo que tu bot responde en el chat: comandos que escriben tus espectadores, palabras a las que reacciona y las herramientas incluidas.",
@@ -6663,5 +6584,71 @@
     "votingTitle": "Votación del chat",
     "goalsTitle": "Metas de victorias",
     "cardsHint": "Cada carta oculta tiene de 0 a 4 ventajas. Gana la carta más votada; los empates se deciden al azar."
+  },
+  "errors": {
+    "codeLabel": "Error {{code}}",
+    "page": "Página",
+    "actions": {
+      "home": "Volver al inicio",
+      "signIn": "Iniciar sesión",
+      "myDashboard": "Mi panel",
+      "myDashboardNamed": "Mi panel: {{name}}",
+      "dashboardNamed": "Abrir el panel de {{name}}"
+    },
+    "e401": {
+      "screen": "Sesión cerrada",
+      "kicker": "Necesitas iniciar sesión",
+      "title": "Inicia sesión para ver esta página",
+      "titleExpired": "Tu sesión expiró",
+      "message": "Esta página es solo para streamers y sus admins con sesión iniciada. Inicia sesión con Twitch para continuar.",
+      "messageExpired": "Por seguridad, las sesiones terminan después de un tiempo. Vuelve a iniciar sesión con Twitch para seguir donde estabas.",
+      "hint": "Tu bot sigue funcionando aunque cierres sesión.",
+      "actions": {
+        "signIn": "Iniciar sesión con Twitch"
+      }
+    },
+    "e403": {
+      "screen": "Bloqueado",
+      "kicker": "Sin acceso",
+      "title": "No puedes abrir esta página",
+      "titleOwner": "Solo el dueño del canal puede abrir esto",
+      "message": "Tu cuenta no tiene acceso a esta parte del canal. Pídeselo al dueño del canal si lo necesitas.",
+      "messageArea": "Eres admin en {{channel}}, pero no de {{area}}. Pídele a {{channel}} que lo agregue en Ajustes → Admins.",
+      "messageOwner": "Esta página cambia cómo funciona el stream de {{channel}}, así que solo el dueño puede abrirla, incluso con acceso completo de admin.",
+      "needs": "Requiere",
+      "hint": "El dueño del canal define los permisos de admin. Los cambios aplican la próxima vez que abras la página."
+    },
+    "e404": {
+      "screen": "Fuera del aire",
+      "screenTitle": "Sin señal",
+      "kicker": "Página no encontrada",
+      "title": "Esta página no existe",
+      "message": "Puede que el enlace esté mal escrito o que ese canal aún no esté en DomDimaBot. Revisa la dirección o vuelve al inicio.",
+      "messageSignedIn": "Puede que el enlace esté mal escrito o que ese canal aún no esté en DomDimaBot. Tu panel está a un toque.",
+      "hint": "Las páginas de canal usan el nombre de Twitch, como domdimabot.com/tunombre/dashboard."
+    },
+    "e500": {
+      "screen": "Stream caído",
+      "kicker": "Error del servidor",
+      "title": "Algo falló de nuestro lado",
+      "message": "No es tu culpa. Tu canal, comandos y ajustes están a salvo. Inténtalo de nuevo en un momento.",
+      "hint": "Si sigue pasando, cuéntanos qué estabas haciendo para poder arreglarlo.",
+      "actions": {
+        "retry": "Intentar de nuevo"
+      }
+    },
+    "e503": {
+      "screen": "Fuera de línea",
+      "screenTitle": "Ya volvemos",
+      "kicker": "No disponible por ahora",
+      "title": "Ya volvemos",
+      "message": "DomDimaBot está en mantenimiento o con mucha carga. Tus ajustes están a salvo, no se perdió nada.",
+      "autoRetry": "Reintentando en {{seconds}}s",
+      "stop": "Detener",
+      "hint": "Normalmente toma unos minutos.",
+      "actions": {
+        "retry": "Intentar ahora"
+      }
+    }
   }
 }

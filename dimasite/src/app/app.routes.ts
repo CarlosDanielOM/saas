@@ -3,8 +3,7 @@ import { Routes } from '@angular/router';
 import { authenticatedGuard } from './guards/authenticated.guard';
 import { dashboardAccessGuard } from './guards/dashboard-access.guard';
 import { PublicCommandsPageComponent } from './features/commands/public-commands-page.component';
-import { ForbiddenPageComponent } from './features/forbidden/forbidden-page.component';
-import { NotFoundPageComponent } from './features/not-found/not-found-page.component';
+import { ErrorPageComponent } from './features/errors/error-page.component';
 import { channelOwnerGuard, permissionGuard } from './guards/permission.guard';
 import { streamerRouteShapeGuard, validStreamerGuard } from './guards/streamer-route.guard';
 import { overlayDraftGuard } from './features/overlays/overlay-draft.guard';
@@ -203,33 +202,12 @@ export const routes: Routes = [
       import('./features/tip/tip-page.component').then((m) => m.TipPageComponent),
     title: 'Tip | DomDimaBot'
   },
-  {
-    path: '403',
-    component: ForbiddenPageComponent,
-    data: {
-      previewPermission: 'settings:view'
-    },
-    title: '403 | DomDimaBot'
-  },
-  {
-    path: '404',
-    component: NotFoundPageComponent,
-    title: '404 | DomDimaBot'
-  },
-  {
-    path: '500',
-    loadComponent: () =>
-      import('./features/status/status-error-page.component').then((m) => m.StatusErrorPageComponent),
-    data: { code: '500' },
-    title: '500 | DomDimaBot'
-  },
-  {
-    path: '503',
-    loadComponent: () =>
-      import('./features/status/status-error-page.component').then((m) => m.StatusErrorPageComponent),
-    data: { code: '503' },
-    title: '503 | DomDimaBot'
-  },
+  ...(['401', '403', '404', '500', '503'] as const).map((code) => ({
+    path: code,
+    component: ErrorPageComponent,
+    data: { code },
+    title: `${code} | DomDimaBot`
+  })),
   {
     path: 'mocks/dev',
     children: [
@@ -754,8 +732,9 @@ export const routes: Routes = [
       },
       {
         path: '403',
-        component: ForbiddenPageComponent,
+        component: ErrorPageComponent,
         data: {
+          code: '403',
           embeddedLayout: true
         },
         title: '403 | DomDimaBot'
