@@ -5,10 +5,14 @@ import { getMongoDBConnection } from '../utils/databases/mongodb.database.js';
 import { getPoll } from '../functions/polls/get.poll.js';
 import * as domain from './model.js';
 import type { State } from './model.js';
+import type { DomainEventEnvelope } from '../domain_events/domain_event.types.js';
+import { defaultEventSettings, eventSettings, applyDbdEventRules, type DbdEventSettings } from './event-model.js';
+import { widgetEventEligible, type WidgetEventTarget } from './events.js';
 
 interface Receipt { key: string; fingerprint: string; at: number }
-interface Stored { _id: string; revision: number; state: State; tokenHash: string | null; dueAt: number | null; receipts: Receipt[] }
-const schema = new Schema<Stored>({ _id: String, revision: { type: Number, required: true }, state: { type: Schema.Types.Mixed, required: true }, tokenHash: { type: String, default: null }, dueAt: { type: Number, default: null }, receipts: { type: [new Schema<Receipt>({ key: String, fingerprint: String, at: Number }, { _id: false })], default: [] } }, { versionKey: false, collection: 'widget_channels' });
+interface EventReceipt { key: string; at: number }
+interface Stored { _id: string; revision: number; state: State; tokenHash: string | null; dueAt: number | null; receipts: Receipt[]; eventSettings?: DbdEventSettings; eventReceipts?: EventReceipt[] }
+const schema = new Schema<Stored>({ _id: String, revision: { type: Number, required: true }, state: { type: Schema.Types.Mixed, required: true }, tokenHash: { type: String, default: null }, dueAt: { type: Number, default: null }, receipts: { type: [new Schema<Receipt>({ key: String, fingerprint: String, at: Number }, { _id: false })], default: [] }, eventSettings: { type: Schema.Types.Mixed }, eventReceipts: { type: [new Schema<EventReceipt>({ key: String, at: Number }, { _id: false })], default: [] } }, { versionKey: false, collection: 'widget_channels' });
 schema.index({ dueAt: 1 });
 export const WidgetChannel = model<Stored>('WidgetChannel', schema);
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
@@ -28,7 +32,7 @@ async function load(id: string): Promise<Stored> {
   }
   domain.normalize(doc!.state); return doc!;
 }
-export type Action = 'select' | 'configure' | 'start' | 'show' | 'hide' | 'reset' | 'retry-poll' | 'role' | 'layout' | 'progress';
+export type Action = 'select' | 'configure' | 'start' | 'show' | 'hide' | 'reset' | 'retry-poll' | 'role' | 'layout' | 'progress' | 'events';
 export async function execute(id: string, action: Action, body: unknown, key: string, revision: number) {
   await requirePremium(id);
   domain.text(key, 'Idempotency-Key', 128); domain.integer(revision, 'If-Match', 0);
@@ -39,8 +43,9 @@ export async function execute(id: string, action: Action, body: unknown, key: st
     if (receipt) { if (receipt.fingerprint !== fingerprint) domain.fail('idempotency_conflict', 'Key already used for a different action', 409); return { replayed: true }; }
     if (revision !== doc.revision) domain.fail('revision_conflict', 'Widget changed; refresh before trying again', 409);
     const state = doc.state;
-    if (!['select','configure','start','role','layout','progress'].includes(action) && Object.keys(data).length) domain.fail('invalid', 'This action does not accept settings');
+    if (!['select','configure','start','role','layout','progress','events'].includes(action) && Object.keys(data).length) domain.fail('invalid', 'This action does not accept settings');
     switch (action) {
+      case 'events': doc.eventSettings = eventSettings(data, now); break;
       case 'select':
         domain.idle(state);
         if (Object.keys(data).some(k => k !== 'packId')) domain.fail('invalid', 'Unknown field');
@@ -72,13 +77,48 @@ export async function execute(id: string, action: Action, body: unknown, key: st
       default: domain.fail('invalid', 'Unknown widget action');
     }
     const receipts = [...doc.receipts.filter(r => now - r.at < 86400000), { key: receiptKey, fingerprint, at: now }].slice(-200);
-    const saved = await WidgetChannel.updateOne({ _id: id, revision: doc.revision }, { $set: { state, dueAt: state.nextAt, receipts }, $inc: { revision: 1 } });
+    const saved = await WidgetChannel.updateOne({ _id: id, revision: doc.revision }, { $set: { state, dueAt: state.nextAt, receipts, ...(action === 'events' ? { eventSettings: doc.eventSettings } : {}) }, $inc: { revision: 1 } }, { writeConcern: { w: 1, j: true } });
     if (saved.modifiedCount) {
       if ((action === 'start' || action === 'retry-poll') && state.phase === 'poll-starting') await launchPoll(id, state, true);
       return { replayed: false };
     }
   }
   return domain.fail('busy', 'Widget is busy; retry with the same key', 409);
+}
+
+export async function widgetEventSettings(id: string) {
+  const doc = await load(id);
+  return { revision: doc.revision, settings: doc.eventSettings ?? defaultEventSettings() };
+}
+
+export async function activeWidgetEventTargets(id: string): Promise<WidgetEventTarget[]> {
+  channel(id); await getMongoDBConnection('widget-event-targets');
+  // Do not create documents or load/evaluate rules for inactive widgets.
+  const doc = await WidgetChannel.findOne({ _id: id, 'eventSettings.enabled': true, 'eventSettings.active': true }, { eventSettings: 1 }).lean();
+  if (!doc?.eventSettings) return [];
+  const { enabled, active, activeSince, allowTestEvents } = doc.eventSettings;
+  return [{ id, enabled, active, activeSince, allowTestEvents }];
+}
+
+export async function applyWidgetEvent(id: string, event: DomainEventEnvelope): Promise<void> {
+  if (event.channelID !== id) return;
+  await getMongoDBConnection('widget-event-effects');
+  for (let attempt = 0; attempt < 20; attempt++) {
+    // Reload on every optimistic-write conflict, including deactivation or a rule edit.
+    const doc = await WidgetChannel.findOne({ _id: id, 'eventSettings.enabled': true, 'eventSettings.active': true }).lean();
+    if (!doc?.eventSettings) return;
+    const now = Date.now();
+    if (!widgetEventEligible({ id, ...doc.eventSettings }, event, now) || !await hasPremium(id)) return;
+    const receipts = doc.eventReceipts ?? [];
+    if (receipts.some(receipt => receipt.key === event.eventKey)) return;
+    if (!applyDbdEventRules(doc.state, doc.eventSettings.rules, event)) return;
+    const saved = await WidgetChannel.updateOne({ _id: id, revision: doc.revision, 'eventSettings.enabled': true, 'eventSettings.active': true }, {
+      $set: { state: doc.state, eventReceipts: [...receipts.filter(receipt => now - receipt.at < 24 * 60 * 60_000), { key: event.eventKey, at: now }] },
+      $inc: { revision: 1 }
+    }, { writeConcern: { w: 1, j: true } });
+    if (saved.modifiedCount) return;
+  }
+  throw new Error('Widget event state is busy; retry delivery');
 }
 async function savePoll(id: string, state: State, patch: Record<string, unknown>) {
   return WidgetChannel.updateOne({ _id: id, 'state.run.id': state.run!.id, 'state.phase': 'poll-starting' }, { $set: patch, $inc: { revision: 1 } });

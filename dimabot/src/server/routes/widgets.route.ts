@@ -3,7 +3,7 @@ import { authMiddleware } from '../../middleware/auth.middleware.js';
 import type { AuthRequest } from '../../middleware/types.js';
 import { catalog } from '../../widgets/catalog.js';
 import { WidgetError, fail, integer, text } from '../../widgets/model.js';
-import { execute, requirePremium, snapshot, rotateToken, authorizeOverlay, type Action } from '../../widgets/service.js';
+import { execute, requirePremium, snapshot, rotateToken, authorizeOverlay, widgetEventSettings, type Action } from '../../widgets/service.js';
 export const widgetsRoute = express.Router();
 const wrap = (handler: (req: Request, res: Response) => Promise<unknown>) => (req: Request, res: Response, next: NextFunction) => { void handler(req, res).catch(next); };
 const channel = (req: Request) => text(req.params.channelID, 'channelID', 30);
@@ -19,11 +19,12 @@ widgetsRoute.use('/:channelID', (req: AuthRequest, res, next) => {
   void requirePremium(channel(req)).then(() => next(), next);
 });
 widgetsRoute.get('/:channelID/catalog', wrap(async (_req, res) => ok(res, catalog)));
+widgetsRoute.get('/:channelID/events', wrap(async (req, res) => ok(res, await widgetEventSettings(channel(req)))));
 widgetsRoute.get('/:channelID', wrap(async (req, res) => ok(res, await snapshot(channel(req)))));
 widgetsRoute.post('/:channelID/overlay-token', wrap(async (req, res) => ok(res, { token: await rotateToken(channel(req)) })));
 widgetsRoute.post('/:channelID/actions/:action', wrap(async (req, res) => {
   const action = text(req.params.action, 'action');
-  if (!['select', 'configure', 'start', 'show', 'hide', 'reset', 'retry-poll', 'role', 'layout', 'progress'].includes(action)) fail('invalid', 'Unknown widget action');
+  if (!['select', 'configure', 'start', 'show', 'hide', 'reset', 'retry-poll', 'role', 'layout', 'progress', 'events'].includes(action)) fail('invalid', 'Unknown widget action');
   await execute(channel(req), action as Action, req.body ?? {}, text(req.header('Idempotency-Key'), 'Idempotency-Key', 128), integer(Number(req.header('If-Match')), 'If-Match', 0));
   return ok(res, await snapshot(channel(req)));
 }));

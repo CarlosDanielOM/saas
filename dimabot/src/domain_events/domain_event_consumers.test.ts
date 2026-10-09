@@ -16,17 +16,27 @@ test('defense admission is channel v1, exactly production Twitch, marked follow/
 });
 
 test('every registry entry explicitly declares replay and ephemeral consumers stay below receipt retention', () => {
-    const ephemeral = ['chat-announcements-v1', 'account-health-notifications-v1', 'follow-defense-v1'];
+    const ephemeral = ['chat-announcements-v1', 'account-health-notifications-v1', 'follow-defense-v1', 'widget-actions-v1', 'overlay-interactions-v1'];
     for (const definition of DOMAIN_EVENT_CONSUMERS) {
         assert.equal(typeof definition.adminReplay, 'boolean', definition.consumer);
         assert.equal(definition.adminReplay, !ephemeral.includes(definition.consumer), definition.consumer);
         if (ephemeral.includes(definition.consumer)) {
-            assert.equal(definition.maxEventAgeMs, 300_000);
+            assert.equal(definition.maxEventAgeMs, definition.consumer === 'overlay-interactions-v1' ? 86_400_000 : 300_000);
             assert.ok(definition.maxEventAgeMs < 48 * 60 * 60_000);
         } else {
             assert.equal(definition.maxEventAgeMs, undefined, 'Retained projections and lifecycle recovery remain uncapped');
         }
     }
+});
+
+test('one widget consumer accepts real/injected channel events without chat announcement gating', () => {
+    const definition = DOMAIN_EVENT_CONSUMERS.find(({ consumer }) => consumer === 'widget-actions-v1');
+    assert.ok(definition);
+    assert.deepEqual(definition.topics, ['channel']);
+    assert.deepEqual(definition.schemaVersions, [1]);
+    assert.deepEqual(definition.eventFilter, { source: { $in: ['twitch-eventsub', 'twitch-eventsub-test'] }, channelID: { $exists: true } });
+    assert.equal(definition.adminReplay, false);
+    assert.equal(definition.maxEventAgeMs, 300_000);
 });
 
 test('history uses existing markers, with no startup-time or new date cutoff', () => {

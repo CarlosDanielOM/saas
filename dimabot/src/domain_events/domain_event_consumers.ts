@@ -1,5 +1,6 @@
 import type { DomainEventConsumerOptions } from '../utils/domain_event_consumer.js';
 import { GIFT_PACK_PAIRS } from '../utils/credit_gift_provider.js';
+import { WIDGET_EVENT_MAX_AGE_MS } from '../widgets/events.js';
 
 export interface DomainEventConsumerDefinition extends DomainEventConsumerOptions {
     schemaVersions: readonly number[];
@@ -9,6 +10,12 @@ export interface DomainEventConsumerDefinition extends DomainEventConsumerOption
 const twitchSources = { $in: ['twitch-eventsub', 'twitch-eventsub-test'] };
 
 export const DOMAIN_EVENT_CONSUMERS: readonly DomainEventConsumerDefinition[] = [
+    {
+        consumer: 'widget-actions-v1', topics: ['channel'], schemaVersions: [1], adminReplay: false,
+        maxEventAgeMs: WIDGET_EVENT_MAX_AGE_MS,
+        eventFilter: { source: twitchSources, channelID: { $exists: true } },
+        handler: async event => (await import('../widgets/events.js')).applyWidgetDomainEvent(event)
+    },
     {
         consumer: 'overlay-interactions-v1', topics: ['channel'], schemaVersions: [1], adminReplay: false,
         maxEventAgeMs: 86_400_000,
