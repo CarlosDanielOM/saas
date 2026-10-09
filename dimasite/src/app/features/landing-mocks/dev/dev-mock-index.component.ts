@@ -143,10 +143,18 @@ export class DevMockIndexComponent {
 
   t(key: string): string {
     this.language.currentLanguage();
+    if (key.startsWith('duelMock.')) return this.language.translate(key);
     return this.language.translate(`overlayMock.${key}`);
   }
 
   readonly mocks: DevMockCard[] = [
+    {
+      id: 'duel',
+      title: 'duelMock.indexTitle',
+      badge: 'duelMock.prototype',
+      description: 'duelMock.indexDescription',
+      translated: true
+    },
     {
       id: 'landing-next',
       title: 'Landing · Live First polish',

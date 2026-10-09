@@ -1,0 +1,101 @@
+<div class="duel-studio">
+  @if (!overlayOnly) {
+    <header class="lf-nav">
+      <a class="back" routerLink="/mocks/dev">← {{ t('back') }}</a>
+      <span class="brand"><i></i> DomDimaBot <span class="prototype">{{ t('prototype') }}</span></span>
+      <div class="nav-tools">
+        <button type="button" (click)="language.toggleLanguage()" [attr.aria-label]="t('language')">{{ language.currentLanguage().toUpperCase() }}</button>
+        <button type="button" (click)="theme.toggleTheme()">{{ t(theme.isDarkMode() ? 'light' : 'dark') }}</button>
+      </div>
+    </header>
+  }
+  <main class="lf-main">
+    @if (!overlayOnly) {
+      <div class="page-head">
+        <div><p class="lf-kicker">{{ t('kicker') }}</p><h1>{{ t('title') }}<span>.</span></h1><p class="subtitle">{{ t('subtitle') }}</p></div>
+        <span class="local-chip"><i></i>{{ t('local') }}</span>
+      </div>
+    }
+    <div class="lf-bento">
+      <section class="lf-tile preview-tile" [attr.aria-label]="t('preview')">
+        @if (!overlayOnly) {
+          <div class="tile-head"><span>{{ t('preview') }}</span><span class="dimension">16:9 · {{ t('silent') }}</span></div>
+        }
+        <div class="stage-frame" [class.checkerboard]="transparent() && !overlayOnly">
+          <div class="arena" [class.transparent]="transparent()" [class.paused]="paused()" [attr.data-phase]="phase()" [attr.data-winner]="chosenWinner()">
+            <div class="scenery" aria-hidden="true"><div class="moon"></div><div class="mountain mountain-one"></div><div class="mountain mountain-two"></div><div class="grid-floor"></div><div class="floor-ring"></div></div>
+            <div class="arena-label"><span>!duel</span><span>{{ t('arena') }} / 01</span></div>
+            <div class="hud">
+              @for (side of sides; track side) {
+                <div class="health" [class.health-right]="side === 'right'" [attr.data-side]="side">
+                  <div class="health-label"><strong>{{ names()[side] }}</strong><span>{{ health()[side] }} <small>HP</small></span></div>
+                  <div class="health-track" role="progressbar" [attr.aria-label]="t('health', {name: names()[side]})" [attr.aria-valuenow]="health()[side]" aria-valuemin="0" aria-valuemax="100"><div [style.width.%]="health()[side]"></div></div>
+                  <span class="fighter-role">{{ t(side === 'left' ? 'challenger' : 'opponent') }}</span>
+                </div>
+              }
+            </div>
+            <div class="fight-space" aria-hidden="true">
+              @for (side of sides; track side) {
+                <div class="fighter-slot" [class.fighter-right]="side === 'right'" [attr.data-action]="action(side)">
+                  <div class="fighter-facing"><app-duel-fighter [side]="side" [action]="action(side)" [paused]="paused()" /></div>
+                  @if (impact(); as hit) {
+                    @if (hit.attacker !== side) { <span class="damage">−{{ hit.damage }}</span><div class="hit-spark"><i></i><i></i><i></i><i></i></div> }
+                  }
+                </div>
+              }
+            </div>
+            <div class="center-cue" aria-hidden="true">
+              @if (phase() === 'ready') { <span class="vs">VS</span><small>{{ t('ready') }}</small> }
+              @if (phase() === 'entrance') { <span class="challenge-cue">{{ t('challenge') }}</span> }
+              @if (phase() === 'countdown') { <span class="countdown">{{ countdown() }}</span> }
+              @if (phase() === 'fight' && elapsed() < 3950) { <span class="fight-cue">{{ t('fight') }}</span> }
+              @if (phase() === 'knockout') { <span class="ko">K.O.</span> }
+            </div>
+            @if (phase() === 'winner') {
+              <div class="winner-reveal">
+                <div class="confetti" aria-hidden="true">@for (n of [0,1,2,3,4,5,6,7,8,9,10,11]; track n) { <i [style.--n]="n"></i> }</div>
+                <span class="winner-kicker">✦ {{ t('victory') }} ✦</span><strong>{{ winnerName() }}</strong><span>{{ t('wins') }}</span>
+              </div>
+            }
+            <div class="arena-footer"><span>{{ t('phase.' + phase()) }}</span><span>{{ t('round') }}</span></div>
+          </div>
+        </div>
+        @if (!overlayOnly) {
+          <div class="playback">
+            <button class="primary" type="button" (click)="play()">{{ t(started() ? 'replay' : 'play') }} <span aria-hidden="true">▶</span></button>
+            <button type="button" (click)="togglePause()" [disabled]="!active()">{{ t(paused() ? 'resume' : 'pause') }}</button>
+            <button class="reset" type="button" (click)="reset()">{{ t('reset') }}</button>
+            <span class="time">{{ (elapsed() / 1000).toFixed(1) }} / 11.4s</span>
+          </div>
+          <div class="timeline" aria-hidden="true"><div [style.width.%]="progress()"></div></div>
+          <div class="sequence"><span [class.current]="phase() === 'entrance' || phase() === 'countdown'">01 <b>{{ t('entry') }}</b></span><span [class.current]="phase() === 'fight'">02 <b>{{ t('combat') }}</b></span><span [class.current]="phase() === 'knockout'">03 <b>{{ t('knockout') }}</b></span><span [class.current]="phase() === 'winner'">04 <b>{{ t('result') }}</b></span></div>
+        }
+      </section>
+      @if (!overlayOnly) {
+        <aside class="lf-tile controls-tile">
+          <div class="tile-head"><span>{{ t('setup') }}</span><span class="prototype">V1</span></div>
+          <form [formGroup]="form" (ngSubmit)="play()">
+            <fieldset><legend>{{ t('fighters') }}</legend>
+              <label for="left-name"><span class="color-dot violet"></span>{{ t('challenger') }}</label><input id="left-name" formControlName="left" maxlength="24" autocomplete="off" />
+              <label for="right-name"><span class="color-dot amber"></span>{{ t('opponent') }}</label><input id="right-name" formControlName="right" maxlength="24" autocomplete="off" />
+            </fieldset>
+            <fieldset><legend>{{ t('outcome') }}</legend><p class="field-hint">{{ t('outcomeHint') }}</p>
+              <div class="winner-options">
+                @for (option of ['random', 'left', 'right']; track option) {
+                  <label class="radio-option"><input type="radio" formControlName="winner" [value]="option" /><span>{{ t('choice.' + option) }}</span></label>
+                }
+              </div>
+            </fieldset>
+            <p class="field-hint">{{ t('applyHint') }}</p>
+            <button class="primary setup-play" type="submit">{{ t('play') }} <span aria-hidden="true">↗</span></button>
+          </form>
+          <div class="overlay-options"><h2>{{ t('background') }}</h2><button class="toggle" type="button" [attr.aria-pressed]="transparent()" (click)="toggleTransparent()"><span>{{ t('transparent') }}</span><i [class.on]="transparent()"></i></button><a class="overlay-link" routerLink="/mocks/dev/duel" [queryParams]="{overlay: '1'}" target="_blank" rel="noopener">{{ t('overlayOnly') }} ↗</a></div>
+          <p class="mock-note">{{ t('mockNote') }}</p>
+        </aside>
+      }
+    </div>
+    <p class="sr-only" role="status" aria-live="polite">{{ phase() === 'winner' ? t('winnerAnnouncement', {name: winnerName()}) : t('phase.' + phase()) }}</p>
+    @if (overlayOnly) { <button class="overlay-play" type="button" (click)="play()">{{ t(started() ? 'replay' : 'play') }}</button> }
+    @if (!overlayOnly) { <footer class="studio-footer"><span>{{ t('footer') }}</span><code>!duel &#64;{{ names().right }}</code></footer> }
+  </main>
+</div>

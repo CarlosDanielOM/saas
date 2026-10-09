@@ -221,6 +221,14 @@ export const routes: Routes = [
         title: 'Dev Mocks | DomDimaBot'
       },
       {
+        path: 'duel',
+        loadComponent: () =>
+          import('./features/landing-mocks/dev/duel-mock.component').then(
+            (m) => m.DuelMockComponent
+          ),
+        title: 'Duel Overlay Prototype | DomDimaBot'
+      },
+      {
         path: 'clips',
         loadComponent: () =>
           import('./features/landing-mocks/dev/clip-overlay-playground.component').then(

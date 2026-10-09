@@ -6827,5 +6827,63 @@
         "retry": "Try now"
       }
     }
+  },
+  "duelMock": {
+    "back": "Dev mocks",
+    "prototype": "Prototype",
+    "language": "Change language",
+    "light": "Light",
+    "dark": "Dark",
+    "kicker": "Command overlays / Duel",
+    "title": "Let chat battle it out",
+    "subtitle": "Two challengers. One final blow. A first look at an animated duel for your stream.",
+    "local": "Local preview",
+    "preview": "Overlay preview",
+    "silent": "Silent",
+    "arena": "Chat arena",
+    "health": "Health of {{name}}",
+    "challenger": "Challenger",
+    "opponent": "Opponent",
+    "ready": "Ready to duel",
+    "challenge": "Challenge accepted",
+    "fight": "FIGHT!",
+    "victory": "Victory",
+    "wins": "wins the duel",
+    "round": "Round 01 / 01",
+    "play": "Play duel",
+    "replay": "Replay duel",
+    "pause": "Pause",
+    "resume": "Resume",
+    "reset": "Reset",
+    "entry": "Entrance",
+    "combat": "Fight",
+    "knockout": "Knockout",
+    "result": "Winner",
+    "setup": "Set the scene",
+    "fighters": "The fighters",
+    "outcome": "Who wins?",
+    "outcomeHint": "Pick an outcome to preview both victory animations.",
+    "applyHint": "Name and winner changes apply on the next replay.",
+    "choice": {
+      "random": "Surprise me",
+      "left": "Challenger wins",
+      "right": "Opponent wins"
+    },
+    "background": "Overlay view",
+    "transparent": "Transparent background",
+    "overlayOnly": "Open overlay only",
+    "mockNote": "Mock battle only. No chat messages, moderation actions or live command connection.",
+    "footer": "Original vector fighters · Entrance → fight → knockout → victory",
+    "winnerAnnouncement": "{{name}} wins the duel.",
+    "phase": {
+      "ready": "Waiting for a challenge",
+      "entrance": "Challengers entering",
+      "countdown": "Get ready",
+      "fight": "Duel in progress",
+      "knockout": "Final blow",
+      "winner": "We have a winner"
+    },
+    "indexTitle": "Duel · Fighting overlay",
+    "indexDescription": "Two animated sword fighters, hit effects, health bars, knockout and winner reveal. Replay with either winner or a transparent background."
   }
 }

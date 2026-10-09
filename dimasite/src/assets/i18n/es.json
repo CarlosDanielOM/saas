@@ -6827,5 +6827,63 @@
         "retry": "Intentar ahora"
       }
     }
+  },
+  "duelMock": {
+    "back": "Mocks de desarrollo",
+    "prototype": "Prototipo",
+    "language": "Cambiar idioma",
+    "light": "Claro",
+    "dark": "Oscuro",
+    "kicker": "Overlays de comandos / Duelo",
+    "title": "Que el chat se enfrente",
+    "subtitle": "Dos contrincantes. Un golpe final. Un primer vistazo a un duelo animado para tu stream.",
+    "local": "Vista previa local",
+    "preview": "Vista previa del overlay",
+    "silent": "Sin sonido",
+    "arena": "Arena del chat",
+    "health": "Vida de {{name}}",
+    "challenger": "Retador",
+    "opponent": "Oponente",
+    "ready": "Listos para el duelo",
+    "challenge": "Desafío aceptado",
+    "fight": "¡A LUCHAR!",
+    "victory": "Victoria",
+    "wins": "gana el duelo",
+    "round": "Ronda 01 / 01",
+    "play": "Iniciar duelo",
+    "replay": "Repetir duelo",
+    "pause": "Pausar",
+    "resume": "Continuar",
+    "reset": "Reiniciar",
+    "entry": "Entrada",
+    "combat": "Combate",
+    "knockout": "Golpe final",
+    "result": "Ganador",
+    "setup": "Prepara la escena",
+    "fighters": "Los luchadores",
+    "outcome": "¿Quién gana?",
+    "outcomeHint": "Elige un resultado para probar ambas animaciones de victoria.",
+    "applyHint": "Los cambios de nombre y ganador se aplican al repetir.",
+    "choice": {
+      "random": "Sorpréndeme",
+      "left": "Gana el retador",
+      "right": "Gana el oponente"
+    },
+    "background": "Vista del overlay",
+    "transparent": "Fondo transparente",
+    "overlayOnly": "Abrir solo el overlay",
+    "mockNote": "Solo un duelo de prueba. Sin mensajes en el chat, acciones de moderación ni conexión al comando real.",
+    "footer": "Luchadores vectoriales originales · Entrada → combate → golpe final → victoria",
+    "winnerAnnouncement": "{{name}} gana el duelo.",
+    "phase": {
+      "ready": "Esperando un desafío",
+      "entrance": "Entran los contrincantes",
+      "countdown": "Prepárate",
+      "fight": "Duelo en curso",
+      "knockout": "Golpe final",
+      "winner": "Tenemos un ganador"
+    },
+    "indexTitle": "Duelo · Overlay de combate",
+    "indexDescription": "Dos luchadores con espadas, efectos de impacto, barras de vida, golpe final y anuncio del ganador. Repite con cualquier ganador o un fondo transparente."
   }
 }
