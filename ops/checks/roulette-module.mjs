@@ -100,18 +100,18 @@ try {
       viewport: { width, height: 1000 },
       permissions: ["clipboard-read", "clipboard-write"],
     });
-    const user = { id: "999991", login: "viewer", display_name: "Viewer" };
+    const user = { id: "999992", login: "adminviewer", display_name: "Viewer" };
     const app = {
       name: "Viewer",
       email: "test@example.invalid",
       language: "en",
-      plan_tier: "pro",
+      plan_tier: "premium",
       actived: true,
       chat_enabled: true,
       twitch_user_id: user.id,
       has_permissions: true,
       up_to_date_permissions: true,
-      administrating: [],
+      administrating: [{ channelID: "999991", channelName: "viewer" }],
     };
     await context.addInitScript(
       ({ user, app }) =>
@@ -129,6 +129,7 @@ try {
         ),
       { user, app },
     );
+    let fullAccess = true;
     let writes = 0,
       forceConflict = false,
       lastStartUser;
@@ -140,8 +141,8 @@ try {
       if (url.hostname !== "api.domdimabot.com") return route.abort();
       let data = {};
       if (url.pathname === "/auth/session") data = { twitch: user, app };
-      else if (url.pathname.endsWith("/access")) data = { allowed: true, role: "owner", planTier: app.plan_tier };
-      else if (url.pathname.startsWith("/auth/access/")) data = { allowed: true };
+      else if (url.pathname.endsWith("/access")) data = { allowed: true, role: "admin", planTier: app.plan_tier };
+      else if (url.pathname.startsWith("/auth/access/")) data = { allowed: url.searchParams.get("permission") === "*" ? fullAccess : true };
       else if (url.pathname.includes("/live-status")) data = { isLive: false, currentViewers: 0 };
       else if (url.pathname.startsWith("/roulettes/")) {
         state.serverTime = Date.now();
@@ -461,18 +462,28 @@ try {
       if (shots) await page.screenshot({ path: `${shots}/roulette-${width}-${theme}.png`, fullPage: true });
     }
     assert.deepEqual(errors, []);
-    for (const tier of ["free", "premium"]) {
+    for (const tier of ["free"]) {
       app.plan_tier = tier;
       const before = writes;
       await page.reload();
-      await module.getByRole("heading", { name: "Roulette Alpha is exclusive to Pro" }).waitFor();
+      await module.getByRole("heading", { name: "Roulette Alpha is available with Premium" }).waitFor();
       assert.equal(await module.getByRole("button", { name: "Start draw", exact: true }).count(), 0);
       assert.equal(writes, before);
       await page.goto(`${base}/viewer/modules`);
       await card.waitFor();
-      assert((await card.getAttribute("class")).includes("lf-mod--locked"), "Roulette is locked below Pro");
+      assert.equal(await card.getAttribute("href"), null, "Roulette cannot open below Premium");
       await page.goto(`${base}/viewer/modules/roulette`);
     }
+    app.plan_tier = "pro";
+    await page.reload();
+    await module.getByRole("button", { name: "New roulette", exact: true }).waitFor();
+    fullAccess = false;
+    await page.reload();
+    await page.waitForURL(/\/403/);
+    await page.goto(`${base}/viewer/modules`);
+    await page.locator("app-modules-page").waitFor();
+    await page.waitForTimeout(300);
+    assert.equal(await card.count(), 0, "limited admins do not see Roulette");
     await context.close();
   }
 
@@ -535,7 +546,7 @@ try {
   await page.locator("app-roulette-display").waitFor({ state: "detached" });
   await context.close();
   console.log(
-    "PASS Roulette: redesigned page at 320/390/1280 (prize dialog, capacity, odds, remove confirm, target user, draft preview + save bar, conflict recovery, OBS link, create/switch/delete), all four styles incl. last one standing land on the saved winner, overlay reconnect/visibility/revoke, Pro gating, en/es parity and axe in dark + light.",
+    "PASS Roulette: redesigned page at 320/390/1280 (prize dialog, capacity, odds, remove confirm, target user, draft preview + save bar, conflict recovery, OBS link, create/switch/delete), all four styles incl. last one standing land on the saved winner, overlay reconnect/visibility/revoke, Premium gating and full-access admins, en/es parity and axe in dark + light.",
   );
 } finally {
   await browser.close();

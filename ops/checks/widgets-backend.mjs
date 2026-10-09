@@ -37,6 +37,20 @@ async function request(method,path,body,status=200,token='widgets-owner',headers
  const response=await fetch(base+path,{method,headers:{...(token?{Authorization:'Bearer '+token}:{}),'Content-Type':'application/json',...headers},...(body===undefined?{}:{body:JSON.stringify(body)})});const value=await response.json();assert.equal(response.status,status,JSON.stringify(value));const data=value.data;if(data?.resultPhase){assert.equal(data.phase,data.resultPhase==='character-result'?'character-spin':'perk-spin','legacy OBS keeps the correct roulette');return {...data,phase:data.resultPhase};}return data;
 }
 await request('GET',root,undefined,401,'');await request('GET',root,undefined,403,'widgets-other');
+const { AdminSchema } = await import('/app/dist/schemas/admin.schema.js');
+const adminGrant = { channelID: '991801', adminID: '991802', actived: true, permissions: ['dashboard:view'] };
+await AdminSchema.collection.insertOne(adminGrant);
+await request('GET', root, undefined, 403, 'widgets-other');
+await AdminSchema.updateOne({ adminID: '991802' }, { $set: { permissions: ['*'] } });
+await request('GET', root, undefined, 200, 'widgets-other');
+await request('POST', root + '/overlay-token', {}, 200, 'widgets-other');
+const adminState = await request('GET', root, undefined, 200, 'widgets-other');
+await request('POST', root + '/actions/hide', {}, 200, 'widgets-other', { 'Idempotency-Key': 'admin-hide', 'If-Match': String(adminState.revision) });
+await AdminSchema.updateOne({ adminID: '991802' }, { $set: { actived: false } });
+await request('GET', root, undefined, 403, 'widgets-other');
+await AdminSchema.updateOne({ adminID: '991802' }, { $set: { actived: true, channelID: '887766' } });
+await request('GET', root, undefined, 403, 'widgets-other');
+await AdminSchema.deleteMany({ adminID: '991802' });
 await request('GET','/widgets/'+other,undefined,200,'widgets-other');
 await request('GET',root+'/catalog');
 let state=await request('GET',root);assert.equal(state.phase,'idle');

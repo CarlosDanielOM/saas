@@ -14,6 +14,7 @@ import { firstValueFrom } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
+import { isModuleAccessible, MODULE_TIER_REQUIREMENTS } from '../modules/module-tier.model';
 import { UpgradeService } from '../../services/upgrade.service';
 import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 import { getRouteParam } from '../../shared/utils/route-param.util';
@@ -66,10 +67,7 @@ export class RoulettePageComponent {
   readonly palettes = Object.entries(PALETTES).map(([id, colors]) => ({ id, colors }));
   readonly commands = COMMANDS;
   readonly streamer = getRouteParam(inject(ActivatedRoute), 'streamer') ?? '';
-  readonly pro = computed(() => this.auth.getPlanTierForStreamer(this.streamer) === 'pro');
-  readonly owner = computed(
-    () => this.auth.session()?.twitchUser.login.toLowerCase() === this.streamer.toLowerCase(),
-  );
+  readonly premium = computed(() => isModuleAccessible(MODULE_TIER_REQUIREMENTS.roulette, this.auth.getPlanTierForStreamer(this.streamer)));
   readonly state = signal<RouletteState | null>(null);
   readonly selectedId = signal('');
   readonly selected = computed(
@@ -233,7 +231,7 @@ export class RoulettePageComponent {
   }
   async init(): Promise<void> {
     this.loading.set(true);
-    if (!this.pro() || !this.owner()) {
+    if (!this.premium()) {
       this.loading.set(false);
       return;
     }

@@ -62,7 +62,7 @@ export const permissionGuard: CanActivateFn = (route, state) => {
   );
 };
 
-/** Overlay Studio and Roulette currently require the broadcaster's own account. */
+/** Overlay Studio currently requires the broadcaster's own account. */
 export const channelOwnerGuard: CanActivateFn = (route, state) => {
   const sessionAuth = inject(SessionAuthService);
   const router = inject(Router);

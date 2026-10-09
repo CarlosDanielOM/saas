@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { Server, Socket } from 'socket.io';
-import { authorizeOverlay, hasPro, overlaySnapshot, RouletteChannel } from '../../roulette/service.js';
+import { authorizeOverlay, hasPremium, overlaySnapshot, RouletteChannel } from '../../roulette/service.js';
 
 /** Database revisions recover missed events across API/bot/cron without lossy pubsub. */
 export function registerRouletteOverlay(io: Server): void {
@@ -30,7 +30,7 @@ export function registerRouletteOverlay(io: Server): void {
       const poll = async () => {
         if (owned.busy) return; owned.busy = true;
         try {
-          if (!await hasPro(channelId)) { for (const client of owned.sockets) client.disconnect(true); return; }
+          if (!await hasPremium(channelId)) { for (const client of owned.sockets) client.disconnect(true); return; }
           const version = await RouletteChannel.findById(channelId, { revision: 1, dueAt: 1, tokenHash: 1 }).lean();
           for (const client of owned.sockets) {
             if (!version || client.data.rouletteTokenHash !== version.tokenHash) { client.disconnect(true); continue; }

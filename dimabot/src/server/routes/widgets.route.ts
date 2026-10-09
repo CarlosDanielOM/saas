@@ -1,5 +1,6 @@
 import express, { type Request, type Response, type NextFunction } from 'express';
 import { authMiddleware } from '../../middleware/auth.middleware.js';
+import { getChannelAccessContext } from '../../middleware/admin.middleware.js';
 import type { AuthRequest } from '../../middleware/types.js';
 import { catalog } from '../../widgets/catalog.js';
 import { WidgetError, fail, integer, text } from '../../widgets/model.js';
@@ -14,9 +15,15 @@ widgetsRoute.get('/:channelID/overlay', wrap(async (req, res) => {
   return ok(res, { state: await snapshot(channel(req)), catalog });
 }));
 widgetsRoute.use(authMiddleware);
+// Owners and full-access channel admins may manage this module.
 widgetsRoute.use('/:channelID', (req: AuthRequest, res, next) => {
-  if (req.user?.id !== req.params.channelID) { res.status(403).json({ error: true, status: 403, code: 'owner_required', message: 'Channel owner required' }); return; }
-  void requirePremium(channel(req)).then(() => next(), next);
+  res.setHeader('Cache-Control', 'no-store');
+  void (async () => {
+    const access = await getChannelAccessContext(req.user?.id, req.params.channelID as string, '*');
+    if (!access.allowed) { res.status(403).json({ error: true, status: 403, code: 'permission_required', message: 'Channel owner or full-access admin required' }); return; }
+    await requirePremium(channel(req));
+    next();
+  })().catch(next);
 });
 widgetsRoute.get('/:channelID/catalog', wrap(async (_req, res) => ok(res, catalog)));
 widgetsRoute.get('/:channelID/events', wrap(async (req, res) => ok(res, await widgetEventSettings(channel(req)))));

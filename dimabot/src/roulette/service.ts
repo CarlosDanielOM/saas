@@ -8,12 +8,12 @@ import { parse } from '../utils/ast_parser/parser.js';
 import type { DrawActor, WinnerAction } from './action-model.js';
 
 /** Alpha entitlement follows the broadcaster, never the command caller. */
-export async function hasPro(channelId: string): Promise<boolean> {
+export async function hasPremium(channelId: string): Promise<boolean> {
   await getMongoDBConnection('roulette-entitlement');
-  return !!await Users.exists({ accounts: { $elemMatch: { type: 'twitch', id: channelId } }, plan_tier: 'pro' });
+  return !!await Users.exists({ accounts: { $elemMatch: { type: 'twitch', id: channelId } }, plan_tier: { $in: ['premium', 'pro'] } });
 }
-export async function requirePro(channelId: string): Promise<void> {
-  if (!await hasPro(channelId)) domain.fail('pro_required', 'Roulette Alpha requires Pro', 403);
+export async function requirePremium(channelId: string): Promise<void> {
+  if (!await hasPremium(channelId)) domain.fail('premium_required', 'Roulette Alpha requires Premium', 403);
 }
 
 interface Receipt { key: string; fingerprint: string; result: string; at: number }
@@ -74,7 +74,7 @@ function apply(state: State, action: Action, now: number): string {
 }
 /** One channel document is the atomic boundary across API, bot and cron processes. */
 export async function execute(channelId: string, action: Action, requestKey?: string, expectedRevision?: number, actor?: DrawActor) {
-  await requirePro(channelId);
+  await requirePremium(channelId);
   if ((action.operation === 'add' || action.operation === 'update') && action.data?.action !== undefined) {
     const source = domain.actionSource(action.data.action);
     if (source && parse(source).error) domain.fail('invalid_action', 'Invalid AST syntax in item action');
@@ -131,7 +131,7 @@ export async function snapshot(channelId: string) {
   return domain.fail('busy', 'Roulette is busy', 409);
 }
 export async function rotateToken(channelId: string): Promise<string> {
-  await requirePro(channelId);
+  await requirePremium(channelId);
   await load(channelId); const token = randomBytes(32).toString('base64url');
   await RouletteChannel.updateOne({ _id: channelId }, { $set: { tokenHash: hash(token) }, $inc: { revision: 1 } });
   return token;
@@ -139,7 +139,7 @@ export async function rotateToken(channelId: string): Promise<string> {
 export async function authorizeOverlay(channelId: string, token: unknown): Promise<boolean> {
   if (typeof token !== 'string' || !/^[\w-]{43}$/.test(token)) return false;
   await getMongoDBConnection('roulette-overlay');
-  if (!await hasPro(channelId)) return false;
+  if (!await hasPremium(channelId)) return false;
   return !!await RouletteChannel.exists({ _id: channel(channelId), tokenHash: hash(token) });
 }
 export async function overlaySnapshot(channelId: string) {

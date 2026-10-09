@@ -120,11 +120,11 @@ const GOALS: readonly GoalOption[] = [
 const RECENT_LIMIT = 4;
 const RECENT_STORAGE_PREFIX = 'dimasite.modules.recent.';
 
-/** Matches the page guards. Overlay Studio and Roulette are broadcaster-only. */
+/** Matches the page guards. Overlay Studio remains broadcaster-only. */
 const MODULE_VIEW_PERMISSIONS: Readonly<Record<ModuleId, string | null>> = {
   overlays: null,
-  roulette: null,
-  widgets: null,
+  roulette: '*',
+  widgets: '*',
   clips: 'clips:view',
   'chat-events': 'eventsubs:view',
   triggers: 'triggers:view',

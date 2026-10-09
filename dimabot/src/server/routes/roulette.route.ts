@@ -1,10 +1,11 @@
 import express, { type Request, type Response, type NextFunction } from 'express';
 import { authMiddleware } from '../../middleware/auth.middleware.js';
+import { getChannelAccessContext } from '../../middleware/admin.middleware.js';
 import type { AuthRequest } from '../../middleware/types.js';
 import { getTwitchUserByLogin } from '../../functions/users/get_user_by_login.users.js';
 import type { DrawActor } from '../../roulette/action-model.js';
 import { RouletteError, object, text, integer, fail } from '../../roulette/model.js';
-import { execute, requirePro, snapshot, rotateToken, authorizeOverlay, overlaySnapshot, type Action } from '../../roulette/service.js';
+import { execute, requirePremium, snapshot, rotateToken, authorizeOverlay, overlaySnapshot, type Action } from '../../roulette/service.js';
 
 export const rouletteRoute = express.Router();
 const param = (req: Request, name: string) => text(req.params[name], name, 100);
@@ -18,11 +19,15 @@ rouletteRoute.get('/:channelID/overlay', wrap(async (req, res) => {
   return ok(res, await overlaySnapshot(param(req, 'channelID')));
 }));
 rouletteRoute.use(authMiddleware);
-// V1 management belongs to the broadcaster; no unrelated module permission grants roulette writes.
+// Owners and full-access channel admins may manage this module.
 rouletteRoute.use('/:channelID', (req: AuthRequest, res, next) => {
   res.setHeader('Cache-Control', 'no-store');
-  if (req.user?.id !== req.params.channelID) { res.status(403).json({ error: true, message: 'Channel owner required', status: 403 }); return; }
-  void requirePro(param(req, 'channelID')).then(() => next(), next);
+  void (async () => {
+    const access = await getChannelAccessContext(req.user?.id, req.params.channelID as string, '*');
+    if (!access.allowed) { res.status(403).json({ error: true, status: 403, code: 'permission_required', message: 'Channel owner or full-access admin required' }); return; }
+    await requirePremium(param(req, 'channelID'));
+    next();
+  })().catch(next);
 });
 rouletteRoute.get('/:channelID', wrap(async (req, res) => ok(res, await snapshot(param(req, 'channelID')))));
 rouletteRoute.post('/:channelID/overlay-token', wrap(async (req, res) => ok(res, { token: await rotateToken(param(req, 'channelID')), namespace: `/overlays/roulette/${param(req, 'channelID')}` })));

@@ -1,4 +1,4 @@
-<div class="lf" data-plan="pro">
+<div class="lf" data-plan="premium">
   <main class="lf-main">
     <header class="lf-head">
       <a class="lf-back" [routerLink]="['/', streamer, 'modules']"
@@ -6,7 +6,7 @@
       >
       <div class="lf-head__row">
         <h1 class="lf-title">{{ t('title') }}</h1>
-        @if (state() && pro() && owner()) {
+        @if (state() && premium()) {
           <button
             type="button"
             class="lf-btn lf-btn--primary"
@@ -20,7 +20,7 @@
       <p class="lf-copy">{{ t('subtitle') }}</p>
       <div class="lf-head__chips">
         <span class="lf-chip lf-chip--accent">{{ t('alpha') }}</span>
-        <span class="lf-chip lf-chip--gold lf-chip--pro">{{ t('pro') }}</span>
+        <span class="lf-chip lf-chip--gold lf-chip--premium">{{ t('premium') }}</span>
         @if (state(); as s) {
           @if (onStream()) {
             <span class="lf-chip lf-chip--live"
@@ -45,18 +45,13 @@
       </div>
     </header>
 
-    @if (!pro()) {
+    @if (!premium()) {
       <section class="lf-tile lf-card lf-gate">
-        <h2 class="lf-h2">{{ t('proOnly') }}</h2>
-        <p class="lf-copy">{{ t('proDescription') }}</p>
+        <h2 class="lf-h2">{{ t('premiumOnly') }}</h2>
+        <p class="lf-copy">{{ t('premiumDescription') }}</p>
         <button type="button" class="lf-btn lf-btn--primary" (click)="upgradePlan()">
           {{ t('upgrade') }}
         </button>
-      </section>
-    } @else if (!owner()) {
-      <section class="lf-tile lf-card lf-gate">
-        <h2 class="lf-h2">{{ t('ownerOnly') }}</h2>
-        <p class="lf-copy">{{ t('ownerDescription') }}</p>
       </section>
     } @else {
       @if (error()) {

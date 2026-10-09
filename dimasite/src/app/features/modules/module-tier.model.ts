@@ -37,7 +37,7 @@ export interface ModuleTierRequirement {
 export const MODULE_TIER_REQUIREMENTS: Readonly<Record<ModuleId, ModuleTierRequirement>> = {
   widgets: { id: 'widgets', minTier: 'premium', displayName: 'Widgets', defaultStatus: 'alpha', category: 'engagement', priority: 86 },
   overlays: { id: 'overlays', minTier: 'free', displayName: 'Overlay Studio', defaultStatus: 'alpha', category: 'engagement', priority: 84 },
-  roulette: { id: 'roulette', minTier: 'pro', displayName: 'Roulette', defaultStatus: 'alpha', category: 'engagement', priority: 85 },
+  roulette: { id: 'roulette', minTier: 'premium', displayName: 'Roulette', defaultStatus: 'alpha', category: 'engagement', priority: 85 },
   'chat-events': {
     id: 'chat-events',
     minTier: 'free',

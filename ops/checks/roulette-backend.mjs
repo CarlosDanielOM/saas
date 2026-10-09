@@ -15,7 +15,7 @@ await svc.RouletteChannel.init();
 await redis.set('app:twitch:token','fixture-app-token');
 const channel = '990011';
 const { default: Users } = await import('/app/dist/schemas/users.schema.js');
-await Users.collection.insertOne({ accounts: [{ type: 'twitch', id: channel }], plan_tier: 'pro' });
+await Users.collection.insertOne({ accounts: [{ type: 'twitch', id: channel }], plan_tier: 'premium' });
 await redis.hSet('token:roulette-owner-test', { id: channel, login: 'fixture', display_name: 'Fixture' });
 await redis.hSet('token:roulette-other-test', { id: '990012', login: 'other', display_name: 'Other' });
 let base = 'http://127.0.0.1:3000';
@@ -44,6 +44,20 @@ async function request(method, path, body, status = 200, token = 'roulette-owner
 }
 await request('GET', root, undefined, 401, '');
 await request('GET', root, undefined, 403, 'roulette-other-test');
+const { AdminSchema } = await import('/app/dist/schemas/admin.schema.js');
+const adminGrant = { channelID: '990011', adminID: '990012', actived: true, permissions: ['dashboard:view'] };
+await AdminSchema.collection.insertOne(adminGrant);
+await request('GET', root, undefined, 403, 'roulette-other-test');
+await AdminSchema.updateOne({ adminID: '990012' }, { $set: { permissions: ['*'] } });
+await request('GET', root, undefined, 200, 'roulette-other-test');
+await request('POST', root + '/overlay-token', {}, 200, 'roulette-other-test');
+const adminRoulette = await request('POST', root + '/roulettes', { name: 'Admin fixture', alias: 'admin-fixture' }, 200, 'roulette-other-test');
+await request('DELETE', root + '/roulettes/' + adminRoulette.result, undefined, 200, 'roulette-other-test');
+await AdminSchema.updateOne({ adminID: '990012' }, { $set: { actived: false } });
+await request('GET', root, undefined, 403, 'roulette-other-test');
+await AdminSchema.updateOne({ adminID: '990012' }, { $set: { actived: true, channelID: '887766' } });
+await request('GET', root, undefined, 403, 'roulette-other-test');
+await AdminSchema.deleteMany({ adminID: '990012' });
 const created = await request('POST', root + '/roulettes', { name: 'Giveaways', alias: 'giveaways', design: 'reel', durationSeconds: 1, settings: { winnerAction: 'remove-copy', hideAfterSeconds: 1 } });
 const id = created.result; const path = root + '/roulettes/' + id;
 await request('POST', root + '/roulettes', { name: 'Duplicate', alias: 'giveaways' }, 409);
@@ -152,7 +166,7 @@ const child = execFileSync('node', ['--input-type=module', '-e', `import {snapsh
 assert(child.includes('DRAW=' + beforeRestart));
 // Prove the completion worker works without readers or an OBS connection.
 const workerChannel = '990014';
-await Users.collection.insertOne({ accounts: [{ type: 'twitch', id: workerChannel }], plan_tier: 'pro' });
+await Users.collection.insertOne({ accounts: [{ type: 'twitch', id: workerChannel }], plan_tier: 'premium' });
 await svc.execute(workerChannel, { operation: 'create', data: { name: 'Worker', alias: 'worker', durationSeconds: 1, settings: { winnerAction: 'remove-item' } } });
 await svc.execute(workerChannel, { operation: 'add', roulette: 'worker', data: { label: 'Only' } });
 await svc.execute(workerChannel, { operation: 'start', roulette: 'worker' });
@@ -193,30 +207,30 @@ assert.equal(state.roulettes[0].id, id);
 await request('POST', root + '/actions/start', {}, 404);
 await request('POST', root + '/actions/switch', { roulette: id });
 
-// Pro-only Alpha across API, AST and existing overlay connections (no roulette revision change).
+// Premium Alpha across API, AST and existing overlay connections (no roulette revision change).
 const currentToken = (await request('POST', root + '/overlay-token', {})).token;
 const downgradeSocket = await connectOverlay(currentToken); await downgradeSocket.wait(m => m.includes('roulette-state'));
 const beforeDowngrade = (await svc.snapshot(channel)).revision;
-for (const tier of ['free', 'premium']) {
+for (const tier of ['free']) {
   await Users.updateOne({ 'accounts.id': channel }, { $set: { plan_tier: tier } });
   await request('GET', root, undefined, 403);
   await request('POST', root + '/roulettes', { name:'Denied', alias:'denied' }, 403);
   await request('POST', root + '/overlay-token', {}, 403);
   await request('GET', root + '/overlay', undefined, 401, currentToken);
-  await assert.rejects(() => svc.execute(channel, { operation:'show' }), e => e.code === 'pro_required');
+  await assert.rejects(() => svc.execute(channel, { operation:'show' }), e => e.code === 'premium_required');
   assert.equal(await svc.authorizeOverlay(channel, currentToken), false);
-  assert.match(String(await ast('$(roulette.result giveaways)')), /requires Pro/);
-  assert.match(String(await ast('$(roulette.add giveaways "Denied")')), /requires Pro/);
+  assert.match(String(await ast('$(roulette.result giveaways)')), /requires Premium/);
+  assert.match(String(await ast('$(roulette.add giveaways "Denied")')), /requires Premium/);
 }
 await downgradeSocket.wait(m => m.startsWith('41')); downgradeSocket.ws.close();
 assert.equal((await svc.snapshot(channel)).revision, beforeDowngrade, 'denied access does not mutate data');
-await Users.updateOne({ 'accounts.id': channel }, { $set: { plan_tier: 'pro' } });
+await Users.updateOne({ 'accounts.id': channel }, { $set: { plan_tier: 'premium' } });
 assert.equal((await request('GET', root)).roulettes[0].id, id, 'upgrading preserves saved data');
 
 // Item actions run on the server, with frozen scripts/identities and one persisted claim.
 const actions = await import('/app/dist/roulette/actions.js');
 const { readFileSync } = await import('node:fs');
-await redis.hSet(`accounts:twitch:${channel}:data`, {id:channel,name:'fixture',plan_tier:'pro'});
+await redis.hSet(`accounts:twitch:${channel}:data`, {id:channel,name:'fixture',plan_tier:'premium'});
 const messages = () => { try { return readFileSync('/tmp/saas-fixtures/roulette-messages.jsonl','utf8').trim().split('\n').filter(Boolean).map(JSON.parse); } catch { return []; } };
 async function until(predicate) { for(let i=0;i<120;i++) { if(await predicate()) return; await new Promise(r=>setTimeout(r,100)); } throw new Error('Action check timed out'); }
 const { AstTimerScheduler } = await import('/app/dist/utils/ast_timer_runtime.js');
@@ -261,8 +275,8 @@ assert.equal(claims.find(Boolean).actor.userId,channel,'dashboard defaults to st
 execFileSync('node',['/app/dist/workers/roulette-actions.worker.js','--once'],{encoding:'utf8'});
 assert(!messages().some(m=>m.message.includes('NEVER')));
 // Downgrades skip queued actions; delivery failures remain failed without automatic retries.
-await Users.updateOne({'accounts.id':workerChannel},{$set:{plan_tier:'pro'}});
-await redis.hSet(`accounts:twitch:${workerChannel}:data`,{id:workerChannel,name:'fixtureworker',plan_tier:'pro'});
+await Users.updateOne({'accounts.id':workerChannel},{$set:{plan_tier:'premium'}});
+await redis.hSet(`accounts:twitch:${workerChannel}:data`,{id:workerChannel,name:'fixtureworker',plan_tier:'premium'});
 await svc.execute(workerChannel,{operation:'add',roulette:'worker',data:{label:'Skip',action:'ROULETTE_TEST_SKIPPED'}});
 const skipDraw=await svc.execute(workerChannel,{operation:'start',roulette:'worker'});
 await Users.updateOne({'accounts.id':workerChannel},{$set:{plan_tier:'free'}});
@@ -270,7 +284,7 @@ await new Promise(r=>setTimeout(r,1200));
 await actions.runDueActions();
 await until(async()=> (await svc.snapshot(workerChannel)).actionRuns.find(a=>a.drawId===skipDraw.result)?.status==='skipped');
 assert(!messages().some(m=>m.message.includes('SKIPPED')));
-await Users.updateOne({'accounts.id':workerChannel},{$set:{plan_tier:'pro'}});
+await Users.updateOne({'accounts.id':workerChannel},{$set:{plan_tier:'premium'}});
 await svc.execute(workerChannel,{operation:'add',roulette:'worker',data:{label:'Fail',action:'ROULETTE_TEST_FAIL'}});
 const failDraw=await svc.execute(workerChannel,{operation:'start',roulette:'worker'});
 await new Promise(r=>setTimeout(r,1200));

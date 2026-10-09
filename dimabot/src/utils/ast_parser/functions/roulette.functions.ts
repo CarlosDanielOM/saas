@@ -1,5 +1,5 @@
 import { registerFunction, type FunctionHandler } from '../evaluator.js';
-import { execute, requirePro, snapshot, type Action } from '../../../roulette/service.js';
+import { execute, requirePremium, snapshot, type Action } from '../../../roulette/service.js';
 import { RouletteError, fail, text, integer, find } from '../../../roulette/model.js';
 
 const definitions = [
@@ -22,7 +22,7 @@ export function registerRouletteFunctions(): void {
         const channel = text(ctx.broadcasterId, 'channel');
         const roulette = args.length ? text(args[0], 'roulette_id') : undefined;
         if (name === 'result') {
-          await requirePro(channel);
+          await requirePremium(channel);
           const state = await snapshot(channel); const selected = find(state, roulette);
           return state.history.find(draw => draw.rouletteId === selected.id)?.winner.label ?? '';
         }

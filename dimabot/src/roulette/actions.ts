@@ -1,4 +1,4 @@
-import { RouletteChannel, actionDue, hasPro, snapshot } from './service.js';
+import { RouletteChannel, actionDue, hasPremium, snapshot } from './service.js';
 import type { WinnerAction } from './action-model.js';
 import { getMongoDBConnection } from '../utils/databases/mongodb.database.js';
 
@@ -40,7 +40,7 @@ export async function runDueActions(execute = executeWinnerAction): Promise<void
   const rows = await RouletteChannel.find({ actionDueAt: { $ne: null, $lte: Date.now() } }, { _id: 1 }).sort({ actionDueAt: 1 }).limit(4).lean();
   await Promise.all(rows.map(async row => {
     // Database outages before a claim leave the job pending for the next poll.
-    const entitled = await hasPro(row._id);
+    const entitled = await hasPremium(row._id);
     await snapshot(row._id); // Completion/removal must be durable before any side effect.
     const job = await claimAction(row._id);
     if (!job) return;
