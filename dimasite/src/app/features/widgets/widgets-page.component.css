@@ -55,7 +55,6 @@ h1 { display:flex; gap:9px; align-items:center; flex-wrap:wrap; margin:0 0 4px; 
 .solo>span { font-size:12px; font-weight:700 }
 .solo .actions { margin-top:8px }
 .solo .actions button { flex:1 1 auto }
-.how summary,.more summary,.entry-picker summary { cursor:pointer; font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center; gap:8px }
 .how p { margin:0 0 4px; font-size:12px }
 
 /* Win streak tile */

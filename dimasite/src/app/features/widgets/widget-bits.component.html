@@ -51,7 +51,7 @@
     </div>
   }
   @if (settings(); as settings) {
-    <details class="bits-more"><summary>{{ t('bits.moreTitle') }}</summary>
+    <details class="bits-more"><summary><span class="sum-text"><strong>{{ t('bits.moreTitle') }}</strong><small>{{ t('bits.moreHint') }}</small></span></summary>
       <label class="checkbox"><input type="checkbox" [checked]="settings.allowTestEvents" (change)="toggleTestEvents()" [disabled]="disabled()" />{{ t('bits.testEvents') }}</label>
       <p class="hint">{{ t('bits.testHint') }}</p>
       <p class="hint">{{ t('bits.window') }}</p>

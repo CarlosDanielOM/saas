@@ -9,7 +9,15 @@
 .tools input { width:100% }
 .tool-buttons { display:flex; flex-wrap:wrap; gap:6px }
 .tool-buttons button { flex:1 1 auto }
+.tune-toggle { display:inline-flex; align-items:center; justify-content:center; gap:6px }
 .tune-toggle[aria-pressed=true] { background:#7c3aed; border-color:#7c3aed; color:#fff }
+.tune-toggle app-lf-icon,.pool-toggle app-lf-icon { transition:transform .2s }
+.tune-toggle[aria-pressed=true] app-lf-icon,.pool-toggle[aria-expanded=true] app-lf-icon { transform:rotate(180deg) }
+.pool-head { display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:space-between; gap:10px }
+.pool-head>div { flex:1 1 16rem }
+.pool-toggle { display:inline-flex; align-items:center; gap:6px; flex:none }
+.pool-body { display:grid; gap:12px }
+.closed-hint { margin:0 }
 .tune-help { display:flex; flex-wrap:wrap; align-items:center; gap:8px; justify-content:space-between; margin-top:8px }
 .tune-help .hint { margin:0; flex:1 1 16rem }
 .entries { list-style:none; margin:10px 0 0; padding:0; display:grid; column-gap:16px }
@@ -35,8 +43,7 @@
 .tuner output { min-width:1.4rem; text-align:center; font-size:13px; font-weight:800; font-variant-numeric:tabular-nums }
 .load-more { margin-top:10px }
 .pool fieldset>.checkbox { margin-top:6px }
-.pool-how summary { cursor:pointer; font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center }
-.pool-how p { margin:0 0 6px; font-size:12px }
+.pool-how p { margin:8px 0 6px; font-size:12px }
 .save-row { margin-top:0 }
 .sub-wheels { margin-top:12px; padding:12px; border:1px solid var(--line); border-radius:14px; background:var(--bg) }
 .sub-head { display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:space-between; gap:10px }

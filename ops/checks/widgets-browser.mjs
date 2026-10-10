@@ -116,7 +116,9 @@ async function fixture({width=1280,tier='pro',theme='dark',lang='en',owner=true,
  await page.goto(base+`/${owner?'widgetfixture':'other'}${path}`);
  return {context,page,state,events:()=>events,writes:()=>writes,reads:()=>widgetReads,errors,actions:actionLog,setLost:()=>lostResponse=true,publish:()=>{manualDraw=true;state.serverTime=Date.now();state.revision++;widgetSocket?.send('42/overlays/widgets/991801,'+JSON.stringify(['widgets-state',wireState()]));},setConflict:()=>conflict=true,setFail:v=>failRead=v};
 }
-const axeClean=async(page,include)=>{const result=await new AxeBuilder({page}).include(include).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();if(process.env.AXE_DEBUG)for(const v of result.violations)for(const n of v.nodes)console.log(v.id,n.target,n.failureSummary);assert.deepEqual(result.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>n.target)})),[]);};
+const axeClean=async(page,include)=>{
+ // Entrance fades would be sampled mid-way; wait for finite animations (pulses loop forever).
+ await page.evaluate(()=>Promise.all(document.getAnimations().filter(a=>a.effect?.getComputedTiming().iterations!==Infinity).map(a=>a.finished.catch(()=>{}))));const result=await new AxeBuilder({page}).include(include).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();if(process.env.AXE_DEBUG)for(const v of result.violations)for(const n of v.nodes)console.log(v.id,n.target,n.failureSummary);assert.deepEqual(result.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>n.target)})),[]);};
 const overflow=async page=>assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'no horizontal overflow');
 const wait=async(page)=>page.waitForTimeout(1750);
 const canvasGeometry=async page=>page.getByTestId('widget-canvas').evaluate(frame=>{
@@ -276,7 +278,18 @@ try{
   await overflow(page);assert.deepEqual(b.errors,[]);await b.context.close();console.log('PASS Bits actions + roulette pool behaviour');
   // Mini roulettes: built in a dialog, saved with the pool, shown on stream as one slice that opens its own wheel.
   {
-   const m=await fixture(),mp=m.page,mpool=mp.getByTestId('roulette-pool');await mpool.getByTestId('pool-tab-killer-perk').click();
+   const m=await fixture(),mp=m.page,mpool=mp.getByTestId('roulette-pool');await mpool.getByTestId('pool-toggle').waitFor();
+   // The long lists start closed; the tab chips open them and the toggle closes them again.
+   assert.equal(await mpool.getByTestId('pool-entry').count(),0);assert.equal(await mpool.getByTestId('pool-toggle').getAttribute('aria-expanded'),'false');
+   await mpool.getByText('Tap a list above to see and change it.',{exact:true}).waitFor();
+   await mpool.getByTestId('pool-toggle').click();await until(async()=>await mpool.getByTestId('pool-entry').count()>0,'toggle opens the lists');assert.equal(await mpool.getByTestId('pool-toggle').getAttribute('aria-expanded'),'true');
+   await mpool.getByTestId('pool-toggle').click();await until(async()=>await mpool.getByTestId('pool-entry').count()===0,'toggle closes the lists');
+   // Every collapsible row says what is inside and shows a chevron, and opens on tap.
+   const rows=await mp.locator('details').all();assert(rows.length>=3);
+   for(const d of rows){assert((await d.locator('summary .sum-text small').innerText()).trim().length>10,'summary helper line');assert.notEqual(await d.locator('summary').evaluate(x=>getComputedStyle(x,'::after').content),'none','summary chevron');}
+   const how=mp.locator('details.how');await how.locator('summary').click();await until(async()=>await how.evaluate(d=>d.open),'summary opens');
+   if(shots)await mpool.screenshot({path:`${shots}/pool-closed-1280.png`});
+   await mpool.getByTestId('pool-tab-killer-perk').click();await until(async()=>await mpool.getByTestId('pool-entry').count()>0,'tab opens the lists');
    const wheels=mpool.getByTestId('sub-wheels');await wheels.waitFor();assert.equal(await wheels.getByTestId('sub-wheel-row').count(),0);
    await wheels.getByTestId('sub-wheel-add').click();const dialog=mp.getByTestId('sub-wheel-dialog');await dialog.getByTestId('sub-wheel-name').waitFor();
    assert.equal(await dialog.getByTestId('sub-wheel-name').inputValue(),'Mini roulette 1');
@@ -324,7 +337,7 @@ try{
    {id:'r4',enabled:true,event:'channel.bits.received',minBits:5000,maxBits:null,action:{type:'reset-wins',role:'both'}}]};
   for(const [width,theme,lang] of [[320,'dark','en'],[390,'dark','en'],[390,'light','es'],[1280,'dark','en'],[1280,'light','en']]){
    const v=await fixture({width,theme,lang,seedEvents}),vp=v.page;await vp.getByTestId('bits-rule').first().waitFor();
-   const vpool=vp.getByTestId('roulette-pool');await vpool.getByTestId('pool-tab-killer-perk').click();await vpool.getByTestId('pool-tune').click();
+   const vpool=vp.getByTestId('roulette-pool');if(shots)await vpool.screenshot({path:`${shots}/pool-closed-${width}-${theme}-${lang}.png`});await vpool.getByTestId('pool-tab-killer-perk').click();await vpool.getByTestId('pool-tune').click();
    // Phones open one perk's steppers at a time; desktop shows them inline on every row.
    if(width<960){assert.equal(await vpool.locator('.tuners').count(),0);await vpool.getByTestId('pool-entry').first().getByTestId('pool-odds').click();await until(async()=>await vpool.locator('.tuners').count()===1,'one perk opens');}
    else await until(async()=>await vpool.locator('.tuners').count()>10,'desktop steppers inline');
@@ -342,10 +355,10 @@ try{
   }
  }
  const hub=await fixture({path:'/modules/widgets'});await hub.page.getByTestId('widget-dbd').click();await hub.page.waitForURL(/\/modules\/widgets\/dbd$/);await hub.page.getByTestId('widgets-page').waitFor();assert.deepEqual(hub.errors,[]);await hub.context.close();
- const hubFree=await fixture({tier:'free',path:'/modules/widgets'});await hubFree.page.getByText('Widgets Alpha requires Premium',{exact:true}).waitFor();assert.equal(await hubFree.page.getByTestId('widget-dbd').count(),0);await axeClean(hubFree.page,'[data-testid="widgets-hub"]');await hubFree.context.close();
+ const hubFree=await fixture({tier:'free',path:'/modules/widgets'});await hubFree.page.getByText('Widgets Alpha requires Premium',{exact:true}).waitFor();const lockedCard=hubFree.page.getByTestId('widget-dbd');assert.equal(await lockedCard.getAttribute('aria-disabled'),'true','free plans see the game locked');assert.equal(await lockedCard.getAttribute('href'),null,'locked card is not a link');await axeClean(hubFree.page,'[data-testid="widgets-hub"]');await hubFree.context.close();
  const freeGate=await fixture({tier:'free'});await freeGate.page.getByText('Widgets Alpha requires Premium',{exact:true}).waitFor();assert.equal(freeGate.reads(),0);await freeGate.context.close();
  const premium=await fixture({tier:'premium'});await premium.page.getByTestId('role-survivor').waitFor();assert(premium.reads()>0);assert.deepEqual(premium.errors,[]);await premium.context.close();
  const admin=await fixture({owner:false,tier:'premium',path:'/modules/widgets'});await admin.page.getByTestId('widget-dbd').click();await admin.page.getByTestId('role-survivor').waitFor();assert(admin.reads()>0);assert.deepEqual(admin.errors,[]);await admin.context.close();
  const spanish=await fixture({lang:'es',width:390});await spanish.page.getByRole('button',{name:'Iniciar ronda',exact:true}).waitFor();await overflow(spanish.page);await axeClean(spanish.page,'[data-testid="widgets-page"]');assert.deepEqual(spanish.errors,[]);await spanish.context.close();
- console.log('PASS unified DBD browser: Bits actions (ideas, ranges, validation, chosen/random perks, goal raise, simulator, listen switch, rule switch, two-tap delete), roulette pool (four tabs, slots/weight/chance, mini roulettes, separate save, remote-change warning, weighted OBS wheel), plain-language round status and step track, skull/hatch win animations (control, preview, OBS, undo, local preview, reduced motion), one control center, per-role fixed character/skip settings, standalone actions, four existing roulette styles, result holds, every camera corner/size, compact alignment, progress, single OBS link, hidden cards, poll confirmation, uncertain-response replay, visibility, Pro gate, EN/ES, light/dark, mobile/desktop, AXE');
+ console.log('PASS unified DBD browser: Bits actions (ideas, ranges, validation, chosen/random perks, goal raise, simulator, listen switch, rule switch, two-tap delete), roulette pool (collapsed by default, four tabs, slots/weight/chance, mini roulettes, disclosure helpers, separate save, remote-change warning, weighted OBS wheel), plain-language round status and step track, skull/hatch win animations (control, preview, OBS, undo, local preview, reduced motion), one control center, per-role fixed character/skip settings, standalone actions, four existing roulette styles, result holds, every camera corner/size, compact alignment, progress, single OBS link, hidden cards, poll confirmation, uncertain-response replay, visibility, Pro gate, EN/ES, light/dark, mobile/desktop, AXE');
 }finally{await browser.close();}

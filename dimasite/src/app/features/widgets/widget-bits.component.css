@@ -56,7 +56,6 @@
 .trial-result li .chip { margin-left:6px }
 .trial-result .hint { margin-top:6px }
 
-.bits-more summary { cursor:pointer; font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center }
 .bits-more .hint { margin:0 0 6px }
 
 /* Editor dialog: bottom sheet on phones, scrolling body, sticky summary + actions. */

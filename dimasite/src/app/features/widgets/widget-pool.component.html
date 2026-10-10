@@ -1,18 +1,23 @@
 <section class="lf-tile pool" aria-labelledby="pool-title" data-testid="roulette-pool">
-  <div><h2 id="pool-title">{{ t('pool.title') }}</h2><p>{{ t('pool.subtitle') }}</p></div>
+  <div class="pool-head">
+    <div><h2 id="pool-title">{{ t('pool.title') }}</h2><p>{{ t('pool.subtitle') }}</p></div>
+    <button type="button" class="pool-toggle" [attr.aria-expanded]="open()" aria-controls="pool-body" (click)="toggleOpen()" data-testid="pool-toggle">{{ open() ? t('pool.hideLists') : t('pool.showLists') }}<app-lf-icon name="chevron-down" [size]="14" /></button>
+  </div>
   <div class="tabs" role="group" [attr.aria-label]="t('pool.tabsLabel')">
     @for (tab of tabs; track tab.id) {
-      <button type="button" [attr.aria-pressed]="activeTab().id === tab.id" (click)="chooseTab(tab.id)" [attr.data-testid]="'pool-tab-' + tab.id"><span>{{ t('pool.tab.' + tab.key) }}</span><span class="count">{{ counts()[tab.id].on }}/{{ counts()[tab.id].total }}</span></button>
+      <button type="button" [attr.aria-pressed]="open() && activeTab().id === tab.id" (click)="chooseTab(tab.id)" [attr.data-testid]="'pool-tab-' + tab.id"><span>{{ t('pool.tab.' + tab.key) }}</span><span class="count">{{ counts()[tab.id].on }}/{{ counts()[tab.id].total }}</span></button>
     }
   </div>
+  @if (!open()) { <p class="hint closed-hint">{{ t('pool.closedHint') }}@if (pool().subWheels.length) { {{ ' ' + t('pool.closedWheels', {n: pool().subWheels.length}) }} }</p> }
   @for (role of tooFewPerks(); track role) { <p class="warn-line" role="status">{{ t('pool.tooFew', {role: t('role.' + role), n: minWheel}) }}</p> }
+  @if (open()) { <div id="pool-body" class="pool-body">
   <fieldset [disabled]="disabled()">
     <div class="tools">
       <input type="search" [value]="query()" (input)="onQuery($event)" [attr.aria-label]="t('search')" [placeholder]="t('search')" />
       <div class="tool-buttons">
         <button type="button" (click)="setAll(true)">{{ t('enableMatching') }}</button>
         <button type="button" (click)="setAll(false)">{{ t('disableMatching') }}</button>
-        @if (isPerkTab()) { <button type="button" class="tune-toggle" [attr.aria-pressed]="tuning()" (click)="toggleTuning()" data-testid="pool-tune">{{ t('pool.tune') }}</button> }
+        @if (isPerkTab()) { <button type="button" class="tune-toggle" [attr.aria-pressed]="tuning()" (click)="toggleTuning()" data-testid="pool-tune">{{ t('pool.tune') }}<app-lf-icon name="chevron-down" [size]="14" /></button> }
       </div>
     </div>
     @if (isPerkTab() && tuning()) {
@@ -69,7 +74,8 @@
     @if (entries().length > shown().length) { <button type="button" class="load-more" (click)="more()">{{ t('loadMore') }}</button> }
     <label class="checkbox"><input type="checkbox" [checked]="pool().includeUnavailable" (change)="setIncludeUnavailable(!pool().includeUnavailable)" />{{ t('unavailable') }}</label>
   </fieldset>
-  <details class="pool-how"><summary>{{ t('pool.howTitle') }}</summary><p>{{ t('pool.how', {n: minWheel}) }}</p></details>
+  <details class="pool-how"><summary><span class="sum-text"><strong>{{ t('pool.howTitle') }}</strong><small>{{ t('pool.howHint') }}</small></span></summary><p>{{ t('pool.how', {n: minWheel}) }}</p></details>
+  </div> }
   @if (changedElsewhere()) { <p class="warn-line" role="alert">{{ t('pool.changedElsewhere') }}</p> }
   <dialog #wheelDialog class="lf-dialog wheel-dialog" (cancel)="closeWheel()" aria-labelledby="wheel-dialog-title" data-testid="sub-wheel-dialog">
     @if (wheelDraft(); as d) {
@@ -94,8 +100,8 @@
       <footer><button type="button" (click)="closeWheel()">{{ t('cancel') }}</button><button type="button" class="primary" (click)="applyWheel()" data-testid="sub-wheel-done">{{ t('subWheel.done') }}</button></footer>
     }
   </dialog>
-  <div class="save-row lf-save-bar">
+  @if (open() || dirty()) { <div class="save-row lf-save-bar">
     <span>{{ dirty() ? t('unsaved') : t('allSaved') }}</span>
     <span class="save-actions">@if (dirty()) { <button type="button" class="ghost" (click)="discard()" [disabled]="disabled()">{{ t('pool.discard') }}</button> }<button type="button" class="primary" (click)="submit()" [disabled]="disabled() || !dirty()" data-testid="pool-save">{{ t('pool.save') }}</button></span>
-  </div>
+  </div> }
 </section>

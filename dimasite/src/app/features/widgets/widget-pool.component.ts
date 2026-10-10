@@ -31,6 +31,8 @@ export class WidgetPoolComponent {
   /** null = showing what is saved; an object = the streamer's unsaved edit and what it started from. */
   private readonly draft = signal<{ pool: WidgetPool; base: WidgetPool } | null>(null);
   readonly tab = signal<Tab | null>(null);
+  /** The long lists start closed; the tab chips double as a summary and a way in. */
+  readonly open = signal(false);
   readonly query = signal('');
   readonly limit = signal(40);
   readonly tuning = signal(false);
@@ -114,7 +116,8 @@ export class WidgetPoolComponent {
     const draft = this.draft(), base = draft?.base ?? this.saved(), pool = change(structuredClone(draft?.pool ?? this.saved()));
     this.draft.set(same(pool, this.saved()) ? null : {pool, base});
   }
-  chooseTab(id: Tab): void { this.tab.set(id); this.query.set(''); this.limit.set(40); }
+  chooseTab(id: Tab): void { this.tab.set(id); this.query.set(''); this.limit.set(40); this.open.set(true); }
+  toggleOpen(): void { this.open.update(open => !open); }
   onQuery(event: Event): void { this.query.set((event.target as HTMLInputElement).value); this.limit.set(40); }
   more(): void { this.limit.update(n => n + 40); }
   setIncludeUnavailable(value: boolean): void { this.edit(pool => ({...pool, includeUnavailable: value})); }
