@@ -1,0 +1,165 @@
+<div class="svg-arena" [class.transparent]="transparent()" [class.reduce]="reduced()" [attr.data-phase]="frame().phase" [attr.data-ultimate]="ultimateClass()" data-testid="duel-svg-gpt" [attr.data-elapsed]="elapsed()" data-fps-cap="30">
+  <svg class="illustration" viewBox="0 0 960 540" preserveAspectRatio="xMidYMid slice" role="img" [attr.aria-label]="t('svgGpt.canvasLabel')">
+    <defs>
+      <linearGradient id="ink-sky" x2="0" y2="1"><stop stop-color="#131828"/><stop offset=".6" stop-color="#222232"/><stop offset="1" stop-color="#111521"/></linearGradient>
+      <radialGradient id="ink-moon"><stop stop-color="#e7bd99" stop-opacity=".2"/><stop offset=".55" stop-color="#c38e73" stop-opacity=".05"/><stop offset="1" stop-color="#c38e73" stop-opacity="0"/></radialGradient>
+      <linearGradient id="ink-floor" x2="0" y2="1"><stop stop-color="#1f2334"/><stop offset="1" stop-color="#0e111b"/></linearGradient>
+      <linearGradient id="ink-blade"><stop stop-color="#a57842"/><stop offset=".46" stop-color="#fff9df"/><stop offset=".53" stop-color="#fff"/><stop offset="1" stop-color="#d7aa65"/></linearGradient>
+      <linearGradient id="ink-orbit"><stop stop-color="#9675ed" stop-opacity=".15"/><stop offset=".45" stop-color="#f2ddff"/><stop offset=".7" stop-color="#b294ff"/><stop offset="1" stop-color="#7654c6" stop-opacity=".2"/></linearGradient>
+      <linearGradient id="ink-bolt"><stop stop-color="#b294ff" stop-opacity="0"/><stop offset="1" stop-color="#f1e5ff"/></linearGradient>
+      <radialGradient id="ink-void"><stop offset=".72" stop-color="#04040d"/><stop offset=".82" stop-color="#0c081d"/><stop offset=".9" stop-color="#ae8ae9"/><stop offset="1" stop-color="#22192f" stop-opacity="0"/></radialGradient>
+      <linearGradient id="ink-moon-red" x2="0" y2="1"><stop stop-color="#e97882"/><stop offset="1" stop-color="#a4354d"/></linearGradient>
+      <filter id="ink-glow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="3"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      <clipPath id="ink-half-top"><rect x="-100" y="-100" width="500" height="300"/></clipPath>
+      <clipPath id="ink-half-bottom"><rect x="-100" y="200" width="500" height="500"/></clipPath>
+    </defs>
+    <g [attr.transform]="camera()">
+      @if (!transparent()) {
+        <g class="scenery">
+          <rect width="960" height="540" fill="url(#ink-sky)"/>
+          <circle cx="480" cy="208" r="205" fill="url(#ink-moon)"/>
+          <circle cx="480" cy="208" r="73" fill="#e9cab2" opacity=".75"/><path d="M468 137A72 72 0 0 1 523 265A75 75 0 0 0 468 137" fill="#bab1ab" opacity=".5"/>
+          <circle cx="480" cy="208" r="87" stroke="#d4b89b" stroke-width=".8" fill="none" opacity=".23"/>
+          @for (star of stars; track $index) { <circle [attr.cx]="star.x" [attr.cy]="star.y" [attr.r]="star.r" fill="#d4d2df" opacity=".35"/> }
+          <path d="M0 315L57 275 108 306 171 237 228 294 288 271 361 330 450 303 533 311 614 273 659 292 724 252 781 283 831 265 901 315 960 274V475H0Z" fill="#171c2b"/>
+          <path d="M0 358L100 322 141 353 232 304 286 363 345 334 413 369 484 337 542 363 608 331 690 351 742 309 842 358 917 329 960 359V475H0Z" fill="#131724"/>
+          <g fill="#0e1320" stroke="#242b3d" stroke-width="2">
+            <path d="M81 444V255Q81 169 164 138V166Q105 199 105 260V444Z"/><path d="M879 444V255Q879 169 796 138V166Q855 199 855 260V444Z"/>
+            <path d="M133 408V256Q137 205 173 189V213Q156 229 155 261V408Z"/><path d="M827 408V256Q823 205 787 189V213Q804 229 805 261V408Z"/>
+          </g>
+          <path d="M68 278L105 268M855 268L892 278M63 393L106 382M854 382L897 393" stroke="#434051" stroke-width="2"/>
+          <path d="M0 416Q480 374 960 416V540H0Z" fill="url(#ink-floor)"/>
+          <path d="M0 433Q480 390 960 433M0 482Q480 416 960 482M70 540L280 409M890 540L680 409M290 540L400 403M670 540L560 403" fill="none" stroke="#5c5263" stroke-width="1" opacity=".23"/>
+          <ellipse cx="480" cy="431" rx="310" ry="35" fill="none" stroke="#b6a48b" stroke-width="1.5" opacity=".18"/>
+          <path d="M450 428L480 412 510 428 480 445Z" fill="none" stroke="#b6a48b" stroke-width="1" opacity=".23"/>
+          <path d="M0 519L84 506 118 519 144 506 199 519 203 540H0M757 540L760 520 824 503 841 514 893 503 960 512V540Z" fill="#0a0e17"/>
+        </g>
+      }
+      @if (ultimateClass(); as ult) {
+        <g class="ultimate-background" [attr.opacity]="reduced() ? 0 : ease(age()/350)">
+          <rect width="960" height="540" [attr.fill]="ult === 'ronin' ? '#200816' : '#050811'" [attr.opacity]="ult === 'mage' ? .48 : .3"/>
+          @if (ult === 'ronin') {
+            <circle cx="480" cy="224" r="100" fill="url(#ink-moon-red)" [attr.opacity]="effectScale()"/>
+            <circle cx="457" cy="206" r="94" fill="#160c1c" [attr.opacity]="effectScale()"/>
+            <path d="M342 283L605 150M335 294L615 158" stroke="#e798a0" stroke-width=".7" [attr.opacity]="effectScale()*.3"/>
+          }
+          @if (ult === 'knight') {
+            <g [attr.transform]="'translate('+x(target())+' 248)'" [attr.opacity]="effectScale()" stroke="#f3d9a5" fill="none">
+              <circle r="130" stroke-width="1" opacity=".3"/><circle r="115" stroke-width="2" opacity=".5"/>
+              @for (n of particles; track n) { <path d="M0 -145L0 -180" [attr.transform]="'rotate('+(n*15)+')'" [attr.opacity]="n%2 ? .13 : .3"/> }
+              <path d="M-107 -42Q-260 -175 -226 -48Q-190 -61 -167 -29Q-154 -8 -117 5M107 -42Q260 -175 226 -48Q190 -61 167 -29Q154 -8 117 5" stroke-width="2"/>
+              <path d="M-107 -27Q-217 -98 -201 -23L-116 19M107 -27Q217 -98 201 -23L116 19" stroke-width="1" opacity=".6"/>
+            </g>
+          }
+        </g>
+      }
+      @for (side of sides; track side) {
+        <ellipse [attr.cx]="frame().poses[side].x" cy="435" rx="62" ry="8" fill="#02040b" [attr.opacity]="bodyOpacity(side)*.5"/>
+        <g class="fighter" [attr.data-side]="side" [attr.data-character]="battle().fighters[side]" [attr.data-action]="frame().poses[side].action" [attr.transform]="poseTransform(side)" [attr.opacity]="bodyOpacity(side)" [class.enraged]="battle().enraged===side" data-testid="svg-fighter">
+          @if (frame().poses[side].split > 0) {
+            @for (half of ['top','bottom']; track half) {
+              <g [attr.transform]="splitTransform(frame().poses[side],half === 'top' ? 'top' : 'bottom')"><g [attr.clip-path]="half === 'top' ? 'url(#ink-half-top)' : 'url(#ink-half-bottom)'"><g duel-svg-fighter [side]="side" [character]="battle().fighters[side]" [pose]="frame().poses[side]" [enraged]="battle().enraged===side"/></g></g>
+            }
+          } @else {
+            <g duel-svg-fighter [side]="side" [character]="battle().fighters[side]" [pose]="frame().poses[side]" [enraged]="battle().enraged===side"/>
+          }
+        </g>
+        @if (frame().poses[side].guard > 0 && !reduced()) {
+          <g [attr.transform]="'translate('+frame().poses[side].x+' 329)'" [attr.opacity]="frame().poses[side].guard">
+            @if (battle().fighters[side] === 'mage') { <path d="M0 -95L80 -48V48L0 95 -80 48V-48Z" fill="#b9a2ff" fill-opacity=".06" stroke="#b9a2ff" stroke-width="2"/><circle r="82" fill="none" stroke="#d3c4ff" stroke-width="1"/> }
+            @else if (battle().fighters[side] === 'knight') { <path [attr.d]="side === 'left' ? 'M72 -65Q118 0 72 65' : 'M-72 -65Q-118 0 -72 65'" stroke="#ffe3a4" stroke-width="3" fill="none"/> }
+            @else { <path d="M-75 5L-35 -15M-85 22L-40 2" stroke="#f2a6b3" stroke-width="2"/> }
+          </g>
+        }
+      }
+      @if (frame().turn; as turn) {
+        @if (turn.move !== 'ultimate' && turn.move !== 'heal' && !reduced()) {
+          @if (battle().fighters[actor()] === 'mage') {
+            <g [attr.transform]="'translate('+projectileX()+' 327)'" [attr.opacity]="slashOpacity()">
+              <path [attr.d]="actor()==='left' ? 'M-105 -12L0 -22 25 0 0 22 -105 12 -65 0Z' : 'M105 -12L0 -22 -25 0 0 22 105 12 65 0Z'" fill="url(#ink-bolt)"/><circle r="11" fill="#f3e8ff" filter="url(#ink-glow)"/>
+            </g>
+          } @else {
+            <g [attr.transform]="'translate('+x(target())+' 328) scale('+(actor()==='left' ? 1 : -1)+' 1)'" [attr.opacity]="slashOpacity()">
+              <path d="M-110 -98Q50 -113 89 65Q20 -40 -110 -98Z" fill="#f3e3c4" opacity=".85"/><path d="M-109 -106Q73 -110 103 64" fill="none" stroke="#fff7e8" stroke-width="2"/>
+            </g>
+          }
+          @if (frame().impact > 0 && !block()) {
+            <g [attr.transform]="'translate('+x(target())+' 334)'" [attr.opacity]="frame().impact" stroke="#f5d6a2" stroke-width="2">
+              @for (n of [0,1,2,3,4,5,6,7]; track n) { <path d="M20 0L53 0" [attr.transform]="'rotate('+(n*45)+') scale('+(1+(1-frame().impact)*1.8)+')'"/> }
+            </g>
+          }
+        }
+        @if ((turn.move === 'heal' || combo()) && !reduced()) {
+          <g [attr.transform]="'translate('+x(turn.move === 'heal' ? actor() : target())+' 400)'" stroke="#8ceac2" fill="none" [attr.opacity]="turn.move === 'heal' ? healOpacity() : 1">
+            <ellipse rx="72" ry="18" stroke-width="2"/><ellipse rx="84" ry="23" stroke-width=".7"/>
+            @for (n of [0,1,2,3,4,5]; track n) { <path d="M-4 0H4M0 -4V4" [attr.transform]="'translate('+((n-2.5)*23)+' '+(-30-((elapsed()+n*140)%850)/7)+')'" stroke-width="2"/> }
+          </g>
+        }
+      }
+      @if (ultimateClass(); as ult) {
+        <g class="ultimate-effects" [attr.opacity]="reduced() ? 0 : 1">
+          @if (ult === 'knight') {
+            <g [attr.transform]="'translate('+x(target())+' '+bladeY()+')'" [attr.opacity]="ease((age()-600)/300)*(1-ease((ultHitAge()-100)/650))">
+              <path d="M0 -25V410" stroke="#f0c683" stroke-width="35" opacity=".06"/><path d="M0 -25V410" stroke="#fbe6bc" stroke-width="13" opacity=".12"/>
+              <path d="M-13 40H13L16 232 0 306 -16 232Z" fill="url(#ink-blade)" stroke="#f8e7c4" stroke-width="1.5"/><path d="M0 54V288" stroke="#fff" stroke-width="2"/>
+              <path d="M-61 20L-51 7 -12 20 12 20 51 7 61 20 43 37 14 30 -14 30 -43 37Z" fill="#d5b176" stroke="#f5ddb2"/>
+              <path d="M-6 -23L0 -42 6 -23 5 19H-5Z" fill="#ecd7ad"/><circle cy="22" r="8" fill="#faf1d3" stroke="#bda06c"/>
+            </g>
+            @if (ultHitAge() >= 0) {
+              <g [attr.transform]="'translate('+x(target())+' 423)'" [attr.opacity]="1-ease(ultHitAge()/1150)">
+                <ellipse rx="65" ry="15" fill="none" stroke="#f6dc9e" stroke-width="2" [attr.transform]="'scale('+shockScale()+')'"/>
+                @for (n of particles; track n) { <path d="M0 -5L5 0 0 5 -5 0Z" fill="#f6ddb5" [attr.transform]="ash(n)"/> }
+              </g>
+            }
+          }
+          @if (ult === 'mage') {
+            <g [attr.transform]="'translate('+x(target())+' 293) scale('+effectScale()+')'">
+              <g stroke="url(#ink-orbit)" fill="none"><ellipse rx="125" ry="47" stroke-width="13" transform="rotate(-24)" opacity=".15"/><ellipse rx="131" ry="45" stroke-width="2" transform="rotate(-24)"/><ellipse rx="120" ry="39" stroke-width="5" transform="rotate(-24)"/><ellipse rx="136" ry="53" stroke-width=".8" transform="rotate(-24)"/></g>
+              <circle r="68" fill="url(#ink-void)"/><circle r="58" fill="#04040c"/>
+              <path d="M-124 37Q0 -26 124 -36" stroke="#f1dfff" stroke-width="2" fill="none"/><path d="M-126 42Q0 -14 126 -34" stroke="#b2a0f0" stroke-width="5" fill="none" opacity=".25"/>
+              <g fill="#bfa6eb">@for (n of particles; track n) { <path d="M-4 -3L5 -1 2 5 -4 2Z" [attr.transform]="debris(n)" [attr.opacity]=".3+(n%3)*.18"/> }</g>
+            </g>
+            @if (ultHitAge() >= 0) { <circle [attr.cx]="x(target())" cy="293" [attr.r]="35+ease(ultHitAge()/900)*180" stroke="#baa0ed" stroke-width="1" fill="none" [attr.opacity]="1-ease(ultHitAge()/900)"/> }
+          }
+          @if (ult === 'ronin') {
+            @for (n of [0,1,2]; track n) { <g class="fighter ghost" [attr.data-character]="'ronin'" [attr.transform]="ghostTransform(n)" [attr.opacity]="cutOpacity(n*2)*.17"><g duel-svg-fighter [side]="actor()" character="ronin" [pose]="frame().poses[actor()]"/></g> }
+            <g [attr.transform]="'translate('+x(target())+' 324)'">
+              @for (a of cuts; track $index) { <g [attr.transform]="'rotate('+a+')'" [attr.opacity]="cutOpacity($index)"><path d="M-220 1Q0 -24 220 -3L240 -6Q0 -17 -220 -3Z" fill="#ffe0dd"/><path d="M-218 8L225 0" stroke="#ed8197" stroke-width="1"/></g> }
+              @if (ultHitAge() >= 0) { <path d="M-210 10L210 -20" stroke="#f8d1cf" stroke-width="2" [attr.opacity]="1-ease(ultHitAge()/420)"/> }
+            </g>
+          }
+        </g>
+      }
+    </g>
+  </svg>
+  <div class="arena-masthead"><span><i></i>{{ t('svgGpt.edition') }}</span><span>GPT / SVG <b>30 FPS</b></span></div>
+  <div class="hud">
+    @for (side of sides; track side) {
+      <div class="fighter-hud" [attr.data-side]="side" [class.low]="frame().hp[side] > 0 && frame().hp[side] / hpMax() <= .3">
+        <div class="class-line"><span>{{ t('character.' + battle().fighters[side]) }}@if (battle().enraged===side) { <b> / {{ t('enraged') }}</b> }</span><span>{{ frame().hp[side] }} <small>HP</small></span></div>
+        <strong class="fighter-name">{{ names()[side] }}</strong>
+        <div class="hp-track" role="progressbar" [attr.aria-label]="t('health', {name:names()[side]})" [attr.aria-valuenow]="frame().hp[side]" aria-valuemin="0" [attr.aria-valuemax]="hpMax()"><i [style.width.%]="frame().hp[side]/hpMax()*100"></i></div>
+        <div class="hud-meta"><span>{{ t(side==='left' ? 'challenger' : 'opponent') }}</span><span class="heal-charges" role="img" [attr.aria-label]="t('healsLeft',{n:frame().heals[side]})">@for (n of charges(); track n) { <i [class.used]="n>=frame().heals[side]"></i> }</span></div>
+      </div>
+    }
+  </div>
+  @if (frame().phase==='ready') { <div class="center-cue ready"><span>{{ t('svgGpt.readyKicker') }}</span><strong>VS</strong><small>{{ t('ready') }}</small></div> }
+  @if (frame().phase==='countdown') { <div class="center-cue"><strong>{{ countdown() }}</strong></div> }
+  @if (frame().phase==='entrance') { <div class="entrance-cue">{{ t(battle().enraged ? 'enrageCue' : 'challenge') }}</div> }
+  @if (frame().phase==='fight' && elapsed()>3400 && elapsed()<3900) { <div class="center-cue fight"><strong>{{ t('fight') }}</strong></div> }
+  @if (frame().impact > 0 && !frame().ultimate) {
+    <div class="impact-number" [class.heal]="frame().turn?.move==='heal'" [attr.data-side]="frame().turn?.move==='heal' ? actor() : target()" [style.opacity]="clamp(frame().impact*2)" [style.transform]="'translateY('+(-18*(1-frame().impact))+'px)'">@if (frame().turn?.crit) { <small>{{ t('crit') }}</small> }{{ impactText() }}@if (frame().turn?.defended && frame().turn?.move==='special') { <small>{{ t('skillBroken.'+battle().fighters[target()]) }}</small> }</div>
+  }
+  @if (combo(); as turn) { <div class="impact-number heal" [attr.data-side]="target()">+{{ turn.comboHeal }}<small>{{ t('comboHeal') }}</small></div> }
+  @if (ultimateClass(); as ult) {
+    <div class="cinema-bars" [style.opacity]="ease(age()/200)"></div>
+    <div class="ultimate-caption" [attr.data-class]="ult" [class.landed]="ultHitAge()>=0">
+      <span>03 / {{ t('ultimateKicker') }} <i></i> {{ names()[actor()] }}</span>
+      <strong>{{ t('ultimate.'+ult) }}</strong>
+      <small>{{ t(ultHitAge()<0 ? 'svgGpt.desc.'+ult : 'ultimateResult.'+ult) }}</small>
+      <div class="charge-track"><i [style.width.%]="frame().charge*100"></i></div>
+    </div>
+  } @else if (frame().phase==='knockout') { <div class="center-cue knockout"><span>{{ t('svgGpt.finalHit') }}</span><strong>K.O.</strong></div> }
+  @if (frame().phase==='winner') { <div class="victory-cue"><span>{{ t('victory') }}</span><strong>{{ names()[battle().winner] }}</strong><small>{{ t('wins',{hp:frame().hp[battle().winner]}) }}</small><i></i></div> }
+  <div class="arena-footer"><span>{{ moveLabel() }}</span><span>{{ t('svgGpt.timeline') }} / 30 FPS</span></div>
+</div>

@@ -5,14 +5,15 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { LanguageService } from '../../../services/language.service';
 import { ThemeService } from '../../../services/theme.service';
 import { DuelArenaComponent } from '../../widgets/duel/duel-arena.component';
-import { DuelCharacter, DuelSide, simulateBattle, ultimateBattle } from '../../widgets/duel/duel-battle';
+import { DuelCharacter, DuelSide, otherSide, simulateBattle, ultimateBattle } from '../../widgets/duel/duel-battle';
 import { DuelGptArenaComponent } from './duel-gpt/duel-gpt-arena.component';
+import { DuelSvgArenaComponent } from './duel-svg-gpt/duel-svg-arena.component';
 
 type Phase = 'ready' | 'entrance' | 'countdown' | 'fight' | 'knockout' | 'winner';
 
 @Component({
   selector: 'app-duel-mock',
-  imports: [RouterLink, ReactiveFormsModule, DuelArenaComponent, DuelGptArenaComponent],
+  imports: [RouterLink, ReactiveFormsModule, DuelArenaComponent, DuelGptArenaComponent, DuelSvgArenaComponent],
   templateUrl: './duel-mock.component.html',
   styleUrl: './duel-mock.component.css',
   host: { '[class.overlay-only]': 'overlayOnly' },
@@ -25,6 +26,7 @@ export class DuelMockComponent {
   private readonly query = inject(ActivatedRoute).snapshot.queryParamMap;
   readonly renderMode = signal<'svg' | '3d'>(this.query.get('renderer') === '3d' ? '3d' : 'svg');
   readonly threeEntry = signal<'gpt' | 'claude'>(this.query.get('entry') === 'claude' ? 'claude' : 'gpt');
+  readonly svgEntry = signal<'original' | 'gpt' | 'claude'>(this.query.get('renderer') !== '3d' && ['gpt','claude'].includes(this.query.get('entry') ?? '') ? this.query.get('entry') as 'gpt' | 'claude' : 'original');
   readonly characters: DuelCharacter[] = ['knight', 'mage', 'ronin'];
   readonly sides: DuelSide[] = ['left', 'right'];
   readonly form = new FormGroup({
@@ -107,6 +109,28 @@ export class DuelMockComponent {
     this.elapsed.set(Number((event.target as HTMLInputElement).value));
     this.lastTick = performance.now();
     if (!this.timer && this.started() && this.elapsed() < this.duration()) this.startTimer();
+  }
+
+  /** Mock-only fixture exposes attack contact, a blocked hit, healing, and a guard break. */
+  showcaseCombat(): void {
+    this.stopTimer();
+    const values = this.form.getRawValue();
+    this.names.set({left:values.left.trim().slice(0,24)||'Dima',right:values.right.trim().slice(0,24)||'ChatChampion'});
+    this.battle.set({fighters:{left:'ronin',right:'mage'},winner:'left',maxHp:100,healCharges:5,duration:14000,enraged:values.streamer?'right':null,turns:[
+      {at:3700,hitAt:3980,attacker:'left',move:'normal',damage:12,bonus:false},
+      {at:4500,hitAt:4950,attacker:'right',move:'heavy',damage:22,bonus:false,crit:true},
+      {at:5550,hitAt:5830,attacker:'left',move:'normal',damage:0,defended:true,comboHeal:8,bonus:false},
+      {at:7050,hitAt:7950,attacker:'right',move:'heal',damage:0,heal:4,bonus:false},
+      {at:8550,hitAt:9400,attacker:'left',move:'special',damage:35,defended:true,bonus:false},
+      {at:10150,hitAt:10600,attacker:'right',move:'heavy',damage:25,bonus:false},
+      {at:11200,hitAt:12050,attacker:'left',move:'special',damage:65,bonus:false},
+    ]});
+    this.elapsed.set(3400);this.started.set(true);this.paused.set(false);this.startTimer();
+  }
+
+  mirrorBattle(): void {
+    const battle = this.battle();
+    this.battle.set({...battle,fighters:{left:battle.fighters.right,right:battle.fighters.left},winner:otherSide(battle.winner),turns:battle.turns.map(turn=>({...turn,attacker:otherSide(turn.attacker)}))});
   }
 
   private startTimer(): void {

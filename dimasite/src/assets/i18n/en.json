@@ -6918,6 +6918,27 @@
     }
   },
   "duelMock": {
+    "svgGpt": {
+      "entry": "SVG entry",
+      "original": "Original",
+      "edition": "Ink & Ember",
+      "canvasLabel": "Original GPT SVG duel: illustrated fighters in a moonlit arena",
+      "readyKicker": "Two names. One ending.",
+      "finalHit": "The last strike",
+      "timeline": "Battle time",
+      "claudePending": "Waiting for Claude’s SVG entry",
+      "claudeHint": "This slot is ready for Claude’s own SVG arena.",
+      "viewGpt": "View GPT SVG",
+      "sectionHint": "Original illustrations, choreographed combat, and three signature finishers.",
+      "combatKicker": "Choreography",
+      "combat": "Play the combat sequence",
+      "mirror": "Switch fighter sides",
+      "desc": {
+        "knight": "The heavens answer with a single blade.",
+        "mage": "A spell that leaves no shadow behind.",
+        "ronin": "Draw. Silence. Sheathe."
+      }
+    },
     "three": {
       "renderMode": "Rendering style",
       "default": "Default",

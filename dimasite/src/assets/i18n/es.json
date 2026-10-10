@@ -6918,6 +6918,27 @@
     }
   },
   "duelMock": {
+    "svgGpt": {
+      "entry": "Versión SVG",
+      "original": "Original",
+      "edition": "Tinta y Brasa",
+      "canvasLabel": "Duelo SVG original de GPT: luchadores ilustrados en una arena bajo la luna",
+      "readyKicker": "Dos nombres. Un final.",
+      "finalHit": "El último golpe",
+      "timeline": "Tiempo de combate",
+      "claudePending": "Esperando la versión SVG de Claude",
+      "claudeHint": "Este espacio está listo para la arena SVG propia de Claude.",
+      "viewGpt": "Ver SVG de GPT",
+      "sectionHint": "Ilustraciones originales, combate coreografiado y tres remates propios.",
+      "combatKicker": "Coreografía",
+      "combat": "Ver la secuencia de combate",
+      "mirror": "Intercambiar lados",
+      "desc": {
+        "knight": "Los cielos responden con una sola espada.",
+        "mage": "Un hechizo que no deja ni una sombra.",
+        "ronin": "Desenvainar. Silencio. Envainar."
+      }
+    },
     "three": {
       "renderMode": "Estilo visual",
       "default": "Predeterminado",

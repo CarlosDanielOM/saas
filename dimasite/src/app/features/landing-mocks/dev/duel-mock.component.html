@@ -32,12 +32,25 @@
                 <button type="button" [attr.aria-pressed]="threeEntry() === 'gpt'" (click)="threeEntry.set('gpt')" data-testid="entry-gpt">GPT</button>
                 <button type="button" [attr.aria-pressed]="threeEntry() === 'claude'" (click)="threeEntry.set('claude')" data-testid="entry-claude">Claude</button>
               </div>
+            } @else {
+              <div class="render-segment entry-segment" role="group" [attr.aria-label]="t('svgGpt.entry')">
+                <button type="button" [attr.aria-pressed]="svgEntry() === 'original'" (click)="svgEntry.set('original')" data-testid="svg-original">{{ t('svgGpt.original') }}</button>
+                <button type="button" [attr.aria-pressed]="svgEntry() === 'gpt'" (click)="svgEntry.set('gpt')" data-testid="svg-gpt">GPT</button>
+                <button type="button" [attr.aria-pressed]="svgEntry() === 'claude'" (click)="svgEntry.set('claude')" data-testid="svg-claude">Claude</button>
+              </div>
             }
           </div>
         }
         <div class="stage-frame" [class.checkerboard]="transparent() && !overlayOnly" [attr.data-renderer]="renderMode()">
           @if (renderMode() === 'svg') {
-            <app-duel-arena [names]="names()" [battle]="battle()" [elapsed]="elapsed()" [started]="started()" [paused]="paused()" [transparent]="transparent()" [locale]="language.currentLanguage()" />
+            @if (svgEntry() === 'original') {
+              <app-duel-arena [names]="names()" [battle]="battle()" [elapsed]="elapsed()" [started]="started()" [paused]="paused()" [transparent]="transparent()" [locale]="language.currentLanguage()" />
+            } @else if (svgEntry() === 'gpt') {
+              <app-duel-svg-gpt-arena [names]="names()" [battle]="battle()" [elapsed]="elapsed()" [started]="started()" [paused]="paused()" [transparent]="transparent()" [locale]="language.currentLanguage()" />
+            } @else {
+              <!-- Reserved for Claude's independently built SVG entry. -->
+              <div class="entry-placeholder claude-slot" data-testid="svg-claude-slot"><span>SVG / CLAUDE</span><strong>{{ t('svgGpt.claudePending') }}</strong><p>{{ t('svgGpt.claudeHint') }}</p><button type="button" (click)="svgEntry.set('gpt')">{{ t('svgGpt.viewGpt') }}</button></div>
+            }
           } @else if (threeEntry() === 'gpt') {
             @defer (on immediate) {
               <app-duel-gpt-arena [names]="names()" [battle]="battle()" [elapsed]="elapsed()" [started]="started()" [paused]="paused()" [transparent]="transparent()" [locale]="language.currentLanguage()" />
@@ -63,7 +76,14 @@
       </section>
       @if (!overlayOnly) {
         <aside class="lf-tile controls-tile">
-          <div class="tile-head"><span>{{ t('setup') }}</span><span class="prototype">{{ renderMode() === '3d' ? '3D LAB' : 'V1' }}</span></div>
+          <div class="tile-head"><span>{{ t('setup') }}</span><span class="prototype">{{ renderMode() === '3d' ? '3D LAB' : svgEntry() === 'gpt' ? 'GPT / SVG' : 'V1' }}</span></div>
+          @if (renderMode() === 'svg' && svgEntry() === 'gpt') {
+            <div class="ultimate-lab svg-lab" data-testid="svg-gpt-section"><span class="svg-edition">GPT / 02</span><h2>{{ t('svgGpt.edition') }}</h2><p>{{ t('svgGpt.sectionHint') }}</p>
+              <button type="button" class="combat-demo" (click)="showcaseCombat()" data-testid="svg-combat"><span class="class-sigil" aria-hidden="true">╱</span><span><small>{{ t('svgGpt.combatKicker') }}</small><strong>{{ t('svgGpt.combat') }}</strong></span><i aria-hidden="true">↗</i></button>
+              @for (character of characters; track character) { <button type="button" [attr.data-class]="character" [attr.data-testid]="'svg-ultimate-' + character" (click)="showcase(character)"><span class="class-sigil" aria-hidden="true">{{ character === 'knight' ? '✧' : character === 'mage' ? '◉' : '╱' }}</span><span><small>{{ t('character.' + character) }}</small><strong>{{ t('ultimate.' + character) }}</strong></span><i aria-hidden="true">↗</i></button> }
+              <button type="button" class="mirror-demo" (click)="mirrorBattle()" data-testid="svg-mirror">{{ t('svgGpt.mirror') }} <i aria-hidden="true">⇄</i></button>
+            </div>
+          }
           @if (renderMode() === '3d' && threeEntry() === 'gpt') {
             <div class="ultimate-lab"><h2>{{ t('three.showcase') }}</h2><p>{{ t('three.showcaseHint') }}</p>
               @for (character of characters; track character) { <button type="button" [attr.data-class]="character" [attr.data-testid]="'ultimate-' + character" (click)="showcase(character)"><span class="class-sigil" aria-hidden="true">{{ character === 'knight' ? '✧' : character === 'mage' ? '◉' : '╱' }}</span><span><small>{{ t('character.' + character) }}</small><strong>{{ t('ultimate.' + character) }}</strong></span><i aria-hidden="true">↗</i></button> }
@@ -85,7 +105,7 @@
             <p class="field-hint">{{ t('applyHint') }}</p>
             <button class="primary setup-play" type="submit">{{ t('play') }} <span aria-hidden="true">↗</span></button>
           </form>
-          <div class="overlay-options"><h2>{{ t('background') }}</h2><button class="toggle" type="button" [attr.aria-pressed]="transparent()" (click)="toggleTransparent()"><span>{{ t('transparent') }}</span><i [class.on]="transparent()"></i></button><a class="overlay-link" routerLink="/mocks/dev/duel" [queryParams]="{overlay: '1', renderer: renderMode(), entry: threeEntry()}" target="_blank" rel="noopener">{{ t('overlayOnly') }} ↗</a></div>
+          <div class="overlay-options"><h2>{{ t('background') }}</h2><button class="toggle" type="button" [attr.aria-pressed]="transparent()" (click)="toggleTransparent()"><span>{{ t('transparent') }}</span><i [class.on]="transparent()"></i></button><a class="overlay-link" routerLink="/mocks/dev/duel" [queryParams]="{overlay: '1', renderer: renderMode(), entry: renderMode() === '3d' ? threeEntry() : svgEntry()}" target="_blank" rel="noopener">{{ t('overlayOnly') }} ↗</a></div>
           <p class="mock-note">{{ t('mockNote') }}</p>
         </aside>
       }
