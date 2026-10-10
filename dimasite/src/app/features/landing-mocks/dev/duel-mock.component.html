@@ -25,12 +25,13 @@
           <div class="render-controls">
             <div class="render-segment" role="group" [attr.aria-label]="t('three.renderMode')">
               <button type="button" [attr.aria-pressed]="renderMode() === 'svg'" (click)="renderMode.set('svg')" data-testid="renderer-svg">SVG <span>{{ t('three.default') }}</span></button>
-              <button type="button" [attr.aria-pressed]="renderMode() === '3d'" (click)="renderMode.set('3d')" data-testid="renderer-3d">3D <span>30 FPS</span></button>
+              <button type="button" [attr.aria-pressed]="renderMode() === '3d'" (click)="renderMode.set('3d')" data-testid="renderer-3d">3D <span>{{ threeEntry() === 'astra' ? '60 FPS' : '30 FPS' }}</span></button>
             </div>
             @if (renderMode() === '3d') {
               <div class="render-segment entry-segment" role="group" [attr.aria-label]="t('three.entry')">
                 <button type="button" [attr.aria-pressed]="threeEntry() === 'gpt'" (click)="threeEntry.set('gpt')" data-testid="entry-gpt">GPT</button>
                 <button type="button" [attr.aria-pressed]="threeEntry() === 'claude'" (click)="threeEntry.set('claude')" data-testid="entry-claude">Claude</button>
+                <button type="button" [attr.aria-pressed]="threeEntry() === 'astra'" (click)="threeEntry.set('astra')" data-testid="entry-astra">Astra</button>
               </div>
             } @else {
               <div class="render-segment entry-segment" role="group" [attr.aria-label]="t('svgGpt.entry')">
@@ -56,6 +57,11 @@
           } @else if (threeEntry() === 'gpt') {
             @defer (on immediate) {
               <app-duel-gpt-arena [names]="names()" [battle]="battle()" [elapsed]="elapsed()" [started]="started()" [paused]="paused()" [transparent]="transparent()" [locale]="language.currentLanguage()" />
+            } @placeholder { <div class="entry-placeholder" role="status">{{ t('three.loading') }}</div> }
+            @error { <div class="entry-placeholder" role="alert">{{ t('three.unavailable') }}</div> }
+          } @else if (threeEntry() === 'astra') {
+            @defer (on immediate) {
+              <app-duel-astra-3d-arena [names]="names()" [battle]="battle()" [elapsed]="elapsed()" [started]="started()" [paused]="paused()" [transparent]="transparent()" [locale]="language.currentLanguage()" />
             } @placeholder { <div class="entry-placeholder" role="status">{{ t('three.loading') }}</div> }
             @error { <div class="entry-placeholder" role="alert">{{ t('three.unavailable') }}</div> }
           } @else {
@@ -97,9 +103,15 @@
               <button type="button" class="mirror-demo" (click)="mirrorBattle()" data-testid="svg-mirror">{{ t('svgGpt.mirror') }} <i aria-hidden="true">⇄</i></button>
             </div>
           }
-          @if (renderMode() === '3d' && threeEntry() === 'gpt') {
-            <div class="ultimate-lab"><h2>{{ t('three.showcase') }}</h2><p>{{ t('three.showcaseHint') }}</p>
+          @if (renderMode() === '3d' && threeEntry() !== 'claude') {
+            <div class="ultimate-lab">@if (threeEntry() === 'astra') { <span class="svg-edition">ASTRA / 03</span> }<h2>{{ t('three.showcase') }}</h2><p>{{ t('three.showcaseHint') }}</p>
               @for (character of characters; track character) { <button type="button" [attr.data-class]="character" [attr.data-testid]="'ultimate-' + character" (click)="showcase(character)"><span class="class-sigil" aria-hidden="true">{{ character === 'knight' ? '✧' : character === 'mage' ? '◉' : '╱' }}</span><span><small>{{ t('character.' + character) }}</small><strong>{{ t('ultimate.' + character) }}</strong></span><i aria-hidden="true">↗</i></button> }
+            </div>
+          }
+          @if (renderMode() === '3d' && threeEntry() === 'astra') {
+            <div class="ultimate-lab">
+              <button type="button" (click)="showcaseCombat()" data-testid="astra-combat">{{ t('svgGpt.combat') }} <i aria-hidden="true">↗</i></button>
+              <button type="button" (click)="mirrorBattle()" data-testid="astra-mirror">{{ t('svgGpt.mirror') }} <i aria-hidden="true">⇄</i></button>
             </div>
           }
           <form [formGroup]="form" (ngSubmit)="play()">

@@ -12,11 +12,13 @@ import { DuelSvgArenaComponent } from './duel-svg-gpt/duel-svg-arena.component';
 import { DuelClaudeArenaComponent } from './duel-svg-claude/duel-claude-arena.component';
 import { DuelAstraArenaComponent } from './duel-svg-astra/duel-astra-arena.component';
 
+import { DuelAstra3dArenaComponent } from './duel-3d-astra/duel-astra-3d-arena.component';
+
 type Phase = 'ready' | 'entrance' | 'countdown' | 'fight' | 'knockout' | 'winner';
 
 @Component({
   selector: 'app-duel-mock',
-  imports: [RouterLink, ReactiveFormsModule, DuelArenaComponent, DuelGptArenaComponent, DuelSvgArenaComponent, DuelClaudeArenaComponent, DuelAstraArenaComponent],
+  imports: [RouterLink, ReactiveFormsModule, DuelArenaComponent, DuelGptArenaComponent, DuelAstra3dArenaComponent, DuelSvgArenaComponent, DuelClaudeArenaComponent, DuelAstraArenaComponent],
   templateUrl: './duel-mock.component.html',
   styleUrl: './duel-mock.component.css',
   host: { '[class.overlay-only]': 'overlayOnly' },
@@ -28,7 +30,7 @@ export class DuelMockComponent {
   readonly overlayOnly = inject(ActivatedRoute).snapshot.queryParamMap.get('overlay') === '1';
   private readonly query = inject(ActivatedRoute).snapshot.queryParamMap;
   readonly renderMode = signal<'svg' | '3d'>(this.query.get('renderer') === '3d' ? '3d' : 'svg');
-  readonly threeEntry = signal<'gpt' | 'claude'>(this.query.get('entry') === 'claude' ? 'claude' : 'gpt');
+  readonly threeEntry = signal<'gpt' | 'claude' | 'astra'>(this.query.get('entry') === 'astra' ? 'astra' : this.query.get('entry') === 'claude' ? 'claude' : 'gpt');
   readonly svgEntry = signal<'original' | 'gpt' | 'claude' | 'astra'>(this.query.get('renderer') !== '3d' && ['gpt','claude','astra'].includes(this.query.get('entry') ?? '') ? this.query.get('entry') as 'gpt' | 'claude' | 'astra' : 'original');
   readonly sampleClass = signal<DuelCharacter>('knight');
   readonly previewMoves: SvgPreviewMove[] = ['normal','heavy','special','heal','defend','break'];
@@ -154,7 +156,7 @@ export class DuelMockComponent {
       this.lastTick = now;
       if (!this.paused()) this.elapsed.update(time => Math.min(this.duration(), time + Math.min(delta, 100)));
       if (this.elapsed() >= this.duration()) this.stopTimer();
-    }, Math.ceil(1000 / (this.renderMode() === 'svg' && this.svgEntry() === 'astra' ? 60 : 30)));
+    }, Math.ceil(1000 / ((this.renderMode() === 'svg' ? this.svgEntry() : this.threeEntry()) === 'astra' ? 60 : 30)));
   }
 
   reset(): void {

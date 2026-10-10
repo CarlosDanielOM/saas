@@ -1,0 +1,37 @@
+<div class="astra-arena" [class.transparent]="transparent()" [attr.data-phase]="phase()" [attr.data-ultimate]="ultimate() ? battle().fighters[ultimate()!.attacker] : null" data-testid="duel-astra-3d-arena">
+  <canvas #canvas [attr.aria-label]="t('three.canvasLabel')" role="img" data-testid="duel-astra-3d-canvas"></canvas>
+  <div class="constellation-mark" aria-hidden="true">✧</div>
+  <div class="vignette" aria-hidden="true"></div>
+  <div class="arena-top"><span class="arena-brand"><i></i> DIMA <b>ARENA</b></span><span class="arena-edition">ASTRA <i>·</i> III</span></div>
+  <div class="astra-hud">
+    @for (side of sides; track side) {
+      <div class="fighter-hud" [attr.data-side]="side" [class.enraged]="battle().enraged === side">
+        <div class="hud-top"><span class="fighter-class">{{ t('character.' + battle().fighters[side]) }}</span><span class="hp-number">{{ health()[side] }} <small>HP</small></span></div>
+        <strong class="fighter-name">{{ names()[side] }}</strong>
+        <div class="hp-track" role="progressbar" [attr.aria-label]="t('health', {name:names()[side]})" [attr.aria-valuenow]="health()[side]" aria-valuemin="0" [attr.aria-valuemax]="battle().maxHp ?? 100"><i [style.width.%]="hpPercent(side)"></i></div>
+        <div class="hud-bottom"><span>{{ t(battle().enraged === side ? 'enraged' : side === 'left' ? 'challenger' : 'opponent') }}</span><span class="charges" role="img" [attr.aria-label]="t('healsLeft', {n:charges()[side]})">@for (n of [0,1,2,3,4]; track n) { <i [class.used]="n >= charges()[side]" aria-hidden="true"></i> }</span></div>
+      </div>
+    }
+  </div>
+  @if (phase() === 'ready') { <div class="ready-cue"><span class="cue-overline">{{ t('three.enterArena') }}</span><strong>VS</strong><span>{{ t('ready') }}</span></div> }
+  @if (phase() === 'countdown') { <div class="countdown-cue">{{ countdown() }}</div> }
+  @if (phase() === 'fight' && elapsed() < 3950) { <div class="fight-cue">{{ t('fight') }}</div> }
+  @if (ultimate(); as turn) {
+    <div class="cinema-bars" aria-hidden="true"><i></i><i></i></div>
+    <div class="ultimate-caption" [class.landed]="ultimateProgress() >= 1">
+      <div class="ult-heading"><span>0{{ sides.indexOf(turn.attacker) + 1 }} / {{ t('ultimateKicker') }}</span><i></i><span>{{ names()[turn.attacker] }}</span></div>
+      <strong>{{ t('ultimate.' + battle().fighters[turn.attacker]) }}</strong>
+      <span class="ult-description">{{ t('three.ultimateDesc.' + battle().fighters[turn.attacker]) }}</span>
+      <div class="charge-track" aria-hidden="true"><i [style.width.%]="ultimateProgress() * 100"></i></div>
+    </div>
+  }
+  @if (impact(); as hit) {
+    @if (hit.move !== 'ultimate') { <div class="hit-number" [attr.data-side]="damageSide()" [class.heal]="hit.move === 'heal'">@if (hit.crit) { <small>{{ t('crit') }}</small> }{{ hit.move === 'heal' ? '+' + hit.heal : hit.damage ? '−' + hit.damage : t('defenseResult.' + battle().fighters[damageSide()!]) }}</div> }
+  }
+  @if (phase() === 'knockout' && !ultimate()) { <div class="knockout-cue"><small>{{ t('three.finalBlow') }}</small><strong>K.O.</strong></div> }
+  @if (phase() === 'winner') {
+    <div class="victory-cue"><span>✦ {{ t('victory') }} ✦</span><strong>{{ names()[battle().winner] }}</strong><small>{{ t('wins', {hp:health()[battle().winner]}) }}</small></div>
+  }
+  <div class="arena-bottom"><span><i></i>{{ paused() ? t('pause') : turnLabel() }}</span><span>60 FPS <b>{{ stats().fps }}</b></span></div>
+  @if (unavailable()) { <div class="webgl-error" role="alert"><strong>{{ t('three.unavailable') }}</strong><span>{{ t('three.useSvg') }}</span></div> }
+</div>
