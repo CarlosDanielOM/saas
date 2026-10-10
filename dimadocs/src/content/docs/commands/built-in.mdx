@@ -1,75 +1,135 @@
 ---
-title: Built-in command reference
-description: Syntax and behavior of DomDimaBot's built-in chat commands.
+title: Built-in commands
+description: Default access, syntax, and behavior of DomDimaBot's built-in chat commands, such as !so, !poll, !duel, and !vip.
 sidebar:
   label: Built-in commands
   order: 3
 ---
 
-This reference follows the bot's reserved command configuration and chat handler. A command must exist and be enabled in the channel to run; channel permissions and cooldowns can also restrict use. The command list in chat (`!commands`) is filtered for the chatter's permissions.
+Built-in commands are ready-made tools that come with DomDimaBot. Viewers and moderators type them in chat. Each one has a default **Who can use it** level and a cooldown, and you can change both.
 
-## Command list
+## Turn them on or change access
 
-| Command | Usage | Behavior |
-|---|---|---|
-| `!commands` | `!commands` | Lists enabled commands available to the chatter. |
-| `!followage` | `!followage [username]` | Shows how long the chatter, or the named user, has followed the channel. |
-| `!sumimetro` | `!sumimetro [username]` | Gives the chatter a reading; a username can request that user's stored reading. |
-| `!amor` | `!amor <username>` or `!amor <user1> <user2>` | Returns a playful love reading. |
-| `!memide` | `!memide` | Returns a random joke measurement. |
-| `!ponerla` | `!ponerla` | Returns a random joke percentage. |
-| `!mecabe` | `!mecabe` | Returns a random joke measurement. |
-| `!ruletarusa` | `!ruletarusa` | Plays Russian roulette; the result may time out the player. Timeout length varies with the player's previous losses: it starts at 10 seconds and increases with each recorded loss. |
-| `!duel` | `!duel <username>`, then `!duel accept` or `!duel decline` | Challenges a user, who can accept or decline. |
-| `!clip` | `!clip [seconds] [title]` | Creates a channel clip. If the first argument is a number, it is duration (5–60 seconds); otherwise it is the title. Out-of-range numeric durations use 30 seconds. |
-| `!so` | `!so <username>` | Sends a shoutout announcement; clip details may be included when available. |
-| `!promo` | `!promo <username>` | Sends a text shoutout intended to be visible to mobile viewers. |
-| `!anuncio` | `!anuncio <message>` | Sends a Twitch announcement. The message is limited to 300 characters. |
-| `!game` | `!game <game name>` | With a permitted user, changes the channel's game; without write permission, the handler returns the current game. |
-| `!title` | `!title <stream title>` | With a permitted user, changes the stream title; without write permission or without a title argument, returns the current title. |
-| `!onlyemotes` | `!onlyemotes [seconds]` | Toggles emote-only mode, or enables it for the given duration in seconds. |
-| `!s` | `!s <message>` | Queues the message for text-to-speech. New channel defaults enable it for everyone with a 0-second cooldown. It is an editable command and uses the normal command AST. |
-| `!mod` | `!mod <username> [days]` | Adds a moderator. |
-| `!unmod` | `!unmod <username>` | Removes a moderator. |
-| `!vip` | `!vip <username> [days]` | Adds a VIP, optionally with a duration in days. |
-| `!unvip` | `!unvip <username>` | Removes a VIP. |
-| `!vanish` | `!vanish` | Makes the caller vanish from chat. |
-| `!poll` | `!poll <title>;<option1>/<option2>;<seconds>` | Creates a poll. Separate the title, slash-separated options, and duration in seconds with semicolons. Twitch validates the values and may reject an invalid poll. |
-| `!endpoll` | `!endpoll` | Ends the active poll. |
-| `!cancelpoll` | `!cancelpoll` | Cancels the active poll. |
-| `!predi` | `!predi <title>;<option1>/<option2>;<seconds>` | Creates a prediction. Separate the title, slash-separated outcomes, and duration in seconds with semicolons. Twitch validates the values and may reject an invalid prediction. |
-| `!lockpredi` | `!lockpredi` | Locks the active prediction. |
-| `!endpredi` | `!endpredi <winning option number>` | Ends the prediction and selects its winning option. |
-| `!cancelpredi` | `!cancelpredi` | Cancels an active or locked prediction. |
-| `!cc` | `!cc <name> <response>` | Creates a custom command. See [Custom commands](/commands/overview/). |
-| `!ec` | `!ec <name> <response>` | Edits a custom command. See [Custom commands](/commands/overview/). |
-| `!dc` | `!dc <name>` | Deletes a custom command. See [Custom commands](/commands/overview/). |
-| `!enable` | `!enable <name>` | Enables a command in the channel. |
-| `!disable` | `!disable <name>` | Disables a command in the channel. |
-| `!cct` | `!cct <name> <minutes> <message>` | Creates a repeating chat timer. Timer message rules and plan limits are documented in [Custom timers](/commands/overview/). |
-| `!ect` | `!ect <name> [minutes] [message]` | Edits an existing repeating chat timer. |
-| `!dct` | `!dct <name>` | Deletes a repeating chat timer. |
-| `!clearchat` | `!clearchat` | Clears chat. Disabled in the shipped reserved command configuration. |
+- **On the dashboard:** open **Commands**, find the **Built-in** section, and use the **On for chat** switch. Open a command to change **Who can use it**.
+- **In chat:** moderators can use `!enable <name>` and `!disable <name>`. The name works with or without `!`.
+- **Built-in commands can't be deleted.**
+- **Cooldowns:** most built-in commands wait 10 seconds between uses. The wait is shared by the whole channel. `!s` and `!vanish` have no wait.
 
-The command handler also contains an `archivepoll` action (`!archivepoll` when configured), although that command is not in the current reserved command list.
+New channels start with `!s` on for everyone and `!clearchat` off. Existing channels keep their saved settings.
+
+In the tables below, **Everyone** means anyone in chat, **Mods and above** includes mods, editors, admins, and you, and **Editors and above** includes editors, admins, and you.
+
+## Info
+
+| Command | Usage | Who can use it | What it does |
+|---|---|---|---|
+| `!commands` | `!commands` | Everyone | Lists the commands the viewer can use. Keywords and repeating messages are not included. |
+| `!followage` | `!followage [user]` | Everyone | Shows how long the viewer, or the user you name, has followed the channel, in years, months, days, and hours. |
+
+## Fun and games
+
+| Command | Usage | Who can use it | What it does |
+|---|---|---|---|
+| `!sumimetro` | `!sumimetro [user]` | Everyone | Gives a random submissive and dominant reading. Each viewer gets one reading, remembered for 20 hours. Add a name to see that person's saved reading. |
+| `!amor` | `!amor <user>` or `!amor <user1> <user2>` | Everyone | Gives a random love percentage. With one name, it compares the viewer and that person. |
+| `!memide` | `!memide` | Everyone | Gives a random joke measurement. |
+| `!ponerla` | `!ponerla` | Everyone | Gives a random joke percentage. |
+| `!mecabe` | `!mecabe` | Everyone | Gives a random joke measurement. |
+| `!ruletarusa` | `!ruletarusa` | Everyone | Pulls the trigger. Details are below. |
+| `!duel` | `!duel <user>`, then `!duel accept` or `!duel decline` | Everyone | Challenges a viewer to a duel. Details are below. |
+| `!vanish` | `!vanish` | Everyone | Times the viewer out for 3 seconds, so their messages disappear. Mods lose mod status for 10 seconds and get it back. Editors can't use it. |
+
+## Text to speech
+
+| Command | Usage | Who can use it | What it does |
+|---|---|---|---|
+| `!s` | `!s <message>` | Everyone | Reads the message aloud with text to speech. Uses TTS credits. The reply is an editable template, `$(tts $(user) dice: &t)` by default. See [Text to speech](/tts/). |
+
+## Stream and shoutouts
+
+| Command | Usage | Who can use it | What it does |
+|---|---|---|---|
+| `!clip` | `!clip [seconds] [title]` | Everyone | Creates a clip and posts its link. A first number from 5 to 60 sets the length. Any other first word starts the title. Numbers outside 5–60 use 30 seconds. |
+| `!so` | `!so <user>` | Mods and above | Posts a shoutout announcement with the channel link and last game. Sends Twitch's own shoutout, and shows one of their clips when available. The same person gets a Twitch shoutout at most once every 2 minutes. |
+| `!promo` | `!promo <user>` | Mods and above | Posts a chat message with the channel's name, game, title, and link. Use it when mobile viewers should see the shoutout. |
+| `!anuncio` | `!anuncio <message>` | Mods and above | Posts a Twitch announcement. The message can be up to 300 characters. |
+| `!game` | `!game <name>` | Mods and above | Changes the stream category. If no category matches the name exactly, the bot uses the top search result. Without permission, or with no name, it replies with the current category. |
+| `!title` | `!title <title>` | Mods and above | Changes the stream title. Without permission, or with no title, it replies with the current title. |
+| `!onlyemotes` | `!onlyemotes [seconds]` | Mods and above | Turns emote-only chat on or off. Each use switches the mode. Add seconds to turn it on for that long. |
+| `!clearchat` | `!clearchat` | Mods and above (off by default) | Clears the chat. |
+
+## Polls and predictions
+
+| Command | Usage | Who can use it | What it does |
+|---|---|---|---|
+| `!poll` | `!poll <title>;<option1>/<option2>;<seconds>` | Mods and above | Starts a Twitch poll. |
+| `!endpoll` | `!endpoll` | Mods and above | Ends the active poll. |
+| `!cancelpoll` | `!cancelpoll` | Mods and above | Cancels the active poll. |
+| `!predi` | `!predi <title>;<outcome1>/<outcome2>;<seconds>` | Mods and above | Starts a Twitch prediction. |
+| `!lockpredi` | `!lockpredi` | Mods and above | Closes betting on the active prediction. |
+| `!endpredi` | `!endpredi <number>` | Mods and above | Ends the prediction and picks the winner by number. `1` is the first outcome. |
+| `!cancelpredi` | `!cancelpredi` | Mods and above | Cancels an active or locked prediction. |
+
+## Mods and VIPs
+
+| Command | Usage | Who can use it | What it does |
+|---|---|---|---|
+| `!mod` | `!mod <user>` | Editors and above | Adds a moderator. |
+| `!unmod` | `!unmod <user>` | Editors and above | Removes a moderator. |
+| `!vip` | `!vip <user> [days]` | Editors and above | Adds a VIP. With days (`1`–`365`), the VIP status ends after that many days. Without days, it stays until removed. |
+| `!unvip` | `!unvip <user>` | Editors and above | Removes a VIP. |
+
+## Manage commands from chat
+
+| Command | Usage | Who can use it | What it does |
+|---|---|---|---|
+| `!cc` | `!cc <name> <reply>` | Mods and above | Creates a custom command. See [Custom commands](/commands/overview/). |
+| `!ec` | `!ec <name> <reply>` | Mods and above | Edits a custom command's reply, cooldown, or access. |
+| `!dc` | `!dc <name>` | Mods and above | Deletes a custom command. |
+| `!enable` | `!enable <name>` | Mods and above | Turns a command on. |
+| `!disable` | `!disable <name>` | Mods and above | Turns a command off. |
+| `!cct` | `!cct <name> <minutes> <message>` | Mods and above | Creates a repeating message. See [Custom commands](/commands/overview/). |
+| `!ect` | `!ect <name> [minutes] [message]` | Mods and above | Edits a repeating message. |
+| `!dct` | `!dct <name>` | Mods and above | Deletes a repeating message. |
+| `!timer` | `!timer create`, `edit`, `delete`, or `list` | Mods and above | Does the same work as `!cct`, `!ect`, and `!dct` in one command. `!timers` also works. |
 
 ## Details
 
+### Ruletarusa
+
+- Each pull has a 1-in-3 chance of firing.
+- A loss gives a timeout of 10 seconds. Each following loss adds 10 seconds: 20, then 30, and so on. The count resets 10 minutes after the first loss.
+- Editors and the channel owner can't play.
+- A moderator who loses is removed as a moderator during the timeout and added back afterward.
+
+### Duels
+
+- `!duel <user>` challenges a viewer. The viewer has 30 seconds to reply with `!duel accept` or `!duel decline`.
+- Challenging the streamer skips the reply. The streamer fights right away, with better odds.
+- A loser gets a timeout when timeouts are on. The default is 60 seconds. Change this in **Widgets** → **Duel**.
+- The streamer and editors are never timed out. A moderator who loses is removed as a moderator during the timeout and added back afterward.
+- Duel messages use the language of the Duel widget on Premium channels. Other channels use the streamer's account language.
+
 ### Polls and predictions
 
-The syntax uses semicolons to separate the title, slash-separated choices, and duration in seconds. Polls accept 2–5 choices and predictions accept 2–10. Both require a duration between 30 seconds and 5 minutes; poll titles and choices are limited to 25 characters, while prediction titles are limited to 30 and outcomes to 20. Twitch validates the values and may reject an invalid request. For example:
+- Separate the title, the options, and the duration with `;`. Separate options with `/`. Duration is in seconds.
+
+  ```text
+  !poll Will the streamer win?;Yes/No;60
+  !predi Will the streamer win?;Yes/No;60
+  ```
+
+- Twitch sets the limits for title length, the number of options, and the duration. If Twitch rejects a request, the bot replies with Twitch's error.
+- `!endpredi` uses the outcome number. `1` is the first outcome. The number must match an outcome.
+- Each command needs an active poll or prediction. If there isn't one, the bot says so.
+
+### Changing built-in settings with `!ec`
+
+Moderators can change a built-in command's cooldown or access without the dashboard:
 
 ```text
-!poll Will the streamer win?;Yes/No;60
-!predi Will the streamer win?;Yes/No;60
+!ec -cd=30 ruletarusa
+!ec -ul=mod duel
 ```
 
-Poll and prediction commands require moderator access by default. `!endpoll` archives an active poll; `!cancelpoll` terminates it without archiving. `!lockpredi` closes betting, `!endpredi <number>` resolves an active or locked prediction using the numbered outcome, and `!cancelpredi` cancels it. Each action requires the poll or prediction to be in a compatible state.
-
-When the AI action tools are available, DomDimaBot can also read the current poll or prediction and its numbered choices; poll results include vote totals. To resolve a prediction, it reads the question and outcome order before selecting the winner. These actions still require moderator permissions.
-
-### Permissions and configuration
-
-New channel defaults enable `!s` for everyone at a 0-second cooldown and disable `!clearchat`. `!poll`, `!predi`, their management commands, and command-management commands such as `!cc`, `!ec`, and `!dc` require moderator access by default. `!mod`, `!unmod`, `!vip`, and `!unvip` require editor access by default. Role checks use the chatter's verified Twitch identity. Channels can change command availability, access, and cooldowns, so `!commands` shows the list visible to the current chatter. Existing channels may retain their saved settings.
-
-For streamer-authored replies and AST syntax, continue to [Advanced custom commands](/commands/advanced/).
+Put the options before the name. Access and cooldown limits from [Custom commands](/commands/overview/) apply here too.

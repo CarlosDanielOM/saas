@@ -1,48 +1,82 @@
 ---
 title: Extensión de Twitch DimaFX
-description: Configura la tienda de la extensión de Twitch DimaFX y explica cómo los espectadores compran, guardan y activan contenido del canal.
+description: Configura la tienda de la extensión de Twitch DimaFX para que los espectadores paguen con Bits y reproduzcan sonidos, videos o mensajes en el stream, al momento o para después.
 sidebar:
   order: 8
 ---
 
-DimaFX es una tienda de contenido multimedia para canales dentro de una extensión de Twitch. El broadcaster o un administrador del panel con permisos de DimaFX puede elegir contenido de la biblioteca multimedia del canal, asignarle un precio en Bits y publicar los elementos habilitados para los espectadores de la extensión.
+DimaFX es una tienda dentro de tu extensión de Twitch. Los espectadores gastan Bits para reproducir un sonido, un video o un mensaje de texto a voz en tu stream. Tú eliges los artículos y los precios. Los espectadores pueden reproducir un artículo al momento o guardarlo para después. El módulo DimaFX está disponible en el plan Free. Necesitas permiso para editar DimaFX: ser el propietario del canal o un administrador con ese permiso.
 
-## Configurar la tienda del canal
+Las compras solo se reproducen mientras la **Fuente de navegador DimaFX para OBS** esté abierta. Las fuentes de Triggers y de Overlay Studio no cuentan.
 
-1. Inicia sesión en DomDimaBot con Twitch y selecciona el canal que administras.
-2. Abre **Módulos → DimaFX**. El módulo está disponible en el plan Free, sujeto a los permisos de acceso al panel.
-3. Crea un elemento, elige un recurso público disponible o uno que pertenezca al canal, y configura el nombre, la descripción opcional, la categoría, el precio, el volumen y si está habilitado. El precio debe ser uno de los valores que ofrece el formulario (por defecto: 0, 5, 10, 25, 50 o 100 Bits). El servidor asigna esos precios a SKU de la extensión de Twitch; no se pueden guardar valores que no estén admitidos.
-4. En Twitch, añade o activa la extensión DimaFX para el canal y abre su vista de configuración. Esa página espera la autorización de Twitch y ofrece **Iniciar sesión con Twitch**; inicia sesión en DomDimaBot para volver al módulo DimaFX de ese canal.
-5. Mantén conectada la superposición de activadores del canal cuando quieras que el contenido aparezca en directo. DimaFX reproduce a través de la fuente de navegador clásica de superposición de activadores o de una escena de Overlay Studio con un widget de activadores; el módulo muestra si hay una superposición conectada. Una compra puede guardarse en el inventario sin reproducirse de inmediato, pero **Usar ahora** requiere que haya una superposición conectada.
+## Configura la tienda
 
-El módulo muestra los elementos configurados y permite a las personas autorizadas crearlos, editarlos, habilitarlos o deshabilitarlos, previsualizarlos y eliminarlos. El botón **Probar en stream** pone un elemento en cola exactamente como lo haría una compra de espectador —sin cobrar Bits— para que el broadcaster verifique la conectividad de la superposición, el volumen y la reproducción antes de publicar. Normalmente, eliminar un elemento no altera el valor del inventario que ya se guardó. La opción independiente de reembolso elimina las cantidades guardadas y devuelve su valor registrado como créditos DimaFX; no reembolsa Bits de Twitch.
+1. Abre **Módulos → DimaFX**.
+2. Selecciona **Agregar a la tienda** y completa el artículo:
+   - **Archivo**: elige un archivo de tus medios o de la biblioteca pública. Pulsa ▶ para revisarlo antes.
+   - **Nombre** y **Descripción para los espectadores**.
+   - **Precio**: **Gratis**, o 5, 10, 25, 50 o 100 Bits. El servidor solo acepta estos precios.
+   - **Volumen** y **Mostrar durante (segundos)**.
+   - **A la venta en la extensión**: actívalo para que los espectadores puedan comprarlo.
+   - **Más opciones**: **Pestaña de la extensión** se define según el tipo de archivo, pero puedes cambiarla aquí. **Posición** define el orden. Los números más bajos aparecen primero.
+3. Selecciona **Agregar a la tienda**.
+4. En **Overlay de OBS**, selecciona **Copiar enlace de OBS**. En OBS, añádelo una vez como **Fuente de navegador**. Mantenla abierta mientras transmites.
+5. En Twitch, añade o activa la extensión DimaFX para tu canal y abre su configuración. La página muestra **Configurar DimaFX en DomDimaBot**. Selecciónala e inicia sesión en DomDimaBot para volver a tu módulo DimaFX. Cuando los espectadores puedan comprar, la página muestra **En el stream**.
+6. Selecciona **Probar en stream** en un artículo para comprobar la fuente de OBS. La prueba reproduce el artículo sin costo. No cobra Bits ni cuenta como venta.
 
-### Elementos TTS
+Selecciona **Editar** en un artículo para cambiarlo. El **Archivo** no se puede cambiar. Para usar otro archivo, crea un artículo nuevo.
 
-Los elementos de la categoría **TTS** sintetizan voz al activarse en lugar de reproducir un recurso guardado, por lo que no necesitan un archivo de la biblioteca multimedia. Cada elemento TTS tiene un idioma y una voz (se usan los valores predeterminados de TTS del canal a menos que se elija una voz específica) y uno de dos modos:
+### Artículos TTS
 
-- **Mensaje fijo** — el broadcaster escribe el texto una vez; cada activación dice el mismo mensaje.
-- **El espectador escribe el mensaje** — los espectadores escriben su propio texto (hasta 280 caracteres) al canjear el elemento. Los enlaces se eliminan automáticamente. Los mensajes personalizados se reproducen de inmediato y no se pueden guardar en el inventario.
+Un artículo TTS dice un mensaje en lugar de reproducir un archivo. En **Qué hace**, elige **Leer un mensaje**. No puedes cambiar el tipo de un artículo después de crearlo. El formulario te pide entonces uno de dos modos:
 
-## Cola de reproducción en el stream
+- **Mensaje fijo**: escribes el texto una vez, y cada compra dice lo mismo.
+- **El espectador escribe el mensaje**: los espectadores escriben su propio texto al comprar. El texto puede tener hasta 280 caracteres, y los enlaces se eliminan. El mensaje se reproduce de inmediato y no se puede guardar para después.
 
-Los elementos activados se reproducen **de uno en uno, en orden de compra**. Si varios espectadores canjean elementos a la vez, la cola los retiene hasta que termine el elemento actual; si la superposición se desconecta brevemente, los elementos en espera se reanudan cuando vuelve a conectarse. Si no hay ninguna superposición conectada, la compra se rechaza desde el inicio y el valor en Bits del espectador identificado se devuelve como créditos DimaFX. Los reintentos de transacciones de Twitch son seguros: reenviar la misma transacción nunca reproduce ni cobra dos veces.
+Elige un **Idioma** (inglés o español) y una **Voz**. Por defecto se usa la voz TTS del canal de [Texto a voz](/es/tts/).
 
-## Experiencia del espectador
+## Elimina un artículo
 
-En el panel de la extensión de Twitch del canal, los espectadores pueden explorar los elementos habilitados, buscar o filtrar la biblioteca, previsualizar contenido y abrir un elemento para elegir una acción. Las compras con Bits solo están disponibles dentro de Twitch. Los elementos gratuitos usan directamente el flujo del servidor y no llaman a la API de compras con Bits de Twitch.
+Selecciona **Eliminar** en un artículo. Tienes dos opciones:
 
-Los espectadores pueden elegir **Usar ahora** para enviar el elemento a la superposición conectada, o **Guardar** para almacenar una copia en el inventario de ese canal. Guardar y usar créditos DimaFX requiere que el espectador comparta su identidad de Twitch con la extensión. Los espectadores anónimos pueden comprar con Bits y elegir **Usar ahora**, pero no pueden guardar elementos en el inventario ni gastar créditos. En los elementos TTS con texto del espectador, el campo de texto aparece al abrir el elemento y la compra se reproduce de inmediato.
+- **Eliminar sin reembolso**: el artículo se quita. Las copias guardadas por los espectadores ya no se pueden usar, y no se devuelve nada.
+- **Eliminar y reembolsar copias guardadas**: las copias guardadas se convierten en créditos DimaFX, por el precio que pagó cada espectador. Los espectadores pueden gastar esos créditos en tus otros artículos. Esto no reembolsa Bits de Twitch.
 
-Cada espectador identificado tiene un saldo de créditos DimaFX independiente por canal. Si la superposición no puede aceptar una solicitud de **Usar ahora**, el servidor informa del error y devuelve el valor como créditos a los espectadores identificados. Los elementos guardados se pueden activar más tarde desde el inventario; si la superposición no acepta la activación, se restaura la copia guardada.
+## Qué pueden hacer los espectadores
 
-Los ajustes del espectador solo controlan el acceso directo de las tarjetas de la tienda: **Créditos primero** o **Bits primero**, y **Usar ahora** o **Guardar**. Con **Bits primero**, el acceso directo usa Bits; la vista de detalles del elemento sigue mostrando las acciones explícitas disponibles. La configuración predeterminada es créditos primero y usar ahora. Para guardar estas preferencias, el espectador debe compartir su identidad.
+Los espectadores abren el panel de DimaFX en tu canal. Pueden explorar, buscar y filtrar la tienda, y previsualizar el contenido. Para comprar, abren un artículo y eligen:
+
+- **Usar ahora**: reproduce el artículo en el stream al momento.
+- **Guardar**: añade una copia a su inventario de este canal para reproducirla más tarde.
+
+Los espectadores pueden pagar con Bits o, si tienen, con créditos DimaFX. Las compras con Bits solo funcionan dentro de Twitch. Los artículos gratuitos se reproducen al momento y no usan Bits.
+
+Para guardar artículos, usar créditos y guardar sus preferencias de la tienda, los espectadores deben compartir su ID de Twitch. Un espectador que no lo ha compartido puede comprar con Bits y elegir **Usar ahora**, pero no puede guardar artículos ni usar créditos. El panel muestra el botón **Compartir ID de Twitch** cuando lo necesitan.
+
+Los espectadores pueden ajustar estos accesos directos en la configuración del panel:
+
+- **Pagar con**: **Créditos primero** (por defecto) o **Solo Bits**.
+- **Al comprar**: **Usar ahora** (por defecto) o **Guardar para después**.
+
+Estos accesos directos solo cambian el botón de compra de cada tarjeta. La vista de detalle del artículo siempre muestra todas las opciones.
+
+### Créditos
+
+Los espectadores identificados reciben créditos DimaFX en dos casos. El primero es cuando una compra no puede reproducirse, por ejemplo porque la fuente está cerrada o falla la reproducción. El segundo es cuando eliminas un artículo y eliges reembolsar las copias guardadas. Los créditos son por canal, y el espectador puede gastarlos en cualquier artículo de ese canal.
+
+## Reproducción en el stream
+
+Los artículos se reproducen **uno a la vez, en orden de compra**. Si llegan varias compras juntas, esperan en una cola de hasta 25 artículos. Si la fuente se desconecta por un momento, la cola continúa al volver a conectarse.
+
+La compra se rechaza si la fuente de DimaFX no está conectada o si la cola está llena. Un espectador identificado recibe sus Bits como créditos. Un espectador anónimo no recibe créditos, así que pide a tus espectadores que compartan su ID de Twitch antes de comprar.
+
+Twitch puede enviar la misma transacción más de una vez. DomDimaBot la verifica, así que una transacción repetida nunca se reproduce ni se cobra dos veces.
 
 ## Solución de problemas
 
-- Si la tienda está vacía, comprueba que los elementos estén habilitados y que los recursos del canal sigan disponibles.
-- Si un elemento no se activa, conecta la superposición de activadores del canal (o una escena de Overlay Studio con un widget de activadores) e inténtalo de nuevo — el indicador de estado de la superposición del módulo muestra el estado actual y **Probar en stream** verifica la reproducción. El valor de un uso inmediato fallido se devuelve como créditos al espectador identificado.
-- Si no aparecen los créditos, el inventario o las preferencias guardadas, comparte tu identidad de Twitch en la extensión. Twitch también puede solicitar la autorización de identidad por separado de la autorización de la extensión.
-- Si no puedes pagar con Bits, abre la extensión dentro de Twitch; el flujo de Bits no funciona fuera de Twitch.
+- **La tienda está vacía:** Activa **A la venta en la extensión** en cada artículo. Comprueba que su archivo siga disponible.
+- **Los artículos no se reproducen:** Mantén abierta la **Fuente de navegador DimaFX para OBS**. El módulo muestra **Overlay DimaFX conectado** u **Overlay DimaFX desconectado**. Usa **Probar en stream** para comprobar la reproducción.
+- **Un espectador no ve sus créditos, artículos guardados o preferencias:** Debe compartir su ID de Twitch en la extensión.
+- **No se puede comprar con Bits:** Abre la extensión dentro de Twitch. Las compras con Bits no funcionan fuera de Twitch.
 
-Usa la **Biblioteca multimedia** del panel para administrar recursos. Consulta [Activadores](/es/triggers/) para conocer el comportamiento de la superposición.
+Para administrar los archivos, usa la [Biblioteca multimedia](/es/media-library/).

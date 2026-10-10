@@ -1,55 +1,95 @@
 ---
 title: Overlay Studio Alpha
-description: Diseña superposiciones reutilizables, publícalas como fuentes de navegador de OBS y conecta alertas, clips, triggers y TTS.
+description: Diseña overlays para tu stream en el navegador, añádelos a OBS como fuente de navegador y conecta alertas, clips, triggers, TTS, encuestas y predicciones.
 ---
 
-Overlay Studio Alpha está disponible desde **Free**. Permite al propietario del canal crear diseños de fuente de navegador con capas de eventos y contenido multimedia. Durante la fase Alpha, solo el propietario del canal puede editar sus superposiciones. El editor está en **Módulos → Overlay Studio**, dentro del panel del canal.
+Overlay Studio te permite diseñar uno o varios diseños para OBS. Cada diseño puede mostrar alertas, texto a voz, clips, medios de triggers, encuestas y predicciones de Twitch, texto, imágenes y videos. Overlay Studio está en **Alpha** y está disponible en todos los planes, desde Free. Solo el propietario del canal puede editar los overlays. Inicia sesión con la cuenta de Twitch que es dueña del canal.
 
-## Crear una superposición
+## Configura un overlay
 
-1. Inicia sesión con la cuenta de Twitch propietaria del canal y abre **Módulos → Overlay Studio**.
-2. Elige una superposición o selecciona **Nueva superposición**. Configura el nombre y las dimensiones del lienzo (de 100 a 7680 píxeles por lado).
-3. Añade fuentes desde la biblioteca. Puedes agregar áreas para TTS, reproducción de triggers y clips; alertas de eventos; texto; imágenes; videos y acentos animados.
-4. Arrastra las capas en el lienzo o ajusta su posición, tamaño, visibilidad, bloqueo y orden en el editor. Guarda el borrador mientras trabajas.
+1. Abre **Módulos → Estudio de overlays**.
+2. Selecciona **Nuevo overlay** o elige uno existente. Escribe un nombre y luego define **Ancho del lienzo** y **Alto del lienzo**. Cada valor puede ir de 100 a 7680 píxeles.
+3. Añade capas desde la paleta. Arrástralas en el lienzo o cambia su posición, tamaño, visibilidad, bloqueo y orden en el editor.
+4. Selecciona **Guardar borrador** mientras trabajas.
+5. Selecciona **Publicar en directo** cuando el overlay esté listo. Usa **Guardar y publicar en vivo** para los diseños de alerta.
+6. Abre **Fuente de navegador y publicación**, selecciona **Copiar URL** y añade la URL a OBS como **Fuente de navegador**. Ajusta el ancho y el alto al tamaño del lienzo que muestra el editor. Mantén la fuente activa.
 
-Cada canal puede tener hasta 25 superposiciones, 50 diseños de alerta reutilizables y 60 capas por lienzo. Al cambiar el tamaño del lienzo, las coordenadas de las capas existentes no se mueven ni se escalan. El orden de las capas controla qué contenido aparece delante.
+Cada canal puede tener hasta 25 overlays, 50 diseños de alerta y 60 capas por lienzo. Al cambiar el tamaño del lienzo, cada capa se queda donde estaba. Si una capa queda fuera del borde, el editor muestra una advertencia, y puedes seleccionarla en **Capas** para moverla.
 
-## Crear diseños de alerta reutilizables
+## Capas que puedes añadir
 
-Cada diseño de alerta tiene una composición independiente para follows, Bits, suscripciones y raids. Cada capa de alerta permite elegir qué eventos recibe, y una superposición puede incluir varias capas de alerta. Puedes reutilizar un diseño guardado en capas de alerta de distintas superposiciones. Al editar un diseño compartido, se actualizan los borradores que lo usan; publica cada superposición para actualizar su versión activa.
+| Capa | Qué muestra |
+|---|---|
+| Encuesta | Encuesta de Twitch y totales de votos en vivo |
+| Predicción | Predicción de Twitch, puntos y resultados |
+| Texto a voz | Mensajes hablados y alertas |
+| Alertas de triggers | Medios de triggers. Puedes limitar un widget de trigger a los triggers que elijas |
+| Clips | Clips de los espectadores |
+| Alertas | Un diseño de alerta guardado, en cualquier lugar |
+| Imagen, Video | Una imagen fija o un video en bucle |
+| Forma | Un rectángulo o una elipse |
 
-El servidor interpreta el texto de las alertas con el renderizador AST. Algunos valores disponibles son `$(user)`, `$(cheer.amount)`, `$(cheer.message)`, `$(sub.tier)`, `$(sub.months)`, `$(gifted.user)`, `$(raid.channel)` y `$(raid.viewers)`. Para Bits, usa `$(cheer.amount)`; `$(amount)` no es un alias. Las plantillas admiten expresiones de visualización y formato de texto, pero no comandos ni acciones que cambien el estado.
+Las encuestas y predicciones muestran datos reales de Twitch solo después de publicar el overlay y activar los eventos de Twitch desde el editor. Mientras tanto, el editor muestra datos de ejemplo.
 
-## Usar imágenes y videos
+Dentro de un diseño de alerta también puedes añadir capas de **Texto**, **Imagen**, **Video**, **Animación** y **Forma**.
 
-Abre **Configuración → Biblioteca de recursos** para subir y administrar archivos privados de diseño. Después, selecciona **Explorar** en una capa de imagen o video de Overlay Studio. El selector también permite usar una URL multimedia HTTPS. La biblioteca acepta PNG, JPEG, GIF, WebP, MP4 y WebM; cada archivo puede pesar hasta 50 MB. No se aceptan archivos SVG ni HTML. El espacio depende del plan: 100 MB para Free, 500 MB para Premium y 5 GB para Pro.
+## Crea diseños de alerta
 
-Las superposiciones publicadas solo pueden leer los recursos incluidos en su diseño publicado. La biblioteca privada protege el almacenamiento y los enlaces de acceso, pero los espectadores pueden ver el contenido que aparece en la transmisión. Los videos de las capas multimedia globales se repiten sin sonido.
+Un diseño de alerta tiene su propia composición para **Seguimientos**, **Bits**, **Suscripciones** y **Raids**. Cada capa de alerta elige cuáles de esos eventos muestra. Un overlay puede tener varias capas de alerta. Puedes reutilizar un diseño guardado en otros overlays.
 
-## Probar y publicar en OBS
+- Editar un diseño compartido cambia todos los borradores que lo usan. Publica cada overlay para actualizar su versión en vivo.
+- Usa **Guardar como diseño nuevo** para copiar un diseño en lugar de modificarlo.
 
-La vista previa del editor ayuda a revisar las posiciones y los diseños de muestra. Las pruebas de clips y triggers usan las rutas activas de sus módulos; necesitan un clip o trigger disponible y una sesión autenticada del canal. La prueba TTS del editor es una animación de muestra. Usa la prueba de alerta en vivo para enviar una alerta de muestra a las fuentes publicadas que estén conectadas.
+El texto de las alertas usa estos valores:
 
-1. Guarda el borrador y selecciona **Publicar** para la superposición.
-2. Abre los ajustes de **Fuente de navegador** del editor y copia la URL.
-3. Añade la URL a OBS como **Fuente de navegador** y déjala abierta en la escena.
+| Valor | Muestra |
+|---|---|
+| `$(user)` | Nombre del espectador |
+| `$(cheer.amount)`, `$(cheer.message)` | Cantidad de Bits y mensaje |
+| `$(sub.tier)`, `$(sub.months)`, `$(gifted.user)` | Nivel de la suscripción, meses y destinatario del regalo |
+| `$(raid.channel)`, `$(raid.viewers)` | Canal que hace el raid y número de espectadores |
 
-La publicación guarda una instantánea de la superposición y de los diseños de alerta que utiliza. Los cambios posteriores del borrador no afectan esa instantánea hasta que vuelvas a publicar. Una fuente abierta obtiene la nueva versión publicada sin perder su cola pendiente. Si publicas mientras se reproduce un evento, el evento actual conserva el diseño con el que comenzó.
+Para Bits, usa `$(cheer.amount)`. `$(amount)` no funciona. El texto de la alerta puede dar formato a los valores (por ejemplo `upper` o `title`). No puede ejecutar comandos ni cambiar el estado.
 
-La URL es un enlace privado de solo lectura. Trátala como una contraseña y compártela únicamente con personas que deban ver la superposición. **Regenerar URL** revoca el enlace anterior. El editor desactiva las analíticas en las páginas privadas y la fuente no envía un referente.
+### Sonidos de alerta
 
-## Colas y reproducción de eventos
+Selecciona **Elegir sonido** en un evento de alerta para añadir un sonido de la Biblioteca de recursos. Los sonidos pueden ser MP3, WAV u Ogg, de hasta 10 minutos y 50 MB. Puedes ajustar el volumen, el retardo y los fundidos de entrada y salida. El sonido se reproduce una vez y termina cuando termina la alerta o el archivo. Si el retardo es más largo que la alerta, no se reproduce ningún sonido. Pon el volumen en 0 % para silenciarlo.
 
-Elige qué categorías deben esperar juntas en la cola FIFO compartida de una superposición. Las demás pueden reproducirse en paralelo. Cada fuente de navegador conectada se suscribe y recibe eventos por separado. Administra las fuentes duplicadas de OBS manualmente; añadir una fuente de Overlay Studio no desactiva las fuentes de navegador existentes de TTS, clips o triggers, por lo que pueden reproducirse eventos duplicados si ambas rutas están activas.
+## Imágenes y videos
 
-La fuente recibe eventos nuevos de follows, Bits, suscripciones/regalos y raids mientras está conectada; no reproduce alertas de cuando estuvo desconectada. El TTS y los clips generados se copian a las fuentes de Studio conectadas antes de que avance el productor existente. La reproducción pendiente pertenece a la sesión: actualizar la fuente de OBS o reiniciar la API no reproduce de nuevo esos archivos. Los diseños guardados y las composiciones publicadas sí persisten.
+Selecciona **Explorar biblioteca de recursos** en una capa de imagen o video para elegir un recurso de diseño. También puedes escribir una **URL multimedia (HTTPS)**. Los videos de las capas globales se repiten sin sonido. Consulta [Biblioteca multimedia](/es/media-library/#recursos-para-diseños) para ver los tipos de archivo y los límites de almacenamiento.
 
-## Límites y solución de problemas
+El enlace del overlay es privado, pero todo lo que aparece en el stream lo ven los espectadores.
 
-- **No puedes abrir el editor:** inicia sesión como propietario del canal; solo el propietario que inició sesión puede editar las superposiciones. Las superposiciones publicadas siguen funcionando al cambiar de plan mientras exista la cuenta de Twitch vinculada.
-- **No aparece un cambio en OBS:** guarda el borrador, publica la superposición y luego actualiza o vuelve a abrir la fuente de navegador.
-- **La fuente dejó de funcionar tras cambiar la URL:** usa la URL actual. Regenerar un enlace revoca el anterior.
-- **No se oye o ve una capa de alerta o multimedia:** comprueba que la fuente esté conectada, que la capa esté visible, que el evento esté seleccionado en esa alerta y que su categoría no esté esperando detrás de otro evento en cola.
-- **No puedes seleccionar o borrar un recurso:** revisa el formato y tamaño del archivo, el espacio disponible del plan y si el recurso sigue referenciado por una superposición o diseño.
+## Publica y usa OBS
 
-Overlay Studio Alpha todavía no ofrece listas permitidas de IDs de triggers por alerta, un modo general de GIF/imagen para triggers ni una función AST para vaciar la cola.
+- **Guardar borrador** guarda tus cambios, pero no cambia OBS.
+- **Publicar en directo** actualiza las fuentes conectadas. Cada fuente recibe la nueva versión y conserva su reproducción pendiente.
+- Al publicar se guarda una copia del overlay y de los diseños de alerta que usa. Los cambios posteriores del borrador no aparecen hasta que publiques de nuevo.
+- Un evento que ya se está reproduciendo conserva el diseño con el que empezó.
+
+El enlace del overlay es privado y de solo lectura. Trátalo como una contraseña. **Reemplazar URL del overlay** crea un enlace nuevo, y el anterior deja de funcionar de inmediato. Actualiza tus fuentes de OBS después. La página del overlay no envía referente.
+
+### Prueba en OBS
+
+Usa la vista previa de **Pruébalo** para revisar el diseño y las alertas de ejemplo sin enviar nada a OBS. Para una prueba real, publica primero. Después elige un evento en **Probar en OBS** y selecciona **Probar esta overlay en OBS**. Confirmas antes de que algo se reproduzca en el directo. La prueba necesita al menos una fuente publicada conectada.
+
+## Colas y reproducción
+
+- **Esperar entre sí** es una opción para cada tipo de evento. Los eventos seleccionados comparten una cola y se reproducen uno a la vez. Los demás se reproducen al momento.
+- Una fuente conectada recibe los eventos nuevos mientras sigue conectada.
+- Una recarga o una desconexión breve recupera la reproducción pendiente en unos 2 minutos. Si una fuente sigue desconectada más tiempo, su reproducción pendiente se descarta, y los eventos de ese periodo no se reproducen cuando vuelve.
+- Cada fuente conserva hasta 200 eventos pendientes durante 30 minutos. Cada canal conserva hasta 512 MB de medios generados. Primero se eliminan los eventos más antiguos.
+- Añadir una fuente de Overlay Studio **no** apaga las fuentes de navegador antiguas de TTS, clips o triggers. Si ambas funcionan, los espectadores escucharán los eventos dos veces. Deja activa una sola ruta.
+
+## Solución de problemas
+
+- **No puedes abrir el editor:** Inicia sesión como propietario del canal. Solo el propietario puede editar los overlays. Los overlays publicados siguen funcionando tras cambiar de plan, siempre que la cuenta de Twitch vinculada exista.
+- **Un cambio no aparece en OBS:** Selecciona **Guardar borrador**, luego **Publicar en directo** y después actualiza la fuente de navegador.
+- **La fuente de OBS dejó de funcionar tras reemplazar la URL:** Usa la URL nueva. El enlace anterior ya no funciona.
+- **Una alerta o una capa multimedia no suena:** Comprueba que la fuente esté conectada, que la capa esté visible, que el evento esté seleccionado en esa alerta y que el evento no esté esperando detrás de otro evento en cola.
+- **No puedes seleccionar o borrar un recurso:** Revisa el tipo y el tamaño del archivo, el almacenamiento de tu plan y si un diseño guardado o un overlay publicado todavía lo usa.
+
+## Todavía no disponible
+
+Overlay Studio Alpha no tiene un modo general de imagen o GIF para triggers, ni una forma de vaciar la cola desde el texto de una alerta. Las capas de alerta eligen eventos, no triggers. Solo los widgets de trigger se pueden limitar a los triggers que elijas.

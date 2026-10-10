@@ -1,37 +1,51 @@
 ---
 title: Planes
-description: Compara los planes Free, Premium y Pro, incluidos los créditos mensuales de IA y los límites actuales.
+description: Compara los planes Gratis, Premium y Pro, con créditos de IA mensuales, enfriamientos de comandos, límites de carga y almacenamiento, y los módulos que desbloquea cada plan.
 sidebar:
   order: 3
 ---
 
-DomDimaBot ofrece tres niveles: Free, Premium y Pro. Consulta la sección **Precios** del sitio público para confirmar la oferta actual antes de suscribirte.
+DomDimaBot tiene tres planes: Gratis, Premium y Pro. El plan del propietario del canal define los créditos de IA, los límites y los módulos del canal, incluidos los enfriamientos de comandos para todos los espectadores. Consulta la sección **Precios** del sitio público para confirmar la oferta actual antes de suscribirte.
 
 ## Planes mensuales
 
-| Plan | Precio mensual mostrado actualmente | Asignación de créditos de IA al mes |
+| Plan | Precio mostrado en el sitio | Créditos de IA al mes |
 |---|---:|---:|
-| Free | $0 | 25 000 |
+| Gratis | $0 | 25 000 |
 | Premium | $6/mes | 200 000 |
 | Pro | $15/mes | 800 000 |
 
-Estas son las asignaciones configuradas para el medidor mensual de créditos de IA; el panel muestra el saldo y la disponibilidad reales. Funciones de IA como el chat con IA, el procesamiento de memoria y las herramientas de voz o clips que consumen créditos usan el saldo de IA del canal. El consumo varía según la función y su configuración. Consulta [Asistentes de IA](/es/ai-assistants/), [Texto a voz](/es/tts/) y [Personalidad de IA](/es/ai-personality/).
+Los créditos no se acumulan al mes siguiente. Tu saldo y la fecha de reinicio aparecen en **Uso de créditos** del panel. Las funciones de IA, como el chat con IA, el procesamiento de memoria y las herramientas de voz o clips, usan los créditos del canal. El consumo varía según la función y su configuración. Para añadir créditos sin cambiar de plan, usa **Comprar créditos de IA** en el menú de perfil.
 
-## Límites mostrados en precios
+Consulta [Asistentes de IA](/es/ai-assistants/), [Texto a voz](/es/tts/) y [Personalidad de IA](/es/ai-personality/) para ver las funciones que usan créditos.
 
-| Capacidad | Free | Premium | Pro |
+## Límites
+
+| Límite | Gratis | Premium | Pro |
 |---|---|---|---|
-| Enfriamiento mínimo de comandos | 5 segundos | 3 segundos | 1 segundo |
+| Enfriamiento de comando más corto que puedes configurar | 5 segundos | 3 segundos | 1 segundo |
 | Almacenamiento privado de medios | Ninguno | 250 MB | 1 GB |
-| Tamaño máximo de carga | 5 MB | 25 MB | 100 MB |
-| Ancho de banda | 10 GB | 1 TB | Ilimitado según la política de uso razonable |
+| Archivo más grande por carga | 5 MB | 25 MB | 100 MB |
+| Ancho de banda | 10 GB | 1 TB | Ilimitado según el uso razonable |
 | Retención de analíticas de transmisiones | 30 días | 180 días | 365 días |
 | Retención de memoria del chat | 15 días | 45 días | 120 días |
 
-Estos son los límites que muestra actualmente la comparación de precios. El tamaño máximo se aplica a todas las cargas; solo los archivos privados consumen la cuota de almacenamiento privado. Los proveedores de texto a voz están disponibles en todos los planes; el uso de voz con IA consume créditos. Las cifras de retención son etiquetas de precios, no una garantía para cada tipo de registro: el servicio actual de analíticas elimina capturas de espectadores después de 90 días, y cada memoria puede tener su propia fecha de vencimiento. Consulta [Analíticas](/es/analytics/) y [Memorias](/es/memories/) para conocer esos detalles.
+- Un enfriamiento de `0` (sin enfriamiento) siempre se permite. Cualquier otro valor debe ser al menos el mínimo de tu plan.
+- Los medios públicos no usan almacenamiento privado. Solo los archivos privados cuentan para el límite de almacenamiento.
+- Los proveedores de texto a voz están disponibles en todos los planes. La voz con IA consume créditos.
+- Las capturas de espectadores de las analíticas se eliminan a los 90 días en todos los planes. Las cifras de retención de arriba vienen de la comparación de precios y no son una garantía para todos los tipos de registro. Consulta [Analíticas](/es/analytics/) y [Memorias](/es/memories/).
 
 ## Acceso a módulos
 
-La mayoría de los módulos están disponibles desde Free. Analíticas y Registro de seguidores requieren como mínimo Premium; Pro también cumple ese requisito. Estudio de overlays es un módulo Alfa disponible desde Free; Ruleta sigue en Alfa y requiere Pro. Durante la Alfa, solo el propietario del canal puede administrar cualquiera de las dos funciones. Las etiquetas generales de marketing para moderación y analíticas no definen el acceso a los módulos: consulta la lista de niveles de acceso de la [guía de módulos](/es/modules/). Un plan habilita el acceso por nivel, pero no concede por sí solo todos los permisos del panel o de Twitch necesarios para usar una función.
+La mayoría de los módulos están disponibles en Gratis. La tabla de abajo muestra los módulos con un plan mínimo más alto. La [guía de módulos](/es/modules/) enumera todos.
 
-Para conocer la oferta vigente, revisa **Precios** en el sitio público. Los precios y las ofertas pueden cambiar.
+| Módulo | Plan mínimo | Estado |
+|---|---|---|
+| Analíticas y Registro de seguidores | Premium (Pro también cumple) | Estable |
+| Widgets | Premium (Pro también cumple) | Alpha |
+| Ruleta | Premium (Pro también cumple) | Alpha |
+| Estudio de overlays | Gratis | Alpha. Solo el propietario del canal puede abrirlo. |
+
+Un plan desbloquea un módulo, pero no concede todos los roles del panel ni los permisos de Twitch que una función necesita. Consulta [Panel de control](/es/dashboard/) si falta un módulo que esperabas ver.
+
+Para la oferta vigente, revisa **Precios** en el sitio público. Los precios y las ofertas pueden cambiar.

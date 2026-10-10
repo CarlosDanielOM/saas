@@ -1,37 +1,51 @@
 ---
 title: Plans
-description: Compare Free, Premium, and Pro plans, including monthly AI credits and current limits.
+description: Compare the Free, Premium, and Pro plans, including monthly AI credits, command cooldowns, upload and storage limits, and which modules each plan unlocks.
 sidebar:
   order: 3
 ---
 
-DomDimaBot has three plan tiers: Free, Premium, and Pro. Check the **Pricing** section on the public site for the current offer before subscribing.
+DomDimaBot has three plans: Free, Premium, and Pro. The channel owner's plan sets the AI credits, limits, and modules for the channel, including command cooldowns for every viewer. Check **Pricing** on the public site for the current offer before you subscribe.
 
 ## Monthly plans
 
-| Plan | Current displayed monthly price | AI credit allowance per month |
+| Plan | Price shown on the site | AI credits per month |
 |---|---:|---:|
 | Free | $0 | 25,000 |
 | Premium | $6/month | 200,000 |
 | Pro | $15/month | 800,000 |
 
-These are the plan allowances configured for the monthly AI credit meter; actual availability and balance are shown in the dashboard. AI features such as AI chat, memory processing, and credit-using speech or clip tools draw from the channel's available AI credits. Usage varies by feature and settings. See [AI assistants](/ai-assistants/), [Text to Speech](/tts/), and [AI personality](/ai-personality/).
+Credits do not roll over. Your balance and reset date appear in **Credit usage** on the dashboard. AI features such as AI chat, memory processing, and speech or clip tools use the channel's credits. Use varies by feature and settings. To add credits without changing plan, use **Buy AI credits** in the profile menu.
 
-## Plan limits shown in pricing
+See [AI assistants](/ai-assistants/), [Text to Speech](/tts/), and [AI personality](/ai-personality/) for the features that use credits.
 
-| Capability | Free | Premium | Pro |
+## Limits
+
+| Limit | Free | Premium | Pro |
 |---|---|---|---|
-| Minimum command cooldown | 5 seconds | 3 seconds | 1 second |
+| Shortest command cooldown you can set | 5 seconds | 3 seconds | 1 second |
 | Private media storage | None | 250 MB | 1 GB |
-| Maximum upload size | 5 MB | 25 MB | 100 MB |
-| Bandwidth | 10 GB | 1 TB | Unlimited under fair-use policy |
+| Largest single upload | 5 MB | 25 MB | 100 MB |
+| Bandwidth | 10 GB | 1 TB | Unlimited under fair use |
 | Stream analytics retention | 30 days | 180 days | 365 days |
 | Chat memory retention | 15 days | 45 days | 120 days |
 
-These are the limits currently displayed by the pricing comparison. The file-size limit applies to every upload; only private assets use private storage quota. TTS providers are available on every plan; AI speech usage consumes credits. The retention figures are pricing labels, not a guarantee for every record type: the current analytics service deletes viewer snapshots after 90 days, and individual memory records may have their own expiry. See [Analytics](/analytics/) and [Memories](/memories/) for those details.
+- A cooldown of `0` (no cooldown) is always allowed. Any other cooldown must be at least the minimum for your plan.
+- Public media uses no private storage. Only private files count toward the storage limit.
+- Text to Speech providers are available on every plan. Speech that uses AI consumes credits.
+- Viewer snapshots in stream analytics are deleted after 90 days on every plan. The retention figures above come from the pricing comparison and are not a promise for every record type. See [Analytics](/analytics/) and [Memories](/memories/).
 
 ## Module access
 
-Most modules are available starting with Free. Analytics and Follow Ledger each have a Premium minimum tier, and Pro also qualifies. Overlay Studio is an Alpha module available starting with Free; Roulette remains Alpha and requires Pro. During Alpha, only the channel owner can manage either feature. The pricing page's broad marketing labels for moderation and analytics do not define module access: use the module entitlement list in the [Modules guide](/modules/). A plan unlocks an entitlement; it does not grant every dashboard role or Twitch permission needed to operate a feature.
+Most modules are available on Free. The table below lists the modules with a higher minimum. The [Modules guide](/modules/) lists every module.
 
-For the current offer, review **Pricing** on the public site. Displayed prices and offers can change.
+| Module | Minimum plan | Status |
+|---|---|---|
+| Analytics and Follow Ledger | Premium (Pro also qualifies) | Stable |
+| Widgets | Premium (Pro also qualifies) | Alpha |
+| Roulette | Premium (Pro also qualifies) | Alpha |
+| Overlay Studio | Free | Alpha. Only the channel owner can open it. |
+
+A plan unlocks a module, but it does not grant every dashboard role or Twitch permission a feature needs. See [Dashboard](/dashboard/) if a module you expect is missing.
+
+For the current offer, review **Pricing** on the public site. Prices and offers can change.

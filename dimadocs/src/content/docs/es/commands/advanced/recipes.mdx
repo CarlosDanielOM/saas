@@ -1,88 +1,131 @@
 ---
-title: Recetas y Patrones AST
-description: "Patrones reutilizables de AST para contadores, guardas y comandos activados por eventos."
+title: Recetas y patrones AST
+description: "Patrones AST listos para copiar: contadores, condiciones, búsqueda de usuarios, acciones con tiempo y resultados de predicciones, con las reglas de plan y los límites de cada uno."
 sidebar:
   order: 4
 ---
 
 import { Aside } from '@astrojs/starlight/components';
 
-Usa estos patrones como punto de partida. Prueba los cambios de estado y las funciones de acción en un comando restringido antes de habilitarlos para el chat.
+Estas recetas son puntos de partida. Cada una es una respuesta completa de un comando personalizado, o un par de comandos cuando se indica. Prueba las recetas que cambian el estado del canal en un comando que solo tú puedas usar antes de abrirlo a otros. La sintaxis está en [Sintaxis y datos AST](/es/commands/advanced/syntax/), y todas las funciones están en la [Referencia de funciones AST](/es/commands/advanced/functions/).
 
-## Buenas prácticas
+## Contadores
 
-### Inicializar o incrementar un contador del canal
+### Contar cuántas veces pasó algo
 
 ```bash
 *( ^(#wins) ? %(#wins *(%(#wins) + 1)) : %(#wins 1) )
-"$(user) ahora tiene %(#wins) wins!"
+$(user) tiene %(#wins) victorias!
 ```
 
-Esto guarda `#wins` en la caché del canal. Los valores de caché expiran 24 horas después de su escritura más reciente. Para conservar el estado, usa una variable de base de datos como `%(*wins ...)` o una variable de base de datos por usuario como `%(**wins ...)`; las escrituras en base de datos requieren Premium o Pro.
+La primera línea empieza el conteo en `1` si el valor todavía no existe, y después suma `1`. La segunda línea publica el total.
 
-### Leer el estado de otro usuario
+- Los valores del canal (`#`) vencen **24 horas después de su última escritura**. Si nadie ejecuta el comando durante un día, el conteo vuelve a empezar.
+- Para un conteo que deba durar, usa una variable de base de datos: `%(*wins ...)` para un conteo por canal, o `%(**wins ...)` para uno por espectador. **Las escrituras en base de datos requieren Premium o Pro.** En el plan Gratis, la escritura se omite sin error. Consulta [Ejecución, errores y límites](/es/commands/advanced/execution/).
+
+### Consultar el valor de otro espectador
 
 ```bash
 %(##rank(&p1))
 ```
 
-En este ejemplo, `&p1` debe resolverse al login del usuario objetivo. Sin selector, las variables `##` y `**` se refieren al usuario actual.
+`&p1` es la primera palabra que escribió el espectador, así que el comando `!rank ronchi` lee el login `ronchi`. Si omites el selector, los valores `##` y `**` pertenecen a quien ejecuta el comando.
 
-### Proteger una acción con una condición
+## Condiciones
+
+### Elegir una de dos respuestas
 
 ```bash
-*( %(#ready) == 1 ? "Ready" : "Not ready" )
+*( %(#ready) == 1 ? "Listo" : "No listo" )
 ```
 
-Una ternaria elige un resultado. Coloca las funciones que cambian estado solo en la rama donde deben ejecutarse y asegúrate de que los permisos configurados del comando permitan invocarlo a los usuarios previstos.
+Un operador ternario `*( condición ? sí : no )` ejecuta una rama. Pon cualquier acción que cambie el canal solo en la rama donde debe ejecutarse.
 
-## Resumen de patrones
+### Ejecutar una acción solo si la condición es verdadera
 
-| Patrón | Idea de sintaxis | Propósito |
-|--------|------------------|-----------|
-| Inicializar o incrementar | `*(^(#x) ? %(#x *(%(#x) + 1)) : %(#x 1))` | Crear un contador o incrementarlo |
-| Selector de usuario | `%(**rank(&p1))` | Leer el valor persistente de un usuario |
-| Guarda | `*(condition ? ACTION : "")` | Ejecutar una acción solo si la condición es verdadera |
-| Rama | `*(condition ? YES : NO)` | Elegir una expresión según una condición |
+```bash
+*( %(#ready) == 1 ? "Listo" : "" )
+```
 
-## Patrones activados por eventos
+Con una segunda rama vacía, no se publica nada cuando la condición es falsa.
 
-Para comandos de redención o EventSub, primero confirma que el comando esté asociado al evento correspondiente. Por ejemplo, `$(reward.input)` tiene sentido en el contexto de una redención de puntos del canal; puede estar vacío durante una ejecución normal desde el chat.
+## Acciones con tiempo
 
-Mantén la moderación, cambios de roles o ajustes del canal, encuestas, TTS y triggers detrás de permisos apropiados para el comando o evento. Prueba el texto y las condiciones antes de añadir esas acciones.
+### Pausar un comando por un tiempo
 
-### Desactivar temporalmente un comando
-
-Esto desactiva `!spoilers` durante cinco minutos y después restaura el estado que tenía antes:
+Esto desactiva `!spoilers` durante cinco minutos y luego lo vuelve a activar:
 
 ```bash
 $(disable.command spoilers 300)
-"!spoilers queda pausado durante cinco minutos."
+!spoilers está pausado durante cinco minutos.
 ```
 
-### Programar un mensaje y una acción
+La duración está en segundos, de `1` a `604800`. El comando vuelve al estado que tenía antes del cambio, incluso si el bot se reinicia en medio. Consulta [Funciones de disponibilidad](/es/commands/advanced/functions/#funciones-de-disponibilidad).
 
-El timer devuelve el control de inmediato. El cuerpo se ejecuta después de cinco minutos, incluso si el bot se reinicia mientras tanto:
+### Enviar un mensaje y una acción más tarde
+
+El timer devuelve el control de inmediato. Su mensaje y su acción se ejecutan después de cinco minutos, incluso si el bot se reinicia en medio:
 
 ```bash
 $(timer 300 "¡Se acabaron los cinco minutos!" $(trigger.send airhorn))
 ```
 
-### Usar las opciones reales de la predicción
+Un timer se ejecuta como máximo una vez, y expira si llega con más de 10 minutos de retraso. Consulta [Ejecución, errores y límites](/es/commands/advanced/execution/).
 
-Lee la predicción activa antes de resolverla. Usa el número que muestra `get.prediction` o el título exacto de la opción:
+## Resultados de predicciones
+
+Usa dos comandos, para que un moderador elija al ganador después de ver las opciones. Los dos comandos deben tener acceso de **Moderadores**.
+
+**Comando 1, `!predicciones`**: muestra la pregunta y las opciones numeradas.
 
 ```bash
 $(get.prediction)
-$(end.prediction 1)
 ```
 
-Consulta la [Referencia de Funciones AST](/es/commands/advanced/functions) para ver operaciones de encuestas, predicciones, ruletas y disponibilidad.
+**Comando 2, `!ganador`**: resuelve la predicción. El moderador escribe el título de la opción o su número.
+
+```bash
+$(end.prediction &t)
+```
+
+Luego un moderador escribe `!ganador Sí` o `!ganador 1`. `&t` mantiene junto un título de varias palabras. `end.prediction` consulta en Twitch la predicción actual cada vez, y rechaza un número que no existe o un título que coincide con dos opciones.
 
 <Aside type="caution">
-El bot realiza acciones reales cuando ejecutas estas funciones. Prueba con un mensaje inocuo o un comando restringido antes de habilitar acciones como `$(ban ...)`, `$(set.title ...)` o `$(trigger.send ...)`.
+No pongas `$(end.prediction 1)` en la misma respuesta que `$(get.prediction)`. Así el ganador se elige sin que nadie lea antes las opciones. Mantén los dos pasos en comandos separados.
 </Aside>
 
-## Cuando un comando se vuelve difícil de mantener
+## Dividir un comando grande en varios
 
-Divide el trabajo en comandos personalizados más pequeños y llámalos con `#(commandName args...)`. Las referencias permiten hasta cinco niveles anidados y se detienen las referencias repetidas en la misma ruta de ejecución.
+Cuando un comando se vuelve difícil de leer, pasa partes a sus propios comandos y llámalos con `#(nombreComando argumentos...)`.
+
+```bash
+¡Bienvenido $(user)!
+#(reglas)
+```
+
+Aquí `!bienvenida` publica su saludo, y después se ejecuta `!reglas` y publica su propia respuesta. Si el argumento tiene signos de puntuación como `;`, `?` o `/`, ponlo entre comillas, por ejemplo `#(encuesta "¿Mejor mapa?;Nuke/Mirage")`. Sin comillas, esos caracteres pueden cambiar en el camino.
+
+Ten en cuenta estos límites:
+
+- Se pueden anidar hasta **cinco** niveles de llamadas, y una sola ejecución puede hacer como máximo **50** llamadas.
+- Un comando no puede llamarse a sí mismo, ni directamente ni a través de otro comando.
+- El comando llamado **no verifica su propia configuración de acceso** cuando lo llama un comando que tú escribiste. Solo aplica el acceso del comando que hace la llamada. Por eso, llama a un comando solo para moderadores únicamente desde un comando que también esté limitado a moderadores.
+- Cada comando llamado publica su propia respuesta, después de la respuesta principal.
+
+Consulta [Ejecución, errores y límites](/es/commands/advanced/execution/) para más detalles.
+
+## Resumen de patrones
+
+| Patrón | Sintaxis | Para qué sirve |
+|--------|----------|----------------|
+| Contar o iniciar un conteo | `*(^(#x) ? %(#x *(%(#x) + 1)) : %(#x 1))` | Crear un contador que falta o sumarle `1` |
+| Consulta de espectador | `%(##rank(&p1))` | Leer un valor guardado para un espectador |
+| Valor persistente de espectador | `%(**rank(&p1))` | Leer un valor de base de datos del espectador (guardarlo requiere Premium o Pro) |
+| Condición | `*(condición ? SÍ : NO)` | Elegir uno de dos resultados |
+| Acción condicional | `*(condición ? ACCIÓN : "")` | Hacer algo solo si la condición es verdadera |
+| Acción con tiempo | `$(timer segundos "mensaje" $(acción))` | Ejecutar después, como máximo una vez |
+| Llamar a otro comando | `#(nombreComando argumentos...)` | Ejecutar un comando separado después de la respuesta |
+
+<Aside type="tip">
+¿Necesitas saber qué hace una función o qué plan requiere? Consulta la [Referencia de funciones AST](/es/commands/advanced/functions/). Para los límites, consulta [Ejecución, errores y límites](/es/commands/advanced/execution/).
+</Aside>

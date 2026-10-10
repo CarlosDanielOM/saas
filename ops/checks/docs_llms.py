@@ -90,17 +90,18 @@ for prefix, language in [('', 'en'), ('/es', 'es')]:
         assert ORIGIN + prefix + '/' + guide + '/index.txt' in modules, (language, guide)
     syntax = fetch(prefix + '/commands/advanced/syntax/index.txt')
     greeting = 'Hello' if language == 'en' else 'Hola'
-    for example in ['%(#wins *(%(#wins) + 1))', '$(say hello \\:\\))', '"' + greeting + ' ${$(user)}!"', '&p1']:
+    escaped = '$(upper hello \\:\\))' if language == 'en' else '$(upper hola \\:\\))'
+    for example in ['%(#wins *(%(#wins) + 1))', escaped, '"' + greeting + ' ${$(user)}!"', '&p1']:
         assert example in syntax, (language, example)
     assistant = fetch(prefix + '/ai-assistants/index.txt')
     assert '!cc -cd=10 -ul=everyone hello ' in assistant
     for page_path in ['/ai-assistants/', '/commands/overview/', '/commands/advanced/syntax/']:
         assert '<table>' in fetch(prefix + page_path, 'text/html'), f'Missing rendered tables: {prefix + page_path}'
 
-assert '**Via Chat**' in fetch('/commands/overview/index.txt')
-assert '**Via Dashboard**' in fetch('/commands/overview/index.txt')
-assert '**Por Chat**' in fetch('/es/commands/overview/index.txt')
-assert '**Por Dashboard**' in fetch('/es/commands/overview/index.txt')
+assert '**Chat:**' in fetch('/commands/overview/index.txt')
+assert '**Example:**' in fetch('/commands/overview/index.txt')
+assert '**En el chat:**' in fetch('/es/commands/overview/index.txt')
+assert '**Ejemplo:**' in fetch('/es/commands/overview/index.txt')
 robots = fetch('/robots.txt', 'text/plain')
 assert 'User-agent: *\nAllow: /' in robots
 assert 'Sitemap: ' + ORIGIN + '/sitemap-index.xml' in robots

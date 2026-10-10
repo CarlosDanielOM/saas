@@ -1,88 +1,156 @@
 ---
 title: Text to Speech
-description: Configure the speech overlay, voices, filters, and chat or AST speech.
+description: Set up the speech overlay, pick a voice engine, use the !s command and AST speech functions, and manage filters, queue limits, and AI credits.
 sidebar:
   order: 3
 ---
 
-Text to speech (TTS) reads chat messages aloud in your stream. It generates audio and plays it through a browser overlay connected to your channel.
+Text to speech (TTS) reads messages aloud on your stream. Your viewers use the `!s` chat command, and your commands and channel point rewards can use AST functions. The audio plays through a browser source in OBS, so the stream hears it.
+
+**Who can change it:** the channel owner, or an admin with `tts:manage`. Admins with `tts:view` can see the settings but cannot change them.
+
+**Plans:** every plan includes every voice engine. Usage comes from your monthly [AI credits](#ai-credits-and-fallbacks).
 
 ## Set up the speech overlay
 
-1. Open your channel dashboard and go to **Modules → Text to Speech**.
-2. Copy the channel's speech URL with **Copy speech URL**.
-3. Add that URL as a browser source in your streaming software and keep it open while you want queued speech to play.
-4. Enable or add a `!s` chat command for your channel, then use `!s Hello chat!` to check playback.
+1. Go to **Modules → Text to Speech** and turn on **Enable channel TTS**.
+2. In **Speech URL**, click **Copy URL**.
+3. In OBS, add a **Browser Source** with that URL. Keep the source active while you want speech to play.
+4. Check that the **Speech Chat** command (`!s`) is on under **Commands**. Then type `!s Hello chat!` in your chat to test it.
 
-The overlay needs to be connected for queued messages to play. The queue accepts a limited number of pending messages; the channel owner or an admin with `tts:manage` can configure its maximum.
+If the browser source is not connected, new speech requests are refused with the message "Speech overlay is not connected." Queued speech waits until the source reconnects.
 
-## Providers and voices
+## Choose a voice engine
 
-Choose the default provider in **Modules → Text to Speech**. The setting applies to `!s` and to default AST TTS functions.
+Pick the engine in **Modules → Text to Speech → Voice**. The engine you pick is the default for `!s` and for `$(tts ...)`.
+
+| Engine | Voices | Cost | Voice tags |
+|---|---|---|---|
+| **Piper** | One English voice (Ryan, `en_US-ryan-medium`) and one Spanish voice (Ald, `es_MX-ald-medium`). | 1 credit per 50 characters, rounded up. | Removed. |
+| **Kokoro** | Preset voices, for example `af_heart` (English) and `ef_dora` (Spanish). | 1 credit per 15 characters, rounded up. | Removed. |
+| **Fish Audio** | Cloned voices. Four built-in voices, plus any voice you find in the voice browser. | 1.5 credits per character, rounded up. | Works. |
+
+**Dima Voice** appears in the list as "Coming soon." You cannot select it yet.
 
 ### Piper
 
-Piper is the local voice provider. Its available dashboard voices are:
+Piper uses the Ryan voice for English and the Ald voice for Spanish. The dashboard uses the channel's default language to choose between them.
 
-- English (US): Ryan — `en_US-ryan-medium`
-- Spanish (Mexico): Ald — `es_MX-ald-medium`
+Piper keeps working when your credits run out. Its usage can make your credit balance negative.
 
-Piper synthesis does not consume AI credits. Expressive tags are removed before Piper speaks; the remaining words are still read.
+### Kokoro
+
+Use Kokoro for a set of preset voices. Pick a default Kokoro voice in the dashboard, or choose one per command with `$(tts.kokoro voice_name text)`.
 
 ### Fish Audio
 
-Fish Audio provides cloned voices. The dashboard includes a voice browser, and its preset voices include Gojo, Rias Gremory, Carlos Bodoque, and Toji Fushiguro. The selected clone can be the channel's default voice or an explicitly named voice in an AST command.
+Fish Audio provides cloned voices. The four built-in voices are:
 
-Fish Audio usage consumes AI credits. In the voice browser, channel owners and admins with `tts:manage` can save up to 20 voices as favorites and rename each favorite's nickname. The UI continues to show the voice's display name (for example, **Pinky Pie** or **Carlos Bodoque**) and shows its nickname alongside it. A nickname is 1–40 letters, numbers, or underscores, starts with a letter, and is normalized to lowercase. Spaces in a voice's display name become underscores in its generated nickname: **Pinky Pie** normally gets `pinky_pie`; a number suffix is added if that nickname is already in use.
+- `gojo` (Gojo)
+- `rias_gremory` (Rias Gremory)
+- `toji_fushiguro` (Toji Fushiguro)
+- `carlos_bodoque` (Carlos Bodoque)
 
-For `$(tts.clone ...)` and its alias `$(tts.fish ...)`, the first argument is a single voice key: use a built-in key such as `carlos_bodoque`, a saved favorite's nickname such as `pinky_pie`, or a Fish voice ID. The display name with spaces is not parsed as one voice argument. For example, to speak using the built-in Carlos Bodoque voice in a command that passes the triggering text, use `$(tts.fish carlos_bodoque &t)`. If a voice is saved as a favorite and its nickname is changed to `bodoquin`, use `$(tts.fish bodoquin &t)`. `$(set.voice ...)` accepts a favorite's nickname or its full display name, including spaces.
+Fish Audio is the only engine that reads [voice tags](#voice-tags-fish-audio-only).
 
-Both providers are available on Free, Premium, and Pro plans. AI credit limits are shared across eligible AI features and vary by plan; TTS does not have a separate monthly allowance.
+### Find and save Fish voices
 
-## Chat command
+Open **Find voice** in the Fish Audio section to search the voice library. Samples from Fish play for free. Generating a preview uses credits.
 
-### `!s` — speak a message
+Click the star on a voice to save it as a **favorite**. A channel can keep up to 20 favorites. Then give a favorite a **nickname** so you can use it in commands:
+
+- Use 1–40 letters, numbers, or underscores. Start with a letter.
+- Nicknames are not case sensitive. They are saved in lowercase.
+- Nicknames must be unique. You cannot use the names of the four built-in voices.
+- If you do not set a nickname, DomDimaBot creates one from the voice name. For example, **Pinky Pie** becomes `pinky_pie`. If that name is taken, a number is added, such as `pinky_pie_2`.
+
+Only owners and admins with `tts:manage` can save, rename, or remove favorites.
+
+### Use a Fish voice in a command
+
+For `$(tts.clone ...)` and its alias `$(tts.fish ...)`, the first argument is one voice key. Use a built-in key, a favorite's nickname, or a Fish voice ID. Names with spaces do not work here.
+
+```text
+$(tts.fish carlos_bodoque &t)
+$(tts.fish bodoquin &t)
+```
+
+In the first line, `&t` is the text the viewer typed. In the second line, `bodoquin` is the nickname of a saved favorite.
+
+`$(set.voice ...)` also accepts a favorite's full display name, including spaces.
+
+## Chat command: `!s`
 
 **Usage:** `!s <message>`
 
-`!s` runs as a regular AST command and reads the message using the channel's configured default provider and voice. Its default template speaks the username followed by `dice:` and the message. Edit the Speech Chat command to change that template; the TTS language setting selects the voice language and does not change the template text. The shipped **Speech Chat** command `!s` is enabled by default for everyone. You can edit it from this page or from **Commands**. Its default cooldown is 0 seconds; only one editable command per channel can use a 0-second cooldown. Other commands must use a cooldown of at least 5 seconds on Free, 3 seconds on Premium, or 1 second on Pro.
+`!s` runs as a normal AST command. It reads the message with the channel's default engine and voice. The shipped **Speech Chat** command is on for everyone, with no cooldown.
+
+The default template is:
+
+```text
+$(tts $(user) dice: &t)
+```
+
+So chat hears the viewer's name, then `dice:`, then the message. To change the wording, edit the **Speech Chat** command under **Commands** or from the TTS page. The language setting changes the voice, not the template text.
 
 ```text
 !s Hello chat, welcome to the stream!
 ```
 
-The chat command applies the channel's message filters: skip emotes, replace links, normalize whitespace, and limit message length. The owner or an admin with `tts:manage` can change these in the TTS module. The message must still contain speakable text after filtering.
+Chat messages go through the [message filters](#message-filters-and-limits) before they are read. If nothing readable is left after filtering, the request is refused.
+
+**Cooldowns:** the Speech Chat command has a 0-second cooldown. Each channel can have only one editable command with a 0-second cooldown. Other commands must wait at least 5 seconds on Free, 3 seconds on Premium, or 1 second on Pro.
 
 ## AST functions
 
-Use these functions in custom commands and AST actions:
+Use these in custom commands, timers, and channel point rewards. See [Advanced commands](/commands/advanced/) for how AST works.
 
-| Function | Behavior |
+| Function | What it does |
 |---|---|
-| `$(tts <message>)` | Speaks with the channel's configured default provider and voice. |
-| `$(tts.speak <message>)` | Speaks with Piper, even when Fish Audio is the channel default. |
-| `$(tts.ai <message>)` | Alias for `$(tts ...)`. |
-| `$(tts.clone <voice> <message>)` | Speaks with a Fish Audio voice. Use a built-in voice name, a saved favorite's nickname, or a Fish voice ID as the first argument; the remaining text is spoken. |
-| `$(tts.fish <voice> <message>)` | Alias for `$(tts.clone ...)`. |
-| `$(set.voice <voice>)` | Changes the channel's default Fish Audio voice and selects Fish Audio as the provider. Use one of the four built-in voice names, or a saved favorite's nickname or display name. This action requires moderator-level access. |
+| `$(tts <message>)` | Speaks with the channel's default engine and voice. |
+| `$(tts.ai <message>)` | Same as `$(tts ...)`. |
+| `$(tts.speak <message>)` | Speaks with Piper, even when another engine is the default. |
+| `$(tts.piper <message>)` | Same as `$(tts.speak ...)`. |
+| `$(tts.kokoro <voice> <message>)` | Speaks with a Kokoro preset voice, such as `ef_dora`. |
+| `$(tts.clone <voice> <message>)` | Speaks with a Fish Audio voice. The first argument is a built-in key, a favorite's nickname, or a Fish voice ID. |
+| `$(tts.fish <voice> <message>)` | Same as `$(tts.clone ...)`. |
+| `$(set.voice <voice>)` | Changes the channel's default Fish voice and makes Fish the default engine. Accepts a built-in key, a favorite's nickname, or a favorite's display name. The bot then posts "TTS voice changed to …" in chat. Requires moderator level. |
 
 ```text
 $(tts Hello chat!)
 $(tts.speak This uses Piper.)
+$(tts.kokoro ef_dora Hola chat!)
 $(tts.clone gojo Hello from Gojo!)
 $(tts.fish carlos_bodoque &t)
-$(tts.fish pinky_pie &t)
-$(tts.fish bodoquin &t)
 $(set.voice my_favorite)
 ```
 
-Save a voice as a favorite before changing its nickname. Built-in voices can also be used directly by their built-in keys, such as `carlos_bodoque`; renaming a saved favorite changes the nickname used in AST, not the name shown as the voice's display name.
+Functions that read viewer text, such as `&t`, work best in channel point rewards that have **Viewer must type something** turned on. See [Channel Rewards](/rewards/).
 
-The queue plays speech in order, one item at a time per channel. Its configured maximum (1–20) counts the item currently playing along with queued items. If the browser overlay is disconnected, the server rejects new speech requests. When it reconnects, speech still waiting in the queue can continue; speech interrupted by the disconnect is not replayed.
+### Queue and overlay behavior
 
-## Expressive tags
+- Speech plays in order, one item at a time, for each channel.
+- The **Maximum messages waiting** setting counts the message that is playing now. With the default of 5, one message can play and four can wait.
+- If the browser source is disconnected, new requests are refused. Messages already waiting stay in the queue and play when the source reconnects.
+- A message that was interrupted by a disconnect is not replayed.
 
-Fish Audio supports expressive tags written in square brackets. Put tags in the message to request an emotion, delivery style, vocal sound, or effect:
+## Message filters and limits
+
+Set these in **Modules → Text to Speech → Message limits**:
+
+| Setting | Default | Range | What it does |
+|---|---|---|---|
+| **Maximum characters per message** | 280 | 30–500 | Longer messages are cut to this length. |
+| **Maximum messages waiting** | 5 | 1–20 | The queue size, including the message that is playing. |
+| **Skip emotes** | On | | Removes emote names before reading. |
+| **Links become [link]** | On | | Removes links. Nothing is read in their place. |
+| **Tidy extra spaces** | On | | Collapses repeated spaces. |
+
+The filters apply to chat messages and to AST speech. Filters run before the length limit, so a cut-off message never reads half a tag.
+
+## Voice tags (Fish Audio only)
+
+Fish Audio can change how a line sounds when you add a tag in square brackets:
 
 ```text
 !s [happy] Great stream today!
@@ -90,9 +158,9 @@ Fish Audio supports expressive tags written in square brackets. Put tags in the 
 $(tts.clone gojo [excited] Let's go!)
 ```
 
-Channel owners and admins with `tts:manage` can enable or disable individual tags in **Modules → Text to Speech → Expressive voice controls**. Disabled and unrecognized tags are stripped before synthesis. Tags only affect Fish Audio; Piper strips them and speaks the remaining message.
+Owners and admins with `tts:manage` can turn tags on or off in **Modules → Text to Speech → Voice tags**. All tags are on by default. A tag that is off, or that the bot does not recognize, is removed before synthesis. Piper and Kokoro remove every tag and read the rest of the message.
 
-The available tags are grouped as follows.
+The tags are:
 
 ### Emotions
 
@@ -110,34 +178,22 @@ The available tags are grouped as follows.
 
 `[pause]` `[long-pause]` `[audience laughing]` `[background laughter]`
 
-Common aliases include `[anger]` for `[angry]`, `[whispering]` for `[whisper]`, `[laughing]` for `[laugh]`, and `[crowd laughing]` for `[audience laughing]`.
+Some short forms also work. For example, `[anger]` means `[angry]`, `[whispering]` means `[whisper]`, `[laughing]` means `[laugh]`, and `[crowd laughing]` means `[audience laughing]`. Turning off a tag also turns off its short forms.
 
-## Configure TTS
+## Channel admin access
 
-In **Modules → Text to Speech**, the channel owner or an admin with `tts:manage` can configure:
+Channel owners always have access to TTS. For channel admins, the permissions are separate:
 
-- Whether TTS is enabled for the channel.
-- The default language and provider.
-- The English and Spanish Piper voices, or the Fish Audio default clone voice when Fish is selected.
-- Maximum message length (30–500 characters).
-- Maximum number of queued and currently playing items (1–20).
-- Whether chat-command messages skip emotes, replace links, and normalize whitespace.
-- Which expressive Fish Audio tags are enabled.
+- `tts:view` lets an admin read the TTS settings.
+- `tts:manage` lets an admin change the settings, save or rename favorites, and preview voices. It includes `tts:view`.
+- `commands:manage` lets an admin edit the **Speech Chat** `!s` command. It does not give access to the TTS settings.
+- `*` gives full access to TTS and commands.
 
-### Channel admin access
+You can combine these with `chat:admin`. For example, an admin can manage chat but only view the TTS settings.
 
-Channel owners can always access TTS. For channel admins, grants are independent:
+## AI credits and fallbacks
 
-- `tts:view` lets the admin read TTS module settings.
-- `tts:manage` lets the admin edit TTS settings and save, rename, or remove Fish Audio favorites. It also includes `tts:view`.
-- `commands:manage` lets the admin edit the **Speech Chat** `!s` command. It does not grant access to TTS settings by itself.
-- `*` retains full access, including TTS and command management.
-
-You can combine these with `chat:admin`; for example, an admin can manage chat while only viewing TTS settings. TTS voice previews require `tts:manage`.
-
-## AI credit use
-
-Piper is free and consumes no AI credits. Fish Audio uses **1.5 AI credits per character**, rounded up for each synthesis. Credit limits are shared across AI features; the plan values currently configured by the product are:
+AI credits are shared by all AI features on your channel. Each plan includes this many credits per month:
 
 | Plan | Monthly AI credits |
 |---|---:|
@@ -145,4 +201,19 @@ Piper is free and consumes no AI credits. Fish Audio uses **1.5 AI credits per c
 | Premium | 200,000 |
 | Pro | 800,000 |
 
-See the [dashboard](/dashboard/) guide for more about your channel settings.
+Credits per message:
+
+- **Piper:** 1 credit per 50 characters, rounded up.
+- **Kokoro:** 1 credit per 15 characters, rounded up.
+- **Fish Audio:** 1.5 credits per character, rounded up for each message.
+- **Voice previews** use credits the same way as the engine they preview.
+
+If credits run out or a voice cannot be generated, TTS switches to a fallback voice so speech keeps working:
+
+- **Credits run out, Fish Audio requested:** Free plans switch to Piper. Premium and Pro plans switch to Kokoro.
+- **Fish Audio or Kokoro fails to generate audio:** the message is read with Piper.
+- **Credit status cannot be checked:** the message is read with Piper.
+
+The voice you chose stays saved. Only the message that needed the fallback uses the fallback voice.
+
+For your channel's settings in general, see the [dashboard](/dashboard/) guide.

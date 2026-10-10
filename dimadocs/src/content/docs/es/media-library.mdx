@@ -1,43 +1,62 @@
 ---
-title: Biblioteca de medios
-description: Sube y administra los medios de activadores compartidos con tu canal.
+title: Biblioteca multimedia
+description: Sube sonidos, videos e imágenes para tus triggers y DimaFX, elige la visibilidad privada o pública y revisa los límites de almacenamiento de tu plan.
 sidebar:
   order: 6
 ---
 
-La **Biblioteca de medios** almacena imágenes, GIF, audio y video para tu canal. Ábrela desde **Panel → Modulos → Tu Biblioteca Multimedia**. La biblioteca muestra el nombre, tipo de medio, visibilidad y espacio utilizado por cada elemento. Usa **Actualizar** para volver a cargar la lista.
+La **Biblioteca multimedia** guarda los sonidos, videos, imágenes y GIF que usan tus [Triggers](/es/triggers/) y [DimaFX](/es/dimafx/). Ábrela desde **Módulos → Media Library**. Cada elemento muestra su nombre, tipo, visibilidad y cuánto almacenamiento usa. Selecciona **Actualizar** para recargar la lista. Subir archivos requiere el permiso **Subir multimedia**: ser el propietario del canal o un administrador con ese permiso.
 
-Esta biblioteca es para medios de activadores. La **Biblioteca de recursos** independiente, en **Panel → Configuración**, guarda imágenes y videos privados para diseños visuales, incluido Overlay Studio. Sus archivos, cuota y administración son independientes de esta biblioteca de medios; una imagen o un video de la Biblioteca de recursos no se puede seleccionar como medio de un activador.
+Esta biblioteca es para los medios de triggers y DimaFX. Los diseños de imágenes y videos para [Overlay Studio](/es/overlay-studio/) están en la **Biblioteca de recursos**, separada, en **Configuración** (consulta [Recursos para diseños](#recursos-para-diseños)).
 
-## Subir medios
+## Sube medios
 
-1. Selecciona **Subir Media**.
-2. Elige un archivo o arrástralo al área de carga.
-3. Escribe un nombre con letras, números y guiones bajos. Debe comenzar con una letra, no puede terminar con un guion bajo y admite hasta 60 caracteres.
-4. Si aparece la opción, elige la visibilidad y selecciona **Subir a la Biblioteca**.
+1. Selecciona **Subir**.
+2. Elige un archivo o arrástralo a la caja.
+3. Escribe un nombre. Usa letras, números y guiones bajos. Los espacios se convierten en guiones bajos. El nombre debe empezar con una letra y tener hasta 60 caracteres.
+4. Elige **Quién puede usarlo** (solo Premium y Pro) y selecciona **Subir**.
 
-El servidor comprueba el tipo MIME exacto del archivo. La lista permitida es: `video/mp4`, `video/mov`, `video/avi`, `video/flv`, `video/wmv`, `video/webm`, `video/mkv`; `image/gif`, `image/jpg`, `image/jpeg`, `image/png`, `image/bmp`, `image/tiff`, `image/svg`, `image/webp`; `audio/mp3`, `audio/flac`, `audio/wav`, `audio/ogg`, `audio/aac`, `audio/wma` y `audio/m4a`. El selector puede mostrar archivos con otros tipos MIME —por ejemplo, `image/svg+xml`, `video/quicktime` o `audio/mpeg`— que el servidor no acepta con esta lista.
+El servidor comprueba el tipo MIME de cada archivo con esta lista:
 
-| Plan | Tamaño máximo por archivo | Cuota de almacenamiento privado |
+- **Video:** `video/mp4`, `video/mov`, `video/avi`, `video/flv`, `video/wmv`, `video/webm`, `video/mkv`
+- **Imagen:** `image/gif`, `image/jpg`, `image/jpeg`, `image/png`, `image/bmp`, `image/tiff`, `image/svg`, `image/webp`
+- **Audio:** `audio/mp3`, `audio/flac`, `audio/wav`, `audio/ogg`, `audio/aac`, `audio/wma`, `audio/m4a`
+
+Los navegadores suelen etiquetar los archivos MP3 y MOV con otros tipos MIME (`audio/mpeg` y `video/quicktime`), que no están en la lista. Si una subida dice que el tipo de archivo no está permitido, conviértelo a un formato de la lista, como WAV o M4A para audio, o MP4 para video.
+
+## Límites por plan
+
+| Plan | Archivo más grande | Almacenamiento privado |
 |---|---:|---:|
-| Free | 5 MB | 0 MB (usa medios públicos) |
+| Free | 5 MB | Ninguno. Las subidas son públicas. |
 | Premium | 25 MB | 250 MB |
 | Pro | 100 MB | 1 GB |
 
-Los archivos privados cuentan su tamaño contra la cuota de almacenamiento del canal. Los públicos no. Los canales Free solo pueden subir medios públicos. Los canales Premium y Pro pueden elegir entre visibilidad privada o pública; las nuevas cargas se configuran como privadas en esos planes y como públicas en Free.
+Los archivos privados cuentan para tu almacenamiento. Los públicos no.
 
 ## Medios privados y públicos
 
-Los medios **privados** pertenecen a la biblioteca de tu canal y consumen su cuota de almacenamiento privado. Los **públicos** se comparten mediante la biblioteca pública y no consumen esa cuota. En el editor de Triggers, abre **Biblioteca Pública** para buscar por nombre, filtrar por tipo de medio, previsualizar un elemento y añadirlo a tu biblioteca. Añadir un elemento público no consume cuota.
+- Los archivos **privados** pertenecen a tu canal y usan tu almacenamiento privado.
+- Los archivos **públicos** aparecen en la biblioteca pública compartida. Otros streamers pueden usarlos, y no consumen tu almacenamiento. Las subidas del plan Free siempre son públicas.
 
-Puedes cambiar un elemento privado a público desde su tarjeta. Esto libera el espacio de la cuota, pero el cambio es irreversible: el recurso pasa a ser público y no se puede volver privado. Confirma este cambio con cuidado.
+Para añadir un archivo público, selecciona **Explorar biblioteca pública**, busca el elemento y añádelo. Añadir un archivo público no consume almacenamiento.
 
-## Eliminar medios y usarlos en Triggers
+**Hacer público** pasa un archivo privado a la biblioteca pública y libera su almacenamiento. **No se puede deshacer.** Un archivo público no puede volver a ser privado, y solo el soporte de DomDimaBot puede quitarlo.
 
-Selecciona **Eliminar** en un elemento de la biblioteca para quitarlo. No se puede quitar un elemento que todavía utiliza un trigger; primero edita o elimina el trigger que lo usa. Quitar un elemento público de la biblioteca de tu canal no elimina el recurso público compartido. Cuando se quita la última copia de un recurso privado de las bibliotecas, también se elimina el archivo almacenado.
+## Renombrar y borrar
 
-Para vincular medios a una acción automática, crea o edita un trigger en **Módulos → Triggers**. Consulta [Triggers y medios](/es/triggers/) para ver cómo configurarlos y reproducirlos. La fuente de navegador de OBS debe estar conectada para que los medios del trigger se reproduzcan en tu transmisión.
+- **Renombrar** cambia el nombre solo en tu biblioteca. Los nombres de tus triggers y de DimaFX no cambian.
+- **Borrar** quita un elemento de tu biblioteca. No puedes borrar un elemento que todavía usa un trigger o un artículo de DimaFX. La página indica dónde se usa cada elemento. Quítalo de esos lugares primero.
+- Quitar un archivo público de tu biblioteca no borra el archivo público compartido.
+- Cuando se quita la última copia privada de un archivo, también se elimina el archivo almacenado.
 
 ## Recursos para diseños
 
-Usa **Panel → Configuración → Biblioteca de recursos → Explorar biblioteca de recursos** para guardar imágenes y videos reutilizables en diseños. Acepta archivos PNG, JPG/JPEG, GIF, WebP, MP4 y WebM de hasta 50 MB cada uno. Los límites de almacenamiento para diseños son 100 MB en Free, 500 MB en Premium y 5 GB en Pro. Estos límites son independientes de los límites de medios para activadores indicados arriba. Los recursos se pueden seleccionar en las capas y diseños de alertas de Overlay Studio; consulta [Overlay Studio Alpha](/es/overlay-studio/) para configurarlo. Para eliminar un recurso usado por un diseño guardado o una superposición publicada, quítalo del diseño y vuelve a publicar la superposición afectada.
+Usa **Configuración → Biblioteca de recursos → Explorar biblioteca de recursos** para subir archivos para los diseños de Overlay Studio. La Biblioteca de recursos acepta:
+
+- **Imágenes y videos:** PNG, JPEG, GIF, WebP, MP4 y WebM.
+- **Sonidos de alerta:** audio MP3, WAV y Ogg de hasta 10 minutos.
+
+Cada archivo puede pesar hasta 50 MB. El almacenamiento para diseños es de 100 MB en Free, 500 MB en Premium y 5 GB en Pro. Estos límites son independientes de los medios de los triggers. Los recursos para diseños no se pueden usar como triggers.
+
+Para borrar un recurso de diseño, primero quítalo de cualquier diseño guardado y vuelve a publicar las superposiciones que lo usen. Consulta [Overlay Studio](/es/overlay-studio/) para la configuración.

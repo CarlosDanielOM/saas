@@ -1,32 +1,44 @@
 ---
 title: Triggers & Media
-description: Build audio and video triggers from your media library and play them through an OBS browser source.
+description: Play sounds and videos on your stream from a Channel Points reward, a chat command, or the dashboard, through one OBS Browser Source.
 sidebar:
   order: 5
 ---
 
-The Triggers dashboard manages a media library and named audio or video triggers. A trigger can be tested from the dashboard, called from a bot message with `$(trigger.send ...)`, or linked to a Twitch Channel Points reward.
+Triggers play a sound or video on your stream. Use them for airhorns, sound effects, and clips you want to play on demand. A trigger can run from a Channel Points reward, a chat command, or the **Test** button. The Triggers module is available on every plan. You need the **Triggers and media** permission: be the channel owner or an admin with that permission.
 
-## Set up the browser source
+## Set up the OBS source
 
-1. Open **Triggers** in your streamer dashboard and copy the OBS link.
-2. In OBS, add a **Browser** source and paste the link. Keep that source active while streaming so it can receive trigger playback.
-3. Return to the dashboard and use **Test** on a trigger. The test dialog has its own embedded preview, so you can preview media there without an OBS source.
-
-This is an OBS browser source that connects to DomDimaBot. There is no DomDimaBot OBS plugin to install. The dashboard also provides a preview link for its test dialog.
+1. Open **Modules → Triggers** and select **Copy** next to **Overlay URL for OBS**.
+2. In OBS, add a **Browser** source, paste the URL, and set its size to **1920×1080**. Every trigger plays in this one source.
+3. Keep the source open while you stream.
+4. Back on the dashboard, select **Test** on a trigger. The test dialog has its own preview, so you can check playback without OBS open.
 
 ## Add media and create a trigger
 
-Upload a file to **My Library**, choose an item from the public library, then create a trigger with a name and volume. Trigger names use letters, digits, and underscores. The current trigger player supports **audio and video**. Image and GIF assets can appear in the library, but cannot currently be attached as triggers.
+1. Upload a file to the [Media Library](/media-library/), or add one from the public library.
+2. Fill in the trigger, then select **Create trigger**:
+   - **Trigger name**: letters, numbers, and underscores, starting with a letter, up to 60 characters. Example: `Airhorn` or `Hydrate_Check`.
+   - **Volume**.
+   - **Create a channel points reward** (optional). See below.
 
-Free accounts can upload files up to 5 MB to the public library; public assets do not use private storage quota. Premium accounts can upload up to 25 MB per file and have 250 MB of private storage. Pro accounts can upload up to 100 MB per file and have 1 GB of private storage. Paid accounts can use public assets too. Private media is available only to its owner; public uploads are listed in the shared library.
+Triggers play audio and video. Images and GIFs can be in your library, but you cannot use them as triggers. Free channels upload to the public library. Premium and Pro channels can keep files private. File size and storage limits are in the [Media Library](/media-library/).
 
-Trigger media uses the **Media Library**. The separate **Asset Library** under **Dashboard → Settings** stores private images and videos for visual designs, including Overlay Studio. Design assets have their own plan allowance (Free 100 MB, Premium 500 MB, Pro 5 GB) and a 50 MB per-file limit; they cannot be attached to triggers. See [Media Library](/media-library/) for the distinction.
+After a trigger is created, its media cannot be swapped. Create a new trigger to use a different file.
 
-## Choose how a trigger plays
+## Ways to play a trigger
 
-- **Dashboard test:** Select **Test** on a trigger. Its embedded preview must connect before playback.
-- **Bot message:** Use `$(trigger.send trigger_name)` in a bot message or reward message. For example, `$(trigger.send airhorn)`. The trigger must exist and be enabled.
-- **Channel Points reward:** When creating or editing a trigger, enable its optional linked reward and set the reward title, cost, prompt, and message. The default message calls the trigger by name. Viewers can then redeem that Twitch reward to run its configured message.
+- **Dashboard test:** Select **Test** on a trigger. The test needs a connected trigger client: the dashboard preview or the OBS source.
+- **Chat command:** Use `$(trigger.send trigger_name)` in a command or reward message. For example, `$(trigger.send airhorn)`. The trigger must exist and be enabled. If it does not, the command replies with a message instead of playing.
+- **Channel Points reward:** Turn on **Create a channel points reward** in the trigger editor, then set:
+  - **Reward name** and **Cost (points)**.
+  - **Description viewers see**.
+  - **Runs when redeemed**. It starts as `$(trigger.send name)`. You can add more text, such as a chat message.
 
-The OBS browser source must be connected for live playback in your stream. If the dashboard preview has not connected and the test reports that no trigger clients are connected, retry the preview; for live playback, check that the OBS Browser source is open and uses the copied link for the correct channel.
+  Viewers who redeem the reward play the trigger. Deleting a trigger also removes its reward from Twitch.
+
+## Troubleshooting
+
+- **Test says it could not send the trigger:** Make sure the OBS Browser source is open, uses the copied URL, and is set to 1920×1080. Refresh the browser source, then test again.
+- **Nothing plays on stream:** Check that the source is active in the current scene and that the trigger is enabled.
+- **Want Bits-based sounds for viewers?** Use [DimaFX](/dimafx/). DimaFX uses its own OBS source, so it does not play through the Triggers source.

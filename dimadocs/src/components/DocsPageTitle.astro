@@ -1,0 +1,11 @@
+---
+import Default from '@astrojs/starlight/components/PageTitle.astro';
+
+// Show the page's one-line summary under the title so readers know right away
+// whether they are on the right page.
+const { entry } = Astro.locals.starlightRoute;
+const lead = entry.data.template === 'splash' ? undefined : entry.data.description;
+---
+
+<Default />
+{lead && <p class="docs-lead">{lead}</p>}

@@ -1,95 +1,105 @@
 ---
 title: AST Execution, Errors & Limits
-description: "How the AST parser runs, common errors, and plan-based safety limits."
+description: "How a custom command runs step by step, what the error messages mean, and the limits for loops, command references, timers, and saved variables on each plan."
 sidebar:
   order: 3
 ---
 
 import { Aside } from '@astrojs/starlight/components';
 
-This page explains what happens when an AST command runs and how to debug it when something goes wrong.
+Read this page when a command shows an error, does nothing, or runs in an order you didn't expect. It explains the steps the bot takes for each command and the limits that apply on each plan.
 
 ## Execution flow
 
-1. A command or event triggers the template
-2. Argument placeholders like `&p1` and `&t` are resolved
-3. Execution context is created with user, channel, and event data
-4. Input is tokenized
-5. Tokens are parsed into an AST
-6. The AST is evaluated
-7. Variables are written to memory, cache, or database if needed
-8. Final output is rendered and sent to chat; command references are dispatched afterward as separate commands
+1. A command, reward, or event starts the template.
+2. Placeholders are filled in. `&p1` is the first word the viewer typed, `&p2` the second, and so on. `&t` is everything after the last numbered word. See [AST Syntax & Data](/commands/advanced/syntax/).
+3. The bot builds the context: the channel, the user, the plan, and any event data.
+4. The text is split into tokens.
+5. The tokens are turned into a structure the bot can run.
+6. The structure runs from top to bottom. Functions run left to right.
+7. Variables are saved to memory, cache, or the database when they are set.
+8. The reply is posted to chat. Command references (`#(...)`) run afterward, in order, each with its own reply.
 
+## Who the command runs as
 
-## Context and permissions
+The context includes the channel, the user, the plan, and, for event commands, the event data. Event functions like `$(cheer.amount)` only have values when the matching event starts the command.
 
-The execution context supplies the channel, user, plan, command scope, and (for event commands) event payload. EventSub values are only populated for the corresponding event. Function permission checks also depend on the caller: chat and AI actions are checked against the requesting user’s role, while streamer-authored command templates run behind their configured command or event access rules. A command reference does not grant extra permissions.
+Permissions depend on what started the command:
 
-## Why this matters
-
-Understanding the order helps you debug issues like:
-
-- arguments not showing up where you expect
-- missing variables
-- branches running unexpectedly
-- command references returning surprising results
-- EventSub functions returning blank values in chat
+- **Your custom commands, rewards, and events** run with the access setting you chose for them. The bot doesn't check each function again, so a function inside a command that everyone can use runs for everyone.
+- **AI chat requests** check each function's minimum level. A viewer who asks the AI to ban someone, for example, gets a permission error unless they are a moderator. The AI also checks the access setting of any custom command it calls.
+- **Command references (`#(...)`)** from your own commands skip the called command's access setting. The outer command's access is the only check. If a command is open to everyone and it calls a moderator-only command, that moderator-only command still runs. Keep the access settings of every command in the chain in mind.
 
 ## Common error messages
 
-| Error Pattern | Meaning |
-|---------------|---------|
-| `[Unknown function: name]` | The function is not registered |
-| `[Loop error: invalid loop syntax]` | The loop syntax is malformed |
-| `[Loop error: missing loop body]` | The loop is missing `{}` |
-| `[Parse error: expr]` | The parser could not understand the expression |
-| `Usage: $(func ...)` | The function arguments are missing or invalid |
+| Message | What it means | What to do |
+|---------|---------------|------------|
+| `[Unknown function: name]` | No function has that name | Check the spelling against [AST Functions Reference](/commands/advanced/functions/). Aliases like `vip` and `add.vip` both work |
+| `Usage: $(name ...)` or `$(name ...)` usage text | A required argument is missing or wrong | Compare your call with the syntax in the functions reference |
+| `Error: permission denied - 'name' requires moderator permissions` | An AI chat request tried a function above its level | Nothing to fix. The viewer needs the right role |
+| `[Parse error: …]` followed by part of your text | The bot can't read that part of the command, for example a missing `)` or `"` | Look for an unclosed `$(`, `%(`, `*(`, or quote near the text shown |
+| `[Loop error: invalid loop syntax]` | A loop's `for` line is malformed | Check the loop syntax on [AST Syntax & Data](/commands/advanced/syntax/) |
+| `[Loop error: invalid range loop syntax]` | A range loop is missing a part | Use three parts: start, condition, and step |
+| `[Loop error: missing loop body]` or `[Loop error: unclosed loop body]` | The loop has no `{ ... }` block, or the block isn't closed | Add the braces |
+| `delay: must be between 0 and 60 seconds` | `$(delay)` got a number over 60 | Use `$(timer ...)` for longer waits |
+| `timer: usage: …` | `$(timer)` is missing its seconds or body | Add both: `$(timer seconds "body")` |
+| `timer: could not schedule timer` | The timer couldn't be saved, usually because the channel already has 100 timers waiting | Wait for some to run, then try again |
 
-## Limits and safety rules
+## Limits by plan
 
-### Loop limits by plan
+| Limit | Free | Premium | Pro |
+|-------|------|---------|-----|
+| Loop nesting depth | 2 | 3 | 4 |
+| Loop iterations | 25 | 50 | 100 |
+| Saving to database variables (`%(*name ...)`, `%(**name ...)`) | Not saved | Yes | Yes |
+| Temporary VIP and moderator days | No | Yes | Yes |
+| Roulette functions | No | Yes | Yes |
 
-| Plan | Max nesting depth | Max iterations |
-|------|-------------------|----------------|
-| Free | 2 | 25 |
-| Premium | 3 | 50 |
-| Pro | 4 | 100 |
+On Free, database writes are skipped without an error message. The command still runs, but the value isn't kept. Reads still work.
 
-### Command reference limits
+Free allows two levels of loops (one loop inside another). Premium allows three, and Pro allows four.
 
-- at most five nested command-reference levels are evaluated
-- repeated command references in the same reference path are stopped
+## Command reference limits
 
-### Delay limits
+A `#(commandName args)` call runs another custom command after the current reply:
 
-- `$(delay N)` supports up to `60` seconds
-- `$(timer seconds body)` schedules the body for `1` to `604800` seconds later (up to seven days)
-- Each timer saves its AST and execution context in the bot cache and can recover after a restart
-- A due timer gets a 10-minute grace period if the bot was offline; timers run at most once
-- Timer nesting is limited to five levels, with at most 100 pending timers per channel
+- Up to **five** levels of references can be nested.
+- A command already in the same call path is stopped, so a command can't call itself in a loop.
+- A single run can make at most **50** references in total, across every level.
+- Each referenced command's reply is posted separately, after the main reply.
+
+## Delay and timer limits
+
+- `$(delay N)` pauses the command for up to **60** seconds. It holds up the rest of the command while it waits.
+- `$(timer seconds body)` runs its body later, from **1** to **604800** seconds (seven days). It returns right away.
+- Each timer saves its command and context in the bot's cache, so it still runs after a restart.
+- If the bot was offline when a timer came due, it still runs if it's less than **10 minutes** late. After that, it expires.
+- A timer runs **at most once**.
+- Timers can be nested up to **five** levels deep.
+- A channel can have up to **100** timers waiting at the same time.
 
 ## Debugging checklist
 
 ### 1. Start simple
 
-Before building the full command, test a minimal version first.
+Before you build the full command, test a minimal version.
 
 ```bash
-"Hello $(user)!"
+Hello $(user)!
 ```
 
 ### 2. Add one feature at a time
 
-Good order:
+A good order:
 
 1. plain text
 2. arguments
 3. functions
 4. variables
-5. conditionals
+5. conditions
 6. loops
 
-### 3. Check initialization
+### 3. Check that a value exists
 
 If a cache or database value might not exist yet, check it first:
 
@@ -97,69 +107,73 @@ If a cache or database value might not exist yet, check it first:
 *(^(#wins) ? %(#wins) : "no wins yet")
 ```
 
-### 4. Remember assignment is direct
+### 4. Remember that assignment replaces the value
 
-This is wrong if you want to increment:
+This doesn't add one. It sets `#wins` to `1` every time:
 
 ```bash
 %(#wins 1)
 ```
 
-This is correct:
+To add one, read the value and write back the result:
 
 ```bash
 %(#wins *(%(#wins) + 1))
 ```
 
-### 5. Remember EventSub context
+### 5. Check the event that starts the command
 
-Functions like `$(cheer.amount)` or `$(reward.input)` only work when the command runs from the matching event type.
+Functions like `$(cheer.amount)` and `$(reward.input)` only have values when the matching event starts the command. In a normal chat test they're blank or `0`. That's expected.
 
 <Aside type="note">
-If an EventSub function seems empty during chat testing, that usually does not mean the function is broken. It often just means the current execution context does not contain that event payload.
+If an event function looks empty during chat testing, the function usually isn't broken. The test just doesn't include that event's data.
 </Aside>
 
 ## Common gotchas
 
-### Blank cache value
+### Expired cache values come back blank
 
-If a `#` or `##` variable expired, it comes back blank.
+A `#` or `##` variable expires 24 hours after its last write. An expired value reads as blank. Use `*` or `**` for values that must last.
 
-### `&t` placement
+### `&t` must come last
 
-`&t` must be last. You cannot define new `&pN` placeholders after it.
+`&t` takes the rest of the text. After it, you can't create a new numbered placeholder such as `&p3`. Using one returns an error.
 
-### Timer body runs later
+### `&p1` is one word
 
-`$(timer ...)` stores its body for later; its message and nested actions are not evaluated while the command is first running. It returns immediately, then sends any rendered message and performs its actions when the deadline arrives. If the timer is overdue by more than 10 minutes, it expires.
+`&p1` is only the first word. For a name with spaces, or a sentence, use `&t`.
 
-### Referenced commands send separately
+### Timer bodies run later
 
-The outer command sends its response first. Commands called with `#(...)` then run in order and send their own responses. Their rendered text is not interpreted as AST a second time.
+`$(timer ...)` saves its body. The message and actions inside it don't run while the command is running. The timer returns right away, and the message is posted and the actions run when the time comes. If it's more than 10 minutes late, it expires without running.
 
-### Loop overuse
+### Command references are sent separately
 
-If a loop can be replaced by a direct expression or command reference, prefer the simpler option.
+The main reply is posted first. Then each `#(...)` command runs in order and posts its own reply. If the main reply fails to post, the referenced commands are skipped. A reply from a referenced command isn't read as AST again.
 
-### Powerful actions in public commands
+### Loops are often unnecessary
 
-Commands using moderation, role, title, game, poll, or trigger actions should not be available to everyone.
+If a loop can be replaced by one expression or one command reference, use the simpler option.
 
-## Practical debugging mindset
+### Action functions in public commands
 
-When a command breaks, ask these questions in order:
+Commands that moderate, change the title or category, start polls, or fire triggers shouldn't be open to everyone. Set the access on the command, not only inside the template.
 
-1. Are my arguments correct?
-2. Did I create the variable before reading it?
-3. Am I assigning or incrementing?
-4. Am I in the right context for this function?
-5. Did I accidentally create recursion or loop complexity?
+## Practical debugging order
+
+When a command breaks, check these in order:
+
+1. Are the arguments what I expect?
+2. Did I create the variable before I read it?
+3. Am I assigning a value or adding to it?
+4. Is this function allowed here, on this plan, and for this event?
+5. Did I create a loop or reference chain that is too deep or too long?
 
 ## Safe testing tip
 
-Build the output first, then add side effects.
+Build the reply first, then add side effects.
 
-For example, test the text and branch logic before you add:
+For example, test the text and the conditions before you add:
 
 - `$(ban ...)`
 - `$(vip ...)`
@@ -167,4 +181,4 @@ For example, test the text and branch logic before you add:
 - `$(start.poll ...)`
 - `$(trigger.send ...)`
 
-That makes it much easier to confirm the logic before the command starts changing real channel state.
+This way you confirm the logic before the command changes anything on your channel.

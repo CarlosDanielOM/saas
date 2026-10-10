@@ -1,28 +1,83 @@
 ---
 title: Recompensas del canal
-description: Crea y gestiona recompensas de puntos del canal de Twitch y vincúlalas con acciones del bot.
+description: Crea recompensas de puntos del canal de Twitch desde DomDimaBot y define el mensaje, sonido o acción de voz que se ejecuta cuando un espectador la canjea.
 sidebar:
   order: 4
 ---
 
-El panel **Canjes** gestiona las recompensas de puntos personalizadas creadas mediante DomDimaBot y muestra tus recompensas de Twitch. Cada recompensa permite canjear puntos de Twitch; DomDimaBot puede procesar el canje y ejecutar el mensaje configurado para esa recompensa.
+Una recompensa del canal es una recompensa de puntos del canal de Twitch que tus espectadores canjean con sus puntos. DomDimaBot la crea por ti, escucha cada canje y ejecuta el mensaje que escribiste para ella. Úsala para enviar un mensaje al chat, reproducir un [disparador](/es/triggers/) como un sonido o una alerta, o leer en voz alta lo que escribió el espectador con [TTS](/es/tts/).
 
-## Crea una recompensa de DomDimaBot
+**Quién puede hacerlo:** el propietario del canal, o un administrador con `rewards:manage`. Los administradores con `rewards:view` pueden ver la lista, pero no cambiarla.
 
-1. Abre **Canjes** en el panel de tu canal y selecciona **Crear recompensa**.
-2. Define un título y un costo en puntos. También puedes configurar un mensaje para el espectador, un enfriamiento global en segundos, un mensaje, una duración, un color de fondo, si se requiere texto del espectador y si Twitch debe omitir la cola de solicitudes de canje.
-3. Guarda la recompensa. DomDimaBot la crea en Twitch y se registra para recibir sus eventos de canje.
+**Planes:** crear y administrar recompensas funciona en todos los planes. Subir el precio después de cada canje requiere un plan Premium o Pro.
 
-Puedes editar, habilitar o deshabilitar y eliminar las recompensas personalizadas desde el panel. La sección **Twitch** muestra las recompensas obtenidas de Twitch; usa el botón de actualizar de esa sección para volver a cargar la lista.
+**Elegibilidad en Twitch:** los puntos del canal son una función de Twitch, y Twitch decide quién puede usarlas. DomDimaBot no verifica la elegibilidad por su cuenta. Si Twitch rechaza crear la recompensa, la creación falla.
 
-## Configura qué sucede al canjear
+## Crear una recompensa
 
-El campo **Mensaje** pasa por el analizador de comandos especiales de DomDimaBot cuando se canjea la recompensa. Por ejemplo, un mensaje que incluya `$(trigger.send airhorn)` puede reproducir un disparador configurado. El analizador recibe como contexto el nombre de usuario, su login, el título de la recompensa y cualquier texto que haya enviado el espectador, para los comandos compatibles. La acción de un disparador también requiere que su fuente de navegador de OBS esté conectada; consulta [Disparadores y medios](/es/triggers/).
+1. Ve a **Módulos → Canjes** y haz clic en **Nueva recompensa**.
+2. En **La recompensa que ven tus espectadores**, define el nombre, el precio, el color y la descripción.
+3. En **Cuando alguien la canjea**, escribe el **Mensaje en el chat** y define las demás opciones.
+4. Opcional: en **Precio que sube**, define un aumento de precio (Premium y Pro).
+5. Haz clic en **Crear recompensa**. DomDimaBot crea la recompensa en Twitch y empieza a escuchar los canjes.
 
-El panel no crea tipos de recompensa integrados separados para TTS, sonidos, shoutouts u otras acciones. Configura el mensaje de la recompensa con comandos del bot compatibles para ejecutar la acción deseada. Si el chat está habilitado, también se envía al chat el mensaje analizado cuando no está vacío.
+### Campos de la recompensa
 
-## Enfriamientos y ajustes de las recompensas
+| Campo | Límite | Qué hace |
+|---|---|---|
+| **Nombre** | 45 caracteres | El título que ven los espectadores en el menú de puntos del canal. |
+| **Precio (puntos de canal)** | 1 o más | Cuántos puntos paga el espectador. |
+| **Color** | Color hexadecimal | El color de fondo de la recompensa en Twitch. |
+| **Descripción en Twitch** | 200 caracteres | El texto debajo de la recompensa en Twitch. |
+| **Mensaje en el chat** | 500 caracteres | Lo que ocurre cuando alguien la canjea. Consulta [Qué pasa al canjear](#qué-pasa-al-canjear). Déjalo vacío para no hacer nada. |
+| **El espectador debe escribir algo** | Activado o desactivado | Twitch le pide al espectador un texto. Pon `&t` en el mensaje para usarlo. |
+| **Tiempo de espera (segundos)** | 0 o más | Tiempo antes de que alguien pueda volver a canjear la recompensa. `0` significa sin espera. |
+| **Saltar la cola de solicitudes** | Activado o desactivado | Marca los canjes como completados de inmediato. Déjalo desactivado si revisas los canjes en la cola de Twitch. |
 
-El campo de enfriamiento se aplica como **enfriamiento global** de Twitch para esa recompensa. No es un enfriamiento compartido por todas las recompensas ni uno por espectador. El costo, el mensaje para el espectador, el estado habilitado, el requisito de texto del espectador y el comportamiento de la cola son ajustes de la recompensa que se envían a Twitch. El mensaje de DomDimaBot se procesa localmente cuando llega el evento de canje.
+## Qué pasa al canjear
 
-DomDimaBot también muestra la duración y el color de fondo de la recompensa. Los planes de pago permiten editar el costo original y el cambio de costo opcionales; estos ajustes pueden aumentar el costo tras un canje. La opción de volver al costo original controla si se restaura el costo variable.
+Cuando un espectador canjea una recompensa, DomDimaBot:
+
+1. Lee tu **Mensaje en el chat** y completa el nombre del espectador, el nombre de la recompensa y el texto que escribió.
+2. Envía el resultado al chat, si el chat está habilitado y el resultado no está vacío.
+3. Ejecuta los comandos que haya en el mensaje, como `$(trigger.send ...)` o `$(tts ...)`. Se ejecutan aunque el chat esté apagado.
+
+Algunos mensajes útiles:
+
+| Mensaje en el chat | Qué pasa |
+|---|---|
+| `$(user) acaba de hacerme tomar agua 💧` | Envía esa línea al chat con el nombre del espectador. |
+| `$(trigger.send airhorn)` | Reproduce el disparador llamado `airhorn`. La fuente de navegador de OBS de ese disparador debe estar conectada. |
+| `$(tts &t)` con **El espectador debe escribir algo** activado | Lee en voz alta lo que escribió el espectador, con tu voz TTS predeterminada. |
+| `$(user) dice: &t` | Envía al chat el texto que escribió el espectador. |
+
+Datos que se completan automáticamente:
+
+- `$(user)`: el espectador que canjeó.
+- `&t`: el texto que escribió el espectador. Queda vacío si **El espectador debe escribir algo** está desactivado.
+- `$(tts ...)`: lee en voz alta. Consulta [Texto a voz](/es/tts/).
+- `$(trigger.send nombre)`: reproduce un disparador por su nombre.
+
+Un disparador también puede crear su propia recompensa de puntos del canal. El mensaje de esa recompensa es `$(trigger.send <nombre del disparador>)`. En esta página, esa recompensa muestra **Reproduce** seguido del nombre del disparador. Puedes crearlas desde la página de [Disparadores](/es/triggers/).
+
+## Enfriamientos y ajustes de la recompensa
+
+El campo **Tiempo de espera (segundos)** configura el **enfriamiento global** de Twitch para esa recompensa. Es compartido por todos los espectadores. Cuando alguien canjea la recompensa, nadie más puede canjearla hasta que termine el tiempo de espera. No es un enfriamiento por espectador y no afecta a tus otras recompensas.
+
+Estos ajustes se envían a Twitch: precio, nombre, descripción, color, la opción de texto del espectador, la opción de saltar la cola y si la recompensa está visible. El mensaje en el chat lo guarda DomDimaBot y se usa cuando llega un canje.
+
+## Desactivar, editar o eliminar
+
+- Para ocultar una recompensa a los espectadores sin borrarla, desactiva **Visible para los espectadores** en la página de [Canjes](/es/redemptions/).
+- Para cambiar una recompensa, haz clic en **Editar**, cambia los ajustes y haz clic en **Guardar cambios**.
+- Para eliminar una recompensa, haz clic en el ícono de la papelera. La recompensa desaparece de Twitch de inmediato. Si había un disparador vinculado, el disparador se conserva, pero los espectadores ya no pueden reproducirlo con puntos.
+
+## Subidas de precio (Premium y Pro)
+
+Las subidas de precio hacen que una recompensa cueste más después de cada canje. Así se frena el spam en recompensas populares.
+
+- **Subir el precio en (puntos):** la cantidad que se suma después de cada canje. `0` mantiene el precio fijo. El formulario muestra los primeros precios, por ejemplo 500 → 550 → 600.
+- **Precio al que vuelve:** el precio original. Aparece al editar una recompensa.
+- **Volver al precio inicial cuando termine mi stream:** cuando termina tu stream, el precio vuelve al original. Solo aplica en planes de pago.
+
+En el plan Free estos campos están bloqueados.

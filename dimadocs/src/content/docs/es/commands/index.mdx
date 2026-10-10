@@ -1,6 +1,6 @@
 ---
 title: Comandos
-description: Consulta la sintaxis de los comandos integrados y aprende sobre comandos personalizados y flujos AST.
+description: "Elige la guía correcta: usa comandos integrados, crea comandos personalizados simples o escribe respuestas avanzadas con AST."
 sidebar:
   label: Comandos
   order: 2
@@ -8,26 +8,28 @@ sidebar:
 
 import { LinkCard, CardGrid } from '@astrojs/starlight/components';
 
-Los comandos de DomDimaBot permiten ejecutar acciones integradas y respuestas de chat creadas por el streamer. Los comandos disponibles en cada canal dependen de su configuración y de los ajustes de activación y permisos de cada comando.
-
-Elige tu camino:
+Los comandos son las palabras que escriben las personas en el chat, normalmente empezando con `!`, que hacen que el bot responda o actúe. Elige la página que coincida con lo que quieres hacer.
 
 <CardGrid>
   <LinkCard
-    title="Referencia de comandos integrados"
+    title="Usar un comando integrado"
     href="/es/commands/built-in/"
-    description="Sintaxis y comportamiento de los comandos integrados registrados por el bot."
+    description="Shoutouts, encuestas, predicciones, duelos, herramientas de moderación y más. Léela para ver lo que el bot ya hace."
   />
   <LinkCard
-    title="Resumen de comandos personalizados"
+    title="Crear un comando personalizado"
     href="/es/commands/overview/"
-    description="Crea y administra comandos personalizados, permisos y cooldowns."
+    description="Crea !discord, !reglas o un mensaje que se repita. Define quién puede usarlo y cuánto deben esperar."
   />
   <LinkCard
-    title="Comandos avanzados (AST)"
+    title="Escribir respuestas avanzadas (AST)"
     href="/es/commands/advanced/"
-    description="Sintaxis, funciones, reglas de ejecución y recetas para lógica compleja."
+    description="Contadores, el nombre de quien escribe, el juego actual, resultados aleatorios y otra lógica dentro de una respuesta."
   />
 </CardGrid>
 
-El comando de chat `!commands` muestra los comandos activados que el usuario actual tiene permiso para usar. El panel también incluye una página de Commands para administrar los comandos personalizados del canal.
+## Dónde administrar los comandos
+
+- **En el chat:** `!commands` muestra los comandos que puedes usar en este canal. Los moderadores pueden crear, editar y eliminar comandos personalizados con `!cc`, `!ec` y `!dc`.
+- **En el dashboard:** abre **Comandos** para activar o desactivar comandos, cambiar quién puede usarlos, definir los tiempos de espera y editar respuestas.
+- **Para espectadores:** la **Lista para espectadores** de la página Comandos muestra los comandos que cada espectador puede usar. Usa **Copiar enlace** para compartirla.

@@ -1,252 +1,235 @@
 ---
-title: Comandos
-description: Todo sobre los comandos predeterminados y personalizados de DomDimaBot.
+title: Comandos personalizados
+description: Crea, edita y elimina tus propios comandos de chat, palabras clave y mensajes que se repiten, con niveles de acceso y tiempos de espera.
 sidebar:
   order: 2
 ---
 
 import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
 
-Los comandos son la base de DomDimaBot. Se dividen en dos categorías: **Comandos Predeterminados** (incluidos) y **Comandos Personalizados** (creados por ti).
+Los comandos personalizados son respuestas que escribes tú. Cuando alguien escribe `!discord`, el bot responde con tu enlace. Los moderadores pueden crearlos desde el chat o desde el dashboard.
 
-## Comandos incluidos
+Para lo que el bot ya hace, como `!so` o `!poll`, consulta [Comandos integrados](/es/commands/built-in/).
 
-El catálogo de comandos, su activación inicial, sintaxis y comportamiento están en la [referencia de comandos incluidos](/es/commands/built-in/). La configuración inicial de canales nuevos activa `!s` y desactiva `!clearchat`; cada canal puede tener otros ajustes. Usa `!commands` para ver los comandos disponibles para ti en un canal.
-
-Esta página se centra en los comandos y temporizadores de chat recurrentes que crean los streamers. Para variables, funciones, condiciones y referencias a otros comandos, consulta las [guías de AST](/es/commands/advanced/).
-
-## Comandos Personalizados
-
-Los comandos personalizados los creas tú y pueden enviar texto, usar funciones AST, guardar datos, activar media y llamar otros comandos.
-
-<Aside type="tip">
-Consulta la página del [Dashboard](/es/dashboard) para una guía visual sobre cómo crear y gestionar comandos personalizados a través de la interfaz web.
-</Aside>
-
-### Cómo Crear Comandos Personalizados
-
-Puedes crear comandos personalizados de dos maneras:
+## Crear un comando
 
 <Tabs>
-<TabItem label="Por Chat">
+<TabItem label="Por chat">
 
-Usa el comando `!cc` directamente en el chat:
+Escribe `!cc`, luego el nombre (sin `!`) y después la respuesta:
 
 ```
-!cc <nombre_comando> <respuesta>
+!cc <nombre> <respuesta>
 ```
-
-El nombre del comando se crea **sin** el `!`.
 
 **Ejemplo:**
 ```
-😎Streamer: !cc discord ¡Mira mi Discord! discord.gg/ejemplo
-🤖 DomDimaBot: ¡Comando !discord creado!
+😎 Streamer: !cc discord ¡Mira mi Discord! discord.gg/ejemplo
+🤖 DomDimaBot: Command discord created
 ```
 
-Con opciones:
+**Con opciones:**
 ```
-!cc -cd=300 -ul=tier1 discord ¡Discord solo para subs! discord.gg/subonly
-🤖 DomDimaBot: ¡Comando !discord creado con configuración personalizada!
+!cc -cd=300 -ul=tier1 discord ¡Enlace de Discord solo para suscriptores! discord.gg/subonly
+🤖 DomDimaBot: Command discord created
 ```
 
-| Opción | Descripción |
-|--------|-------------|
-| `-cd=` | Enfriamiento en segundos. El mínimo depende del plan del dueño del canal: Free `5`, Premium `3`, Pro `1`. Un comando editable por canal puede usar `0`; la configuración inicial de canales nuevos ya usa ese espacio para `!s`. |
-| `-ul=` | Nivel de usuario, con número `1`–`10` o nombre: `1`/`everyone`, `2`/`tier1`, `3`/`tier2`, `4`/`tier3`, `5`/`vip`, `6`/`founder`, `7`/`mod`, `8`/`editor`, `9`/`admin`, `10`/`broadcaster`. `streamer` es un alias de `broadcaster`. `!cc -ul=7` y `!cc -ul=mod` son lo mismo. |
+| Opción | Qué define | Predeterminado |
+|--------|------------|----------------|
+| `-cd=` | Segundos que deben esperar los espectadores entre usos. Mínimo: Gratis `5`, Premium `3`, Pro `1`. `0` se permite en un solo comando editable por canal. | `10` |
+| `-ul=` | Quién puede usarlo. Usa un número del `1` al `10` o un nombre de la tabla. | `1` (todos) |
 
-**Editar:** `!ec <nombre> <nueva respuesta>`  
-**Eliminar:** `!dc <nombre>`
+| Número | Nombre | Quién |
+|--------|--------|-------|
+| `1` | `everyone` | Cualquiera en el chat |
+| `2` | `tier1` | Suscriptores |
+| `3` | `tier2` | Subs de nivel 2 |
+| `4` | `tier3` | Subs de nivel 3 |
+| `5` | `vip` | VIPs |
+| `6` | `founder` | Fundadores |
+| `7` | `mod` | Moderadores o más |
+| `8` | `editor` | Editores o más |
+| `9` | `admin` | Admins o más |
+| `10` | `broadcaster` | Solo tú (`streamer` también funciona) |
 
-De forma predeterminada, los comandos integrados `!cc`, `!ec` y `!dc` requieren acceso de moderador. Para editar o eliminar un comando personalizado también se comprueba su nivel de acceso; los comandos con permisos basados en etiquetas requieren que lo gestione un moderador. La página Commands del panel ofrece el editor visual de permisos.
+`-ul=7` y `-ul=mod` significan lo mismo.
+
+Mensajes del chat que puedes ver (el bot los muestra en inglés):
+
+- `Command already exists`: el nombre ya está en uso, incluidos los nombres de comandos integrados como `so`.
+- `Command cooldown must be 0 or at least N seconds`: el valor de `-cd=` está por debajo del mínimo de tu plan.
+- `User level X is invalid`: el valor de `-ul=` no está en la tabla.
 
 </TabItem>
-<TabItem label="Por Dashboard">
+<TabItem label="En el dashboard">
 
-Navega a la sección **Comandos** en tu dashboard para un editor visual con:
-
-- Lista completa de comandos con interruptores de activar/desactivar
-- Configuración de enfriamiento y permisos
-- Editor de respuestas para texto / plantillas AST
-- Gestión de temporizadores
+1. Abre **Comandos** en la barra de navegación.
+2. Pulsa **Nuevo comando**. Usa **Nueva palabra clave** para palabras que deben activar una respuesta sin `!`.
+3. Completa **Nombre** (la palabra después de `!`) y **Respuesta**.
+4. Define **Espera entre usos** y **Quién puede usarlo**.
+5. Opcional: activa **Repetir este comando con un temporizador** y elige los minutos.
+6. Pulsa **Crear**.
 
 </TabItem>
 </Tabs>
 
-### Comandos Básicos vs Avanzados
+## Editar, desactivar o eliminar un comando
 
-Hay dos formas útiles de entender los comandos personalizados:
+- **Editar la respuesta:** `!ec <nombre> <nueva respuesta>`.
+- **Cambiar solo el tiempo de espera o el acceso:** `!ec -cd=<segundos> <nombre>` o `!ec -ul=<nivel> <nombre>`. Deja fuera la respuesta para conservarla. Pon las opciones antes del nombre.
+- **Eliminar:** `!dc <nombre>`. Los comandos integrados no se pueden eliminar.
+- **Activar o desactivar:** `!enable <nombre>` o `!disable <nombre>`. El nombre funciona con o sin `!`.
 
-| Tipo | Mejor para | Ejemplo |
-|------|------------|---------|
-| **Comandos de texto básicos** | enlaces, reglas, información simple | `!discord`, `!reglas`, `!horario` |
-| **Comandos AST** | respuestas dinámicas, contadores, lógica, triggers | `!uptime`, `!abrazo`, sistemas de lealtad |
+Solo puedes editar o eliminar un comando si tu nivel de acceso es igual o superior al que requiere. Los comandos con reglas de etiquetas o de cuentas solo pueden gestionarlos los moderadores desde el chat, y ahí no se puede usar `-ul=`. Cambia esas reglas desde el dashboard.
 
-### Nota importante sobre AST
+## Tiempos de espera y acceso
 
-DomDimaBot **no** usa sintaxis tipo `{user}` o `{game}` para la lógica avanzada de comandos.
+- **El tiempo de espera es compartido por todo el canal.** Después de que un espectador usa un comando, nadie puede volver a usarlo hasta que termine la espera.
+- **Mínimos por plan:** Gratis `5` segundos, Premium `3`, Pro `1`. El formulario del dashboard acepta hasta 60 segundos.
+- **Espera de 0 segundos:** un comando editable por canal puede usar `0`. Los canales nuevos ya asignan ese espacio a `!s`, así que otro comando no puede usar `0` hasta que cambies `!s`.
+- **Quién puede usarlo:** elige un método por comando. **Nivel de usuario** usa un nivel, como Suscriptores o Moderadores. **Etiquetas y cuentas** permite o excluye grupos y agrega cuentas específicas de Twitch. Los dos métodos no se combinan.
 
-Usa:
+## Palabras clave (sin `!`)
 
-- `$(user)` para el usuario actual
-- `$(twitch.game)` para el juego actual
-- `&p1`, `&p2`, `&t` para argumentos
-- `%(...)` para variables que tú mismo creas
+Una palabra clave responde cuando aparece una palabra en el chat, así que los espectadores no necesitan escribir `!`. En el dashboard usa **Nueva palabra clave** y elige una regla de coincidencia:
 
-## Temporizadores de chat recurrentes
+- **Al inicio del mensaje:** el mensaje empieza con la palabra.
+- **En cualquier parte del mensaje:** la palabra aparece en cualquier posición.
+- **Mensaje completo:** todo el mensaje es la palabra.
 
-Los moderadores pueden gestionar mensajes de chat recurrentes con `!cct`, `!ect` y `!dct`, o mediante `!timer create|edit|delete|list`. Los temporizadores solo envían mensajes cuando el canal está en vivo. Los mensajes pueden usar la sintaxis AST.
+Las palabras clave siempre esperan al menos el mínimo de tu plan. No aparecen en `!commands`.
+
+## Mensajes que se repiten (temporizadores)
+
+Los mensajes que se repiten se publican con un temporizador mientras tu canal está en vivo. Los moderadores pueden gestionarlos con `!cct`, `!ect` y `!dct`, o con `!timer create`, `!timer edit`, `!timer delete` y `!timer list`. `!timers` funciona igual.
 
 ```text
-!cct redes 15 Visita los enlaces del canal!
+!cct redes 15 ¡Mira los enlaces del canal!
 !ect redes 30 Los enlaces actualizados están en los paneles.
 !dct redes
 !timer list
 ```
 
-Los nombres de temporizador pueden contener letras, números y guiones bajos, con un máximo de `30` caracteres. Los mensajes pueden tener hasta `350` caracteres. Límites de temporizadores activos: Free `5`, Premium `15` y Pro `50`.
+| Plan | Intervalos | Temporizadores activos |
+|------|------------|------------------------|
+| Gratis | `10`, `20`, `30`, `40`, `50` o `60` minutos | `5` |
+| Premium | Múltiplos de `5` desde `5` hasta `180` minutos | `15` |
+| Pro | Cualquier número entero de minutos desde `1` hasta `180` | `50` |
 
-- Free: `15`, `30`, `45` o `60` minutos
-- Premium: múltiplos de `5` entre `5` y `180` minutos
-- Pro: cualquier número entero de minutos entre `1` y `180`
+- **Nombre:** hasta `30` caracteres: letras, números y guiones bajos.
+- **Mensaje:** hasta `350` caracteres. Los mensajes pueden usar funciones `$(...)`.
+- **Intervalo:** un número de minutos, o agrega `m` o `h` (por ejemplo `15m` o `1h`).
+- **Cambio de plan:** si un intervalo deja de estar permitido, el temporizador sigue funcionando. Elige un intervalo permitido antes de editarlo de nuevo.
 
-Introduce un número entero de minutos o usa el sufijo `m` o `h` (por ejemplo, `15m` o `1h`). Para editar un temporizador existente, el intervalo debe estar permitido por el plan actual. Si un cambio de plan deja un intervalo fuera del plan, el temporizador puede seguir funcionando, pero debes cambiarlo a un intervalo permitido antes de editarlo.
+## Escribir una respuesta
 
-## Ejemplos de Patrones Correctos para Comandos Personalizados
+Las respuestas usan funciones `$(...)` para texto dinámico. El bot no reemplaza marcadores tipo `{user}`.
+
+| Escribes | El bot inserta |
+|----------|----------------|
+| `$(user)` | El nombre del espectador |
+| `$(twitch.channel)` | El nombre de tu canal |
+| `$(twitch.game)` | El juego actual |
+| `$(random 10)` | Un número aleatorio del 0 al 9 |
+| `&p1`, `&p2` | La primera y la segunda palabra después del comando |
+| `&t` | El resto de lo que escribió el espectador |
+
+Para contadores, condiciones y más funciones, consulta las [guías de comandos avanzados](/es/commands/advanced/).
+
+## Ejemplos
 
 <Tabs>
 <TabItem label="Texto">
 
-Respuestas de texto plano para información, enlaces y anuncios.
+Texto simple para información, enlaces y reglas.
 
 ```
 !cc discord ¡Mira mi Discord! discord.gg/ejemplo
 ```
 
-**Ejemplo en chat:**
+**En el chat:**
 ```
 💬 Espectador: !discord
 🤖 DomDimaBot: ¡Mira mi Discord! discord.gg/ejemplo
 ```
 
-```
-!cc reglas ¡Por favor sé amable y diviértete!
-```
-
 </TabItem>
 <TabItem label="Funciones">
 
-Las respuestas dinámicas deben usar funciones AST.
+Usa funciones `$(...)` cuando la respuesta deba cambiar.
 
-**Ejemplo:**
 ```
-!cc gameinfo $(twitch.channel) está jugando ahora mismo a $(twitch.game)
+!cc infojuego $(twitch.channel) está jugando ahora mismo a $(twitch.game)
 ```
 
-**Ejemplo en chat:**
+**En el chat:**
 ```
-💬 Espectador: !gameinfo
+💬 Espectador: !infojuego
 🤖 DomDimaBot: DomDima está jugando ahora mismo a Valorant
 ```
 
 </TabItem>
-<TabItem label="Parámetros">
+<TabItem label="Argumentos">
 
-Usa `&p1`, `&p2` y `&t` cuando quieras recibir entrada del usuario.
+Usa `&p1`, `&p2` y `&t` para usar lo que el espectador escribe después del comando.
 
-**Argumento único:**
 ```
 !cc abrazo $(user) le manda un cálido abrazo a &p1! 🤗
 ```
 
-**Ejemplo en chat:**
+**En el chat:**
 ```
 💬 Espectador: !abrazo @AmigoUsuario
 🤖 DomDimaBot: Espectador le manda un cálido abrazo a @AmigoUsuario! 🤗
 ```
 
-**Texto restante:**
 ```
 !cc decir $(user) dice: &t
 ```
 
-**Ejemplo en chat:**
+**En el chat:**
 ```
 💬 Espectador: !decir este bot está increíble
 🤖 DomDimaBot: Espectador dice: este bot está increíble
 ```
 
 </TabItem>
-<TabItem label="Datos Guardados">
+<TabItem label="Contadores">
 
-Las variables AST las creas tú. No existen por defecto.
+Las variables las creas tú. No existen hasta que les das un valor.
 
 ```
-!cc wins *(^(#wins) ? %(#wins *(%(#wins) + 1)) : %(#wins 1)) $(user) ahora tiene %(#wins) wins!
+!cc victorias *(^(#victorias) ? %(#victorias *(%(#victorias) + 1)) : %(#victorias 1)) $(user) lleva victorias: %(#victorias)
 ```
 
-**Ejemplo en chat:**
+**En el chat:**
 ```
-💬 Espectador: !wins
-🤖 DomDimaBot: Espectador ahora tiene 1 wins!
+💬 Espectador: !victorias
+🤖 DomDimaBot: Espectador lleva victorias: 1
 ```
 
-En el siguiente uso:
-
-```text
-💬 Espectador: !wins
-🤖 DomDimaBot: Espectador ahora tiene 2 wins!
-```
+Cada uso siguiente suma una.
 
 </TabItem>
-<TabItem label="Triggers y Encadenamiento">
+<TabItem label="Triggers y otros comandos">
 
-Puedes disparar media configurada y llamar otros comandos desde AST.
-
-**Ejemplo de trigger:**
-```
-!cc airhorn $(trigger.send airhorn) AIRHORN!
-```
-
-**Ejemplo en chat:**
-```
-💬 Espectador: !airhorn
-🤖 DomDimaBot: AIRHORN!
-```
-
-Si existe un trigger llamado `airhorn`, se disparará cuando corra el comando.
-
-**Ejemplo de referencia a comando:**
+Una respuesta puede reproducir un trigger o ejecutar otro comando.
 
 ```
-!cc creator Mira mis enlaces aquí: #(discord)
+!cc airhorn $(trigger.send airhorn) ¡AIRHORN!
 ```
 
-Esto ejecuta el comando `discord` dentro de `creator`.
+Si existe un trigger llamado `airhorn`, se reproduce cuando se ejecuta el comando.
+
+```
+!cc creador Mira mis enlaces aquí: #(discord)
+```
+
+Esto ejecuta el comando `discord` dentro de `creador`.
 
 </TabItem>
 </Tabs>
 
-### Comandos Personalizados Avanzados
-
-Los ejemplos anteriores solo cubren lo básico. El sistema AST completo soporta:
-
-- **Condiciones** con `*(...)`
-- **Variables y almacenamiento** con `%(...)`
-- **Verificación de existencia** con `^(...)`
-- **Argumentos** con `&p1`, `&p2` y `&t`
-- **Referencias a comandos** con `#(...)`
-- **Bucles, arrays y lógica avanzada**
-- **Llamadas a funciones** para Twitch, moderación, TTS, triggers, EventSub y más
-
-👉 Para la referencia AST completa y correcta, usa estas páginas:
-
-- **[Comandos Personalizados Avanzados](/es/commands/advanced)**
-- **[Sintaxis y Datos de AST](/es/commands/advanced/syntax)**
-- **[Referencia de Funciones AST](/es/commands/advanced/functions)**
-- **[Ejecución, Errores y Límites de AST](/es/commands/advanced/execution)**
-- **[Recetas y Patrones AST](/es/commands/advanced/recipes)**
-
----
-
-*Para crear comandos personalizados, usa el comando `!cc` en el chat o visita la sección Comandos en tu panel de control.*
+<Aside type="tip">
+La página **Comandos** del dashboard muestra todos los comandos, su estado y su nivel de acceso en un solo lugar.
+</Aside>

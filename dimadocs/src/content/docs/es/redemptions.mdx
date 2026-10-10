@@ -1,20 +1,51 @@
 ---
 title: Canjes
-description: Consulta las recompensas de puntos de Twitch y administra las recompensas de DomDimaBot desde el panel.
+description: Administra las recompensas de puntos de tu canal desde la página Canjes, incluidas las que creó DomDimaBot y las que se hicieron directamente en Twitch.
 sidebar:
   order: 7
 ---
 
-La página **Canjes** del panel tiene dos listas: **Canjeos Personalizados**, que se administran con DomDimaBot, y **Recompensas Nativas de Twitch**, que se consultan desde Twitch. Esta página sirve para configurar recompensas, no para procesar la cola de canjes individuales de los espectadores.
+La página **Canjes** es donde administras las recompensas de puntos de tu canal. Puedes crear, editar, ocultar y eliminar las recompensas que creó DomDimaBot para ti. También puedes ver las recompensas que se hicieron directamente en Twitch.
 
-## Recompensas personalizadas
+**Quién puede verla y cambiarla:** para verla se necesita `rewards:view`. Para crear, editar, ocultar y eliminar se necesita `rewards:manage`. El propietario del canal tiene ambos permisos.
 
-Cada tarjeta de DomDimaBot muestra el título, el mensaje de solicitud, el costo, el tiempo de espera global y si está habilitada. Usa **Crear Recompensa** para añadir una. En una recompensa personalizada existente, puedes editarla, habilitarla o deshabilitarla, y eliminarla. La guía [Recompensas del canal](/es/rewards/) explica sus opciones y cómo funcionan los mensajes.
+Esta página no muestra una cola ni un historial de canjes. DomDimaBot ejecuta cada canje en cuanto llega. Para ver quién canjeó qué, o para cumplir los canjes, usa las páginas de Twitch.
 
-Después de crear o cambiar una recompensa en Twitch, usa **Actualizar** para volver a cargar las listas del panel. La actualización combinada tiene un breve período de espera. También puedes actualizar solo la lista de Twitch.
+## Recompensas y canjes
 
-## Recompensas de Twitch
+Estas dos palabras significan cosas distintas:
 
-La sección **Twitch** muestra las recompensas de puntos del canal obtenidas de Twitch. Estas tarjetas son de solo lectura aquí; administra las recompensas desde Twitch. Si una recompensa de Twitch tiene el mismo título que una recompensa personalizada de DomDimaBot, no aparece en esta lista separada para evitar mostrarla dos veces.
+- Una **recompensa** es el artículo que aparece en el menú de puntos del canal de Twitch. Tiene un nombre, un precio, un tiempo de espera y un mensaje en el chat. Las recompensas se administran en esta página.
+- Un **canje** es un espectador que gasta puntos en una recompensa. Cada canje ejecuta el mensaje en el chat de la recompensa. Consulta [Recompensas del canal](/es/rewards/) para ver qué pasa al canjear.
 
-Las recompensas personalizadas de DomDimaBot crean y administran recompensas de puntos de Twitch vinculadas al procesamiento de canjes del bot. Para ver la configuración, las acciones disponibles en los mensajes, los tiempos de espera y las opciones de costo limitadas por plan, consulta [Recompensas del canal](/es/rewards/).
+## Diseño de la página
+
+La página tiene dos listas.
+
+**Tus recompensas** muestra las recompensas que creó DomDimaBot. Cada tarjeta muestra:
+
+- El nombre y el precio.
+- **Oculta**, cuando la recompensa está desactivada aquí.
+- **En pausa**, cuando la recompensa está pausada en Twitch. Reanúdala en Twitch.
+- Lo que hace la recompensa: **Envía un mensaje al chat**, o **Reproduce** un disparador vinculado.
+- La subida de precio, el tiempo de espera y si el espectador debe escribir un texto, cuando están configurados.
+
+Usa el interruptor de una tarjeta para ocultar o mostrar la recompensa sin borrarla. Usa **Editar** y el ícono de la papelera para cambiarla o eliminarla. Usa el buscador cuando tengas muchas recompensas.
+
+**Creadas en Twitch** muestra las recompensas que no creó DomDimaBot. Aquí no puedes editarlas. Haz clic en **Abrir recompensas en Twitch** para administrarlas en Twitch. Si una recompensa de Twitch tiene el mismo nombre que una de tus recompensas de DomDimaBot, no se repite en esta lista.
+
+El panel **Qué pasa cuando alguien canjea** a la derecha muestra los pasos del canje y los datos que puedes usar en un mensaje del chat.
+
+## Actualizar las listas
+
+El encabezado tiene un botón **Actualizar**. Vuelve a cargar las dos listas y los vínculos con los disparadores. Si cambiaste una recompensa en Twitch, haz clic en él para ver el cambio aquí.
+
+Entre actualizaciones hay un tiempo de espera de 30 segundos. El botón muestra **Actualizar en** y los segundos que faltan.
+
+## Preguntas frecuentes
+
+**¿Por qué no puedo editar aquí una recompensa de Twitch?** Twitch solo permite que la app que creó una recompensa la cambie. Las recompensas creadas en Twitch deben editarse en Twitch.
+
+**¿Por qué una recompensa dice "En pausa"?** Está pausada en Twitch, así que los espectadores no pueden canjearla por ahora.
+
+**¿Dónde configuro lo que hace una recompensa?** Abre la recompensa con **Editar**, o lee [Recompensas del canal](/es/rewards/) para ver cada campo y los datos que puedes usar en el mensaje del chat.

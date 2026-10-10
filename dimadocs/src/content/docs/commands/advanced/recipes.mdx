@@ -1,88 +1,131 @@
 ---
 title: AST Recipes & Patterns
-description: "Reusable AST patterns for counters, guards, and event driven commands."
+description: "Copy-ready AST patterns for counters, conditions, user lookups, timed actions, and prediction results, with the plan rules and limits each one depends on."
 sidebar:
   order: 4
 ---
 
 import { Aside } from '@astrojs/starlight/components';
 
-Use these patterns as starting points. Test state changes and action functions in a restricted command before enabling them for chat.
+These recipes are starting points. Each one is a complete custom command reply, or a pair of commands where noted. Test any recipe that changes channel state in a command only you can use before you open it to others. Syntax details are on [AST Syntax & Data](/commands/advanced/syntax/), and every function is listed on [AST Functions Reference](/commands/advanced/functions/).
 
-## Best practices
+## Counters
 
-### Initialize or increment a channel counter
+### Count how many times something happened
 
 ```bash
 *( ^(#wins) ? %(#wins *(%(#wins) + 1)) : %(#wins 1) )
-"$(user) has %(#wins) wins!"
+$(user) has %(#wins) wins!
 ```
 
-This writes `#wins` in channel cache. Cache values expire 24 hours after their most recent write. For durable state, use a database variable such as `%(*wins ...)` or a user database variable such as `%(**wins ...)`; database writes require Premium or Pro.
+The first line starts the count at `1` when the value doesn't exist yet, and adds `1` after that. The second line posts the total.
 
-### Read another user's state
+- Channel values (`#`) expire **24 hours after their last write**. If nobody triggers the command for a day, the count starts over.
+- For a count that must last, use a database variable: `%(*wins ...)` for one count per channel, or `%(**wins ...)` for one count per viewer. **Database writes need Premium or Pro.** On Free, the write is skipped without an error. See [Execution, Errors & Limits](/commands/advanced/execution/).
+
+### Look up another viewer's value
 
 ```bash
 %(##rank(&p1))
 ```
 
-Here `&p1` must resolve to the target user's login. Without a selector, `##` and `**` variables refer to the current user.
+`&p1` is the first word the viewer typed, so the command reads `!rank ronchi` as the login `ronchi`. Leave out the selector and `##` and `**` values belong to the person running the command.
 
-### Guard an action with a condition
+## Conditions
+
+### Choose one of two replies
 
 ```bash
 *( %(#ready) == 1 ? "Ready" : "Not ready" )
 ```
 
-A ternary chooses one result. Put state-changing functions only in the branch where they should run, and make sure the command’s configured permissions allow the intended users to invoke it.
+A ternary `*( condition ? yes : no )` runs one branch. Put any action that changes the channel only in the branch where it should run.
 
-## Pattern summary
+### Run an action only when a condition is true
 
-| Pattern | Syntax idea | Purpose |
-|---------|-------------|---------|
-| Initialize-or-increment | `*(^(#x) ? %(#x *(%(#x) + 1)) : %(#x 1))` | Create a missing counter or increment it |
-| User selector | `%(**rank(&p1))` | Read a user's persistent value |
-| Guard | `*(condition ? ACTION : "")` | Run an action only when a condition is true |
-| Branch | `*(condition ? YES : NO)` | Choose one expression based on a condition |
+```bash
+*( %(#ready) == 1 ? "Ready" : "" )
+```
 
-## Event driven patterns
+With an empty second branch, nothing is posted when the condition is false.
 
-For redemption or EventSub commands, first confirm the command is attached to the relevant event. For example, `$(reward.input)` is meaningful in a channel points redemption context; it can be empty during ordinary chat execution.
+## Timed actions
 
-Keep moderation, role changes, channel settings, polls, TTS, and trigger actions behind appropriate command or event access controls. Test the text and conditions before adding those actions.
+### Pause a command for a set time
 
-### Temporarily disable a command
-
-This disables `!spoilers` for five minutes, then restores the state it had before the timer started:
+This turns `!spoilers` off for five minutes, then turns it back on:
 
 ```bash
 $(disable.command spoilers 300)
-"!spoilers is paused for five minutes."
+!spoilers is paused for five minutes.
 ```
 
-### Schedule a message and action
+The duration is in seconds, from `1` to `604800`. The command returns to the state it had before the change, even if the bot restarts in between. See [Availability functions](/commands/advanced/functions/#availability-functions).
 
-The timer returns immediately. Its body runs after five minutes, even if the bot restarts in between:
+### Send a message and an action later
+
+The timer returns right away. Its message and action run after five minutes, even if the bot restarts in between:
 
 ```bash
 $(timer 300 "Five minutes are up!" $(trigger.send airhorn))
 ```
 
-### Use the actual prediction choices
+A timer runs at most once, and it expires if it's more than 10 minutes late. See [Execution, Errors & Limits](/commands/advanced/execution/#delay-and-timer-limits).
 
-Read the current prediction before resolving it. Use the numbered choice shown by `get.prediction` or its exact title:
+## Prediction results
+
+Use two commands, so a moderator picks the winner after seeing the choices. Both commands should be set to **Moderators** access.
+
+**Command 1, `!predictions`**: shows the question and the numbered choices.
 
 ```bash
 $(get.prediction)
-$(end.prediction 1)
 ```
 
-See [AST Functions Reference](/commands/advanced/functions) for poll, prediction, roulette, and availability operations.
+**Command 2, `!winner`**: resolves the prediction. The moderator types the choice's title or its number.
+
+```bash
+$(end.prediction &t)
+```
+
+Then a moderator types `!winner Yes` or `!winner 1`. `&t` keeps a title with several words together. `end.prediction` looks up the current prediction on Twitch each time and rejects a number that doesn't exist or a title that matches two choices.
 
 <Aside type="caution">
-The bot performs real actions when these functions run. Test with a harmless message or a restricted command before enabling actions such as `$(ban ...)`, `$(set.title ...)`, or `$(trigger.send ...)`.
+Don't put `$(end.prediction 1)` in the same reply as `$(get.prediction)`. The winner is then picked without anyone reading the choices first. Keep the two steps in separate commands.
 </Aside>
 
-## When a command gets hard to maintain
+## Split a large command into smaller ones
 
-Split the work into smaller custom commands and call them with `#(commandName args...)`. References are limited to five nested levels, and repeated references on the same call path are stopped.
+When one command gets hard to read, move parts into their own commands and call them with `#(commandName args...)`.
+
+```bash
+Welcome $(user)!
+#(rules)
+```
+
+Here `!welcome` posts its greeting, then `!rules` runs and posts its own reply. If the argument has punctuation such as `;`, `?`, or `/`, wrap it in quotes, like `#(poll "Best map?;Nuke/Mirage")`. Without quotes, those characters can be changed on the way through.
+
+Keep these limits in mind:
+
+- At most **five** levels of calls can be nested, and a single run can make at most **50** calls.
+- A command can't call itself, directly or through another command.
+- The called command **doesn't check its own access setting** when a command you wrote calls it. Only the calling command's access applies. So only call a moderator-only command from a command that is also limited to moderators.
+- Each called command posts its own reply, after the main reply.
+
+See [Execution, Errors & Limits](/commands/advanced/execution/#command-reference-limits) for the details.
+
+## Pattern summary
+
+| Pattern | Syntax | Purpose |
+|---------|--------|---------|
+| Count or start a count | `*(^(#x) ? %(#x *(%(#x) + 1)) : %(#x 1))` | Create a missing counter or add `1` |
+| Viewer lookup | `%(##rank(&p1))` | Read a value saved for one viewer |
+| Persistent viewer value | `%(**rank(&p1))` | Read a viewer's database value (Premium or Pro to save) |
+| Condition | `*(condition ? YES : NO)` | Choose one of two results |
+| Conditional action | `*(condition ? ACTION : "")` | Do something only when a condition is true |
+| Timed action | `$(timer seconds "message" $(action))` | Run later, at most once |
+| Call another command | `#(commandName args...)` | Run a separate command after the reply |
+
+<Aside type="tip">
+Need to know what a function does, or which plan it needs? Check [AST Functions Reference](/commands/advanced/functions/). For the limits, see [Execution, Errors & Limits](/commands/advanced/execution/).
+</Aside>

@@ -1,55 +1,112 @@
 ---
 title: Chat Moderation
-description: Configure DomDimaBot chat filters, exemptions, escalation steps, and action history.
+description: Set up chat protection against spam and scams, plus your own rules for caps, links, emotes, and blocked words, with escalating penalties.
 ---
 
-DomDimaBot's Chat Moderation module checks Twitch chat messages against rules you configure. It can warn, delete, timeout, or ban a chatter when a rule matches. The module is available on the **Free** plan and is marked beta in the module catalog.
+import { Steps } from '@astrojs/starlight/components';
 
-## Open the moderation settings
+**Chat Moderation** keeps unwanted messages out of your chat. It has two parts:
 
-In your dashboard, open **Modules** and choose **Chat Moderation**. You need dashboard access to view the page and the `moderation:manage` permission to change or save settings. Users without that permission can view settings in read-only mode.
+- **Chat protection** checks messages for spam, scams, and ads. It is on by default for every channel.
+- **Rules** are filters you set up for caps, links, emote spam, and blocked words.
 
-The page has a master **Filter chat** switch. Rules do nothing while this switch is off. Save your changes to make them active.
+It is available on **Free, Premium, and Pro**, and is marked beta in the module catalog. Viewing settings needs the `moderation:view` permission. Changing them needs `moderation:manage`. Without that permission, you can see the settings but not change them.
 
-New streamers receive default settings when their account is first activated: Caps, Links, and Emote spam are enabled; Blocked words is present but disabled and has no terms. Existing channels are not automatically seeded with those rules. If your page has no rules, add the ones you want and save them.
+## Set it up
 
-## Rule types
+<Steps>
 
-Each rule checks one kind of message. You can add up to 20 rules per channel, enable or disable a rule, and remove it.
+1. Open **Modules → Chat Moderation**.
+2. In **Protection**, choose **What to detect** and **Exempt roles**. Chat protection is already on.
+3. In **Rules**, turn on **Rule filter** and add the rules you want. You can add up to 20.
+4. For each rule, set **Skip this rule for** and the three steps: **First time**, **Second time**, and **Every time after**.
+5. Select **Save Settings**. Changes apply after you save.
 
-| Rule | What it checks | Configuration |
-| --- | --- | --- |
-| **Caps** | Messages with enough uppercase letters. | Choose a minimum uppercase-letter count or a maximum uppercase-letter percentage. The minimum message length prevents short messages from triggering the rule. Only letters count; Twitch emote fragments are excluded from caps counting. |
-| **Links** | URLs with a domain that is not allowed. | Add domains such as `twitch.tv` to the allowlist. Subdomains are allowed too, so `clips.twitch.tv` is covered by `twitch.tv`. |
-| **Emote spam** | Twitch messages with more emote fragments than the configured maximum. | Set the maximum emote count. |
-| **Blocked words** | A listed word or phrase appearing as a whole term. | Add terms separated by commas or Enter. Matching ignores letter case and accents; a listed term does not match inside a longer word. |
+</Steps>
 
-The link detector is a practical chat filter, not a full URL validator. If a link is not detected as a URL, this rule will not act on it.
+The page has four tabs: **Protection**, **Rules**, **Recent Actions**, and **Decisions**.
 
-## Choose actions and exemptions
+## Chat protection
 
-Each rule has a first, second, and third offense action. The third action repeats for later offenses. The available actions are:
+Chat protection checks each chatter's first message in your channel for the behaviors you select. A match is a **ban**, applied right away.
 
-- **Just count it** records the offense but takes no moderation action and lets the message continue through normal processing.
-- **Warn** sends a Twitch warning.
-- **Delete** deletes the matching message.
-- **Timeout** applies a timeout for the duration you set.
-- **Ban** applies a permanent ban.
+| Setting | Default | What it does |
+|---|---|---|
+| **Spam / scams** | On | Scam offers, credential theft, buying fake viewers or followers. |
+| **Ads / sales** | On | Offers to sell products, services, viewers, or followers. |
+| **Self-promotion** | On | Asking viewers to follow or visit the sender's own channel or social account. |
+| **Profanity** | Off | Explicit swear words in the sender's own message. |
+| **Insults** | Off | Direct, abusive attacks on a person or group. |
 
-For actions other than “Just count it,” the configured reason is used for the Twitch action when supported and for a public chat notice. Public notices are rate-limited per chatter; this does not rate-limit the moderation action itself.
+- **Review subsequent messages** (Premium and Pro) checks every message, not only the first one. Each review uses AI credits.
+- **Ban confidence** is the score needed before a ban. The default is 85%. Premium and Pro can choose from 80% to 100%. Free always uses 85%.
+- Uncertain cases are allowed and logged. They do not count toward the rules' steps.
+- **Exempt roles** are skipped. Moderators, editors, and channel admins are exempt by default. You can also exempt VIPs, subscribers, and founders.
+- The broadcaster and the bot account are always skipped.
+- If you clear every category under **What to detect**, chat protection pauses. **Rule filter** does not turn chat protection off.
+- Chat protection runs separately from your rules. The AI review is limited to 30 messages per minute per channel. Messages above that limit are not reviewed.
 
-Use **Skip this rule for** to exempt a role level and everyone above it. The usual choice is moderators and above. The broadcaster and the bot account are always skipped by the message moderation gate.
+## Rules
 
-Set **Forget warnings after** to control how long an offense count is remembered. The supported range is 1 minute to 24 hours; the default is 1 hour. Each rule tracks offenses separately for each chatter. The first offense starts the timer; after the window expires, the next matching message starts at step one again.
+Each rule checks one kind of message.
+
+| Rule | Blocks | Settings and defaults |
+|---|---|---|
+| **Caps** | Messages with many capital letters | **Caps count** (default 8 capitals) or **Caps percentage** (default 70%). **Minimum message length** counts letters (default 10). Emote names do not count. |
+| **Links** | Links to domains not on your list | **Allowed domains** (up to 50). Subdomains are included, so `twitch.tv` also allows `clips.twitch.tv`. A new link rule blocks every link until you add domains. |
+| **Emote spam** | Messages with more Twitch emotes than the limit | **Maximum emotes** (default 10) |
+| **Blocked words** | Whole words or phrases you list | Up to 200 terms, separated by commas or Enter. Ignores capitals and accents. Does not match inside longer words. |
+
+The link check is a practical filter, not a full URL validator. A link it does not recognize as a URL is not blocked.
+
+New channels start with **Caps**, **Links**, and **Emote spam** on, and **Blocked words** off. Existing channels keep their current rules until they save.
+
+## Penalties and exemptions
+
+Each rule has three steps, and the third repeats for every later offense:
+
+- **First time**, **Second time**, and **Every time after**.
+- Each step can be **Just count it**, **Warn**, **Delete**, **Timeout**, or **Ban**.
+- The default steps are a warning, then a delete, then a 60-second timeout.
+
+| Action | What happens |
+|---|---|
+| **Just count it** | Records the offense and lets the message continue normally. |
+| **Warn** | Sends a Twitch warning and a public chat notice. |
+| **Delete** | Deletes the message and sends a public chat notice. |
+| **Timeout** | Times out the chatter for the length you set, up to 14 days. |
+| **Ban** | Bans the chatter permanently. |
+
+Public notices appear at most once per chatter per minute. The moderation action still runs for every match.
+
+**Forget warnings after** sets how long an offense counts toward the steps. It is set in minutes, from 1 to 1,440 (24 hours). The default is 60 minutes. Each rule counts offenses separately for each chatter. The timer starts with the first offense, and after it runs out, the next match starts again at **First time**.
+
+**Skip this rule for** sets who is exempt from one rule. Choose one method for each rule:
+
+- **User level**: for example, **Mods and above**, the usual choice.
+- **Tags**: exempt or include viewers by role, such as VIPs or subscribers.
+- **Accounts**: always exempt, or always apply the rule, for specific Twitch usernames.
+
+The broadcaster and the bot account are always skipped.
+
+## Advanced options (Premium and Pro)
+
+These options are saved on Free, but they do not act there.
+
+- **Word variations** catch spelling tricks for a blocked word. You can match spaced letters, repeated letters, or broader spellings.
+- **Regex patterns** extend a blocked word with a pattern. Use RE2 syntax without slashes, lookarounds, or backreferences.
+- **Contextual review** asks the AI to check a match against your written policy and nearby chat. Only a confirmed violation counts toward the steps. An uncertain review, a timeout, or no AI credits allows the message and logs it. Reviews use AI credits.
 
 ## Permit a temporary bypass
 
-Custom AST commands can call `$(permit)` to bypass moderation filters temporarily. With no arguments it permits everyone in the channel for 60 seconds. You can permit one user with `$(permit username)` or choose a duration with `$(permit username seconds)`; durations range from 1 to 600 seconds. A numeric argument alone permits everyone for that many seconds. Restrict any command using this function to trusted users. See [AST moderation functions](/commands/advanced/functions/).
+Custom AST commands can call `$(permit)` to bypass the moderation filters, including chat protection, for a short time. With no arguments, everyone in the channel is permitted for 60 seconds. You can permit one user with `$(permit username)`, or set a time with `$(permit username seconds)`. Times range from 1 to 600 seconds. A number alone permits everyone for that many seconds. Restrict any command that uses this function to trusted users. See [AST moderation functions](/commands/advanced/functions/).
 
-## Action history and failures
+## Recent Actions and Decisions
 
-The **Recent Actions** table shows moderation actions from the last 30 days, including the rule, action, offense number, and whether the action succeeded. The API returns up to 100 records per page; the dashboard shows 10 per page.
+**Recent Actions** lists what the bot did in the last 30 days: the time, user, rule, action, offense number, and result (**Applied** or **Failed**). It shows 10 rows per page.
 
-A rule match is detected before the bot handles commands or sends its AI response. For warn, delete, timeout, or ban, the message pipeline stops after the match even though the Twitch action is started asynchronously. If Twitch rejects an action or the bot lacks the required Twitch authorization, the attempt is marked failed in the action history; the bot logs the error. Check that the bot has the channel permissions needed for moderation and review the recorded failure before relying on a rule.
+**Decisions** shows the matches and AI verdicts from the last 30 days. The bot keeps these records for 180 days to improve moderation.
 
-If moderation settings or cache access encounters an internal error, the error is logged and the message continues through normal chat processing. This keeps a moderation infrastructure problem from stopping other chat features.
+A **Failed** result means Twitch rejected the action, or the bot lacks the moderation permissions it needs in your channel. Check that the bot can moderate your channel, then review the failure before you rely on a rule.
+
+If the moderation system hits an internal error, the bot logs it and the message continues through normal chat. A moderation problem does not stop other chat features.

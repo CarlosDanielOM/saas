@@ -1,32 +1,112 @@
 ---
 title: AI Personality
-description: Configure the bot's persona, community context, and memory preferences.
+description: Set how DomDimaBot talks in chat, the rules it follows, the regulars it knows, and what it may remember.
 sidebar:
   order: 6
 ---
 
-Open **Modules → AI Personality** in your channel dashboard to configure how DomDimaBot responds in chat. The module has a master switch. Stream summaries and clip recommendations have separate switches on the same page.
+import { Steps } from '@astrojs/starlight/components';
 
-## Profiles and tone
+Use **Modules → AI Personality** to decide how DomDimaBot replies in chat. It is for streamers who want the bot to sound like their channel, follow a few house rules, and recognize regular viewers. The page is available on every plan. Your plan sets how many personalities, rules, and regulars you can have. The table under **Plan limits** below shows each plan.
 
-Each profile has a name, personality prompt, persona mode, tone preset, optional persona reference, voice style fields, and catchphrases. Select the active profile before editing it. You can also add rules that guide responses.
+Viewing this page needs the `ai:view` permission. Saving changes needs `ai:manage`. The channel owner has both; admins get them when the owner grants them.
 
-| Plan | Profiles | Rules | Known users | Chat context window |
+## Set up the bot's voice
+
+<Steps>
+
+1. Open **Modules → AI Personality** in your channel dashboard.
+2. Under **On or off**, keep **AI chat on** enabled. The bot replies when someone mentions it and runs `$(ai)` commands.
+3. In **Personalities**, edit the one you want. Write how the bot should talk in **How the bot talks**. This text guides every reply.
+4. Select **Use in chat** on that personality. The bot talks as one personality at a time.
+5. Add **Rules it always follows** and **Regulars the bot knows** if you need them.
+6. Select **Save changes**, then send a mention in your channel to test it.
+
+</Steps>
+
+## Plan limits
+
+| Plan | Personalities | Rules | Regulars | Recent chat messages read |
 |---|---:|---:|---:|---:|
 | Free | 1 | 3 | 3 | 7 |
 | Premium | 2 | 5 | 10 | 15 |
 | Pro | 3 | Unlimited | Unlimited | 35 |
 
-The context window is the configured number of recent chat messages considered by the personality feature. It does not guarantee that every message will produce a response.
+The number of recent chat messages limits the context the bot reads. It does not guarantee that every message gets a response.
 
-## Known users
+## What the bot uses
 
-Add a Twitch username, a short description, and an optional relationship for community members you want the bot to recognize. The bot can use this information when responding. Avoid storing private or sensitive information in these fields.
+Only the personality set to **Use in chat** shapes replies. Rules and regulars apply to every personality.
+
+| Setting | Chat replies | Stream summaries |
+|---|---|---|
+| **How the bot talks** | Yes | Yes |
+| **Style details** (mode and tone) | No | Yes |
+| **Inspired by**, voice, and catchphrases | No, saved for later | No |
+| **Rules it always follows** | Yes | No |
+| **Regulars the bot knows** | Yes | No |
+
+Chat replies also see the live stream title, game, and uptime, the channel's emote names, and relevant memories.
+
+## Regulars the bot knows
+
+For each regular, add a Twitch username, **Who they are** (for example, mod or friend), and **What the bot should know**. The bot uses this as background when they chat. Do not store private or sensitive details here.
+
+A new channel starts with one sample regular and a default personality. Edit or remove both.
 
 ## Learning and memory
 
-The page includes learning controls for memory suggestions and confirmation, post-stream summaries, maintenance, and automatic application of suggested changes. Review the automatic create, edit, archive, and delete switches before enabling them. The memory policy also lets you choose whether to prioritize recent chat and which kinds of remembered information can be used.
+The bot can learn from chat and from your stream summaries. You control what it may keep. You review what it proposes on the [Memories](/memories/) page.
 
-When AI tools are available, the bot can look up confirmed channel memories when someone explicitly asks what it remembers or asks about a past fact. A question can name another chatter; user-scoped memories are returned only when the channel's memory policy allows them. This explicit lookup is separate from passive chat context, which does not include another user's scoped facts.
+### What it can remember
 
-AI replies can vary. Test a profile in your channel, then adjust its prompt and rules if its responses do not fit your community. For chat filtering and temporary link permits, see [Chat Moderation](/moderation/).
+| Control | Default | What it allows |
+|---|---|---|
+| **Learn from chat** | On | When off, the bot only knows what you write on this page. No new memories are proposed or saved. |
+| **Viewer likes and dislikes** | On | Remembers preferences, such as favorite games. |
+| **Running jokes** | On | Remembers recurring bits and shared references. |
+| **Sensitive details** | Off | Allows personal details viewers share. Medium and high care-level memories need this on. |
+
+The three kinds above are unavailable while **Learn from chat** is off.
+
+### Automatic upkeep
+
+These switches control what the bot may do on its own. Defaults shown are for new channels.
+
+| Control | Default | What it does |
+|---|---|---|
+| **Learn after each stream** | On | Writes memory suggestions after each stream. Also needs **Stream summaries** on. |
+| **Skip review when it's very sure** | On | Low care-level memories at or above **Skip review above** go active without your review. |
+| **Add new memories** | On | Saves newly found memories on its own. |
+| **Update memories** | On | Corrects memories whose facts changed. |
+| **Archive old memories** | On | Archives memories that stopped being true. You can restore them. |
+| **Weekly cleanup** and **Monthly cleanup** | On | Weekly runs on Mondays at 00:15 UTC. Monthly runs on the 1st at 00:30 UTC. |
+| **Delete memories forever** | On | Permanently deletes memories. This cannot be undone. Turn it off unless you are sure. |
+
+### Fine-tune the numbers
+
+Higher percentages mean the bot must be more sure before it acts.
+
+| Setting | Default |
+|---|---|
+| **Skip review above** | 82% |
+| **Add a memory above** | 72% |
+| **Update a memory above** | 74% |
+| **Archive a memory above** | 80% |
+| **Delete a memory above** | 88% |
+| Minimum stream length for a recap | 20 minutes |
+| Minimum chat messages for a recap | 30 |
+| Maximum changes per run | 20 |
+| Maximum deletions per run | 5 |
+| Delete only memories older than | 30 days |
+| Delete only if unused for | 21 days |
+| Maximum memories waiting for review | 250 |
+| Maximum active memories | 2,000 |
+
+## How memories reach chat
+
+Chat replies use only confirmed, active memories that fit the current message and your memory policy. A memory about a specific viewer can be used the same way when the message relates to it and **Viewer likes and dislikes** is on. The bot sees whose memory it is.
+
+When someone asks what the bot remembers, the bot searches confirmed memories about a named chatter. It returns up to 3 results on Free, 5 on Premium, or 8 on Pro. See [Memories](/memories/) for how review and statuses work.
+
+AI replies can vary. Test a personality in your channel, then adjust its text and rules if the replies do not fit your community. For chat filtering and temporary link permits, see [Chat Moderation](/moderation/).

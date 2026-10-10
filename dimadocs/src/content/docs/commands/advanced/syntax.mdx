@@ -1,43 +1,65 @@
 ---
 title: AST Syntax & Data
-description: "Core AST building blocks: prefixes, storage, arguments, arrays, expressions, conditionals, loops, and command references."
+description: "AST syntax reference: expression prefixes, variables and storage, arguments, escaping, arrays, operators, conditionals, loops, delete, command references, and timers."
 sidebar:
   order: 1
 ---
 
 import { Aside } from '@astrojs/starlight/components';
 
-This page covers the core syntax you use to build AST commands.
+This page is the reference for writing AST commands. New to AST? Read the [AST overview](/commands/advanced/) first.
+
+## How a message is read
+
+Only parts that start with a prefix are run. Everything else is copied exactly as typed, including quotes, punctuation, and emoticons.
+
+```bash
+Hi $(user)! Welcome to "the stream" :)
+→ Hi Carlos! Welcome to "the stream" :)
+```
+
+Inside a prefix, the rules are different:
+
+- A prefix runs until its matching `)`.
+- Double quotes, `${ }`, and `%[ ]` arrays only work **inside** a prefix.
+
+<Aside type="caution">
+Writing `"$(user) has 2 wins!"` prints the quote marks too. Write `$(user) has 2 wins!` instead.
+</Aside>
 
 ## Core prefixes
 
-The parser understands 5 main prefixes:
+The parser understands 6 prefixes:
 
 | Prefix | Syntax | Purpose | Example |
 |--------|--------|---------|---------|
-| ``$( `` | `$(funcName arg1 arg2)` | Call a function | `$(random 10)` |
+| ``$( `` | `$(funcName arg1 arg2)` | Call a function | `$(random 10)` (a number from 0 to 9) |
 | ``%( `` | `%(name)` or `%(name value)` | Read or write a variable | `%(wins)`, `%(wins 5)` |
-| ``*( `` | `*(condition ? yes : no)` | Compute logic or math | `*(5 > 3 ? "yes" : "no")` |
-| ``^( `` | `^(variableName)` | Check existence | `^(#wins)` |
-| ``#( `` | `#(commandName args...)` | Call another command | `#(othercmd arg1)` |
+| ``%del( `` | `%del(name)` | Delete a variable or list item | `%del(wins)` |
+| ``*( `` | `*(condition ? yes : no)` | Compute logic or math, or run a loop | `*(5 > 3 ? "yes" : "no")` |
+| ``^( `` | `^(name)` | Check whether something exists | `^(#wins)` |
+| ``#( `` | `#(commandName args...)` | Run another command | `#(othercmd arg1)` |
 
 ## Variables and storage
 
-Variables are created by you. They can be temporary or persistent depending on the prefix you choose.
+You create variables yourself. The prefix you put before the name decides how long the value lasts.
 
-| Prefix | Storage | Persistence | Plan | Example |
-|--------|---------|-------------|------|---------|
-| none | Memory | Current execution only | Free | `%(temp)` |
-| `#` | Cache | Up to 24 hours | Free | `%(#wins)` |
-| `##` | Cache + user-scoped | Up to 24 hours | Free | `%(##chips)` |
+| Prefix | Storage | How long it lasts | Plan | Example |
+|--------|---------|-------------------|------|---------|
+| none | Memory | Only during the current run | Free | `%(temp)` |
+| `#` | Cache | 24 hours after the last write | Free | `%(#wins)` |
+| `##` | Cache, per viewer | 24 hours after the last write | Free | `%(##chips)` |
 | `*` | Database | Permanent | Premium / Pro | `%(*wins)` |
-| `**` | Database + user-scoped | Permanent | Premium / Pro | `%(**rank)` |
+| `**` | Database, per viewer | Permanent | Premium / Pro | `%(**rank)` |
+
+The plan is the streamer's plan, not the viewer's.
 
 ### Important behavior
 
-1. Each cache write refreshes a 24-hour expiration. This applies to both `#` and `##` variables.
-2. Expired cache values come back **blank**, not `0`.
-3. Assignment overwrites.
+1. Every write to a `#` or `##` variable starts a new 24-hour timer. Reading a value does not extend it.
+2. A variable that has expired, or was never set, reads as **blank**, not `0`.
+3. Assignment overwrites. `%(#wins 1)` sets the value to `1`. It does not add 1.
+4. On Free, writes to `*` and `**` variables are ignored without an error.
 
 ```bash
 %(#wins 1)
@@ -51,9 +73,9 @@ The example above **sets** the value to `1`. It does not add 1.
 %(#wins *(%(#wins) + 1))
 ```
 
-### User-scoped selectors
+### Per-viewer variables
 
-User-scoped values can target another user:
+`##` and `**` variables belong to a viewer. Without a selector they use the viewer who ran the command. To use another viewer, put their login name in parentheses after the name. A leading `@` is optional.
 
 ```bash
 %(##rank)
@@ -62,19 +84,21 @@ User-scoped values can target another user:
 %(**rank(&p1))
 ```
 
-## Argument placeholders
+## Arguments
 
-When a viewer uses a command, their arguments can be accessed with placeholders.
+When a viewer runs a command, their words are available as placeholders. Word 1 is the first word after the command name.
 
 | Placeholder | Meaning | Example |
 |-------------|---------|---------|
-| `&p1`, `&p2`, `&p3`... | Positional arguments | `&p1` = first argument |
-| `&t` | All remaining trailing text | `&t` = everything left |
+| `&p1`, `&p2`, `&p3`... | Word number 1, 2, 3... | `&p1` = first word |
+| `&t` | Everything from the last numbered word onward | `&t` = the rest of the message |
 
 ### Rules
 
-- `&t` must come last
-- you cannot create new `&pN` placeholders after `&t`
+- A word that was not typed becomes blank.
+- `&t` takes the words after the highest `&pN` that appears before it.
+- You may reuse a `&pN` after `&t`, but a **new** `&pN` after `&t` is an error: `[Parser error: cannot create new &pN after &t]`.
+- In chat commands, what a viewer types is plain text. It cannot run AST code.
 
 ### Examples
 
@@ -92,69 +116,99 @@ Message: &p1 &p2 &t
 
 ```bash
 Message: &t &p1
-→ Error: cannot create new &pN after &t
+→ [Parser error: cannot create new &pN after &t]
 ```
 
-## Template strings
+## Text in quotes
 
-Use double quotes and `${}` when you want interpolation inside a string.
+Inside a prefix, double quotes make text. Use `${ }` to put a value inside that text.
 
 ```bash
-"Hello ${$(user)}!"
-"You've won ${%(#wins)} times!"
+%(greeting "Hello ${$(user)}!")%(greeting)
+→ Hello Carlos!
 ```
 
-## Special characters and escaping
+Inside `${ }` you can put any expression, such as `${%(#wins)}`. To include a quote mark inside quoted text, write `\"`.
 
-Parentheses define where an expression starts and ends, so a literal `)` inside one would close it early. You have three tools to include special characters as plain text:
+## Escaping
 
-1. **Balanced pairs just work.** Parentheses that open and close inside an expression are kept as text:
+There are three ways to keep special characters as plain text.
+
+1. **Balanced pairs work.** A `(` that has a matching `)` inside a prefix stays as text.
 
    ```bash
-   $(say score (5-3))
-   → score ( 5 - 3 )
+   $(upper score (5-3))
+   → SCORE ( 5 - 3 )
    ```
 
-2. **Double quotes** protect any text, including unbalanced characters:
+2. **Quotes protect text.** Anything inside quotes is kept, including unbalanced characters.
 
    ```bash
-   $(say "quoted :) here")
-   → quoted :) here
+   $(upper "quoted :) here")
+   → QUOTED :) HERE
    ```
 
-3. **Backslash escapes** protect a single character. Use `\(` `\)` `\[` `\]` `\{` `\}` `\;` `\?` `\:` and `\\`:
+3. **A backslash protects one character.** Use `\(` `\)` `\[` `\]` `\{` `\}` `\;` `\?` `\:` and `\\`.
 
    ```bash
-   $(say hello \:\))
-   → hello :)
+   $(upper hello \:\))
+   → HELLO :)
 
    %(mood \:\)) %(mood)
    → :)
    ```
 
+To show a prefix as text, put a backslash before its `$`, `%`, `*`, `#`, or `^`. For example, `\$(user)` prints `$(user)`, and `100\%` prints `100%`.
+
 <Aside type="tip">
-Emoticons like `:)` or `;)` are the most common case — escape them (`\:\)`, `\)`) or wrap the text in quotes.
+Emoticons like `:)` or `;)` are only a problem **inside** a prefix, where the `)` can close it early. Outside a prefix they print as typed. Inside one, escape them (`\:\)`), or wrap the text in quotes:
+
+```bash
+$(upper hello :) and bye)
+→ HELLO : and bye)
+```
 </Aside>
 
 ## Arrays
 
-### Literal arrays
+A list stores several values. A list can be read, changed, and counted.
+
+### Adding and reading lists
 
 ```bash
-%[item1, item2, item3]
-%[1, 2, 3, 4, 5]
+%(items[] extra)
+%(items)
+→ ["extra"]
 ```
 
-### Array accessors
+Reading a whole list prints it as JSON, such as `["a","b"]`.
+
+### Literal lists
+
+A literal list writes its values inline. It only works inside a prefix. Use `[]` to add its items to a list. A plain assignment stores the items as one comma-separated text value, not as a list.
+
+```bash
+%(colors[] %[red, green, blue]) %(colors)
+→ ["red","green","blue"]
+
+%(pick %[1, 2, 3][random]) %(pick)
+→ 2 (a random 1, 2, or 3)
+```
+
+### Accessors
 
 | Syntax | Meaning | Example |
 |--------|---------|---------|
-| `%(arr[0])` | Access by index | `%(items[0])` |
-| `%(arr[-1])` | Access from the end | `%(items[-1])` = last element |
-| `%(arr[random])` | Random element | `%(items[random])` |
-| `%(arr[].length)` | Array length | `%(items[].length)` |
-| `%(arr[] value)` | Append value | `%(items[] extra)` |
-| `%(arr[2] value)` | Replace by index | `%(items[2] updated)` |
+| `%(arr[0])` | Item by position, starting at 0 | `%(items[0])` |
+| `%(arr[-1])` | Item counted from the end | `%(items[-1])` = last item |
+| `%(arr[random])` | Random item | `%(items[random])` |
+| `%(arr[].length)` | Number of items | `%(items[].length)` |
+| `%(arr[] value)` | Add an item at the end | `%(items[] extra)` |
+| `%(arr[2] value)` | Replace the item at a position | `%(items[2] updated)` |
+| `%del(arr[1])` | Remove the item at a position | `%del(items[1])` |
+| `%del(arr[])` | Clear the whole list | `%del(items[])` |
+
+A position that does not exist reads as blank. Replacing a position that does not exist does nothing.
 
 ### Examples
 
@@ -164,22 +218,24 @@ Emoticons like `:)` or `;)` are the most common case — escape them (`\:\)`, `\
 %(items[].length)
 %(items[] extra)
 %(items[1] replacement)
-%[1, 2, 3][random]
+%(pick %[1, 2, 3][random]) %(pick)
 ```
 
 ## Operators and expressions
 
 ### Comparison
 
+Two numbers compare as numbers. Other values compare as text. Results are `true` or `false`.
+
 | Operator | Meaning | Example |
 |----------|---------|---------|
-| `==` or `=` | Equals | `%(wins) == 5` |
-| `!=` or `<>` | Not equals | `%(status) != "offline"` |
+| `==` or `=` | Equal. Text ignores capital letters. | `%(wins) == 5` |
+| `!=` or `<>` | Not equal. Text ignores capital letters. | `%(status) != "offline"` |
 | `>` | Greater than | `%(level) > 3` |
 | `<` | Less than | `%(age) < 18` |
 | `>=` | Greater than or equal | `%(wins) >= 10` |
 | `<=` | Less than or equal | `%(wins) <= 5` |
-| `~=` | Case-insensitive substring match | `%(tags) ~= "gaming"` |
+| `~=` | Contains the text, ignoring capital letters | `%(tags) ~= "gaming"` |
 
 ### Arithmetic
 
@@ -189,7 +245,11 @@ Emoticons like `:)` or `;)` are the most common case — escape them (`\:\)`, `\
 | `-` | Subtract | `*(%(#wins) - 1)` |
 | `*` | Multiply | `*(%(x) * 2)` |
 | `/` | Divide | `*(%(total) / 2)` |
-| `%` | Modulo | `*(%(count) % 10)` |
+| `%` | Remainder | `*(%(count) % 10)` |
+
+- Dividing or taking a remainder by `0` gives `0`. It does not show an error.
+- Text that is not a number counts as `0`.
+- Results are rounded to 6 decimal places.
 
 ### Unary operators
 
@@ -198,9 +258,9 @@ Emoticons like `:)` or `;)` are the most common case — escape them (`\:\)`, `\
 | `+` | Unary plus |
 | `-` | Negation |
 
-### Assignment operators
+### Loop-variable assignment operators
 
-These are for **loop variables only**:
+These only work on loop variables such as `#i`. See [Loops](#loops).
 
 | Operator | Meaning |
 |----------|---------|
@@ -211,11 +271,11 @@ These are for **loop variables only**:
 | `-=` | Subtract and assign |
 | `*=` | Multiply and assign |
 | `/=` | Divide and assign |
-| `%=` | Modulo and assign |
+| `%=` | Remainder and assign |
 
 ## Conditionals
 
-AST uses ternary expressions for branching:
+Use a ternary expression to choose between two values:
 
 ```bash
 *(condition ? trueValue : falseValue)
@@ -223,47 +283,83 @@ AST uses ternary expressions for branching:
 *(%(islive) == 1 ? "Stream is live!" : "Stream is offline")
 ```
 
+A condition is false when its value is empty, `0`, or `false`. Any other value is true.
+
 ## Loops
+
+Inside a loop, write the loop variable without `%( )`, like `#i`. `%(#i)` reads a cache variable named `i`, not the loop variable.
 
 ### Range loop
 
 ```bash
-*(for #i = 0; #i < 3; #i++ {
-  %(out[] #i)
-})
+*(for #i = 0; #i < 3; #i++ { %(out[] #i) }) %(out[])
+→ ["0","1","2"]
 ```
 
 ### Foreach loop
 
 ```bash
-*(for #item in %(#items[]) {
-  %(result[] %(#item))
-})
+%(items[] a) %(items[] b) *(for #item in %(items[]) { %(result[] #item) }) %(result[])
+→ ["a","b"]
 ```
+
+You can also loop over a literal list: `*(for #c in %[red, green] { ... })`.
 
 ### Loop control
 
 | Function | Purpose |
 |----------|---------|
 | `$(break)` | Exit the loop immediately |
-| `$(continue)` | Skip the current iteration |
+| `$(continue)` | Skip the rest of this pass and go to the next |
+
+```bash
+*(for #i = 0; #i < 4; #i++ { *(#i == 2 ? $(continue) : "") %(o[] #i) }) %(o[])
+→ ["0","1","3"]
+```
 
 ### Plan limits
 
-| Plan | Max nesting depth | Max iterations |
-|------|-------------------|----------------|
+| Plan | Loops nested inside each other | Passes per loop |
+|------|--------------------------------|-----------------|
 | Free | 2 | 25 |
 | Premium | 3 | 50 |
 | Pro | 4 | 100 |
 
+A loop nested deeper than the limit does nothing. A loop stops after its maximum number of passes.
+
 ### Loop example
 
 ```bash
-*(for #i = 0; #i < %(#count); #i++ {
-  %(output[] #i)
-})
-"Your numbers: ${%(output[])}"
+%(count 3) *(for #i = 0; #i < %(count); #i++ { %(output[] #i) }) %(output[])
+→ ["0","1","2"]
 ```
+
+## Delete
+
+`%del(...)` removes a variable or part of one. It prints nothing.
+
+```bash
+%(list[] a) %(list[] b) %(list[] c) %del(list[1]) %(list[])
+→ ["a","c"]
+
+%del(wins)
+```
+
+`%del(name)` removes the variable and any list stored in it. `%del(name[0])` removes one item. `%del(name[])` clears the list. Per-viewer variables accept a selector too: `%del(##rank(&p1))`.
+
+## Exists checks
+
+Use `^()` to check whether something exists. It returns `true` or `false`.
+
+```bash
+^(#wins)
+^(#items[0])
+^(##balance)
+```
+
+<Aside type="tip">
+If you are writing a command that stores state, `^()` is often the cleanest way to decide between “initialize” and “update”.
+</Aside>
 
 ## Command references
 
@@ -273,35 +369,30 @@ You can run one command from inside another:
 #(othercmd arg1 arg2)
 ```
 
+The words after the command name become its argument. The reference prints nothing in your message.
+
 ### Rules
 
-- max recursion depth: `5`
-- cycles are detected and blocked
-- the outer command response is sent first, then referenced commands run in authored order
-- each referenced command sends its own response; rendered text is not parsed a second time
+- Commands can call other commands up to 5 levels deep.
+- A command cannot appear twice in the same chain. Cycles are blocked.
+- Up to 50 references can run for one message.
+- Your message is sent first. Then the referenced commands run in the order you wrote them.
+- Each referenced command sends its own reply. Its reply is not parsed again.
+- A referenced command that cannot run is skipped, for example because it is on cooldown or disabled.
 
 ## Scheduled timers
 
-`$(timer seconds message_and_actions)` schedules its body to run later and returns immediately. The delay must be from `1` to `604800` seconds (seven days). The timer stores its AST and execution context in the bot cache, so it can recover after a bot restart. If the bot is offline when the timer is due, it can still run within a 10-minute grace period; after that it expires. Each call creates a separate timer, and a timer runs at most once.
+`$(timer seconds message_and_actions)` schedules its body to run later. The call returns immediately, and the body runs when the timer fires.
 
 ```bash
 $(timer 300 "Five minutes are up!" $(trigger.send airhorn))
 ```
 
-The message and action are evaluated when the timer fires. Timers can be nested up to five levels. At most 100 pending timers are allowed per channel.
+- The delay must be from `1` to `604800` seconds (seven days).
+- Timers work only in Twitch channels.
+- Each call creates a separate timer. A timer runs at most once.
+- A timer survives a bot restart. If the bot is offline when a timer is due, it can still run within a 10-minute grace period. After that it expires.
+- Timers can be nested up to five levels.
+- A channel can have at most 100 pending timers. Past that, the message shows `timer: could not schedule timer`.
 
-## Exists checks
-
-Use `^()` to ask if something exists:
-
-```bash
-^(#wins)
-^(#items[0])
-^(##balance)
-```
-
-This returns `true` or `false`.
-
-<Aside type="tip">
-If you are writing a command that stores state, `^()` is often the cleanest way to decide between “initialize” and “update”.
-</Aside>
+Errors from a timer appear as text starting with `timer:`, such as `timer: seconds must be between 1 and 604800`.

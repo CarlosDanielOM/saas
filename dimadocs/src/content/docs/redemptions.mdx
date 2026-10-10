@@ -1,20 +1,51 @@
 ---
 title: Redemptions
-description: View Twitch Channel Points rewards and manage DomDimaBot rewards from the dashboard.
+description: Manage your channel point rewards from the Redemptions page, including the rewards DomDimaBot created and the rewards that were made on Twitch.
 sidebar:
   order: 7
 ---
 
-The **Redemptions** dashboard page has two lists: **Custom redemptions** managed through DomDimaBot, and **Twitch** rewards fetched from Twitch. This page is for configuring rewards, not for processing viewers' individual redemption queue.
+The **Redemptions** page is where you manage your channel point rewards. You can create, edit, hide, and delete the rewards DomDimaBot made for you. You can also see the rewards that were made directly on Twitch.
 
-## Custom redemptions
+**Who can see and change it:** viewing requires `rewards:view`. Creating, editing, hiding, and deleting requires `rewards:manage`. The channel owner has both.
 
-Each DomDimaBot reward card shows its title, prompt, cost, global cooldown, and whether it is enabled. Use **Create reward** to add one. For an existing custom reward, you can edit it, enable or disable it, or delete it. The reward settings and message behavior are covered in [Channel Rewards](/rewards/).
+This page does not show a queue or history of redemptions. DomDimaBot runs each redemption as it arrives. To see who redeemed what, or to fulfill redemptions, use Twitch's own pages.
 
-After creating or changing a reward in Twitch, use **Refresh** to reload the dashboard lists. The combined refresh has a short cooldown. You can also refresh the Twitch list on its own.
+## Rewards and redemptions
 
-## Twitch rewards
+These two words mean different things:
 
-The **Twitch** section displays Channel Points rewards read from Twitch. These cards are read only here; use the reward's controls on Twitch to manage it. A Twitch reward with the same title as one of your DomDimaBot custom rewards is omitted from this separate list to avoid showing it twice.
+- A **reward** is the item on Twitch's Channel Points menu. It has a name, a price, a cooldown, and a chat message. You manage rewards on this page.
+- A **redemption** is one viewer spending points on a reward. Each redemption runs the reward's chat message. See [Channel Rewards](/rewards/) for what happens on redeem.
 
-DomDimaBot custom rewards create and manage Twitch channel point rewards connected to the bot's redemption behavior. For configuration details, supported message actions, cooldown semantics, and plan-gated cost options, see [Channel Rewards](/rewards/).
+## Page layout
+
+The page has two lists.
+
+**Your rewards** shows the rewards DomDimaBot created. Each card shows:
+
+- The name and price.
+- **Hidden**, when the reward is switched off here.
+- **Paused**, when the reward is paused on Twitch. Resume it on Twitch.
+- What the reward does: **Posts a chat message**, or **Plays** a linked trigger.
+- The price increase, cooldown, and whether the viewer must type text, when they are set.
+
+Use the switch on a card to hide or show the reward without deleting it. Use **Edit** and the trash icon to change or delete it. Use the search box when you have many rewards.
+
+**Made on Twitch** shows rewards that were not created by DomDimaBot. You cannot edit them here. Click **Open Twitch rewards** to manage them on Twitch. If a Twitch reward has the same name as one of your DomDimaBot rewards, it is not repeated in this list.
+
+The **What happens when someone redeems** panel on the right shows the redemption steps and the fill-ins you can use in a chat message.
+
+## Refresh the lists
+
+The header has a **Refresh** button. It reloads both lists and the trigger links. After you change a reward on Twitch, click it to see the change here.
+
+There is a 30-second cooldown between refreshes. The button shows **Refresh in** and the seconds left.
+
+## Common questions
+
+**Why can't I edit a Twitch reward here?** Twitch lets only the app that created a reward change it. Rewards made on Twitch must be edited on Twitch.
+
+**Why does a reward say "Paused"?** It is paused on Twitch, so viewers cannot redeem it right now.
+
+**Where do I set what a reward does?** Open the reward with **Edit**, or read [Channel Rewards](/rewards/) for each field and for the chat message fill-ins.

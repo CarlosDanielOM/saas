@@ -1,104 +1,172 @@
 ---
 title: Texto a voz
-description: Configura la superposición de voz, las voces, los filtros y el TTS para chat o AST.
+description: Configura la superposición de voz, elige un motor de voz, usa el comando !s y las funciones AST de voz, y administra filtros, límites de cola y créditos de IA.
 sidebar:
   order: 3
 ---
 
-El texto a voz (TTS) lee en voz alta los mensajes del chat durante tu stream. Genera audio y lo reproduce mediante una superposición del navegador conectada a tu canal.
+El texto a voz (TTS) lee mensajes en voz alta durante tu stream. Tus espectadores usan el comando de chat `!s`, y tus comandos y recompensas de puntos del canal pueden usar funciones AST. El audio se reproduce desde una fuente de navegador en OBS, así que el stream lo escucha.
+
+**Quién puede cambiarlo:** el propietario del canal, o un administrador con `tts:manage`. Los administradores con `tts:view` pueden ver la configuración, pero no cambiarla.
+
+**Planes:** todos los planes incluyen todos los motores de voz. El uso sale de tus [créditos de IA](#créditos-de-ia-y-respaldos) mensuales.
 
 ## Configurar la superposición de voz
 
-1. Abre el panel de tu canal y ve a **Módulos → Texto a voz**.
-2. Copia la URL del canal con **Copiar URL de voz**.
-3. Agrega esa URL como fuente de navegador en tu software de transmisión y mantenla abierta mientras quieras reproducir mensajes en cola.
-4. Habilita o agrega el comando de chat `!s` para tu canal y úsalo con `!s Hola chat!` para comprobar la reproducción.
+1. Ve a **Módulos → Texto a voz** y activa **Habilitar TTS del canal**.
+2. En **URL de voz**, haz clic en **Copiar URL**.
+3. En OBS, agrega una **Fuente de navegador** con esa URL. Mantén la fuente activa mientras quieras que se reproduzca la voz.
+4. Revisa que el comando **Speech Chat** (`!s`) esté activado en **Comandos**. Luego escribe `!s Hola chat!` en tu chat para probarlo.
 
-La superposición debe estar conectada para reproducir los mensajes en cola. La cola acepta una cantidad limitada de mensajes pendientes; el propietario del canal o un administrador con `tts:manage` puede configurar el máximo.
+Si la fuente de navegador no está conectada, las nuevas solicitudes de voz se rechazan con el mensaje "Speech overlay is not connected" (la superposición de voz no está conectada). Los mensajes en cola esperan hasta que la fuente se vuelva a conectar.
 
-## Proveedores y voces
+## Elegir un motor de voz
 
-Elige el proveedor predeterminado en **Módulos → Texto a voz**. Esta opción se aplica a `!s` y a las funciones TTS predeterminadas de AST.
+Elige el motor en **Módulos → Texto a voz → Voz**. El motor que elijas es el predeterminado para `!s` y para `$(tts ...)`.
+
+| Motor | Voces | Costo | Etiquetas de voz |
+|---|---|---|---|
+| **Piper** | Una voz en inglés (Ryan, `en_US-ryan-medium`) y una en español (Ald, `es_MX-ald-medium`). | 1 crédito por cada 50 caracteres, redondeado hacia arriba. | Se quitan. |
+| **Kokoro** | Voces predefinidas, por ejemplo `af_heart` (inglés) y `ef_dora` (español). | 1 crédito por cada 15 caracteres, redondeado hacia arriba. | Se quitan. |
+| **Fish Audio** | Voces clonadas. Cuatro voces integradas, más cualquier voz que encuentres en el explorador. | 1.5 créditos por carácter, redondeado hacia arriba. | Funcionan. |
+
+**Dima Voice** aparece en la lista como "Próximamente". Todavía no puedes seleccionarlo.
 
 ### Piper
 
-Piper es el proveedor de voz local. Las voces disponibles en el panel son:
+Piper usa la voz de Ryan para inglés y la de Ald para español. El panel usa el idioma predeterminado del canal para elegir entre ellas.
 
-- Inglés (EE. UU.): Ryan — `en_US-ryan-medium`
-- Español (México): Ald — `es_MX-ald-medium`
+Piper sigue funcionando cuando se acaban tus créditos. Su uso puede dejar tu saldo de créditos en negativo.
 
-La síntesis de Piper no consume créditos de IA. Las etiquetas expresivas se eliminan antes de que Piper hable; el texto restante sí se lee.
+### Kokoro
+
+Usa Kokoro si quieres un conjunto de voces predefinidas. Elige una voz de Kokoro predeterminada en el panel, o elige una por comando con `$(tts.kokoro voz_name texto)`.
 
 ### Fish Audio
 
-Fish Audio ofrece voces clonadas. El panel incluye un explorador de voces; algunas voces predeterminadas son Gojo, Rias Gremory, Carlos Bodoque y Toji Fushiguro. La voz clonada seleccionada puede ser la voz predeterminada del canal o puedes indicar una voz en un comando AST.
+Fish Audio ofrece voces clonadas. Las cuatro voces integradas son:
 
-Fish Audio consume créditos de IA. En el explorador de voces, los propietarios del canal y los administradores con `tts:manage` pueden guardar hasta 20 voces favoritas y cambiar el apodo de cada una. La interfaz sigue mostrando el nombre visible de la voz (por ejemplo, **Pinky Pie** o **Carlos Bodoque**) y muestra el apodo junto a él. El apodo tiene entre 1 y 40 letras, números o guiones bajos, comienza con una letra y se normaliza a minúsculas. Los espacios del nombre visible se convierten en guiones bajos en el apodo generado: **Pinky Pie** normalmente recibe `pinky_pie`; si ya se usa ese apodo, se agrega un número al final.
+- `gojo` (Gojo)
+- `rias_gremory` (Rias Gremory)
+- `toji_fushiguro` (Toji Fushiguro)
+- `carlos_bodoque` (Carlos Bodoque)
 
-En `$(tts.clone ...)` y su alias `$(tts.fish ...)`, el primer argumento es una sola clave de voz: usa una clave integrada como `carlos_bodoque`, el apodo de una favorita guardada como `pinky_pie` o un ID de voz Fish. El nombre visible con espacios no se interpreta como un solo argumento de voz. Por ejemplo, para hablar con la voz integrada de Carlos Bodoque en un comando que recibe el texto que escribió el usuario, usa `$(tts.fish carlos_bodoque &t)`. Si guardas una voz como favorita y cambias su apodo a `bodoquin`, usa `$(tts.fish bodoquin &t)`. `$(set.voice ...)` acepta el apodo o el nombre visible completo de una favorita, incluso si tiene espacios.
+Fish Audio es el único motor que lee las [etiquetas de voz](#etiquetas-de-voz-solo-fish-audio).
 
-Ambos proveedores están disponibles en los planes Free, Premium y Pro. Los límites de créditos de IA se comparten entre las funciones de IA disponibles y varían según el plan; TTS no tiene una asignación mensual aparte.
+### Buscar y guardar voces de Fish
 
-## Comando de chat
+Abre **Buscar voz** en la sección de Fish Audio para explorar la biblioteca de voces. Las muestras de Fish se reproducen gratis. Generar una vista previa usa créditos.
 
-### `!s` — leer un mensaje
+Haz clic en la estrella de una voz para guardarla como **favorita**. Un canal puede tener hasta 20 favoritas. Después, dale un **apodo** a la favorita para usarla en los comandos:
+
+- Usa de 1 a 40 letras, números o guiones bajos. Empieza con una letra.
+- Los apodos no distinguen mayúsculas. Se guardan en minúsculas.
+- Los apodos deben ser únicos. No puedes usar los nombres de las cuatro voces integradas.
+- Si no le pones apodo, DomDimaBot crea uno a partir del nombre de la voz. Por ejemplo, **Pinky Pie** se convierte en `pinky_pie`. Si ese nombre ya está en uso, se agrega un número, como `pinky_pie_2`.
+
+Solo los propietarios y los administradores con `tts:manage` pueden guardar, renombrar o quitar favoritas.
+
+### Usar una voz de Fish en un comando
+
+En `$(tts.clone ...)` y su alias `$(tts.fish ...)`, el primer argumento es una sola clave de voz. Usa una clave integrada, el apodo de una favorita o el ID de una voz de Fish. Los nombres con espacios no funcionan aquí.
+
+```text
+$(tts.fish carlos_bodoque &t)
+$(tts.fish bodoquin &t)
+```
+
+En la primera línea, `&t` es el texto que escribió el espectador. En la segunda, `bodoquin` es el apodo de una favorita guardada.
+
+`$(set.voice ...)` también acepta el nombre visible completo de una favorita, incluidos los espacios.
+
+## Comando de chat: `!s`
 
 **Uso:** `!s <mensaje>`
 
-`!s` funciona como un comando AST normal y lee el mensaje con el proveedor y la voz predeterminados del canal. Su plantilla predeterminada dice el nombre de usuario seguido de `dice:` y el mensaje. Edita el comando Speech Chat para cambiar la plantilla; el idioma de TTS selecciona el idioma de la voz, pero no cambia el texto de la plantilla. El comando **Speech Chat** `!s` viene habilitado para todos. Puedes editarlo desde esta página o desde **Comandos**. Su enfriamiento predeterminado es de 0 segundos; solo un comando editable por canal puede tener un enfriamiento de 0 segundos. Los demás comandos deben tener un enfriamiento mínimo de 5 segundos en Free, 3 segundos en Premium o 1 segundo en Pro.
+`!s` funciona como un comando AST normal. Lee el mensaje con el motor y la voz predeterminados del canal. El comando **Speech Chat** viene activado para todos, sin enfriamiento.
+
+La plantilla predeterminada es:
+
+```text
+$(tts $(user) dice: &t)
+```
+
+Entonces el chat escucha el nombre del espectador, después `dice:` y luego el mensaje. Para cambiar la redacción, edita el comando **Speech Chat** en **Comandos** o desde la página de TTS. El idioma cambia la voz, no el texto de la plantilla.
 
 ```text
 !s Hola chat, bienvenidos al stream!
 ```
 
-El comando de chat aplica los filtros de mensajes del canal: omitir emotes, reemplazar enlaces, normalizar espacios y limitar la longitud del mensaje. El propietario o un administrador con `tts:manage` puede cambiar estas opciones en el módulo TTS. Después de aplicar los filtros, el mensaje debe conservar texto que se pueda leer.
+Los mensajes del chat pasan por los [filtros de mensajes](#filtros-y-límites-de-mensajes) antes de leerse. Si después del filtrado no queda texto legible, la solicitud se rechaza.
+
+**Enfriamientos:** el comando Speech Chat tiene un enfriamiento de 0 segundos. Cada canal puede tener solo un comando editable con enfriamiento de 0 segundos. Los demás comandos deben esperar al menos 5 segundos en Free, 3 segundos en Premium o 1 segundo en Pro.
 
 ## Funciones AST
 
-Usa estas funciones en comandos personalizados y acciones AST:
+Úsalas en comandos personalizados, temporizadores y recompensas de puntos del canal. Consulta [Comandos avanzados](/es/commands/advanced/) para entender cómo funciona AST.
 
-| Función | Comportamiento |
+| Función | Qué hace |
 |---|---|
-| `$(tts <mensaje>)` | Habla con el proveedor y la voz predeterminados del canal. |
-| `$(tts.speak <mensaje>)` | Habla con Piper, incluso si Fish Audio es el proveedor predeterminado del canal. |
-| `$(tts.ai <mensaje>)` | Alias de `$(tts ...)`. |
-| `$(tts.clone <voz> <mensaje>)` | Habla con una voz de Fish Audio. Usa como primer argumento el nombre de una voz integrada, el apodo de una favorita guardada o el ID de una voz Fish; el resto es el texto que se lee. |
-| `$(tts.fish <voz> <mensaje>)` | Alias de `$(tts.clone ...)`. |
-| `$(set.voice <voz>)` | Cambia la voz predeterminada del canal a una voz Fish Audio y selecciona Fish Audio como proveedor. Usa el nombre de una de las cuatro voces integradas, o el apodo o nombre visible de una favorita guardada. Esta acción requiere permisos de moderador. |
+| `$(tts <mensaje>)` | Habla con el motor y la voz predeterminados del canal. |
+| `$(tts.ai <mensaje>)` | Igual que `$(tts ...)`. |
+| `$(tts.speak <mensaje>)` | Habla con Piper, aunque otro motor sea el predeterminado. |
+| `$(tts.piper <mensaje>)` | Igual que `$(tts.speak ...)`. |
+| `$(tts.kokoro <voz> <mensaje>)` | Habla con una voz predefinida de Kokoro, como `ef_dora`. |
+| `$(tts.clone <voz> <mensaje>)` | Habla con una voz de Fish Audio. El primer argumento es una clave integrada, el apodo de una favorita o el ID de una voz de Fish. |
+| `$(tts.fish <voz> <mensaje>)` | Igual que `$(tts.clone ...)`. |
+| `$(set.voice <voz>)` | Cambia la voz predeterminada de Fish del canal y convierte a Fish en el motor predeterminado. Acepta una clave integrada, el apodo de una favorita o su nombre visible. Después, el bot publica "TTS voice changed to …" en el chat. Requiere nivel de moderador. |
 
 ```text
 $(tts Hola chat!)
-$(tts.speak Usa Piper.)
-$(tts.clone gojo Hola desde Gojo!)
+$(tts.speak Esto usa Piper.)
+$(tts.kokoro ef_dora ¡Hola chat!)
+$(tts.clone gojo ¡Hola desde Gojo!)
 $(tts.fish carlos_bodoque &t)
-$(tts.fish pinky_pie &t)
-$(tts.fish bodoquin &t)
 $(set.voice mi_favorita)
 ```
 
-Guarda una voz como favorita antes de cambiar su apodo. También puedes usar las voces integradas directamente con sus claves, como `carlos_bodoque`; al cambiar el apodo de una favorita, cambia el nombre que se usa en AST, pero no el nombre visible de la voz.
+Las funciones que leen texto del espectador, como `&t`, funcionan mejor en recompensas de puntos del canal con **El espectador debe escribir algo** activado. Consulta [Recompensas del canal](/es/rewards/).
 
-La cola reproduce los mensajes en orden, uno a la vez por canal. El máximo configurado (1–20) cuenta tanto el elemento que se reproduce como los que esperan en la cola. Si la superposición del navegador está desconectada, el servidor rechaza nuevas solicitudes. Cuando se vuelve a conectar, puede continuar con los mensajes que aún esperan; no vuelve a reproducir el mensaje interrumpido por la desconexión.
+### Comportamiento de la cola y de la superposición
 
-## Etiquetas expresivas
+- La voz se reproduce en orden, de un mensaje a la vez, por canal.
+- La opción **Máximo de mensajes en espera** cuenta el mensaje que se está reproduciendo. Con el valor predeterminado de 5, uno se reproduce y cuatro esperan.
+- Si la fuente de navegador se desconecta, las nuevas solicitudes se rechazan. Los mensajes que ya esperan siguen en la cola y se reproducen cuando la fuente vuelve a conectarse.
+- Un mensaje interrumpido por una desconexión no se vuelve a reproducir.
 
-Fish Audio admite etiquetas expresivas entre corchetes. Agrégalas al mensaje para pedir una emoción, un estilo de voz, un sonido vocal o un efecto:
+## Filtros y límites de mensajes
+
+Configúralos en **Módulos → Texto a voz → Límites de mensajes**:
+
+| Opción | Predeterminado | Rango | Qué hace |
+|---|---|---|---|
+| **Máximo de caracteres por mensaje** | 280 | 30–500 | Los mensajes más largos se cortan a este largo. |
+| **Máximo de mensajes en espera** | 5 | 1–20 | El tamaño de la cola, incluido el mensaje que se reproduce. |
+| **Omitir emotes** | Activado | | Quita los nombres de los emotes antes de leer. |
+| **Enlaces como [link]** | Activado | | Quita los enlaces. No se lee nada en su lugar. |
+| **Quitar espacios extra** | Activado | | Une los espacios repetidos. |
+
+Los filtros se aplican a los mensajes del chat y a la voz de AST. Se aplican antes del límite de longitud, así que un mensaje cortado nunca deja a medias una etiqueta.
+
+## Etiquetas de voz (solo Fish Audio)
+
+Fish Audio puede cambiar el tono de una línea si agregas una etiqueta entre corchetes:
 
 ```text
-!s [happy] Excelente stream hoy!
+!s [happy] ¡Gran stream hoy!
 !s [whisper] [pause] ¿Puedes guardar un secreto?
 $(tts.clone gojo [excited] ¡Vamos!)
 ```
 
-Los propietarios del canal y los administradores con `tts:manage` pueden habilitar o deshabilitar etiquetas individuales en **Módulos → Texto a voz → Controles de voz expresiva**. Las etiquetas deshabilitadas o no reconocidas se eliminan antes de la síntesis. Las etiquetas solo afectan a Fish Audio; Piper las elimina y lee el mensaje restante.
+Los propietarios y los administradores con `tts:manage` pueden activar o desactivar etiquetas en **Módulos → Texto a voz → Etiquetas de voz**. Todas las etiquetas vienen activadas. Una etiqueta desactivada, o que el bot no reconoce, se quita antes de generar la voz. Piper y Kokoro quitan todas las etiquetas y leen el resto del mensaje.
 
-Las etiquetas disponibles se agrupan así.
+Las etiquetas son:
 
 ### Emociones
 
 `[happy]` `[sad]` `[angry]` `[excited]` `[calm]` `[nervous]` `[confident]` `[surprised]` `[scared]` `[worried]` `[disappointed]` `[curious]` `[sarcastic]` `[satisfied]` `[delighted]` `[upset]` `[frustrated]` `[depressed]` `[empathetic]` `[embarrassed]` `[disgusted]` `[moved]` `[proud]` `[relaxed]` `[grateful]` `[disdainful]` `[unhappy]` `[anxious]` `[hysterical]` `[indifferent]` `[uncertain]` `[doubtful]` `[confused]` `[regretful]` `[guilty]` `[ashamed]` `[jealous]` `[envious]` `[hopeful]` `[optimistic]` `[pessimistic]` `[nostalgic]` `[lonely]` `[bored]` `[contemptuous]` `[sympathetic]` `[compassionate]` `[determined]` `[resigned]`
 
-### Voz y entrega
+### Voz y expresión
 
 `[whisper]` `[shouting]` `[soft]` `[singing]` `[slow]` `[fast]` `[emphasis]` `[screaming]`
 
@@ -110,34 +178,22 @@ Las etiquetas disponibles se agrupan así.
 
 `[pause]` `[long-pause]` `[audience laughing]` `[background laughter]`
 
-Algunos alias comunes son `[anger]` para `[angry]`, `[whispering]` para `[whisper]`, `[laughing]` para `[laugh]` y `[crowd laughing]` para `[audience laughing]`.
+Algunas formas cortas también funcionan. Por ejemplo, `[anger]` equivale a `[angry]`, `[whispering]` a `[whisper]`, `[laughing]` a `[laugh]` y `[crowd laughing]` a `[audience laughing]`. Desactivar una etiqueta también desactiva sus formas cortas.
 
-## Configurar TTS
+## Acceso de administradores del canal
 
-En **Módulos → Texto a voz**, el propietario del canal o un administrador con `tts:manage` puede configurar:
+Los propietarios del canal siempre tienen acceso a TTS. Para los administradores, los permisos son independientes:
 
-- Si TTS está habilitado para el canal.
-- El idioma y el proveedor predeterminados.
-- Las voces Piper en inglés y español, o la voz clonada predeterminada de Fish Audio cuando Fish está seleccionado.
-- La longitud máxima de los mensajes (30–500 caracteres).
-- La cantidad máxima de elementos en espera o reproducción (1–20).
-- Si los mensajes del comando de chat omiten emotes, reemplazan enlaces y normalizan espacios.
-- Qué etiquetas expresivas de Fish Audio están habilitadas.
+- `tts:view` permite ver la configuración de TTS.
+- `tts:manage` permite cambiar la configuración, guardar o renombrar favoritas y previsualizar voces. Incluye `tts:view`.
+- `commands:manage` permite editar el comando **Speech Chat** (`!s`). No da acceso a la configuración de TTS.
+- `*` da acceso completo a TTS y a los comandos.
 
-### Acceso de administradores del canal
+Puedes combinarlos con `chat:admin`. Por ejemplo, un administrador puede moderar el chat y solo ver la configuración de TTS.
 
-Los propietarios del canal siempre pueden acceder a TTS. Para los administradores del canal, los permisos son independientes:
+## Créditos de IA y respaldos
 
-- `tts:view` permite leer la configuración del módulo TTS.
-- `tts:manage` permite editar la configuración de TTS y guardar, cambiar el apodo o quitar voces favoritas de Fish Audio. También incluye `tts:view`.
-- `commands:manage` permite editar el comando **Speech Chat** `!s`. Por sí solo, no permite acceder a la configuración de TTS.
-- `*` conserva el acceso completo, incluida la administración de TTS y comandos.
-
-Estos permisos se pueden combinar con `chat:admin`; por ejemplo, un administrador puede administrar el chat y solo ver la configuración de TTS. Las vistas previas de voz requieren `tts:manage`.
-
-## Uso de créditos de IA
-
-Piper es gratis y no consume créditos de IA. Fish Audio consume **1.5 créditos de IA por carácter**, redondeados hacia arriba en cada síntesis. Los límites de créditos se comparten entre las funciones de IA; los valores de plan configurados actualmente por el producto son:
+Los créditos de IA los comparten todas las funciones de IA del canal. Cada plan incluye esta cantidad de créditos al mes:
 
 | Plan | Créditos mensuales de IA |
 |---|---:|
@@ -145,4 +201,19 @@ Piper es gratis y no consume créditos de IA. Fish Audio consume **1.5 créditos
 | Premium | 200,000 |
 | Pro | 800,000 |
 
-Consulta la guía del [panel](/es/dashboard/) para obtener más información sobre la configuración del canal.
+Créditos por mensaje:
+
+- **Piper:** 1 crédito por cada 50 caracteres, redondeado hacia arriba.
+- **Kokoro:** 1 crédito por cada 15 caracteres, redondeado hacia arriba.
+- **Fish Audio:** 1.5 créditos por carácter, redondeado hacia arriba en cada mensaje.
+- **Las vistas previas de voz** usan créditos igual que el motor que previsualizan.
+
+Si se acaban los créditos o no se puede generar una voz, TTS cambia a una voz de respaldo para que la lectura siga funcionando:
+
+- **Se acaban los créditos y se pidió Fish Audio:** los planes Free cambian a Piper. Los planes Premium y Pro cambian a Kokoro.
+- **Fish Audio o Kokoro no logran generar el audio:** el mensaje se lee con Piper.
+- **No se puede verificar el estado de los créditos:** el mensaje se lee con Piper.
+
+La voz que elegiste sigue guardada. Solo el mensaje que necesitó el respaldo usa la voz de respaldo.
+
+Para la configuración general de tu canal, consulta la guía del [panel](/es/dashboard/).

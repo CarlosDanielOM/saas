@@ -1,0 +1,209 @@
+---
+/**
+ * Docs assistant placeholder.
+ *
+ * Today: a launcher + panel that explains the assistant is coming and sends the
+ * visitor's question to the built-in docs search instead.
+ *
+ * Wiring a real chatbot later (no markup changes needed):
+ *   document.addEventListener('docs-assistant:ask', (event) => {
+ *     event.preventDefault();               // skip the search fallback
+ *     const { question, page } = event.detail; // page = { title, url, lang }
+ *     // render the conversation into event.detail.mount
+ *   });
+ * Also available: window.DocsAssistant.open(question?) / .close().
+ * Any element with [data-docs-assistant-open] opens the panel; any element with
+ * [data-docs-search="query"] opens the docs search with that query.
+ */
+import { Icon } from '@astrojs/starlight/components';
+
+const { entry } = Astro.locals.starlightRoute;
+const spanish = entry.id === 'es' || entry.id.startsWith('es/');
+
+const t = spanish
+  ? {
+      launcher: 'Pregunta a la documentación',
+      launcherShort: 'Preguntar',
+      title: 'Asistente de la documentación',
+      soon: 'Próximamente',
+      close: 'Cerrar',
+      intro:
+        'Pronto podrás hacer preguntas con tus propias palabras, como «¿Cómo hago que el bot lea el chat en voz alta?», y recibir una respuesta con enlaces a la página correcta.',
+      fallback: 'Mientras tanto, tu pregunta abre el buscador de la documentación.',
+      tryLabel: 'Prueba con',
+      suggestions: [
+        ['¿Cómo configuro texto a voz?', 'texto a voz'],
+        ['¿Cómo creo un comando personalizado?', 'comando personalizado'],
+        ['¿Cómo freno los follows de bots?', 'defensa de follows'],
+        ['¿Qué incluyen Premium y Pro?', 'planes'],
+      ],
+      inputLabel: 'Tu pregunta',
+      placeholder: 'Escribe tu pregunta…',
+      send: 'Buscar',
+      context: 'Página actual:',
+    }
+  : {
+      launcher: 'Ask the docs',
+      launcherShort: 'Ask',
+      title: 'Docs assistant',
+      soon: 'Coming soon',
+      close: 'Close',
+      intro:
+        'Soon you’ll be able to ask questions in your own words, like “How do I make the bot read chat aloud?”, and get an answer with links to the right page.',
+      fallback: 'Until then, your question opens the docs search.',
+      tryLabel: 'Try asking',
+      suggestions: [
+        ['How do I set up text to speech?', 'text to speech'],
+        ['How do I make a custom command?', 'custom command'],
+        ['How do I stop follow bots?', 'follow defense'],
+        ['What do Premium and Pro include?', 'plans'],
+      ],
+      inputLabel: 'Your question',
+      placeholder: 'Ask a question…',
+      send: 'Search',
+      context: 'Current page:',
+    };
+---
+
+<docs-assistant class="print:hidden" data-lang={spanish ? 'es' : 'en'} data-page-title={entry.data.title}>
+  <button class="da-launcher" type="button" data-docs-assistant-open aria-haspopup="dialog" aria-controls="docs-assistant-panel">
+    <Icon name="comment-alt" size="1.25rem" />
+    <span class="da-launcher__label">{t.launcher}</span>
+    <span class="da-launcher__short">{t.launcherShort}</span>
+  </button>
+
+  <dialog id="docs-assistant-panel" class="da-panel" aria-labelledby="da-title">
+    <div class="da-panel__inner">
+      <header class="da-head">
+        <span class="da-head__icon"><Icon name="comment-alt" size="1.1rem" /></span>
+        <div class="da-head__text">
+          <p id="da-title" class="da-title">{t.title}</p>
+          <span class="da-soon">{t.soon}</span>
+        </div>
+        <button class="da-close" type="button" data-docs-assistant-close aria-label={t.close}>
+          <Icon name="close" size="1.25rem" />
+        </button>
+      </header>
+
+      <div class="da-body" data-docs-assistant-mount>
+        <p class="da-intro">{t.intro}</p>
+        <p class="da-fallback">{t.fallback}</p>
+        <p class="da-label">{t.tryLabel}</p>
+        <ul class="da-suggestions">
+          {t.suggestions.map(([question, query]) => (
+            <li>
+              <button type="button" class="da-suggestion" data-question={question} data-query={query}>
+                {question}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <form class="da-composer" data-docs-assistant-form>
+        <label class="sr-only" for="da-input">{t.inputLabel}</label>
+        <input id="da-input" name="question" type="text" autocomplete="off" enterkeyhint="search" placeholder={t.placeholder} />
+        <button type="submit" class="da-send" aria-label={t.send}>
+          <Icon name="right-arrow" size="1.2rem" />
+        </button>
+      </form>
+      <p class="da-context">{t.context} <strong>{entry.data.title}</strong></p>
+    </div>
+  </dialog>
+</docs-assistant>
+
+<script>
+  // Words that make a natural question but hurt keyword search.
+  const STOP = new Set(
+    ('how do i can you the a an to my me is are what which where when why does with for of in on it ' +
+      'cómo como qué que cuál cual dónde donde cuándo cuando por para el la los las un una mi mis es son de del en con se hago puedo')
+      .split(' '),
+  );
+
+  const toQuery = (question: string) => {
+    const words = question.toLowerCase().replace(/[¿?¡!.,;:"“”«»]/g, ' ').split(/\s+/).filter(Boolean);
+    const kept = words.filter((word) => !STOP.has(word));
+    return (kept.length ? kept : words).join(' ');
+  };
+
+  async function openSearch(query = '') {
+    const trigger = document.querySelector<HTMLButtonElement>('site-search button[data-open-modal]');
+    if (!trigger) return;
+    // Wait for the current click to finish: Starlight closes search on any
+    // window click outside the dialog, including the one that opened it.
+    await new Promise((resolve) => setTimeout(resolve));
+    trigger.click();
+    if (!query) return;
+    // Pagefind's UI mounts lazily after the dialog opens.
+    for (let attempt = 0; attempt < 40; attempt++) {
+      const input = document.querySelector<HTMLInputElement>('#starlight__search input');
+      if (input) {
+        input.value = query;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.focus();
+        return;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+  }
+
+  class DocsAssistantElement extends HTMLElement {
+    dialog!: HTMLDialogElement;
+
+    connectedCallback() {
+      this.dialog = this.querySelector('dialog')!;
+      const input = this.querySelector<HTMLInputElement>('#da-input')!;
+
+      this.querySelector('[data-docs-assistant-close]')!.addEventListener('click', () => this.close());
+      // Click on the backdrop closes the panel.
+      this.dialog.addEventListener('click', (event) => {
+        if (event.target === this.dialog) this.close();
+      });
+      this.querySelector('[data-docs-assistant-form]')!.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const question = input.value.trim();
+        if (question) this.ask(question);
+      });
+      this.querySelectorAll<HTMLButtonElement>('.da-suggestion').forEach((button) =>
+        button.addEventListener('click', () => this.ask(button.dataset.question!, button.dataset.query)),
+      );
+
+      // Page-wide hooks so any page or future component can use the assistant/search.
+      document.addEventListener('click', (event) => {
+        const target = (event.target as Element).closest<HTMLElement>('[data-docs-assistant-open], [data-docs-search]');
+        if (!target) return;
+        event.preventDefault();
+        if (target.hasAttribute('data-docs-assistant-open')) this.open();
+        else openSearch(target.dataset.docsSearch);
+      });
+
+      (window as any).DocsAssistant = { open: (question?: string) => this.open(question), close: () => this.close() };
+    }
+
+    open(question?: string) {
+      if (!this.dialog.open) this.dialog.showModal();
+      const input = this.querySelector<HTMLInputElement>('#da-input')!;
+      if (question) input.value = question;
+      // Don't pop the phone keyboard over the intro text.
+      if (window.matchMedia('(min-width: 50rem)').matches) input.focus();
+    }
+
+    close() {
+      this.dialog.close();
+    }
+
+    ask(question: string, query?: string) {
+      const detail = {
+        question,
+        mount: this.querySelector('[data-docs-assistant-mount]'),
+        page: { title: this.dataset.pageTitle, url: location.href, lang: this.dataset.lang },
+      };
+      const handled = !this.dispatchEvent(new CustomEvent('docs-assistant:ask', { detail, bubbles: true, cancelable: true }));
+      if (handled) return;
+      this.close();
+      openSearch(query ?? toQuery(question));
+    }
+  }
+
+  customElements.define('docs-assistant', DocsAssistantElement);
+</script>

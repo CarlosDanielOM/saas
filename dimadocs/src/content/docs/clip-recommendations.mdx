@@ -1,28 +1,47 @@
 ---
 title: Clip Recommendations
-description: Analyze recent Twitch VODs for likely clip moments, review candidates, and understand credit costs.
+description: Find likely clip moments in your recent streams, review them, and understand what each analysis costs in AI credits.
 sidebar:
   order: 9
 ---
 
-Clip Recommendations analyzes the audio of a Twitch VOD and returns likely moments to review. The dashboard module is currently marked **Alpha**. Manual analysis is available on Free, Premium, and Pro; automatic analysis after a stream ends is Pro-only. The feature requires a Twitch VOD that the service can access and enough AI credits in the channel balance.
+Clip Recommendations listens to the audio of one of your past streams (a Twitch VOD) and suggests moments worth clipping. The module is marked **Alpha**. Manual analysis works on **Free, Premium, and Pro**. Automatic analysis after each stream is **Pro only**.
 
-## Analyze a VOD
+**Who can use it:** the channel owner, or an admin with clip permissions. Admins with view access can see results but can't start analyses or review moments.
 
-1. Open **Modules → Clip Recommendations** in your channel dashboard.
-2. Review the recent VOD list. Use **Refresh VODs** if needed; the list covers the recent seven-day period.
-3. Check the estimated credit cost shown on the VOD card, then select **Analyze**.
-4. The request is queued for background processing. Check **Past Analyses** for Pending, Processing, Completed, or Failed status.
-5. Review each candidate's time range, reason, confidence, and video check when available. Confirm candidates that pass the video check and that you want to keep, or deny candidates you do not want.
+## Find clips in a stream
 
-The estimate is 2,750 AI credits for a VOD up to 60 minutes, plus 50 credits for each minute over 60 (rounded up). The worker checks the balance when processing starts. If the balance is too low, the VOD is unavailable, or processing fails, the job may not complete. Queueing a job is not a guarantee that candidates will be returned.
+1. Open **Modules → Clip Recommendations**.
+2. Under **Find clips in a stream**, find the stream you want. The list shows your streams from the last 7 days. Select **Refresh** if a new stream is missing.
+3. Select **Find clips**. A dialog shows the estimated cost. Confirm to start.
+4. Watch progress under **Moments to review**. A stream shows **Waiting to start…**, then **Analyzing…**, then **N moments found** or **No moments were good enough to clip**. You can leave the page while it runs.
+5. Open a stream's moments and select **Keep** or **Skip** for each one. **Open on Twitch** jumps to that point in the VOD so you can make the clip yourself.
+
+Keep and Skip only change your review status. They don't create a clip on Twitch.
+
+## What it costs
+
+- An analysis of a VOD up to 60 minutes costs **2,750 AI credits**.
+- Each minute past 60 adds **50 credits** (partial minutes count as a full minute).
+- Credits are checked when the analysis starts. You're charged only when it finishes. A failed attempt shows "No credits were charged for this attempt."
+- If your balance is too low, the analysis stops with the message "Couldn't finish: not enough AI credits."
+
+See [Plans](/plans/) for monthly credit allowances.
 
 ## Automatic analysis
 
-Pro users can enable **Auto-analyze after stream ends** in this module. When enabled, a stream-offline event queues analysis of the latest Twitch VOD. Free and Premium users can still start manual analyses. Automatic jobs use the same VOD and AI-credit requirements as manual jobs; make sure the channel has enough credits for the VOD duration.
+Pro channels can turn on **Find clips after every stream**. When the stream ends, the bot waits about 5 minutes, then analyzes the most recent VOD. This uses the same credit cost as a manual analysis. Make sure your balance covers a full-length stream.
 
-## What a result means
+Free and Premium channels can't turn this on, but they can still run manual analyses.
 
-The model identifies likely moments from VOD audio and gives each candidate a time range and explanation. A separate video check can approve or reject candidates; only candidates approved by that check can be confirmed in the dashboard. Confirmation or denial updates the candidate's review status. It does not itself create or publish a Twitch clip.
+## What the results mean
 
-Results are suggestions, not guaranteed highlights. Audio analysis can miss visual context, produce inaccurate timestamps or reasons, or return no candidates. VOD access, provider availability, queue load, and credit balance can affect whether a job finishes. Review the preview and the VOD before using any suggested moment. See [Plans](/plans/) for monthly credit allowances.
+The analysis looks for laughs, hype, and big reactions in the audio. Then a video check reviews each candidate. Only moments that pass the video check get **Keep** and **Skip**. The rest are hidden. Select **Show N that didn't pass the video check** to see them.
+
+Results are suggestions, not guaranteed highlights. Check each moment on the VOD before you clip it. An analysis can also return no moments, or a moment's timestamp can be a little off.
+
+## Troubleshooting
+
+- **A stream shows "Couldn't finish":** the message says why. A credit shortage or a charge that didn't go through are the most common reasons.
+- **The VOD isn't listed:** only streams from the last 7 days appear, and the stream must have a VOD on Twitch.
+- **Buttons are missing:** you need clip permission to start analyses or review moments.

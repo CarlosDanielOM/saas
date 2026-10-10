@@ -55,6 +55,8 @@ export function toMarkdown(body, canonical, publishedPaths) {
     if (node.type === 'mdxJsxFlowElement' || node.type === 'mdxJsxTextElement') {
       const name = node.name;
       if (attribute(node, 'aria-hidden') === 'true') return [];
+      // Interactive or decorative components carry no documentation text.
+      if (['DocsHomeSearch', 'Icon'].includes(name)) return [];
       if (name === 'a' || name === 'LinkButton' || name === 'LinkCard') {
         const href = attribute(node, 'href');
         if (typeof href !== 'string') throw new Error(`Non-static link in ${canonical}`);

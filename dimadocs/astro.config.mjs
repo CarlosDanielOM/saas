@@ -1,186 +1,94 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 
+const page = (slug, label, es, extra = {}) => ({ label, translations: { es }, slug, ...extra });
+const alpha = { text: { en: 'Alpha', es: 'Alfa' }, variant: 'caution' };
+
+// Grouped by what a streamer is trying to do, not by internal module names.
 const sidebar = [
   {
     label: 'Start here',
     translations: { es: 'Empieza aquí' },
     items: [
-      {
-        label: 'Use with AI assistants',
-        translations: { es: 'Usar con asistentes de IA' },
-        slug: 'ai-assistants',
-      },
-      {
-        label: 'Getting Started',
-        translations: { es: 'Primeros pasos' },
-        slug: 'getting-started',
-      },
-      {
-        label: 'Dashboard',
-        translations: { es: 'Panel de control' },
-        slug: 'dashboard',
-      },
-      {
-        label: 'Plans',
-        translations: { es: 'Planes' },
-        slug: 'plans',
-      },
-      {
-        label: 'Modules',
-        translations: { es: 'Módulos' },
-        slug: 'modules',
-      },
+      page('getting-started', 'Getting started', 'Primeros pasos'),
+      page('dashboard', 'Dashboard tour', 'Recorrido por el panel'),
+      page('modules', 'Modules', 'Módulos'),
+      page('plans', 'Plans & credits', 'Planes y créditos'),
     ],
   },
   {
-    label: 'Features',
-    translations: { es: 'Funciones' },
+    label: 'Chat & commands',
+    translations: { es: 'Chat y comandos' },
     items: [
+      page('commands', 'Which command page?', '¿Qué página de comandos?'),
+      page('commands/built-in', 'Built-in commands', 'Comandos integrados'),
+      page('commands/overview', 'Custom commands & timers', 'Comandos personalizados y temporizadores'),
       {
-        label: 'Commands',
-        translations: { es: 'Comandos' },
-        slug: 'commands',
-      },
-      {
-        label: 'Chat Events',
-        translations: { es: 'Eventos del chat' },
-        slug: 'chat-events',
-      },
-      {
-        label: 'Analytics & Follow Ledger',
-        translations: { es: 'Analíticas y registro de seguidores' },
-        slug: 'analytics',
-      },
-      {
-        label: 'Clips',
-        translations: { es: 'Clips' },
-        slug: 'clips',
-      },
-      {
-        label: 'DimaFX',
-        translations: { es: 'DimaFX' },
-        slug: 'dimafx',
-      },
-      {
-        label: 'Referrals',
-        translations: { es: 'Referidos' },
-        slug: 'referrals',
-      },
-      {
-        label: 'Text to Speech',
-        translations: { es: 'Texto a voz' },
-        slug: 'tts',
-      },
-      {
-        label: 'Channel Rewards',
-        translations: { es: 'Recompensas del canal' },
-        slug: 'rewards',
-      },
-      {
-        label: 'Redemptions',
-        translations: { es: 'Canjes' },
-        slug: 'redemptions',
-      },
-      {
-        label: 'Triggers & Media',
-        translations: { es: 'Disparadores y medios' },
-        slug: 'triggers',
-      },
-      {
-        label: 'Media Library',
-        translations: { es: 'Biblioteca de medios' },
-        slug: 'media-library',
-      },
-      {
-        label: 'AI Personality',
-        translations: { es: 'Personalidad IA' },
-        slug: 'ai-personality',
-      },
-      {
-        label: 'Follow Defense',
-        translations: { es: 'Defensa de follows' },
-        slug: 'follow-defense',
-      },
-      {
-        label: 'Chat Moderation',
-        translations: { es: 'Moderación del chat' },
-        slug: 'moderation',
-      },
-      {
-        label: 'Memories',
-        translations: { es: 'Memorias' },
-        slug: 'memories',
-      },
-      {
-        label: 'Stream Summaries',
-        translations: { es: 'Resúmenes de transmisiones' },
-        slug: 'stream-summaries',
-      },
-      {
-        label: 'Clip Recommendations',
-        translations: { es: 'Recomendaciones de clips' },
-        slug: 'clip-recommendations',
-      },
-      {
-        label: 'Roulette (Alpha · Pro)',
-        translations: { es: 'Ruleta (Alfa · Pro)' },
-        slug: 'roulette',
-      },
-      {
-        label: 'Overlay Studio (Alpha · Free)',
-        translations: { es: 'Estudio de overlays (Alfa · Free)' },
-        slug: 'overlay-studio',
-      },
-    ],
-  },
-  {
-    label: 'Commands guide',
-    translations: { es: 'Guía de comandos' },
-    items: [
-      {
-        label: 'Built-in commands',
-        translations: { es: 'Comandos integrados' },
-        slug: 'commands/built-in',
-      },
-      {
-        label: 'Overview',
-        translations: { es: 'Resumen' },
-        slug: 'commands/overview',
-      },
-      {
-        label: 'Advanced (AST)',
-        translations: { es: 'Avanzado (AST)' },
+        label: 'Advanced commands (AST)',
+        translations: { es: 'Comandos avanzados (AST)' },
         collapsed: true,
         items: [
-          {
-            label: 'Introduction',
-            translations: { es: 'Introducción' },
-            slug: 'commands/advanced',
-          },
-          {
-            label: 'Syntax',
-            translations: { es: 'Sintaxis' },
-            slug: 'commands/advanced/syntax',
-          },
-          {
-            label: 'Functions',
-            translations: { es: 'Funciones' },
-            slug: 'commands/advanced/functions',
-          },
-          {
-            label: 'Execution',
-            translations: { es: 'Ejecución' },
-            slug: 'commands/advanced/execution',
-          },
-          {
-            label: 'Recipes',
-            translations: { es: 'Recetas' },
-            slug: 'commands/advanced/recipes',
-          },
+          page('commands/advanced', 'Introduction', 'Introducción'),
+          page('commands/advanced/syntax', 'Syntax', 'Sintaxis'),
+          page('commands/advanced/functions', 'Functions', 'Funciones'),
+          page('commands/advanced/execution', 'How it runs', 'Cómo se ejecuta'),
+          page('commands/advanced/recipes', 'Recipes', 'Recetas'),
         ],
       },
+      page('chat-events', 'Chat events', 'Eventos del chat'),
     ],
+  },
+  {
+    label: 'Alerts, sound & overlays',
+    translations: { es: 'Alertas, sonido y overlays' },
+    items: [
+      page('triggers', 'Triggers & media', 'Disparadores y medios'),
+      page('media-library', 'Media library', 'Biblioteca de medios'),
+      page('tts', 'Text to speech', 'Texto a voz'),
+      page('overlay-studio', 'Overlay Studio', 'Estudio de overlays', { badge: alpha }),
+      page('roulette', 'Roulette', 'Ruleta', { badge: { text: { en: 'Alpha · Premium', es: 'Alfa · Premium' }, variant: 'caution' } }),
+      page('dimafx', 'DimaFX extension', 'Extensión DimaFX'),
+    ],
+  },
+  {
+    label: 'Channel points',
+    translations: { es: 'Puntos del canal' },
+    items: [
+      page('rewards', 'Channel rewards', 'Recompensas del canal'),
+      page('redemptions', 'Redemptions', 'Canjes'),
+    ],
+  },
+  {
+    label: 'AI features',
+    translations: { es: 'Funciones de IA' },
+    items: [
+      page('ai-personality', 'AI personality', 'Personalidad IA'),
+      page('memories', 'Memories', 'Memorias'),
+      page('stream-summaries', 'Stream summaries', 'Resúmenes de transmisiones'),
+      page('clip-recommendations', 'Clip recommendations', 'Recomendaciones de clips'),
+    ],
+  },
+  {
+    label: 'Safety',
+    translations: { es: 'Seguridad' },
+    items: [
+      page('follow-defense', 'Follow defense', 'Defensa de follows'),
+      page('moderation', 'Chat moderation', 'Moderación del chat'),
+    ],
+  },
+  {
+    label: 'Growth & stats',
+    translations: { es: 'Crecimiento y estadísticas' },
+    items: [
+      page('analytics', 'Analytics & follow ledger', 'Analíticas y registro de seguidores'),
+      page('clips', 'Clips', 'Clips'),
+      page('referrals', 'Referrals', 'Referidos'),
+    ],
+  },
+  {
+    label: 'Help',
+    translations: { es: 'Ayuda' },
+    items: [page('ai-assistants', 'Use with AI assistants', 'Usar con asistentes de IA')],
   },
 ];
 
@@ -193,7 +101,7 @@ export default defineConfig({
     starlight({
       title: 'DomDimaBot Docs',
       description:
-        'Guides for DomDimaBot — Twitch commands, rewards, TTS, triggers, AI personality, stream protection, Pro Alpha Roulette, and Free Alpha Overlay Studio.',
+        'Guides for DomDimaBot — Twitch commands, rewards, TTS, triggers, AI personality, stream protection, Premium Alpha Roulette, and Free Alpha Overlay Studio.',
       defaultLocale: 'root',
       locales: {
         root: {
@@ -209,6 +117,8 @@ export default defineConfig({
       components: {
         Head: './src/components/DocsHead.astro',
         Footer: './src/components/DocsFooter.astro',
+        PageFrame: './src/components/DocsPageFrame.astro',
+        PageTitle: './src/components/DocsPageTitle.astro',
       },
       head: [
         {

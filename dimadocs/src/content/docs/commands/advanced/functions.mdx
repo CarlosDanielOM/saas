@@ -1,83 +1,95 @@
 ---
 title: AST Functions Reference
-description: "User, Twitch, moderation, EventSub, TTS, trigger, counter, clip, and chat functions available in AST commands."
+description: "Every $(...) function for custom commands: users, text, Twitch data, moderation, channel actions, polls, predictions, roulette, TTS, triggers, counters, clips, and EventSub values, with arguments, access, and plan rules."
 sidebar:
   order: 2
 ---
 
-import { Aside } from '@astrojs/starlight/components';
+import { Aside, Steps } from '@astrojs/starlight/components';
 
-Functions are called with `$(...)`.
+Functions are the `$(...)` pieces inside a custom command's reply. Use them to read information (the current user, the stream title, the follower count), change something on your channel (the title, a raid, a poll), or control a command's flow (a delay, a loop exit). This page lists each one, what it returns, and who can use it.
 
-```bash
-$(user)
-$(random 10)
-$(twitch.game)
-```
+<Steps>
+1. Open **Commands** in the navbar and create a command, or edit one you already have.
+2. Type a function where you want its result, for example `Welcome $(user)!`.
+3. Save, then test with a harmless function first, like `$(random 10)`. Add functions that change your channel only after the text looks right.
+</Steps>
 
 <Aside type="note">
-Some functions only read data. Others perform actions like banning, changing title, speaking TTS, or sending chat messages. Restrict action-heavy commands to trusted roles.
+Most action functions return nothing on success. When they fail, they return a short error message instead, such as `Error setting title: …`. Syntax for variables, conditions, and loops is on the [AST Syntax & Data](/commands/advanced/syntax/) page.
 </Aside>
+
+## Who can use each function
+
+- **Your own commands** run with the command's access setting. A function inside a command adds no second check. If a command is open to everyone, `$(ban ...)` inside it works for everyone, so keep action commands restricted to moderators.
+- **AI chat requests** are different. When a viewer asks the bot's AI assistant to do something, the function's minimum level in the **Access** column applies. Moderator is level 7 and Editor is level 8.
+- **Plans:** Temporary VIP and moderator days need **Premium or Pro**. Roulette needs **Premium or Pro**. Saving to database variables (`%(*name ...)`, `%(**name ...)`) needs **Premium or Pro**.
 
 ## User functions
 
-| Function | Description | Usage |
-|----------|-------------|-------|
-| `$(user)` | Current chatter's username | `$(user)` |
-| `$(touser)` | Target user from context | `$(touser)` |
-| `$(randomuser)` | Random chatter in channel | `$(randomuser)` |
+| Function | Description | Example |
+|----------|-------------|---------|
+| `$(user)` | Username of the person who ran the command | `$(user)` |
+| `$(touser)` | The text typed after the command, or the caller if nothing was typed. Keeps an `@` if one was typed | `!hug @ronchi` → `@ronchi` |
+| `$(randomuser)` | A random name from the chat list. Returns the caller if the list is empty | `$(randomuser)` |
 
 ## Random functions
 
-| Function | Description | Usage |
-|----------|-------------|-------|
-| `$(random N)` | Random integer from `0` to `N-1` | `$(random 10)` |
-| `$(random)` | Random integer using the default range | `$(random)` |
+| Function | Description | Example |
+|----------|-------------|---------|
+| `$(random)` | Whole number from `0` to `99` | `$(random)` |
+| `$(random N)` | Whole number from `0` to `N-1` | `$(random 10)` gives `0` to `9` |
 
-## String functions
+## Text functions
 
-| Function | Description | Usage |
-|----------|-------------|-------|
-| `$(upper text)` | Uppercases the text | `$(upper hello)` → `HELLO` |
-| `$(lower text)` | Lowercases the text | `$(lower HELLO)` → `hello` |
-| `$(title text)` | Capitalizes each word | `$(title hello world)` → `Hello World` |
+| Function | Description | Example |
+|----------|-------------|---------|
+| `$(upper text)` | Converts to uppercase | `$(upper hello)` → `HELLO` |
+| `$(lower text)` | Converts to lowercase | `$(lower HELLO)` → `hello` |
+| `$(title text)` | Capitalizes each word. The rest of each word is lowercased first | `$(title hello world)` → `Hello World` |
 | `$(capitalize text)` | Capitalizes only the first letter | `$(capitalize hello)` → `Hello` |
-| `$(trim text)` | Removes surrounding whitespace | `$(trim "  hi  ")` → `hi` |
-| `$(length text)` | Length of the text | `$(length hello)` → `5` |
-| `$(slice start [end] text)` | Cuts text by position; negatives wrap from the end | `$(slice 0 5 hello world)` → `hello` |
-| `$(replace search replacement text)` | Replaces every occurrence (literal, no regex) | `$(replace o 0 foo)` → `f00` |
+| `$(trim text)` | Removes spaces at the start and end | `$(trim "  hi  ")` → `hi` |
+| `$(length text)` | Counts characters | `$(length hello)` → `5` |
+| `$(slice start [end] text)` | Cuts text by position. Negative numbers count from the end | `$(slice 0 5 hello world)` → `hello` |
+| `$(replace search replacement text)` | Replaces every match. Plain text only, no patterns | `$(replace o 0 foo)` → `f00` |
 
-For multi-word search or replacement values, use quotes: `$(replace "old text" "new text" the old text here)`.
+For a search or replacement with several words, put it in quotes: `$(replace "old text" "new text" the old text here)`.
 
-## Twitch functions
+## Twitch data functions
 
-| Function | Description | Usage |
-|----------|-------------|-------|
+These read live data from your channel. Anyone can use them.
+
+| Function | Description | Example |
+|----------|-------------|---------|
+| `$(twitch.live)` | `true` when the channel is live, `false` when offline or unknown. Use it in a condition | `$(twitch.live)` |
+| `$(twitch.title)` | Current stream title, or `No title set` | `$(twitch.title)` |
+| `$(twitch.game)` | Current category, or `No game set` | `$(twitch.game)` |
+| `$(twitch.viewers)` | Current viewer count | `$(twitch.viewers)` |
 | `$(twitch.subs)` | Subscriber count | `$(twitch.subs)` |
-| `$(twitch.title)` | Stream title | `$(twitch.title)` |
-| `$(twitch.game)` | Current category | `$(twitch.game)` |
-| `$(twitch.viewers)` | Viewer count / chatters | `$(twitch.viewers)` |
 | `$(twitch.follows)` | Follower count | `$(twitch.follows)` |
-| `$(twitch.channel)` | Broadcaster name | `$(twitch.channel)` |
-| `$(twitch.login)` | Broadcaster login | `$(twitch.login)` |
+| `$(twitch.channel)` | Channel display name | `$(twitch.channel)` |
+| `$(twitch.login)` | Channel login name, lowercase | `$(twitch.login)` |
 
 ## Moderation functions
 
-| Function | Description | Args | Access notes |
-|----------|-------------|------|--------------|
-| `$(vip)` or `$(add.vip)` | Add VIP | `username [days]` | Mod |
-| `$(unvip)` | Remove VIP | `username` | Mod |
-| `$(ban)` | Ban or timeout user | `username [duration_seconds]` | Mod |
-| `$(ban.mod)` | Remove a moderator, then ban/timeout them; optionally restore mod after a timeout | `username seconds [true|false]` | Requires level 8 for AI calls; authored commands use configured command permissions |
-| `$(mod)` or `$(add.mod)` | Add moderator | `username [days]` | Requires level 8 for AI calls; authored commands use configured command permissions |
-| `$(unmod)` | Remove moderator | `username` | Requires level 8 for AI calls; authored commands use configured command permissions |
-| `$(clear.chat)` | Clear chat | none | Mod |
-| `$(emoteonly)` | Toggle emote-only mode | `[duration_seconds]` | Mod |
-| `$(bot.mode attack)` | Manually activate Follow Defense Attack Mode | none | Mod |
-| `$(bot.mode status)` | Show current Follow Defense mode | none | Mod |
-| `$(permit [username] [seconds])` | Temporarily bypass channel moderation filters; without arguments permits everyone for 60 seconds | `[username] [seconds]` | Mod |
+| Function | What it does | Arguments | Access (AI chat) |
+|----------|--------------|-----------|------------------|
+| `$(vip)` or `$(add.vip)` | Gives VIP. Add days to make it temporary | `username [days]` | Moderator |
+| `$(unvip)` | Removes VIP | `username` | Moderator |
+| `$(ban)` | Bans, or times out when you add seconds. Timeouts run up to `604800` seconds (7 days) | `username [seconds]` | Moderator |
+| `$(ban.mod)` | Removes the user's moderator role, then bans or times them out. With `true`, the role comes back after the timeout | `username seconds [true\|false]` | Editor |
+| `$(mod)` or `$(add.mod)` | Gives moderator. Add days to make it temporary | `username [days]` | Editor |
+| `$(unmod)` | Removes moderator | `username` | Editor |
+| `$(warn)` | Sends an official Twitch warning. The reason is 1–500 characters | `username reason` | Moderator |
+| `$(clear.chat)` | Clears the chat | none | Moderator |
+| `$(emoteonly)` | Turns emote-only mode on or off. When you turn it on with seconds, it turns off again after that many seconds | `[seconds]` | Moderator |
+| `$(permit)` | Lets users skip the channel's moderation filters (caps, links, emote spam, blacklist) for a while. With no arguments, everyone is permitted for 60 seconds | `[username] [seconds]` | Moderator |
+| `$(bot.mode attack)` | Starts Follow Defense attack mode | none | Moderator |
+| `$(bot.mode status)` | Shows the current Follow Defense mode and time left | none | Moderator |
 
-Temporary mod and VIP durations from `1` to `365` days require **Premium or Pro**. Pin, moderation, and channel actions are checked against function permissions for AI calls; streamer-authored commands are governed by their configured command access.
+Temporary VIP and moderator days go from `1` to `365` and need **Premium or Pro**. `$(permit)` takes `1` to `600` seconds. `$(ban.mod)` needs a seconds value.
+
+`$(emoteonly)` with seconds keeps the auto-off timer in the bot's memory. If the bot restarts before the time is up, emote-only stays on until someone turns it off.
 
 <Aside type="caution">
 `$(bot.mode attack)` can permanently ban tracked followers from an active follow wave. Use it only in moderator-only commands such as `!defmode`. See [Follow Defense](/follow-defense/) for details.
@@ -85,162 +97,203 @@ Temporary mod and VIP durations from `1` to `365` days require **Premium or Pro*
 
 ## Channel functions
 
-| Function | Description | Usage |
-|----------|-------------|-------|
-| `$(raid channel)` | Raid target channel | `$(raid targetchannel)` |
-| `$(unraid)` | Cancel raid | `$(unraid)` |
-| `$(set.title new_title)` | Update stream title | `$(set.title Playing Valorant!)` |
-| `$(set.game game_name)` | Update category | `$(set.game Valorant)` |
-| `$(start.prediction "title;opt1/opt2;seconds")` | Start prediction; quote the complete semicolon-separated argument | `$(start.prediction "Who wins?;A/B;120")` |
-| `$(start.poll "title;opt1/opt2;seconds")` | Start poll; quote the complete semicolon-separated argument | `$(start.poll "Favorite game?;COD/Halo;60")` |
-| `$(ad)` | Ad duration in seconds | `$(ad)` |
-| `$(ad.time)` | Ad duration in seconds | `$(ad.time)` |
-| `$(ai prompt)` | AI-generated response | `$(ai tell a joke)` |
+| Function | What it does | Example |
+|----------|--------------|---------|
+| `$(raid channel)` | Starts a raid to a channel login. Returns `User not found` if the login doesn't exist | `$(raid targetchannel)` |
+| `$(unraid)` | Cancels the raid and posts `Raid cancelled!` in chat | `$(unraid)` |
+| `$(set.title new_title)` | Changes the stream title and posts `Title updated to: …` in chat | `$(set.title Playing Valorant!)` |
+| `$(set.game game_name)` | Searches Twitch categories and picks the closest match, then posts `Game updated to: …` in chat | `$(set.game Valorant)` |
+| `$(ad)` or `$(ad.time)` | Length of the ad break in seconds. Returns `0` outside an ad-break event | `$(ad)` |
+| `$(ai prompt)` | AI-generated reply to the prompt | `$(ai tell a joke)` |
 
-### Polls and predictions
+All functions in this table need moderator access in AI chat, except `$(ad)` and `$(ai)`, which anyone can use.
 
-These functions require moderator access in streamer-authored commands. Quote the entire `title;options;seconds` argument because semicolons are reserved syntax. Use `/` between choices.
+### Polls
 
-| Function | Description | Usage |
-|----------|-------------|-------|
-| `$(start.poll "title;choice1/choice2;seconds")` | Start a poll with 2–5 choices | `$(start.poll "Best map?;Nuke/Mirage;120")` |
-| `$(get.poll)` | Read the active poll, or the latest poll if none is active; includes status and vote totals | `$(get.poll)` |
-| `$(end.poll)` | End the active poll and archive its results | `$(end.poll)` |
-| `$(cancel.poll)` | End the active poll without archiving its results | `$(cancel.poll)` |
-| `$(start.prediction "title;choice1/choice2;seconds")` | Start a channel-points prediction with 2–10 choices | `$(start.prediction "Will we win?;Yes/No;120")` |
-| `$(get.prediction)` | Read the active or locked prediction and its numbered choices | `$(get.prediction)` |
-| `$(lock.prediction)` | Close betting without choosing a winner; already locked predictions stay locked | `$(lock.prediction)` |
-| `$(end.prediction option)` | Resolve with an exact choice title or its 1-based number | `$(end.prediction "No")` or `$(end.prediction 1)` |
-| `$(cancel.prediction)` | Cancel the active or locked prediction without choosing a winner | `$(cancel.prediction)` |
+Quote the whole `title;choices;seconds` argument, because `;` is reserved syntax. Separate choices with `/`.
 
-Call `get.prediction` before ending one so you can check the question and actual choice order. `end.prediction` fetches the current prediction again and rejects missing, ambiguous, or invalid choices.
+| Function | What it does | Example |
+|----------|--------------|---------|
+| `$(start.poll "title;choice1/choice2;seconds")` | Starts a native Twitch poll with 2–5 choices. Add a fourth part for Channel Points per vote, `0` to `1000000` (default `0`, off) | `$(start.poll "Best map?;Nuke/Mirage;120")` |
+| `$(get.poll)` | Reads the active poll, or the latest one if none is active. Includes status and vote counts | `$(get.poll)` |
+| `$(end.poll)` | Ends the active poll and keeps its results | `$(end.poll)` |
+| `$(cancel.poll)` | Ends the active poll and discards its results | `$(cancel.poll)` |
+
+`end.poll` and `cancel.poll` only work on an active poll. All poll functions need moderator access in AI chat.
+
+### Predictions
+
+Quote the whole `title;choices;seconds` argument. Choices are separated by `/`.
+
+| Function | What it does | Example |
+|----------|--------------|---------|
+| `$(start.prediction "title;choice1/choice2;seconds")` | Starts a Channel Points prediction. Twitch allows 2–10 choices; the bot checks for at least 2 | `$(start.prediction "Will we win?;Yes/No;120")` |
+| `$(get.prediction)` | Reads the active or locked prediction, with its numbered choices | `$(get.prediction)` |
+| `$(lock.prediction)` | Closes betting without choosing a winner. A locked prediction stays locked | `$(lock.prediction)` |
+| `$(end.prediction option)` | Picks the winner by exact choice title or by its number, starting at `1` | `$(end.prediction "No")` or `$(end.prediction 1)` |
+| `$(cancel.prediction)` | Cancels the active or locked prediction without choosing a winner | `$(cancel.prediction)` |
+
+Run `get.prediction` before `end.prediction` to check the question and the number order. `end.prediction` looks up the current prediction on Twitch each time. It rejects a number that doesn't exist and a title that matches more than one choice.
 
 ## Availability functions
 
-Moderators can enable or disable one of their custom commands or Twitch channel-point rewards. Names are matched exactly without case sensitivity; for commands, the leading `!` is optional. For rewards, use the exact title or reward ID when titles are ambiguous.
+Moderators can turn one of the channel's custom commands or Twitch Channel Points rewards on or off.
 
-| Function | Description | Usage |
-|----------|-------------|-------|
-| `$(disable.command "name" [seconds])` | Disable a command, optionally restoring its prior state later | `$(disable.command spoilers 300)` |
-| `$(enable.command "name" [seconds])` | Enable a command, optionally restoring its prior state later | `$(enable.command spoilers 300)` |
-| `$(disable.redemption "title-or-id" [seconds])` | Disable a Twitch redemption, optionally restoring its prior state later | `$(disable.redemption "Hydrate" 300)` |
-| `$(enable.redemption "title-or-id" [seconds])` | Enable a Twitch redemption, optionally restoring its prior state later | `$(enable.redemption "Hydrate" 300)` |
+| Function | What it does | Example |
+|----------|--------------|---------|
+| `$(disable.command "name" [seconds])` | Turns a command off | `$(disable.command spoilers 300)` |
+| `$(enable.command "name" [seconds])` | Turns a command on | `$(enable.command spoilers 300)` |
+| `$(disable.redemption "title-or-id" [seconds])` | Turns a Twitch reward off | `$(disable.redemption "Hydrate" 300)` |
+| `$(enable.redemption "title-or-id" [seconds])` | Turns a Twitch reward on | `$(enable.redemption "Hydrate" 300)` |
 
-The optional duration is a whole number of seconds from `1` to `604800` (seven days). When it expires, the item returns to the state it had before the timed change, including after a bot restart. Repeating the same timed change extends the deadline. Omitting the duration cancels any pending restoration. Quote names that contain spaces.
+- **Names:** matched exactly, without caring about capital letters. For commands, the leading `!` is optional. Quote names that contain spaces.
+- **Commands:** keyword commands (those that reply to a word without `!`) can't be turned on or off this way.
+- **Rewards:** only Twitch rewards. Use the reward ID when two rewards share a title. If the title matches more than one reward, the bot refuses and asks for the ID.
+- **Duration:** a whole number of seconds from `1` to `604800` (seven days). When it runs out, the item goes back to the state it had before the change, even after a bot restart. Using the same timed change again extends the deadline. Leaving out the duration cancels a pending restore.
 
 ## Roulette functions
 
-These AST controls require **Pro**. Identify a roulette by its saved alias or ID; operations that omit it use the active roulette. Except for `result` and `add`, these functions return no chat text. `add` returns the new item ID, which you can save in an AST variable.
+These controls need **Premium or Pro**. Identify a roulette by its alias or ID. If you leave it out, the active roulette is used. Except for `roulette.result` and `roulette.add`, these functions return no chat text. `roulette.add` returns the new item ID, which you can save in a variable.
 
-| Function | Description | Usage |
-|----------|-------------|-------|
-| `$(roulette.add roulette_id "item label" [multiplier] [weight])` | Add copies of an item; multiplier and weight default to 1 | `$(roulette.add giveaways "VIP for a day" 3 10)` |
-| `$(roulette.remove roulette_id item_id)` | Remove an item and all its copies | `$(roulette.remove giveaways item_id)` |
-| `$(roulette.update roulette_id item_id multiplier [weight])` | Change an item's copy count and optionally its weight | `$(roulette.update giveaways item_id 3 10)` |
-| `$(roulette.shuffle roulette_id)` | Shuffle copies without changing their odds | `$(roulette.shuffle giveaways)` |
-| `$(roulette.switch roulette_id)` | Select the active roulette without changing visibility | `$(roulette.switch giveaways)` |
-| `$(roulette.show)` / `$(roulette.hide)` | Show or hide the overlay; hiding does not cancel a draw | `$(roulette.show)` |
-| `$(roulette.start [roulette_id])` | Start the active or named roulette and record a winner | `$(roulette.start giveaways)` |
-| `$(roulette.result [roulette_id])` | Return the most recently completed winner label, or blank if there is none | `$(roulette.result giveaways)` |
+| Function | What it does | Example |
+|----------|--------------|---------|
+| `$(roulette.add roulette_id "item label" [multiplier] [weight])` | Adds an item. Multiplier is how many copies (default `1`). Weight sets the chance per copy (default `1`) | `$(roulette.add giveaways "VIP for a day" 3 10)` |
+| `$(roulette.remove roulette_id item_id)` | Removes an item and all its copies | `$(roulette.remove giveaways item_id)` |
+| `$(roulette.update roulette_id item_id multiplier [weight])` | Changes an item's copies and, optionally, its weight | `$(roulette.update giveaways item_id 3 10)` |
+| `$(roulette.shuffle roulette_id)` | Shuffles the copies without changing the odds | `$(roulette.shuffle giveaways)` |
+| `$(roulette.switch roulette_id)` | Makes a roulette the active one, without changing whether it shows | `$(roulette.switch giveaways)` |
+| `$(roulette.show)` / `$(roulette.hide)` | Shows or hides the overlay. Hiding doesn't cancel a draw | `$(roulette.show)` |
+| `$(roulette.start [roulette_id])` | Starts a draw and records one winner | `$(roulette.start giveaways)` |
+| `$(roulette.result [roulette_id])` | Returns the label of the most recent winner, or blank if there is none | `$(roulette.result giveaways)` |
 
-You can attach an AST action to an item in the roulette editor. It runs when that item wins, with `%(roulette_id)`, `%(roulette_draw_id)`, `%(roulette_item_id)`, and `%(roulette_item)` available. Restrict who can start a draw when winner actions can change channel state.
+`roulette.result` is open to everyone. The other roulette functions need moderator access in AI chat.
 
-## Count functions
+You can attach an AST action to a roulette item in the roulette editor. It runs when that item wins. It can use `%(roulette_id)`, `%(roulette_draw_id)`, `%(roulette_item_id)`, and `%(roulette_item)`. Winner actions run with Pro limits, whatever the channel's plan. Restrict who can start a draw if the winner actions change channel state.
 
-| Function | Description | Usage |
-|----------|-------------|-------|
-| `$(count N)` | Read current count and optionally add `N` | `$(count 5)` |
-| `$(count 0)` | Read count without changing it | `$(count 0)` |
-| `$(count -3)` | Subtract from the count | `$(count -3)` |
-| `$(scount)` | Simple `+1` increment | `$(scount)` |
-| `$(bits)` | Bits from a cheer event | `$(bits)` |
+## Counter functions
+
+Counters are saved per command.
+
+| Function | What it does | Example |
+|----------|--------------|---------|
+| `$(count N)` | Adds `N` to the command's total and returns the new total | `$(count 1)` |
+| `$(count 0)` | Returns the total without changing it | `$(count 0)` |
+| `$(scount)` | Adds `1` and returns the total | `$(scount)` |
+| `$(bits)` | Bits in a cheer event. Returns `0` outside a cheer | `$(bits)` |
+
+- `$(count)` with no number adds the text typed after the command. For example, `!uses 5` adds `5`.
+- Only positive whole numbers work right now. A negative number, such as `$(count -3)`, is read as `0` and the total doesn't change. A leading `+` has the same problem.
 
 ## Clip functions
 
-| Function | Description | Usage |
-|----------|-------------|-------|
-| `$(create.clip)` | Create a clip and return the URL | `$(create.clip)` |
+| Function | What it does | Example |
+|----------|--------------|---------|
+| `$(create.clip [title])` | Creates a clip of the current moment and returns its link. Returns blank if the clip fails. Optional title | `$(create.clip Epic win)` |
 
 ## Followage functions
 
-| Function | Description | Usage |
-|----------|-------------|-------|
-| `$(followage username)` | Return how long a user has followed | `$(followage ronni)` |
+| Function | What it does | Example |
+|----------|--------------|---------|
+| `$(followage [username])` | How long a user has followed, like `2 months, 3 days, 5 hours`. Returns blank if the user doesn't follow or can't be found. Defaults to the caller | `$(followage ronchi)` |
 
 ## EventSub functions
 
-These only return useful data when the command is triggered by the matching EventSub event.
+These return data only when the command runs from the matching Twitch event. In a normal chat test they return blank or `0`, and that is expected.
 
-| Function | Event Context | Returns |
-|----------|---------------|---------|
-| `$(raid.channel)` | `channel.raid` | Raiding channel display name |
-| `$(raid.login)` | `channel.raid` | Raiding channel login |
-| `$(raid.viewers)` | `channel.raid` | Number of raid viewers |
-| `$(cheer.amount)` | `channel.cheer` | Bits cheered |
-| `$(cheer.message)` | `channel.cheer` | Cheer message text |
-| `$(sub.tier)` | `channel.subscribe` | Prime / Tier 1 / Tier 2 / Tier 3 |
-| `$(sub.months)` | `channel.subscribe` | Cumulative months |
-| `$(gifted.user)` | `channel.gift` | Gift recipient username |
-| `$(hypetrain.progress)` | `hypetrain.event` | Progress toward goal |
-| `$(hypetrain.level)` | `hypetrain.event` | Current level |
-| `$(hypetrain.end)` | `hypetrain.event` | End timestamp |
-| `$(shoutout.channel)` | `channel.shoutout` | Channel that was shouted out |
-| `$(reward.input)` | `channel.points_redemption` | User redemption input |
-| `$(redemption.input)` | `channel.points_redemption` | User redemption input |
-| `$(ad)` | `channel.ad_break` | Ad duration |
+| Function | Event | Returns |
+|----------|-------|---------|
+| `$(raid.channel)` | Raid | Display name of the raiding channel |
+| `$(raid.login)` | Raid | Login of the raiding channel |
+| `$(raid.viewers)` | Raid | Viewers who came with the raid |
+| `$(cheer.amount)` | Cheer | Bits in the cheer |
+| `$(cheer.message)` | Cheer | Text of the cheer |
+| `$(sub.tier)` | Subscription | `Prime`, `Tier 1`, `Tier 2`, or `Tier 3` |
+| `$(sub.months)` | Subscription | Total months subscribed |
+| `$(gifted.user)` | Gift subscription | Username of the gift recipient |
+| `$(hypetrain.progress)` | Hype Train | Progress toward the goal |
+| `$(hypetrain.level)` | Hype Train | Current level |
+| `$(hypetrain.end)` | Hype Train | End time |
+| `$(shoutout.channel)` | Shoutout | Channel that got the shoutout |
+| `$(reward.input)` or `$(redemption.input)` | Channel Points redemption | Text the viewer typed for the reward |
+| `$(twitch.streak)` | Chat message with a watch streak | Number of streak days, `0` if none |
+| `$(twitch.modiversary)` | Chat message for a moderator anniversary | Months as a moderator, `0` if none |
 
 ## Pinned chat messages
 
-| Function | Description | Usage |
-|----------|-------------|-------|
-| `$(pin [duration] message)` / `$(pin.create ...)` | Send and pin a chat message; optional duration is 30–1800 seconds | `$(pin.create 300 Rules: be kind)` |
-| `$(pin.update seconds)` | Change the current pin duration (30–1800 seconds) | `$(pin.update 600)` |
-| `$(pin.del)` / `$(pin.delete)` | Unpin the current chat message | `$(pin.del)` |
+| Function | What it does | Example |
+|----------|--------------|---------|
+| `$(pin [seconds] message)` or `$(pin.create ...)` | Sends a message and pins it. The optional duration is `30` to `1800` seconds. If the first word isn't a number in that range, the whole text is the message | `$(pin.create 300 Rules: be kind)` |
+| `$(pin.update seconds)` | Changes how long the current pin stays (`30` to `1800`) | `$(pin.update 600)` |
+| `$(pin.del)` or `$(pin.delete)` | Unpins the current message | `$(pin.del)` |
 
-These actions require moderator level access.
+All pin functions need moderator access in AI chat.
 
 ## TTS functions
 
-TTS calls run inside the custom command's AST and use that command's configured access. The default calls speak with the channel's configured TTS voice. `tts.clone`/`tts.fish` use a Fish Audio voice available to the channel, while `set.voice` changes the default channel voice and provider.
+Speech needs **TTS** turned on for the channel. If it's off, the function returns `TTS is disabled for this channel`.
 
-| Function | Plan | Description | Usage |
-|----------|------|-------------|-------|
-| `$(tts message)` | Depends on channel TTS settings and plan | Queue default TTS | `$(tts Hello world)` |
-| `$(tts.speak message)` | Depends on channel TTS settings and plan | Same as `$(tts ...)` | `$(tts.speak Hello)` |
-| `$(tts.ai message)` | Depends on channel TTS settings and plan | Same as `$(tts ...)` | `$(tts.ai Hello world)` |
-| `$(tts.clone name message)` | Depends on TTS settings and plan | Speak with a named Fish Audio voice | `$(tts.clone voice1 Hello)` |
-| `$(tts.fish name message)` | Depends on TTS settings and plan | Alias of `$(tts.clone ...)` | `$(tts.fish voice1 Hello)` |
-| `$(set.voice voice_name)` | Moderator action; choose one of the four built-in Fish voices or a saved favorite, and switch the channel provider to Fish | `$(set.voice gojo)` or `$(set.voice favorite_alias)` |
+| Function | Voice | Example |
+|----------|-------|---------|
+| `$(tts message)` or `$(tts.ai message)` | The channel's default voice and provider | `$(tts Hello world)` |
+| `$(tts.speak message)` or `$(tts.piper message)` | Always Piper, the built-in voice, no matter the channel's default | `$(tts.speak Hello)` |
+| `$(tts.kokoro voice_name text)` | A Kokoro preset voice, like `af_heart` | `$(tts.kokoro af_heart Hello chat!)` |
+| `$(tts.clone name message)` or `$(tts.fish name message)` | A Fish Audio voice, by name or voice ID | `$(tts.clone gojo Hello chat!)` |
+| `$(set.voice voice_name)` | Moderator action. Sets the channel's default Fish voice and switches the provider to Fish. Accepts one of the four built-in voices (`gojo`, `rias_gremory`, `toji_fushiguro`, `carlos_bodoque`) or a saved favorite. Posts `TTS voice changed to …` in chat | `$(set.voice gojo)` |
+
+Details that affect what viewers hear:
+
+- **Spoken text:** functions speak the text exactly as written. Unlike the chat `!tts` command, they don't add "name says:" in front.
+- **Length:** long text is cut to the channel's maximum TTS length.
+- **Credits:** Kokoro costs 1 credit per 15 characters and Fish uses AI credits too. `$(tts.speak)` costs 1 credit per 50 characters and keeps working after credits run out. When Fish or Kokoro credits run out, the bot switches to Piper on Free and to Kokoro on Premium and Pro.
 
 ## Trigger functions
 
-| Function | Description | Usage |
-|----------|-------------|-------|
-| `$(trigger.send name)` | Fire a trigger | `$(trigger.send airhorn)` |
-| `$(trigger.send name true)` | Fire a queued trigger | `$(trigger.send airhorn true)` |
+Triggers are sounds or videos you set up on the **Triggers** page. See [Triggers](/triggers/).
+
+| Function | What it does | Example |
+|----------|--------------|---------|
+| `$(trigger.send name)` | Plays a trigger by its exact name | `$(trigger.send airhorn)` |
+| `$(trigger.send name true)` | Asks the overlay to queue it instead of playing right away | `$(trigger.send airhorn true)` |
+
+Triggers play in the OBS Browser Source from the **Triggers** page, so that source must be open in OBS. If it isn't, the function returns `No trigger overlay clients connected`. If the trigger doesn't exist, is turned off, or has no media file, it returns a short message such as `Trigger not found: airhorn`. Moderator access is needed in AI chat.
+
+## Global Overlay controls
+
+These control the alert queue of your [Overlay Studio](/overlay-studio/) scenes. Moderator access is needed in AI chat. Your Twitch account must be linked to Overlay Studio. If the bot says the account needs reconnecting, reconnect it in the dashboard.
+
+| Function | What it does |
+|----------|--------------|
+| `$(overlay.skip)` | Stops the current alert and moves on to the next one |
+| `$(overlay.pause)` | Holds new alerts while the current one finishes |
+| `$(overlay.resume)` | Starts playing held alerts again |
+| `$(overlay.clear)` | Removes waiting alerts. The current one keeps playing |
+
+Add `.twitch` or `.kick` to the name to affect only one platform, for example `$(overlay.skip.twitch)`.
 
 ## Delay, control, and chat functions
 
-| Function | Description | Usage |
-|----------|-------------|-------|
-| `$(delay N)` | Pause for `N` seconds, max `60` | `$(delay 5)` |
-| `$(break)` | Exit a loop early | `$(break)` |
-| `$(continue)` | Skip the current loop iteration | `$(continue)` |
-| `$(chat.send message)` | Send a message to chat | `$(chat.send Hello everyone!)` |
+| Function | What it does | Example |
+|----------|--------------|---------|
+| `$(delay N)` | Pauses the command for `N` seconds, from `0` to `60`. A bigger number returns an error message | `$(delay 5)` |
+| `$(timer seconds "message" $(action))` | Saves a message and actions to run later, from `1` to `604800` seconds. The command continues right away. See [Execution, Errors & Limits](/commands/advanced/execution/) | `$(timer 300 "Five minutes are up!")` |
+| `$(break)` | Leaves a loop early | `$(break)` |
+| `$(continue)` | Skips to the next loop step | `$(continue)` |
+| `$(chat.send message)` | Posts a message as the bot | `$(chat.send Hello everyone!)` |
+| `$(announce [color] message)` | Posts a Twitch announcement. Colors are `blue`, `green`, `orange`, `purple`, or `primary` (the default). The message is 1–500 characters. Moderator access in AI chat | `$(announce purple Five minutes left!)` |
 
 ## Quick examples
 
-| Function | Example Usage | Example Output |
-|----------|---------------|----------------|
-| `$(user)` | `"Welcome $(user)!"` | `Welcome ronchi!` |
-| `$(random 20)` | `"You rolled: $(random 20)"` | `You rolled: 7` |
-| `$(twitch.subs)` | `"We have $(twitch.subs) subscribers!"` | `We have 1542 subscribers!` |
-| `$(count 1)` | `"Uses: $(count 1)"` | `Uses: 42` |
-| `$(followage ronchi)` | `"$(user) has followed for $(followage ronchi)"` | `ronchi has followed for 1 year...` |
-| `$(create.clip)` | `"Clip: $(create.clip)"` | `Clip: https://clips.twitch.tv/...` |
-| `$(trigger.send airhorn)` | `"$(trigger.send airhorn)"` | Trigger fires |
-| `$(chat.send Hello everyone!)` | `"$(chat.send Hello everyone!)"` | Message sent |
+| Function | Example use | Example output |
+|----------|-------------|----------------|
+| `$(user)` | `Welcome $(user)!` | `Welcome ronchi!` |
+| `$(random 20)` | `You rolled: $(random 20)` | `You rolled: 7` |
+| `$(twitch.subs)` | `We have $(twitch.subs) subscribers!` | `We have 1542 subscribers!` |
+| `$(count 1)` | `Uses: $(count 1)` | `Uses: 42` |
+| `$(followage ronchi)` | `$(user) has followed for $(followage ronchi)` | `ronchi has followed for 2 months, 3 days, 5 hours` |
+| `$(create.clip)` | `Clip: $(create.clip)` | `Clip: https://clips.twitch.tv/...` |
+| `$(trigger.send airhorn)` | `$(trigger.send airhorn)` | The trigger plays |
+| `$(chat.send Hello everyone!)` | `$(chat.send Hello everyone!)` | Message posted |
 
 <Aside type="tip">
-If a function changes channel state or moderates users, pair it with proper command permissions in your dashboard.
+If a function changes channel state or moderates users, pair it with the right access setting on the command. Test the text first, then add the action. For how commands run and the limits they follow, see [Execution, Errors & Limits](/commands/advanced/execution/).
 </Aside>

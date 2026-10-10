@@ -1,0 +1,63 @@
+---
+/**
+ * Homepage search + assistant entry. Interactive only: the plain-text export
+ * (src/lib/markdown.mjs) drops it, because it carries no documentation content.
+ */
+import { Icon } from '@astrojs/starlight/components';
+
+interface Props {
+  lang?: 'en' | 'es';
+}
+
+const spanish = Astro.props.lang === 'es';
+const t = spanish
+  ? {
+      search: 'Busca en la documentación…',
+      askLong: 'Pregunta a la documentación',
+      soon: 'Próximamente',
+      popular: 'Búsquedas populares',
+      chips: [
+        ['Texto a voz', 'texto a voz'],
+        ['Comandos', 'comandos'],
+        ['Overlay para OBS', 'OBS'],
+        ['Créditos', 'créditos'],
+        ['Follows de bots', 'defensa de follows'],
+      ],
+    }
+  : {
+      search: 'Search the docs…',
+      askLong: 'Ask the docs',
+      soon: 'Coming soon',
+      popular: 'Popular searches',
+      chips: [
+        ['Text to speech', 'text to speech'],
+        ['Commands', 'commands'],
+        ['OBS overlay', 'OBS'],
+        ['Credits', 'credits'],
+        ['Follow bots', 'follow defense'],
+      ],
+    };
+---
+
+<div class="lf-search">
+  <div class="lf-search__row">
+    <button type="button" class="lf-search__box" data-docs-search="">
+      <Icon name="magnifier" size="1.25rem" />
+      <span class="lf-search__placeholder">{t.search}</span>
+      <kbd class="lf-search__kbd" aria-hidden="true">Ctrl K</kbd>
+    </button>
+    <button type="button" class="lf-search__ask" data-docs-assistant-open aria-haspopup="dialog" aria-controls="docs-assistant-panel" aria-label={`${t.askLong} (${t.soon})`}>
+      <Icon name="comment-alt" size="1.15rem" />
+      <span class="lf-search__ask-long">{t.askLong}</span>
+      <span class="lf-search__soon">{t.soon}</span>
+    </button>
+  </div>
+  <div class="lf-search__popular">
+    <span class="lf-search__popular-label">{t.popular}</span>
+    {t.chips.map(([label, query]) => (
+      <button type="button" class="lf-chip lf-chip--link" data-docs-search={query}>
+        {label}
+      </button>
+    ))}
+  </div>
+</div>

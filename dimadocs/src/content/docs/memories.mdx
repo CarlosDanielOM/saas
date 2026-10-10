@@ -1,45 +1,106 @@
 ---
 title: Memories
-description: Review and manage information the AI may retain about your channel.
+description: Review, approve, edit, and delete what DomDimaBot remembers about your channel and viewers.
 sidebar:
   order: 7
 ---
 
-The **Memories** page lets channel dashboard users review information the AI has stored or proposed from channel activity. It is available on **Free, Premium, and Pro**. Sign in, choose a channel, open **Modules**, then select **Memories**.
+import { Steps } from '@astrojs/starlight/components';
 
-Memories are structured notes used as context for AI features. They are not a searchable archive of every chat message. A memory can have source evidence, a channel or user subject, a type, a risk level, and a review status.
+The **Memories** page is where you review what DomDimaBot has learned about your channel and viewers. You approve or deny what it proposes, and you edit or delete anything that is wrong. It is available on **Free, Premium, and Pro**.
 
-## Memory types and statuses
+Viewing the page needs the `memories:view` permission. Approving, editing, archiving, or deleting needs `memories:manage`. The channel owner has both.
 
-Types include **Preference**, **Running joke**, **Known user fact**, **Channel lore**, and **Boundary**. Risk is labeled **Low**, **Medium**, or **High**. The page can filter by status, type, and risk, and search loaded memory content, summaries, and subject usernames.
+## Open the page
 
-Statuses shown by the page are:
+<Steps>
 
-- **Candidate** or **Pending review** — proposed information awaiting a decision.
-- **Confirmed** — active memory that may be eligible for AI context.
-- **Rejected** — declined memory.
-- **Archived** — hidden from active memory use and retained in the archive list.
+1. Sign in and choose your channel.
+2. Open **Modules → Memories**.
+3. Use the filters to show **Needs Review** first.
+4. Approve or deny each memory you review.
 
-Low-risk memories may be confirmed automatically when automatic confirmation is enabled and the confidence meets the configured threshold. Other proposals can remain for review. The AI Personality settings control learning, automatic review behavior, and memory policy.
+</Steps>
 
-## Review and editing
+## What a memory is
 
-For a candidate or pending memory, choose **Approve** to confirm it or **Deny** to reject it. You can archive confirmed or pending memories, edit a memory's content, summary, type, or risk, or permanently delete it. The page asks you to confirm status changes and deletion; permanent deletion cannot be undone.
+A memory is a short, structured note the bot may use as context. It is not a searchable copy of your chat. Each memory has:
 
-Changing a memory's status affects whether it can be used as active AI context. The system also checks channel, status, subject scope, expiry when set, and memory policy before selecting context. Passive chat context does not include user-scoped facts as channel-wide context. When AI tools are available and someone explicitly asks about a past fact, the bot can search confirmed memories for a named chatter in the same channel, subject to the channel's memory policy. An explicit lookup returns up to 3 memories on Free, 5 on Premium, or 8 on Pro.
+- **Kind**: what sort of note it is.
+- **Care level**: how personal it is, from **Low Risk** to **High Risk**.
+- **Subject**: the whole channel, or one viewer.
+- **Summary and content**: a short version and the full note.
+- **Evidence**: where it came from, such as a chat excerpt, the username, user ID, message ID, and time.
 
-## Privacy and controls
+## Kinds and statuses
 
-AI Personality includes policy switches for potentially sensitive memories, user preference memories, and running jokes. Sensitive memories are disabled by default in the backend policy. User preference memories are allowed by default. Chat users can create user-scoped memories only about themselves; they cannot ask the system to store a fact about another chatter through that path. Explicit recall may return a confirmed user-scoped memory about another chatter when that policy is enabled; the bot should share it only in response to a relevant, explicit question.
+| Kind | Use |
+|---|---|
+| **Preference** | A channel or viewer preference |
+| **Running Joke** | A recurring bit or shared reference |
+| **Known User Fact** | A fact about one regular viewer |
+| **Channel Lore** | Something that happened on the channel |
+| **Boundary** | A limit the streamer or mods set, such as a topic to avoid |
 
-Memory records can contain the memory text and source evidence such as a message excerpt, username, user ID, and message ID. Review the content before approving it, and use edit, archive, or permanent delete controls when it should no longer be used. Deletion also removes the associated vector entry.
+| Status | Meaning | Used in chat? |
+|---|---|---|
+| **Candidate** | Proposed, not yet reviewed | No |
+| **Needs Review** | Waiting for your decision | No |
+| **Active** | Confirmed | Yes, when it fits the message (see below) |
+| **Denied** | You rejected it | No |
+| **Archived** | Hidden from active use. You can make it active again. | No |
 
-The pricing comparison currently lists chat memory retention as **15 days on Free, 45 days on Premium, and 120 days on Pro**. Individual records can also have an expiry date. The exact retention behavior depends on the memory path and record; the page does not expose a retention timer for each record, so use the dashboard's current plan details and record expiry where shown rather than assuming every memory has the same age limit.
+## Review and edit
+
+For a memory in **Candidate** or **Needs Review**, select **Approve** to make it active or **Deny** to reject it. The page asks you to confirm each status change.
+
+For any memory you can:
+
+- **Edit** its content, short version, kind, or care level.
+- **Archive** it. Archived memories stay in the archive and can be restored with **Make active again**.
+- **Delete for good**. This removes the memory permanently, including its vector entry used for search. It cannot be undone.
+
+Use archive when you might want the memory back. Use delete when it must never be used again.
+
+### Automatic approval
+
+Low care-level memories can become **Active** without review when **Skip review when it's very sure** is on and the bot's confidence reaches **Skip review above** (82% by default). Other memories wait for you. See [AI Personality](/ai-personality/) for every automatic switch.
+
+## When the bot uses a memory
+
+A memory is used in chat only when all of these are true:
+
+- It is **Active**.
+- It has not passed its expiry date, if it has one.
+- It matches the channel, the subject, and the current message.
+- Your memory policy allows its kind and care level.
+
+Chat replies can use relevant memories about the channel and about a specific viewer. A memory about a viewer can appear when the current message relates to it and **Viewer likes and dislikes** is on. Viewer memories are labeled with that viewer's name.
+
+When someone asks the bot what it remembers, the bot searches confirmed memories about a named chatter. It returns up to 3 memories on Free, 5 on Premium, or 8 on Pro.
+
+## Privacy and who can add memories
+
+On [AI Personality](/ai-personality/), the memory policy controls what may be kept:
+
+| Policy | Default |
+|---|---|
+| **Sensitive details** (medium and high care level) | Off |
+| **Viewer likes and dislikes** (memories about viewers) | On |
+| **Running jokes** | On |
+
+Chat users can only save facts about themselves. Memories proposed by viewers who are not moderators or the streamer need your review before they become active.
+
+Memories store the text, a summary, and source evidence such as a message excerpt, username, user ID, and message ID. Review the content before you approve it.
+
+## Retention
+
+The plan comparison lists chat memory retention as **15 days on Free, 45 days on Premium, and 120 days on Pro**. The dashboard does not show a timer for each memory. A memory stops being used when its expiry date passes, if it has one. Weekly and monthly cleanup can also archive or delete memories when their switches are on. See [Plans](/plans/) for current plan details.
 
 ## Limits and access
 
-The page requests memories in batches of 50 and offers **Load more**; the service caps one list request at 200 records. These are loading limits, not a stated total-memory allowance. Learning configuration also has per-channel pending and confirmed caps; the defaults in the service are 250 pending and 2,000 confirmed, and channel settings may change them.
+- The page loads memories 50 at a time. Select **Load more** to see more. One list request returns at most 200 records.
+- Each channel has a maximum number of memories waiting for review (250 by default) and of active memories (2,000 by default). You can change both on [AI Personality](/ai-personality/).
+- The page has no minimum plan tier. The recall limit above and the retention figures vary by plan. You still need dashboard access to the channel.
 
-Plan access and dashboard permission are separate. Memories have no paid minimum tier in the module catalog, while the viewer still needs dashboard access to the selected channel.
-
-For learning controls and context behavior, see [AI Personality](/ai-personality/). For current plan allowances, see [Plans](/plans/) and [Modules](/modules/).
+For learning controls and how memories affect replies, see [AI Personality](/ai-personality/). For plan allowances, see [Plans](/plans/) and [Modules](/modules/).

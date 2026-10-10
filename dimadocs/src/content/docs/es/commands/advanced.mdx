@@ -1,74 +1,100 @@
 ---
 title: Comandos Personalizados Avanzados (AST)
-description: "Punto de inicio amigable para el sistema AST de DomDimaBot, con guías separadas de sintaxis, funciones, ejecución y recetas."
+description: "Cuándo un comando personalizado necesita AST (contadores, memoria por viewer, if/else, bucles y llamadas a funciones), con enlaces a las guías de sintaxis, funciones, ejecución y recetas."
 sidebar:
   order: 3
 ---
 
 import { Aside } from '@astrojs/starlight/components';
 
-El **parser AST** de DomDimaBot es la capa avanzada detrás de los comandos personalizados. Te permite construir comandos que guardan valores, ejecutan lógica, llaman funciones, reutilizan otros comandos y responden distinto según el contexto.
+AST es la capa avanzada detrás de los comandos personalizados. Te permite que un comando recuerde valores, tome decisiones, llame funciones y ejecute otros comandos. Úsalo cuando una respuesta fija no alcanza.
 
 <Aside type="caution">
-Esta sección es para configuraciones avanzadas. Si solo necesitas comandos de texto simples, empieza por [Comandos](/es/commands/overview).
+Esta sección es para configuraciones avanzadas. Si basta con una respuesta fija, empieza por [Comandos](/es/commands/overview/).
 </Aside>
+
+## ¿Necesitas AST?
+
+Un mensaje de comando es texto plano por defecto. Cuando usa un prefijo de AST (`$(`, `%(`, `*(`, `^(`, `%del(` o `#(`), esa parte se ejecuta como AST.
+
+| El texto plano basta cuando... | Usa AST cuando... |
+|--------------------------------|-------------------|
+| La respuesta nunca cambia | La respuesta tiene un número que cambia, como un contador |
+| Solo necesitas un enlace o una frase fija | Necesitas recordar algo entre usos |
+| | Necesitas lógica if/else, un elemento al azar o un bucle |
+| | Quieres que el comando llame una función u otro comando |
+
+**Texto plano** (sin AST):
+
+```bash
+Únete a nuestro Discord: example.com/discord
+```
+
+**AST** (un contador que cambia cada vez):
+
+```bash
+*( ^(#wins) ? %(#wins *(%(#wins) + 1)) : %(#wins 1) ) $(user) tiene %(#wins) wins!
+```
+
+Qué hace:
+
+1. Comprueba si `#wins` existe.
+2. Si existe, le suma 1. Si no, lo crea con `1`.
+3. Muestra el total actualizado, por ejemplo `Carlos tiene 3 wins!`.
+
+<Aside type="note">
+`#wins` es una variable de caché. Expira 24 horas después de su último cambio. Para un contador que debe durar, usa una variable de base de datos (`*wins`), que requiere Premium o Pro.
+</Aside>
+
+## Importante: las variables no vienen creadas
+
+DomDimaBot **no** crea variables AST por ti.
+
+- Creas una variable escribiéndola: `%(nombre valor)`.
+- Los datos de contexto vienen de **funciones** como `$(user)` y `$(twitch.game)`, o de **argumentos** como `&p1`.
+
+```bash
+%(#wins *(%(#wins) + 1)) $(user) ahora tiene %(#wins) wins!
+```
 
 ## Para qué sirve AST
 
-Usa AST cuando quieres que un comando haga algo más que enviar texto fijo.
-
 - guardar contadores y progreso de usuarios
-- construir respuestas dinámicas
-- ejecutar lógica tipo if / else
-- trabajar con arrays y bucles
+- construir respuestas que cambian
+- ejecutar lógica if / else
+- trabajar con listas y bucles
 - llamar funciones de Twitch, moderación, disponibilidad, TTS, ruleta, triggers y EventSub
 - programar acciones AST con delay que sobreviven reinicios del bot
 - encadenar comandos entre sí
 
-## Importante: las variables no vienen creadas
-
-DomDimaBot **no** te da variables AST por defecto automáticamente.
-
-- Las variables las **creas tú** con `%(...)`
-- Si quieres guardar un valor, debes crear esa variable
-- Los datos de contexto normalmente vienen de **funciones** como `$(user)`, `$(twitch.game)` o de **argumentos** como `&p1`
-
-Ejemplo:
-
-```bash
-%(#wins *(%(#wins) + 1))
-"$(user) ahora tiene %(#wins) wins!"
-```
-
 ## Empieza aquí
 
-Esta sección AST ahora está dividida en guías más pequeñas para que sea más fácil aprenderla.
+Esta sección está dividida en guías más pequeñas:
 
-1. **[Sintaxis y Datos de AST](/es/commands/advanced/syntax)**
-   - prefijos
+1. **[Sintaxis y Datos de AST](/es/commands/advanced/syntax/)**
+   - prefijos y cómo se lee un mensaje
    - variables y almacenamiento
-   - argumentos
-   - arrays
-   - condicionales
-   - bucles
-   - referencias a comandos
+   - argumentos y comillas
+   - escapes
+   - listas, operadores, condicionales y bucles
+   - borrado, comprobación de existencia, referencias a comandos y timers
 
-2. **[Referencia de Funciones AST](/es/commands/advanced/functions)**
+2. **[Referencia de Funciones AST](/es/commands/advanced/functions/)**
    - funciones de usuario y Twitch
    - acciones de moderación, canal, disponibilidad y ruleta
    - contadores, clips, followage
    - encuestas, predicciones, EventSub, TTS, triggers y chat send
 
-3. **[Ejecución, Errores y Límites de AST](/es/commands/advanced/execution)**
+3. **[Ejecución, Errores y Límites de AST](/es/commands/advanced/execution/)**
    - cómo corre el parser
    - ejecución y recuperación de timers
    - errores comunes
    - límites de bucles y recursión
    - mentalidad de debugging
 
-4. **[Recetas y Patrones AST](/es/commands/advanced/recipes)**
+4. **[Recetas y Patrones AST](/es/commands/advanced/recipes/)**
    - buenas prácticas
-   - initialize-or-increment
+   - inicializar o incrementar
    - guard checks
    - selectores de usuario
    - sistemas completos de escudos
@@ -78,26 +104,11 @@ Esta sección AST ahora está dividida en guías más pequeñas para que sea má
 Piensa en los comandos AST como pequeños scripts dentro de un comando personalizado.
 
 - `%(...)` = leer o escribir tus variables
+- `%del(...)` = borrar una variable o un elemento de lista
 - `$(...)` = llamar una función
-- `*(...)` = calcular lógica
+- `*(...)` = calcular lógica, o ejecutar un bucle
 - `^(...)` = comprobar si algo existe
 - `#(...)` = ejecutar otro comando desde este comando
-
-## Ejemplo rápido
-
-Este comando crea un contador simple de wins:
-
-```bash
-*( ^(#wins) ? %(#wins *(%(#wins) + 1)) : %(#wins 1) )
-"$(user) tiene %(#wins) wins!"
-```
-
-Qué hace:
-
-1. comprueba si `#wins` existe
-2. si existe, lo incrementa
-3. si no existe, lo crea con `1`
-4. imprime el total actualizado
 
 ## Funciones según el plan
 
@@ -107,12 +118,12 @@ Algunas funciones AST dependen del plan del streamer.
 |---------|------|---------|-----|
 | Variables en memoria | Sí | Sí | Sí |
 | Variables de caché (`#`, `##`) | Sí | Sí | Sí |
-| Variables de base de datos (`*`, `**`) | No | Sí | Sí |
-| Escrituras de variables persistentes en base de datos | No | Sí | Sí |
-| Anidación / iteraciones de bucles | 2 / 25 | 3 / 50 | 4 / 100 |
+| Variables de base de datos (`*`, `**`) | Las escrituras se ignoran | Sí | Sí |
+| Bucles anidados uno dentro de otro | 2 | 3 | 4 |
+| Iteraciones por bucle | 25 | 50 | 100 |
 
 <Aside type="note">
-Las escrituras de variables de base de datos requieren Premium o Pro. Los valores de caché expiran 24 horas después de cada escritura. La disponibilidad de voces TTS y clones depende de la configuración TTS y del plan del canal; consulta la guía TTS para los detalles actuales.
+Las escrituras en variables de base de datos requieren Premium o Pro. Los valores de caché expiran 24 horas después de cada escritura. Consulta [Variables y almacenamiento](/es/commands/advanced/syntax/#variables-y-almacenamiento) para más detalles.
 </Aside>
 
 ## Flujo recomendado

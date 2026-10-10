@@ -1,29 +1,61 @@
 ---
 title: Panel de control
-description: Encuentra el estado del canal, los controles del chat, la actividad y los módulos.
+description: Encuentra tu camino en el panel del canal, incluido el menú superior, el control de encendido del bot, el estado en vivo, la actividad, los créditos de IA y el menú de perfil.
 sidebar:
   order: 2
 ---
 
-El panel corresponde a un canal. Abre **Panel**, **Comandos**, **Módulos** o **Configuración** desde la navegación superior. En pantallas pequeñas, abre el menú para acceder a las mismas secciones.
+El panel muestra el estado de tu canal y te permite encender o apagar el bot. Cada canal tiene su propio panel. Ábrelo desde el menú superior después de iniciar sesión.
 
-## Vista general
+## Menú superior
 
-La página principal muestra si el canal está en directo o desconectado y, durante el directo, datos como espectadores, juego y título. También muestra contadores de actividad, historial de transmisiones e información de uso de IA cuando está disponible. Los valores dependen de los datos recopilados para el canal.
+| Elemento | Quién lo ve | Qué hace |
+|---|---|---|
+| **Panel** | Cualquiera con acceso al canal | Abre la vista general del canal de esta página. |
+| **Mi Panel** | Ayudantes que ven el canal de otra persona | Regresa a tu propio canal. |
+| **Comandos** | El propietario del canal y los ayudantes que pueden ver comandos | Crea y administra los comandos del chat. |
+| **Modulos** | Cualquiera con acceso al canal | Lista las funciones. Solo ves los módulos que tu rol puede ver. |
+| **Configuracion** | El propietario del canal y los ayudantes que pueden ver el equipo | Abre **Ajustes del canal**. La sección **Equipo** añade ayudantes y define lo que pueden hacer. |
+| **Hub Admin** | Todos | Lista los canales donde otro streamer te nombró ayudante. |
 
-Usa **Encender el bot** o **Apagar el bot** en esta página para cambiar si DomDimaBot participa en el chat. Junto al control se muestra el estado del chat y de la conexión.
+En pantallas pequeñas, toca el icono del menú para abrir los mismos elementos.
+
+## Barra superior
+
+- **Botón de permisos.** Cuando el bot necesita configuración o nuevos permisos de Twitch, aparece un botón: **Activar Bot**, **Reautenticar** o **Actualizar Permisos**. Consulta [Primeros pasos](/es/getting-started/).
+- **Menú de perfil.** Haz clic en tu avatar para abrirlo. Muestra tu nombre y la insignia de tu plan, y después estos elementos:
+  - **Configuracion de Perfil**
+  - **Comprar créditos de IA** y **Regalar créditos**
+  - **Mejorar plan** (en Gratis) o **Mejorar a Pro** (en Premium). No aparece en Pro ni cuando ves otro canal.
+  - **Oscuro** o **Claro** para cambiar el tema
+  - El cambio de idioma
+  - **Cerrar sesion**
+
+## Página principal
+
+La página principal es el inicio del canal. Muestra estas secciones:
+
+- **Empieza aquí.** Tres consejos rápidos: encender el bot, agregar un comando y abrir tus herramientas.
+- **Estado en Vivo.** Muestra LIVE o Offline. Cuando estás en directo, también muestra espectadores, juego y título.
+- **Acciones Rápidas.** Indica si el bot está en tu chat, con el botón **Encender el bot** o **Apagar el bot**. Solo el propietario del canal puede cambiar esta opción. La línea de estado dice "El bot está en tu chat y puede responder." cuando el bot está encendido.
+- **Actividad en Vivo.** Seguidores, subs, bits, donaciones, mensajes y comandos del directo actual.
+- **Salud del Stream.** Estado de la conexión y tiempo de respuesta.
+- **Tendencia de Rendimiento.** Un gráfico con el rango de tiempo que elijas: 7d, 15d, 30d, 90d o All. El gráfico usa el día del servidor (UTC).
+- **Objetivos de Followers y Subs.** Tus totales de seguidores y subs, con el progreso de tus objetivos.
+- **Historial de Streams de los Ultimos 30 Dias.** Tus directos recientes, del más nuevo al más antiguo. El directo actual aparece marcado como LIVE.
+- **Créditos de IA.** Tu saldo restante. **Ver uso de créditos →** abre la página de uso de créditos del panel, donde ves qué consumió tus créditos.
+
+Las tarjetas de métricas pueden cambiar entre promedios por día y por directo. Los valores dependen de los datos que el canal haya recopilado. En un canal nuevo, las secciones aparecen vacías hasta que llegan datos.
 
 ## Encuentra una función
 
-| Navegación | Qué puedes hacer |
+| Necesitas | Ve a |
 |---|---|
-| **Comandos** | Crear, editar y administrar comandos de chat del canal. |
-| **Módulos** | Explorar disparadores, voz, moderación, analíticas, Ruleta y Estudio de overlays. Cada tarjeta indica disponibilidad o requisito de plan. Estudio de overlays está disponible desde Free; Ruleta requiere Pro. Ambos siguen en Alfa y solo los administra el propietario. |
-| **Configuración** | Administrar los responsables del panel del canal. El propietario puede añadir o quitar administradores. |
-| **Menú de perfil** | Abrir el perfil, ver tu plan, comprar créditos, cambiar tema o idioma y cerrar sesión. |
+| Crear o editar comandos del chat | **Comandos** |
+| Activar funciones y configurarlas | **Modulos** (usa el buscador o el filtro por objetivo) |
+| Añadir ayudantes o cambiar su acceso | **Configuracion** → **Equipo** |
+| Cambiar tu plan o comprar créditos | Menú de perfil → **Comprar créditos de IA** o **Mejorar plan** |
 
-Algunas páginas de módulos son experimentales o siguen en desarrollo. Consulta el estado de cada tarjeta antes de usarla en directo. La [guía de módulos](/es/modules/) enumera los estados actuales.
+Algunas páginas de módulos son experimentales o siguen en desarrollo. Revisa el estado de cada tarjeta antes de depender de una función durante un directo. La [guía de módulos](/es/modules/) enumera cada estado.
 
-Consulta las guías de [Ruleta](/es/roulette/) y [Estudio de overlays](/es/overlay-studio/) para conocer estas funciones Alfa. Ruleta requiere Pro; Estudio de overlays está disponible desde Free. Durante la Alfa, solo el propietario del canal puede administrar ambas.
-
-Si la cabecera muestra **Activar Bot**, **Reautenticar** o **Actualizar Permisos**, úsalo para conceder o renovar permisos de Twitch. Consulta [Primeros pasos](/es/getting-started/).
+Estudio de overlays y Ruleta son herramientas Alpha. Lee las guías de [Ruleta](/es/roulette/) y [Estudio de overlays](/es/overlay-studio/) antes de configurarlas.

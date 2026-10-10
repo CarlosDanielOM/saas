@@ -1,37 +1,68 @@
 ---
 title: Chat Events
-description: Configure Twitch EventSub announcements in chat.
+description: Choose which Twitch events (follows, subs, raids, Bits, ad breaks) the bot announces in your chat, and edit each message.
 ---
 
-Chat Events lets you connect supported Twitch events to messages in your channel chat. The dashboard loads the available event cards from the bot's event catalog and your channel's EventSub subscriptions, so the exact cards and their plan labels can change as that catalog is maintained.
+Chat Events makes the bot post a message in your chat when something happens on your channel, such as a follow, a raid, or a Bits cheer. Each event is a card you can turn on, turn off, and customize. The bot gets these events from Twitch through EventSub, Twitch's event notification system. You don't need to set EventSub up yourself.
 
-## Open the module
+**Who can change events:** the channel owner, or an admin with the events **Manage** permission. Other admins can only view the page.
 
-Sign in, open your channel dashboard, and choose **Modules → Chat Events**. The page shows the event cards, how many are enabled, and the number of premium or Pro events in the loaded catalog.
+**Plans:** some events need Premium or Pro. Locked cards show an **Upgrade** button.
 
-## Configure an event
+## Set up an event
 
-1. Choose an event card and open its configuration.
-2. Set the controls shown for that event. Depending on the catalog entry, controls can include a message, a number, a checkbox, or cheer message tiers.
-3. Save the configuration, then enable the event. Enabling creates a Twitch EventSub subscription when one does not already exist; an existing subscription can be enabled or disabled from its card.
-4. To remove a subscription, use **Delete event** in the configuration panel. Deleting removes the subscription; disabling keeps it available to turn on again.
+1. Open **Modules → Chat Events**. The page shows how many events are on (for example, "2 of 9 on") and groups them into **Community moments** and **Your stream**.
+2. Open a card and fill in its **Configuration** fields. The fields depend on the event; the **What each event can do** table below lists them.
+3. Select **Save Changes**.
+4. Turn the event on with its toggle. If the channel has no subscription for that event yet, the dashboard creates one with Twitch.
 
-The form only displays controls defined for that event. For example, the current backend handles an optional ending message and enable switch for ad breaks, an optional clip switch and minimum-viewer setting for raids, and cheer tiers for Bits. Message placeholders are event-specific; use the placeholder shown by the control rather than assuming every event supports the same variables.
+To remove an event, open its configuration and select **Delete Event**.
 
-Some subscription types cannot be disabled through the API. For these, clear the event's message to silence its chat output; the API rejects disabling the subscription itself.
+## Turn off, delete, or silence
 
-## Event types
+- **Off** (the toggle) keeps the Twitch subscription. Turn it on again any time.
+- **Delete Event** removes the subscription. You can add the event back later.
+- **Stream online** and **Stream offline** can't be turned off or deleted. To silence them, clear their message.
 
-The backend's built-in subscription set includes chat messages, follows, stream online/offline, raids, poll and prediction progress, Hype Train begin/progress/end, received shoutouts, ad breaks, user and channel updates, subscriptions, gifted subscriptions, resubscription messages and ends, Bits, and AutoMod held messages. The dashboard's event catalog is database-backed, and may expose only a subset or additional configured entries. EventSub delivery also depends on Twitch authorization and the subscription being accepted by Twitch.
+Leave a message empty if you don't want the bot to say anything for that event.
 
-Bits uses the canonical `channel.bits.use` event type. Older `channel.cheer` and `channel.bit.use` subscriptions are normalized to that card in the dashboard.
+## What each event can do
 
-## Plans and limits
+Put these variables in an event's message. The bot replaces each one with the real value when the event happens.
 
-An event catalog entry can require Free, Premium, or Pro access. The dashboard shows locked events and the backend checks the channel's plan when a subscription is created or updated. Cheer message tier limits come from that event's catalog configuration when present. The backend is authoritative and rejects saves that exceed its applicable limit; when the catalog has no tier limits, its fallback is 0 for Free, 2 for Premium, and 5 for Pro. The editor's generic client-side fallback can differ from this server fallback, so a value shown as available in the editor may still be rejected when saved.
+| Event | Variables | Extra settings |
+|-------|-----------|----------------|
+| Follow | `$(user)` | |
+| Stream online | `$(twitch.channel)`, `$(twitch.game)` | |
+| Stream offline | `$(twitch.channel)` | |
+| Raid | `$(raid.channel)`, `$(raid.login)`, `$(raid.viewers)` | Minimum viewers. Raids below it are skipped. Clip switch. |
+| Ad break | `$(ad.time)` (seconds) | Ending message with its own on/off switch |
+| Subscription | `$(user)`, `$(sub.tier)` | |
+| Gifted subscription | `$(user)`, `$(sub.tier)`, `$(gifted.user)` | |
+| Resubscription | `$(user)`, `$(sub.tier)`, `$(sub.months)` | |
+| Bits (cheer) | `$(user)`, `$(cheer.amount)`, `$(cheer.message)` | Message tiers: **Min Bits**, **Max Bits**, **Message** |
+| Hype Train | `$(hypetrain.level)`, `$(hypetrain.progress)`, `$(hypetrain.end)` | |
+| Shoutout received | `$(shoutout.channel)`, `$(twitch.channel)` | |
+| Chat Notifications | `$(user)`, `$(twitch.streak)`, `$(twitch.modiversary)` | Watch streaks and moderator anniversaries, each with its own switch and message |
+
+Use the placeholder shown by each control. If a control doesn't list a variable, don't assume the event supports it.
+
+## Bits tiers and plan limits
+
+Each card shows its plan requirement. The server checks the plan every time you create or change a subscription.
+
+Bits message tiers have a limit per plan. If the event doesn't set its own limit, the server uses **0** tiers on Free, **2** on Premium, and **5** on Pro. The editor doesn't stop you from adding tiers when the event has no limit, so you can fill in more than your plan allows. The save is then rejected with a message such as "Your premium plan allows up to 2 cheer tiers."
+
+## Events the bot listens for
+
+By default, the bot subscribes to these Twitch events: chat messages, follows, stream online and offline, raids, Hype Train, received shoutouts, ad breaks, subscriptions, gifted subscriptions, resubscriptions, Bits, poll and prediction progress, channel and user updates, and AutoMod held messages.
+
+Bits use the current `channel.bits.use` event. Older `channel.cheer` and `channel.bit.use` subscriptions appear on the same Bits card.
+
+Not every subscription has a card. The cards come from the bot's catalog, so a subscription without a card doesn't appear on this page.
 
 ## Troubleshooting
 
-- If an event is missing, the catalog may not include it; the Twitch subscription list alone does not create an event card.
-- If enabling fails, check that the signed-in account can manage the channel, the plan includes the event, and Twitch authorization is current.
-- If the event is enabled but no announcement appears, check the event's message/configuration and Twitch EventSub delivery. Some event types are intentionally non-disableable and can only be silenced by clearing their message.
+- **An event is missing:** the bot's catalog doesn't include it. A Twitch subscription alone doesn't create a card.
+- **Enabling fails:** check that your account has the events Manage permission, that your plan includes the event (the message names the plan it needs), and that Twitch authorization is current.
+- **The event is on but nothing appears in chat:** check that the message isn't empty and that its settings are right. A raid below the minimum viewers is skipped on purpose.

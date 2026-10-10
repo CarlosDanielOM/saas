@@ -1,32 +1,44 @@
 ---
-title: Disparadores y medios
-description: Crea disparadores de audio y video desde tu biblioteca y reprodúcelos mediante una fuente de navegador de OBS.
+title: Triggers y medios
+description: Reproduce sonidos y videos en tu stream desde una recompensa de puntos de canal, un comando del chat o el panel, mediante una sola fuente de navegador de OBS.
 sidebar:
   order: 5
 ---
 
-El panel **Disparadores** gestiona una biblioteca de medios y disparadores con nombre para audio o video. Puedes probar un disparador desde el panel, invocarlo en un mensaje del bot con `$(trigger.send ...)` o vincularlo a una recompensa de puntos del canal de Twitch.
+Los triggers reproducen un sonido o un video en tu stream. Úsalos para bocinas, efectos de sonido y clips que quieras reproducir cuando decidas. Un trigger puede activarse desde una recompensa de puntos de canal, un comando del chat o el botón **Probar**. El módulo Triggers está disponible en todos los planes. Necesitas el permiso **Triggers y multimedia**: ser el propietario del canal o un administrador con ese permiso.
 
-## Configura la fuente de navegador
+## Configura la fuente de OBS
 
-1. Abre **Disparadores** en el panel de tu canal y copia el enlace de OBS.
-2. En OBS, añade una fuente **Navegador** y pega el enlace. Mantén activa esa fuente durante la transmisión para que pueda recibir la reproducción.
-3. Vuelve al panel y pulsa **Probar** en un disparador. El cuadro de prueba tiene su propia vista previa integrada, así que puedes previsualizar el medio sin una fuente de OBS.
+1. Abre **Módulos → Triggers** y selecciona **Copiar** junto a **URL del overlay para OBS**.
+2. En OBS, añade una fuente **Navegador**, pega la URL y ajusta su tamaño a **1920×1080**. Todos los triggers se reproducen en esta fuente.
+3. Mantén la fuente abierta mientras transmites.
+4. De vuelta en el panel, selecciona **Probar** en un trigger. El cuadro de prueba tiene su propia vista previa, así que puedes comprobar la reproducción sin tener OBS abierto.
 
-Es una fuente de navegador de OBS que se conecta a DomDimaBot. No hay que instalar ningún plugin de OBS de DomDimaBot. El panel también proporciona un enlace de vista previa para el cuadro de prueba.
+## Añade medios y crea un trigger
 
-## Añade medios y crea un disparador
+1. Sube un archivo a la [Biblioteca multimedia](/es/media-library/) o agrega uno desde la biblioteca pública.
+2. Completa los datos del trigger y selecciona **Crear trigger**:
+   - **Nombre del trigger**: letras, números y guiones bajos, empezando con una letra, hasta 60 caracteres. Ejemplo: `Bocina` o `Toma_Agua`.
+   - **Volumen**.
+   - **Crear una recompensa de puntos de canal** (opcional). Consulta más abajo.
 
-Sube un archivo a **Mi biblioteca**, elige un elemento de la biblioteca pública y crea un disparador con un nombre y volumen. Los nombres aceptan letras, números y guiones bajos. El reproductor actual admite **audio y video**. Las imágenes y los GIF pueden aparecer en la biblioteca, pero todavía no se pueden adjuntar como disparadores.
+Los triggers reproducen audio y video. Las imágenes y los GIF pueden estar en tu biblioteca, pero no puedes usarlos como triggers. Los canales Free suben a la biblioteca pública. Los canales Premium y Pro pueden mantener los archivos privados. Los límites de tamaño y almacenamiento están en la [Biblioteca multimedia](/es/media-library/).
 
-Las cuentas gratuitas pueden subir archivos de hasta 5 MB a la biblioteca pública; los archivos públicos no consumen cuota de almacenamiento privado. Las cuentas Premium pueden subir hasta 25 MB por archivo y tienen 250 MB de almacenamiento privado. Las cuentas Pro pueden subir hasta 100 MB por archivo y tienen 1 GB de almacenamiento privado. Los planes de pago también pueden usar archivos públicos. Los medios privados solo están disponibles para su propietario; los archivos públicos aparecen en la biblioteca compartida.
+Después de crear un trigger, su archivo no se puede cambiar. Crea un trigger nuevo para usar otro archivo.
 
-Los medios para activadores se guardan en la **Biblioteca de medios**. La **Biblioteca de recursos**, independiente y disponible en **Panel → Configuración**, guarda imágenes y videos privados para diseños visuales, incluido Overlay Studio. Los recursos para diseños tienen su propia cuota por plan (Free 100 MB, Premium 500 MB, Pro 5 GB) y un límite de 50 MB por archivo; no se pueden adjuntar a activadores. Consulta [Biblioteca de medios](/es/media-library/) para ver la diferencia.
+## Formas de reproducir un trigger
 
-## Elige cómo reproducir un disparador
+- **Prueba desde el panel:** Selecciona **Probar** en un trigger. La prueba necesita un cliente de triggers conectado: la vista previa del panel o la fuente de OBS.
+- **Comando del chat:** Usa `$(trigger.send nombre_del_trigger)` en un comando o en el mensaje de una recompensa. Por ejemplo, `$(trigger.send bocina)`. El trigger debe existir y estar habilitado. Si no existe, el comando responde con un mensaje en lugar de reproducirlo.
+- **Recompensa de puntos de canal:** Activa **Crear una recompensa de puntos de canal** en el editor del trigger y define:
+  - **Nombre de la recompensa** y **Costo (puntos)**.
+  - **Descripción para los espectadores**.
+  - **Se ejecuta al canjear**. Empieza como `$(trigger.send nombre)`. Puedes añadir más texto, como un mensaje en el chat.
 
-- **Prueba desde el panel:** Pulsa **Probar** en un disparador. Su vista previa integrada debe conectarse antes de reproducirlo.
-- **Mensaje del bot:** Usa `$(trigger.send nombre_del_disparador)` en un mensaje del bot o de una recompensa. Por ejemplo, `$(trigger.send airhorn)`. El disparador debe existir y estar habilitado.
-- **Recompensa de puntos del canal:** Al crear o editar un disparador, habilita su recompensa vinculada opcional y define el título, el costo, el texto descriptivo y el mensaje de la recompensa. El mensaje predeterminado invoca el disparador por nombre. Luego, los espectadores pueden canjear esa recompensa de Twitch para ejecutar el mensaje configurado.
+  Los espectadores que canjean la recompensa reproducen el trigger. Si eliminas un trigger, también se quita su recompensa de Twitch.
 
-La fuente de navegador de OBS debe estar conectada para reproducir el medio en tu transmisión. Si la vista previa del panel aún no se conectó y la prueba indica que no hay clientes de disparadores conectados, vuelve a intentar la vista previa. Para la reproducción en vivo, comprueba que la fuente Navegador de OBS esté abierta y use el enlace copiado para el canal correcto.
+## Solución de problemas
+
+- **La prueba dice que no se pudo enviar el trigger:** Comprueba que la fuente de navegador de OBS esté abierta, use la URL copiada y tenga 1920×1080. Actualiza la fuente de navegador y prueba de nuevo.
+- **No se reproduce nada en el stream:** Verifica que la fuente esté activa en la escena actual y que el trigger esté habilitado.
+- **Quieres que los espectadores paguen con Bits:** Usa [DimaFX](/es/dimafx/). DimaFX usa su propia fuente de OBS, así que no se reproduce a través de la fuente de Triggers.

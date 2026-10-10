@@ -1,24 +1,54 @@
 ---
 title: Analíticas
-description: Conoce qué incluye actualmente el centro de analíticas del canal y cómo funciona el acceso.
+description: Qué muestran el Hub de Analíticas y el Registro de Seguidores, quién puede abrirlos, cada cuánto se actualizan y cuánto tiempo se guardan los datos.
 sidebar:
   order: 8
 ---
 
-El centro de **Analíticas** está disponible para canales con **Premium o Pro**. El catálogo de módulos muestra Analíticas y Follow Ledger como permisos independientes, cada uno con Premium como plan mínimo (Pro también cumple el requisito). Además, necesitas permiso para ver el panel del canal.
+El **Hub de Analíticas** reúne las herramientas de audiencia de tu canal en un solo lugar. Hoy tiene una herramienta funcional, el **Registro de Seguidores** (Follow Ledger), que muestra a todas las personas que siguen tu canal. El hub y el registro requieren un plan **Premium** o **Pro**.
 
-La página del centro aparece como **Beta** y actualmente ofrece una herramienta para usuarios: **Follow Ledger**. El centro menciona otras ideas de analíticas como planes futuros; hoy no puedes usar desde esta página herramientas de actividad del chat u otras funciones similares.
+**Quién puede abrirlo:** el propietario del canal o un administrador con el permiso de **Analíticas** para ver.
 
-## Abrir el centro
+El hub aparece como **Beta**. También muestra herramientas planeadas, como actividad del chat y retención del stream. Todavía no están disponibles.
 
-Inicia sesión, elige un canal, abre **Módulos** y selecciona **Analíticas**. El centro enlaza con Follow Ledger, muestra el estado del plan e indica que la herramienta se enfoca en quienes siguen actualmente el canal.
+## Abrir el Registro de Seguidores
 
-## Qué significa la retención de datos
+1. Abre **Módulos → Analíticas**. El hub muestra el estado de tu plan y la tarjeta del Registro de Seguidores.
+2. Pulsa **Abrir Registro de Seguidores**.
 
-La comparación pública de planes muestra una retención de analíticas de transmisiones de **30 días en Free, 180 días en Premium y 365 días en Pro**. Esa etiqueta de precios describe la asignación para analíticas de transmisiones, no un período de retención de Follow Ledger. El backend de analíticas también elimina actualmente los registros de snapshots de espectadores con más de 90 días; este detalle de implementación no garantiza una retención específica por plan para cada registro analítico.
+En un canal Free, la tarjeta y la página muestran un aviso de bloqueo. Los propietarios ven ahí el botón **Mejorar plan para desbloquear**.
 
-La página y la API de Follow Ledger no publican un período de retención. La vista muestra solo seguidores actuales; el servicio guarda por separado relaciones finalizadas, pero el panel actual no las muestra. Consulta [Planes](/es/plans/) para ver la comparación de precios vigente.
+## Qué muestra el Registro de Seguidores
 
-## Acceso y disponibilidad
+- **Seguidores actuales:** el total de personas que siguen tu canal en este momento.
+- **Seguidores mutuos:** personas a las que también sigues.
+- **Solo te siguen:** personas que te siguen pero a las que tú no sigues.
 
-El permiso del plan no reemplaza el acceso al panel ni la autorización necesaria de Twitch. Si el centro o Follow Ledger no está disponible, confirma que el canal seleccionado tenga Premium o Pro y que tu cuenta pueda acceder a su panel. La página de Follow Ledger lo identifica como Beta; la etiqueta de madurez del catálogo puede ser distinta a la de la página de la función.
+Pulsa un total para filtrar la lista. Después puedes:
+
+- **Buscar** por nombre, login o ID del seguidor.
+- **Ordenar** por fecha de follow: **Más nuevos** o **Más antiguos**.
+- Ver en cada fila la fecha del follow y hace cuánto ocurrió.
+
+Solo aparecen los seguidores actuales. Las personas que dejaron de seguirte se guardan, pero el panel no las muestra.
+
+## Cada cuánto se actualiza
+
+- El bot sincroniza tu lista de seguidores desde Twitch **una vez al día, a medianoche UTC**.
+- El botón **Actualizar** recarga la lista guardada. No pide datos nuevos a Twitch, así que un seguidor nuevo puede tardar en aparecer hasta la siguiente sincronización diaria.
+
+## Historial de stream en tu panel
+
+Tu panel principal muestra **Historial de Streams de los últimos 30 días**, con el promedio de espectadores, los nuevos seguidores y los Bits de ese periodo. Este resumen siempre cubre 30 días, sin importar tu plan.
+
+## Retención de datos
+
+La página de [Planes](/es/plans/) indica una retención de analíticas de stream de **30 días en Free, 180 días en Premium y 365 días en Pro**. Hoy el sistema elimina los snapshots de espectadores con más de **90 días** para todos los planes, así que no cuentes con los periodos más largos para los datos de espectadores.
+
+El Registro de Seguidores no publica un periodo de retención.
+
+## Solución de problemas
+
+- **El hub o el Registro de Seguidores aparece bloqueado:** el canal necesita un plan Premium o Pro.
+- **No puedes abrir la página:** debes ser el propietario del canal o tener el permiso de **Analíticas** para ver. Tu plan no reemplaza este acceso.
+- **El Registro de Seguidores muestra un error:** pulsa **Actualizar** e inténtalo de nuevo. Si sigue fallando, revisa que la autorización de Twitch del canal esté vigente.

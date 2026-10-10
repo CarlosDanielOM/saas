@@ -54,6 +54,29 @@ Docs share the **Live First (OC3c)** design language with `dimasite/`.
 - Dark/light via Starlight `data-theme`; both themes must stay readable (4.5:1 body text).
 - Reference: `.opencode/skills/live-first/SKILL.md` and dimasite landing/dashboard.
 
+## Layout & navigation
+
+- Sidebar (`astro.config.mjs`) is grouped by streamer task: Start here, Chat & commands, Alerts/sound/overlays, Channel points, AI features, Safety, Growth & stats, Help. Add new pages to the group a streamer would look in; mark Alpha/plan-gated pages with a sidebar `badge` (`{ en, es }` text).
+- `DocsPageTitle.astro` shows each page's frontmatter `description` as a lead line under the title — write it as one plain sentence saying what the page helps with.
+- Homepage (`index.mdx`, `es/index.mdx`): search-first hero (`DocsHomeSearch.astro`), 3-step start, topic tiles mirroring the sidebar groups. Keep both languages in sync. The wrapper has `.not-content` so Starlight's markdown spacing doesn't leak in.
+- Interactive-only components (`DocsHomeSearch`, `Icon`) are dropped by the text exporter in `src/lib/markdown.mjs`; register any new one there.
+
+## Docs assistant (chatbot placeholder)
+
+`DocsAssistant.astro` (mounted on every page by `DocsPageFrame.astro`) renders the "Ask the docs" launcher and panel: bottom sheet on phones, side panel on desktop. Until a chatbot exists, questions open the docs search with the question's keywords.
+
+To plug in a chatbot, load a script that handles the ask event — no markup changes needed:
+
+```js
+document.addEventListener('docs-assistant:ask', (event) => {
+  event.preventDefault(); // skip the search fallback
+  const { question, page, mount } = event.detail; // page = { title, url, lang }; mount = panel body element
+  // render the conversation into `mount`
+});
+```
+
+Also available: `window.DocsAssistant.open(question?)` / `.close()`, `[data-docs-assistant-open]` on any element, and `[data-docs-search="query"]` to open search pre-filled. Remove the "Coming soon" labels (assistant + homepage) when it ships. `ops/checks/docs-redesign-browser.mjs` covers the fallback and the hook contract.
+
 ## Production Verification & Deployment
 
 - Use `scripts/saas-ops` target `docs` and [`../ops/README.md`](../ops/README.md). `scripts/dima-update` is the human operator's tool; agents must not invoke or modify it.

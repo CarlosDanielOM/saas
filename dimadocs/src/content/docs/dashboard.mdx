@@ -1,29 +1,61 @@
 ---
 title: Dashboard
-description: Find channel status, chat controls, activity, and modules.
+description: Find your way around the channel dashboard, including the top menu, the bot on/off control, live status, activity, AI credits, and the profile menu.
 sidebar:
   order: 2
 ---
 
-The dashboard is scoped to a channel. Open **Dashboard**, **Commands**, **Modules**, or **Settings** from the top navigation. On a narrow screen, open the menu to reach the same sections.
+The dashboard shows your channel's status and lets you turn the bot on or off. Each channel has its own dashboard. Open it from the top menu after you sign in.
 
-## Dashboard overview
+## Top menu
 
-The main page shows the channel's live or offline status and, when live, stream details such as viewer count, game, and title. It also shows activity counters, stream history, and AI usage information where available. Values depend on the data the channel has collected.
+| Menu item | Who sees it | What it does |
+|---|---|---|
+| **Dashboard** | Anyone with access to the channel | Opens the channel overview on this page. |
+| **My Dashboard** | Helpers who are viewing someone else's channel | Returns to your own channel. |
+| **Commands** | The channel owner, and helpers who can view commands | Creates and manages chat commands. |
+| **Modules** | Anyone with access to the channel | Lists features. You see only the modules your role can view. |
+| **Settings** | The channel owner, and helpers who can view the team | Opens **Channel settings**. The **Team** section adds helpers and sets what they can do. |
+| **Admin Hub** | Everyone | Lists the channels where another streamer made you a helper. |
 
-Use **Join Bot** or **Leave Chat** on this page to change whether DomDimaBot participates in chat. The page shows chat and connection status next to this control.
+On a narrow screen, tap the menu icon to open the same items.
+
+## Top bar
+
+- **Permission button.** When the bot needs setup or new Twitch permissions, a button appears: **Activate Bot**, **Reauthenticate**, or **Update Permissions**. See [Getting Started](/getting-started/).
+- **Profile menu.** Click your avatar to open it. It shows your name and plan badge, then these items:
+  - **Profile Settings**
+  - **Buy AI credits** and **Gift credits**
+  - **Upgrade** (on Free) or **Upgrade to Pro** (on Premium). It does not appear on Pro or when you are viewing another channel.
+  - **Dark** or **Light** to change the theme
+  - The language switch
+  - **Logout**
+
+## Overview page
+
+The overview page is the channel's home. It shows these sections:
+
+- **Start here.** Three quick tips: turn the bot on, add a command, and open your tools.
+- **Live Status.** Shows LIVE or Offline. When you are live, it also shows viewer count, game, and title.
+- **Quick Actions.** Shows whether the bot is in your chat, with the button **Turn the bot on** or **Turn the bot off**. Only the channel owner can change this setting. The status line reads "The bot is in your chat and can answer." when the bot is on.
+- **Live Activity.** Follows, subs, bits, donations, messages, and commands for the current stream.
+- **Stream Health.** Connection status and response time.
+- **Performance Trend.** A chart with a time range you choose: 7d, 15d, 30d, 90d, or All. The chart uses the server's day (UTC).
+- **Followers & Subs Goals.** Your totals for followers and subs, with goal progress.
+- **Last 30 Days Stream History.** Your recent streams, newest first. The live stream is marked LIVE.
+- **AI Credits.** Your remaining balance. **View credit usage →** opens the credit usage page in the dashboard, where you can see what used your credits.
+
+Metric cards can switch between per-day and per-stream averages. Values depend on the data the channel has collected. A new channel shows empty sections until data arrives.
 
 ## Find a feature
 
-| Navigation | What you can do |
+| Need | Go to |
 |---|---|
-| **Commands** | Create, edit, and manage channel chat commands. |
-| **Modules** | Browse features such as triggers, TTS, moderation, analytics, Roulette, and Overlay Studio. A module card shows its availability or plan requirement. Overlay Studio is available from Free; Roulette requires Pro. Both are in Alpha and owner-only. |
-| **Settings** | Manage the channel's dashboard administrators. Owners can add or remove admins. |
-| **Profile menu** | Open profile settings, view your plan, buy credits, change theme or language, and sign out. |
+| Create or edit chat commands | **Commands** |
+| Turn features on and configure them | **Modules** (use the search box or the goal filter to find one) |
+| Add helpers or change their access | **Settings** → **Team** |
+| Change your plan or buy credits | Profile menu → **Buy AI credits** or **Upgrade** |
 
-Some module pages are experimental or still in development. Check the status shown on each card before relying on it for a live stream. The [modules guide](/modules/) lists current statuses.
+Some module pages are experimental or still in development. Check the status on each card before you rely on a feature during a live stream. The [modules guide](/modules/) lists each status.
 
-For the Alpha tools, see [Roulette](/roulette/) and [Overlay Studio](/overlay-studio/). Roulette requires Pro; Overlay Studio is available from Free. Channel owners manage both during Alpha.
-
-If the header shows **Activate Bot**, **Reauthenticate**, or **Update Permissions**, follow it to grant or renew Twitch permissions. See [Getting Started](/getting-started/).
+Overlay Studio and Roulette are Alpha tools. Read [Roulette](/roulette/) and [Overlay Studio](/overlay-studio/) before you set them up.

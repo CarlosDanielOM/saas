@@ -1,49 +1,71 @@
 ---
 title: Sintaxis y Datos de AST
-description: "Bloques base de AST: prefijos, almacenamiento, argumentos, arrays, expresiones, condicionales, bucles y referencias a comandos."
+description: "Referencia de sintaxis AST: prefijos, variables y almacenamiento, argumentos, escapes, arrays, operadores, condicionales, bucles, borrado, referencias a comandos y timers."
 sidebar:
   order: 1
 ---
 
 import { Aside } from '@astrojs/starlight/components';
 
-Esta página cubre la sintaxis principal que usarás para construir comandos AST.
+Esta página es la referencia para escribir comandos AST. ¿Es tu primera vez con AST? Lee primero la [guía general de AST](/es/commands/advanced/).
+
+## Cómo se lee un mensaje
+
+Solo se ejecutan las partes que empiezan con un prefijo. Todo lo demás se copia tal como lo escribes, incluidas las comillas, la puntuación y los emoticonos.
+
+```bash
+Hola $(user)! Bienvenido a "el stream" :)
+→ Hola Carlos! Bienvenido a "el stream" :)
+```
+
+Dentro de un prefijo, las reglas son distintas:
+
+- Un prefijo se ejecuta hasta su `)` correspondiente.
+- Las comillas dobles, `${ }` y los arrays `%[ ]` solo funcionan **dentro** de un prefijo.
+
+<Aside type="caution">
+Escribir `"$(user) tiene 2 wins!"` también imprime las comillas. Escribe `$(user) tiene 2 wins!` en su lugar.
+</Aside>
 
 ## Prefijos principales
 
-El parser entiende 5 prefijos importantes:
+El parser entiende 6 prefijos:
 
 | Prefijo | Sintaxis | Propósito | Ejemplo |
 |--------|----------|-----------|---------|
-| ``$( `` | `$(funcName arg1 arg2)` | Llamar una función | `$(random 10)` |
+| ``$( `` | `$(funcName arg1 arg2)` | Llamar una función | `$(random 10)` (un número del 0 al 9) |
 | ``%( `` | `%(name)` o `%(name value)` | Leer o escribir una variable | `%(wins)`, `%(wins 5)` |
-| ``*( `` | `*(condition ? yes : no)` | Calcular lógica o matemáticas | `*(5 > 3 ? "yes" : "no")` |
-| ``^( `` | `^(variableName)` | Comprobar existencia | `^(#wins)` |
-| ``#( `` | `#(commandName args...)` | Llamar otro comando | `#(othercmd arg1)` |
+| ``%del( `` | `%del(name)` | Borrar una variable o un elemento de lista | `%del(wins)` |
+| ``*( `` | `*(condition ? yes : no)` | Calcular lógica o matemáticas, o ejecutar un bucle | `*(5 > 3 ? "yes" : "no")` |
+| ``^( `` | `^(name)` | Comprobar si algo existe | `^(#wins)` |
+| ``#( `` | `#(commandName args...)` | Ejecutar otro comando | `#(othercmd arg1)` |
 
 ## Variables y almacenamiento
 
-Las variables las creas tú. Pueden ser temporales o persistentes según el prefijo que uses.
+Tú creas las variables. El prefijo que pongas antes del nombre decide cuánto dura el valor.
 
-| Prefijo | Almacenamiento | Persistencia | Plan | Ejemplo |
-|--------|----------------|--------------|------|---------|
-| ninguno | Memoria | Solo la ejecución actual | Free | `%(temp)` |
-| `#` | Caché | Hasta 24 horas | Free | `%(#wins)` |
-| `##` | Caché + por usuario | Hasta 24 horas | Free | `%(##chips)` |
+| Prefijo | Almacenamiento | Cuánto dura | Plan | Ejemplo |
+|--------|----------------|-------------|------|---------|
+| ninguno | Memoria | Solo durante la ejecución actual | Free | `%(temp)` |
+| `#` | Caché | 24 horas después de la última escritura | Free | `%(#wins)` |
+| `##` | Caché, por viewer | 24 horas después de la última escritura | Free | `%(##chips)` |
 | `*` | Base de datos | Permanente | Premium / Pro | `%(*wins)` |
-| `**` | Base de datos + por usuario | Permanente | Premium / Pro | `%(**rank)` |
+| `**` | Base de datos, por viewer | Permanente | Premium / Pro | `%(**rank)` |
+
+El plan es el del streamer, no el del viewer.
 
 ### Comportamientos importantes
 
-1. Cada escritura en caché renueva una expiración de 24 horas. Esto aplica a las variables `#` y `##`.
-2. Si una variable de caché expiró, vuelve **vacía**, no con `0`.
-3. La asignación sobrescribe.
+1. Cada escritura en una variable `#` o `##` reinicia su temporizador de 24 horas. Leer un valor no lo extiende.
+2. Una variable que expiró, o que nunca se creó, se lee **vacía**, no como `0`.
+3. La asignación sobrescribe. `%(#wins 1)` pone el valor en `1`. No suma 1.
+4. En Free, las escrituras en variables `*` y `**` se ignoran sin mostrar error.
 
 ```bash
 %(#wins 1)
 ```
 
-Ese ejemplo **pone** el valor en `1`. No suma 1.
+El ejemplo anterior **pone** el valor en `1`. No suma 1.
 
 ### Patrón correcto para incrementar
 
@@ -51,9 +73,9 @@ Ese ejemplo **pone** el valor en `1`. No suma 1.
 %(#wins *(%(#wins) + 1))
 ```
 
-### Selectores por usuario
+### Variables por viewer
 
-Los valores por usuario pueden apuntar a otro usuario:
+Las variables `##` y `**` pertenecen a un viewer. Sin selector usan al viewer que ejecutó el comando. Para usar a otro viewer, pon su nombre de login entre paréntesis después del nombre. El `@` inicial es opcional.
 
 ```bash
 %(##rank)
@@ -62,19 +84,21 @@ Los valores por usuario pueden apuntar a otro usuario:
 %(**rank(&p1))
 ```
 
-## Placeholders de argumentos
+## Argumentos
 
-Cuando un viewer usa un comando, sus argumentos se pueden acceder con placeholders.
+Cuando un viewer ejecuta un comando, sus palabras están disponibles como placeholders. La palabra 1 es la primera palabra después del nombre del comando.
 
 | Placeholder | Significado | Ejemplo |
 |-------------|-------------|---------|
-| `&p1`, `&p2`, `&p3`... | Argumentos posicionales | `&p1` = primer argumento |
-| `&t` | Todo el texto restante | `&t` = todo lo que queda |
+| `&p1`, `&p2`, `&p3`... | Palabra número 1, 2, 3... | `&p1` = primera palabra |
+| `&t` | Todo desde la última palabra numerada | `&t` = el resto del mensaje |
 
 ### Reglas
 
-- `&t` debe ir al final
-- no puedes crear nuevos `&pN` después de `&t`
+- Una palabra que no se escribió queda vacía.
+- `&t` toma las palabras que siguen al `&pN` más alto que aparece antes.
+- Puedes reutilizar un `&pN` después de `&t`, pero un `&pN` **nuevo** después de `&t` es un error: `[Parser error: cannot create new &pN after &t]`.
+- En los comandos de chat, lo que escribe el viewer es texto plano. No puede ejecutar código AST.
 
 ### Ejemplos
 
@@ -92,69 +116,99 @@ Mensaje: &p1 &p2 &t
 
 ```bash
 Mensaje: &t &p1
-→ Error: cannot create new &pN after &t
+→ [Parser error: cannot create new &pN after &t]
 ```
 
-## Template strings
+## Texto entre comillas
 
-Usa comillas dobles y `${}` cuando quieras interpolación dentro de un string.
+Dentro de un prefijo, las comillas dobles crean texto. Usa `${ }` para meter un valor dentro de ese texto.
 
 ```bash
-"Hola ${$(user)}!"
-"Has ganado ${%(#wins)} veces!"
+%(saludo "Hola ${$(user)}!")%(saludo)
+→ Hola Carlos!
 ```
+
+Dentro de `${ }` puedes poner cualquier expresión, como `${%(#wins)}`. Para incluir unas comillas dentro de un texto entre comillas, escribe `\"`.
 
 ## Caracteres especiales y escapes
 
-Los paréntesis definen dónde empieza y termina una expresión, así que un `)` literal dentro de una la cerraría antes de tiempo. Tienes tres herramientas para incluir caracteres especiales como texto plano:
+Hay tres formas de dejar caracteres especiales como texto plano.
 
-1. **Los pares balanceados funcionan directamente.** Los paréntesis que abren y cierran dentro de una expresión se mantienen como texto:
+1. **Los pares balanceados funcionan.** Un `(` que tiene su `)` dentro de un prefijo se queda como texto.
 
    ```bash
-   $(say score (5-3))
-   → score ( 5 - 3 )
+   $(upper puntaje (5-3))
+   → PUNTAJE ( 5 - 3 )
    ```
 
-2. **Las comillas dobles** protegen cualquier texto, incluidos caracteres desbalanceados:
+2. **Las comillas protegen el texto.** Todo lo que está entre comillas se conserva, incluidos los caracteres desbalanceados.
 
    ```bash
-   $(say "quoted :) here")
-   → quoted :) here
+   $(upper "entre comillas :) aquí")
+   → ENTRE COMILLAS :) AQUÍ
    ```
 
-3. **Los escapes con barra invertida** protegen un solo carácter. Usa `\(` `\)` `\[` `\]` `\{` `\}` `\;` `\?` `\:` y `\\`:
+3. **La barra invertida protege un carácter.** Usa `\(` `\)` `\[` `\]` `\{` `\}` `\;` `\?` `\:` y `\\`.
 
    ```bash
-   $(say hello \:\))
-   → hello :)
+   $(upper hola \:\))
+   → HOLA :)
 
-   %(mood \:\)) %(mood)
+   %(humor \:\)) %(humor)
    → :)
    ```
 
+Para mostrar un prefijo como texto, pon una barra invertida antes de su `$`, `%`, `*`, `#` o `^`. Por ejemplo, `\$(user)` imprime `$(user)`, y `100\%` imprime `100%`.
+
 <Aside type="tip">
-Los emoticonos como `:)` o `;)` son el caso más común — escápalos (`\:\)`, `\)`) o envuelve el texto en comillas.
+Los emoticonos como `:)` o `;)` solo son un problema **dentro** de un prefijo, donde el `)` puede cerrarlo antes de tiempo. Fuera de un prefijo se imprimen tal como los escribes. Dentro de uno, escápalos (`\:\)`) o envuelve el texto en comillas:
+
+```bash
+$(upper hola :) y chao)
+→ HOLA : y chao)
+```
 </Aside>
 
 ## Arrays
 
-### Arrays literales
+Una lista guarda varios valores. Se puede leer, cambiar y contar.
+
+### Agregar y leer listas
 
 ```bash
-%[item1, item2, item3]
-%[1, 2, 3, 4, 5]
+%(items[] extra)
+%(items)
+→ ["extra"]
 ```
 
-### Accesores de array
+Al leer una lista completa se imprime como JSON, por ejemplo `["a","b"]`.
+
+### Listas literales
+
+Una lista literal escribe sus valores directamente. Solo funciona dentro de un prefijo. Usa `[]` para agregar sus elementos a una lista. Una asignación normal guarda los elementos como un solo texto separado por comas, no como lista.
+
+```bash
+%(colors[] %[red, green, blue]) %(colors)
+→ ["red","green","blue"]
+
+%(pick %[1, 2, 3][random]) %(pick)
+→ 2 (un 1, 2 o 3 al azar)
+```
+
+### Accesores
 
 | Sintaxis | Significado | Ejemplo |
 |----------|-------------|---------|
-| `%(arr[0])` | Acceder por índice | `%(items[0])` |
-| `%(arr[-1])` | Acceder desde el final | `%(items[-1])` = último elemento |
+| `%(arr[0])` | Elemento por posición, empezando en 0 | `%(items[0])` |
+| `%(arr[-1])` | Elemento contado desde el final | `%(items[-1])` = último elemento |
 | `%(arr[random])` | Elemento aleatorio | `%(items[random])` |
-| `%(arr[].length)` | Longitud del array | `%(items[].length)` |
-| `%(arr[] value)` | Agregar valor | `%(items[] extra)` |
-| `%(arr[2] value)` | Reemplazar por índice | `%(items[2] updated)` |
+| `%(arr[].length)` | Cantidad de elementos | `%(items[].length)` |
+| `%(arr[] value)` | Agregar un elemento al final | `%(items[] extra)` |
+| `%(arr[2] value)` | Reemplazar el elemento de una posición | `%(items[2] updated)` |
+| `%del(arr[1])` | Quitar el elemento de una posición | `%del(items[1])` |
+| `%del(arr[])` | Vaciar toda la lista | `%del(items[])` |
+
+Una posición que no existe se lee vacía. Reemplazar una posición que no existe no hace nada.
 
 ### Ejemplos
 
@@ -164,22 +218,24 @@ Los emoticonos como `:)` o `;)` son el caso más común — escápalos (`\:\)`, 
 %(items[].length)
 %(items[] extra)
 %(items[1] replacement)
-%[1, 2, 3][random]
+%(pick %[1, 2, 3][random]) %(pick)
 ```
 
 ## Operadores y expresiones
 
 ### Comparación
 
+Dos números se comparan como números. Los demás valores se comparan como texto. El resultado es `true` o `false`.
+
 | Operador | Significado | Ejemplo |
 |----------|-------------|---------|
-| `==` o `=` | Igual | `%(wins) == 5` |
-| `!=` o `<>` | Distinto | `%(status) != "offline"` |
+| `==` o `=` | Igual. El texto ignora mayúsculas. | `%(wins) == 5` |
+| `!=` o `<>` | Distinto. El texto ignora mayúsculas. | `%(status) != "offline"` |
 | `>` | Mayor que | `%(level) > 3` |
 | `<` | Menor que | `%(age) < 18` |
-| `>=` | Mayor o igual | `%(wins) >= 10` |
-| `<=` | Menor o igual | `%(wins) <= 5` |
-| `~=` | Coincidencia de subcadena sin distinguir mayúsculas | `%(tags) ~= "gaming"` |
+| `>=` | Mayor o igual que | `%(wins) >= 10` |
+| `<=` | Menor o igual que | `%(wins) <= 5` |
+| `~=` | Contiene el texto, sin distinguir mayúsculas | `%(tags) ~= "gaming"` |
 
 ### Aritmética
 
@@ -189,7 +245,11 @@ Los emoticonos como `:)` o `;)` son el caso más común — escápalos (`\:\)`, 
 | `-` | Restar | `*(%(#wins) - 1)` |
 | `*` | Multiplicar | `*(%(x) * 2)` |
 | `/` | Dividir | `*(%(total) / 2)` |
-| `%` | Módulo | `*(%(count) % 10)` |
+| `%` | Resto | `*(%(count) % 10)` |
+
+- Dividir o sacar el resto entre `0` da `0`. No muestra error.
+- Un texto que no es número cuenta como `0`.
+- Los resultados se redondean a 6 decimales.
 
 ### Operadores unarios
 
@@ -198,9 +258,9 @@ Los emoticonos como `:)` o `;)` son el caso más común — escápalos (`\:\)`, 
 | `+` | Más unario |
 | `-` | Negación |
 
-### Operadores de asignación
+### Operadores de asignación de variables de bucle
 
-Estos son para **variables de bucle solamente**:
+Estos solo funcionan con variables de bucle como `#i`. Consulta [Bucles](#bucles).
 
 | Operador | Significado |
 |----------|-------------|
@@ -211,11 +271,11 @@ Estos son para **variables de bucle solamente**:
 | `-=` | Restar y asignar |
 | `*=` | Multiplicar y asignar |
 | `/=` | Dividir y asignar |
-| `%=` | Módulo y asignar |
+| `%=` | Resto y asignar |
 
 ## Condicionales
 
-AST usa expresiones ternarias para ramificar lógica:
+Usa una expresión ternaria para elegir entre dos valores:
 
 ```bash
 *(condition ? trueValue : falseValue)
@@ -223,47 +283,83 @@ AST usa expresiones ternarias para ramificar lógica:
 *(%(islive) == 1 ? "Stream is live!" : "Stream is offline")
 ```
 
+Una condición es falsa cuando su valor está vacío, es `0` o es `false`. Cualquier otro valor es verdadero.
+
 ## Bucles
+
+Dentro de un bucle, escribe la variable de bucle sin `%( )`, como `#i`. `%(#i)` lee una variable de caché llamada `i`, no la variable del bucle.
 
 ### Bucle de rango
 
 ```bash
-*(for #i = 0; #i < 3; #i++ {
-  %(out[] #i)
-})
+*(for #i = 0; #i < 3; #i++ { %(out[] #i) }) %(out[])
+→ ["0","1","2"]
 ```
 
 ### Bucle foreach
 
 ```bash
-*(for #item in %(#items[]) {
-  %(result[] %(#item))
-})
+%(items[] a) %(items[] b) *(for #item in %(items[]) { %(result[] #item) }) %(result[])
+→ ["a","b"]
 ```
 
-### Control de bucle
+También puedes recorrer una lista literal: `*(for #c in %[red, green] { ... })`.
+
+### Control de bucles
 
 | Función | Propósito |
 |---------|-----------|
 | `$(break)` | Salir del bucle inmediatamente |
-| `$(continue)` | Saltar la iteración actual |
+| `$(continue)` | Saltar el resto de esta vuelta e ir a la siguiente |
+
+```bash
+*(for #i = 0; #i < 4; #i++ { *(#i == 2 ? $(continue) : "") %(o[] #i) }) %(o[])
+→ ["0","1","3"]
+```
 
 ### Límites por plan
 
-| Plan | Máx. profundidad de anidación | Máx. iteraciones |
-|------|-------------------------------|------------------|
+| Plan | Bucles anidados uno dentro de otro | Vueltas por bucle |
+|------|------------------------------------|-------------------|
 | Free | 2 | 25 |
 | Premium | 3 | 50 |
 | Pro | 4 | 100 |
 
+Un bucle anidado más profundo que el límite no hace nada. Un bucle se detiene al llegar a su máximo de vueltas.
+
 ### Ejemplo de bucle
 
 ```bash
-*(for #i = 0; #i < %(#count); #i++ {
-  %(output[] #i)
-})
-"Tus números: ${%(output[])}"
+%(count 3) *(for #i = 0; #i < %(count); #i++ { %(output[] #i) }) %(output[])
+→ ["0","1","2"]
 ```
+
+## Borrar
+
+`%del(...)` borra una variable o una parte de ella. No imprime nada.
+
+```bash
+%(list[] a) %(list[] b) %(list[] c) %del(list[1]) %(list[])
+→ ["a","c"]
+
+%del(wins)
+```
+
+`%del(name)` borra la variable y cualquier lista que tenga guardada. `%del(name[0])` quita un elemento. `%del(name[])` vacía la lista. Las variables por viewer también aceptan selector: `%del(##rank(&p1))`.
+
+## Verificación de existencia
+
+Usa `^()` para comprobar si algo existe. Devuelve `true` o `false`.
+
+```bash
+^(#wins)
+^(#items[0])
+^(##balance)
+```
+
+<Aside type="tip">
+Si estás escribiendo un comando que guarda estado, `^()` suele ser la forma más limpia de decidir entre “inicializar” y “actualizar”.
+</Aside>
 
 ## Referencias a comandos
 
@@ -273,35 +369,30 @@ Puedes ejecutar un comando dentro de otro:
 #(othercmd arg1 arg2)
 ```
 
+Las palabras que siguen al nombre del comando se convierten en su argumento. La referencia no imprime nada en tu mensaje.
+
 ### Reglas
 
-- profundidad máxima de recursión: `5`
-- los ciclos se detectan y bloquean
-- primero se envía la respuesta del comando externo; después se ejecutan los comandos referenciados en el orden escrito
-- cada comando referenciado envía su propia respuesta; el texto renderizado no se vuelve a parsear
+- Los comandos pueden llamar a otros comandos hasta 5 niveles de profundidad.
+- Un comando no puede aparecer dos veces en la misma cadena. Los ciclos se bloquean.
+- Se pueden ejecutar hasta 50 referencias por mensaje.
+- Primero se envía tu mensaje. Después se ejecutan los comandos referenciados en el orden en que los escribiste.
+- Cada comando referenciado envía su propia respuesta. Esa respuesta no se vuelve a interpretar.
+- Un comando referenciado que no puede ejecutarse se omite, por ejemplo porque está en cooldown o desactivado.
 
 ## Timers programados
 
-`$(timer segundos mensaje_y_acciones)` programa el cuerpo para ejecutarlo más tarde y devuelve el control de inmediato. El delay debe ser de `1` a `604800` segundos (siete días). El timer guarda su AST y contexto de ejecución en la caché del bot, por lo que puede recuperarse después de un reinicio. Si el bot está desconectado cuando vence, todavía puede ejecutarse dentro de una ventana de gracia de 10 minutos; después expira. Cada llamada crea un timer independiente y cada timer se ejecuta como máximo una vez.
+`$(timer segundos mensaje_y_acciones)` programa su contenido para ejecutarse más tarde. La llamada devuelve el control de inmediato, y el contenido se ejecuta cuando el timer se activa.
 
 ```bash
 $(timer 300 "¡Se acabaron los cinco minutos!" $(trigger.send airhorn))
 ```
 
-El mensaje y la acción se evalúan cuando se activa el timer. Se pueden anidar timers hasta cinco niveles. Cada canal puede tener como máximo 100 timers pendientes.
+- El delay debe estar entre `1` y `604800` segundos (siete días).
+- Los timers funcionan solo en canales de Twitch.
+- Cada llamada crea un timer independiente. Un timer se ejecuta como máximo una vez.
+- Un timer sobrevive a un reinicio del bot. Si el bot está desconectado cuando vence, todavía puede ejecutarse dentro de una ventana de gracia de 10 minutos. Después expira.
+- Se pueden anidar timers hasta cinco niveles.
+- Un canal puede tener como máximo 100 timers pendientes. Si se supera, el mensaje muestra `timer: could not schedule timer`.
 
-## Verificación de existencia
-
-Usa `^()` para preguntar si algo existe:
-
-```bash
-^(#wins)
-^(#items[0])
-^(##balance)
-```
-
-Esto devuelve `true` o `false`.
-
-<Aside type="tip">
-Si estás escribiendo un comando que guarda estado, `^()` suele ser la forma más limpia de decidir entre “inicializar” y “actualizar”.
-</Aside>
+Los errores de un timer aparecen como texto que empieza con `timer:`, como `timer: seconds must be between 1 and 604800`.

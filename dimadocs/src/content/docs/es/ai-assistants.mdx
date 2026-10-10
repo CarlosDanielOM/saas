@@ -1,9 +1,21 @@
 ---
 title: Crear comandos con un asistente de IA
-description: Usa las referencias oficiales de DomDimaBot con una IA que pueda navegar para crear comandos con la sintaxis, los permisos y las pruebas correctos.
+description: Dale a un asistente de IA la documentación oficial de DomDimaBot para que te ayude a crear un comando del chat con la sintaxis, los permisos y las pruebas correctos.
 ---
 
-Puedes compartir estas guías con cualquier asistente capaz de abrir páginas públicas, incluidos GPT, Grok, Gemini y Kimi. Empieza por el [índice de documentación](/es/llms.txt). Cada página también tiene un enlace **Leer Markdown** al final, con los mismos ejemplos y tablas en texto plano.
+La mayoría de los asistentes de IA que pueden abrir páginas públicas pueden leer estas guías, incluidos GPT, Grok, Gemini y Kimi. Empieza por el [índice de documentación](/es/llms.txt). Cada página también tiene un enlace **Leer Markdown** al final, que muestra el mismo texto, ejemplos y tablas en texto plano.
+
+## Archivos que el asistente puede leer
+
+| Archivo | Qué contiene |
+|---|---|
+| [`/es/llms.txt`](/es/llms.txt) | El índice en español, con enlaces a cada página en texto plano. Empieza aquí. |
+| [`/llms.txt`](/llms.txt) | El índice en inglés. |
+| [`/es/llms-full.txt`](/es/llms-full.txt) | Todas las páginas en español en un solo archivo grande. |
+| [`/llms-full.txt`](/llms-full.txt) | Todas las páginas en inglés en un solo archivo grande. |
+| `/<página>/index.txt` | Una página en texto plano, como `/es/dashboard/index.txt`. Usa el enlace **Leer Markdown** de cada página. |
+
+Cada página en texto plano incluye su dirección web original, para que el asistente pueda citarla. Para una pregunta concreta, es mejor usar páginas individuales. Los archivos completos sirven cuando el asistente puede leer documentos largos.
 
 ## Un prompt que puedes usar
 
@@ -11,16 +23,16 @@ Puedes compartir estas guías con cualquier asistente capaz de abrir páginas p�
 Ayúdame a crear un comando personalizado para DomDimaBot.
 Lee https://docs.domdimabot.com/es/llms.txt y abre las referencias necesarias.
 Quiero: [describe el comando y un mensaje de chat de ejemplo].
-Mi plan: [Free, Premium o Pro].
+Mi plan: [Gratis, Premium o Pro].
 Quién puede usarlo: [todos, suscriptores, moderadores o broadcaster].
-Lo crearé desde: [el chat de Twitch o el dashboard].
+Lo crearé desde: [el chat de Twitch o el panel].
 Explica el cuerpo de respuesta, la configuración, el resultado esperado
 y cómo probarlo. Cita las páginas que consultaste. Pregunta si falta algún
 requisito y no inventes funciones ni uses la sintaxis de otro bot.
 Si no puedes leer una página, dímelo.
 ```
 
-Si tu asistente no puede navegar, abre los enlaces **Leer Markdown** que necesites y pega su contenido en la conversación. También están disponibles [todas las guías en español](/es/llms-full.txt) y [en inglés](/llms-full.txt) en archivos más grandes. Para una petición concreta, suele ser mejor usar páginas individuales.
+Si tu asistente no puede navegar, abre los enlaces **Leer Markdown** que necesites y pega su contenido en la conversación.
 
 ## Referencias que debes leer antes de escribir un comando
 
@@ -32,19 +44,19 @@ Si tu asistente no puede navegar, abre los enlaces **Leer Markdown** que necesit
 | ¿Cuáles son las reglas de ejecución, los errores y los límites? | [Ejecución AST](/es/commands/advanced/execution/) |
 | ¿Hay un patrón documentado para esta tarea? | [Recetas AST](/es/commands/advanced/recipes/) |
 
-Lee también la guía específica al usar [TTS](/es/tts/), [triggers](/es/triggers/) o [recompensas](/es/rewards/). No supongas que una función acepta los mismos argumentos que un comando de chat con un nombre parecido.
+Lee también la guía de la función cuando tu comando use [Texto a voz](/es/tts/), [disparadores](/es/triggers/) o [recompensas](/es/rewards/). No supongas que una función acepta los mismos argumentos que un comando de chat con un nombre parecido.
 
 ## Dar una respuesta que se pueda usar
 
-1. Confirma el objetivo, los argumentos, los permisos de quien invoca el comando y el plan del streamer. Si guarda datos, aclara si pertenecen al canal o a cada usuario y cuánto tiempo deben conservarse.
-2. Usa texto simple cuando sea suficiente. Para comportamiento dinámico, utiliza la sintaxis AST de DomDimaBot: `$(...)` llama funciones, `%(...)` accede a variables creadas por el usuario y `&p1` obtiene el primer argumento. Los marcadores como `{user}` no son equivalentes.
-3. Proporciona por separado el **nombre**, el **cuerpo de respuesta**, el **cooldown** y el **nivel de usuario**. Para configurarlo por chat, incluye también la instrucción completa `!cc`. El nombre que recibe `!cc` no lleva `!`; los espectadores sí lo usan al invocar el comando guardado.
-4. Comprueba la firma de cada función, la duración del almacenamiento, el plan necesario y los límites de ejecución en las referencias. Inicializa los datos antes de depender de su valor. Restringe los comandos de moderación o configuración del canal a los usuarios autorizados previstos.
-5. Explica una entrada normal y su resultado esperado. Si hay argumentos o datos guardados, describe también qué pasa si faltan argumentos o es la primera ejecución. No afirmes haber ejecutado un comando generado sin haberlo probado.
+1. Confirma el objetivo, los argumentos, quién puede ejecutar el comando y el plan del streamer. Si el comando guarda datos, aclara si pertenecen al canal o a cada espectador, y cuánto tiempo deben conservarse.
+2. Usa texto simple cuando sea suficiente. Para un comportamiento dinámico, usa la sintaxis de DomDimaBot: `$(...)` llama una función, `%(...)` lee una variable creada por el usuario y `&p1` lee el primer argumento. Los marcadores como `{user}` no funcionan aquí.
+3. Da por separado el **nombre**, el **cuerpo de respuesta**, el **cooldown** y el **nivel de usuario**. Para configurarlo por chat, incluye también la instrucción completa `!cc`. El nombre que recibe `!cc` no lleva `!`. Los espectadores escriben el `!` al ejecutar el comando guardado.
+4. Revisa en las referencias los argumentos, la duración del almacenamiento, el plan necesario y los límites de cada función. Prepara cualquier valor guardado antes de que el comando lo lea. Limita los comandos que moderan el chat o cambian la configuración del canal a quienes deben usarlos.
+5. Describe una entrada normal y su resultado esperado. Si hay argumentos o datos guardados, describe también qué pasa cuando falta una entrada y en la primera ejecución. Marca estos resultados como esperados. No afirmes que un comando generado se ejecutó si no lo probaste.
 
 ## Ejemplo completo: un comando de bienvenida
 
-Objetivo: permitir que los espectadores usen `!hello` para recibir una bienvenida con su nombre.
+Objetivo: que los espectadores escriban `!hello` y reciban un saludo con su propio nombre.
 
 | Ajuste | Valor |
 |--------|-------|
@@ -53,24 +65,24 @@ Objetivo: permitir que los espectadores usen `!hello` para recibir una bienvenid
 | Cooldown | `10` segundos |
 | Nivel de usuario | `everyone` |
 
-Como broadcaster u otro administrador autorizado de comandos, créalo en el chat de Twitch con:
+Como broadcaster, o como otro moderador que puede crear comandos, escribe esto en el chat de Twitch:
 
 ```text
 !cc -cd=10 -ul=everyone hello Hola $(user)! Bienvenido al stream.
 ```
 
-También puedes introducir estos ajustes en el editor de **Comandos** del dashboard. En el campo de respuesta guarda solo el cuerpo, no la instrucción completa `!cc`.
+También puedes introducir estos ajustes en el editor de **Comandos** del panel. En el campo de respuesta, guarda solo el cuerpo, no la instrucción `!cc` completa.
 
-Cuando un espectador llamado `Alex` envíe `!hello`, la respuesta esperada es:
+Cuando un espectador llamado `Alex` escriba `!hello`, la respuesta esperada es:
 
 ```text
 Hola Alex! Bienvenido al stream.
 ```
 
-Este ejemplo usa la [función `$(user)` documentada](/es/commands/advanced/functions/). No necesita argumentos ni variables guardadas. Pruébalo en tu canal después de crearlo; comprueba que esté habilitado y espera a que termine el cooldown antes de repetirlo. Para cambiar un comando existente, usa `!ec` como explica el [resumen](/es/commands/overview/).
+Este ejemplo usa la [función `$(user)` documentada](/es/commands/advanced/functions/). No necesita argumentos ni variables guardadas. Pruébalo en tu canal después de crearlo. Comprueba que el comando esté habilitado y espera a que termine el cooldown antes de repetirlo. Para cambiar un comando existente, usa `!ec`, como explica el [resumen de comandos](/es/commands/overview/).
 
 ## Para qué sirven estos archivos
 
-El índice y las páginas de texto se generan desde la misma fuente de documentación en cada compilación del sitio, en inglés y español. Incluyen las URL originales para citarlas y enlaces que se pueden seguir sin ejecutar JavaScript ni iniciar sesión.
+El índice y las páginas de texto se generan desde la misma fuente de documentación en cada compilación del sitio, en inglés y en español. Incluyen la dirección web original para citarla, y enlaces que el asistente puede seguir sin ejecutar JavaScript ni iniciar sesión.
 
-Publicar documentación legible no garantiza que un proveedor de IA la indexe ni que todas las respuestas generadas sean correctas. Comparte directamente la URL del índice, pide referencias a las páginas que el asistente realmente haya leído y prueba el comando antes de depender de él.
+Publicar documentación legible no garantiza que un proveedor de IA la indexe ni que todas las respuestas generadas sean correctas. Comparte directamente la dirección del índice, pide que cite las páginas que realmente leyó y prueba el comando antes de depender de él.

@@ -1,45 +1,106 @@
 ---
 title: Memorias
-description: Revisa y administra la información que la IA puede conservar sobre tu canal.
+description: Revisa, aprueba, edita y elimina lo que DomDimaBot recuerda sobre tu canal y tus espectadores.
 sidebar:
   order: 7
 ---
 
-La página **Memorias** permite que las personas con acceso al panel del canal revisen la información que la IA guardó o propuso a partir de la actividad del canal. Está disponible en **Free, Premium y Pro**. Inicia sesión, elige un canal, abre **Módulos** y selecciona **Memorias**.
+import { Steps } from '@astrojs/starlight/components';
 
-Las memorias son notas estructuradas que sirven como contexto para las funciones de IA. No son un archivo consultable de todos los mensajes del chat. Cada memoria puede incluir evidencia de origen, un sujeto de canal o usuario, un tipo, un nivel de riesgo y un estado de revisión.
+La página **Memorias** es donde revisas lo que DomDimaBot ha aprendido sobre tu canal y tus espectadores. Apruebas o rechazas lo que propone, y editas o eliminas lo que esté mal. Está disponible en **Free, Premium y Pro**.
+
+Para ver la página necesitas el permiso `memories:view`. Para aprobar, editar, archivar o eliminar necesitas `memories:manage`. La persona propietaria del canal tiene ambos.
+
+## Abrir la página
+
+<Steps>
+
+1. Inicia sesión y elige tu canal.
+2. Abre **Módulos → Memorias**.
+3. Usa los filtros para ver primero las que están en **Requiere Revision**.
+4. Aprueba o rechaza cada memoria que revises.
+
+</Steps>
+
+## Qué es una memoria
+
+Una memoria es una nota corta y estructurada que el bot puede usar como contexto. No es una copia buscable de tu chat. Cada memoria tiene:
+
+- **Tipo**: qué clase de nota es.
+- **Nivel de cuidado**: qué tan personal es, de **Riesgo Bajo** a **Riesgo Alto**.
+- **Sujeto**: todo el canal o un espectador concreto.
+- **Resumen y contenido**: una versión corta y la nota completa.
+- **Evidencia**: de dónde salió, como un fragmento del chat, el nombre de usuario, el ID de usuario, el ID del mensaje y la hora.
 
 ## Tipos y estados
 
-Los tipos incluyen **Preferencia**, **Broma recurrente**, **Dato conocido de un usuario**, **Historia del canal** y **Límite**. El riesgo se muestra como **Bajo**, **Medio** o **Alto**. La página permite filtrar por estado, tipo y riesgo, y buscar en el contenido, los resúmenes y los nombres de usuario asociados a las memorias cargadas.
+| Tipo | Uso |
+|---|---|
+| **Preferencia** | Una preferencia del canal o de un espectador |
+| **Chiste Recurrente** | Una broma que se repite o una referencia compartida |
+| **Hecho de Usuario** | Un dato sobre un habitual concreto |
+| **Lore del Canal** | Algo que pasó en el canal |
+| **Limite** | Un límite que pone la streamer o los mods, como un tema que evitar |
 
-Los estados que muestra la página son:
+| Estado | Significado | ¿Se usa en el chat? |
+|---|---|---|
+| **Candidato** | Propuesta, aún sin revisar | No |
+| **Requiere Revision** | Espera tu decisión | No |
+| **Activo** | Confirmada | Sí, cuando encaja con el mensaje (ver abajo) |
+| **Rechazado** | La rechazaste | No |
+| **Archivado** | Oculto del uso activo. Puedes volver a activarlo. | No |
 
-- **Candidata** o **Pendiente de revisión**: información propuesta que espera una decisión.
-- **Confirmada**: memoria activa que puede ser apta para el contexto de la IA.
-- **Rechazada**: memoria que se descartó.
-- **Archivada**: se oculta del uso activo de memorias y permanece en la lista del archivo.
+## Revisar y editar
 
-Las memorias de riesgo bajo pueden confirmarse automáticamente si la confirmación automática está activada y la confianza alcanza el umbral configurado. Otras propuestas pueden quedar pendientes de revisión. Los ajustes de Personalidad de IA controlan el aprendizaje, la revisión automática y las políticas de memoria.
+En una memoria en estado **Candidato** o **Requiere Revision**, selecciona **Aprobar** para activarla o **Rechazar** para descartarla. La página pide confirmar cada cambio de estado.
 
-## Revisión y edición
+En cualquier memoria puedes:
 
-En una memoria candidata o pendiente, elige **Aprobar** para confirmarla o **Rechazar** para descartarla. Puedes archivar memorias confirmadas o pendientes, editar su contenido, resumen, tipo o riesgo, o eliminarlas de forma permanente. La página solicita confirmar los cambios de estado y la eliminación; una eliminación permanente no se puede deshacer.
+- **Editar** su contenido, versión corta, tipo o nivel de cuidado.
+- **Archivar**. Las memorias archivadas quedan en el archivo y puedes restaurarlas con **Volver a activar**.
+- **Eliminar para siempre**. Esto borra la memoria de forma permanente, incluida la entrada vectorial que usa la búsqueda. No se puede deshacer.
 
-El estado determina si la memoria puede usarse como contexto activo de la IA. Antes de seleccionar el contexto, el sistema también comprueba el canal, el estado, el ámbito del sujeto, la fecha de vencimiento cuando existe y la política de memoria. El contexto pasivo del chat no incluye datos asociados a usuarios como contexto general del canal. Cuando las herramientas de IA están disponibles y alguien pregunta explícitamente por un dato pasado, el bot puede buscar memorias confirmadas de una persona nombrada en el mismo canal, según la política de memoria del canal. Una búsqueda explícita devuelve hasta 3 memorias en Free, 5 en Premium o 8 en Pro.
+Archiva cuando quizá quieras recuperarla. Elimínala cuando nunca deba volver a usarse.
 
-## Privacidad y controles
+### Aprobación automática
 
-Personalidad de IA incluye opciones para permitir memorias potencialmente sensibles, preferencias de usuarios y bromas recurrentes. En la política del backend, las memorias sensibles están desactivadas de forma predeterminada y las preferencias de usuarios están permitidas de forma predeterminada. Mediante la ruta de chat, cada persona puede crear memorias asociadas a sí misma, pero no pedir que se guarde un dato sobre otra persona. La recuperación explícita puede devolver una memoria confirmada asociada a otra persona cuando esa política está activada; el bot solo debería compartirla ante una pregunta explícita y pertinente.
+Las memorias de nivel de cuidado bajo pueden pasar a **Activo** sin revisión si **Saltar la revisión cuando está muy seguro** está activado y la confianza del bot alcanza **Saltar revisión por encima de** (82% por defecto). Las demás esperan tu revisión. Consulta [Personalidad IA](/es/ai-personality/) para ver todos los interruptores automáticos.
 
-Los registros pueden contener el texto de la memoria y evidencia de origen, como un fragmento del mensaje, nombre de usuario, ID de usuario, ID de mensaje y fecha. Revisa el contenido antes de aprobarlo. Usa editar, archivar o eliminar de forma permanente cuando ya no deba utilizarse. La eliminación también quita la entrada vectorial asociada.
+## Cuándo usa el bot una memoria
 
-La comparación de precios muestra actualmente una retención de memorias de chat de **15 días en Free, 45 días en Premium y 120 días en Pro**. Algunos registros también pueden tener una fecha de vencimiento. El comportamiento exacto depende de la ruta de memoria y del registro; la página no muestra un temporizador de retención para cada elemento. Consulta los detalles vigentes del plan y la fecha de vencimiento del registro cuando esté disponible, en lugar de suponer que todas las memorias tienen el mismo límite de antigüedad.
+Una memoria se usa en el chat solo si se cumplen todas estas condiciones:
+
+- Su estado es **Activo**.
+- No ha pasado su fecha de vencimiento, si tiene una.
+- Coincide con el canal, el sujeto y el mensaje actual.
+- Tu política de memoria permite su tipo y su nivel de cuidado.
+
+Las respuestas del chat pueden usar memorias relevantes sobre el canal y sobre un espectador concreto. Una memoria sobre un espectador puede aparecer cuando el mensaje actual se relaciona con ella y **Gustos de los espectadores** está activado. Las memorias de espectadores aparecen con el nombre de esa persona.
+
+Cuando alguien pregunta qué recuerda el bot, este busca memorias confirmadas sobre una persona nombrada. Devuelve hasta 3 memorias en Free, 5 en Premium u 8 en Pro.
+
+## Privacidad y quién puede añadir memorias
+
+En [Personalidad IA](/es/ai-personality/), la política de memoria controla qué se puede guardar:
+
+| Política | Predeterminado |
+|---|---|
+| **Datos sensibles** (nivel de cuidado medio y alto) | Desactivado |
+| **Gustos de los espectadores** (memorias sobre espectadores) | Activado |
+| **Bromas recurrentes** | Activado |
+
+Las personas del chat solo pueden guardar datos sobre sí mismas. Las memorias propuestas por espectadores que no son moderadores ni la streamer necesitan tu revisión antes de activarse.
+
+Las memorias guardan el texto, un resumen y la evidencia de origen, como un fragmento del mensaje, nombre de usuario, ID de usuario e ID de mensaje. Revisa el contenido antes de aprobarlo.
+
+## Retención
+
+La comparación de planes indica una retención de memorias del chat de **15 días en Free, 45 días en Premium y 120 días en Pro**. El panel no muestra un temporizador para cada memoria. Una memoria deja de usarse cuando pasa su fecha de vencimiento, si tiene una. Las limpiezas semanales y mensuales también pueden archivar o eliminar memorias cuando sus interruptores están activados. Consulta [Planes](/es/plans/) para ver los detalles vigentes.
 
 ## Límites y acceso
 
-La página solicita memorias en lotes de 50 y ofrece **Cargar más**; el servicio limita cada solicitud de lista a 200 registros. Son límites de carga, no un límite total de memorias publicado. La configuración de aprendizaje también establece máximos por canal para memorias pendientes y confirmadas; los valores predeterminados del servicio son 250 pendientes y 2.000 confirmadas, y los ajustes del canal pueden cambiarlos.
+- La página carga las memorias de 50 en 50. Selecciona **Cargar más** para ver más. Una solicitud de lista devuelve como máximo 200 registros.
+- Cada canal tiene un máximo de memorias por revisar (250 por defecto) y de memorias activas (2.000 por defecto). Puedes cambiar ambos en [Personalidad IA](/es/ai-personality/).
+- La página no tiene un plan mínimo. El límite de consultas y la retención de arriba varían según el plan. Aun así necesitas acceso al panel del canal.
 
-El acceso por plan y el permiso del panel son independientes. El catálogo de módulos no establece un plan de pago mínimo para Memorias, pero la persona que lo consulta necesita acceso al panel del canal seleccionado.
-
-Consulta [Personalidad de IA](/es/ai-personality/) para conocer los controles de aprendizaje y el uso del contexto. Revisa [Planes](/es/plans/) y [Módulos](/es/modules/) para ver las condiciones actuales.
+Para los controles de aprendizaje y cómo afectan las respuestas, consulta [Personalidad IA](/es/ai-personality/). Para ver las condiciones de cada plan, consulta [Planes](/es/plans/) y [Módulos](/es/modules/).

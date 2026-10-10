@@ -1,32 +1,112 @@
 ---
 title: Personalidad IA
-description: Configura la personalidad del bot, el contexto de la comunidad y las preferencias de memoria.
+description: Define cómo habla DomDimaBot en el chat, las reglas que sigue, los habituales que conoce y lo que puede recordar.
 sidebar:
   order: 6
 ---
 
-Abre **Módulos → Personalidad IA** en el panel de tu canal para configurar cómo responde DomDimaBot en el chat. El módulo tiene un interruptor principal. Los resúmenes de transmisiones y las recomendaciones de clips tienen interruptores independientes en la misma página.
+import { Steps } from '@astrojs/starlight/components';
 
-## Perfiles y tono
+Usa **Módulos → Personalidad IA** para decidir cómo responde DomDimaBot en el chat. Es para streamers que quieren que el bot suene como su canal, siga algunas reglas de la casa y reconozca a los espectadores habituales. La página está disponible en todos los planes. Tu plan define cuántas personalidades, reglas y habituales puedes tener. La tabla de **Límites por plan**, más abajo, muestra cada plan.
 
-Cada perfil incluye nombre, instrucciones de personalidad, modo de personaje, tono, referencia opcional, campos de estilo de voz y frases características. Selecciona el perfil activo antes de editarlo. También puedes añadir reglas para orientar las respuestas.
+Para ver esta página necesitas el permiso `ai:view`. Para guardar cambios necesitas `ai:manage`. La persona propietaria del canal tiene ambos; las personas administradoras los reciben cuando la propietaria se los concede.
 
-| Plan | Perfiles | Reglas | Usuarios conocidos | Ventana de contexto del chat |
+## Configurar la voz del bot
+
+<Steps>
+
+1. Abre **Módulos → Personalidad IA** en el panel de tu canal.
+2. En **Activar o desactivar**, deja **Chat IA activado**. El bot responde cuando alguien lo menciona y ejecuta los comandos `$(ai)`.
+3. En **Personalidades**, edita la que quieras. Escribe cómo debe hablar el bot en **Cómo habla el bot**. Este texto guía cada respuesta.
+4. Selecciona **Usar en el chat** en esa personalidad. El bot habla como una personalidad a la vez.
+5. Añade **Reglas que siempre sigue** y **Habituales que conoce el bot** si los necesitas.
+6. Selecciona **Guardar cambios** y envía una mención en tu canal para probarlo.
+
+</Steps>
+
+## Límites por plan
+
+| Plan | Personalidades | Reglas | Habituales | Mensajes recientes del chat que lee |
 |---|---:|---:|---:|---:|
-| Gratis | 1 | 3 | 3 | 7 |
+| Free | 1 | 3 | 3 | 7 |
 | Premium | 2 | 5 | 10 | 15 |
 | Pro | 3 | Sin límite | Sin límite | 35 |
 
-La ventana de contexto es la cantidad configurada de mensajes recientes que puede considerar la personalidad IA. No garantiza que cada mensaje reciba una respuesta.
+La cantidad de mensajes recientes limita el contexto que lee el bot. No garantiza que cada mensaje reciba una respuesta.
 
-## Usuarios conocidos
+## Qué usa el bot
 
-Añade el nombre de usuario de Twitch, una descripción breve y una relación opcional para los miembros de la comunidad que quieras que el bot reconozca. El bot puede usar esos datos al responder. Evita guardar información privada o sensible en estos campos.
+Solo la personalidad marcada con **Usar en el chat** define las respuestas. Las reglas y los habituales se aplican a todas las personalidades.
+
+| Ajuste | Respuestas del chat | Resúmenes de directos |
+|---|---|---|
+| **Cómo habla el bot** | Sí | Sí |
+| **Detalles de estilo** (modo y tono) | No | Sí |
+| **Inspirado en**, voz y frases características | No, se guardan para más adelante | No |
+| **Reglas que siempre sigue** | Sí | No |
+| **Habituales que conoce el bot** | Sí | No |
+
+Las respuestas del chat también ven el título, el juego y el tiempo en vivo del directo, los nombres de emotes del canal y las memorias relevantes.
+
+## Habituales que conoce el bot
+
+Para cada habitual, añade un nombre de usuario de Twitch, **Quién es** (por ejemplo, mod o amigo) y **Qué debe saber el bot**. El bot usa esta información como contexto cuando esa persona escribe. No guardes aquí datos privados o sensibles.
+
+Un canal nuevo empieza con un habitual de ejemplo y una personalidad predeterminada. Edita o elimina ambos.
 
 ## Aprendizaje y memoria
 
-La página incluye controles para sugerencias y confirmación de recuerdos, resúmenes después del directo, mantenimiento y aplicación automática de cambios sugeridos. Revisa las opciones de creación, edición, archivo y eliminación automáticos antes de activarlas. La política de memoria también permite priorizar el chat reciente y elegir qué tipos de información recordada se pueden usar.
+El bot puede aprender del chat y de tus resúmenes de directos. Tú decides qué puede guardar. Revisas lo que propone en la página de [Memorias](/es/memories/).
 
-Cuando las herramientas de IA están disponibles, el bot puede buscar memorias confirmadas del canal si alguien pregunta explícitamente qué recuerda o consulta un dato pasado. La pregunta puede mencionar a otra persona del chat; las memorias asociadas a usuarios solo se devuelven si la política de memoria del canal lo permite. Esta búsqueda explícita es distinta del contexto pasivo del chat, que no incluye datos asociados a otras personas.
+### Qué puede recordar
 
-Las respuestas de IA pueden variar. Prueba un perfil en tu canal y ajusta sus instrucciones y reglas si las respuestas no encajan con tu comunidad. Para filtros del chat y permisos temporales para enlaces, consulta [Moderación del chat](/es/moderation/).
+| Control | Predeterminado | Qué permite |
+|---|---|---|
+| **Aprender del chat** | Activado | Si está desactivado, el bot solo sabe lo que escribes en esta página. No se proponen ni guardan memorias nuevas. |
+| **Gustos de los espectadores** | Activado | Recuerda preferencias, como juegos favoritos. |
+| **Bromas recurrentes** | Activado | Recuerda chistes que se repiten y referencias compartidas. |
+| **Datos sensibles** | Desactivado | Permite datos personales que comparten los espectadores. Las memorias de riesgo medio y alto necesitan este control activado. |
+
+Los tres tipos de arriba no están disponibles mientras **Aprender del chat** esté desactivado.
+
+### Mantenimiento automático
+
+Estos interruptores controlan lo que el bot puede hacer por su cuenta. Los valores predeterminados son los de los canales nuevos.
+
+| Control | Predeterminado | Qué hace |
+|---|---|---|
+| **Aprender después de cada directo** | Activado | Escribe sugerencias de memoria al terminar cada directo. También necesita **Resúmenes de streams** activado. |
+| **Saltar la revisión cuando está muy seguro** | Activado | Las memorias de riesgo bajo que alcanzan **Saltar revisión por encima de** se activan sin tu revisión. |
+| **Añadir memorias nuevas** | Activado | Guarda por sí solo las memorias nuevas que encuentra. |
+| **Actualizar memorias** | Activado | Corrige memorias cuyos datos cambiaron. |
+| **Archivar memorias viejas** | Activado | Archiva memorias que dejaron de ser ciertas. Puedes restaurarlas. |
+| **Limpieza semanal** y **Limpieza mensual** | Activado | La semanal corre los lunes a las 00:15 UTC. La mensual corre el día 1 a las 00:30 UTC. |
+| **Eliminar memorias para siempre** | Activado | Borra memorias de forma permanente. No se puede deshacer. Déjalo desactivado salvo que estés seguro. |
+
+### Ajustar los números
+
+Un porcentaje más alto significa que el bot debe estar más seguro antes de actuar.
+
+| Ajuste | Predeterminado |
+|---|---|
+| **Saltar revisión por encima de** | 82% |
+| **Añadir memoria por encima de** | 72% |
+| **Actualizar memoria por encima de** | 74% |
+| **Archivar memoria por encima de** | 80% |
+| **Eliminar memoria por encima de** | 88% |
+| Resumir directos de más de (minutos) | 20 |
+| Resumir directos con al menos (mensajes) | 30 |
+| Máximo de cambios por pasada | 20 |
+| Máximo de eliminaciones por pasada | 5 |
+| Solo eliminar memorias de más de (días) | 30 |
+| Solo eliminar si no se usó en (días) | 21 |
+| Máximo de memorias por revisar | 250 |
+| Máximo de memorias activas | 2.000 |
+
+## Cómo llegan las memorias al chat
+
+Las respuestas del chat usan solo memorias confirmadas y activas que encajan con el mensaje actual y con tu política de memoria. Una memoria sobre un espectador concreto también puede usarse así cuando el mensaje se relaciona con ella y **Gustos de los espectadores** está activado. El bot ve de quién es esa memoria.
+
+Cuando alguien pregunta qué recuerda el bot, este busca memorias confirmadas sobre una persona nombrada. Devuelve hasta 3 resultados en Free, 5 en Premium u 8 en Pro. Consulta [Memorias](/es/memories/) para ver cómo funcionan la revisión y los estados.
+
+Las respuestas de IA pueden variar. Prueba una personalidad en tu canal y ajusta su texto y sus reglas si las respuestas no encajan con tu comunidad. Para filtros del chat y permisos temporales para enlaces, consulta [Moderación del Chat](/es/moderation/).

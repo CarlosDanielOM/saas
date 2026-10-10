@@ -1,70 +1,91 @@
 ---
-title: Defensa de follows
-description: Configura la detección de ráfagas de follows, el seguimiento de raids y los controles de moderación.
+title: Follow Defense
+description: Detecta ráfagas de follows de bots o hate raids, pausa las alertas de follow y banea a los seguidores registrados solo cuando una oleada se convierte en ataque.
 sidebar:
   order: 6
 ---
 
 import { Aside, Steps } from '@astrojs/starlight/components';
 
-Defensa de follows supervisa los follows entrantes y puede silenciar alertas, rastrear una ráfaga o poner bans en cola cuando se activa Ataque. Se ejecuta en segundo plano. Revisa los ajustes y explica los controles de moderación a tus moderadores antes de activar acciones automáticas de Ataque.
+Follow Defense vigila las ráfagas repentinas de follows, como las de bots de follows o los hate raids. Cuando empieza una ráfaga, pausa las alertas de follow y registra quién siguió. Solo banea seguidores cuando una oleada llega al modo Ataque. Funciona en segundo plano y está disponible en todos los planes.
 
-## Modos y ajustes predeterminados
+Para ver Follow Defense necesitas el permiso `moderation:view`. Para cambiar la configuración, activar el modo Ataque o banear seguidores de una raid necesitas `moderation:manage`. La persona propietaria del canal tiene ambos.
 
-| Modo | Comportamiento predeterminado |
-|------|-------------------------------|
-| **Normal** | No hay un modo de defensa activo. |
-| **Silencioso** | Activado de forma predeterminada. Empieza con 10 follows en 5 segundos. Se silencian los mensajes de alerta de follows en el chat y se rastrea la ráfaga. No aplica bans. |
-| **Protección** | Activado de forma predeterminada. Empieza con 100 follows dentro de la ventana de detección. Fuera de una raid, envía un aviso y rastrea la ráfaga. No pone bans en cola; la ola puede escalar después a Ataque. |
-| **Ataque** | Activado de forma predeterminada, pero su límite automático es dinámico y está vacío por defecto; no es un valor fijo de 500. Cuando se activa fuera de una raid, pone en cola bans para la ola rastreada. Un moderador también puede solicitarlo manualmente. |
-
-La duración predeterminada de un modo es de 60 segundos. Los nuevos follows que cumplan las condiciones pueden extender un modo activo. En el panel de Defensa de follows puedes cambiar los modos, sus límites, la ventana de detección y la duración. Los límites son cantidades positivas de follows; la ventana y la duración se expresan en segundos.
-
-<Aside type="caution">
-Fuera de la moderación de sesiones de raid autorizada por separado, solo Ataque pone bans de Twitch en cola. No son timeouts y pueden ser permanentes. Protección rastrea la ráfaga y envía un aviso sin aplicar bans. Un límite solo indica actividad inusual; no demuestra que todas las cuentas que siguen sean abusivas. Ajusta los límites a tu canal y revisa la ola rastreada antes de activar acciones automáticas de Ataque.
-</Aside>
-
-## Sensibilidad automática del modo Ataque
-
-Deja vacío **Límite de Ataque** para usar sensibilidad dinámica. El sistema calcula el límite a partir del historial reciente de follows y transmisiones del canal cuando dispone de al menos 7 días de muestra y 3 registros de transmisiones completadas. El cálculo nunca es menor de 500 y puede ser mayor en canales con una actividad habitual más alta. Si no hay suficiente historial útil, el modo Ataque automático no tiene un límite y no se activa por umbral; Protección y Silencioso aún pueden activarse. También puedes indicar un entero positivo para fijar el límite de Ataque.
-
-La API de ajustes aún guarda un valor `baselineFollowsPerHour`, pero el código actual de detección de follows no lo usa para calcular los límites y la página de Defensa de follows no lo ofrece como campo editable. La sensibilidad automática de Ataque usa el historial descrito arriba.
-
-## Alertas y seguimiento de follows
-
-El modo Silencioso suprime los mensajes de alerta de follows en el chat mientras haya un estado de defensa activo. El controlador de follows también puede omitir una alerta si el mismo evento ya se asignó a un estado de defensa, para evitar mensajes duplicados. El código no confirma que se silencien todos los overlays de terceros o triggers ajenos a este flujo; revisa esas integraciones por separado.
-
-El sistema rastrea los follows de la ráfaga activa para permitir escalar la respuesta y guardar el historial. Una ráfaga por sí sola no demuestra intención maliciosa. El historial de ataques registra el modo que se activó, si estaba asociado con una raid, el total de follows y los resultados de bans cuando están disponibles.
-
-## Comportamiento durante raids
-
-Una raid entrante de Twitch crea una marca de raid durante cinco minutos si alcanza el mínimo de espectadores configurado en EventSub para el canal. Los follows se rastrean durante la sesión de raid, pero los umbrales normales de ráfaga no activan automáticamente el modo Ataque ni aplican bans a los follows de la raid. El panel tiene controles separados para revisar y moderar sesiones de raid.
-
-Cuando **Cambiar de modo Ataque a Protección con una nueva raid** está activado (valor predeterminado), una nueva raid cambia a Protección un estado activo de Ataque. Si desactivas esta opción, un estado de Ataque activo que cumpla las condiciones continúa durante la nueva raid, lo que puede causar bans a los follows de esa raid. Se necesita permiso para administrar la moderación para cambiar esta opción.
-
-<Aside type="note">
-Usa los controles de sesión de raid del panel para revisar o autorizar la moderación de follows de una raid. Una solicitud manual de `attack` mientras se rastrea una raid puede poner sus follows registrados en cola para revisión de moderación; no garantiza bans inmediatos. Defensa de follows puede conservar el historial de raids e identificar a quien inició una raid como posible fuente de hate raid, pero esa etiqueta no demuestra intención.
-</Aside>
-
-## Controles manuales
-
-La función AST `$(bot.mode attack)` solicita el modo Ataque; `$(bot.mode status)` informa el modo actual y el tiempo restante. Por ejemplo, puedes crear un comando llamado `!defmode` cuya respuesta sea `$(bot.mode attack)`. En la ejecución normal de comandos, la función requiere permisos de moderador. Restringe el comando a moderadores de confianza porque puede poner acciones de moderación en cola.
-
-El panel también ofrece **Activar Ataque**, **Restablecer modo**, el estado actual, el historial de ataques y la revisión de sesiones de raid. Para acceder al panel se necesita acceso de propietario o administrador del canal; activar Ataque y cambiar los ajustes de moderación de raids requiere permiso para administrar la moderación.
-
-## Configuración recomendada
+## Configurarlo
 
 <Steps>
 
-1. Abre Defensa de follows desde el panel de tu canal y revisa el modo actual y los follows rastreados.
-2. Mantén los valores predeterminados durante un periodo inicial de observación o desactiva el sistema si otro servicio ya se encarga de la defensa contra ataques de follows.
-3. Establece límites por encima de las ráfagas normales. Deja vacío el límite de Ataque para usar la sensibilidad dinámica basada en el historial, o fija un valor solo si tienes una razón clara.
-4. Decide si Ataque debe volver a Protección cuando empieza una raid. Mantén la opción activada salvo que tus moderadores quieran explícitamente que el modo Ataque continúe durante las raids entrantes.
-5. Si creas `!defmode`, restríngelo a moderadores de confianza y explícales que puede poner acciones de moderación en cola.
-6. Después de un incidente, revisa el historial de ataques y las sesiones de raid; luego ajusta los límites según lo ocurrido.
+1. Abre **Módulos → Follow Defense** en el panel de tu canal. Revisa el modo actual y los follows registrados.
+2. Mantén los valores predeterminados durante un periodo inicial de observación. Desactiva **Habilitar Follow Defense** solo si otra herramienta ya se encarga de las avalanchas de follows.
+3. Configura los umbrales de **Silencio** y **Protección** por encima de tus ráfagas normales. Deja vacío **Umbral de ataque** para usar sensibilidad dinámica, o escribe un número.
+4. Decide si debe seguir activado **Cambiar de modo Ataque a Protección con una nueva raid**. Viene activado por defecto.
+5. Si añades un comando `!defmode`, limítalo a moderadores de confianza, porque puede poner baneos en cola.
+6. Después de un incidente, revisa **Oleadas anteriores** y las sesiones de raid, y ajusta los números.
 
 </Steps>
 
-## Desactivar Defensa de follows
+## Modos
 
-Desactiva **Activar Defensa de follows** en el panel para detener el procesamiento de defensa de follows del canal. Esto impide nuevas decisiones de defensa y que la defensa silencie alertas. El historial existente no se elimina. Desactivar Ataque o Protección cancela las acciones de defensa pendientes. Si dependes de otro bot o servicio, confirma cómo gestiona sus alertas y moderación antes de cambiar de sistema.
+| Modo | Empieza cuando (predeterminados) | Qué hace | ¿Banea? |
+|---|---|---|---|
+| **Normal** | No hay ninguna ráfaga activa | Nada. | No |
+| **Silencio** | 10 follows en 5 segundos | Pausa las alertas de follow y registra la oleada. | No |
+| **Protección** | 100 follows dentro de la misma ventana de 5 segundos | Pausa las alertas de follow y registra a cada seguidor. Fuera de una raid, envía un aviso en el chat. Puede escalar a Ataque. | No |
+| **Ataque** | El umbral de ataque dentro de la ventana, o un moderador lo activa | Banea a todos los registrados en la oleada y a cada nuevo follow mientras Ataque esté activo. | Sí, permanente |
+
+Cada modo se mantiene activo 60 segundos después del último follow que cuenta. Las nuevas ráfagas reinician el temporizador. Cada modo se evalúa por separado y gana el más alto que se cumpla: Ataque gana a Protección, y Protección gana a Silencio.
+
+<Aside type="caution">
+Los baneos de Ataque son baneos permanentes de Twitch, no timeouts. Fuera de una raid, solo Ataque banea seguidores. Protección y Silencio nunca banean. Una ráfaga es una señal de actividad inusual, no una prueba de que todos los seguidores sean abusivos. Ajusta los umbrales a tu canal y revisa la oleada registrada antes de confiar en el modo Ataque automático.
+</Aside>
+
+## Umbral de ataque
+
+Deja vacío **Umbral de ataque** para usar sensibilidad dinámica. El umbral se calcula con los últimos 30 días de follows y de streams completados. Solo se usa cuando el canal tiene al menos 7 días de actividad de follows y 3 streams completados. Nunca es menor de 500, y puede ser mayor en canales con un volumen normal más alto.
+
+Mientras no haya historial suficiente, el modo Ataque automático no tiene umbral y no se activa por una ráfaga. Silencio y Protección siguen funcionando.
+
+Para fijar un umbral, escribe un número entero positivo. Usa un número fijo solo si tienes una razón clara.
+
+## Alertas de follow
+
+Mientras Silencio, Protección o Ataque estén activos, el bot retiene los mensajes de alerta de follow en el chat. Cada follow retenido se cuenta.
+
+Cuando termina el modo, el bot publica un resumen, pero solo si las alertas de follow están activadas en el canal:
+
+- Silencio o Protección: `Recibimos N follows adicionales mientras los anuncios estaban en pausa. ¡Gracias por seguir el canal!`
+- Ataque: cuántos anuncios se bloquearon y cuántas cuentas se han baneado hasta ahora.
+
+Follow Defense no cambia los overlays ni otras integraciones. Revísalos por separado si también muestran alertas de follow.
+
+Una ráfaga por sí sola no demuestra intención maliciosa. El historial de ataques registra el modo, si hubo una raid, los totales de follows y los resultados de los baneos.
+
+## Raids
+
+Una raid se rastrea durante 5 minutos. Las raids con menos espectadores que el mínimo configurado para tu canal se ignoran.
+
+Durante una raid:
+
+- Las ráfagas normales no activan el modo Ataque, y los follows de la raid no se banean automáticamente.
+- Los follows se registran, así que puedes revisarlos en el panel de sesiones de raid y banearlos desde allí.
+- Protección todavía puede activarse.
+
+**Cambiar de modo Ataque a Protección con una nueva raid** viene activado por defecto. Una nueva raid cambia un Ataque activo a Protección. Si lo desactivas, un Ataque activo continúa en la nueva raid y sus follows pueden ser baneados.
+
+Un Ataque manual durante una raid marca la raid como posible hate raid y pone en revisión los follows registrados de esa raid. No garantiza baneos inmediatos. El canal que hizo la raid puede aparecer en **Fuentes de Hate Raid**. Esa etiqueta no demuestra intención.
+
+## Controles manuales
+
+- **Activar Modo Ataque** inicia el modo Ataque. Debes escribir `ATTACK` para confirmar.
+- **Detener Modo Ataque** reinicia el modo actual a Normal.
+- En el chat, `$(bot.mode attack)` pone en cola el modo Ataque, y `$(bot.mode status)` muestra el modo actual y los segundos restantes. Ambos requieren nivel de moderador (7) o superior. Por ejemplo, un comando `!defmode` puede responder con `$(bot.mode attack)`. Limítalo a moderadores de confianza.
+
+## Historial
+
+**Oleadas anteriores** muestra cada vez que se activó un modo, la más reciente primero. Para cada oleada puedes ver el modo, qué la inició, los follows totales y su ritmo, si hubo una raid y cuántos fueron baneados.
+
+## Desactivarlo
+
+Desactivar **Habilitar Follow Defense** detiene las nuevas decisiones y deja de retener las alertas de follow. El historial existente se conserva. Desactivar Ataque o Protección también cancela las acciones de defensa que sigan pendientes.
+
+Si dependes de otro bot o servicio para las alertas de follow o la moderación, confirma cómo se comporta esa herramienta antes de cambiar de sistema.

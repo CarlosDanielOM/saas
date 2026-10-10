@@ -1,37 +1,70 @@
 ---
 title: Referrals
-description: Create referral codes, share signup links, and understand code limits, attribution, and referral rewards.
+description: Create referral codes, share signup links, and see how signups, paid conversions, and reward credits are counted.
 sidebar:
   order: 9
 ---
 
-The Referrals module lets a channel owner create trackable signup codes and review conversions and referral credits. Open **Modules → Referrals** in the dashboard.
+Referrals lets you invite people to DomDimaBot with your own link. When someone signs up through it and buys a plan, you earn reward credits. Open **Modules → Referrals** in your dashboard.
+
+**Who can manage codes:** the channel owner can create and delete codes. Admins with the referrals view permission can see the codes and stats, but can't change them.
 
 ## Create and share a code
 
-1. Sign in and open Referrals for your own channel. Channel owners can create and delete codes; dashboard admins with view access can inspect codes and stats but cannot manage them.
-2. Choose **Create code**, enter a unique code of 1–16 letters, numbers, or underscores, and optionally add a label of up to 50 characters. Codes are case-insensitive and saved in lowercase.
-3. Copy the generated `https://domdimabot.com/r/CODE` link and share it with the person who is creating a DomDimaBot account.
+1. Open **Modules → Referrals** for your own channel.
+2. Select **Add referral code**. In the **Create referral code** dialog, enter a **Referral code** of 1–16 letters, numbers, or underscores. Codes aren't case-sensitive; they're saved in lowercase. You can also add an optional **Card label** of up to 50 characters.
+3. On the new card, select **Copy link**. The link looks like `https://domdimabot.com/r/yourcode`. Send it to the person you're inviting.
 
-The active code limit depends on the owner's plan: Free allows 1, Premium 5, and Pro 15. Deleting a code deactivates it and frees a slot. The code itself does not grant the new user a plan discount.
+Each plan has a limit on active codes: **Free 1, Premium 5, Pro 15**. The page shows how many you've used. Deleting a code frees its slot.
 
-## How attribution works
+## How a signup is attributed
 
-The recipient must open the referral link while signed out. The site validates the code, stores a pending code for the signup flow, and sends it when the recipient first creates an account. Referral codes can only be attached during initial account creation; the dashboard's old apply endpoint is retired. Opening the link while already signed in clears any pending referral code and returns to the home page.
+1. The new person opens your link while **signed out**. The site checks the code. If it's valid, the site keeps it in that browser tab.
+2. The person signs up by logging in with Twitch for the first time. The code is attached to the new account at that moment.
 
-Invalid codes and failed validation requests are not attached to the account. A person cannot refer their own account, and an existing account cannot add a referral later. Share the link before signup and ask the recipient to complete signup in the same browser session.
+Keep these rules in mind:
 
-## Conversions and rewards
+- If the code is invalid or inactive, the link just sends the visitor to the home page. Nothing is attached, and no error appears.
+- If the visitor is already signed in when they open the link, any pending code is cleared and they go to the home page.
+- Existing accounts can't add a code later.
+- You can't refer your own account.
 
-The Referrals module shows **referred signups** and **paid conversions** separately, both in the summary and on each active code. A signup appears when a new account is attributed to the code. That account becomes one paid conversion after its first qualifying paid purchase. Renewals do not add conversions, although each qualifying paid order can still earn a reward. Free signups do not earn a reward.
+## What the numbers mean
 
-The module also shows total referral earnings, the current account token balance, and the code allowance for the owner's plan. The current balance can include tokens earned outside the referral program. Reward amounts depend on the purchased plan and billing cadence, so use the balance and transaction history for the posted amount.
+The **Referrals** page shows four totals:
+
+- **Current balance:** the reward credits in your account now.
+- **Total earned:** all the reward credits you have earned.
+- **Referred signups:** new accounts attributed to your codes.
+- **Paid conversions:** referred accounts that have bought a plan. Each account counts once, at its first paid purchase. Renewals don't add conversions.
+
+Each card repeats the signup and conversion counts for its code. A free signup counts as a signup, but it doesn't earn a reward.
+
+## Reward credits
+
+Each paid order from a referred account adds credits to your balance. Renewals earn rewards too. Amounts depend on the plan and billing period:
+
+| Plan bought | Monthly | Yearly |
+|-------------|---------|--------|
+| Free | 0 | 0 |
+| Premium | 50 | 500 |
+| Pro | 100 | 1,000 |
+
+Referral credits are separate from the AI credits used by clip analysis. The module doesn't show a way to spend your balance.
+
+**If you delete a code:** the referred accounts you already have keep their history, but their future paid orders no longer credit you. Those rewards go to the bot's account instead. The deleted code's signups and conversions also leave the summary and cards. Credits you already earned stay in your balance.
+
+## People and history
+
+Below the cards, **People & history** has two views:
+
+- **Referred people** lists each referred account with the code it used, its sign-up date, its current plan, and the credits it has earned you. A plan can be a trial, and credits count only completed rewards.
+- **Timeline** lists signups and reward events by date.
 
 ## Troubleshooting
 
-- **The link says invalid:** check spelling and make sure the code is still active.
-- **The signup was not attributed:** the recipient must be signed out when opening the link and must use that browser's signup flow to create a new account. Existing accounts cannot apply a code later.
-- **I cannot create a code:** check that you are viewing your own channel and still have a code slot. Only the channel owner can create or delete codes.
-- **A signup has no paid conversion yet:** a free signup is tracked, but a paid conversion needs that account's first qualifying paid order. Renewals do not increase the conversion count.
+- **Nothing was attached after signup:** the person must open the link while signed out, in the same browser tab, and then sign up with Twitch. Check that the code is still active.
+- **I can't create a code:** only the channel owner can create codes. Check that you're viewing your own channel and have a free slot.
+- **A signup has no paid conversion:** the account must make its first paid purchase. Free signups don't count as conversions.
 
-See [Plans](/plans/) for plan tiers and [Modules](/modules/) for dashboard access information.
+See [Plans](/plans/) for plan tiers and [Modules](/modules/) for dashboard access.

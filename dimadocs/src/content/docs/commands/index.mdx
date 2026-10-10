@@ -1,6 +1,6 @@
 ---
 title: Commands
-description: Find built-in command syntax and learn how custom commands and AST flows work.
+description: "Choose the right commands guide: use built-in commands, create simple custom commands, or write advanced AST replies."
 sidebar:
   label: Commands
   order: 2
@@ -8,26 +8,28 @@ sidebar:
 
 import { LinkCard, CardGrid } from '@astrojs/starlight/components';
 
-DomDimaBot commands let a channel run built-in actions and streamer-authored chat responses. The commands available in a channel depend on its command configuration and each command's enabled and permission settings.
-
-Choose your path:
+Commands are the words viewers type in chat, usually starting with `!`, that make the bot reply or act. Pick the page that matches what you want to do.
 
 <CardGrid>
   <LinkCard
-    title="Built-in command reference"
+    title="Use a built-in command"
     href="/commands/built-in/"
-    description="Syntax and behavior for the built-in commands registered by the bot."
+    description="Shoutouts, polls, predictions, duels, moderator tools, and more. Read this to see what the bot already does."
   />
   <LinkCard
-    title="Custom commands overview"
+    title="Create a custom command"
     href="/commands/overview/"
-    description="Create and manage custom chat commands, permissions, and cooldowns."
+    description="Make !discord, !rules, or a repeating message. Set who can use it and how long viewers must wait."
   />
   <LinkCard
-    title="Advanced Custom Commands (AST)"
+    title="Write advanced replies (AST)"
     href="/commands/advanced/"
-    description="Syntax, functions, execution rules, and recipes for complex command logic."
+    description="Counters, the viewer's name, the current game, random results, and other logic inside a reply."
   />
 </CardGrid>
 
-The `!commands` chat command lists enabled commands that the current chatter is allowed to use. The dashboard also has a Commands page for managing a channel's custom commands.
+## Where to manage commands
+
+- **In chat:** `!commands` lists the commands you can use in this channel. Moderators can create, edit, and delete custom commands with `!cc`, `!ec`, and `!dc`.
+- **On the dashboard:** open **Commands** to turn commands on or off, change who can use them, set cooldowns, and edit replies.
+- **For viewers:** the **Viewer list** on the Commands page lists the commands each viewer can use. Use **Copy link** to share it.

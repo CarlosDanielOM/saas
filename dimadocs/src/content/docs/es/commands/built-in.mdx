@@ -1,75 +1,135 @@
 ---
-title: Referencia de comandos integrados
-description: Sintaxis y comportamiento de los comandos integrados de DomDimaBot.
+title: Comandos integrados
+description: Acceso predeterminado, sintaxis y comportamiento de los comandos integrados del chat de DomDimaBot, como !so, !poll, !duel y !vip.
 sidebar:
   label: Comandos integrados
   order: 3
 ---
 
-Esta referencia se basa en la configuración de comandos reservados y el manejador de chat del bot. Para ejecutarse, el comando debe existir y estar activado en el canal; los permisos y el cooldown también pueden limitar su uso. El comando de chat `!commands` filtra la lista según los permisos de quien lo usa.
+Los comandos integrados son herramientas listas que vienen con DomDimaBot. Los espectadores y los moderadores los escriben en el chat. Cada uno tiene un nivel predeterminado de **Quién puede usarlo** y un tiempo de espera, y puedes cambiar ambos.
 
-## Lista de comandos
+## Activarlos o cambiar el acceso
 
-| Comando | Uso | Comportamiento |
-|---|---|---|
-| `!commands` | `!commands` | Muestra los comandos activados que la persona puede usar. |
-| `!followage` | `!followage [usuario]` | Muestra cuánto tiempo lleva siguiendo el canal quien lo usa o el usuario indicado. |
-| `!sumimetro` | `!sumimetro [usuario]` | Genera una lectura para quien lo usa; un nombre de usuario solicita la lectura guardada de esa persona. |
-| `!amor` | `!amor <usuario>` o `!amor <usuario1> <usuario2>` | Devuelve una lectura humorística de amor. |
-| `!memide` | `!memide` | Devuelve una medida aleatoria en tono de broma. |
-| `!ponerla` | `!ponerla` | Devuelve un porcentaje aleatorio en tono de broma. |
-| `!mecabe` | `!mecabe` | Devuelve una medida aleatoria en tono de broma. |
-| `!ruletarusa` | `!ruletarusa` | Juega a la ruleta rusa; el resultado puede aplicar un timeout a quien lo usa. La duración varía según las pérdidas anteriores: empieza en 10 segundos y aumenta con cada pérdida registrada. |
-| `!duel` | `!duel <usuario>`, luego `!duel accept` o `!duel decline` | Reta a un usuario, quien puede aceptar o rechazar. |
-| `!clip` | `!clip [segundos] [título]` | Crea un clip del canal. Si el primer argumento es un número, indica la duración (5–60 segundos); de lo contrario, se toma como título. Las duraciones numéricas fuera del rango usan 30 segundos. |
-| `!so` | `!so <usuario>` | Envía un anuncio de shoutout; puede incluir detalles de un clip si están disponibles. |
-| `!promo` | `!promo <usuario>` | Envía un shoutout de texto pensado para que lo vean usuarios de dispositivos móviles. |
-| `!anuncio` | `!anuncio <mensaje>` | Envía un anuncio de Twitch. El mensaje admite hasta 300 caracteres. |
-| `!game` | `!game <nombre del juego>` | Si quien lo usa tiene permiso, cambia el juego del canal; sin permiso para cambiarlo, el manejador devuelve el juego actual. |
-| `!title` | `!title <título del stream>` | Si quien lo usa tiene permiso, cambia el título del stream; sin permiso para cambiarlo o sin argumento, devuelve el título actual. |
-| `!onlyemotes` | `!onlyemotes [segundos]` | Alterna el modo de solo emotes o lo activa durante los segundos indicados. |
-| `!s` | `!s <mensaje>` | Envía el mensaje a la cola de texto a voz. La configuración inicial de canales nuevos lo activa para todos con un enfriamiento de 0 segundos. Es un comando editable y usa el AST normal de comandos. |
-| `!mod` | `!mod <usuario> [días]` | Agrega un moderador. |
-| `!unmod` | `!unmod <usuario>` | Quita un moderador. |
-| `!vip` | `!vip <usuario> [días]` | Agrega un VIP, opcionalmente por una cantidad de días. |
-| `!unvip` | `!unvip <usuario>` | Quita un VIP. |
-| `!vanish` | `!vanish` | Hace que quien lo usa desaparezca del chat. |
-| `!poll` | `!poll <título>;<opción1>/<opción2>;<segundos>` | Crea una encuesta. Separa el título, las opciones separadas por barras y la duración en segundos con punto y coma. Twitch valida los valores y puede rechazar una encuesta no válida. |
-| `!endpoll` | `!endpoll` | Termina la encuesta activa. |
-| `!cancelpoll` | `!cancelpoll` | Cancela la encuesta activa. |
-| `!predi` | `!predi <título>;<opción1>/<opción2>;<segundos>` | Crea una predicción. Separa el título, los resultados separados por barras y la duración en segundos con punto y coma. Twitch valida los valores y puede rechazar una predicción no válida. |
-| `!lockpredi` | `!lockpredi` | Bloquea la predicción activa. |
-| `!endpredi` | `!endpredi <número de opción ganadora>` | Termina la predicción y selecciona la opción ganadora. |
-| `!cancelpredi` | `!cancelpredi` | Cancela una predicción activa o bloqueada. |
-| `!cc` | `!cc <nombre> <respuesta>` | Crea un comando personalizado. Consulta [Comandos personalizados](/es/commands/overview/). |
-| `!ec` | `!ec <nombre> <respuesta>` | Edita un comando personalizado. Consulta [Comandos personalizados](/es/commands/overview/). |
-| `!dc` | `!dc <nombre>` | Elimina un comando personalizado. Consulta [Comandos personalizados](/es/commands/overview/). |
-| `!enable` | `!enable <nombre>` | Activa un comando en el canal. |
-| `!disable` | `!disable <nombre>` | Desactiva un comando en el canal. |
-| `!cct` | `!cct <nombre> <minutos> <mensaje>` | Crea un temporizador de chat repetitivo. Consulta [Temporizadores personalizados](/es/commands/overview/) para conocer las reglas y límites por plan. |
-| `!ect` | `!ect <nombre> [minutos] [mensaje]` | Edita un temporizador de chat repetitivo existente. |
-| `!dct` | `!dct <nombre>` | Elimina un temporizador de chat repetitivo. |
-| `!clearchat` | `!clearchat` | Limpia el chat. Está desactivado en la configuración incluida de comandos reservados. |
+- **En el dashboard:** abre **Comandos**, busca la sección **Incluidos** y usa el interruptor **Activo en el chat**. Abre un comando para cambiar **Quién puede usarlo**.
+- **En el chat:** los moderadores pueden usar `!enable <nombre>` y `!disable <nombre>`. El nombre funciona con o sin `!`.
+- **Los comandos integrados no se pueden eliminar.**
+- **Tiempos de espera:** la mayoría de los comandos integrados esperan 10 segundos entre usos. La espera es compartida por todo el canal. `!s` y `!vanish` no tienen espera.
 
-El manejador también contiene una acción `archivepoll` (`!archivepoll` si se configura), aunque ese comando no aparece en la lista actual de comandos reservados.
+Los canales nuevos empiezan con `!s` activo para todos y `!clearchat` desactivado. Los canales existentes conservan su configuración guardada.
+
+En las tablas siguientes, **Cualquiera** significa cualquier persona en el chat, **Moderadores o más** incluye a moderadores, editores, admins y a ti, y **Editores o más** incluye a editores, admins y a ti.
+
+## Información
+
+| Comando | Uso | Quién puede usarlo | Qué hace |
+|---|---|---|---|
+| `!commands` | `!commands` | Cualquiera | Muestra los comandos que la persona puede usar. No incluye palabras clave ni mensajes que se repiten. |
+| `!followage` | `!followage [usuario]` | Cualquiera | Muestra cuánto tiempo lleva siguiendo el canal quien escribe, o el usuario que indiques, en años, meses, días y horas. |
+
+## Diversión y juegos
+
+| Comando | Uso | Quién puede usarlo | Qué hace |
+|---|---|---|---|
+| `!sumimetro` | `!sumimetro [usuario]` | Cualquiera | Da una lectura aleatoria de sumiso y dominante. Cada espectador recibe una lectura, que se recuerda durante 20 horas. Si indicas un nombre, muestra la lectura guardada de esa persona. |
+| `!amor` | `!amor <usuario>` o `!amor <usuario1> <usuario2>` | Cualquiera | Da un porcentaje de amor aleatorio. Con un nombre, compara a quien escribe con esa persona. |
+| `!memide` | `!memide` | Cualquiera | Da una medida aleatoria en tono de broma. |
+| `!ponerla` | `!ponerla` | Cualquiera | Da un porcentaje aleatorio en tono de broma. |
+| `!mecabe` | `!mecabe` | Cualquiera | Da una medida aleatoria en tono de broma. |
+| `!ruletarusa` | `!ruletarusa` | Cualquiera | Aprieta el gatillo. Los detalles están abajo. |
+| `!duel` | `!duel <usuario>`, luego `!duel accept` o `!duel decline` | Cualquiera | Reta a un espectador a un duelo. Los detalles están abajo. |
+| `!vanish` | `!vanish` | Cualquiera | Aplica un timeout de 3 segundos a quien escribe, para que sus mensajes desaparezcan. Los moderadores pierden el rol de mod durante 10 segundos y luego lo recuperan. Los editores no pueden usarlo. |
+
+## Texto a voz
+
+| Comando | Uso | Quién puede usarlo | Qué hace |
+|---|---|---|---|
+| `!s` | `!s <mensaje>` | Cualquiera | Lee el mensaje en voz alta con texto a voz. Usa créditos de TTS. La respuesta es una plantilla editable, `$(tts $(user) dice: &t)` por defecto. Consulta [Texto a voz](/es/tts/). |
+
+## Stream y shoutouts
+
+| Comando | Uso | Quién puede usarlo | Qué hace |
+|---|---|---|---|
+| `!clip` | `!clip [segundos] [título]` | Cualquiera | Crea un clip y publica su enlace. Si la primera palabra es un número del 5 al 60, define la duración. Cualquier otra primera palabra inicia el título. Los números fuera de 5–60 usan 30 segundos. |
+| `!so` | `!so <usuario>` | Moderadores o más | Publica un anuncio de shoutout con el enlace del canal y el último juego. Envía el shoutout nativo de Twitch y muestra uno de sus clips si hay. La misma persona recibe un shoutout nativo de Twitch como máximo una vez cada 2 minutos. |
+| `!promo` | `!promo <usuario>` | Moderadores o más | Publica un mensaje de chat con el nombre del canal, el juego, el título y el enlace. Úsalo cuando quieras que los espectadores en el móvil vean el shoutout. |
+| `!anuncio` | `!anuncio <mensaje>` | Moderadores o más | Publica un anuncio de Twitch. El mensaje puede tener hasta 300 caracteres. |
+| `!game` | `!game <nombre>` | Moderadores o más | Cambia la categoría del stream. Si ninguna categoría coincide exactamente con el nombre, el bot usa el primer resultado de búsqueda. Sin permiso, o sin nombre, responde con la categoría actual. |
+| `!title` | `!title <título>` | Moderadores o más | Cambia el título del stream. Sin permiso, o sin título, responde con el título actual. |
+| `!onlyemotes` | `!onlyemotes [segundos]` | Moderadores o más | Activa o desactiva el chat solo con emotes. Cada uso cambia el modo. Agrega segundos para activarlo durante ese tiempo. |
+| `!clearchat` | `!clearchat` | Moderadores o más (desactivado por defecto) | Limpia el chat. |
+
+## Encuestas y predicciones
+
+| Comando | Uso | Quién puede usarlo | Qué hace |
+|---|---|---|---|
+| `!poll` | `!poll <título>;<opción1>/<opción2>;<segundos>` | Moderadores o más | Inicia una encuesta de Twitch. |
+| `!endpoll` | `!endpoll` | Moderadores o más | Termina la encuesta activa. |
+| `!cancelpoll` | `!cancelpoll` | Moderadores o más | Cancela la encuesta activa. |
+| `!predi` | `!predi <título>;<resultado1>/<resultado2>;<segundos>` | Moderadores o más | Inicia una predicción de Twitch. |
+| `!lockpredi` | `!lockpredi` | Moderadores o más | Cierra las apuestas de la predicción activa. |
+| `!endpredi` | `!endpredi <número>` | Moderadores o más | Termina la predicción y elige al ganador por número. `1` es el primer resultado. |
+| `!cancelpredi` | `!cancelpredi` | Moderadores o más | Cancela una predicción activa o bloqueada. |
+
+## Mods y VIPs
+
+| Comando | Uso | Quién puede usarlo | Qué hace |
+|---|---|---|---|
+| `!mod` | `!mod <usuario>` | Editores o más | Agrega un moderador. |
+| `!unmod` | `!unmod <usuario>` | Editores o más | Quita un moderador. |
+| `!vip` | `!vip <usuario> [días]` | Editores o más | Agrega un VIP. Con días (`1`–`365`), el estado VIP termina después de esa cantidad de días. Sin días, dura hasta que lo quites. |
+| `!unvip` | `!unvip <usuario>` | Editores o más | Quita un VIP. |
+
+## Gestionar comandos desde el chat
+
+| Comando | Uso | Quién puede usarlo | Qué hace |
+|---|---|---|---|
+| `!cc` | `!cc <nombre> <respuesta>` | Moderadores o más | Crea un comando personalizado. Consulta [Comandos personalizados](/es/commands/overview/). |
+| `!ec` | `!ec <nombre> <respuesta>` | Moderadores o más | Edita la respuesta, la espera o el acceso de un comando personalizado. |
+| `!dc` | `!dc <nombre>` | Moderadores o más | Elimina un comando personalizado. |
+| `!enable` | `!enable <nombre>` | Moderadores o más | Activa un comando. |
+| `!disable` | `!disable <nombre>` | Moderadores o más | Desactiva un comando. |
+| `!cct` | `!cct <nombre> <minutos> <mensaje>` | Moderadores o más | Crea un mensaje que se repite. Consulta [Comandos personalizados](/es/commands/overview/). |
+| `!ect` | `!ect <nombre> [minutos] [mensaje]` | Moderadores o más | Edita un mensaje que se repite. |
+| `!dct` | `!dct <nombre>` | Moderadores o más | Elimina un mensaje que se repite. |
+| `!timer` | `!timer create`, `edit`, `delete` o `list` | Moderadores o más | Hace lo mismo que `!cct`, `!ect` y `!dct` en un solo comando. `!timers` también funciona. |
 
 ## Detalles
 
+### Ruleta rusa
+
+- Cada jalón tiene 1 posibilidad en 3 de disparar.
+- La primera pérdida da un timeout de 10 segundos. Cada pérdida siguiente suma 10 segundos: 20, luego 30, y así sucesivamente. El conteo se reinicia 10 minutos después de la primera pérdida.
+- Los editores y el dueño del canal no pueden jugar.
+- Un moderador que pierde deja de ser moderador durante el timeout y luego vuelve a serlo.
+
+### Duelos
+
+- `!duel <usuario>` reta a un espectador. Tiene 30 segundos para responder con `!duel accept` o `!duel decline`.
+- Retar al streamer no requiere respuesta. El streamer pelea de inmediato, con mejores probabilidades.
+- Quien pierde recibe un timeout cuando los timeouts están activados. El valor predeterminado es 60 segundos. Cámbialo en **Widgets** → **Duel**.
+- El streamer y los editores nunca reciben timeout. Un moderador que pierde deja de ser moderador durante el timeout y luego vuelve a serlo.
+- Los mensajes del duelo usan el idioma del widget Duel en canales Premium. Los demás canales usan el idioma de la cuenta del streamer.
+
 ### Encuestas y predicciones
 
-La sintaxis usa punto y coma para separar el título, las opciones separadas por barras y la duración en segundos. Las encuestas admiten de 2 a 5 opciones y las predicciones de 2 a 10. Ambas requieren una duración de 30 segundos a 5 minutos; los títulos y opciones de encuestas tienen un máximo de 25 caracteres, mientras que los títulos de predicciones admiten 30 y sus resultados 20. Twitch valida los valores y puede rechazar una solicitud no válida. Por ejemplo:
+- Separa el título, las opciones y la duración con `;`. Separa las opciones con `/`. La duración va en segundos.
+
+  ```text
+  !poll ¿Ganará el streamer?;Sí/No;60
+  !predi ¿Ganará el streamer?;Sí/No;60
+  ```
+
+- Twitch define los límites de longitud del título, la cantidad de opciones y la duración. Si Twitch rechaza una solicitud, el bot responde con el error de Twitch.
+- `!endpredi` usa el número del resultado. `1` es el primer resultado. El número debe corresponder a un resultado existente.
+- Cada comando necesita una encuesta o predicción activa. Si no hay ninguna, el bot lo indica.
+
+### Cambiar la configuración de un comando integrado con `!ec`
+
+Los moderadores pueden cambiar la espera o el acceso de un comando integrado sin usar el dashboard:
 
 ```text
-!poll ¿Ganará el streamer?;Sí/No;60
-!predi ¿Ganará el streamer?;Sí/No;60
+!ec -cd=30 ruletarusa
+!ec -ul=mod duel
 ```
 
-De forma predeterminada, los comandos de encuestas y predicciones requieren acceso de moderador. `!endpoll` archiva una encuesta activa; `!cancelpoll` la termina sin archivarla. `!lockpredi` cierra las apuestas, `!endpredi <número>` resuelve una predicción activa o bloqueada con el resultado numerado y `!cancelpredi` la cancela. Cada acción requiere que la encuesta o predicción esté en un estado compatible.
-
-Cuando las herramientas de acciones de IA están disponibles, DomDimaBot también puede leer la encuesta o predicción actual y sus opciones numeradas; los resultados de encuestas incluyen los totales de votos. Para resolver una predicción, primero lee la pregunta y el orden de los resultados. Estas acciones siguen requiriendo permisos de moderador.
-
-### Permisos y configuración
-
-La configuración inicial de canales nuevos activa `!s` para todos con un enfriamiento de 0 segundos y desactiva `!clearchat`. De forma predeterminada, `!poll`, `!predi`, sus comandos de gestión y comandos de administración como `!cc`, `!ec` y `!dc` requieren acceso de moderador. `!mod`, `!unmod`, `!vip` y `!unvip` requieren acceso de editor. Los permisos se comprueban con la identidad verificada de Twitch de quien escribe. Cada canal puede cambiar la disponibilidad, el acceso y los enfriamientos; `!commands` muestra la lista visible para quien lo ejecuta. Los canales existentes pueden conservar sus propios ajustes.
-
-Para respuestas creadas por el streamer y la sintaxis AST, consulta [Comandos personalizados avanzados](/es/commands/advanced/).
+Pon las opciones antes del nombre. Los límites de acceso y de espera de [Comandos personalizados](/es/commands/overview/) también aplican aquí.

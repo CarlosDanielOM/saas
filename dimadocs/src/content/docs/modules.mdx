@@ -1,13 +1,16 @@
 ---
 title: Modules
-description: Browse dashboard modules, their minimum plan tiers, status labels, and related guides.
+description: See every dashboard module, its minimum plan, its status label, and the guide for each one.
 sidebar:
   order: 4
 ---
 
-The Modules page in the channel dashboard lists feature areas and links to their settings. The table below reflects the current module catalog; open a module link for its feature guide. “Minimum tier” is the plan entitlement configured for that card; Pro also qualifies for Premium modules. “Status” is the status label shown by the catalog; it describes maturity, not access rights or service uptime.
+The **Modules** page lists every feature you can open for your channel. Each card shows the feature's minimum plan and its status. Open a card to reach the feature's settings and its guide.
 
-| Module | Tier | Status |
+- **Plan** is the lowest plan that unlocks the module. Pro also unlocks Premium modules.
+- **Status** describes how mature the feature is. It is not a promise of uptime and does not decide who can use the feature.
+
+| Module | Plan | Status |
 |---|---|---|
 | [Chat Events](/chat-events/) | Free | Stable |
 | [Chat Moderation](/moderation/) | Free | Beta |
@@ -21,19 +24,26 @@ The Modules page in the channel dashboard lists feature areas and links to their
 | [Memories](/memories/) | Free | Beta |
 | [Follow Defense](/follow-defense/) | Free | Beta |
 | [Analytics](/analytics/) | Premium | Stable |
-| [Follow Ledger](/analytics/) | Premium | Stable in catalog; Beta on page |
+| Follow Ledger (in [Analytics](/analytics/)) | Premium | Stable in the catalog; Beta on its page |
 | [Stream Summaries](/stream-summaries/) | Free | Stable |
 | [Media Library](/media-library/) | Free | Beta |
 | [Clip Recommendations](/clip-recommendations/) | Free | Alpha |
-| [Roulette](/roulette/) | Pro | Alpha |
+| Widgets | Premium | Alpha |
+| [Roulette](/roulette/) | Premium | Alpha |
 | [Overlay Studio](/overlay-studio/) | Free | Alpha |
 
-## Entitlement, status, and permissions
+## Find a module
 
-The catalog can show a module as available to a plan while its card says Beta or Alpha. Those labels describe the catalog's maturity classification. A “Stable” label is not a guarantee of uninterrupted availability; an experimental label is a cue to review the feature before relying on it live.
+Use the search box or the goal filter at the top of the page. Modules you can't view for your role are hidden, so a missing card usually means your helper access doesn't include that area. Ask the channel owner to check it under **Settings** → **Team**.
 
-Roulette is a Pro-only Alpha module. Overlay Studio is available starting with Free and remains in Alpha. During Alpha, only the channel owner can manage either module. Alpha describes maturity; the tier column shows plan access.
+## Locked and Alpha modules
 
-Plan entitlement is separate from dashboard authorization. You must also have the dashboard permission required for the page, and some actions depend on the bot's Twitch authorization, channel settings, or other feature-specific requirements. If a module appears locked, check the minimum tier above; if it is available but you cannot use it, check your channel role and Twitch permissions.
+A locked card shows **Upgrade to Access**. Upgrade your plan from the profile menu, or read the [plans comparison](/plans/).
 
-To open the hub, sign in, select a channel, and choose **Modules** in the dashboard navigation. See [Dashboard](/dashboard/) and [Getting Started](/getting-started/).
+Alpha means the feature is new and may change. Read its guide before you use it on a live stream:
+
+- **Overlay Studio** is on Free. Only the channel owner can open it.
+- **Roulette** needs Premium or Pro. The channel owner and helpers with full access can open it.
+- **Widgets** needs Premium or Pro. The channel owner and helpers with full access can open it.
+
+Plan access and helper access are separate. A plan unlocks a module, but your role on the channel still decides which areas you can open. See [Dashboard](/dashboard/) for the menu and [Getting Started](/getting-started/) for the first setup.

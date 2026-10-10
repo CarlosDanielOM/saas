@@ -1,28 +1,47 @@
 ---
 title: Recomendaciones de clips
-description: Analiza VOD recientes de Twitch para encontrar posibles momentos de clip, revisar candidatos y conocer el costo en créditos.
+description: Encuentra posibles momentos para clipear en tus directos recientes, revísalos y conoce cuánto cuesta cada análisis en créditos de IA.
 sidebar:
   order: 9
 ---
 
-Recomendaciones de clips analiza el audio de un VOD de Twitch y devuelve posibles momentos para revisar. El módulo del panel está marcado actualmente como **Alfa**. El análisis manual está disponible en Free, Premium y Pro; el análisis automático al terminar un stream solo está disponible en Pro. La función requiere un VOD de Twitch al que el servicio pueda acceder y suficientes créditos de IA en el saldo del canal.
+Recomendaciones de Clips escucha el audio de uno de tus directos pasados (un VOD de Twitch) y sugiere momentos que vale la pena clipear. El módulo está marcado como **Alpha**. El análisis manual funciona en **Free, Premium y Pro**. El análisis automático después de cada directo es **solo para Pro**.
 
-## Analizar un VOD
+**Quién puede usarlo:** el propietario del canal o un administrador con permisos de clips. Los administradores con permiso de solo lectura pueden ver los resultados, pero no pueden iniciar análisis ni revisar momentos.
 
-1. Abre **Módulos → Recomendaciones de clips** en el panel de tu canal.
-2. Consulta la lista de VOD recientes. Si hace falta, pulsa **Actualizar VOD**; la lista abarca los últimos siete días.
-3. Revisa el costo estimado que aparece en la tarjeta del VOD y selecciona **Analizar**.
-4. La solicitud se agrega a la cola para procesarse en segundo plano. Consulta **Análisis anteriores** para ver el estado: Pendiente, En proceso, Completado o Fallido.
-5. Revisa el intervalo, el motivo, la confianza y la verificación de video de cada candidato cuando estén disponibles. Confirma los candidatos aprobados por la verificación que quieras conservar o rechaza los que no quieras.
+## Buscar clips en un directo
 
-El costo estimado es de 2.750 créditos de IA para un VOD de hasta 60 minutos, más 50 créditos por cada minuto que exceda los 60 (redondeado hacia arriba). El trabajador comprueba el saldo cuando comienza el procesamiento. Si el saldo es insuficiente, el VOD no está disponible o el proceso falla, el trabajo puede no completarse. Agregarlo a la cola no garantiza que se obtengan candidatos.
+1. Abre **Módulos → Recomendaciones de Clips**.
+2. En **Buscar clips en un directo**, busca el directo que quieras. La lista muestra tus directos de los últimos 7 días. Pulsa **Actualizar** si falta un directo nuevo.
+3. Pulsa **Buscar clips**. Un cuadro muestra el costo estimado. Confirma para empezar.
+4. Sigue el progreso en **Momentos por revisar**. Un directo muestra **Esperando para empezar…**, luego **Analizando…** y después **N momentos encontrados** o **Ningún momento fue lo bastante bueno para clipear**. Puedes salir de la página mientras se procesa.
+5. Abre los momentos de un directo y pulsa **Guardar** o **Descartar** en cada uno. **Abrir en Twitch** lleva a ese punto del VOD para que hagas el clip tú mismo.
+
+Guardar y Descartar solo cambian el estado de tu revisión. No crean un clip en Twitch.
+
+## Cuánto cuesta
+
+- Un análisis de un VOD de hasta 60 minutos cuesta **2,750 créditos de IA**.
+- Cada minuto que pase de 60 suma **50 créditos** (un minuto incompleto cuenta como minuto completo).
+- El saldo se revisa al iniciar el análisis. Solo se cobra cuando el análisis termina. Un intento fallido muestra "No se cobraron créditos por este intento."
+- Si tu saldo es insuficiente, el análisis se detiene con el mensaje "No se pudo terminar: no hay suficientes créditos de IA."
+
+Consulta [Planes](/es/plans/) para ver las asignaciones mensuales de créditos.
 
 ## Análisis automático
 
-Los usuarios Pro pueden activar **Analizar automáticamente al terminar el stream** en este módulo. Cuando está habilitado, un evento de finalización del stream agrega a la cola el VOD más reciente de Twitch. Los usuarios Free y Premium pueden iniciar análisis manuales. Los trabajos automáticos tienen los mismos requisitos de VOD y créditos de IA que los manuales; asegúrate de que el canal tenga créditos suficientes según la duración del VOD.
+Los canales Pro pueden activar **Buscar clips después de cada directo**. Cuando el directo termina, el bot espera unos 5 minutos y luego analiza el VOD más reciente. Cuesta lo mismo que un análisis manual. Asegúrate de tener saldo para un directo de duración completa.
 
-## Qué significa el resultado
+Los canales Free y Premium no pueden activarlo, pero sí pueden hacer análisis manuales.
 
-El modelo identifica posibles momentos a partir del audio del VOD y asigna a cada candidato un intervalo y una explicación. Una verificación de video independiente puede aprobar o rechazar candidatos; en el panel solo se pueden confirmar los que aprueba esa verificación. Confirmar o rechazar actualiza el estado de revisión del candidato. Esa acción no crea ni publica un clip de Twitch por sí sola.
+## Qué significan los resultados
 
-Los resultados son sugerencias, no momentos destacados garantizados. El análisis de audio puede pasar por alto el contexto visual, indicar tiempos o motivos inexactos o no devolver candidatos. El acceso al VOD, la disponibilidad del proveedor, la carga de la cola y el saldo de créditos pueden afectar la finalización del trabajo. Revisa la vista previa y el VOD antes de usar un momento sugerido. Consulta [Planes](/es/plans/) para ver las asignaciones mensuales de créditos.
+El análisis busca risas, hype y reacciones fuertes en el audio. Después, una verificación de video revisa cada candidato. Solo los momentos que pasan esa verificación muestran **Guardar** y **Descartar**. Los demás quedan ocultos. Pulsa **Mostrar N que no pasaron la revisión de video** para verlos.
+
+Los resultados son sugerencias, no momentos destacados garantizados. Revisa cada momento en el VOD antes de clipearlo. Un análisis también puede no devolver momentos, o la marca de tiempo de un momento puede estar un poco desfasada.
+
+## Solución de problemas
+
+- **Un directo muestra "No se pudo terminar":** el mensaje indica el motivo. Las causas más comunes son la falta de créditos o un cobro que no se completó.
+- **No aparece el VOD:** solo se muestran los directos de los últimos 7 días, y el directo debe tener un VOD en Twitch.
+- **No aparecen los botones:** necesitas permiso de clips para iniciar análisis o revisar momentos.

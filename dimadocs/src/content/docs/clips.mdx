@@ -1,31 +1,49 @@
 ---
 title: Clip overlay
-description: Set up the browser overlay that plays channel clips in OBS.
+description: Set up the Clip overlay in OBS, pick a design, test it, and see how !clip, !promo, and !so create and play clips.
 ---
 
-The Clips module provides a browser-source overlay for playing a channel clip when the bot queues one. The dashboard lets you copy an overlay URL, open a preview, adjust its timeout, and request a test clip.
+The **Clip overlay** plays a Twitch clip on your stream. Add its URL to OBS once. After that, the overlay plays a clip when a `!promo` runs or a `!so` finds a clip. Viewers can also create clips with `!clip`. See [Built-in commands](/commands/built-in/) for every command option.
+
+**Who can set it up:** the channel owner, or an admin with clip management permission.
 
 ## Set up the overlay
 
 1. Open your channel dashboard and choose **Modules → Clips**.
-2. Select a design card and set the timeout (1–30 seconds; the initial value is 30 seconds).
-3. Copy the URL and add it to OBS as a **Browser Source**. You can also open the URL in a browser to preview it.
-4. Keep the browser source open, then use **Test design** in the dashboard. The test is queued through the bot and needs the overlay connection to be active. If the dashboard says the overlay is not connected, open the URL first and retry.
+2. Pick a design card. **Classic** and **Third** are free. The other designs need Premium or Pro.
+3. Set **Clip duration** from 1 to 30 seconds. The default is 30.
+4. Select **Copy** next to **Browser Source URL**. In OBS, add a **Browser Source** with that URL. Use a width of 800. For a height, use 450 for Third, Cinema, Pill, HUD, and Slash, and 225 for the others.
+5. Keep the overlay open. Opening the URL in a normal browser tab also connects it.
+6. Select **Test on this page**. The page shows a live preview and sends a sample clip. If the overlay isn't open yet, the page asks you to open the URL first.
 
-The timeout is part of the copied URL. The dashboard keeps this value in the current page state; it does not save a channel preference. The page also does not persist a selected design.
+The design and duration are part of the URL. If you change either one, copy the new URL into OBS. The page remembers your choices for each channel in this browser only, so set them again on another computer.
 
-## Design availability
+## Designs
 
-The dashboard catalog currently lists Classic, Third, Tile, Cinema, Orbit, Pill, HUD, and Slash. It marks Classic as stable, while Third and the other redesigned options are marked beta. Premium users can access designs marked Premium; Pro also unlocks any design explicitly marked Premium Plus.
+| Design | Plan | Status |
+|--------|------|--------|
+| Classic | Free | Stable |
+| Third | Free | Beta |
+| Tile, Cinema, Orbit, Pill, HUD, Slash | Premium or Pro | Beta |
 
-There is a current implementation limit to keep in mind: the API route serving `/clip/:channelID` accepts only design IDs `1`, `2`, and `3`. Other design query values fall back to the default overlay. The dashboard's newer design IDs and labels therefore do not all map to distinct server overlays yet. Treat its mock previews as visual mockups; a test sends a real queued clip but does not confirm that every listed design is supported by the overlay route.
+No design currently requires Pro.
 
-## How clips play
+## Create clips in chat
 
-The overlay connects to the bot over a WebSocket and listens for queued clip playback. Keep the overlay open in the OBS scene for the bot to reach it. When playback ends, the overlay notifies the bot so the queue can continue. The dashboard test uses the same connected overlay path.
+- **`!clip`** creates a Twitch clip and posts its link. Everyone can use it by default, with a 10-second cooldown.
+- **`!clip 20 Epic moment`** sets a length and a title. A length from 5 to 60 seconds is used; any other value falls back to 30 seconds.
+
+Twitch only creates clips while the channel is live. You can change who can use `!clip` in your command settings.
+
+## How clips reach the overlay
+
+- **`!promo <user>`** (moderators and above by default) posts a chat message and plays a clip of that streamer in the overlay.
+- **`!so <user>`** (moderators and above by default) sends the shoutout and shows one of that streamer's clips when one is available.
+
+Clips play one at a time. If a clip is already playing, the next one waits in the queue.
 
 ## Troubleshooting
 
-- **Overlay not connected:** open the copied URL in OBS or a browser, leave it open, and retry the test.
-- **No clip plays:** confirm the channel ID in the URL and that a clip is available to the bot. Twitch clip creation and retrieval can take time.
-- **Design looks like Classic:** the route currently falls back to its default for design IDs outside 1–3, even if the dashboard card shows another option.
+- **The overlay isn't connected:** keep the overlay URL open in OBS or a browser tab. The test needs it to be open.
+- **No clip plays:** confirm the overlay is open and that Twitch has a clip available for the channel. Twitch can take a while to create or return a clip.
+- **The overlay looks like Classic:** the URL may be missing the design, or the design couldn't load. Copy the URL again from the page.

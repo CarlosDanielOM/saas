@@ -1,42 +1,74 @@
 ---
 title: Getting Started
-description: Sign in, authorize your channel, and turn on DomDimaBot chat.
+description: Log in with Twitch, approve the bot's permissions, turn the bot on in your chat, and test your first command in about 10 minutes.
 sidebar:
   order: 1
 ---
 
 import { Steps, Aside } from '@astrojs/starlight/components';
 
-DomDimaBot connects to your Twitch channel through the dashboard. Signing in, authorizing channel permissions, and joining chat are separate steps.
+This guide gets DomDimaBot working in your Twitch chat. You need the Twitch account that owns the channel and about 10 minutes. New accounts start on the **Free** plan, which is enough for this setup.
+
+Only the channel owner can turn the bot on or off. Helpers can use only the pages the owner gave them.
 
 <Steps>
 
-1. **Sign in with Twitch**
+1. **Log in with Twitch**
 
-   Open [domdimabot.com](https://domdimabot.com) and choose **Login with Twitch**. A new account starts on the Free plan. Your subscription plan and Twitch permissions are separate: upgrading a plan does not grant Twitch permissions.
+   Go to [domdimabot.com](https://domdimabot.com) and click **Login with Twitch**. Sign in with the Twitch account that owns the channel.
 
-2. **Activate and authorize your channel**
+   You are done when the dashboard opens.
 
-   In the dashboard header, use **Activate Bot**, **Reauthenticate**, or **Update Permissions** if that button appears. Twitch will show the permissions being requested. Return to the dashboard after authorizing.
+2. **Approve the bot's Twitch permissions**
+
+   If the top bar shows **Activate Bot**, click it. Twitch opens a permissions screen. Approve it, and you return to the dashboard.
+
+   Twitch shows a long list because the bot needs it to read and send chat, moderate chat, manage channel rewards, and read follows, subscriptions, bits, and your email address. Approve only if you want DomDimaBot in your channel.
 
    <Aside type="note">
-   If Twitch permissions expire or change, the header can ask you to authorize again. The dashboard may still be accessible while a bot feature needs renewed permission.
+   The top bar button changes when access is missing or out of date. See the table below. Your plan does not grant or remove Twitch permissions.
    </Aside>
 
-3. **Join chat**
+3. **Turn the bot on**
 
-   On your channel dashboard, choose **Join Bot**. The status changes when chat is enabled. You can use **Leave Chat** later to turn chat participation off.
+   On the dashboard, find **Quick Actions** and click **Turn the bot on**. The status line changes to "The bot is in your chat and can answer." The button now reads **Turn the bot off**, which makes the bot stop answering in chat.
 
-4. **Set up a command or module**
+   You are done when the status line says the bot is in your chat.
 
-   Open **Commands** to manage chat commands. Open **Modules** to find features such as TTS, triggers, chat moderation, and channel rewards. Overlay Studio is available from Free and Roulette requires Pro; both are Alpha features that only the channel owner can manage. Availability also depends on the module's status and your channel permissions.
+4. **Add your first command**
+
+   Open **Commands** and click **Add Command**. Enter a name such as `hello`, a response, and save. Viewers then type `!hello` in your chat.
+
+   You are done when your test command replies in chat. If it does not, check that the bot is on and the command is enabled, then wait for its cooldown to end.
+
+5. **Look at modules (optional)**
+
+   Open **Modules** to see the features you can turn on, such as Text to Speech, Triggers, Chat Moderation, Clips, and Analytics. Each card shows its plan and status. A locked card shows **Upgrade to Access**.
+
+   Two Alpha tools need a closer look before you rely on them. **Overlay Studio** is available on Free and only the channel owner can open it. **Roulette** requires Premium or Pro and can be opened by the channel owner or a helper with full access.
 
 </Steps>
 
+## Permission buttons in the top bar
+
+| Button | What it means | What to do |
+|---|---|---|
+| **Activate Bot** | The channel is not set up yet. | Click it and approve the Twitch permissions. |
+| **Reauthenticate** | The bot no longer has the Twitch access it needs. | Click it and approve again. |
+| **Update Permissions** | The bot now needs permissions it did not have before. | Click it and approve the new list. |
+
+If the button appears again after you approved, reload the page and check that you are signed in with the channel owner's Twitch account. The dashboard stays usable while the button is showing.
+
+## Check that setup worked
+
+- The top bar shows no permission button.
+- **Quick Actions** says **The bot is in your chat and can answer.**
+- Your test command replies in chat.
+
 ## Where to go next
 
-- [Dashboard](/dashboard/) — Find the live status, chat control, activity, and usage.
-- [Commands](/commands/) — Learn built-in and custom commands.
-- [Modules](/modules/) — See the available tools and their status.
-- [Plans](/plans/) — Compare Free, Premium, and Pro.
-- [Roulette](/roulette/) and [Overlay Studio](/overlay-studio/) — Read about the Pro Alpha Roulette module and the Free Alpha Overlay Studio module.
+- [Dashboard](/dashboard/): the status, bot on/off control, activity, and menus.
+- [Commands](/commands/): built-in and custom commands.
+- [Modules](/modules/): every feature, its plan, and its status.
+- [Plans](/plans/): compare Free, Premium, and Pro.
+- [Roulette](/roulette/) and [Overlay Studio](/overlay-studio/): the two Alpha tools.

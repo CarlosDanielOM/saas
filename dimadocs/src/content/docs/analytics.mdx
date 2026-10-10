@@ -1,24 +1,54 @@
 ---
 title: Analytics
-description: Learn what the channel analytics hub currently includes and how its access works.
+description: What the Analytics hub and Follow Ledger show, who can open them, how often they update, and how long data is kept.
 sidebar:
   order: 8
 ---
 
-The **Analytics** hub is available to **Premium and Pro** channels. The module catalog lists Analytics and Follow Ledger as separate entitlements, and each has a Premium minimum tier (Pro also qualifies). You also need permission to view the channel dashboard.
+The **Analytics** hub groups your channel's audience tools in one place. It has one working tool today, **Follow Ledger**, which lists everyone who follows your channel. The hub and Follow Ledger need a **Premium** or **Pro** plan.
 
-The hub is currently marked **Beta** in the page UI and ships one user-facing tool: **Follow Ledger**. The hub mentions other analytics ideas as planned; chat activity and similar future tools are not available through this page today.
+**Who can open it:** the channel owner, or an admin with the **Analytics** view permission.
 
-## Open the hub
+The hub is marked **Beta**. It also lists planned tools, such as chat activity and stream retention. Those are not available yet.
 
-Sign in, choose a channel, open **Modules**, and select **Analytics**. The current hub links to Follow Ledger, shows the plan status, and indicates that the tool focuses on current followers.
+## Open Follow Ledger
 
-## What data retention means here
+1. Open **Modules → Analytics**. The hub shows your plan status and the Follow Ledger card.
+2. Select **Open Follow Ledger**.
 
-The public plan comparison lists stream analytics retention of **30 days on Free, 180 days on Premium, and 365 days on Pro**. That pricing label describes the stream analytics allowance, not a retention period for Follow Ledger. The analytics backend also currently removes viewer snapshot records older than 90 days; this implementation detail does not establish a plan-specific retention guarantee for every analytics record.
+On a Free channel, the card and page show a locked notice. Owners see an **Upgrade to unlock** button there.
 
-Follow Ledger has no published retention period in its page or API. Its display is limited to current followers; historical ended relationships are stored separately by the service but are not exposed by the current dashboard view. See [Plans](/plans/) for the current pricing comparison.
+## What Follow Ledger shows
 
-## Access and availability
+- **Current followers:** the total of people who follow your channel right now.
+- **Mutual followers:** people you also follow back.
+- **Following you only:** people who follow you but whom you don't follow back.
 
-Plan entitlement does not replace dashboard access or required Twitch authorization. If the hub or Follow Ledger is unavailable, confirm that the selected channel has Premium or Pro and that your account has access to its dashboard. Follow Ledger is identified as Beta in its page UI; the module catalog's maturity label can differ from the feature's page label.
+Select a total to filter the list. Then:
+
+- **Search** by follower name, login, or ID.
+- **Sort** by follow date, **Newest** or **Oldest**.
+- Each row shows the follow date and how long ago it happened.
+
+Only current followers appear. People who have unfollowed are stored, but the dashboard doesn't show them.
+
+## How often it updates
+
+- The bot syncs your follower list from Twitch **once a day, at midnight UTC**.
+- The **Refresh** button reloads the saved list. It doesn't fetch new data from Twitch, so a new follower may not appear until the next daily sync.
+
+## Stream history on your dashboard
+
+Your main dashboard shows **Last 30 Days Stream History**, with average viewers, new followers, and Bits for the last 30 days. This summary always covers 30 days, whatever your plan.
+
+## Data retention
+
+The [Plans](/plans/) page lists stream analytics retention of **30 days on Free, 180 days on Premium, and 365 days on Pro**. Today the system deletes stored viewer snapshots older than **90 days** for every plan, so don't count on the longer periods for viewer data.
+
+Follow Ledger doesn't publish a retention period.
+
+## Troubleshooting
+
+- **The hub or Follow Ledger is locked:** the channel needs Premium or Pro.
+- **You can't open the page:** you need to be the channel owner or have the **Analytics** view permission. Your plan doesn't replace this access.
+- **Follow Ledger shows an error:** select **Refresh** and try again. If it keeps failing, check that the channel's Twitch authorization is current.

@@ -1,165 +1,179 @@
 ---
-title: Ejecución, Errores y Límites de AST
-description: "Cómo corre el parser AST, errores comunes y límites de seguridad según el plan."
+title: Ejecución de AST, errores y límites
+description: "Cómo se ejecuta un comando personalizado paso a paso, qué significan los mensajes de error y los límites de bucles, referencias a comandos, timers y variables guardadas en cada plan."
 sidebar:
   order: 3
 ---
 
 import { Aside } from '@astrojs/starlight/components';
 
-Esta página explica qué pasa cuando corre un comando AST y cómo depurarlo cuando algo falla.
+Lee esta página cuando un comando muestre un error, no haga nada o se ejecute en un orden distinto al que esperas. Explica los pasos que sigue el bot con cada comando y los límites que aplican en cada plan.
 
 ## Flujo de ejecución
 
-1. Un comando o evento activa la plantilla
-2. Se resuelven placeholders como `&p1` y `&t`
-3. Se crea el contexto de ejecución con datos del usuario, canal y evento
-4. El input se tokeniza
-5. Los tokens se parsean en un AST
-6. El AST se evalúa
-7. Las variables se escriben en memoria, caché o base de datos si hace falta
-8. La salida final se renderiza y se envía al chat; las referencias a comandos se despachan después como comandos separados
+1. Un comando, una recompensa o un evento inicia la plantilla.
+2. Se completan los placeholders. `&p1` es la primera palabra que escribió el espectador, `&p2` la segunda, y así sucesivamente. `&t` es todo lo que va después de la última palabra numerada. Consulta [Sintaxis y datos AST](/es/commands/advanced/syntax/).
+3. El bot arma el contexto: el canal, el usuario, el plan y los datos del evento, si los hay.
+4. El texto se divide en tokens.
+5. Los tokens se convierten en una estructura que el bot puede ejecutar.
+6. La estructura se ejecuta de arriba hacia abajo. Las funciones se ejecutan de izquierda a derecha.
+7. Las variables se guardan en memoria, caché o base de datos cuando se asignan.
+8. La respuesta se publica en el chat. Las referencias a comandos (`#(...)`) se ejecutan después, en orden, cada una con su propia respuesta.
 
+## Quién ejecuta el comando
 
-## Contexto y permisos
+El contexto incluye el canal, el usuario, el plan y, en los comandos de eventos, los datos del evento. Las funciones de evento como `$(cheer.amount)` solo tienen valor cuando el evento correspondiente inicia el comando.
 
-El contexto de ejecución aporta el canal, usuario, plan, ámbito del comando y, para comandos de eventos, la carga útil del evento. Los valores EventSub solo están disponibles para el evento correspondiente. La comprobación de permisos de funciones también depende de quién ejecuta: las acciones de chat e IA se verifican según el rol de quien las solicita, mientras que las plantillas creadas por el streamer se ejecutan según los permisos configurados para el comando o evento. Una referencia a otro comando no concede permisos adicionales.
+Los permisos dependen de lo que inició el comando:
 
-## Por qué importa
-
-Entender el orden te ayuda a depurar problemas como:
-
-- argumentos que no aparecen donde esperabas
-- variables faltantes
-- ramas que se ejecutan cuando no deberían
-- referencias a comandos con resultados raros
-- funciones EventSub que devuelven vacío en el chat
+- **Tus comandos personalizados, recompensas y eventos** usan la configuración de acceso que elegiste para ellos. El bot no vuelve a verificar cada función, así que una función dentro de un comando abierto a todos funciona para todos.
+- **Las solicitudes al chat de IA** verifican el nivel mínimo de cada función. Si un espectador le pide a la IA que banee a alguien, por ejemplo, recibe un error de permisos a menos que sea moderador. La IA también verifica la configuración de acceso de cualquier comando personalizado que llame.
+- **Las referencias a comandos (`#(...)`)** desde tus propios comandos no verifican la configuración de acceso del comando llamado. Solo cuenta el acceso del comando que hace la llamada. Si un comando está abierto a todos y llama a uno solo para moderadores, ese comando de moderadores se ejecuta igual. Ten en cuenta la configuración de acceso de cada comando de la cadena.
 
 ## Mensajes de error comunes
 
-| Patrón de Error | Significado |
-|-----------------|-------------|
-| `[Unknown function: name]` | La función no está registrada |
-| `[Loop error: invalid loop syntax]` | La sintaxis del bucle es inválida |
-| `[Loop error: missing loop body]` | Al bucle le faltan `{}` |
-| `[Parse error: expr]` | El parser no pudo entender la expresión |
-| `Usage: $(func ...)` | Faltan argumentos o son inválidos |
+| Mensaje | Qué significa | Qué hacer |
+|---------|---------------|-----------|
+| `[Unknown function: nombre]` | No existe ninguna función con ese nombre | Revisa la ortografía en la [Referencia de funciones AST](/es/commands/advanced/functions/). Los alias como `vip` y `add.vip` funcionan los dos |
+| `Usage: $(nombre ...)` o un texto de uso de `$(nombre ...)` | Falta un argumento obligatorio o está mal | Compara tu llamada con la sintaxis de la referencia de funciones |
+| `Error: permission denied - 'nombre' requires moderator permissions` | Una solicitud al chat de IA intentó usar una función por encima de su nivel | No hay nada que corregir. El espectador necesita el rol adecuado |
+| `[Parse error: …]` seguido de parte de tu texto | El bot no puede leer esa parte del comando, por ejemplo falta un `)` o una `"` | Busca un `$(`, `%(`, `*(` o comillas sin cerrar cerca del texto mostrado |
+| `[Loop error: invalid loop syntax]` | La línea `for` de un bucle está mal escrita | Revisa la sintaxis de bucles en [Sintaxis y datos AST](/es/commands/advanced/syntax/) |
+| `[Loop error: invalid range loop syntax]` | A un bucle por rango le falta una parte | Usa tres partes: inicio, condición y paso |
+| `[Loop error: missing loop body]` o `[Loop error: unclosed loop body]` | El bucle no tiene bloque `{ ... }`, o el bloque no está cerrado | Agrega las llaves |
+| `delay: must be between 0 and 60 seconds` | `$(delay)` recibió un número mayor que 60 | Usa `$(timer ...)` para esperas más largas |
+| `timer: usage: …` | A `$(timer)` le falta el número de segundos o el cuerpo | Agrega ambos: `$(timer segundos "cuerpo")` |
+| `timer: could not schedule timer` | No se pudo guardar el timer, normalmente porque el canal ya tiene 100 timers en espera | Espera a que se ejecuten algunos y vuelve a intentar |
 
-## Límites y reglas de seguridad
+## Límites por plan
 
-### Límites de bucles por plan
+| Límite | Gratis | Premium | Pro |
+|--------|--------|---------|-----|
+| Profundidad de bucles anidados | 2 | 3 | 4 |
+| Iteraciones de bucle | 25 | 50 | 100 |
+| Guardar en variables de base de datos (`%(*nombre ...)`, `%(**nombre ...)`) | No se guarda | Sí | Sí |
+| Días temporales de VIP y moderador | No | Sí | Sí |
+| Funciones de ruleta | No | Sí | Sí |
 
-| Plan | Máx. profundidad de anidación | Máx. iteraciones |
-|------|-------------------------------|------------------|
-| Free | 2 | 25 |
-| Premium | 3 | 50 |
-| Pro | 4 | 100 |
+En el plan Gratis, las escrituras en variables de base de datos se omiten sin mensaje de error. El comando sigue ejecutándose, pero el valor no se guarda. Las lecturas siguen funcionando.
 
-### Límites de referencia a comandos
+En el plan Gratis puedes anidar dos niveles de bucles (un bucle dentro de otro). Premium permite tres, y Pro permite cuatro.
 
-- se evalúan como máximo cinco niveles anidados de referencias a comandos
-- se detienen las referencias repetidas dentro de la misma ruta
+## Límites de referencias a comandos
 
-### Límites de delay
+Una llamada `#(nombreComando argumentos)` ejecuta otro comando personalizado después de la respuesta actual:
 
-- `$(delay N)` soporta hasta `60` segundos
-- `$(timer segundos cuerpo)` programa el cuerpo para dentro de `1` a `604800` segundos (hasta siete días)
-- Cada timer guarda el AST y el contexto de ejecución en la caché del bot y puede recuperarse tras un reinicio
-- Un timer vencido tiene una ventana de gracia de 10 minutos si el bot estuvo desconectado; se ejecuta como máximo una vez
-- El anidamiento de timers está limitado a cinco niveles y a 100 timers pendientes por canal
+- Se pueden anidar hasta **cinco** niveles de referencias.
+- Un comando que ya está en la misma ruta de llamadas se detiene. Así, un comando no puede llamarse a sí mismo en un bucle.
+- Una sola ejecución puede hacer como máximo **50** referencias en total, sumando todos los niveles.
+- La respuesta de cada comando referenciado se publica por separado, después de la respuesta principal.
 
-## Checklist de debugging
+## Límites de retrasos y timers
+
+- `$(delay N)` pausa el comando hasta **60** segundos. Mientras espera, retiene el resto del comando.
+- `$(timer segundos cuerpo)` ejecuta su cuerpo más tarde, de **1** a **604800** segundos (siete días). Devuelve el control de inmediato.
+- Cada timer guarda su comando y su contexto en la caché del bot, así que sigue funcionando después de un reinicio.
+- Si el bot estaba apagado cuando llegó la hora de un timer, se ejecuta si tiene menos de **10 minutos** de retraso. Después de eso, expira.
+- Un timer se ejecuta **como máximo una vez**.
+- Los timers se pueden anidar hasta **cinco** niveles.
+- Un canal puede tener hasta **100** timers en espera al mismo tiempo.
+
+## Lista de revisión para depurar
 
 ### 1. Empieza simple
 
 Antes de construir el comando completo, prueba una versión mínima.
 
 ```bash
-"Hello $(user)!"
+¡Hola $(user)!
 ```
 
-### 2. Añade una sola cosa cada vez
+### 2. Agrega una función a la vez
 
-Buen orden:
+Un buen orden:
 
-1. texto plano
+1. texto simple
 2. argumentos
 3. funciones
 4. variables
-5. condicionales
+5. condiciones
 6. bucles
 
-### 3. Comprueba la inicialización
+### 3. Verifica que el valor exista
 
-Si un valor de caché o base de datos puede no existir todavía, compruébalo primero:
+Si un valor de caché o de base de datos podría no existir todavía, revísalo primero:
 
 ```bash
-*(^(#wins) ? %(#wins) : "no wins yet")
+*(^(#wins) ? %(#wins) : "todavía no hay victorias")
 ```
 
-### 4. Recuerda que la asignación es directa
+### 4. Recuerda que asignar reemplaza el valor
 
-Esto está mal si quieres incrementar:
+Esto no suma. Pone `#wins` en `1` cada vez:
 
 ```bash
 %(#wins 1)
 ```
 
-Esto está bien:
+Para sumar, lee el valor y guarda el resultado:
 
 ```bash
 %(#wins *(%(#wins) + 1))
 ```
 
-### 5. Recuerda el contexto EventSub
+### 5. Revisa el evento que inicia el comando
 
-Funciones como `$(cheer.amount)` o `$(reward.input)` solo funcionan cuando el comando corre desde el tipo de evento correcto.
+Funciones como `$(cheer.amount)` y `$(reward.input)` solo tienen valor cuando el evento correspondiente inicia el comando. En una prueba normal en el chat están vacías o valen `0`. Eso es lo esperado.
 
 <Aside type="note">
-Si una función EventSub parece vacía durante pruebas en chat, normalmente no significa que esté rota. Suele significar que el contexto actual no contiene esa carga útil del evento.
+Si una función de evento parece vacía durante una prueba en el chat, normalmente la función no está rota. La prueba simplemente no incluye los datos de ese evento.
 </Aside>
 
-## Errores comunes
+## Trampas comunes
 
-### Valor de caché vacío
+### Los valores de caché vencidos aparecen vacíos
 
-Si una variable `#` o `##` expiró, volverá vacía.
+Una variable `#` o `##` vence 24 horas después de su última escritura. Un valor vencido se lee como vacío. Usa `*` o `**` para valores que deban durar.
 
-### Posición de `&t`
+### `&t` debe ir al final
 
-`&t` debe ir al final. No puedes definir nuevos `&pN` después.
+`&t` toma el resto del texto. Después de él no puedes crear un placeholder numerado nuevo, como `&p3`. Si lo intentas, recibes un error.
 
-### El cuerpo del timer se ejecuta más tarde
+### `&p1` es una sola palabra
 
-`$(timer ...)` guarda el cuerpo para ejecutarlo después; el mensaje y las acciones anidadas no se evalúan cuando empieza el comando. Devuelve el control de inmediato y, al vencer el plazo, envía el mensaje renderizado y realiza las acciones. Si el timer lleva más de 10 minutos vencido, expira.
+`&p1` es solo la primera palabra. Para un nombre con espacios o una frase, usa `&t`.
 
-### Los comandos referenciados envían mensajes separados
+### El cuerpo de un timer se ejecuta después
 
-El comando externo envía primero su respuesta. Luego se ejecutan en orden los comandos llamados con `#(...)`, y cada uno envía su propia respuesta. El texto renderizado no se vuelve a interpretar como AST.
+`$(timer ...)` guarda su cuerpo. El mensaje y las acciones que contiene no se ejecutan mientras corre el comando. El timer devuelve el control de inmediato, y cuando llega la hora se publica el mensaje y se ejecutan las acciones. Si llega con más de 10 minutos de retraso, expira sin ejecutarse.
 
-### Abusar de bucles
+### Las referencias a comandos se envían por separado
 
-Si un bucle puede reemplazarse por una expresión directa o una referencia a otro comando, suele ser mejor la opción simple.
+La respuesta principal se publica primero. Luego cada comando `#(...)` se ejecuta en orden y publica su propia respuesta. Si la respuesta principal no se puede publicar, los comandos referenciados se omiten. La respuesta de un comando referenciado no se vuelve a leer como AST.
 
-### Acciones potentes en comandos públicos
+### Los bucles muchas veces no hacen falta
 
-Los comandos que usan moderación, roles, título, juego, encuestas o triggers no deberían estar disponibles para todo el mundo.
+Si un bucle se puede reemplazar por una sola expresión o una sola referencia a comando, usa la opción más simple.
 
-## Mentalidad práctica para depurar
+### Las acciones fuertes en comandos públicos
 
-Cuando un comando falla, hazte estas preguntas en orden:
+Los comandos que moderan, cambian el título o la categoría, inician encuestas o disparan triggers no deben estar abiertos a todos. Configura el acceso en el comando, no solo dentro de la plantilla.
 
-1. ¿Mis argumentos están bien?
+## Orden práctico de depuración
+
+Cuando un comando falla, revisa en este orden:
+
+1. ¿Los argumentos son los que espero?
 2. ¿Creé la variable antes de leerla?
-3. ¿Estoy asignando o incrementando?
-4. ¿Estoy en el contexto correcto para esa función?
-5. ¿Creé recursión o demasiada complejidad con bucles?
+3. ¿Estoy asignando un valor o sumándolo?
+4. ¿Esta función se puede usar aquí, en este plan y con este evento?
+5. ¿Creé una cadena de bucles o referencias demasiado profunda o larga?
 
-## Consejo para probar con seguridad
+## Consejo para probar sin riesgo
 
-Construye primero la salida, y después añade los side effects.
+Primero arma la respuesta y después agrega los efectos secundarios.
 
-Por ejemplo, prueba el texto y la lógica antes de añadir:
+Por ejemplo, prueba el texto y las condiciones antes de agregar:
 
 - `$(ban ...)`
 - `$(vip ...)`
@@ -167,4 +181,4 @@ Por ejemplo, prueba el texto y la lógica antes de añadir:
 - `$(start.poll ...)`
 - `$(trigger.send ...)`
 
-Así es mucho más fácil confirmar la lógica antes de que el comando empiece a cambiar el estado real del canal.
+Así confirmas la lógica antes de que el comando cambie algo en tu canal.

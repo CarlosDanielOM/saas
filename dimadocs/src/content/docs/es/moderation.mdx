@@ -1,55 +1,112 @@
 ---
-title: Moderación del chat
-description: Configura los filtros de chat de DomDimaBot, las exenciones, las acciones escalonadas y el historial.
+title: Moderación del Chat
+description: Configura la protección del chat contra spam y estafas, además de tus propias reglas para mayúsculas, enlaces, emotes y palabras bloqueadas, con sanciones escalonadas.
 ---
 
-El módulo de Moderación del chat de DomDimaBot compara los mensajes de Twitch con las reglas que configures. Si una regla coincide, puede avisar, borrar el mensaje, aplicar un timeout o banear a quien lo envió. El módulo está disponible en el plan **Free** y aparece en beta en el catálogo de módulos.
+import { Steps } from '@astrojs/starlight/components';
 
-## Abrir los ajustes de moderación
+**Moderación del Chat** evita que lleguen mensajes no deseados a tu chat. Tiene dos partes:
 
-En tu dashboard, abre **Módulos** y elige **Moderación del chat**. Necesitas acceso al dashboard para ver la página y el permiso `moderation:manage` para cambiar o guardar ajustes. Quienes no tengan ese permiso pueden ver la configuración en modo de solo lectura.
+- **Protección del chat** revisa los mensajes en busca de spam, estafas y anuncios. Está activada por defecto en todos los canales.
+- **Reglas** son filtros que configuras para mayúsculas, enlaces, spam de emotes y palabras bloqueadas.
 
-La página tiene un interruptor principal, **Filtrar el chat**. Las reglas no hacen nada mientras esté apagado. Guarda los cambios para activarlos.
+Está disponible en **Free, Premium y Pro**, y aparece como beta en el catálogo de módulos. Para ver la configuración necesitas el permiso `moderation:view`. Para cambiarla necesitas `moderation:manage`. Sin ese permiso puedes ver los ajustes, pero no modificarlos.
 
-Las cuentas nuevas reciben ajustes predeterminados cuando se activan por primera vez: Mayúsculas, Enlaces y Spam de emotes están encendidos; Palabras bloqueadas está presente, pero apagado y sin términos. Las cuentas existentes no reciben esas reglas automáticamente. Si la página no muestra reglas, añade las que quieras y guarda.
+## Configurarlo
 
-## Tipos de regla
+<Steps>
 
-Cada regla revisa un tipo de mensaje. Puedes añadir hasta 20 reglas por canal, activar o desactivar una regla y quitarla.
+1. Abre **Módulos → Moderación del Chat**.
+2. En **Protección**, elige **Qué detectar** y **Roles exentos**. La protección del chat ya está activada.
+3. En **Reglas**, activa **Filtro de reglas** y añade las reglas que quieras. Puedes añadir hasta 20.
+4. En cada regla, configura **Saltar esta regla para** y los tres pasos: **Primera vez**, **Segunda vez** y **Cada vez después**.
+5. Selecciona **Guardar Ajustes**. Los cambios se aplican al guardar.
 
-| Regla | Qué revisa | Configuración |
-| --- | --- | --- |
-| **Mayúsculas** | Mensajes con suficientes letras mayúsculas. | Elige un mínimo de letras mayúsculas o un porcentaje máximo de mayúsculas. La longitud mínima del mensaje evita que se activen reglas con mensajes cortos. Solo cuentan las letras; los fragmentos de emotes de Twitch se excluyen del recuento. |
-| **Enlaces** | URLs cuyo dominio no esté permitido. | Añade dominios como `twitch.tv` a la lista de permitidos. También se permiten subdominios, por lo que `twitch.tv` incluye `clips.twitch.tv`. |
-| **Spam de emotes** | Mensajes de Twitch con más fragmentos de emote que el máximo configurado. | Establece el máximo de emotes. |
-| **Palabras bloqueadas** | Una palabra o frase de la lista usada como término completo. | Añade términos separados por comas o Enter. La comparación ignora mayúsculas y acentos; un término no coincide dentro de una palabra más larga. |
+</Steps>
 
-El detector de enlaces es un filtro práctico para chat, no un validador completo de URLs. Si no detecta un enlace como URL, esta regla no actuará.
+La página tiene cuatro pestañas: **Protección**, **Reglas**, **Acciones recientes** y **Decisiones**.
 
-## Elegir acciones y exenciones
+## Protección del chat
 
-Cada regla tiene una acción para la primera, segunda y tercera infracción. La acción de la tercera se repite para las siguientes. Las acciones disponibles son:
+La protección del chat revisa el primer mensaje de cada persona en tu canal para las conductas que selecciones. Una coincidencia es un **ban**, que se aplica de inmediato.
 
-- **Solo contarlo** registra la infracción, pero no aplica una acción de moderación y permite que el mensaje continúe por el procesamiento normal.
-- **Aviso** envía una advertencia de Twitch.
-- **Borrar** elimina el mensaje coincidente.
-- **Timeout** aplica un timeout durante el tiempo que configures.
-- **Ban** aplica un ban permanente.
+| Ajuste | Predeterminado | Qué hace |
+|---|---|---|
+| **Spam / estafas** | Activado | Ofertas fraudulentas, robo de credenciales, compra de viewers o follows falsos. |
+| **Anuncios / ventas** | Activado | Ofertas para vender productos, servicios, viewers o follows. |
+| **Autopromoción** | Activado | Pedir a los espectadores que sigan o visiten la cuenta o redes propias del autor. |
+| **Palabrotas** | Desactivado | Palabrotas explícitas en el propio mensaje del autor. |
+| **Insultos** | Desactivado | Ataques directos y abusivos contra una persona o un grupo. |
 
-En las acciones que no sean «Solo contarlo», el motivo configurado se usa en la acción de Twitch cuando es compatible y en un aviso público en el chat. Los avisos públicos tienen un límite de frecuencia por usuario; la acción de moderación no.
+- **Revisar los mensajes posteriores** (Premium y Pro) revisa cada mensaje, no solo el primero. Cada revisión consume créditos de IA.
+- **Confianza para banear** es la puntuación necesaria para un ban. Por defecto es 85%. Premium y Pro pueden elegir entre 80% y 100%. Free siempre usa 85%.
+- Los casos dudosos se permiten y se registran. No cuentan para los pasos de las reglas.
+- **Roles exentos** se omiten. Los moderadores, editores y administradores del canal están exentos por defecto. También puedes eximir a VIPs, suscriptores y fundadores.
+- La persona propietaria del canal y la cuenta del bot siempre se omiten.
+- Si desmarcas todas las categorías en **Qué detectar**, la protección del chat se pausa. **Filtro de reglas** no desactiva la protección del chat.
+- La protección del chat funciona aparte de tus reglas. Las revisiones con IA están limitadas a 30 mensajes por minuto por canal. Los mensajes que pasen de ese límite no se revisan.
 
-Usa **Saltar esta regla para** para eximir un nivel de rol y todos los niveles superiores. La opción habitual es moderadores o más. La persona propietaria del canal y la cuenta del bot siempre se omiten en el filtro de mensajes.
+## Reglas
 
-Configura **Olvidar avisos después de** para elegir cuánto tiempo se recuerda una infracción. El rango admitido es de 1 minuto a 24 horas; el valor predeterminado es 1 hora. Cada regla cuenta las infracciones por separado para cada usuario. El temporizador empieza con la primera infracción; cuando vence, el siguiente mensaje coincidente comienza de nuevo en el primer paso.
+Cada regla revisa un tipo de mensaje.
+
+| Regla | Bloquea | Ajustes y predeterminados |
+|---|---|---|
+| **Mayúsculas** | Mensajes con muchas letras mayúsculas | **Cantidad de mayúsculas** (predeterminado 8) o **Porcentaje de mayúsculas** (predeterminado 70%). **Longitud mínima del mensaje** cuenta letras (predeterminado 10). Los nombres de emotes no cuentan. |
+| **Enlaces** | Enlaces a dominios que no están en tu lista | **Dominios permitidos** (hasta 50). Se incluyen los subdominios: `twitch.tv` también permite `clips.twitch.tv`. Una regla de enlaces nueva bloquea todos los enlaces hasta que añadas dominios. |
+| **Spam de emotes** | Mensajes con más emotes de Twitch que el límite | **Máximo de emotes** (predeterminado 10) |
+| **Palabras bloqueadas** | Palabras o frases completas que listas | Hasta 200 términos, separados por comas o Enter. No distingue mayúsculas ni acentos. No coincide dentro de palabras más largas. |
+
+El filtro de enlaces es práctico, no un validador completo de URL. Un enlace que no reconoce como URL no se bloquea.
+
+Los canales nuevos empiezan con **Mayúsculas**, **Enlaces** y **Spam de emotes** activados, y **Palabras bloqueadas** desactivado. Los canales existentes conservan sus reglas actuales hasta que guarden cambios.
+
+## Sanciones y exenciones
+
+Cada regla tiene tres pasos, y el tercero se repite en cada infracción posterior:
+
+- **Primera vez**, **Segunda vez** y **Cada vez después**.
+- Cada paso puede ser **Solo contarlo**, **Aviso**, **Borrar**, **Timeout** o **Ban**.
+- Los pasos predeterminados son un aviso, luego borrar, y después un timeout de 60 segundos.
+
+| Acción | Qué pasa |
+|---|---|
+| **Solo contarlo** | Registra la infracción y deja que el mensaje siga su curso normal. |
+| **Aviso** | Envía una advertencia de Twitch y un aviso público en el chat. |
+| **Borrar** | Elimina el mensaje y envía un aviso público en el chat. |
+| **Timeout** | Aplica un timeout durante el tiempo que elijas, de hasta 14 días. |
+| **Ban** | Aplica un ban permanente. |
+
+Los avisos públicos aparecen como máximo una vez por minuto para cada persona. La acción de moderación se aplica en cada coincidencia.
+
+**Olvidar avisos después de** indica cuánto tiempo cuenta una infracción para los pasos. Se configura en minutos, de 1 a 1.440 (24 horas). El valor predeterminado es 60 minutos. Cada regla cuenta las infracciones por separado para cada persona. El temporizador empieza con la primera infracción; cuando termina, la siguiente coincidencia vuelve a empezar en **Primera vez**.
+
+**Saltar esta regla para** indica quién queda exento de una regla. Elige un método para cada regla:
+
+- **Nivel de usuario**: por ejemplo, **Moderadores o más**, la opción habitual.
+- **Etiquetas**: exime o incluye espectadores según su rol, como VIPs o suscriptores.
+- **Cuentas**: siempre exentas, o siempre sujetas a la regla, para nombres de usuario concretos de Twitch.
+
+La persona propietaria del canal y la cuenta del bot siempre se omiten.
+
+## Opciones avanzadas (Premium y Pro)
+
+En Free estas opciones se guardan, pero no hacen nada.
+
+- **Variaciones de palabras** detecta trucos de escritura para una palabra bloqueada. Puedes detectar letras separadas por espacios, letras repetidas o escrituras más amplias.
+- **Patrones regex** amplían una palabra bloqueada con un patrón. Usa sintaxis RE2 sin barras, lookarounds ni referencias hacia atrás.
+- **Revisar el contexto antes de actuar** pide a la IA que compare una coincidencia con tu política escrita y con el chat cercano. Solo una infracción confirmada cuenta para los pasos. Si la revisión es incierta, si se agota el tiempo o si no hay créditos de IA, el mensaje se permite y se registra. Las revisiones consumen créditos de IA.
 
 ## Permitir una omisión temporal
 
-Los comandos personalizados de AST pueden llamar a `$(permit)` para omitir temporalmente los filtros de moderación. Sin argumentos, permite a todos en el canal durante 60 segundos. Puedes permitir a una persona con `$(permit username)` o elegir una duración con `$(permit username seconds)`; las duraciones van de 1 a 600 segundos. Un argumento numérico permite a todos durante ese tiempo. Restringe cualquier comando que use esta función a personas de confianza. Consulta [Funciones de moderación de AST](/es/commands/advanced/functions/).
+Los comandos personalizados de AST pueden llamar a `$(permit)` para omitir los filtros de moderación, incluida la protección del chat, durante un tiempo. Sin argumentos, todos en el canal quedan permitidos durante 60 segundos. Puedes permitir a una persona con `$(permit nombre_de_usuario)` o elegir un tiempo con `$(permit nombre_de_usuario segundos)`. Los tiempos van de 1 a 600 segundos. Un número solo permite a todos durante esos segundos. Restringe cualquier comando que use esta función a personas de confianza. Consulta [Funciones de moderación de AST](/es/commands/advanced/functions/).
 
-## Historial de acciones y errores
+## Acciones recientes y decisiones
 
-La tabla **Acciones recientes** muestra las acciones de moderación de los últimos 30 días, incluida la regla, la acción, el número de infracción y si la acción tuvo éxito. La API devuelve hasta 100 registros por página; el dashboard muestra 10 por página.
+**Acciones recientes** muestra lo que hizo el bot en los últimos 30 días: la hora, el usuario, la regla, la acción, el número de infracción y el resultado (**Aplicada** o **Fallida**). Muestra 10 filas por página.
 
-La coincidencia de una regla se detecta antes de que el bot procese comandos o envíe una respuesta de IA. Para Aviso, Borrar, Timeout o Ban, el flujo del mensaje se detiene tras la coincidencia, aunque la acción de Twitch se inicia de forma asíncrona. Si Twitch rechaza una acción o el bot no tiene la autorización de Twitch necesaria, el intento aparece como fallido en el historial y el bot registra el error. Comprueba que el bot tenga los permisos de moderación necesarios en el canal y revisa el fallo registrado antes de confiar en una regla.
+**Decisiones** muestra las coincidencias y los veredictos de la IA de los últimos 30 días. El bot conserva estos registros durante 180 días para mejorar la moderación.
 
-Si ocurre un error interno al cargar los ajustes de moderación o acceder a la caché, se registra el error y el mensaje continúa por el procesamiento normal del chat. Así, un problema de infraestructura de moderación no detiene las demás funciones del chat.
+Un resultado **Fallida** significa que Twitch rechazó la acción o que el bot no tiene los permisos de moderación necesarios en tu canal. Comprueba que el bot pueda moderar tu canal y revisa el fallo antes de confiar en una regla.
+
+Si el sistema de moderación tiene un error interno, el bot lo registra y el mensaje sigue su curso normal en el chat. Un problema de moderación no detiene las demás funciones del chat.

@@ -1,28 +1,83 @@
 ---
 title: Channel Rewards
-description: Create and manage Twitch Channel Points rewards and connect them to bot actions.
+description: Create Twitch Channel Points rewards from DomDimaBot and set the chat message, sound, or text-to-speech action that runs when a viewer redeems them.
 sidebar:
   order: 4
 ---
 
-The **Redemptions** dashboard manages custom Channel Points rewards created through DomDimaBot and displays your Twitch rewards. A reward is a Twitch point redemption; DomDimaBot can process its redemption and run the message configured for that reward.
+A channel reward is a Twitch Channel Points reward that viewers spend points on. DomDimaBot creates the reward for you, listens for each redemption, and runs the message you wrote for it. Use it to post a chat message, play a [trigger](/triggers/) such as a sound or alert, or read the viewer's text aloud with [TTS](/tts/).
 
-## Create a DomDimaBot reward
+**Who can do it:** the channel owner, or an admin with `rewards:manage`. Admins with `rewards:view` can see the list but cannot change it.
 
-1. Open **Redemptions** in your streamer dashboard and choose **Create reward**.
-2. Set a title and point cost. You can also set a prompt, a global cooldown in seconds, a message, duration, background color, whether viewer input is required, and whether Twitch should skip its redemption request queue.
-3. Save the reward. DomDimaBot creates the custom reward in Twitch and registers to receive its redemption events.
+**Plans:** creating and managing rewards works on every plan. Raising the price after each redemption needs a Premium or Pro plan.
 
-You can edit, enable or disable, and delete custom rewards from the dashboard. The **Twitch** section lists rewards fetched from Twitch; use its refresh button to reload that list.
+**Twitch eligibility:** Channel Points are a Twitch feature, and Twitch sets who can use them. DomDimaBot does not check eligibility itself. If Twitch refuses to create the reward, creation fails.
 
-## Configure what happens on redemption
+## Create a reward
 
-The **Message** field is processed by DomDimaBot's special-command parser when the reward is redeemed. For example, a message containing `$(trigger.send airhorn)` can play a configured trigger. The parser receives the viewer name, login, reward title, and any viewer input as context for supported commands. A trigger action also requires its OBS browser source to be connected; see [Triggers & Media](/triggers/).
+1. Go to **Modules → Redemptions** and click **New reward**.
+2. Under **The reward viewers see**, set the name, price, colour, and description.
+3. Under **When someone redeems it**, write the **Chat message** and set the other options.
+4. Optional: under **Price that goes up**, set a price increase (Premium and Pro).
+5. Click **Create reward**. DomDimaBot creates the reward on Twitch and starts listening for redemptions.
 
-The dashboard does not create separate built-in reward types for TTS, sounds, shoutouts, or other actions. Configure the reward message with supported bot commands for the action you want. If chat is enabled, a nonempty parsed message is also sent to chat.
+### Reward fields
+
+| Field | Limit | What it does |
+|---|---|---|
+| **Name** | 45 characters | The title viewers see in the Channel Points menu. |
+| **Price (channel points)** | 1 or more | What viewers pay. |
+| **Colour** | Hex colour | The reward's background colour on Twitch. |
+| **Description on Twitch** | 200 characters | Text under the reward on Twitch. |
+| **Chat message** | 500 characters | What happens when someone redeems it. See [What happens on redeem](#what-happens-on-redeem). Leave empty to do nothing. |
+| **Viewer must type something** | On or off | Twitch asks the viewer for text. Put `&t` in the message to use it. |
+| **Cooldown (seconds)** | 0 or more | Time before anyone can redeem the reward again. `0` means no cooldown. |
+| **Skip the requests queue** | On or off | Marks redemptions as done right away. Leave it off if you review redemptions in Twitch's queue. |
+
+## What happens on redeem
+
+When a viewer redeems a reward, DomDimaBot:
+
+1. Reads your **Chat message** and fills in the viewer's name, the reward name, and any text they typed.
+2. Posts the result in chat, if chat is enabled and the result is not empty.
+3. Runs any commands in the message, such as `$(trigger.send ...)` or `$(tts ...)`. These run even when chat is off.
+
+Some useful messages:
+
+| Chat message | What happens |
+|---|---|
+| `$(user) just made me drink water 💧` | Posts that line in chat, using the viewer's name. |
+| `$(trigger.send airhorn)` | Plays the trigger named `airhorn`. The trigger's OBS browser source must be connected. |
+| `$(tts &t)` with **Viewer must type something** on | Reads what the viewer typed, using your default TTS voice. |
+| `$(user) says: &t` | Posts the viewer's text in chat. |
+
+Fill-ins:
+
+- `$(user)`: the viewer who redeemed.
+- `&t`: the text the viewer typed. It is empty unless **Viewer must type something** is on.
+- `$(tts ...)`: reads text aloud. See [Text to Speech](/tts/).
+- `$(trigger.send name)`: plays a trigger by its name.
+
+A trigger can also create its own channel point reward. That reward's message is `$(trigger.send <trigger name>)`. On this page, such a reward shows **Plays** followed by the trigger's name. You can create them from the [Triggers](/triggers/) page.
 
 ## Cooldowns and reward settings
 
-The cooldown field maps to Twitch's **global cooldown** for that reward. It is not a shared cooldown across all rewards or a per-viewer cooldown. Cost, prompt, enable state, viewer-input requirement, and request-queue behavior are reward settings sent to Twitch. DomDimaBot's reward message is local processing data used when the redemption event arrives.
+The **Cooldown** field sets Twitch's **global cooldown** for that reward. It is shared by all viewers. Once someone redeems the reward, nobody can redeem it again until the cooldown ends. It is not a per-viewer cooldown, and it does not affect your other rewards.
 
-DomDimaBot also shows the reward's duration and background color. Paid plans can edit the optional original-cost and cost-change settings; these can raise the reward's cost after a redemption. The return-to-original-cost option controls whether the changing cost is restored.
+These settings are sent to Twitch: price, name, description, colour, the typed-text requirement, the queue setting, and whether the reward is visible. The chat message is stored by DomDimaBot and used when a redemption arrives.
+
+## Turn off, edit, or delete
+
+- To hide a reward from viewers without deleting it, switch off **Visible to viewers** on the [Redemptions](/redemptions/) page.
+- To change a reward, click **Edit**, change the settings, and click **Save changes**.
+- To delete a reward, click the trash icon. The reward disappears from Twitch right away. If a trigger was linked to it, the trigger stays, but viewers can no longer play it with points.
+
+## Price increases (Premium and Pro)
+
+Price increases make a reward more expensive after each redemption, which slows down spam on popular rewards.
+
+- **Raise the price by (points):** the amount added after each redemption. `0` keeps the price fixed. The form shows the first few prices, such as 500 → 550 → 600.
+- **Price it resets to:** the original price. Shown when you edit a reward.
+- **Reset the price when my stream ends:** when your stream ends, the price goes back to the original. This only applies on paid plans.
+
+On the Free plan these fields are locked.

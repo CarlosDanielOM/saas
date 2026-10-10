@@ -1,43 +1,62 @@
 ---
 title: Media Library
-description: Upload and manage trigger media shared with your channel.
+description: Upload sounds, videos, and images for your triggers and DimaFX, choose private or public visibility, and check your plan's storage limits.
 sidebar:
   order: 6
 ---
 
-The **Media Library** stores images, GIFs, audio, and video for your channel. Open it from **Dashboard → Modules → Media Library**. Your library shows each item's name, media type, visibility, and storage charge. Use **Refresh** to reload the list.
+The **Media Library** holds the sounds, videos, images, and GIFs that your [Triggers](/triggers/) and [DimaFX](/dimafx/) use. Open it from **Modules → Media Library**. Every item shows its name, type, visibility, and how much storage it uses. Select **Refresh** to reload the list. Uploading needs the **Upload media** permission: be the channel owner or an admin with that permission.
 
-This library is for trigger media. The separate **Asset Library** in **Dashboard → Settings** stores private images and videos for visual designs, including Overlay Studio. Its files, quota, and management are separate from this media library; an Asset Library image or video cannot be selected as a trigger.
+This library is for trigger and DimaFX media. Design images and videos for [Overlay Studio](/overlay-studio/) live in the separate **Asset Library** under **Settings** (see [Design assets](#design-assets)).
 
 ## Upload media
 
-1. Choose **Upload**.
-2. Select a file or drag it into the file area.
-3. Enter a name using letters, numbers, and underscores. It must start with a letter, cannot end with an underscore, and can be up to 60 characters.
-4. Choose visibility when the option is available, then upload.
+1. Select **Upload**.
+2. Choose a file, or drag it into the box.
+3. Enter a name. Use letters, numbers, and underscores. Spaces become underscores. The name must start with a letter and can be up to 60 characters.
+4. Pick **Who can use it** (Premium and Pro only), then select **Upload**.
 
-The server checks the file’s exact MIME type. Its allowlist is: `video/mp4`, `video/mov`, `video/avi`, `video/flv`, `video/wmv`, `video/webm`, `video/mkv`; `image/gif`, `image/jpg`, `image/jpeg`, `image/png`, `image/bmp`, `image/tiff`, `image/svg`, `image/webp`; and `audio/mp3`, `audio/flac`, `audio/wav`, `audio/ogg`, `audio/aac`, `audio/wma`, `audio/m4a`. The picker may show files with other MIME types — for example, `image/svg+xml`, `video/quicktime`, or `audio/mpeg` — that this server allowlist does not accept.
+The server checks each file's MIME type against this list:
 
-| Plan | Maximum file size | Private storage quota |
+- **Video:** `video/mp4`, `video/mov`, `video/avi`, `video/flv`, `video/wmv`, `video/webm`, `video/mkv`
+- **Image:** `image/gif`, `image/jpg`, `image/jpeg`, `image/png`, `image/bmp`, `image/tiff`, `image/svg`, `image/webp`
+- **Audio:** `audio/mp3`, `audio/flac`, `audio/wav`, `audio/ogg`, `audio/aac`, `audio/wma`, `audio/m4a`
+
+Browsers often label MP3 and MOV files with other MIME types (`audio/mpeg` and `video/quicktime`), and those are not on the list. If an upload says the file type is not allowed, convert it to a listed format, such as WAV or M4A for audio, or MP4 for video.
+
+## Limits by plan
+
+| Plan | Largest file | Private storage |
 |---|---:|---:|
-| Free | 5 MB | 0 MB (use public media) |
+| Free | 5 MB | None. Uploads are public. |
 | Premium | 25 MB | 250 MB |
 | Pro | 100 MB | 1 GB |
 
-Private uploads count their file size toward the channel's storage quota. Public uploads do not. Free channels can upload public media only. Premium and Pro channels can choose private or public visibility; new uploads default to private on those plans and public on Free.
+Private files count toward your storage. Public files do not.
 
 ## Private and public media
 
-**Private** media belongs to your channel library and uses its private storage quota. **Public** media is shared through the public library and does not use your private quota. In the Triggers editor, open the public library to search by name, filter by media type, preview an item, and add it to your library. Adding a public item does not charge storage quota.
+- **Private** files belong to your channel. They use your private storage.
+- **Public** files appear in the shared public library. Other streamers can use them, and they do not use your storage. Free uploads are always public.
 
-You can promote a private item to public from its library card. This releases its quota charge, but the change is one way: the asset becomes public and cannot be made private again. Confirm the visibility change carefully.
+To add a public file, select **Browse public library**, find the item, and add it. Adding a public file costs no storage.
 
-## Remove media and use it in triggers
+**Make public** moves a private file to the public library and frees its storage. **This cannot be undone.** A public file cannot become private again, and only DomDimaBot support can remove it.
 
-Choose **Delete** on a library item to remove it. An item that is still referenced by a trigger cannot be removed; first edit or delete the trigger that uses it. Removing a public item from your channel library does not delete the shared public asset. When the last library copy of a private asset is removed, its stored asset is deleted.
+## Rename and delete
 
-To attach library media to an automated action, create or edit a trigger in **Modules → Triggers**. See [Triggers & Media](/triggers/) for trigger setup and playback requirements. The OBS browser source must be connected for trigger media to play in your stream.
+- **Rename** changes the name in your library only. Trigger and DimaFX names stay the same.
+- **Delete** removes an item from your library. You cannot delete an item that a trigger or DimaFX item still uses. The page lists where each item is used. Remove it from those first.
+- Removing a public file from your library does not delete the shared public file.
+- When the last library copy of a private file is removed, its stored file is deleted.
 
 ## Design assets
 
-Use **Dashboard → Settings → Asset Library → Browse Asset Library** for reusable design images and video. It accepts PNG, JPG/JPEG, GIF, WebP, MP4, and WebM files up to 50 MB each. The design-storage allowances are 100 MB for Free, 500 MB for Premium, and 5 GB for Pro. These allowances do not change the trigger-media limits above. Assets can be selected in Overlay Studio layers and alert designs; see [Overlay Studio Alpha](/overlay-studio/) for setup. To delete an asset used by a saved design or published overlay, remove the reference from the design and republish the affected overlay first.
+Use **Settings → Asset Library → Browse Asset Library** to upload files for Overlay Studio designs. The Asset Library accepts:
+
+- **Images and videos:** PNG, JPEG, GIF, WebP, MP4, and WebM.
+- **Alert sounds:** MP3, WAV, and Ogg audio up to 10 minutes long.
+
+Each file can be up to 50 MB. Design storage is 100 MB on Free, 500 MB on Premium, and 5 GB on Pro. These limits are separate from trigger media. Design assets cannot be used as triggers.
+
+To delete a design asset, first remove it from any saved design, and republish any overlay that uses it. See [Overlay Studio](/overlay-studio/) for setup.

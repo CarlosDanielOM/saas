@@ -1,55 +1,95 @@
 ---
 title: Overlay Studio Alpha
-description: Design reusable stream overlays, publish OBS browser sources, and connect alerts, clips, triggers, and TTS.
+description: Design stream overlays in your browser, add them to OBS as a Browser Source, and connect alerts, clips, triggers, TTS, polls, and predictions.
 ---
 
-Overlay Studio Alpha is available starting with **Free**. It lets a channel owner compose browser-source layouts from live event and media layers. During Alpha, only the channel owner can edit the channel's overlays. The editor is at **Modules → Overlay Studio** in the channel dashboard.
+Overlay Studio lets you design one or more layouts for OBS. Each layout can show alerts, text-to-speech, clips, trigger media, Twitch polls and predictions, text, images, and videos. Overlay Studio is in **Alpha** and is available on every plan, starting with Free. Only the channel owner can edit overlays. Sign in as the Twitch account that owns the channel.
 
-## Create an overlay
+## Set up an overlay
 
-1. Sign in as the Twitch account that owns the channel and open **Modules → Overlay Studio**.
-2. Choose an overlay or select **New overlay**. Set its name and canvas dimensions (100–7680 pixels per side).
-3. Add sources from the library. You can add TTS, trigger, and clip playback areas; event alerts; text; images; videos; and animated accents.
-4. Drag layers on the canvas or adjust their position, size, visibility, lock, and stack order in the editor. Save the draft as you work.
+1. Open **Modules → Overlay studio**.
+2. Select **New overlay** or pick an existing one. Enter a name, then set **Canvas width** and **Canvas height**. Each can be 100 to 7,680 pixels.
+3. Add layers from the palette. Drag them on the canvas, or change their position, size, visibility, lock, and order in the editor.
+4. Select **Save draft** while you work.
+5. Select **Publish live** when the overlay is ready. Use **Save & publish live** for alert designs.
+6. Open **Browser source & publishing**, select **Copy URL**, and add the URL to OBS as a **Browser Source**. Set the width and height to the canvas size shown in the editor. Keep the source active.
 
-A channel can have up to 25 overlays, 50 reusable alert designs, and 60 layers on a canvas. Resizing a canvas does not move or scale existing layer coordinates. The layer order controls which content appears in front.
+Each channel can have up to 25 overlays, 50 alert designs, and 60 layers per canvas. Changing the canvas size keeps every layer where it is. If a layer now sits past the edge, the editor shows a warning, and you can select it under **Layers** to move it.
 
-## Build reusable alert designs
+## Layers you can add
 
-An alert design has a separate layout for follows, Bits, subscriptions, and raids. Each alert layer chooses which of those events it receives, and an overlay can contain multiple alert layers. A saved design can be reused by alert layers across overlays. Editing a shared design updates the drafts that refer to it; publish each overlay to update its live version.
+| Layer | What it shows |
+|---|---|
+| Poll | Twitch poll and live vote totals |
+| Prediction | Twitch prediction, points, and results |
+| Text to speech | Spoken messages and alerts |
+| Trigger alerts | Trigger media. You can limit a trigger widget to chosen triggers |
+| Clips | Viewer clips |
+| Alerts | A saved alert design, placed anywhere |
+| Image, Video | A permanent image or looping video |
+| Shape | A rectangle or ellipse |
 
-Alert text is rendered by the server's AST renderer. Useful values include `$(user)`, `$(cheer.amount)`, `$(cheer.message)`, `$(sub.tier)`, `$(sub.months)`, `$(gifted.user)`, `$(raid.channel)`, and `$(raid.viewers)`. For Bits, use `$(cheer.amount)`; `$(amount)` is not an alias. Alert templates support display and text-formatting expressions, not commands or state-changing actions.
+Polls and predictions show real Twitch data only after you publish the overlay and activate Twitch events from the editor. Until then, the editor shows sample data.
 
-## Use images and videos
+Inside an alert design you can also add **Text**, **Image**, **Video**, **Animation**, and **Shape** layers.
 
-Open **Settings → Asset Library** to upload and manage private design files, then select **Browse** on an image or video layer in Overlay Studio. The picker can also use an HTTPS media URL. The library accepts PNG, JPEG, GIF, WebP, MP4, and WebM; each upload is limited to 50 MB. SVG and HTML files are not accepted. Library storage allowances depend on plan: 100 MB for Free, 500 MB for Premium, and 5 GB for Pro.
+## Build alert designs
 
-Published overlays can read only the assets referenced by their published layout. A private library protects storage and access links, but media displayed on stream is visible to viewers. Videos used as global media layers loop muted.
+An alert design has its own layout for **Follows**, **Bits**, **Subscriptions**, and **Raids**. An alert layer picks which of those events it shows. An overlay can have several alert layers. You can reuse a saved design in other overlays.
 
-## Test and publish to OBS
+- Editing a shared design changes every draft that uses it. Publish each overlay to update its live version.
+- Use **Save as a new design** to copy a design instead of changing it.
 
-The editor preview helps check placement and sample event layouts. Clip and trigger tests use their live module paths; they need an available clip or trigger and an authenticated channel. The TTS test in the editor is a sample animation. Use the live alert test to send a sample alert to connected published sources.
+Alert text uses these values:
 
-1. Save the draft, then select **Publish** for the overlay.
-2. Open **Browser Source** settings in the editor and copy the overlay URL.
-3. Add the URL to OBS as a **Browser Source** and keep it open in the scene.
+| Value | Shows |
+|---|---|
+| `$(user)` | Viewer name |
+| `$(cheer.amount)`, `$(cheer.message)` | Bits amount and message |
+| `$(sub.tier)`, `$(sub.months)`, `$(gifted.user)` | Subscription tier, months, and gift recipient |
+| `$(raid.channel)`, `$(raid.viewers)` | Raiding channel and viewer count |
 
-Publishing snapshots the overlay and its referenced alert designs. Later draft changes do not change that snapshot until you publish again. An open source fetches the new published version while keeping its pending queue. You can publish while an event is playing; the current event keeps the layout it started with.
+For Bits, use `$(cheer.amount)`. `$(amount)` does not work. Alert text can format values (for example `upper` or `title`). It cannot run commands or change state.
 
-The URL is a private, read-only bearer link. Treat it like a password and share it only with people who should see the overlay. **Regenerate URL** revokes the previous link. The editor disables analytics on private overlay pages, and the source does not send a referrer.
+### Alert sounds
 
-## Event queues and playback
+Choose **Choose sound** on an alert event to add a sound from the Asset Library. Sounds can be MP3, WAV, or Ogg, up to 10 minutes and 50 MB. You can set volume, delay, and fade in and out. The sound plays once and stops when the alert or the file ends. A delay longer than the alert means no sound plays. Set the volume to 0% to mute it.
 
-Choose which event categories wait together in an overlay's shared FIFO queue. Other categories can play independently. Each connected browser source subscribes and receives events separately. Manage duplicate OBS sources yourself; adding an Overlay Studio source does not disable existing TTS, clip, or trigger browser sources, so duplicate playback is possible if both paths are active.
+## Images and videos
 
-The source listens for new follow, Bits, subscription/gift, and raid events while connected; it does not replay alerts from when it was offline. TTS and generated clips are copied to connected Studio sources before the existing producer advances. Pending playback is session state: refreshing an OBS source or restarting the API does not replay its pending media. Saved designs and published layouts persist.
+Select **Browse Asset Library** on an image or video layer to pick a design asset. You can also enter an HTTPS **Media URL**. Videos on global layers loop without sound. See [Media Library](/media-library/#design-assets) for file types and storage limits.
 
-## Limits and troubleshooting
+The overlay link is private, but anything shown on stream is visible to viewers.
 
-- **Editor access is blocked:** sign in as the channel owner; only the signed-in owner can edit overlays. Published overlays continue working across plan changes as long as the linked Twitch account exists.
-- **An edit is missing from OBS:** save the draft, publish the overlay, then refresh or reopen the browser source.
-- **The source stopped after a URL change:** use the current URL. Regenerating a link revokes the old one.
-- **An alert or media layer is silent:** check that the source is connected, the layer is visible, the event is selected for that alert layer, and its category is not waiting behind another queued event.
-- **An asset cannot be selected or deleted:** check the file format and size, available plan storage, and whether the asset is still referenced by an overlay or design.
+## Publish and OBS
 
-Overlay Studio Alpha does not yet provide per-alert trigger ID allowlists, a general trigger GIF/image mode, or a queue-clear AST function.
+- **Save draft** saves your changes but does not change OBS.
+- **Publish live** updates connected sources. Each source gets the new version and keeps its pending playback.
+- Publishing saves a snapshot of the overlay and the alert designs it uses. Later draft changes do not appear until you publish again.
+- An event that is already playing keeps the layout it started with.
+
+The overlay URL is a private, read-only link. Treat it like a password. **Replace overlay URL** creates a new link, and the old link stops working right away. Update your OBS sources afterwards. The overlay page sends no referrer.
+
+### Test in OBS
+
+Use the preview under **Try it** to check layout and sample alerts without sending anything to OBS. For a real test, publish first. Then choose an event under **Test in OBS** and select **Test this overlay in OBS**. You confirm before anything plays on stream. The test needs at least one connected, published source.
+
+## Queues and playback
+
+- **Wait for each other** is a setting for each event type. Selected events share one queue and play one at a time. Other events play right away.
+- A connected source gets new events while it stays connected.
+- A refresh or a brief disconnect recovers pending playback within about 2 minutes. If a source stays offline longer than that, its pending playback is dropped, and events from that time are not played when it returns.
+- Each source keeps up to 200 pending events for 30 minutes. A channel keeps up to 512 MB of generated media. Older events are removed first.
+- Adding an Overlay Studio source does **not** turn off older TTS, clip, or trigger browser sources. If both run, viewers will hear events twice. Keep only one path active.
+
+## Troubleshooting
+
+- **You cannot open the editor:** Sign in as the channel owner. Only the owner can edit overlays. Published overlays keep working after plan changes as long as the linked Twitch account exists.
+- **A change is missing in OBS:** Select **Save draft**, then **Publish live**, then refresh the browser source.
+- **OBS stopped after you replaced the URL:** Use the new URL. The old link no longer works.
+- **An alert or media layer is silent:** Check that the source is connected, the layer is visible, the event is selected for that alert, and the event is not waiting behind another queued event.
+- **An asset cannot be selected or deleted:** Check the file type, the file size, your plan's storage, and whether a saved design or published overlay still uses it.
+
+## Not yet available
+
+Overlay Studio Alpha does not have a general trigger image or GIF mode, or a way to clear the queue from an alert text value. Alert layers choose events, not triggers. Only trigger widgets can be limited to chosen triggers.

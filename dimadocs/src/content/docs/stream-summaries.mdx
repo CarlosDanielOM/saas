@@ -1,36 +1,76 @@
 ---
 title: Stream Summaries
-description: Review stream metrics, AI recaps, highlights, and memory actions recorded after broadcasts.
+description: Read each stream's metrics, AI recap, and what the bot learned from it.
 sidebar:
   order: 8
 ---
 
-Stream Summaries lists recorded broadcast sessions with their metrics, an AI-generated recap and highlights when available, and proposed or applied memory actions. It is available in the dashboard under **Modules → Stream Summaries**. The module is listed as stable and has no minimum plan tier. AI generation uses the channel's AI credit allowance; the exact cost depends on provider usage and is not shown as a fixed per-summary price.
+import { Steps } from '@astrojs/starlight/components';
 
-## Enable post-stream summaries
+After a stream ends, DomDimaBot can write a short recap of it and save what it learned as memories. **Modules → Stream Summaries** lists your past streams with their numbers, the recap, and the memory changes made from each one. It is available on every plan.
 
-1. Connect your Twitch channel and open **Modules → AI Personality**.
-2. Turn on **Stream summaries**.
-3. Under **Learning config**, turn on **Create post-stream summaries** and save the settings.
-4. Let the bot observe a broadcast, then open **Modules → Stream Summaries** to review results.
+Viewing the list needs the `summaries:view` permission. Approving or changing the memories it proposes needs `memories:manage`.
 
-The separate **AI chat responses** switch controls chat replies; it does not control stream summaries. The learning pipeline's general **Enable learning pipeline** switch controls weekly and monthly maintenance jobs, but post-stream summaries use the two switches above.
+## Turn on summaries
 
-By default, a stream-offline summary requires a session of at least 20 minutes and at least 30 sampled chat messages. You can change both thresholds in Learning config. A session below either threshold is recorded as **No-op** and does not produce a recap or memory actions. The service needs the stream session, viewer snapshots, and retained chat context to build a useful result.
+<Steps>
 
-## Read a summary
+1. Open **Modules → AI Personality**.
+2. Under **On or off**, turn on **Stream summaries**.
+3. Under **Automatic upkeep**, turn on **Learn after each stream**. Both switches must be on.
+4. Keep **Learn from chat** on if you want the bot to save memories from each recap. Without it, the recap is still written, but no memories are saved.
+5. Select **Save changes**.
+6. After your next stream ends, open **Modules → Stream Summaries**. The first recap usually appears a few minutes after the stream ends.
 
-Select a session in the list to see its duration, average and peak viewers, sampled chat count, follows, subscriptions, Bits, and donations. The **Recap** tab shows the generated headline, recap, and highlights. The **Memories** tab shows proposed actions and, where available, their evidence, confidence, risk, and whether they were applied or skipped.
+</Steps>
 
-Memory changes follow the confirmation and auto-apply settings in **AI Personality → Learning config**. Review those settings and the memory policy before enabling automatic changes. To review or manage retained memories directly, open the dashboard's **Memories** module.
+The **AI chat on** switch controls chat replies only. It does not turn summaries on or off.
 
-## Status and limitations
+## When a recap is written
 
-- **Pending** means processing has not completed.
-- **Applied** means at least one memory action was applied; it does not guarantee every proposal was applied.
-- **No-op** means no action was applied, for example because the session did not meet its thresholds or the model proposed no applicable change.
-- **Failed** means the processing run did not complete successfully.
+A recap is written only for a stream that is long and busy enough. By default, a stream needs at least **20 minutes** and **30 chat messages**. A stream that misses either minimum shows **Too short** and gets no recap and no memory changes.
 
-The recap and memory suggestions are model output based on sampled chat and available session data. They can omit events, misread context, or contain errors; treat them as aids for review rather than a complete or authoritative transcript. Processing can also be delayed or unavailable when required data or an AI provider is unavailable. A stream-offline summary email is sent only when generation succeeds and the account has an active email destination.
+You can change both minimums under **Fine-tune the numbers** on [AI Personality](/ai-personality/).
 
-For plan credit allowances and other AI usage, see [Plans](/plans/). For memory, persona, and learning controls, see [AI Personality](/ai-personality/).
+Weekly and monthly cleanup runs also appear in the list when those switches are on, labeled as **Weekly memory cleanup** or **Monthly memory cleanup**.
+
+## Read a stream
+
+Select a stream in the list. The details show:
+
+- **Length**, **Avg viewers**, and **Peak**.
+- **Follows**, **Subs**, **Bits**, and **Tips**.
+- **What happened**: the headline, recap, and highlights.
+- **What the bot learned**: each memory change, with the **Why** and the chat evidence (**From chat**) behind it.
+
+Each memory change shows a result:
+
+| Result | Meaning |
+|---|---|
+| **Saved** | The memory was created, updated, archived, or removed. |
+| **Couldn't save** | The change failed. |
+| **Not saved: learning is off** | **Learn from chat** is off. |
+| **Not saved: the bot was not sure enough** | Confidence was below the threshold for that action. |
+| **Not saved: auto-save is off for this** | The matching automatic switch is off. |
+| **Not saved: limit per stream reached** | The stream hit the maximum number of changes. |
+| **Kept: still in use** | A deletion was skipped because the memory was used or updated too recently. |
+
+## Stream status
+
+| Label | Meaning |
+|---|---|
+| **Still writing…** | The recap is not finished. Check back in a few minutes. |
+| **N memories saved** | At least one memory change was saved. Not every proposal has to be saved. |
+| **Nothing new to remember** | The bot finished and found nothing worth saving. |
+| **Too short** | The stream missed the minimum length or chat count. |
+| **No changes needed** | A cleanup run found nothing to change. |
+| **Couldn't finish** | Processing failed. The next stream is summarized as usual. |
+
+## Limits
+
+- The recap and memory suggestions come from an AI model, based on sampled chat and the stream's data. They can miss events, misread context, or contain errors. Use them to help you review, not as a full transcript.
+- Processing can be delayed, or fail, when the data or the AI provider is unavailable.
+- If your Twitch account is active and has an email address on file, the bot emails the recap after a successful stream summary.
+- Generating summaries counts toward your channel's AI usage. See [Plans](/plans/) for allowances.
+
+For plan allowances, see [Plans](/plans/). For memory review and the learning controls, see [Memories](/memories/) and [AI Personality](/ai-personality/).

@@ -1,72 +1,98 @@
 ---
 title: Advanced Custom Commands (AST)
-description: Friendly starting point for DomDimaBot's AST system, with links to syntax, functions, execution, and recipe guides.
+description: "When a custom command needs AST (counters, per-viewer memory, if/else, loops, and function calls), with links to syntax, functions, execution, and recipe guides."
 sidebar:
   order: 3
 ---
 
 import { Aside } from '@astrojs/starlight/components';
 
-DomDimaBot's **AST parser** is the advanced layer behind custom commands. It lets you build commands that can store values, run logic, call functions, reuse other commands, and react differently based on context.
+AST is the advanced layer behind custom commands. It lets one command remember values, make decisions, call functions, and run other commands. Use it when a fixed reply is not enough.
 
 <Aside type="caution">
-This section is for advanced setups. If you only need simple text commands, start with [Commands Overview](/commands/overview).
+This section is for advanced setups. If a fixed reply is enough, start with [Commands Overview](/commands/overview/).
 </Aside>
+
+## Do you need AST?
+
+A command message is plain text by default. Once it uses an AST prefix (`$(`, `%(`, `*(`, `^(`, `%del(`, or `#(`), that part runs as AST.
+
+| Plain text is enough when... | Use AST when... |
+|------------------------------|-----------------|
+| The reply never changes | The reply has a number that changes, like a counter |
+| You only need a link or a fixed sentence | You need to remember something between uses |
+| | You need if/else logic, a random pick, or a loop |
+| | You want the command to call a function or another command |
+
+**Plain text** (no AST):
+
+```bash
+Join our Discord: example.com/discord
+```
+
+**AST** (a counter that changes each time):
+
+```bash
+*( ^(#wins) ? %(#wins *(%(#wins) + 1)) : %(#wins 1) ) $(user) has %(#wins) wins!
+```
+
+What it does:
+
+1. Checks whether `#wins` exists.
+2. If it exists, adds 1 to it. If not, creates it with `1`.
+3. Prints the updated total, such as `Carlos has 3 wins!`.
+
+<Aside type="note">
+`#wins` is a cache variable. It expires 24 hours after its last change. For a count that must last, use a database variable (`*wins`), which needs Premium or Pro.
+</Aside>
+
+## Important: variables are not built in
+
+DomDimaBot does **not** create AST variables for you.
+
+- You create a variable by writing it: `%(name value)`.
+- Context data comes from **functions** like `$(user)` and `$(twitch.game)`, or from **arguments** like `&p1`.
+
+```bash
+%(#wins *(%(#wins) + 1)) $(user) now has %(#wins) wins!
+```
 
 ## What AST is for
 
-Use AST when you want your command to do more than send fixed text.
-
 - save counters and user progress
-- build dynamic replies
-- run conditionals like if / else logic
-- work with arrays and loops
+- build replies that change
+- run if / else logic
+- work with lists and loops
 - call Twitch, moderation, availability, TTS, roulette, trigger, and EventSub functions
 - schedule delayed AST actions that survive bot restarts
 - chain commands together
 
-## Important: variables are not built in
-
-DomDimaBot does **not** give you default AST variables automatically.
-
-- Variables are **user-created** with `%(...)`
-- If you want to store a value, you create that variable yourself
-- Context data usually comes from **functions** like `$(user)`, `$(twitch.game)`, or from **arguments** like `&p1`
-
-Example:
-
-```bash
-%(#wins *(%(#wins) + 1))
-"$(user) now has %(#wins) wins!"
-```
-
 ## Start here
 
-This AST section is now split into smaller guides so it is easier to learn.
+This section is split into smaller guides:
 
-1. **[AST Syntax & Data](/commands/advanced/syntax)**
-   - prefixes
+1. **[AST Syntax & Data](/commands/advanced/syntax/)**
+   - prefixes and how a message is read
    - variables and storage
-   - arguments
-   - arrays
-   - conditionals
-   - loops
-   - command references
+   - arguments and quotes
+   - escaping
+   - lists, operators, conditionals, and loops
+   - delete, exists checks, command references, and timers
 
-2. **[AST Functions Reference](/commands/advanced/functions)**
+2. **[AST Functions Reference](/commands/advanced/functions/)**
    - user and Twitch functions
    - moderation, channel, availability, and roulette actions
    - counters, clips, followage
    - polls, predictions, EventSub, TTS, triggers, chat send
 
-3. **[AST Execution, Errors & Limits](/commands/advanced/execution)**
+3. **[AST Execution, Errors & Limits](/commands/advanced/execution/)**
    - how the parser runs
    - delayed timer execution and recovery
    - common errors
    - loop and recursion limits
    - debugging mindset
 
-4. **[AST Recipes & Patterns](/commands/advanced/recipes)**
+4. **[AST Recipes & Patterns](/commands/advanced/recipes/)**
    - best practices
    - initialize-or-increment
    - guard checks
@@ -78,26 +104,11 @@ This AST section is now split into smaller guides so it is easier to learn.
 Think of AST commands as small scripts inside a custom command.
 
 - `%(...)` = read or write your own variables
+- `%del(...)` = delete a variable or list item
 - `$(...)` = call a function
-- `*(...)` = compute logic
+- `*(...)` = compute logic, or run a loop
 - `^(...)` = check whether something exists
 - `#(...)` = run another command from this command
-
-## Quick example
-
-This command creates a simple win counter:
-
-```bash
-*( ^(#wins) ? %(#wins *(%(#wins) + 1)) : %(#wins 1) )
-"$(user) has %(#wins) wins!"
-```
-
-What it does:
-
-1. checks if `#wins` exists
-2. if yes, increments it
-3. if no, creates it with `1`
-4. prints the updated total
 
 ## Plan-aware features
 
@@ -107,12 +118,12 @@ Some AST features depend on the streamer's plan.
 |---------|------|---------|-----|
 | Memory variables | Yes | Yes | Yes |
 | Cache variables (`#`, `##`) | Yes | Yes | Yes |
-| Database variables (`*`, `**`) | No | Yes | Yes |
-| Persistent database variable writes | No | Yes | Yes |
-| Loop nesting / iterations | 2 / 25 | 3 / 50 | 4 / 100 |
+| Database variables (`*`, `**`) | Writes are ignored | Yes | Yes |
+| Loops nested inside each other | 2 | 3 | 4 |
+| Passes per loop | 25 | 50 | 100 |
 
 <Aside type="note">
-Database variable writes require Premium or Pro. Cache values expire 24 hours after each write. TTS voice and clone availability depends on the channel’s TTS settings and plan; check the TTS guide for current details.
+Database variable writes require Premium or Pro. Cache values expire 24 hours after each write. See [Variables and storage](/commands/advanced/syntax/#variables-and-storage) for details.
 </Aside>
 
 ## Recommended workflow
