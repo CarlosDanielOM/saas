@@ -4,6 +4,22 @@ import { RouletteError } from '../roulette/model.js';
 import { challengeDuel, acceptDuel, declineDuel, loadDuel, fightStreamer } from '../duel/service.js';
 
 interface DuelResponse { error: boolean; message: string; status?: number }
+/** Chat lines in the channel's duel language. The challenge always explains how to answer:
+ * an OBS overlay is often too small for viewers to read the commands. */
+const lines = {
+  en: {
+    challenge: (who: string, target: string) => `@${target}, ${who} has challenged you to a duel! To accept use "!duel accept" or decline with "!duel decline" within 30 seconds.`,
+    challenger: (actor: string, enraged: boolean) => enraged ? `the enraged streamer @${actor}` : `@${actor}`,
+    declined: (actor: string, challenger: string) => `@${actor} has declined the duel challenge from @${challenger}.`,
+    streamer: (actor: string, owner: string) => `@${actor} has challenged the streamer @${owner}! The enraged streamer accepts. FIGHT!`
+  },
+  es: {
+    challenge: (who: string, target: string) => `@${target}, ¡${who} te ha retado a un duelo! Para aceptar usa "!duel accept" o rechaza con "!duel decline" en 30 segundos.`,
+    challenger: (actor: string, enraged: boolean) => enraged ? `el streamer enfurecido @${actor}` : `@${actor}`,
+    declined: (actor: string, challenger: string) => `@${actor} ha rechazado el duelo de @${challenger}.`,
+    streamer: (actor: string, owner: string) => `¡@${actor} ha retado al streamer @${owner}! El streamer enfurecido acepta. ¡A PELEAR!`
+  }
+};
 export async function duelCommand(channelID: string, user: string, _userMod: boolean, argument: string, _modID = '698614112'): Promise<DuelResponse> {
   try {
     const actor = user.trim().toLowerCase(), target = argument.trim().replace(/^@/, '').toLowerCase();
@@ -23,16 +39,16 @@ export async function duelCommand(channelID: string, user: string, _userMod: boo
     }
     if (target === 'decline') {
       const result = await declineDuel(channelID, actor);
-      return { error: false, message: result.overlay ? '' : `@${actor} has declined the duel challenge from @${result.challenger}.` };
+      return { error: false, message: result.overlay ? '' : lines[result.language].declined(actor, result.challenger) };
     }
     if (target === owner) {
       // Challenges against the streamer are accepted automatically.
       const run = await fightStreamer(channelID, actor, owner);
-      return { error: false, message: run.mode === 'overlay' ? '' : `@${actor} has challenged the streamer @${owner}! The enraged streamer accepts. FIGHT!` };
+      return { error: false, message: run.mode === 'overlay' ? '' : lines[run.language].streamer(actor, owner) };
     }
-    const overlay = await challengeDuel(channelID, actor, target, actor === owner ? 'left' : null);
-    const who = actor === owner ? `The enraged streamer @${actor}` : `@${actor}`;
-    return { error: false, message: overlay ? '' : `${who} has challenged @${target} to a duel! Type "!duel accept" within 30 seconds to accept the challenge or "!duel decline" to decline it.` };
+    const { language } = await challengeDuel(channelID, actor, target, actor === owner ? 'left' : null);
+    const text = lines[language];
+    return { error: false, message: text.challenge(text.challenger(actor, actor === owner), target) };
   } catch (error) {
     if (error instanceof RouletteError) return { error: true, message: error.message, status: error.status };
     await logError({ function: 'duelCommand', channelID, user, argument, error: String(error) }, { channelId: channelID, destination: 'both' });

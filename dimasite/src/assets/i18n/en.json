@@ -7072,7 +7072,7 @@
     "stepChallenge": "A viewer challenges someone:",
     "stepAccept": "The challenged viewer accepts within 30 seconds:",
     "stepWinner": "Fighters take turns: usually a normal attack, sometimes a heavy one, rarely a special, and any hit can crit for double damage. Sometimes the defender's skill (Shield Wall, Ghost Step or Arcane Ward) stops a normal attack or cuts a heavy one by 80%; specials shatter it at full damage. Fighters may heal up to 5 times, and blocking can chain into a combo heal, and anyone can strike twice in a row. Very rarely a fighter unleashes an unblockable one-shot ultimate (much more often when the enraged streamer fights). The first to 0 HP loses, and chat gets the winner.",
-    "fallback": "With the overlay connected, chat stays quiet until the winner. Without it, chat narrates the battle.",
+    "fallback": "With the overlay connected, chat only gets the challenge instructions (how to accept or decline) and the winner. Without it, chat narrates the battle.",
     "challengeTitle": "@{{name}}, you have been challenged!",
     "challengeFrom": "@{{name}} is waiting in the arena. Accept within {{seconds}} s.",
     "loadError": "Could not load the duel widget. Try reloading.",

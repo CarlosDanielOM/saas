@@ -6,6 +6,7 @@ import { requirePremium, hasPremium } from '../widgets/service.js';
 import { fail, integer, text } from '../roulette/model.js';
 import { defaultSettings, normalizeSettings, settings, createRun, nextDeadline, type DuelSettings, type DuelChallenge, type DuelRun, type DuelSide } from './model.js';
 import { headToHead } from './stats.js';
+import Users from '../schemas/users.schema.js';
 
 interface Receipt { key: string; fingerprint: string; at: number }
 export interface DuelDocument { _id: string; revision: number; settings: DuelSettings; challenge: DuelChallenge | null; run: DuelRun | null; tokenHash: string | null; dueAt: number | null; leaseUntil: number; receipts: Receipt[]; statsRevision?: number }
@@ -72,14 +73,24 @@ async function withRecord(id: string, run: DuelRun, config: DuelSettings): Promi
   if (run.tracked && config.rivalries) run.record = await headToHead(id, run.challenger, run.opponent);
   return run;
 }
-export async function challengeDuel(id: string, challenger: string, opponent: string, enraged: DuelSide | null = null): Promise<boolean> {
+/**
+ * The language duel chat speaks: the widget's setting on Premium channels (the only ones that
+ * can change it), otherwise the streamer's account language.
+ */
+export async function duelLanguage(id: string, doc: DuelDocument): Promise<'en' | 'es'> {
+  if (await hasPremium(id)) return doc.settings.language;
+  const user = await Users.findOne({ accounts: { $elemMatch: { type: 'twitch', id } } }, { language: 1 }).lean<{ language?: string | null }>();
+  return user?.language === 'es' ? 'es' : 'en';
+}
+const withLanguage = async (id: string, doc: DuelDocument): Promise<DuelSettings> => ({ ...doc.settings, language: await duelLanguage(id, doc) });
+export async function challengeDuel(id: string, challenger: string, opponent: string, enraged: DuelSide | null = null): Promise<{ overlay: boolean; language: 'en' | 'es' }> {
   for (let attempt = 0; attempt < 10; attempt++) {
     const doc = await loadDuel(id), now = Date.now();
     if (doc.run && doc.run.completedAt === null || doc.challenge && doc.challenge.expiresAt > now) fail('busy', 'A duel is already waiting or fighting in this channel', 409);
     const overlay = await overlayActive(doc);
     const challenge: DuelChallenge = { id: randomUUID(), challenger, opponent, expiresAt: now + CHALLENGE_MS, enraged };
     const saved = await DuelChannel.updateOne({ _id: id, revision: doc.revision }, { $set: { challenge, run: null, dueAt: challenge.expiresAt, leaseUntil: 0 }, $inc: { revision: 1 } });
-    if (saved.modifiedCount) return overlay;
+    if (saved.modifiedCount) return { overlay, language: await duelLanguage(id, doc) };
   }
   return fail('busy', 'Duel is busy; try again', 409);
 }
@@ -88,7 +99,7 @@ export async function fightStreamer(id: string, challenger: string, streamer: st
   for (let attempt = 0; attempt < 10; attempt++) {
     const doc = await loadDuel(id), now = Date.now();
     if (doc.run && doc.run.completedAt === null || doc.challenge && doc.challenge.expiresAt > now) fail('busy', 'A duel is already waiting or fighting in this channel', 409);
-    const run = await withRecord(id, createRun({ id: randomUUID(), challenger, opponent: streamer, expiresAt: now, enraged: 'right' }, doc.settings, await overlayActive(doc), now), doc.settings);
+    const run = await withRecord(id, createRun({ id: randomUUID(), challenger, opponent: streamer, expiresAt: now, enraged: 'right' }, await withLanguage(id, doc), await overlayActive(doc), now), doc.settings);
     const saved = await DuelChannel.updateOne({ _id: id, revision: doc.revision }, { $set: { challenge: null, run, dueAt: nextDeadline(run), leaseUntil: 0 }, $inc: { revision: 1 } });
     if (saved.modifiedCount) return run;
   }
@@ -97,15 +108,15 @@ export async function fightStreamer(id: string, challenger: string, streamer: st
 export async function acceptDuel(id: string, opponent: string): Promise<DuelRun> {
   const doc = await loadDuel(id), now = Date.now();
   if (!doc.challenge || doc.challenge.opponent !== opponent || doc.challenge.expiresAt <= now) return fail('missing', 'There is no duel challenge to accept', 409);
-  const run = await withRecord(id, createRun(doc.challenge, doc.settings, await overlayActive(doc), now), doc.settings);
+  const run = await withRecord(id, createRun(doc.challenge, await withLanguage(id, doc), await overlayActive(doc), now), doc.settings);
   const saved = await DuelChannel.updateOne({ _id: id, revision: doc.revision, 'challenge.id': doc.challenge.id }, { $set: { challenge: null, run, dueAt: nextDeadline(run), leaseUntil: 0 }, $inc: { revision: 1 } });
   if (!saved.modifiedCount) return fail('busy', 'This duel was already accepted or changed', 409);
   return run;
 }
-export async function declineDuel(id: string, opponent: string): Promise<{ challenger: string; overlay: boolean }> {
+export async function declineDuel(id: string, opponent: string): Promise<{ challenger: string; overlay: boolean; language: 'en' | 'es' }> {
   const doc = await loadDuel(id);
   if (!doc.challenge || doc.challenge.opponent !== opponent || doc.challenge.expiresAt <= Date.now()) return fail('missing', 'There is no duel challenge to decline', 409);
-  const result = { challenger: doc.challenge.challenger, overlay: await overlayActive(doc) };
+  const result = { challenger: doc.challenge.challenger, overlay: await overlayActive(doc), language: await duelLanguage(id, doc) };
   const saved = await DuelChannel.updateOne({ _id: id, revision: doc.revision }, { $set: { challenge: null, dueAt: null }, $inc: { revision: 1 } });
   if (!saved.modifiedCount) return fail('busy', 'This duel changed; try again', 409);
   return result;

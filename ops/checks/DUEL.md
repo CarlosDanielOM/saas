@@ -28,7 +28,9 @@ each HP bar. About 3 in 4 fights last 15–35 s (median ~20 s, ~19% end sooner).
 Defenses and heals stop after 24 turns so every fight ends. The first fighter at 0 HP loses. The stored turns drive
 the overlay animation and the deadline (last hit + 1.9 s knockout, typically 13–18 s).
 The dimasite preview mirrors those numbers in `duel-battle.ts`; keep them in step.
-Connected overlays carry the prompt and fight; chat receives only the winner (with
+Connected overlays carry the prompt and fight; chat receives the challenge instructions
+("@target, @challenger has challenged you… !duel accept / !duel decline", always, since
+overlays are often small) and the winner (with
 remaining HP) at the deadline. New duels without an enabled, ready source retain
 chat prompts and narrate the fight's real specials, heals, crits, defenses, stolen turns
 and heavy blows.
