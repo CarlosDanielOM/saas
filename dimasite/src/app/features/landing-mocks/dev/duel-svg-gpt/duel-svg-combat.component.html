@@ -1,0 +1,104 @@
+@if (!reduced() && turn(); as turn) {
+  @if (turn.move !== 'ultimate') {
+    @if (layer() === 'back') {
+      @if (turn.move !== 'heal') {
+        @if (character() === 'ronin' && turn.move === 'special' && hit() > -155 && hit() < 220) {
+          <svg:g data-effect="ronin-dash" stroke="#efa0ae" fill="none" [attr.opacity]="1-ease(hit()/220)">
+            <path d="M275 359Q480 345 735 334" stroke-width="15" opacity=".08"/>
+            <path d="M225 370Q480 348 760 341M248 354Q480 336 730 326" stroke-width="1" opacity=".4"/>
+            @for (n of [0,1,2]; track n) { <svg:g class="fighter ghost" data-character="ronin" [attr.transform]="transform(dashGhost(n),actor())" [attr.opacity]=".16-n*.04"><svg:g duel-svg-fighter character="ronin" [side]="actor()" [pose]="dashGhost(n)"/></svg:g> }
+          </svg:g>
+        }
+        @if (turn.move === 'special' && character() !== 'ronin') {
+          <svg:g data-effect="landing-seal" [attr.transform]="'translate('+contact().x+' 430)'" [attr.stroke]="color()" fill="none" [attr.opacity]="charge()*.65">
+            <ellipse rx="75" ry="18"/><ellipse rx="62" ry="13"/>
+            @for (n of [0,1,2,3,4,5]; track n) { <path d="M-6 0L0 -5 6 0 0 5Z" [attr.transform]="'translate('+(Math.cos(n*Math.PI/3)*52)+' '+(Math.sin(n*Math.PI/3)*12)+')'"/> }
+            <path d="M-90 0H-76M76 0H90M0 -26V-18M0 18V26" stroke-width="2"/>
+          </svg:g>
+        }
+        @if (character() === 'mage') {
+          <svg:g data-effect="mage-charge" [attr.transform]="'translate('+staffTip(frame().poses[actor()],actor()).x+' '+staffTip(frame().poses[actor()],actor()).y+')'" [attr.opacity]="charge()">
+            <circle [attr.r]="12+charge()*13" fill="#af8cf3" opacity=".1"/><circle [attr.r]="4+charge()*6" fill="#eadfff"/>
+            @if (turn.move !== 'normal') { @for (n of [0,1,2]; track n) { <svg:g [attr.transform]="'rotate('+(n*120+frame().age/5)+') translate(0 '+(-30+ease((hit()+80)/80)*22)+')'"><path d="M0 -7L5 0 0 7 -5 0Z" fill="#d9c1ff"/><circle r="12" fill="#be96ff" opacity=".1"/></svg:g> } }
+          </svg:g>
+        }
+        @if (turn.defended && battle().fighters[target()] === 'ronin' && frame().poses[target()].guard > 0) {
+          <svg:g data-effect="ronin-evade">
+            @for (n of [0,1]; track n) { <svg:g class="fighter ghost" data-character="ronin" [attr.transform]="transform(ghostPose(target(),n),target())" [attr.opacity]="frame().poses[target()].guard*(n===0 ? .16 : .08)"><svg:g duel-svg-fighter character="ronin" [side]="target()" [pose]="ghostPose(target(),n)"/></svg:g> }
+          </svg:g>
+        }
+      }
+      @if (healer(); as side) {
+        <svg:g data-effect="healing" [attr.data-class]="healCharacter()" [attr.transform]="position(side,420)" [attr.opacity]="healing()" fill="none" stroke="#a2efca">
+          @if (healCharacter() === 'knight') {
+            <path d="M-55 -218L-26 -190V-2L-54 5ZM55 -218L26 -190V-2L54 5Z" fill="#f4dca6" stroke="none" opacity=".06"/>
+            <ellipse rx="69" ry="17" stroke="#edd6a1" stroke-width="1.5"/><ellipse rx="57" ry="12" stroke="#edd6a1" opacity=".45"/>
+            <svg:g transform="translate(0 -218)" stroke="#f8e9bf"><path d="M0 -14V14M-14 0H14" stroke-width="3"/><path d="M-9 -7Q-32 -24 -35 -8L-15 6M9 -7Q32 -24 35 -8L15 6"/></svg:g>
+          }
+          @if (healCharacter() === 'mage') {
+            <svg:g [attr.transform]="'translate(0 -48) rotate('+(-20+healAge()/25)+')'"><ellipse rx="76" ry="19" stroke-width="2"/><ellipse rx="88" ry="24" opacity=".35"/><path d="M-89 0L-78 -8 -68 0 -78 8ZM89 0L78 -8 68 0 78 8Z" fill="#b2f4d8"/></svg:g>
+            <ellipse rx="72" ry="17" stroke-width="1.5"/><path d="M-48 0L0 -12 48 0 0 12ZM-34 -8L34 8M34 -8L-34 8" opacity=".5"/>
+            <path d="M-55 -20Q-92 -96 0 -145Q75 -175 51 -200M55 -20Q92 -96 0 -145Q-75 -175 -51 -200" stroke-width="1.5" [attr.opacity]=".2+healing()*.5"/>
+          }
+          @if (healCharacter() === 'ronin') { <path d="M-38 -90Q0 -100 38 -90M-27 -102Q0 -110 27 -102" opacity=".4" [attr.transform]="'translate(0 '+(-renewal()*20)+')'"/> }
+          @for (n of seeds; track n) { <svg:g [attr.transform]="mote(n)" [attr.opacity]="renewal()*(.3+n%3*.2)"><path d="M-3 0H3M0 -3V3" stroke-width="1.5"/></svg:g> }
+          <ellipse [attr.rx]="34+ease((healAge()-850)/500)*75" [attr.ry]="8+ease((healAge()-850)/500)*17" [attr.opacity]="renewal()*.7" stroke-width="2"/>
+        </svg:g>
+      }
+    } @else {
+      @if (turn.move !== 'heal') {
+        @if (character() === 'mage') {
+          <svg:g data-effect="mage-projectile" [attr.data-move]="turn.move" [attr.transform]="'translate('+bolt().x+' '+bolt().y+') rotate('+bolt().angle+')'" [attr.opacity]="boltOpacity()">
+            @if (turn.move === 'special') {
+              <path d="M-140 -20L0 -23 22 0 0 23 -140 20 -95 0Z" fill="url(#ink-bolt)" opacity=".55"/><path d="M-90 -9L0 -12 17 0 0 12 -90 9 -50 0Z" fill="#f4dca5"/><path d="M-62 -3H10" stroke="#fff9e6" stroke-width="4"/>
+              <path d="M-12 -17L9 -12 18 2 2 18 -15 10 -21 -4Z" fill="#efdbc3" stroke="#faf2e0" stroke-width="2"/>
+            } @else {
+              <path [attr.d]="turn.move==='heavy' ? 'M-115 -13L0 -17 25 0 0 17 -115 13 -70 0Z' : 'M-70 -6L0 -9 17 0 0 9 -70 6 -42 0Z'" fill="url(#ink-bolt)"/>
+              <path d="M-7 -7L13 0 -7 7 -2 0Z" fill="#fbf1ff"/><path d="M-50 0H-9" stroke="#e0caff" stroke-width="2"/>
+              @if (turn.move === 'heavy') { <path d="M-32 -12L-10 -9M-32 12L-10 9" stroke="#c5a6ff" stroke-width="2"/> }
+            }
+          </svg:g>
+        } @else {
+          <svg:g data-effect="blade-cut" [attr.data-class]="character()" [attr.data-move]="turn.move" [attr.transform]="'translate('+contact().x+' 329) scale('+dir()+' 1)'" [attr.opacity]="cutOpacity()" fill="none" [attr.stroke]="color()">
+            @if (character() === 'knight') {
+              @if (turn.move === 'normal') { <path d="M-110 -81Q-7 -92 25 60Q-8 -46 -110 -81Z" fill="#f4e5c8" fill-opacity=".32" stroke="none"/><path d="M-106 -85Q-4 -93 29 61" stroke="#fff4dc" stroke-width="2"/> }
+              @else { <path d="M-62 -141Q83 -105 32 84Q63 -54 -62 -141Z" fill="#f2d5a0" fill-opacity=".35" stroke="none"/><path d="M-62 -145Q91 -105 36 89" stroke="#fff3d4" stroke-width="3"/><path d="M-45 -127Q70 -85 26 72" opacity=".6"/> }
+            } @else {
+              @if (turn.move === 'normal') { <path d="M-129 51Q-21 -18 64 -39L80 -45Q-20 -20 -129 47Z" fill="#ffdeea" stroke="none"/><path d="M-127 57L68 -33" opacity=".5"/> }
+              @else if (turn.move === 'heavy') { <path d="M-65 96Q110 28 70 -122Q139 16 -65 96Z" fill="#f4bdcc" fill-opacity=".35" stroke="none"/><path d="M-65 101Q120 30 75 -123" stroke="#ffe4ea" stroke-width="2"/><path d="M-52 85Q93 24 64 -104"/> }
+              @else { <path d="M-210 33L122 -47" stroke="#ffe2e8" stroke-width="3"/><path d="M-159 -54L85 64" stroke-width="2"/><path d="M-198 41L126 -38" opacity=".4"/> }
+            }
+          </svg:g>
+        }
+        @if (turn.defended && frame().poses[target()].guard > 0) {
+          <svg:g data-effect="defense" [attr.data-class]="battle().fighters[target()]" [attr.transform]="position(target())" [attr.opacity]="frame().poses[target()].guard" fill="none">
+            @switch (battle().fighters[target()]) {
+              @case ('knight') { <svg:g [attr.transform]="'scale('+(target()==='left' ? 1 : -1)+' 1)'" stroke="#f8dda0"><path d="M48 -76Q107 -47 91 44L50 74" stroke-width="2"/><path d="M60 -63Q107 -29 78 47" opacity=".35"/><path d="M48 -76L54 -82 63 -71M50 74L56 79 64 68"/></svg:g> }
+              @case ('mage') { <path d="M0 -93L81 -46V46L0 93 -81 46V-46Z" fill="#b7a0fa" fill-opacity=".05" stroke="#c3a8ff" stroke-width="2"/><path d="M0 -79L69 -40V40L0 79 -69 40V-40Z" stroke="#ded0ff" opacity=".4"/><circle r="103" stroke="#b7a0fa" stroke-dasharray="2 23" [attr.transform]="'rotate('+frame().age/14+')'"/>@for (n of [0,1,2,3,4,5]; track n) { <path d="M0 -106L4 -100 0 -94 -4 -100Z" stroke="#dfcaff" [attr.transform]="'rotate('+(n*60)+')'"/> } }
+              @case ('ronin') { <path d="M-35 64Q-54 50 -55 21M-48 62Q-65 44 -63 12" stroke="#f3adbf" stroke-width="1.5" opacity=".65"/> }
+            }
+          </svg:g>
+        }
+        @if (hit() >= 0 && hit() < 500) {
+          <svg:g data-effect="contact" [attr.transform]="'translate('+contact().x+' '+contact().y+')'" [attr.opacity]="1-ease(hit()/500)" [attr.stroke]="turn.defended && turn.move !== 'special' ? '#d4d0ef' : color()" fill="none">
+            @if (turn.defended && turn.move !== 'special') { <circle [attr.r]="8+ease(hit()/400)*34" stroke-width="1.5"/><path d="M0 -17L5 -5 18 0 5 5 0 17 -5 5 -18 0 -5 -5Z" fill="#fff5e1" fill-opacity=".4" stroke-width="1"/> }
+            @else { <path d="M0 -24L6 -6 24 0 6 6 0 24 -6 6 -24 0 -6 -6Z" fill="#fff4e3" stroke="none" [attr.opacity]="1-ease(hit()/140)"/> }
+            @for (n of seeds; track n) { <path d="M0 0H9" [attr.transform]="spark(n)" [attr.stroke-width]="n%3 ? 1 : 2"/> }
+          </svg:g>
+          @if (turn.defended && turn.move === 'special') {
+            <svg:g data-effect="guard-break" [attr.transform]="'translate('+baseTargetX()+' 329)'" stroke="#d6b2ee" fill="#d6b2ee" fill-opacity=".12" [attr.opacity]="1-ease(hit()/500)">
+              @for (n of [0,1,2,3,4,5]; track n) { <path d="M-16 -6L13 -9 20 6 -11 9Z" [attr.transform]="fragment(n)"/> }
+            </svg:g>
+          }
+        }
+        @if (turn.move === 'special' && character() !== 'ronin' && hit() >= 0 && hit() < 700) {
+          <svg:g data-effect="ground-impact" [attr.transform]="'translate('+contact().x+' 430)'" [attr.opacity]="1-ease(hit()/700)" [attr.stroke]="color()" fill="none">
+            <ellipse [attr.rx]="25+ease(hit()/650)*155" [attr.ry]="5+ease(hit()/650)*27" stroke-width="2"/><ellipse [attr.rx]="15+ease(hit()/650)*100" [attr.ry]="4+ease(hit()/650)*18" opacity=".35"/>
+            @if (character() === 'knight') { <path d="M-14 0L-7 -169 0 -211 7 -169 14 0Z" fill="#f5d9a4" fill-opacity=".14" stroke="none" [attr.opacity]="1-ease(hit()/300)"/> }
+            @for (n of [0,1,2,3,4,5]; track n) { <path d="M-5 -3L3 -5 6 2 -2 5Z" fill="#6b617b" [attr.transform]="'translate('+((n-2.5)*(14+ease(hit()/600)*30))+' '+(-Math.sin(clamp(hit()/700)*Math.PI)*(30+n%3*16))+') rotate('+(n*47+hit()/6)+')'"/> }
+          </svg:g>
+        }
+      }
+    }
+  }
+}

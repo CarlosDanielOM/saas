@@ -6919,6 +6919,46 @@
   },
   "duelMock": {
     "svgGpt": {
+      "studio": {
+        "title": "Estudio de movimientos",
+        "normal": "Ataque rápido",
+        "heavy": "Ataque pesado",
+        "special": "Especial",
+        "heal": "Curación",
+        "defend": "Defensa + cura",
+        "break": "Romper defensa"
+      },
+      "moves": {
+        "knight": {
+          "normal": "Corte de vanguardia",
+          "heavy": "Tajo de hierro",
+          "special": "Rompejuramentos",
+          "heal": "Plegaria del escudo"
+        },
+        "ronin": {
+          "normal": "Corte de seda",
+          "heavy": "Media luna ascendente",
+          "special": "Paso carmesí",
+          "heal": "Tónico de jade"
+        },
+        "mage": {
+          "normal": "Dardo astral",
+          "heavy": "Tríada arcana",
+          "special": "Lluvia estelar",
+          "heal": "Renovación astral"
+        }
+      },
+      "beat": {
+        "prepare": "Preparación",
+        "hit": "Impacto",
+        "recover": "Recuperación"
+      },
+      "guard": {
+        "knight": "Escudo firme",
+        "mage": "Barrera absorbió",
+        "ronin": "Paso evasivo",
+        "broken": "Defensa rota"
+      },
       "entry": "Versión SVG",
       "original": "Original",
       "edition": "Tinta y Brasa",

@@ -5,7 +5,7 @@ import { mkdirSync } from 'node:fs';
 const require = createRequire(`${process.env.SAAS_BROWSER_TOOLS || '/tmp/saas-cooldown-browser'}/package.json`);
 const { chromium } = require('playwright'), AxeBuilder = require('@axe-core/playwright').default;
 const base = process.env.SAAS_PREVIEW_URL; assert(base, 'SAAS_PREVIEW_URL is required');
-const shots = process.env.SAAS_SCREENSHOT_DIR || '/tmp/duel-svg-verified'; mkdirSync(shots, { recursive: true });
+const shots = process.env.SAAS_SCREENSHOT_DIR || '/tmp/duel-svg-combat-verified'; mkdirSync(shots, { recursive: true });
 const browser = await chromium.launch({ args: ['--no-sandbox', '--enable-unsafe-swiftshader'] });
 const errors = [];
 async function fixture(width = 1280, theme = 'dark', language = 'en', reducedMotion = 'no-preference', query = '') {
@@ -62,6 +62,54 @@ try {
   await page.waitForTimeout(250); assert.deepEqual(await state(page),contact,'paused SVG has no independent animation clocks');
   assert.equal(await page.getByTestId('duel-svg-gpt').evaluate(e => e.getAnimations({subtree:true}).length),0);
   console.log('PASS contact, recoil, block, combo heal, heal, guard break, deterministic scrub and true pause');
+  for (const character of ['knight','mage','ronin']) {
+    await page.getByTestId('svg-class-'+character).click();
+    for (const move of ['normal','heavy','special','heal','defend','break']) {
+      await page.getByTestId('svg-move-'+move).click();
+      await page.getByRole('button',{name:'Pause',exact:true}).click();
+      const hit = 5550 + ({normal:280,heavy:450,special:850,heal:900,defend:450,break:850})[move];
+      for (const mirrored of [false,true]) {
+        if (mirrored) await page.getByTestId('svg-mirror').click();
+        await seek(page,hit-40);
+        const before = await state(page); assert.deepEqual(before.hp,mirrored?[78,72]:[72,78]);
+        if (move==='defend' || move==='break') {
+          const defense = character==='ronin' ? '[data-effect=ronin-evade]' : '[data-effect=defense]';
+          assert.equal(await page.locator(defense).count(),1,character+' prepares defense');
+        }
+        if (character==='mage' && ['normal','heavy','special'].includes(move)) {
+          const projectile=page.locator('[data-effect=mage-projectile]');
+          assert.equal(await projectile.locator('path').first().evaluate(e=>e.namespaceURI),'http://www.w3.org/2000/svg');
+          assert(Number(await projectile.getAttribute('opacity'))>0,'spell is visible before contact');
+        }
+        await seek(page,hit+90);
+        const expected = move==='heal'?[100,78]:move==='defend'?[67,78]:move==='break'?[36,78]:[72,78-({normal:14,heavy:26,special:36})[move]];
+        assert.deepEqual((await state(page)).hp,mirrored?[...expected].reverse():expected);
+        if (move==='heal') {
+          assert.equal(await page.locator('[data-effect=healing]').getAttribute('data-class'),character);
+          if (character==='ronin') assert.equal(await page.getByTestId('ronin-potion').count(),1);
+        }
+        if (move==='break') assert.equal(await page.locator('[data-effect=guard-break]').count(),1);
+        if (move==='special' && character!=='ronin') assert.equal(await page.locator('[data-effect=ground-impact]').count(),1);
+        const key=await state(page);await page.waitForTimeout(100);assert.deepEqual(await state(page),key,'new effects use the paused battle clock');
+        await seek(page,hit+220);if(move==='break')assert.equal(await page.locator('[data-effect=defense]').count(),0,'broken guard disappears');
+        if (!mirrored) await page.locator('.stage-frame').screenshot({path:`${shots}/${character}-${move}.png`});
+        if (move==='defend') { await seek(page,hit+400); assert.deepEqual((await state(page)).hp,mirrored?[78,81]:[81,78],'class-specific combo renewal restores health'); }
+        await seek(page,hit+90);assert.deepEqual(await state(page),key,'each sample reconstructs after seeking');
+      }
+    }
+    console.log(`PASS ${character}: six move previews, both directions, spell travel, contact HP, healing, defense, guard break and pause`);
+  }
+  await page.getByTestId('svg-move-normal').click();
+  const cadence = await page.getByTestId('duel-svg-gpt').evaluate(element => new Promise(resolve => {
+    const times=[], started=performance.now();
+    const observer=new MutationObserver(() => times.push(performance.now()));
+    observer.observe(element,{attributes:true,attributeFilter:['data-elapsed']});
+    setTimeout(() => { observer.disconnect(); resolve({frames:times.length,duration:performance.now()-started}); },2200);
+  }));
+  assert(cadence.frames>20,'real playback advances');
+  assert(cadence.frames<=Math.ceil(cadence.duration/1000*30)+1,'render updates stay within the 30 FPS cap');
+  await page.getByRole('button',{name:'Pause',exact:true}).click();
+  console.log(`PASS live playback frame cap: ${cadence.frames} updates in ${Math.round(cadence.duration)} ms`);
   for (const character of ['knight','mage','ronin']) {
     await page.getByTestId('svg-ultimate-'+character).click(); await page.getByRole('button',{name:'Pause',exact:true}).click();
     for (const mirrored of [false,true]) {

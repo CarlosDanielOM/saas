@@ -81,6 +81,15 @@
             <div class="ultimate-lab svg-lab" data-testid="svg-gpt-section"><span class="svg-edition">GPT / 02</span><h2>{{ t('svgGpt.edition') }}</h2><p>{{ t('svgGpt.sectionHint') }}</p>
               <button type="button" class="combat-demo" (click)="showcaseCombat()" data-testid="svg-combat"><span class="class-sigil" aria-hidden="true">╱</span><span><small>{{ t('svgGpt.combatKicker') }}</small><strong>{{ t('svgGpt.combat') }}</strong></span><i aria-hidden="true">↗</i></button>
               @for (character of characters; track character) { <button type="button" [attr.data-class]="character" [attr.data-testid]="'svg-ultimate-' + character" (click)="showcase(character)"><span class="class-sigil" aria-hidden="true">{{ character === 'knight' ? '✧' : character === 'mage' ? '◉' : '╱' }}</span><span><small>{{ t('character.' + character) }}</small><strong>{{ t('ultimate.' + character) }}</strong></span><i aria-hidden="true">↗</i></button> }
+              <details class="move-studio" open>
+                <summary>{{ t('svgGpt.studio.title') }}</summary>
+                <div class="class-picker" role="group" [attr.aria-label]="t('fighters')">
+                  @for (character of characters; track character) { <button type="button" [attr.aria-pressed]="sampleClass()===character" [attr.data-testid]="'svg-class-'+character" (click)="sampleClass.set(character)">{{ t('character.'+character) }}</button> }
+                </div>
+                <div class="move-picker">
+                  @for (move of previewMoves; track move) { <button type="button" [attr.data-testid]="'svg-move-'+move" (click)="previewMove(move)"><span>{{ t('svgGpt.studio.'+move) }}</span><i aria-hidden="true">↗</i></button> }
+                </div>
+              </details>
               <button type="button" class="mirror-demo" (click)="mirrorBattle()" data-testid="svg-mirror">{{ t('svgGpt.mirror') }} <i aria-hidden="true">⇄</i></button>
             </div>
           }

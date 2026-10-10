@@ -15,4 +15,6 @@ export class DuelSvgFighterComponent {
   readonly pose = input.required<VectorPose>();
   readonly enraged = input(false);
   joint(angle: number, x: number, y: number): string { return `rotate(${angle.toFixed(2)} ${x} ${y})`; }
+  shieldArm(): string { const q = this.pose().guard; return `M78 140L${55+q*90} ${172-q*25} ${64+q*117} ${191-q*24}`; }
+  shieldTransform(): string { const q = this.pose().guard; return `translate(${q*120} ${-q*24})`; }
 }

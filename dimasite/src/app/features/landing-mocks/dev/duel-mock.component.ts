@@ -7,6 +7,7 @@ import { ThemeService } from '../../../services/theme.service';
 import { DuelArenaComponent } from '../../widgets/duel/duel-arena.component';
 import { DuelCharacter, DuelSide, otherSide, simulateBattle, ultimateBattle } from '../../widgets/duel/duel-battle';
 import { DuelGptArenaComponent } from './duel-gpt/duel-gpt-arena.component';
+import { sampleBattle, SvgPreviewMove } from './duel-svg-gpt/duel-svg-showcase';
 import { DuelSvgArenaComponent } from './duel-svg-gpt/duel-svg-arena.component';
 
 type Phase = 'ready' | 'entrance' | 'countdown' | 'fight' | 'knockout' | 'winner';
@@ -27,6 +28,8 @@ export class DuelMockComponent {
   readonly renderMode = signal<'svg' | '3d'>(this.query.get('renderer') === '3d' ? '3d' : 'svg');
   readonly threeEntry = signal<'gpt' | 'claude'>(this.query.get('entry') === 'claude' ? 'claude' : 'gpt');
   readonly svgEntry = signal<'original' | 'gpt' | 'claude'>(this.query.get('renderer') !== '3d' && ['gpt','claude'].includes(this.query.get('entry') ?? '') ? this.query.get('entry') as 'gpt' | 'claude' : 'original');
+  readonly sampleClass = signal<DuelCharacter>('knight');
+  readonly previewMoves: SvgPreviewMove[] = ['normal','heavy','special','heal','defend','break'];
   readonly characters: DuelCharacter[] = ['knight', 'mage', 'ronin'];
   readonly sides: DuelSide[] = ['left', 'right'];
   readonly form = new FormGroup({
@@ -128,6 +131,14 @@ export class DuelMockComponent {
     this.elapsed.set(3400);this.started.set(true);this.paused.set(false);this.startTimer();
   }
 
+  previewMove(move: SvgPreviewMove): void {
+    this.stopTimer();
+    const values = this.form.getRawValue();
+    this.names.set({left:values.left.trim().slice(0,24)||'Dima',right:values.right.trim().slice(0,24)||'ChatChampion'});
+    this.battle.set(sampleBattle(this.sampleClass(),move,values.streamer?'right':null));
+    this.elapsed.set(5250); this.started.set(true); this.paused.set(false); this.startTimer();
+  }
+
   mirrorBattle(): void {
     const battle = this.battle();
     this.battle.set({...battle,fighters:{left:battle.fighters.right,right:battle.fighters.left},winner:otherSide(battle.winner),turns:battle.turns.map(turn=>({...turn,attacker:otherSide(turn.attacker)}))});
@@ -141,7 +152,7 @@ export class DuelMockComponent {
       this.lastTick = now;
       if (!this.paused()) this.elapsed.update(time => Math.min(this.duration(), time + Math.min(delta, 100)));
       if (this.elapsed() >= this.duration()) this.stopTimer();
-    }, 1000 / 30);
+    }, Math.ceil(1000 / 30));
   }
 
   reset(): void {

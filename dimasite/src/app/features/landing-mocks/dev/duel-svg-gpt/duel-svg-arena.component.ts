@@ -1,12 +1,13 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, afterNextRender, computed, inject, input, signal } from '@angular/core';
 import { LanguageService } from '../../../../services/language.service';
 import { COMBO_HEAL, DuelBattle, DuelSide, legacyBattle, otherSide } from '../../../widgets/duel/duel-battle';
+import { DuelSvgCombatComponent } from './duel-svg-combat.component';
 import { DuelSvgFighterComponent } from './duel-svg-fighter.component';
 import { baseX, clamp, ease, vectorFrame, VectorPose } from './duel-svg-motion';
 
 @Component({
   selector: 'app-duel-svg-gpt-arena',
-  imports: [DuelSvgFighterComponent],
+  imports: [DuelSvgFighterComponent, DuelSvgCombatComponent],
   templateUrl: './duel-svg-arena.component.html',
   styleUrl: './duel-svg-arena.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -38,7 +39,7 @@ export class DuelSvgArenaComponent {
   readonly combo = computed(() => { const turn = this.frame().turn; return turn?.comboHeal && this.elapsed() >= turn.hitAt + COMBO_HEAL.delay && this.elapsed() < turn.hitAt + COMBO_HEAL.delay + 700 ? turn : null; });
   readonly effectScale = computed(() => this.reduced() ? 0 : ease((this.age() - 400) / 1000) * (1 - ease(this.ultHitAge() / 850)));
   readonly countdown = computed(() => Math.max(1, 3 - Math.floor((this.elapsed() - 1300) / 700)));
-  readonly healOpacity = computed(() => Math.sin(clamp(this.frame().age / 1500) * Math.PI));
+  readonly beat = computed(() => this.hitAge() < 0 ? 'prepare' : this.hitAge() < 110 ? 'hit' : 'recover');
   readonly camera = computed(() => {
     const f = this.frame();
     if (this.reduced()) return '';
@@ -64,11 +65,18 @@ export class DuelSvgArenaComponent {
   }
   bodyOpacity(side: DuelSide): number { return this.frame().poses[side].opacity; }
   splitTransform(pose: VectorPose, half: 'top' | 'bottom'): string { return half === 'top' ? `translate(${pose.split * 16} ${pose.split * -8}) rotate(${pose.split * 12} 108 200)` : `translate(${-pose.split * 9} ${pose.split * 7})`; }
-  slashOpacity(): number { return this.reduced() ? 0 : ease((this.hitAge() + 80) / 60) * (1 - ease(this.hitAge() / 240)); }
-  projectileX(): number {
-    const turn = this.frame().turn; if (!turn) return 480;
-    const travel = ease((this.elapsed() - turn.hitAt + 210) / 210);
-    return this.x(turn.attacker) + (this.x(otherSide(turn.attacker)) - this.x(turn.attacker)) * travel;
+  hpTrail(side: DuelSide): number {
+    const last = this.battle().turns.filter(t => t.hitAt <= this.elapsed() && t.move !== 'heal' && otherSide(t.attacker) === side && t.damage > 0).at(-1);
+    const now = this.frame().hp[side];
+    if (!last || this.reduced()) return now;
+    const previous = vectorFrame(this.battle(),last.hitAt-1,true,true).hp[side];
+    return Math.max(now, previous + (now-previous)*ease((this.elapsed()-last.hitAt-260)/520));
+  }
+  healthFlash(side: DuelSide): number {
+    if (this.reduced()) return 0;
+    const turn = this.frame().turn;
+    const restored = turn?.move==='heal' && this.actor()===side ? this.hitAge() : turn?.comboHeal && this.target()===side ? this.hitAge()-COMBO_HEAL.delay : -1;
+    return restored>=0 ? 1-ease(restored/650) : 0;
   }
   bladeY(): number { return -250 + 90 * ease((this.age() - 600) / 500) + 390 * ease((this.ultHitAge() + 240) / 240); }
   shockScale(): number { return 1 + ease(this.ultHitAge() / 900) * 6; }
@@ -91,7 +99,7 @@ export class DuelSvgArenaComponent {
   }
   moveLabel(): string {
     const turn = this.frame().turn; if (!turn) return this.t('phase.' + this.frame().phase);
-    return this.t(turn.move === 'ultimate' ? 'ultimate.' + this.battle().fighters[turn.attacker] : turn.move === 'heal' ? 'heal.' + this.battle().fighters[turn.attacker] : turn.move === 'special' ? 'special.' + this.battle().fighters[turn.attacker] : 'move.' + turn.move);
+    return this.t(turn.move === 'ultimate' ? 'ultimate.' + this.battle().fighters[turn.attacker] : 'svgGpt.moves.'+this.battle().fighters[turn.attacker]+'.'+turn.move);
   }
   impactText(): string {
     const turn = this.frame().turn; if (!turn) return '';

@@ -6919,6 +6919,46 @@
   },
   "duelMock": {
     "svgGpt": {
+      "studio": {
+        "title": "Move studio",
+        "normal": "Quick attack",
+        "heavy": "Heavy attack",
+        "special": "Special",
+        "heal": "Healing",
+        "defend": "Defense + heal",
+        "break": "Guard break"
+      },
+      "moves": {
+        "knight": {
+          "normal": "Vanguard cut",
+          "heavy": "Iron cleave",
+          "special": "Oathbreaker",
+          "heal": "Aegis prayer"
+        },
+        "ronin": {
+          "normal": "Silk cut",
+          "heavy": "Rising crescent",
+          "special": "Crimson passage",
+          "heal": "Jade tonic"
+        },
+        "mage": {
+          "normal": "Astral dart",
+          "heavy": "Arcane triad",
+          "special": "Starfall",
+          "heal": "Astral renewal"
+        }
+      },
+      "beat": {
+        "prepare": "Anticipation",
+        "hit": "Contact",
+        "recover": "Recovery"
+      },
+      "guard": {
+        "knight": "Shield held",
+        "mage": "Ward absorbed",
+        "ronin": "Sidestepped",
+        "broken": "Guard broken"
+      },
       "entry": "SVG entry",
       "original": "Original",
       "edition": "Ink & Ember",

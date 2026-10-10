@@ -6,7 +6,7 @@
         <path d="M84 148Q60 192 48 248L59 229 70 241 89 177" fill="none" stroke="var(--color)" stroke-width="1.5"/>
         <g [attr.transform]="joint(-pose().leg,94,216)"><path d="M82 204L102 210 99 254 85 278 65 285 65 296H103L112 267 112 219Z" fill="#919cb0"/><path d="M83 247L100 247 94 280H77Z" fill="#d6deea"/><path d="M73 287H101L100 299H59Q58 291 73 287" fill="#2a3045"/></g>
         <g [attr.transform]="joint(pose().leg,119,216)"><path d="M112 207L132 201 135 252 147 279 164 288 160 299H121L110 265Z" fill="#b4bfd1"/><path d="M116 246L132 244 142 276 122 280Z" fill="#edf0f6"/><path d="M123 285L149 285 166 294 165 300H123Z" fill="#343c53"/></g>
-        <g [attr.transform]="joint(pose().back,77,147)"><path d="M78 140L55 172 64 191" fill="none" stroke="#b9c2d5" stroke-width="18"/><path d="M33 163L58 150 84 163 81 202 58 225 36 202Z" fill="var(--deep)" stroke="#d6c596" stroke-width="4"/><path d="M42 169L58 160 75 169 71 197 58 212 46 197Z" fill="var(--color)" stroke-width="1.5"/><path d="M58 172V200M48 183H68" stroke="#f7e7b7" stroke-width="4"/><path d="M38 178L43 200" stroke="#fff2c4" stroke-width="1.5"/></g>
+        <g [attr.transform]="joint(pose().back,77,147)"><path [attr.d]="shieldArm()" fill="none" stroke="#b9c2d5" stroke-width="18"/><g [attr.transform]="shieldTransform()" data-testid="knight-shield"><path d="M33 163L58 150 84 163 81 202 58 225 36 202Z" fill="var(--deep)" stroke="#d6c596" stroke-width="4"/><path d="M42 169L58 160 75 169 71 197 58 212 46 197Z" fill="var(--color)" stroke-width="1.5"/><path d="M58 172V200M48 183H68" stroke="#f7e7b7" stroke-width="4"/><path d="M38 178L43 200" stroke="#fff2c4" stroke-width="1.5"/></g></g>
         <path d="M83 127L111 121 137 131 143 192 125 221 86 221 69 196Z" fill="#c5cede"/>
         <path d="M80 137L109 132 135 140 130 181 108 197 84 181Z" fill="#e9edf4"/>
         <path d="M109 137L109 184M96 155H122" stroke="#b5a574" stroke-width="5"/><path d="M85 181L108 192 130 181" stroke="#8695ae" fill="none"/>
@@ -18,11 +18,23 @@
         <path [attr.transform]="joint(pose().cloth,80,132)" d="M85 130Q42 128 12 154L48 152 15 177Q54 177 93 147Z" fill="var(--color)"/><path d="M67 141L34 157" stroke="var(--light)" stroke-width="2"/>
         <g [attr.transform]="joint(-pose().leg,95,214)"><path d="M79 202L111 210 87 263 76 286 55 292 56 300H92L103 269 121 225Z" fill="#242b40"/><path d="M80 261L97 267 87 286 72 283Z" fill="var(--deep)"/><path d="M56 289L81 287 87 298H53Z" fill="#55586b"/></g>
         <g [attr.transform]="joint(pose().leg,118,214)"><path d="M108 208L136 206 133 247 155 278 173 290 168 301H132L112 263Z" fill="#36394c"/><path d="M122 258L142 252 155 277 139 282Z" fill="var(--deep)"/><path d="M138 289L157 283 177 294 172 301H137Z" fill="#5b5b6a"/></g>
-        <g [attr.transform]="joint(pose().back,77,148)"><path d="M81 145L61 173 78 188" fill="none" stroke="var(--deep)" stroke-width="19"/><path d="M42 213L138 192" stroke="#24202d" stroke-width="9"/><path d="M45 210L112 195" stroke="#ac8981" stroke-width="2"/><path d="M76 180L86 183 86 193 75 198 68 190Z" fill="#cfb29e"/></g>
+        <path d="M42 213L138 192" stroke="#24202d" stroke-width="9"/><path d="M45 210L112 195" stroke="#ac8981" stroke-width="2"/>
+        @if (pose().potion === 0) { <g [attr.transform]="joint(pose().back,77,148)"><path d="M81 145L61 173 78 188" fill="none" stroke="var(--deep)" stroke-width="19"/><path d="M76 180L86 183 86 193 75 198 68 190Z" fill="#cfb29e"/></g> }
+
         <path d="M84 131Q111 118 135 136L145 204 126 228 81 220 67 201Z" fill="var(--deep)"/><path d="M78 141L106 160 129 131 131 182 110 198 86 182Z" fill="var(--color)"/><path d="M83 142L104 159 92 173 108 180 123 151" fill="none" stroke="var(--light)" stroke-width="2"/>
         <path d="M74 190L142 187 142 204 75 207Z" fill="#252334"/><path d="M101 191L115 191 116 203 102 203Z" fill="#dfbf85"/><path d="M126 201L146 232 127 225 115 207" fill="var(--color)"/>
         <path d="M88 207L122 206 130 250 110 243 98 254 74 245Z" fill="var(--deep)"/><path d="M82 220L123 217M80 231L126 227M79 242L126 238" stroke="var(--color)" stroke-width="3"/>
         <g [attr.transform]="joint(pose().head,107,130)"><path d="M84 79Q110 63 132 80L127 121 107 135 86 116Z" fill="#cba993"/><path d="M82 98L128 96 126 119 105 128 83 117Z" fill="#252939"/><path d="M89 99L102 97M114 96L124 95" [attr.stroke]="enraged() ? '#ff667c' : 'var(--light)'" stroke-width="2"/><path d="M40 85L111 45 171 76 177 89Q104 111 34 93Z" fill="#b5a080"/><path d="M55 86L113 52 159 79M86 77L115 53 140 82M113 51L113 89" stroke="#e2d2b6" stroke-width="1.5" fill="none"/><path d="M36 94Q100 111 176 91" fill="none" stroke="#716756" stroke-width="4"/></g>
+        @if (pose().potion > 0) {
+          <g [attr.transform]="joint(-135*pose().heal,77,148)">
+            <path d="M81 145L61 173 78 188" fill="none" stroke="var(--deep)" stroke-width="19"/>
+            <path d="M76 180L86 183 86 193 75 198 68 190Z" fill="#cfb29e"/>
+            <g class="potion" [attr.opacity]="pose().potion" [attr.transform]="joint(170*pose().heal,78,188)" data-testid="ronin-potion">
+              <path d="M71 169H81V177L86 183V198Q77 204 68 198V183L71 177Z" fill="#9cf3c5" stroke="#162b2a" stroke-width="2"/>
+              <path d="M71 169H81V175H71Z" fill="#b59a72"/><path d="M72 186V195" stroke="#eafff4" stroke-width="2"/>
+            </g>
+          </g>
+        }
         <g [attr.transform]="joint(pose().arm,135,145)"><path d="M135 143L158 166" stroke="var(--deep)" stroke-width="20"/><path d="M148 155L155 160" stroke="var(--color)" stroke-width="8"/><g [attr.transform]="joint(pose().wrist,162,174)"><path d="M164 174Q202 125 212 55L220 38Q218 111 177 181Z" fill="#eaf0f4" stroke-width="2"/><path d="M173 168Q207 110 218 42" fill="none" stroke="#fff" stroke-width="2"/><path d="M155 171L181 184" stroke="#c7ab71" stroke-width="5"/><path d="M165 180L150 202" stroke="#65524d" stroke-width="7"/><path d="M155 168L167 170 172 180 160 191 149 181Z" fill="#cfb29e"/></g></g>
       }
       @case ('mage') {
