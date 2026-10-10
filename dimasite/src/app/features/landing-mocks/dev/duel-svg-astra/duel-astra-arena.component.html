@@ -1,0 +1,161 @@
+          <div class="arena" data-testid="duel-svg-astra" [attr.data-elapsed]="elapsed()" [astraClock]="elapsed()" [attr.data-clock-origin]="impact()?.hitAt ?? 0" [class.transparent]="transparent()" [class.paused]="paused()" [attr.data-phase]="phase()" [attr.data-winner]="winner()" [attr.data-shake]="shake()" [attr.data-ultimate]="ultimate() && phase() !== 'winner' ? '' : null">
+            <div class="scenery" data-clock-origin="0" aria-hidden="true">
+              <svg class="observatory" viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid slice">
+                <defs><radialGradient id="astra-sky"><stop stop-color="#323050"/><stop offset="1" stop-color="#090d1b"/></radialGradient><linearGradient id="astra-floor" x2="0" y2="1"><stop stop-color="#272a45"/><stop offset="1" stop-color="#0a1020"/></linearGradient></defs>
+                <path fill="url(#astra-sky)" d="M0 0H1000V600H0Z"/>
+                <g fill="none" stroke="#c5b2ea" opacity=".17"><circle cx="500" cy="210" r="119"/><circle cx="500" cy="210" r="105"/><circle cx="500" cy="210" r="93" stroke-dasharray="1 12" stroke-width="3"/><path d="M500 76V345M366 210H634M408 118L592 302M408 302L592 118" opacity=".5"/></g>
+                <g fill="#d5ddf7" opacity=".6"><circle cx="95" cy="131" r="1"/><circle cx="190" cy="233" r="1.4"/><circle cx="287" cy="87" r="1"/><circle cx="717" cy="127" r="1.6"/><circle cx="805" cy="201" r="1"/><circle cx="914" cy="91" r="1.3"/><circle cx="614" cy="52" r="1"/><circle cx="364" cy="214" r="1"/></g>
+                <path d="M0 399L82 280 147 338 259 230 381 397 474 311 585 405 722 264 836 367 941 280 1000 354V600H0Z" fill="#37324d" opacity=".38"/>
+                <path d="M0 417L122 369 273 416 394 368 535 421 702 379 890 423 1000 359V600H0Z" fill="#131b2e"/>
+                <ellipse cx="500" cy="489" rx="410" ry="79" fill="url(#astra-floor)" stroke="#a594c1" stroke-opacity=".25"/>
+                <ellipse cx="500" cy="481" rx="373" ry="59" fill="none" stroke="#b4a0d3" stroke-opacity=".24"/>
+                <ellipse cx="500" cy="481" rx="330" ry="47" fill="none" stroke="#d7c598" stroke-opacity=".18" stroke-dasharray="4 16"/>
+                <path d="M91 489H909M500 410V568M210 432L790 548M210 548L790 432" fill="none" stroke="#aa9ac8" stroke-opacity=".1"/>
+              </svg>
+              <div class="ambient-dust">@for (n of [0,1,2,3,4,5,6,7]; track n) { <i [style.--n]="n"></i> }</div>
+            </div>
+            <div class="arena-label"><span>!duel</span><span>ASTRA / 04</span></div>
+            <div class="hud" [attr.data-clock-origin]="ultimate()?.at ?? 0">
+              @for (side of sides; track side) {
+                <div class="health" [class.health-right]="side === 'right'" [class.active]="attacking(side)" [class.low]="low(side)" [class.healing]="healing(side)" [attr.data-side]="side">
+                  <div class="health-label"><strong>{{ names()[side] }}</strong>@if (enraged(side)) { <em class="rage-badge">{{ t('enraged') }}</em> }<span>{{ health()[side] }} <small>HP</small></span></div>
+                  <div class="health-track" role="progressbar" [attr.aria-label]="t('health', {name: names()[side]})" [attr.aria-valuenow]="health()[side]" aria-valuemin="0" [attr.aria-valuemax]="maxHp()"><div class="trail" [style.width.%]="percent(side)"></div><div class="fill" [style.width.%]="percent(side)"></div></div>
+                  <div class="health-meta">
+                    <span class="fighter-role">{{ t(enraged(side) ? 'streamer' : side === 'left' ? 'challenger' : 'opponent') }} · {{ t('character.' + battle().fighters[side]) }}</span>
+                    <span class="heal-charges" role="img" [attr.aria-label]="t('healsLeft', {n: healsLeft()[side]})">@for (charge of charges(); track charge) { <i [class.used]="charge >= healsLeft()[side]" aria-hidden="true">✚</i> }</span>
+                  </div>
+                </div>
+              }
+            </div>
+            @if (record(); as rec) {
+              <div class="rivalry" [attr.data-stage]="rivalryStage()" role="img" [attr.aria-label]="t('rivalryLabel', {left: names().left, a: score().left, right: names().right, b: score().right})">
+                <small>{{ t(rec.left + rec.right ? 'rivalry' : 'firstDuel') }}</small>
+                <div class="rivalry-score"><span class="rivalry-name">{{ names().left }}</span>@for (n of [score().left]; track n) { <b data-side="left">{{ n }}</b> }<i>–</i>@for (n of [score().right]; track n) { <b data-side="right">{{ n }}</b> }<span class="rivalry-name">{{ names().right }}</span></div>
+              </div>
+            }
+            <div class="fight-space" aria-hidden="true">
+              @for (side of sides; track side) {
+                <div class="fighter-slot" [attr.data-clock-origin]="doom(side) ? ultimate()?.at : 0" [class.fighter-right]="side === 'right'" [attr.data-action]="action(side)" [attr.data-combo]="comboOn(side) ? '' : null" [attr.data-enraged]="enraged(side) ? '' : null" [attr.data-doom]="doom(side)" [attr.data-split]="split(side) ? '' : null">
+                  @if (enraged(side)) { <div class="rage-flames">@for (n of [0,1,2,3,4,5]; track n) { <i [style.--n]="n"></i> }</div> }
+                  @if (attacking(side)) { <div class="turn-ring"></div> }
+                  @for (key of [actionKey(side)]; track key) {
+                    <div class="fighter-motion" [attr.data-clock-origin]="origin(side)" [attr.data-action]="action(side)" [attr.data-move]="move(side)" [attr.data-character]="battle().fighters[side]">
+                      <div class="fighter-facing"><app-duel-astra-fighter [side]="side" [character]="battle().fighters[side]" [action]="action(side)" [move]="move(side)" [low]="low(side)" [enraged]="enraged(side)" [paused]="paused()" /></div>
+                    </div>
+                  }
+                  @if (split(side)) {
+                    @for (half of ['top','bottom']; track half) { <div class="half" [attr.data-clock-origin]="finalHit()" [attr.data-half]="half"><div class="fighter-facing"><app-duel-astra-fighter [side]="side" [character]="battle().fighters[side]" [paused]="paused()" /></div></div> }
+                  }
+                </div>
+              }
+              @if (currentTurn(); as turn) {
+                @for (index of [turnIndex()]; track index) {
+                  <div class="fx" [attr.data-clock-origin]="turn.at" [attr.data-attacker]="turn.attacker" [attr.data-move]="turn.move" [attr.data-character]="battle().fighters[turn.attacker]">
+                    @if (turn.move === 'special') { <div class="special-dim"></div> }
+                    @if (turn.bonus) { <span class="extra-turn">{{ t('extraTurn') }}</span> }
+                    @if (turn.defended) { <span class="skill-callout" [class.broken]="shattered(turn)">{{ skillName(turn) }}</span> }
+                    @if (turn.move !== 'normal' && turn.move !== 'ultimate') { <span class="move-callout">{{ moveName(turn) }}</span> }
+                    @if (turn.move === 'heal') {
+                      <div class="heal-fx" [attr.data-character]="battle().fighters[turn.attacker]">
+                        @if (battle().fighters[turn.attacker] === 'knight') {
+                          <div class="heal-beam"></div>
+                          <svg class="angel" viewBox="0 0 120 120" aria-hidden="true"><ellipse cx="60" cy="16" rx="16" ry="5" fill="none" stroke="#ffe27a" stroke-width="4"/><path d="M52 50Q18 26 4 44Q22 52 14 66Q34 62 52 64Z" fill="#fff" stroke="#c9d6ff" stroke-width="3"/><path d="M68 50Q102 26 116 44Q98 52 106 66Q86 62 68 64Z" fill="#fff" stroke="#c9d6ff" stroke-width="3"/><circle cx="60" cy="34" r="11" fill="#ffe9cf" stroke="#c9d6ff" stroke-width="3"/><path d="M46 48Q60 42 74 48L84 112H36Z" fill="#fff" stroke="#c9d6ff" stroke-width="3"/><path d="M48 62L36 82M72 62L84 82" stroke="#ffe9cf" stroke-width="6" stroke-linecap="round"/></svg>
+                        }
+                        <div class="glyphs">@for (glyph of glyphs(turn); track $index) { <i [style.--n]="$index">{{ glyph }}</i> }</div>
+                      </div>
+                    }
+                    @else if (turn.move === 'ultimate') { }
+                    @else if (battle().fighters[turn.attacker] === 'mage') { <div class="projectile"></div> }
+                    @else if (turn.move === 'special' && battle().fighters[turn.attacker] === 'knight') { <div class="pillar"></div> }
+                    @else if (turn.move === 'special') { <div class="crescent"><i></i><i></i></div> }
+                  </div>
+                }
+              }
+              @if (impact(); as hit) {
+                @for (index of [turnIndex()]; track index) {
+                  @if (hit.move === 'heal') { <div [attr.data-clock-origin]="hit.hitAt" class="impact-fx heal-impact" [attr.data-target]="hit.attacker"><span class="heal-number">+{{ hit.heal }} <small>HP</small></span></div> }
+                  @else if (hit.move !== 'ultimate') {
+                  <div [attr.data-clock-origin]="hit.hitAt" class="impact-fx" [attr.data-target]="target(hit)" [attr.data-move]="hit.move" [attr.data-defended]="held(hit) ? battle().fighters[target(hit)] : null" [attr.data-broken]="shattered(hit) ? battle().fighters[target(hit)] : null">
+                    @if (!held(hit)) { <span class="damage" [class.crit]="hit.crit">@if (hit.crit) { <b>{{ t('crit') }}</b> }−{{ hit.damage }}</span> }
+                    @else if (hit.damage > 0) { <span class="damage">−{{ hit.damage }} <small>−80%</small></span> }
+                    @else { <span class="damage blocked">{{ defenseResult(hit) }}</span> }
+                    <div class="hit-spark"><i></i><i></i><i></i><i></i></div>
+                    @if ((hit.move !== 'normal' || hit.crit) && !held(hit)) { <div class="shock-ring"></div> }
+                    @if (hit.crit && !held(hit)) { <div class="crit-flash"></div> }
+                    @if (shattered(hit)) { <span class="broken-label">{{ brokenResult(hit) }}</span><div class="shatter">@for (n of [0,1,2,3,4,5,6,7,8,9]; track n) { <i [style.--n]="n"></i> }</div> }
+                  </div>
+                  }
+                }
+              }
+              @if (comboImpact(); as combo) {
+                @for (index of [turnIndex()]; track index) {
+                  <div [attr.data-clock-origin]="combo.hitAt + 350" class="impact-fx combo-fx" [attr.data-target]="target(combo)"><span class="heal-number">+{{ combo.comboHeal }} <small>HP</small></span><span class="combo-label">{{ t('comboHeal') }}</span><div class="glyphs">@for (n of [0,1,2,3,4,5]; track n) { <i [style.--n]="n">✚</i> }</div></div>
+                }
+              }
+            </div>
+            @if (phase() !== 'winner') { @if (ultimate(); as ult) {
+              <div class="fx ultimate-stage" [attr.data-clock-origin]="ult.at" [attr.data-beat]="cinematicBeat()" [attr.data-attacker]="ult.attacker" [attr.data-move]="'ultimate'" [attr.data-character]="battle().fighters[ult.attacker]" aria-hidden="true">
+                <div class="ult-dim"></div>
+                @switch (battle().fighters[ult.attacker]) {
+                  @case ('knight') {
+                    <div class="god-rays"></div>
+                    <div class="judgment-beam"></div>
+                    <svg class="big-angel" viewBox="0 0 320 280">
+                      <defs><linearGradient id="astra-feather" x2="0.6" y2="1"><stop stop-color="#fffef0"/><stop offset=".55" stop-color="#e2dded"/><stop offset="1" stop-color="#867caa"/></linearGradient><linearGradient id="astra-divine" x2="1" y2=".3"><stop stop-color="#bc8841"/><stop offset=".45" stop-color="#fffce3"/><stop offset=".6" stop-color="#f0ce7c"/><stop offset="1" stop-color="#b57b30"/></linearGradient></defs>
+                      <g fill="none" stroke="#ffe4a1"><circle cx="160" cy="74" r="47" opacity=".5"/><circle cx="160" cy="74" r="40" stroke-dasharray="2 8"/><path d="M160 13V27M160 121V135M99 74H112M208 74H221M118 31L127 40M193 108L204 119M118 117L128 108M193 40L203 30" stroke-width="2"/></g>
+                      <g class="wing wing-l" fill="url(#astra-feather)" stroke="#fef6d4" stroke-width="1.2">
+                        <path d="M143 108C104 97 73 40 14 22C24 48 46 71 77 92C49 83 26 66 5 52C20 99 68 119 100 128C65 126 36 111 17 100C37 141 74 152 112 150C88 157 65 153 46 149C74 176 111 176 144 141Z"/>
+                        <path d="M143 112Q81 79 27 35M139 121Q79 111 20 69M133 135Q74 139 32 115M134 144Q108 165 62 157" fill="none" stroke="#9d90b5"/>
+                      </g>
+                      <g class="wing wing-r" fill="url(#astra-feather)" stroke="#fef6d4" stroke-width="1.2">
+                        <path d="M177 108C216 97 247 40 306 22C296 48 274 71 243 92C271 83 294 66 315 52C300 99 252 119 220 128C255 126 284 111 303 100C283 141 246 152 208 150C232 157 255 153 274 149C246 176 209 176 176 141Z"/>
+                        <path d="M177 112Q239 79 293 35M181 121Q241 111 300 69M187 135Q246 139 288 115M186 144Q212 165 258 157" fill="none" stroke="#9d90b5"/>
+                      </g>
+                      <path d="M142 82L146 54 160 43 174 54 178 82 168 96H151Z" fill="url(#astra-divine)" stroke="#fff5c8"/>
+                      <path d="M151 66H170L166 85H156Z" fill="#514865"/><path d="M153 70H167" stroke="#fff" stroke-width="3"/>
+                      <path d="M140 99L160 91 180 99 188 145 207 242 160 264 113 242 132 145Z" fill="url(#astra-feather)" stroke="#f5e0ad" stroke-width="2"/>
+                      <path d="M142 108L160 125 178 108M160 125V252M137 149L123 236M183 149L197 236" fill="none" stroke="url(#astra-divine)" stroke-width="3"/>
+                      <path d="M137 109L122 156 148 170M183 109L198 156 172 170" fill="none" stroke="#e8dfd9" stroke-width="12" stroke-linejoin="round"/>
+                      <path d="M158 146H162V250L160 272 158 250Z" fill="#fffbe5"/><path d="M139 170H181" stroke="url(#astra-divine)" stroke-width="5"/>
+                    </svg>
+                    <svg class="celestial-seal" viewBox="0 0 200 200"><g fill="none" stroke="#ffe5a0"><circle cx="100" cy="100" r="92"/><circle cx="100" cy="100" r="82" stroke-dasharray="3 8" stroke-width="3"/><path d="M100 12L176 144H24ZM100 188L24 56H176Z"/><circle cx="100" cy="100" r="39"/></g></svg>
+                    <svg class="judgment-sword" viewBox="0 0 80 300"><path d="M36 75H44V249L40 296 36 249Z" fill="url(#astra-divine)" stroke="#fffbd9" stroke-width="2"/><path d="M40 83V285" stroke="#fff"/><path d="M9 78Q40 65 71 78L66 89 40 82 14 89Z" fill="url(#astra-divine)"/><path d="M40 21V73" stroke="#f5d597" stroke-width="8"/><path d="M40 9L48 20 40 31 32 20Z" fill="#fff1c0"/></svg>
+                    <div class="ash">@for (n of [0,1,2,3,4,5,6,7,8,9]; track n) { <i [style.--n]="n"></i> }</div>
+                  }
+                  @case ('mage') {
+                    <div class="bh-debris">@for (n of [0,1,2,3,4,5,6,7,8,9,10,11]; track n) { <i [style.--n]="n"></i> }</div>
+                    <div class="black-hole"><div class="bh-lens"></div><div class="bh-disk-tilt"><div class="bh-disk"></div></div><div class="bh-core"></div></div>
+                    <svg class="singularity-orbits" viewBox="0 0 300 300"><g fill="none" stroke="#d9c2ff"><ellipse cx="150" cy="150" rx="135" ry="48" transform="rotate(-28 150 150)"/><ellipse cx="150" cy="150" rx="122" ry="39" transform="rotate(36 150 150)" stroke-dasharray="3 9"/><circle cx="150" cy="150" r="109" stroke-opacity=".2"/><circle cx="150" cy="150" r="116" stroke-dasharray="1 17" stroke-width="4"/></g></svg>
+                    <div class="bh-burst"></div><div class="event-horizon"></div>
+                  }
+                  @default {
+                    <div class="blood-sky"></div>
+                    <div class="blood-moon"><svg viewBox="0 0 200 200"><g fill="#480e29" opacity=".28"><circle cx="74" cy="50" r="24"/><circle cx="137" cy="116" r="35"/><circle cx="69" cy="137" r="16"/><circle cx="142" cy="57" r="12"/></g><path d="M12 108Q50 138 90 104T191 88" fill="none" stroke="#f9a799" opacity=".3" stroke-width="3"/></svg></div>
+                    <div class="ronin-afterimages">@for (n of [0,1,2]; track n) { <div [style.--n]="n"><app-duel-astra-fighter [side]="ult.attacker" character="ronin" /></div> }</div>
+                    <svg class="final-cut" viewBox="0 0 1000 600" preserveAspectRatio="none"><path d="M30 530L970 65 952 88 50 526Z" fill="#fff3dc"/><path d="M20 541L981 63" stroke="#ff5278" stroke-width="2"/></svg>
+                    <div class="cuts">@for (angle of cuts; track $index) { <i [style.--a]="angle + 'deg'" [style.--n]="$index"></i> }</div>
+                  }
+                }
+                <div class="impact-petals">@for (n of [0,1,2,3,4,5,6,7,8,9,10,11]; track n) { <i [style.--n]="n"></i> }</div>
+                <div class="ult-bars"><i></i><i></i></div>
+                <div class="ult-title"><small>{{ t('ultimateKicker') }}</small><strong>{{ t('ultimate.' + battle().fighters[ult.attacker]) }}</strong><span>{{ names()[ult.attacker] }}</span></div>
+                <div class="ult-flash"></div>
+                <span class="ult-result">{{ t('ultimateResult.' + battle().fighters[ult.attacker]) }}</span>
+              </div>
+            } }
+            <div class="center-cue" aria-hidden="true">
+              @if (phase() === 'ready') { <span class="vs">VS</span><small>{{ t('ready') }}</small> }
+              @if (phase() === 'entrance') { @if (battle().enraged) { <span class="challenge-cue enrage-cue">{{ t('enrageCue') }}</span> } @else { <span class="challenge-cue">{{ t('challenge') }}</span> } }
+              @if (phase() === 'countdown') { @for (n of [countdown()]; track n) { <span class="countdown" [attr.data-clock-origin]="1300 + (3 - countdown()) * 700">{{ n }}</span> } }
+              @if (phase() === 'fight' && elapsed() < 3950) { <span class="fight-cue" data-clock-origin="3400">{{ t('fight') }}</span> }
+              @if (phase() === 'knockout') { <span class="ko" [attr.data-clock-origin]="finalHit()">K.O.</span> }
+            </div>
+            @if (phase() === 'knockout') { <div class="ko-flash" [attr.data-clock-origin]="finalHit()" aria-hidden="true"></div> }
+            @if (phase() === 'winner') {
+              <div class="winner-reveal" [attr.data-clock-origin]="battle().duration">
+                <div class="confetti" aria-hidden="true">@for (n of [0,1,2,3,4,5,6,7,8,9,10,11]; track n) { <i [style.--n]="n"></i> }</div>
+                <span class="winner-kicker">✦ {{ t('victory') }} ✦</span><strong>{{ winnerName() }}</strong><span>{{ t('wins', {hp: health()[winner()]}) }}</span>@if (record()) { <span class="rivalry-line">{{ rivalryLine() }}</span> }
+              </div>
+            }
+            <div class="arena-footer"><span>{{ t('phase.' + phase()) }}</span><span>{{ turnIndex() < 0 ? t('round') : t('turn', {n: turnIndex() + 1}) }}</span></div>
+          </div>

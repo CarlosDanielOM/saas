@@ -6918,6 +6918,10 @@
     }
   },
   "duelMock": {
+    "svgAstra": {
+      "edition": "Edición celestial",
+      "sectionHint": "Los personajes originales, redibujados al detalle. Armaduras grabadas, telas fluidas y tres ataques definitivos cinematográficos. Pausa o recorre la línea de tiempo para ver cada fotograma."
+    },
     "svgClaude": {
       "edition": "Alta definición",
       "sectionHint": "La arena original redibujada con más detalle: luchadores sombreados, golpes con más peso y tres remates remasterizados. Pausa o mueve la línea de tiempo para ver cualquier fotograma exacto.",

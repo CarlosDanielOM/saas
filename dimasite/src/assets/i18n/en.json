@@ -6918,6 +6918,10 @@
     }
   },
   "duelMock": {
+    "svgAstra": {
+      "edition": "Celestial edition",
+      "sectionHint": "The original cast, finely redrawn. Engraved armor, flowing fabrics and three cinematic Ultimates. Pause or scrub to explore every frame."
+    },
     "svgClaude": {
       "edition": "High Definition",
       "sectionHint": "The original arena redrawn in higher detail: shaded fighters, weightier hits and three remastered finishers. Pause or scrub for any exact frame.",

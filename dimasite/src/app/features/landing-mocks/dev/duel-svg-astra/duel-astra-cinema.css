@@ -1,0 +1,78 @@
+/* Astra's mock-only art direction. Preserve the original readable silhouettes. */
+.arena { aspect-ratio:16/11; --stage:#0b1020; --violet:#c0b0ff; --amber:#edc78b; background:#0b1020; --fighter-size:33%; --fight-spread:19% }
+.arena *, .arena *::before, .arena *::after { animation-play-state:paused!important; transition:none!important }
+.observatory { width:100%; height:100%; display:block }
+.arena-label { font-size:1.5cqw; letter-spacing:.22em; color:#c3bbd1 }
+.arena-label span:first-child { color:#f0ddaa }
+.hud { gap:14%; top:12% }
+.health-label { font-size:2.7cqw; margin-bottom:1.1cqw }
+.health-track { height:1.1cqw; min-height:4px; border-radius:1px; background:#070b15; box-shadow:0 0 0 1px #b8a4d826 }
+.health-track .fill { background:linear-gradient(90deg,#8376b8,var(--hp-color)); box-shadow:0 0 10px color-mix(in srgb,var(--hp-color) 35%,transparent) }
+.health-right .health-track .fill { background:linear-gradient(90deg,var(--hp-color),#b2834e) }
+.health.active .health-track { box-shadow:0 0 0 1px var(--hp-color),0 0 16px #bcabef44 }
+.fighter-role { font-size:1.55cqw; color:#bab6ce; letter-spacing:.06em }
+.health-meta { margin-top:1cqw }
+.heal-charges i { width:1.6cqw; min-width:4px; font-size:1cqw; color:#b6f0d4; background:#284b45; box-shadow:none; border:1px solid #6ebf9e44 }
+.fighter-slot { bottom:18%; filter:drop-shadow(0 10px 8px #0005) }
+.fighter-facing { filter:drop-shadow(0 0 1px #e5d9ff45) }
+.arena-footer { color:#b8b3c9; font-size:1.4cqw; letter-spacing:.13em }
+.vs { font-size:9cqw; font-weight:500; font-family:Georgia,serif; font-style:italic; color:#f0d7a6; text-shadow:0 0 25px #d5af6740 }
+.center-cue small { color:#c7bfd8; font-size:1.45cqw; letter-spacing:.25em }
+.center-cue { top:46% }
+.ambient-dust { position:absolute; inset:0 }
+.ambient-dust i { position:absolute; left:calc(9% + var(--n) * 12%); top:calc(40% + mod(var(--n), 3) * 13%); width:2px; height:2px; background:#efc889; border-radius:50%; animation:astra-dust 7s ease-in-out infinite; animation-delay:calc(var(--n) * -800ms); opacity:.4 }
+@keyframes astra-dust { 0%,100% { transform:translate(0,0); opacity:0 } 50% { transform:translate(12px,-26px); opacity:.7 } }
+/* Weighted contact: a short anticipation, fast acceleration, then longer recovery. */
+.fighter-motion[data-action="attack"] { animation-timing-function:cubic-bezier(.2,.75,.25,1) }
+@keyframes dash { 0% { transform:translateX(0) } 18% { transform:translateX(calc(var(--dir) * -8%)) } 35%,39% { transform:translateX(calc(var(--dir) * 46%)) } 61% { transform:translateX(calc(var(--dir) * 40%)) } 100% { transform:translateX(0) } }
+@keyframes dash-heavy { 0% { transform:none } 25% { transform:translateX(calc(var(--dir) * -12%)) rotate(calc(var(--dir) * -4deg)) } 43%,49% { transform:translateX(calc(var(--dir) * 49%)) } 75% { transform:translateX(calc(var(--dir) * 33%)) } 100% { transform:none } }
+.turn-ring { opacity:.35; border-width:1px }
+/* A composed, quieter title leaves the actual attack visible. */
+.ult-title { bottom:14%; gap:.5cqw }
+.ult-title small { color:#f3d8a5; font-size:1.35cqw; letter-spacing:.48em }
+.ult-title strong { font-family:Georgia,serif; font-size:5.8cqw; font-weight:500; font-style:normal; letter-spacing:-.045em; text-transform:none; text-shadow:0 2px 14px #000,0 0 35px var(--ult-glow) }
+.ult-title span { font-size:1.5cqw; letter-spacing:.2em; text-transform:uppercase }
+.ult-bars i { height:7% }
+.ult-result { font-size:2.9cqw; top:81%; letter-spacing:.24em; font-weight:700; font-style:normal }
+.big-angel { width:36cqw; top:4%; filter:drop-shadow(0 0 10px #ffdfa45c) }
+.big-angel .wing { animation-duration:1.8s }
+.judgment-beam { width:15cqw; box-shadow:0 0 38px 8px #ffe8ae66; background:linear-gradient(90deg,transparent,#ffdfa777 27%,#fff9e8 49%,#fff 50%,#ffdfa777 73%,transparent) }
+.celestial-seal { position:absolute; z-index:2; top:48%; left:var(--def); width:29cqw; translate:-50% -50%; overflow:visible; animation:astra-seal 4.7s ease both; filter:drop-shadow(0 0 6px #f6cb86) }
+.judgment-sword { position:absolute; z-index:6; width:8cqw; height:34cqw; top:12%; left:var(--def); translate:-50% 0; filter:drop-shadow(0 0 12px #ffdda7); animation:astra-sword 4.7s cubic-bezier(.2,.8,.2,1) both }
+@keyframes astra-seal { 0%,15% { opacity:0; transform:scale(.2) rotate(-55deg) } 32%,54% { opacity:.7; transform:scale(1) rotate(0) } 60% { opacity:1; transform:scale(1.25) rotate(20deg) } 76%,100% { opacity:0; transform:scale(1.7) rotate(35deg) } }
+@keyframes astra-sword { 0%,34% { opacity:0; transform:translateY(-95%) scaleY(.3) } 44%,54% { opacity:1; transform:translateY(-42%) scaleY(1) } 59.6%,63% { opacity:1; transform:translateY(20%) scaleY(1.2) } 73%,100% { opacity:0; transform:translateY(25%) scaleY(1.2) } }
+.black-hole { width:32cqw; z-index:3 }
+.bh-core { inset:27%; box-shadow:0 0 0 .23cqw #f6ddb4,0 0 0 .6cqw #9264d644,0 0 27px 5px #a765ff88; background:radial-gradient(circle at 45% 45%,#010106 55%,#160e2e) }
+.bh-disk-tilt { inset:-13%; transform:rotate(-24deg) scaleY(.31) }
+.bh-disk { background:conic-gradient(#fff1c3,#f9bfb1,#ae84fe,#251b47,#7650d1,#f4d0b1,#fff1c3); filter:drop-shadow(0 0 6px #d7afff) }
+.singularity-orbits { position:absolute; z-index:4; width:41cqw; top:47%; left:var(--def); translate:-50% -50%; opacity:.6; animation:astra-orbits 4.7s ease both }
+.event-horizon { position:absolute; z-index:5; width:35cqw; aspect-ratio:1; border:1px solid #e9baff; border-radius:50%; top:47%; left:var(--def); translate:-50% -50%; animation:astra-horizon 4.7s ease both }
+@keyframes astra-orbits { 0%,17% { opacity:0; transform:scale(.1) rotate(-90deg) } 34% { opacity:.65; transform:scale(.8) rotate(0) } 53% { opacity:.8; transform:scale(1) rotate(50deg) } 59.6%,100% { opacity:0; transform:scale(.04) rotate(140deg) } }
+@keyframes astra-horizon { 0%,59% { opacity:0; transform:scale(.05) } 61% { opacity:.8; transform:scale(.4) } 77%,100% { opacity:0; transform:scale(3.5) } }
+.blood-moon { width:27cqw; top:10%; background:radial-gradient(circle at 35% 25%,#ecae94,#b7455e 47%,#4b1635 88%); box-shadow:0 0 0 1px #ffc0a533,0 0 65px #f3446844 }
+.blood-moon svg { width:100%; height:100%; border-radius:50% }
+.blood-sky { background:radial-gradient(ellipse at 50% 24%,#7e264350,#110d1eee 76%) }
+.cuts i { height:.2cqw; box-shadow:0 0 6px #ff6981; background:linear-gradient(90deg,transparent,#ffbfa4 20%,#fff 50%,transparent) }
+.ronin-afterimages { position:absolute; inset:0; z-index:4; pointer-events:none }
+.ronin-afterimages > div { position:absolute; width:24%; left:calc(var(--att) - 12%); bottom:18%; opacity:0; filter:sepia(.5) drop-shadow(0 0 4px #ff4378); animation:astra-afterimage 4.7s ease both; animation-delay:calc(var(--n) * 90ms) }
+.ultimate-stage[data-attacker="right"] .ronin-afterimages app-duel-astra-fighter { transform:scaleX(-1) }
+@keyframes astra-afterimage { 0%,28% { opacity:0; transform:translateX(0) } 31% { opacity:.33; transform:translateX(calc(var(--dir) * 55%)) } 39% { opacity:0; transform:translateX(calc(var(--dir) * 160%)) } 100% { opacity:0 } }
+.final-cut { position:absolute; inset:0; width:100%; height:100%; z-index:6; animation:astra-final-cut 4.7s ease-out both; filter:drop-shadow(0 0 6px #fa628b) }
+.ultimate-stage[data-attacker="right"] .final-cut { scale:-1 1 }
+@keyframes astra-final-cut { 0%,58% { opacity:0; clip-path:inset(0 100% 0 0) } 59.6%,62% { opacity:1; clip-path:inset(0) } 70%,100% { opacity:0; clip-path:inset(0) } }
+.impact-petals { position:absolute; z-index:6; left:var(--def); top:53% }
+.impact-petals i { position:absolute; --a:calc(var(--n) * 30deg); width:1cqw; height:.3cqw; background:#fff3cf; box-shadow:0 0 8px var(--ult-glow); animation:astra-petals 4.7s ease-out both }
+@keyframes astra-petals { 0%,59% { opacity:0; transform:rotate(var(--a)) translateX(0) } 61% { opacity:1 } 80%,100% { opacity:0; transform:rotate(var(--a)) translateX(28cqw) rotate(120deg) } }
+/* Keep a soft impact bloom rather than a full-frame white strobe. */
+.ult-flash { background:radial-gradient(ellipse at var(--def) 50%,#fff1dca0,transparent 66%); opacity:0 }
+.ko-flash { display:none }
+.transparent { background:transparent }
+.transparent .scenery { display:none }
+.transparent .ult-dim { background:radial-gradient(ellipse at 50% 55%,#05040c22,#05040c88 75%) }
+@media(min-width:640px) { .arena { aspect-ratio:16/9; --fighter-size:28%; --fight-spread:17% } .health-label { font-size:2.2cqw } }
+@media(prefers-reduced-motion:reduce) {
+ .arena *, .arena *::before, .arena *::after { animation:none!important }
+ .ambient-dust,.celestial-seal,.judgment-sword,.singularity-orbits,.event-horizon,.ronin-afterimages,.final-cut,.impact-petals { display:none }
+ .ult-title { bottom:24% } .ult-result { top:81% } .ult-dim { opacity:.65 }
+ .arena[data-ultimate] .center-cue { display:none }
+}

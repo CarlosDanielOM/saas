@@ -1,0 +1,72 @@
+
+    <svg viewBox="0 0 220 240" aria-hidden="true" focusable="false">
+
+      <defs>
+        <linearGradient [id]="uid + '-armor'" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f5efff"/><stop offset=".22" stop-color="var(--fighter-light)"/><stop offset=".48" stop-color="var(--fighter-color)"/><stop offset="1" stop-color="var(--fighter-deep)"/></linearGradient>
+        <linearGradient [id]="uid + '-silk'" x1="0" y1="0" x2="1" y2=".7"><stop stop-color="var(--fighter-light)"/><stop offset=".3" stop-color="var(--fighter-color)"/><stop offset="1" stop-color="var(--fighter-deep)"/></linearGradient>
+        <linearGradient [id]="uid + '-dark'" x1="0" y1="0" x2="1" y2="1"><stop stop-color="var(--fighter-color)"/><stop offset=".6" stop-color="var(--fighter-deep)"/><stop offset="1" stop-color="#141629"/></linearGradient>
+        <linearGradient [id]="uid + '-steel'" x1="0" y1="0" x2="1" y2=".4"><stop stop-color="#8fa3bd"/><stop offset=".28" stop-color="#f6fbff"/><stop offset=".49" stop-color="#c5d4e4"/><stop offset=".5" stop-color="#6b7e9c"/><stop offset=".78" stop-color="#f4fbff"/><stop offset="1" stop-color="#9bb1cb"/></linearGradient>
+        <linearGradient [id]="uid + '-gold'" x1="0" y1="0" x2=".8" y2="1"><stop stop-color="#ffefbb"/><stop offset=".3" stop-color="#dfbd71"/><stop offset=".65" stop-color="#97703a"/><stop offset="1" stop-color="#ead098"/></linearGradient>
+        <radialGradient [id]="uid + '-gem'" cx=".3" cy=".2"><stop stop-color="#fff"/><stop offset=".2" stop-color="#e6eeff"/><stop offset=".5" stop-color="var(--fighter-light)"/><stop offset="1" stop-color="var(--fighter-deep)"/></radialGradient>
+      </defs>
+      <ellipse class="shadow" cx="104" cy="221" rx="58" ry="9" fill="#000" opacity=".3" />
+      <ellipse class="aura" cx="106" cy="128" rx="78" ry="98" />
+      <g class="body">
+        @switch (character()) {
+          @case ('ronin') {
+            <path class="cloth" d="M96 90Q62 84 28 104Q46 102 54 110Q34 120 22 140Q62 122 100 104Z" [attr.fill]="paint('gem')" stroke="#101421" stroke-width="2" />
+            <g class="leg back-leg"><path d="M86 146L62 204H94L102 156Z" [attr.fill]="paint('dark')" stroke="#101421" stroke-width="3"/><path d="M58 202H92L93 212H56Z" fill="#232738" stroke="#101421" stroke-width="3"/></g>
+            <g class="leg front-leg"><path d="M110 146L138 204H108L102 156Z" [attr.fill]="paint('dark')" stroke="#101421" stroke-width="3"/><path d="M108 202H142L145 212H108Z" fill="#232738" stroke="#101421" stroke-width="3"/></g>
+            <g class="back-arm"><path d="M48 160L134 140" stroke="#3a2a22" stroke-width="8" stroke-linecap="round"/><path d="M82 100L68 128 86 144" fill="none" stroke="var(--fighter-color)" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/><circle cx="88" cy="145" r="8" fill="#2a2f42" stroke="#101421" stroke-width="3"/></g>
+            <path d="M78 92Q105 82 132 92L138 152H74Z" [attr.fill]="paint('armor')" stroke="#101421" stroke-width="3"/>
+            <path d="M92 91L106 120 120 91" fill="none" stroke="var(--fighter-light)" stroke-width="7" stroke-linejoin="round"/>
+            <path d="M74 136H138V150H74Z" fill="#232738"/><path d="M122 140L134 158M126 140L120 160" stroke="var(--fighter-deep)" stroke-width="3" stroke-linecap="round"/>
+
+            <g class="tailoring" fill="none" stroke="#fce6ae" stroke-width="1.1" opacity=".8"><path d="M80 99L88 129M128 99L123 131M78 133H135M90 151L76 196M115 151L130 195"/><path d="M94 98L106 123 119 99" stroke-width="2"/></g>
+            <path d="M80 107L87 129 75 128M126 111L132 129 125 130" fill="#fff" opacity=".1"/>
+            <path d="M78 140H135M80 146H130" stroke="#e4c894" stroke-width="1"/>
+            <circle cx="110" cy="141" r="5" [attr.fill]="paint('gold')" stroke="#282338" stroke-width="1.5"/>
+<g class="head"><path d="M84 62Q84 44 106 44 128 44 128 62V80Q118 92 106 92 94 92 84 80Z" fill="#2a2f42" stroke="#101421" stroke-width="3"/><path d="M95 66H103M115 66H123" class="eyes" stroke="var(--fighter-light)" stroke-width="3" stroke-linecap="round"/><path d="M86 74Q106 82 126 74" fill="none" stroke="var(--fighter-deep)" stroke-width="3"/><path d="M48 52L106 16 164 52Q106 64 48 52Z" [attr.fill]="paint('gold')" stroke="#101421" stroke-width="3" stroke-linejoin="round"/><path d="M61 50L103 22M77 53L105 22M95 54L106 22M114 54L107 22M134 52L109 23M153 51L110 25" fill="none" stroke="#6c4a2a" stroke-width=".8" opacity=".6"/><path d="M58 53Q105 66 155 54" fill="none" stroke="#ffedbd" stroke-width="1.6"/><path d="M72 42Q106 32 140 42M106 18V30" fill="none" stroke="#a8823f" stroke-width="3"/></g>
+            <g class="weapon-arm"><path d="M128 100L150 118" stroke="var(--fighter-color)" stroke-width="20" stroke-linecap="round"/><g class="weapon"><path d="M161 108L198 28 203 24 202 33 167 112Z" [attr.fill]="paint('steel')" stroke="#101421" stroke-width="3.5"/><path d="M190 42L166 100" stroke="#9baac4" stroke-width="2.5"/><path d="M146 128L158 112" stroke="#6e4b32" stroke-width="9" stroke-linecap="round"/><ellipse cx="160" cy="110" rx="9" ry="5" transform="rotate(-62 160 110)" fill="#ffe2a5" stroke="#101421" stroke-width="3"/><circle cx="152" cy="121" r="9" fill="#2a2f42" stroke="#101421" stroke-width="3"/></g></g>
+            <g class="potion"><rect x="84" y="128" width="8" height="9" rx="2" fill="#a8823f" stroke="#101421" stroke-width="2.5"/><path d="M82 137H94V141Q101 145 100 153 98 162 88 162 78 162 76 153 75 145 82 141Z" fill="#5dff9a" stroke="#101421" stroke-width="3"/><path d="M81 148Q83 144 86 144" stroke="#fff" stroke-width="2.5" stroke-linecap="round" fill="none"/></g>
+          }
+          @case ('mage') {
+            <path class="cloth" d="M82 118Q50 168 38 208H92Z" [attr.fill]="paint('dark')" stroke="#101421" stroke-width="3" stroke-linejoin="round"/>
+            <g class="leg back-leg"><path d="M84 196L76 212H98L100 196Z" fill="#232738" stroke="#101421" stroke-width="4"/></g>
+            <g class="leg front-leg"><path d="M116 196L118 212H142L134 196Z" fill="#232738" stroke="#101421" stroke-width="4"/></g>
+            <g class="back-arm"><path d="M84 100Q66 112 62 132" fill="none" stroke="var(--fighter-color)" stroke-width="20" stroke-linecap="round"/><circle class="cast-hand" cx="60" cy="138" r="9" fill="var(--fighter-light)" stroke="#101421" stroke-width="3"/></g>
+            <path d="M78 90Q106 80 134 90L150 206H62Z" [attr.fill]="paint('armor')" stroke="#101421" stroke-width="3" stroke-linejoin="round"/>
+            <path d="M106 96V204" stroke="var(--fighter-light)" stroke-width="7"/><path d="M70 140Q106 152 142 140" fill="none" stroke="#232738" stroke-width="9"/>
+            <circle cx="88" cy="176" r="5" fill="var(--fighter-light)"/><circle cx="126" cy="176" r="5" fill="var(--fighter-light)"/><path d="M94 112L100 122M118 112L112 122" stroke="var(--fighter-deep)" stroke-width="4" stroke-linecap="round"/>
+
+            <path d="M82 98L72 197 97 199 98 128Z" [attr.fill]="paint('silk')" opacity=".65"/>
+            <g fill="none" stroke="#ecd9a9" stroke-width="1.4"><path d="M81 98L68 199H98M131 98L144 199H114M96 103L106 114 116 103M106 156L119 171 106 187 93 171Z"/><path d="M74 190L79 181 84 190 89 181 94 190M119 190L124 181 129 190 134 181 139 190"/></g>
+            <path d="M103 153L110 161 107 177 101 166Z" [attr.fill]="paint('gem')" stroke="#f7e7b8" stroke-width="1"/>
+            <g stroke="#fff2c6" stroke-width="1" opacity=".6"><path d="M80 117L89 124M78 129L87 136M130 116L122 126"/></g>
+<g class="head"><path d="M76 72Q74 30 108 18Q118 14 126 4Q126 30 140 50Q146 66 138 86Q122 100 106 100Q88 100 76 86Z" [attr.fill]="paint('dark')" stroke="#101421" stroke-width="3" stroke-linejoin="round"/><path d="M88 64Q90 48 108 48 126 48 128 64V80Q118 90 108 90 96 90 88 80Z" fill="#14121f"/><path d="M82 73Q79 45 108 25M133 74Q139 56 122 30" fill="none" stroke="#e7cf9b" stroke-width="1.7"/><path d="M88 59L105 43 124 59" fill="none" stroke="var(--fighter-light)" stroke-width="1.5"/><g class="eyes"><rect x="96" y="63" width="8" height="5" rx="2" fill="var(--fighter-light)"/><rect x="114" y="63" width="8" height="5" rx="2" fill="var(--fighter-light)"/></g><path d="M84 40Q96 26 112 24" fill="none" stroke="var(--fighter-light)" stroke-width="4" stroke-linecap="round" opacity=".6"/></g>
+            <g class="guard ward"><circle cx="106" cy="122" r="100" fill="var(--fighter-light)" fill-opacity=".14" stroke="var(--fighter-light)" stroke-width="4"/><path d="M106 22L193 72V172L106 222 19 172V72Z" fill="none" stroke="var(--fighter-light)" stroke-width="2.5" stroke-opacity=".6"/><path d="M40 90Q106 60 172 90" fill="none" stroke="#fff" stroke-width="3" stroke-opacity=".5" stroke-linecap="round"/></g>
+            <g class="weapon-arm"><path d="M130 100L152 124" stroke="var(--fighter-color)" stroke-width="20" stroke-linecap="round"/><g class="weapon"><path d="M154 212L164 42" stroke="#6e4b32" stroke-width="8" stroke-linecap="round"/><path d="M164 44Q172 24 156 16" fill="none" stroke="#6e4b32" stroke-width="7" stroke-linecap="round"/><path d="M148 23Q140 41 162 51Q182 41 175 21M149 42L161 53 174 42" fill="none" stroke="#edcc87" stroke-width="3"/><path d="M160 64L162 55M158 83L161 70M154 158L160 158M154 164L160 164M152 191L158 191" stroke="#ecd49e" stroke-width="2"/><circle class="orb" cx="161" cy="30" r="13" [attr.fill]="paint('gem')" stroke="#101421" stroke-width="2"/><circle cx="157" cy="26" r="4" fill="#fff"/><circle cx="158" cy="126" r="9" fill="var(--fighter-light)" stroke="#101421" stroke-width="3"/></g></g>
+          }
+          @default {
+            <path class="cloth" d="M75 85Q44 107 39 179L87 166 111 96Z" [attr.fill]="paint('dark')" stroke="#101421" stroke-width="3" />
+            <g class="leg back-leg"><path d="M87 155L79 199" stroke="#232738" stroke-width="25" stroke-linecap="round"/><path d="M77 187L69 209H97L98 187Z" [attr.fill]="paint('armor')" stroke="#101421" stroke-width="3"/></g>
+            <g class="leg front-leg"><path d="M121 155L129 199" stroke="#232738" stroke-width="25" stroke-linecap="round"/><path d="M116 187L115 209H148L143 187Z" [attr.fill]="paint('armor')" stroke="#101421" stroke-width="3"/></g>
+            <path d="M75 91Q106 79 135 94L140 150 125 171H82L67 150Z" [attr.fill]="paint('armor')" stroke="#101421" stroke-width="3"/>
+            <path d="M87 103L107 96 127 103 122 137 107 148 92 137Z" fill="var(--fighter-light)"/>
+            <path d="M105 103V135M95 119H117" stroke="var(--fighter-deep)" stroke-width="6" stroke-linecap="round"/>
+            <path d="M72 148H136" stroke="#232738" stroke-width="10"/><rect x="99" y="141" width="17" height="15" rx="3" fill="#ffe2a5" stroke="#101421" stroke-width="3"/>
+            <g class="back-arm"><path d="M77 104L56 128" stroke="var(--fighter-light)" stroke-width="22" stroke-linecap="round"/><path d="M32 120L58 110 83 120 79 151 58 170 36 151Z" [attr.fill]="paint('dark')" stroke="#101421" stroke-width="3"/><path d="M43 128L58 122 72 128 69 145 58 156 47 145Z" [attr.fill]="paint('armor')"/><path d="M58 128V149M49 137H67" stroke="var(--fighter-light)" stroke-width="4"/></g>
+
+            <path d="M72 150L83 167 105 173 128 166 138 151M82 156L84 163M129 155L126 163" fill="none" stroke="#d7c092" stroke-width="2"/>
+            <path d="M79 98L86 103 84 129 75 135Z" fill="#fff" opacity=".17"/>
+            <path d="M128 98L132 126 124 134" fill="none" stroke="#141b38" stroke-width="2" opacity=".65"/>
+            <g fill="#e9cf8c" stroke="#6a543a" stroke-width=".6"><circle cx="78" cy="100" r="2"/><circle cx="131" cy="100" r="2"/><circle cx="77" cy="142" r="2"/><circle cx="132" cy="141" r="2"/></g>
+            <path d="M107 101L112 114 125 119 113 123 107 140 102 124 90 119 102 114Z" [attr.fill]="paint('gold')" stroke="#fff0bd" stroke-width=".8"/>
+<g class="head"><path class="plume" d="M97 32Q89 13 109 7 129 9 131 26L115 43Z" [attr.fill]="paint('armor')" stroke="#101421" stroke-width="3"/><path d="M71 59Q71 27 105 27 140 27 142 60V85Q124 101 105 101 85 99 70 84Z" [attr.fill]="paint('steel')" stroke="#101421" stroke-width="3"/><path d="M74 63H143L138 86 105 94 74 84Z" fill="#30364b"/><path d="M108 33V60H143" fill="none" stroke="#a1b0c9" stroke-width="6"/><path class="eyes" d="M94 70H101M122 70H129" stroke="var(--fighter-light)" stroke-width="3" stroke-linecap="round"/><path d="M80 78L85 87M90 80L94 90M119 80L117 90M132 77L128 88" stroke="#8394b0" stroke-width="1.5"/><path d="M82 48Q89 37 101 37M115 36Q130 39 136 54" fill="none" stroke="#fff" stroke-width="1.4" opacity=".8"/><path d="M108 77V88" stroke="#65748e" stroke-width="4"/><path d="M75 45Q84 32 101 33" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/></g>
+            <g class="weapon-arm"><path d="M131 104L153 121" stroke="var(--fighter-light)" stroke-width="22" stroke-linecap="round"/><g class="weapon"><path d="M155 118L174 42 184 22 188 45 168 121Z" [attr.fill]="paint('steel')" stroke="#101421" stroke-width="4"/><path d="M174 48L163 107" stroke="#9baac4" stroke-width="3"/><path d="M147 112L177 120" stroke="#ffe2a5" stroke-width="9" stroke-linecap="round"/><path d="M159 119L153 139" stroke="#6e4b32" stroke-width="8" stroke-linecap="round"/><circle cx="154" cy="124" r="11" [attr.fill]="paint('armor')" stroke="#101421" stroke-width="4"/></g></g>
+            <path class="guard barrier" d="M176 64Q214 128 176 196" fill="none" stroke="var(--fighter-light)" stroke-width="9" stroke-linecap="round"/>
+          }
+        }
+      </g>
+      <path class="slash" d="M153 22Q248 83 175 183Q213 92 153 22Z" fill="var(--fighter-light)" />
+    </svg>
