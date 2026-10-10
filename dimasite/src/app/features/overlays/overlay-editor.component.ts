@@ -5,7 +5,7 @@ import { waitForOverlayImages } from './overlay-image-readiness';
 import { OverlayKeyframeEditorComponent } from './overlay-keyframe-editor.component';
 import { OverlayAppearanceComponent } from './overlay-appearance.component';
 import { OverlayVariantsComponent } from './overlay-variants.component';
-import { matchingVariant, selectAlertLayout, designLayouts, type AlertLayout, type AlertVariant } from './overlay.model';
+import { matchingVariant, selectAlertLayout, type AlertLayout, type AlertVariant } from './overlay.model';
 import { OverlayTimelineComponent, type TimelineEdit } from './overlay-timeline.component';
 import type { AlertTransport } from './overlay-sound.component';
 import { OverlaySoundComponent } from './overlay-sound.component';
@@ -62,7 +62,8 @@ export class OverlayEditorComponent {
   readonly conflict = signal(false);
   private recoveryRequestId: string | null = null;
   readonly astError = signal('');
-  readonly rendered = signal<Record<string, string>>({});
+  /** Sample text per alert event: each event renders with its own sample, so Bits never shows 0 bits first. */
+  readonly rendered = signal<Partial<Record<AlertEvent, Record<string, string>>>>({});
   private readonly playbackTexts = signal<Record<string, string> | null>(null);
   readonly confirmRotate = signal(false);
   readonly liveTestKind = signal<EventKind>('tts');
@@ -217,15 +218,19 @@ export class OverlayEditorComponent {
     });
     effect(onCleanup => {
       const ownTexts = this.widgets().filter(w => w.kind === 'text').map(w => w.text || '');
-      const designTexts = this.designs().flatMap(d => designLayouts(d).flatMap(e => e.widgets.filter(w => w.kind === 'text').map(w => w.text || '')));
-      const texts = [...new Set([...ownTexts, ...designTexts])].slice(0, 100);
-      const kind = this.designEvent(), user = this.sampleUser(), amount = this.sampleAmount(), tier = this.sampleTier();
+      const current = this.designEvent(), user = this.sampleUser(), amount = this.sampleAmount(), tier = this.sampleTier();
+      const batches = ALERT_EVENTS.map(kind => {
+        const designTexts = this.designs().flatMap(d => [d.events[kind], ...(d.variants?.[kind] ?? []).map(v => v.layout)])
+          .flatMap(layout => layout?.widgets.filter(w => w.kind === 'text').map(w => w.text || '') ?? []);
+        return { kind, texts: [...new Set([...(kind === current ? ownTexts : []), ...designTexts])].slice(0, 100) };
+      }).filter(batch => batch.texts.length);
       this.loading();
-      if (!this.channel || !texts.length) return;
+      if (!this.channel || !batches.length) return;
       let valid = true;
       const timer = setTimeout(() => {
-        void this.api.render(this.channel, texts, kind, user, amount, tier).then(values => {
-          if (valid) { this.rendered.set(Object.fromEntries(texts.map((text, i) => [text, values[i]]))); this.astError.set(''); }
+        // Each event updates independently, so one slow render cannot hold back the others.
+        for (const { kind, texts } of batches) void this.api.render(this.channel, texts, kind, user, amount, tier).then(values => {
+          if (valid) { this.rendered.update(all => ({ ...all, [kind]: Object.fromEntries(texts.map((text, i) => [text, values[i]])) })); this.astError.set(''); }
         }).catch(e => { if (valid) this.astError.set(e?.error?.message || this.t('astFailed')); });
       }, 200);
       onCleanup(() => { valid = false; clearTimeout(timer); });
@@ -485,10 +490,10 @@ export class OverlayEditorComponent {
     this.resetSimulation();
     this.updateLayout(layout => ({...layout, duration: Math.max(1,Math.min(120,value))}));
   }
-  renderText(text='$(user)', widget?: OverlayWidget): string {
+  renderText(text='$(user)', widget?: OverlayWidget, kind: AlertEvent = widget?.kind === 'alert' ? this.eventFor(widget) : this.designEvent()): string {
     const event = widget && [this.active(), ...this.parallel()].find(e => e && !e.preparing && widget.events?.includes(e.kind as AlertEvent));
     const prepared = widget && this.designDraft() && (this.previewDesign() || this.timeline()) ? this.playbackTexts() : event?.texts;
-    return prepared?.[text] ?? this.rendered()[text] ?? text;
+    return prepared?.[text] ?? this.rendered()[kind]?.[text] ?? text;
   }
   alertLayout(widget: OverlayWidget): OverlayWidget[] { return this.playingLayout(widget)?.widgets ?? []; }
   eventFor(widget: OverlayWidget): AlertEvent {

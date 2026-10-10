@@ -503,7 +503,7 @@
                 <div class="design-thumbnail" aria-hidden="true"><div class="design-mini-canvas" [style.aspect-ratio]="design.width + ' / ' + design.height">
                   @for (layer of design.events.follow.widgets; track layer.id) { @if (layer.visible) {
                     <div class="alert-part" [attr.data-kind]="layer.kind" [style.left.%]="layer.x / design.width * 100" [style.top.%]="layer.y / design.height * 100" [style.width.%]="layer.width / design.width * 100" [style.height.%]="layer.height / design.height * 100">
-                      <app-overlay-layer [owner]="channel" [layer]="layer" [text]="renderText(layer.text)" />
+                      <app-overlay-layer [owner]="channel" [layer]="layer" [text]="renderText(layer.text, undefined, 'follow')" />
                     </div>
                   } }
                 </div></div>

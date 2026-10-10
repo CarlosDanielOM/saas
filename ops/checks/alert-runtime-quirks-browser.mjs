@@ -46,6 +46,7 @@ try {
     const box = await page.locator('.canvas').boundingBox();
     assert.ok(Math.abs(box.width - Math.min(width, height * 16 / 9)) < 2 && box.height <= height + 1, `canvas fits ${width}x${height}: ${JSON.stringify(box)}`);
     await sleep(700);
+    await page.evaluate(() => { window.seenText = []; new MutationObserver(() => { for (const e of document.querySelectorAll('[data-event] .layer-content span')) window.seenText.push(e.textContent); }).observe(document.querySelector('.canvas'), { subtree: true, childList: true, characterData: true }); });
     send('overlay-event', { id: 'follow-1', kind: 'follow' });
     const image = page.locator('[data-event=follow] img');
     await image.waitFor();
@@ -53,6 +54,7 @@ try {
     assert.ok(await page.evaluate(() => document.fonts.check("400 40px 'Plus Jakarta Sans'")), 'web font is ready before the first alert text');
     assert.equal(await page.locator('app-overlay-sound audio').evaluate(a => a.src.startsWith('blob:')), true, 'sound plays from local bytes');
     await until(() => ended.includes('follow-1'), 'follow completes');
+    assert.deepEqual([...new Set(await page.evaluate(() => window.seenText))], ['Luna followed'], 'OBS shows only the server-rendered text, never the template');
     send('overlay-event', { id: 'follow-2', kind: 'follow' }); await image.waitFor();
     assert.equal(calls.filter(id => id === gifId).length, 1, 'repeat alert reuses picture bytes');
     assert.equal(calls.filter(id => id === soundId).length, 1, 'repeat alert reuses sound bytes');
