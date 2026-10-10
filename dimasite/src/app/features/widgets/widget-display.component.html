@@ -86,7 +86,7 @@
               </div>
             }
           </div>
-          <p class="info-hint">{{ t(state().run?.perkCount === 0 ? 'noPerks' : gameplay() ? 'recordWinHint' : 'phase.' + state().phase) }}</p>
+          <p class="info-hint">{{ subWheel() && !subWheel()!.inside && state().resultPhase === 'perk-result' ? t('subWheel.won', {name: subWheel()!.name}) : t(state().run?.perkCount === 0 ? 'noPerks' : gameplay() ? 'recordWinHint' : 'phase.' + state().phase) }}</p>
         </div>
       </aside>
     }

@@ -1,9 +1,9 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, computed, effect, inject, input, output, signal, viewChild } from '@angular/core';
 import { NgOptimizedImage, NgStyle } from '@angular/common';
-import { WidgetCatalog, WidgetEntry, WidgetLayout, WidgetRole, WidgetState } from './widgets-api.service';
+import { WIDGET_SUB_WHEEL_PREFIX, WidgetCatalog, WidgetEntry, WidgetLayout, WidgetRole, WidgetState } from './widgets-api.service';
 import { widgetText } from './widget-text';
 import { RouletteDisplayComponent } from '../roulette/roulette-display.component';
-import { widgetRoulette } from './widget-roulette';
+import { mainWheelEntries, subWheelEntry, widgetRoulette } from './widget-roulette';
 import { widgetGeometry, WidgetRect } from './widget-layout';
 import { WidgetStreakComponent } from './widget-streak.component';
 import { challengeSteps } from './widget-steps';
@@ -37,8 +37,21 @@ export class WidgetDisplayComponent {
   readonly pool = computed(() => {
     const state = this.state(), kind = state.run?.draw?.kind ?? (this.mode() === 'perks' ? 'perk' : 'character');
     const ids = state.run?.draw?.poolIds;
-    return ids ? ids.flatMap(id => { const entry = this.entriesById().get(id); return entry ? [entry] : []; }) : this.catalog().entries.filter(e => e.kind === kind && e.role === this.role() && (state.config.includeUnavailable || e.available) && !state.config.excludedIds.includes(e.id));
+    if (ids) return ids.flatMap(id => { const entry = this.entriesById().get(id) ?? this.wheelEntry(id); return entry ? [entry] : []; });
+    const entries = this.catalog().entries.filter(e => e.kind === kind && e.role === this.role() && (state.config.includeUnavailable || e.available) && !state.config.excludedIds.includes(e.id));
+    return kind === 'perk' ? mainWheelEntries(state.config, this.role(), entries, state.run?.perkIds ?? []) : entries;
   });
+  /** The mini roulette that won the main wheel, or whose own wheel is spinning. */
+  readonly subWheel = computed(() => {
+    const draw = this.state().run?.draw, id = draw?.wheelId ?? (draw?.itemId.startsWith(WIDGET_SUB_WHEEL_PREFIX) ? draw.itemId.slice(WIDGET_SUB_WHEEL_PREFIX.length) : null);
+    if (!draw || id === null) return null;
+    return {name: this.state().config.subWheels.find(w => w.id === id)?.name ?? '?', inside: !!draw.wheelId};
+  });
+  private wheelEntry(id: string): WidgetEntry | null {
+    if (!id.startsWith(WIDGET_SUB_WHEEL_PREFIX)) return null;
+    const wheelId = id.slice(WIDGET_SUB_WHEEL_PREFIX.length);
+    return subWheelEntry({id: wheelId, role: this.role(), name: this.state().config.subWheels.find(w => w.id === wheelId)?.name ?? '?'});
+  }
   readonly character = computed(() => this.entriesById().get(this.state().run?.characterId ?? this.state().loadouts[this.role()].characterId ?? '') ?? null);
   /** A one-item list re-creates the portrait when the character changes, replaying its entrance. */
   readonly characterList = computed(() => { const entry = this.character(); return entry ? [entry] : []; });
@@ -58,10 +71,13 @@ export class WidgetDisplayComponent {
     const left = this.state().config.targets[this.role()] - this.state().wins[this.role()];
     return left <= 0 ? this.t('goalReached') : this.t(left === 1 ? 'goalRemainingOne' : 'goalRemaining', {n: left});
   });
-  readonly title = computed(() => this.voteStage() ? this.t('pollTitle') : this.gameplay() ? this.t('roundReady') : this.intro() ? this.t('pack.' + this.role() + '.challenge.title') : this.t('pack.' + this.role() + '.' + (this.state().run?.draw?.kind === 'perk' || this.mode() === 'perks' ? 'perks' : 'characters') + '.title'));
+  readonly title = computed(() => this.voteStage() ? this.t('pollTitle') : this.gameplay() ? this.t('roundReady') : this.intro() ? this.t('pack.' + this.role() + '.challenge.title') : this.subWheel()?.inside ? '🎲 ' + this.subWheel()!.name : this.t('pack.' + this.role() + '.' + (this.state().run?.draw?.kind === 'perk' || this.mode() === 'perks' ? 'perks' : 'characters') + '.title'));
   readonly phaseText = computed(() => {
     const character = this.character();
     if (this.gameplay()) return character ? this.t('loadoutSummary', {name: this.label(character), n: this.perks().length}) : this.t('roundReady');
+    const sub = this.subWheel();
+    if (sub && !sub.inside && this.state().resultPhase === 'perk-result') return this.t('subWheel.won', {name: sub.name});
+    if (sub?.inside && this.state().phase === 'perk-spin' && !this.state().resultPhase) return this.t('subWheel.spinning', {name: sub.name});
     if (this.state().phase === 'polling' && this.state().run?.joker) return this.t('jokerVotesHint', {points: this.state().config.jokerPointsPerVote});
     if (this.state().phase === 'polling') return this.state().config.channelPointsVoting ? this.t('extraVotesHint', {points: this.state().config.channelPointsPerVote}) : this.t('freeVotesHint');
     return this.t('phase.' + this.state().phase);

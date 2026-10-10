@@ -18,10 +18,32 @@
     @if (isPerkTab() && tuning()) {
       <div class="tune-help"><p class="hint">{{ t('pool.tuneHint') }}</p>@if (tunedCount()) { <button type="button" class="ghost" (click)="resetTuning()">{{ t('pool.resetTuning') }}</button> }</div>
     }
+    @if (isPerkTab()) {
+      <section class="sub-wheels" aria-labelledby="sub-wheels-title" data-testid="sub-wheels">
+        <div class="sub-head">
+          <div><h3 id="sub-wheels-title">{{ t('subWheel.title') }}</h3><p class="hint">{{ t('subWheel.hint') }}</p></div>
+          <button type="button" (click)="addWheel()" [disabled]="roleWheels().length >= maxWheels" data-testid="sub-wheel-add"><app-lf-icon name="plus" [size]="14" />{{ t('subWheel.add') }}</button>
+        </div>
+        @if (roleWheels().length) {
+          <ul class="sub-list">
+            @for (w of roleWheels(); track w.id) {
+              <li class="sub-row" data-testid="sub-wheel-row">
+                <span class="sub-icon" aria-hidden="true">🎲</span>
+                <span class="sub-name"><strong>{{ w.name }}</strong><small>{{ t('subWheel.summary', {on: wheelOnCount(w), n: w.perkIds.length}) }}@if (w.copies > 1) { · {{ t('pool.slotsChip', {n: w.copies}) }} }@if (w.weight > 1) { · {{ t('pool.weightChip', {n: w.weight}) }} }</small></span>
+                <span class="chance"><span aria-hidden="true">{{ wheelChance(w) }}</span><span class="sr-only">{{ t('pool.chanceAria', {pct: wheelChance(w)}) }}</span></span>
+                <button type="button" (click)="editWheel(w)" [attr.aria-label]="t('subWheel.editAria', {name: w.name})">{{ t('subWheel.edit') }}</button>
+                <button type="button" class="icon-btn" (click)="removeWheel(w)" [attr.aria-label]="t('subWheel.removeAria', {name: w.name})"><app-lf-icon name="trash" [size]="16" /></button>
+              </li>
+            }
+          </ul>
+        }
+        @if (roleWheels().length >= maxWheels) { <p class="hint">{{ t('subWheel.max', {n: maxWheels}) }}</p> }
+      </section>
+    }
     <ul class="entries" [class.perks]="isPerkTab()" [class.tuning]="isPerkTab() && tuning()">
       @for (entry of shown(); track entry.id) {
         <li class="entry" [class.off]="!on(entry)" data-testid="pool-entry">
-          <label class="entry-main"><input type="checkbox" [checked]="on(entry)" (change)="toggle(entry)" />@if (!failedImages().has(entry.id)) { <img [ngSrc]="entry.image_url" width="32" height="38" alt="" (error)="imageFailed(entry)" /> }<span class="name">{{ label(entry) }}@if (!entry.available) { <small>{{ t('ownedOnly') }}</small> }</span></label>
+          <label class="entry-main"><input type="checkbox" [checked]="on(entry)" (change)="toggle(entry)" />@if (!failedImages().has(entry.id)) { <img [ngSrc]="entry.image_url" width="32" height="38" alt="" (error)="imageFailed(entry)" /> }<span class="name">{{ label(entry) }}@if (!entry.available) { <small>{{ t('ownedOnly') }}</small> }@if (isPerkTab() && wheelOf().get(entry.id); as w) { <small class="in-wheel">{{ t('subWheel.inside', {name: w.name}) }}</small> }</span></label>
           @if (isPerkTab() && on(entry)) {
             @if (tuning() && !wide()) {
               <button type="button" class="odds odds-btn" [attr.aria-expanded]="expanded() === entry.id" (click)="toggleExpanded(entry)" [attr.aria-label]="t('pool.tuneAria', {name: label(entry), pct: chance(entry)})" data-testid="pool-odds">
@@ -49,6 +71,29 @@
   </fieldset>
   <details class="pool-how"><summary>{{ t('pool.howTitle') }}</summary><p>{{ t('pool.how', {n: minWheel}) }}</p></details>
   @if (changedElsewhere()) { <p class="warn-line" role="alert">{{ t('pool.changedElsewhere') }}</p> }
+  <dialog #wheelDialog class="lf-dialog wheel-dialog" (cancel)="closeWheel()" aria-labelledby="wheel-dialog-title" data-testid="sub-wheel-dialog">
+    @if (wheelDraft(); as d) {
+      <h2 id="wheel-dialog-title">{{ t(d.isNew ? 'subWheel.newTitle' : 'subWheel.editTitle') }}</h2>
+      <p class="hint">{{ t('subWheel.dialogHint') }}</p>
+      <label class="field">{{ t('subWheel.name') }}<input type="text" maxlength="40" [value]="d.name" (input)="onWheelName($event)" [attr.aria-invalid]="d.tried && wheelErrors().name" data-testid="sub-wheel-name" /></label>
+      @if (d.tried && wheelErrors().name) { <p class="invalid" role="alert">{{ t('subWheel.nameError') }}</p> }
+      <div class="wheel-odds">
+        <span class="tuner"><span class="tuner-label">{{ t('pool.slots') }}</span><button type="button" (click)="stepWheel('copies', -1)" [disabled]="d.copies <= 1" [attr.aria-label]="t('pool.less', {what: t('pool.slots'), name: d.name})">−</button><output [attr.aria-label]="t('pool.slotsOf', {name: d.name, n: d.copies})">{{ d.copies }}</output><button type="button" (click)="stepWheel('copies', 1)" [disabled]="d.copies >= maxCopies" [attr.aria-label]="t('pool.more', {what: t('pool.slots'), name: d.name})">+</button></span>
+        <span class="tuner"><span class="tuner-label">{{ t('pool.weight') }}</span><button type="button" (click)="stepWheel('weight', -1)" [disabled]="d.weight <= 1" [attr.aria-label]="t('pool.less', {what: t('pool.weight'), name: d.name})">−</button><output [attr.aria-label]="t('pool.weightOf', {name: d.name, n: d.weight})">{{ d.weight }}</output><button type="button" (click)="stepWheel('weight', 1)" [disabled]="d.weight >= maxWeight" [attr.aria-label]="t('pool.more', {what: t('pool.weight'), name: d.name})" data-testid="sub-wheel-more-weight">+</button></span>
+      </div>
+      <p class="hint">{{ t('subWheel.oddsHint') }}</p>
+      <div class="wheel-pick-head"><strong>{{ t('subWheel.perks') }}</strong><span class="count" aria-live="polite">{{ t('subWheel.chosen', {n: d.perkIds.length}) }}</span></div>
+      <input type="search" [value]="d.query" (input)="onWheelQuery($event)" [attr.aria-label]="t('search')" [placeholder]="t('search')" />
+      <ul class="wheel-perks" [attr.aria-invalid]="d.tried && wheelErrors().perks">
+        @for (entry of wheelPerks(); track entry.id) {
+          <li><label><input type="checkbox" [checked]="d.perkIds.includes(entry.id)" (change)="toggleWheelPerk(entry)" />@if (!failedImages().has(entry.id)) { <img [ngSrc]="entry.image_url" width="28" height="33" alt="" (error)="imageFailed(entry)" /> }<span class="name">{{ label(entry) }}@if (!on(entry)) { <small>{{ t('subWheel.offNote') }}</small> }@if (otherWheel(entry); as other) { <small>{{ t('subWheel.movesFrom', {name: other.name}) }}</small> }</span></label></li>
+        } @empty { <li class="hint">{{ t('noMatches') }}</li> }
+      </ul>
+      @if (d.tried && wheelErrors().perks) { <p class="invalid" role="alert">{{ t('subWheel.perksError', {n: minWheelPerks}) }}</p> }
+      @for (w of emptiedBy(); track w.id) { <p class="warn-line" role="status">{{ t('subWheel.emptiesOther', {name: w.name, n: minWheelPerks}) }}</p> }
+      <footer><button type="button" (click)="closeWheel()">{{ t('cancel') }}</button><button type="button" class="primary" (click)="applyWheel()" data-testid="sub-wheel-done">{{ t('subWheel.done') }}</button></footer>
+    }
+  </dialog>
   <div class="save-row lf-save-bar">
     <span>{{ dirty() ? t('unsaved') : t('allSaved') }}</span>
     <span class="save-actions">@if (dirty()) { <button type="button" class="ghost" (click)="discard()" [disabled]="disabled()">{{ t('pool.discard') }}</button> }<button type="button" class="primary" (click)="submit()" [disabled]="disabled() || !dirty()" data-testid="pool-save">{{ t('pool.save') }}</button></span>

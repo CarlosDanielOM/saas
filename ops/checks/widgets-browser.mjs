@@ -114,7 +114,7 @@ async function fixture({width=1280,tier='pro',theme='dark',lang='en',owner=true,
  });
  const page=await context.newPage();const errors=[];page.on('pageerror',error=>errors.push(error.message));
  await page.goto(base+`/${owner?'widgetfixture':'other'}${path}`);
- return {context,page,state,events:()=>events,writes:()=>writes,reads:()=>widgetReads,errors,actions:actionLog,setLost:()=>lostResponse=true,publish:()=>{manualDraw=true;state.serverTime=Date.now();state.revision++;widgetSocket.send('42/overlays/widgets/991801,'+JSON.stringify(['widgets-state',wireState()]));},setConflict:()=>conflict=true,setFail:v=>failRead=v};
+ return {context,page,state,events:()=>events,writes:()=>writes,reads:()=>widgetReads,errors,actions:actionLog,setLost:()=>lostResponse=true,publish:()=>{manualDraw=true;state.serverTime=Date.now();state.revision++;widgetSocket?.send('42/overlays/widgets/991801,'+JSON.stringify(['widgets-state',wireState()]));},setConflict:()=>conflict=true,setFail:v=>failRead=v};
 }
 const axeClean=async(page,include)=>{const result=await new AxeBuilder({page}).include(include).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();if(process.env.AXE_DEBUG)for(const v of result.violations)for(const n of v.nodes)console.log(v.id,n.target,n.failureSummary);assert.deepEqual(result.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>n.target)})),[]);};
 const overflow=async page=>assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'no horizontal overflow');
@@ -257,13 +257,13 @@ try{
   await row.getByText('3 slots',{exact:true}).waitFor();await row.getByText('2× luck',{exact:true}).waitFor();assert.notEqual(await row.locator('.chance').innerText(),before,'chance follows slots × weight');
   assert(await page.getByTestId('start-sequence').isDisabled(),'unsaved pool blocks starting');
   await pool.getByTestId('pool-save').click();await until(async()=>!(await pool.getByTestId('pool-save').isEnabled()),'pool saved');
-  let configure=b.actions.filter(a=>a.action==='configure').at(-1).body;assert.deepEqual(Object.keys(configure).sort(),['excludedIds','includeUnavailable','perkTuning']);
+  let configure=b.actions.filter(a=>a.action==='configure').at(-1).body;assert.deepEqual(Object.keys(configure).sort(),['excludedIds','includeUnavailable','perkTuning','subWheels']);
   assert.deepEqual(configure.perkTuning,{[killerPerks[0].id]:{copies:3,weight:2}});
   await pool.getByTestId('pool-tab-survivor-character').click();await pool.getByTestId('pool-entry').first().locator('input[type=checkbox]').uncheck();await pool.getByTestId('pool-save').click();
   await until(()=>b.state.config.excludedIds.includes(survivors[0].id),'survivor excluded');assert.deepEqual(b.state.config.perkTuning,{[killerPerks[0].id]:{copies:3,weight:2}});
   await page.getByLabel('Character roulette style',{exact:true}).selectOption('reel');await page.getByRole('button',{name:'Save settings',exact:true}).click();
   await until(()=>b.state.config.characterDesign==='reel','settings saved');configure=b.actions.filter(a=>a.action==='configure').at(-1).body;
-  assert(!('excludedIds' in configure)&&!('perkTuning' in configure),'settings never resend the pool');assert(b.state.config.excludedIds.includes(survivors[0].id));
+  assert(!('excludedIds' in configure)&&!('perkTuning' in configure)&&!('subWheels' in configure),'settings never resend the pool');assert(b.state.config.excludedIds.includes(survivors[0].id));
   // A Bits change to the wheel while editing is called out instead of silently lost.
   await pool.getByTestId('pool-tab-killer-perk').click();await pool.getByTestId('pool-entry').nth(2).locator('input[type=checkbox]').uncheck();
   b.state.config={...b.state.config,excludedIds:[...b.state.config.excludedIds,killerPerks[5].id]};b.state.revision++;
@@ -274,6 +274,49 @@ try{
   const drawn=b.state.run.draw;assert.equal(drawn.poolIds.filter(id=>id===killerPerks[0].id).length,3);assert.equal(drawn.itemId,killerPerks[0].id);
   assert.equal(await page.locator('app-roulette-display .display').getAttribute('data-winner'),`${drawn.itemId}~3`,'lands on the third copy the server picked');
   await overflow(page);assert.deepEqual(b.errors,[]);await b.context.close();console.log('PASS Bits actions + roulette pool behaviour');
+  // Mini roulettes: built in a dialog, saved with the pool, shown on stream as one slice that opens its own wheel.
+  {
+   const m=await fixture(),mp=m.page,mpool=mp.getByTestId('roulette-pool');await mpool.getByTestId('pool-tab-killer-perk').click();
+   const wheels=mpool.getByTestId('sub-wheels');await wheels.waitFor();assert.equal(await wheels.getByTestId('sub-wheel-row').count(),0);
+   await wheels.getByTestId('sub-wheel-add').click();const dialog=mp.getByTestId('sub-wheel-dialog');await dialog.getByTestId('sub-wheel-name').waitFor();
+   assert.equal(await dialog.getByTestId('sub-wheel-name').inputValue(),'Mini roulette 1');
+   await dialog.getByTestId('sub-wheel-done').click();await dialog.getByText('Pick at least 2 perks.',{exact:true}).waitFor();
+   await dialog.getByTestId('sub-wheel-name').fill('Bad roulette');
+   const inside=killerPerks.slice(0,3);
+   for(const e of inside)await dialog.locator('.wheel-perks label',{hasText:e.english}).first().locator('input').check();
+   await until(async()=>(await dialog.locator('.wheel-pick-head .count').innerText())==='3 chosen','three perks chosen');
+   await dialog.getByTestId('sub-wheel-more-weight').click();await axeClean(mp,'[data-testid="sub-wheel-dialog"]');
+   await dialog.getByTestId('sub-wheel-done').click();await until(async()=>!(await dialog.isVisible()),'dialog closes');
+   const row=wheels.getByTestId('sub-wheel-row');await row.waitFor();assert.match(await row.innerText(),/Bad roulette/);assert.match(await row.innerText(),/3 of 3 perks on/);
+   await until(async()=>await mpool.getByText('In Bad roulette',{exact:true}).count()===3,'perks show their mini roulette');
+   assert(await mp.getByTestId('start-sequence').isDisabled(),'unsaved mini roulette blocks starting');
+   await mpool.getByTestId('pool-save').click();await until(()=>m.state.config.subWheels?.length===1,'mini roulette saved');
+   const saved=m.state.config.subWheels[0];assert.equal(saved.name,'Bad roulette');assert.equal(saved.role,'killer');assert.deepEqual([...saved.perkIds].sort(),inside.map(e=>e.id).sort());assert.equal(saved.weight,2);assert.equal(saved.copies,1);
+   assert('subWheels' in m.actions.filter(a=>a.action==='configure').at(-1).body,'saved with the pool');
+   // A second mini roulette that takes two of its perks leaves it under the minimum, so it is removed (with a warning).
+   await wheels.getByTestId('sub-wheel-add').click();await dialog.getByTestId('sub-wheel-name').waitFor();
+   for(const e of inside.slice(0,2))await dialog.locator('.wheel-perks label',{hasText:e.english}).first().locator('input').check();
+   await dialog.getByText('Bad roulette would have fewer than 2 perks left, so it will be removed.',{exact:true}).waitFor();
+   await dialog.getByRole('button',{name:'Cancel',exact:true}).click();await until(async()=>!(await dialog.isVisible()),'cancel closes');assert.equal(await wheels.getByTestId('sub-wheel-row').count(),1);
+   // On stream: the main wheel lands on the slice, then its own wheel spins with only its perks.
+   await mp.getByTestId('draw-perk').click();await until(()=>!!m.state.run?.draw,'draw started');
+   const slice='wheel:'+saved.id;m.state.phase='perk-result';m.state.nextAt=Date.now()+60000;
+   m.state.run.draw={...m.state.run.draw,id:crypto.randomUUID(),itemId:slice,poolIds:[slice,killerPerks[5].id,killerPerks[6].id],slot:0,startedAt:Date.now()-2000,endsAt:Date.now()-1000};m.publish();
+   const stagePhase=async()=>(await mp.locator('.stage-title .phase').allTextContents()).map(t=>t.trim());
+   await until(async()=>(await stagePhase()).includes('Bad roulette won! Its roulette spins next.'),'slice win announced',8000);
+   assert.equal(await mp.locator('app-roulette-display .display').first().getAttribute('data-winner'),slice);
+   if(shots)await mp.getByTestId('widget-canvas').screenshot({path:`${shots}/mini-roulette-won.png`});
+   m.state.phase='perk-spin';m.state.nextAt=null;m.state.run.draw={...m.state.run.draw,id:crypto.randomUUID(),itemId:inside[1].id,poolIds:inside.map(e=>e.id),slot:1,wheelId:saved.id,startedAt:Date.now(),endsAt:Date.now()+1500};m.publish();
+   await until(async()=>(await mp.locator('.stage-title h2').allTextContents()).some(t=>t.trim()==='🎲 Bad roulette'),'inner wheel titled',8000);
+   await until(async()=>(await stagePhase()).includes('Spinning Bad roulette…'),'inner spin announced',8000);
+   await mp.locator('app-roulette-display .display[data-state=done]').first().waitFor({timeout:7000});assert.equal(await mp.locator('app-roulette-display .display').first().getAttribute('data-winner'),inside[1].id);
+   await axeClean(mp,'[data-testid="widget-canvas"]');if(shots)await mp.getByTestId('widget-canvas').screenshot({path:`${shots}/mini-roulette-inner.png`});
+   // Removing it puts its perks back on the main wheel.
+   m.state.phase='complete';m.state.nextAt=null;m.publish();await mp.waitForTimeout(400);
+   await row.getByRole('button',{name:'Remove Bad roulette (its perks go back on the main wheel)',exact:true}).click();await until(async()=>await wheels.getByTestId('sub-wheel-row').count()===0,'row removed');
+   await mpool.getByTestId('pool-save').click();await until(()=>m.state.config.subWheels.length===0,'mini roulette removed');
+   await overflow(mp);assert.deepEqual(m.errors,[]);await m.context.close();console.log('PASS mini roulettes: dialog validation, save with pool, chips, move warning, slice win then inner wheel on stage, removal');
+  }
   const seedEvents={enabled:true,active:true,activeSince:Date.now()-3600_000,allowTestEvents:false,rules:[
    {id:'r1',enabled:true,event:'channel.bits.received',minBits:100,maxBits:100,action:{type:'remove-wins',role:'current',amount:1}},
    {id:'r2',enabled:true,event:'channel.bits.received',minBits:500,maxBits:999,action:{type:'add-perks',role:'current',amount:2,perkIds:killerPerks.slice(0,4).map(e=>e.id)}},
@@ -288,6 +331,10 @@ try{
    await vpool.getByTestId('pool-entry').first().getByTestId('pool-more-slots').click();
    await overflow(vp);await axeClean(vp,'[data-testid="widgets-page"]');
    if(shots){await vp.getByTestId('bits-actions').screenshot({path:`${shots}/bits-${width}-${theme}-${lang}.png`});await vpool.screenshot({path:`${shots}/pool-${width}-${theme}-${lang}.png`});}
+   await vpool.getByTestId('sub-wheel-add').click();const vdialog=vp.getByTestId('sub-wheel-dialog');await vdialog.getByTestId('sub-wheel-name').waitFor();
+   await vdialog.locator('.wheel-perks input').first().check();await vdialog.getByTestId('sub-wheel-done').click();await vdialog.locator('.invalid').first().waitFor();
+   await axeClean(vp,'[data-testid="sub-wheel-dialog"]');await overflow(vp);if(shots)await vp.screenshot({path:`${shots}/mini-dialog-${width}-${theme}-${lang}.png`});
+   await vdialog.getByRole('button',{name:lang==='es'?'Cancelar':'Cancel',exact:true}).click();await until(async()=>!(await vdialog.isVisible()),'mini roulette dialog closes');
    await vp.getByTestId('bits-rule').nth(1).getByRole('button',{name:lang==='es'?'Editar':'Edit'}).click();await vp.locator('dialog.rule-dialog').waitFor();
    await axeClean(vp,'dialog.rule-dialog');await overflow(vp);
    if(shots)await vp.screenshot({path:`${shots}/bits-dialog-${width}-${theme}-${lang}.png`});
@@ -300,5 +347,5 @@ try{
  const premium=await fixture({tier:'premium'});await premium.page.getByTestId('role-survivor').waitFor();assert(premium.reads()>0);assert.deepEqual(premium.errors,[]);await premium.context.close();
  const admin=await fixture({owner:false,tier:'premium',path:'/modules/widgets'});await admin.page.getByTestId('widget-dbd').click();await admin.page.getByTestId('role-survivor').waitFor();assert(admin.reads()>0);assert.deepEqual(admin.errors,[]);await admin.context.close();
  const spanish=await fixture({lang:'es',width:390});await spanish.page.getByRole('button',{name:'Iniciar ronda',exact:true}).waitFor();await overflow(spanish.page);await axeClean(spanish.page,'[data-testid="widgets-page"]');assert.deepEqual(spanish.errors,[]);await spanish.context.close();
- console.log('PASS unified DBD browser: Bits actions (ideas, ranges, validation, chosen/random perks, goal raise, simulator, listen switch, rule switch, two-tap delete), roulette pool (four tabs, slots/weight/chance, separate save, remote-change warning, weighted OBS wheel), plain-language round status and step track, skull/hatch win animations (control, preview, OBS, undo, local preview, reduced motion), one control center, per-role fixed character/skip settings, standalone actions, four existing roulette styles, result holds, every camera corner/size, compact alignment, progress, single OBS link, hidden cards, poll confirmation, uncertain-response replay, visibility, Pro gate, EN/ES, light/dark, mobile/desktop, AXE');
+ console.log('PASS unified DBD browser: Bits actions (ideas, ranges, validation, chosen/random perks, goal raise, simulator, listen switch, rule switch, two-tap delete), roulette pool (four tabs, slots/weight/chance, mini roulettes, separate save, remote-change warning, weighted OBS wheel), plain-language round status and step track, skull/hatch win animations (control, preview, OBS, undo, local preview, reduced motion), one control center, per-role fixed character/skip settings, standalone actions, four existing roulette styles, result holds, every camera corner/size, compact alignment, progress, single OBS link, hidden cards, poll confirmation, uncertain-response replay, visibility, Pro gate, EN/ES, light/dark, mobile/desktop, AXE');
 }finally{await browser.close();}

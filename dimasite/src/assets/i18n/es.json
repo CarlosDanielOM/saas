@@ -6763,6 +6763,33 @@
         "save": "Guardar acción"
       }
     },
+    "subWheel": {
+      "title": "Mini ruletas",
+      "hint": "Una mini ruleta es una casilla de la ruleta de ventajas. Si gana, gira su propia ruleta solo con las ventajas que pongas dentro. Esas ventajas salen de la ruleta principal.",
+      "add": "Añadir mini ruleta",
+      "summary": "{{on}} de {{n}} ventajas activadas",
+      "edit": "Editar",
+      "editAria": "Editar {{name}}",
+      "removeAria": "Quitar {{name}} (sus ventajas vuelven a la ruleta principal)",
+      "max": "Puedes tener hasta {{n}} mini ruletas por rol.",
+      "inside": "En {{name}}",
+      "newTitle": "Nueva mini ruleta",
+      "editTitle": "Editar mini ruleta",
+      "dialogHint": "Elige su nombre y sus ventajas. Los cambios se aplican cuando guardes la ruleta.",
+      "name": "Nombre en la ruleta",
+      "nameError": "Escribe un nombre de 1 a 40 caracteres.",
+      "oddsHint": "Las casillas y el peso deciden cuántas veces gana esta casilla en la ruleta principal. Las ventajas de dentro mantienen sus propias casillas y peso dentro de la mini ruleta.",
+      "perks": "Ventajas dentro",
+      "chosen": "{{n}} elegidas",
+      "offNote": "Desactivada: no saldrá hasta que la actives",
+      "movesFrom": "Sale de {{name}}",
+      "perksError": "Elige al menos {{n}} ventajas.",
+      "emptiesOther": "A {{name}} le quedarían menos de {{n}} ventajas, así que se quitará.",
+      "done": "Listo",
+      "defaultName": "Mini ruleta {{n}}",
+      "won": "¡Ha ganado {{name}}! Ahora gira su ruleta.",
+      "spinning": "Girando {{name}}…"
+    },
     "pool": {
       "title": "Qué entra en la ruleta",
       "subtitle": "Elige qué personajes y perks pueden salir. Los perks también pueden ocupar más espacios en la ruleta o tener más suerte.",

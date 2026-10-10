@@ -189,7 +189,7 @@ export class WidgetsPageComponent {
     const value = this.form.getRawValue();
     for (const role of this.roles) if (!value.sequences[role].character && !value.sequences[role].fixedCharacterId) { this.error.set(this.t('fixedCharacterRequired')); return; }
     // The server merges missing fields, so the roulette pool saved elsewhere stays untouched.
-    const config: Omit<WidgetConfig, 'includeUnavailable' | 'excludedIds' | 'perkTuning'> = {...value, sequences: {killer: {...value.sequences.killer, fixedCharacterId: value.sequences.killer.fixedCharacterId || null}, survivor: {...value.sequences.survivor, fixedCharacterId: value.sequences.survivor.fixedCharacterId || null}}, layout: this.state()!.config.layout};
+    const config: Omit<WidgetConfig, 'includeUnavailable' | 'excludedIds' | 'perkTuning' | 'subWheels'> = {...value, sequences: {killer: {...value.sequences.killer, fixedCharacterId: value.sequences.killer.fixedCharacterId || null}, survivor: {...value.sequences.survivor, fixedCharacterId: value.sequences.survivor.fixedCharacterId || null}}, layout: this.state()!.config.layout};
     void this.act('configure', config);
   }
   savePool(pool: WidgetPool): void { void this.act('configure', pool); }

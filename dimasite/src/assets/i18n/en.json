@@ -6763,6 +6763,33 @@
         "save": "Save action"
       }
     },
+    "subWheel": {
+      "title": "Mini roulettes",
+      "hint": "A mini roulette is one slice on the perk wheel. If it wins, its own wheel spins with only the perks you put inside it. Those perks leave the main wheel.",
+      "add": "Add mini roulette",
+      "summary": "{{on}} of {{n}} perks on",
+      "edit": "Edit",
+      "editAria": "Edit {{name}}",
+      "removeAria": "Remove {{name}} (its perks go back on the main wheel)",
+      "max": "You can have up to {{n}} mini roulettes per role.",
+      "inside": "In {{name}}",
+      "newTitle": "New mini roulette",
+      "editTitle": "Edit mini roulette",
+      "dialogHint": "Choose its name and perks. Changes apply when you save the roulette.",
+      "name": "Name shown on the wheel",
+      "nameError": "Enter a name of 1 to 40 characters.",
+      "oddsHint": "Slots and weight set how often this slice wins on the main wheel. Perks inside keep their own slots and weight inside the mini roulette.",
+      "perks": "Perks inside",
+      "chosen": "{{n}} chosen",
+      "offNote": "Turned off: it won't come out until you turn it on",
+      "movesFrom": "Moves out of {{name}}",
+      "perksError": "Pick at least {{n}} perks.",
+      "emptiesOther": "{{name}} would have fewer than {{n}} perks left, so it will be removed.",
+      "done": "Done",
+      "defaultName": "Mini roulette {{n}}",
+      "won": "{{name}} won! Its roulette spins next.",
+      "spinning": "Spinning {{name}}…"
+    },
     "pool": {
       "title": "What's on the roulette",
       "subtitle": "Choose which characters and perks can be drawn. Perks can also take extra slots on the wheel or get extra luck.",

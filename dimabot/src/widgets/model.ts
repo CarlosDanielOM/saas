@@ -1,7 +1,7 @@
 import { randomInt, randomUUID } from 'node:crypto';
 import { catalog, type Entry, type Pack, type Role } from './catalog.js';
 export { RouletteError as WidgetError, fail, integer, object, text } from '../roulette/model.js';
-import { fail, integer, object } from '../roulette/model.js';
+import { fail, integer, object, text } from '../roulette/model.js';
 
 export type CharacterDesign = 'cards' | 'reel' | 'wheel' | 'elimination';
 export type Operation = 'challenge' | 'characters' | 'perks' | 'poll';
@@ -11,10 +11,15 @@ export const defaultSequence = (): Sequence => ({ character: true, fixedCharacte
 export const defaultLayout = (): Layout => ({ cameraCorner: 'bottom-right', cameraWidth: 512, cameraHeight: 288, loadoutMode: 'detailed', autoCompact: true, progressStyle: 'badges', showActive: true, showInfo: true, showProgress: true, hideActiveDuringGameplay: true });
 export interface PerkTuning { copies: number; weight: number }
 export const MAX_PERK_COPIES = 5, MAX_PERK_WEIGHT = 10;
-export interface Config { perkTuning?: Record<string, PerkTuning>; sequences?: Record<Role, Sequence>; layout?: Layout; targets?: Record<Role, number>; language: 'en' | 'es'; characterDesign: CharacterDesign; spinSeconds: number; pollSeconds: number; channelPointsVoting: boolean; channelPointsPerVote: number; jokerChance: number; jokerPointsPerVote: number; includeUnavailable: boolean; excludedIds: string[] }
+/** A mini roulette is one slice on its role's perk wheel; its perks leave the main wheel and spin on their own if it wins. */
+export interface SubWheel { id: string; role: Role; name: string; perkIds: string[]; copies: number; weight: number }
+export const MAX_SUB_WHEELS = 10, MIN_SUB_WHEEL_PERKS = 2, SUB_WHEEL_PREFIX = 'wheel:';
+export const subWheelSlot = (id: string) => SUB_WHEEL_PREFIX + id;
+export interface Config { perkTuning?: Record<string, PerkTuning>; subWheels?: SubWheel[]; sequences?: Record<Role, Sequence>; layout?: Layout; targets?: Record<Role, number>; language: 'en' | 'es'; characterDesign: CharacterDesign; spinSeconds: number; pollSeconds: number; channelPointsVoting: boolean; channelPointsPerVote: number; jokerChance: number; jokerPointsPerVote: number; includeUnavailable: boolean; excludedIds: string[] }
 export type Phase = 'idle' | 'character-spin' | 'character-result' | 'poll-starting' | 'polling' | 'poll-error' | 'reveal' | 'perk-spin' | 'perk-result' | 'complete';
-/** poolIds lists wheel slots in order (a perk with 2 slots appears twice); slot is the winning index. */
-export interface Draw { id: string; kind: 'character' | 'perk'; design?: CharacterDesign; itemId: string; poolIds: string[]; slot?: number; startedAt: number; endsAt: number }
+/** poolIds lists wheel slots in order (a perk with 2 slots appears twice); slot is the winning index.
+ *  A `wheel:<id>` item is a mini roulette slice; wheelId marks a spin inside that mini roulette. */
+export interface Draw { id: string; kind: 'character' | 'perk'; design?: CharacterDesign; itemId: string; poolIds: string[]; slot?: number; wheelId?: string; startedAt: number; endsAt: number }
 export interface Run {
   operation?: Operation; sequence?: Sequence; id: string; characterId: string | null; perkIds: string[]; draw: Draw | null;
   cards: number[]; votes: number[]; channelPointsVotes: number[]; winningCard: number | null; perkCount: number | null;
@@ -24,7 +29,7 @@ export interface Run {
   error: string | null;
 }
 export interface State { wins?: Record<Role, number>; loadouts?: Record<Role, {characterId: string | null; perkIds: string[]}>; packId: string; config: Config; visible: boolean; phase: Phase; run: Run | null; nextAt: number | null }
-export const initial = (): State => ({ packId: 'dbd-killer-challenge', config: { language: 'en', characterDesign: 'cards', spinSeconds: 4, pollSeconds: 30, channelPointsVoting: false, channelPointsPerVote: 100, jokerChance: 0, jokerPointsPerVote: 100, includeUnavailable: false, excludedIds: [], perkTuning: {}, sequences: { killer: defaultSequence(), survivor: defaultSequence() }, layout: defaultLayout(), targets: { killer: 3, survivor: 4 } }, visible: false, phase: 'idle', run: null, nextAt: null, wins: { killer: 0, survivor: 0 }, loadouts: { killer: {characterId: null, perkIds: []}, survivor: {characterId: null, perkIds: []} } });
+export const initial = (): State => ({ packId: 'dbd-killer-challenge', config: { language: 'en', characterDesign: 'cards', spinSeconds: 4, pollSeconds: 30, channelPointsVoting: false, channelPointsPerVote: 100, jokerChance: 0, jokerPointsPerVote: 100, includeUnavailable: false, excludedIds: [], perkTuning: {}, subWheels: [], sequences: { killer: defaultSequence(), survivor: defaultSequence() }, layout: defaultLayout(), targets: { killer: 3, survivor: 4 } }, visible: false, phase: 'idle', run: null, nextAt: null, wins: { killer: 0, survivor: 0 }, loadouts: { killer: {characterId: null, perkIds: []}, survivor: {characterId: null, perkIds: []} } });
 export const pick = <T>(items: T[]): T => items[randomInt(items.length)];
 export function shuffle<T>(items: T[]): T[] { const out = [...items]; for (let n = out.length - 1; n > 0; n--) { const i = randomInt(n + 1); [out[n], out[i]] = [out[i], out[n]]; } return out; }
 export function pack(id: string): Pack { const result = catalog.packs.find(p => p.id === id); if (!result) return fail('invalid', 'Unknown widget pack'); return result; }
@@ -33,7 +38,7 @@ export function pool(state: State, kind: Entry['kind']): Entry[] {
 }
 /** Normalize old channel documents in memory; their OBS token and active run remain intact. */
 export function normalize(state: State): State {
-  state.config = { ...initial().config, ...state.config, sequences: state.config.sequences ?? {killer: defaultSequence(), survivor: defaultSequence()}, layout: state.config.layout ?? defaultLayout(), targets: state.config.targets ?? {killer: 3, survivor: 4}, perkTuning: state.config.perkTuning ?? {} };
+  state.config = { ...initial().config, ...state.config, sequences: state.config.sequences ?? {killer: defaultSequence(), survivor: defaultSequence()}, layout: state.config.layout ?? defaultLayout(), targets: state.config.targets ?? {killer: 3, survivor: 4}, perkTuning: state.config.perkTuning ?? {}, subWheels: state.config.subWheels ?? [] };
   state.wins ??= {killer: 0, survivor: 0};
   if (!state.loadouts) {
     state.loadouts = {killer: {characterId: null, perkIds: []}, survivor: {characterId: null, perkIds: []}};
@@ -43,12 +48,37 @@ export function normalize(state: State): State {
 }
 export function tuning(state: State, id: string): PerkTuning { return state.config.perkTuning?.[id] ?? {copies: 1, weight: 1}; }
 /** Spread each perk's slots evenly around the wheel (offset by its position) so copies don't bunch up. */
-export function slots(state: State, entries: Entry[]): string[] {
-  const n = entries.length;
-  return entries.flatMap((e, i) => {
-    const copies = e.kind === 'perk' ? tuning(state, e.id).copies : 1;
-    return Array.from({length: copies}, (_, j) => ({id: e.id, at: (j + (i + .5) / n) / copies}));
-  }).sort((a, b) => a.at - b.at).map(slot => slot.id);
+export function slots(state: State, entries: Entry[], wheels: SubWheel[] = []): string[] {
+  const items = [...entries.map(e => ({id: e.id, copies: e.kind === 'perk' ? tuning(state, e.id).copies : 1})), ...wheels.map(w => ({id: subWheelSlot(w.id), copies: w.copies}))];
+  const n = items.length;
+  return items.flatMap((item, i) => Array.from({length: item.copies}, (_, j) => ({id: item.id, at: (j + (i + .5) / n) / item.copies})))
+    .sort((a, b) => a.at - b.at).map(slot => slot.id);
+}
+export function subWheels(state: State, role: Role): SubWheel[] { return (state.config.subWheels ?? []).filter(w => w.role === role); }
+function slotWeight(state: State, id: string): number {
+  return id.startsWith(SUB_WHEEL_PREFIX) ? state.config.subWheels?.find(w => subWheelSlot(w.id) === id)?.weight ?? 1 : tuning(state, id).weight;
+}
+function subWheelConfig(input: unknown): SubWheel[] {
+  if (!Array.isArray(input) || input.length > MAX_SUB_WHEELS * 2) fail('invalid', `Use at most ${MAX_SUB_WHEELS} mini roulettes per role`);
+  const ids = new Set<string>(), perks = new Set<string>();
+  const out = input.map(value => {
+    const row = object(value);
+    if (Object.keys(row).some(k => !['id','role','name','perkIds','copies','weight'].includes(k))) fail('invalid', 'Unknown mini roulette setting');
+    const id = text(row.id, 'Mini roulette ID', 40);
+    if (!/^[A-Za-z0-9_-]+$/.test(id) || ids.has(id)) fail('invalid', 'Mini roulette IDs must be unique letters, numbers, - or _');
+    ids.add(id);
+    if (row.role !== 'killer' && row.role !== 'survivor') fail('invalid', 'Choose killer or survivor for the mini roulette');
+    const role = row.role as Role, name = text(row.name, 'Mini roulette name', 40);
+    if (!Array.isArray(row.perkIds) || row.perkIds.length < MIN_SUB_WHEEL_PERKS || row.perkIds.length > catalog.entries.length) fail('invalid', `A mini roulette needs at least ${MIN_SUB_WHEEL_PERKS} perks`);
+    const perkIds = (row.perkIds as unknown[]).map(perk => {
+      if (typeof perk !== 'string' || !catalog.entries.some(e => e.id === perk && e.kind === 'perk' && e.role === role)) fail('invalid', 'Mini roulettes only hold perks of their role');
+      if (perks.has(perk)) fail('invalid', 'A perk can only be in one mini roulette');
+      perks.add(perk); return perk;
+    });
+    return { id, role, name, perkIds, copies: integer(row.copies, 'slots', 1, MAX_PERK_COPIES), weight: integer(row.weight, 'weight', 1, MAX_PERK_WEIGHT) };
+  });
+  for (const role of ['killer', 'survivor']) if (out.filter(w => w.role === role).length > MAX_SUB_WHEELS) fail('invalid', `Use at most ${MAX_SUB_WHEELS} mini roulettes per role`);
+  return out;
 }
 function perkTuning(input: unknown): Record<string, PerkTuning> {
   const data = object(input), out: Record<string, PerkTuning> = {};
@@ -80,7 +110,7 @@ function sequence(input: unknown, role: Role): Sequence {
 }
 export function config(input: unknown): Config {
   const data = object(input);
-  if (Object.keys(data).some(k => !['language', 'characterDesign', 'spinSeconds', 'pollSeconds', 'channelPointsVoting', 'channelPointsPerVote', 'jokerChance', 'jokerPointsPerVote', 'includeUnavailable', 'excludedIds', 'perkTuning', 'sequences', 'layout', 'targets'].includes(k))) fail('invalid', 'Unknown widget setting');
+  if (Object.keys(data).some(k => !['language', 'characterDesign', 'spinSeconds', 'pollSeconds', 'channelPointsVoting', 'channelPointsPerVote', 'jokerChance', 'jokerPointsPerVote', 'includeUnavailable', 'excludedIds', 'perkTuning', 'subWheels', 'sequences', 'layout', 'targets'].includes(k))) fail('invalid', 'Unknown widget setting');
   if (data.language !== 'en' && data.language !== 'es') fail('invalid', 'Choose English or Spanish');
   if (data.characterDesign !== undefined && !['cards', 'reel', 'wheel', 'elimination'].includes(data.characterDesign as string)) fail('invalid', 'Choose cards, reel, wheel, or last one standing for the character roulette');
   if (typeof data.includeUnavailable !== 'boolean') fail('invalid', 'includeUnavailable must be a boolean');
@@ -90,18 +120,29 @@ export function config(input: unknown): Config {
   if (Object.keys(sequences).some(k => !['killer','survivor'].includes(k))) fail('invalid', 'Unknown sequence role');
   const targets = data.targets === undefined ? {killer: 3, survivor: 4} : object(data.targets);
   if (Object.keys(targets).some(k => !['killer','survivor'].includes(k))) fail('invalid', 'Unknown progress role');
-  return { sequences: {killer: sequence(sequences.killer, 'killer'), survivor: sequence(sequences.survivor, 'survivor')}, layout: data.layout === undefined ? defaultLayout() : layout(data.layout), targets: {killer: integer(targets.killer, 'killer target', 1, 20), survivor: integer(targets.survivor, 'survivor target', 1, 20)}, language: data.language as Config['language'], characterDesign: (data.characterDesign ?? 'cards') as CharacterDesign, spinSeconds: integer(data.spinSeconds, 'spinSeconds', 1, 15), pollSeconds: integer(data.pollSeconds, 'pollSeconds', 15, 180), channelPointsVoting: data.channelPointsVoting === true, channelPointsPerVote: integer(data.channelPointsPerVote === undefined ? 100 : data.channelPointsPerVote, 'channelPointsPerVote', 1, 1000000), jokerChance: integer(data.jokerChance === undefined ? 0 : data.jokerChance, 'jokerChance', 0, 100), jokerPointsPerVote: integer(data.jokerPointsPerVote === undefined ? 100 : data.jokerPointsPerVote, 'jokerPointsPerVote', 1, 1000000), includeUnavailable: data.includeUnavailable as boolean, excludedIds: [...new Set(data.excludedIds as string[])], perkTuning: perkTuning(data.perkTuning ?? {}) };
+  return { sequences: {killer: sequence(sequences.killer, 'killer'), survivor: sequence(sequences.survivor, 'survivor')}, layout: data.layout === undefined ? defaultLayout() : layout(data.layout), targets: {killer: integer(targets.killer, 'killer target', 1, 20), survivor: integer(targets.survivor, 'survivor target', 1, 20)}, language: data.language as Config['language'], characterDesign: (data.characterDesign ?? 'cards') as CharacterDesign, spinSeconds: integer(data.spinSeconds, 'spinSeconds', 1, 15), pollSeconds: integer(data.pollSeconds, 'pollSeconds', 15, 180), channelPointsVoting: data.channelPointsVoting === true, channelPointsPerVote: integer(data.channelPointsPerVote === undefined ? 100 : data.channelPointsPerVote, 'channelPointsPerVote', 1, 1000000), jokerChance: integer(data.jokerChance === undefined ? 0 : data.jokerChance, 'jokerChance', 0, 100), jokerPointsPerVote: integer(data.jokerPointsPerVote === undefined ? 100 : data.jokerPointsPerVote, 'jokerPointsPerVote', 1, 1000000), includeUnavailable: data.includeUnavailable as boolean, excludedIds: [...new Set(data.excludedIds as string[])], perkTuning: perkTuning(data.perkTuning ?? {}), subWheels: subWheelConfig(data.subWheels ?? []) };
 }
 export function active(state: State): boolean { return !['idle', 'complete', 'poll-error'].includes(state.phase); }
 export function idle(state: State): void { if (active(state) || state.phase === 'poll-error') fail('busy', 'Finish or reset the challenge first', 409); }
-function draw(state: State, kind: Draw['kind'], now: number): void {
-  const options = pool(state, kind).filter(e => !state.run!.perkIds.includes(e.id));
-  if (!options.length) fail('empty_pool', 'Select more entries before starting');
-  // Each slot wins with its perk's weight; characters stay one equal slot each.
-  const poolIds = slots(state, options), weights = poolIds.map(id => kind === 'perk' ? tuning(state, id).weight : 1);
+function draw(state: State, kind: Draw['kind'], now: number, wheelId?: string): void {
+  let options = pool(state, kind).filter(e => !state.run!.perkIds.includes(e.id)), wheels: SubWheel[] = [];
+  if (kind === 'perk') {
+    const all = subWheels(state, pack(state.packId).role), inner = all.find(w => w.id === wheelId);
+    const insideAny = new Set(all.flatMap(w => w.perkIds));
+    // A mini roulette emptied mid-run (e.g. by a Bits removal) falls back to the main wheel instead of failing.
+    if (inner && options.some(e => inner.perkIds.includes(e.id))) options = options.filter(e => inner.perkIds.includes(e.id));
+    else {
+      wheelId = undefined;
+      wheels = all.filter(w => options.some(e => w.perkIds.includes(e.id)));
+      options = options.filter(e => !insideAny.has(e.id));
+    }
+  }
+  if (!options.length && !wheels.length) fail('empty_pool', 'Select more entries before starting');
+  // Each slot wins with its perk's (or mini roulette's) weight; characters stay one equal slot each.
+  const poolIds = slots(state, options, wheels), weights = poolIds.map(id => kind === 'perk' ? slotWeight(state, id) : 1);
   let ticket = randomInt(weights.reduce((a, b) => a + b, 0)), slot = 0;
   while (ticket >= weights[slot]) ticket -= weights[slot++];
-  state.run!.draw = { id: randomUUID(), kind, design: kind === 'perk' ? 'wheel' : state.config.characterDesign ?? 'cards', itemId: poolIds[slot], poolIds, slot, startedAt: now, endsAt: now + state.config.spinSeconds * 1000 };
+  state.run!.draw = { id: randomUUID(), kind, design: kind === 'perk' ? 'wheel' : state.config.characterDesign ?? 'cards', itemId: poolIds[slot], poolIds, slot, ...(wheelId ? {wheelId} : {}), startedAt: now, endsAt: now + state.config.spinSeconds * 1000 };
   state.phase = kind === 'character' ? 'character-spin' : 'perk-spin'; state.nextAt = state.run!.draw.endsAt;
 }
 function finish(state: State): void { state.phase = 'complete'; state.nextAt = null; }
@@ -151,6 +192,11 @@ export function settle(state: State, now: number): boolean {
     state.nextAt = mode === 'challenge' ? now + 3000 : null;
   } else if (state.phase === 'character-result') {
     afterCharacter(state, now);
+  } else if (state.phase === 'perk-spin' && run.draw!.itemId.startsWith(SUB_WHEEL_PREFIX)) {
+    // The mini roulette's slice stays on screen, then its own wheel spins (in every mode).
+    state.phase = 'perk-result'; state.nextAt = now + 3000;
+  } else if (state.phase === 'perk-result' && run.draw!.itemId.startsWith(SUB_WHEEL_PREFIX)) {
+    draw(state, 'perk', now, run.draw!.itemId.slice(SUB_WHEEL_PREFIX.length));
   } else if (state.phase === 'perk-spin') {
     run.perkIds.push(run.draw!.itemId); loadout.perkIds = [...run.perkIds];
     state.phase = mode === 'challenge' ? 'perk-result' : 'complete';

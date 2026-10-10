@@ -38,6 +38,37 @@
 .pool-how summary { cursor:pointer; font-size:13px; font-weight:700; min-height:44px; display:flex; align-items:center }
 .pool-how p { margin:0 0 6px; font-size:12px }
 .save-row { margin-top:0 }
+.sub-wheels { margin-top:12px; padding:12px; border:1px solid var(--line); border-radius:14px; background:var(--bg) }
+.sub-head { display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:space-between; gap:10px }
+.sub-head>div { flex:1 1 16rem }
+.sub-head h3 { margin:0 }
+.sub-head button { display:inline-flex; align-items:center; gap:6px }
+.sub-list { list-style:none; margin:10px 0 0; padding:0; display:grid; gap:6px }
+.sub-row { display:flex; align-items:center; gap:8px; padding:6px 6px 6px 10px; border-radius:12px; background:var(--tile); border:1px solid var(--line) }
+.sub-icon { font-size:20px; flex:none }
+.sub-name { display:grid; flex:1 1 auto; min-width:0; font-size:13px }
+.sub-name strong { overflow-wrap:anywhere }
+.sub-name small { font-size:11px; color:var(--muted) }
+.sub-row .chance { min-width:0 }
+.icon-btn { display:inline-grid; place-items:center; min-width:44px; padding:0; color:var(--danger) }
+.in-wheel { color:var(--accent) !important; font-weight:700 }
+.wheel-dialog { overflow:auto; max-width:520px }
+.wheel-dialog .field { display:grid; gap:7px; margin-top:16px; font-size:12px; font-weight:700 }
+.wheel-dialog .field input { width:100% }
+.wheel-odds { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px }
+.wheel-pick-head { display:flex; justify-content:space-between; align-items:baseline; gap:8px; margin:18px 0 8px; font-size:13px }
+.wheel-pick-head .count { color:var(--muted) }
+.wheel-dialog input[type=search] { width:100% }
+.wheel-perks { list-style:none; margin:8px 0 0; padding:0; max-height:min(40dvh,320px); overflow:auto; border:1px solid var(--line); border-radius:12px }
+.wheel-perks[aria-invalid=true] { border-color:var(--danger) }
+.wheel-perks li { border-bottom:1px solid var(--line) }
+.wheel-perks li:last-child { border-bottom:0 }
+.wheel-perks label { display:flex; align-items:center; gap:10px; min-height:48px; padding:4px 10px; cursor:pointer }
+.wheel-perks img { object-fit:contain; flex:none }
+.wheel-perks .hint { padding:12px }
+.wheel-dialog footer { position:sticky; bottom:-24px; background:var(--tile); padding:12px 0 0; margin-bottom:-6px }
+.wheel-dialog .invalid { margin:6px 0 0 }
+.wheel-dialog .warn-line { margin-top:10px }
 .save-actions { display:flex; gap:8px }
 @media(min-width:560px) {
   .tools { grid-template-columns:minmax(0,1fr) auto; align-items:center }

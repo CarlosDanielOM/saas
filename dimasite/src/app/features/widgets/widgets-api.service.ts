@@ -13,8 +13,11 @@ export interface WidgetLayout { cameraCorner: 'top-left' | 'top-right' | 'bottom
 export const widgetDefaultLayout = (): WidgetLayout => ({cameraCorner: 'bottom-right', cameraWidth: 512, cameraHeight: 288, loadoutMode: 'detailed', autoCompact: true, progressStyle: 'badges', showActive: true, showInfo: true, showProgress: true, hideActiveDuringGameplay: true});
 export interface WidgetPerkTuning { copies: number; weight: number }
 export const WIDGET_MAX_PERK_COPIES = 5, WIDGET_MAX_PERK_WEIGHT = 10, WIDGET_MIN_WHEEL_PERKS = 4;
-export interface WidgetConfig { perkTuning: Record<string, WidgetPerkTuning>; sequences: Record<WidgetRole, WidgetSequence>; layout: WidgetLayout; targets: Record<WidgetRole, number>; language: 'en' | 'es'; characterDesign: WidgetCharacterDesign; spinSeconds: number; pollSeconds: number; channelPointsVoting: boolean; channelPointsPerVote: number; jokerChance: number; jokerPointsPerVote: number; includeUnavailable: boolean; excludedIds: string[] }
-export interface WidgetDraw { id: string; kind: 'character' | 'perk'; design?: WidgetCharacterDesign; itemId: string; poolIds: string[]; slot?: number; startedAt: number; endsAt: number }
+/** One slice on its role's perk wheel; when it wins, its own wheel spins with the perks inside. */
+export interface WidgetSubWheel { id: string; role: WidgetRole; name: string; perkIds: string[]; copies: number; weight: number }
+export const WIDGET_MAX_SUB_WHEELS = 10, WIDGET_MIN_SUB_WHEEL_PERKS = 2, WIDGET_SUB_WHEEL_PREFIX = 'wheel:';
+export interface WidgetConfig { perkTuning: Record<string, WidgetPerkTuning>; subWheels: WidgetSubWheel[]; sequences: Record<WidgetRole, WidgetSequence>; layout: WidgetLayout; targets: Record<WidgetRole, number>; language: 'en' | 'es'; characterDesign: WidgetCharacterDesign; spinSeconds: number; pollSeconds: number; channelPointsVoting: boolean; channelPointsPerVote: number; jokerChance: number; jokerPointsPerVote: number; includeUnavailable: boolean; excludedIds: string[] }
+export interface WidgetDraw { id: string; kind: 'character' | 'perk'; design?: WidgetCharacterDesign; itemId: string; poolIds: string[]; slot?: number; wheelId?: string; startedAt: number; endsAt: number }
 export type WidgetPhase = 'idle' | 'character-spin' | 'character-result' | 'poll-starting' | 'polling' | 'poll-error' | 'reveal' | 'perk-spin' | 'perk-result' | 'complete';
 export interface WidgetState {
   wins: Record<WidgetRole, number>; loadouts: Record<WidgetRole, {characterId: string | null; perkIds: string[]}>; revision: number; serverTime: number; packId: string; config: WidgetConfig; visible: boolean; phase: WidgetPhase; nextAt: number | null;
@@ -32,7 +35,7 @@ export interface WidgetEventSettings { enabled: boolean; active: boolean; active
 export const WIDGET_MAX_EVENT_RULES = 100;
 export function normalizeWidgetState(state: WidgetState): WidgetState {
   const sequence = {character: true, fixedCharacterId: null, poll: true, perks: true, perkCount: 4};
-  return {...state, phase: state.resultPhase ?? state.phase, wins: state.wins ?? {killer: 0, survivor: 0}, loadouts: state.loadouts ?? {killer: {characterId: null, perkIds: []}, survivor: {characterId: null, perkIds: []}}, config: {...state.config, sequences: state.config.sequences ?? {killer: {...sequence}, survivor: {...sequence}}, layout: state.config.layout ?? widgetDefaultLayout(), targets: state.config.targets ?? {killer: 3, survivor: 4}, perkTuning: state.config.perkTuning ?? {}}};
+  return {...state, phase: state.resultPhase ?? state.phase, wins: state.wins ?? {killer: 0, survivor: 0}, loadouts: state.loadouts ?? {killer: {characterId: null, perkIds: []}, survivor: {characterId: null, perkIds: []}}, config: {...state.config, sequences: state.config.sequences ?? {killer: {...sequence}, survivor: {...sequence}}, layout: state.config.layout ?? widgetDefaultLayout(), targets: state.config.targets ?? {killer: 3, survivor: 4}, perkTuning: state.config.perkTuning ?? {}, subWheels: state.config.subWheels ?? []}};
 }
 @Injectable({ providedIn: 'root' })
 export class WidgetsApi {

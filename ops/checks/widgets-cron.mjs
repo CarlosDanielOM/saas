@@ -1,11 +1,12 @@
 // Run only with saas-ops, disposable Mongo/Redis, and widgets-fixtures (cron target).
 // The full widgets-backend check exceeds the cron candidate's memory limit next to every
-// supervised worker, so this drives the real widgets worker through joker poll launches.
+// supervised worker, so this drives the real widgets worker through poll launches and mini roulettes.
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
 const svc=await import('/app/dist/widgets/service.js');
 const domain=await import('/app/dist/widgets/model.js');
+const {catalog}=await import('/app/dist/widgets/catalog.js');
 const {getMongoDBConnection}=await import('/app/dist/utils/databases/mongodb.database.js');
 const {getDragonflyClient}=await import('/app/dist/utils/databases/dragonfly.database.js');
 await getMongoDBConnection('widgets-joker-test');const redis=await getDragonflyClient('widgets-joker-test');
@@ -42,6 +43,15 @@ await close();
 result=await launch({channelPointsVoting:false,jokerChance:0});
 assert.equal(result.poll.channel_points_voting_enabled,false,'normal free polls stay one vote per viewer');
 await close();
+// Mini roulette: the worker turns a slice win into a spin of its own wheel.
+const perks=catalog.entries.filter(e=>e.role==='killer'&&e.kind==='perk'&&e.available).map(e=>e.id),inside=perks.slice(0,3);
+const mini=domain.initial();mini.config=domain.config({...mini.config,excludedIds:perks.slice(3),subWheels:[{id:'bad',role:'killer',name:'Bad',perkIds:inside,copies:1,weight:1}]});
+domain.start(mini,Date.now(),'perks');assert.equal(mini.run.draw.itemId,'wheel:bad');mini.nextAt=0;
+await svc.WidgetChannel.deleteMany({_id:channel});await svc.WidgetChannel.create({_id:channel,revision:0,state:mini,dueAt:0,receipts:[]});
+async function waitPhase(check,label){for(let i=0;i<100;i++){const doc=await svc.WidgetChannel.findById(channel).lean();if(check(doc.state))return doc.state;if(i%10===0)execFileSync('node',['/app/dist/workers/widgets.worker.js','--once'],{encoding:'utf8'});await new Promise(r=>setTimeout(r,200));}throw new Error('Cron worker did not reach '+label);}
+let miniState=await waitPhase(s=>s.phase==='perk-result','slice result');assert.deepEqual(miniState.run.perkIds,[]);
+await svc.WidgetChannel.updateOne({_id:channel},{$set:{'state.nextAt':0,dueAt:0}});
+miniState=await waitPhase(s=>s.phase==='perk-spin'&&s.run.draw.wheelId==='bad','inner wheel');assert(miniState.run.draw.poolIds.every(id=>inside.includes(id)));
 execFileSync(process.execPath,['--experimental-test-module-mocks','--test','/app/dist/widgets/model.test.js'],{stdio:'inherit',timeout:30000});
-console.log('PASS widgets cron: worker launches joker polls at the joker price, normal paid and free polls unchanged');
+console.log('PASS widgets cron: worker launches joker polls at the joker price, normal paid and free polls unchanged, mini roulette slice opens its own wheel');
 process.exit(0);

@@ -200,3 +200,47 @@ test('joker polls roll once per poll run and switch to the joker Channel Points 
   for (const bad of [{ jokerChance: 101 }, { jokerChance: -1 }, { jokerChance: 5.5 }, { jokerChance: null }, { jokerPointsPerVote: 0 }])
     assert.throws(() => domain.config({ ...state.config, ...bad }), { code: 'invalid' });
 });
+
+test('mini roulettes are one main-wheel slice whose perks spin on their own wheel when it wins', () => {
+  const state = domain.initial(), perks = domain.pool(state, 'perk').map(e => e.id), inside = perks.slice(0, 4);
+  state.config = domain.config({ ...state.config, subWheels: [{ id: 'bad', role: 'killer', name: ' Bad roulette ', perkIds: inside, copies: 2, weight: 3 }] });
+  assert.equal(state.config.subWheels![0].name, 'Bad roulette');
+  choice = 0; domain.start(state, 1000, 'perks');
+  let draw = state.run!.draw!;
+  assert.equal(draw.poolIds.filter(id => id === 'wheel:bad').length, 2, 'slice uses its own slots');
+  assert(!draw.poolIds.some(id => inside.includes(id)), 'its perks leave the main wheel');
+  assert.equal(randomBound, perks.length - 4 + 2 * 3, 'slice wins with its own weight');
+  // Only the slice is left on the main wheel, so it always wins.
+  const only = domain.initial(); only.config = domain.config({ ...state.config, excludedIds: perks.filter(id => !inside.includes(id)) });
+  domain.start(only, 1000, 'perks'); draw = only.run!.draw!;
+  assert.deepEqual(draw.poolIds, ['wheel:bad', 'wheel:bad']); assert.equal(draw.itemId, 'wheel:bad');
+  domain.settle(only, draw.endsAt); assert.equal(only.phase, 'perk-result'); assert.deepEqual(only.run!.perkIds, []); assert.equal(only.nextAt, draw.endsAt + 3000);
+  assert.equal(domain.settle(only, draw.endsAt + 2999), false);
+  domain.settle(only, draw.endsAt + 3000); const inner = only.run!.draw!;
+  assert.equal(only.phase, 'perk-spin'); assert.equal(inner.wheelId, 'bad'); assert.deepEqual([...new Set(inner.poolIds)].sort(), [...inside].sort());
+  domain.settle(only, inner.endsAt); assert.equal(only.phase, 'complete'); assert.deepEqual(only.run!.perkIds, [inner.itemId]); assert(inside.includes(inner.itemId));
+  // A full challenge draws four distinct perks through the slice, never a slice as a perk.
+  const full = domain.initial(); full.config = domain.config({ ...only.config, sequences: { killer: { ...domain.defaultSequence(), character: true, poll: false, perkCount: 4 }, survivor: domain.defaultSequence() } });
+  domain.start(full, 1000, 'challenge');
+  for (let n = 0; n < 40 && full.phase !== 'complete'; n++) domain.settle(full, full.nextAt!);
+  assert.equal(full.phase, 'complete'); assert.deepEqual([...full.run!.perkIds].sort(), [...inside].sort());
+  choice = 0;
+});
+
+test('an emptied mini roulette falls back to the main wheel and mini roulette settings are validated', () => {
+  const state = domain.initial(), perks = domain.pool(state, 'perk').map(e => e.id), inside = perks.slice(0, 3);
+  state.config = domain.config({ ...state.config, excludedIds: perks.slice(10), subWheels: [{ id: 'bad', role: 'killer', name: 'Bad', perkIds: inside, copies: 1, weight: 1 }] });
+  domain.start(state, 1000, 'perks');
+  state.phase = 'perk-result'; state.run!.draw!.itemId = 'wheel:bad'; state.nextAt = 5000;
+  state.config.excludedIds = [...state.config.excludedIds, ...inside];
+  domain.settle(state, 5000); const draw = state.run!.draw!;
+  assert.equal(state.phase, 'perk-spin'); assert.equal(draw.wheelId, undefined); assert(!draw.poolIds.includes('wheel:bad')); assert(!draw.poolIds.some(id => inside.includes(id)));
+  const survivorPerk = domain.initial(); survivorPerk.packId = 'dbd-survivor-perks'; const survivor = domain.pool(survivorPerk, 'perk').map(e => e.id);
+  const wheel = (over: Record<string, unknown>) => ({ id: 'w', role: 'killer', name: 'Bad', perkIds: perks.slice(0, 2), copies: 1, weight: 1, ...over });
+  const invalid = [[wheel({ perkIds: perks.slice(0, 1) })], [wheel({ perkIds: [perks[0], survivor[0]] })], [wheel({}), wheel({ id: 'x' })], [wheel({}), wheel({ perkIds: perks.slice(2, 4) })],
+    [wheel({ id: 'bad id' })], [wheel({ name: '  ' })], [wheel({ name: 'x'.repeat(41) })], [wheel({ copies: 6 })], [wheel({ weight: 11 })], [wheel({ role: 'both' })], [wheel({ extra: true })],
+    Array.from({ length: 11 }, (_, i) => wheel({ id: 'w' + i, perkIds: perks.slice(i * 2, i * 2 + 2) }))];
+  for (const subWheels of invalid) assert.throws(() => domain.config({ ...state.config, excludedIds: [], subWheels }), { code: 'invalid' });
+  assert.equal(domain.config({ ...state.config, excludedIds: [], subWheels: Array.from({ length: 10 }, (_, i) => wheel({ id: 'w' + i, perkIds: perks.slice(i * 2, i * 2 + 2) })) }).subWheels!.length, 10);
+  const legacy = domain.initial(); delete legacy.config.subWheels; domain.normalize(legacy); assert.deepEqual(legacy.config.subWheels, []);
+});
