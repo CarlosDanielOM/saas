@@ -5,13 +5,14 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { LanguageService } from '../../../services/language.service';
 import { ThemeService } from '../../../services/theme.service';
 import { DuelArenaComponent } from '../../widgets/duel/duel-arena.component';
-import { DuelSide, simulateBattle, ultimateBattle } from '../../widgets/duel/duel-battle';
+import { DuelCharacter, DuelSide, simulateBattle, ultimateBattle } from '../../widgets/duel/duel-battle';
+import { DuelGptArenaComponent } from './duel-gpt/duel-gpt-arena.component';
 
 type Phase = 'ready' | 'entrance' | 'countdown' | 'fight' | 'knockout' | 'winner';
 
 @Component({
   selector: 'app-duel-mock',
-  imports: [RouterLink, ReactiveFormsModule, DuelArenaComponent],
+  imports: [RouterLink, ReactiveFormsModule, DuelArenaComponent, DuelGptArenaComponent],
   templateUrl: './duel-mock.component.html',
   styleUrl: './duel-mock.component.css',
   host: { '[class.overlay-only]': 'overlayOnly' },
@@ -21,6 +22,10 @@ export class DuelMockComponent {
   readonly language = inject(LanguageService);
   readonly theme = inject(ThemeService);
   readonly overlayOnly = inject(ActivatedRoute).snapshot.queryParamMap.get('overlay') === '1';
+  private readonly query = inject(ActivatedRoute).snapshot.queryParamMap;
+  readonly renderMode = signal<'svg' | '3d'>(this.query.get('renderer') === '3d' ? '3d' : 'svg');
+  readonly threeEntry = signal<'gpt' | 'claude'>(this.query.get('entry') === 'claude' ? 'claude' : 'gpt');
+  readonly characters: DuelCharacter[] = ['knight', 'mage', 'ronin'];
   readonly sides: DuelSide[] = ['left', 'right'];
   readonly form = new FormGroup({
     left: new FormControl('Dima', { nonNullable: true }),
@@ -77,6 +82,34 @@ export class DuelMockComponent {
     this.elapsed.set(0);
     this.started.set(true);
     this.paused.set(false);
+    this.startTimer();
+  }
+
+  /** Fixed local choreography lets each class show its ultimate without waiting for RNG. */
+  showcase(character: DuelCharacter): void {
+    this.stopTimer();
+    const values = this.form.getRawValue();
+    this.names.set({ left: values.left.trim().slice(0, 24) || 'Dima', right: values.right.trim().slice(0, 24) || 'ChatChampion' });
+    this.battle.set({ fighters: {left: character, right: character === 'knight' ? 'ronin' : 'knight'}, winner: 'left', duration: 11000, maxHp: 100, enraged: values.streamer ? 'right' : null,
+      turns: [
+        {at:3700,hitAt:3980,attacker:'left',move:'normal',damage:12,bonus:false},
+        {at:4500,hitAt:4950,attacker:'right',move:'heavy',damage:22,bonus:false},
+        {at:5550,hitAt:5830,attacker:'left',move:'normal',damage:14,bonus:false},
+        {at:6350,hitAt:9150,attacker:'left',move:'ultimate',damage:74,bonus:false},
+      ] });
+    this.elapsed.set(5750);
+    this.started.set(true);
+    this.paused.set(false);
+    this.startTimer();
+  }
+
+  seek(event: Event): void {
+    this.elapsed.set(Number((event.target as HTMLInputElement).value));
+    this.lastTick = performance.now();
+    if (!this.timer && this.started() && this.elapsed() < this.duration()) this.startTimer();
+  }
+
+  private startTimer(): void {
     this.lastTick = performance.now();
     this.timer = setInterval(() => {
       const now = performance.now();
@@ -84,7 +117,7 @@ export class DuelMockComponent {
       this.lastTick = now;
       if (!this.paused()) this.elapsed.update(time => Math.min(this.duration(), time + Math.min(delta, 100)));
       if (this.elapsed() >= this.duration()) this.stopTimer();
-    }, 40);
+    }, 1000 / 30);
   }
 
   reset(): void {

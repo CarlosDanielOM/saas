@@ -21,8 +21,32 @@
         @if (!overlayOnly) {
           <div class="tile-head"><span>{{ t('preview') }}</span><span class="dimension">16:9 · {{ t('silent') }}</span></div>
         }
-        <div class="stage-frame" [class.checkerboard]="transparent() && !overlayOnly">
-          <app-duel-arena [names]="names()" [battle]="battle()" [elapsed]="elapsed()" [started]="started()" [paused]="paused()" [transparent]="transparent()" [locale]="language.currentLanguage()" />
+        @if (!overlayOnly) {
+          <div class="render-controls">
+            <div class="render-segment" role="group" [attr.aria-label]="t('three.renderMode')">
+              <button type="button" [attr.aria-pressed]="renderMode() === 'svg'" (click)="renderMode.set('svg')" data-testid="renderer-svg">SVG <span>{{ t('three.default') }}</span></button>
+              <button type="button" [attr.aria-pressed]="renderMode() === '3d'" (click)="renderMode.set('3d')" data-testid="renderer-3d">3D <span>30 FPS</span></button>
+            </div>
+            @if (renderMode() === '3d') {
+              <div class="render-segment entry-segment" role="group" [attr.aria-label]="t('three.entry')">
+                <button type="button" [attr.aria-pressed]="threeEntry() === 'gpt'" (click)="threeEntry.set('gpt')" data-testid="entry-gpt">GPT</button>
+                <button type="button" [attr.aria-pressed]="threeEntry() === 'claude'" (click)="threeEntry.set('claude')" data-testid="entry-claude">Claude</button>
+              </div>
+            }
+          </div>
+        }
+        <div class="stage-frame" [class.checkerboard]="transparent() && !overlayOnly" [attr.data-renderer]="renderMode()">
+          @if (renderMode() === 'svg') {
+            <app-duel-arena [names]="names()" [battle]="battle()" [elapsed]="elapsed()" [started]="started()" [paused]="paused()" [transparent]="transparent()" [locale]="language.currentLanguage()" />
+          } @else if (threeEntry() === 'gpt') {
+            @defer (on immediate) {
+              <app-duel-gpt-arena [names]="names()" [battle]="battle()" [elapsed]="elapsed()" [started]="started()" [paused]="paused()" [transparent]="transparent()" [locale]="language.currentLanguage()" />
+            } @placeholder { <div class="entry-placeholder" role="status">{{ t('three.loading') }}</div> }
+            @error { <div class="entry-placeholder" role="alert">{{ t('three.unavailable') }}</div> }
+          } @else {
+            <!-- Claude owns this slot. Replace this placeholder with their mock-only component. -->
+            <div class="entry-placeholder claude-slot" data-testid="claude-slot"><span>02 / CLAUDE</span><strong>{{ t('three.claudePending') }}</strong><p>{{ t('three.claudeHint') }}</p><button type="button" (click)="threeEntry.set('gpt')">{{ t('three.viewGpt') }}</button></div>
+          }
         </div>
         @if (!overlayOnly) {
           <div class="playback">
@@ -33,12 +57,18 @@
             <span class="time">{{ (elapsed() / 1000).toFixed(1) }} / {{ (duration() / 1000).toFixed(1) }}s</span>
           </div>
           <div class="timeline" aria-hidden="true"><div [style.width.%]="progress()"></div></div>
+          @if (started()) { <label class="scrub-label">{{ t('three.scrub') }}<input type="range" min="0" [max]="duration()" step="1" [value]="elapsed()" (input)="seek($event)" [attr.aria-label]="t('three.scrub')" data-testid="duel-scrub" /></label> }
           <div class="sequence"><span [class.current]="phase() === 'entrance' || phase() === 'countdown'">01 <b>{{ t('entry') }}</b></span><span [class.current]="phase() === 'fight'">02 <b>{{ t('combat') }}</b></span><span [class.current]="phase() === 'knockout'">03 <b>{{ t('knockout') }}</b></span><span [class.current]="phase() === 'winner'">04 <b>{{ t('result') }}</b></span></div>
         }
       </section>
       @if (!overlayOnly) {
         <aside class="lf-tile controls-tile">
-          <div class="tile-head"><span>{{ t('setup') }}</span><span class="prototype">V1</span></div>
+          <div class="tile-head"><span>{{ t('setup') }}</span><span class="prototype">{{ renderMode() === '3d' ? '3D LAB' : 'V1' }}</span></div>
+          @if (renderMode() === '3d' && threeEntry() === 'gpt') {
+            <div class="ultimate-lab"><h2>{{ t('three.showcase') }}</h2><p>{{ t('three.showcaseHint') }}</p>
+              @for (character of characters; track character) { <button type="button" [attr.data-class]="character" [attr.data-testid]="'ultimate-' + character" (click)="showcase(character)"><span class="class-sigil" aria-hidden="true">{{ character === 'knight' ? '✧' : character === 'mage' ? '◉' : '╱' }}</span><span><small>{{ t('character.' + character) }}</small><strong>{{ t('ultimate.' + character) }}</strong></span><i aria-hidden="true">↗</i></button> }
+            </div>
+          }
           <form [formGroup]="form" (ngSubmit)="play()">
             <fieldset><legend>{{ t('fighters') }}</legend>
               <label for="left-name"><span class="color-dot violet"></span>{{ t('challenger') }}</label><input id="left-name" formControlName="left" maxlength="24" autocomplete="off" />
@@ -55,7 +85,7 @@
             <p class="field-hint">{{ t('applyHint') }}</p>
             <button class="primary setup-play" type="submit">{{ t('play') }} <span aria-hidden="true">↗</span></button>
           </form>
-          <div class="overlay-options"><h2>{{ t('background') }}</h2><button class="toggle" type="button" [attr.aria-pressed]="transparent()" (click)="toggleTransparent()"><span>{{ t('transparent') }}</span><i [class.on]="transparent()"></i></button><a class="overlay-link" routerLink="/mocks/dev/duel" [queryParams]="{overlay: '1'}" target="_blank" rel="noopener">{{ t('overlayOnly') }} ↗</a></div>
+          <div class="overlay-options"><h2>{{ t('background') }}</h2><button class="toggle" type="button" [attr.aria-pressed]="transparent()" (click)="toggleTransparent()"><span>{{ t('transparent') }}</span><i [class.on]="transparent()"></i></button><a class="overlay-link" routerLink="/mocks/dev/duel" [queryParams]="{overlay: '1', renderer: renderMode(), entry: threeEntry()}" target="_blank" rel="noopener">{{ t('overlayOnly') }} ↗</a></div>
           <p class="mock-note">{{ t('mockNote') }}</p>
         </aside>
       }

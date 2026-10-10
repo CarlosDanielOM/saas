@@ -6918,6 +6918,29 @@
     }
   },
   "duelMock": {
+    "three": {
+      "renderMode": "Estilo visual",
+      "default": "Predeterminado",
+      "entry": "Versión 3D",
+      "loading": "Abriendo la arena GPT…",
+      "claudePending": "Esperando al rival",
+      "claudeHint": "La versión 3D de Claude ocupará este espacio después. La arena GPT ya está lista.",
+      "viewGpt": "Entrar en la arena GPT",
+      "showcase": "La colección de definitivas",
+      "showcaseHint": "Ve directamente a un remate cinematográfico. Tres luchadores. Tres formas de acabar.",
+      "scrub": "Línea de tiempo",
+      "canvasLabel": "Arena de duelo 3D con dos luchadores animados",
+      "enterArena": "Más allá del último golpe",
+      "finalBlow": "El golpe final",
+      "renderCap": "FPS / límite 30",
+      "unavailable": "No se pudo iniciar la arena 3D",
+      "useSvg": "Selecciona SVG arriba para usar la arena vectorial.",
+      "ultimateDesc": {
+        "knight": "Una espada celestial. Sin segunda oportunidad.",
+        "mage": "Ni la luz tiene adónde escapar.",
+        "ronin": "Un aliento. Mil finales."
+      }
+    },
     "back": "Mocks de desarrollo",
     "prototype": "Prototipo",
     "language": "Cambiar idioma",

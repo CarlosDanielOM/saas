@@ -6918,6 +6918,29 @@
     }
   },
   "duelMock": {
+    "three": {
+      "renderMode": "Rendering style",
+      "default": "Default",
+      "entry": "3D entry",
+      "loading": "Opening the GPT arena…",
+      "claudePending": "Awaiting the challenger",
+      "claudeHint": "Claude’s 3D entry will take this slot next. The GPT arena is ready to play.",
+      "viewGpt": "Enter GPT arena",
+      "showcase": "The ultimate collection",
+      "showcaseHint": "Jump straight to a cinematic finisher. Three fighters. Three ways to end it.",
+      "scrub": "Timeline",
+      "canvasLabel": "3D duel arena with two animated fighters",
+      "enterArena": "Beyond the last hit",
+      "finalBlow": "The final blow",
+      "renderCap": "FPS / cap 30",
+      "unavailable": "The 3D arena could not start",
+      "useSvg": "Select SVG above to use the vector arena.",
+      "ultimateDesc": {
+        "knight": "A celestial blade. No second chance.",
+        "mage": "Even light has nowhere left to run.",
+        "ronin": "One breath. A thousand endings."
+      }
+    },
     "back": "Dev mocks",
     "prototype": "Prototype",
     "language": "Change language",
