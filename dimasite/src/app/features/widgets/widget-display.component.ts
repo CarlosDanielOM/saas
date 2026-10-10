@@ -62,6 +62,7 @@ export class WidgetDisplayComponent {
   readonly phaseText = computed(() => {
     const character = this.character();
     if (this.gameplay()) return character ? this.t('loadoutSummary', {name: this.label(character), n: this.perks().length}) : this.t('roundReady');
+    if (this.state().phase === 'polling' && this.state().run?.joker) return this.t('jokerVotesHint', {points: this.state().config.jokerPointsPerVote});
     if (this.state().phase === 'polling') return this.state().config.channelPointsVoting ? this.t('extraVotesHint', {points: this.state().config.channelPointsPerVote}) : this.t('freeVotesHint');
     return this.t('phase.' + this.state().phase);
   });

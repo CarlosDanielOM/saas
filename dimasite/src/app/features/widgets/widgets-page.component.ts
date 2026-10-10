@@ -51,11 +51,12 @@ export class WidgetsPageComponent {
   readonly poolDirty = computed(() => this.poolEditor()?.dirty() ?? false);
   private sequenceForm() { return this.fb.group({character: true, fixedCharacterId: '', poll: true, perks: true, perkCount: [4, [Validators.required, Validators.min(0), Validators.max(4), Validators.pattern(/^\d+$/)]]}); }
   readonly sequenceForms = {killer: this.sequenceForm(), survivor: this.sequenceForm()};
-  readonly form = this.fb.group({ language: this.fb.control<'en' | 'es'>('en'), characterDesign: this.fb.control<'cards' | 'reel' | 'wheel' | 'elimination'>('cards'), spinSeconds: [4, [Validators.required, Validators.min(1), Validators.max(15), Validators.pattern(/^\d+$/)]], pollSeconds: [30, [Validators.required, Validators.min(15), Validators.max(180), Validators.pattern(/^\d+$/)]], channelPointsVoting: false, channelPointsPerVote: [100, [Validators.required, Validators.min(1), Validators.max(1000000), Validators.pattern(/^\d+$/)]], sequences: this.fb.group(this.sequenceForms), targets: this.fb.group({killer: [3, [Validators.required, Validators.min(1), Validators.max(20), Validators.pattern(/^\d+$/)]], survivor: [4, [Validators.required, Validators.min(1), Validators.max(20), Validators.pattern(/^\d+$/)]]}) });
+  readonly form = this.fb.group({ language: this.fb.control<'en' | 'es'>('en'), characterDesign: this.fb.control<'cards' | 'reel' | 'wheel' | 'elimination'>('cards'), spinSeconds: [4, [Validators.required, Validators.min(1), Validators.max(15), Validators.pattern(/^\d+$/)]], pollSeconds: [30, [Validators.required, Validators.min(15), Validators.max(180), Validators.pattern(/^\d+$/)]], channelPointsVoting: false, channelPointsPerVote: [100, [Validators.required, Validators.min(1), Validators.max(1000000), Validators.pattern(/^\d+$/)]], jokerChance: [0, [Validators.required, Validators.min(0), Validators.max(100), Validators.pattern(/^\d+$/)]], jokerPointsPerVote: [100, [Validators.required, Validators.min(1), Validators.max(1000000), Validators.pattern(/^\d+$/)]], sequences: this.fb.group(this.sequenceForms), targets: this.fb.group({killer: [3, [Validators.required, Validators.min(1), Validators.max(20), Validators.pattern(/^\d+$/)]], survivor: [4, [Validators.required, Validators.min(1), Validators.max(20), Validators.pattern(/^\d+$/)]]}) });
   readonly layoutForm = this.fb.group({...widgetDefaultLayout(), cameraWidth: [512,[Validators.required,Validators.min(320),Validators.max(800),Validators.pattern(/^\d+$/)]], cameraHeight: [288,[Validators.required,Validators.min(180),Validators.max(640),Validators.pattern(/^\d+$/)]]});
   readonly formValue = toSignal(this.form.valueChanges, {initialValue: this.form.getRawValue()});
   readonly layoutValue = toSignal(this.layoutForm.valueChanges, {initialValue: this.layoutForm.getRawValue()});
   readonly channelPointsVoting = computed(() => this.formValue().channelPointsVoting === true);
+  readonly jokerOn = computed(() => Number(this.formValue().jokerChance) > 0);
   readonly active = computed(() => !['idle', 'complete', 'poll-error'].includes(this.state()?.phase ?? 'idle'));
   readonly locked = computed(() => this.active() || this.state()?.phase === 'poll-error' || this.busy() || this.stale());
   readonly preview = computed<WidgetState | null>(() => {
@@ -183,6 +184,7 @@ export class WidgetsPageComponent {
   saveSettings(): void {
     this.form.markAllAsTouched();
     if (!this.form.controls.channelPointsVoting.value) this.form.controls.channelPointsPerVote.setValue(this.state()?.config.channelPointsPerVote ?? 100);
+    if (!this.jokerOn() && this.form.controls.jokerChance.valid) this.form.controls.jokerPointsPerVote.setValue(this.state()?.config.jokerPointsPerVote ?? 100);
     if (this.form.invalid) { this.error.set(this.t('settingsInvalid')); return; }
     const value = this.form.getRawValue();
     for (const role of this.roles) if (!value.sequences[role].character && !value.sequences[role].fixedCharacterId) { this.error.set(this.t('fixedCharacterRequired')); return; }

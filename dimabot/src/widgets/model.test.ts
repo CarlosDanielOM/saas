@@ -177,3 +177,26 @@ test('perk tuning is limited to known perks and sane slot and weight ranges', ()
   for (const perkTuning of [{ [character]: { copies: 2, weight: 1 } }, { unknown: { copies: 2, weight: 1 } }, { [perk]: { copies: 6, weight: 1 } }, { [perk]: { copies: 1, weight: 11 } }, { [perk]: { copies: 1, weight: 1, odds: 2 } }])
     assert.throws(() => domain.config({ ...state.config, perkTuning }), { code: 'invalid' });
 });
+
+test('joker polls roll once per poll run and switch to the joker Channel Points price', () => {
+  const state = domain.initial();
+  assert.equal(state.config.jokerChance, 0); assert.equal(domain.pollPointsPerVote(state), 0);
+  state.config = domain.config({ ...state.config, jokerChance: 10, jokerPointsPerVote: 50 });
+  for (const [roll, joker] of [[9, true], [10, false]] as const) {
+    choice = roll; const run = domain.initial(); run.config = state.config;
+    domain.start(run, 1000, 'poll');
+    assert.equal(randomBound, 100); assert.equal(run.run!.joker, joker);
+    assert.equal(domain.pollPointsPerVote(run), joker ? 50 : 0);
+    run.config = { ...run.config, channelPointsVoting: true, channelPointsPerVote: 200 };
+    assert.equal(domain.pollPointsPerVote(run), joker ? 50 : 200, 'normal polls keep their own price');
+  }
+  choice = 0;
+  const perks = domain.initial(); perks.config.jokerChance = 100; domain.start(perks, 1000, 'perks');
+  assert.equal(perks.run!.joker, undefined, 'draws without a poll never roll');
+  const skipped = domain.initial(); skipped.config.jokerChance = 100; skipped.config.sequences!.killer.poll = false; domain.start(skipped, 1000, 'challenge');
+  assert.equal(skipped.run!.joker, undefined);
+  const legacy = domain.initial(), old = legacy.config as unknown as Record<string, unknown>; delete old.jokerChance; delete old.jokerPointsPerVote;
+  domain.normalize(legacy); assert.equal(legacy.config.jokerChance, 0); assert.equal(legacy.config.jokerPointsPerVote, 100);
+  for (const bad of [{ jokerChance: 101 }, { jokerChance: -1 }, { jokerChance: 5.5 }, { jokerChance: null }, { jokerPointsPerVote: 0 }])
+    assert.throws(() => domain.config({ ...state.config, ...bad }), { code: 'invalid' });
+});

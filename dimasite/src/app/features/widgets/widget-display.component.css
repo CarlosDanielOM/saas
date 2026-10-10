@@ -65,6 +65,7 @@ h2 { font-size:44px; line-height:1.15; font-weight:800; letter-spacing:-1.3px; m
 .poll-state.live { background:#c8202f; color:#fff }
 .poll-state.live::before { content:''; width:10px; height:10px; border-radius:50%; background:#fff; animation:blink 1.1s ease-in-out infinite }
 @keyframes blink { 50% { opacity:.25 } }
+.poll-joker { display:inline-flex; align-items:center; padding:7px 15px; border-radius:999px; background:var(--gold); color:#14151a; letter-spacing:1.5px; font-size:17px; font-weight:800 }
 .poll-timer { margin-left:auto; display:inline-flex; align-items:center; gap:12px; color:var(--gold); font-variant-numeric:tabular-nums; font-size:24px }
 .poll-timer svg { width:44px; height:44px; transform:rotate(-90deg) }
 .poll-timer circle { fill:none; stroke:rgba(255,255,255,.12); stroke-width:4 }

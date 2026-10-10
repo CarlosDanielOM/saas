@@ -190,9 +190,16 @@ try{
  await page.getByRole('button',{name:'Create OBS link',exact:true}).click();await page.getByRole('button',{name:'Copy',exact:true}).waitFor();
  const link=await page.getByLabel('OBS browser source',{exact:true}).inputValue();assert(link.includes('/overlays/widgets/991801#'));
  await page.getByTestId('role-survivor').click();await wait(page);assert.equal(await page.getByLabel('OBS browser source',{exact:true}).inputValue(),link);assert.equal(f.state.wins.killer,3);
+ // Joker poll chance and price save with the settings; the price field only shows once the chance is above 0%.
+ assert.equal(await page.getByTestId('joker-points').count(),0);await page.getByTestId('joker-chance').fill('10');await page.getByTestId('joker-points').fill('40');
+ await page.getByRole('button',{name:'Save settings',exact:true}).click();await until(()=>f.state.config.jokerChance===10&&f.state.config.jokerPointsPerVote===40,'joker settings saved');
  // Native poll requires confirmation and stays inside this same preview.
- const before=f.writes();await page.getByTestId('start-poll').click();await page.getByRole('dialog').waitFor();assert.equal(f.writes(),before);await axeClean(page,'dialog');await page.getByRole('button',{name:'Cancel',exact:true}).click();assert.equal(f.writes(),before);
+ const before=f.writes();await page.getByTestId('start-poll').click();await page.getByRole('dialog').waitFor();await page.getByRole('dialog').getByText('10% chance this becomes a Joker poll, with extra votes for 40 Channel Points each.',{exact:true}).waitFor();assert.equal(f.writes(),before);await axeClean(page,'dialog');await page.getByRole('button',{name:'Cancel',exact:true}).click();assert.equal(f.writes(),before);
  await page.getByTestId('start-poll').click();await page.getByRole('button',{name:'Start on stream',exact:true}).click();await page.getByTestId('widget-poll').waitFor();assert.equal(f.state.run.operation,'poll');assert.equal(await page.locator('.mystery strong').allTextContents().then(v=>v.every(x=>x==='?')),true);
+ // A joker roll is labelled on the stage with its own price.
+ assert.equal(await page.getByTestId('joker-badge').count(),0);f.state.run.joker=true;f.state.revision++;await wait(page);await page.getByTestId('joker-badge').waitFor();
+ const jokerHint='Joker poll! One free vote per viewer, and extra votes cost 40 Channel Points each. Vote in the Twitch poll.';await until(async()=>(await page.locator('.stage-title .phase').allTextContents()).some(t=>t.trim()===jokerHint),'joker hint on stage');await axeClean(page,'[data-testid="widget-poll"]');
+ if(shots)await page.screenshot({path:`${shots}/joker-poll.png`,fullPage:true});
  assert.deepEqual(f.errors,[]);
  // An accepted draw with a lost HTTP response retries the original key and mode.
  f.state.phase='complete';f.state.nextAt=null;await wait(page);f.setLost();await page.getByTestId('draw-perk').click();await page.getByRole('alert').waitFor();await page.getByRole('button',{name:'Retry',exact:true}).click();await page.getByRole('alert').waitFor({state:'hidden'});const retry=f.actions.slice(-2);assert.equal(retry[0].key,retry[1].key);assert.deepEqual(retry[0].body,{mode:'perks'});

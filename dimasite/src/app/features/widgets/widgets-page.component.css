@@ -103,6 +103,8 @@ h1 { display:flex; gap:9px; align-items:center; flex-wrap:wrap; margin:0 0 4px; 
 .sub { margin:2px 0 8px }
 .points-settings { border:1px solid var(--line); border-radius:12px; background:var(--bg); padding:12px }
 .points-cost { margin-top:12px; max-width:360px }
+.points-settings>h4 { margin:0 0 8px; font-size:13px }
+.joker-settings { margin-top:10px; border-color:var(--gold-soft, var(--line)) }
 .entry-picker { border-top:1px solid var(--line); margin-top:18px; padding-top:6px }
 .summary-count { font-size:11px; color:var(--muted); font-weight:600 }
 .entry-tools { display:flex; gap:6px; flex-wrap:wrap; margin:10px 0 }

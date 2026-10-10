@@ -20,6 +20,7 @@
             <section class="widget-poll" [attr.aria-label]="t('pollTitle')" data-testid="widget-poll">
               <div class="poll-meta">
                 <span class="poll-state" [class.live]="state().phase === 'polling'">{{ t(run.winningCard !== null ? 'pollClosed' : state().phase === 'polling' ? 'pollLive' : state().phase === 'poll-error' ? 'pollFailed' : 'pollPreparing') }}</span>
+                @if (run.joker) { <span class="poll-joker" data-testid="joker-badge">🃏 {{ t('jokerBadge') }}</span> }
                 <span class="poll-total">{{ t('votes', {n: totalVotes()}) }}</span>
                 @if (state().phase === 'polling') {
                   <span class="poll-timer"><svg viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="19" /><circle class="left" cx="22" cy="22" r="19" [style.stroke-dashoffset]="119.4 * (1 - timeShare())" /></svg>{{ t('pollTimeLeft', {seconds: countdown()}) }}</span>

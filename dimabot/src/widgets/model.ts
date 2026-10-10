@@ -11,7 +11,7 @@ export const defaultSequence = (): Sequence => ({ character: true, fixedCharacte
 export const defaultLayout = (): Layout => ({ cameraCorner: 'bottom-right', cameraWidth: 512, cameraHeight: 288, loadoutMode: 'detailed', autoCompact: true, progressStyle: 'badges', showActive: true, showInfo: true, showProgress: true, hideActiveDuringGameplay: true });
 export interface PerkTuning { copies: number; weight: number }
 export const MAX_PERK_COPIES = 5, MAX_PERK_WEIGHT = 10;
-export interface Config { perkTuning?: Record<string, PerkTuning>; sequences?: Record<Role, Sequence>; layout?: Layout; targets?: Record<Role, number>; language: 'en' | 'es'; characterDesign: CharacterDesign; spinSeconds: number; pollSeconds: number; channelPointsVoting: boolean; channelPointsPerVote: number; includeUnavailable: boolean; excludedIds: string[] }
+export interface Config { perkTuning?: Record<string, PerkTuning>; sequences?: Record<Role, Sequence>; layout?: Layout; targets?: Record<Role, number>; language: 'en' | 'es'; characterDesign: CharacterDesign; spinSeconds: number; pollSeconds: number; channelPointsVoting: boolean; channelPointsPerVote: number; jokerChance: number; jokerPointsPerVote: number; includeUnavailable: boolean; excludedIds: string[] }
 export type Phase = 'idle' | 'character-spin' | 'character-result' | 'poll-starting' | 'polling' | 'poll-error' | 'reveal' | 'perk-spin' | 'perk-result' | 'complete';
 /** poolIds lists wheel slots in order (a perk with 2 slots appears twice); slot is the winning index. */
 export interface Draw { id: string; kind: 'character' | 'perk'; design?: CharacterDesign; itemId: string; poolIds: string[]; slot?: number; startedAt: number; endsAt: number }
@@ -19,10 +19,12 @@ export interface Run {
   operation?: Operation; sequence?: Sequence; id: string; characterId: string | null; perkIds: string[]; draw: Draw | null;
   cards: number[]; votes: number[]; channelPointsVotes: number[]; winningCard: number | null; perkCount: number | null;
   pollId: string | null; choiceIds: string[]; pollTitle: string; pollEndsAt: number | null;
+  /** Rolled once per run: this poll allows Channel Points votes at the joker price. */
+  joker?: boolean;
   error: string | null;
 }
 export interface State { wins?: Record<Role, number>; loadouts?: Record<Role, {characterId: string | null; perkIds: string[]}>; packId: string; config: Config; visible: boolean; phase: Phase; run: Run | null; nextAt: number | null }
-export const initial = (): State => ({ packId: 'dbd-killer-challenge', config: { language: 'en', characterDesign: 'cards', spinSeconds: 4, pollSeconds: 30, channelPointsVoting: false, channelPointsPerVote: 100, includeUnavailable: false, excludedIds: [], perkTuning: {}, sequences: { killer: defaultSequence(), survivor: defaultSequence() }, layout: defaultLayout(), targets: { killer: 3, survivor: 4 } }, visible: false, phase: 'idle', run: null, nextAt: null, wins: { killer: 0, survivor: 0 }, loadouts: { killer: {characterId: null, perkIds: []}, survivor: {characterId: null, perkIds: []} } });
+export const initial = (): State => ({ packId: 'dbd-killer-challenge', config: { language: 'en', characterDesign: 'cards', spinSeconds: 4, pollSeconds: 30, channelPointsVoting: false, channelPointsPerVote: 100, jokerChance: 0, jokerPointsPerVote: 100, includeUnavailable: false, excludedIds: [], perkTuning: {}, sequences: { killer: defaultSequence(), survivor: defaultSequence() }, layout: defaultLayout(), targets: { killer: 3, survivor: 4 } }, visible: false, phase: 'idle', run: null, nextAt: null, wins: { killer: 0, survivor: 0 }, loadouts: { killer: {characterId: null, perkIds: []}, survivor: {characterId: null, perkIds: []} } });
 export const pick = <T>(items: T[]): T => items[randomInt(items.length)];
 export function shuffle<T>(items: T[]): T[] { const out = [...items]; for (let n = out.length - 1; n > 0; n--) { const i = randomInt(n + 1); [out[n], out[i]] = [out[i], out[n]]; } return out; }
 export function pack(id: string): Pack { const result = catalog.packs.find(p => p.id === id); if (!result) return fail('invalid', 'Unknown widget pack'); return result; }
@@ -78,7 +80,7 @@ function sequence(input: unknown, role: Role): Sequence {
 }
 export function config(input: unknown): Config {
   const data = object(input);
-  if (Object.keys(data).some(k => !['language', 'characterDesign', 'spinSeconds', 'pollSeconds', 'channelPointsVoting', 'channelPointsPerVote', 'includeUnavailable', 'excludedIds', 'perkTuning', 'sequences', 'layout', 'targets'].includes(k))) fail('invalid', 'Unknown widget setting');
+  if (Object.keys(data).some(k => !['language', 'characterDesign', 'spinSeconds', 'pollSeconds', 'channelPointsVoting', 'channelPointsPerVote', 'jokerChance', 'jokerPointsPerVote', 'includeUnavailable', 'excludedIds', 'perkTuning', 'sequences', 'layout', 'targets'].includes(k))) fail('invalid', 'Unknown widget setting');
   if (data.language !== 'en' && data.language !== 'es') fail('invalid', 'Choose English or Spanish');
   if (data.characterDesign !== undefined && !['cards', 'reel', 'wheel', 'elimination'].includes(data.characterDesign as string)) fail('invalid', 'Choose cards, reel, wheel, or last one standing for the character roulette');
   if (typeof data.includeUnavailable !== 'boolean') fail('invalid', 'includeUnavailable must be a boolean');
@@ -88,7 +90,7 @@ export function config(input: unknown): Config {
   if (Object.keys(sequences).some(k => !['killer','survivor'].includes(k))) fail('invalid', 'Unknown sequence role');
   const targets = data.targets === undefined ? {killer: 3, survivor: 4} : object(data.targets);
   if (Object.keys(targets).some(k => !['killer','survivor'].includes(k))) fail('invalid', 'Unknown progress role');
-  return { sequences: {killer: sequence(sequences.killer, 'killer'), survivor: sequence(sequences.survivor, 'survivor')}, layout: data.layout === undefined ? defaultLayout() : layout(data.layout), targets: {killer: integer(targets.killer, 'killer target', 1, 20), survivor: integer(targets.survivor, 'survivor target', 1, 20)}, language: data.language as Config['language'], characterDesign: (data.characterDesign ?? 'cards') as CharacterDesign, spinSeconds: integer(data.spinSeconds, 'spinSeconds', 1, 15), pollSeconds: integer(data.pollSeconds, 'pollSeconds', 15, 180), channelPointsVoting: data.channelPointsVoting === true, channelPointsPerVote: integer(data.channelPointsPerVote === undefined ? 100 : data.channelPointsPerVote, 'channelPointsPerVote', 1, 1000000), includeUnavailable: data.includeUnavailable as boolean, excludedIds: [...new Set(data.excludedIds as string[])], perkTuning: perkTuning(data.perkTuning ?? {}) };
+  return { sequences: {killer: sequence(sequences.killer, 'killer'), survivor: sequence(sequences.survivor, 'survivor')}, layout: data.layout === undefined ? defaultLayout() : layout(data.layout), targets: {killer: integer(targets.killer, 'killer target', 1, 20), survivor: integer(targets.survivor, 'survivor target', 1, 20)}, language: data.language as Config['language'], characterDesign: (data.characterDesign ?? 'cards') as CharacterDesign, spinSeconds: integer(data.spinSeconds, 'spinSeconds', 1, 15), pollSeconds: integer(data.pollSeconds, 'pollSeconds', 15, 180), channelPointsVoting: data.channelPointsVoting === true, channelPointsPerVote: integer(data.channelPointsPerVote === undefined ? 100 : data.channelPointsPerVote, 'channelPointsPerVote', 1, 1000000), jokerChance: integer(data.jokerChance === undefined ? 0 : data.jokerChance, 'jokerChance', 0, 100), jokerPointsPerVote: integer(data.jokerPointsPerVote === undefined ? 100 : data.jokerPointsPerVote, 'jokerPointsPerVote', 1, 1000000), includeUnavailable: data.includeUnavailable as boolean, excludedIds: [...new Set(data.excludedIds as string[])], perkTuning: perkTuning(data.perkTuning ?? {}) };
 }
 export function active(state: State): boolean { return !['idle', 'complete', 'poll-error'].includes(state.phase); }
 export function idle(state: State): void { if (active(state) || state.phase === 'poll-error') fail('busy', 'Finish or reset the challenge first', 409); }
@@ -124,12 +126,19 @@ export function start(state: State, now: number, operation?: Operation): void {
   state.packId = `dbd-${role}-${mode === 'poll' ? 'challenge' : mode}`;
   const id = randomUUID(), previous = state.loadouts![role];
   state.run = { operation: mode, sequence, id, characterId: mode === 'challenge' && !sequence.character ? sequence.fixedCharacterId : needsCharacter ? null : previous.characterId, perkIds: mode === 'challenge' ? [] : [...previous.perkIds], draw: null, cards: shuffle([0, 1, 2, 3, 4]), votes: [0, 0, 0, 0, 0], channelPointsVotes: [0, 0, 0, 0, 0], winningCard: null, perkCount: mode === 'challenge' && !sequence.poll ? sequence.perkCount : null, pollId: null, choiceIds: [], pollTitle: `${state.config.language === 'es' ? 'DBD: Elige una carta' : 'DBD: Choose a card'} (${id.slice(0, 8)})`, pollEndsAt: null, error: null };
+  const polls = mode === 'poll' || (mode === 'challenge' && sequence.poll);
+  if (polls && state.config.jokerChance > 0) state.run.joker = randomInt(100) < state.config.jokerChance;
   if (mode === 'challenge') state.loadouts![role] = {characterId: state.run.characterId, perkIds: []};
   if (mode === 'perks' && state.run.perkIds.length >= 4) { state.run.perkIds = []; state.loadouts![role].perkIds = []; }
   state.visible = true;
   if (needsCharacter) draw(state, 'character', now);
   else if (mode === 'perks') draw(state, 'perk', now);
   else afterCharacter(state, now);
+}
+/** Channel Points per extra vote for this run's poll; 0 keeps it to one free vote per viewer. */
+export function pollPointsPerVote(state: State): number {
+  if (state.run?.joker) return state.config.jokerPointsPerVote;
+  return state.config.channelPointsVoting ? state.config.channelPointsPerVote : 0;
 }
 /** Pure timed transitions. Poll creation/results are claimed separately by the service. */
 export function settle(state: State, now: number): boolean {

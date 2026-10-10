@@ -133,7 +133,7 @@ async function launchPoll(id: string, state: State, create: boolean): Promise<vo
       const { parseSpecialCommands } = await import('../handlers/special_parser.handler.js');
       const label = state.config.language === 'es' ? 'Carta' : 'Card';
       const options = [1, 2, 3, 4, 5].map(n => `${label} ${n}`).join('/');
-      const points = state.config.channelPointsVoting ? state.config.channelPointsPerVote : 0;
+      const points = domain.pollPointsPerVote(state);
       const source = `$(start.poll ${JSON.stringify(`${run.pollTitle};${options};${state.config.pollSeconds};${points}`)})`;
       const result = await parseSpecialCommands(source, { channelID: id, scopeType: 'widgets', scopeName: state.packId, userPlan: 'pro', userLevel: 10, literalArguments: true });
       if (result.parsedText.trim()) throw new Error(result.parsedText.slice(0, 300));
