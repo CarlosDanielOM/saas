@@ -7,7 +7,7 @@
     @if (notice()) { <p class="message" role="status">{{ notice() }}</p> }
     @if (state(); as current) {
       <div class="lf-bento">
-        <section class="lf-tile preview"><div class="tile-head"><h2>{{ t('preview') }}</h2><span>{{ t('surprise') }}</span></div><app-duel-arena [elapsed]="elapsed()" [started]="started()" [battle]="battle()" [locale]="language.currentLanguage()" /><div class="preview-tools"><button class="primary" (click)="preview()">{{ t(started()?'replay':'play') }} ▶</button><button (click)="preview(true)">✦ {{ t('previewUltimate') }}</button><label class="streamer-toggle"><input type="checkbox" [checked]="streamerFight()" (change)="streamerFight.set($any($event.target).checked)" /> {{ t('streamerFight') }}</label><p>{{ t('previewHint') }}</p></div></section>
+        <section class="lf-tile preview"><div class="tile-head"><h2>{{ t('preview') }}</h2><span>{{ t('surprise') }}</span></div><app-duel-arena [elapsed]="elapsed()" [started]="started()" [battle]="battle()" [locale]="language.currentLanguage()" [record]="previewRecord()" /><div class="preview-tools"><button class="primary" (click)="preview()">{{ t(started()?'replay':'play') }} ▶</button><button (click)="preview(true)">✦ {{ t('previewUltimate') }}</button><label class="streamer-toggle"><input type="checkbox" [checked]="streamerFight()" (change)="streamerFight.set($any($event.target).checked)" /> {{ t('streamerFight') }}</label><p>{{ t('previewHint') }}</p></div></section>
         <section class="lf-tile settings"><h2>{{ t('settings') }}</h2><form [formGroup]="form" (ngSubmit)="save()">
           <fieldset [disabled]="busy() || uncertainSave()"><label class="switch"><span>{{ t('enabled') }}<small>{{ t('enabledHint') }}</small></span><input type="checkbox" formControlName="enabled" /></label>
           <label class="switch"><span>{{ t('timeout') }}<small>{{ t('timeoutHint') }}</small></span><input type="checkbox" formControlName="timeoutEnabled" /></label>
@@ -18,8 +18,13 @@
         </section>
         <section class="lf-tile connection"><div class="tile-head"><h2>{{ t('obs') }}</h2><span class="status" [class.connected]="current.connected">{{ t(current.connected?'connected':'offline') }}</span></div><p>{{ t('obsHint') }}</p><button (click)="createLink()" [disabled]="busy()">{{ t(overlayUrl()?'replaceLink':'createLink') }}</button>
           @if (rotateConfirm()) { <div class="confirm" role="group" [attr.aria-label]="t('replaceLink')"><p>{{ t('replaceWarning') }}</p><button (click)="createLink()" [disabled]="busy()">{{ t('confirmReplace') }}</button><button (click)="rotateConfirm.set(false)">{{ t('cancel') }}</button></div> }
-          @if (overlayUrl()) { <label for="duel-link">{{ t('privateLink') }}</label><input id="duel-link" type="text" readonly [value]="overlayUrl()" /><button (click)="copyLink()">{{ t('copy') }}</button> }
+          @if (overlayUrl()) { <label for="duel-link">{{ t('privateLink') }}</label><input id="duel-link" type="text" readonly [value]="overlayUrl()" /><button (click)="copyLink()">{{ t('copy') }}</button>
+            <label for="duel-board-link">{{ t('leaderboardLink') }}</label><input id="duel-board-link" type="text" readonly [value]="leaderboardUrl()" /><button (click)="copyLink(true)">{{ t('copyLeaderboard') }}</button> }
           <p class="hint">{{ t('connectionHint') }}</p>
+        </section>
+        <section class="lf-tile leaderboard"><div class="tile-head"><h2>{{ t('leaderboard') }}</h2><span>{{ t('leaderboardSize') }}</span></div><p class="hint">{{ t('leaderboardHint') }}</p>
+          @if (leaderboardError()) { <p class="error" role="status">{{ t('leaderboardError') }}</p><button (click)="loadLeaderboard()">{{ t('retry') }}</button> }
+          @if (leaderboard(); as board) { <app-duel-leaderboard [board]="board" [locale]="language.currentLanguage()" /> }
         </section>
         <section class="lf-tile how"><h2>{{ t('how') }}</h2><ol><li>{{ t('stepChallenge') }} <code>!duel &#64;viewer</code></li><li>{{ t('stepAccept') }} <code>!duel accept</code></li><li>{{ t('stepWinner') }}</li></ol><p>{{ t('stepStreamer') }} <code>!duel &#64;{{ streamer }}</code></p><p>{{ t('fallback') }}</p>
           @if (current.run?.timeoutError) { <p class="error" role="status">{{ t('timeoutFailed') }}</p> }

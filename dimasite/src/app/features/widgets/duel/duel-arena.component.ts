@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { LanguageService } from '../../../services/language.service';
 import { DuelFighterComponent } from './duel-fighter.component';
+import type { DuelRecord } from './duel-api.service';
 import { COMBO_HEAL, DuelBattle, DuelMove, DuelSide, DuelTurn, HEAL, MAX_HP, legacyBattle, otherSide, turnLength } from './duel-battle';
 type Phase = 'ready' | 'entrance' | 'countdown' | 'fight' | 'knockout' | 'winner';
 /** How long the damage number, sparks and screen shake stay after a hit lands. */
@@ -15,6 +16,8 @@ export class DuelArenaComponent {
   readonly paused = input(false);
   readonly transparent = input(false);
   readonly locale = input<'en'|'es'>('en');
+  /** Head-to-head wins before this fight; only tracked overlay duels have one. */
+  readonly record = input<DuelRecord | null>(null);
   readonly sides: DuelSide[] = ['left','right'];
   readonly winner = computed(() => this.battle().winner);
   readonly finalHit = computed(() => this.battle().turns.at(-1)?.hitAt ?? 0);
@@ -74,6 +77,19 @@ export class DuelArenaComponent {
     return left;
   });
   readonly winnerName = computed(() => this.names()[this.winner()]);
+  /** Big over the floor while the fighters walk in, then it flies between the health bars. */
+  readonly rivalryStage = computed(() => this.phase() === 'entrance' || this.phase() === 'countdown' ? 'intro' : 'hud');
+  /** The record counts this fight once the winner is revealed. */
+  readonly score = computed<DuelRecord>(() => {
+    const record = this.record() ?? { left: 0, right: 0 }, winner = this.winner();
+    return this.phase() === 'winner' ? { ...record, [winner]: record[winner] + 1 } : record;
+  });
+  readonly rivalryLine = computed(() => {
+    const score = this.score(), names = this.names(), winner = this.winner();
+    if (score.left === score.right) return this.t('rivalryTied', { a: score.left, b: score.right });
+    const leader: DuelSide = score.left > score.right ? 'left' : 'right';
+    return this.t(leader === winner ? 'rivalryLeads' : 'rivalryStillLeads', { name: names[leader], a: score[leader], b: score[otherSide(leader)] });
+  });
 
   t(key:string, params?:Record<string,string|number>):string { return this.language.translate('duelMock.'+key,params,this.locale()); }
   action(side: DuelSide): string {

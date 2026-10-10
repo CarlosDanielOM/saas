@@ -40,6 +40,18 @@
 .heal-charges i { display:grid; place-items:center; width:2.2cqw; min-width:10px; aspect-ratio:1; border-radius:50%; font-style:normal; font-size:1.3cqw; line-height:1; color:#0f3a22; background:#5dff9a; box-shadow:0 0 8px #5dff9a99; transition:background .3s,box-shadow .3s,transform .3s }
 .heal-charges i.used { color:#b6accb; background:transparent; box-shadow:none; outline:1px dashed #b6accb; outline-offset:-1px; transform:scale(.85) }
 .fighter-role { display:block; color:#ada6bf; font-size:1.7cqw; letter-spacing:.09em; text-transform:uppercase }
+/* Rivalry: head-to-head wins. Big over the floor while the fighters walk in, then it
+   shrinks into the gap between the health bars; the winner's number pops at the end. */
+.rivalry { position:absolute; left:50%; top:76%; z-index:4; display:grid; justify-items:center; gap:.3cqw; padding:1cqw 2.6cqw 1.2cqw; translate:-50% 0; transform-origin:50% 0; border:1px solid #aa91ff55; border-radius:2cqw; background:#120f1fe6; box-shadow:0 0 30px #8b5cf633; white-space:nowrap; pointer-events:none; transition:top .8s cubic-bezier(.65,0,.3,1),scale .8s cubic-bezier(.65,0,.3,1),padding .8s; animation:cue .35s ease both }
+.rivalry small { color:#d8ccff; font-size:1.7cqw; font-weight:850; letter-spacing:.3em; text-transform:uppercase }
+.rivalry-score { display:flex; align-items:center; gap:1.4cqw; font-weight:950; line-height:1 }
+.rivalry-score b { font-size:6.4cqw; color:var(--violet); text-shadow:0 0 18px #8b5cf688; font-variant-numeric:tabular-nums; animation:score-pop .5s cubic-bezier(.3,1.6,.5,1) both }
+.rivalry-score b[data-side="right"] { color:var(--amber); text-shadow:0 0 18px #ffb54788 }
+.rivalry-score i { font-style:normal; font-size:4cqw; color:#ffffff88 }
+.rivalry-name { max-width:22cqw; overflow:hidden; text-overflow:ellipsis; font-size:2.8cqw; font-weight:850; letter-spacing:-.02em; transition:max-width .8s,opacity .5s }
+.rivalry[data-stage="hud"] { top:12.4%; scale:.42; padding:1cqw 2cqw 1.1cqw }
+.rivalry[data-stage="hud"] .rivalry-name { max-width:0; opacity:0; margin:0 -.7cqw }
+@keyframes score-pop { from { scale:1.9; filter:brightness(2) } to { scale:1; filter:none } }
 .fight-space { position:absolute; inset:0 }
 .fighter-slot { position:absolute; width:var(--fighter-size); left:calc(50% - var(--fight-spread) - var(--fighter-size) / 2); bottom:21%; transition:left .75s ease }
 .fighter-right { left:calc(50% + var(--fight-spread) - var(--fighter-size) / 2) }
@@ -62,7 +74,7 @@
    and the HUD-level cinema (bars, title, flash). */
 .ultimate-stage { --ult:4700ms; z-index:auto }
 /* The HUD steps back for the cinematic and returns as the blow lands. */
-.arena[data-ultimate] .hud { animation:ult-hud 4.7s ease both }
+.arena[data-ultimate] .hud,.arena[data-ultimate] .rivalry { animation:ult-hud 4.7s ease both }
 .ult-dim { position:absolute; inset:0; z-index:1; background:radial-gradient(ellipse at 50% 55%,#05040c88,#05040cf2 70%); animation:ult-dim var(--ult) ease both }
 .transparent .ult-dim { background:radial-gradient(ellipse at 50% 55%,#05040c44,#05040cbb 75%) }
 .ult-bars i { position:absolute; left:0; right:0; z-index:8; height:9%; background:#000; animation:ult-bar var(--ult) cubic-bezier(.2,.8,.3,1) both }
@@ -220,7 +232,8 @@
 .winner-reveal { position:absolute; top:22%; left:6%; right:6%; display:grid; text-align:center; justify-items:center; gap:2px; z-index:5; animation:winner .6s ease both }
 .winner-kicker { color:#ffe0a0; font-size:1.9cqw; font-weight:800; letter-spacing:.25em; text-transform:uppercase }
 .winner-reveal strong { font-size:4.6cqw; max-width:100%; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; font-weight:900; letter-spacing:-.045em; text-shadow:0 3px 14px #000 }
-.winner-reveal>span:last-child { font-size:2cqw; color:#c9c1d9 }
+.winner-reveal>span:not(.winner-kicker) { font-size:2cqw; color:#c9c1d9 }
+.winner-reveal>.rivalry-line { margin-top:.6cqw; padding:.4cqw 1.4cqw; border-radius:99px; background:#120f1fd9; color:#ffe0a0; font-weight:800 }
 .confetti { position:absolute; inset:0; pointer-events:none; z-index:-1 }
 .confetti i { position:absolute; left:calc(var(--n) * 8% + 3%); top:0; width:.8cqw; height:1.6cqw; background:var(--amber); transform:rotate(calc(var(--n) * 37deg)); animation:confetti 2.5s ease-out both; animation-delay:calc(var(--n) * .035s) }
 .confetti i:nth-child(even) { background:var(--violet) }

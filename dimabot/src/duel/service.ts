@@ -5,10 +5,11 @@ import { getDragonflyClient } from '../utils/databases/dragonfly.database.js';
 import { requirePremium, hasPremium } from '../widgets/service.js';
 import { fail, integer, text } from '../roulette/model.js';
 import { defaultSettings, settings, createRun, nextDeadline, type DuelSettings, type DuelChallenge, type DuelRun, type DuelSide } from './model.js';
+import { headToHead } from './stats.js';
 
 interface Receipt { key: string; fingerprint: string; at: number }
-export interface DuelDocument { _id: string; revision: number; settings: DuelSettings; challenge: DuelChallenge | null; run: DuelRun | null; tokenHash: string | null; dueAt: number | null; leaseUntil: number; receipts: Receipt[] }
-const schema = new Schema<DuelDocument>({ _id: String, revision: { type: Number, default: 0 }, settings: { type: Schema.Types.Mixed, required: true }, challenge: { type: Schema.Types.Mixed, default: null }, run: { type: Schema.Types.Mixed, default: null }, tokenHash: { type: String, default: null }, dueAt: { type: Number, default: null }, leaseUntil: { type: Number, default: 0 }, receipts: { type: [new Schema<Receipt>({ key: String, fingerprint: String, at: Number }, { _id: false })], default: [] } }, { versionKey: false, collection: 'duel_widgets' });
+export interface DuelDocument { _id: string; revision: number; settings: DuelSettings; challenge: DuelChallenge | null; run: DuelRun | null; tokenHash: string | null; dueAt: number | null; leaseUntil: number; receipts: Receipt[]; statsRevision?: number }
+const schema = new Schema<DuelDocument>({ _id: String, revision: { type: Number, default: 0 }, settings: { type: Schema.Types.Mixed, required: true }, challenge: { type: Schema.Types.Mixed, default: null }, run: { type: Schema.Types.Mixed, default: null }, tokenHash: { type: String, default: null }, dueAt: { type: Number, default: null }, leaseUntil: { type: Number, default: 0 }, statsRevision: { type: Number, default: 0 }, receipts: { type: [new Schema<Receipt>({ key: String, fingerprint: String, at: Number }, { _id: false })], default: [] } }, { versionKey: false, collection: 'duel_widgets' });
 schema.index({ dueAt: 1 });
 export const DuelChannel = model<DuelDocument>('DuelWidget', schema);
 export const tokenHash = (value: string) => createHash('sha256').update(value).digest('hex');
@@ -41,7 +42,7 @@ export async function duelSnapshot(id: string) {
   const run = doc.run;
   return { revision: doc.revision, settings: doc.settings, serverTime: now, connected: await overlayActive(doc),
     challenge: doc.challenge && doc.challenge.expiresAt > now ? doc.challenge : null,
-    run: run ? { id: run.id, challenger: run.challenger, opponent: run.opponent, winner: run.winner, fighters: run.fighters, turns: run.turns, enraged: run.enraged ?? null, mode: run.mode, startedAt: run.startedAt, endsAt: run.endsAt, completedAt: run.completedAt, announcementError: run.announcementError, timeoutError: run.timeoutError } : null };
+    run: run ? { id: run.id, challenger: run.challenger, opponent: run.opponent, winner: run.winner, fighters: run.fighters, turns: run.turns, enraged: run.enraged ?? null, mode: run.mode, startedAt: run.startedAt, endsAt: run.endsAt, completedAt: run.completedAt, announcementError: run.announcementError, timeoutError: run.timeoutError, record: run.record ?? null } : null };
 }
 export async function configureDuel(id: string, input: unknown, revision: number, key: string): Promise<void> {
   await requirePremium(id); integer(revision, 'If-Match', 0); text(key, 'Idempotency-Key', 128);
@@ -63,6 +64,11 @@ export async function authorizeDuelOverlay(id: string, token: unknown): Promise<
   if (!/^[0-9]{1,30}$/.test(id) || typeof token !== 'string' || !/^[\w-]{43}$/.test(token)) return false;
   return await hasPremium(id) && !!await DuelChannel.exists({ _id: id, tokenHash: tokenHash(token) });
 }
+/** Overlay fights carry the rivalry so far; chat-only duels are never tracked. */
+async function withRecord(id: string, run: DuelRun): Promise<DuelRun> {
+  if (run.mode === 'overlay') run.record = await headToHead(id, run.challenger, run.opponent);
+  return run;
+}
 export async function challengeDuel(id: string, challenger: string, opponent: string, enraged: DuelSide | null = null): Promise<boolean> {
   for (let attempt = 0; attempt < 10; attempt++) {
     const doc = await loadDuel(id), now = Date.now();
@@ -79,7 +85,7 @@ export async function fightStreamer(id: string, challenger: string, streamer: st
   for (let attempt = 0; attempt < 10; attempt++) {
     const doc = await loadDuel(id), now = Date.now();
     if (doc.run && doc.run.completedAt === null || doc.challenge && doc.challenge.expiresAt > now) fail('busy', 'A duel is already waiting or fighting in this channel', 409);
-    const run = createRun({ id: randomUUID(), challenger, opponent: streamer, expiresAt: now, enraged: 'right' }, doc.settings, await overlayActive(doc), now);
+    const run = await withRecord(id, createRun({ id: randomUUID(), challenger, opponent: streamer, expiresAt: now, enraged: 'right' }, doc.settings, await overlayActive(doc), now));
     const saved = await DuelChannel.updateOne({ _id: id, revision: doc.revision }, { $set: { challenge: null, run, dueAt: nextDeadline(run), leaseUntil: 0 }, $inc: { revision: 1 } });
     if (saved.modifiedCount) return run;
   }
@@ -88,7 +94,7 @@ export async function fightStreamer(id: string, challenger: string, streamer: st
 export async function acceptDuel(id: string, opponent: string): Promise<DuelRun> {
   const doc = await loadDuel(id), now = Date.now();
   if (!doc.challenge || doc.challenge.opponent !== opponent || doc.challenge.expiresAt <= now) return fail('missing', 'There is no duel challenge to accept', 409);
-  const run = createRun(doc.challenge, doc.settings, await overlayActive(doc), now);
+  const run = await withRecord(id, createRun(doc.challenge, doc.settings, await overlayActive(doc), now));
   const saved = await DuelChannel.updateOne({ _id: id, revision: doc.revision, 'challenge.id': doc.challenge.id }, { $set: { challenge: null, run, dueAt: nextDeadline(run), leaseUntil: 0 }, $inc: { revision: 1 } });
   if (!saved.modifiedCount) return fail('busy', 'This duel was already accepted or changed', 409);
   return run;

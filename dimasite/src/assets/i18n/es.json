@@ -7000,7 +7000,13 @@
       "mage": "¡Devorado!",
       "ronin": "¡Rebanado!"
     },
-    "playUltimate": "Ver una definitiva"
+    "playUltimate": "Ver una definitiva",
+    "rivalry": "Rivalidad",
+    "firstDuel": "Primer duelo",
+    "rivalryLabel": "Historial: {{left}} {{a}}, {{right}} {{b}}",
+    "rivalryLeads": "{{name}} lidera la rivalidad {{a}}–{{b}}",
+    "rivalryStillLeads": "{{name}} sigue liderando la rivalidad {{a}}–{{b}}",
+    "rivalryTied": "La rivalidad está empatada {{a}}–{{b}}"
   },
   "duelWidget": {
     "back": "Todos los widgets",
@@ -7059,6 +7065,23 @@
     "streamerFight": "Pelear contra el streamer",
     "enragedChallenge": "¡El streamer enfurecido te desafía!",
     "stepStreamer": "Tus espectadores también pueden pelear contra ti. Empieza al instante, peleas enfurecido (doble probabilidad de golpe fuerte/especial, crítico y escudo, unas 5 de cada 6 victorias) y nunca recibes timeout:",
-    "previewUltimate": "Ver una definitiva"
+    "previewUltimate": "Ver una definitiva",
+    "leaderboard": "Clasificación K/D",
+    "leaderboardSize": "Fuente vertical de OBS · 500 × 900",
+    "leaderboardHint": "Clasifica por K/D (victorias ÷ derrotas), así pelear mucho nunca penaliza. Solo cuentan los duelos mostrados en el overlay de OBS; los duelos solo por chat no se registran. El streamer enfurecido no entra en la clasificación.",
+    "leaderboardLink": "Enlace de la clasificación (vertical, 500 × 900)",
+    "copyLeaderboard": "Copiar enlace de la clasificación",
+    "leaderboardCopied": "Enlace de la clasificación copiado.",
+    "leaderboardError": "No se pudo cargar la clasificación.",
+    "retry": "Reintentar",
+    "board": {
+      "title": "Clasificación de duelos",
+      "subtitle": "Por victorias ÷ derrotas",
+      "rank": "Puesto {{n}}",
+      "record": "{{w}} V · {{l}} D",
+      "footer": "{{n}} luchadores clasificados · {{d}} duelos",
+      "empty": "Aún no hay duelos",
+      "emptyHint": "Escribe !duel @alguien para entrar en la clasificación"
+    }
   }
 }

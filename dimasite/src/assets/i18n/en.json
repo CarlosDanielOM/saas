@@ -7000,7 +7000,13 @@
       "mage": "Swallowed!",
       "ronin": "Sliced!"
     },
-    "playUltimate": "Play an ultimate"
+    "playUltimate": "Play an ultimate",
+    "rivalry": "Rivalry",
+    "firstDuel": "First duel",
+    "rivalryLabel": "Head-to-head: {{left}} {{a}}, {{right}} {{b}}",
+    "rivalryLeads": "{{name}} leads the rivalry {{a}}–{{b}}",
+    "rivalryStillLeads": "{{name}} still leads the rivalry {{a}}–{{b}}",
+    "rivalryTied": "The rivalry is tied {{a}}–{{b}}"
   },
   "duelWidget": {
     "back": "All widgets",
@@ -7059,6 +7065,23 @@
     "streamerFight": "Fight the streamer",
     "enragedChallenge": "The enraged streamer challenges you!",
     "stepStreamer": "Viewers can also fight you. It starts instantly, you fight enraged (double heavy/special, crit and shield chances, about 5 in 6 wins) and you are never timed out:",
-    "previewUltimate": "Preview an ultimate"
+    "previewUltimate": "Preview an ultimate",
+    "leaderboard": "K/D leaderboard",
+    "leaderboardSize": "Vertical OBS source · 500 × 900",
+    "leaderboardHint": "Ranked by K/D (wins ÷ losses), so fighting a lot is never a penalty. Only duels shown on the OBS overlay count; chat-only duels aren't tracked. The enraged streamer isn't ranked.",
+    "leaderboardLink": "Leaderboard link (vertical, 500 × 900)",
+    "copyLeaderboard": "Copy leaderboard link",
+    "leaderboardCopied": "Leaderboard link copied.",
+    "leaderboardError": "Could not load the leaderboard.",
+    "retry": "Try again",
+    "board": {
+      "title": "Duel leaderboard",
+      "subtitle": "Ranked by wins ÷ losses",
+      "rank": "Rank {{n}}",
+      "record": "{{w}} W · {{l}} L",
+      "footer": "{{n}} ranked fighters · {{d}} duels",
+      "empty": "No duels yet",
+      "emptyHint": "Type !duel @someone to get on the board"
+    }
   }
 }

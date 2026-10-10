@@ -16,6 +16,8 @@ export type DuelCharacter = 'knight' | 'ronin' | 'mage';
 export interface DuelTurn { at: number; hitAt: number; attacker: DuelSide; move: DuelMove | 'heal' | 'ultimate'; damage: number; raw: number; crit: boolean; defended: boolean; heal: number; comboHeal: number; bonus: boolean }
 export interface DuelBattle { fighters: Record<DuelSide, DuelCharacter>; turns: DuelTurn[]; winner: DuelSide; duration: number; enraged: DuelSide | null }
 /** enraged marks the streamer's side: the channel owner fights with doubled odds. */
+/** Head-to-head wins of each side before this fight (overlay duels only). */
+export interface DuelRecord { left: number; right: number }
 export interface DuelChallenge { id: string; challenger: string; opponent: string; expiresAt: number; enraged?: DuelSide | null }
 export interface DuelRun {
   id: string; challenger: string; opponent: string; winner: DuelSide; mode: 'overlay' | 'chat';
@@ -23,7 +25,7 @@ export interface DuelRun {
   startedAt: number; endsAt: number; timeoutEnabled: boolean; timeoutSeconds: number; language: 'en' | 'es';
   phrases: { at: number; text: string }[]; phraseIndex: number;
   announcementAttempted: boolean; timeoutAttempted: boolean; completedAt: number | null;
-  announcementError?: string; timeoutError?: string;
+  announcementError?: string; timeoutError?: string; record?: DuelRecord | null;
 }
 export const defaultSettings = (): DuelSettings => ({ enabled: true, timeoutEnabled: true, timeoutSeconds: 60, language: 'en' });
 export function settings(input: unknown): DuelSettings {

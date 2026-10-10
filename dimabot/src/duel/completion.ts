@@ -1,5 +1,6 @@
 import { Schema, model } from 'mongoose';
 import { DuelChannel, loadDuel } from './service.js';
+import { recordDuelResult } from './stats.js';
 import { loserLogin, winnerMessage, nextDeadline, type DuelRun } from './model.js';
 import { getMongoDBConnection } from '../utils/databases/mongodb.database.js';
 import { getDragonflyClient } from '../utils/databases/dragonfly.database.js';
@@ -91,9 +92,15 @@ export async function settleDuels(): Promise<void> {
         const claimed = await DuelChannel.updateOne({ _id: doc._id, 'run.id': run.id, 'run.timeoutAttempted': false }, { $set: { 'run.timeoutAttempted': true }, $inc: { revision: 1 } });
         if (claimed.modifiedCount) try { await timeoutLoser(doc._id, run); } catch (error) { await report(doc._id, run, 'timeoutError', error); }
       }
+      // Only overlay fights feed the leaderboard and rivalries (keyed by run ID, so a
+      // retry never double counts). A failure leaves the run open and retries next tick.
+      const tracked = run.mode === 'overlay';
+      if (tracked) try { await recordDuelResult(doc._id, run); } catch (error) {
+        await logError({ function: 'duel-record-result', runId: run.id, error: String(error) }, { channelId: doc._id, destination: 'both' }); continue;
+      }
       // Accepted effects survive lost OBS/bot connections. Attempts are receipted
       // before sending: no automatic duplicate timeout/announcement after a crash.
-      await DuelChannel.updateOne({ _id: doc._id, 'run.id': run.id }, { $set: { 'run.completedAt': Date.now(), dueAt: null }, $inc: { revision: 1 } });
+      await DuelChannel.updateOne({ _id: doc._id, 'run.id': run.id }, { $set: { 'run.completedAt': Date.now(), dueAt: null }, $inc: { revision: 1, statsRevision: tracked ? 1 : 0 } });
     } finally { await DuelChannel.updateOne({ _id: doc._id }, { $set: { leaseUntil: 0 } }); }
   }
   const restores = await DuelModeratorRestore.find({ dueAt: { $lte: Date.now() }, leaseUntil: { $lte: Date.now() } }).limit(10).lean();

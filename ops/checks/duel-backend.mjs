@@ -8,6 +8,7 @@ const require=createRequire('/app/package.json');
 const svc=await import('/app/dist/duel/service.js'),domain=await import('/app/dist/duel/model.js');
 const {duelCommand}=await import('/app/dist/commands/duel.command.js');
 const {DuelModeratorRestore}=await import('/app/dist/duel/completion.js');
+const stats=await import('/app/dist/duel/stats.js');
 const {getMongoDBConnection}=await import('/app/dist/utils/databases/mongodb.database.js');
 const {getDragonflyClient}=await import('/app/dist/utils/databases/dragonfly.database.js');
 await getMongoDBConnection('duel-test');const redis=await getDragonflyClient('duel-test');
@@ -21,7 +22,7 @@ for(const [id,name,tier] of [[channel,'duelfixture','pro'],[other,'other','free'
 await redis.set('app:twitch:token','fixture',{EX:3600});
 await redis.hSet('token:duel-owner',{id:channel,login:'duelfixture',display_name:'Duel Fixture'});
 await redis.hSet('token:duel-other',{id:other,login:'other',display_name:'Other'});
-await svc.DuelChannel.init();await DuelModeratorRestore.init();
+await svc.DuelChannel.init();await DuelModeratorRestore.init();await stats.DuelResult.init();
 let base='http://127.0.0.1:3000',server,io;
 if(process.env.SAAS_TARGET!=='api'){
  const express=require('express'),app=express();app.use(express.json());app.use('/widgets',(await import('/app/dist/server/routes/widgets.route.js')).widgetsRoute);
@@ -53,9 +54,9 @@ function checkBattle(run){
 }
 const once=()=>execFileSync('node',['/app/dist/workers/duel.worker.js','--once'],{encoding:'utf8'});
 async function finish(){await svc.DuelChannel.updateOne({_id:channel},{$set:{'run.endsAt':Date.now()-1,dueAt:Date.now()-1}});once();await wait(async()=>(await svc.loadDuel(channel)).run?.completedAt,'duel completion');}
-function connect(token,ready=true){
+function connect(token,ready=true,view){
  const ws=new WebSocket(base.replace('http:','ws:')+'/socket.io/?EIO=4&transport=websocket'),packets=[];
- ws.addEventListener('message',event=>{const text=String(event.data);if(text.startsWith('0'))ws.send('40/overlays/duel/'+channel+','+JSON.stringify({token}));else if(text==='2')ws.send('3');else{packets.push(text);if(ready&&text.includes('duel-state'))ws.send('42/overlays/duel/'+channel+','+JSON.stringify(['duel-ready',{version:1}]));}});
+ ws.addEventListener('message',event=>{const text=String(event.data);if(text.startsWith('0'))ws.send('40/overlays/duel/'+channel+','+JSON.stringify(view?{token,view}:{token}));else if(text==='2')ws.send('3');else{packets.push(text);if(ready&&text.includes('duel-state'))ws.send('42/overlays/duel/'+channel+','+JSON.stringify(['duel-ready',{version:1}]));}});
  const heartbeat=setInterval(()=>{if(ready&&ws.readyState===1)ws.send('42/overlays/duel/'+channel+','+JSON.stringify(['duel-ready',{version:1}]));},1000);
  return {ws,packets,close(){clearInterval(heartbeat);ws.close();}};
 }
@@ -86,15 +87,19 @@ const before=chats().length,modBefore=mods().length;
 assert.equal((await duelCommand(channel,'alice',false,'@bob')).message,'','overlay suppresses challenge');await wait(()=>source.packets.some(p=>p.includes('"opponent":"bob"')),'challenge prompt');
 assert((await duelCommand(channel,'alice',false,'accept')).error,'only challenged user accepts');
 const accepted=await Promise.all([duelCommand(channel,'bob',false,'accept'),duelCommand(channel,'bob',false,'accept')]);assert.equal(accepted.filter(r=>!r.error).length,1);assert.equal(accepted.find(r=>!r.error).message,'');
-let run=(await svc.loadDuel(channel)).run;assert.equal(run.mode,'overlay');assert.equal(run.phrases.length,0);assert(['left','right'].includes(run.winner));checkBattle(run);
+let run=(await svc.loadDuel(channel)).run;assert.equal(run.mode,'overlay');assert.equal(run.phrases.length,0);assert(['left','right'].includes(run.winner));checkBattle(run);assert.deepEqual(run.record,{left:0,right:0},'an overlay fight carries the (empty) head-to-head');
 await wait(()=>source.packets.some(p=>p.includes(run.id)&&p.includes('"turns"')),'overlay receives the battle');const live=JSON.parse(source.packets.find(p=>p.includes(run.id)&&p.includes('"turns"')).split(',').slice(1).join(','))[1];assert.deepEqual(live.run.turns,run.turns,'overlay animates the server battle');assert.deepEqual(live.run.fighters,run.fighters);
 source.close();await wait(async()=>!await svc.overlayActive(await svc.loadDuel(channel)),'disconnect clears presence');
 // Fights now run 15-40 s; pull the real deadline in so the check stays inside the helper's 300 s limit.
 await svc.DuelChannel.updateOne({_id:channel},{$set:{'run.endsAt':Date.now()+8000,dueAt:Date.now()+8000}});run=(await svc.loadDuel(channel)).run;
 await sleep(1200);once();assert.equal(chats().length,before,'no early winner or battle messages');
 await sleep(Math.max(0,run.endsAt-Date.now()+100));if(process.env.SAAS_TARGET!=='cron')once();await wait(()=>chats().length===before+1,'supervised winner after end');assert(chats().at(-1).at>=run.endsAt);assert.equal(chats().at(-1).body.message,domain.winnerMessage(run));assert.equal(mods().length,modBefore,'disabled timeout makes no moderation calls');once();assert.equal(chats().length,before+1,'winner cannot repeat');
+// Overlay fights are recorded once, keyed by run ID, and wake leaderboard sources.
+const overlayResult=await stats.DuelResult.findById(run.id).lean();assert.deepEqual([overlayResult.winner,overlayResult.loser,overlayResult.streamer],[domain.winnerLogin(run),domain.loserLogin(run),null]);assert.equal((await svc.loadDuel(channel)).statsRevision,1);
+await stats.recordDuelResult(channel,run);assert.equal(await stats.DuelResult.countDocuments({channel}),1,'recording is idempotent');
 assert((await duelCommand(channel,'alice',false,'bob')).message.includes('has challenged'));const chatCount=chats().length;await duelCommand(channel,'bob',false,'accept');run=(await svc.loadDuel(channel)).run;assert.equal(run.mode,'chat');assert(run.phrases.length>=2&&run.phrases.length<=4);
 await svc.DuelChannel.updateOne({_id:channel},{$set:{'run.phrases':run.phrases.map((p,i)=>({...p,at:Date.now()-1000+i})),dueAt:Date.now()-1000}});for(let i=0;i<run.phrases.length;i++)once();await wait(()=>chats().length===chatCount+run.phrases.length,'chat narration');assert.equal(chats().length,chatCount+run.phrases.length,'chat narration retained');await finish();assert.equal(chats().length,chatCount+run.phrases.length+1);
+assert.equal(await stats.DuelResult.countDocuments({_id:run.id}),0,'chat-only duels are never tracked');assert.equal(run.record??null,null,'chat-only duels carry no head-to-head');assert.equal((await svc.loadDuel(channel)).statsRevision,1);
 await config({timeoutEnabled:true,timeoutSeconds:17});writeFileSync('/tmp/saas-fixtures/mods.json',JSON.stringify(['991811','991812']));
 await duelCommand(channel,'alice',false,'bob');await duelCommand(channel,'bob',true,'accept','WRONG_REQUESTING_MODERATOR');run=(await svc.loadDuel(channel)).run;await finish();const ban=calls().filter(c=>c.path==='/helix/moderation/bans').at(-1);assert.equal(ban.body.data.duration,17);assert.equal(ban.query.moderator_id,'698614112');const restore=await DuelModeratorRestore.findById(run.id).lean();assert(restore);assert(restore.dueAt>Date.now()+16000);await DuelModeratorRestore.updateOne({_id:run.id},{$set:{dueAt:Date.now()-1}});once();assert.equal(await DuelModeratorRestore.countDocuments({_id:run.id}),0,'new worker restores moderator');
 await config({timeoutEnabled:true});await duelCommand(channel,'alice',false,'bob');await duelCommand(channel,'bob',false,'accept');await config({timeoutEnabled:false});const n=mods().length;await finish();assert.equal(mods().length,n,'switch off applies to an accepted battle');
@@ -144,5 +149,22 @@ const attacks=runs.flatMap(r=>r.turns.filter(t=>t.move!=='heal')),critShare=atta
 assert(runs.some(r=>r.turns.some(t=>t.move==='heal')),'heals happen');assert(runs.some(r=>r.turns.some(t=>t.comboHeal>0)),'block combos heal');assert(narrated.some(t=>/COMBO! @\w+ blocks with/.test(t)),'chat narrates combo heals');assert(narrated.some(t=>/angel descends|healing potion|life glyphs/.test(t)),'chat narrates heals');assert(narrated.some(t=>/CRITICAL/.test(t)),'chat narrates crits');assert(runs.some(r=>r.turns.some(t=>t.move==='special'&&t.defended)),'specials can shatter a defense');assert(narrated.some(t=>/shatters it/.test(t)),'chat narrates shattered defenses');assert.deepEqual([...new Set(runs.flatMap(r=>[r.fighters.left,r.fighters.right]))].sort(),['knight','mage','ronin']);
 const chatRun=domain.createRun({id:'test',challenger:'alice',opponent:'bob',expiresAt:Date.now()},{...domain.defaultSettings(),language:'es'},false,Date.now());assert(chatRun.phrases.every(p=>p.at>chatRun.startedAt&&p.at<chatRun.endsAt));assert.match(domain.winnerMessage(chatRun),/ha ganado el duelo contra @\w+ con \d+ HP restantes\.$/);
 assert.equal(domain.winnerMessage({...chatRun,turns:undefined}),'@'+domain.winnerLogin(chatRun)+' ha ganado el duelo contra @'+domain.loserLogin(chatRun)+'.','legacy runs keep the old message');
+// Head-to-head carries into the next overlay fight; the leaderboard view shares the token
+// but never receives fights and never makes the overlay "ready".
+const board=connect(replacement,false,'leaderboard');await wait(()=>board.packets.some(p=>p.includes('duel-leaderboard')),'leaderboard snapshot');assert(!board.packets.some(p=>p.includes('duel-state')),'no fights on the leaderboard view');
+board.ws.send('42/overlays/duel/'+channel+','+JSON.stringify(['duel-ready',{version:1}]));await sleep(1200);assert.equal(await svc.overlayActive(await svc.loadDuel(channel)),false,'a leaderboard source is never a ready duel overlay');
+const source3=connect(replacement);await wait(async()=>await svc.overlayActive(await svc.loadDuel(channel)),'source for a tracked rematch');await config({timeoutEnabled:false});
+const h2h={left:await stats.DuelResult.countDocuments({channel,winner:'alice',loser:'bob'}),right:await stats.DuelResult.countDocuments({channel,winner:'bob',loser:'alice'})};assert.equal(h2h.left+h2h.right,1);
+await duelCommand(channel,'alice',false,'@bob');await duelCommand(channel,'bob',false,'accept');run=(await svc.loadDuel(channel)).run;assert.equal(run.mode,'overlay');assert.deepEqual(run.record,h2h,'rematch shows the head-to-head so far');
+await wait(()=>source3.packets.some(p=>p.includes(run.id)&&p.includes('"record"')),'overlay receives the record');source3.close();
+const boards=board.packets.filter(p=>p.includes('duel-leaderboard')).length;await finish();await wait(()=>board.packets.filter(p=>p.includes('duel-leaderboard')).length>boards,'leaderboard updates after a tracked fight');
+assert.equal(await stats.DuelResult.countDocuments({channel}),2);const latest=JSON.parse(board.packets.filter(p=>p.includes('duel-leaderboard')).at(-1).split(',').slice(1).join(','))[1];assert.equal(latest.duels,2);assert.equal(latest.enabled,true);board.close();
+// K/D ranking: wins ÷ losses (wins while unbeaten), ties to more wins; the streamer is tracked but not ranked; top 10.
+await stats.DuelResult.deleteMany({channel});const seed=[];const add=(winner,loser,n,streamer=null)=>{for(let i=0;i<n;i++)seed.push({_id:crypto.randomUUID(),channel,winner,loser,streamer,at:Date.now()});};
+add('grinder','pad',100);add('pad','grinder',200);add('sharp','x',6);add('x','sharp',2);add('perfect','y',2);add('duelfixture','z',9,'duelfixture');add('z','duelfixture',1,'duelfixture');for(let i=1;i<=5;i++)add('rookie'+i,'y',1);add('elsewhere','sharp',50);for(const row of seed.slice(-50))row.channel='991899';await stats.DuelResult.insertMany(seed);
+const ranking=await request('GET',root+'/leaderboard');assert.deepEqual(ranking.players.map(p=>p.login),['sharp','pad','perfect','rookie1','rookie2','rookie3','rookie4','rookie5','grinder','x']);
+assert.deepEqual(ranking.players[0],{login:'sharp',kills:6,deaths:2,kd:3});assert.equal(ranking.players.find(p=>p.login==='grinder').kd,.5,'100 wins and 200 losses rank by K/D, not volume');assert.equal(ranking.players.find(p=>p.login==='perfect').kd,2,'unbeaten K/D is the win count');
+assert.equal(ranking.ranked,12,'the streamer is not ranked');assert.equal(ranking.duels,325,'other channels never count');assert(!ranking.players.some(p=>p.login==='duelfixture'));
+await request('GET',root+'/leaderboard',undefined,401,'');await request('GET','/widgets/'+other+'/duel/leaderboard',undefined,403,'duel-other');await stats.DuelResult.deleteMany({});
 if(io)await new Promise(resolve=>io.close(resolve));
-await redis.quit();await (await getMongoDBConnection('duel-test-close')).disconnect();console.log('PASS duel '+process.env.SAAS_TARGET+': overlay/chat, deadlines, settings, tokens, concurrency, timeout safety and durable moderator restoration');process.exit(0);
+await redis.quit();await (await getMongoDBConnection('duel-test-close')).disconnect();console.log('PASS duel '+process.env.SAAS_TARGET+': overlay/chat, deadlines, settings, tokens, concurrency, timeout safety and durable moderator restoration, overlay-only result tracking, head-to-head, K/D leaderboard and leaderboard sources');process.exit(0);

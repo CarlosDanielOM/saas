@@ -39,6 +39,18 @@ enraged streamer rolls 4% per turn (about 1 in 6 streamer fights) and everyone e
 Runs accepted before turn-based battles (no `turns`) still render and announce. Accepted battles finish even if OBS or
 the bot disconnects. The cron supervisor runs `duel.worker` independently.
 
+Only duels shown on the OBS overlay (`run.mode === 'overlay'`, so Premium with a ready source)
+are tracked; chat-only duels never are. When such a fight finishes, the worker inserts one
+`duel_results` row keyed by the run ID (`dimabot/src/duel/stats.ts`, so retries never
+double count) after the winner announcement and timeout, then bumps `statsRevision`.
+Overlay runs carry `record` (each side's head-to-head wins before the fight): the arena shows
+it big while the fighters enter, then between the health bars, and adds the fight at the
+winner reveal. The K/D leaderboard (wins ÷ losses, wins alone while unbeaten; ties to more
+wins, then fewer losses; top 10) excludes whoever fought as the enraged streamer. The page
+reads `GET /widgets/:id/duel/leaderboard`; the vertical OBS source
+`/overlays/duel/:id/leaderboard#token` (500 × 900) shares the duel token and connects with
+`view: 'leaderboard'`. It receives `duel-leaderboard` and never fights or readiness.
+
 Loser timeouts default to enabled for 60 seconds, preserving existing behavior.
 The widget allows disabling them or choosing 1–1,209,600 seconds. Disabling takes
 effect for an accepted battle too. No moderation/provider lookups occur when
@@ -64,9 +76,11 @@ The backend check exercises command acceptance, quiet overlays, real-time
 winner deadlines, fallback narration, settings validation/concurrency, private
 OBS authorization/readiness/revocation, no-timeout mode, configured duration,
 moderator restoration in a fresh worker, provider failure handling, and battle
-invariants/odds over 2,000 simulated fights. All
+invariants/odds over 2,000 simulated fights, overlay-only idempotent result tracking,
+head-to-head on rematches, leaderboard sources and K/D ranking. All
 provider requests are intercepted; no production data or Twitch messages are used.
 The browser checks cover dark/light at 320/390/1280 pixels, English/Spanish,
 WCAG AA, Premium gating, full-access admins, uncertain-save retries, conflicts,
-local previews, and transparent OBS challenge/fight/winner/idle/disconnect states.
+local previews, transparent OBS challenge/fight/winner/idle/disconnect states, the
+rivalry display and the leaderboard tile, link and OBS source.
 Browser dependencies default to the host's `/tmp/saas-cooldown-browser` installation.

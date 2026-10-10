@@ -10,6 +10,7 @@ import { overlayDraftGuard } from './features/overlays/overlay-draft.guard';
 
 export const routes: Routes = [
   { path: 'overlays/:publicId', loadComponent: () => import('./features/overlays/overlay-runtime.component').then(m => m.OverlayRuntimeComponent), title: 'Overlay Studio' },
+  { path: 'overlays/duel/:channelID/leaderboard', loadComponent: () => import('./features/widgets/duel/duel-leaderboard-overlay.component').then(m => m.DuelLeaderboardOverlayComponent), title: 'Duel Leaderboard' },
   { path: 'overlays/duel/:channelID', loadComponent: () => import('./features/widgets/duel/duel-overlay.component').then(m => m.DuelOverlayComponent), title: 'Duel Overlay' },
   { path: 'overlays/widgets/:channelID', loadComponent: () => import('./features/widgets/widgets-overlay.component').then(m => m.WidgetsOverlayComponent), title: 'Widgets Overlay' },
   { path: 'overlays/roulette/:channelID', loadComponent: () => import('./features/roulette/roulette-overlay.component').then(m => m.RouletteOverlayComponent), title: 'Roulette Overlay' },

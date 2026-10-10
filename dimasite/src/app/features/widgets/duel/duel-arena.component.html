@@ -13,6 +13,12 @@
                 </div>
               }
             </div>
+            @if (record(); as rec) {
+              <div class="rivalry" [attr.data-stage]="rivalryStage()" role="img" [attr.aria-label]="t('rivalryLabel', {left: names().left, a: score().left, right: names().right, b: score().right})">
+                <small>{{ t(rec.left + rec.right ? 'rivalry' : 'firstDuel') }}</small>
+                <div class="rivalry-score"><span class="rivalry-name">{{ names().left }}</span>@for (n of [score().left]; track n) { <b data-side="left">{{ n }}</b> }<i>–</i>@for (n of [score().right]; track n) { <b data-side="right">{{ n }}</b> }<span class="rivalry-name">{{ names().right }}</span></div>
+              </div>
+            }
             <div class="fight-space" aria-hidden="true">
               @for (side of sides; track side) {
                 <div class="fighter-slot" [class.fighter-right]="side === 'right'" [attr.data-action]="action(side)" [attr.data-combo]="comboOn(side) ? '' : null" [attr.data-enraged]="enraged(side) ? '' : null" [attr.data-doom]="doom(side)" [attr.data-split]="split(side) ? '' : null">
@@ -111,7 +117,7 @@
             @if (phase() === 'winner') {
               <div class="winner-reveal">
                 <div class="confetti" aria-hidden="true">@for (n of [0,1,2,3,4,5,6,7,8,9,10,11]; track n) { <i [style.--n]="n"></i> }</div>
-                <span class="winner-kicker">✦ {{ t('victory') }} ✦</span><strong>{{ winnerName() }}</strong><span>{{ t('wins', {hp: health()[winner()]}) }}</span>
+                <span class="winner-kicker">✦ {{ t('victory') }} ✦</span><strong>{{ winnerName() }}</strong><span>{{ t('wins', {hp: health()[winner()]}) }}</span>@if (record()) { <span class="rivalry-line">{{ rivalryLine() }}</span> }
               </div>
             }
             <div class="arena-footer"><span>{{ t('phase.' + phase()) }}</span><span>{{ turnIndex() < 0 ? t('round') : t('turn', {n: turnIndex() + 1}) }}</span></div>
