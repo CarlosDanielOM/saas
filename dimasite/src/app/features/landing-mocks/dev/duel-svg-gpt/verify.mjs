@@ -44,7 +44,7 @@ try {
   assert.equal(await page.locator('g[duel-svg-fighter] path').first().evaluate(n => n.namespaceURI),'http://www.w3.org/2000/svg');
   assert(await page.locator('g[duel-svg-fighter] path').count() > 45,'original illustrated rigs render');
   await page.screenshot({path:shots+'/ready-desktop.png',fullPage:true});
-  await page.getByTestId('svg-claude').click(); await page.getByTestId('svg-claude-slot').waitFor();
+  await page.getByTestId('svg-claude').click(); await page.getByTestId('duel-svg-claude').waitFor();
   assert.equal(await page.locator('app-duel-svg-gpt-arena').count(),0);
   await page.getByTestId('svg-gpt').click();
   await page.getByTestId('svg-combat').click(); await page.getByRole('button',{name:'Pause',exact:true}).click();

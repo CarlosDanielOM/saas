@@ -6918,6 +6918,26 @@
     }
   },
   "duelMock": {
+    "svgClaude": {
+      "edition": "High Definition",
+      "sectionHint": "The original arena redrawn in higher detail: shaded fighters, weightier hits and three remastered finishers. Pause or scrub for any exact frame.",
+      "turnShort": "Turn",
+      "healKicker": "Heal",
+      "moves": {
+        "knight": {
+          "normal": "Vanguard cut",
+          "heavy": "Iron cleave"
+        },
+        "ronin": {
+          "normal": "Silk cut",
+          "heavy": "Rising crescent"
+        },
+        "mage": {
+          "normal": "Astral dart",
+          "heavy": "Arcane triad"
+        }
+      }
+    },
     "svgGpt": {
       "studio": {
         "title": "Move studio",
@@ -6966,9 +6986,6 @@
       "readyKicker": "Two names. One ending.",
       "finalHit": "The last strike",
       "timeline": "Battle time",
-      "claudePending": "Waiting for Claude’s SVG entry",
-      "claudeHint": "This slot is ready for Claude’s own SVG arena.",
-      "viewGpt": "View GPT SVG",
       "sectionHint": "Original illustrations, choreographed combat, and three signature finishers.",
       "combatKicker": "Choreography",
       "combat": "Play the combat sequence",

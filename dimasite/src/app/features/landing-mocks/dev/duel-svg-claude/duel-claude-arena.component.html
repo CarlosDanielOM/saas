@@ -1,0 +1,292 @@
+<div class="arena" data-testid="duel-svg-claude" [class.transparent]="transparent()" [class.paused]="paused()" [class.reduce]="reduced()" [attr.data-phase]="phase()" [attr.data-winner]="winner()" [attr.data-ultimate]="finisher() ? battle().fighters[finisher()!.attacker] : null" [attr.data-elapsed]="elapsed()" [attr.data-epoch]="epoch()">
+  @if (!transparent()) {
+    <div class="scenery" aria-hidden="true">
+      <svg class="backdrop" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
+        <defs>
+          <linearGradient id="dc-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#05040e"/><stop offset=".45" stop-color="#140f2c"/><stop offset=".72" stop-color="#2c1840"/><stop offset="1" stop-color="#3b1d33"/></linearGradient>
+          <radialGradient id="dc-moon" cx=".42" cy=".38" r=".7"><stop offset="0" stop-color="#fff8ea"/><stop offset=".55" stop-color="#e9dcff"/><stop offset="1" stop-color="#a08ad6"/></radialGradient>
+          <radialGradient id="dc-halo"><stop offset="0" stop-color="#cdb8ff" stop-opacity=".42"/><stop offset=".4" stop-color="#8f6ce0" stop-opacity=".14"/><stop offset="1" stop-color="#8f6ce0" stop-opacity="0"/></radialGradient>
+          <linearGradient id="dc-far" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a2d63"/><stop offset="1" stop-color="#1d1733"/></linearGradient>
+          <linearGradient id="dc-near" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#21193a"/><stop offset="1" stop-color="#0d0a18"/></linearGradient>
+          <radialGradient id="dc-floor" cx=".5" cy=".3" r=".75"><stop offset="0" stop-color="#3a2c52"/><stop offset=".55" stop-color="#1c1630"/><stop offset="1" stop-color="#0a0812"/></radialGradient>
+          <linearGradient id="dc-fog" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b89cff" stop-opacity="0"/><stop offset=".5" stop-color="#b89cff" stop-opacity=".13"/><stop offset="1" stop-color="#b89cff" stop-opacity="0"/></linearGradient>
+          <radialGradient id="dc-fire-glow"><stop offset="0" stop-color="#ffb35c" stop-opacity=".55"/><stop offset=".5" stop-color="#ff6a2a" stop-opacity=".14"/><stop offset="1" stop-color="#ff6a2a" stop-opacity="0"/></radialGradient>
+          <linearGradient id="dc-stone" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4a3f66"/><stop offset="1" stop-color="#1a1528"/></linearGradient>
+        </defs>
+        <rect width="1600" height="900" fill="url(#dc-sky)"/>
+        <g class="stars">@for (star of stars; track $index) { <circle [attr.cx]="star.x" [attr.cy]="star.y" [attr.r]="star.r" [style.--d]="(-star.d) + 'ms'"/> }</g>
+        <circle cx="800" cy="260" r="330" fill="url(#dc-halo)"/>
+        <g class="moon">
+          <circle cx="800" cy="260" r="118" fill="url(#dc-moon)"/>
+          <circle cx="760" cy="230" r="22" fill="#b6a3e6" opacity=".35"/><circle cx="842" cy="292" r="30" fill="#b6a3e6" opacity=".28"/><circle cx="812" cy="208" r="11" fill="#b6a3e6" opacity=".3"/><circle cx="752" cy="304" r="14" fill="#b6a3e6" opacity=".25"/>
+        </g>
+        <path class="cloud-band" d="M-100 330Q200 300 420 336T900 322T1400 340T1800 326V372H-100Z" fill="#2a2148" opacity=".7"/>
+        <path d="M0 560L130 410 210 470 330 330 470 500 560 430 690 560ZM900 560L1040 420 1120 470 1250 340 1370 450 1470 390 1600 520V560Z" fill="url(#dc-far)"/>
+        <path d="M330 330L362 368 346 366 380 404M1250 340L1222 372 1238 370 1206 410" fill="none" stroke="#d9c8ff" stroke-opacity=".28" stroke-width="3" stroke-linecap="round"/>
+        <!-- Shrine gates frame the arena. -->
+        <g fill="#120e20" class="gates">
+          <path d="M176 610V420M286 610V420" stroke="#120e20" stroke-width="16"/>
+          <path d="M140 414Q231 398 322 414L330 400Q231 382 132 400Z"/><rect x="156" y="436" width="150" height="12"/>
+          <path d="M1314 610V420M1424 610V420" stroke="#120e20" stroke-width="16"/>
+          <path d="M1278 414Q1369 398 1460 414L1468 400Q1369 382 1270 400Z"/><rect x="1294" y="436" width="150" height="12"/>
+        </g>
+        <path d="M0 640L150 520 260 590 390 500 520 620 640 600 760 650H0ZM840 650L980 590 1100 620 1230 520 1350 590 1460 530 1600 610V650Z" fill="url(#dc-near)"/>
+        <rect class="fog" x="-200" y="520" width="2000" height="140" fill="url(#dc-fog)"/>
+        <!-- Stone arena with a rune ring. -->
+        <ellipse cx="800" cy="790" rx="900" ry="210" fill="url(#dc-floor)"/>
+        <ellipse cx="800" cy="768" rx="560" ry="120" fill="none" stroke="#a68fdc" stroke-opacity=".22" stroke-width="3"/>
+        <ellipse class="rune-ring" cx="800" cy="768" rx="500" ry="102" fill="none" stroke="#c9b6ff" stroke-opacity=".3" stroke-width="5" stroke-dasharray="4 18 22 18"/>
+        <ellipse cx="800" cy="768" rx="440" ry="86" fill="none" stroke="#a68fdc" stroke-opacity=".14" stroke-width="2"/>
+        <path d="M800 682V854M360 768H1240M490 700L1110 836M1110 700L490 836" stroke="#a68fdc" stroke-opacity=".06" stroke-width="2"/>
+        <!-- Braziers. -->
+        @for (x of [150, 1450]; track x) {
+          <g [attr.transform]="'translate(' + x + ' 0)'">
+            <circle cx="0" cy="600" r="150" fill="url(#dc-fire-glow)" class="fire-glow"/>
+            <path d="M-14 720L-8 640H8L14 720Z" fill="url(#dc-stone)"/>
+            <path d="M-42 628Q0 662 42 628L36 646Q0 670 -36 646Z" fill="url(#dc-stone)" stroke="#0b0912" stroke-width="3"/>
+            <path class="flame" d="M-30 630Q-34 596 -10 572Q-12 594 2 596Q-4 566 16 548Q16 580 30 594Q38 612 30 630Z" fill="#ff7a2a"/>
+            <path class="flame flame-core" d="M-16 630Q-18 608 -2 592Q0 606 8 608Q8 592 18 584Q20 606 18 630Z" fill="#ffd67a"/>
+          </g>
+        }
+      </svg>
+      <div class="embers">@for (ember of embers; track ember.n) { <i [style.left.%]="ember.x" [style.--s]="ember.size" [style.--t]="ember.speed + 's'" [style.--d]="(-ember.n * 610) + 'ms'"></i> }</div>
+      <div class="vignette"></div>
+    </div>
+  }
+
+  <div class="hud" [style.opacity]="hudOpacity()">
+    @for (side of sides; track side) {
+      <div class="plate" [class.plate-right]="side === 'right'" [class.active]="attacking(side)" [class.low]="low(side)" [class.healing]="healing(side)" [attr.data-side]="side">
+        <div class="crest" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="sigil(side)"/></svg></div>
+        <div class="plate-body">
+          <div class="plate-name"><strong>{{ names()[side] }}</strong>@if (enraged(side)) { <em class="rage-badge">{{ t('enraged') }}</em> }</div>
+          <div class="bar" role="progressbar" [attr.aria-label]="t('health', {name: names()[side]})" [attr.aria-valuenow]="health()[side]" aria-valuemin="0" [attr.aria-valuemax]="maxHp()">
+            <div class="bar-trail" [style.width.%]="percent(side)"></div>
+            <div class="bar-fill" [style.width.%]="percent(side)"></div>
+            <span class="bar-hp">{{ health()[side] }}<small>HP</small></span>
+          </div>
+          <div class="plate-meta">
+            <span class="role">{{ t(enraged(side) ? 'streamer' : side === 'left' ? 'challenger' : 'opponent') }} · {{ t('character.' + battle().fighters[side]) }}</span>
+            <span class="heal-charges" role="img" [attr.aria-label]="t('healsLeft', {n: healsLeft()[side]})">@for (charge of charges(); track charge) { <i [class.used]="charge >= healsLeft()[side]" aria-hidden="true"></i> }</span>
+          </div>
+        </div>
+      </div>
+    }
+    <div class="hud-center" aria-hidden="true"><span>{{ turnIndex() < 0 ? 'VS' : turnIndex() + 1 }}</span><small>{{ turnIndex() < 0 ? '' : t('svgClaude.turnShort') }}</small></div>
+  </div>
+
+  <div class="camera" [style.transform]="camera().transform" [style.transform-origin]="camera().origin">
+    <div class="fight-space" aria-hidden="true">
+      @if (finisher(); as ult) {
+        @for (ultKey of [key('ult-world')]; track ultKey) {
+          <div class="ultimate-stage world" [duelClock]="age(ult.at)" [attr.data-attacker]="ult.attacker" [attr.data-character]="battle().fighters[ult.attacker]">
+            <div class="ult-dim"></div>
+            @switch (battle().fighters[ult.attacker]) {
+              @case ('knight') {
+                <div class="heaven"></div>
+                <div class="god-rays"></div>
+                <svg class="sigil" viewBox="0 0 400 400"><circle cx="200" cy="200" r="190"/><circle cx="200" cy="200" r="160" class="dashed"/><circle cx="200" cy="200" r="120"/><path d="M200 40L339 280H61ZM200 360L61 120H339Z"/><path class="runes" d="M200 18v16M200 366v16M18 200h16M366 200h16M71 71l11 11M318 318l11 11M71 329l11-11M318 82l11-11"/></svg>
+                <svg class="colossus" viewBox="0 0 400 420">
+                  <defs>
+                    <linearGradient id="dc-feather" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff7dd"/><stop offset=".5" stop-color="#ffcf5c"/><stop offset="1" stop-color="#c3801a"/></linearGradient>
+                    <linearGradient id="dc-robe" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff7dd"/><stop offset=".45" stop-color="#ffd978" stop-opacity=".85"/><stop offset="1" stop-color="#ffcf5c" stop-opacity="0"/></linearGradient>
+                    <radialGradient id="dc-halo-big"><stop offset="0" stop-color="#fff" stop-opacity=".95"/><stop offset=".5" stop-color="#ffe27a" stop-opacity=".45"/><stop offset="1" stop-color="#ffd75e" stop-opacity="0"/></radialGradient>
+                  </defs>
+                  <circle cx="200" cy="110" r="130" fill="url(#dc-halo-big)"/>
+                  @for (side of ['l', 'r']; track side) {
+                    <g class="big-wing" [attr.data-wing]="side" [attr.transform]="side === 'r' ? 'translate(400 0) scale(-1 1)' : null"><g class="feathers">
+                      @for (n of [0,1,2,3,4,5,6]; track n) { <path [attr.transform]="'rotate(' + (-62 + n * 13) + ' 176 150)'" d="M176 150Q120 140 30 150Q90 162 176 162Z" fill="url(#dc-feather)" stroke="#7a4a0c" stroke-width="2"/> }
+                      @for (n of [0,1,2,3,4]; track n) { <path [attr.transform]="'rotate(' + (-50 + n * 15) + ' 176 150)'" d="M176 150Q140 144 92 150Q130 158 176 158Z" fill="#fff4d0" stroke="#9a6412" stroke-width="1.5"/> }
+                    </g></g>
+                  }
+                  <ellipse cx="200" cy="58" rx="34" ry="9" fill="none" stroke="#ffe27a" stroke-width="6"/>
+                  <circle cx="200" cy="92" r="22" fill="#fff4dc" stroke="#7a4a0c" stroke-width="3"/>
+                  <path d="M200 84l-8 10h16z" fill="#ffd75e" opacity=".5"/>
+                  <path d="M170 120Q200 108 230 120L262 410H138Z" fill="url(#dc-robe)"/><path d="M138 410L170 120Q200 108 230 120L262 410" fill="none" stroke="#7a4a0c" stroke-width="3" stroke-opacity=".7"/>
+                  <path d="M200 124V330M180 140L166 320M220 140L234 320" stroke="#c98a1c" stroke-width="2.5" opacity=".5"/>
+                  <path class="colossus-arms" d="M176 132L150 188 196 214M224 132L250 188 204 214" fill="none" stroke="#7a4a0c" stroke-width="17" stroke-linecap="round" stroke-linejoin="round"/><path d="M176 132L150 188 196 214M224 132L250 188 204 214" fill="none" stroke="#fff4dc" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <svg class="holy-sword" viewBox="0 0 160 440">
+                  <defs>
+                    <linearGradient id="dc-holy-blade" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffd978"/><stop offset=".48" stop-color="#fff"/><stop offset=".52" stop-color="#fff3cf"/><stop offset="1" stop-color="#e9b445"/></linearGradient>
+                    <linearGradient id="dc-holy-gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff4c4"/><stop offset=".5" stop-color="#f3c450"/><stop offset="1" stop-color="#a86d14"/></linearGradient>
+                  </defs>
+                  <path d="M80 438L48 382V150H112V382Z" fill="url(#dc-holy-blade)" stroke="#7a4a0c" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>
+                  <path d="M80 424V164" stroke="#c98a1c" stroke-width="1.6" vector-effect="non-scaling-stroke"/>
+                  <path d="M56 170V372" stroke="#fff" stroke-width="1.6" vector-effect="non-scaling-stroke" opacity=".9"/>
+                  <path d="M80 140Q46 112 4 118Q30 128 22 140Q44 136 40 150Q62 146 80 156Q98 146 120 150Q116 136 138 140Q130 128 156 118Q114 112 80 140Z" fill="url(#dc-holy-gold)" stroke="#7a4a0c" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>
+                  <rect x="68" y="46" width="24" height="86" rx="7" fill="#fff4dc" stroke="#7a4a0c" stroke-width="2" vector-effect="non-scaling-stroke"/>
+                  <path d="M68 66H92M68 86H92M68 106H92" stroke="#c98a1c" stroke-width="1.4" vector-effect="non-scaling-stroke"/>
+                  <circle cx="80" cy="30" r="18" fill="url(#dc-holy-gold)" stroke="#7a4a0c" stroke-width="2" vector-effect="non-scaling-stroke"/>
+                  <circle cx="80" cy="142" r="10" fill="#fff" stroke="#7a4a0c" stroke-width="2" vector-effect="non-scaling-stroke"/>
+                </svg>
+                <div class="judgment-beam"></div>
+                <div class="floor-shock"><i></i><i></i><i></i></div>
+                <div class="ash">@for (n of debris; track n) { <i [style.--n]="n" [style.--d]="(n * 35) + 'ms'"></i> }</div>
+              }
+              @case ('mage') {
+                <div class="void"></div>
+                <div class="warp"></div>
+                <div class="black-hole">
+                  <div class="bh-glow"></div>
+                  <div class="bh-lens"></div>
+                  <div class="bh-disk back"><i></i></div>
+                  <div class="bh-core"></div>
+                  <div class="bh-photon"></div>
+                </div>
+                <div class="black-hole front-layer"><div class="bh-disk front"><i></i></div></div>
+                <div class="bh-debris">@for (n of debris; track n) { <i [style.--n]="n" [style.--d]="(n * 28) + 'ms'"></i> }</div>
+                <div class="bh-burst"></div>
+                <div class="bh-flare"></div>
+              }
+              @default {
+                <div class="blood-sky"></div>
+                <div class="blood-moon"><i></i><i></i></div>
+                <div class="petals">@for (n of petals; track n) { <i [style.--n]="n" [style.--d]="(n * -260) + 'ms'"></i> }</div>
+                <div class="eye-glint"></div>
+                <div class="afterimages"><i></i><i></i><i></i></div>
+                <div class="cuts">@for (cut of brushCuts; track $index) {
+                  <svg viewBox="0 0 100 20" preserveAspectRatio="none" [style.--a]="cut[0] + 'deg'" [style.--o]="cut[1] + '%'" [style.--l]="cut[2]" [style.--d]="(1250 + $index * 95) + 'ms'"><path d="M0 11Q30 6 70 8Q92 9 100 10Q90 12 70 13Q30 15 0 11Z"/></svg>
+                }</div>
+                <div class="iai-line"></div>
+                <div class="blood-burst">@for (n of debris; track n) { <i [style.--n]="n"></i> }</div>
+              }
+            }
+          </div>
+        }
+      }
+      @for (side of sides; track side) {
+        <div class="fighter-slot" [class.fighter-right]="side === 'right'" [attr.data-side]="side" [attr.data-action]="action(side)" [attr.data-combo]="comboOn(side) ? '' : null" [attr.data-enraged]="enraged(side) ? '' : null">
+          @if (enraged(side)) {
+            <svg class="rage-flames" viewBox="0 0 200 120" preserveAspectRatio="none">@for (n of [0,1,2,3,4,5,6]; track n) { <path [style.--n]="n" [attr.transform]="'translate(' + (n * 28 + 2) + ' 0)'" d="M0 120Q-4 80 14 50Q12 76 22 78Q20 44 36 20Q36 66 48 84Q56 100 50 120Z"/> }</svg>
+          }
+          @if (attacking(side)) { <div class="turn-ring"></div> }
+          @for (doomKey of [key('doom-' + (doom(side) ?? ''))]; track doomKey) {
+            <div class="doom-wrap" [attr.data-doom]="doom(side)" [duelClock]="ultimate() ? age(ultimate()!.at) : 0">
+              @for (poseKeyValue of [poseKey(side)]; track poseKeyValue) {
+                <div class="fighter-motion" [duelClock]="age(actionStart(side))" [attr.data-action]="action(side)" [attr.data-move]="move(side)" [attr.data-character]="battle().fighters[side]" [attr.data-split]="split(side) ? '' : null">
+                  <div class="dust" aria-hidden="true"><i></i><i></i><i></i></div>
+                  <div class="fighter-facing"><app-duel-claude-fighter [side]="side" [character]="battle().fighters[side]" [action]="action(side)" [move]="move(side)" [low]="low(side)" [enraged]="enraged(side)" [paused]="paused()" /></div>
+                </div>
+              }
+              @if (split(side)) {
+                @for (half of ['top', 'bottom']; track half) {
+                  <div class="half" [attr.data-half]="half" [duelClock]="age(finalHit())"><div class="fighter-facing"><app-duel-claude-fighter [side]="side" [character]="battle().fighters[side]" [paused]="paused()" /></div></div>
+                }
+                <div class="split-line" [duelClock]="age(finalHit())"></div>
+              }
+            </div>
+          }
+        </div>
+      }
+
+      @if (currentTurn(); as turn) {
+        @for (fxKey of [key(turnIndex())]; track fxKey) {
+          <div class="fx" [duelClock]="age(turn.at)" [attr.data-attacker]="turn.attacker" [attr.data-move]="turn.move" [attr.data-character]="battle().fighters[turn.attacker]">
+            @if (turn.move === 'special') { <div class="special-dim"></div><div class="speed-lines"></div> }
+            @if (turn.bonus) { <span class="extra-turn">{{ t('extraTurn') }}</span> }
+            @if (turn.defended) { <span class="skill-callout" [class.broken]="shattered(turn)">{{ skillName(turn) }}</span> }
+            @if (turn.move === 'heavy' || turn.move === 'special' || turn.move === 'heal') { <span class="move-callout"><small>{{ t(turn.move === 'heal' ? 'svgClaude.healKicker' : 'move.' + turn.move) }}</small>{{ calloutName(turn) }}</span> }
+            @if (turn.move === 'heal') {
+              <div class="heal-fx" [attr.data-character]="battle().fighters[turn.attacker]">
+                <div class="heal-column"></div>
+                <svg class="heal-circle" viewBox="0 0 200 200"><circle cx="100" cy="100" r="88"/><circle cx="100" cy="100" r="70"/><path d="M100 12L176 144H24Z M100 188L24 56H176Z"/></svg>
+                @if (battle().fighters[turn.attacker] === 'knight') {
+                  <svg class="angel" viewBox="0 0 160 150" aria-hidden="true">
+                    <defs><linearGradient id="dc-wing" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#cfe0ff"/></linearGradient></defs>
+                    <ellipse cx="80" cy="16" rx="18" ry="5" fill="none" stroke="#ffe27a" stroke-width="3.5"/>
+                    <g class="wing wing-l"><path d="M70 56Q40 18 4 34Q24 44 12 58Q34 58 22 76Q46 72 40 92Q60 78 70 70Z" fill="url(#dc-wing)" stroke="#b9cbff" stroke-width="2"/><path d="M66 60Q42 40 22 44M64 66Q46 58 32 64" fill="none" stroke="#b9cbff" stroke-width="2"/></g>
+                    <g class="wing wing-r"><path d="M90 56Q120 18 156 34Q136 44 148 58Q126 58 138 76Q114 72 120 92Q100 78 90 70Z" fill="url(#dc-wing)" stroke="#b9cbff" stroke-width="2"/><path d="M94 60Q118 40 138 44M96 66Q114 58 128 64" fill="none" stroke="#b9cbff" stroke-width="2"/></g>
+                    <circle cx="80" cy="36" r="11" fill="#ffe9cf" stroke="#c9d6ff" stroke-width="2"/>
+                    <path d="M66 52Q80 46 94 52L106 146H54Z" fill="url(#dc-wing)" stroke="#c9d6ff" stroke-width="2"/>
+                    <path d="M80 56V140" stroke="#ffe27a" stroke-width="2.5" opacity=".7"/>
+                    <path d="M68 64L58 86M92 64L102 86" stroke="#ffe9cf" stroke-width="5" stroke-linecap="round"/>
+                  </svg>
+                }
+                @if (battle().fighters[turn.attacker] === 'ronin') { <div class="potion-splash">@for (n of sparks; track n) { <i [style.--n]="n"></i> }</div> }
+                <div class="glyphs">@for (glyph of glyphs(turn); track $index) { <i [style.--n]="$index" [style.--d]="($index * 60) + 'ms'">{{ glyph }}</i> }</div>
+              </div>
+            }
+            @else if (turn.move === 'ultimate') { }
+            @else if (battle().fighters[turn.attacker] === 'mage') {
+              @if (turn.move === 'special') {
+                <div class="meteor"><svg viewBox="0 0 200 120"><defs><radialGradient id="dc-rock" cx=".4" cy=".35"><stop offset="0" stop-color="#ffe7a8"/><stop offset=".45" stop-color="#ff8a3a"/><stop offset="1" stop-color="#7a1d10"/></radialGradient><linearGradient id="dc-tail" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#ffd67a"/><stop offset=".4" stop-color="#ff6a2a" stop-opacity=".8"/><stop offset="1" stop-color="#ff3a2a" stop-opacity="0"/></linearGradient></defs><path d="M150 40Q60 30 0 0Q50 52 150 80Z" fill="url(#dc-tail)"/><path d="M150 30Q172 26 184 44Q192 64 176 80Q156 92 140 78Q128 62 136 46Q140 34 150 30Z" fill="url(#dc-rock)" stroke="#3a0d08" stroke-width="3"/></svg></div>
+                <div class="meteor-mark"></div>
+              } @else {
+                @for (n of turn.move === 'heavy' ? [0, 1, 2] : [0]; track n) { <div class="bolt" [style.--n]="n" [style.--d]="(n * 45) + 'ms'"><i></i></div> }
+              }
+            }
+            @else if (turn.move === 'special' && battle().fighters[turn.attacker] === 'knight') { <div class="smite-mark"></div><div class="pillar"></div> }
+            @else if (turn.move === 'special') { <div class="crescent"><svg viewBox="0 0 200 200"><defs><linearGradient id="dc-crescent" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff"/><stop offset=".6" stop-color="#ffd2dc"/><stop offset="1" stop-color="#ff3b5c" stop-opacity="0"/></linearGradient></defs><path d="M20 30Q170 30 180 170Q150 70 20 30Z" fill="url(#dc-crescent)"/></svg></div><div class="dash-streak"></div> }
+          </div>
+        }
+      }
+
+      @if (impact(); as hit) {
+        @for (impactKey of [key(turnIndex())]; track impactKey) {
+          @if (hit.move === 'heal') {
+            <div class="impact-fx heal-impact" [duelClock]="age(hit.hitAt)" [attr.data-target]="hit.attacker"><span class="heal-number">+{{ hit.heal }}<small>HP</small></span></div>
+          } @else if (hit.move !== 'ultimate') {
+            <div class="impact-fx" [duelClock]="age(hit.hitAt)" [attr.data-target]="target(hit)" [attr.data-move]="hit.move" [attr.data-crit]="hit.crit && !held(hit) ? '' : null" [attr.data-defended]="held(hit) ? battle().fighters[target(hit)] : null" [attr.data-broken]="shattered(hit) ? battle().fighters[target(hit)] : null">
+              @if (!held(hit)) { <span class="damage" [class.crit]="hit.crit">@if (hit.crit) { <b>{{ t('crit') }}</b> }−{{ hit.damage }}@if (hit.move === 'normal') { <em>{{ attackName(hit) }}</em> }</span> }
+              @else if (hit.damage > 0) { <span class="damage chip">−{{ hit.damage }} <small>−80%</small></span> }
+              @else { <span class="damage blocked">{{ defenseResult(hit) }}</span> }
+              <svg class="burst" viewBox="-50 -50 100 100"><path d="M0-48L9-12 40-30 16-2 46 12 12 12 10 46-4 14-34 38-16 4-48-6-14-12-30-40-2-16Z"/><circle r="10"/></svg>
+              <div class="sparks">@for (n of sparks; track n) { <i [style.--n]="n"></i> }</div>
+              @if ((hit.move !== 'normal' || hit.crit) && !held(hit)) { <div class="shock-ring"></div><div class="ground-ring"></div> }
+              @if (hit.crit && !held(hit)) { <div class="crit-flash"></div> }
+              @if (shattered(hit)) { <span class="broken-label">{{ brokenResult(hit) }}</span><div class="shatter">@for (n of [0,1,2,3,4,5,6,7,8,9,10,11]; track n) { <i [style.--n]="n"></i> }</div> }
+            </div>
+          }
+        }
+      }
+      @if (comboImpact(); as combo) {
+        @for (comboKey of [key(turnIndex())]; track comboKey) {
+          <div class="impact-fx combo-fx" [duelClock]="age(comboAt())" [attr.data-target]="target(combo)"><span class="heal-number">+{{ combo.comboHeal }}<small>HP</small></span><span class="combo-label">{{ t('comboHeal') }}</span><div class="glyphs">@for (n of [0,1,2,3,4,5]; track n) { <i [style.--n]="n" [style.--d]="(n * 60) + 'ms'">✚</i> }</div></div>
+        }
+      }
+    </div>
+  </div>
+
+  @if (finisher(); as ult) {
+    @for (ultKey of [key('ult-cinema')]; track ultKey) {
+      <div class="ultimate-stage cinema" [duelClock]="age(ult.at)" [attr.data-attacker]="ult.attacker" [attr.data-character]="battle().fighters[ult.attacker]" aria-hidden="true">
+        <div class="ult-bars"><i></i><i></i></div>
+        <div class="cut-in">
+          <div class="cut-band">
+            <div class="cut-speed"></div>
+            <svg class="cut-eyes" viewBox="0 0 400 80" preserveAspectRatio="xMidYMid meet">
+              @switch (battle().fighters[ult.attacker]) {
+                @case ('knight') { <path d="M60 22H340L330 58H70Z" fill="#11141f"/><path d="M118 40H172M226 40H300" class="eye-line"/><path d="M60 22H340" stroke="#e6ecf6" stroke-width="5"/> }
+                @case ('mage') { <path d="M40 74Q200 -10 360 74Z" fill="#07060d"/><path d="M128 50Q150 36 172 50Q150 60 128 50ZM228 50Q250 36 272 50Q250 60 228 50Z" class="eye-fill"/> }
+                @default { <path d="M20 8L200 -4 380 8 380 30Q200 44 20 30Z" fill="#d2a656"/><path d="M130 52L176 56M224 56L270 52" class="eye-line"/><path d="M60 64Q200 80 340 64V80H60Z" fill="#1b1f2e"/> }
+              }
+            </svg>
+          </div>
+          <div class="cut-title"><small>{{ t('ultimateKicker') }}</small><strong>{{ t('ultimate.' + battle().fighters[ult.attacker]) }}</strong><span>{{ names()[ult.attacker] }}</span></div>
+        </div>
+        <div class="ult-flash"></div>
+        <span class="ult-result">{{ t('ultimateResult.' + battle().fighters[ult.attacker]) }}</span>
+      </div>
+    }
+  }
+
+  <div class="center-cue" aria-hidden="true">
+    @if (phase() === 'ready') { <div class="ready"><span class="vs">VS</span><small>{{ t('ready') }}</small></div> }
+    @if (phase() === 'entrance') { @for (cueKey of [key('entrance')]; track cueKey) { <span class="challenge-cue" [class.enrage-cue]="battle().enraged" [duelClock]="age(0)">{{ t(battle().enraged ? 'enrageCue' : 'challenge') }}</span> } }
+    @if (phase() === 'countdown') { @for (cueKey of [key(countdown())]; track cueKey) { <div class="countdown" [duelClock]="age(countdownStart())"><i></i><span>{{ countdown() }}</span></div> } }
+    @if (phase() === 'fight' && elapsed() < 3950) { @for (cueKey of [key('fight')]; track cueKey) { <div class="fight-cue" [duelClock]="age(3400)"><i></i><span>{{ t('fight') }}</span></div> } }
+    @if (phase() === 'knockout' && !finisher()) { @for (cueKey of [key('ko')]; track cueKey) { <div class="ko" [duelClock]="age(finalHit())"><i></i><span>K.O.</span></div> } }
+  </div>
+  @if (phase() === 'knockout') { @for (cueKey of [key('ko-flash')]; track cueKey) { <div class="ko-flash" [duelClock]="age(finalHit())" aria-hidden="true"></div> } }
+  @if (phase() === 'winner') {
+    @for (cueKey of [key('winner')]; track cueKey) {
+      <div class="winner-reveal" [duelClock]="age(battle().duration)" [attr.data-side]="winner()">
+        <div class="winner-rays" aria-hidden="true"></div>
+        <div class="confetti" aria-hidden="true">@for (n of [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]; track n) { <i [style.--n]="n" [style.--d]="(n * 35) + 'ms'"></i> }</div>
+        <span class="winner-kicker">{{ t('victory') }}</span><strong>{{ winnerName() }}</strong><span class="winner-line">{{ t('wins', {hp: health()[winner()]}) }}</span>
+      </div>
+    }
+  }
+  <div class="arena-footer"><span>{{ t('phase.' + phase()) }}</span><span>{{ turnIndex() < 0 ? t('round') : t('turn', {n: turnIndex() + 1}) }}</span></div>
+</div>

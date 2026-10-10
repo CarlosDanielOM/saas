@@ -9,12 +9,13 @@ import { DuelCharacter, DuelSide, otherSide, simulateBattle, ultimateBattle } fr
 import { DuelGptArenaComponent } from './duel-gpt/duel-gpt-arena.component';
 import { sampleBattle, SvgPreviewMove } from './duel-svg-gpt/duel-svg-showcase';
 import { DuelSvgArenaComponent } from './duel-svg-gpt/duel-svg-arena.component';
+import { DuelClaudeArenaComponent } from './duel-svg-claude/duel-claude-arena.component';
 
 type Phase = 'ready' | 'entrance' | 'countdown' | 'fight' | 'knockout' | 'winner';
 
 @Component({
   selector: 'app-duel-mock',
-  imports: [RouterLink, ReactiveFormsModule, DuelArenaComponent, DuelGptArenaComponent, DuelSvgArenaComponent],
+  imports: [RouterLink, ReactiveFormsModule, DuelArenaComponent, DuelGptArenaComponent, DuelSvgArenaComponent, DuelClaudeArenaComponent],
   templateUrl: './duel-mock.component.html',
   styleUrl: './duel-mock.component.css',
   host: { '[class.overlay-only]': 'overlayOnly' },

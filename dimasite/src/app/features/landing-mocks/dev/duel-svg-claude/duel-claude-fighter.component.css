@@ -1,0 +1,318 @@
+:host { display:block; width:100%; --u:var(--fighter-light); --fighter-color:#9b7afa; --fighter-light:#ddd0ff; --fighter-deep:#4f2f8f; --dur:800ms; --def-dur:700ms }
+:host([data-side="right"]) { --fighter-color:#efac48; --fighter-light:#ffe6ad; --fighter-deep:#8f5520 }
+:host([data-move="heavy"]) { --dur:1050ms; --def-dur:880ms }
+:host([data-move="special"]) { --dur:1600ms; --def-dur:1800ms }
+:host([data-move="ultimate"]) { --dur:3600ms }
+/* Every animation follows the arena's clock (see DuelClaudeClockDirective). */
+* { animation-delay:calc(var(--d, 0ms) - var(--sync, 0ms)) !important }
+:host([data-paused="true"]) * { animation-play-state:paused !important }
+svg { display:block; width:100%; overflow:visible; shape-rendering:geometricPrecision }
+
+/* Paint tokens. */
+.s-light { stop-color:var(--fighter-light) }
+.s-color { stop-color:var(--fighter-color) }
+.s-deep { stop-color:var(--fighter-deep) }
+.s-u { stop-color:var(--u) }
+.f-light { stroke:var(--fighter-light) }
+.f-color { stroke:var(--fighter-color) }
+.f-deep { stroke:var(--fighter-deep) }
+.f-light-fill { fill:var(--fighter-light) }
+.rim { stroke:var(--fighter-light); stroke-linecap:round; opacity:.7 }
+.ward-fill { fill:var(--fighter-light); fill-opacity:.12; stroke:var(--fighter-light); stroke-width:3 }
+.barrier-fill { fill:var(--fighter-light); fill-opacity:.28; stroke:var(--fighter-light); stroke-width:2 }
+.smear-outer { fill:var(--fighter-color); opacity:.6 }
+.eyes { filter:drop-shadow(0 0 2.5px var(--fighter-light)) drop-shadow(0 0 6px var(--fighter-color)) }
+
+/* Pivots (shared rig). */
+.rig { transform-origin:106px 212px }
+.upper { transform-origin:106px 150px }
+.back-leg { transform-origin:88px 150px }
+.front-leg { transform-origin:120px 150px }
+.head { transform-origin:106px 92px }
+.weapon-arm { transform-origin:129px 102px }
+.back-arm { transform-origin:82px 102px }
+.cloth { transform-origin:92px 92px }
+.plume { transform-origin:100px 36px }
+.kasa { transform-origin:106px 52px }
+.slash { opacity:0; transform-origin:130px 105px; filter:drop-shadow(0 0 5px var(--fighter-light)) }
+.aura { opacity:0; transform-box:fill-box; transform-origin:center }
+.shadow { transform-box:fill-box; transform-origin:center }
+.orb,.hand-spark,.potion,.guard,.gem { transform-box:fill-box; transform-origin:center }
+.guard { opacity:0 }
+.potion { opacity:0 }
+.weapon { transition:filter .2s }
+
+/* ── Idle: breathing, cloth and plume on slightly different cycles ── */
+.rig { animation:breathe 2.4s ease-in-out infinite }
+.upper { animation:sway 2.4s ease-in-out infinite }
+.head { animation:nod 2.4s ease-in-out infinite; --d:-300ms }
+.weapon-arm { animation:arm-idle 2.4s ease-in-out infinite; --d:-500ms }
+.back-arm { animation:back-idle 2.4s ease-in-out infinite; --d:-900ms }
+.cloth { animation:cloth 1.7s ease-in-out infinite }
+.plume { animation:plume 1.3s ease-in-out infinite }
+.orb { animation:orb-pulse 1.6s ease-in-out infinite }
+.orb-ring { animation:ring-run 2.2s linear infinite }
+.hand-spark { animation:spark-float 1.4s ease-in-out infinite }
+.edge-glint { animation:glint 3.2s ease-in-out infinite; opacity:0 }
+.runes { animation:runes 2.2s ease-in-out infinite }
+:host([data-low="true"][data-action="idle"]) .rig { animation:pant .9s ease-in-out infinite }
+:host([data-low="true"][data-action="idle"]) .upper { animation:hunch .9s ease-in-out infinite }
+:host([data-low="true"]) svg { filter:drop-shadow(0 0 6px #ff4d5a77) }
+
+/* Enraged streamer: red aura, red eyes. */
+:host([data-enraged="true"]) { --u:#ff3b3b }
+:host([data-enraged="true"]) .aura { animation:rage-aura 1s ease-in-out infinite }
+:host([data-enraged="true"]) .eyes.f-light { stroke:#ff4d4d }
+:host([data-enraged="true"]) .eyes.f-light-fill { fill:#ff4d4d }
+:host([data-enraged="true"]) .eyes { filter:drop-shadow(0 0 3px #ff3b3b) drop-shadow(0 0 8px #ff1f3d) }
+
+/* ── Attacks: anticipation, a short hold on contact (hit-stop), follow-through.
+   Contact lands at the move's windup: 35% / 43% / 53%. ── */
+:host([data-action="attack"]) .rig { animation:a-rig var(--dur) cubic-bezier(.3,.7,.4,1) both }
+:host([data-action="attack"]) .upper { animation:a-upper var(--dur) ease both }
+:host([data-action="attack"]) .weapon-arm { animation:a-arm var(--dur) ease both }
+:host([data-action="attack"]) .back-arm { animation:a-back var(--dur) ease both }
+:host([data-action="attack"]) .front-leg { animation:a-front var(--dur) ease both }
+:host([data-action="attack"]) .back-leg { animation:a-backleg var(--dur) ease both }
+:host([data-action="attack"]) .head { animation:a-head var(--dur) ease both }
+:host([data-action="attack"]) .cloth { animation:a-cloth var(--dur) ease both }
+:host([data-action="attack"]) .slash { animation:a-slash var(--dur) ease-out both }
+:host([data-action="attack"][data-move="heavy"]) .rig { animation-name:h-rig }
+:host([data-action="attack"][data-move="heavy"]) .upper { animation-name:h-upper }
+:host([data-action="attack"][data-move="heavy"]) .weapon-arm { animation-name:h-arm }
+:host([data-action="attack"][data-move="heavy"]) .back-arm { animation-name:h-back }
+:host([data-action="attack"][data-move="heavy"]) .front-leg { animation-name:h-front }
+:host([data-action="attack"][data-move="heavy"]) .back-leg { animation-name:h-backleg }
+:host([data-action="attack"][data-move="heavy"]) .slash { animation-name:h-slash }
+:host([data-action="attack"][data-move="special"]) .rig { animation-name:s-rig }
+:host([data-action="attack"][data-move="special"]) .upper { animation-name:s-upper }
+:host([data-action="attack"][data-move="special"]) .weapon-arm { animation-name:s-arm }
+:host([data-action="attack"][data-move="special"]) .back-arm { animation-name:s-back }
+:host([data-action="attack"][data-move="special"]) .front-leg { animation-name:s-front }
+:host([data-action="attack"][data-move="special"]) .slash { animation-name:s-slash }
+:host([data-action="attack"][data-move="special"]) .aura { animation:s-aura var(--dur) ease both }
+:host([data-action="attack"][data-move="special"]) .weapon { animation:charged var(--dur) ease both }
+:host([data-action="attack"][data-move="special"]) .eyes { animation:eye-flare var(--dur) ease both }
+/* Ronin special: crouched iai draw, then a dash straight through the defender. */
+:host([data-action="attack"][data-move="special"][data-character="ronin"]) .rig { animation-name:r-s-rig }
+:host([data-action="attack"][data-move="special"][data-character="ronin"]) .weapon-arm { animation-name:r-s-arm }
+:host([data-action="attack"][data-move="special"][data-character="ronin"]) .upper { animation-name:r-s-upper }
+/* The Mage casts: staff thrust, off-hand flick, orb flare; the arena draws the spell. */
+:host([data-character="mage"][data-action="attack"]) .slash { animation:none }
+:host([data-character="mage"][data-action="attack"]) .weapon-arm { animation-name:m-arm }
+:host([data-character="mage"][data-action="attack"]) .back-arm { animation-name:m-back }
+:host([data-character="mage"][data-action="attack"]) .rig { animation-name:m-rig }
+:host([data-character="mage"][data-action="attack"]) .upper { animation-name:m-upper }
+:host([data-character="mage"][data-action="attack"]) .orb { animation:m-orb var(--dur) ease both }
+:host([data-character="mage"][data-action="attack"]) .hand-spark { animation:m-spark var(--dur) ease both }
+:host([data-character="mage"][data-action="attack"][data-move="heavy"]) .weapon-arm { animation-name:m-arm-h }
+:host([data-character="mage"][data-action="attack"][data-move="heavy"]) .back-arm { animation-name:m-back-h }
+:host([data-character="mage"][data-action="attack"][data-move="special"]) .weapon-arm { animation-name:m-arm-s }
+:host([data-character="mage"][data-action="attack"][data-move="special"]) .back-arm { animation-name:m-back-s }
+:host([data-character="mage"][data-action="attack"][data-move="special"]) .rig { animation-name:m-rig-s }
+
+/* ── Ultimates (3.6 s, the one-shot lands at 78%) ── */
+:host([data-action="attack"][data-move="ultimate"]) .slash { animation:none }
+:host([data-action="attack"][data-move="ultimate"]) .aura { animation:u-aura 3.6s ease both }
+:host([data-action="attack"][data-move="ultimate"]) .eyes { animation:eye-flare 3.6s ease both }
+:host([data-action="attack"][data-move="ultimate"]) .front-leg,:host([data-action="attack"][data-move="ultimate"]) .back-leg { animation:none }
+:host([data-action="attack"][data-move="ultimate"][data-character="knight"]) .rig { animation:u-k-rig 3.6s ease both }
+:host([data-action="attack"][data-move="ultimate"][data-character="knight"]) .upper { animation:u-k-upper 3.6s ease both }
+:host([data-action="attack"][data-move="ultimate"][data-character="knight"]) .head { animation:u-k-head 3.6s ease both }
+:host([data-action="attack"][data-move="ultimate"][data-character="knight"]) .weapon-arm { animation:u-k-arm 3.6s cubic-bezier(.5,0,.3,1) both }
+:host([data-action="attack"][data-move="ultimate"][data-character="knight"]) .back-arm { animation:u-k-back 3.6s ease both }
+:host([data-action="attack"][data-move="ultimate"][data-character="knight"]) .weapon { animation:u-holy 3.6s ease both }
+:host([data-action="attack"][data-move="ultimate"][data-character="mage"]) .rig { animation:breathe 1s ease-in-out infinite }
+:host([data-action="attack"][data-move="ultimate"][data-character="mage"]) .weapon-arm { animation:u-m-arm 3.6s ease both }
+:host([data-action="attack"][data-move="ultimate"][data-character="mage"]) .back-arm { animation:u-m-back 3.6s ease both }
+:host([data-action="attack"][data-move="ultimate"][data-character="mage"]) .upper { animation:u-m-upper 3.6s ease both }
+:host([data-action="attack"][data-move="ultimate"][data-character="mage"]) .orb { animation:u-m-orb 3.6s ease both }
+:host([data-action="attack"][data-move="ultimate"][data-character="mage"]) .cloth { animation:cloth .5s ease-in-out infinite }
+:host([data-action="attack"][data-move="ultimate"][data-character="ronin"]) .rig { animation:u-r-rig 3.6s ease both }
+:host([data-action="attack"][data-move="ultimate"][data-character="ronin"]) .upper { animation:u-r-upper 3.6s ease both }
+:host([data-action="attack"][data-move="ultimate"][data-character="ronin"]) .weapon-arm { animation:u-r-arm 3.6s cubic-bezier(.6,0,.2,1) both }
+:host([data-action="attack"][data-move="ultimate"][data-character="ronin"]) .cloth { animation:u-r-cloth 3.6s ease both }
+:host([data-action="attack"][data-move="ultimate"][data-character="knight"]) { --u:#ffe27a }
+:host([data-action="attack"][data-move="ultimate"][data-character="mage"]) { --u:#a35cff }
+:host([data-action="attack"][data-move="ultimate"][data-character="ronin"]) { --u:#ff1f3d }
+
+/* ── Getting hit: snap back, white impact frames, settle ── */
+:host([data-action="hit"]) .rig { animation:hit-rig .5s cubic-bezier(.2,.8,.3,1) both }
+:host([data-action="hit"]) .upper { animation:hit-upper .5s ease both }
+:host([data-action="hit"]) .head { animation:hit-head .5s ease both }
+:host([data-action="hit"]) .weapon-arm { animation:hit-arm .5s ease both }
+:host([data-action="hit"]) .back-arm { animation:hit-back .5s ease both }
+:host([data-action="hit"]) .cloth { animation:hit-cloth .5s ease both }
+:host([data-action="hit"]) svg { animation:hit-flash .34s linear both }
+:host([data-action="hit"][data-move="heavy"]) .rig { animation:hit-rig-h .65s cubic-bezier(.2,.8,.3,1) both }
+:host([data-action="hit"][data-move="special"]) .rig { animation:hit-rig-s .85s cubic-bezier(.2,.8,.3,1) both }
+:host([data-action="hit"][data-move="special"]) .front-leg { animation:buckle .85s ease both }
+
+/* ── Defense skills; the blow lands at ~28% (a special keeps the guard up, then breaks it) ── */
+:host([data-action="defend"]) .rig { animation:brace var(--def-dur) ease both }
+:host([data-action="defend"]) .guard { animation:guard var(--def-dur) ease both }
+:host([data-action="defend"][data-character="knight"]) .back-arm { animation:shield-up var(--def-dur) cubic-bezier(.2,.9,.3,1) both }
+:host([data-action="defend"][data-character="knight"]) .weapon-arm { animation:tuck var(--def-dur) ease both }
+:host([data-action="defend"][data-character="mage"]) .weapon-arm { animation:ward-staff var(--def-dur) ease both }
+:host([data-action="defend"][data-character="mage"]) .back-arm { animation:ward-hand var(--def-dur) ease both }
+:host([data-action="defend"][data-character="ronin"]) .rig { animation:ghost-step var(--def-dur) cubic-bezier(.2,.9,.3,1) both }
+:host([data-action="defend"][data-character="ronin"]) svg { filter:drop-shadow(26px 0 0 color-mix(in srgb,var(--fighter-light) 40%,transparent)) drop-shadow(52px 0 0 color-mix(in srgb,var(--fighter-color) 18%,transparent)) }
+/* No fill before the delay: the flash only shows once the blow lands. */
+:host([data-action="defend"][data-move="heavy"]) svg { animation:hit-flash .3s linear; --d:calc(var(--def-dur) * .28) }
+
+/* ── Heals (1.5 s, HP lands at 60%) ── */
+:host([data-action="heal"]) svg { animation:heal-glow 1.5s ease both }
+:host([data-action="heal"]) { --u:#5dff9a }
+:host([data-action="heal"]) .aura { animation:aura-heal 1.5s ease both }
+:host([data-action="heal"][data-character="knight"]) .rig { animation:kneel 1.5s ease both }
+:host([data-action="heal"][data-character="knight"]) .upper { animation:pray 1.5s ease both }
+:host([data-action="heal"][data-character="knight"]) .weapon-arm { animation:plant 1.5s ease both }
+:host([data-action="heal"][data-character="knight"]) .head { animation:bow 1.5s ease both }
+:host([data-action="heal"][data-character="ronin"]) .potion { animation:drink 1.5s ease both }
+:host([data-action="heal"][data-character="ronin"]) .head { animation:tilt-back 1.5s ease both }
+:host([data-action="heal"][data-character="ronin"]) .back-arm { animation:lift 1.5s ease both }
+:host([data-action="heal"][data-character="mage"]) .weapon-arm { animation:raise-staff 1.5s ease both }
+:host([data-action="heal"][data-character="mage"]) .back-arm { animation:open-hand 1.5s ease both }
+:host([data-action="heal"][data-character="mage"]) .orb { fill:#9dffc4; animation:heal-orb 1.5s ease both }
+
+/* ── Knockout and victory ── */
+:host([data-action="defeated"]) .rig { animation:fall 1.1s cubic-bezier(.35,.6,.4,1) both }
+:host([data-action="defeated"]) .upper { animation:slump 1.1s ease both }
+:host([data-action="defeated"]) .weapon-arm { animation:drop 1.1s ease both }
+:host([data-action="defeated"]) .head { animation:loll 1.1s ease both }
+:host([data-action="defeated"]) .front-leg { animation:buckle 1.1s ease both }
+:host([data-action="defeated"]) .shadow { animation:shadow-fall 1.1s ease both }
+:host([data-action="victory"]) .rig { animation:celebrate 1.2s ease-in-out infinite }
+:host([data-action="victory"]) .weapon-arm { animation:raise 1.2s ease-in-out infinite }
+:host([data-action="victory"]) .back-arm { animation:fist 1.2s ease-in-out infinite }
+:host([data-action="victory"][data-character="mage"]) .weapon-arm { animation:raise-staff-loop 1.2s ease-in-out infinite }
+:host([data-action="victory"][data-character="mage"]) .orb { animation:orb-victory 1.2s ease-in-out infinite }
+:host([data-action="victory"][data-character="ronin"]) .weapon-arm { animation:sheathed 1.2s ease-in-out infinite }
+:host([data-action="victory"][data-character="ronin"]) .cloth { animation:cloth .8s ease-in-out infinite }
+:host([data-action="victory"]) .aura { opacity:.22 }
+
+@keyframes breathe { 50% { transform:translateY(-2.5px) } }
+@keyframes sway { 50% { transform:rotate(-1.2deg) } }
+@keyframes nod { 50% { transform:rotate(1.6deg) } }
+@keyframes arm-idle { 50% { transform:rotate(-3deg) } }
+@keyframes back-idle { 50% { transform:rotate(2.5deg) } }
+@keyframes cloth { 50% { transform:rotate(5deg) skewX(-3deg) } }
+@keyframes plume { 50% { transform:rotate(-7deg) } }
+@keyframes orb-pulse { 50% { transform:scale(1.08); filter:brightness(1.3) drop-shadow(0 0 6px var(--fighter-light)) } }
+@keyframes ring-run { to { stroke-dashoffset:-40 } }
+@keyframes spark-float { 50% { transform:translateY(-5px) scale(.75); opacity:.7 } }
+@keyframes glint { 0%,78% { opacity:0; transform:translate(4px,-14px) } 86% { opacity:1 } 94%,100% { opacity:0; transform:translate(-4px,14px) } }
+@keyframes runes { 50% { opacity:.35 } }
+@keyframes pant { 50% { transform:translateY(4px) } }
+@keyframes hunch { 50% { transform:rotate(7deg) } }
+@keyframes rage-aura { 0%,100% { opacity:.3; transform:scale(.96) } 50% { opacity:.55; transform:scale(1.05) } }
+
+@keyframes a-rig { 22% { transform:translate(-6px,2px) } 32% { transform:translate(10px,0) } 35%,41% { transform:translate(15px,1px) } 62% { transform:translate(9px,0) } 100% { transform:none } }
+@keyframes a-upper { 22% { transform:rotate(-11deg) } 32% { transform:rotate(6deg) } 35%,41% { transform:rotate(13deg) } 65% { transform:rotate(5deg) } 100% { transform:none } }
+@keyframes a-arm { 22% { transform:rotate(-80deg) } 30% { transform:rotate(8deg) } 35%,41% { transform:rotate(104deg) } 56% { transform:rotate(116deg) } 100% { transform:none } }
+@keyframes a-back { 22% { transform:rotate(18deg) } 35%,41% { transform:rotate(-22deg) } 100% { transform:none } }
+@keyframes a-front { 22% { transform:translateY(-4px) rotate(-9deg) } 33%,62% { transform:translateX(9px) rotate(10deg) } 100% { transform:none } }
+@keyframes a-backleg { 22% { transform:rotate(5deg) } 35%,62% { transform:rotate(-12deg) } 100% { transform:none } }
+@keyframes a-head { 22% { transform:rotate(-5deg) } 35%,41% { transform:rotate(7deg) } 100% { transform:none } }
+@keyframes a-cloth { 22% { transform:rotate(-8deg) } 36% { transform:rotate(16deg) skewX(-6deg) } 62% { transform:rotate(-4deg) } 100% { transform:none } }
+@keyframes a-slash { 0%,28% { opacity:0; transform:rotate(-46deg) scale(.9) } 33% { opacity:1; transform:rotate(16deg) } 38% { opacity:1; transform:rotate(44deg) scale(1.03) } 56%,100% { opacity:0; transform:rotate(82deg) scale(1.07) } }
+
+@keyframes h-rig { 30% { transform:translate(-11px,6px) scaleY(.94) } 39% { transform:translate(12px,-7px) } 43%,50% { transform:translate(21px,3px) scaleY(.97) } 70% { transform:translate(14px,0) } 100% { transform:none } }
+@keyframes h-upper { 30% { transform:rotate(-17deg) } 39% { transform:rotate(8deg) } 43%,50% { transform:rotate(19deg) } 72% { transform:rotate(9deg) } 100% { transform:none } }
+@keyframes h-arm { 30% { transform:rotate(-152deg) } 38% { transform:rotate(-40deg) } 43%,50% { transform:rotate(121deg) } 66% { transform:rotate(130deg) } 100% { transform:none } }
+@keyframes h-back { 30% { transform:rotate(-34deg) } 43%,50% { transform:rotate(-8deg) } 100% { transform:none } }
+@keyframes h-front { 30% { transform:translateY(-7px) rotate(-15deg) } 41%,70% { transform:translateX(12px) rotate(15deg) } 100% { transform:none } }
+@keyframes h-backleg { 30% { transform:rotate(9deg) } 43%,70% { transform:rotate(-17deg) } 100% { transform:none } }
+@keyframes h-slash { 0%,37% { opacity:0; transform:rotate(-64deg) scale(1.12) } 41% { opacity:1; transform:rotate(14deg) scale(1.3) } 47% { opacity:1; transform:rotate(52deg) scale(1.33) } 68%,100% { opacity:0; transform:rotate(98deg) scale(1.38) } }
+
+@keyframes s-rig { 14%,44% { transform:translateY(6px) scaleY(.94) } 49% { transform:translate(8px,-13px) } 53%,61% { transform:translate(23px,2px) scaleY(.96) } 78% { transform:translate(15px,0) } 100% { transform:none } }
+@keyframes s-upper { 14%,44% { transform:rotate(-15deg) } 49% { transform:rotate(4deg) } 53%,61% { transform:rotate(21deg) } 78% { transform:rotate(10deg) } 100% { transform:none } }
+@keyframes s-arm { 14% { transform:rotate(-120deg) } 44% { transform:rotate(-134deg) } 49% { transform:rotate(-24deg) } 53%,61% { transform:rotate(126deg) } 77% { transform:rotate(134deg) } 100% { transform:none } }
+@keyframes s-back { 14%,44% { transform:rotate(-46deg) } 53%,61% { transform:rotate(-6deg) } 100% { transform:none } }
+@keyframes s-front { 14%,44% { transform:translateY(-3px) rotate(-12deg) } 51%,76% { transform:translateX(13px) rotate(16deg) } 100% { transform:none } }
+@keyframes s-slash { 0%,48% { opacity:0; transform:rotate(-64deg) scale(1.42) } 52% { opacity:1; transform:rotate(18deg) scale(1.66) } 58% { opacity:1; transform:rotate(56deg) scale(1.7) } 80%,100% { opacity:0; transform:rotate(112deg) scale(1.76) } }
+@keyframes s-aura { 0% { opacity:0; transform:scale(.6) } 15% { opacity:.45 } 30% { opacity:.7; transform:scale(1) } 40% { opacity:.5; transform:scale(.95) } 50% { opacity:.95; transform:scale(1.12) } 62% { opacity:.35 } 100% { opacity:0; transform:scale(1.26) } }
+@keyframes charged { 10%,53% { filter:brightness(1.35) drop-shadow(0 0 4px var(--fighter-light)) drop-shadow(0 0 12px var(--fighter-color)) } 75%,100% { filter:none } }
+@keyframes eye-flare { 8%,58% { filter:brightness(1.8) drop-shadow(0 0 4px #fff) drop-shadow(0 0 12px var(--fighter-light)) } 100% { filter:none } }
+@keyframes r-s-rig { 14%,46% { transform:translateY(9px) rotate(-6deg) scaleY(.91) } 53%,72% { transform:translateY(3px) rotate(9deg) } 100% { transform:none } }
+@keyframes r-s-upper { 14%,46% { transform:rotate(-12deg) } 53%,72% { transform:rotate(16deg) } 100% { transform:none } }
+@keyframes r-s-arm { 14%,46% { transform:rotate(56deg) } 50% { transform:rotate(-34deg) } 53%,72% { transform:rotate(112deg) } 100% { transform:none } }
+
+@keyframes m-rig { 22% { transform:translate(-4px,0) } 34%,46% { transform:translate(5px,0) } 100% { transform:none } }
+@keyframes m-upper { 22% { transform:rotate(-7deg) } 34%,46% { transform:rotate(7deg) } 100% { transform:none } }
+@keyframes m-arm { 22% { transform:rotate(-28deg) } 32%,46% { transform:rotate(50deg) } 100% { transform:none } }
+@keyframes m-back { 22% { transform:rotate(-32deg) } 33%,50% { transform:rotate(-62deg) translate(4px,-2px) } 100% { transform:none } }
+@keyframes m-arm-h { 30% { transform:rotate(-48deg) translateY(-6px) } 41%,58% { transform:rotate(64deg) } 100% { transform:none } }
+@keyframes m-back-h { 30% { transform:rotate(-74deg) } 43%,60% { transform:rotate(-40deg) } 100% { transform:none } }
+@keyframes m-arm-s { 12%,48% { transform:rotate(-26deg) translateY(-16px) } 53%,74% { transform:rotate(72deg) } 100% { transform:none } }
+@keyframes m-back-s { 12%,48% { transform:rotate(-96deg) } 53%,74% { transform:rotate(-50deg) } 100% { transform:none } }
+@keyframes m-rig-s { 12%,48% { transform:translateY(-10px) } 53%,74% { transform:translate(5px,-4px) } 100% { transform:none } }
+@keyframes m-orb { 0% { transform:none } 26% { transform:scale(1.7); filter:brightness(1.9) drop-shadow(0 0 10px var(--fighter-light)) } 42% { transform:scale(1.1) } 100% { transform:none } }
+@keyframes m-spark { 0% { transform:none } 24% { transform:scale(2.2); filter:brightness(1.8) drop-shadow(0 0 8px var(--fighter-light)) } 40% { transform:scale(.4); opacity:.3 } 100% { transform:none; opacity:1 } }
+
+@keyframes u-aura { 0% { opacity:0; transform:scale(.6) } 15% { opacity:.55; transform:scale(1) } 35% { opacity:.38 } 55% { opacity:.85; transform:scale(1.14) } 78% { opacity:1; transform:scale(1.28) } 90% { opacity:.4 } 100% { opacity:0 } }
+@keyframes u-k-rig { 10%,46% { transform:translateY(13px) } 54%,94% { transform:translateY(-4px) scale(1.03) } 100% { transform:none } }
+@keyframes u-k-upper { 10%,46% { transform:rotate(6deg) } 54%,94% { transform:rotate(-6deg) } 100% { transform:none } }
+@keyframes u-k-head { 10%,46% { transform:rotate(14deg) } 54%,94% { transform:rotate(-10deg) } 100% { transform:none } }
+@keyframes u-k-arm { 10%,46% { transform:rotate(52deg) } 54%,94% { transform:rotate(-156deg) } 100% { transform:none } }
+@keyframes u-k-back { 10%,46% { transform:rotate(-30deg) } 54%,94% { transform:rotate(26deg) } 100% { transform:none } }
+@keyframes u-holy { 0%,10% { filter:none } 30%,94% { filter:brightness(1.6) drop-shadow(0 0 6px #fff6c8) drop-shadow(0 0 18px #ffd75e) } 100% { filter:none } }
+@keyframes u-m-arm { 8%,92% { transform:rotate(-30deg) translateY(-18px) } 100% { transform:none } }
+@keyframes u-m-back { 8%,92% { transform:rotate(118deg) } 100% { transform:none } }
+@keyframes u-m-upper { 8%,70% { transform:rotate(-8deg) } 78%,92% { transform:rotate(4deg) } 100% { transform:none } }
+@keyframes u-m-orb { 0% { transform:none } 15%,76% { fill:#14052e; transform:scale(1.55); filter:drop-shadow(0 0 4px #e6d2ff) drop-shadow(0 0 16px #8a3cff) } 78% { transform:scale(2.3); filter:brightness(2) drop-shadow(0 0 20px #fff) } 100% { transform:none } }
+@keyframes u-r-rig { 8%,24% { transform:translateY(13px) rotate(-8deg) scaleY(.9) } 62%,94% { transform:translateY(-1px) rotate(2deg) } 100% { transform:none } }
+@keyframes u-r-upper { 8%,24% { transform:rotate(-14deg) } 62%,74% { transform:rotate(12deg) } 86%,94% { transform:rotate(-2deg) } 100% { transform:none } }
+@keyframes u-r-arm { 8%,24% { transform:rotate(56deg) } 62%,74% { transform:rotate(118deg) } 82% { transform:rotate(30deg) } 88%,96% { transform:rotate(58deg) } 100% { transform:none } }
+@keyframes u-r-cloth { 8%,24% { transform:rotate(12deg) skewX(-6deg) } 62%,94% { transform:rotate(-10deg) skewX(4deg) } 100% { transform:none } }
+
+@keyframes hit-rig { 0% { transform:none } 12% { transform:translate(-17px,-2px) rotate(-8deg) } 30% { transform:translate(-20px,0) rotate(-11deg) } 65% { transform:translate(-8px,0) rotate(-4deg) } 100% { transform:none } }
+@keyframes hit-rig-h { 12% { transform:translate(-30px,-7px) rotate(-17deg) } 34% { transform:translate(-32px,0) rotate(-12deg) scaleY(.95) } 65% { transform:translate(-14px,0) rotate(-6deg) } 100% { transform:none } }
+@keyframes hit-rig-s { 10% { transform:translate(-48px,-20px) rotate(-28deg) } 30% { transform:translate(-40px,2px) rotate(-14deg) scaleY(.92) } 55% { transform:translate(-26px,0) rotate(-10deg) } 80% { transform:translate(-10px,0) rotate(-3deg) } 100% { transform:none } }
+@keyframes hit-upper { 12% { transform:rotate(-15deg) } 42% { transform:rotate(-7deg) } 100% { transform:none } }
+@keyframes hit-head { 10% { transform:rotate(-18deg) } 36% { transform:rotate(-8deg) } 100% { transform:none } }
+@keyframes hit-arm { 12% { transform:rotate(-42deg) } 50% { transform:rotate(-12deg) } 100% { transform:none } }
+@keyframes hit-back { 12% { transform:rotate(30deg) } 50% { transform:rotate(10deg) } 100% { transform:none } }
+@keyframes hit-cloth { 12% { transform:rotate(-14deg) skewX(8deg) } 50% { transform:rotate(6deg) } 100% { transform:none } }
+@keyframes hit-flash { 0%,22% { filter:brightness(0) invert(1) drop-shadow(0 0 6px #fff) } 23%,44% { filter:none } 45%,62% { filter:brightness(1.8) saturate(.4) sepia(.5) hue-rotate(-30deg) } 63%,100% { filter:none } }
+@keyframes buckle { 20%,60% { transform:rotate(-18deg) translateY(3px) } 100% { transform:none } }
+
+@keyframes brace { 20%,70% { transform:translateX(-6px) rotate(-3deg) } 30% { transform:translateX(-13px) rotate(-5deg) } 100% { transform:none } }
+@keyframes guard { 0%,8% { opacity:0; transform:scale(.4) } 20% { opacity:.95; transform:scale(1) } 28% { opacity:1; transform:scale(1.08); filter:brightness(1.9) drop-shadow(0 0 12px #fff) } 36%,72% { opacity:.9; transform:scale(1) } 100% { opacity:0; transform:scale(1.12) } }
+@keyframes shield-up { 18%,75% { transform:translate(90px,-14px) rotate(6deg) } 28% { transform:translate(80px,-12px) rotate(1deg) } 100% { transform:none } }
+@keyframes tuck { 18%,75% { transform:rotate(40deg) } 100% { transform:none } }
+@keyframes ward-staff { 15%,75% { transform:rotate(-18deg) translateY(-8px) } 100% { transform:none } }
+@keyframes ward-hand { 15%,75% { transform:rotate(-70deg) } 100% { transform:none } }
+@keyframes ghost-step { 0% { transform:none; opacity:1 } 16%,70% { transform:translateX(-56px) skewX(-9deg); opacity:.6 } 100% { transform:none; opacity:1 } }
+
+@keyframes heal-glow { 0%,40% { filter:none } 58%,78% { filter:drop-shadow(0 0 4px #5dff9a) drop-shadow(0 0 14px #5dff9a) brightness(1.15) } 100% { filter:none } }
+@keyframes aura-heal { 0%,25% { opacity:0; transform:scale(.7) } 60% { opacity:.6; transform:scale(1.06) } 78% { opacity:.36 } 100% { opacity:0; transform:scale(1.16) } }
+@keyframes kneel { 15%,80% { transform:translateY(10px) } 100% { transform:none } }
+@keyframes pray { 15%,80% { transform:rotate(5deg) } 100% { transform:none } }
+@keyframes plant { 15%,80% { transform:rotate(50deg) } 100% { transform:none } }
+@keyframes bow { 15%,45% { transform:rotate(12deg) } 60%,80% { transform:rotate(-9deg) } 100% { transform:none } }
+@keyframes drink { 0% { opacity:0; transform:none } 12% { opacity:1; transform:none } 35%,60% { opacity:1; transform:translate(22px,-64px) rotate(-130deg) } 75% { opacity:1; transform:translate(4px,-10px) rotate(-20deg) } 88%,100% { opacity:0; transform:none } }
+@keyframes tilt-back { 30%,60% { transform:rotate(-15deg) } 100% { transform:none } }
+@keyframes lift { 30%,60% { transform:rotate(-32deg) } 100% { transform:none } }
+@keyframes raise-staff { 15%,80% { transform:rotate(-18deg) translateY(-14px) } 100% { transform:none } }
+@keyframes open-hand { 15%,80% { transform:rotate(-60deg) } 100% { transform:none } }
+@keyframes heal-orb { 30%,80% { transform:scale(1.5); filter:drop-shadow(0 0 12px #5dff9a) brightness(1.4) } 100% { transform:none } }
+
+@keyframes fall { 15% { transform:translate(-14px,-6px) rotate(-10deg) } 35% { transform:translate(-18px,4px) rotate(-6deg) scaleY(.93) } 100% { transform:translate(-26px,10px) rotate(-84deg) } }
+@keyframes slump { 35% { transform:rotate(12deg) } 100% { transform:rotate(-6deg) } }
+@keyframes drop { 30% { transform:rotate(-30deg) } 100% { transform:rotate(68deg) } }
+@keyframes loll { 35% { transform:rotate(18deg) } 100% { transform:rotate(-12deg) } }
+@keyframes shadow-fall { 100% { transform:translateX(-30px) scaleX(1.25); opacity:.7 } }
+@keyframes celebrate { 50% { transform:translateY(-12px) } }
+@keyframes raise { 0%,100% { transform:rotate(-150deg) } 50% { transform:rotate(-140deg) } }
+@keyframes fist { 0%,100% { transform:rotate(-20deg) } 50% { transform:rotate(-40deg) } }
+@keyframes raise-staff-loop { 0%,100% { transform:rotate(-14deg) translateY(-10px) } 50% { transform:rotate(-8deg) translateY(-16px) } }
+@keyframes orb-victory { 50% { filter:drop-shadow(0 0 16px var(--fighter-light)) brightness(1.7); transform:scale(1.2) } }
+@keyframes sheathed { 0%,100% { transform:rotate(58deg) } 50% { transform:rotate(54deg) } }
+
+@media (prefers-reduced-motion:reduce) {
+  * { animation:none !important }
+  :host([data-action="defeated"]) .rig { opacity:.45; transform:rotate(-15deg) }
+  :host([data-action="hit"]) .rig { opacity:.7 }
+  :host([data-action="defend"]) .guard { opacity:.8 }
+}
