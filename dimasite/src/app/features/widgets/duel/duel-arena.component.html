@@ -5,10 +5,10 @@
               @for (side of sides; track side) {
                 <div class="health" [class.health-right]="side === 'right'" [class.active]="attacking(side)" [class.low]="low(side)" [class.healing]="healing(side)" [attr.data-side]="side">
                   <div class="health-label"><strong>{{ names()[side] }}</strong>@if (enraged(side)) { <em class="rage-badge">{{ t('enraged') }}</em> }<span>{{ health()[side] }} <small>HP</small></span></div>
-                  <div class="health-track" role="progressbar" [attr.aria-label]="t('health', {name: names()[side]})" [attr.aria-valuenow]="health()[side]" aria-valuemin="0" aria-valuemax="100"><div class="trail" [style.width.%]="health()[side]"></div><div class="fill" [style.width.%]="health()[side]"></div></div>
+                  <div class="health-track" role="progressbar" [attr.aria-label]="t('health', {name: names()[side]})" [attr.aria-valuenow]="health()[side]" aria-valuemin="0" [attr.aria-valuemax]="maxHp()"><div class="trail" [style.width.%]="percent(side)"></div><div class="fill" [style.width.%]="percent(side)"></div></div>
                   <div class="health-meta">
                     <span class="fighter-role">{{ t(enraged(side) ? 'streamer' : side === 'left' ? 'challenger' : 'opponent') }} · {{ t('character.' + battle().fighters[side]) }}</span>
-                    <span class="heal-charges" role="img" [attr.aria-label]="t('healsLeft', {n: healsLeft()[side]})">@for (charge of charges; track charge) { <i [class.used]="charge >= healsLeft()[side]" aria-hidden="true">✚</i> }</span>
+                    <span class="heal-charges" role="img" [attr.aria-label]="t('healsLeft', {n: healsLeft()[side]})">@for (charge of charges(); track charge) { <i [class.used]="charge >= healsLeft()[side]" aria-hidden="true">✚</i> }</span>
                   </div>
                 </div>
               }

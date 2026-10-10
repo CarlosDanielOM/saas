@@ -39,6 +39,24 @@ enraged streamer rolls 4% per turn (about 1 in 6 streamer fights) and everyone e
 Runs accepted before turn-based battles (no `turns`) still render and announce. Accepted battles finish even if OBS or
 the bot disconnects. The cron supervisor runs `duel.worker` independently.
 
+Battle rules are tunable per channel (`settings.rules`, `DEFAULT_RULES`/`RULE_LIMITS` in
+`dimabot/src/duel/model.ts`, mirrored in `dimasite/.../duel/duel-rules.ts`): HP, a damage
+percentage, stolen-turn/heavy/special/crit/shield/heal/combo chances, heal charges and amounts,
+the streamer's rage multiplier and both ultimate chances (per mille). All numbers above are the
+defaults. Damage never scales under 50% (min 1 per hit), so every fight still ends after the
+skill limit; runs store `maxHp`/`healCharges` for the arena. The page's "Battle rules" section
+warns that the defaults are balanced and shows a live balance check (seeded simulation:
+streamer win rate and typical fight length; viewer duels are always 50/50 since both sides
+share the rules). Saving custom rules while tracking is on needs a confirm. `configure` keeps
+the stored `rules`/`leaderboard`/`rivalries` when an older page leaves them out.
+
+`settings.leaderboard` (K/D board) and `settings.rivalries` (head-to-head) switch separately.
+A run is tracked (`run.tracked`) only when it plays on the overlay, uses the default rules and
+at least one switch is on; `record` is attached only when rivalries are on. Runs from before
+this field count when `mode === 'overlay'`. `GET .../leaderboard` and the `duel-leaderboard`
+event carry `status`: `live`, `paused` (custom rules: nothing new counts, the OBS source hides,
+old rankings stay) or `off` (source hides). Nothing is deleted when tracking pauses.
+
 Only duels shown on the OBS overlay (`run.mode === 'overlay'`, so Premium with a ready source)
 are tracked; chat-only duels never are. When such a fight finishes, the worker inserts one
 `duel_results` row keyed by the run ID (`dimabot/src/duel/stats.ts`, so retries never
@@ -68,6 +86,8 @@ Run each candidate with the helper, private Mongo/Redis, and provider fixtures:
 scripts/saas-ops verify api-RUN --dependency mongo --dependency redis \
   --test-env ops/checks/duel-fixtures/test-env.json \
   --fixtures ops/checks/duel-fixtures --check ops/checks/duel-backend.mjs
+# cron: duel-backend.mjs exceeds the candidate's memory next to every worker; use the
+# lighter ops/checks/duel-cron.mjs (same flags), which drives the real duel worker.
 # Repeat with the bot-RUN and cron-RUN candidates.
 scripts/saas-ops verify site-RUN --check ops/checks/duel-widget.sh
 ```

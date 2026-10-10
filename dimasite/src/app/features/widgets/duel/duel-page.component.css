@@ -1,4 +1,143 @@
-:host{font-family:var(--font);color:var(--fg)}.lf{background:var(--bg);min-height:100dvh}
-:host{display:block}.lf-main{max-width:1280px;margin:auto;padding:24px 16px 64px}.back{color:var(--muted);text-decoration:none}header{margin-bottom:24px}h1{font-size:clamp(30px,4vw,44px);margin:12px 0}header>p,.hint,.preview-tools p{color:var(--muted)}.lf-bento{display:grid;gap:16px}.lf-tile{padding:20px;border:1px solid var(--line);border-radius:var(--radius);background:var(--tile);min-width:0}h2{font-size:18px;margin:0 0 16px}.tile-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px}.tile-head>span{font-size:12px;color:var(--muted)}.preview{padding:0;overflow:hidden}.preview>.tile-head,.preview-tools{padding:20px}.preview-tools{display:flex;flex-wrap:wrap;align-items:center;gap:16px}.preview-tools p{font-size:13px;flex:1;min-width:140px;margin:0}button,input,select{font:inherit;box-sizing:border-box}button{min-height:44px;border-radius:12px;padding:10px 16px;background:var(--tile);border:1px solid var(--line);color:var(--fg);cursor:pointer}.primary{background:#7c3aed;color:#fff;border-color:transparent;font-weight:600}button:disabled{opacity:.5;cursor:default}input:not([type=checkbox]),select{display:block;width:100%;min-height:44px;background:var(--bg);border:1px solid var(--line);border-radius:10px;color:var(--fg);padding:10px 12px}input[readonly]{color:var(--muted)}input[type=checkbox]{width:22px;height:22px;accent-color:var(--accent);flex:none}label{display:block;margin:18px 0 8px}fieldset{padding:0;border:0;min-width:0}.switch{display:flex;align-items:center;justify-content:space-between;gap:20px;margin:0;padding:16px 0;border-bottom:1px solid var(--line)}.switch small{display:block;color:var(--muted);font-size:12px;line-height:1.6;margin-top:5px}small{display:block;color:var(--muted);margin-top:8px;font-size:12px}.save{width:100%;margin-top:24px}.connection>button{margin:8px 8px 0 0}.connection p,.how p,.how li{font-size:14px;line-height:1.7}.status{padding:6px 10px;border:1px solid var(--line);border-radius:99px}.status.connected{color:var(--fg);border-color:var(--accent)}code{display:inline-block;background:var(--bg);padding:2px 6px;border-radius:6px;overflow-wrap:anywhere}.how ol{padding-left:20px}.how li{margin:12px 0}.message,.confirm{padding:16px;border:1px solid var(--line);border-radius:12px}.error{color:var(--danger,#ef6868)}.confirm button{margin-right:8px}:is(button,input,select,a):focus-visible{outline:3px solid var(--accent);outline-offset:3px}@media(min-width:960px){.lf-main{padding:40px 32px 80px}.lf-bento{grid-template-columns:minmax(0,1.65fr) minmax(300px,1fr)}.preview{grid-column:1;grid-row:1}.settings{grid-column:2;grid-row:1 / 3}.connection{grid-column:1;grid-row:2}.leaderboard{grid-column:2;grid-row:3}.how{grid-column:1;grid-row:3;align-self:start}}
-.streamer-toggle{display:inline-flex;align-items:center;gap:8px;min-height:44px;font-weight:600;cursor:pointer}.streamer-toggle input{width:18px;height:18px;accent-color:#ff5a5f}
-.leaderboard .hint{font-size:14px;line-height:1.6;margin:0 0 16px}.leaderboard>button{margin-bottom:16px}.leaderboard app-duel-leaderboard{max-width:440px;margin:auto}
+:host { --warn:#92400e; --warn-soft:rgba(180,83,9,.1); --ok-soft:rgba(22,101,52,.1) }
+:host-context(html.dark) { --warn:#fbbf24; --warn-soft:rgba(251,191,36,.12); --ok-soft:rgba(134,239,172,.12) }
+.lf { background:radial-gradient(circle at 0 0,var(--accent-soft),transparent 35rem),radial-gradient(circle at 100% 0,rgba(239,68,68,.07),transparent 28rem); min-height:100dvh; color:var(--fg); font-family:var(--font) }
+.lf-main { width:min(100%,80rem); margin:auto; padding:16px 12px 32px; display:grid; gap:14px; min-width:0 }
+.back { display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); text-decoration:none; min-height:44px }
+.back app-lf-icon { width:16px }
+h1 { display:flex; gap:9px; align-items:center; flex-wrap:wrap; margin:0 0 4px; font-size:25px; font-weight:800; letter-spacing:-.03em }
+.lf-head>p { margin:0 }
+.head-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px }
+.chip.on-air { color:var(--fg); background:var(--live-soft) }
+.chip.warn { color:var(--warn); background:var(--warn-soft) }
+.chip.ok { color:var(--ok); background:var(--ok-soft) }
+h3 { margin:22px 0 2px; font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted) }
+
+/* Layout: what you change on the left, setup and results on the right. Phones stack it. */
+.duel-grid { display:grid; gap:14px; min-width:0 }
+.col { display:contents }
+.tile-head { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px }
+.muted-note { font-size:12px; color:var(--muted) }
+.preview { padding:0; overflow:hidden }
+.preview>.tile-head { padding:16px 16px 0 }
+.preview-tools { display:flex; flex-wrap:wrap; align-items:center; gap:10px; padding:14px 16px 16px }
+.preview-tools p { font-size:12px; flex:1 1 180px; margin:0 }
+.streamer-toggle { display:inline-flex; align-items:center; gap:8px; min-height:44px; font-size:12px; font-weight:700; cursor:pointer }
+.streamer-toggle input { accent-color:#ff5a5f }
+
+/* Settings */
+fieldset { padding:0; margin:0; border:0; min-width:0 }
+.settings h2 { margin-bottom:4px }
+.switch { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:14px 0; border-bottom:1px solid var(--line); font-size:14px; font-weight:700; cursor:pointer }
+.switch small { display:block; color:var(--muted); font-size:12px; line-height:1.55; margin-top:3px; font-weight:500 }
+.switch input { width:22px; height:22px }
+.field-row { display:grid; gap:4px 14px; padding-top:6px }
+.field label { display:block; margin:12px 0 6px; font-size:13px; font-weight:700 }
+.field input,.field select { width:100% }
+.field small { display:block; color:var(--muted); margin-top:6px; font-size:11px }
+.field .error { margin-top:6px; padding:6px 10px; border-radius:8px; font-size:12px }
+.hint { color:var(--muted); font-size:12px; line-height:1.55; margin:10px 0 0 }
+input[readonly]:not([type=range]) { color:var(--muted) }
+
+.callout { display:flex; gap:12px; align-items:flex-start; margin-top:12px; padding:12px 14px; border-radius:14px; border:1px solid var(--line); background:var(--bg) }
+.callout app-lf-icon { width:18px; flex:none; margin-top:2px }
+.callout strong { display:block; font-size:13px }
+.callout p { font-size:12px; margin-top:3px }
+.callout button { margin-top:10px; min-height:40px }
+.callout.warn,.callout.caution { border-color:color-mix(in srgb,var(--warn) 35%,transparent); background:var(--warn-soft) }
+.callout.warn app-lf-icon,.callout.caution app-lf-icon,.callout.warn strong,.callout.caution strong { color:var(--warn) }
+
+/* Battle rules: tucked away, with the warning and the live balance check first. */
+.rules { margin-top:18px; border:1px solid var(--line); border-radius:16px; background:color-mix(in srgb,var(--bg) 55%,var(--tile)) }
+.rules[open] { padding-bottom:14px }
+.rules>:not(summary) { margin-left:14px; margin-right:14px }
+summary { display:flex; align-items:center; gap:10px; min-height:60px; padding:12px 14px; cursor:pointer; list-style:none; border-radius:16px }
+summary::-webkit-details-marker { display:none }
+summary>span:first-child { display:grid; gap:2px; margin-right:auto }
+summary strong { font-size:14px }
+summary small { color:var(--muted); font-size:12px; line-height:1.45 }
+.chev { width:18px; color:var(--muted); transition:transform .2s; flex:none }
+.rules[open] .chev { transform:rotate(180deg) }
+.rules>.callout { margin-top:0 }
+
+.balance { margin-top:12px; padding:12px; border-radius:14px; border:1px solid var(--line); background:var(--tile) }
+.balance-head { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:4px 10px; margin-bottom:10px }
+.balance-head strong { font-size:13px }
+.balance-head small { color:var(--muted); font-size:11px }
+.balance-stats { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px }
+.balance .stat { display:grid; gap:2px; align-content:start; min-width:0; padding:10px; border-radius:12px; background:var(--btn) }
+.balance .stat small { color:var(--muted); font-size:11px; font-weight:700; line-height:1.3 }
+.balance .stat b { font-size:18px; font-weight:850; font-variant-numeric:tabular-nums; letter-spacing:-.02em }
+.balance .stat span { color:var(--muted); font-size:11px; line-height:1.35 }
+.balance .stat.drift { background:var(--warn-soft); box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--warn) 40%,transparent) }
+.balance .stat.drift b { color:var(--warn) }
+
+.rule-group { margin-top:16px }
+.rule-group legend { padding:0; margin-bottom:4px; font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; color:var(--muted) }
+.rule-list { display:grid; gap:0 22px }
+.rule { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; align-content:start; gap:0 12px; padding:10px 0 4px; border-bottom:1px solid var(--line) }
+.rule label { display:grid; gap:2px; font-size:13px; font-weight:700; margin:0 }
+.rule label small { color:var(--muted); font-size:11px; font-weight:500; line-height:1.45 }
+.rule output { font-size:15px; font-weight:850; font-variant-numeric:tabular-nums; min-width:64px; text-align:right }
+.rule.changed output { color:var(--gold) }
+.rule .lf-range { grid-column:1 / -1 }
+.rule .default { grid-column:1 / -1; display:flex; align-items:center; gap:6px; color:var(--muted); font-size:11px; margin-top:-4px }
+.dot-changed { width:6px; height:6px; border-radius:50%; background:var(--gold) }
+.reset { display:inline-flex; align-items:center; gap:6px; margin-top:14px }
+.reset app-lf-icon { width:15px }
+.error:not(.message) { color:var(--danger); font-size:12px }
+
+/* Slider: fill ends at the thumb centre, so 0% and 100% sit flush with the ends. */
+/* Beats the shared field style (input:not([type=checkbox])…), which would box the slider. */
+.rule input.lf-range[type=range] { --pct:0; --thumb:1.4rem; width:100%; height:44px; min-height:0; margin:0; padding:0; border:0; border-radius:0; background:transparent; cursor:pointer; -webkit-appearance:none; appearance:none }
+.lf-range::-webkit-slider-runnable-track { height:.5rem; border-radius:999px; background:linear-gradient(90deg,#7c3aed 0 calc(var(--thumb) / 2 + (100% - var(--thumb)) * var(--pct)),color-mix(in srgb,var(--fg) 16%,transparent) 0) }
+.lf-range::-webkit-slider-thumb { width:var(--thumb); height:var(--thumb); margin-top:calc((.5rem - var(--thumb)) / 2); border:3px solid #7c3aed; border-radius:999px; background:#fff; box-shadow:0 2px 6px rgba(0,0,0,.3); -webkit-appearance:none; appearance:none }
+.lf-range::-moz-range-track { height:.5rem; border-radius:999px; background:color-mix(in srgb,var(--fg) 16%,transparent) }
+.lf-range::-moz-range-progress { height:.5rem; border-radius:999px; background:#7c3aed }
+.lf-range::-moz-range-thumb { width:var(--thumb); height:var(--thumb); box-sizing:border-box; border:3px solid #7c3aed; border-radius:999px; background:#fff; box-shadow:0 2px 6px rgba(0,0,0,.3) }
+.lf-range:focus-visible { outline:none }
+.lf-range:focus-visible::-webkit-slider-thumb { box-shadow:0 0 0 4px var(--accent-soft),0 0 0 6px var(--accent) }
+.lf-range:focus-visible::-moz-range-thumb { box-shadow:0 0 0 4px var(--accent-soft),0 0 0 6px var(--accent) }
+.lf-range:disabled { cursor:not-allowed; opacity:.6 }
+
+/* Save bar: sticks to the bottom of the screen while the settings are in view. */
+.lf-save-bar { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px 12px; margin-top:16px }
+.lf-save-bar:not(.dirty) { position:static; box-shadow:none }
+.lf-save-bar.dirty { border-color:color-mix(in srgb,var(--accent) 45%,transparent) }
+.save-status { margin:0; font-size:12px; font-weight:700 }
+.save-status.warn { color:var(--warn); flex:1 1 220px }
+.save-actions { display:flex; gap:8px; margin-left:auto }
+.save-actions .primary { min-width:120px }
+
+/* Side tiles */
+.connection.offline { border-color:color-mix(in srgb,var(--warn) 35%,transparent) }
+.connection label { display:block; margin:14px 0 6px; font-size:12px; font-weight:700 }
+.link-actions { margin-top:12px }
+.copy-row { display:flex; gap:8px }
+.copy-row input { flex:1; min-width:0; font-size:13px }
+.copy-row button { width:44px; padding:0; display:grid; place-items:center; flex:none }
+.copy-row app-lf-icon { width:16px }
+.confirm { margin-top:12px; padding:12px; border:1px solid var(--line); border-radius:12px; display:flex; flex-wrap:wrap; gap:8px }
+.confirm p { width:100%; margin:0 }
+.leaderboard app-duel-leaderboard { max-width:440px; margin:14px auto 0 }
+.leaderboard app-duel-leaderboard.dimmed { filter:grayscale(.7) }
+.leaderboard>button { margin-top:10px }
+.how p,.how li { font-size:13px; line-height:1.65; color:var(--muted) }
+.how li { margin:10px 0 }
+.how ol { padding-left:20px; margin:12px 0 }
+code { display:inline-block; background:var(--bg); padding:2px 6px; border-radius:6px; overflow-wrap:anywhere; color:var(--fg); font-size:12px }
+
+@media (min-width:640px) {
+  .lf-main { padding:22px 20px 40px }
+  .field-row { grid-template-columns:1fr 1fr }
+  .rule-list { grid-template-columns:1fr 1fr }
+}
+@media (max-width:480px) {
+  .balance-stats { grid-template-columns:1fr }
+  .balance .stat { grid-template-columns:minmax(0,1fr) auto; align-items:baseline; gap:0 10px }
+  .balance .stat span { grid-column:1 / -1 }
+}
+@media (min-width:960px) {
+  .lf-main { padding:28px 32px 48px }
+  .duel-grid { grid-template-columns:minmax(0,1.6fr) minmax(320px,1fr); align-items:start }
+  .col { display:grid; gap:14px; min-width:0 }
+}

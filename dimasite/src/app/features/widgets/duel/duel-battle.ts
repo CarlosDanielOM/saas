@@ -108,22 +108,23 @@ export function ultimateBattle(enraged: DuelSide | null = null, rules: DuelRules
   return simulateBattle(Math.random, enraged, rules);
 }
 
-/** What a set of rules plays like, from a fixed-seed batch of simulated fights. */
-export interface DuelBalance { viewerWin: number; streamerWin: number; typical: [number, number]; longest: number; oneShot: number }
+/**
+ * What a set of rules plays like, from a fixed-seed batch of simulated fights. Viewer duels
+ * aren't measured: both sides share the rules and a coin flip picks who starts, so they are
+ * exactly 50/50 under any rules.
+ */
+export interface DuelBalance { streamerWin: number; typical: [number, number] }
 export function duelBalance(rules: DuelRules = DEFAULT_DUEL_RULES, fights = 1500): DuelBalance {
   // A fixed seed keeps the numbers steady while a slider sits still.
   let seed = 0x9e3779b9;
   const random = () => { seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
-  let left = 0, streamer = 0, ultimates = 0;
+  let streamer = 0;
   const durations: number[] = [];
   for (let index = 0; index < fights; index++) {
-    const viewers = simulateBattle(random, null, rules), enraged = simulateBattle(random, 'right', rules);
-    if (viewers.winner === 'left') left++;
-    if (enraged.winner === 'right') streamer++;
-    if (viewers.turns.at(-1)?.move === 'ultimate') ultimates++;
-    durations.push(viewers.duration);
+    if (simulateBattle(random, 'right', rules).winner === 'right') streamer++;
+    durations.push(simulateBattle(random, null, rules).duration);
   }
   durations.sort((a, b) => a - b);
   const at = (share: number) => durations[Math.min(durations.length - 1, Math.floor(durations.length * share))];
-  return { viewerWin: left / fights, streamerWin: streamer / fights, typical: [at(.1), at(.9)], longest: durations[durations.length - 1], oneShot: ultimates / fights };
+  return { streamerWin: streamer / fights, typical: [at(.1), at(.9)] };
 }

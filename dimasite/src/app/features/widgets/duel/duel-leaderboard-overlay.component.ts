@@ -8,7 +8,8 @@ import { DuelLeaderboardComponent } from './duel-leaderboard.component';
 type Board = DuelLeaderboard & { enabled:boolean; language:'en'|'es' };
 /** Vertical OBS source for the K/D leaderboard; it shares the duel overlay's private token. */
 @Component({selector:'app-duel-leaderboard-overlay',imports:[DuelLeaderboardComponent],changeDetection:ChangeDetectionStrategy.OnPush,
-  template:`@if (board(); as current) { @if (current.enabled) { <app-duel-leaderboard [board]="current" [locale]="current.language" /> } }`,
+  // Hidden while the duel or the leaderboard is off, and while custom battle rules pause it.
+  template:`@if (board(); as current) { @if (current.enabled && (current.status ?? 'live') === 'live') { <app-duel-leaderboard [board]="current" [locale]="current.language" /> } }`,
   styles:`:host{display:block;width:100%;max-width:100vw}`})
 export class DuelLeaderboardOverlayComponent {
   readonly board=signal<Board|null>(null);

@@ -92,9 +92,9 @@ export async function settleDuels(): Promise<void> {
         const claimed = await DuelChannel.updateOne({ _id: doc._id, 'run.id': run.id, 'run.timeoutAttempted': false }, { $set: { 'run.timeoutAttempted': true }, $inc: { revision: 1 } });
         if (claimed.modifiedCount) try { await timeoutLoser(doc._id, run); } catch (error) { await report(doc._id, run, 'timeoutError', error); }
       }
-      // Only overlay fights feed the leaderboard and rivalries (keyed by run ID, so a
-      // retry never double counts). A failure leaves the run open and retries next tick.
-      const tracked = run.mode === 'overlay';
+      // Only overlay fights under the default rules feed the leaderboard and rivalries (keyed
+      // by run ID, so a retry never double counts). A failure leaves the run open and retries next tick.
+      const tracked = run.tracked ?? run.mode === 'overlay';
       if (tracked) try { await recordDuelResult(doc._id, run); } catch (error) {
         await logError({ function: 'duel-record-result', runId: run.id, error: String(error) }, { channelId: doc._id, destination: 'both' }); continue;
       }

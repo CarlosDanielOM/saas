@@ -1,35 +1,126 @@
 <div class="lf" data-plan="premium"><main class="lf-main" data-testid="duel-widget">
-  <header><a class="back" [routerLink]="['/',streamer,'modules','widgets']">← {{ t('back') }}</a><p class="lf-kicker">!duel · {{ t('widget') }}</p><h1>{{ t('title') }}</h1><p>{{ t('subtitle') }}</p></header>
-  @if (!premium()) { <section class="lf-tile"><h2>{{ t('premiumRequired') }}</h2><button class="primary" (click)="promptUpgrade()">{{ t('upgrade') }}</button></section> }
-  @else if (loading()) { <p role="status">{{ t('loading') }}</p> }
-  @else {
-    @if (error()) { <p class="message error" role="alert">{{ error() }}</p><button (click)="reload()" [disabled]="busy()">{{ t('reload') }}</button> }
-    @if (notice()) { <p class="message" role="status">{{ notice() }}</p> }
+  <header class="lf-head">
+    <a class="back" [routerLink]="['/',streamer,'modules','widgets']"><app-lf-icon name="back" />{{ t('back') }}</a>
+    <h1>{{ t('title') }} <span class="chip gold">{{ language.translate('widgets.premium') }}</span></h1>
+    <p>{{ t('subtitle') }}</p>
     @if (state(); as current) {
-      <div class="lf-bento">
-        <section class="lf-tile preview"><div class="tile-head"><h2>{{ t('preview') }}</h2><span>{{ t('surprise') }}</span></div><app-duel-arena [elapsed]="elapsed()" [started]="started()" [battle]="battle()" [locale]="language.currentLanguage()" [record]="previewRecord()" /><div class="preview-tools"><button class="primary" (click)="preview()">{{ t(started()?'replay':'play') }} ▶</button><button (click)="preview(true)">✦ {{ t('previewUltimate') }}</button><label class="streamer-toggle"><input type="checkbox" [checked]="streamerFight()" (change)="streamerFight.set($any($event.target).checked)" /> {{ t('streamerFight') }}</label><p>{{ t('previewHint') }}</p></div></section>
-        <section class="lf-tile settings"><h2>{{ t('settings') }}</h2><form [formGroup]="form" (ngSubmit)="save()">
-          <fieldset [disabled]="busy() || uncertainSave()"><label class="switch"><span>{{ t('enabled') }}<small>{{ t('enabledHint') }}</small></span><input type="checkbox" formControlName="enabled" /></label>
-          <label class="switch"><span>{{ t('timeout') }}<small>{{ t('timeoutHint') }}</small></span><input type="checkbox" formControlName="timeoutEnabled" /></label>
-          <label for="duel-duration">{{ t('duration') }}</label><input id="duel-duration" type="number" min="1" max="1209600" step="1" formControlName="timeoutSeconds" [readOnly]="!form.controls.timeoutEnabled.value" aria-describedby="duration-help" /><small id="duration-help">{{ t('durationHint') }}</small>
-          @if (form.controls.timeoutSeconds.invalid && form.controls.timeoutSeconds.touched) { <p class="error" role="alert">{{ t('durationError') }}</p> }
-          <label for="duel-language">{{ t('language') }}</label><select id="duel-language" formControlName="language"><option value="en">English</option><option value="es">Español</option></select>
-          </fieldset><button class="primary save" type="submit" [disabled]="!form.dirty || busy()">{{ t(busy()?'saving':'save') }}</button></form>
-        </section>
-        <section class="lf-tile connection"><div class="tile-head"><h2>{{ t('obs') }}</h2><span class="status" [class.connected]="current.connected">{{ t(current.connected?'connected':'offline') }}</span></div><p>{{ t('obsHint') }}</p><button (click)="createLink()" [disabled]="busy()">{{ t(overlayUrl()?'replaceLink':'createLink') }}</button>
-          @if (rotateConfirm()) { <div class="confirm" role="group" [attr.aria-label]="t('replaceLink')"><p>{{ t('replaceWarning') }}</p><button (click)="createLink()" [disabled]="busy()">{{ t('confirmReplace') }}</button><button (click)="rotateConfirm.set(false)">{{ t('cancel') }}</button></div> }
-          @if (overlayUrl()) { <label for="duel-link">{{ t('privateLink') }}</label><input id="duel-link" type="text" readonly [value]="overlayUrl()" /><button (click)="copyLink()">{{ t('copy') }}</button>
-            <label for="duel-board-link">{{ t('leaderboardLink') }}</label><input id="duel-board-link" type="text" readonly [value]="leaderboardUrl()" /><button (click)="copyLink(true)">{{ t('copyLeaderboard') }}</button> }
-          <p class="hint">{{ t('connectionHint') }}</p>
-        </section>
-        <section class="lf-tile leaderboard"><div class="tile-head"><h2>{{ t('leaderboard') }}</h2><span>{{ t('leaderboardSize') }}</span></div><p class="hint">{{ t('leaderboardHint') }}</p>
-          @if (leaderboardError()) { <p class="error" role="status">{{ t('leaderboardError') }}</p><button (click)="loadLeaderboard()">{{ t('retry') }}</button> }
-          @if (leaderboard(); as board) { <app-duel-leaderboard [board]="board" [locale]="language.currentLanguage()" /> }
-        </section>
-        <section class="lf-tile how"><h2>{{ t('how') }}</h2><ol><li>{{ t('stepChallenge') }} <code>!duel &#64;viewer</code></li><li>{{ t('stepAccept') }} <code>!duel accept</code></li><li>{{ t('stepWinner') }}</li></ol><p>{{ t('stepStreamer') }} <code>!duel &#64;{{ streamer }}</code></p><p>{{ t('fallback') }}</p>
-          @if (current.run?.timeoutError) { <p class="error" role="status">{{ t('timeoutFailed') }}</p> }
-          @if (current.run?.announcementError) { <p class="error" role="status">{{ t('announcementFailed') }}</p> }
-        </section>
+      <div class="head-chips" data-testid="duel-chips">
+        @if (!current.settings.enabled) { <span class="chip">{{ t('chip.off') }}</span> }
+        @else if (current.connected) { <span class="chip on-air"><span class="dot on"></span>{{ t('chip.obs') }}</span> }
+        @else { <span class="chip warn">{{ t('chip.chat') }}</span> }
+        <span class="chip" [class.gold]="savedCustom()" data-testid="rules-chip">{{ t(savedCustom() ? 'chip.rulesCustom' : 'chip.rulesDefault') }}</span>
+        <span class="chip" [class.warn]="boardStatus() === 'paused'" data-testid="board-chip">{{ t('chip.board.' + boardStatus()) }}</span>
+      </div>
+    }
+  </header>
+  @if (!premium()) { <section class="lf-tile"><h2>{{ t('premiumRequired') }}</h2><button class="primary" (click)="promptUpgrade()">{{ t('upgrade') }}</button></section> }
+  @else if (loading()) { <section class="lf-tile" role="status">{{ t('loading') }}</section> }
+  @else {
+    @if (error()) { <div class="message error" role="alert"><span>{{ error() }}</span><button (click)="reload()" [disabled]="busy()">{{ t('reload') }}</button></div> }
+    @if (notice()) { <p class="notice" role="status">{{ notice() }}</p> }
+    @if (state(); as current) {
+      <div class="duel-grid">
+        <div class="col main">
+          <section class="lf-tile preview">
+            <div class="tile-head"><h2>{{ t('preview') }}</h2>@if (previewRules() && started()) { <span class="chip gold">{{ t('previewCustom') }}</span> } @else { <span class="muted-note">{{ t('surprise') }}</span> }</div>
+            <app-duel-arena [elapsed]="elapsed()" [started]="started()" [battle]="battle()" [locale]="language.currentLanguage()" [record]="previewRecord()" />
+            <div class="preview-tools"><button class="primary" (click)="preview()">{{ t(started()?'replay':'play') }} ▶</button><button (click)="preview(true)">✦ {{ t('previewUltimate') }}</button><label class="streamer-toggle"><input type="checkbox" [checked]="streamerFight()" (change)="streamerFight.set($any($event.target).checked)" /> {{ t('streamerFight') }}</label><p>{{ t(customDraft() ? 'previewHintCustom' : 'previewHint') }}</p></div>
+          </section>
+
+          <form class="lf-tile settings" [formGroup]="form" (ngSubmit)="save()" data-testid="duel-settings">
+            <h2>{{ t('settings') }}</h2>
+            <fieldset [disabled]="busy() || uncertainSave()">
+              <label class="switch"><span>{{ t('enabled') }}<small>{{ t('enabledHint') }}</small></span><input type="checkbox" formControlName="enabled" /></label>
+              <label class="switch"><span>{{ t('timeout') }}<small>{{ t('timeoutHint') }}</small></span><input type="checkbox" formControlName="timeoutEnabled" /></label>
+              <div class="field-row">
+                <div class="field"><label for="duel-duration">{{ t('duration') }}</label><input id="duel-duration" type="number" min="1" max="1209600" step="1" formControlName="timeoutSeconds" [readOnly]="!form.controls.timeoutEnabled.value" aria-describedby="duration-help" /><small id="duration-help">{{ t('durationHint') }}</small>
+                  @if (form.controls.timeoutSeconds.invalid && form.controls.timeoutSeconds.touched) { <p class="error" role="alert">{{ t('durationError') }}</p> }</div>
+                <div class="field"><label for="duel-language">{{ t('language') }}</label><select id="duel-language" formControlName="language"><option value="en">English</option><option value="es">Español</option></select></div>
+              </div>
+
+              <h3>{{ t('tracking.title') }}</h3>
+              <label class="switch"><span>{{ t('tracking.leaderboard') }}<small>{{ t('tracking.leaderboardHint') }}</small></span><input type="checkbox" formControlName="leaderboard" data-testid="leaderboard-switch" /></label>
+              <label class="switch"><span>{{ t('tracking.rivalries') }}<small>{{ t('tracking.rivalriesHint') }}</small></span><input type="checkbox" formControlName="rivalries" data-testid="rivalries-switch" /></label>
+              @if (customDraft() && (draft().leaderboard || draft().rivalries)) {
+                <div class="callout warn" role="status" data-testid="tracking-paused"><app-lf-icon name="pause" /><div><strong>{{ t('tracking.pausedTitle') }}</strong><p>{{ t('tracking.pausedBody') }}</p><button type="button" (click)="resetRules()">{{ t('rules.reset') }}</button></div></div>
+              } @else if (!draft().leaderboard && !draft().rivalries) {
+                <p class="hint">{{ t('tracking.bothOff') }}</p>
+              } @else {
+                <p class="hint">{{ t('tracking.onlyOverlay') }}</p>
+              }
+
+              <details class="rules" data-testid="battle-rules" [open]="rulesOpen()" (toggle)="rulesOpen.set($any($event.target).open)">
+                <summary><span><strong>{{ t('rules.title') }}</strong><small>{{ t('rules.summary') }}</small></span>
+                  @if (customDraft()) { <span class="chip gold">{{ t('rules.changedCount', {n: changed().length}) }}</span> } @else { <span class="chip ok">{{ t('rules.balanced') }}</span> }
+                  <app-lf-icon name="chevron-down" class="chev" /></summary>
+                <div class="callout caution" data-testid="rules-warning"><app-lf-icon name="alert" /><div><strong>{{ t('rules.warningTitle') }}</strong><p>{{ t('rules.warningBody') }}</p></div></div>
+
+                <section class="balance" [class.custom]="customDraft()" aria-live="polite" data-testid="balance-check">
+                  <div class="balance-head"><strong>{{ t('balance.title') }}</strong><small>{{ t('balance.hint') }}</small></div>
+                  <div class="balance-stats">
+                    <div class="stat"><small>{{ t('balance.viewers') }}</small><b data-testid="balance-viewers">50 / 50</b><span>{{ t('balance.viewersNote') }}</span></div>
+                    <div class="stat" [class.drift]="drift('streamer')"><small>{{ t('balance.streamer') }}</small><b data-testid="balance-streamer">{{ percent(balance().streamerWin) }}</b><span>{{ t('balance.default', {value: percent(defaultBalance.streamerWin)}) }}</span></div>
+                    <div class="stat" [class.drift]="drift('length')"><small>{{ t('balance.length') }}</small><b data-testid="balance-length">{{ t('balance.seconds', {a: seconds(balance().typical[0]), b: seconds(balance().typical[1])}) }}</b><span>{{ t('balance.default', {value: t('balance.seconds', {a: seconds(defaultBalance.typical[0]), b: seconds(defaultBalance.typical[1])})}) }}</span></div>
+                  </div>
+                </section>
+
+                <div formGroupName="rules">
+                  @for (group of groups; track group.id) {
+                    <fieldset class="rule-group"><legend>{{ t('rules.group.' + group.id) }}</legend><div class="rule-list">
+                      @for (spec of group.rules; track spec.key) {
+                        <div class="rule" [class.changed]="value(spec.key) !== defaults[spec.key]">
+                          <label [for]="'rule-' + spec.key"><span>{{ t('rules.' + spec.key + '.label') }}</span><small>{{ t('rules.' + spec.key + '.hint') }}</small></label>
+                          <output [for]="'rule-' + spec.key">{{ format(spec, value(spec.key)) }}</output>
+                          <input class="lf-range" type="range" [id]="'rule-' + spec.key" [formControlName]="spec.key" [min]="spec.min" [max]="spec.max" [step]="spec.step" [style.--pct]="pct(spec, value(spec.key))" [attr.aria-valuetext]="format(spec, value(spec.key))" />
+                          @if (value(spec.key) !== defaults[spec.key]) { <small class="default"><span class="dot-changed" aria-hidden="true"></span>{{ t('rules.defaultValue', {value: format(spec, defaults[spec.key])}) }}</small> }
+                        </div>
+                      }
+                    </div></fieldset>
+                  }
+                  @if (form.controls.rules.hasError('healRange')) { <p class="error" role="alert">{{ t('rules.healRangeError') }}</p> }
+                </div>
+                <button type="button" class="reset" (click)="resetRules()" [disabled]="!customDraft()" data-testid="reset-rules"><app-lf-icon name="refresh" />{{ t('rules.reset') }}</button>
+              </details>
+            </fieldset>
+
+            <div class="lf-save-bar" [class.dirty]="dirty()" data-testid="save-bar">
+              @if (confirmPause()) {
+                <p class="save-status warn" role="alert">{{ t('rules.confirmPause') }}</p>
+                <div class="save-actions"><button type="button" (click)="confirmPause.set(false)">{{ t('cancel') }}</button><button class="primary" type="submit" [disabled]="busy()" data-testid="confirm-custom">{{ t('rules.confirmSave') }}</button></div>
+              } @else {
+                <p class="save-status" role="status">{{ t(dirty() ? 'unsaved' : 'allSaved') }}</p>
+                <div class="save-actions">@if (dirty()) { <button type="button" (click)="discard()" [disabled]="busy() || uncertainSave()">{{ t('discard') }}</button> }<button class="primary" type="submit" [disabled]="!dirty() || busy()">{{ t(busy()?'saving':'save') }}</button></div>
+              }
+            </div>
+          </form>
+        </div>
+
+        <div class="col side">
+          <section class="lf-tile connection" [class.offline]="current.settings.enabled && !current.connected"><div class="tile-head"><h2>{{ t('obs') }}</h2><span class="chip" [class.on-air]="current.connected"><span class="dot" [class.on]="current.connected"></span>{{ t(current.connected?'connected':'offline') }}</span></div><p>{{ t('obsHint') }}</p>
+            <div class="link-actions"><button (click)="createLink()" [disabled]="busy()">{{ t(overlayUrl()?'replaceLink':'createLink') }}</button></div>
+            @if (rotateConfirm()) { <div class="confirm" role="group" [attr.aria-label]="t('replaceLink')"><p>{{ t('replaceWarning') }}</p><button (click)="createLink()" [disabled]="busy()">{{ t('confirmReplace') }}</button><button (click)="rotateConfirm.set(false)">{{ t('cancel') }}</button></div> }
+            @if (overlayUrl()) {
+              <label for="duel-link">{{ t('privateLink') }}</label><div class="copy-row"><input id="duel-link" type="text" readonly [value]="overlayUrl()" /><button (click)="copyLink()" [attr.aria-label]="t('copy')"><app-lf-icon name="copy" /></button></div>
+              <label for="duel-board-link">{{ t('leaderboardLink') }}</label><div class="copy-row"><input id="duel-board-link" type="text" readonly [value]="leaderboardUrl()" /><button (click)="copyLink(true)" [attr.aria-label]="t('copyLeaderboard')"><app-lf-icon name="copy" /></button></div>
+            }
+            <p class="hint">{{ t('connectionHint') }}</p>
+          </section>
+
+          <section class="lf-tile leaderboard" [attr.data-status]="boardStatus()"><div class="tile-head"><h2>{{ t('leaderboard') }}</h2><span class="chip" [class.warn]="boardStatus() === 'paused'" [class.ok]="boardStatus() === 'live'">{{ t('chip.boardShort.' + boardStatus()) }}</span></div>
+            @switch (boardStatus()) {
+              @case ('paused') { <div class="callout warn" data-testid="board-paused"><app-lf-icon name="pause" /><div><strong>{{ t('boardPausedTitle') }}</strong><p>{{ t('boardPausedBody') }}</p></div></div> }
+              @case ('off') { <p class="hint" data-testid="board-off">{{ t('boardOffBody') }}</p> }
+              @default { <p class="hint">{{ t('leaderboardHint') }}</p> }
+            }
+            @if (leaderboardError()) { <p class="error" role="status">{{ t('leaderboardError') }}</p><button (click)="loadLeaderboard()">{{ t('retry') }}</button> }
+            @if (boardStatus() !== 'off') { @if (leaderboard(); as board) { <app-duel-leaderboard [class.dimmed]="boardStatus() === 'paused'" [board]="board" [locale]="language.currentLanguage()" /> } }
+          </section>
+
+          <section class="lf-tile how"><h2>{{ t('how') }}</h2><ol><li>{{ t('stepChallenge') }} <code>!duel &#64;viewer</code></li><li>{{ t('stepAccept') }} <code>!duel accept</code></li><li>{{ t('stepWinner') }}</li></ol><p>{{ t('stepStreamer') }} <code>!duel &#64;{{ streamer }}</code></p><p>{{ t('fallback') }}</p>
+            @if (current.run?.timeoutError) { <p class="error" role="status">{{ t('timeoutFailed') }}</p> }
+            @if (current.run?.announcementError) { <p class="error" role="status">{{ t('announcementFailed') }}</p> }
+          </section>
+        </div>
       </div>
     }
   }

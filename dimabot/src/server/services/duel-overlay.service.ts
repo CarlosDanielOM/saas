@@ -1,5 +1,6 @@
 import type { Server, Socket } from 'socket.io';
 import { authorizeDuelOverlay, DuelChannel, duelSnapshot, presenceKey, tokenHash } from '../../duel/service.js';
+import { leaderboardStatus, normalizeSettings } from '../../duel/model.js';
 import { duelLeaderboard } from '../../duel/stats.js';
 import { hasPremium } from '../../widgets/service.js';
 import { getDragonflyClient } from '../../utils/databases/dragonfly.database.js';
@@ -35,10 +36,12 @@ export function registerDuelOverlay(io: Server): void {
           for (const client of owned.sockets) {
             if (!doc || !premium || client.data.duelTokenHash !== doc.tokenHash) { client.disconnect(true); continue; }
             if (client.data.leaderboard) {
-              const key = `${doc.statsRevision ?? 0}:${doc.settings.enabled}:${doc.settings.language}`;
+              // Turning the leaderboard off or switching to custom rules hides the source.
+              const config = normalizeSettings(doc.settings), status = leaderboardStatus(config);
+              const key = `${doc.statsRevision ?? 0}:${config.enabled}:${config.language}:${status}`;
               if (client.data.leaderboardKey !== key) {
                 board ??= await duelLeaderboard(channel);
-                client.emit('duel-leaderboard', { ...board, enabled: doc.settings.enabled, language: doc.settings.language });
+                client.emit('duel-leaderboard', { ...board, enabled: config.enabled, language: config.language, status });
                 client.data.leaderboardKey = key;
               }
               continue;

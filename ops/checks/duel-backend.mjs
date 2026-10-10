@@ -38,18 +38,18 @@ async function wait(check,message,seconds=10){for(let n=0;n<seconds*20;n++){if(a
 async function config(patch){const s=await request('GET',root);return request('POST',root+'/configure',{...s.settings,...patch},200,'duel-owner',{'If-Match':String(s.revision),'Idempotency-Key':crypto.randomUUID()});}
 // Turn-based battle invariants: alternate turns unless an extra turn was rolled,
 // damage within the move's range, and the first fighter to reach 0 HP loses.
-function checkBattle(run){
- const hp={left:100,right:100},heals={left:0,right:0};assert(run.turns.length>0);assert.notEqual(run.fighters.left,run.fighters.right);
+function checkBattle(run,rules=domain.DEFAULT_RULES){
+ const max=rules.hp,hp={left:max,right:max},heals={left:0,right:0};if(run.maxHp!==undefined){assert.equal(run.maxHp,max);assert.equal(run.healCharges,rules.healCharges);}assert(run.turns.length>0);assert.notEqual(run.fighters.left,run.fighters.right);
  run.turns.forEach((t,i)=>{if(t.move==='ultimate'){assert.equal(i,run.turns.length-1,'an ultimate ends the fight');assert(i>=domain.ULTIMATE.minTurn,'no ultimate in the opening turns');assert.equal(t.hitAt-t.at,domain.ULTIMATE.windup);assert.equal(t.defended,false);const d=t.attacker==='left'?'right':'left';assert(hp[d]>0);assert.equal(t.damage,hp[d],'an ultimate is a one-shot');hp[d]=0;return;}
   const spec=t.move==='heal'?domain.HEAL:domain.MOVES[t.move];assert(spec,'known move');assert.equal(t.hitAt-t.at,spec.windup);
   if(i){const prev=run.turns[i-1];assert.equal(t.attacker===prev.attacker,t.bonus,'extra turn keeps the attacker');assert(t.at>=prev.at+(prev.move==='heal'?domain.HEAL:domain.MOVES[prev.move]).duration+(prev.comboHeal?domain.COMBO_HEAL.extra:0));}
   assert(hp.left>0&&hp.right>0,'no turns after a knockout');
-  if(t.move==='heal'){assert(hp[t.attacker]<=domain.HEAL.threshold,'only hurt fighters heal');assert(t.heal>=domain.HEAL.min&&t.heal<=domain.HEAL.max);assert(++heals[t.attacker]<=domain.HEAL.perFighter,'heal limit');assert.equal(t.damage,0);hp[t.attacker]=Math.min(100,hp[t.attacker]+t.heal);return;}
-  assert(t.raw>=spec.min&&t.raw<=spec.max,'damage range');const hit=t.raw*(t.crit?2:1);
+  if(t.move==='heal'){assert(hp[t.attacker]<=Math.round(max*domain.HEAL.threshold),'only hurt fighters heal');assert(t.heal>=Math.min(rules.healMin,max-hp[t.attacker])&&t.heal<=rules.healMax);assert(++heals[t.attacker]<=rules.healCharges,'heal limit');assert.equal(t.damage,0);hp[t.attacker]=Math.min(max,hp[t.attacker]+t.heal);return;}
+  assert(t.raw>=Math.max(1,Math.round(spec.min*rules.damage/100))&&t.raw<=Math.round(spec.max*rules.damage/100),'damage range');const hit=t.raw*(t.crit?2:1);
   if(t.defended&&t.move==='special')assert.equal(t.damage,hit,'specials shatter the defense at full damage');else if(t.defended){if(t.move==='normal'){assert.equal(t.damage,0);assert.equal(t.crit,false,'a blocked crit is just a block');}else assert.equal(t.damage,Math.round(hit*domain.HEAVY_DEFENDED_RATIO),'heavy -80%');}else assert.equal(t.damage,hit,'crit doubles damage');
   const defender=t.attacker==='left'?'right':'left';hp[defender]=Math.max(0,hp[defender]-t.damage);
-  if(t.comboHeal){assert(t.defended&&t.move!=='special','only blocked normal/heavy attacks chain a heal');assert(hp[defender]>0&&t.comboHeal<=domain.HEAL.max&&hp[defender]+t.comboHeal<=100);assert(++heals[defender]<=domain.HEAL.perFighter,'combo heals use charges');hp[defender]+=t.comboHeal;}});
- const loser=run.winner==='left'?'right':'left';assert.equal(hp[loser],0);assert(hp[run.winner]>0);assert.equal(run.turns.at(-1).attacker,run.winner);assert.equal(domain.remainingHp(run.turns,run.winner),hp[run.winner]);
+  if(t.comboHeal){assert(t.defended&&t.move!=='special','only blocked normal/heavy attacks chain a heal');assert(hp[defender]>0&&t.comboHeal<=rules.healMax&&hp[defender]+t.comboHeal<=max);assert(++heals[defender]<=rules.healCharges,'combo heals use charges');hp[defender]+=t.comboHeal;}});
+ const loser=run.winner==='left'?'right':'left';assert.equal(hp[loser],0);assert(hp[run.winner]>0);assert.equal(run.turns.at(-1).attacker,run.winner);assert.equal(domain.remainingHp(run.turns,run.winner,max),hp[run.winner]);
  assert.equal(run.endsAt-run.startedAt,run.turns.at(-1).hitAt+domain.KNOCKOUT_MS);
 }
 const once=()=>execFileSync('node',['/app/dist/workers/duel.worker.js','--once'],{encoding:'utf8'});
@@ -138,7 +138,7 @@ const enragedBattles=Array.from({length:2000},()=>domain.simulateBattle(undefine
 const streamerUltimates=enragedBattles.filter(b=>b.turns.at(-1).move==='ultimate'&&b.turns.at(-1).attacker==='right').length/2000;assert(streamerUltimates>.1&&streamerUltimates<.26,'the streamer lands an ultimate in roughly 1 of 6 fights: '+streamerUltimates);
 let ultimatePhrase;for(let i=0;i<3000&&!ultimatePhrase;i++)ultimatePhrase=domain.createRun({id:'u',challenger:'alice',opponent:'bob',expiresAt:Date.now(),enraged:'right'},domain.defaultSettings(),false,Date.now()).phrases.find(p=>/^ULTIMATE!/.test(p.text));assert(ultimatePhrase,'chat narrates ultimates');
 assert(enragedWins>.75&&enragedWins<.9,'the enraged streamer usually wins, but not always: '+enragedWins);
-const runs=Array.from({length:2000},()=>domain.createRun({id:'test',challenger:'alice',opponent:'bob',expiresAt:Date.now()},domain.defaultSettings(),true,Date.now()));runs.forEach(checkBattle);
+const runs=Array.from({length:2000},()=>domain.createRun({id:'test',challenger:'alice',opponent:'bob',expiresAt:Date.now()},domain.defaultSettings(),true,Date.now()));runs.forEach(r=>checkBattle(r));
 const normalUltimates=runs.filter(r=>r.turns.at(-1).move==='ultimate').length/runs.length;assert(normalUltimates>.003&&normalUltimates<.06,'ultimates are super rare for everyone else: '+normalUltimates);
 assert.deepEqual([...new Set(runs.map(r=>r.winner))].sort(),['left','right']);const share=runs.filter(r=>r.winner==='left').length/runs.length;assert(share>.43&&share<.57,'no side is favoured: '+share);
 const moves=runs.flatMap(r=>r.turns.map(t=>t.move)),count=m=>moves.filter(x=>x===m).length;assert(count('normal')>count('heavy')&&count('heavy')>count('special')&&count('special')>0,'normal > heavy > special');
@@ -159,6 +159,33 @@ await duelCommand(channel,'alice',false,'@bob');await duelCommand(channel,'bob',
 await wait(()=>source3.packets.some(p=>p.includes(run.id)&&p.includes('"record"')),'overlay receives the record');source3.close();
 const boards=board.packets.filter(p=>p.includes('duel-leaderboard')).length;await finish();await wait(()=>board.packets.filter(p=>p.includes('duel-leaderboard')).length>boards,'leaderboard updates after a tracked fight');
 assert.equal(await stats.DuelResult.countDocuments({channel}),2);const latest=JSON.parse(board.packets.filter(p=>p.includes('duel-leaderboard')).at(-1).split(',').slice(1).join(','))[1];assert.equal(latest.duels,2);assert.equal(latest.enabled,true);board.close();
+// Custom battle rules: validated, kept when an older page leaves them out, used by every
+// fight (fuzzed across the allowed ranges), and they pause all tracking: no result, no
+// head-to-head, leaderboard 'paused' and its source told to hide.
+const ruleRoll=(min,max,step)=>min+step*Math.floor(Math.random()*((max-min)/step+1));
+for(let i=0;i<400;i++){const rules=Object.fromEntries(Object.entries(domain.RULE_LIMITS).map(([k,[min,max,step]])=>[k,ruleRoll(min,max,step)]));if(rules.healMin>rules.healMax)[rules.healMin,rules.healMax]=[rules.healMax,rules.healMin];if(i<4)Object.assign(rules,{hp:300,damage:50,defenseChance:50,healChance:60,healCharges:10,healMin:100,healMax:100,comboHealChance:100});
+ for(const enraged of [null,'right']){const run=domain.createRun({id:'fuzz',challenger:'alice',opponent:'bob',expiresAt:Date.now(),enraged},{...domain.defaultSettings(),rules},true,Date.now());checkBattle(run,rules);assert.equal(run.tracked,false,'custom rules are never tracked');assert(run.endsAt-run.startedAt<600000,'every fight still ends');}}
+assert.equal(domain.createRun({id:'d',challenger:'a',opponent:'b',expiresAt:Date.now()},domain.defaultSettings(),true,Date.now()).tracked,true);assert.equal(domain.createRun({id:'d',challenger:'a',opponent:'b',expiresAt:Date.now()},domain.defaultSettings(),false,Date.now()).tracked,false,'chat duels are never tracked');
+let duelLive=await request('GET',root);assert.equal(duelLive.settings.leaderboard,true);assert.equal(duelLive.settings.rivalries,true);assert.deepEqual(duelLive.settings.rules,domain.DEFAULT_RULES);
+const badConfig=async patch=>request('POST',root+'/configure',{...duelLive.settings,...patch},400,'duel-owner',{'If-Match':String(duelLive.revision),'Idempotency-Key':crypto.randomUUID()});
+for(const rules of [{hp:55},{hp:40},{damage:250},{healMin:50,healMax:30},{luck:5},{critChance:'10'}])await badConfig({rules:{...domain.DEFAULT_RULES,...rules}});await badConfig({leaderboard:'yes'});
+const customRules={...domain.DEFAULT_RULES,hp:200,streamerBoost:300};await config({rules:customRules});
+duelLive=await request('GET',root);const {rules:_r,leaderboard:_l,rivalries:_v,...olderPage}=duelLive.settings;await request('POST',root+'/configure',{...olderPage,language:'es'},200,'duel-owner',{'If-Match':String(duelLive.revision),'Idempotency-Key':crypto.randomUUID()});
+duelLive=await request('GET',root);assert.deepEqual(duelLive.settings.rules,customRules,'an older page never resets the rules');assert.equal(duelLive.settings.leaderboard,true);await config({language:'en'});
+assert.equal((await request('GET',root+'/leaderboard')).status,'paused');
+const pausedBoard=connect(replacement,false,'leaderboard');await wait(()=>pausedBoard.packets.some(p=>p.includes('duel-leaderboard')&&p.includes('"status":"paused"')),'leaderboard source told it is paused');
+const source4=connect(replacement);await wait(async()=>await svc.overlayActive(await svc.loadDuel(channel)),'source for a custom-rules fight');
+const resultsBefore=await stats.DuelResult.countDocuments({channel}),statsBefore=(await svc.loadDuel(channel)).statsRevision;
+await duelCommand(channel,'alice',false,'@bob');await duelCommand(channel,'bob',false,'accept');run=(await svc.loadDuel(channel)).run;assert.equal(run.mode,'overlay');assert.equal(run.tracked,false);assert.equal(run.record??null,null,'no head-to-head under custom rules');checkBattle(run,customRules);
+const customSnapshot=await request('GET',root);assert.equal(customSnapshot.run.maxHp,200);assert.equal(customSnapshot.run.tracked,false);
+await finish();assert.equal(await stats.DuelResult.countDocuments({channel}),resultsBefore,'custom-rule fights are never recorded');assert.equal((await svc.loadDuel(channel)).statsRevision,statsBefore);
+// Rivalries off: still ranked, but no head-to-head on screen. Leaderboard off: status 'off'.
+await config({rules:domain.DEFAULT_RULES,rivalries:false});await wait(()=>pausedBoard.packets.some(p=>p.includes('"status":"live"')),'source resumes with the default rules');
+await duelCommand(channel,'alice',false,'@bob');await duelCommand(channel,'bob',false,'accept');run=(await svc.loadDuel(channel)).run;assert.equal(run.tracked,true);assert.equal(run.record??null,null,'rivalries off hides the head-to-head');
+await finish();assert.equal(await stats.DuelResult.countDocuments({channel}),resultsBefore+1,'the leaderboard still counts it');
+await config({rivalries:true,leaderboard:false});assert.equal((await request('GET',root+'/leaderboard')).status,'off');await wait(()=>pausedBoard.packets.some(p=>p.includes('"status":"off"')),'source told the leaderboard is off');
+await config({leaderboard:false,rivalries:false});await duelCommand(channel,'alice',false,'@bob');await duelCommand(channel,'bob',false,'accept');run=(await svc.loadDuel(channel)).run;assert.equal(run.tracked,false,'both off: nothing is tracked');await finish();assert.equal(await stats.DuelResult.countDocuments({channel}),resultsBefore+1);
+await config({leaderboard:true,rivalries:true});assert.equal((await request('GET',root+'/leaderboard')).status,'live');source4.close();pausedBoard.close();
 // K/D ranking: wins ÷ losses (wins while unbeaten), ties to more wins; the streamer is tracked but not ranked; top 10.
 await stats.DuelResult.deleteMany({channel});const seed=[];const add=(winner,loser,n,streamer=null)=>{for(let i=0;i<n;i++)seed.push({_id:crypto.randomUUID(),channel,winner,loser,streamer,at:Date.now()});};
 add('grinder','pad',100);add('pad','grinder',200);add('sharp','x',6);add('x','sharp',2);add('perfect','y',2);add('duelfixture','z',9,'duelfixture');add('z','duelfixture',1,'duelfixture');for(let i=1;i<=5;i++)add('rookie'+i,'y',1);add('elsewhere','sharp',50);for(const row of seed.slice(-50))row.channel='991899';await stats.DuelResult.insertMany(seed);
@@ -167,4 +194,4 @@ assert.deepEqual(ranking.players[0],{login:'sharp',kills:6,deaths:2,kd:3});asser
 assert.equal(ranking.ranked,12,'the streamer is not ranked');assert.equal(ranking.duels,325,'other channels never count');assert(!ranking.players.some(p=>p.login==='duelfixture'));
 await request('GET',root+'/leaderboard',undefined,401,'');await request('GET','/widgets/'+other+'/duel/leaderboard',undefined,403,'duel-other');await stats.DuelResult.deleteMany({});
 if(io)await new Promise(resolve=>io.close(resolve));
-await redis.quit();await (await getMongoDBConnection('duel-test-close')).disconnect();console.log('PASS duel '+process.env.SAAS_TARGET+': overlay/chat, deadlines, settings, tokens, concurrency, timeout safety and durable moderator restoration, overlay-only result tracking, head-to-head, K/D leaderboard and leaderboard sources');process.exit(0);
+await redis.quit();await (await getMongoDBConnection('duel-test-close')).disconnect();console.log('PASS duel '+process.env.SAAS_TARGET+': overlay/chat, deadlines, settings, tokens, concurrency, timeout safety and durable moderator restoration, overlay-only result tracking, head-to-head, K/D leaderboard and leaderboard sources, custom battle rules (validation, older pages, fuzzed fights, tracking pause, separate leaderboard/rivalry switches)');process.exit(0);

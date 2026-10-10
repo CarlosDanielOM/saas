@@ -6820,6 +6820,27 @@
       "oddsShort": "Slots {{slots}} · Weight {{weight}}",
       "tuneAria": "Slots and weight: {{name}}, {{pct}} chance",
       "save": "Save roulette"
+    },
+    "hub": {
+      "count": "{{n}} widgets",
+      "live": "{{n}} of {{total}} live on stream",
+      "duelObs": "In OBS",
+      "duelChat": "Chat only",
+      "off": "Off",
+      "duelTagline": "Viewers challenge each other with !duel and fight it out on stream. The RNG picks the winner.",
+      "statusError": "Could not load the status. Open the widget to check it.",
+      "duels": "Duels fought",
+      "topFighter": "Top fighter",
+      "boardOff": "Leaderboard off",
+      "noFights": "No ranked fights yet",
+      "rules": "Battle rules",
+      "rulesCustom": "Custom",
+      "rulesDefault": "Balanced",
+      "openDuel": "Open arena",
+      "hidden": "Hidden",
+      "wins": "{{wins}} / {{target}} wins",
+      "dbdHint": "Runs from its page",
+      "openDbd": "Open widget"
     }
   },
   "errors": {
@@ -7064,11 +7085,11 @@
     "announcementFailed": "A chat message for the last duel could not be sent. Check the bot’s chat permissions.",
     "streamerFight": "Fight the streamer",
     "enragedChallenge": "The enraged streamer challenges you!",
-    "stepStreamer": "Viewers can also fight you. It starts instantly, you fight enraged (double heavy/special, crit and shield chances, about 5 in 6 wins) and you are never timed out:",
+    "stepStreamer": "Viewers can also fight you. It starts instantly, you fight enraged (with the default rules: double heavy/special, crit and shield chances, about 5 in 6 wins) and you are never timed out:",
     "previewUltimate": "Preview an ultimate",
     "leaderboard": "K/D leaderboard",
     "leaderboardSize": "Vertical OBS source · 500 × 900",
-    "leaderboardHint": "Ranked by K/D (wins ÷ losses), so fighting a lot is never a penalty. Only duels shown on the OBS overlay count; chat-only duels aren't tracked. The enraged streamer isn't ranked.",
+    "leaderboardHint": "Ranked by K/D (wins ÷ losses), so fighting a lot is never a penalty. Only overlay duels under the default rules count; chat-only duels aren't tracked. The enraged streamer isn't ranked.",
     "leaderboardLink": "Leaderboard link (vertical, 500 × 900)",
     "copyLeaderboard": "Copy leaderboard link",
     "leaderboardCopied": "Leaderboard link copied.",
@@ -7082,6 +7103,131 @@
       "footer": "{{n}} ranked fighters · {{d}} duels",
       "empty": "No duels yet",
       "emptyHint": "Type !duel @someone to get on the board"
-    }
+    },
+    "chip": {
+      "off": "!duel off",
+      "obs": "Playing in OBS",
+      "chat": "Chat only: OBS offline",
+      "rulesCustom": "Custom battle rules",
+      "rulesDefault": "Balanced rules",
+      "board": {
+        "live": "Leaderboard on",
+        "paused": "Leaderboard paused",
+        "off": "Leaderboard off"
+      },
+      "boardShort": {
+        "live": "Counting",
+        "paused": "Paused",
+        "off": "Off"
+      }
+    },
+    "previewCustom": "Your custom rules",
+    "previewHintCustom": "Previews use your custom rules, saved or not. Local only: no chat messages or timeouts.",
+    "tracking": {
+      "title": "Leaderboard & rivalries",
+      "leaderboard": "K/D leaderboard",
+      "leaderboardHint": "Ranks viewers by wins ÷ losses in its own OBS source.",
+      "rivalries": "Rivalry records",
+      "rivalriesHint": "Tracks who beat whom and shows each pair's head-to-head score when they meet again.",
+      "pausedTitle": "Paused while custom rules are on",
+      "pausedBody": "Fights under custom rules aren't counted, so rankings and rivalries stay fair. The leaderboard source hides itself. Go back to the default rules to resume; nothing is deleted.",
+      "bothOff": "Nothing is tracked: fights aren't saved and the leaderboard source stays hidden.",
+      "onlyOverlay": "Only fights shown on the OBS overlay count. Chat-only duels are never tracked."
+    },
+    "rules": {
+      "title": "Battle rules",
+      "summary": "Health, damage, heals, shields and the streamer's rage.",
+      "changedCount": "{{n}} changed",
+      "balanced": "Balanced",
+      "warningTitle": "The default rules are already balanced",
+      "warningBody": "They were tuned over thousands of simulated fights: viewer duels are a fair 50/50, the enraged streamer wins about 5 in 6, and fights stay fast. Changing anything can break that balance: fights can drag on, end in one hit, or tilt the odds. While custom rules are on, the leaderboard and rivalries pause.",
+      "group": {
+        "fighters": "Fighters",
+        "attacks": "Attacks",
+        "defense": "Shields & heals",
+        "streamer": "Streamer & ultimates"
+      },
+      "defaultValue": "Default: {{value}}",
+      "healRangeError": "The smallest heal can't be bigger than the largest heal.",
+      "reset": "Reset to balanced rules",
+      "confirmPause": "Custom rules pause the leaderboard and rivalries until you switch back. Save anyway?",
+      "confirmSave": "Save custom rules",
+      "hp": {
+        "label": "Fighter health",
+        "hint": "HP each fighter starts with. More HP means longer fights."
+      },
+      "damage": {
+        "label": "Damage",
+        "hint": "Scales every attack. Lower is slower, higher ends fights fast."
+      },
+      "extraTurnChance": {
+        "label": "Stolen turns",
+        "hint": "Chance to strike again right away instead of passing the turn."
+      },
+      "heavyChance": {
+        "label": "Heavy attacks",
+        "hint": "Share of attacks that are heavy blows (18–26 base damage)."
+      },
+      "specialChance": {
+        "label": "Specials",
+        "hint": "Share of attacks that are specials (30–40 base damage, they break shields)."
+      },
+      "critChance": {
+        "label": "Critical hits",
+        "hint": "Chance for any hit to deal double damage."
+      },
+      "defenseChance": {
+        "label": "Shields",
+        "hint": "Chance the defender blocks: normals do nothing, heavies lose 80%."
+      },
+      "healChance": {
+        "label": "Heals",
+        "hint": "Chance a hurt fighter (60% HP or less) heals instead of attacking."
+      },
+      "healCharges": {
+        "label": "Heal charges",
+        "hint": "How many heals each fighter gets per fight."
+      },
+      "healMin": {
+        "label": "Smallest heal",
+        "hint": "Least HP a heal can restore."
+      },
+      "healMax": {
+        "label": "Largest heal",
+        "hint": "Most HP a heal can restore."
+      },
+      "comboHealChance": {
+        "label": "Block-and-heal combo",
+        "hint": "Chance a block chains into a heal (uses a charge)."
+      },
+      "streamerBoost": {
+        "label": "Streamer rage",
+        "hint": "Multiplies your heavy, special, crit and shield chances when viewers fight you."
+      },
+      "streamerUltimate": {
+        "label": "Your ultimate",
+        "hint": "Chance per turn that you, enraged, win instantly with an ultimate."
+      },
+      "ultimate": {
+        "label": "Viewer ultimates",
+        "hint": "Chance per turn that a viewer wins instantly with an ultimate."
+      }
+    },
+    "balance": {
+      "title": "Balance check",
+      "hint": "From 1,500 simulated fights with these rules",
+      "viewers": "Viewer vs viewer",
+      "viewersNote": "Always even: both sides use the same rules",
+      "streamer": "Enraged streamer wins",
+      "default": "Default: {{value}}",
+      "length": "Most fights last",
+      "seconds": "{{a}}–{{b}} s"
+    },
+    "unsaved": "Unsaved changes",
+    "allSaved": "All changes saved",
+    "discard": "Discard",
+    "boardPausedTitle": "Paused: custom battle rules are on",
+    "boardPausedBody": "New fights don't count and the OBS source is hidden. The rankings below are kept and resume when you go back to the default rules.",
+    "boardOffBody": "The leaderboard is off, so its OBS source stays hidden. Turn it on in Duel settings."
   }
 }

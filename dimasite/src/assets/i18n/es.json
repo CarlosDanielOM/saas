@@ -6820,6 +6820,27 @@
       "oddsShort": "Espacios {{slots}} · Peso {{weight}}",
       "tuneAria": "Espacios y peso: {{name}}, {{pct}} de probabilidad",
       "save": "Guardar ruleta"
+    },
+    "hub": {
+      "count": "{{n}} widgets",
+      "live": "{{n}} de {{total}} en directo",
+      "duelObs": "En OBS",
+      "duelChat": "Solo chat",
+      "off": "Apagado",
+      "duelTagline": "Tus espectadores se retan con !duel y pelean en directo. El azar elige al ganador.",
+      "statusError": "No se pudo cargar el estado. Abre el widget para revisarlo.",
+      "duels": "Duelos",
+      "topFighter": "Mejor luchador",
+      "boardOff": "Clasificación apagada",
+      "noFights": "Aún no hay combates clasificados",
+      "rules": "Reglas",
+      "rulesCustom": "Personalizadas",
+      "rulesDefault": "Equilibradas",
+      "openDuel": "Abrir arena",
+      "hidden": "Oculto",
+      "wins": "{{wins}} / {{target}} victorias",
+      "dbdHint": "Se maneja desde su página",
+      "openDbd": "Abrir widget"
     }
   },
   "errors": {
@@ -7064,11 +7085,11 @@
     "announcementFailed": "No se pudo enviar un mensaje del último duelo. Revisa los permisos del bot para el chat.",
     "streamerFight": "Pelear contra el streamer",
     "enragedChallenge": "¡El streamer enfurecido te desafía!",
-    "stepStreamer": "Tus espectadores también pueden pelear contra ti. Empieza al instante, peleas enfurecido (doble probabilidad de golpe fuerte/especial, crítico y escudo, unas 5 de cada 6 victorias) y nunca recibes timeout:",
+    "stepStreamer": "Tus espectadores también pueden pelear contra ti. Empieza al instante, peleas enfurecido (con las reglas por defecto: doble probabilidad de golpe fuerte/especial, crítico y escudo, unas 5 de cada 6 victorias) y nunca recibes timeout:",
     "previewUltimate": "Ver una definitiva",
     "leaderboard": "Clasificación K/D",
     "leaderboardSize": "Fuente vertical de OBS · 500 × 900",
-    "leaderboardHint": "Clasifica por K/D (victorias ÷ derrotas), así pelear mucho nunca penaliza. Solo cuentan los duelos mostrados en el overlay de OBS; los duelos solo por chat no se registran. El streamer enfurecido no entra en la clasificación.",
+    "leaderboardHint": "Clasifica por K/D (victorias ÷ derrotas), así pelear mucho nunca penaliza. Solo cuentan los duelos del overlay con las reglas por defecto; los duelos solo por chat no se registran. El streamer enfurecido no entra en la clasificación.",
     "leaderboardLink": "Enlace de la clasificación (vertical, 500 × 900)",
     "copyLeaderboard": "Copiar enlace de la clasificación",
     "leaderboardCopied": "Enlace de la clasificación copiado.",
@@ -7082,6 +7103,131 @@
       "footer": "{{n}} luchadores clasificados · {{d}} duelos",
       "empty": "Aún no hay duelos",
       "emptyHint": "Escribe !duel @alguien para entrar en la clasificación"
-    }
+    },
+    "chip": {
+      "off": "!duel apagado",
+      "obs": "En OBS",
+      "chat": "Solo chat: OBS desconectado",
+      "rulesCustom": "Reglas personalizadas",
+      "rulesDefault": "Reglas equilibradas",
+      "board": {
+        "live": "Clasificación activa",
+        "paused": "Clasificación en pausa",
+        "off": "Clasificación apagada"
+      },
+      "boardShort": {
+        "live": "Contando",
+        "paused": "En pausa",
+        "off": "Apagada"
+      }
+    },
+    "previewCustom": "Tus reglas personalizadas",
+    "previewHintCustom": "La vista previa usa tus reglas personalizadas, guardadas o no. Solo local: sin mensajes ni timeouts.",
+    "tracking": {
+      "title": "Clasificación y rivalidades",
+      "leaderboard": "Clasificación K/D",
+      "leaderboardHint": "Ordena a los espectadores por victorias ÷ derrotas en su propia fuente de OBS.",
+      "rivalries": "Historial de rivalidades",
+      "rivalriesHint": "Registra quién ganó a quién y muestra el marcador de cada pareja cuando vuelven a enfrentarse.",
+      "pausedTitle": "En pausa mientras uses reglas personalizadas",
+      "pausedBody": "Los combates con reglas personalizadas no cuentan, así la clasificación y las rivalidades siguen siendo justas. La fuente de la clasificación se oculta. Vuelve a las reglas por defecto para reanudar; no se borra nada.",
+      "bothOff": "No se registra nada: los combates no se guardan y la fuente de la clasificación queda oculta.",
+      "onlyOverlay": "Solo cuentan los combates mostrados en el overlay de OBS. Los duelos solo por chat nunca se registran."
+    },
+    "rules": {
+      "title": "Reglas de combate",
+      "summary": "Vida, daño, curaciones, escudos y la furia del streamer.",
+      "changedCount": "{{n}} cambiadas",
+      "balanced": "Equilibradas",
+      "warningTitle": "Las reglas por defecto ya están equilibradas",
+      "warningBody": "Se ajustaron con miles de combates simulados: los duelos entre espectadores son un 50/50 justo, el streamer enfurecido gana unas 5 de cada 6 y los combates son rápidos. Cambiar cualquier cosa puede romper ese equilibrio: combates eternos, de un solo golpe o con las probabilidades inclinadas. Mientras uses reglas personalizadas, la clasificación y las rivalidades quedan en pausa.",
+      "group": {
+        "fighters": "Luchadores",
+        "attacks": "Ataques",
+        "defense": "Escudos y curaciones",
+        "streamer": "Streamer y definitivas"
+      },
+      "defaultValue": "Por defecto: {{value}}",
+      "healRangeError": "La curación mínima no puede ser mayor que la máxima.",
+      "reset": "Volver a las reglas equilibradas",
+      "confirmPause": "Las reglas personalizadas pausan la clasificación y las rivalidades hasta que vuelvas a las de por defecto. ¿Guardar igualmente?",
+      "confirmSave": "Guardar reglas personalizadas",
+      "hp": {
+        "label": "Vida de los luchadores",
+        "hint": "HP con los que empieza cada luchador. Más HP, combates más largos."
+      },
+      "damage": {
+        "label": "Daño",
+        "hint": "Escala todos los ataques. Menos es más lento, más termina los combates rápido."
+      },
+      "extraTurnChance": {
+        "label": "Turnos robados",
+        "hint": "Probabilidad de volver a atacar en vez de ceder el turno."
+      },
+      "heavyChance": {
+        "label": "Golpes fuertes",
+        "hint": "Parte de los ataques que son golpes fuertes (18–26 de daño base)."
+      },
+      "specialChance": {
+        "label": "Especiales",
+        "hint": "Parte de los ataques que son especiales (30–40 de daño base, rompen escudos)."
+      },
+      "critChance": {
+        "label": "Golpes críticos",
+        "hint": "Probabilidad de que un golpe haga el doble de daño."
+      },
+      "defenseChance": {
+        "label": "Escudos",
+        "hint": "Probabilidad de bloquear: los normales no hacen nada, los fuertes pierden el 80%."
+      },
+      "healChance": {
+        "label": "Curaciones",
+        "hint": "Probabilidad de que un luchador herido (60% de HP o menos) se cure en vez de atacar."
+      },
+      "healCharges": {
+        "label": "Cargas de curación",
+        "hint": "Cuántas curaciones tiene cada luchador por combate."
+      },
+      "healMin": {
+        "label": "Curación mínima",
+        "hint": "Lo mínimo que puede curar una curación."
+      },
+      "healMax": {
+        "label": "Curación máxima",
+        "hint": "Lo máximo que puede curar una curación."
+      },
+      "comboHealChance": {
+        "label": "Combo bloqueo y cura",
+        "hint": "Probabilidad de que un bloqueo encadene una curación (usa una carga)."
+      },
+      "streamerBoost": {
+        "label": "Furia del streamer",
+        "hint": "Multiplica tus probabilidades de golpe fuerte, especial, crítico y escudo cuando te retan."
+      },
+      "streamerUltimate": {
+        "label": "Tu definitiva",
+        "hint": "Probabilidad por turno de que, enfurecido, ganes al instante con una definitiva."
+      },
+      "ultimate": {
+        "label": "Definitivas de espectadores",
+        "hint": "Probabilidad por turno de que un espectador gane al instante con una definitiva."
+      }
+    },
+    "balance": {
+      "title": "Prueba de equilibrio",
+      "hint": "Con 1.500 combates simulados con estas reglas",
+      "viewers": "Espectador contra espectador",
+      "viewersNote": "Siempre parejo: ambos usan las mismas reglas",
+      "streamer": "Gana el streamer enfurecido",
+      "default": "Por defecto: {{value}}",
+      "length": "La mayoría dura",
+      "seconds": "{{a}}–{{b}} s"
+    },
+    "unsaved": "Cambios sin guardar",
+    "allSaved": "Todo guardado",
+    "discard": "Descartar",
+    "boardPausedTitle": "En pausa: hay reglas de combate personalizadas",
+    "boardPausedBody": "Los combates nuevos no cuentan y la fuente de OBS está oculta. La clasificación de abajo se conserva y se reanuda al volver a las reglas por defecto.",
+    "boardOffBody": "La clasificación está apagada, así que su fuente de OBS queda oculta. Actívala en los ajustes del duelo."
   }
 }

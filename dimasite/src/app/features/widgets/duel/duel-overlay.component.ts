@@ -19,7 +19,7 @@ export class DuelOverlayComponent {
   private offset=0;
   private readonly language=inject(LanguageService);
   // Runs accepted before turn-based battles carry only a winner.
-  readonly battle=computed<DuelBattle>(()=>{const run=this.state()?.run;if(!run)return legacyBattle('left');return run.fighters&&run.turns?.length?{fighters:run.fighters,turns:run.turns,winner:run.winner,duration:run.endsAt-run.startedAt,enraged:run.enraged??null}:legacyBattle(run.winner);});
+  readonly battle=computed<DuelBattle>(()=>{const run=this.state()?.run;if(!run)return legacyBattle('left');return run.fighters&&run.turns?.length?{fighters:run.fighters,turns:run.turns,winner:run.winner,duration:run.endsAt-run.startedAt,enraged:run.enraged??null,maxHp:run.maxHp??undefined,healCharges:run.healCharges??undefined}:legacyBattle(run.winner);});
   /** Seconds left to accept the challenge (challenges last 30 s). */
   readonly secondsLeft=computed(()=>{const challenge=this.state()?.challenge;return challenge?Math.max(0,Math.ceil((challenge.expiresAt-this.now()-this.offset)/1000)):0;});
   readonly elapsed=computed(()=>Math.max(0,Math.min(this.battle().duration,this.now()+this.offset-(this.state()?.run?.startedAt??0))));

@@ -2,7 +2,8 @@ import { ChangeDetectionStrategy, Component, computed, inject, input } from '@an
 import { LanguageService } from '../../../services/language.service';
 import { DuelFighterComponent } from './duel-fighter.component';
 import type { DuelRecord } from './duel-api.service';
-import { COMBO_HEAL, DuelBattle, DuelMove, DuelSide, DuelTurn, HEAL, MAX_HP, legacyBattle, otherSide, turnLength } from './duel-battle';
+import { COMBO_HEAL, DuelBattle, DuelMove, DuelSide, DuelTurn, MAX_HP, legacyBattle, otherSide, turnLength } from './duel-battle';
+import { DEFAULT_DUEL_RULES } from './duel-rules';
 type Phase = 'ready' | 'entrance' | 'countdown' | 'fight' | 'knockout' | 'winner';
 /** How long the damage number, sparks and screen shake stay after a hit lands. */
 const IMPACT_MS = 650;
@@ -54,22 +55,27 @@ export class DuelArenaComponent {
     return turn?.comboHeal && time >= at && time < at + COMBO_HEAL.extra + 200 ? turn : null;
   });
   readonly health = computed(() => {
-    const health = { left: MAX_HP, right: MAX_HP };
+    const max = this.maxHp(), health = { left: max, right: max };
     if (this.started()) for (const turn of this.battle().turns) {
       if (this.elapsed() < turn.hitAt) break;
-      if (turn.move === 'heal') health[turn.attacker] = Math.min(MAX_HP, health[turn.attacker] + (turn.heal ?? 0));
+      if (turn.move === 'heal') health[turn.attacker] = Math.min(max, health[turn.attacker] + (turn.heal ?? 0));
       else {
         const defender = otherSide(turn.attacker);
         health[defender] = Math.max(0, health[defender] - turn.damage);
-        if (turn.comboHeal && this.elapsed() >= turn.hitAt + COMBO_HEAL.delay) health[defender] = Math.min(MAX_HP, health[defender] + turn.comboHeal);
+        if (turn.comboHeal && this.elapsed() >= turn.hitAt + COMBO_HEAL.delay) health[defender] = Math.min(max, health[defender] + turn.comboHeal);
       }
     }
     return health;
   });
-  readonly charges = Array.from({ length: HEAL.perFighter }, (_, index) => index);
+  /** Custom battle rules change the HP pool and heal charges; older fights used 100 and 5. */
+  readonly maxHp = computed(() => this.battle().maxHp ?? MAX_HP);
+  readonly healCharges = computed(() => this.battle().healCharges ?? DEFAULT_DUEL_RULES.healCharges);
+  readonly charges = computed(() => Array.from({ length: this.healCharges() }, (_, index) => index));
+  /** Health as a share of the pool, for the bars. */
+  percent(side: DuelSide): number { return this.health()[side] / this.maxHp() * 100; }
   /** A heal charge is spent as soon as the fighter starts healing, or when its block chains into a heal. */
   readonly healsLeft = computed(() => {
-    const left = { left: HEAL.perFighter, right: HEAL.perFighter }, time = this.elapsed();
+    const charges = this.healCharges(), left = { left: charges, right: charges }, time = this.elapsed();
     if (this.started()) for (const turn of this.battle().turns) {
       if (turn.move === 'heal' && turn.at <= time) left[turn.attacker]--;
       if (turn.comboHeal && turn.hitAt <= time) left[otherSide(turn.attacker)]--;
@@ -115,7 +121,7 @@ export class DuelArenaComponent {
     const move = this.currentTurn()?.move ?? (this.health()[side] === 0 ? this.battle().turns.at(-1)?.move ?? 'normal' : 'normal');
     return move === 'heal' ? 'normal' : move;
   }
-  low(side: DuelSide): boolean { return this.started() && this.health()[side] > 0 && this.health()[side] <= 30; }
+  low(side: DuelSide): boolean { return this.started() && this.health()[side] > 0 && this.percent(side) <= 30; }
   attacking(side: DuelSide): boolean { return this.phase() === 'fight' && this.currentTurn()?.attacker === side; }
   target(turn: DuelTurn): DuelSide { return otherSide(turn.attacker); }
   /** Defended normal hits shake nothing; everything else shakes by move weight. */
