@@ -12,6 +12,8 @@ const schema = new Schema<DuelDocument>({ _id: String, revision: { type: Number,
 schema.index({ dueAt: 1 });
 export const DuelChannel = model<DuelDocument>('DuelWidget', schema);
 export const tokenHash = (value: string) => createHash('sha256').update(value).digest('hex');
+/** How long the challenged viewer has to accept. */
+export const CHALLENGE_MS = 30000;
 export const presenceKey = (channel: string) => `widgets:duel:${channel}:connected`;
 export function channelId(id: string): string { if (!/^[0-9]{1,30}$/.test(id)) fail('invalid', 'Invalid channel ID'); return id; }
 export async function loadDuel(id: string): Promise<DuelDocument> {
@@ -66,7 +68,7 @@ export async function challengeDuel(id: string, challenger: string, opponent: st
     const doc = await loadDuel(id), now = Date.now();
     if (doc.run && doc.run.completedAt === null || doc.challenge && doc.challenge.expiresAt > now) fail('busy', 'A duel is already waiting or fighting in this channel', 409);
     const overlay = await overlayActive(doc);
-    const challenge: DuelChallenge = { id: randomUUID(), challenger, opponent, expiresAt: now + 180000, enraged };
+    const challenge: DuelChallenge = { id: randomUUID(), challenger, opponent, expiresAt: now + CHALLENGE_MS, enraged };
     const saved = await DuelChannel.updateOne({ _id: id, revision: doc.revision }, { $set: { challenge, run: null, dueAt: challenge.expiresAt, leaseUntil: 0 }, $inc: { revision: 1 } });
     if (saved.modifiedCount) return overlay;
   }

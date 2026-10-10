@@ -65,7 +65,7 @@ let state=await request('GET',root);assert.equal(state.settings.timeoutSeconds,6
 for(const value of [0,-1,1.5,1209601,'60'])await request('POST',root+'/configure',{...state.settings,timeoutSeconds:value},400,'duel-owner',{'If-Match':String(state.revision),'Idempotency-Key':crypto.randomUUID()});
 await request('POST',root+'/configure',{...state.settings,winner:'left'},400,'duel-owner',{'If-Match':String(state.revision),'Idempotency-Key':crypto.randomUUID()});
 const key=crypto.randomUUID(),body={...state.settings,timeoutEnabled:false};const saved=await request('POST',root+'/configure',body,200,'duel-owner',{'If-Match':String(state.revision),'Idempotency-Key':key});await request('POST',root+'/configure',body,200,'duel-owner',{'If-Match':String(state.revision),'Idempotency-Key':key});assert.equal((await request('GET',root)).revision,saved.revision);await request('POST',root+'/configure',body,409,'duel-owner',{'If-Match':String(state.revision),'Idempotency-Key':crypto.randomUUID()});
-assert((await duelCommand(channel,'alice',false,'alice')).error);assert((await duelCommand(channel,'duelfixture',false,'duelfixture')).error,'the streamer cannot duel itself');await redis.sAdd('twitch:'+channel+':editors','editor');assert((await duelCommand(channel,'editor',false,'bob')).error);assert((await duelCommand(channel,'alice',false,'editor')).error);
+assert((await duelCommand(channel,'alice',false,'alice')).error);assert((await duelCommand(channel,'duelfixture',false,'duelfixture')).error,'the streamer cannot duel itself');await redis.sAdd('twitch:'+channel+':editors','editor');
 const token=(await request('POST',root+'/overlay-token',{})).token;assert.equal(token.length,43);
 await request('POST',root+'/configure',body,401,token,{'If-Match':'0','Idempotency-Key':'unauthorized'});
 const invalid=connect('x'.repeat(43));await wait(()=>invalid.packets.some(p=>p.startsWith('44/')),'invalid token rejection');invalid.close();
@@ -88,6 +88,8 @@ const accepted=await Promise.all([duelCommand(channel,'bob',false,'accept'),duel
 let run=(await svc.loadDuel(channel)).run;assert.equal(run.mode,'overlay');assert.equal(run.phrases.length,0);assert(['left','right'].includes(run.winner));checkBattle(run);
 await wait(()=>source.packets.some(p=>p.includes(run.id)&&p.includes('"turns"')),'overlay receives the battle');const live=JSON.parse(source.packets.find(p=>p.includes(run.id)&&p.includes('"turns"')).split(',').slice(1).join(','))[1];assert.deepEqual(live.run.turns,run.turns,'overlay animates the server battle');assert.deepEqual(live.run.fighters,run.fighters);
 source.close();await wait(async()=>!await svc.overlayActive(await svc.loadDuel(channel)),'disconnect clears presence');
+// Fights now run 15-40 s; pull the real deadline in so the check stays inside the helper's 300 s limit.
+await svc.DuelChannel.updateOne({_id:channel},{$set:{'run.endsAt':Date.now()+8000,dueAt:Date.now()+8000}});run=(await svc.loadDuel(channel)).run;
 await sleep(1200);once();assert.equal(chats().length,before,'no early winner or battle messages');
 await sleep(Math.max(0,run.endsAt-Date.now()+100));if(process.env.SAAS_TARGET!=='cron')once();await wait(()=>chats().length===before+1,'supervised winner after end');assert(chats().at(-1).at>=run.endsAt);assert.equal(chats().at(-1).body.message,domain.winnerMessage(run));assert.equal(mods().length,modBefore,'disabled timeout makes no moderation calls');once();assert.equal(chats().length,before+1,'winner cannot repeat');
 assert((await duelCommand(channel,'alice',false,'bob')).message.includes('has challenged'));const chatCount=chats().length;await duelCommand(channel,'bob',false,'accept');run=(await svc.loadDuel(channel)).run;assert.equal(run.mode,'chat');assert(run.phrases.length>=2&&run.phrases.length<=4);
@@ -117,6 +119,15 @@ await svc.DuelChannel.updateOne({_id:channel},{$set:{'run.winner':'left'}});awai
 assert.equal(calls().filter(c=>c.path==='/helix/moderation/bans').length,bansBeforeStreamer,'a losing streamer is never timed out');assert.equal(mods().length,modsBeforeStreamer,'no moderation lookups for the streamer');assert.match(chats().at(-1).body.message,/defeated the enraged streamer @duelfixture/);
 const byStreamer=await duelCommand(channel,'duelfixture',false,'@bob');assert.match(byStreamer.message,/enraged streamer @duelfixture has challenged @bob/);assert.equal((await svc.loadDuel(channel)).challenge.enraged,'left');
 await duelCommand(channel,'bob',false,'accept');streamerRun=(await svc.loadDuel(channel)).run;assert.equal(streamerRun.enraged,'left');checkBattle(streamerRun);await finish();
+// Editors may duel (normal odds) and are never timed out; challenges last 30 seconds.
+const bansBeforeEditor=calls().filter(c=>c.path==='/helix/moderation/bans').length,modsBeforeEditor=mods().length;
+assert(!(await duelCommand(channel,'editor',false,'@bob')).error,'editors can challenge');let editorChallenge=(await svc.loadDuel(channel)).challenge;
+assert(editorChallenge.expiresAt-Date.now()<=30000&&editorChallenge.expiresAt-Date.now()>25000,'30-second challenge');assert.equal(editorChallenge.enraged??null,null,'editors are not enraged');
+await svc.DuelChannel.updateOne({_id:channel},{$set:{'challenge.expiresAt':Date.now()-1,dueAt:Date.now()-1}});once();assert.equal((await svc.loadDuel(channel)).challenge,null,'an unanswered challenge expires');
+assert(!(await duelCommand(channel,'alice',false,'@editor')).error,'editors can be challenged');assert(!(await duelCommand(channel,'editor',false,'accept')).error,'editors can accept');
+let editorRun=(await svc.loadDuel(channel)).run;assert.equal(editorRun.enraged??null,null);checkBattle(editorRun);
+await svc.DuelChannel.updateOne({_id:channel},{$set:{'run.winner':'left'}});await finish();
+assert.equal(calls().filter(c=>c.path==='/helix/moderation/bans').length,bansBeforeEditor,'a losing editor is never timed out');assert.equal(mods().length,modsBeforeEditor,'no moderation lookups for an editor');
 const enragedWins=Array.from({length:2000},()=>domain.simulateBattle(undefined,'right')).filter(b=>b.winner==='right').length/2000;assert(enragedWins>.75&&enragedWins<.9,'the enraged streamer usually wins, but not always: '+enragedWins);
 const runs=Array.from({length:2000},()=>domain.createRun({id:'test',challenger:'alice',opponent:'bob',expiresAt:Date.now()},domain.defaultSettings(),true,Date.now()));runs.forEach(checkBattle);
 assert.deepEqual([...new Set(runs.map(r=>r.winner))].sort(),['left','right']);const share=runs.filter(r=>r.winner==='left').length/runs.length;assert(share>.43&&share<.57,'no side is favoured: '+share);

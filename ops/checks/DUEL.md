@@ -6,7 +6,7 @@ The token lives in the URL fragment. Rotating the link revokes existing sources.
 A source counts as active after its authenticated client acknowledges readiness;
 presence expires after five seconds if the API/source stops refreshing it.
 
-`!duel @viewer` creates a three-minute challenge. `!duel @streamer` skips the accept step and
+`!duel @viewer` creates a 30-second challenge (the OBS card counts down). `!duel @streamer` skips the accept step and
 starts at once; the streamer may also challenge viewers (normal accept). The streamer's side
 fights enraged (`run.enraged`): doubled heavy/special, crit and defense chances, winning about
 83% of fights, with an enraged overlay look. A losing streamer is never timed out and no
@@ -38,7 +38,8 @@ the bot disconnects. The cron supervisor runs `duel.worker` independently.
 Loser timeouts default to enabled for 60 seconds, preserving existing behavior.
 The widget allows disabling them or choosing 1–1,209,600 seconds. Disabling takes
 effect for an accepted battle too. No moderation/provider lookups occur when
-it is off. Streamers, editors, and the bot account remain protected. A losing
+it is off. Streamers, editors, and the bot account are never timed out (editors
+duel with normal odds; the streamer fights enraged). A losing
 moderator's restoration is persisted before demotion and retried after the
 configured timeout. Twitch permission errors do not prevent winner delivery.
 External effects are claimed before execution to avoid duplicate announcements

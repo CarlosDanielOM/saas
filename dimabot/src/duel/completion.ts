@@ -24,6 +24,7 @@ async function timeoutLoser(channel: string, run: DuelRun): Promise<void> {
   // The enraged streamer is the channel owner and is never timed out.
   if (run.enraged && run.enraged !== run.winner) return;
   const login = loserLogin(run), cache = await getDragonflyClient('duel-timeout');
+  // Editors may duel but, like the streamer, are never timed out.
   if (await isEditorLoginCached(cache, channel, login)) return;
   const user = await getTwitchUserByLogin(login);
   if (user.error || !user.data) throw new Error(user.message);
