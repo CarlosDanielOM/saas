@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 import { pipeline } from 'node:stream/promises';
 import { AssetError, findAsset, readAsset } from './library.js';
 
-export async function serveAsset(req: Request, res: Response, owner: string, id: string, cacheImages = false) {
+export async function serveAsset(req: Request, res: Response, owner: string, id: string, revalidate = false) {
   const asset = await findAsset(owner, id);
   res.setHeader('Cache-Control', 'private, no-store');
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -11,8 +11,8 @@ export async function serveAsset(req: Request, res: Response, owner: string, id:
   res.setHeader('Accept-Ranges', 'bytes');
   res.type(asset.mime);
   // Uploaded bytes are immutable per ID. Revalidate access before reusing bytes;
-  // private library previews and non-image playback retain their existing policy.
-  if (cacheImages && asset.kind === 'image') {
+  // private library previews retain their existing policy.
+  if (revalidate) {
     res.setHeader('Cache-Control', 'private, no-cache');
     res.setHeader('ETag', `"asset-${asset.id}"`);
     if (req.fresh) return res.status(304).end();

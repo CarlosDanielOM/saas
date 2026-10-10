@@ -97,8 +97,10 @@ try {
   const liveText=source.locator('[data-event="follow"] app-overlay-layer').filter({hasText:'CDOM201 nos ha seguido, bienvenido!'});
   const m=await metrics(liveText);assert(Math.abs(m.scale-.8)<.02);assert(m.textHeight<=m.hostHeight+1);
   assert.equal(m.color,editorMetrics.color);assert(m.font<=editorMetrics.font && m.font>=8,'long names shrink within the requested font size');
+  // One alert per box: release the box before the broken-image alert.
+  send('overlay-control',{id:'skip-good',action:'skip',eventIds:['follow-good']});await source.waitForFunction(()=>!document.querySelector('[data-event="follow"]'));
   broken=true;send('overlay-event',{id:'follow-broken',kind:'follow'});await source.waitForTimeout(500);
-  assert.equal(await source.locator('[data-event="follow"]').count(),2,'a failed image must not remove the follower text or end the alert');assert(!ended.includes('follow-broken'));
+  assert.equal(await source.locator('[data-event="follow"]').count(),1,'a failed image must not remove the follower text or end the alert');assert(!ended.includes('follow-broken'));
   assert.deepEqual(errors,[]);await runtime.close();
   console.log('PASS OBS matches design text layout, loads scoped images, and retains text for the alert duration when an image fails.');
 } finally {await browser.close();}

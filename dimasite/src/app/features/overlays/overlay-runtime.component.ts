@@ -1,6 +1,6 @@
 import { OverlayInteractionComponent } from './overlay-interaction.component';
 import type { InteractionSnapshot, InteractionState } from './overlay-interaction.model';
-import { OverlayImageCache, type PreparedImage } from './overlay-image-cache';
+import { OverlayAssetCache, type PreparedAsset } from './overlay-asset-cache';
 import { OverlaySoundComponent } from './overlay-sound.component';
 import type { QueueState, QueueCommand, OverlayPlatform } from './overlay-queue.model';
 import { Component, ChangeDetectionStrategy, DestroyRef, inject, signal } from '@angular/core';
@@ -14,18 +14,19 @@ import { OverlayClipComponent } from './overlay-clip.component';
 import { OverlayMediaComponent, TestMedia } from './overlay-media.component';
 import { OverlayLayerComponent } from './overlay-layer.component';
 import { LanguageService } from '../../services/language.service';
-import { matchesTrigger, type AlertEvent, type AlertLayout, type EventKind, type OverlayWidget } from './overlay.model';
+import { ALERT_EVENTS, matchesTrigger, type AlertEvent, type AlertLayout, type EventKind, type OverlayWidget } from './overlay.model';
 import { clipPlaybackLimit } from './overlay-clip-motion';
 import { placeTrigger } from './overlay-trigger-placement';
 interface Event { platform?: OverlayPlatform; serialized?: boolean; id: string; kind: EventKind; triggerId?: string; media?: TestMedia; text?: string; layouts?: Record<string, AlertLayout>; snapshot?: Snapshot; revision?: number }
 interface Retry { attempts: number; timer?: ReturnType<typeof setTimeout> }
+const layoutAssets = (layouts: AlertLayout[]) => layouts.flatMap(layout => layout.widgets).filter(part => part.visible && (part.kind === 'image' || part.kind === 'video') && part.assetId).map(part => part.assetId!);
 const retryDelay = (attempt: number) => Math.min(1000 * 2 ** Math.min(attempt, 5), 30000);
 const retryable = (error: unknown) => error instanceof TimeoutError || error instanceof HttpErrorResponse && (error.status === 0 || error.status === 408 || error.status === 429 || error.status >= 500);
-interface Playing { images: Map<string, PreparedImage>; event: Event; widgets: OverlayWidget[]; snapshot: Snapshot; pending: Set<string>; timers: Map<string, ReturnType<typeof setTimeout>> }
+interface Playing { assets: Map<string, PreparedAsset>; event: Event; widgets: OverlayWidget[]; snapshot: Snapshot; pending: Set<string>; timers: Map<string, ReturnType<typeof setTimeout>> }
 @Component({
   selector: 'app-overlay-runtime', imports: [OverlayInteractionComponent, OverlaySoundComponent, OverlayMediaComponent, OverlayLayerComponent, OverlayClipComponent], changeDetection: ChangeDetectionStrategy.OnPush,
   template: `@if (snapshot(); as scene) {
-    <div class="canvas" [style.width.px]="scene.width" [style.height.px]="scene.height">
+    <div class="canvas" [style.width.px]="scene.width" [style.height.px]="scene.height" [style.transform]="fit(scene)">
       @for (w of scene.widgets; track w.id) { @if (w.visible && ['image','video','text','shape'].includes(w.kind)) {
         <div class="placement art" [style.left.px]="w.x" [style.top.px]="w.y" [style.width.px]="w.width" [style.height.px]="w.height" [style.z-index]="scene.widgets.indexOf(w)"><app-overlay-layer [publicId]="publicId" [layer]="w" (failed)="reportIssue('media')" /></div>
       } }
@@ -33,7 +34,7 @@ interface Playing { images: Map<string, PreparedImage>; event: Event; widgets: O
         <div class="placement interaction" [attr.data-interaction]="w.kind" [style.left.px]="w.x" [style.top.px]="w.y" [style.width.px]="w.width" [style.height.px]="w.height" [style.z-index]="scene.widgets.indexOf(w)"><app-overlay-interaction [state]="interactionFor(w.kind)" [design]="w.interactionDesign ?? 'card'" [clockOffset]="clockOffset()" /></div>
       } }
       @for (job of playing(); track job.event.id) {
-        @for (sound of soundsFor(job); track sound.id) { <app-overlay-sound [sound]="sound.config" [duration]="sound.duration" [playbackKey]="job.event.id" [publicId]="publicId" (failed)="reportIssue('media')" (playbackBlocked)="reportIssue('autoplay')" (started)="soundStarted()" /> }
+        @for (sound of soundsFor(job); track sound.id) { <app-overlay-sound [sound]="sound.config" [duration]="sound.duration" [playbackKey]="job.event.id" [publicId]="publicId" [preparedSource]="job.assets.get(sound.config.assetId)?.url || ''" (failed)="reportIssue('media')" (playbackBlocked)="reportIssue('autoplay')" (started)="soundStarted()" /> }
         @for (w of job.widgets; track w.id) {
           <div class="placement" [attr.data-event]="job.event.kind" [attr.data-platform]="job.event.platform ?? 'twitch'" [style.left.px]="w.x" [style.top.px]="w.y" [style.width.px]="w.width" [style.height.px]="w.height" [style.z-index]="job.snapshot.widgets.findIndex(indexOfId(w.id))">
             @if (job.event.media; as media) {
@@ -47,7 +48,7 @@ interface Playing { images: Map<string, PreparedImage>; event: Event; widgets: O
             } @else {
               @if (job.event.layouts?.[w.designId || '']; as layout) {
                 @for (part of layout.widgets; track part.id) { @if(part.visible) {
-                  <div class="placement art" [style.left.%]="part.x / designWidth(job,w) * 100" [style.top.%]="part.y / designHeight(job,w) * 100" [style.width.%]="part.width / designWidth(job,w) * 100" [style.height.%]="part.height / designHeight(job,w) * 100"><app-overlay-layer [publicId]="publicId" [layer]="part" [preparedImage]="job.images.get(part.assetId || '')?.url || ''" [playbackKey]="job.event.id" [duration]="layout.duration" (failed)="reportIssue('media')" /></div>
+                  <div class="placement art" [style.left.%]="part.x / designWidth(job,w) * 100" [style.top.%]="part.y / designHeight(job,w) * 100" [style.width.%]="part.width / designWidth(job,w) * 100" [style.height.%]="part.height / designHeight(job,w) * 100"><app-overlay-layer [publicId]="publicId" [layer]="part" [preparedSource]="job.assets.get(part.assetId || '')?.url || ''" [playbackKey]="job.event.id" [duration]="layout.duration" (failed)="reportIssue('media')" /></div>
                 } }
               }
             }
@@ -56,7 +57,7 @@ interface Playing { images: Map<string, PreparedImage>; event: Event; widgets: O
       }
     </div>
   }`,
-  styles: `:host { display:block; margin:0; padding:0; background:transparent } .canvas { position:relative; overflow:hidden; font-family:'Plus Jakarta Sans',sans-serif } .placement { position:absolute; overflow:hidden } .placement.art { overflow:visible } app-overlay-sound { position:relative; z-index:1000 } app-overlay-media { background:transparent } .speech-text { position:absolute; inset:0; display:grid; place-content:center; color:white; background:#171a21cc; font-size:28px; padding:12px; text-align:center; white-space:pre-wrap; overflow-wrap:anywhere; pointer-events:none }`
+  styles: `:host { display:block; margin:0; padding:0; background:transparent } .canvas { position:relative; overflow:hidden; transform-origin:top left; font-family:'Plus Jakarta Sans',sans-serif } .placement { position:absolute; overflow:hidden } .placement.art { overflow:visible } app-overlay-sound { position:relative; z-index:1000 } app-overlay-media { background:transparent } .speech-text { position:absolute; inset:0; display:grid; place-content:center; color:white; background:#171a21cc; font-size:28px; padding:12px; text-align:center; white-space:pre-wrap; overflow-wrap:anywhere; pointer-events:none }`
 })
 export class OverlayRuntimeComponent {
   readonly snapshot = signal<Snapshot | null>(null);
@@ -71,7 +72,7 @@ export class OverlayRuntimeComponent {
   }
   readonly playing = signal<Playing[]>([]);
   private readonly api = inject(OverlayApi);
-  private readonly imageCache = new OverlayImageCache();
+  private readonly assetCache = new OverlayAssetCache();
   private readonly language = inject(LanguageService);
   readonly publicId = inject(ActivatedRoute).snapshot.paramMap.get('publicId') || '';
   private readonly receiptKey = 'overlay-playback:' + this.publicId;
@@ -81,6 +82,10 @@ export class OverlayRuntimeComponent {
   private readonly socket = io(`${this.api.base}/overlay-studio/${this.publicId}`, { auth: { clientId: this.clientId }, transports: ['websocket'], autoConnect: false });
   private queue: Event[] = [];
   private inFlight = new Map<string, Event>();
+  /** Alert widgets occupied by each started event: one alert per box at a time. */
+  private boxes = new Map<string, string[]>();
+  readonly viewport = signal({ width: 0, height: 0 });
+  private fonts: Promise<unknown> = Promise.resolve();
   private eventRetries = new Map<string, Retry>();
   private queueState: QueueState = { revision: -1, all: false, platforms: {} };
   private commands = new Set<string>();
@@ -99,10 +104,14 @@ export class OverlayRuntimeComponent {
     const doc = inject(DOCUMENT); const oldBody = doc.body.style.background, oldRoot = doc.documentElement.style.background;
     doc.body.style.background = 'transparent'; doc.documentElement.style.background = 'transparent';
     const referrer = doc.createElement('meta'); referrer.name = 'referrer'; referrer.content = 'no-referrer'; doc.head.append(referrer);
+    // An empty page never requests its web font, so the first alert would swap fonts mid-animation.
+    if (doc.fonts) this.fonts = Promise.all(['400', '700'].map(weight => doc.fonts.load(`${weight} 40px 'Plus Jakarta Sans'`))).catch(() => {});
+    const view = doc.defaultView, measure = () => this.viewport.set({ width: view?.innerWidth ?? 0, height: view?.innerHeight ?? 0 });
+    measure(); view?.addEventListener('resize', measure);
     this.socket.on('overlay-state', state => {
       this.acceptInteractions(state.interactions);
       this.batching = true;
-      if (state.revision >= this.revision) { this.revision = state.revision; this.snapshot.set(state.snapshot); this.warmImages(state.snapshot); this.snapshotRecovered(); }
+      if (state.revision >= this.revision) { this.revision = state.revision; this.snapshot.set(state.snapshot); this.warmAssets(state.snapshot); this.snapshotRecovered(); }
       if (Array.isArray(state.pendingIds)) {
         const retained = new Set<string>(state.pendingIds);
         for (const event of [...this.queue, ...this.inFlight.values()]) if (!retained.has(event.id)) this.finish(event.id);
@@ -125,7 +134,7 @@ export class OverlayRuntimeComponent {
     this.saveReceipts();
     const healthTimer = setInterval(() => { this.saveReceipts(); this.reportHealth(); this.reportPlayback(); }, 15000);
     if (/^[a-f0-9]{48}$/.test(this.publicId)) this.connectSource();
-    inject(DestroyRef).onDestroy(() => { this.disposed = true; this.releaseIdentity?.(); clearInterval(healthTimer); this.clear(); this.socket.disconnect(); doc.body.style.background = oldBody; doc.documentElement.style.background = oldRoot; referrer.remove(); });
+    inject(DestroyRef).onDestroy(() => { this.disposed = true; this.releaseIdentity?.(); clearInterval(healthTimer); view?.removeEventListener('resize', measure); this.clear(); this.socket.disconnect(); doc.body.style.background = oldBody; doc.documentElement.style.background = oldRoot; referrer.remove(); });
   }
   private connectSource(): void {
     // Duplicated tabs inherit sessionStorage. A live tab holds its identity;
@@ -160,6 +169,11 @@ export class OverlayRuntimeComponent {
   indexOfId(id: string) { return (w: OverlayWidget) => w.id === id; }
   designWidth(job: Playing, w: OverlayWidget) { return job.snapshot.designs.find(d => d.id === w.designId)?.width || 800; }
   designHeight(job: Playing, w: OverlayWidget) { return job.snapshot.designs.find(d => d.id === w.designId)?.height || 240; }
+  /** A browser source sized differently from the canvas shows the whole canvas instead of cropping it. */
+  fit(scene: Snapshot): string | null {
+    const { width, height } = this.viewport(), scale = Math.min(width / scene.width, height / scene.height);
+    return width && height && Number.isFinite(scale) && Math.abs(scale - 1) > .001 ? `scale(${scale})` : null;
+  }
   private snapshotRecovered(): void {
     if (this.revision < this.targetRevision) return;
     clearTimeout(this.snapshotRetry.timer);
@@ -177,7 +191,7 @@ export class OverlayRuntimeComponent {
       if (this.disposed || generation !== this.generation) return;
       if (state.revision >= this.revision) {
         this.acceptInteractions(state.interactions);
-        this.revision = state.revision; this.snapshot.set(state.snapshot); this.warmImages(state.snapshot);
+        this.revision = state.revision; this.snapshot.set(state.snapshot); this.warmAssets(state.snapshot);
         this.snapshotRecovered(); this.reportHealth();
       }
     } catch (error) {
@@ -229,13 +243,21 @@ export class OverlayRuntimeComponent {
     if (this.batching || this.disposed) return;
     // A paused platform does not block eligible events from another platform.
     let index: number;
-    while ((index = this.queue.findIndex(event => !this.paused(event) && (!event.serialized || !this.active))) >= 0) {
+    const busy = new Set([...this.boxes.values()].flat());
+    while ((index = this.queue.findIndex(event => !this.paused(event) && (!event.serialized || !this.active) && !this.alertBoxes(event).some(id => busy.has(id)))) >= 0) {
       const [event] = this.queue.splice(index, 1);
       if (event.serialized) this.active = event.id;
+      const boxes = this.alertBoxes(event);
+      if (boxes.length) { this.boxes.set(event.id, boxes); boxes.forEach(id => busy.add(id)); }
       this.inFlight.set(event.id, event);
       void this.start(event);
     }
     this.reportPlayback();
+  }
+  /** Alerts of any category queue per alert widget, even when their category does not wait for others. */
+  private alertBoxes(event: Event): string[] {
+    if (!ALERT_EVENTS.includes(event.kind as AlertEvent)) return [];
+    return (this.snapshot()?.widgets ?? []).filter(w => w.visible && w.kind === 'alert' && w.events?.includes(event.kind as AlertEvent)).map(w => w.id);
   }
   private async start(event: Event) {
     const generation = this.generation;
@@ -249,20 +271,20 @@ export class OverlayRuntimeComponent {
         .map(w => placeTrigger(w, snapshot, full.id));
       if (!widgets.length) { this.finish(event.id); return; }
       if (full.media?.url.startsWith('/')) full.media.url = this.api.base + full.media.url;
-      const images = new Map<string, PreparedImage>();
+      const assets = new Map<string, PreparedAsset>();
       if (!full.media) {
-        const ids = new Set(widgets.flatMap(w => full.layouts?.[w.designId || '']?.widgets ?? [])
-          .filter(part => part.visible && part.kind === 'image' && part.assetId).map(part => part.assetId!));
-        await Promise.all([...ids].map(async id => {
-          const image = await this.imageCache.prepare(this.imageUrl(id));
-          if (image) images.set(id, image);
-        }));
+        const layouts = widgets.flatMap(w => full.layouts?.[w.designId || ''] ?? []);
+        const ids = new Set([...layoutAssets(layouts), ...layouts.flatMap(layout => layout.sound?.assetId ?? [])]);
+        await Promise.all([...[...ids].map(async id => {
+          const asset = await this.assetCache.prepare(this.assetUrl(id));
+          if (asset) assets.set(id, asset);
+        }), layouts.some(layout => layout.widgets.some(part => part.visible && part.kind === 'text')) ? Promise.race([this.fonts, new Promise(resolve => setTimeout(resolve, 1500))]) : null]);
       }
       if (this.disposed || generation !== this.generation || this.completed.has(event.id)) {
-        images.forEach(image => image.release()); return;
+        assets.forEach(asset => asset.release()); return;
       }
       this.inFlight.delete(event.id);
-      const job: Playing = { images, event: full, snapshot, widgets, pending: new Set(widgets.map(w => w.id)), timers: new Map() };
+      const job: Playing = { assets, event: full, snapshot, widgets, pending: new Set(widgets.map(w => w.id)), timers: new Map() };
       this.playing.update(all => [...all, job]); this.reportPlayback();
       for (const w of widgets) {
         const seconds = full.media ? 30 : full.layouts?.[w.designId || '']?.duration || 5;
@@ -280,17 +302,17 @@ export class OverlayRuntimeComponent {
       }, retryDelay(retry.attempts++));
     }
   }
-  private imageUrl(id: string): string {
+  private assetUrl(id: string): string {
     return `${this.api.base}/overlay-studio/public/${encodeURIComponent(this.publicId)}/assets/${encodeURIComponent(id)}`;
   }
-  private warmImages(snapshot: Snapshot): void {
+  private warmAssets(snapshot: Snapshot): void {
     const layouts = snapshot.widgets.filter(w => w.visible && w.kind === 'alert').flatMap(w => {
       const design = snapshot.designs.find(d => d.id === w.designId);
       return design ? (w.events ?? []).flatMap(event => [design.events?.[event],
         ...(design.variants?.[event] ?? []).filter(v => v.enabled).map(v => v.layout)]) : [];
-    });
-    this.imageCache.warm(layouts.flatMap(layout => layout?.widgets ?? [])
-      .filter(w => w.visible && w.kind === 'image' && w.assetId).map(w => this.imageUrl(w.assetId!)));
+    }).filter((layout): layout is AlertLayout => !!layout);
+    // Pictures first: they gate an alert's start, while sounds can begin a moment later.
+    this.assetCache.warm([...new Set([...layoutAssets(layouts), ...layouts.flatMap(layout => layout.sound?.assetId ?? [])])].map(id => this.assetUrl(id)));
   }
   private cancelEventRetry(id: string): void {
     clearTimeout(this.eventRetries.get(id)?.timer);
@@ -319,7 +341,8 @@ export class OverlayRuntimeComponent {
     if (this.completed.has(id)) return;
     this.cancelEventRetry(id);
     this.seen.add(id); this.inFlight.delete(id); this.queue = this.queue.filter(event => event.id !== id);
-    const job = this.playing().find(p => p.event.id === id); job?.timers.forEach(clearTimeout); job?.images.forEach(image => image.release());
+    this.boxes.delete(id);
+    const job = this.playing().find(p => p.event.id === id); job?.timers.forEach(clearTimeout); job?.assets.forEach(asset => asset.release());
     this.playing.update(all => all.filter(p => p.event.id !== id)); this.completed.add(id);
     while (this.completed.size > 512) { const oldest = this.completed.values().next().value!; this.completed.delete(oldest); this.seen.delete(oldest); }
     this.saveReceipts(); this.socket.emit('overlay-ended', id);
@@ -327,5 +350,5 @@ export class OverlayRuntimeComponent {
     if (this.active === id) this.active = null;
     this.next(); this.reportPlayback();
   }
-  private clear() { this.interactions.set(null); this.generation++; this.imageCache.clear(); this.playing().forEach(p => p.images.forEach(image => image.release())); clearTimeout(this.snapshotRetry.timer); this.snapshotRetry = { attempts: 0 }; this.targetRevision = -1; this.refreshing = false; this.eventRetries.forEach(retry => clearTimeout(retry.timer)); this.eventRetries.clear(); this.playing().forEach(p => p.timers.forEach(clearTimeout)); this.playing.set([]); this.queue = []; this.inFlight.clear(); this.active = null; this.snapshot.set(null); }
+  private clear() { this.interactions.set(null); this.generation++; this.assetCache.clear(); this.playing().forEach(p => p.assets.forEach(asset => asset.release())); clearTimeout(this.snapshotRetry.timer); this.snapshotRetry = { attempts: 0 }; this.targetRevision = -1; this.refreshing = false; this.eventRetries.forEach(retry => clearTimeout(retry.timer)); this.eventRetries.clear(); this.playing().forEach(p => p.timers.forEach(clearTimeout)); this.playing.set([]); this.queue = []; this.inFlight.clear(); this.boxes.clear(); this.active = null; this.snapshot.set(null); }
 }

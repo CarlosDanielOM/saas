@@ -121,7 +121,7 @@ const exactValue = (page, key) => page.locator('.properties').getByLabel(key, { 
  await page.evaluate(()=>{const play=HTMLMediaElement.prototype.play;window.allowSound=false;HTMLMediaElement.prototype.play=function(){return window.allowSound?play.call(this):Promise.reject(new DOMException('blocked','NotAllowedError'));};});
  send('overlay-event',{id:'sound-event',kind:'follow'});const audio=page.locator('app-overlay-sound audio');await audio.waitFor({state:'attached'});assert.equal(await audio.count(),1,'duplicate placements play one sound');
  await page.getByRole('button',{name:'Enable sound',exact:true}).waitFor();await page.evaluate(()=>window.allowSound=true);await page.getByRole('button',{name:'Enable sound',exact:true}).click();
- await until(()=>audio.evaluate(a=>!a.paused && a.currentTime>.15),'runtime playback');assert.match(await audio.getAttribute('src'),new RegExp('/public/'+publicId+'/assets/'));
+ await until(()=>audio.evaluate(a=>!a.paused && a.currentTime>.15),'runtime playback');assert.match(await audio.getAttribute('src'),/^blob:/,'runtime sound plays from prepared local bytes');
  const early=await audio.evaluate(a=>a.volume);assert(early<.8,'fade in');await until(()=>audio.evaluate(a=>a.currentTime>1),'full volume');assert(Math.abs(await audio.evaluate(a=>a.volume)-.8)<.1);
  await until(()=>audio.evaluate(a=>a.currentTime>2),'fade out');assert(await audio.evaluate(a=>a.volume)<.6);
  await audio.evaluate(a=>window.lastSound=a);await until(()=>ended.includes('sound-event'),'normal alert completes');assert.equal(await page.evaluate(()=>window.lastSound.paused && !window.lastSound.getAttribute('src')),true,'natural cleanup');

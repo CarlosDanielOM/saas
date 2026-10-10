@@ -1,6 +1,7 @@
 import { interactionSnapshot, resyncInteractions } from './interactions.js';
 import type { InteractionKind, InteractionSnapshot } from './interaction-model.js';
 import { selectAlertLayout } from './model.js';
+import { ALERT_DOMAIN_TYPES, AlertEventFilter } from './alert-events.js';
 import { OVERLAY_ACTIONS, OVERLAY_PLATFORMS, initialQueueState, platformMatches, type OverlayPlatform, type OverlayScope, type OverlayAction, type QueueState, type QueueCommand } from './controls.js';
 import { registerStudioBridge } from './bridge.js';
 import { randomUUID } from 'node:crypto';
@@ -59,7 +60,7 @@ function saveDelivery(item: Pending) {
   const saved: SavedDelivery = { ...item, _id: item.event.id, recipients: [...item.recipients] };
   return write(async () => (await deliveries()).replaceOne({ _id: saved._id }, saved, { upsert: true }));
 }
-const types: Record<string, AlertEvent> = { 'channel.follow.received': 'follow', 'channel.bits.received': 'bits', 'channel.subscription.received': 'sub', 'channel.subscription.gifted': 'sub', 'channel.raid.received': 'raid' };
+const alertFilter = new AlertEventFilter();
 const accepts = (peer: Peer, kind: EventKind) => peer.state.snapshot.widgets.some(w => w.visible && (w.kind === kind && (kind !== 'trigger' || w.triggerIds === undefined || w.triggerIds.length > 0) || w.kind === 'alert' && w.events?.includes(kind as AlertEvent)));
 export function studioHasSource(channel: string, kind: EventKind): boolean { return [...peers.values()].some(p => p.channel === channel && (p.socket?.connected || reconnecting(p)) && accepts(p, kind)); }
 /** Owner-only diagnostics. Browser sources include OBS and ordinary browser tabs. */
@@ -337,9 +338,10 @@ export function registerStudio(io: Server): void {
         if (studioHasSource(channel, 'clip')) { await cache.set(`twitch:${channel}:clips:connected`, 'true'); await cache.set(`twitch:${channel}:clips:last_activity`, Date.now()); }
         if (cursor.busy) continue; cursor.busy = true;
         try {
-          const events = await DomainEventSchema.find({ channelID: channel, source: 'twitch-eventsub', schemaVersion: 1, _id: { $gt: cursor.after }, type: { $in: Object.keys(types) } }).sort({ _id: 1 }).limit(100).lean();
+          const events = await DomainEventSchema.find({ channelID: channel, source: 'twitch-eventsub', schemaVersion: 1, _id: { $gt: cursor.after }, type: { $in: Object.keys(ALERT_DOMAIN_TYPES) } }).sort({ _id: 1 }).limit(100).lean();
           for (const event of events) {
-            await publishStudioAlert(channel, types[event.type], event.payload.event as Record<string, unknown>, String(event._id), event.journaledAt.getTime(), 'twitch', true);
+            const raw = event.payload.event as Record<string, unknown>, kind = alertFilter.kind(channel, event.type, raw, event.journaledAt.getTime());
+            if (kind) await publishStudioAlert(channel, kind, raw, String(event._id), event.journaledAt.getTime(), 'twitch', true);
             cursor.after = event._id;
           }
         } finally { cursor.busy = false; }

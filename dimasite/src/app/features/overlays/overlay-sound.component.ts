@@ -20,6 +20,8 @@ export class OverlaySoundComponent {
   readonly transport = input<AlertTransport | null>(null);
   private syncTimeline?: () => void;
   readonly publicId = input('');
+  /** Local bytes prepared by the OBS renderer, so the sound starts with the visuals. */
+  readonly preparedSource = input('');
   readonly failed = output<void>();
   readonly playbackBlocked = output<void>();
   readonly started = output<void>();
@@ -32,7 +34,7 @@ export class OverlaySoundComponent {
   retry(): void { this.playAgain?.(); }
   constructor() {
     afterRenderEffect(cleanup => {
-      const sound = this.sound(), duration = this.duration(), owner = this.owner(), publicId = this.publicId(); this.playbackKey();
+      const sound = this.sound(), duration = this.duration(), owner = this.owner(), publicId = this.publicId(), prepared = this.preparedSource(); this.playbackKey();
       if (untracked(this.transport)) { this.timelineAudio(sound, duration, owner, publicId, cleanup); return; }
       const audio = this.audio().nativeElement, began = performance.now();
       let disposed = false, playing = false, done = false, timer: ReturnType<typeof setTimeout> | undefined;
@@ -68,7 +70,7 @@ export class OverlaySoundComponent {
       const interval = setInterval(updateVolume, 40);
       cleanup(() => { disposed = true; done = true; clearTimeout(timer); clearInterval(interval); this.playAgain = null; audio.onloadedmetadata = null; audio.onerror = null; audio.onended = null; audio.pause(); audio.removeAttribute('src'); audio.load(); });
       if (sound.volume === 0 || sound.delay >= duration) return;
-      const source = publicId ? Promise.resolve(`${this.base}/overlay-studio/public/${encodeURIComponent(publicId)}/assets/${sound.assetId}`) : this.library.preview(owner, sound.assetId);
+      const source = prepared ? Promise.resolve(prepared) : publicId ? Promise.resolve(`${this.base}/overlay-studio/public/${encodeURIComponent(publicId)}/assets/${sound.assetId}`) : this.library.preview(owner, sound.assetId);
       void source.then(url => { if (!disposed && !done) { audio.src = url; audio.load(); } }).catch(fail);
     });
     afterRenderEffect(() => { this.transport(); this.syncTimeline?.(); });
