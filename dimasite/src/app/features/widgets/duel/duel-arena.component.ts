@@ -94,7 +94,7 @@ export class DuelArenaComponent {
     const action = this.action(side);
     return action === 'attack' || action === 'hit' || action === 'defend' || action === 'heal' ? `${action}-${this.turnIndex()}` : action;
   }
-  move(side: DuelSide): DuelMove {
+  move(side: DuelSide): DuelMove | 'ultimate' {
     // An attacker shows its own move; a defender reacts to the incoming one.
     const move = this.currentTurn()?.move ?? (this.health()[side] === 0 ? this.battle().turns.at(-1)?.move ?? 'normal' : 'normal');
     return move === 'heal' ? 'normal' : move;
@@ -104,14 +104,25 @@ export class DuelArenaComponent {
   target(turn: DuelTurn): DuelSide { return otherSide(turn.attacker); }
   /** Defended normal hits shake nothing; everything else shakes by move weight. */
   readonly shake = computed(() => { const hit = this.impact(); return !hit || this.held(hit) || hit.move === 'heal' ? null : hit.crit ? 'crit' : hit.move; });
+  /** The final turn when it is an ultimate: its cinematic runs on through the knockout. */
+  readonly ultimate = computed(() => {
+    const turn = this.battle().turns.at(-1);
+    return turn?.move === 'ultimate' && this.started() && this.elapsed() >= turn.at ? turn : null;
+  });
+  /** The fighter an ultimate destroys, named by the attacker's character. */
+  doom(side: DuelSide): string | null { const turn = this.ultimate(); return turn && this.target(turn) === side ? this.battle().fighters[turn.attacker] : null; }
+  /** The Ronin's ultimate cuts the defender in two once the blow lands. */
+  split(side: DuelSide): boolean { const turn = this.ultimate(); return this.doom(side) === 'ronin' && !!turn && this.elapsed() >= turn.hitAt; }
+  /** Angles of the Ronin's Thousand Cuts. */
+  readonly cuts = [-32, 18, -70, 55, 5, -48, 78, -12, 36, -84];
   /** The defender's skill held (normal/heavy); against a special it shatters instead. */
   held(turn: DuelTurn): boolean { return !!turn.defended && turn.move !== 'special'; }
   shattered(turn: DuelTurn): boolean { return !!turn.defended && turn.move === 'special'; }
   brokenResult(turn: DuelTurn): string { return this.t('skillBroken.' + this.battle().fighters[this.target(turn)]); }
-  /** Green flash on the HP bar of a fighter that has just healed. */
   /** The streamer's side fights enraged (doubled odds, flames, red eyes). */
   enraged(side: DuelSide): boolean { return this.battle().enraged === side; }
   comboOn(side: DuelSide): boolean { const combo = this.comboImpact(); return !!combo && this.target(combo) === side; }
+  /** Green flash on the HP bar of a fighter that has just healed. */
   healing(side: DuelSide): boolean {
     const turn = this.impact();
     return turn?.move === 'heal' && turn.attacker === side || this.comboOn(side);

@@ -56,6 +56,66 @@
 .fighter-slot[data-enraged] .fighter-facing { filter:drop-shadow(0 0 10px #ff3b3b99) }
 .rage-badge { flex-shrink:0; font-style:normal; font-size:1.4cqw; font-weight:900; text-transform:uppercase; letter-spacing:.08em; color:#fff; background:#c41f35; padding:.2cqw .8cqw; border-radius:99px; box-shadow:0 0 10px #ff3b3b; animation:rage-pulse 1s ease-in-out infinite }
 .enrage-cue { color:#ffe0e0; background:#3a0d14ee; border-color:#ff3b3b; box-shadow:0 0 24px #ff3b3b88; text-transform:uppercase }
+/* ── Ultimates ──────────────────────────────────────────────────────────────
+   One stage spans the 2.8 s windup plus the 1.9 s knockout (--ult); the
+   one-shot lands at 59.6%. Elements sit between the scenery (dim, sky, hole)
+   and the HUD-level cinema (bars, title, flash). */
+.ultimate-stage { --ult:4700ms; z-index:auto }
+/* The HUD steps back for the cinematic and returns as the blow lands. */
+.arena[data-ultimate] .hud { animation:ult-hud 4.7s ease both }
+.ult-dim { position:absolute; inset:0; z-index:1; background:radial-gradient(ellipse at 50% 55%,#05040c88,#05040cf2 70%); animation:ult-dim var(--ult) ease both }
+.transparent .ult-dim { background:radial-gradient(ellipse at 50% 55%,#05040c44,#05040cbb 75%) }
+.ult-bars i { position:absolute; left:0; right:0; z-index:8; height:9%; background:#000; animation:ult-bar var(--ult) cubic-bezier(.2,.8,.3,1) both }
+.ult-bars i:first-child { top:0; transform-origin:top }
+.ult-bars i:last-child { bottom:0; transform-origin:bottom }
+.ult-title { position:absolute; z-index:8; bottom:11%; left:4%; right:4%; display:grid; justify-items:center; text-align:center; pointer-events:none; animation:ult-title var(--ult) ease both }
+.ult-title small { font-size:1.9cqw; font-weight:900; letter-spacing:.5em; text-transform:uppercase; color:#fff; text-shadow:0 0 12px var(--ult-glow) }
+.ult-title strong { max-width:100%; font-size:5.6cqw; line-height:1.02; font-weight:950; font-style:italic; letter-spacing:-.03em; text-transform:uppercase; color:#fff; text-shadow:0 0 18px var(--ult-glow),0 0 48px var(--ult-glow),0 5px 0 #0008 }
+.ult-title span { margin-top:.6cqw; font-size:2cqw; font-weight:800; color:#ffffffcc }
+.ult-flash { position:absolute; inset:-5%; z-index:7; background:var(--ult-flash); animation:ult-flash var(--ult) ease-out both; pointer-events:none }
+/* Over a live stream the flash is softer. */
+.transparent .ult-flash { animation-name:ult-flash-soft }
+.ult-result { position:absolute; z-index:8; top:75%; left:50%; translate:-50% 0; white-space:nowrap; font-size:4.6cqw; font-weight:950; font-style:italic; text-transform:uppercase; color:#fff; text-shadow:0 0 16px var(--ult-glow),0 4px 0 #000a; animation:ult-result var(--ult) ease both }
+.ultimate-stage[data-character="knight"] { --ult-glow:#ffd75e; --ult-flash:#fffdf2 }
+.ultimate-stage[data-character="mage"] { --ult-glow:#b26bff; --ult-flash:#efe2ff }
+.ultimate-stage[data-character="ronin"] { --ult-glow:#ff2d4a; --ult-flash:#ff3b4f }
+/* Divine Judgment: god rays, a giant angel, a beam that evaporates the enemy. */
+.god-rays { position:absolute; z-index:1; top:-38%; left:var(--def); width:80cqw; aspect-ratio:1; translate:-50% 0; border-radius:50%; background:repeating-conic-gradient(#fff6c840 0deg 5deg,transparent 5deg 15deg); mask:radial-gradient(circle,#000 20%,transparent 68%); animation:ult-rays var(--ult) ease both,spin 16s linear infinite }
+.big-angel { position:absolute; z-index:5; top:3%; left:var(--def); width:21cqw; translate:-50% 0; overflow:visible; filter:drop-shadow(0 0 18px #fff6c8) drop-shadow(0 0 40px #ffd75e88); animation:ult-angel var(--ult) ease both }
+.big-angel .wing { transform-box:fill-box; animation:flap .7s ease-in-out infinite alternate }
+.big-angel .wing-l { transform-origin:right center }
+.big-angel .wing-r { transform-origin:left center; animation-direction:alternate-reverse }
+.judgment-beam { position:absolute; z-index:2; top:16%; bottom:16%; left:var(--def); width:24cqw; translate:-50% 0; background:linear-gradient(90deg,transparent,#fff8dc 25%,#fff 50%,#fff8dc 75%,transparent); box-shadow:0 0 80px 20px #fff3c4aa; animation:ult-beam var(--ult) ease both }
+.ash { position:absolute; z-index:5; top:44%; left:var(--def); width:20cqw; height:0; translate:-50% 0 }
+.ash i { position:absolute; left:calc(var(--n) * 10%); width:.7cqw; aspect-ratio:1; border-radius:50%; background:#fff8dc; box-shadow:0 0 8px #ffd75e; animation:ult-ash var(--ult) ease-out both; animation-delay:calc(var(--n) * 40ms) }
+/* Black Hole: a spinning accretion disk swallows the enemy, then collapses. */
+.black-hole { position:absolute; z-index:1; top:47%; left:var(--def); width:30cqw; aspect-ratio:1; translate:-50% -50%; animation:ult-hole var(--ult) ease both }
+.bh-lens { position:absolute; inset:-28%; border-radius:50%; background:radial-gradient(circle,transparent 36%,#b48bff26 44%,#d9c2ff66 49%,transparent 60%); animation:spin 3s linear infinite reverse }
+.bh-disk-tilt { position:absolute; inset:-8%; transform:rotate(-16deg) scaleY(.36) }
+.bh-disk { position:absolute; inset:0; border-radius:50%; background:conic-gradient(#ffb35c,#ff4fd8,#7b2cff,#24074f,#7b2cff,#ff4fd8,#ffb35c); mask:radial-gradient(circle,transparent 30%,#000 35%,#000 56%,transparent 72%); filter:drop-shadow(0 0 14px #b26bff); animation:spin .8s linear infinite }
+.bh-core { position:absolute; inset:31%; border-radius:50%; background:#000; box-shadow:0 0 0 .45cqw #ffd7a0bb,0 0 32px 12px #7b2cffbb,inset 0 0 18px #000 }
+.bh-debris { position:absolute; z-index:2; top:47%; left:var(--def); width:0; height:0 }
+.bh-debris i { position:absolute; width:.9cqw; aspect-ratio:1; margin:-.45cqw; border-radius:50%; background:#efe2ff; box-shadow:0 0 10px #b26bff; --a:calc(var(--n) * 30deg); animation:ult-debris var(--ult) ease-in both; animation-delay:calc(var(--n) * 35ms) }
+.bh-burst { position:absolute; z-index:6; top:47%; left:var(--def); width:10cqw; aspect-ratio:1; translate:-50% -50%; border-radius:50%; border:.8cqw solid #efe2ff; box-shadow:0 0 40px #b26bff,inset 0 0 30px #b26bff; animation:ult-burst var(--ult) ease-out both }
+/* Blood Moon: Thousand Cuts: a crimson sky, a rising moon, a flurry of slashes. */
+.blood-sky { position:absolute; inset:0; z-index:1; background:radial-gradient(ellipse at 50% 20%,#ff1f3d55,#3a000acc 72%); animation:ult-sky var(--ult) ease both }
+.transparent .blood-sky { background:radial-gradient(ellipse at 50% 20%,#ff1f3d33,#3a000a88 75%) }
+.blood-moon { position:absolute; z-index:1; top:8%; left:50%; width:26cqw; aspect-ratio:1; translate:-50% 0; border-radius:50%; background:radial-gradient(circle at 38% 35%,#ff9a8a,#e0283a 42%,#6a0815 78%); box-shadow:0 0 80px 24px #ff1f3d77; animation:ult-moon var(--ult) ease both }
+.cuts { position:absolute; z-index:5; top:46%; left:var(--def); width:0; height:0 }
+.cuts i { position:absolute; width:40cqw; height:.45cqw; margin:-.22cqw 0 0 -20cqw; background:linear-gradient(90deg,transparent,#fff 40%,#ff3b4f 60%,transparent); box-shadow:0 0 10px #ff3b4f; opacity:0; animation:ult-cut var(--ult) ease-out both; animation-delay:calc(var(--n) * 90ms) }
+/* The doomed fighter: evaporated, swallowed, or cut in two. */
+/* An animated slot forms its own stack, so lift it above the dim/sky/hole layers. */
+.fighter-slot[data-doom] { z-index:2 }
+.fighter-slot[data-doom="knight"] { animation:doom-evaporate 4.7s ease both }
+.fighter-slot[data-doom="mage"] { animation:doom-swallow 4.7s ease-in both }
+.fighter-slot[data-doom="ronin"] { animation:doom-freeze 4.7s ease both }
+.fighter-slot[data-split] .fighter-motion { visibility:hidden }
+.half { position:absolute; inset:0 }
+.half[data-half="top"] { clip-path:polygon(0 0,100% 0,100% 40%,0 64%); animation:half-top 1.6s cubic-bezier(.3,.6,.4,1) both }
+.half[data-half="bottom"] { clip-path:polygon(0 64%,100% 40%,100% 100%,0 100%); animation:half-bottom 1.6s ease both }
+.fighter-motion[data-action="attack"][data-move="ultimate"] { animation:none }
+.fighter-motion[data-action="attack"][data-move="ultimate"][data-character="mage"] { animation:ult-levitate 3.6s ease both }
+.fighter-motion[data-action="attack"][data-move="ultimate"][data-character="ronin"] { animation:ult-vanish 3.6s ease both; z-index:3 }
 .turn-ring { position:absolute; left:12%; right:12%; bottom:2%; height:9%; border-radius:50%; border:2px solid var(--ring); box-shadow:0 0 18px var(--ring),inset 0 0 12px var(--ring); animation:ring 1s ease-in-out infinite; --ring:var(--violet) }
 .fighter-right .turn-ring { --ring:var(--amber) }
 /* Melee fighters dash into range; the strike lands at 35% / 43% / 53%. */
@@ -191,6 +251,32 @@
 @keyframes combo-glow { 30%,70% { filter:drop-shadow(0 0 4px #5dff9a) drop-shadow(0 0 14px #5dff9a) brightness(1.12) } }
 @keyframes flame { 0%,100% { transform:scaleY(.7); opacity:.5 } 50% { transform:scaleY(1.15) translateY(-6%); opacity:.85 } }
 @keyframes rage-pulse { 50% { box-shadow:0 0 18px #ff3b3b; transform:scale(1.06) } }
+@keyframes spin { to { rotate:360deg } }
+@keyframes ult-hud { 0% { opacity:1 } 8%,56% { opacity:.18 } 64%,100% { opacity:1 } }
+@keyframes ult-dim { 0% { opacity:0 } 8%,58% { opacity:1 } 70% { opacity:.6 } 100% { opacity:0 } }
+@keyframes ult-bar { 0% { transform:scaleY(0) } 7%,86% { transform:scaleY(1) } 100% { transform:scaleY(0) } }
+@keyframes ult-title { 0%,5% { opacity:0; transform:scale(1.5); filter:blur(8px) } 11% { opacity:1; transform:scale(1); filter:none } 34% { opacity:1; transform:scale(1.04) } 42%,100% { opacity:0; transform:scale(1.1) translateY(-8%) } }
+@keyframes ult-flash-soft { 0%,58.5% { opacity:0 } 59.6% { opacity:.5 } 68%,100% { opacity:0 } }
+@keyframes ult-flash { 0%,58.5% { opacity:0 } 59.6% { opacity:1 } 68%,100% { opacity:0 } }
+@keyframes ult-result { 0%,61% { opacity:0; transform:scale(1.6) } 64% { opacity:1; transform:scale(1) } 92% { opacity:1 } 100% { opacity:0 } }
+@keyframes ult-rays { 0%,10% { opacity:0 } 30%,62% { opacity:1 } 90%,100% { opacity:0 } }
+@keyframes ult-angel { 0%,12% { opacity:0; transform:translateY(-110%) } 30% { opacity:1; transform:translateY(0) } 42% { transform:translateY(-4%) } 54% { transform:translateY(2%) } 59.6% { transform:translateY(0) } 76% { opacity:1; transform:translateY(-2%) } 100% { opacity:0; transform:translateY(-110%) } }
+@keyframes flap { from { transform:rotate(-7deg) } to { transform:rotate(5deg) } }
+@keyframes ult-beam { 0%,48% { opacity:0; transform:scaleX(.04) } 54% { opacity:1; transform:scaleX(.35) } 59.6% { opacity:1; transform:scaleX(1.25) } 70% { opacity:.85; transform:scaleX(.9) } 82%,100% { opacity:0; transform:scaleX(.2) } }
+@keyframes ult-ash { 0%,60% { opacity:0; transform:none } 64% { opacity:1 } 100% { opacity:0; transform:translate(calc((var(--n) - 4.5) * 1.2cqw),-24cqw) } }
+@keyframes ult-hole { 0%,16% { opacity:0; transform:scale(0) } 30% { opacity:1; transform:scale(.5) } 50% { transform:scale(1) } 57% { transform:scale(1.1) } 59.6% { opacity:1; transform:scale(.1) } 61%,100% { opacity:0; transform:scale(0) } }
+@keyframes ult-debris { 0%,20% { opacity:0; transform:rotate(var(--a)) translateX(30cqw) } 26% { opacity:1 } 57% { opacity:1; transform:rotate(calc(var(--a) + 540deg)) translateX(0) scale(.2) } 59%,100% { opacity:0; transform:rotate(calc(var(--a) + 560deg)) translateX(0) scale(0) } }
+@keyframes ult-burst { 0%,59% { opacity:0; transform:scale(.1) } 60% { opacity:1; transform:scale(.4) } 74%,100% { opacity:0; transform:scale(7) } }
+@keyframes ult-sky { 0% { opacity:0 } 10%,80% { opacity:1 } 100% { opacity:0 } }
+@keyframes ult-moon { 0%,4% { opacity:0; transform:translateY(45%) } 24% { opacity:1; transform:translateY(0) } 84% { opacity:1 } 100% { opacity:0; transform:translateY(-6%) } }
+@keyframes ult-cut { 0%,30% { opacity:0; transform:rotate(var(--a)) scaleX(0) } 31% { opacity:1; transform:rotate(var(--a)) scaleX(1.1) } 36%,100% { opacity:0; transform:rotate(var(--a)) scaleX(1.15) } }
+@keyframes doom-evaporate { 0%,34% { transform:none; filter:none; opacity:1 } 40%,56% { transform:translateX(-.6%); filter:brightness(1.5) } 48% { transform:translateX(.6%) } 59.6% { filter:brightness(4) saturate(0); opacity:1; transform:none } 66% { filter:brightness(5) saturate(0) blur(3px); opacity:.7; transform:translateY(-6%) } 78%,100% { filter:brightness(5) blur(12px); opacity:0; transform:translateY(-16%) } }
+@keyframes doom-swallow { 0%,26% { transform:none; opacity:1 } 34%,42% { transform:translateX(-.8%) skewX(-4deg) } 38%,46% { transform:translateX(.8%) skewX(4deg) } 52% { transform:scaleX(.8) scaleY(1.18) rotate(-12deg) } 56% { transform:scale(.5) rotate(200deg) } 59.6% { transform:scale(.02) rotate(560deg); opacity:1 } 61%,100% { transform:scale(0); opacity:0 } }
+@keyframes doom-freeze { 0%,30% { transform:none } 34%,40%,46%,52%,58% { transform:translateX(-.5%) } 37%,43%,49%,55% { transform:translateX(.5%) } 59.6%,100% { transform:none } }
+@keyframes half-top { 0% { transform:none } 18% { transform:translate(5%,-5%) } 100% { transform:translate(14%,26%) rotate(22deg); opacity:0 } }
+@keyframes half-bottom { 0%,18% { transform:none } 100% { transform:translate(-3%,4%) rotate(-8deg); opacity:0 } }
+@keyframes ult-levitate { 8%,90% { transform:translateY(-16%) } 100% { transform:none } }
+@keyframes ult-vanish { 0% { transform:none; opacity:1 } 20% { transform:translateX(calc(var(--dir) * -5%)); opacity:1; filter:none } 26% { transform:translateX(calc(var(--dir) * 20%)); opacity:0; filter:blur(6px) } 60% { transform:translateX(calc(var(--dir) * 190%)); opacity:0; filter:blur(6px) } 66%,96% { transform:translateX(calc(var(--dir) * 190%)); opacity:1; filter:none } 100% { transform:translateX(calc(var(--dir) * 190%)); opacity:0 } }
 @keyframes skill { 0%,12% { opacity:0; transform:translateY(8px) scale(.6) } 18% { opacity:1; transform:scale(1.12) } 24%,72% { opacity:1; transform:scale(1) } 100% { opacity:0; transform:translateY(-10px) } }
 @keyframes extra { 0% { opacity:0; transform:translateY(10px) scale(.6) } 12% { opacity:1; transform:translateY(0) scale(1.15) } 20%,60% { opacity:1; transform:scale(1) } 100% { opacity:0; transform:translateY(-12px) } }
 @keyframes bolt { 0%,20% { opacity:0; left:var(--att); transform:scale(.3) } 27% { opacity:1; left:var(--att); transform:scale(1) } 35% { opacity:1; left:var(--def) } 45%,100% { left:var(--def); opacity:0; transform:scale(1.6) } }
@@ -210,4 +296,4 @@
 @keyframes winner { from { opacity:0; transform:translateY(14px) } to { opacity:1; transform:translateY(0) } }
 @keyframes confetti { from { opacity:0; transform:translateY(-40px) rotate(0deg) } 20% { opacity:1 } to { opacity:0; transform:translateY(180px) rotate(240deg) } }
 @media(min-width:640px){.arena{aspect-ratio:16/9;--fighter-size:25%;--fight-spread:13%}.arena[data-phase="winner"] .fighter-slot:not([data-action="defeated"]){--fighter-size:20%}.health-label{font-size:2.3cqw}}
-@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}.confetti,.hit-spark,.shock-ring,.special-dim,.projectile,.pillar,.crescent,.ko-flash,.turn-ring{display:none}.damage,.move-callout,.extra-turn,.skill-callout,.heal-number{opacity:1}.heal-beam,.glyphs,.angel,.crit-flash,.shatter,.rage-flames{display:none}.broken-label,.combo-label{opacity:1}.move-callout{transform:translateX(-50%)}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}.confetti,.hit-spark,.shock-ring,.special-dim,.projectile,.pillar,.crescent,.ko-flash,.turn-ring{display:none}.damage,.move-callout,.extra-turn,.skill-callout,.heal-number{opacity:1}.heal-beam,.glyphs,.angel,.crit-flash,.shatter,.rage-flames,.god-rays,.judgment-beam,.ash,.bh-debris,.bh-burst,.cuts,.ult-flash,.big-angel,.black-hole,.blood-moon{display:none}.ult-title,.ult-result{opacity:1}.broken-label,.combo-label{opacity:1}.move-callout{transform:translateX(-50%)}}

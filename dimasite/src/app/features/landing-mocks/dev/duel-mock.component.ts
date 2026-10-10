@@ -5,7 +5,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { LanguageService } from '../../../services/language.service';
 import { ThemeService } from '../../../services/theme.service';
 import { DuelArenaComponent } from '../../widgets/duel/duel-arena.component';
-import { DuelSide, simulateBattle } from '../../widgets/duel/duel-battle';
+import { DuelSide, simulateBattle, ultimateBattle } from '../../widgets/duel/duel-battle';
 
 type Phase = 'ready' | 'entrance' | 'countdown' | 'fight' | 'knockout' | 'winner';
 
@@ -68,11 +68,12 @@ export class DuelMockComponent {
     return this.language.translate(`duelMock.${key}`, params);
   }
 
-  play(): void {
+  play(ultimate = false): void {
     this.stopTimer();
     const values = this.form.getRawValue();
     this.names.set({ left: values.left.trim().slice(0, 24) || 'Dima', right: values.right.trim().slice(0, 24) || 'ChatChampion' });
-    this.battle.set(simulateBattle(Math.random, values.streamer ? 'right' : null));
+    const enraged = values.streamer ? 'right' : null;
+    this.battle.set(ultimate ? ultimateBattle(enraged) : simulateBattle(Math.random, enraged));
     this.elapsed.set(0);
     this.started.set(true);
     this.paused.set(false);

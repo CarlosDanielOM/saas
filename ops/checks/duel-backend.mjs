@@ -39,7 +39,8 @@ async function config(patch){const s=await request('GET',root);return request('P
 // damage within the move's range, and the first fighter to reach 0 HP loses.
 function checkBattle(run){
  const hp={left:100,right:100},heals={left:0,right:0};assert(run.turns.length>0);assert.notEqual(run.fighters.left,run.fighters.right);
- run.turns.forEach((t,i)=>{const spec=t.move==='heal'?domain.HEAL:domain.MOVES[t.move];assert(spec,'known move');assert.equal(t.hitAt-t.at,spec.windup);
+ run.turns.forEach((t,i)=>{if(t.move==='ultimate'){assert.equal(i,run.turns.length-1,'an ultimate ends the fight');assert(i>=domain.ULTIMATE.minTurn,'no ultimate in the opening turns');assert.equal(t.hitAt-t.at,domain.ULTIMATE.windup);assert.equal(t.defended,false);const d=t.attacker==='left'?'right':'left';assert(hp[d]>0);assert.equal(t.damage,hp[d],'an ultimate is a one-shot');hp[d]=0;return;}
+  const spec=t.move==='heal'?domain.HEAL:domain.MOVES[t.move];assert(spec,'known move');assert.equal(t.hitAt-t.at,spec.windup);
   if(i){const prev=run.turns[i-1];assert.equal(t.attacker===prev.attacker,t.bonus,'extra turn keeps the attacker');assert(t.at>=prev.at+(prev.move==='heal'?domain.HEAL:domain.MOVES[prev.move]).duration+(prev.comboHeal?domain.COMBO_HEAL.extra:0));}
   assert(hp.left>0&&hp.right>0,'no turns after a knockout');
   if(t.move==='heal'){assert(hp[t.attacker]<=domain.HEAL.threshold,'only hurt fighters heal');assert(t.heal>=domain.HEAL.min&&t.heal<=domain.HEAL.max);assert(++heals[t.attacker]<=domain.HEAL.perFighter,'heal limit');assert.equal(t.damage,0);hp[t.attacker]=Math.min(100,hp[t.attacker]+t.heal);return;}
@@ -128,8 +129,12 @@ assert(!(await duelCommand(channel,'alice',false,'@editor')).error,'editors can 
 let editorRun=(await svc.loadDuel(channel)).run;assert.equal(editorRun.enraged??null,null);checkBattle(editorRun);
 await svc.DuelChannel.updateOne({_id:channel},{$set:{'run.winner':'left'}});await finish();
 assert.equal(calls().filter(c=>c.path==='/helix/moderation/bans').length,bansBeforeEditor,'a losing editor is never timed out');assert.equal(mods().length,modsBeforeEditor,'no moderation lookups for an editor');
-const enragedWins=Array.from({length:2000},()=>domain.simulateBattle(undefined,'right')).filter(b=>b.winner==='right').length/2000;assert(enragedWins>.75&&enragedWins<.9,'the enraged streamer usually wins, but not always: '+enragedWins);
+const enragedBattles=Array.from({length:2000},()=>domain.simulateBattle(undefined,'right')),enragedWins=enragedBattles.filter(b=>b.winner==='right').length/2000;
+const streamerUltimates=enragedBattles.filter(b=>b.turns.at(-1).move==='ultimate'&&b.turns.at(-1).attacker==='right').length/2000;assert(streamerUltimates>.1&&streamerUltimates<.26,'the streamer lands an ultimate in roughly 1 of 6 fights: '+streamerUltimates);
+let ultimatePhrase;for(let i=0;i<3000&&!ultimatePhrase;i++)ultimatePhrase=domain.createRun({id:'u',challenger:'alice',opponent:'bob',expiresAt:Date.now(),enraged:'right'},domain.defaultSettings(),false,Date.now()).phrases.find(p=>/^ULTIMATE!/.test(p.text));assert(ultimatePhrase,'chat narrates ultimates');
+assert(enragedWins>.75&&enragedWins<.9,'the enraged streamer usually wins, but not always: '+enragedWins);
 const runs=Array.from({length:2000},()=>domain.createRun({id:'test',challenger:'alice',opponent:'bob',expiresAt:Date.now()},domain.defaultSettings(),true,Date.now()));runs.forEach(checkBattle);
+const normalUltimates=runs.filter(r=>r.turns.at(-1).move==='ultimate').length/runs.length;assert(normalUltimates>.003&&normalUltimates<.06,'ultimates are super rare for everyone else: '+normalUltimates);
 assert.deepEqual([...new Set(runs.map(r=>r.winner))].sort(),['left','right']);const share=runs.filter(r=>r.winner==='left').length/runs.length;assert(share>.43&&share<.57,'no side is favoured: '+share);
 const moves=runs.flatMap(r=>r.turns.map(t=>t.move)),count=m=>moves.filter(x=>x===m).length;assert(count('normal')>count('heavy')&&count('heavy')>count('special')&&count('special')>0,'normal > heavy > special');
 assert(runs.some(r=>r.turns.some(t=>t.bonus)),'extra turns happen');

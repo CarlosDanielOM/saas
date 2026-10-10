@@ -62,6 +62,7 @@ import { DuelCharacter, DuelMove } from './duel-battle';
     :host([data-side="right"]) { --fighter-color:#efac48; --fighter-light:#ffe1a0; --fighter-deep:#996027 }
     :host([data-move="heavy"]) { --dur:1050ms }
     :host([data-move="special"]) { --dur:1600ms }
+    :host([data-move="ultimate"]) { --dur:3600ms }
     svg { display:block; width:100%; overflow:visible }
     .body { transform-origin:105px 213px; animation:breathe 1.8s ease-in-out infinite }
     .cloth { transform-origin:90px 94px; animation:cloth 2.4s ease-in-out infinite }
@@ -92,6 +93,21 @@ import { DuelCharacter, DuelMove } from './duel-battle';
     :host([data-action="attack"][data-move="special"]) .slash { animation-name:slash-special }
     :host([data-action="attack"][data-move="special"]) .aura { animation:aura var(--dur) ease both }
     :host([data-action="attack"][data-move="special"]) .eyes { animation:glow var(--dur) ease both }
+    /* Ultimates (3.6 s, the one-shot lands at 78%): a long, powered-up windup per character. */
+    :host([data-action="attack"][data-move="ultimate"]) .slash { animation:none }
+    :host([data-action="attack"][data-move="ultimate"]) .aura { animation:ult-aura 3.6s ease both }
+    :host([data-action="attack"][data-move="ultimate"][data-character="knight"]) .aura { fill:#ffe27a }
+    :host([data-action="attack"][data-move="ultimate"][data-character="knight"]) .body { animation:ult-pray 3.6s ease both }
+    :host([data-action="attack"][data-move="ultimate"][data-character="knight"]) .weapon-arm { animation:ult-raise 3.6s ease both }
+    :host([data-action="attack"][data-move="ultimate"][data-character="mage"]) .aura { fill:#7b2cff }
+    :host([data-action="attack"][data-move="ultimate"][data-character="mage"]) .body { animation:breathe 1.2s ease-in-out infinite }
+    :host([data-action="attack"][data-move="ultimate"][data-character="mage"]) .weapon-arm { animation:ult-staff 3.6s ease both }
+    :host([data-action="attack"][data-move="ultimate"][data-character="mage"]) .back-arm { animation:ult-cast 3.6s ease both }
+    :host([data-action="attack"][data-move="ultimate"][data-character="mage"]) .orb { fill:#2b0a66; filter:drop-shadow(0 0 14px #b26bff) }
+    :host([data-action="attack"][data-move="ultimate"][data-character="ronin"]) .aura { fill:#ff1f3d }
+    :host([data-action="attack"][data-move="ultimate"][data-character="ronin"]) .body { animation:ult-iai 3.6s ease both }
+    :host([data-action="attack"][data-move="ultimate"][data-character="ronin"]) .weapon-arm { animation:ult-sheath 3.6s ease both }
+    :host([data-action="attack"][data-move="ultimate"]) .eyes { animation:glow 3.6s ease both }
     /* The mage casts instead of swinging; the arena draws the spell. */
     :host([data-character="mage"][data-action="attack"]) .slash { animation:none }
     :host([data-character="mage"][data-action="attack"]) .weapon-arm { animation-name:cast }
@@ -140,6 +156,13 @@ import { DuelCharacter, DuelMove } from './duel-battle';
     :host([data-paused="true"]) * { animation-play-state:paused !important }
 
     @keyframes rage-aura { 0%,100% { opacity:.2; transform:scale(.96) } 50% { opacity:.38; transform:scale(1.04) } }
+    @keyframes ult-aura { 0% { opacity:0; transform:scale(.6) } 15% { opacity:.55; transform:scale(1) } 35% { opacity:.35 } 55% { opacity:.8; transform:scale(1.12) } 78% { opacity:1; transform:scale(1.25) } 90% { opacity:.4 } 100% { opacity:0 } }
+    @keyframes ult-pray { 10%,48% { transform:translateY(9px) rotate(3deg) } 58%,95% { transform:translateY(-6px) scale(1.04) } 100% { transform:none } }
+    @keyframes ult-raise { 10%,48% { transform:rotate(48deg) } 58%,92% { transform:rotate(-150deg) } 100% { transform:none } }
+    @keyframes ult-staff { 8%,92% { transform:rotate(-24deg) translateY(-18px) } 100% { transform:none } }
+    @keyframes ult-cast { 8%,92% { transform:rotate(-70deg) } 100% { transform:none } }
+    @keyframes ult-iai { 8%,24% { transform:translateY(12px) rotate(-8deg) scaleY(.92) } 62%,94% { transform:translateY(-2px) rotate(2deg) } 100% { transform:none } }
+    @keyframes ult-sheath { 8%,24% { transform:rotate(-55deg) } 62%,94% { transform:rotate(70deg) } 100% { transform:none } }
     @keyframes breathe { 50% { transform:translateY(-3px) rotate(-1deg) } }
     @keyframes pant { 50% { transform:translateY(4px) rotate(4deg) } }
     @keyframes cloth { 50% { transform:rotate(5deg) } }
@@ -194,7 +217,7 @@ export class DuelFighterComponent {
   readonly side = input.required<'left' | 'right'>();
   readonly character = input<DuelCharacter>('knight');
   readonly action = input('idle');
-  readonly move = input<DuelMove>('normal');
+  readonly move = input<DuelMove | 'ultimate'>('normal');
   readonly low = input(false);
   readonly enraged = input(false);
   readonly paused = input(false);

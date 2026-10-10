@@ -32,6 +32,10 @@ Connected overlays carry the prompt and fight; chat receives only the winner (wi
 remaining HP) at the deadline. New duels without an enabled, ready source retain
 chat prompts and narrate the fight's real specials, heals, crits, defenses, stolen turns
 and heavy blows.
+Ultimates (`move: 'ultimate'`) are unblockable one-shots with a 2.8 s cinematic: Knight
+Divine Judgment, Mage Black Hole, Ronin Blood Moon: Thousand Cuts. From turn 4 on, the
+enraged streamer rolls 4% per turn (about 1 in 6 streamer fights) and everyone else 0.2%
+(about 1 in 40 fights). The widget and dev mock have an ultimate preview button.
 Runs accepted before turn-based battles (no `turns`) still render and announce. Accepted battles finish even if OBS or
 the bot disconnects. The cron supervisor runs `duel.worker` independently.
 

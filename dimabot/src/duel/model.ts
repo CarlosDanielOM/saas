@@ -13,7 +13,7 @@ export type DuelCharacter = 'knight' | 'ronin' | 'mage';
  * through a defense); damage is what landed. A 'heal' turn restores `heal` HP to the acting
  * fighter instead. comboHeal is HP the defender regains right after blocking.
  */
-export interface DuelTurn { at: number; hitAt: number; attacker: DuelSide; move: DuelMove | 'heal'; damage: number; raw: number; crit: boolean; defended: boolean; heal: number; comboHeal: number; bonus: boolean }
+export interface DuelTurn { at: number; hitAt: number; attacker: DuelSide; move: DuelMove | 'heal' | 'ultimate'; damage: number; raw: number; crit: boolean; defended: boolean; heal: number; comboHeal: number; bonus: boolean }
 export interface DuelBattle { fighters: Record<DuelSide, DuelCharacter>; turns: DuelTurn[]; winner: DuelSide; duration: number; enraged: DuelSide | null }
 /** enraged marks the streamer's side: the channel owner fights with doubled odds. */
 export interface DuelChallenge { id: string; challenger: string; opponent: string; expiresAt: number; enraged?: DuelSide | null }
@@ -56,6 +56,10 @@ export const COMBO_HEAL = { percent: 35, delay: 350, extra: 700 };
 // Defenses and heals stop after this many turns so every fight ends.
 const SKILL_TURN_LIMIT = 24;
 const EXTRA_TURN_LEAD_MS = 250;
+// A character's ultimate: an unblockable one-shot with a long cinematic windup.
+// Chances are per mille per turn: rare for the enraged streamer, super rare for
+// everyone else, and never in the opening turns so every fight gets going first.
+export const ULTIMATE = { streamer: 40, everyone: 2, minTurn: 3, windup: 2800, duration: 3600 };
 // chance is out of 100; windup is the time from the turn start to the hit.
 export const MOVES: Record<DuelMove, { chance: number; min: number; max: number; windup: number; duration: number }> = {
   normal: { chance: 68, min: 10, max: 16, windup: 280, duration: 800 },
@@ -76,6 +80,11 @@ export function simulateBattle(roll: (max: number) => number = randomInt, enrage
   // After SKILL_TURN_LIMIT turns every hit removes at least 10 HP, so the fight always ends.
   for (;;) {
     const skills = turns.length < SKILL_TURN_LIMIT, defender = other(attacker);
+    if (turns.length >= ULTIMATE.minTurn && roll(1000) < (attacker === enraged ? ULTIMATE.streamer : ULTIMATE.everyone)) {
+      const damage = hp[defender];
+      turns.push({ at, hitAt: at + ULTIMATE.windup, attacker, move: 'ultimate', damage, raw: damage, crit: false, defended: false, heal: 0, comboHeal: 0, bonus });
+      return { fighters, turns, winner: attacker, duration: at + ULTIMATE.windup + KNOCKOUT_MS, enraged };
+    }
     if (skills && hp[attacker] <= HEAL.threshold && heals[attacker] < HEAL.perFighter && roll(100) < HEAL.percent) {
       const heal = Math.min(MAX_HP - hp[attacker], HEAL.min + roll(HEAL.max - HEAL.min + 1));
       hp[attacker] += heal; heals[attacker]++;
@@ -122,6 +131,10 @@ const healLines: Record<'en' | 'es', Record<DuelCharacter, (name: string, hp: nu
   en: { knight: (name, hp) => `An angel descends and heals ${name}! (+${hp} HP)`, ronin: (name, hp) => `${name} drinks a healing potion! (+${hp} HP)`, mage: (name, hp) => `${name} glows green with life glyphs! (+${hp} HP)` },
   es: { knight: (name, hp) => `¡Un ángel desciende y cura a ${name}! (+${hp} HP)`, ronin: (name, hp) => `¡${name} bebe una poción curativa! (+${hp} HP)`, mage: (name, hp) => `¡${name} brilla en verde con glifos de vida! (+${hp} HP)` }
 };
+const ultimates: Record<'en' | 'es', Record<DuelCharacter, (attacker: string, defender: string) => string>> = {
+  en: { knight: (a, d) => `ULTIMATE! ${a} calls DIVINE JUDGMENT: an angel descends and evaporates ${d}!`, ronin: (a, d) => `ULTIMATE! ${a} unleashes BLOOD MOON: THOUSAND CUTS and ${d} is cut down!`, mage: (a, d) => `ULTIMATE! ${a} opens a BLACK HOLE and ${d} is swallowed whole!` },
+  es: { knight: (a, d) => `¡DEFINITIVA! ${a} invoca el JUICIO DIVINO: ¡un ángel desciende y evapora a ${d}!`, ronin: (a, d) => `¡DEFINITIVA! ${a} desata LUNA SANGRIENTA: MIL CORTES y ${d} cae!`, mage: (a, d) => `¡DEFINITIVA! ${a} abre un AGUJERO NEGRO y ${d} es devorado!` }
+};
 const specials: Record<'en' | 'es', Record<DuelCharacter, string>> = {
   en: { knight: 'Holy Smite', ronin: 'Crescent Moon Slash', mage: 'Meteor Storm' },
   es: { knight: 'Castigo Sagrado', ronin: 'Tajo de Luna Creciente', mage: 'Tormenta de Meteoros' }
@@ -129,6 +142,7 @@ const specials: Record<'en' | 'es', Record<DuelCharacter, string>> = {
 // Chat narration describes the real fight: specials, heals, crits, defenses, stolen turns, then heavy blows.
 function highlight(turn: DuelTurn, names: Record<DuelSide, string>, fighters: DuelBattle['fighters'], language: 'en' | 'es'): string {
   const attacker = `@${names[turn.attacker]}`, defender = `@${names[other(turn.attacker)]}`;
+  if (turn.move === 'ultimate') return ultimates[language][fighters[turn.attacker]](attacker, defender);
   if (turn.move === 'heal') return healLines[language][fighters[turn.attacker]](attacker, turn.heal);
   const crit = turn.crit ? (language === 'es' ? ' ¡CRÍTICO!' : ' CRITICAL!') : '';
   if (turn.move === 'special' && turn.defended) {
@@ -152,7 +166,7 @@ function highlight(turn: DuelTurn, names: Record<DuelSide, string>, fighters: Du
 export function createRun(challenge: DuelChallenge, config: DuelSettings, overlay: boolean, now: number): DuelRun {
   const enraged = challenge.enraged ?? null, battle = simulateBattle(randomInt, enraged), names = { left: challenge.challenger, right: challenge.opponent };
   const startedAt = now + 750; // Give connected sources one polling interval to receive the fight.
-  const rank = (turn: DuelTurn) => turn.move === 'special' ? 5 : turn.move === 'heal' || turn.comboHeal ? 4 : turn.crit || turn.defended ? 3 : turn.bonus ? 2 : turn.move === 'heavy' ? 1 : 0;
+  const rank = (turn: DuelTurn) => turn.move === 'ultimate' ? 6 : turn.move === 'special' ? 5 : turn.move === 'heal' || turn.comboHeal ? 4 : turn.crit || turn.defended ? 3 : turn.bonus ? 2 : turn.move === 'heavy' ? 1 : 0;
   const notable = battle.turns.filter(turn => rank(turn) > 0).sort((a, b) => rank(b) - rank(a) || a.at - b.at).slice(0, 3);
   const phrases = notable.map(turn => ({ at: startedAt + turn.hitAt, text: highlight(turn, names, battle.fighters, config.language) }));
   // Quiet fights still get some flavour, spread across the battle.

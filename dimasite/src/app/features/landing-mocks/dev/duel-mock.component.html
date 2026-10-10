@@ -27,6 +27,7 @@
         @if (!overlayOnly) {
           <div class="playback">
             <button class="primary" type="button" (click)="play()">{{ t(started() ? 'replay' : 'play') }} <span aria-hidden="true">▶</span></button>
+            <button type="button" (click)="play(true)">✦ {{ t('playUltimate') }}</button>
             <button type="button" (click)="togglePause()" [disabled]="!active()">{{ t(paused() ? 'resume' : 'pause') }}</button>
             <button class="reset" type="button" (click)="reset()">{{ t('reset') }}</button>
             <span class="time">{{ (elapsed() / 1000).toFixed(1) }} / {{ (duration() / 1000).toFixed(1) }}s</span>

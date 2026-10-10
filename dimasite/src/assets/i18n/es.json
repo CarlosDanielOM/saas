@@ -6953,7 +6953,19 @@
     "streamer": "Streamer",
     "enraged": "Enfurecido",
     "enrageCue": "¡El streamer está enfurecido!",
-    "streamerFight": "El oponente es el streamer (enfurecido)"
+    "streamerFight": "El oponente es el streamer (enfurecido)",
+    "ultimateKicker": "Definitiva",
+    "ultimate": {
+      "knight": "Juicio Divino",
+      "mage": "Agujero Negro",
+      "ronin": "Luna Sangrienta: Mil Cortes"
+    },
+    "ultimateResult": {
+      "knight": "¡Evaporado!",
+      "mage": "¡Devorado!",
+      "ronin": "¡Rebanado!"
+    },
+    "playUltimate": "Ver una definitiva"
   },
   "duelWidget": {
     "back": "Todos los widgets",
@@ -6997,7 +7009,7 @@
     "how": "Cómo funciona un duelo",
     "stepChallenge": "Un espectador desafía a otro:",
     "stepAccept": "El espectador desafiado acepta en 30 segundos:",
-    "stepWinner": "Los luchadores se turnan: casi siempre un ataque normal, a veces uno fuerte, rara vez uno especial, y cualquier golpe puede ser crítico y hacer el doble de daño. A veces la habilidad del defensor (Muro de Escudo, Paso Fantasma o Barrera Arcana) detiene un ataque normal o reduce uno fuerte un 80 %; los especiales la destrozan con todo su daño. Cada luchador puede curarse hasta 5 veces, y un bloqueo puede encadenar una curación combo y cualquiera puede atacar dos veces seguidas. Pierde quien llegue a 0 HP y el chat recibe al ganador.",
+    "stepWinner": "Los luchadores se turnan: casi siempre un ataque normal, a veces uno fuerte, rara vez uno especial, y cualquier golpe puede ser crítico y hacer el doble de daño. A veces la habilidad del defensor (Muro de Escudo, Paso Fantasma o Barrera Arcana) detiene un ataque normal o reduce uno fuerte un 80 %; los especiales la destrozan con todo su daño. Cada luchador puede curarse hasta 5 veces, y un bloqueo puede encadenar una curación combo y cualquiera puede atacar dos veces seguidas. Muy rara vez un luchador desata una definitiva imparable que acaba el combate (mucho más a menudo si pelea el streamer enfurecido). Pierde quien llegue a 0 HP y el chat recibe al ganador.",
     "fallback": "Con el overlay conectado, el chat permanece en silencio hasta el ganador. Sin él, el chat narra la batalla.",
     "challengeTitle": "¡@{{name}}, te han desafiado!",
     "challengeFrom": "@{{name}} te espera en la arena. Acepta en {{seconds}} s.",
@@ -7011,6 +7023,7 @@
     "announcementFailed": "No se pudo enviar un mensaje del último duelo. Revisa los permisos del bot para el chat.",
     "streamerFight": "Pelear contra el streamer",
     "enragedChallenge": "¡El streamer enfurecido te desafía!",
-    "stepStreamer": "Tus espectadores también pueden pelear contra ti. Empieza al instante, peleas enfurecido (doble probabilidad de golpe fuerte/especial, crítico y escudo, unas 5 de cada 6 victorias) y nunca recibes timeout:"
+    "stepStreamer": "Tus espectadores también pueden pelear contra ti. Empieza al instante, peleas enfurecido (doble probabilidad de golpe fuerte/especial, crítico y escudo, unas 5 de cada 6 victorias) y nunca recibes timeout:",
+    "previewUltimate": "Ver una definitiva"
   }
 }

@@ -1,4 +1,4 @@
-          <div class="arena" [class.transparent]="transparent()" [class.paused]="paused()" [attr.data-phase]="phase()" [attr.data-winner]="winner()" [attr.data-shake]="shake()">
+          <div class="arena" [class.transparent]="transparent()" [class.paused]="paused()" [attr.data-phase]="phase()" [attr.data-winner]="winner()" [attr.data-shake]="shake()" [attr.data-ultimate]="ultimate() && phase() !== 'winner' ? '' : null">
             <div class="scenery" aria-hidden="true"><div class="moon"></div><div class="mountain mountain-one"></div><div class="mountain mountain-two"></div><div class="grid-floor"></div><div class="floor-ring"></div></div>
             <div class="arena-label"><span>!duel</span><span>{{ t('arena') }} / 01</span></div>
             <div class="hud">
@@ -15,13 +15,16 @@
             </div>
             <div class="fight-space" aria-hidden="true">
               @for (side of sides; track side) {
-                <div class="fighter-slot" [class.fighter-right]="side === 'right'" [attr.data-action]="action(side)" [attr.data-combo]="comboOn(side) ? '' : null" [attr.data-enraged]="enraged(side) ? '' : null">
+                <div class="fighter-slot" [class.fighter-right]="side === 'right'" [attr.data-action]="action(side)" [attr.data-combo]="comboOn(side) ? '' : null" [attr.data-enraged]="enraged(side) ? '' : null" [attr.data-doom]="doom(side)" [attr.data-split]="split(side) ? '' : null">
                   @if (enraged(side)) { <div class="rage-flames">@for (n of [0,1,2,3,4,5]; track n) { <i [style.--n]="n"></i> }</div> }
                   @if (attacking(side)) { <div class="turn-ring"></div> }
                   @for (key of [actionKey(side)]; track key) {
                     <div class="fighter-motion" [attr.data-action]="action(side)" [attr.data-move]="move(side)" [attr.data-character]="battle().fighters[side]">
                       <div class="fighter-facing"><app-duel-fighter [side]="side" [character]="battle().fighters[side]" [action]="action(side)" [move]="move(side)" [low]="low(side)" [enraged]="enraged(side)" [paused]="paused()" /></div>
                     </div>
+                  }
+                  @if (split(side)) {
+                    @for (half of ['top','bottom']; track half) { <div class="half" [attr.data-half]="half"><div class="fighter-facing"><app-duel-fighter [side]="side" [character]="battle().fighters[side]" [paused]="paused()" /></div></div> }
                   }
                 </div>
               }
@@ -31,7 +34,7 @@
                     @if (turn.move === 'special') { <div class="special-dim"></div> }
                     @if (turn.bonus) { <span class="extra-turn">{{ t('extraTurn') }}</span> }
                     @if (turn.defended) { <span class="skill-callout" [class.broken]="shattered(turn)">{{ skillName(turn) }}</span> }
-                    @if (turn.move !== 'normal') { <span class="move-callout">{{ moveName(turn) }}</span> }
+                    @if (turn.move !== 'normal' && turn.move !== 'ultimate') { <span class="move-callout">{{ moveName(turn) }}</span> }
                     @if (turn.move === 'heal') {
                       <div class="heal-fx" [attr.data-character]="battle().fighters[turn.attacker]">
                         @if (battle().fighters[turn.attacker] === 'knight') {
@@ -41,6 +44,7 @@
                         <div class="glyphs">@for (glyph of glyphs(turn); track $index) { <i [style.--n]="$index">{{ glyph }}</i> }</div>
                       </div>
                     }
+                    @else if (turn.move === 'ultimate') { }
                     @else if (battle().fighters[turn.attacker] === 'mage') { <div class="projectile"></div> }
                     @else if (turn.move === 'special' && battle().fighters[turn.attacker] === 'knight') { <div class="pillar"></div> }
                     @else if (turn.move === 'special') { <div class="crescent"><i></i><i></i></div> }
@@ -50,7 +54,7 @@
               @if (impact(); as hit) {
                 @for (index of [turnIndex()]; track index) {
                   @if (hit.move === 'heal') { <div class="impact-fx heal-impact" [attr.data-target]="hit.attacker"><span class="heal-number">+{{ hit.heal }} <small>HP</small></span></div> }
-                  @else {
+                  @else if (hit.move !== 'ultimate') {
                   <div class="impact-fx" [attr.data-target]="target(hit)" [attr.data-move]="hit.move" [attr.data-defended]="held(hit) ? battle().fighters[target(hit)] : null" [attr.data-broken]="shattered(hit) ? battle().fighters[target(hit)] : null">
                     @if (!held(hit)) { <span class="damage" [class.crit]="hit.crit">@if (hit.crit) { <b>{{ t('crit') }}</b> }−{{ hit.damage }}</span> }
                     @else if (hit.damage > 0) { <span class="damage">−{{ hit.damage }} <small>−80%</small></span> }
@@ -69,6 +73,33 @@
                 }
               }
             </div>
+            @if (phase() !== 'winner') { @if (ultimate(); as ult) {
+              <div class="fx ultimate-stage" [attr.data-attacker]="ult.attacker" [attr.data-move]="'ultimate'" [attr.data-character]="battle().fighters[ult.attacker]" aria-hidden="true">
+                <div class="ult-dim"></div>
+                @switch (battle().fighters[ult.attacker]) {
+                  @case ('knight') {
+                    <div class="god-rays"></div>
+                    <div class="judgment-beam"></div>
+                    <svg class="big-angel" viewBox="0 0 200 200"><defs><radialGradient id="ult-halo"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#ffe27a" stop-opacity="0"/></radialGradient></defs><circle cx="100" cy="60" r="56" fill="url(#ult-halo)" opacity=".5"/><g class="wing wing-l"><path d="M88 78Q40 20 4 40Q30 54 10 70Q40 70 22 92Q56 88 44 112Q72 100 90 96Z" fill="#fff" stroke="#d9e2ff" stroke-width="3"/><path d="M84 84Q52 52 26 58M84 90Q56 76 36 84" stroke="#c9d6ff" stroke-width="3" fill="none"/></g><g class="wing wing-r"><path d="M112 78Q160 20 196 40Q170 54 190 70Q160 70 178 92Q144 88 156 112Q128 100 110 96Z" fill="#fff" stroke="#d9e2ff" stroke-width="3"/><path d="M116 84Q148 52 174 58M116 90Q144 76 164 84" stroke="#c9d6ff" stroke-width="3" fill="none"/></g><ellipse cx="100" cy="26" rx="22" ry="6" fill="none" stroke="#ffe27a" stroke-width="5"/><circle cx="100" cy="48" r="14" fill="#ffe9cf" stroke="#d9e2ff" stroke-width="3"/><path d="M80 66Q100 58 120 66L134 190H66Z" fill="#fff" stroke="#d9e2ff" stroke-width="3"/><path d="M100 70V186" stroke="#ffe27a" stroke-width="4" opacity=".7"/><path d="M84 76L70 116M116 76L130 116" stroke="#ffe9cf" stroke-width="8" stroke-linecap="round"/><path class="light-spear" d="M100 96L92 196H108Z" fill="#fff8dc"/></svg>
+                    <div class="ash">@for (n of [0,1,2,3,4,5,6,7,8,9]; track n) { <i [style.--n]="n"></i> }</div>
+                  }
+                  @case ('mage') {
+                    <div class="bh-debris">@for (n of [0,1,2,3,4,5,6,7,8,9,10,11]; track n) { <i [style.--n]="n"></i> }</div>
+                    <div class="black-hole"><div class="bh-lens"></div><div class="bh-disk-tilt"><div class="bh-disk"></div></div><div class="bh-core"></div></div>
+                    <div class="bh-burst"></div>
+                  }
+                  @default {
+                    <div class="blood-sky"></div>
+                    <div class="blood-moon"></div>
+                    <div class="cuts">@for (angle of cuts; track $index) { <i [style.--a]="angle + 'deg'" [style.--n]="$index"></i> }</div>
+                  }
+                }
+                <div class="ult-bars"><i></i><i></i></div>
+                <div class="ult-title"><small>{{ t('ultimateKicker') }}</small><strong>{{ t('ultimate.' + battle().fighters[ult.attacker]) }}</strong><span>{{ names()[ult.attacker] }}</span></div>
+                <div class="ult-flash"></div>
+                <span class="ult-result">{{ t('ultimateResult.' + battle().fighters[ult.attacker]) }}</span>
+              </div>
+            } }
             <div class="center-cue" aria-hidden="true">
               @if (phase() === 'ready') { <span class="vs">VS</span><small>{{ t('ready') }}</small> }
               @if (phase() === 'entrance') { @if (battle().enraged) { <span class="challenge-cue enrage-cue">{{ t('enrageCue') }}</span> } @else { <span class="challenge-cue">{{ t('challenge') }}</span> } }

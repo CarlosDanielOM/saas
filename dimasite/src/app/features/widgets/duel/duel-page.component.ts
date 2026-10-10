@@ -10,7 +10,7 @@ import { getRouteParam } from '../../../shared/utils/route-param.util';
 import { MODULE_TIER_REQUIREMENTS, isModuleAccessible } from '../../modules/module-tier.model';
 import { DuelApi, DuelSettings, DuelState } from './duel-api.service';
 import { DuelArenaComponent } from './duel-arena.component';
-import { simulateBattle } from './duel-battle';
+import { simulateBattle, ultimateBattle } from './duel-battle';
 @Component({selector:'app-duel-page',imports:[ReactiveFormsModule,RouterLink,DuelArenaComponent],templateUrl:'./duel-page.component.html',styleUrls:['../widgets-base.css','./duel-page.component.css'],changeDetection:ChangeDetectionStrategy.OnPush})
 export class DuelPageComponent {
   private readonly auth=inject(SessionAuthService);
@@ -43,5 +43,5 @@ export class DuelPageComponent {
   async reload():Promise<void>{this.pending=null;this.uncertainSave.set(false);this.form.markAsPristine();this.error.set('');await this.refresh();}
   async createLink():Promise<void>{if(this.busy())return;if(this.overlayUrl()&&!this.rotateConfirm()){this.rotateConfirm.set(true);return;}this.busy.set(true);this.error.set('');try{const token=await this.api.token(this.channel);const url=location.origin+'/overlays/duel/'+this.channel+'#'+token;this.overlayUrl.set(url);this.rotateConfirm.set(false);try{sessionStorage.setItem('duel-overlay-'+this.channel,url);}catch{}await this.refresh();}catch{this.error.set(this.t('linkError'));}finally{this.busy.set(false);}}
   async copyLink():Promise<void>{try{await navigator.clipboard.writeText(this.overlayUrl());this.notice.set(this.t('copied'));}catch{this.error.set(this.t('copyError'));}}
-  preview():void{this.battle.set(simulateBattle(Math.random,this.streamerFight()?'right':null));this.elapsed.set(0);this.previewStarted=performance.now();this.started.set(true);}
+  preview(ultimate=false):void{const enraged=this.streamerFight()?'right':null;this.battle.set(ultimate?ultimateBattle(enraged):simulateBattle(Math.random,enraged));this.elapsed.set(0);this.previewStarted=performance.now();this.started.set(true);}
 }
