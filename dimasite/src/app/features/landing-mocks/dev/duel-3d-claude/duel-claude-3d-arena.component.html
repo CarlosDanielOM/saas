@@ -53,6 +53,6 @@
   @if (phase() === 'winner') {
     <div class="victory-cue"><span>✦ {{ t('victory') }} ✦</span><strong>{{ names()[battle().winner] }}</strong><small>{{ t('wins', {hp:health()[battle().winner]}) }}</small></div>
   }
-  <div class="arena-bottom"><span><i></i>{{ paused() ? t('pause') : turnLabel() }}</span><span>60 FPS <b>{{ stats().fps }}</b></span></div>
+  <div class="arena-bottom"><span><i></i>{{ paused() ? t('pause') : turnLabel() }}</span><span>30 FPS <b>{{ stats().fps }}</b></span></div>
   @if (unavailable()) { <div class="webgl-error" role="alert"><strong>{{ t('three.unavailable') }}</strong><span>{{ t('three.useSvg') }}</span></div> }
 </div>

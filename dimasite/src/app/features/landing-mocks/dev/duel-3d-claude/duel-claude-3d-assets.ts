@@ -8,6 +8,7 @@ export interface ClaudeAssets {
   noise: T.DataTexture; straw: T.DataTexture; stone: T.CanvasTexture; stoneBump: T.CanvasTexture;
   radial: T.CanvasTexture; glyph: T.CanvasTexture; sigil: T.CanvasTexture; feather: T.CanvasTexture;
   petal: T.CanvasTexture; crack: T.CanvasTexture; streak: T.CanvasTexture;
+  engrave: T.CanvasTexture; weave: T.CanvasTexture; runeBand: T.CanvasTexture; mon: T.CanvasTexture;
   dispose(): void;
 }
 
@@ -155,6 +156,71 @@ function crack(): T.CanvasTexture {
   });
 }
 
+/** Filigree scrollwork for engraved armour (bump only). */
+function engrave(): T.CanvasTexture {
+  const texture = canvas(512, (g, s) => {
+    g.fillStyle = '#808080'; g.fillRect(0, 0, s, s); g.lineCap = 'round';
+    for (let tile = 0; tile < 4; tile++) {
+      const ox = (tile % 2) * s / 2, oy = Math.floor(tile / 2) * s / 2;
+      for (let k = 0; k < 2; k++) {
+        const cx = ox + s / 4 + (k ? 60 : -60), cy = oy + s / 4 + (k ? -40 : 40), dir = k ? -1 : 1;
+        g.strokeStyle = '#d8d8d8'; g.lineWidth = 5; g.beginPath();
+        for (let a = 0; a < 9.5; a += .1) { const r = 6 + a * 7, x = cx + Math.cos(a * dir) * r, y = cy + Math.sin(a * dir) * r; a ? g.lineTo(x, y) : g.moveTo(x, y); }
+        g.stroke(); g.strokeStyle = '#3a3a3a'; g.lineWidth = 2; g.stroke();
+        for (let l = 0; l < 6; l++) {
+          const a = l * 1.4 + 1, r = 8 + a * 7, x = cx + Math.cos(a * dir) * r, y = cy + Math.sin(a * dir) * r;
+          g.fillStyle = '#d0d0d0'; g.beginPath(); g.ellipse(x, y, 11, 4, a * dir + .8, 0, Math.PI * 2); g.fill();
+        }
+      }
+    }
+    g.strokeStyle = '#b8b8b8'; g.lineWidth = 6; for (const y of [3, s / 2 - 3, s / 2 + 3, s - 3]) { g.beginPath(); g.moveTo(0, y); g.lineTo(s, y); g.stroke(); }
+  });
+  texture.colorSpace = T.NoColorSpace; texture.wrapS = texture.wrapT = T.RepeatWrapping; return texture;
+}
+
+/** Fine twill weave for cloth (bump only). */
+function weave(): T.CanvasTexture {
+  const texture = canvas(256, (g, s) => {
+    g.fillStyle = '#7a7a7a'; g.fillRect(0, 0, s, s);
+    for (let y = 0; y < s; y += 4) for (let x = 0; x < s; x += 4) {
+      const v = 110 + ((x / 4 + y / 4) % 4 < 2 ? 70 : 0) + hash(x * 3 + y * 7) * 30;
+      g.fillStyle = `rgb(${v},${v},${v})`; g.fillRect(x, y, 4, 3);
+    }
+  });
+  texture.colorSpace = T.NoColorSpace; texture.wrapS = texture.wrapT = T.RepeatWrapping; texture.repeat.set(6, 6); return texture;
+}
+
+/** A scrolling band of glyphs for glowing hems. */
+function runeBand(): T.CanvasTexture {
+  const texture = canvas(1024, (g, s) => {
+    g.clearRect(0, 0, s, 64); g.strokeStyle = '#fff'; g.lineWidth = 3; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(0, 6); g.lineTo(s, 6); g.moveTo(0, 58); g.lineTo(s, 58); g.stroke();
+    for (let i = 0; i < 40; i++) {
+      const x = i * s / 40 + 12; g.beginPath();
+      for (let k = 0; k < 3; k++) {
+        const r = hash(i * 5 + k);
+        if (r < .33) { g.moveTo(x, 16 + k * 12); g.lineTo(x + 14, 16 + k * 12); }
+        else if (r < .66) { g.moveTo(x + k * 6, 14); g.lineTo(x + k * 6, 50); }
+        else { g.moveTo(x, 48); g.lineTo(x + 7, 16); g.lineTo(x + 14, 48); }
+      }
+      g.stroke();
+    }
+  }, 64);
+  texture.wrapS = T.RepeatWrapping; return texture;
+}
+
+/** Family crest for the ronin's haori: a crescent over three tomoe-like commas. */
+function mon(): T.CanvasTexture {
+  return canvas(256, (g, s) => {
+    const c = s / 2; g.strokeStyle = '#fff'; g.fillStyle = '#fff'; g.lineWidth = 10;
+    g.beginPath(); g.arc(c, c, 112, 0, Math.PI * 2); g.stroke();
+    for (let i = 0; i < 3; i++) {
+      g.save(); g.translate(c, c); g.rotate(i * Math.PI * 2 / 3); g.beginPath(); g.arc(0, -40, 26, 0, Math.PI * 2); g.fill();
+      g.beginPath(); g.moveTo(26, -40); g.quadraticCurveTo(40, 10, -10, 30); g.quadraticCurveTo(14, -6, -26, -40); g.fill(); g.restore();
+    }
+  });
+}
+
 /** Horizontal light streak (lens flare bar / slash glint). */
 function streak(): T.CanvasTexture {
   return canvas(512, (g, s) => {
@@ -173,8 +239,8 @@ export function createAssets(): ClaudeAssets {
   stoneBump.colorSpace = T.NoColorSpace;
   const assets: ClaudeAssets = {
     noise, straw, stone, stoneBump, radial: radial(), glyph: glyphCircle(3, 6), sigil: glyphCircle(11, 5),
-    feather: feather(), petal: petal(), crack: crack(), streak: streak(),
-    dispose: () => { for (const texture of [noise, straw, stone, stoneBump, assets.radial, assets.glyph, assets.sigil, assets.feather, assets.petal, assets.crack, assets.streak]) texture.dispose(); },
+    feather: feather(), petal: petal(), crack: crack(), streak: streak(), engrave: engrave(), weave: weave(), runeBand: runeBand(), mon: mon(),
+    dispose: () => { for (const texture of [noise, straw, stone, stoneBump, assets.radial, assets.glyph, assets.sigil, assets.feather, assets.petal, assets.crack, assets.streak, assets.engrave, assets.weave, assets.runeBand, assets.mon]) texture.dispose(); },
   };
   return assets;
 }
@@ -207,13 +273,13 @@ export function skyMaterial(): T.ShaderMaterial {
       vec3 col=mix(vec3(.05,.045,.11),vec3(.012,.016,.04),smoothstep(-.05,.6,h));
       col+=vec3(.22,.12,.38)*exp(-abs(h-.06)*9.)*.3;
       vec2 uv=vec2(atan(d.x,d.z)*1.6,h*3.);
-      float n=fbm(uv*1.4+vec2(uTime*.01,0.));float band=exp(-pow((h-.32+sin(uv.x*.7)*.12)*3.2,2.));
+      float n=fbm(uv*1.4+vec2(uTime*.01,0.));float bd=(h-.32+sin(uv.x*.7)*.12)*3.2;float band=exp(-bd*bd);
       col+=mix(vec3(.18,.08,.32),vec3(.05,.12,.3),fbm(uv*2.3-3.))*smoothstep(.35,.85,n)*band*.55;
       col+=vec3(.5,.28,.2)*smoothstep(.55,.95,fbm(uv*3.1+7.))*band*.18;
       vec2 sp=uv*58.;vec2 cell=floor(sp);float star=h21(cell);vec2 f=fract(sp)-.5;
       float tw=.6+.4*sin(uTime*(1.+star*3.)+star*40.);
       col+=vec3(.85,.85,1.)*step(.985,star)*smoothstep(.12,0.,length(f))*tw*smoothstep(-.05,.15,h);
-      col=mix(col,col*.35+uTint*(.015+.07*smoothstep(-.1,.6,h)*fbm(uv*2.+uTime*.05)),uTintAmount);
+      col=mix(col,col*.4+uTint*(.003+.05*smoothstep(.3,.85,h)*fbm(uv*2.+uTime*.05)),uTintAmount);
       col*=1.-uDark*.7;col=mix(col,vec3(.55,.03,.07)*(.55+.6*fbm(uv*1.7+uTime*.04))*(.7+.5*smoothstep(-.1,.5,h)),uRed);gl_FragColor=vec4(col,1.);}`,
   });
 }
@@ -261,7 +327,7 @@ export function shaftMaterial(color: T.ColorRepresentation, opacity = .5): T.Sha
     uniforms: { uTime: { value: 0 }, uColor: { value: new T.Color(color) }, uOpacity: { value: opacity } },
     vertexShader: 'varying vec2 vUv;varying vec3 vN;varying vec3 vV;void main(){vUv=uv;vN=normalize(normalMatrix*normal);vec4 mv=modelViewMatrix*vec4(position,1.);vV=normalize(-mv.xyz);gl_Position=projectionMatrix*mv;}',
     fragmentShader: `varying vec2 vUv;varying vec3 vN;varying vec3 vV;uniform float uTime;uniform vec3 uColor;uniform float uOpacity;${NOISE_GLSL}
-    void main(){float facing=pow(abs(dot(vN,vV)),1.5);float ends=smoothstep(0.,.25,vUv.y)*smoothstep(1.,.55,vUv.y);
+    void main(){float facing=pow(min(1.,abs(dot(vN,vV))),1.5);float ends=smoothstep(0.,.25,vUv.y)*smoothstep(1.,.55,vUv.y);
       float dust=.65+.35*fbm(vec2(vUv.x*8.,vUv.y*3.-uTime*.4));
       gl_FragColor=vec4(uColor*facing*ends*dust*uOpacity,1.);}`,
   });
@@ -288,7 +354,7 @@ export function beamMaterial(color: T.ColorRepresentation): T.ShaderMaterial {
     uniforms: { uTime: { value: 0 }, uColor: { value: new T.Color(color) }, uOpacity: { value: 1 } },
     vertexShader: 'varying vec2 vUv;varying vec3 vN;varying vec3 vV;void main(){vUv=uv;vN=normalize(normalMatrix*normal);vec4 mv=modelViewMatrix*vec4(position,1.);vV=normalize(-mv.xyz);gl_Position=projectionMatrix*mv;}',
     fragmentShader: `varying vec2 vUv;varying vec3 vN;varying vec3 vV;uniform float uTime;uniform vec3 uColor;uniform float uOpacity;${NOISE_GLSL}
-    void main(){float f=abs(dot(vN,vV));float core=pow(f,2.5);float n=fbm(vec2(vUv.x*6.,vUv.y*4.-uTime*3.));
+    void main(){float f=min(1.,abs(dot(vN,vV)));float core=pow(f,2.5);float n=fbm(vec2(vUv.x*6.,vUv.y*4.-uTime*3.));
       float ends=smoothstep(0.,.08,vUv.y)*smoothstep(1.,.8,vUv.y);
       vec3 c=mix(uColor,vec3(1.),core*.8)*(core*1.6+n*.6)*ends;gl_FragColor=vec4(c*uOpacity,1.);}`,
   });
@@ -301,7 +367,7 @@ export function shellMaterial(color: T.ColorRepresentation, hex = true): T.Shade
     uniforms: { uTime: { value: 0 }, uColor: { value: new T.Color(color) }, uOpacity: { value: 1 }, uHex: { value: hex ? 1 : 0 }, uCrack: { value: 0 } },
     vertexShader: 'varying vec2 vUv;varying vec3 vN;varying vec3 vV;void main(){vUv=uv;vN=normalize(normalMatrix*normal);vec4 mv=modelViewMatrix*vec4(position,1.);vV=normalize(-mv.xyz);gl_Position=projectionMatrix*mv;}',
     fragmentShader: `varying vec2 vUv;varying vec3 vN;varying vec3 vV;uniform float uTime;uniform vec3 uColor;uniform float uOpacity;uniform float uHex;uniform float uCrack;${NOISE_GLSL}
-    void main(){float fr=pow(1.-abs(dot(vN,vV)),2.2);vec2 g=vUv*vec2(24.,12.);g.x+=mod(floor(g.y),2.)*.5;vec2 f=abs(fract(g)-.5);
+    void main(){float fr=pow(max(0.,1.-abs(dot(vN,vV))),2.2);vec2 g=vUv*vec2(24.,12.);g.x+=mod(floor(g.y),2.)*.5;vec2 f=abs(fract(g)-.5);
       float hexl=smoothstep(.42,.5,max(f.x*1.15+f.y*.6,f.y*1.2))*uHex;float sweep=exp(-abs(fract(vUv.y-uTime*.6)-.5)*12.);
       float cracks=uCrack*step(.62,fbm(vUv*14.))*1.5;
       gl_FragColor=vec4(uColor*(fr*1.4+hexl*(.35+sweep*.6)+cracks)*uOpacity,1.);}`,
@@ -377,3 +443,45 @@ export class Particles {
 }
 
 export { hash };
+
+/**
+ * Velocity-stretched sparks: camera-facing ribbons from each spark's position a moment
+ * ago to now, so fast embers read as streaks. Closed-form in time like Particles.
+ */
+export class Streaks {
+  readonly mesh: T.Mesh;
+  readonly material: T.ShaderMaterial;
+  constructor(count: number, seed = 1) {
+    const quad = new T.PlaneGeometry(1, 1), geometry = new T.InstancedBufferGeometry(), seeds = new Float32Array(count * 4);
+    geometry.index = quad.index; geometry.setAttribute('position', quad.attributes['position']); geometry.setAttribute('uv', quad.attributes['uv']);
+    for (let i = 0; i < count * 4; i++) seeds[i] = hash(i * 2.13 + seed * 57.3);
+    geometry.setAttribute('aSeed', new T.InstancedBufferAttribute(seeds, 4)); geometry.instanceCount = count;
+    this.material = new T.ShaderMaterial({
+      transparent: true, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide, toneMapped: false,
+      uniforms: {
+        uAge: { value: 0 }, uLife: { value: 1 }, uOrigin: { value: new T.Vector3() }, uDir: { value: new T.Vector3(0, 1, 0) }, uSpread: { value: 1 }, uSpeed: { value: 8 },
+        uGravity: { value: -8 }, uWidth: { value: .025 }, uTrail: { value: .05 }, uColorA: { value: new T.Color('#fff') }, uColorB: { value: new T.Color('#fa0') }, uOpacity: { value: 1 },
+      },
+      vertexShader: `attribute vec4 aSeed;uniform float uAge;uniform float uLife;uniform vec3 uOrigin;uniform vec3 uDir;uniform float uSpread;uniform float uSpeed;uniform float uGravity;uniform float uWidth;uniform float uTrail;
+        varying vec2 vUv;varying float vFade;varying float vMix;
+        vec3 at(float t,vec3 d,float speed){return uOrigin+d*speed*(1.-exp(-t*2.6))/2.6+vec3(0.,uGravity*.5*t*t,0.);}
+        void main(){vec3 rnd=normalize(vec3(aSeed.x,aSeed.y,fract(aSeed.x*7.3+aSeed.w))*2.-1.+.0001);vec3 d=normalize(mix(uDir,rnd,uSpread));
+          float speed=uSpeed*(.3+.7*aSeed.y),life=uLife*(.35+.65*aSeed.w),t=max(uAge,0.),k=clamp(t/life,0.,1.);
+          vFade=(uAge<0.||t>life)?0.:pow(1.-k,1.3);vMix=aSeed.z;vUv=uv;
+          vec4 head=modelViewMatrix*vec4(at(t,d,speed),1.),tail=modelViewMatrix*vec4(at(max(0.,t-uTrail*(.6+aSeed.x)),d,speed),1.);
+          vec3 axis=head.xyz-tail.xyz;vec3 side=normalize(cross(axis+vec3(0.,1e-5,0.),head.xyz))*uWidth*(.5+aSeed.w)*(.4+.6*vFade);
+          vec3 p=mix(tail.xyz,head.xyz,position.x+.5)+side*position.y*2.;gl_Position=projectionMatrix*vec4(p,1.);}`,
+      fragmentShader: `uniform vec3 uColorA;uniform vec3 uColorB;uniform float uOpacity;varying vec2 vUv;varying float vFade;varying float vMix;
+        void main(){if(vFade<=0.)discard;float across=1.-abs(vUv.y-.5)*2.;float along=vUv.x;float a=across*across*(.25+.75*along)*vFade;
+          vec3 c=mix(uColorB,uColorA,along*.7+vMix*.3);gl_FragColor=vec4(c*a*uOpacity*2.,1.);}`,
+    });
+    this.mesh = new T.Mesh(geometry, this.material); this.mesh.frustumCulled = false; this.mesh.visible = false;
+  }
+  set(origin: T.Vector3Like, age: number, options: { life?: number; speed?: number; gravity?: number; spread?: number; width?: number; trail?: number; dir?: T.Vector3Like; a?: T.ColorRepresentation; b?: T.ColorRepresentation; opacity?: number } = {}): void {
+    const u = this.material.uniforms; this.mesh.visible = age >= 0;
+    (u['uOrigin'].value as T.Vector3).copy(origin); u['uAge'].value = age; u['uLife'].value = options.life ?? .6; u['uSpeed'].value = options.speed ?? 8;
+    u['uGravity'].value = options.gravity ?? -8; u['uSpread'].value = options.spread ?? 1; u['uWidth'].value = options.width ?? .02; u['uTrail'].value = options.trail ?? .05;
+    u['uOpacity'].value = options.opacity ?? 1; (u['uDir'].value as T.Vector3).copy(options.dir ?? { x: 0, y: 1, z: 0 });
+    (u['uColorA'].value as T.Color).set(options.a ?? '#ffffff'); (u['uColorB'].value as T.Color).set(options.b ?? options.a ?? '#ffffff');
+  }
+}

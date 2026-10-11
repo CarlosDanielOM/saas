@@ -44,7 +44,7 @@ canvas{display:block;width:100%;height:100%;position:absolute;inset:0}
 .medallion b{font-size:max(10px,1.8cqw)}.medallion small{font-size:max(6px,.85cqw);font-style:normal;letter-spacing:.06em;text-transform:uppercase;font-weight:800;line-height:1.1}
 
 /* Phase cues */
-.ready-cue{position:absolute;top:36%;left:4%;right:4%;display:grid;justify-items:center;gap:.8cqw;text-align:center;pointer-events:none}
+.ready-cue{position:absolute;bottom:13%;left:4%;right:4%;display:grid;justify-items:center;gap:.8cqw;text-align:center;pointer-events:none}
 .cue-overline{font-size:max(7px,1cqw);text-transform:uppercase;letter-spacing:.4em;color:#cfc6e6}
 .vs-line{display:flex;align-items:center;gap:2.4cqw;max-width:100%}
 .vs-name{font-size:max(12px,3cqw);font-weight:850;letter-spacing:-.04em;max-width:34cqw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-shadow:0 3px 18px #000}

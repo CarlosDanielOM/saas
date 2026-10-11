@@ -1,6 +1,6 @@
 import * as T from 'three';
 import type { DuelCharacter } from '../../../widgets/duel/duel-battle';
-import { ClaudeAssets, GLSL_NOISE, Particles, additive, beamMaterial, hash, ringMaterial, shaftMaterial, shellMaterial, sprite } from './duel-claude-3d-assets';
+import { ClaudeAssets, GLSL_NOISE, Particles, Streaks, additive, beamMaterial, hash, ringMaterial, shaftMaterial, shellMaterial, sprite } from './duel-claude-3d-assets';
 import { bladeGeometry } from './duel-claude-3d-rig';
 
 const clamp = T.MathUtils.clamp, smooth = (x: number) => { const p = clamp(x, 0, 1); return p * p * (3 - 2 * p); };
@@ -14,6 +14,7 @@ interface CamKey { t: number; pos: [number, number, number]; look: [number, numb
 export interface UltimateLook {
   shot: CameraShot | null; lensWorld: T.Vector3 | null; lens: number; ink: number; impact: number; flash: number; flashColor: T.Color;
   dark: number; tint: T.Color; tintAmount: number; aberration: number; shake: number; floor: T.Color; floorPower: number; bloodMoon: number; exposure: number;
+  ripple: T.Vector3 | null; rippleAge: number; rippleStrength: number;
 }
 
 export interface UltimateContext {
@@ -26,7 +27,7 @@ const GHOST_COUNT = 6, CUT_COUNT = 15;
 export class UltimateEffects {
   readonly root = new T.Group();
   readonly particles: Particles[] = [];
-  readonly look: UltimateLook = { shot: null, lensWorld: null, lens: 0, ink: 0, impact: 0, flash: 0, flashColor: new T.Color(), dark: 0, tint: new T.Color(), tintAmount: 0, aberration: 0, shake: 0, floor: new T.Color(), floorPower: 0, bloodMoon: 0, exposure: 0 };
+  readonly look: UltimateLook = { shot: null, lensWorld: null, lens: 0, ink: 0, impact: 0, flash: 0, flashColor: new T.Color(), dark: 0, tint: new T.Color(), tintAmount: 0, aberration: 0, shake: 0, floor: new T.Color(), floorPower: 0, bloodMoon: 0, exposure: 0, ripple: null, rippleAge: 0, rippleStrength: 0 };
   // Divine Judgment
   private readonly judgment = new T.Group();
   private readonly portal: T.Mesh;
@@ -58,6 +59,8 @@ export class UltimateEffects {
   private readonly petals: T.InstancedMesh;
   private readonly cuts: T.Mesh[] = [];
   readonly ghosts: T.Mesh[] = [];
+  readonly avatar: T.Mesh[] = [];
+  private readonly avatarWings: T.InstancedMesh;
   readonly ghostMaterial: T.ShaderMaterial;
   readonly halves: T.Mesh[] = [];
   readonly planes = [new T.Plane(), new T.Plane()];
@@ -66,6 +69,7 @@ export class UltimateEffects {
   private readonly flare: T.Sprite;
   private readonly streak: T.Sprite;
   private readonly burst: Particles;
+  private readonly streakBurst = new Streaks(260, 41);
   private readonly swirl: Particles;
   private readonly motes: Particles;
   private readonly light = new T.PointLight('#ffffff', 0, 16, 1.6);
@@ -91,9 +95,9 @@ export class UltimateEffects {
     for (let i = 0; i < 7; i++) { const ray = new T.Mesh(new T.ConeGeometry(.07 + hash(i) * .08, 9, 10, 1, true), shaftMaterial('#ffe3a6', .45)); ray.geometry.translate(0, -4.5, 0); this.rays.push(ray); }
     this.judgment.add(this.portal, ...this.portalRings, ...this.rays);
     this.wings = new T.InstancedMesh(new T.PlaneGeometry(.26, 1.25).translate(0, .62, 0), additive('#ffd58c', assets.feather, .95), 36); this.wings.frustumCulled = false;
-    this.colossusMaterial = new T.MeshStandardMaterial({ color: '#fff3d6', emissive: '#ff9f3a', emissiveIntensity: .45, metalness: .85, roughness: .22, transparent: true });
+    this.colossusMaterial = new T.MeshStandardMaterial({ color: '#fff3d6', emissive: '#ff9f3a', emissiveIntensity: .3, metalness: .85, roughness: .22, transparent: true });
     const blade = new T.Mesh(bladeGeometry(6.4, .62, 1.1, .1), this.colossusMaterial);
-    const core = new T.Mesh(bladeGeometry(6.0, .16, .8, .12), additive('#ffe2a0', null, .45)); core.position.z = .2;
+    const core = new T.Mesh(bladeGeometry(6.0, .16, .8, .12), additive('#ffe2a0', null, .28)); core.position.z = .2;
     const guard = new T.Mesh(new T.BoxGeometry(.3, 2.4, .32), this.colossusMaterial); guard.position.z = -.1;
     const grip = new T.Mesh(new T.CylinderGeometry(.13, .15, 1.3, 12), this.colossusMaterial); grip.rotation.x = Math.PI / 2; grip.position.z = -.8;
     const halo = new T.Mesh(new T.TorusGeometry(.75, .05, 8, 48), additive('#ffd27a')); halo.position.z = -1.0;
@@ -105,7 +109,8 @@ export class UltimateEffects {
     this.crack = new T.Mesh(new T.PlaneGeometry(1, 1), additive('#ffc66b', assets.crack)); this.crack.rotation.x = -Math.PI / 2;
     this.debris = new T.InstancedMesh(new T.DodecahedronGeometry(.13, 0), new T.MeshStandardMaterial({ color: '#2a3047', roughness: .6, metalness: .3, emissive: '#ffb860', emissiveIntensity: .6, flatShading: true }), 28); this.debris.frustumCulled = false;
     this.feathers = new T.InstancedMesh(new T.PlaneGeometry(.12, .5), additive('#fff1cf', assets.feather, .9), 24); this.feathers.frustumCulled = false;
-    this.judgment.add(this.wings, this.colossus, this.heavenBeam, ...this.chains, this.pillar, this.crack, this.debris, this.feathers);
+    this.avatarWings = new T.InstancedMesh(new T.PlaneGeometry(.26, 1.25).translate(0, .62, 0), additive('#ffd58c', assets.feather, .5), 44); this.avatarWings.frustumCulled = false;
+    this.judgment.add(this.wings, this.colossus, this.heavenBeam, ...this.chains, this.pillar, this.crack, this.debris, this.feathers, this.avatarWings);
     // ---- Black Hole --------------------------------------------------------------------
     this.horizon = new T.Mesh(new T.SphereGeometry(1, 48, 32), new T.MeshBasicMaterial({ color: '#000000' }));
     this.photon = new T.Mesh(new T.RingGeometry(1.0, 1.14, 96), additive('#fff0ff'));
@@ -136,7 +141,7 @@ export class UltimateEffects {
       vertexShader: 'varying vec3 vN;varying vec3 vP;varying vec3 vV;void main(){vN=normalize(normalMatrix*normal);vP=position;vec4 mv=modelViewMatrix*vec4(position,1.);vV=normalize(-mv.xyz);gl_Position=projectionMatrix*mv;}',
       fragmentShader: `varying vec3 vN;varying vec3 vP;varying vec3 vV;uniform float uOpacity;uniform float uTime;${GLSL_NOISE}
       void main(){float n=fbm(vP.xy*1.6+vP.z*.7);float craters=smoothstep(.55,.75,fbm(vP.xy*3.+4.));float lit=clamp(dot(vN,normalize(vec3(-.4,.5,1.))),0.,1.);
-        vec3 c=mix(vec3(.45,.02,.06),vec3(1.,.18,.2),n)*(.35+lit*.9)-craters*.12;float rim=pow(1.-abs(dot(vN,vV)),3.);
+        vec3 c=mix(vec3(.45,.02,.06),vec3(1.,.18,.2),n)*(.35+lit*.9)-craters*.12;float rim=pow(max(0.,1.-abs(dot(vN,vV))),3.);
         gl_FragColor=vec4((c+vec3(1.,.2,.25)*rim*1.5)*1.6,uOpacity);}`,
     }));
     this.moonHalo = sprite(assets.radial, '#ff2d48', 9);
@@ -154,14 +159,14 @@ export class UltimateEffects {
     this.ghostMaterial = new T.ShaderMaterial({
       transparent: true, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide, toneMapped: false, uniforms: { uOpacity: { value: 1 } },
       vertexShader: 'varying vec3 vN;varying vec3 vV;void main(){vN=normalize(normalMatrix*normal);vec4 mv=modelViewMatrix*vec4(position,1.);vV=normalize(-mv.xyz);gl_Position=projectionMatrix*mv;}',
-      fragmentShader: 'varying vec3 vN;varying vec3 vV;uniform float uOpacity;void main(){float rim=pow(1.-abs(dot(vN,vV)),2.5);gl_FragColor=vec4(vec3(1.,.1,.25)*(rim*.75+.03)*uOpacity,1.);}',
+      fragmentShader: 'varying vec3 vN;varying vec3 vV;uniform float uOpacity;void main(){float rim=pow(max(0.,1.-abs(dot(vN,vV))),2.5);gl_FragColor=vec4(vec3(1.,.1,.25)*(rim*.75+.03)*uOpacity,1.);}',
     });
     this.crimson.add(this.moon, this.moonHalo, this.petals, ...this.cuts);
     // ---- Shared ------------------------------------------------------------------------
     this.shock = new T.Mesh(new T.PlaneGeometry(1, 1), ringMaterial('#ffffff')); this.shock.rotation.x = -Math.PI / 2;
     this.flare = sprite(assets.radial, '#ffffff', 1); this.streak = sprite(assets.streak, '#ffffff', 1);
     this.burst = this.addParticles(260, 21); this.swirl = this.addParticles(320, 23); this.motes = this.addParticles(160, 29);
-    this.root.add(this.shock, this.flare, this.streak);
+    this.root.add(this.shock, this.flare, this.streak, this.streakBurst.mesh);
     this.hide();
   }
 
@@ -174,6 +179,22 @@ export class UltimateEffects {
     for (const geometry of geometries) { const ghost = new T.Mesh(geometry, this.ghostMaterial); ghost.frustumCulled = false; this.ghosts.push(ghost); this.crimson.add(ghost); }
   }
   private readonly halfOrigin = new T.Vector3();
+/** The spectral avatar: the knight baked in two poses, drawn as translucent gold light. */
+  setAvatar(geometries: T.BufferGeometry[]): void {
+    for (const mesh of this.avatar) { this.judgment.remove(mesh); mesh.geometry.dispose(); (mesh.material as T.Material).dispose(); }
+    this.avatar.length = 0;
+    for (const geometry of geometries) {
+      const material = new T.ShaderMaterial({
+        transparent: true, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide, toneMapped: false, uniforms: { uOpacity: { value: 0 }, uTime: { value: 0 } },
+        vertexShader: 'varying vec3 vN;varying vec3 vV;varying float vY;void main(){vN=normalize(normalMatrix*normal);vec4 w=modelMatrix*vec4(position,1.);vY=w.y;vec4 mv=viewMatrix*w;vV=normalize(-mv.xyz);gl_Position=projectionMatrix*mv;}',
+        fragmentShader: `varying vec3 vN;varying vec3 vV;varying float vY;uniform float uOpacity;uniform float uTime;
+          void main(){float rim=pow(max(0.,1.-abs(dot(vN,vV))),2.2);float bands=.55+.45*sin(vY*5.-uTime*4.);float rise=smoothstep(-1.,4.,vY);
+            vec3 c=mix(vec3(1.,.6,.2),vec3(1.,.96,.82),rim)*(rim*1.9+.16+.16*bands)*(.65+.35*rise);gl_FragColor=vec4(c*uOpacity,1.);}`,
+      });
+      const mesh = new T.Mesh(geometry, material); mesh.frustumCulled = false; this.avatar.push(mesh); this.judgment.add(mesh);
+    }
+  }
+
   setHalves(baked: { geometry: T.BufferGeometry; materials: T.Material[]; origin: T.Vector3 } | null): void {
     for (const half of this.halves) { this.root.remove(half); for (const m of half.material as T.Material[]) m.dispose(); }
     if (this.halves[0]) this.halves[0].geometry.dispose();
@@ -190,7 +211,7 @@ export class UltimateEffects {
     this.judgment.visible = this.singularity.visible = this.crimson.visible = false;
     for (const child of [...this.root.children, ...this.judgment.children, ...this.crimson.children]) if (child !== this.judgment && child !== this.singularity && child !== this.crimson && !(child instanceof T.Light)) child.visible = false;
     this.light.intensity = 0;
-    const l = this.look; l.shot = null; l.lensWorld = null; l.lens = l.ink = l.impact = l.flash = l.dark = l.tintAmount = l.aberration = l.shake = l.floorPower = l.bloodMoon = l.exposure = 0;
+    const l = this.look; l.shot = null; l.lensWorld = null; l.ripple = null; l.rippleAge = l.rippleStrength = 0; l.lens = l.ink = l.impact = l.flash = l.dark = l.tintAmount = l.aberration = l.shake = l.floorPower = l.bloodMoon = l.exposure = 0;
   }
 
   update(ctx: UltimateContext | null): void {
@@ -228,8 +249,8 @@ export class UltimateEffects {
       ],
       ronin: [
         { t: 0, pos: [fx + dir * 1.7, 1.25, 3.6], look: [fx, 1.3, 0], fov: 30 },
-        { t: .95, pos: [fx + dir * 1.3, 1.05, 3.1], look: [fx, 1.5, 0], fov: 28 },
-        { t: 1.3, pos: [fx + dir * 1.2, 1.02, 2.95], look: [fx, 1.5, 0], fov: 26 },
+        { t: .95, pos: [fx + dir * 1.25, .72, 3.0], look: [fx + dir * .1, 1.42, 0], fov: 30 },
+        { t: 1.3, pos: [fx + dir * 1.15, .7, 2.85], look: [fx + dir * .1, 1.42, 0], fov: 28 },
         { t: 1.42, pos: [tx - dir * 2.4, 1.4, 6.2], look: [tx, 1.5, 0], fov: 40 },
         { t: 2.1, pos: [tx + dir * 1.6, 1.9, 6.4], look: [tx, 1.4, 0], fov: 42, roll: dir * .03 },
         { t: 2.5, pos: [tx + dir * 3.2, 1.15, 4.9], look: [tx + dir * 1.1, 1.3, 0], fov: 35 },
@@ -257,7 +278,7 @@ export class UltimateEffects {
     // Sword beam to the heavens.
     const beam = smooth((age - 1.15) / .2) * (1 - smooth((age - 2.5) / .2));
     this.heavenBeam.visible = beam > 0; this.heavenBeam.position.copy(ctx.tip); this.heavenBeam.scale.set(1 + beam, 14 * beam, 1 + beam);
-    (this.heavenBeam.material as T.ShaderMaterial).uniforms['uOpacity'].value = beam * .9; (this.heavenBeam.material as T.ShaderMaterial).uniforms['uTime'].value = world;
+    (this.heavenBeam.material as T.ShaderMaterial).uniforms['uOpacity'].value = beam * .5; (this.heavenBeam.material as T.ShaderMaterial).uniforms['uTime'].value = world;
     // The heavens part over the victim.
     const open = smooth((age - 1.1) / .65) * (1 - smooth((hit - .8) / 1));
     this.portal.visible = open > 0; this.portal.position.set(to.x, 8.2, to.z); (this.portal.material as T.ShaderMaterial).uniforms['uOpen'].value = open; (this.portal.material as T.ShaderMaterial).uniforms['uTime'].value = world;
@@ -268,7 +289,7 @@ export class UltimateEffects {
     });
     // Wings unfurl behind the knight.
     const unfurl = easeOut((age - .95) / .7), wingFade = 1 - smooth((hit - .3) / .9);
-    this.wings.visible = unfurl > 0 && wingFade > 0; (this.wings.material as T.MeshBasicMaterial).opacity = .55 * wingFade;
+    this.wings.visible = unfurl > 0 && wingFade > 0 && this.avatar.length === 0; (this.wings.material as T.MeshBasicMaterial).opacity = .55 * wingFade;
     for (let s = 0; s < 2; s++) for (let i = 0; i < 18; i++) {
       const side = s ? 1 : -1, row = i % 3, n = Math.floor(i / 3), spread = (n / 5) * (.35 + unfurl * 1.25) + .1;
       this.dummy.position.set(from.x - dir * .25 + side * .1, 1.75 + row * .05, from.z - .35);
@@ -281,6 +302,22 @@ export class UltimateEffects {
     const y = embedded ? 6.55 : 17.5 - emerge * 8.9 - plunge * 2.05 + Math.sin(age * 30) * .03 * smooth((age - 2.3) / .3);
     this.colossus.visible = emerge > 0 && hit < 1.75; this.colossus.position.set(to.x, y, to.z + .1); this.colossus.rotation.z = Math.PI / 2 + (1 - emerge) * .8 + Math.sin(age * .7) * .05;
     this.colossusMaterial.opacity = 1 - smooth((hit - 1.1) / .6);
+    // A colossal spectral knight rises behind its champion: sword to the heavens, then judgment.
+    const rise = easeOut((age - 1.1) / .9), vanish = 1 - smooth((hit - .6) / .9), strike = smooth((age - 2.5) / .3);
+    const statue = new T.Vector3(from.x - dir * 1.1, -5.2 + rise * 4.7, -4.9);
+    this.avatar.forEach((mesh, i) => {
+      const weight = i === 0 ? 1 - strike : strike; mesh.visible = rise > 0 && vanish > 0 && weight > .01;
+      mesh.position.copy(statue); mesh.scale.setScalar(3.1); mesh.rotation.set(0, -dir * .55, 0);
+      const u = (mesh.material as T.ShaderMaterial).uniforms; u['uOpacity'].value = rise * vanish * weight * .95; u['uTime'].value = age;
+    });
+    this.avatarWings.visible = rise > 0 && vanish > 0; (this.avatarWings.material as T.MeshBasicMaterial).opacity = .45 * rise * vanish;
+    for (let s = 0; s < 2; s++) for (let i = 0; i < 22; i++) {
+      const side = s ? 1 : -1, row = i % 2, n = Math.floor(i / 2), spread = (n / 10) * (.5 + rise * 1.1) + .15;
+      this.dummy.position.set(statue.x + side * .3, statue.y + 5.2 + row * .2, statue.z - .7);
+      this.dummy.rotation.set(-.15, dir * .3, side * (spread + row * .1) + Math.sin(age * 1.5 + n) * .04);
+      this.dummy.scale.set(3 + row, (3.4 + n * .5 - row * .8) * (.4 + rise * .6), 1); this.dummy.updateMatrix(); this.avatarWings.setMatrixAt(s * 22 + i, this.dummy.matrix);
+    }
+    this.avatarWings.instanceMatrix.needsUpdate = true;
     // Chains of light bind the victim.
     const bind = smooth((age - 1.35) / .5);
     this.chains.forEach((chain, i) => {
@@ -294,7 +331,9 @@ export class UltimateEffects {
       (this.pillar.material as T.ShaderMaterial).uniforms['uOpacity'].value = (1 - smooth(k / .65)) * .45; (this.pillar.material as T.ShaderMaterial).uniforms['uTime'].value = world;
       this.crack.visible = true; this.crack.position.set(to.x, .035, to.z); this.crack.scale.setScalar(2 + easeOut(k / .15) * 5.5); (this.crack.material as T.MeshBasicMaterial).opacity = (1 - smooth((k - .8) / 1)) * 1.3;
       this.shockwave(to, k, gold, 12);
-      this.burst.set(0, new T.Vector3(to.x, 1, to.z), k, { life: 1.1, speed: 14, gravity: -5, spread: .9, size: 22, a: '#ffffff', b: '#ffbf5a' });
+      this.burst.set(0, new T.Vector3(to.x, 1, to.z), k, { life: 1.1, speed: 12, gravity: -5, spread: .9, size: 16, a: '#ffffff', b: '#ffbf5a' });
+      this.streakBurst.set(new T.Vector3(to.x, .4, to.z), k, { life: 1.1, speed: 22, gravity: -9, spread: .7, width: .035, trail: .06, a: '#fff6dc', b: '#ffb84d' });
+      this.wave(new T.Vector3(to.x, .8, to.z), k, .045);
       this.debris.visible = k < 1.6;
       for (let i = 0; i < 28; i++) {
         const a = hash(i) * Math.PI * 2, speed = 3 + hash(i * 3) * 5, up = 4 + hash(i * 5) * 5, t = Math.min(k, 1.6);
@@ -354,7 +393,9 @@ export class UltimateEffects {
       const n = this.nova.material as T.ShaderMaterial; n.uniforms['uOpacity'].value = (1 - smooth(k / 1.2)) * .45; n.uniforms['uColor'].value.set('#c9a2ff');
       this.flare.visible = k < .8; this.flare.position.copy(center); this.flare.scale.setScalar(2 + easeOut(k / .2) * 6); this.flare.material.opacity = .7 * (1 - smooth(k / .6)); this.flare.material.color.set('#f2e6ff');
       this.streak.visible = k < .7; this.streak.position.copy(center); this.streak.scale.set(28 * easeOut(k / .15), 1.2, 1); this.streak.material.opacity = 1 - smooth(k / .7); this.streak.material.color.set('#d9c4ff');
-      this.burst.set(0, center, k, { life: 1.2, speed: 16, gravity: -2, spread: 1, size: 20, a: '#ffffff', b: '#a77bff' });
+      this.burst.set(0, center, k, { life: 1.2, speed: 14, gravity: -2, spread: 1, size: 16, a: '#ffffff', b: '#a77bff' });
+      this.streakBurst.set(center, k, { life: 1.2, speed: 26, gravity: -1, spread: 1, width: .03, trail: .07, a: '#f6ecff', b: '#9a6bff' });
+      this.wave(center, k, .06);
       this.shockwave(new T.Vector3(to.x, 0, to.z), k, violet, 13);
       this.light.position.copy(center); this.light.color.set('#d8c2ff'); this.light.intensity = Math.exp(-k * 2.2) * 70;
     } else { this.light.position.copy(center); this.light.color.copy(violet); this.light.intensity = size * 18; }
@@ -383,6 +424,7 @@ export class UltimateEffects {
     if (vanish > -.05 && vanish < .35) {
       const k = pulse((vanish + .05) / .4); this.streak.visible = true; this.streak.position.set(from.x + dir * .6, 1.4, from.z + .2); this.streak.scale.set(7 * k, .35, 1); this.streak.material.color.set('#ffd6de'); this.streak.material.opacity = k;
       this.burst.set(0, new T.Vector3(from.x, 1.2, from.z), vanish, { life: .7, speed: 6, gravity: -2, spread: 1, size: 14, a: '#ffffff', b: '#ff2d55' });
+      this.streakBurst.set(new T.Vector3(from.x, 1.2, from.z), vanish, { life: .5, speed: 14, gravity: 0, spread: .35, dir: { x: dir, y: .1, z: 0 }, width: .02, trail: .08, a: '#ffffff', b: '#ff2d55' });
     }
     // Afterimages appear one by one around the frozen victim, each with its cuts.
     const ghostFade = 1 - smooth(hit / .2);
@@ -415,9 +457,15 @@ export class UltimateEffects {
         for (const m of half.material as T.MeshStandardMaterial[]) { m.opacity = 1 - smooth((k - 1) / .6); if (m.emissive && !m.userData['glow']) m.emissive.setRGB(glow, glow * .08, glow * .15); }
       });
       this.burst.set(0, origin, k, { life: 1, speed: 9, gravity: -6, spread: 1, size: 12, a: '#ffd6de', b: '#ff2d55', opacity: .7 });
+      this.streakBurst.set(origin, k, { life: .9, speed: 16, gravity: -6, spread: .95, width: .022, trail: .05, a: '#fff0f3', b: '#ff2d55' });
+      this.wave(origin, k, .04);
       this.shockwave(new T.Vector3(to.x, 0, to.z), k, red, 11);
       this.light.position.set(to.x, 2, to.z + 1.2); this.light.color.copy(red); this.light.intensity = Math.exp(-k * 2.5) * 50;
     } else if (hit < 0) { this.light.position.set(0, 3.5, -2.5); this.light.color.copy(red); this.light.intensity = l.bloodMoon * 30; }
+  }
+
+  private wave(at: T.Vector3, k: number, strength: number): void {
+    if (k >= 0 && k < 1) { this.look.ripple = at.clone(); this.look.rippleAge = k; this.look.rippleStrength = strength; }
   }
 
   private shockwave(at: T.Vector3, k: number, color: T.Color, size: number): void {

@@ -327,7 +327,7 @@ function react(pose: Pose, character: DuelCharacter, turn: DuelTurn, age: number
   pose.r[0] -= shove * .5 * strength; pose.h[1] -= shove * .14;
   pose.j.ch = mix3(pose.j.ch, [-.45 * strength, .25, .12], jolt); pose.j.hd = mix3(pose.j.hd, [-.55 * strength, -.2, .25], jolt);
   pose.j.sR = mix3(pose.j.sR, [-.9, 0, -.8], jolt * .7); pose.j.sL = mix3(pose.j.sL, [-.7, 0, .9], jolt * .7);
-  pose.fR[2] -= shove * .1; pose.flash = Math.max(0, 1 - hitAge / 140) * .8; pose.flashColor = turn.crit ? '#ffd27a' : '#ffffff'; pose.wind = shove * .8;
+  pose.fR[2] -= shove * .1; pose.flash = Math.max(0, 1 - hitAge / 110) * .8; pose.flashColor = turn.crit ? '#ffd27a' : '#ffffff'; pose.wind = shove * .8;
 }
 
 function knockout(pose: Pose, character: DuelCharacter, hitAge: number): void {
@@ -376,4 +376,10 @@ function victimOfUltimate(pose: Pose, attacker: DuelCharacter, age: number, wind
 export function strikePoses(character: DuelCharacter): Pose[] {
   const stance = STANCE[character], picks: ['normal' | 'heavy' | 'special', number][] = [['normal', 1], ['heavy', 1], ['special', 1], ['normal', 1.3], ['heavy', 1.35], ['special', 1.5]];
   return picks.map(([move, p]) => { const pose = emptyPose(stance); sample(CLIPS[character][move], p, stance, pose); pose.r = [0, pose.r[1] * .3, 0]; pose.yaw = 0; pose.wind = 1; return pose; });
+}
+
+/** Finisher poses at chosen phases, for baking the Divine Judgment avatar. */
+export function ultimatePoses(character: DuelCharacter, phases: number[]): Pose[] {
+  const stance = STANCE[character];
+  return phases.map(p => { const pose = emptyPose(stance); sample(ULTIMATE[character], p, stance, pose); pose.r = [0, 0, 0]; pose.yaw = 0; pose.wind = 1.4; return pose; });
 }

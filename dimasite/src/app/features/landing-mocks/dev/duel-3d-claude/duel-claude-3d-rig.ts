@@ -20,7 +20,7 @@ export interface ClaudeRig {
   legs: { R: [T.Group, T.Group, T.Group]; L: [T.Group, T.Group, T.Group] };
   weapon: T.Group; bladeBase: T.Object3D; bladeTip: T.Object3D; focus: T.Object3D; tip: T.Object3D;
   sheathed: T.Object3D | null; gourdHand: T.Object3D | null; gourdBelt: T.Object3D | null;
-  cloths: Cloth[]; skirt: Skirt | null; orbs: T.Object3D[]; aura: T.Mesh;
+  cloths: Cloth[]; skirt: Skirt | null; skirtBand: Skirt | null; orbs: T.Object3D[]; aura: T.Mesh; book: T.Group | null; runes: T.Texture[];
   materials: T.MeshStandardMaterial[]; glow: T.MeshStandardMaterial[]; accent: T.Color;
 }
 
@@ -59,7 +59,7 @@ export class Cloth {
 export class Skirt {
   readonly mesh: T.Mesh;
   private readonly base: Float32Array;
-  constructor(geometry: T.BufferGeometry, material: T.Material, private readonly top: number, private readonly bottom: number) {
+  constructor(geometry: T.BufferGeometry, material: T.Material | T.Material[], private readonly top: number, private readonly bottom: number) {
     this.base = (geometry.attributes['position'].array as Float32Array).slice();
     this.mesh = new T.Mesh(geometry, material); this.mesh.castShadow = true; this.mesh.receiveShadow = true; this.mesh.frustumCulled = false; this.mesh.userData['dynamic'] = true;
   }
@@ -148,6 +148,7 @@ interface Mats {
   steel: T.MeshPhysicalMaterial; dark: T.MeshPhysicalMaterial; gold: T.MeshPhysicalMaterial; leather: T.MeshStandardMaterial;
   cloth: T.MeshPhysicalMaterial; clothDark: T.MeshPhysicalMaterial; trim: T.MeshPhysicalMaterial; skin: T.MeshStandardMaterial; wood: T.MeshStandardMaterial;
   glow: T.MeshStandardMaterial; eye: T.MeshStandardMaterial; lacquer: T.MeshPhysicalMaterial; straw: T.MeshStandardMaterial; crystal: T.MeshPhysicalMaterial;
+  tabi: T.MeshStandardMaterial; hair: T.MeshStandardMaterial; glass: T.MeshPhysicalMaterial;
 }
 
 function materials(side: DuelSide, enraged: boolean, assets: ClaudeAssets): Mats {
@@ -155,12 +156,12 @@ function materials(side: DuelSide, enraged: boolean, assets: ClaudeAssets): Mats
   const cloth = enraged ? '#6b1424' : side === 'left' ? '#3b2a7a' : '#8a4220', clothDark = enraged ? '#2d0710' : side === 'left' ? '#1b1638' : '#3b1b10';
   const bump = assets.noise;
   return {
-    steel: new T.MeshPhysicalMaterial({ color: '#a7b0c4', metalness: 1, roughness: .34, bumpMap: bump, bumpScale: .6, clearcoat: .25, clearcoatRoughness: .3, envMapIntensity: .55 }),
+    steel: new T.MeshPhysicalMaterial({ color: '#a7b0c4', metalness: 1, roughness: .32, bumpMap: assets.engrave, bumpScale: 1.6, clearcoat: .25, clearcoatRoughness: .3, envMapIntensity: .55 }),
     dark: new T.MeshPhysicalMaterial({ color: '#262c3d', metalness: .85, roughness: .38, bumpMap: bump, bumpScale: .8, clearcoat: .2 }),
-    gold: new T.MeshPhysicalMaterial({ color: '#d9ad62', metalness: 1, roughness: .28, clearcoat: .4, clearcoatRoughness: .2, envMapIntensity: .7 }),
+    gold: new T.MeshPhysicalMaterial({ color: '#d9ad62', metalness: 1, roughness: .28, bumpMap: assets.engrave, bumpScale: .8, clearcoat: .4, clearcoatRoughness: .2, envMapIntensity: .7 }),
     leather: new T.MeshStandardMaterial({ color: '#3a2620', roughness: .75, bumpMap: bump, bumpScale: 1.5 }),
-    cloth: new T.MeshPhysicalMaterial({ color: cloth, roughness: .82, sheen: 1, sheenColor: new T.Color(tint).multiplyScalar(.55), sheenRoughness: .45, side: T.DoubleSide, bumpMap: bump, bumpScale: .5 }),
-    clothDark: new T.MeshPhysicalMaterial({ color: clothDark, roughness: .9, sheen: .6, sheenColor: new T.Color(tint).multiplyScalar(.3), side: T.DoubleSide }),
+    cloth: new T.MeshPhysicalMaterial({ color: cloth, roughness: .82, sheen: 1, sheenColor: new T.Color(tint).multiplyScalar(.55), sheenRoughness: .45, side: T.DoubleSide, bumpMap: assets.weave, bumpScale: 1.1 }),
+    clothDark: new T.MeshPhysicalMaterial({ color: clothDark, roughness: .9, sheen: .6, sheenColor: new T.Color(tint).multiplyScalar(.3), side: T.DoubleSide, bumpMap: assets.weave, bumpScale: 1.1 }),
     trim: new T.MeshPhysicalMaterial({ color: '#d9ad5f', metalness: .6, roughness: .45, sheen: .5, side: T.DoubleSide }),
     skin: new T.MeshStandardMaterial({ color: '#d7a98a', roughness: .62 }),
     wood: new T.MeshStandardMaterial({ color: '#4a3020', roughness: .7, bumpMap: assets.straw, bumpScale: 2 }),
@@ -169,6 +170,9 @@ function materials(side: DuelSide, enraged: boolean, assets: ClaudeAssets): Mats
     lacquer: new T.MeshPhysicalMaterial({ color: '#120d14', metalness: .1, roughness: .2, clearcoat: 1, clearcoatRoughness: .05 }),
     straw: new T.MeshStandardMaterial({ color: '#b89257', roughness: .88, map: assets.straw, bumpMap: assets.straw, bumpScale: 2.5, side: T.DoubleSide }),
     crystal: new T.MeshPhysicalMaterial({ color: tint, emissive: tint, emissiveIntensity: 2.2, metalness: 0, roughness: .05, clearcoat: 1, iridescence: 1, iridescenceIOR: 1.6 }),
+    tabi: new T.MeshStandardMaterial({ color: '#d9d4c8', roughness: .85, bumpMap: assets.weave, bumpScale: 1 }),
+    hair: new T.MeshStandardMaterial({ color: '#c7cad6', roughness: .65, bumpMap: assets.straw, bumpScale: 3 }),
+    glass: new T.MeshPhysicalMaterial({ color: '#d8f6ff', roughness: .05, metalness: 0, clearcoat: 1, transparent: true, opacity: .45 }),
   };
 }
 
@@ -191,15 +195,15 @@ export function buildRig(character: DuelCharacter, side: DuelSide, enraged: bool
   const weapon = group(), bladeBase = new T.Object3D(), bladeTip = new T.Object3D(), focus = new T.Object3D(), tip = new T.Object3D();
   j.wR.add(weapon); weapon.position.set(0, -.07, .02); weapon.add(bladeBase, bladeTip); j.ch.add(focus); focus.position.set(0, .15, .1);
   const rig: ClaudeRig = { character, side, anchor, root, j, legs, weapon, bladeBase, bladeTip, focus, tip, sheathed: null, gourdHand: null, gourdBelt: null,
-    cloths: [], skirt: null, orbs: [], aura: new T.Mesh(), materials: [], glow: [m.glow, m.eye, m.crystal], accent: new T.Color(m.glow.color) };
+    cloths: [], skirt: null, skirtBand: null, orbs: [], aura: new T.Mesh(), book: null, runes: [], materials: [], glow: [m.glow, m.eye, m.crystal], accent: new T.Color(m.glow.color) };
 
   // Shared limbs: hands, plus per-class shells added below.
   for (const [wrist, elbow, shoulderJ] of [[j.wR, j.eR, j.sR], [j.wL, j.eL, j.sL]] as const) {
-    add(wrist, rbox(.09, .11, .1, .03), character === 'knight' ? m.steel : character === 'mage' ? m.skin : m.leather, [0, -.04, .01]);
+    fist(wrist, character === 'knight' ? m.steel : character === 'mage' ? m.skin : m.leather, character === 'ronin' ? m.skin : null);
     add(elbow, sphere(.06, 16, 12), character === 'knight' ? m.gold : m.dark, [0, 0, 0]);
     void shoulderJ;
   }
-  if (character === 'knight') knight(rig, m, assets); else if (character === 'mage') mage(rig, m); else ronin(rig, m);
+  if (character === 'knight') knight(rig, m, assets); else if (character === 'mage') mage(rig, m, assets); else ronin(rig, m, assets);
 
   // Enraged aura: a column of crimson heat around the streamer's fighter.
   rig.aura = new T.Mesh(new T.CylinderGeometry(.62, .8, 2.5, 32, 1, true), new T.ShaderMaterial({
@@ -218,9 +222,25 @@ export function buildRig(character: DuelCharacter, side: DuelSide, enraged: bool
   return rig;
 }
 
-function boot(rig: ClaudeRig, m: Mats, armored: boolean): void {
+/** A closed hand: palm, four curled fingers and a thumb wrapped around the grip. */
+function fist(wrist: T.Object3D, glove: T.Material, skin: T.Material | null): void {
+  add(wrist, rbox(.085, .085, .095, .028), glove, [0, -.03, .005]);
+  for (let i = 0; i < 4; i++) {
+    const x = -.03 + i * .02, finger = add(wrist, new T.CapsuleGeometry(.0125, .04, 3, 8), skin ?? glove, [x, -.085, .035], [1.15, 0, 0]);
+    finger.scale.set(1, 1 - Math.abs(i - 1.5) * .08, 1);
+  }
+  add(wrist, new T.CapsuleGeometry(.014, .04, 3, 8), skin ?? glove, [.048, -.05, .045], [.6, 0, -.6]);
+  add(wrist, lathe([[.05, .03], [.058, -.02]], 16), glove, [0, .0, 0]);
+}
+
+function boot(rig: ClaudeRig, m: Mats, armored: boolean, ronin = false): void {
   for (const [thigh, knee, ankle] of [rig.legs.R, rig.legs.L]) {
-    add(ankle, rbox(.15, .1, .3, .045), armored ? m.steel : m.leather, [0, -.03, .06]);
+    if (ronin) {
+      // Tabi socks on straw waraji with crossed straps.
+      add(ankle, rbox(.12, .1, .26, .045), m.tabi, [0, -.02, .05]);
+      add(ankle, rbox(.14, .025, .31, .01), m.straw, [0, -.075, .055]);
+      for (const z of [.0, .1]) add(ankle, new T.TorusGeometry(.068, .008, 5, 18), m.leather, [0, -.035, z + .04], [0, Math.PI / 2, 0], [1, .55, 1]);
+    } else add(ankle, rbox(.15, .1, .3, .045), armored ? m.steel : m.leather, [0, -.03, .06]);
     if (armored) { add(ankle, sphere(.08, 16, 10, Math.PI * 2, Math.PI / 2), m.steel, [0, -.02, .18], [Math.PI / 2, 0, 0], [1, 1.4, .6]); add(knee, sphere(.085, 18, 12), m.steel, [0, 0, .03]); add(knee, new T.ConeGeometry(.04, .1, 8), m.gold, [0, 0, .12], [Math.PI / 2, 0, 0]); }
     void thigh;
   }
@@ -269,6 +289,16 @@ function knight(rig: ClaudeRig, m: Mats, assets: ClaudeAssets): void {
     add(thigh, lathe([[.1, -.02], [.125, -.12], [.11, -.34], [.09, -.42]]), m.steel, [0, 0, 0], [0, 0, 0], [1, 1, .9]);
     add(knee, lathe([[.075, -.04], [.09, -.14], [.085, -.3], [.07, -.4]]), m.steel, [0, 0, 0], [0, 0, 0], [1, 1, .95]);
   }
+  // Cape clasps, empty scabbard, belt pouch and a mail skirt under the fauld.
+  for (const x of [-.17, .17]) { add(j.ch, new T.CylinderGeometry(.045, .045, .02, 20), m.gold, [x, .38, .17], [Math.PI / 2, 0, 0]); add(j.ch, new T.OctahedronGeometry(.022), m.glow, [x, .38, .185]); }
+  const scabbard = new T.Group(); j.hp.add(scabbard); scabbard.position.set(.28, -.02, -.04); scabbard.rotation.set(-.38, 0, .14);
+  add(scabbard, new T.CylinderGeometry(.04, .03, .98, 14), m.lacquer, [0, -.5, 0], [0, 0, 0], [1, 1, .42]);
+  add(scabbard, new T.ConeGeometry(.032, .09, 14), m.gold, [0, -1.03, 0], [Math.PI, 0, 0], [1, 1, .45]);
+  for (const y of [-.04, -.36]) add(scabbard, new T.TorusGeometry(.04, .008, 6, 18), m.gold, [0, y, 0], [Math.PI / 2, 0, 0], [1, .45, 1]);
+  add(j.hp, rbox(.1, .1, .055, .018), m.leather, [-.2, -.01, .14], [0, -.6, 0]);
+  add(j.hp, new T.CylinderGeometry(.012, .012, .02, 10), m.gold, [-.2, .02, .175], [Math.PI / 2, 0, -.6]);
+  add(j.hp, lathe([[.25, -.18], [.29, -.3], [.31, -.38]], 32), m.dark, [0, 0, 0], [0, 0, 0], [1, 1, .82]);
+  add(j.hd, new T.OctahedronGeometry(.035), m.gold, [0, .27, .16], [0, 0, 0], [.7, 1.3, .5]);
   boot(rig, m, true);
   // Longsword: beveled steel, luminous fuller, curved quillons, wrapped grip.
   const w = rig.weapon;
@@ -297,7 +327,7 @@ function knight(rig: ClaudeRig, m: Mats, assets: ClaudeAssets): void {
   void assets;
 }
 
-function mage(rig: ClaudeRig, m: Mats): void {
+function mage(rig: ClaudeRig, m: Mats, assets: ClaudeAssets): void {
   const { j } = rig;
   // Robe skirt: a flared lathe the legs push from inside.
   const skirtGeometry = lathe([[.2, .08], [.24, -.1], [.3, -.35], [.38, -.62], [.46, -.88], [.47, -.92]], 40);
@@ -344,10 +374,35 @@ function mage(rig: ClaudeRig, m: Mats): void {
   }
   const back = new Cloth(m.clothDark, .5, .8, 6, 10, { rest: .12, taper: .2, flutter: .8 });
   j.ch.add(back.mesh); back.mesh.position.set(0, .42, -.17); rig.cloths.push(back);
+  // Long silver beard spilling from the shadowed face.
+  for (const [x, len] of [[0, .42], [-.05, .34], [.05, .34], [-.025, .38], [.025, .38]] as const) {
+    add(j.hd, taperTube([new T.Vector3(x, .04, .1), new T.Vector3(x * 1.3, -.08, .15), new T.Vector3(x * 1.1, -.22, .16), new T.Vector3(x * .6, -len + .1, .14)], u => .045 * (1 - u) ** .8 + .004, 16, 8), m.hair);
+  }
+  add(j.hd, sphere(.075, 16, 10), m.hair, [.0, .07, .11], [0, 0, 0], [1.4, .45, .6]);
+  // Shoulder mantle with a gold hem.
+  add(j.ch, lathe([[.13, .47], [.27, .41], [.36, .3], [.37, .22], [.35, .2]], 36), m.clothDark, [0, 0, 0], [0, 0, 0], [1, 1, .88]);
+  add(j.ch, new T.TorusGeometry(.36, .012, 6, 48), m.trim, [0, .21, 0], [Math.PI / 2, 0, 0], [1, .88, 1]);
+  // Potion vials on the belt.
+  for (const [x, color] of [[-.17, '#7dffc4'], [.15, '#ff7ad9']] as const) {
+    const vial = new T.Group(); j.hp.add(vial); vial.position.set(x, -.04, .17); vial.rotation.z = x * .6;
+    add(vial, sphere(.045, 14, 10), m.glass, [0, 0, 0]); add(vial, new T.CylinderGeometry(.014, .02, .05, 10), m.glass, [0, .055, 0]);
+    add(vial, sphere(.036, 12, 8), new T.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 1.6 }), [0, -.006, 0]);
+    add(vial, new T.CylinderGeometry(.013, .013, .02, 8), m.wood, [0, .088, 0]);
+  }
+  // Glowing glyph band at the hem: deforms with the robe and scrolls slowly.
+  const runes = assets.runeBand.clone(); runes.repeat.set(5, 1); runes.needsUpdate = true; rig.runes.push(runes);
+  const bandMaterial = new T.MeshBasicMaterial({ color: rig.accent.clone().lerp(new T.Color('#ffffff'), .25), map: runes, transparent: true, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide, toneMapped: false, opacity: .9 });
+  const band = new Skirt(new T.LatheGeometry([new T.Vector2(.418, -.72), new T.Vector2(.449, -.82)], 64), bandMaterial, .08, -.92);
+  band.mesh.castShadow = false; j.hp.add(band.mesh); band.mesh.scale.z = .85; rig.skirtBand = band;
+  // A spellbook drifting beside the off hand.
+  const book = new T.Group(); rig.root.add(book); rig.book = book;
+  add(book, rbox(.3, .05, .38, .012), m.leather, [0, 0, 0]); add(book, rbox(.28, .042, .36, .006), new T.MeshStandardMaterial({ color: '#e9dfc8', roughness: .9 }), [.012, 0, 0]);
+  for (const [x, z] of [[-.13, -.17], [-.13, .17], [.13, -.17], [.13, .17]] as const) add(book, rbox(.05, .056, .05, .008), m.trim, [x, 0, z]);
+  const sigil = new T.Mesh(new T.CircleGeometry(.08, 6), m.glow); sigil.rotation.x = -Math.PI / 2; sigil.position.y = .027; book.add(sigil);
   boot(rig, m, false);
 }
 
-function ronin(rig: ClaudeRig, m: Mats): void {
+function ronin(rig: ClaudeRig, m: Mats, assets: ClaudeAssets): void {
   const { j, legs } = rig;
   // Hakama: pleated, flared per leg so lunges read clearly.
   const pleat = (points: [number, number][]) => {
@@ -410,7 +465,17 @@ function ronin(rig: ClaudeRig, m: Mats): void {
   (scarf.mesh.material as T.MeshStandardMaterial).emissiveIntensity = .55; (scarf.mesh.material as T.MeshStandardMaterial).side = T.DoubleSide;
   rig.glow.push(scarf.mesh.material as T.MeshStandardMaterial);
   j.nk.add(scarf.mesh); scarf.mesh.position.set(.04, .02, -.12); rig.cloths.push(scarf);
-  boot(rig, m, false);
+  // Wakizashi beside the katana's saya.
+  const short = new T.Group(); j.hp.add(short); short.position.set(.23, .0, .1); short.rotation.set(-1.75, .25, .18);
+  add(short, new T.CylinderGeometry(.022, .026, .55, 12), m.lacquer, [0, .3, 0], [0, 0, 0], [1, 1, .55]);
+  add(short, new T.CylinderGeometry(.036, .036, .01, 18), m.gold, [0, -.01, 0]); add(short, new T.CylinderGeometry(.02, .023, .18, 10), m.leather, [0, -.1, 0]);
+  // Prayer beads, forearm wraps and the crest on the back.
+  for (let i = 0; i < 18; i++) { const a = i / 18 * Math.PI * 2; add(j.ch, sphere(.018, 10, 8), i % 6 ? m.wood : m.trim, [Math.sin(a) * .16, .4 - (Math.cos(a) * .5 + .5) * .06, Math.cos(a) * .14]); }
+  for (const elbow of [j.eR, j.eL]) for (let i = 0; i < 4; i++) add(elbow, new T.TorusGeometry(.086, .01, 6, 20), m.leather, [0, -.11 - i * .045, 0], [Math.PI / 2 + (i % 2 ? .12 : -.12), 0, 0]);
+  const crest = new T.Mesh(new T.CircleGeometry(.11, 32), new T.MeshStandardMaterial({ map: assets.mon, color: '#f0dcb0', transparent: true, roughness: .8, side: T.DoubleSide }));
+  crest.position.set(0, .24, -.225); crest.rotation.set(-.08, Math.PI, 0); crest.userData['dynamic'] = true; j.ch.add(crest);
+  for (const x of [.1, .15]) { const tassel = new Cloth(m.cloth, .05, .32, 1, 6, { rest: -.05, facing: -1, flutter: .9, seed: x * 40 }); j.hp.add(tassel.mesh); tassel.mesh.position.set(x, .04, .2); rig.cloths.push(tassel); }
+  boot(rig, m, false, true);
 }
 
 /** Collapse each joint's static pieces into one mesh per material (cloth stays dynamic). */
@@ -433,13 +498,14 @@ function batch(parent: T.Group): void {
  * Freeze the rig's current pose into one geometry (relative to its anchor). Ghosts use a
  * single draw; the split victim keeps one material group per source mesh.
  */
-export function bakeRig(rig: ClaudeRig, groups: boolean): { geometry: T.BufferGeometry; materials: T.Material[]; origin: T.Vector3 } {
+export function bakeRig(rig: ClaudeRig, groups: boolean, cloth = true): { geometry: T.BufferGeometry; materials: T.Material[]; origin: T.Vector3 } {
   rig.anchor.updateMatrixWorld(true);
   // World orientation (mirroring included), relative to the fighter's feet.
   const origin = new T.Vector3().setFromMatrixPosition(rig.anchor.matrixWorld);
   const inverse = new T.Matrix4().makeTranslation(-origin.x, -origin.y, -origin.z), geometries: T.BufferGeometry[] = [], mats: T.Material[] = [];
   rig.root.traverse(object => {
     if (!(object instanceof T.Mesh) || !object.visible || object === rig.aura || Array.isArray(object.material)) return;
+    if (!cloth && rig.cloths.some(c => c.mesh === object)) return;
     let visible = true; object.traverseAncestors(a => { if (!a.visible) visible = false; }); if (!visible) return;
     const g = object.geometry.index ? object.geometry.toNonIndexed() : object.geometry.clone();
     for (const name of Object.keys(g.attributes)) if (!['position', 'normal', 'uv'].includes(name)) g.deleteAttribute(name);

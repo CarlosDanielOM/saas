@@ -1,13 +1,14 @@
 import * as T from 'three';
 import type { DuelCharacter, DuelTurn } from '../../../widgets/duel/duel-battle';
 import { COMBO_HEAL, turnLength } from '../../../widgets/duel/duel-battle';
-import { ClaudeAssets, Particles, additive, beamMaterial, hash, ringMaterial, shellMaterial, sprite } from './duel-claude-3d-assets';
+import { ClaudeAssets, Particles, Streaks, additive, beamMaterial, hash, ringMaterial, shellMaterial, sprite } from './duel-claude-3d-assets';
 
 const clamp = T.MathUtils.clamp, smooth = (x: number) => { const p = clamp(x, 0, 1); return p * p * (3 - 2 * p); };
 const pulse = (x: number) => (x <= 0 || x >= 1) ? 0 : Math.sin(x * Math.PI);
 
 /** Screen-level feedback the scene applies to the camera and the grade pass. */
-export interface ScreenFx { shake: number; aberration: number; flash: number; flashColor: T.Color; exposure: number }
+/** ripple: a screen-space shockwave centred on a world point (age 0 → 1). */
+export interface ScreenFx { shake: number; aberration: number; flash: number; flashColor: T.Color; exposure: number; ripple: T.Vector3 | null; rippleAge: number; rippleStrength: number }
 
 export interface CombatContext {
   turn: DuelTurn; time: number; attacker: DuelCharacter; defender: DuelCharacter;
@@ -29,7 +30,7 @@ export class Trail {
       transparent: true, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide, toneMapped: false,
       uniforms: { uColor: { value: new T.Color() }, uOpacity: { value: 1 } },
       vertexShader: 'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
-      fragmentShader: `varying vec2 vUv;uniform vec3 uColor;uniform float uOpacity;void main(){float age=vUv.x;float a=pow(1.-age,2.4)*smoothstep(.3,.95,vUv.y)*.7;
+      fragmentShader: `varying vec2 vUv;uniform vec3 uColor;uniform float uOpacity;void main(){float age=vUv.x;float a=pow(clamp(1.-age,0.,1.),2.4)*smoothstep(.3,.95,vUv.y)*.7;
         vec3 c=mix(vec3(1.),uColor,smoothstep(0.,.3,age))*(.55+(1.-age)*.65);gl_FragColor=vec4(c*a*uOpacity,1.);}`,
     });
     this.mesh = new T.Mesh(geometry, this.material); this.mesh.frustumCulled = false; this.mesh.visible = false;
@@ -68,8 +69,9 @@ export class CombatEffects {
   readonly root = new T.Group();
   readonly trail = new Trail(14);
   readonly particles: Particles[] = [];
-  readonly fx: ScreenFx = { shake: 0, aberration: 0, flash: 0, flashColor: new T.Color('#fff'), exposure: 0 };
+  readonly fx: ScreenFx = { shake: 0, aberration: 0, flash: 0, flashColor: new T.Color('#fff'), exposure: 0, ripple: null, rippleAge: 0, rippleStrength: 0 };
   private readonly sparks: Particles;
+  private readonly streakSparks = new Streaks(150, 2);
   private readonly embers: Particles;
   private readonly dust: Particles;
   private readonly motes: Particles;
@@ -78,7 +80,7 @@ export class CombatEffects {
   private readonly shock: T.Mesh;
   private readonly ground: T.Mesh;
   private readonly bolts: Bolt[];
-  private readonly meteors: { rock: T.Mesh; fire: T.Mesh; glow: T.Sprite; blast: Particles }[] = [];
+  private readonly meteors: { rock: T.Mesh; fire: T.Mesh; glow: T.Sprite; blast: Particles; streaks: Streaks }[] = [];
   private readonly pillar: T.Mesh;
   private readonly sigil: T.Mesh;
   private readonly column: T.Mesh;
@@ -101,8 +103,8 @@ export class CombatEffects {
     for (let i = 0; i < 4; i++) {
       const rock = new T.Mesh(new T.DodecahedronGeometry(.32, 1), new T.MeshStandardMaterial({ color: '#2b1a14', emissive: '#ff5a1e', emissiveIntensity: 2.2, roughness: .8, flatShading: true }));
       const fire = new T.Mesh(new T.ConeGeometry(.34, 2.6, 18, 1, true), beamMaterial('#ff7a2e')); fire.geometry.translate(0, 1.3, 0);
-      const glow = sprite(assets.radial, '#ff8a3c', 2.2), blast = this.addParticles(70, 11 + i);
-      rock.add(fire); this.meteors.push({ rock, fire, glow, blast }); r.add(rock, glow);
+      const glow = sprite(assets.radial, '#ff8a3c', 2.2), blast = this.addParticles(50, 11 + i), streaks = new Streaks(60, 31 + i);
+      rock.add(fire); this.meteors.push({ rock, fire, glow, blast, streaks }); r.add(rock, glow, streaks.mesh);
     }
     this.pillar = new T.Mesh(new T.CylinderGeometry(.75, .95, 12, 32, 1, true), beamMaterial('#ffe0a0')); this.pillar.geometry.translate(0, 6, 0);
     this.sigil = new T.Mesh(new T.PlaneGeometry(1, 1), additive('#ffd27a', assets.sigil)); this.sigil.rotation.x = -Math.PI / 2;
@@ -121,7 +123,7 @@ export class CombatEffects {
     for (const g of this.glyphs) g.rotation.x = -Math.PI / 2;
     this.feathers = new T.InstancedMesh(new T.PlaneGeometry(.12, .48), additive('#fff1cf', assets.feather, .9), 14);
     this.feathers.frustumCulled = false;
-    r.add(this.trail.mesh, this.flare, ...this.streaks, this.shock, this.ground, ...this.bolts.map(b => b.group), this.pillar, this.sigil, this.column, this.crescent, this.ward, this.aegis, ...this.glyphs, this.feathers, this.light);
+    r.add(this.trail.mesh, this.streakSparks.mesh, this.flare, ...this.streaks, this.shock, this.ground, ...this.bolts.map(b => b.group), this.pillar, this.sigil, this.column, this.crescent, this.ward, this.aegis, ...this.glyphs, this.feathers, this.light);
     this.hide();
   }
 
@@ -133,7 +135,7 @@ export class CombatEffects {
     for (const child of this.root.children) if (!(child instanceof T.Light)) child.visible = false;
     for (const p of this.particles) p.points.visible = false;
     for (const meteor of this.meteors) { meteor.rock.visible = meteor.glow.visible = false; }
-    this.light.intensity = 0; this.fx.shake = this.fx.aberration = this.fx.flash = this.fx.exposure = 0;
+    this.light.intensity = 0; this.fx.shake = this.fx.aberration = this.fx.flash = this.fx.exposure = this.fx.rippleAge = this.fx.rippleStrength = 0; this.fx.ripple = null;
   }
 
   /** Contact feedback: flash, crossing streaks, sparks, shock ring, dust and a light pop. */
@@ -145,11 +147,13 @@ export class CombatEffects {
       s.visible = pop > .01; s.position.copy(at); s.material.rotation = .35 + i * 1.05 + age * .4; s.material.color.copy(color).lerp(new T.Color('#fff'), .4);
       s.scale.set(size * (2.4 - i * .5) * (.4 + pop * .8), size * .22 * pop, 1); s.material.opacity = pop * .8;
     });
-    this.sparks.set(0, at, age, { life: .55, speed: 9 * size, gravity: -7, spread: .85, size: 14 * size, a: '#ffffff', b: color });
+    this.sparks.set(0, at, age, { life: .5, speed: 7 * size, gravity: -6, spread: .85, size: 9 * size, a: '#ffffff', b: color });
+    this.streakSparks.set(at, age, { life: .55, speed: 13 * size, gravity: -9, spread: .92, width: .016 * size, trail: .045, a: '#ffffff', b: color });
+    if (age < .6) { this.fx.ripple = at.clone(); this.fx.rippleAge = age / .6; this.fx.rippleStrength = .014 * size; }
     this.shock.visible = age < .45; this.shock.position.copy(at); this.shock.scale.setScalar(.6 + age * 7 * size);
     const ring = this.shock.material as T.ShaderMaterial; ring.uniforms['uProgress'].value = .2 + age / .45 * .8; ring.uniforms['uColor'].value.copy(color); ring.uniforms['uOpacity'].value = 1 - age / .45;
     this.dust.set(0, feet, age, { life: .9, speed: 3.2, gravity: .4, spread: .55, dir: { x: 0, y: .25, z: 0 }, size: 40, a: '#8f86b8', b: '#423a5c', opacity: .5 });
-    this.light.position.copy(at).add(this.scratch.set(0, .3, .8)); this.light.color.copy(color); this.light.intensity = Math.max(this.light.intensity, pop * 14 * size);
+    this.light.position.copy(at).add(this.scratch.set(0, .6, 1.4)); this.light.color.copy(color); this.light.intensity = Math.max(this.light.intensity, pop * 14 * size);
     this.fx.shake = Math.max(this.fx.shake, pop * .14 * size); this.fx.aberration = Math.max(this.fx.aberration, pop * .006 * size);
   }
 
@@ -190,7 +194,8 @@ export class CombatEffects {
           }
           const blast = age - land;
           if (blast > 0 && blast < 1.1) {
-            m.blast.set(0, target, blast, { life: .8, speed: 7, gravity: -5, spread: .7, size: 26, a: '#ffd59a', b: '#ff4d1f' });
+            m.blast.set(0, target, blast, { life: .8, speed: 6, gravity: -5, spread: .7, size: 20, a: '#ffd59a', b: '#ff4d1f' });
+            m.streaks.set(target, blast, { life: .9, speed: 12, gravity: -10, spread: .55, width: .022, trail: .06, a: '#fff1c4', b: '#ff5a1e' });
             if (i === 0 || i === 3) this.impact(new T.Vector3(target.x, .6, target.z), blast, new T.Color('#ff8a3c'), 1.1, target);
           }
         }
@@ -228,7 +233,7 @@ export class CombatEffects {
       if (ctx.defender === 'knight') {
         const a = pulse((k + .06) / .5); this.aegis.visible = a > 0; this.aegis.position.set(to.x - dir * .55, 1.45, to.z + .35); this.aegis.lookAt(from.x, 1.45, from.z + 4);
         this.aegis.scale.setScalar(.8 + a * .5); (this.aegis.material as T.ShaderMaterial).uniforms['uOpacity'].value = a * 1.6;
-        this.sparks.set(0, new T.Vector3(to.x - dir * .55, 1.45, to.z + .3), k, { life: .45, speed: 7, gravity: -9, spread: .7, dir: { x: -dir, y: .5, z: 0 }, size: 10, a: '#fff6d8', b: '#ffc06b' });
+        this.streakSparks.set(new T.Vector3(to.x - dir * .55, 1.45, to.z + .3), k, { life: .45, speed: 10, gravity: -10, spread: .6, dir: { x: -dir, y: .5, z: 0 }, width: .014, trail: .04, a: '#fff6d8', b: '#ffc06b' });
         this.fx.shake = Math.max(this.fx.shake, pulse(k / .25) * .05);
       } else if (ctx.defender === 'mage') {
         const a = pulse((k + .1) / .65); this.ward.visible = a > 0; this.ward.position.set(to.x, 1.35, to.z); this.ward.scale.setScalar(1.05 + a * .15);

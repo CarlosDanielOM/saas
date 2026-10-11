@@ -25,7 +25,7 @@
           <div class="render-controls">
             <div class="render-segment" role="group" [attr.aria-label]="t('three.renderMode')">
               <button type="button" [attr.aria-pressed]="renderMode() === 'svg'" (click)="renderMode.set('svg')" data-testid="renderer-svg">SVG <span>{{ t('three.default') }}</span></button>
-              <button type="button" [attr.aria-pressed]="renderMode() === '3d'" (click)="renderMode.set('3d')" data-testid="renderer-3d">3D <span>{{ threeEntry() === 'gpt' ? '30 FPS' : '60 FPS' }}</span></button>
+              <button type="button" [attr.aria-pressed]="renderMode() === '3d'" (click)="renderMode.set('3d')" data-testid="renderer-3d">3D <span>{{ threeEntry() === 'astra' ? '60 FPS' : '30 FPS' }}</span></button>
             </div>
             @if (renderMode() === '3d') {
               <div class="render-segment entry-segment" role="group" [attr.aria-label]="t('three.entry')">

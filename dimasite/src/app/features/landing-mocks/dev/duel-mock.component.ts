@@ -157,7 +157,7 @@ export class DuelMockComponent {
       this.lastTick = now;
       if (!this.paused()) this.elapsed.update(time => Math.min(this.duration(), time + Math.min(delta, 100)));
       if (this.elapsed() >= this.duration()) this.stopTimer();
-    }, Math.ceil(1000 / (this.renderMode() === 'svg' ? (this.svgEntry() === 'astra' ? 60 : 30) : this.threeEntry() === 'gpt' ? 30 : 60)));
+    }, Math.ceil(1000 / (this.renderMode() === 'svg' ? (this.svgEntry() === 'astra' ? 60 : 30) : this.threeEntry() === 'astra' ? 60 : 30)));
   }
 
   reset(): void {

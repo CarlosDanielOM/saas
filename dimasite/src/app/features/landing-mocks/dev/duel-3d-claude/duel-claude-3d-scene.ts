@@ -5,10 +5,11 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { Reflector } from 'three/addons/objects/Reflector.js';
 import { DuelBattle, DuelSide, COMBO_HEAL, otherSide } from '../../../widgets/duel/duel-battle';
 import { ClaudeAssets, Particles, coronaMaterial, createAssets, flameMaterial, mistMaterial, runeFloorMaterial, shaftMaterial, skyMaterial } from './duel-claude-3d-assets';
 import { ARM_JOINTS, ClaudeRig, Cloth, HIP_HEIGHT, SHIN, THIGH, bakeRig, buildRig } from './duel-claude-3d-rig';
-import { MotionContext, Pose, activeTurn, attackPhase, fighterPose, strikePoses } from './duel-claude-3d-motion';
+import { MotionContext, Pose, activeTurn, attackPhase, fighterPose, strikePoses, ultimatePoses } from './duel-claude-3d-motion';
 import { CombatEffects } from './duel-claude-3d-effects';
 import { UltimateEffects } from './duel-claude-3d-ultimates';
 
@@ -16,7 +17,32 @@ export interface DuelSceneState { battle: DuelBattle; elapsed: number; started: 
 export interface DuelSceneStats { fps: number; calls: number; triangles: number }
 const clamp = T.MathUtils.clamp, smooth = (x: number) => { const p = clamp(x, 0, 1); return p * p * (3 - 2 * p); };
 const pulse = (x: number) => (x <= 0 || x >= 1) ? 0 : Math.sin(x * Math.PI);
-const FPS = 60, FRAME_MS = 1000 / FPS, BASE = -2.35, FACING = 1.0, SIDES: DuelSide[] = ['left', 'right'];
+const FPS = 30, FRAME_MS = 1000 / FPS, BASE = -2.35, FACING = 1.0, SIDES: DuelSide[] = ['left', 'right'];
+
+/**
+ * Runs before bloom. A single NaN or infinite pixel (an extreme specular highlight
+ * overflowing the half-float target, or undefined shader math on some GPUs) would
+ * otherwise be smeared across the whole frame by the bloom blur and read as black.
+ */
+const SanitizeShader = {
+  uniforms: { tDiffuse: { value: null } },
+  vertexShader: 'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
+  fragmentShader: `uniform sampler2D tDiffuse;varying vec2 vUv;
+    float safe(float x){return (isnan(x)||isinf(x)||!(x>=0.||x<0.))?0.:clamp(x,0.,96.);}
+    void main(){vec4 c=texture2D(tDiffuse,vUv);gl_FragColor=vec4(safe(c.r),safe(c.g),safe(c.b),1.);}`,
+};
+
+/** Polished flagstones: the mirrored scene, broken up by the stone relief and faded at the rim. */
+const MirrorShader = {
+  name: 'ClaudeArenaMirror',
+  uniforms: { color: { value: null }, tDiffuse: { value: null }, textureMatrix: { value: null }, uStone: { value: null }, uStrength: { value: .42 } },
+  vertexShader: 'uniform mat4 textureMatrix;varying vec4 vMirror;varying vec2 vUv;void main(){vMirror=textureMatrix*vec4(position,1.);vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
+  fragmentShader: `uniform sampler2D tDiffuse;uniform sampler2D uStone;uniform float uStrength;varying vec4 vMirror;varying vec2 vUv;
+    void main(){float g=texture2D(uStone,vUv).r;vec4 m=vMirror;m.xy+=(g-.55)*.035*m.w;vec3 r=texture2DProj(tDiffuse,m).rgb;
+      r=(any(isnan(r))||any(isinf(r)))?vec3(0.):min(r,vec3(24.));
+      float edge=smoothstep(1.,.86,length(vUv-.5)*2.);float polish=.3+.7*smoothstep(.3,.7,g);
+      gl_FragColor=vec4(r*uStrength*edge*polish,1.);}`,
+};
 
 /** Grade pass: gravitational lensing, ink (Blood Moon), impact frames, aberration, flash, vignette and grain. */
 const GradeShader = {
@@ -24,12 +50,15 @@ const GradeShader = {
     tDiffuse: { value: null }, uAspect: { value: 16 / 9 }, uTime: { value: 0 }, uLensPos: { value: new T.Vector2(.5, .5) }, uLensE: { value: 0 },
     uInk: { value: 0 }, uImpact: { value: 0 }, uAberration: { value: 0 }, uFlash: { value: 0 }, uFlashColor: { value: new T.Color('#fff') },
     uExposure: { value: 0 }, uVignette: { value: .55 }, uGrain: { value: .018 },
+    uRipplePos: { value: new T.Vector2(.5, .5) }, uRippleAge: { value: 0 }, uRippleStrength: { value: 0 },
   },
   vertexShader: 'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
   fragmentShader: `uniform sampler2D tDiffuse;uniform float uAspect;uniform float uTime;uniform vec2 uLensPos;uniform float uLensE;uniform float uInk;uniform float uImpact;
-    uniform float uAberration;uniform float uFlash;uniform vec3 uFlashColor;uniform float uExposure;uniform float uVignette;uniform float uGrain;varying vec2 vUv;
+    uniform float uAberration;uniform float uFlash;uniform vec3 uFlashColor;uniform float uExposure;uniform float uVignette;uniform float uGrain;uniform vec2 uRipplePos;uniform float uRippleAge;uniform float uRippleStrength;varying vec2 vUv;
     float h(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}
     void main(){vec2 uv=vUv;float shadow=0.;
+      if(uRippleStrength>0.){vec2 d=(uv-uRipplePos)*vec2(uAspect,1.);float r=max(length(d),1e-4);float x=(r-uRippleAge*.6)*13.;
+        uv-=(d/r)/vec2(uAspect,1.)*exp(-x*x)*uRippleStrength*(1.-uRippleAge);}
       if(uLensE>0.0005){vec2 d=(uv-uLensPos)*vec2(uAspect,1.);float r=max(length(d),1e-4);float shift=min(uLensE*uLensE/r,.5);
         vec2 src=d-normalize(d)*shift;uv=uLensPos+src/vec2(uAspect,1.);shadow=smoothstep(uLensE*.62,uLensE*.5,r);}
       vec2 c=uv-.5;vec3 col=vec3(texture2D(tDiffuse,uv+c*uAberration).r,texture2D(tDiffuse,uv).g,texture2D(tDiffuse,uv-c*uAberration).b);
@@ -70,6 +99,9 @@ export class DuelClaude3dScene {
   private readonly key = new T.DirectionalLight('#e3e8ff', 2.6);
   private readonly rims: T.SpotLight[] = [];
   private readonly gateLight = new T.PointLight('#8f6dff', 12, 16, 1.6);
+  private mirror!: Reflector;
+  private readonly contact: Record<DuelSide, T.Mesh> = { left: new T.Mesh(), right: new T.Mesh() };
+  private readonly probe = new T.Mesh(new T.PlaneGeometry(.4, .4), new T.ShaderMaterial({ vertexShader: 'void main(){gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}', fragmentShader: 'uniform float uZero;void main(){gl_FragColor=vec4(vec3(uZero/uZero),1.);}', uniforms: { uZero: { value: 0 } } }));
   private readonly rigs: Partial<Record<DuelSide, ClaudeRig>> = {};
   private readonly observer: ResizeObserver;
   private readonly motion = matchMedia('(prefers-reduced-motion: reduce)');
@@ -117,7 +149,7 @@ export class DuelClaude3dScene {
     this.ambient = new Particles(220, this.assets.radial, 41);
     this.buildEnvironment();
     const target = new T.WebGLRenderTarget(1, 1, { type: T.HalfFloatType, samples: 4 });
-    this.composer = new EffectComposer(this.renderer, target); this.composer.addPass(new RenderPass(this.scene, this.camera));
+    this.composer = new EffectComposer(this.renderer, target); this.composer.addPass(new RenderPass(this.scene, this.camera)); this.composer.addPass(new ShaderPass(SanitizeShader));
     this.bloom = new UnrealBloomPass(new T.Vector2(800, 450), .42, .28, 1.25); this.composer.addPass(this.bloom);
     this.grade = new ShaderPass(GradeShader); this.composer.addPass(this.grade); this.composer.addPass(new OutputPass());
     this.observer = new ResizeObserver(() => this.resize()); this.observer.observe(canvas.parentElement!);
@@ -186,7 +218,8 @@ export class DuelClaude3dScene {
     }
     // Floating shards, mist sheets and light shafts.
     for (let i = 0; i < 18; i++) {
-      const t = i * 2.399, r = 5.6 + (i % 4) * .8;
+      // Only behind the stage: shards in front would drift through the close-up cameras.
+      const t = Math.PI * (1.04 + (i / 17) * .92) + Math.sin(i * 7.1) * .05, r = 5.8 + (i % 4) * .8;
       const shard = new T.Mesh(new T.OctahedronGeometry(.16 + (i % 3) * .09, 0), stone); shard.position.set(Math.cos(t) * r, .3 + (i % 5) * .35, Math.sin(t) * r - 1); shard.rotation.set(t, t * .3, t * .2); shard.castShadow = true;
       env.add(shard); this.shards.push(shard);
     }
@@ -199,6 +232,17 @@ export class DuelClaude3dScene {
       const shaft = new T.Mesh(new T.ConeGeometry(1.4 + i * .3, 8, 24, 1, true), material); shaft.position.set((i - 1) * 2.2, 3.4, -2.6); shaft.rotation.z = (i - 1) * -.28; env.add(shaft);
     }
     this.ambient.points.visible = true; env.add(this.ambient.points);
+    // Polished floor: a half-resolution mirror of the scene, added over the stone.
+    this.mirror = new Reflector(new T.CircleGeometry(4.64, 128), { textureWidth: 512, textureHeight: 288, clipBias: .003, multisample: 0, shader: MirrorShader });
+    const mirror = this.mirror.material as T.ShaderMaterial; mirror.transparent = true; mirror.depthWrite = false; mirror.blending = T.AdditiveBlending; mirror.uniforms['uStone'].value = a.stoneBump;
+    this.mirror.rotation.x = -Math.PI / 2; this.mirror.position.y = .016; env.add(this.mirror);
+    // Soft contact shadows keep the fighters planted.
+    for (const side of SIDES) {
+      const shadow = new T.Mesh(new T.PlaneGeometry(1.7, 1.7), new T.MeshBasicMaterial({ color: '#000000', map: a.radial, transparent: true, depthWrite: false, opacity: .6 }));
+      shadow.rotation.x = -Math.PI / 2; shadow.renderOrder = 1; this.contact[side] = shadow; env.add(shadow);
+    }
+    // Test-only NaN source (enabled by a data attribute) proving the sanitize pass keeps the frame intact.
+    this.probe.position.set(0, 1.6, 1); this.probe.visible = false; this.scene.add(this.probe);
   }
 
   private readonly motionChanged = () => { this.dirty = true; };
@@ -212,6 +256,7 @@ export class DuelClaude3dScene {
     const w = Math.max(1, Math.round(rect.width * density)), h = Math.max(1, Math.round(rect.height * density));
     this.canvas.dataset['resolution'] = `${w}×${h}`; this.height = h;
     this.renderer.setSize(w, h, false); this.composer.setSize(w, h); this.bloom.setSize(Math.ceil(w / 2), Math.ceil(h / 2));
+    this.mirror.getRenderTarget().setSize(Math.ceil(w / 2), Math.ceil(h / 2));
     this.camera.aspect = w / h; this.camera.updateProjectionMatrix(); this.grade.uniforms['uAspect'].value = w / h; this.dirty = true;
   }
 
@@ -238,7 +283,7 @@ export class DuelClaude3dScene {
       this.lastTime = snapshot.elapsed; this.lastFlags = flags; this.dirty = false;
     }
     this.lastTick = frameStart;
-    // Bound drawing to 60 FPS without catch-up bursts; paused scenes only redraw when dirty.
+    // Bound drawing to 30 FPS without catch-up bursts; paused scenes only redraw when dirty.
     this.timer = setTimeout(this.tick, Math.max(1, Math.ceil(FRAME_MS - (performance.now() - frameStart))));
   };
 
@@ -257,6 +302,13 @@ export class DuelClaude3dScene {
       for (const pose of strikePoses('ronin')) { this.apply(rig, pose); ghosts.push(bakeRig(rig, false).geometry); }
     }
     this.ultimates.setGhosts(ghosts); this.ultimates.setHalves(null); this.halvesFor = null;
+    // Divine Judgment bakes the knight's colossal avatar (sword raised, then pointed at the victim).
+    const avatar: T.BufferGeometry[] = [];
+    if (ultimate && battle.fighters[ultimate.attacker] === 'knight') {
+      const rig = this.rigs[ultimate.attacker]!;
+      for (const pose of ultimatePoses('knight', [.82, 1])) { this.apply(rig, pose); avatar.push(bakeRig(rig, false).geometry); }
+    }
+    this.ultimates.setAvatar(avatar);
     this.previousBattle = battle;
   }
 
@@ -280,7 +332,7 @@ export class DuelClaude3dScene {
     if (rig.gourdHand && rig.gourdBelt) { rig.gourdHand.visible = pose.gourd; rig.gourdBelt.visible = !pose.gourd; }
     for (const material of rig.materials) {
       if (rig.glow.includes(material)) material.emissiveIntensity = (material.userData['base'] as number) * pose.glow;
-      else material.emissive.set(pose.flashColor).multiplyScalar(pose.flash * .32);
+      else material.emissive.set(pose.flashColor).multiplyScalar(pose.flash * .22);
     }
   }
 
@@ -306,15 +358,24 @@ export class DuelClaude3dScene {
         this.m3.setFromMatrix4(cloth.mesh.parent!.matrixWorld).invert();
         cloth.update(clock + (side === 'left' ? 0 : 1.3), velocity.clone().applyMatrix3(this.m3), pose.wind);
       }
-      if (rig.skirt) { this.m3.setFromMatrix4(rig.j.hp.matrixWorld).invert(); rig.skirt.update(clock, rig.legs.R[0].rotation.x, rig.legs.L[0].rotation.x, velocity.clone().applyMatrix3(this.m3), pose.wind); }
+      if (rig.skirt) {
+        this.m3.setFromMatrix4(rig.j.hp.matrixWorld).invert(); const drag = velocity.clone().applyMatrix3(this.m3);
+        for (const skirt of [rig.skirt, rig.skirtBand]) skirt?.update(clock, rig.legs.R[0].rotation.x, rig.legs.L[0].rotation.x, drag, pose.wind);
+      }
+      for (const runes of rig.runes) runes.offset.x = -clock * .04;
+      if (rig.book) { rig.book.position.set(.62 + Math.sin(clock * .9) * .05, 1.45 + Math.sin(clock * 1.7) * .07, .2); rig.book.rotation.set(-.5 + Math.sin(clock * 1.3) * .08, clock * .35, .25); }
       rig.orbs.forEach((orb, i) => { const a = clock * 2.2 + i * 2.094; orb.position.set(Math.cos(a) * .22, Math.sin(a) * .22, 1.4 + Math.sin(clock * 3 + i) * .05); });
       (rig.aura.material as T.ShaderMaterial).uniforms['uTime'].value = clock;
+      const hips = rig.j.hp.getWorldPosition(this.v), lift = clamp(hips.y - .9, 0, 3), shadow = this.contact[side];
+      shadow.visible = !pose.hidden; shadow.position.set(hips.x, .02, hips.z); shadow.scale.setScalar(1 + lift * .35 + pose.tilt * .5);
+      (shadow.material as T.MeshBasicMaterial).opacity = .62 * (1 - clamp(lift / 2.2, 0, .85));
     }
+    this.probe.visible = this.canvas.dataset['nanProbe'] === '1';
     // Split halves need the frozen victim pose: bake it once per battle.
     if (ultimate && battle.fighters[ultimate.attacker] === 'ronin' && time - ultimate.at > 1500 && this.halvesFor !== battle) {
       const victim = otherSide(ultimate.attacker), rig = this.rigs[victim]!;
       this.apply(rig, fighterPose(victim, { ...ctx, time: ultimate.at + 2600 })); rig.anchor.updateMatrixWorld(true);
-      this.ultimates.setHalves(bakeRig(rig, true)); this.halvesFor = battle; this.apply(rig, poses[victim]);
+      this.ultimates.setHalves(bakeRig(rig, true, false)); this.halvesFor = battle; this.apply(rig, poses[victim]);
     }
     // Effects.
     const positions = Object.fromEntries(SIDES.map(side => [side, this.anchorWorld(side, { ...poses[side], r: [0, 0, 0] }, new T.Vector3())])) as Record<DuelSide, T.Vector3>;
@@ -382,10 +443,14 @@ export class DuelClaude3dScene {
     this.hemi.intensity = .75 * (1 - dark * .65); this.key.intensity = 2.6 * (1 - dark * .55); this.gateLight.intensity = 12 * (1 - dark * .4) + look.bloodMoon * 30;
     this.gateLight.color.set('#8f6dff').lerp(new T.Color('#ff2a48'), look.bloodMoon);
     this.rims.forEach(rim => { rim.intensity = 45 * (1 - dark * .3); });
-    const g = this.grade.uniforms;
+    const g = this.grade.uniforms, ripple = look.rippleStrength > 0 ? look : fx;
+    if (ripple.ripple && ripple.rippleStrength > 0 && !reduced) {
+      const p = ripple.ripple.clone().project(this.camera); (g['uRipplePos'].value as T.Vector2).set(p.x * .5 + .5, p.y * .5 + .5);
+      g['uRippleAge'].value = ripple.rippleAge; g['uRippleStrength'].value = ripple.rippleStrength;
+    } else g['uRippleStrength'].value = 0;
     g['uTime'].value = (time % 1000) + world; g['uInk'].value = look.ink; g['uImpact'].value = reduced ? 0 : look.impact;
     g['uAberration'].value = reduced ? 0 : Math.max(fx.aberration, look.aberration); g['uExposure'].value = fx.exposure + look.exposure;
-    const flash = Math.max(fx.flash, look.flash) * (reduced ? .3 : 1); g['uFlash'].value = flash * .55; (g['uFlashColor'].value as T.Color).copy(look.flash > fx.flash ? look.flashColor : fx.flashColor);
+    const flash = Math.max(fx.flash, look.flash) * (reduced ? .3 : 1); g['uFlash'].value = flash * .32; (g['uFlashColor'].value as T.Color).copy(look.flash > fx.flash ? look.flashColor : fx.flashColor);
     if (look.lensWorld && look.lens > .001) {
       const projected = look.lensWorld.clone().project(this.camera), distance = this.camera.position.distanceTo(look.lensWorld);
       (g['uLensPos'].value as T.Vector2).set(projected.x * .5 + .5, projected.y * .5 + .5);
@@ -399,6 +464,7 @@ export class DuelClaude3dScene {
     this.canvas.dataset['trail'] = this.combat.trail.mesh.visible ? '1' : '0';
     this.canvas.dataset['lens'] = (g['uLensE'].value as number).toFixed(3); this.canvas.dataset['ink'] = look.ink.toFixed(2);
     this.canvas.dataset['halves'] = String(this.ultimates.halves.filter(h => h.visible).length);
+    this.canvas.dataset['avatar'] = String(this.ultimates.avatar.filter(m => m.visible).length);
   }
 
   /** Smear trails sample the real blade arc over the last frames (deterministic: poses are pure). */
@@ -430,7 +496,7 @@ export class DuelClaude3dScene {
   dispose(): void {
     if (this.dead) return; this.dead = true; clearTimeout(this.timer);
     this.observer.disconnect(); this.motion.removeEventListener('change', this.motionChanged); this.canvas.removeEventListener('webglcontextlost', this.contextLost);
-    this.ultimates.setGhosts([]); this.ultimates.setHalves(null);
+    this.ultimates.setGhosts([]); this.ultimates.setAvatar([]); this.ultimates.setHalves(null); this.mirror.dispose();
     this.envMap.dispose(); disposeObject(this.scene); this.assets.dispose();
     for (const pass of this.composer.passes) pass.dispose(); this.composer.dispose();
     this.key.shadow.dispose(); for (const rim of this.rims) rim.shadow.dispose();
