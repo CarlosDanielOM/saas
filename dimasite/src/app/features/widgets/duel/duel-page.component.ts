@@ -1,3 +1,4 @@
+import { OverlayLinkComponent } from '../../../shared/overlay-link/overlay-link.component';
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -19,7 +20,7 @@ type RulesForm = FormGroup<Record<DuelRuleKey, FormControl<number>>>;
 const healRange = (group: AbstractControl): ValidationErrors | null => { const value = group.value as DuelRules; return value.healMin > value.healMax ? { healRange: true } : null; };
 /** The rules' balance check is a snapshot of these defaults, so it is computed once. */
 const DEFAULT_BALANCE = duelBalance();
-@Component({selector:'app-duel-page',imports:[ReactiveFormsModule,RouterLink,LfIconComponent,DuelStageComponent,DuelLeaderboardComponent],templateUrl:'./duel-page.component.html',styleUrls:['../widgets-base.css','./duel-page.component.css'],changeDetection:ChangeDetectionStrategy.OnPush})
+@Component({selector:'app-duel-page',imports:[OverlayLinkComponent,ReactiveFormsModule,RouterLink,LfIconComponent,DuelStageComponent,DuelLeaderboardComponent],templateUrl:'./duel-page.component.html',styleUrls:['../widgets-base.css','./duel-page.component.css'],changeDetection:ChangeDetectionStrategy.OnPush})
 export class DuelPageComponent {
   private readonly auth=inject(SessionAuthService);
   private readonly api=inject(DuelApi);
@@ -27,11 +28,9 @@ export class DuelPageComponent {
   readonly language=inject(LanguageService);
   readonly streamer=getRouteParam(inject(ActivatedRoute),'streamer')??'';
   readonly premium=computed(()=>isModuleAccessible(MODULE_TIER_REQUIREMENTS.widgets,this.auth.getPlanTierForStreamer(this.streamer)));
-  readonly state=signal<DuelState|null>(null);readonly loading=signal(true);readonly busy=signal(false);readonly error=signal('');readonly notice=signal('');readonly overlayUrl=signal('');readonly rotateConfirm=signal(false);readonly uncertainSave=signal(false);
-  private channel='';private formRevision=0;private stopped=false;private refreshing=false;
+  readonly state=signal<DuelState|null>(null);readonly loading=signal(true);readonly busy=signal(false);readonly error=signal('');readonly notice=signal('');readonly uncertainSave=signal(false);
+  channel='';private formRevision=0;private stopped=false;private refreshing=false;
   readonly leaderboard=signal<DuelLeaderboard|null>(null);readonly leaderboardError=signal(false);
-  /** The vertical leaderboard source shares the private overlay token. */
-  readonly leaderboardUrl=computed(()=>this.overlayUrl().replace('#','/leaderboard#'));
   private seenBoardKey:string|undefined;
   private pending:{settings:DuelSettings;revision:number;key:string}|null=null;
   private readonly fb=inject(FormBuilder).nonNullable;
@@ -77,7 +76,7 @@ export class DuelPageComponent {
     // Only patch real changes: every patch re-runs the balance simulation.
     if(!this.rulesOpened){this.rulesOpened=true;if(!isDefaultDuelRules(state.settings.rules))this.rulesOpen.set(true);}
     if(!this.form.dirty&&!this.pending){const next=state.settings;if(JSON.stringify(next)!==JSON.stringify(this.form.getRawValue()))this.form.patchValue(next);this.formRevision=state.revision;}}
-  private async load():Promise<void>{try{this.channel=(await firstValueFrom(this.auth.resolveChannelID(this.streamer)))??'';if(this.premium()&&this.channel){this.apply(await this.api.read(this.channel));try{this.overlayUrl.set(sessionStorage.getItem('duel-overlay-'+this.channel)??'');}catch{}}}catch{this.error.set(this.t('loadError'));}finally{this.loading.set(false);}}
+  private async load():Promise<void>{try{this.channel=(await firstValueFrom(this.auth.resolveChannelID(this.streamer)))??'';if(this.premium()&&this.channel){this.apply(await this.api.read(this.channel));}}catch{this.error.set(this.t('loadError'));}finally{this.loading.set(false);}}
   async refresh():Promise<void>{if(this.refreshing)return;this.refreshing=true;try{this.apply(await this.api.read(this.channel));}catch{this.error.set(this.t('loadError'));}finally{this.refreshing=false;}}
   async save():Promise<void>{this.form.markAllAsTouched();if(this.form.invalid||this.busy()||!this.state())return;
     if(!this.pending&&this.pausesTracking()&&!this.confirmPause()){this.confirmPause.set(true);return;}
@@ -89,9 +88,7 @@ export class DuelPageComponent {
   /** Back to the last saved settings. */
   discard():void{const state=this.state();if(!state||this.busy()||this.uncertainSave())return;this.form.reset({...state.settings,rules:normalizeDuelRules(state.settings.rules)});this.form.markAsPristine();this.dirty.set(false);this.confirmPause.set(false);}
   resetRules():void{this.form.controls.rules.setValue(normalizeDuelRules(null));this.form.markAsDirty();this.dirty.set(true);}
-  async createLink():Promise<void>{if(this.busy())return;if(this.overlayUrl()&&!this.rotateConfirm()){this.rotateConfirm.set(true);return;}this.busy.set(true);this.error.set('');try{const token=await this.api.token(this.channel);const url=location.origin+'/overlays/duel/'+this.channel+'#'+token;this.overlayUrl.set(url);this.rotateConfirm.set(false);try{sessionStorage.setItem('duel-overlay-'+this.channel,url);}catch{}await this.refresh();}catch{this.error.set(this.t('linkError'));}finally{this.busy.set(false);}}
   async loadLeaderboard():Promise<void>{try{const board=await this.api.leaderboard(this.channel);if(!this.stopped){this.leaderboard.set(board);this.leaderboardError.set(false);}}catch{this.leaderboardError.set(true);}}
-  async copyLink(board=false):Promise<void>{try{await navigator.clipboard.writeText(board?this.leaderboardUrl():this.overlayUrl());this.notice.set(this.t(board?'leaderboardCopied':'copied'));}catch{this.error.set(this.t('copyError'));}}
   /** Previews play the draft rules, so a streamer sees a change before saving it. */
   preview(ultimate=false):void{const enraged=this.streamerFight()?'right':null,rules=this.draftRules();this.previewRules.set(this.customDraft());this.battle.set(ultimate?ultimateBattle(enraged,rules):simulateBattle(Math.random,enraged,rules));const wins=()=>Math.floor(Math.random()*7);this.previewRecord.set(Math.random()<.2?{left:0,right:0}:{left:wins(),right:wins()});this.elapsed.set(0);this.previewStarted=performance.now();this.started.set(true);}
   /** "120 HP", "15%", "×2.0", "4.0%" (per mille), "5". */

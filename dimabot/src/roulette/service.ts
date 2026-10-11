@@ -1,4 +1,5 @@
-import { createHash, randomBytes } from 'node:crypto';
+import { manageOverlayToken, readOverlayToken, rememberOverlayToken, storedOverlayToken, type OverlayTokenStore } from '../utils/overlay-token.js';
+import { createHash } from 'node:crypto';
 import { Schema, model } from 'mongoose';
 import { getMongoDBConnection } from '../utils/databases/mongodb.database.js';
 import * as domain from './model.js';
@@ -17,11 +18,11 @@ export async function requirePremium(channelId: string): Promise<void> {
 }
 
 interface Receipt { key: string; fingerprint: string; result: string; at: number }
-interface Stored { _id: string; revision: number; state: State; tokenHash: string | null; dueAt: number | null; receipts: Receipt[]; actions: WinnerAction[]; actionDueAt: number | null }
+interface Stored { _id: string; revision: number; state: State; tokenHash: string | null; overlayToken?: { iv: string; content: string } | null; dueAt: number | null; receipts: Receipt[]; actions: WinnerAction[]; actionDueAt: number | null }
 const schema = new Schema<Stored>({
   actions: { type: [new Schema<WinnerAction>({ drawId: String, rouletteId: String, itemId: String, label: String, source: String, dueAt: Number, status: String, actor: Schema.Types.Mixed, startedAt: Number, finishedAt: Number }, { _id: false })], default: [] }, actionDueAt: { type: Number, default: null },
   _id: String, revision: { type: Number, required: true }, state: { type: Schema.Types.Mixed, required: true },
-  tokenHash: { type: String, default: null }, dueAt: { type: Number, default: null }, receipts: { type: [new Schema<Receipt>({ key: String, fingerprint: String, result: String, at: Number }, { _id: false })], default: [] },
+  tokenHash: { type: String, default: null }, overlayToken: { type: Schema.Types.Mixed, select: false }, dueAt: { type: Number, default: null }, receipts: { type: [new Schema<Receipt>({ key: String, fingerprint: String, result: String, at: Number }, { _id: false })], default: [] },
 }, { versionKey: false, collection: 'roulette_channels' });
 schema.index({ dueAt: 1 });
 schema.index({ actionDueAt: 1 });
@@ -130,18 +131,33 @@ export async function snapshot(channelId: string) {
   }
   return domain.fail('busy', 'Roulette is busy', 409);
 }
-export async function rotateToken(channelId: string): Promise<string> {
-  await requirePremium(channelId);
-  await load(channelId); const token = randomBytes(32).toString('base64url');
-  await RouletteChannel.updateOne({ _id: channelId }, { $set: { tokenHash: hash(token) }, $inc: { revision: 1 } });
-  return token;
+function overlayTokenStore(id: string): OverlayTokenStore {
+  return {
+    read: async () => { await load(id); return (await RouletteChannel.findById(id).select('tokenHash +overlayToken').lean())!; },
+    save: async (expectedHash, token, replace) => {
+      const result = await RouletteChannel.updateOne({ _id: id, tokenHash: expectedHash }, { $set: storedOverlayToken(token), ...(replace ? { $inc: { revision: 1 } } : {}) });
+      return result.matchedCount === 1;
+    },
+  };
 }
-export async function authorizeOverlay(channelId: string, token: unknown): Promise<boolean> {
+export async function overlayTokenState(id: string) { await requirePremium(id); return readOverlayToken(overlayTokenStore(id)); }
+export async function updateOverlayToken(id: string, input: unknown) {
+  await requirePremium(id);
+  const result = await manageOverlayToken(overlayTokenStore(id), input, domain.fail);
+  return result;
+}
+// Internal callers retain explicit rotation semantics; HTTP creation uses updateOverlayToken.
+export async function rotateToken(id: string): Promise<string> {
+  const current = await overlayTokenState(id);
+  return (await updateOverlayToken(id, { rotate: true, version: current.version })).token!;
+}
+export async function authorizeOverlay(id: string, token: unknown): Promise<boolean> {
   if (typeof token !== 'string' || !/^[\w-]{43}$/.test(token)) return false;
-  await getMongoDBConnection('roulette-overlay');
-  if (!await hasPremium(channelId)) return false;
-  return !!await RouletteChannel.exists({ _id: channel(channelId), tokenHash: hash(token) });
+  const allowed = await hasPremium(id) && !!await RouletteChannel.exists({ _id: channel(id), tokenHash: hash(token) });
+  if (allowed) await rememberOverlayToken(overlayTokenStore(id), token).catch(() => { /* Recovery must not interrupt an existing OBS source. */ });
+  return allowed;
 }
+
 export async function overlaySnapshot(channelId: string) {
   const s = await snapshot(channelId);
   const active = s.roulettes.find(r => r.id === s.activeId);

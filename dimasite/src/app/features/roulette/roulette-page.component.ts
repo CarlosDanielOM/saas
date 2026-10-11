@@ -1,3 +1,4 @@
+import { OverlayLinkComponent } from '../../shared/overlay-link/overlay-link.component';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -46,7 +47,7 @@ const COMMANDS = ['start', 'add', 'update', 'remove', 'shuffle', 'show', 'hide',
 
 @Component({
   selector: 'app-roulette-page',
-  imports: [ReactiveFormsModule, RouterLink, RouletteDisplayComponent, LfIconComponent],
+  imports: [OverlayLinkComponent, ReactiveFormsModule, RouterLink, RouletteDisplayComponent, LfIconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './roulette-page.component.html',
   styleUrl: './roulette-page.component.css',
@@ -88,7 +89,6 @@ export class RoulettePageComponent {
   readonly prizeDialog = signal<{ item: RouletteItem | null } | null>(null);
   readonly createOpen = signal(false);
   readonly deleteOpen = signal(false);
-  readonly rotateOpen = signal(false);
   readonly removing = signal<RouletteItem | null>(null);
   readonly prizeSubmitted = signal(false);
   readonly createSubmitted = signal(false);
@@ -204,7 +204,7 @@ export class RoulettePageComponent {
     };
   });
 
-  private channel = '';
+  channel = '';
   private disposed = false;
   private refreshTask: Promise<void> | null = null;
   private drawEndTimer: ReturnType<typeof setTimeout> | undefined;
@@ -238,11 +238,6 @@ export class RoulettePageComponent {
     try {
       this.channel = (await firstValueFrom(this.auth.resolveChannelID(this.streamer))) ?? '';
       if (!this.channel) throw new Error('channel');
-      try {
-        this.overlayUrl.set(localStorage.getItem(`roulette.overlay.${this.channel}`) ?? '');
-      } catch {
-        /* browser storage may be unavailable */
-      }
       await this.refresh(true);
     } catch {
       this.error.set(this.t('loadError'));
@@ -532,32 +527,6 @@ export class RoulettePageComponent {
           },
     );
   }
-  async token(): Promise<void> {
-    if (this.busy()) return;
-    this.busy.set(true);
-    this.error.set('');
-    try {
-      const { token } = await this.api.write<{ token: string }>(
-        this.channel,
-        'POST',
-        '/overlay-token',
-        {},
-      );
-      const url = `${location.origin}/overlays/roulette/${this.channel}#${token}`;
-      this.overlayUrl.set(url);
-      this.rotateOpen.set(false);
-      try {
-        localStorage.setItem(`roulette.overlay.${this.channel}`, url);
-      } catch {
-        /* copy remains available */
-      }
-      await this.refresh(false);
-    } catch (e) {
-      this.handleError(e);
-    } finally {
-      this.busy.set(false);
-    }
-  }
   async copy(value: string): Promise<void> {
     try {
       await navigator.clipboard.writeText(value);
@@ -571,7 +540,6 @@ export class RoulettePageComponent {
   }
   closeTop(): void {
     if (this.removing()) this.removing.set(null);
-    else if (this.rotateOpen()) this.rotateOpen.set(false);
     else if (this.deleteOpen()) this.deleteOpen.set(false);
     else if (this.prizeDialog()) this.prizeDialog.set(null);
     else if (this.createOpen()) this.createOpen.set(false);

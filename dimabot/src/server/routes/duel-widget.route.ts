@@ -1,5 +1,5 @@
 import express, { type Request, type Response, type NextFunction } from 'express';
-import { configureDuel, duelSnapshot, loadDuel, rotateDuelToken } from '../../duel/service.js';
+import { configureDuel, duelSnapshot, loadDuel, overlayTokenState, updateOverlayToken } from '../../duel/service.js';
 import { leaderboardStatus } from '../../duel/model.js';
 import { duelLeaderboard } from '../../duel/stats.js';
 import { integer, text } from '../../roulette/model.js';
@@ -18,4 +18,5 @@ duelWidgetRoute.post('/configure', wrap(async (req, res) => {
   await configureDuel(channel(req), req.body, integer(Number(req.header('If-Match')), 'If-Match', 0), text(req.header('Idempotency-Key'), 'Idempotency-Key', 128));
   return ok(res, await duelSnapshot(channel(req)));
 }));
-duelWidgetRoute.post('/overlay-token', wrap(async (req, res) => ok(res, { token: await rotateDuelToken(channel(req)) })));
+duelWidgetRoute.get('/overlay-token', wrap(async (req, res) => ok(res, await overlayTokenState(channel(req)))));
+duelWidgetRoute.post('/overlay-token', wrap(async (req, res) => ok(res, await updateOverlayToken(channel(req), req.body ?? {}))));

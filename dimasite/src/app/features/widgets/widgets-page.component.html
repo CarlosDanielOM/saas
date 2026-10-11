@@ -61,10 +61,9 @@
           <p class="hint">{{ t('previewWinHint') }}</p>
         </section>
       </div>
-      <section class="lf-tile lf-setup" [class.needs-link]="!overlayUrl()">
+      <section class="lf-tile lf-setup">
         <div><h2>{{ t('obsTitle') }}</h2><p>{{ t('obsHint') }}</p></div>
-        @if (overlayUrl()) { <div class="link-controls"><input [value]="overlayUrl()" readonly [attr.aria-label]="t('obsTitle')" /><button (click)="copyLink()">{{ t('copy') }}</button><button (click)="openConfirm('rotate')" [disabled]="busy() || hasPending()">{{ t('newLink') }}</button></div> }
-        @else { <button class="primary" (click)="makeLink()" [disabled]="busy() || hasPending()">{{ t('makeLink') }}</button> }
+        <app-overlay-link kind="widgets" [channel]="channel" [streamer]="streamer" [disabled]="busy() || hasPending()" (changed)="refresh()" />
       </section>
       <app-widget-bits [catalog]="catalog" [state]="state" [settings]="eventSettings()" [disabled]="busy() || stale() || hasPending()" [error]="error()" (save)="saveEvents($event)" />
       <section class="lf-tile preview-panel" #previewPanel>

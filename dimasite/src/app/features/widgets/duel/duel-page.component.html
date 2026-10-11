@@ -111,12 +111,7 @@
 
         <div class="col side">
           <section class="lf-tile connection" [class.offline]="current.settings.enabled && !current.connected"><div class="tile-head"><h2>{{ t('obs') }}</h2><span class="chip" [class.on-air]="current.connected"><span class="dot" [class.on]="current.connected"></span>{{ t(current.connected?'connected':'offline') }}</span></div><p>{{ t('obsHint') }}</p>
-            <div class="link-actions"><button (click)="createLink()" [disabled]="busy()">{{ t(overlayUrl()?'replaceLink':'createLink') }}</button></div>
-            @if (rotateConfirm()) { <div class="confirm" role="group" [attr.aria-label]="t('replaceLink')"><p>{{ t('replaceWarning') }}</p><button (click)="createLink()" [disabled]="busy()">{{ t('confirmReplace') }}</button><button (click)="rotateConfirm.set(false)">{{ t('cancel') }}</button></div> }
-            @if (overlayUrl()) {
-              <label for="duel-link">{{ t('privateLink') }}</label><div class="copy-row"><input id="duel-link" type="text" readonly [value]="overlayUrl()" /><button (click)="copyLink()" [attr.aria-label]="t('copy')"><app-lf-icon name="copy" /></button></div>
-              <label for="duel-board-link">{{ t('leaderboardLink') }}</label><div class="copy-row"><input id="duel-board-link" type="text" readonly [value]="leaderboardUrl()" /><button (click)="copyLink(true)" [attr.aria-label]="t('copyLeaderboard')"><app-lf-icon name="copy" /></button></div>
-            }
+            <app-overlay-link kind="duel" [channel]="channel" [streamer]="streamer" [disabled]="busy()" (changed)="refresh()" />
             <p class="hint">{{ t('connectionHint') }}</p>
           </section>
 

@@ -126,30 +126,7 @@
               </h2>
               <p class="lf-note">{{ overlayUrl() ? t('overlayHelp') : t('overlayMissingHelp') }}</p>
             </div>
-            <div class="lf-setup__actions">
-              @if (overlayUrl()) {
-                <input
-                  class="lf-setup__url"
-                  readonly
-                  [value]="overlayUrl()"
-                  [attr.aria-label]="t('overlayLink')"
-                  (focus)="$any($event.target).select()"
-                />
-                <button type="button" class="lf-btn lf-btn--compact" (click)="copy(overlayUrl())">
-                  <app-lf-icon name="copy" [size]="14"></app-lf-icon> {{ t('copyLink') }}
-                </button>
-                <a class="lf-btn lf-btn--compact lf-btn--ghost" [href]="overlayUrl()" target="_blank" rel="noopener noreferrer">{{
-                  t('openOverlay')
-                }}</a>
-                <button type="button" class="lf-btn lf-btn--compact lf-btn--ghost" (click)="rotateOpen.set(true)" [disabled]="busy()">
-                  {{ t('rotate') }}
-                </button>
-              } @else {
-                <button type="button" class="lf-btn lf-btn--compact lf-btn--primary" (click)="rotateOpen.set(true)" [disabled]="busy()">
-                  {{ t('generate') }}
-                </button>
-              }
-            </div>
+            <app-overlay-link kind="roulette" [channel]="channel" [streamer]="streamer" [disabled]="busy()" (urlChanged)="overlayUrl.set($event)" (changed)="refresh(false)" />
           </section>
 
           @if (selected(); as r) {
@@ -909,24 +886,6 @@
       <footer class="lf-modal__footer">
         <button type="button" class="lf-btn" (click)="deleteOpen.set(false)">{{ t('cancel') }}</button>
         <button type="button" class="lf-btn lf-btn--danger" (click)="remove()" [disabled]="busy() || spinning()">{{ t('confirmDelete') }}</button>
-      </footer>
-    </section>
-  </div>
-}
-@if (rotateOpen()) {
-  <div class="lf-modal-overlay lf-modal-overlay--top" (click)="rotateOpen.set(false)">
-    <section class="lf-modal lf-modal--narrow" role="alertdialog" aria-modal="true" aria-labelledby="rl-rot-title" aria-describedby="rl-rot-desc" (click)="$event.stopPropagation()">
-      <header class="lf-modal__head">
-        <h2 class="lf-modal__title" id="rl-rot-title">{{ overlayUrl() ? t('rotateTitle') : t('generateTitle') }}</h2>
-      </header>
-      <div class="lf-modal__body">
-        <p class="lf-copy" id="rl-rot-desc">{{ overlayUrl() ? t('rotateWarning') : t('generateWarning') }}</p>
-      </div>
-      <footer class="lf-modal__footer">
-        <button type="button" class="lf-btn" (click)="rotateOpen.set(false)">{{ t('cancel') }}</button>
-        <button type="button" class="lf-btn lf-btn--primary" (click)="token()" [disabled]="busy()">
-          {{ overlayUrl() ? t('confirmRotate') : t('confirmGenerate') }}
-        </button>
       </footer>
     </section>
   </div>

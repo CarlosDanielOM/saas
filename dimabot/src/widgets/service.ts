@@ -1,4 +1,5 @@
-import { createHash, randomBytes } from 'node:crypto';
+import { manageOverlayToken, readOverlayToken, rememberOverlayToken, storedOverlayToken, type OverlayTokenStore } from '../utils/overlay-token.js';
+import { createHash } from 'node:crypto';
 import { Schema, model } from 'mongoose';
 import Users from '../schemas/users.schema.js';
 import { getMongoDBConnection } from '../utils/databases/mongodb.database.js';
@@ -11,8 +12,8 @@ import { widgetEventEligible, type WidgetEventTarget } from './events.js';
 
 interface Receipt { key: string; fingerprint: string; at: number }
 interface EventReceipt { key: string; at: number }
-interface Stored { _id: string; revision: number; state: State; tokenHash: string | null; dueAt: number | null; receipts: Receipt[]; eventSettings?: DbdEventSettings; eventReceipts?: EventReceipt[] }
-const schema = new Schema<Stored>({ _id: String, revision: { type: Number, required: true }, state: { type: Schema.Types.Mixed, required: true }, tokenHash: { type: String, default: null }, dueAt: { type: Number, default: null }, receipts: { type: [new Schema<Receipt>({ key: String, fingerprint: String, at: Number }, { _id: false })], default: [] }, eventSettings: { type: Schema.Types.Mixed }, eventReceipts: { type: [new Schema<EventReceipt>({ key: String, at: Number }, { _id: false })], default: [] } }, { versionKey: false, collection: 'widget_channels' });
+interface Stored { _id: string; revision: number; state: State; tokenHash: string | null; overlayToken?: { iv: string; content: string } | null; dueAt: number | null; receipts: Receipt[]; eventSettings?: DbdEventSettings; eventReceipts?: EventReceipt[] }
+const schema = new Schema<Stored>({ _id: String, revision: { type: Number, required: true }, state: { type: Schema.Types.Mixed, required: true }, tokenHash: { type: String, default: null }, overlayToken: { type: Schema.Types.Mixed, select: false }, dueAt: { type: Number, default: null }, receipts: { type: [new Schema<Receipt>({ key: String, fingerprint: String, at: Number }, { _id: false })], default: [] }, eventSettings: { type: Schema.Types.Mixed }, eventReceipts: { type: [new Schema<EventReceipt>({ key: String, at: Number }, { _id: false })], default: [] } }, { versionKey: false, collection: 'widget_channels' });
 schema.index({ dueAt: 1 });
 export const WidgetChannel = model<Stored>('WidgetChannel', schema);
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
@@ -181,12 +182,29 @@ export async function settleDue(): Promise<void> {
   const rows = await WidgetChannel.find({ dueAt: { $ne: null, $lte: Date.now() } }, { _id: 1 }).sort({ dueAt: 1 }).limit(10).lean();
   for (const row of rows) await advance(row._id);
 }
+function overlayTokenStore(id: string): OverlayTokenStore {
+  return {
+    read: async () => { await load(id); return (await WidgetChannel.findById(id).select('tokenHash +overlayToken').lean())!; },
+    save: async (expectedHash, token, replace) => {
+      const result = await WidgetChannel.updateOne({ _id: id, tokenHash: expectedHash }, { $set: storedOverlayToken(token), ...(replace ? { $inc: { revision: 1 } } : {}) });
+      return result.matchedCount === 1;
+    },
+  };
+}
+export async function overlayTokenState(id: string) { await requirePremium(id); return readOverlayToken(overlayTokenStore(id)); }
+export async function updateOverlayToken(id: string, input: unknown) {
+  await requirePremium(id);
+  const result = await manageOverlayToken(overlayTokenStore(id), input, domain.fail);
+  return result;
+}
+// Internal callers retain explicit rotation semantics; HTTP creation uses updateOverlayToken.
 export async function rotateToken(id: string): Promise<string> {
-  await requirePremium(id); await load(id);
-  const token = randomBytes(32).toString('base64url');
-  await WidgetChannel.updateOne({ _id: id }, { $set: { tokenHash: hash(token) }, $inc: { revision: 1 } }); return token;
+  const current = await overlayTokenState(id);
+  return (await updateOverlayToken(id, { rotate: true, version: current.version })).token!;
 }
 export async function authorizeOverlay(id: string, token: unknown): Promise<boolean> {
-  if (typeof token !== 'string' || !/^[\w-]{43}$/.test(token) || !/^[0-9]{1,30}$/.test(id)) return false;
-  return await hasPremium(id) && !!await WidgetChannel.exists({ _id: id, tokenHash: hash(token) });
+  if (!/^[0-9]{1,30}$/.test(id) || typeof token !== 'string' || !/^[\w-]{43}$/.test(token)) return false;
+  const allowed = await hasPremium(id) && !!await WidgetChannel.exists({ _id: id, tokenHash: hash(token) });
+  if (allowed) await rememberOverlayToken(overlayTokenStore(id), token).catch(() => { /* Recovery must not interrupt an existing OBS source. */ });
+  return allowed;
 }

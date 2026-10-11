@@ -129,6 +129,7 @@ try {
         ),
       { user, app },
     );
+    let overlayToken = null;
     let fullAccess = true;
     let writes = 0,
       forceConflict = false,
@@ -155,15 +156,15 @@ try {
         const suffix = url.pathname.split("/").slice(3),
           method = req.method();
         const body = req.postDataJSON() || {};
-        if (method === "GET") data = structuredClone(state);
+        if (method === "GET") data = suffix[0] === "overlay-token" ? {token: overlayToken, exists: !!overlayToken, version: overlayToken ? "a".repeat(64) : null} : structuredClone(state);
         else {
           writes++;
-          assert(req.headers()["idempotency-key"]);
+          if (suffix[0] !== "overlay-token") assert(req.headers()["idempotency-key"]);
           if (forceConflict) {
             forceConflict = false;
             return route.fulfill({ status: 409, json: { error: true, code: "revision_conflict" } });
           }
-          if (suffix[0] === "overlay-token") data = { token: "a".repeat(43) };
+          if (suffix[0] === "overlay-token") { overlayToken ??= "a".repeat(43); data = { token: overlayToken, exists: true, version: "a".repeat(64) }; }
           else if (suffix[0] === "roulettes") {
             const selected = state.roulettes.find((x) => x.id === suffix[1]);
             if (suffix.length === 1) {
@@ -426,9 +427,8 @@ try {
     await module.getByRole("button", { name: "Save", exact: true }).click();
     await until(() => r.settings.winnerAction === "remove-item" && r.settings.hideAfterSeconds === 10, "rules saved");
 
-    // OBS link: confirm, then a copyable private URL.
-    await module.getByRole("button", { name: "Get overlay link" }).click();
-    await page.getByRole("alertdialog", { name: "Get an overlay link" }).getByRole("button", { name: "Get link" }).click();
+    // Initial creation returns a saved private URL; replacement has its own confirmation.
+    await module.getByRole("button", { name: "Create overlay link" }).click();
     await module.getByLabel("Private overlay link").waitFor();
     assert.match(await module.getByLabel("Private overlay link").inputValue(), /\/overlays\/roulette\/999991#[a]{43}$/);
     assert.equal(await module.locator(".lf-setup--warn").count(), 0);

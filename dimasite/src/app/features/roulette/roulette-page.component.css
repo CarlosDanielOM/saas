@@ -925,6 +925,7 @@
   background: var(--tile);
   box-shadow: var(--shadow);
 }
+.lf-setup > app-overlay-link { grid-column: 1 / -1; }
 .lf-setup--warn { border-color: color-mix(in srgb, var(--warn) 45%, transparent); background: color-mix(in srgb, var(--warn-soft) 55%, var(--tile)); }
 .lf-setup__icon { display: grid; place-items: center; width: 2.4rem; height: 2.4rem; border-radius: 0.8rem; color: var(--accent); background: var(--accent-soft); }
 .lf-setup--warn .lf-setup__icon { color: var(--warn); background: var(--warn-soft); }
@@ -1237,6 +1238,7 @@
   .rl-choice-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
   .rl-tabs { margin: 0; padding: 0.1rem 0 0.3rem; }
   .lf-setup { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .lf-setup > app-overlay-link { grid-column: auto; }
   .lf-setup__actions { grid-column: auto; justify-content: flex-end; flex-wrap: nowrap; }
   .lf-setup__url { flex: 1 1 16rem; width: 16rem; }
 }

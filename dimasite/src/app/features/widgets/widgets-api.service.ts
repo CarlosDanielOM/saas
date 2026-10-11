@@ -44,7 +44,6 @@ export class WidgetsApi {
   async read(channel: string): Promise<WidgetState> { return normalizeWidgetState((await firstValueFrom(this.http.get<{ data: WidgetState }>(`${this.base}/widgets/${channel}`))).data); }
   async catalog(channel: string): Promise<WidgetCatalog> { return (await firstValueFrom(this.http.get<{ data: WidgetCatalog }>(`${this.base}/widgets/${channel}/catalog`))).data; }
   async events(channel: string): Promise<{ revision: number; settings: WidgetEventSettings }> { return (await firstValueFrom(this.http.get<{ data: { revision: number; settings: WidgetEventSettings } }>(`${this.base}/widgets/${channel}/events`))).data; }
-  async token(channel: string): Promise<string> { return (await firstValueFrom(this.http.post<{ data: { token: string } }>(`${this.base}/widgets/${channel}/overlay-token`, {}))).data.token; }
   async action(channel: string, action: WidgetAction, body: unknown, revision: number, key: string): Promise<WidgetState> {
     return normalizeWidgetState((await firstValueFrom(this.http.post<{ data: WidgetState }>(`${this.base}/widgets/${channel}/actions/${action}`, body, { headers: { 'Idempotency-Key': key, 'If-Match': String(revision) } }))).data);
   }

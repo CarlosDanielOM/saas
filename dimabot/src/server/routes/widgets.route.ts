@@ -5,7 +5,7 @@ import type { AuthRequest } from '../../middleware/types.js';
 import { catalog } from '../../widgets/catalog.js';
 import { duelWidgetRoute } from './duel-widget.route.js';
 import { WidgetError, fail, integer, text } from '../../widgets/model.js';
-import { execute, requirePremium, snapshot, rotateToken, authorizeOverlay, widgetEventSettings, type Action } from '../../widgets/service.js';
+import { execute, requirePremium, snapshot, overlayTokenState, updateOverlayToken, authorizeOverlay, widgetEventSettings, type Action } from '../../widgets/service.js';
 export const widgetsRoute = express.Router();
 const wrap = (handler: (req: Request, res: Response) => Promise<unknown>) => (req: Request, res: Response, next: NextFunction) => { void handler(req, res).catch(next); };
 const channel = (req: Request) => text(req.params.channelID, 'channelID', 30);
@@ -30,7 +30,8 @@ widgetsRoute.get('/:channelID/catalog', wrap(async (_req, res) => ok(res, catalo
 widgetsRoute.use('/:channelID/duel', duelWidgetRoute);
 widgetsRoute.get('/:channelID/events', wrap(async (req, res) => ok(res, await widgetEventSettings(channel(req)))));
 widgetsRoute.get('/:channelID', wrap(async (req, res) => ok(res, await snapshot(channel(req)))));
-widgetsRoute.post('/:channelID/overlay-token', wrap(async (req, res) => ok(res, { token: await rotateToken(channel(req)) })));
+widgetsRoute.get('/:channelID/overlay-token', wrap(async (req, res) => ok(res, await overlayTokenState(channel(req)))));
+widgetsRoute.post('/:channelID/overlay-token', wrap(async (req, res) => ok(res, await updateOverlayToken(channel(req), req.body ?? {}))));
 widgetsRoute.post('/:channelID/actions/:action', wrap(async (req, res) => {
   const action = text(req.params.action, 'action');
   if (!['select', 'configure', 'start', 'show', 'hide', 'reset', 'retry-poll', 'role', 'layout', 'progress', 'events'].includes(action)) fail('invalid', 'Unknown widget action');

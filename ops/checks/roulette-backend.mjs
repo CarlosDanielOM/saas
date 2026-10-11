@@ -129,7 +129,7 @@ await svc.settleDue(); assert.equal((await svc.snapshot(channel)).history.length
 const acceptedIndex = starts.findIndex(r => r.status === 'fulfilled');
 const replay = await svc.execute(channel, { operation: 'start', roulette: id }, `start-${acceptedIndex}`);
 assert.equal(replay.result, draw.id); assert(replay.replayed, 'retry after completion cannot reroll');
-await request('POST', root + '/overlay-token', {});
+await request('POST', root + '/overlay-token', { rotate: true, version: (await request('GET', root + '/overlay-token')).version });
 await request('GET', root + '/overlay', undefined, 401, token);
 await socket.wait(m => m.startsWith('41')); socket.ws.close(); reconnect.ws.close();
 const revokedRecovery = await connectOverlay(token, recovery);

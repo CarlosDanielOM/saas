@@ -1,4 +1,5 @@
-import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { manageOverlayToken, readOverlayToken, rememberOverlayToken, storedOverlayToken, type OverlayTokenStore } from '../utils/overlay-token.js';
+import { createHash, randomUUID } from 'node:crypto';
 import { Schema, model } from 'mongoose';
 import { getMongoDBConnection } from '../utils/databases/mongodb.database.js';
 import { getDragonflyClient } from '../utils/databases/dragonfly.database.js';
@@ -9,8 +10,8 @@ import { headToHead } from './stats.js';
 import Users from '../schemas/users.schema.js';
 
 interface Receipt { key: string; fingerprint: string; at: number }
-export interface DuelDocument { _id: string; revision: number; settings: DuelSettings; challenge: DuelChallenge | null; run: DuelRun | null; tokenHash: string | null; dueAt: number | null; leaseUntil: number; receipts: Receipt[]; statsRevision?: number }
-const schema = new Schema<DuelDocument>({ _id: String, revision: { type: Number, default: 0 }, settings: { type: Schema.Types.Mixed, required: true }, challenge: { type: Schema.Types.Mixed, default: null }, run: { type: Schema.Types.Mixed, default: null }, tokenHash: { type: String, default: null }, dueAt: { type: Number, default: null }, leaseUntil: { type: Number, default: 0 }, statsRevision: { type: Number, default: 0 }, receipts: { type: [new Schema<Receipt>({ key: String, fingerprint: String, at: Number }, { _id: false })], default: [] } }, { versionKey: false, collection: 'duel_widgets' });
+export interface DuelDocument { _id: string; revision: number; settings: DuelSettings; challenge: DuelChallenge | null; run: DuelRun | null; tokenHash: string | null; overlayToken?: { iv: string; content: string } | null; dueAt: number | null; leaseUntil: number; receipts: Receipt[]; statsRevision?: number }
+const schema = new Schema<DuelDocument>({ _id: String, revision: { type: Number, default: 0 }, settings: { type: Schema.Types.Mixed, required: true }, challenge: { type: Schema.Types.Mixed, default: null }, run: { type: Schema.Types.Mixed, default: null }, tokenHash: { type: String, default: null }, overlayToken: { type: Schema.Types.Mixed, select: false }, dueAt: { type: Number, default: null }, leaseUntil: { type: Number, default: 0 }, statsRevision: { type: Number, default: 0 }, receipts: { type: [new Schema<Receipt>({ key: String, fingerprint: String, at: Number }, { _id: false })], default: [] } }, { versionKey: false, collection: 'duel_widgets' });
 schema.index({ dueAt: 1 });
 export const DuelChannel = model<DuelDocument>('DuelWidget', schema);
 export const tokenHash = (value: string) => createHash('sha256').update(value).digest('hex');
@@ -54,16 +55,33 @@ export async function configureDuel(id: string, input: unknown, revision: number
   const saved = await DuelChannel.updateOne({ _id: id, revision }, { $set: { settings: config, receipts: [...doc.receipts.filter(receipt => now - receipt.at < 86400000), { key: receiptKey, fingerprint, at: now }].slice(-200) }, $inc: { revision: 1 } }, { writeConcern: { w: 1, j: true } });
   if (!saved.modifiedCount) fail('revision_conflict', 'Duel changed; refresh before saving', 409);
 }
+function overlayTokenStore(id: string): OverlayTokenStore {
+  return {
+    read: async () => { await loadDuel(id); return (await DuelChannel.findById(id).select('tokenHash +overlayToken').lean())!; },
+    save: async (expectedHash, token, replace) => {
+      const result = await DuelChannel.updateOne({ _id: id, tokenHash: expectedHash }, { $set: storedOverlayToken(token), ...(replace ? { $inc: { revision: 1 } } : {}) });
+      return result.matchedCount === 1;
+    },
+  };
+}
+export async function overlayTokenState(id: string) { await requirePremium(id); return readOverlayToken(overlayTokenStore(id)); }
+export async function updateOverlayToken(id: string, input: unknown) {
+  await requirePremium(id);
+  const before = await readOverlayToken(overlayTokenStore(id));
+  const result = await manageOverlayToken(overlayTokenStore(id), input, fail);
+  if (before.version !== result.version) await (await getDragonflyClient('duel-token')).del(presenceKey(id));
+  return result;
+}
+// Internal callers retain explicit rotation semantics; HTTP creation uses updateOverlayToken.
 export async function rotateDuelToken(id: string): Promise<string> {
-  await requirePremium(id); await loadDuel(id);
-  const token = randomBytes(32).toString('base64url');
-  await DuelChannel.updateOne({ _id: id }, { $set: { tokenHash: tokenHash(token) }, $inc: { revision: 1 } });
-  await (await getDragonflyClient('duel-token')).del(presenceKey(id));
-  return token;
+  const current = await overlayTokenState(id);
+  return (await updateOverlayToken(id, { rotate: true, version: current.version })).token!;
 }
 export async function authorizeDuelOverlay(id: string, token: unknown): Promise<boolean> {
   if (!/^[0-9]{1,30}$/.test(id) || typeof token !== 'string' || !/^[\w-]{43}$/.test(token)) return false;
-  return await hasPremium(id) && !!await DuelChannel.exists({ _id: id, tokenHash: tokenHash(token) });
+  const allowed = await hasPremium(id) && !!await DuelChannel.exists({ _id: id, tokenHash: tokenHash(token) });
+  if (allowed) await rememberOverlayToken(overlayTokenStore(id), token).catch(() => { /* Recovery must not interrupt an existing OBS source. */ });
+  return allowed;
 }
 /**
  * Tracked fights (overlay, default rules) carry the rivalry so far when rivalries are on;

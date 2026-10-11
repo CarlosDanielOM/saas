@@ -1,0 +1,30 @@
+@if (loading()) { <p role="status">{{ t('loading') }}</p> }
+@else {
+  @if (url()) {
+    <label [for]="fieldId()">{{ t('privateLink') }}</label>
+    <div class="copy-row"><input [id]="fieldId()" type="text" readonly [value]="url()" /><button type="button" (click)="copy()" [attr.aria-label]="t('copy')"><app-lf-icon name="copy" />{{ t('copy') }}</button></div>
+    @if (kind() === 'duel') {
+      <label [for]="fieldId() + '-board'">{{ t('leaderboardLink') }}</label>
+      <div class="copy-row"><input [id]="fieldId() + '-board'" type="text" readonly [value]="boardUrl()" /><button type="button" (click)="copy(true)" [attr.aria-label]="t('copyLeaderboard')"><app-lf-icon name="copy" />{{ t('copy') }}</button></div>
+    }
+    @if (kind() === 'roulette') { <div class="actions"><a [href]="url()" target="_blank" rel="noopener noreferrer">{{ t('open') }}</a></div> }
+    <p>{{ t('sharedHint') }}</p>
+  } @else if (state()?.exists) {
+    <p>{{ t('legacyHint') }}</p>
+    <label [for]="fieldId() + '-recover'">{{ t('existingLink') }}</label>
+    <div class="copy-row"><input [id]="fieldId() + '-recover'" type="url" [formControl]="existingLink" autocomplete="off" spellcheck="false" /><button type="button" (click)="recover()" [disabled]="blocked() || !existingLink.value.trim()">{{ t('saveExisting') }}</button></div>
+  }
+  @if (state(); as current) {
+    <div class="actions">
+      @if (current.exists) { <button type="button" (click)="openReplacement()" [disabled]="blocked() || !!error()">{{ t('replace') }}</button> }
+      @else { <button type="button" class="primary" (click)="create()" [disabled]="blocked() || !!error()">{{ t('create') }}</button> }
+    </div>
+  }
+}
+@if (error()) { <p class="error" role="alert">{{ error() }}</p><button type="button" (click)="load()" [disabled]="busy()">{{ t('retry') }}</button> }
+@if (notice()) { <p class="notice" role="status">{{ notice() }}</p> }
+<dialog #replacement [attr.aria-labelledby]="fieldId() + '-title'" [attr.aria-describedby]="fieldId() + '-warning'">
+  <h2 [id]="fieldId() + '-title'">{{ t('replace') }}</h2>
+  <p [id]="fieldId() + '-warning'">{{ t(kind() === 'duel' ? 'replaceDuelWarning' : 'replaceWarning') }}</p>
+  <div class="actions"><button type="button" (click)="closeReplacement()" [disabled]="busy()">{{ t('cancel') }}</button><button type="button" class="primary" (click)="replace()" [disabled]="blocked()">{{ t('confirmReplace') }}</button></div>
+</dialog>

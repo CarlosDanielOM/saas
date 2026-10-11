@@ -33,6 +33,7 @@ async function fixture({width=1280,tier='pro',theme='dark',lang='en',owner=true,
  const wireState=()=>({...state,phase:state.phase==='character-result'?'character-spin':state.phase==='perk-result'?'perk-spin':state.phase,resultPhase:['character-result','perk-result'].includes(state.phase)?state.phase:undefined});
  const actionLog=[],receipts=new Map();
  let events=seedEvents??{enabled:false,active:false,activeSince:null,allowTestEvents:false,rules:[]};
+ let overlayToken=null;
  let writes=0,widgetReads=0,conflict=false,failRead=false,lostResponse=false,manualDraw=false,widgetSocket;
  const role=()=>state.packId.includes('-survivor-')?'survivor':'killer';
  const draw=(kind)=>{
@@ -78,10 +79,10 @@ async function fixture({width=1280,tier='pro',theme='dark',lang='en',owner=true,
    widgetReads++;if(!['premium','pro'].includes(tier))return route.fulfill({status:403,json:{error:true,code:'premium_required'}});
    if(failRead&&req.method()==='GET')return route.fulfill({status:503,json:{error:true}});
    finish();state.serverTime=Date.now();
-   if(req.method()==='GET')data=url.pathname.endsWith('/catalog')?catalog:url.pathname.endsWith('/events')?{revision:state.revision,settings:structuredClone(events)}:structuredClone(wireState());
+   if(req.method()==='GET')data=url.pathname.endsWith('/overlay-token')?{token:overlayToken,exists:!!overlayToken,version:overlayToken?'a'.repeat(64):null}:url.pathname.endsWith('/catalog')?catalog:url.pathname.endsWith('/events')?{revision:state.revision,settings:structuredClone(events)}:structuredClone(wireState());
    else{
     const body=req.postDataJSON()||{};
-    if(url.pathname.endsWith('/overlay-token')){state.revision++;data={token:'a'.repeat(43)};}
+    if(url.pathname.endsWith('/overlay-token')){overlayToken??='a'.repeat(43);state.revision++;data={token:overlayToken,exists:true,version:'a'.repeat(64)};}
     else{
      writes++;assert(req.headers()['idempotency-key']);assert(req.headers()['if-match']);
      if(conflict){conflict=false;return route.fulfill({status:409,json:{error:true,code:'revision_conflict'}});}
@@ -189,9 +190,9 @@ try{
  for(const scope of ['.wins','[data-testid=widget-progress]'])await until(async()=>await page.locator(`${scope} app-widget-streak.survivor [data-state=fresh] .light`).count()===1,`hatch preview in ${scope}`);
  assert.equal(f.writes(),quiet);assert.equal(f.state.wins.survivor,0);
  await until(async()=>await icons(page,'.wins','survivor','lost')===1&&await icons(page,'.wins','survivor','fresh')===0,'preview hatch closes',5000);assert.equal(f.writes(),quiet);
- await page.getByRole('button',{name:'Create OBS link',exact:true}).click();await page.getByRole('button',{name:'Copy',exact:true}).waitFor();
- const link=await page.getByLabel('OBS browser source',{exact:true}).inputValue();assert(link.includes('/overlays/widgets/991801#'));
- await page.getByTestId('role-survivor').click();await wait(page);assert.equal(await page.getByLabel('OBS browser source',{exact:true}).inputValue(),link);assert.equal(f.state.wins.killer,3);
+ await page.getByRole('button',{name:'Create overlay link',exact:true}).click();await page.getByRole('button',{name:'Copy',exact:true}).waitFor();
+ const link=await page.getByLabel('Private overlay link',{exact:true}).inputValue();assert(link.includes('/overlays/widgets/991801#'));
+ await page.getByTestId('role-survivor').click();await wait(page);assert.equal(await page.getByLabel('Private overlay link',{exact:true}).inputValue(),link);assert.equal(f.state.wins.killer,3);
  // Joker poll chance and price save with the settings; the price field only shows once the chance is above 0%.
  assert.equal(await page.getByTestId('joker-points').count(),0);await page.getByTestId('joker-chance').fill('10');await page.getByTestId('joker-points').fill('40');
  await page.getByRole('button',{name:'Save settings',exact:true}).click();await until(()=>f.state.config.jokerChance===10&&f.state.config.jokerPointsPerVote===40,'joker settings saved');

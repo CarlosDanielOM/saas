@@ -1,3 +1,5 @@
+import { firstValueFrom } from 'rxjs';
+import { OverlayLinkComponent } from '../../shared/overlay-link/overlay-link.component';
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -16,7 +18,7 @@ import { WidgetPoolComponent, WidgetPool } from './widget-pool.component';
 import { challengeSteps } from './widget-steps';
 import { WidgetsApi, WidgetAction, WidgetCatalog, WidgetConfig, WidgetEntry, WidgetEventSettings, WidgetState, WidgetRole, WidgetMode, WidgetLayout, widgetDefaultLayout } from './widgets-api.service';
 
-@Component({ selector: 'app-widgets-page', imports: [ReactiveFormsModule, RouterLink, LfIconComponent, WidgetDisplayComponent, WidgetStreakComponent, WidgetBitsComponent, WidgetPoolComponent], templateUrl: './widgets-page.component.html', styleUrls: ['./widgets-base.css', './widgets-page.component.css'], changeDetection: ChangeDetectionStrategy.OnPush })
+@Component({ selector: 'app-widgets-page', imports: [OverlayLinkComponent, ReactiveFormsModule, RouterLink, LfIconComponent, WidgetDisplayComponent, WidgetStreakComponent, WidgetBitsComponent, WidgetPoolComponent], templateUrl: './widgets-page.component.html', styleUrls: ['./widgets-base.css', './widgets-page.component.css'], changeDetection: ChangeDetectionStrategy.OnPush })
 export class WidgetsPageComponent {
   private readonly api = inject(WidgetsApi);
   private readonly auth = inject(SessionAuthService);
@@ -26,7 +28,7 @@ export class WidgetsPageComponent {
   private readonly destroy = inject(DestroyRef);
   readonly streamer = getRouteParam(inject(ActivatedRoute), 'streamer') ?? '';
   readonly premium = computed(() => isModuleAccessible(MODULE_TIER_REQUIREMENTS.widgets, this.auth.getPlanTierForStreamer(this.streamer)));
-  readonly channel = this.auth.session()?.appUser.twitch_user_id ?? '';
+  channel = '';
   readonly catalog = signal<WidgetCatalog | null>(null);
   readonly state = signal<WidgetState | null>(null);
   readonly roles: WidgetRole[] = ['killer', 'survivor'];
@@ -42,8 +44,7 @@ export class WidgetsPageComponent {
   readonly stale = signal(false);
   readonly error = signal('');
   readonly notice = signal('');
-  readonly overlayUrl = signal('');
-  readonly confirm = signal<'start' | 'retry-poll' | 'rotate' | null>(null);
+  readonly confirm = signal<'start' | 'retry-poll' | null>(null);
   readonly dialog = viewChild<ElementRef<HTMLDialogElement>>('confirmDialog');
   readonly previewPanel = viewChild<ElementRef<HTMLElement>>('previewPanel');
   readonly eventSettings = signal<WidgetEventSettings | null>(null);
@@ -117,7 +118,6 @@ export class WidgetsPageComponent {
     const timer = setInterval(() => { if (this.premium() && this.state() && !this.busy() && !this.pending) void this.refresh(); }, 1500);
     const clock = setInterval(() => this.now.set(Date.now()), 1000);
     this.destroy.onDestroy(() => { clearInterval(timer); clearInterval(clock); });
-    try { this.overlayUrl.set(sessionStorage.getItem('widgets-overlay-' + this.channel) ?? ''); } catch { /* Link stays usable without storage. */ }
   }
   t(key: string, params?: Record<string, string | number>): string { return this.language.translate('widgets.' + key, params); }
   label(entry: WidgetEntry): string { return this.language.currentLanguage() === 'es' ? entry.spanish : entry.english; }
@@ -137,6 +137,8 @@ export class WidgetsPageComponent {
   async load(): Promise<void> {
     this.loading.set(true); this.error.set('');
     try {
+      this.channel = (await firstValueFrom(this.auth.resolveChannelID(this.streamer))) ?? '';
+      if (!this.channel) throw new Error('channel');
       const [catalog, state, events] = await Promise.all([this.api.catalog(this.channel), this.api.read(this.channel), this.api.events(this.channel)]);
       if (this.stopped) return;
       this.catalog.set(catalog); this.accept(state); this.eventSettings.set(events.settings); this.stale.set(false);
@@ -194,19 +196,9 @@ export class WidgetsPageComponent {
   }
   savePool(pool: WidgetPool): void { void this.act('configure', pool); }
   saveEvents(settings: Omit<WidgetEventSettings, 'activeSince'>): void { void this.act('events', settings); }
-  openConfirm(kind: 'start' | 'retry-poll' | 'rotate'): void { this.confirm.set(kind); this.dialog()?.nativeElement.showModal(); }
+  openConfirm(kind: 'start' | 'retry-poll'): void { this.confirm.set(kind); this.dialog()?.nativeElement.showModal(); }
   closeConfirm(): void { this.dialog()?.nativeElement.close(); this.confirm.set(null); }
-  confirmAction(): void { const action = this.confirm(); this.closeConfirm(); if (action === 'rotate') void this.makeLink(); else if (action) void this.act(action, action === 'start' ? {mode: this.startMode} : {}); }
-  async makeLink(): Promise<void> {
-    if (this.busy()) return; this.busy.set(true); this.error.set('');
-    try {
-      const token = await this.api.token(this.channel);
-      const url = `${location.origin}/overlays/widgets/${this.channel}#${token}`;
-      this.overlayUrl.set(url); try { sessionStorage.setItem('widgets-overlay-' + this.channel, url); } catch { /* Optional. */ }
-      await this.refresh(); this.notice.set(this.t('linkReady'));
-    } catch (e) { this.handleError(e); } finally { this.busy.set(false); }
-  }
-  async copyLink(): Promise<void> { try { await navigator.clipboard.writeText(this.overlayUrl()); this.notice.set(this.t('copied')); } catch { this.error.set(this.t('copyError')); } }
+  confirmAction(): void { const action = this.confirm(); this.closeConfirm(); if (action) void this.act(action, action === 'start' ? {mode: this.startMode} : {}); }
   private handleError(e: unknown): void {
     const code = e instanceof HttpErrorResponse ? e.error?.code : '';
     this.error.set(this.t(code === 'premium_required' ? 'premiumRequired' : code === 'revision_conflict' || code === 'busy' ? 'conflict' : code === 'empty_pool' ? 'emptyPool' : 'loadError'));

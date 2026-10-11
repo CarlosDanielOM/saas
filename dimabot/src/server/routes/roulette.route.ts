@@ -5,7 +5,7 @@ import type { AuthRequest } from '../../middleware/types.js';
 import { getTwitchUserByLogin } from '../../functions/users/get_user_by_login.users.js';
 import type { DrawActor } from '../../roulette/action-model.js';
 import { RouletteError, object, text, integer, fail } from '../../roulette/model.js';
-import { execute, requirePremium, snapshot, rotateToken, authorizeOverlay, overlaySnapshot, type Action } from '../../roulette/service.js';
+import { execute, requirePremium, snapshot, overlayTokenState, updateOverlayToken, authorizeOverlay, overlaySnapshot, type Action } from '../../roulette/service.js';
 
 export const rouletteRoute = express.Router();
 const param = (req: Request, name: string) => text(req.params[name], name, 100);
@@ -30,7 +30,8 @@ rouletteRoute.use('/:channelID', (req: AuthRequest, res, next) => {
   })().catch(next);
 });
 rouletteRoute.get('/:channelID', wrap(async (req, res) => ok(res, await snapshot(param(req, 'channelID')))));
-rouletteRoute.post('/:channelID/overlay-token', wrap(async (req, res) => ok(res, { token: await rotateToken(param(req, 'channelID')), namespace: `/overlays/roulette/${param(req, 'channelID')}` })));
+rouletteRoute.get('/:channelID/overlay-token', wrap(async (req, res) => ok(res, await overlayTokenState(param(req, 'channelID')))));
+rouletteRoute.post('/:channelID/overlay-token', wrap(async (req, res) => ok(res, await updateOverlayToken(param(req, 'channelID'), req.body ?? {}))));
 async function action(req: Request, res: Response, operation: Action['operation'], data?: Record<string, unknown>, actor?: DrawActor) {
   const revision = req.header('If-Match');
   const expectedRevision = revision === undefined ? undefined : integer(Number(revision.replace(/^"|"$/g, '')), 'If-Match', 0);
