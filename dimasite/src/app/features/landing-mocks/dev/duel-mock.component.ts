@@ -13,12 +13,13 @@ import { DuelClaudeArenaComponent } from './duel-svg-claude/duel-claude-arena.co
 import { DuelAstraArenaComponent } from './duel-svg-astra/duel-astra-arena.component';
 
 import { DuelAstra3dArenaComponent } from './duel-3d-astra/duel-astra-3d-arena.component';
+import { DuelClaude3dArenaComponent } from './duel-3d-claude/duel-claude-3d-arena.component';
 
 type Phase = 'ready' | 'entrance' | 'countdown' | 'fight' | 'knockout' | 'winner';
 
 @Component({
   selector: 'app-duel-mock',
-  imports: [RouterLink, ReactiveFormsModule, DuelArenaComponent, DuelGptArenaComponent, DuelAstra3dArenaComponent, DuelSvgArenaComponent, DuelClaudeArenaComponent, DuelAstraArenaComponent],
+  imports: [RouterLink, ReactiveFormsModule, DuelArenaComponent, DuelGptArenaComponent, DuelAstra3dArenaComponent, DuelClaude3dArenaComponent, DuelSvgArenaComponent, DuelClaudeArenaComponent, DuelAstraArenaComponent],
   templateUrl: './duel-mock.component.html',
   styleUrl: './duel-mock.component.css',
   host: { '[class.overlay-only]': 'overlayOnly' },
@@ -156,7 +157,7 @@ export class DuelMockComponent {
       this.lastTick = now;
       if (!this.paused()) this.elapsed.update(time => Math.min(this.duration(), time + Math.min(delta, 100)));
       if (this.elapsed() >= this.duration()) this.stopTimer();
-    }, Math.ceil(1000 / ((this.renderMode() === 'svg' ? this.svgEntry() : this.threeEntry()) === 'astra' ? 60 : 30)));
+    }, Math.ceil(1000 / (this.renderMode() === 'svg' ? (this.svgEntry() === 'astra' ? 60 : 30) : this.threeEntry() === 'gpt' ? 30 : 60)));
   }
 
   reset(): void {

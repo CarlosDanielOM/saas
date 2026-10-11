@@ -53,7 +53,7 @@ try {
   assert.equal(await detached.evaluate(c=>c.isConnected),false);
   const oldFrames=await detached.evaluate(c=>c.dataset.frames);await page.waitForTimeout(120);
   assert.equal(await detached.evaluate(c=>c.dataset.frames),oldFrames,'destroyed renderer stops drawing');
-  await page.getByTestId('entry-claude').click();await page.getByTestId('claude-slot').waitFor();
+  await page.getByTestId('entry-claude').click();await page.getByTestId('duel-claude-3d-canvas').waitFor();
   assert.equal(await page.locator('app-duel-gpt-arena').count(),0,'Claude slot does not impersonate GPT');
   await page.getByTestId('entry-gpt').click();await ready(page);
   for(const character of ['knight','mage','ronin']) {

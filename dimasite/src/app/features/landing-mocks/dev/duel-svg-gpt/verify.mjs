@@ -134,7 +134,7 @@ try {
   assert.equal(await page.locator('app-duel-svg-gpt-arena .scenery').count(),0);
   await page.getByRole('button',{name:'Transparent background',exact:true}).click();
   await page.getByTestId('renderer-3d').click();await page.getByTestId('duel-gpt-canvas').waitFor();
-  await page.getByTestId('entry-claude').click();await page.getByTestId('claude-slot').waitFor();
+  await page.getByTestId('entry-claude').click();await page.getByTestId('duel-claude-3d-canvas').waitFor();
   await page.getByTestId('renderer-svg').click();await page.getByTestId('duel-svg-gpt').waitFor();
   await context.close();
   for (const [width,theme,language] of [[320,'dark','en'],[390,'dark','en'],[390,'light','es'],[1280,'dark','en'],[1280,'light','en']]) {

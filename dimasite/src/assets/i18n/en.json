@@ -7005,9 +7005,6 @@
       "default": "Default",
       "entry": "3D entry",
       "loading": "Opening the GPT arena…",
-      "claudePending": "Awaiting the challenger",
-      "claudeHint": "Claude’s 3D entry will take this slot next. The GPT arena is ready to play.",
-      "viewGpt": "Enter GPT arena",
       "showcase": "The ultimate collection",
       "showcaseHint": "Jump straight to a cinematic finisher. Three fighters. Three ways to end it.",
       "scrub": "Timeline",
@@ -7021,6 +7018,26 @@
         "knight": "A celestial blade. No second chance.",
         "mage": "Even light has nowhere left to run.",
         "ronin": "One breath. A thousand endings."
+      },
+      "claude": {
+        "sectionHint": "A cinematic remaster: sculpted fighters with real skeletons and cloth, blade smears, hit-stop and three directed finishers. Pause or scrub for any exact frame.",
+        "beat": {
+          "knight": {
+            "a": "The knight kneels in prayer",
+            "b": "The heavens part",
+            "c": "Judgment falls"
+          },
+          "mage": {
+            "a": "Gravity begins to bend",
+            "b": "The event horizon opens",
+            "c": "Everything falls inward"
+          },
+          "ronin": {
+            "a": "Steel returns to its sheath",
+            "b": "The moon bleeds; time stops",
+            "c": "One breath remains"
+          }
+        }
       }
     },
     "back": "Dev mocks",

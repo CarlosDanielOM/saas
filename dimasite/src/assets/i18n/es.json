@@ -7005,9 +7005,6 @@
       "default": "Predeterminado",
       "entry": "Versión 3D",
       "loading": "Abriendo la arena GPT…",
-      "claudePending": "Esperando al rival",
-      "claudeHint": "La versión 3D de Claude ocupará este espacio después. La arena GPT ya está lista.",
-      "viewGpt": "Entrar en la arena GPT",
       "showcase": "La colección de definitivas",
       "showcaseHint": "Ve directamente a un remate cinematográfico. Tres luchadores. Tres formas de acabar.",
       "scrub": "Línea de tiempo",
@@ -7021,6 +7018,26 @@
         "knight": "Una espada celestial. Sin segunda oportunidad.",
         "mage": "Ni la luz tiene adónde escapar.",
         "ronin": "Un aliento. Mil finales."
+      },
+      "claude": {
+        "sectionHint": "Una remasterización cinematográfica: luchadores esculpidos con esqueleto y tela reales, estelas de filo, pausa de impacto y tres remates dirigidos. Pausa o desliza para ver cualquier fotograma exacto.",
+        "beat": {
+          "knight": {
+            "a": "El caballero se arrodilla a rezar",
+            "b": "Los cielos se abren",
+            "c": "Cae el juicio"
+          },
+          "mage": {
+            "a": "La gravedad empieza a curvarse",
+            "b": "Se abre el horizonte de sucesos",
+            "c": "Todo cae hacia dentro"
+          },
+          "ronin": {
+            "a": "El acero vuelve a su vaina",
+            "b": "La luna sangra; el tiempo se detiene",
+            "c": "Queda un solo aliento"
+          }
+        }
       }
     },
     "back": "Mocks de desarrollo",
