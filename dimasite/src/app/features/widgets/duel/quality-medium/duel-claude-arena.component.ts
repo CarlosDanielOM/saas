@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, afterNextRender, computed, inject, linkedSignal, signal } from '@angular/core';
-import { DuelArenaComponent } from '../../../widgets/duel/duel-arena.component';
-import { COMBO_HEAL, DuelSide, DuelTurn } from '../../../widgets/duel/duel-battle';
+import { DuelArenaComponent } from '../duel-arena.component';
+import { COMBO_HEAL, DuelSide, DuelTurn } from '../duel-battle';
 import { DuelClaudeClockDirective } from './duel-claude-clock.directive';
 import { DuelClaudeFighterComponent } from './duel-claude-fighter.component';
 

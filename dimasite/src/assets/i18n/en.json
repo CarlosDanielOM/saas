@@ -7358,6 +7358,31 @@
     "discard": "Discard",
     "boardPausedTitle": "Paused: custom battle rules are on",
     "boardPausedBody": "New fights don't count and the OBS source is hidden. The rankings below are kept and resume when you go back to the default rules.",
-    "boardOffBody": "The leaderboard is off, so its OBS source stays hidden. Turn it on in Duel settings."
+    "boardOffBody": "The leaderboard is off, so its OBS source stays hidden. Turn it on in Duel settings.",
+    "quality": {
+      "title": "Overlay look",
+      "hint": "How the fight looks on stream. Battles play out the same in every look.",
+      "low": {
+        "name": "Low",
+        "tag": "Original",
+        "body": "The classic arena. Lightest on your PC."
+      },
+      "medium": {
+        "name": "Medium",
+        "tag": "HD",
+        "body": "Sharper fighters, shading and remastered finishers."
+      },
+      "high": {
+        "name": "High",
+        "tag": "Cinematic",
+        "body": "Painted arena and cinematic finishers."
+      },
+      "extreme": {
+        "name": "Extreme",
+        "tag": "3D",
+        "body": "Real-time 3D with cinematic cameras at 30 FPS.",
+        "note": "Extreme uses your graphics card. Keep hardware acceleration on in OBS (Settings → Advanced → Sources); without it the overlay shows High instead."
+      }
+    }
   }
 }

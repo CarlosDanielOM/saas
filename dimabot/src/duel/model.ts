@@ -7,7 +7,10 @@ export const MAX_TIMEOUT_SECONDS = 1209600;
  * leaderboard ranks viewers by K/D, rivalries shows each pair's head-to-head record.
  * Both only track overlay fights played under the default rules.
  */
-export interface DuelSettings { enabled: boolean; timeoutEnabled: boolean; timeoutSeconds: number; language: 'en' | 'es'; leaderboard: boolean; rivalries: boolean; rules: DuelRules }
+/** Overlay look: low (original vector), medium (HD vector), high (cinematic vector), extreme (3D). Display only. */
+export type DuelQuality = 'low' | 'medium' | 'high' | 'extreme';
+export const DUEL_QUALITIES: DuelQuality[] = ['low', 'medium', 'high', 'extreme'];
+export interface DuelSettings { enabled: boolean; timeoutEnabled: boolean; timeoutSeconds: number; language: 'en' | 'es'; leaderboard: boolean; rivalries: boolean; rules: DuelRules; quality: DuelQuality }
 /**
  * Battle rules a streamer can tune (mirrored in dimasite/.../duel/duel-rules.ts). Chances
  * are out of 100, ultimates per mille per turn, damage and streamerBoost are percentages
@@ -79,19 +82,20 @@ export interface DuelRun {
   /** Whether the result feeds the leaderboard/rivalries (unset on older runs: overlay runs counted). */
   tracked?: boolean;
 }
-export const defaultSettings = (): DuelSettings => ({ enabled: true, timeoutEnabled: true, timeoutSeconds: 60, language: 'en', leaderboard: true, rivalries: true, rules: { ...DEFAULT_RULES } });
-/** Channels saved before tracking switches and rules existed get the defaults. */
+export const defaultSettings = (): DuelSettings => ({ enabled: true, timeoutEnabled: true, timeoutSeconds: 60, language: 'en', leaderboard: true, rivalries: true, rules: { ...DEFAULT_RULES }, quality: 'low' });
+/** Channels saved before tracking switches, rules and quality existed get the defaults. */
 export const normalizeSettings = (stored: Partial<DuelSettings>): DuelSettings => ({ ...defaultSettings(), ...stored, rules: { ...DEFAULT_RULES, ...(stored.rules ?? {}) } });
 /** Fields an older page doesn't send keep their current value instead of resetting. */
 export function settings(input: unknown, current: DuelSettings = defaultSettings()): DuelSettings {
   const data = object(input);
-  if (Object.keys(data).some(key => !['enabled', 'timeoutEnabled', 'timeoutSeconds', 'language', 'leaderboard', 'rivalries', 'rules'].includes(key))) fail('invalid', 'Unknown duel setting');
+  if (Object.keys(data).some(key => !['enabled', 'timeoutEnabled', 'timeoutSeconds', 'language', 'leaderboard', 'rivalries', 'rules', 'quality'].includes(key))) fail('invalid', 'Unknown duel setting');
   if (typeof data.enabled !== 'boolean' || typeof data.timeoutEnabled !== 'boolean') fail('invalid', 'Duel switches must be booleans');
   if ([data.leaderboard, data.rivalries].some(value => value !== undefined && typeof value !== 'boolean')) fail('invalid', 'Duel switches must be booleans');
   if (!['en', 'es'].includes(data.language as string)) fail('invalid', 'Choose English or Spanish');
+  if (data.quality !== undefined && !DUEL_QUALITIES.includes(data.quality as DuelQuality)) fail('invalid', 'Choose low, medium, high or extreme quality');
   return { enabled: data.enabled as boolean, timeoutEnabled: data.timeoutEnabled as boolean, timeoutSeconds: integer(data.timeoutSeconds, 'timeoutSeconds', 1, MAX_TIMEOUT_SECONDS), language: data.language as DuelSettings['language'],
     leaderboard: (data.leaderboard as boolean | undefined) ?? current.leaderboard, rivalries: (data.rivalries as boolean | undefined) ?? current.rivalries,
-    rules: data.rules === undefined ? { ...current.rules } : rules(data.rules) };
+    rules: data.rules === undefined ? { ...current.rules } : rules(data.rules), quality: (data.quality as DuelQuality | undefined) ?? current.quality };
 }
 const flavour = {
   en: ['The battle is intense, who will win?', 'The tension is rising in the arena!', 'A flurry of blows! Both duelists are holding their ground.', 'The crowd is going wild!', 'Is that a secret technique I see?', 'One mistake could end it all now...', 'The ground trembles under their feet!', 'Neither side is backing down!', 'An epic clash of titans!', 'Dust fills the air as they trade hits!'],

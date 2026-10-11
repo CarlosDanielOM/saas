@@ -1,6 +1,6 @@
 import * as T from 'three';
-import type { DuelCharacter, DuelTurn } from '../../../widgets/duel/duel-battle';
-import { COMBO_HEAL, turnLength } from '../../../widgets/duel/duel-battle';
+import type { DuelCharacter, DuelTurn } from '../duel-battle';
+import { COMBO_HEAL, turnLength } from '../duel-battle';
 import { ClaudeAssets, Particles, Streaks, additive, beamMaterial, hash, ringMaterial, shellMaterial, sprite } from './duel-claude-3d-assets';
 
 const clamp = T.MathUtils.clamp, smooth = (x: number) => { const p = clamp(x, 0, 1); return p * p * (3 - 2 * p); };

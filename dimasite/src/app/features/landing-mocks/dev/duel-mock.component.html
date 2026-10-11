@@ -50,7 +50,7 @@
             } @else if (svgEntry() === 'gpt') {
               <app-duel-svg-gpt-arena [names]="names()" [battle]="battle()" [elapsed]="elapsed()" [started]="started()" [paused]="paused()" [transparent]="transparent()" [locale]="language.currentLanguage()" />
             } @else if (svgEntry() === 'astra') {
-              <app-duel-astra-arena [names]="names()" [battle]="battle()" [elapsed]="elapsed()" [started]="started()" [paused]="paused()" [transparent]="transparent()" [locale]="language.currentLanguage()" />
+              <app-duel-astra-arena [lab]="true" [names]="names()" [battle]="battle()" [elapsed]="elapsed()" [started]="started()" [paused]="paused()" [transparent]="transparent()" [locale]="language.currentLanguage()" />
             } @else {
               <app-duel-claude-arena [names]="names()" [battle]="battle()" [elapsed]="elapsed()" [started]="started()" [paused]="paused()" [transparent]="transparent()" [locale]="language.currentLanguage()" />
             }
@@ -66,7 +66,7 @@
             @error { <div class="entry-placeholder" role="alert">{{ t('three.unavailable') }}</div> }
           } @else {
             @defer (on immediate) {
-              <app-duel-claude-3d-arena [names]="names()" [battle]="battle()" [elapsed]="elapsed()" [started]="started()" [paused]="paused()" [transparent]="transparent()" [locale]="language.currentLanguage()" />
+              <app-duel-claude-3d-arena [lab]="true" [names]="names()" [battle]="battle()" [elapsed]="elapsed()" [started]="started()" [paused]="paused()" [transparent]="transparent()" [locale]="language.currentLanguage()" />
             } @placeholder { <div class="entry-placeholder" role="status">{{ t('three.loading') }}</div> }
             @error { <div class="entry-placeholder" role="alert">{{ t('three.unavailable') }}</div> }
           }

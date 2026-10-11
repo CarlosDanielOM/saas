@@ -310,3 +310,18 @@
   .cut-title,.ult-result,.damage,.heal-number,.move-callout,.extra-turn,.skill-callout,.broken-label,.combo-label { opacity:1 }
   .move-callout { transform:translateX(-50%) }
 }
+
+/* Head-to-head record, matching the original arena. */
+.rivalry { position:absolute; left:50%; top:76%; z-index:4; display:grid; justify-items:center; gap:.3cqw; padding:1cqw 2.6cqw 1.2cqw; translate:-50% 0; transform-origin:50% 0; border:1px solid #aa91ff55; border-radius:2cqw; background:#120f1fe6; box-shadow:0 0 30px #8b5cf633; white-space:nowrap; pointer-events:none; transition:top .8s cubic-bezier(.65,0,.3,1),scale .8s cubic-bezier(.65,0,.3,1),padding .8s; animation:cue .35s ease both }
+.rivalry small { color:#d8ccff; font-size:1.7cqw; font-weight:850; letter-spacing:.3em; text-transform:uppercase }
+.rivalry-score { display:flex; align-items:center; gap:1.4cqw; font-weight:950; line-height:1 }
+.rivalry-score b { font-size:6.4cqw; color:var(--violet); text-shadow:0 0 18px #8b5cf688; font-variant-numeric:tabular-nums; animation:score-pop .5s cubic-bezier(.3,1.6,.5,1) both }
+.rivalry-score b[data-side="right"] { color:var(--amber); text-shadow:0 0 18px #ffb54788 }
+.rivalry-score i { font-style:normal; font-size:4cqw; color:#ffffff88 }
+.rivalry-name { max-width:22cqw; overflow:hidden; text-overflow:ellipsis; font-size:2.8cqw; font-weight:850; letter-spacing:-.02em; transition:max-width .8s,opacity .5s }
+.rivalry[data-stage="hud"] { top:12.4%; scale:.42; padding:1cqw 2cqw 1.1cqw }
+.rivalry[data-stage="hud"] .rivalry-name { max-width:0; opacity:0; margin:0 -.7cqw }
+@keyframes score-pop { from { scale:1.9; filter:brightness(2) } to { scale:1; filter:none } }
+.winner-reveal>.rivalry-line { margin-top:.6cqw; padding:.4cqw 1.4cqw; border-radius:99px; background:#120f1fd9; color:#ffe0a0; font-weight:800 }
+.rivalry { z-index:8 }
+.rivalry[data-stage="hud"] { top:9.5% }

@@ -14,7 +14,7 @@
               </svg>
               <div class="ambient-dust">@for (n of [0,1,2,3,4,5,6,7]; track n) { <i [style.--n]="n"></i> }</div>
             </div>
-            <div class="arena-label"><span>!duel</span><span>ASTRA / 04</span></div>
+            <div class="arena-label"><span>!duel</span><span>{{ lab() ? 'ASTRA / 04' : t('arena') }}</span></div>
             <div class="hud" [attr.data-clock-origin]="ultimate()?.at ?? 0">
               @for (side of sides; track side) {
                 <div class="health" [class.health-right]="side === 'right'" [class.active]="attacking(side)" [class.low]="low(side)" [class.healing]="healing(side)" [attr.data-side]="side">

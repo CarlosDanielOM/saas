@@ -6,8 +6,8 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
-import { DuelBattle, DuelSide, COMBO_HEAL, otherSide } from '../../../widgets/duel/duel-battle';
-import { ClaudeAssets, Particles, coronaMaterial, createAssets, flameMaterial, mistMaterial, runeFloorMaterial, shaftMaterial, skyMaterial } from './duel-claude-3d-assets';
+import { DuelBattle, DuelSide, COMBO_HEAL, otherSide } from '../duel-battle';
+import { ClaudeAssets, Particles, coronaMaterial, createAssets, keepAlpha, flameMaterial, mistMaterial, runeFloorMaterial, shaftMaterial, skyMaterial } from './duel-claude-3d-assets';
 import { ARM_JOINTS, ClaudeRig, Cloth, HIP_HEIGHT, SHIN, THIGH, bakeRig, buildRig } from './duel-claude-3d-rig';
 import { MotionContext, Pose, activeTurn, attackPhase, fighterPose, strikePoses, ultimatePoses } from './duel-claude-3d-motion';
 import { CombatEffects } from './duel-claude-3d-effects';
@@ -29,7 +29,7 @@ const SanitizeShader = {
   vertexShader: 'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
   fragmentShader: `uniform sampler2D tDiffuse;varying vec2 vUv;
     float safe(float x){return (isnan(x)||isinf(x)||!(x>=0.||x<0.))?0.:clamp(x,0.,96.);}
-    void main(){vec4 c=texture2D(tDiffuse,vUv);gl_FragColor=vec4(safe(c.r),safe(c.g),safe(c.b),1.);}`,
+    void main(){vec4 c=texture2D(tDiffuse,vUv);gl_FragColor=vec4(safe(c.r),safe(c.g),safe(c.b),min(safe(c.a),1.));}`,
 };
 
 /** Polished flagstones: the mirrored scene, broken up by the stone relief and faded at the rim. */
@@ -50,11 +50,11 @@ const GradeShader = {
     tDiffuse: { value: null }, uAspect: { value: 16 / 9 }, uTime: { value: 0 }, uLensPos: { value: new T.Vector2(.5, .5) }, uLensE: { value: 0 },
     uInk: { value: 0 }, uImpact: { value: 0 }, uAberration: { value: 0 }, uFlash: { value: 0 }, uFlashColor: { value: new T.Color('#fff') },
     uExposure: { value: 0 }, uVignette: { value: .55 }, uGrain: { value: .018 },
-    uRipplePos: { value: new T.Vector2(.5, .5) }, uRippleAge: { value: 0 }, uRippleStrength: { value: 0 },
+    uRipplePos: { value: new T.Vector2(.5, .5) }, uRippleAge: { value: 0 }, uRippleStrength: { value: 0 }, uTransparent: { value: 0 },
   },
   vertexShader: 'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
   fragmentShader: `uniform sampler2D tDiffuse;uniform float uAspect;uniform float uTime;uniform vec2 uLensPos;uniform float uLensE;uniform float uInk;uniform float uImpact;
-    uniform float uAberration;uniform float uFlash;uniform vec3 uFlashColor;uniform float uExposure;uniform float uVignette;uniform float uGrain;uniform vec2 uRipplePos;uniform float uRippleAge;uniform float uRippleStrength;varying vec2 vUv;
+    uniform float uAberration;uniform float uFlash;uniform vec3 uFlashColor;uniform float uExposure;uniform float uVignette;uniform float uGrain;uniform vec2 uRipplePos;uniform float uRippleAge;uniform float uRippleStrength;uniform float uTransparent;varying vec2 vUv;
     float h(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}
     void main(){vec2 uv=vUv;float shadow=0.;
       if(uRippleStrength>0.){vec2 d=(uv-uRipplePos)*vec2(uAspect,1.);float r=max(length(d),1e-4);float x=(r-uRippleAge*.6)*13.;
@@ -66,6 +66,9 @@ const GradeShader = {
       float l=dot(col,vec3(.299,.587,.114));
       vec3 ink=mix(vec3(.012,0.,.006),vec3(.85,.03,.1),smoothstep(.07,.26,l));ink=mix(ink,vec3(1.,.9,.92)*1.3,smoothstep(1.3,2.4,l));
       col=mix(col,ink,uInk);
+      if(uTransparent>.5){
+        // OBS overlay: keep the stream visible; glows and bloom become partial alpha (premultiplied).
+        float a=clamp(max(texture2D(tDiffuse,uv).a,max(col.r,max(col.g,col.b))),0.,1.);gl_FragColor=vec4(col,a);return;}
       if(uImpact>.5){float m=smoothstep(.42,.6,l);col=uImpact<1.5?mix(vec3(.01),vec3(1.,.96,.88)*1.6,m):mix(vec3(1.5),vec3(.03,0.,.04),m);}
       else col+=uFlashColor*uFlash;vec2 q=vUv-.5;col*=1.-dot(q,q)*uVignette;col+=(h(vUv*937.+uTime)-.5)*uGrain;
       gl_FragColor=vec4(col,1.);}`,
@@ -155,7 +158,7 @@ export class DuelClaude3dScene {
     this.observer = new ResizeObserver(() => this.resize()); this.observer.observe(canvas.parentElement!);
     this.motion.addEventListener('change', this.motionChanged); canvas.addEventListener('webglcontextlost', this.contextLost);
     canvas.dataset['fpsCap'] = String(FPS); canvas.dataset['renderer'] = 'claude';
-    this.resize(); this.tick();
+    keepAlpha(this.scene); this.resize(); this.tick();
   }
 
   /** The original arena — rune platform, broken moon gate, pillars — rebuilt in higher detail. */
@@ -270,7 +273,7 @@ export class DuelClaude3dScene {
       if (!snapshot.paused && !reduced) this.worldTime += delta;
       this.update(snapshot, reduced ? 0 : this.worldTime, reduced);
       this.renderer.info.reset();
-      if (snapshot.transparent) this.renderer.render(this.scene, this.camera); else this.composer.render();
+      this.composer.render();
       this.frameCount++; this.statsFrames++;
       this.canvas.dataset['frames'] = String(this.frameCount); this.canvas.dataset['drawCalls'] = String(this.renderer.info.render.calls);
       this.canvas.dataset['triangles'] = String(this.renderer.info.render.triangles);
@@ -309,6 +312,7 @@ export class DuelClaude3dScene {
       for (const pose of ultimatePoses('knight', [.82, 1])) { this.apply(rig, pose); avatar.push(bakeRig(rig, false).geometry); }
     }
     this.ultimates.setAvatar(avatar);
+    keepAlpha(this.scene);
     this.previousBattle = battle;
   }
 
@@ -443,7 +447,8 @@ export class DuelClaude3dScene {
     this.hemi.intensity = .75 * (1 - dark * .65); this.key.intensity = 2.6 * (1 - dark * .55); this.gateLight.intensity = 12 * (1 - dark * .4) + look.bloodMoon * 30;
     this.gateLight.color.set('#8f6dff').lerp(new T.Color('#ff2a48'), look.bloodMoon);
     this.rims.forEach(rim => { rim.intensity = 45 * (1 - dark * .3); });
-    const g = this.grade.uniforms, ripple = look.rippleStrength > 0 ? look : fx;
+    const g = this.grade.uniforms; g['uTransparent'].value = transparent ? 1 : 0;
+    const ripple = look.rippleStrength > 0 ? look : fx;
     if (ripple.ripple && ripple.rippleStrength > 0 && !reduced) {
       const p = ripple.ripple.clone().project(this.camera); (g['uRipplePos'].value as T.Vector2).set(p.x * .5 + .5, p.y * .5 + .5);
       g['uRippleAge'].value = ripple.rippleAge; g['uRippleStrength'].value = ripple.rippleStrength;

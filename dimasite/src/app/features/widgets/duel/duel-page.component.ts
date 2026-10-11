@@ -10,8 +10,8 @@ import { UpgradeService } from '../../../services/upgrade.service';
 import { getRouteParam } from '../../../shared/utils/route-param.util';
 import { LfIconComponent } from '../../../shared/lf-icon/lf-icon.component';
 import { MODULE_TIER_REQUIREMENTS, isModuleAccessible } from '../../modules/module-tier.model';
-import { DuelApi, DuelLeaderboard, DuelLeaderboardStatus, DuelRecord, DuelSettings, DuelState } from './duel-api.service';
-import { DuelArenaComponent } from './duel-arena.component';
+import { DUEL_QUALITIES, DuelApi, DuelLeaderboard, DuelLeaderboardStatus, DuelQuality, DuelRecord, DuelSettings, DuelState } from './duel-api.service';
+import { DuelStageComponent } from './duel-stage.component';
 import { DuelLeaderboardComponent } from './duel-leaderboard.component';
 import { duelBalance, simulateBattle, ultimateBattle } from './duel-battle';
 import { DEFAULT_DUEL_RULES, DUEL_RULE_GROUPS, DUEL_RULE_KEYS, DuelRuleKey, DuelRules, DuelRuleSpec, changedDuelRules, isDefaultDuelRules, normalizeDuelRules } from './duel-rules';
@@ -19,7 +19,7 @@ type RulesForm = FormGroup<Record<DuelRuleKey, FormControl<number>>>;
 const healRange = (group: AbstractControl): ValidationErrors | null => { const value = group.value as DuelRules; return value.healMin > value.healMax ? { healRange: true } : null; };
 /** The rules' balance check is a snapshot of these defaults, so it is computed once. */
 const DEFAULT_BALANCE = duelBalance();
-@Component({selector:'app-duel-page',imports:[ReactiveFormsModule,RouterLink,LfIconComponent,DuelArenaComponent,DuelLeaderboardComponent],templateUrl:'./duel-page.component.html',styleUrls:['../widgets-base.css','./duel-page.component.css'],changeDetection:ChangeDetectionStrategy.OnPush})
+@Component({selector:'app-duel-page',imports:[ReactiveFormsModule,RouterLink,LfIconComponent,DuelStageComponent,DuelLeaderboardComponent],templateUrl:'./duel-page.component.html',styleUrls:['../widgets-base.css','./duel-page.component.css'],changeDetection:ChangeDetectionStrategy.OnPush})
 export class DuelPageComponent {
   private readonly auth=inject(SessionAuthService);
   private readonly api=inject(DuelApi);
@@ -35,11 +35,11 @@ export class DuelPageComponent {
   private seenBoardKey:string|undefined;
   private pending:{settings:DuelSettings;revision:number;key:string}|null=null;
   private readonly fb=inject(FormBuilder).nonNullable;
-  readonly groups=DUEL_RULE_GROUPS;readonly defaults=DEFAULT_DUEL_RULES;
+  readonly groups=DUEL_RULE_GROUPS;readonly defaults=DEFAULT_DUEL_RULES;readonly qualities=DUEL_QUALITIES;
   /** Opens once on load when custom rules are saved; afterwards the streamer decides. */
   readonly rulesOpen=signal(false);private rulesOpened=false;
   readonly form=this.fb.group({enabled:true,timeoutEnabled:true,timeoutSeconds:[60,[Validators.required,Validators.min(1),Validators.max(1209600),Validators.pattern(/^\d+$/)]],language:this.fb.control<'en'|'es'>('en'),
-    leaderboard:true,rivalries:true,
+    leaderboard:true,rivalries:true,quality:this.fb.control<DuelQuality>('low'),
     rules:new FormGroup(Object.fromEntries(DUEL_RULE_KEYS.map(key=>[key,new FormControl(DEFAULT_DUEL_RULES[key],{nonNullable:true})])) as Record<DuelRuleKey,FormControl<number>>,{validators:healRange}) as RulesForm});
   /** Draft values as signals: the balance check and chips follow the sliders live. */
   readonly draft=toSignal(this.form.valueChanges.pipe(map(()=>this.form.getRawValue())),{initialValue:this.form.getRawValue()});
@@ -71,7 +71,7 @@ export class DuelPageComponent {
   promptUpgrade():void{void this.upgrade.promptUpgradeForModule({moduleId:'widgets',source:'duel_widget'});}
   private apply(raw:DuelState):void{if(this.stopped)return;
     // Settings saved before tracking switches and rules existed read as the defaults.
-    const state={...raw,settings:{...raw.settings,leaderboard:raw.settings.leaderboard??true,rivalries:raw.settings.rivalries??true,rules:normalizeDuelRules(raw.settings.rules)}};this.state.set(state);
+    const state={...raw,settings:{...raw.settings,leaderboard:raw.settings.leaderboard??true,rivalries:raw.settings.rivalries??true,rules:normalizeDuelRules(raw.settings.rules),quality:raw.settings.quality??'low'}};this.state.set(state);
     // A finished fight or a tracking change may change the board.
     const key=`${state.run?.completedAt??null}:${state.settings.leaderboard}:${isDefaultDuelRules(state.settings.rules)}`;if(key!==this.seenBoardKey){this.seenBoardKey=key;void this.loadLeaderboard();}
     // Only patch real changes: every patch re-runs the balance simulation.

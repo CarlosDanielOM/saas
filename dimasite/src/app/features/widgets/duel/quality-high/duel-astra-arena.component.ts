@@ -2,9 +2,9 @@ import { ChangeDetectionStrategy, Component, computed, inject, input } from '@an
 import { LanguageService } from '../../../../services/language.service';
 import { DuelAstraFighterComponent } from './duel-astra-fighter.component';
 import { DuelAstraClockDirective } from './duel-astra-clock.directive';
-import type { DuelRecord } from '../../../widgets/duel/duel-api.service';
-import { COMBO_HEAL, DuelBattle, DuelMove, DuelSide, DuelTurn, MAX_HP, legacyBattle, otherSide, turnLength } from '../../../widgets/duel/duel-battle';
-import { DEFAULT_DUEL_RULES } from '../../../widgets/duel/duel-rules';
+import type { DuelRecord } from '../duel-api.service';
+import { COMBO_HEAL, DuelBattle, DuelMove, DuelSide, DuelTurn, MAX_HP, legacyBattle, otherSide, turnLength } from '../duel-battle';
+import { DEFAULT_DUEL_RULES } from '../duel-rules';
 type Phase = 'ready' | 'entrance' | 'countdown' | 'fight' | 'knockout' | 'winner';
 /** How long the damage number, sparks and screen shake stay after a hit lands. */
 const IMPACT_MS = 650;
@@ -20,6 +20,8 @@ export class DuelAstraArenaComponent {
   readonly locale = input<'en'|'es'>('en');
   /** Head-to-head wins before this fight; only tracked overlay duels have one. */
   readonly record = input<DuelRecord | null>(null);
+  /** Dev lab only: shows the edition badge. */
+  readonly lab = input(false);
   readonly sides: DuelSide[] = ['left','right'];
   readonly winner = computed(() => this.battle().winner);
   readonly finalHit = computed(() => this.battle().turns.at(-1)?.hitAt ?? 0);

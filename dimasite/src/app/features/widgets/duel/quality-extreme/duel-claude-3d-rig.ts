@@ -1,7 +1,7 @@
 import * as T from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import type { DuelCharacter, DuelSide } from '../../../widgets/duel/duel-battle';
+import type { DuelCharacter, DuelSide } from '../duel-battle';
 import type { ClaudeAssets } from './duel-claude-3d-assets';
 
 /**

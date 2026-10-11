@@ -1,5 +1,5 @@
 import * as T from 'three';
-import type { DuelCharacter } from '../../../widgets/duel/duel-battle';
+import type { DuelCharacter } from '../duel-battle';
 import { ClaudeAssets, GLSL_NOISE, Particles, Streaks, additive, beamMaterial, hash, ringMaterial, shaftMaterial, shellMaterial, sprite } from './duel-claude-3d-assets';
 import { bladeGeometry } from './duel-claude-3d-rig';
 
@@ -377,7 +377,7 @@ export class UltimateEffects {
     for (const mesh of [this.disk, this.lensed]) { const m = mesh.material as T.ShaderMaterial; m.uniforms['uTime'].value = world; m.uniforms['uView'].value = view; m.uniforms['uOpacity'].value = smooth((age - 1.0) / .6); }
     this.photon.lookAt(this.v.copy(center).add(new T.Vector3(0, 0, 10)));
     this.jets.forEach(jet => { (jet.material as T.ShaderMaterial).uniforms['uOpacity'].value = smooth((age - 1.6) / .5) * .9; (jet.material as T.ShaderMaterial).uniforms['uTime'].value = world; jet.rotation.x = .22; });
-    l.lensWorld = center.clone(); l.lens = hit >= 0 ? Math.max(0, .9 - hit * 3) * (hit < .25 ? Math.cos(hit * 40) : 0) : size * (1 + collapse * 1.4);
+    l.lensWorld = center.clone(); l.lens = hit >= 0 ? 0 : size * (1 + collapse * 1.4);
     // Matter spirals in: particles and floor rubble.
     this.swirl.set(1, center, age - .8, { life: 1.4, radius: 5 * (1 - collapse * .6), size: 13, a: '#f6e4ff', b: '#8f63ff', opacity: hit < 0 ? 1 : 0 });
     this.rubble.visible = hit < 0 && age > 1.1;

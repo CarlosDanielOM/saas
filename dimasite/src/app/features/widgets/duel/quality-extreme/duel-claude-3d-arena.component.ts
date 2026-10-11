@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, afterNextRender, computed, inject, input, signal, viewChild } from '@angular/core';
-import { DuelBattle, DuelSide, COMBO_HEAL, legacyBattle, otherSide, turnLength } from '../../../widgets/duel/duel-battle';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, afterNextRender, computed, inject, input, output, signal, viewChild } from '@angular/core';
+import type { DuelRecord } from '../duel-api.service';
+import { DuelBattle, DuelSide, COMBO_HEAL, legacyBattle, otherSide, turnLength } from '../duel-battle';
 import { LanguageService } from '../../../../services/language.service';
 import { DuelClaude3dScene, DuelSceneStats, healthAt } from './duel-claude-3d-scene';
 
@@ -19,6 +20,12 @@ export class DuelClaude3dArenaComponent {
   readonly paused = input(false);
   readonly transparent = input(false);
   readonly locale = input<'en' | 'es'>('en');
+  /** Head-to-head wins before this fight (tracked overlay fights only). */
+  readonly record = input<DuelRecord | null>(null);
+  /** Dev lab only: edition badge and the live FPS counter. */
+  readonly lab = input(false);
+  /** WebGL could not start (e.g. OBS hardware acceleration off); the stage swaps arenas. */
+  readonly failed = output<void>();
   readonly canvas = viewChild.required<ElementRef<HTMLCanvasElement>>('canvas');
   readonly unavailable = signal(false);
   readonly stats = signal<DuelSceneStats>({ fps: 0, calls: 0, triangles: 0 });
@@ -64,11 +71,25 @@ export class DuelClaude3dArenaComponent {
     afterNextRender(() => {
       let scene: DuelClaude3dScene | undefined;
       try {
-        scene = new DuelClaude3dScene(this.canvas().nativeElement, () => ({ battle: this.battle(), elapsed: this.elapsed(), started: this.started(), paused: this.paused(), transparent: this.transparent() }), stats => this.stats.set(stats), () => this.unavailable.set(true));
-      } catch { this.unavailable.set(true); }
+        scene = new DuelClaude3dScene(this.canvas().nativeElement, () => ({ battle: this.battle(), elapsed: this.elapsed(), started: this.started(), paused: this.paused(), transparent: this.transparent() }), stats => this.stats.set(stats), () => this.fail());
+      } catch { this.fail(); }
       destroy.onDestroy(() => scene?.dispose());
     });
   }
+
+  private fail(): void { this.unavailable.set(true); this.failed.emit(); }
+  /** Big while the fighters enter, then between the health bars; this fight counts at the winner reveal. */
+  readonly rivalryStage = computed(() => this.phase() === 'entrance' || this.phase() === 'countdown' ? 'intro' : 'hud');
+  readonly score = computed<DuelRecord>(() => {
+    const record = this.record() ?? { left: 0, right: 0 }, winner = this.battle().winner;
+    return this.phase() === 'winner' ? { ...record, [winner]: record[winner] + 1 } : record;
+  });
+  readonly rivalryLine = computed(() => {
+    const score = this.score(), names = this.names(), winner = this.battle().winner;
+    if (score.left === score.right) return this.t('rivalryTied', { a: score.left, b: score.right });
+    const leader: DuelSide = score.left > score.right ? 'left' : 'right';
+    return this.t(leader === winner ? 'rivalryLeads' : 'rivalryStillLeads', { name: names[leader], a: score[leader], b: score[otherSide(leader)] });
+  });
 
   t(key: string, params?: Record<string, string | number>): string { return this.language.translate('duelMock.' + key, params, this.locale()); }
   percent(value: number): number { return value / (this.battle().maxHp ?? 100) * 100; }

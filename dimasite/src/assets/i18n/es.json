@@ -7358,6 +7358,31 @@
     "discard": "Descartar",
     "boardPausedTitle": "En pausa: hay reglas de combate personalizadas",
     "boardPausedBody": "Los combates nuevos no cuentan y la fuente de OBS está oculta. La clasificación de abajo se conserva y se reanuda al volver a las reglas por defecto.",
-    "boardOffBody": "La clasificación está apagada, así que su fuente de OBS queda oculta. Actívala en los ajustes del duelo."
+    "boardOffBody": "La clasificación está apagada, así que su fuente de OBS queda oculta. Actívala en los ajustes del duelo.",
+    "quality": {
+      "title": "Aspecto del overlay",
+      "hint": "Cómo se ve la pelea en el stream. Las batallas son iguales en todos los aspectos.",
+      "low": {
+        "name": "Bajo",
+        "tag": "Original",
+        "body": "La arena clásica. La más ligera para tu PC."
+      },
+      "medium": {
+        "name": "Medio",
+        "tag": "HD",
+        "body": "Luchadores más nítidos, sombreado y remates remasterizados."
+      },
+      "high": {
+        "name": "Alto",
+        "tag": "Cinemático",
+        "body": "Arena pintada y remates cinematográficos."
+      },
+      "extreme": {
+        "name": "Extremo",
+        "tag": "3D",
+        "body": "3D en tiempo real con cámaras cinematográficas a 30 FPS.",
+        "note": "Extremo usa tu tarjeta gráfica. Mantén activada la aceleración por hardware en OBS (Ajustes → Avanzado → Fuentes); sin ella el overlay muestra Alto."
+      }
+    }
   }
 }

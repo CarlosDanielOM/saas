@@ -5,7 +5,10 @@ import { LinksService } from '../../../services/links.service';
 import { DuelCharacter, DuelSide, DuelTurn } from './duel-battle';
 import { DuelRules } from './duel-rules';
 /** leaderboard and rivalries only track overlay fights under the default rules. */
-export interface DuelSettings { enabled:boolean; timeoutEnabled:boolean; timeoutSeconds:number; language:'en'|'es'; leaderboard:boolean; rivalries:boolean; rules:DuelRules }
+/** Overlay look (display only): low = original, medium = HD vector, high = cinematic vector, extreme = 3D. */
+export type DuelQuality = 'low'|'medium'|'high'|'extreme';
+export const DUEL_QUALITIES: DuelQuality[] = ['low','medium','high','extreme'];
+export interface DuelSettings { enabled:boolean; timeoutEnabled:boolean; timeoutSeconds:number; language:'en'|'es'; leaderboard:boolean; rivalries:boolean; rules:DuelRules; quality?:DuelQuality }
 /** Head-to-head wins of each side before the fight. */
 export interface DuelRecord { left:number; right:number }
 export interface DuelRanking { login:string; kills:number; deaths:number; kd:number }

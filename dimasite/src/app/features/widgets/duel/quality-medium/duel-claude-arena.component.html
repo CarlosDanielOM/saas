@@ -278,13 +278,20 @@
     @if (phase() === 'fight' && elapsed() < 3950) { @for (cueKey of [key('fight')]; track cueKey) { <div class="fight-cue" [duelClock]="age(3400)"><i></i><span>{{ t('fight') }}</span></div> } }
     @if (phase() === 'knockout' && !finisher()) { @for (cueKey of [key('ko')]; track cueKey) { <div class="ko" [duelClock]="age(finalHit())"><i></i><span>K.O.</span></div> } }
   </div>
+  <!-- Head-to-head record (tracked overlay fights): big at the entrance, then between the plates. -->
+  @if (record(); as rec) {
+              <div class="rivalry" [attr.data-stage]="rivalryStage()" role="img" [attr.aria-label]="t('rivalryLabel', {left: names().left, a: score().left, right: names().right, b: score().right})">
+                <small>{{ t(rec.left + rec.right ? 'rivalry' : 'firstDuel') }}</small>
+                <div class="rivalry-score"><span class="rivalry-name">{{ names().left }}</span>@for (n of [score().left]; track n) { <b data-side="left">{{ n }}</b> }<i>–</i>@for (n of [score().right]; track n) { <b data-side="right">{{ n }}</b> }<span class="rivalry-name">{{ names().right }}</span></div>
+              </div>
+            }
   @if (phase() === 'knockout') { @for (cueKey of [key('ko-flash')]; track cueKey) { <div class="ko-flash" [duelClock]="age(finalHit())" aria-hidden="true"></div> } }
   @if (phase() === 'winner') {
     @for (cueKey of [key('winner')]; track cueKey) {
       <div class="winner-reveal" [duelClock]="age(battle().duration)" [attr.data-side]="winner()">
         <div class="winner-rays" aria-hidden="true"></div>
         <div class="confetti" aria-hidden="true">@for (n of [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]; track n) { <i [style.--n]="n" [style.--d]="(n * 35) + 'ms'"></i> }</div>
-        <span class="winner-kicker">{{ t('victory') }}</span><strong>{{ winnerName() }}</strong><span class="winner-line">{{ t('wins', {hp: health()[winner()]}) }}</span>
+        <span class="winner-kicker">{{ t('victory') }}</span><strong>{{ winnerName() }}</strong><span class="winner-line">{{ t('wins', {hp: health()[winner()]}) }}</span>@if (record()) { <span class="rivalry-line">{{ rivalryLine() }}</span> }
       </div>
     }
   }

@@ -99,3 +99,16 @@ canvas{display:block;width:100%;height:100%;position:absolute;inset:0}
   .fighter-hud{width:43%;gap:4px}.crest{display:none}.medallion{top:-2px}.hud-bottom{letter-spacing:.04em}
   .ultimate-caption{bottom:11%}.ultimate-caption strong{font-size:max(15px,5.4cqw)}.vs-name{max-width:30cqw}
 }
+
+/* Head-to-head and entrance cue (production overlay). */
+.medallion.rivalry::before{border-color:#ffd27a99;box-shadow:0 0 26px #ffd27a33}
+.medallion .score{position:relative;font-size:max(10px,1.7cqw);font-style:normal;letter-spacing:0;white-space:nowrap;font-variant-numeric:tabular-nums}
+.medallion .score span[data-side=left]{color:var(--ice)}.medallion .score span[data-side=right]{color:var(--ember)}
+.rivalry-intro{position:absolute;left:50%;bottom:12%;translate:-50% 0;display:grid;justify-items:center;gap:.5cqw;padding:1.2cqw 2.6cqw;border:1px solid #ffd27a55;border-radius:1.6cqw;background:#0a0d1cd9;box-shadow:0 0 30px #ffd27a26;white-space:nowrap;pointer-events:none}
+.rivalry-intro small{font-size:max(7px,1.1cqw);font-weight:850;letter-spacing:.32em;text-transform:uppercase;color:#ffe2b8}
+.rivalry-intro div{display:flex;align-items:center;gap:1.2cqw}.rivalry-intro b{font-size:max(18px,4.6cqw);font-weight:950;line-height:1;font-variant-numeric:tabular-nums}
+.rivalry-intro b[data-side=left]{color:var(--ice);text-shadow:0 0 16px #8b5cf688}.rivalry-intro b[data-side=right]{color:var(--ember);text-shadow:0 0 16px #ffb54788}.rivalry-intro i{font-style:normal;color:#9c94b8;font-size:max(14px,3cqw)}
+.rivalry-intro .vs-name{font-size:max(10px,1.6cqw);font-weight:800;max-width:22cqw;overflow:hidden;text-overflow:ellipsis;color:#e9e4f7}
+.victory-cue .rivalry-line{font-size:max(8px,1.15cqw);color:#ffe2b8;letter-spacing:.04em}
+.entrance-cue{position:absolute;top:30%;left:0;right:0;text-align:center;font-size:max(14px,3.4cqw);font-weight:900;font-style:italic;letter-spacing:-.03em;color:#f3eaff;text-shadow:0 0 3cqw #8b5cf666,0 3px 16px #000}
+.entrance-cue.enrage{color:#ff8a9a;text-shadow:0 0 3cqw #ff3b5588,0 3px 16px #000}

@@ -485,3 +485,19 @@ export class Streaks {
     (u['uColorA'].value as T.Color).set(options.a ?? '#ffffff'); (u['uColorB'].value as T.Color).set(options.b ?? options.a ?? '#ffffff');
   }
 }
+
+/**
+ * Additive blending normally adds to the alpha channel too, so on a transparent (OBS)
+ * canvas a mostly black additive quad would turn opaque. Keep the colour equation and
+ * leave alpha alone; the grade pass derives glow alpha from brightness instead.
+ */
+export function keepAlpha(root: T.Object3D): void {
+  root.traverse(object => {
+    const material = (object as T.Mesh).material as T.Material | T.Material[] | undefined;
+    for (const m of material ? (Array.isArray(material) ? material : [material]) : []) {
+      if (m.blending !== T.AdditiveBlending) continue;
+      m.blending = T.CustomBlending; m.blendEquation = T.AddEquation; m.blendSrc = T.SrcAlphaFactor; m.blendDst = T.OneFactor;
+      m.blendSrcAlpha = T.ZeroFactor; m.blendDstAlpha = T.OneFactor; m.needsUpdate = true;
+    }
+  });
+}

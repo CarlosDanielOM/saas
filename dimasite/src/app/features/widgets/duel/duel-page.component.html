@@ -23,7 +23,7 @@
         <div class="col main">
           <section class="lf-tile preview">
             <div class="tile-head"><h2>{{ t('preview') }}</h2>@if (previewRules() && started()) { <span class="chip gold">{{ t('previewCustom') }}</span> } @else { <span class="muted-note">{{ t('surprise') }}</span> }</div>
-            <app-duel-arena [elapsed]="elapsed()" [started]="started()" [battle]="battle()" [locale]="language.currentLanguage()" [record]="previewRecord()" />
+            <app-duel-stage [quality]="draft().quality" [elapsed]="elapsed()" [started]="started()" [battle]="battle()" [locale]="language.currentLanguage()" [record]="previewRecord()" />
             <div class="preview-tools"><button class="primary" (click)="preview()">{{ t(started()?'replay':'play') }} ▶</button><button (click)="preview(true)">✦ {{ t('previewUltimate') }}</button><label class="streamer-toggle"><input type="checkbox" [checked]="streamerFight()" (change)="streamerFight.set($any($event.target).checked)" /> {{ t('streamerFight') }}</label><p>{{ t(customDraft() ? 'previewHintCustom' : 'previewHint') }}</p></div>
           </section>
 
@@ -37,6 +37,20 @@
                   @if (form.controls.timeoutSeconds.invalid && form.controls.timeoutSeconds.touched) { <p class="error" role="alert">{{ t('durationError') }}</p> }</div>
                 <div class="field"><label for="duel-language">{{ t('language') }}</label><select id="duel-language" formControlName="language"><option value="en">English</option><option value="es">Español</option></select></div>
               </div>
+
+              <fieldset class="quality" data-testid="quality-picker">
+                <legend><strong>{{ t('quality.title') }}</strong><small>{{ t('quality.hint') }}</small></legend>
+                <div class="quality-options">
+                  @for (level of qualities; track level) {
+                    <label class="quality-option" [class.selected]="draft().quality === level" [attr.data-quality]="level">
+                      <input type="radio" formControlName="quality" [value]="level" [attr.data-testid]="'quality-' + level" />
+                      <span class="quality-name">{{ t('quality.' + level + '.name') }}<b>{{ t('quality.' + level + '.tag') }}</b></span>
+                      <small>{{ t('quality.' + level + '.body') }}</small>
+                    </label>
+                  }
+                </div>
+                @if (draft().quality === 'extreme') { <p class="hint" data-testid="quality-gpu-note">{{ t('quality.extreme.note') }}</p> }
+              </fieldset>
 
               <h3>{{ t('tracking.title') }}</h3>
               <label class="switch"><span>{{ t('tracking.leaderboard') }}<small>{{ t('tracking.leaderboardHint') }}</small></span><input type="checkbox" formControlName="leaderboard" data-testid="leaderboard-switch" /></label>

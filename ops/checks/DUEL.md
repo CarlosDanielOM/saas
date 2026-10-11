@@ -71,6 +71,14 @@ reads `GET /widgets/:id/duel/leaderboard`; the vertical OBS source
 `/overlays/duel/:id/leaderboard#token` (500 × 900) shares the duel token and connects with
 `view: 'leaderboard'`. It receives `duel-leaderboard` and never fights or readiness.
 
+`settings.quality` picks the overlay look (display only; battles are identical): `low` (the
+original arena, default for every channel including ones saved before this field), `medium`
+(HD vector remaster), `high` (cinematic vector edition) or `extreme` (Three.js 3D at 30 FPS,
+loaded on demand). The arenas live in `dimasite/.../widgets/duel/quality-*` and are chosen by
+`app-duel-stage`, used by the OBS overlay and the page preview. Extreme draws its post effects with
+real alpha so OBS composites glows over the stream; without WebGL (OBS hardware acceleration off)
+it falls back to `high`. `configure` validates the value and keeps it when an older page omits it.
+
 Loser timeouts default to enabled for 60 seconds, preserving existing behavior.
 The widget allows disabling them or choosing 1–1,209,600 seconds. Disabling takes
 effect for an accepted battle too. No moderation/provider lookups occur when
@@ -92,6 +100,10 @@ scripts/saas-ops verify api-RUN --dependency mongo --dependency redis \
 # lighter ops/checks/duel-cron.mjs (same flags), which drives the real duel worker.
 # Repeat with the bot-RUN and cron-RUN candidates.
 scripts/saas-ops verify site-RUN --check ops/checks/duel-widget.sh
+# Quality tiers: the widget check plus ops/checks/duel-quality-browser.mjs (picker, OBS per tier).
+scripts/saas-ops verify site-RUN --check ops/checks/duel-quality.sh
+# The 3D arena's own check (widgets/duel/quality-extreme/verify.mjs) exceeds the 300 s limit in full;
+# run DUEL_CHECK=full against the candidate bundle served on loopback.
 ```
 
 The backend check exercises command acceptance, quiet overlays, real-time

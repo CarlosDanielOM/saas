@@ -9,11 +9,11 @@ import { DuelCharacter, DuelSide, otherSide, simulateBattle, ultimateBattle } fr
 import { DuelGptArenaComponent } from './duel-gpt/duel-gpt-arena.component';
 import { sampleBattle, SvgPreviewMove } from './duel-svg-gpt/duel-svg-showcase';
 import { DuelSvgArenaComponent } from './duel-svg-gpt/duel-svg-arena.component';
-import { DuelClaudeArenaComponent } from './duel-svg-claude/duel-claude-arena.component';
-import { DuelAstraArenaComponent } from './duel-svg-astra/duel-astra-arena.component';
+import { DuelClaudeArenaComponent } from '../../widgets/duel/quality-medium/duel-claude-arena.component';
+import { DuelAstraArenaComponent } from '../../widgets/duel/quality-high/duel-astra-arena.component';
 
 import { DuelAstra3dArenaComponent } from './duel-3d-astra/duel-astra-3d-arena.component';
-import { DuelClaude3dArenaComponent } from './duel-3d-claude/duel-claude-3d-arena.component';
+import { DuelClaude3dArenaComponent } from '../../widgets/duel/quality-extreme/duel-claude-3d-arena.component';
 
 type Phase = 'ready' | 'entrance' | 'countdown' | 'fight' | 'knockout' | 'winner';
 

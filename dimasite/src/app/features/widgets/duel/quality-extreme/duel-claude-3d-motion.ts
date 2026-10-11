@@ -1,5 +1,5 @@
-import type { DuelBattle, DuelCharacter, DuelSide, DuelTurn } from '../../../widgets/duel/duel-battle';
-import { COMBO_HEAL, otherSide, turnLength } from '../../../widgets/duel/duel-battle';
+import type { DuelBattle, DuelCharacter, DuelSide, DuelTurn } from '../duel-battle';
+import { COMBO_HEAL, otherSide, turnLength } from '../duel-battle';
 import type { ArmJoint } from './duel-claude-3d-rig';
 
 /**
