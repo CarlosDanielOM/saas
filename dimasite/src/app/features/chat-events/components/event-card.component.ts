@@ -235,6 +235,9 @@ export class EventCardComponent {
   readonly alwaysOn = computed(() => this.event().enabled && !this.canDisable());
 
   getEventName(): string {
+    if (this.event().type === 'channel.shoutout.receive') {
+      return this.t('chatEvents.shoutoutReceived.name');
+    }
     return this.event().type === 'channel.chat.notification' && !this.event().notice
       ? this.t('chatEvents.notificationsName')
       : this.event().name;

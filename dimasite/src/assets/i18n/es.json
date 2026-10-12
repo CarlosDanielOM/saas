@@ -4157,6 +4157,9 @@
     "deleteEvent": "Eliminar Evento",
     "upgrade": "Mejorar plan",
     "notificationsName": "Notificaciones del chat",
+    "shoutoutReceived": {
+      "name": "Shoutout recibido"
+    },
     "modiversary": {
       "name": "Aniversarios de moderación",
       "description": "Agradece a tus moderadores cuando comparten su aniversario en el chat.",

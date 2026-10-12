@@ -38,8 +38,36 @@ export const CHAT_NOTIFICATION_EVENT = {
     }]
 } satisfies Omit<IEvent, '_id' | 'createdAt' | 'updatedAt' | 'tierLimits'>;
 
-export function withBuiltinChatEvents<T extends { type?: string }>(events: T[]): (T | typeof CHAT_NOTIFICATION_EVENT)[] {
-    return events.some(event => event.type === CHAT_NOTIFICATION_EVENT.type)
-        ? events
-        : [...events, CHAT_NOTIFICATION_EVENT];
+export const SHOUTOUT_RECEIVED_EVENT = {
+    name: 'Shoutout Received',
+    type: 'channel.shoutout.receive',
+    version: '1',
+    condition: { broadcaster_user_id: 'user', moderator_user_id: 'moderator' },
+    icon: 'MessageCircle',
+    color: '#7c3aed',
+    textColor: '#ffffff',
+    releaseStage: 'stable',
+    enabled: false,
+    plan_tier: 'free',
+    description: {
+        EN: 'Thank another streamer when they send your channel a shoutout.',
+        ES: 'Agradece a otro streamer cuando le hace un shoutout a tu canal.'
+    },
+    config: [{
+        id: 'message',
+        label: { EN: 'Message', ES: 'Mensaje' },
+        type: 'text',
+        value: '$(shoutout.channel) has sent a shoutout to $(twitch.channel)!',
+        canDisable: true
+    }]
+} satisfies Omit<IEvent, '_id' | 'createdAt' | 'updatedAt' | 'tierLimits'>;
+
+const BUILTIN_CHAT_EVENTS = [CHAT_NOTIFICATION_EVENT, SHOUTOUT_RECEIVED_EVENT] as const;
+
+export function getBuiltinChatEvent(type: string) {
+    return BUILTIN_CHAT_EVENTS.find(event => event.type === type);
+}
+
+export function withBuiltinChatEvents<T extends { type?: string }>(events: T[]) {
+    return [...events, ...BUILTIN_CHAT_EVENTS.filter(builtin => !events.some(event => event.type === builtin.type))];
 }

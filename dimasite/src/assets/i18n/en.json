@@ -4157,6 +4157,9 @@
     "deleteEvent": "Delete Event",
     "upgrade": "Upgrade",
     "notificationsName": "Chat Notifications",
+    "shoutoutReceived": {
+      "name": "Shoutout Received"
+    },
     "modiversary": {
       "name": "Mod anniversaries",
       "description": "Thank moderators who share their mod anniversary in chat.",

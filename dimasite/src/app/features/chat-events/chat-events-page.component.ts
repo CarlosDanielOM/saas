@@ -41,6 +41,7 @@ const STREAM_EVENT_TYPES: readonly string[] = ['stream.online', 'stream.offline'
 const EVENT_ORDER: readonly string[] = [
   'channel.follow',
   'channel.raid',
+  'channel.shoutout.receive',
   'channel.bits.use',
   `${CHAT_NOTIFICATION_TYPE}:watch_streak`,
   `${CHAT_NOTIFICATION_TYPE}:modiversary`,
