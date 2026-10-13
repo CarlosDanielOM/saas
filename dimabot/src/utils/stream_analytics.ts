@@ -1,3 +1,4 @@
+import { recordTimelineParticipant } from './stream_timeline.js';
 import { StreamSessionSchema } from '../schemas/stream_session.schema.js';
 import { StreamViewerSnapshotSchema } from '../schemas/stream_viewer_snapshot.schema.js';
 import { StreamSubscriptionLedgerSchema } from '../schemas/stream_subscription_ledger.schema.js';
@@ -942,7 +943,7 @@ export async function recordStreamDonationEvent(input: { channelID: string; amou
     }
 }
 
-export async function recordStreamMessageEvent(input: { channelID: string; quantity?: number }): Promise<void> {
+export async function recordStreamMessageEvent(input: { channelID: string; quantity?: number; userID?: string; receivedAt?: number }): Promise<void> {
     const channelID = String(input.channelID || '').trim();
     if (!channelID) {
         return;
@@ -951,13 +952,14 @@ export async function recordStreamMessageEvent(input: { channelID: string; quant
     const quantity = Math.max(1, toPositiveInteger(input.quantity, 1));
 
     try {
-        await StreamSessionSchema.updateOne({
+        const session = await StreamSessionSchema.findOneAndUpdate({
             channelID,
             status: 'live',
             ended_at: null
         }, {
             $inc: { messages: quantity }
-        });
+        }, { new: true }).select('_id started_at').lean();
+        if (session && input.userID) await recordTimelineParticipant(channelID, session._id, session.started_at, input.userID, new Date(input.receivedAt || Date.now()));
     } catch (error) {
         logAnalyticsError('recordStreamMessageEvent', {
             channelID,

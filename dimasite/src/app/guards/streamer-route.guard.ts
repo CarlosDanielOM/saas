@@ -42,7 +42,7 @@ const MODULE_CHILDREN = new Map<string, ReadonlySet<string> | null>([
   ['stream-summaries', null],
   ['clip-recommendations', null],
   ['library', null],
-  ['analytics', new Set(['follows'])]
+  ['analytics', new Set(['follows', 'timeline'])]
 ]);
 
 function hasKnownStreamerPathShape(segments: UrlSegment[]): boolean {

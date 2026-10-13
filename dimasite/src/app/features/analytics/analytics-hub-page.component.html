@@ -52,30 +52,19 @@
                 <app-lf-icon name="lock"></app-lf-icon> {{ t('analyticsHub.followLedger.lockedCta') }}
               </button>
             } @else {
-              <span class="lf-module__note"><app-lf-icon name="lock"></app-lf-icon> {{ planStatusLabel() }}</span>
+              <span class="lf-module__note"><app-lf-icon name="lock"></app-lf-icon> {{ t('analyticsHub.followLedger.tierLabel') }}</span>
             }
           </div>
         </article>
 
-        <div class="lf-soon" role="list" [attr.aria-label]="t('analyticsHub.future.heading')">
-          <div class="lf-soon__item" role="listitem">
-            <div class="lf-soon__icon" aria-hidden="true"><app-lf-icon name="chat" [size]="18"></app-lf-icon></div>
-            <div>
-              <p class="lf-soon__title">{{ t('analyticsHub.future.chatTitle') }}</p>
-              <p class="lf-soon__copy">{{ t('analyticsHub.future.chatCopy') }}</p>
-            </div>
-            <span class="lf-chip lf-soon__chip">{{ t('analyticsHub.future.soon') }}</span>
+        <article class="lf-tile lf-module">
+          <div class="lf-module__head">
+            <div class="lf-module__icon" aria-hidden="true"><app-lf-icon name="trend" [size]="20" /></div>
+            <div class="lf-module__heading"><h3 class="lf-h3">{{ t('analyticsHub.timeline.title') }}</h3><p class="lf-module__meta">{{ t('analyticsHub.timeline.tier') }}</p></div>
           </div>
-          <div class="lf-soon__item" role="listitem">
-            <div class="lf-soon__icon" aria-hidden="true"><app-lf-icon name="trend" [size]="18"></app-lf-icon></div>
-            <div>
-              <p class="lf-soon__title">{{ t('analyticsHub.future.retentionTitle') }}</p>
-              <p class="lf-soon__copy">{{ t('analyticsHub.future.retentionCopy') }}</p>
-            </div>
-            <span class="lf-chip lf-soon__chip">{{ t('analyticsHub.future.soon') }}</span>
-          </div>
-          <p class="lf-soon__note">{{ t('analyticsHub.future.teaser') }}</p>
-        </div>
+          <p class="lf-copy lf-copy--tight">{{ t('analyticsHub.timeline.description') }}</p>
+          <div class="lf-module__footer"><a class="lf-btn lf-btn--primary" [routerLink]="timelineLink()">{{ t('analyticsHub.timeline.open') }} <app-lf-icon name="forward" /></a></div>
+        </article>
       </div>
     </section>
   </main>

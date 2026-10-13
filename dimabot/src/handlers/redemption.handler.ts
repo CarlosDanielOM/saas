@@ -1,3 +1,4 @@
+import { recordTimelineRedemption } from '../utils/stream_timeline.js';
 import type { AstMessage } from '../utils/ast_parser/types.js';
 import { deliverAstMessage } from '../utils/ast_command_delivery.js';
 import { sendTwitchChatMessage, type SendMessageContext } from "../functions/chats/send_message.chat.js";
@@ -67,6 +68,7 @@ export async function redemptionHandler(
     eventData: IRedemptionEvent,
     chatEnabled: boolean
 ): Promise<RedemptionHandlerResponse> {
+    void recordTimelineRedemption(eventData).catch(error => console.error('Timeline redemption recording failed', error));
     try {
         const { broadcaster_user_id, broadcaster_user_login, user_id, user_login, user_name, reward } = eventData;
 

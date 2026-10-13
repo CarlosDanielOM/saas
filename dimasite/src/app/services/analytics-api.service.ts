@@ -1,3 +1,4 @@
+import { StreamTimeline, TimelineResponse, TimelineStreamList } from '../models/stream-timeline.model';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { catchError, throwError } from 'rxjs';
@@ -40,6 +41,16 @@ export class AnalyticsApiService {
     return this.http
       .get<FollowLedgerResponse>(search ? `${url}?${search}` : url)
       .pipe(catchError((error) => throwError(() => this.toRequestError(error))));
+  }
+
+  private timelineUrl(channel: string): string { return `${this.linksService.getApiUrl()}/analytics/streams/${encodeURIComponent(channel)}`; }
+  getTimelineStreams(channel: string, page: number) { return this.http.get<TimelineResponse<TimelineStreamList>>(`${this.timelineUrl(channel)}?page=${page}`); }
+  getStreamTimeline(channel: string, session: string) { return this.http.get<TimelineResponse<StreamTimeline>>(`${this.timelineUrl(channel)}/${encodeURIComponent(session)}`); }
+  saveTimelineMarker(channel: string, session: string, key: string, body: { label: string; offsetSeconds: number }) {
+    return this.http.put<TimelineResponse<unknown>>(`${this.timelineUrl(channel)}/${encodeURIComponent(session)}/markers/${encodeURIComponent(key)}`, body);
+  }
+  deleteTimelineMarker(channel: string, session: string, id: string) {
+    return this.http.delete<TimelineResponse<unknown>>(`${this.timelineUrl(channel)}/${encodeURIComponent(session)}/markers/${encodeURIComponent(id)}`);
   }
 
   private toRequestError(error: unknown): Error {

@@ -1,3 +1,4 @@
+import { streamTimelineRoute } from './stream_timeline.route.js';
 import express, { type Request, type Response } from 'express';
 import TwitchStreamers from '../../classes/twitch_streamers.class.js';
 import { authMiddleware } from '../../middleware/auth.middleware.js';
@@ -52,6 +53,7 @@ async function getAccessContext(requesterID: string, channelID: string): Promise
 }
 
 const router = express.Router();
+router.use(streamTimelineRoute);
 
 router.get('/follows/:channelID', authMiddleware as any, async (req: IRequestWithUser, res: Response) => {
     try {

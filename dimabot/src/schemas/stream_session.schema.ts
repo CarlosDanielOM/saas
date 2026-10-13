@@ -10,6 +10,7 @@ export interface IStreamSession {
     started_at: Date;
     ended_at: Date | null;
     status: StreamSessionStatus;
+    chat_tracking_started_at?: Date;
     peak_viewers: number;
     average_viewers: number;
     sample_count: number;
@@ -37,6 +38,7 @@ const streamSessionSchema = new Schema<IStreamSession>({
     started_at: { type: Date, required: true, index: true },
     ended_at: { type: Date, default: null, index: true },
     status: { type: String, enum: ['live', 'offline', 'orphaned'], default: 'live', index: true },
+    chat_tracking_started_at: { type: Date },
     peak_viewers: { type: Number, default: 0 },
     average_viewers: { type: Number, default: 0 },
     sample_count: { type: Number, default: 0 },

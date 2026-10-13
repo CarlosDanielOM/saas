@@ -34,6 +34,7 @@ export class AnalyticsHubPageComponent {
     const streamer = this.streamer();
     return streamer ? ['/', streamer, 'modules'] : ['/'];
   });
+  readonly timelineLink = computed(() => ['/', this.streamer(), 'modules', 'analytics', 'timeline']);
   readonly followLedgerLink = computed(() => {
     const streamer = this.streamer();
     return streamer ? ['/', streamer, 'modules', 'analytics', 'follows'] : ['/'];

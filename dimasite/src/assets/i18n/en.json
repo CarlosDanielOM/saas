@@ -1952,7 +1952,7 @@
     },
     "panel": {
       "paidPlan": "Unlocked on your plan",
-      "freePlan": "Premium or Pro required"
+      "freePlan": "Timeline included"
     },
     "followLedger": {
       "eyebrow": "Available now · beta",
@@ -1973,11 +1973,17 @@
     },
     "tools": {
       "heading": "Tools",
-      "count": "1 available"
+      "count": "2 available"
     },
     "features": {
       "search": "Search by name or login",
       "sort": "Sort by follow date"
+    },
+    "timeline": {
+      "title": "Stream timeline",
+      "description": "See how your audience and chat changed, alongside the moments that shaped your stream.",
+      "open": "Open stream timeline",
+      "tier": "All plans"
     }
   },
   "analytics": {
@@ -7526,6 +7532,70 @@
       "finished": "Attempt finished",
       "error": "Delivery failed · not retried",
       "unknown": "Result unknown · not retried"
+    }
+  },
+  "streamTimeline": {
+    "title": "Stream timeline",
+    "subtitle": "See how your audience and chat changed, alongside the moments that shaped your stream.",
+    "back": "Back to Analytics",
+    "chooseStream": "Choose a stream",
+    "older": "Load older streams",
+    "refresh": "Refresh",
+    "retry": "Retry",
+    "addMarker": "Add marker",
+    "loading": "Loading your stream timeline…",
+    "loadError": "This timeline could not be loaded",
+    "loadErrorHint": "The stream may be outside the 90-day history, or temporarily unavailable. Choose another stream or retry.",
+    "listError": "Could not load the stream list.",
+    "duration": "Duration",
+    "updated": "Updated",
+    "truncated": "This long stream exceeds the display limit. Some later samples or events are not shown.",
+    "activity": "Audience & chat",
+    "chartHint": "Tap a chart or an event to inspect a moment. Each chart has its own scale.",
+    "noSamples": "No viewer samples recorded for this stream yet.",
+    "viewers": "Viewers",
+    "messages": "Messages / min",
+    "chatters": "Active chatters / 5 min",
+    "chartAccessible": "Values are available in the sample selector below.",
+    "noChatters": "Chatter tracking is not available for this part of the stream.",
+    "inspect": "Inspect sample",
+    "nearest": "Nearest viewer/chat sample: {{time}}",
+    "gap": "There is a recording gap before this sample. The message rate averages the whole interval.",
+    "about": "How to read this timeline",
+    "method": "Viewer counts are periodic snapshots. Message rates use the difference between consecutive message totals, including commands, divided by elapsed time. These are observed audience trends, not individual viewer retention. Missing samples are not zero viewers.",
+    "chatterMethod": "Active chatters counts distinct accounts that sent a message in each five-minute interval, excluding DimaBot itself. Other bots may be included. Collection starts with this feature; older and initial partial intervals are unavailable. The last interval of a stream may be partial. Counts reflect messages received by the bot, so collection outages can undercount.",
+    "eventMethod": "Viewer samples, participant counts and private markers are retained for up to 90 days. Game and title changes show when first sampled, not the exact switch time. Raid history uses retained Twitch events. Reward redemption recording starts with this feature; earlier redemptions cannot be recovered.",
+    "events": "Stream moments",
+    "eventFilter": "Show moments",
+    "noEvents": "No recorded moments match this filter.",
+    "eventHint": "Select a moment to place it on the charts. Markers are private notes and do not send anything to chat.",
+    "unknown": "Not specified",
+    "raidViewers": "{{count}} announced raiders",
+    "emptyTitle": "Your next stream starts the story",
+    "emptyHint": "Streams from the last 90 days appear here once DimaBot records them.",
+    "removeNamed": "Remove marker: {{name}}",
+    "removeMarker": "Remove marker",
+    "removeConfirm": "Remove “{{name}}” from this timeline?",
+    "markerHint": "Add a private note such as “Break” or “New game”. This does not create a Twitch marker.",
+    "markerLabel": "What happened?",
+    "markerTime": "Minutes after stream start",
+    "invalidMarker": "Enter a note of 1–120 characters and a time within the stream.",
+    "markerError": "The marker could not be saved. Your note is still here; try again.",
+    "cancel": "Cancel",
+    "saving": "Saving…",
+    "saveMarker": "Save marker",
+    "status": {
+      "live": "Live",
+      "offline": "Ended",
+      "orphaned": "End time estimated"
+    },
+    "kind": {
+      "all": "All moments",
+      "game": "Game change",
+      "title": "Title change",
+      "raid": "Incoming raid",
+      "redemption": "Reward redeemed",
+      "note": "Your marker"
     }
   }
 }

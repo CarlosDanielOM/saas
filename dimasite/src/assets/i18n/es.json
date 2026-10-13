@@ -1952,7 +1952,7 @@
     },
     "panel": {
       "paidPlan": "Desbloqueado en tu plan",
-      "freePlan": "Requiere Premium o Pro"
+      "freePlan": "Cronología incluida"
     },
     "followLedger": {
       "eyebrow": "Disponible ahora · beta",
@@ -1973,11 +1973,17 @@
     },
     "tools": {
       "heading": "Herramientas",
-      "count": "1 disponible"
+      "count": "2 disponibles"
     },
     "features": {
       "search": "Busca por nombre o login",
       "sort": "Ordena por fecha de follow"
+    },
+    "timeline": {
+      "title": "Cronología del directo",
+      "description": "Explora cómo cambiaron tu audiencia y tu chat junto a los momentos de tu directo.",
+      "open": "Abrir cronología",
+      "tier": "Todos los planes"
     }
   },
   "analytics": {
@@ -7526,6 +7532,70 @@
       "finished": "Intento finalizado",
       "error": "Error de envío · sin reintento",
       "unknown": "Resultado desconocido · sin reintento"
+    }
+  },
+  "streamTimeline": {
+    "title": "Cronología del directo",
+    "subtitle": "Explora cómo cambiaron tu audiencia y tu chat junto a los momentos de tu directo.",
+    "back": "Volver a Analíticas",
+    "chooseStream": "Elige un directo",
+    "older": "Cargar directos anteriores",
+    "refresh": "Actualizar",
+    "retry": "Reintentar",
+    "addMarker": "Añadir marcador",
+    "loading": "Cargando la cronología del directo…",
+    "loadError": "No se pudo cargar esta cronología",
+    "loadErrorHint": "El directo puede estar fuera del historial de 90 días o no estar disponible temporalmente. Elige otro o reinténtalo.",
+    "listError": "No se pudo cargar la lista de directos.",
+    "duration": "Duración",
+    "updated": "Actualizado",
+    "truncated": "Este directo supera el límite de visualización. Algunas muestras o eventos posteriores no se muestran.",
+    "activity": "Audiencia y chat",
+    "chartHint": "Toca una gráfica o un evento para explorar un momento. Cada gráfica tiene su propia escala.",
+    "noSamples": "Todavía no hay muestras de audiencia para este directo.",
+    "viewers": "Espectadores",
+    "messages": "Mensajes / min",
+    "chatters": "Participantes activos / 5 min",
+    "chartAccessible": "Los valores están disponibles en el selector de muestras de abajo.",
+    "noChatters": "No hay datos de participantes para esta parte del directo.",
+    "inspect": "Explorar muestra",
+    "nearest": "Muestra de audiencia/chat más cercana: {{time}}",
+    "gap": "Faltan muestras antes de este punto. La tasa de mensajes es el promedio de todo el intervalo.",
+    "about": "Cómo interpretar esta cronología",
+    "method": "Los espectadores se registran en muestras periódicas. La tasa de mensajes es la diferencia entre totales consecutivos, incluidos los comandos, dividida por el tiempo transcurrido. Son tendencias de audiencia observadas, no retención individual. La ausencia de muestras no significa cero espectadores.",
+    "chatterMethod": "Los participantes activos son las cuentas distintas que enviaron mensajes en cada intervalo de cinco minutos, excluyendo a DimaBot. Puede incluir otros bots. La recopilación comienza con esta función; los intervalos anteriores y el primer intervalo parcial no están disponibles. El último intervalo puede ser parcial. Se cuentan los mensajes recibidos por el bot; una interrupción puede reducir el recuento.",
+    "eventMethod": "Las muestras, los recuentos de participantes y los marcadores privados se conservan hasta 90 días. Los cambios de juego y título indican cuándo se observaron, no el instante exacto del cambio. Las raids proceden de los eventos de Twitch conservados. El registro de canjes comienza con esta función; no se pueden recuperar los anteriores.",
+    "events": "Momentos del directo",
+    "eventFilter": "Mostrar momentos",
+    "noEvents": "No hay momentos registrados con este filtro.",
+    "eventHint": "Selecciona un momento para ubicarlo en las gráficas. Los marcadores son notas privadas y no envían nada al chat.",
+    "unknown": "Sin especificar",
+    "raidViewers": "{{count}} espectadores anunciados en la raid",
+    "emptyTitle": "Tu próximo directo inicia la historia",
+    "emptyHint": "Los directos de los últimos 90 días aparecen aquí cuando DimaBot los registra.",
+    "removeNamed": "Eliminar marcador: {{name}}",
+    "removeMarker": "Eliminar marcador",
+    "removeConfirm": "¿Eliminar «{{name}}» de esta cronología?",
+    "markerHint": "Añade una nota privada, como «Descanso» o «Cambio de juego». No crea un marcador en Twitch.",
+    "markerLabel": "¿Qué ocurrió?",
+    "markerTime": "Minutos desde el inicio del directo",
+    "invalidMarker": "Escribe una nota de 1 a 120 caracteres y un tiempo dentro del directo.",
+    "markerError": "No se pudo guardar el marcador. Tu nota sigue aquí; inténtalo de nuevo.",
+    "cancel": "Cancelar",
+    "saving": "Guardando…",
+    "saveMarker": "Guardar marcador",
+    "status": {
+      "live": "En directo",
+      "offline": "Finalizado",
+      "orphaned": "Fin estimado"
+    },
+    "kind": {
+      "all": "Todos los momentos",
+      "game": "Cambio de juego",
+      "title": "Cambio de título",
+      "raid": "Raid recibida",
+      "redemption": "Recompensa canjeada",
+      "note": "Tu marcador"
     }
   }
 }

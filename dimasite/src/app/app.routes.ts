@@ -897,6 +897,11 @@ export const routes: Routes = [
                 title: 'Analytics | DomDimaBot'
               },
           {
+            path: 'timeline',
+            loadComponent: () => import('./features/analytics/stream-timeline-page.component').then(m => m.StreamTimelinePageComponent),
+            canActivate: [permissionGuard], data: { permission: 'analytics:view' }, title: 'Stream Timeline | DomDimaBot'
+          },
+          {
             path: 'follows',
                 loadComponent: () =>
                   import('./features/analytics/follow-ledger-page.component').then(

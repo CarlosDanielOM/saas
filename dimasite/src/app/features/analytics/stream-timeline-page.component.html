@@ -1,0 +1,105 @@
+<div class="lf">
+  <main class="lf-main">
+    <header class="lf-head">
+      <a class="lf-back" [routerLink]="backLink()"><app-lf-icon name="back" /> {{ t('back') }}</a>
+      <h1>{{ t('title') }}</h1>
+      <p>{{ t('subtitle') }}</p>
+    </header>
+    <section class="lf-tile controls" [attr.aria-label]="t('chooseStream')">
+      <label class="stream-select">{{ t('chooseStream') }}
+        <select [attr.aria-label]="t('chooseStream')" [value]="selectedID()" (change)="selectStream($event)" [disabled]="!streams().length">
+          @for (stream of streams(); track stream.id) {
+            <option [value]="stream.id">{{ date(stream.startedAt) }} · {{ t('status.' + stream.status) }}</option>
+          }
+        </select>
+      </label>
+      <div class="actions">
+        @if (hasMore()) { <button type="button" (click)="loadStreams(true)" [disabled]="listLoading()">{{ t('older') }}</button> }
+        <button type="button" (click)="selectedID() ? loadTimeline() : loadStreams()" [disabled]="loading() || listLoading()"><app-lf-icon name="refresh" /> {{ t('refresh') }}</button>
+        @if (timeline()?.canAnnotate) { <button type="button" class="primary" (click)="openMarker()">{{ t('addMarker') }}</button> }
+      </div>
+      @if (listError()) { <p class="error" role="alert">{{ t('listError') }} <button type="button" (click)="loadStreams(hasMore())">{{ t('retry') }}</button></p> }
+    </section>
+    @if (loading()) {
+      <div class="lf-tile state" role="status">{{ t('loading') }}</div>
+    } @else if (error()) {
+      <div class="lf-tile state" role="alert"><h2>{{ t('loadError') }}</h2><p>{{ t('loadErrorHint') }}</p><button type="button" (click)="selectedID() ? loadTimeline() : loadStreams()">{{ t('retry') }}</button></div>
+    } @else if (timeline(); as data) {
+      <div class="context"><span class="chip" [class.live]="data.session.status === 'live'">{{ t('status.' + data.session.status) }}</span><span>{{ t('duration') }} {{ time(data.session.durationSeconds) }}</span><span>{{ t('updated') }} {{ date(data.asOf) }}</span></div>
+      @if (data.coverage.truncated) { <p class="notice" role="status">{{ t('truncated') }}</p> }
+      <div class="timeline-layout">
+        <section class="lf-tile chart-panel" aria-labelledby="activity-heading">
+          <h2 id="activity-heading">{{ t('activity') }}</h2>
+          <p>{{ t('chartHint') }}</p>
+          @if (!data.points.length) { <p class="notice">{{ t('noSamples') }}</p> }
+          @for (chart of charts(); track chart.key) {
+            <div class="chart" [class]="'chart chart--' + chart.key">
+              <div class="chart-heading"><h3>{{ t(chart.key) }}</h3><span>0–{{ chart.max }}</span></div>
+              @if (chart.available) {
+                <svg viewBox="0 0 1000 130" preserveAspectRatio="none" role="img" [attr.aria-label]="t(chart.key) + '. ' + t('chartAccessible')" (click)="chartSelect($event)">
+                  <line x1="0" y1="115" x2="1000" y2="115" class="grid-line" />
+                  <line x1="0" y1="65" x2="1000" y2="65" class="grid-line" />
+                  @for (event of data.events; track event.id) { <line [attr.x1]="x(event.offsetSeconds)" y1="5" [attr.x2]="x(event.offsetSeconds)" y2="115" class="event-line" /> }
+                  <path [attr.d]="chart.path" class="series" />
+                  @for (dot of chart.dots; track $index) { <circle [attr.cx]="dot.x" [attr.cy]="dot.y" r="2.5" class="point" /> }
+                  <line [attr.x1]="x(selectedOffset())" y1="0" [attr.x2]="x(selectedOffset())" y2="120" class="cursor" />
+                </svg>
+              } @else { <div class="chart-empty">{{ t(chart.key === 'chatters' ? 'noChatters' : 'noSamples') }}</div> }
+            </div>
+          }
+          <div class="axis"><span>00:00:00</span><span>{{ time(data.session.durationSeconds / 2) }}</span><span>{{ time(data.session.durationSeconds) }}</span></div>
+          <div class="inspection">
+            <label>{{ t('inspect') }}
+              <select [attr.aria-label]="t('inspect')" [value]="selectedOffset()" (change)="selectPoint($event)" [disabled]="!inspectionOffsets().length">
+                @for (offset of inspectionOffsets(); track offset) { <option [value]="offset">{{ time(offset) }}</option> }
+              </select>
+            </label>
+            <div aria-live="polite" class="readout">
+              <strong>{{ time(selectedOffset()) }}</strong>
+              @if (selectedPoint(); as point) {
+                <span>{{ t('viewers') }} <b>{{ point.viewers }}</b></span>
+                <span>{{ t('messages') }} <b>{{ point.messagesPerMinute ?? '—' }}</b></span>
+                <span class="readout-context">{{ point.game }} · {{ point.title }}</span>
+                <small>{{ t('nearest', { time: time(point.offsetSeconds) }) }}</small>
+                @if (point.gap) { <small class="notice">{{ t('gap') }}</small> }
+              }
+              <span>{{ t('chatters') }} <b>{{ selectedChatters() ?? '—' }}</b></span>
+            </div>
+          </div>
+          <details class="method"><summary>{{ t('about') }}</summary><p>{{ t('method') }}</p><p>{{ t('chatterMethod') }}</p><p>{{ t('eventMethod') }}</p></details>
+        </section>
+        <section class="lf-tile event-panel" aria-labelledby="events-heading">
+          <div class="event-heading"><h2 id="events-heading">{{ t('events') }}</h2><span class="chip">{{ events().length }}</span></div>
+          <label>{{ t('eventFilter') }}<select [attr.aria-label]="t('eventFilter')" [value]="filter()" (change)="filter.set($any($event.target).value)">@for (kind of eventKinds; track kind) { <option [value]="kind">{{ t('kind.' + kind) }}</option> }</select></label>
+          <ol class="events">
+            @for (event of events(); track event.id) {
+              <li>
+                <button class="event-button" type="button" (click)="selectedOffset.set(event.offsetSeconds)" [attr.aria-pressed]="selectedOffset() === event.offsetSeconds">
+                  <time>{{ time(event.offsetSeconds) }}</time><span><small>{{ t('kind.' + event.kind) }}</small><strong>{{ event.label || t('unknown') }}</strong>@if (event.kind === 'raid') { <small>{{ t('raidViewers', { count: event.value ?? 0 }) }}</small> }</span>
+                </button>
+                @if (event.kind === 'note' && data.canAnnotate) { <button class="remove" type="button" (click)="openMarker(event)" [attr.aria-label]="t('removeNamed', { name: event.label })"><app-lf-icon name="trash" /></button> }
+              </li>
+            } @empty { <li class="empty-events">{{ t('noEvents') }}</li> }
+          </ol>
+          <p class="event-footnote">{{ t('eventHint') }}</p>
+        </section>
+      </div>
+    } @else if (!listError()) {
+      <div class="lf-tile state"><app-lf-icon name="trend" [size]="28" /><h2>{{ t('emptyTitle') }}</h2><p>{{ t('emptyHint') }}</p></div>
+    }
+  </main>
+</div>
+<dialog #markerDialog aria-labelledby="marker-heading" (cancel)="onMarkerCancel($event)">
+  <form (submit)="$event.preventDefault(); saveMarker()">
+    <h2 id="marker-heading">{{ t(deleting() ? 'removeMarker' : 'addMarker') }}</h2>
+    @if (deleting(); as event) { <p>{{ t('removeConfirm', { name: event.label }) }}</p> }
+    @else {
+      <p>{{ t('markerHint') }}</p>
+      <label>{{ t('markerLabel') }}<input type="text" maxlength="120" [value]="markerLabel()" (input)="markerLabel.set($any($event.target).value)" [attr.aria-invalid]="submitted() && !markerValid()" /></label>
+      <label>{{ t('markerTime') }}<input type="number" min="0" step="0.1" [max]="(timeline()?.session?.durationSeconds || 0) / 60" [value]="markerMinutes()" (input)="markerMinutes.set($any($event.target).value)" [attr.aria-invalid]="submitted() && !markerValid()" /></label>
+      @if (submitted() && !markerValid()) { <p class="error" role="alert">{{ t('invalidMarker') }}</p> }
+    }
+    @if (markerError()) { <p class="error" role="alert">{{ t('markerError') }}</p> }
+    <div class="actions"><button type="button" (click)="closeMarker()" [disabled]="saving()">{{ t('cancel') }}</button><button class="primary" type="submit" [disabled]="saving()">{{ t(saving() ? 'saving' : deleting() ? 'removeMarker' : 'saveMarker') }}</button></div>
+  </form>
+</dialog>

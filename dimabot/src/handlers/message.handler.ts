@@ -79,7 +79,7 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
             });
         });
 
-        void recordStreamMessageEvent({ channelID }).catch((analyticsError) => {
+        void recordStreamMessageEvent({ channelID, userID: messageEventData.chatter_user_id, receivedAt }).catch((analyticsError) => {
             console.error('Error recording stream message analytics from message handler:', {
                 function: 'messageHandler.recordStreamMessageEvent',
                 channelID,
