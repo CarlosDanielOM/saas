@@ -235,6 +235,16 @@ export class EventCardComponent {
   readonly alwaysOn = computed(() => this.event().enabled && !this.canDisable());
 
   getEventName(): string {
+    const subscriptionNames: Record<string, string> = {
+      'channel.subscribe': 'new',
+      'channel.subscription.gift': 'gift',
+      'channel.subscription.message': 'resub',
+      'channel.subscription.end': 'end'
+    };
+    const subscriptionName = subscriptionNames[this.event().type];
+    if (subscriptionName) {
+      return this.t(`chatEvents.subscriptions.${subscriptionName}`);
+    }
     if (this.event().type === 'channel.shoutout.receive') {
       return this.t('chatEvents.shoutoutReceived.name');
     }

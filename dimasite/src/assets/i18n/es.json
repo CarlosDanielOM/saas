@@ -4157,6 +4157,12 @@
     "deleteEvent": "Eliminar Evento",
     "upgrade": "Mejorar plan",
     "notificationsName": "Notificaciones del chat",
+    "subscriptions": {
+      "new": "Nuevas suscripciones",
+      "gift": "Suscripciones regaladas",
+      "resub": "Mensajes de resuscripción",
+      "end": "Suscripciones finalizadas"
+    },
     "shoutoutReceived": {
       "name": "Shoutout recibido"
     },

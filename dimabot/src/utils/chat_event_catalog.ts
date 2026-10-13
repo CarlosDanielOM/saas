@@ -62,7 +62,68 @@ export const SHOUTOUT_RECEIVED_EVENT = {
     }]
 } satisfies Omit<IEvent, '_id' | 'createdAt' | 'updatedAt' | 'tierLimits'>;
 
-const BUILTIN_CHAT_EVENTS = [CHAT_NOTIFICATION_EVENT, SHOUTOUT_RECEIVED_EVENT] as const;
+// These subscriptions already feed analytics and chat delivery. Discovery only
+// exposes their existing settings; it never enables or rewrites a channel's data.
+export const SUBSCRIPTION_CHAT_EVENTS = [
+    {
+        name: 'New subscriptions',
+        type: 'channel.subscribe',
+        icon: 'Star',
+        description: {
+            EN: 'Welcome new subscribers, including viewers who receive a gift subscription.',
+            ES: 'Da la bienvenida a nuevos suscriptores, incluidos quienes reciben una suscripción regalada.'
+        },
+        message: 'Thanks $(user) for subscribing at $(sub.tier)!'
+    },
+    {
+        name: 'Gifted subscriptions',
+        type: 'channel.subscription.gift',
+        icon: 'Heart',
+        description: {
+            EN: 'Thank subscription gifts with one message per gift batch, including anonymous gifts.',
+            ES: 'Agradece las suscripciones regaladas con un mensaje por lote, incluidos los regalos anónimos.'
+        },
+        message: 'Thank you for the gifted $(sub.tier) subscriptions!'
+    },
+    {
+        name: 'Resubscription messages',
+        type: 'channel.subscription.message',
+        icon: 'MessageCircle',
+        description: {
+            EN: 'Celebrate subscribers who share their resubscription in chat. Automatic renewals do not trigger this message.',
+            ES: 'Celebra a quienes comparten su resuscripción en el chat. Las renovaciones automáticas no activan este mensaje.'
+        },
+        message: 'Thanks $(user) for $(sub.months) months of support at $(sub.tier)!'
+    },
+    {
+        name: 'Subscription endings',
+        type: 'channel.subscription.end',
+        icon: 'Clock',
+        description: {
+            EN: 'Post a message when a subscription expires. Leave the message empty to stay silent.',
+            ES: 'Publica un mensaje cuando vence una suscripción. Deja el mensaje vacío para no anunciarlo.'
+        },
+        message: ''
+    }
+].map(({ message, ...event }) => ({
+    ...event,
+    version: '1',
+    condition: { broadcaster_user_id: 'user' },
+    color: '#7c3aed',
+    textColor: '#ffffff',
+    releaseStage: 'stable',
+    enabled: false,
+    plan_tier: 'free',
+    config: [{
+        id: 'message',
+        label: { EN: 'Message', ES: 'Mensaje' },
+        type: 'text',
+        value: message,
+        canDisable: true
+    }]
+} satisfies Omit<IEvent, '_id' | 'createdAt' | 'updatedAt' | 'tierLimits'>));
+
+const BUILTIN_CHAT_EVENTS = [CHAT_NOTIFICATION_EVENT, SHOUTOUT_RECEIVED_EVENT, ...SUBSCRIPTION_CHAT_EVENTS] as const;
 
 export function getBuiltinChatEvent(type: string) {
     return BUILTIN_CHAT_EVENTS.find(event => event.type === type);

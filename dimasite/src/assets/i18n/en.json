@@ -4157,6 +4157,12 @@
     "deleteEvent": "Delete Event",
     "upgrade": "Upgrade",
     "notificationsName": "Chat Notifications",
+    "subscriptions": {
+      "new": "New subscriptions",
+      "gift": "Gifted subscriptions",
+      "resub": "Resubscription messages",
+      "end": "Subscription endings"
+    },
     "shoutoutReceived": {
       "name": "Shoutout Received"
     },
