@@ -38,6 +38,7 @@ import {
   ReferralPromoReward
 } from '../../shared/referral-promo-banner/referral-promo-banner.component';
 import { environment } from '../../../environments/environment';
+import { GoalsComponent } from './components/goals/goals.component';
 
 type TimeRange = '7d' | '15d' | '30d';
 type MobilePanel = 'chart' | 'goals';
@@ -73,6 +74,7 @@ interface UpcomingTile {
 @Component({
   selector: 'app-dashboard',
   imports: [
+    GoalsComponent,
     NgxEchartsDirective,
     CountUpDirective,
     LoadingIndicatorComponent,
@@ -249,21 +251,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
   });
   readonly totalFollowers = computed(() => this.bootstrap()?.totalFollowers ?? 0);
   readonly totalSubs = computed(() => this.bootstrap()?.totalSubs ?? 0);
-  readonly monthlyGoals = computed(() =>
-    this.bootstrap()?.monthlyGoals ?? {
-      followersGoal: 1000,
-      followersCurrent: 0,
-      subsGoal: 1000,
-      subsCurrent: 0
-    }
-  );
-  readonly followersGoalPercent = computed(() =>
-    this.calculateGoalPercent(this.monthlyGoals().followersCurrent, this.monthlyGoals().followersGoal)
-  );
-  readonly subsGoalPercent = computed(() =>
-    this.calculateGoalPercent(this.monthlyGoals().subsCurrent, this.monthlyGoals().subsGoal)
-  );
-
   // AI Credits (5th KPI tile)
   readonly aiCreditsData = computed(() => this.dashboardApi.aiCredits());
   readonly aiCreditsAvailable = computed(() => this.aiCreditsData()?.available ?? false);
@@ -1194,14 +1181,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   private getDashboardLocale(): string {
     return this.languageService.getCurrentLanguage() === 'es' ? 'es-ES' : 'en-US';
-  }
-
-  private calculateGoalPercent(current: number, goal: number): number {
-    if (goal <= 0) {
-      return 0;
-    }
-
-    return Math.max(0, Math.min(100, Math.round((current / goal) * 100)));
   }
 
   formatCompactNumber(value: number): string {

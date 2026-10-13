@@ -11,6 +11,11 @@ const twitchSources = { $in: ['twitch-eventsub', 'twitch-eventsub-test'] };
 
 export const DOMAIN_EVENT_CONSUMERS: readonly DomainEventConsumerDefinition[] = [
     {
+        consumer: 'channel-goals-v1', topics: ['channel'], schemaVersions: [1], adminReplay: true,
+        eventFilter: { source: 'twitch-eventsub', type: { $in: ['channel.follow.received', 'channel.subscription.received', 'channel.subscription.gifted', 'channel.bits.received'] } },
+        handler: async event => (await import('../goals/service.js')).applyGoalEvent(event)
+    },
+    {
         consumer: 'widget-actions-v1', topics: ['channel'], schemaVersions: [1], adminReplay: false,
         maxEventAgeMs: WIDGET_EVENT_MAX_AGE_MS,
         eventFilter: { source: twitchSources, channelID: { $exists: true } },

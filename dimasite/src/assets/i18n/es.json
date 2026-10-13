@@ -7414,5 +7414,81 @@
         "note": "Extremo usa tu tarjeta gráfica. Mantén activada la aceleración por hardware en OBS (Ajustes → Avanzado → Fuentes); sin ella el overlay muestra Alto."
       }
     }
+  },
+  "channelGoals": {
+    "title": "Metas",
+    "subtitle": "Elige qué quiere conseguir tu comunidad.",
+    "new": "Nueva meta",
+    "quota": "{{count}} de {{limit}} metas",
+    "plans": {
+      "free": "Gratis",
+      "premium": "Premium",
+      "pro": "Pro"
+    },
+    "empty": "Crea tu primera meta para contar nuevos seguidores o suscripciones.",
+    "loading": "Cargando metas…",
+    "loadError": "No se pudieron cargar las metas.",
+    "stale": "El progreso puede estar desactualizado.",
+    "retry": "Reintentar",
+    "metrics": {
+      "follows": "Seguidores",
+      "subs": "Suscripciones",
+      "bits": "Bits"
+    },
+    "modes": {
+      "total": "Total desde la creación",
+      "fixed": "Período fijo",
+      "rolling": "Ventana móvil"
+    },
+    "status": {
+      "scheduled": "Programada",
+      "reached": "Meta alcanzada",
+      "ended": "Período terminado",
+      "active": "En progreso"
+    },
+    "window": "Últimas {{hours}} horas",
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "editNamed": "Editar {{name}}",
+    "deleteNamed": "Eliminar {{name}}",
+    "counting": "Cuenta eventos nuevos desde la creación. Las suscripciones incluyen regalos y resuscripciones compartidas. El progreso móvil puede bajar al salir eventos de la ventana. Se actualiza cada 5 segundos.",
+    "planHint": "Gratis: 2 metas de seguidores/suscripciones · Premium: 3 metas + Bits · Pro: 4 metas. Las metas existentes conservan su progreso al cambiar de plan.",
+    "newTitle": "Crear una meta",
+    "editTitle": "Editar meta",
+    "deleteTitle": "Eliminar meta",
+    "deleteHint": "¿Eliminar «{{name}}» y su progreso? No se puede deshacer.",
+    "name": "Nombre de la meta",
+    "nameError": "Escribe un nombre de 1 a 80 caracteres.",
+    "metric": "Contar",
+    "bitsPremium": "Bits · Premium",
+    "target": "Cantidad objetivo",
+    "targetError": "Escribe un número entero entre 1 y 1.000.000.000.",
+    "mode": "Modo de tiempo",
+    "modeHints": {
+      "total": "Cuenta eventos nuevos desde ahora, sin fecha límite.",
+      "fixed": "Cuenta eventos entre estas fechas. Se usa tu zona horaria local; no se añaden eventos pasados.",
+      "rolling": "Cuenta eventos en la ventana más reciente, desde que creas la meta. Hasta 90 días."
+    },
+    "start": "Empieza",
+    "end": "Termina",
+    "duration": "Mirar atrás",
+    "unit": "Unidad de tiempo",
+    "minutes": "Minutos",
+    "hours": "Horas",
+    "days": "Días",
+    "periodError": "Elige un inicio actual o futuro y un final posterior al inicio.",
+    "windowError": "Elige una ventana entre 1 minuto y 90 días.",
+    "editHint": "Puedes cambiar el nombre y el objetivo sin perder progreso. Crea otra meta para cambiar qué cuenta o su período.",
+    "cancel": "Cancelar",
+    "save": "Guardar meta",
+    "saving": "Guardando…",
+    "errors": {
+      "conflict": "Las metas cambiaron en otra sesión. Revisa la lista actualizada y vuelve a guardar.",
+      "limit": "Has alcanzado el límite de metas de tu plan. Elimina una para crear otra.",
+      "plan_required": "Las metas de Bits requieren Premium o Pro.",
+      "permission_required": "Solo el propietario o un administrador con acceso completo puede gestionar metas.",
+      "invalid": "Revisa los campos y el período e inténtalo de nuevo.",
+      "save": "No se pudo guardar. Tus datos se han conservado. Inténtalo de nuevo."
+    }
   }
 }

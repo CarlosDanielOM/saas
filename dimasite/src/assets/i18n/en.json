@@ -7414,5 +7414,81 @@
         "note": "Extreme uses your graphics card. Keep hardware acceleration on in OBS (Settings → Advanced → Sources); without it the overlay shows High instead."
       }
     }
+  },
+  "channelGoals": {
+    "title": "Goals",
+    "subtitle": "Choose what your community works toward.",
+    "new": "New goal",
+    "quota": "{{count}} of {{limit}} goals",
+    "plans": {
+      "free": "Free",
+      "premium": "Premium",
+      "pro": "Pro"
+    },
+    "empty": "Create your first goal to start tracking new follows or subscriptions.",
+    "loading": "Loading goals…",
+    "loadError": "Goals could not be loaded.",
+    "stale": "Progress may be out of date.",
+    "retry": "Retry",
+    "metrics": {
+      "follows": "Follows",
+      "subs": "Subscriptions",
+      "bits": "Bits"
+    },
+    "modes": {
+      "total": "Total since creation",
+      "fixed": "Fixed period",
+      "rolling": "Rolling window"
+    },
+    "status": {
+      "scheduled": "Scheduled",
+      "reached": "Target reached",
+      "ended": "Period ended",
+      "active": "In progress"
+    },
+    "window": "Last {{hours}} hours",
+    "edit": "Edit",
+    "delete": "Delete",
+    "editNamed": "Edit {{name}}",
+    "deleteNamed": "Delete {{name}}",
+    "counting": "Counts new events from creation. Subs include gifts and shared resubscriptions. Rolling progress can fall as events leave the window. Updates every 5 seconds.",
+    "planHint": "Free: 2 follow/sub goals · Premium: 3 goals + Bits · Pro: 4 goals. Existing goals keep their progress after a plan change.",
+    "newTitle": "Create a goal",
+    "editTitle": "Edit goal",
+    "deleteTitle": "Delete goal",
+    "deleteHint": "Delete “{{name}}” and its progress? This cannot be undone.",
+    "name": "Goal name",
+    "nameError": "Enter a name of 1–80 characters.",
+    "metric": "Count",
+    "bitsPremium": "Bits · Premium",
+    "target": "Target amount",
+    "targetError": "Enter a whole number from 1 to 1,000,000,000.",
+    "mode": "Time mode",
+    "modeHints": {
+      "total": "Count new events from now, with no deadline.",
+      "fixed": "Count events between these dates. Times use your local timezone; past events are not added.",
+      "rolling": "Count events in the most recent window, starting when you create the goal. Up to 90 days."
+    },
+    "start": "Starts at",
+    "end": "Ends at",
+    "duration": "Look back",
+    "unit": "Time unit",
+    "minutes": "Minutes",
+    "hours": "Hours",
+    "days": "Days",
+    "periodError": "Choose a current or future start and an end after the start.",
+    "windowError": "Choose a window between 1 minute and 90 days.",
+    "editHint": "Name and target can change without losing progress. Create a new goal to change its metric or time window.",
+    "cancel": "Cancel",
+    "save": "Save goal",
+    "saving": "Saving…",
+    "errors": {
+      "conflict": "Goals changed elsewhere. Review the refreshed list, then save again.",
+      "limit": "Your plan’s goal limit has been reached. Delete a goal to make room.",
+      "plan_required": "Bits goals require Premium or Pro.",
+      "permission_required": "Only the owner or a full-access channel admin can manage goals.",
+      "invalid": "Check the goal fields and time period, then try again.",
+      "save": "Could not save. Your input has been kept. Try again."
+    }
   }
 }

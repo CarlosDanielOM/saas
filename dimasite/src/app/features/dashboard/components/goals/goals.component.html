@@ -1,0 +1,71 @@
+<div class="head">
+  <div><h2>{{ t('title') }}</h2><p>{{ t('subtitle') }}</p></div>
+  @if (data(); as state) {
+    @if (state.canManage) { <button type="button" class="primary" (click)="open()" [disabled]="state.goals.length >= state.limit">{{ t('new') }}</button> }
+  }
+</div>
+@if (loadError()) {
+  <p class="error" role="status">{{ t(data() ? 'stale' : 'loadError') }} <button type="button" (click)="reload()">{{ t('retry') }}</button></p>
+}
+@if (data(); as state) {
+  <p class="quota">{{ t('quota', { count: state.goals.length, limit: state.limit }) }} · {{ t('plans.' + state.plan) }}</p>
+  @if (!state.goals.length) { <p class="empty">{{ t('empty') }}</p> }
+  <div class="goals">
+    @for (goal of state.goals; track goal.id) {
+      <section class="goal" [attr.aria-label]="goal.name">
+        <div class="goal-head"><h3>{{ goal.name }}</h3><span class="status" [class.reached]="goal.status === 'reached'">{{ t('status.' + goal.status) }}</span></div>
+        <p class="detail">{{ t('metrics.' + goal.metric) }} · {{ t('modes.' + goal.mode) }}</p>
+        @if (goal.mode === 'fixed') { <p class="detail">{{ goal.startsAt | date:'short' }} – {{ goal.endsAt | date:'short' }}</p> }
+        @if (goal.mode === 'rolling') { <p class="detail">{{ t('window', { hours: (goal.windowSeconds! / 3600 | number:'1.0-2')! }) }}</p> }
+        <div class="numbers"><strong>{{ goal.current | number }} <span>/ {{ goal.target | number }}</span></strong><span>{{ goal.percent | number:'1.0-0' }}%</span></div>
+        <div class="progress" role="progressbar" [attr.aria-label]="goal.name" [attr.aria-valuenow]="goal.current" [attr.aria-valuemin]="0" [attr.aria-valuemax]="goal.current > goal.target ? goal.current : goal.target" [attr.aria-valuetext]="goal.current + ' / ' + goal.target"><span [style.width.%]="goal.percent"></span></div>
+        @if (state.canManage) {
+          <div class="actions"><button type="button" (click)="open(goal)" [attr.aria-label]="t('editNamed', { name: goal.name })">{{ t('edit') }}</button><button type="button" (click)="open(goal, true)" [attr.aria-label]="t('deleteNamed', { name: goal.name })">{{ t('delete') }}</button></div>
+        }
+      </section>
+    }
+  </div>
+  <p class="note">{{ t('counting') }}</p>
+  @if (state.plan !== 'pro') { <p class="plan-note">{{ t('planHint') }}</p> }
+} @else if (!loadError()) { <p role="status">{{ t('loading') }}</p> }
+
+<dialog #editor aria-labelledby="goal-editor-title" (cancel)="cancel($event)">
+  <form [formGroup]="form" (ngSubmit)="save()">
+    <div class="dialog-body">
+      <h2 id="goal-editor-title">{{ t(deleting() ? 'deleteTitle' : editing() ? 'editTitle' : 'newTitle') }}</h2>
+      @if (deleting()) {
+        <p>{{ t('deleteHint', { name: editing()!.name }) }}</p>
+      } @else {
+        <label for="goal-name">{{ t('name') }}</label>
+        <input id="goal-name" formControlName="name" maxlength="80" autocomplete="off" [attr.aria-invalid]="attempted() && (!form.controls.name.valid || !form.controls.name.value.trim())" aria-describedby="goal-name-error" />
+        <p id="goal-name-error" class="error">@if (attempted() && (!form.controls.name.valid || !form.controls.name.value.trim())) { {{ t('nameError') }} }</p>
+        @if (!editing()) {
+          <label for="goal-metric">{{ t('metric') }}</label>
+          <select id="goal-metric" formControlName="metric">
+            <option value="follows">{{ t('metrics.follows') }}</option><option value="subs">{{ t('metrics.subs') }}</option>
+            <option value="bits" [disabled]="!data()?.metrics?.includes('bits')">{{ t(data()?.metrics?.includes('bits') ? 'metrics.bits' : 'bitsPremium') }}</option>
+          </select>
+        }
+        <label for="goal-target">{{ t('target') }}</label>
+        <input id="goal-target" type="number" min="1" max="1000000000" step="1" formControlName="target" [attr.aria-invalid]="attempted() && form.controls.target.invalid" aria-describedby="goal-target-error" />
+        <p id="goal-target-error" class="error">@if (attempted() && form.controls.target.invalid) { {{ t('targetError') }} }</p>
+        @if (!editing()) {
+          <label for="goal-mode">{{ t('mode') }}</label>
+          <select id="goal-mode" formControlName="mode"><option value="total">{{ t('modes.total') }}</option><option value="fixed">{{ t('modes.fixed') }}</option><option value="rolling">{{ t('modes.rolling') }}</option></select>
+          <p class="note">{{ t('modeHints.' + mode()) }}</p>
+          @if (mode() === 'fixed') {
+            <label for="goal-start">{{ t('start') }}</label><input id="goal-start" type="datetime-local" formControlName="startsAt" [attr.aria-invalid]="attempted() && invalidTime()" aria-describedby="goal-time-error" />
+            <label for="goal-end">{{ t('end') }}</label><input id="goal-end" type="datetime-local" formControlName="endsAt" [attr.aria-invalid]="attempted() && invalidTime()" aria-describedby="goal-time-error" />
+          }
+          @if (mode() === 'rolling') {
+            <label for="goal-window">{{ t('duration') }}</label>
+            <div class="duration"><input id="goal-window" type="number" min="1" step="1" formControlName="windowAmount" [attr.aria-invalid]="attempted() && invalidTime()" aria-describedby="goal-time-error" /><select formControlName="windowUnit" [attr.aria-label]="t('unit')"><option [ngValue]="60">{{ t('minutes') }}</option><option [ngValue]="3600">{{ t('hours') }}</option><option [ngValue]="86400">{{ t('days') }}</option></select></div>
+          }
+          <p id="goal-time-error" class="error">@if (attempted() && invalidTime()) { {{ t(mode() === 'fixed' ? 'periodError' : 'windowError') }} }</p>
+        } @else { <p class="note">{{ t('editHint') }}</p> }
+      }
+      @if (saveError()) { <p class="error" role="alert">{{ t('errors.' + saveError()) }}</p> }
+    </div>
+    <footer><button type="button" (click)="close()" [disabled]="saving()">{{ t('cancel') }}</button><button type="submit" class="primary" [disabled]="saving()">{{ t(saving() ? 'saving' : deleting() ? 'delete' : 'save') }}</button></footer>
+  </form>
+</dialog>

@@ -1,4 +1,5 @@
 import { widgetsRoute } from './routes/widgets.route.js';
+import { goalsRoute } from './routes/goals.route.js';
 import { overlayStudioRoute } from './routes/overlay-studio.route.js';
 import { assetLibraryRoute } from './routes/asset-library.route.js';
 import { rouletteRoute } from './routes/roulette.route.js';
@@ -124,6 +125,7 @@ export const server = async (): Promise<Express.Application> => {
         app.use('/timers', timerRoute);
         app.use('/roulettes', rouletteRoute);
         app.use('/widgets', widgetsRoute);
+        app.use('/goals', goalsRoute);
         app.use('/overlay-studio', overlayStudioRoute);
         app.use('/asset-library', assetLibraryRoute);
 

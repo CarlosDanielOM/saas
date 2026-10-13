@@ -374,51 +374,14 @@
           class="lf-tile lf-goals"
           [class.lf-panel--hidden-mobile]="selectedMobilePanel() !== 'goals'"
         >
-          <div class="lf-section-mini">
-            <p class="lf-kicker">{{ t('dashboard.goals.sectionLabel') }}</p>
-            <h2 class="lf-h3">{{ t('dashboard.goals.title') }}</h2>
+          @if (channelID(); as channel) {
+            <app-channel-goals [channelID]="channel" />
+          }
+          <div class="lf-goals__stack">
+            <div class="lf-goal__head"><span>{{ t('dashboard.goals.totalFollowers') }}</span><strong>{{ formatNumber(totalFollowers()) }}</strong></div>
+            <div class="lf-goal__head"><span>{{ t('dashboard.goals.totalSubs') }}</span><strong>{{ formatNumber(totalSubs()) }}</strong></div>
           </div>
 
-          <div class="lf-goals__stack">
-            <div class="lf-goal">
-              <div class="lf-goal__head">
-                <span>{{ t('dashboard.goals.totalFollowers') }}</span>
-                <strong>{{ formatNumber(totalFollowers()) }}</strong>
-              </div>
-            </div>
-            <div class="lf-goal">
-              <div class="lf-goal__head">
-                <span>{{ t('dashboard.goals.totalSubs') }}</span>
-                <strong>{{ formatNumber(totalSubs()) }}</strong>
-              </div>
-            </div>
-            <div class="lf-goal">
-              <div class="lf-goal__head">
-                <span>{{ t('dashboard.goals.followersGoal') }}</span>
-                <strong>
-                  {{ formatNumber(monthlyGoals().followersCurrent) }} /
-                  {{ formatNumber(monthlyGoals().followersGoal) }}
-                </strong>
-              </div>
-              <div class="lf-bar lf-bar--violet" aria-hidden="true">
-                <span [style.width.%]="followersGoalPercent()"></span>
-              </div>
-              <p class="lf-goal__pct">{{ formatPercent(followersGoalPercent()) }}</p>
-            </div>
-            <div class="lf-goal">
-              <div class="lf-goal__head">
-                <span>{{ t('dashboard.goals.subsGoal') }}</span>
-                <strong>
-                  {{ formatNumber(monthlyGoals().subsCurrent) }} /
-                  {{ formatNumber(monthlyGoals().subsGoal) }}
-                </strong>
-              </div>
-              <div class="lf-bar lf-bar--gold" aria-hidden="true">
-                <span [style.width.%]="subsGoalPercent()"></span>
-              </div>
-              <p class="lf-goal__pct">{{ formatPercent(subsGoalPercent()) }}</p>
-            </div>
-          </div>
         </article>
       </section>
 
