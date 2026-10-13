@@ -44,6 +44,7 @@ export class NavbarComponent {
 
   readonly navItems = [
     { label: 'Overview', route: '/dashboard', icon: 'overview' },
+    { label: 'Analytics', route: '/observability', icon: 'overview' },
     { label: 'Users', route: '/users', icon: 'users' },
     { label: 'Files', route: '/read-tool', icon: 'files' },
     { label: 'Email', route: '/email-test', icon: 'mail' },

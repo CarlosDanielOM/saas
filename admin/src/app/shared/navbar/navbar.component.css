@@ -198,7 +198,7 @@
   left: 0;
   z-index: 90;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   padding: 0.35rem 0.5rem calc(0.35rem + env(safe-area-inset-bottom));
   border-top: 1px solid var(--line);
   background: color-mix(in srgb, var(--tile) 92%, transparent);

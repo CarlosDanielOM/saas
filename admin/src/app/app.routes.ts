@@ -29,6 +29,11 @@ export const routes: Routes = [
     canActivate: [adminAuthGuard],
     children: [
       {
+        path: 'observability',
+        loadComponent: () => import('./pages/observability/observability-page.component').then(m => m.ObservabilityPageComponent),
+        title: 'System analytics | DimaBot Admin',
+      },
+      {
         path: 'dashboard',
         loadComponent: () =>
           import('./pages/dashboard/dashboard-page.component').then(
