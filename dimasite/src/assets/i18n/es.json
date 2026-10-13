@@ -7436,9 +7436,10 @@
       "bits": "Bits"
     },
     "modes": {
-      "total": "Total desde la creación",
+      "total": "Desde la creación",
       "fixed": "Período fijo",
-      "rolling": "Ventana móvil"
+      "rolling": "Ventana móvil",
+      "current": "Total actual"
     },
     "status": {
       "scheduled": "Programada",
@@ -7451,7 +7452,7 @@
     "delete": "Eliminar",
     "editNamed": "Editar {{name}}",
     "deleteNamed": "Eliminar {{name}}",
-    "counting": "Cuenta eventos nuevos desde la creación. Las suscripciones incluyen regalos y resuscripciones compartidas. El progreso móvil puede bajar al salir eventos de la ventana. Se actualiza cada 5 segundos.",
+    "counting": "Las metas de total actual usan los seguidores/suscriptores activos del panel. Los otros modos cuentan eventos nuevos desde la creación, incluidos regalos y resuscripciones compartidas. El progreso móvil puede bajar al salir eventos de la ventana. Se actualiza cada 5 segundos.",
     "planHint": "Gratis: 2 metas de seguidores/suscripciones · Premium: 3 metas + Bits · Pro: 4 metas. Las metas existentes conservan su progreso al cambiar de plan.",
     "newTitle": "Crear una meta",
     "editTitle": "Editar meta",
@@ -7463,11 +7464,12 @@
     "bitsPremium": "Bits · Premium",
     "target": "Cantidad objetivo",
     "targetError": "Escribe un número entero entre 1 y 1.000.000.000.",
-    "mode": "Modo de tiempo",
+    "mode": "Modo de conteo",
     "modeHints": {
       "total": "Cuenta eventos nuevos desde ahora, sin fecha límite.",
       "fixed": "Cuenta eventos entre estas fechas. Se usa tu zona horaria local; no se añaden eventos pasados.",
-      "rolling": "Cuenta eventos en la ventana más reciente, desde que creas la meta. Hasta 90 días."
+      "rolling": "Cuenta eventos en la ventana más reciente, desde que creas la meta. Hasta 90 días.",
+      "current": "Usa el total de seguidores o suscriptores activos del panel, incluidos los anteriores a esta meta. El progreso puede bajar si dejan de seguirte o terminan sus suscripciones."
     },
     "start": "Empieza",
     "end": "Termina",

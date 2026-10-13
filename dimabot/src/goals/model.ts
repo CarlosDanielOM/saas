@@ -1,5 +1,6 @@
 export type GoalMetric = 'follows' | 'subs' | 'bits';
-export type GoalMode = 'total' | 'fixed' | 'rolling';
+// Keep `total` as the persisted since-creation mode for existing goals.
+export type GoalMode = 'total' | 'current' | 'fixed' | 'rolling';
 export type GoalPlan = 'free' | 'premium' | 'pro';
 export interface Goal {
   id: string;
@@ -37,7 +38,8 @@ export function newGoal(value: unknown, plan: GoalPlan, id: string, now: number)
   const input = object(value), metric = input.metric as GoalMetric, mode = input.mode as GoalMode;
   if (!['follows', 'subs', 'bits'].includes(metric)) throw new GoalError('invalid', 'Unknown metric');
   if (!goalMetrics(plan).includes(metric)) throw new GoalError('plan_required', 'Bits goals require Premium', 403);
-  if (!['total', 'fixed', 'rolling'].includes(mode)) throw new GoalError('invalid', 'Unknown time mode');
+  if (!['total', 'current', 'fixed', 'rolling'].includes(mode)) throw new GoalError('invalid', 'Unknown counting mode');
+  if (mode === 'current' && metric === 'bits') throw new GoalError('invalid', 'Current total is only available for follows and subscriptions');
   const goal: Goal = { id, name: goalLabel(input.name), metric, mode, target: goalInteger(input.target), createdAt: now, startsAt: now };
   if (mode === 'fixed') {
     goal.startsAt = timestamp(input.startsAt);
@@ -49,6 +51,7 @@ export function newGoal(value: unknown, plan: GoalPlan, id: string, now: number)
   return goal;
 }
 export function eligible(goal: Goal, occurredAt: number, now: number): boolean {
+  if (goal.mode === 'current') return false; // Read active ledgers; never add event contributions.
   if (occurredAt < goal.startsAt || occurredAt > now) return false;
   if (goal.mode === 'fixed') return occurredAt < goal.endsAt!;
   if (goal.mode === 'rolling') return occurredAt > now - goal.windowSeconds! * 1000;

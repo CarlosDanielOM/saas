@@ -3,6 +3,8 @@ import { Schema, model } from 'mongoose';
 import { getMongoDBConnection } from '../utils/databases/mongodb.database.js';
 import Users from '../schemas/users.schema.js';
 import Eventsub from '../schemas/eventsub.schema.js';
+import { FollowRelationshipLedgerSchema } from '../schemas/follow_relationship_ledger.schema.js';
+import { StreamSubscriptionLedgerSchema } from '../schemas/stream_subscription_ledger.schema.js';
 import type { DomainEventEnvelope } from '../domain_events/domain_event.types.js';
 import { CANONICAL_BITS_EVENT_TYPE, isLegacyBitsEventType } from '../utils/eventsub.js';
 import { eligible, GoalError, goalInteger, goalLabel, goalLimit, goalMetrics, newGoal, object, type Goal, type GoalMetric, type GoalPlan } from './model.js';
@@ -24,8 +26,15 @@ export async function goalPlan(channel: string): Promise<GoalPlan> {
 }
 export async function goalSnapshot(channel: string, now = Date.now()) {
   const plan = await goalPlan(channel), state = await GoalSet.findById(channel).lean();
+  // Use the dashboard's active ledgers, including relationships predating the goal.
+  // Query each requested metric once, even if several goals share it.
+  const needsTotal = (metric: GoalMetric) => state?.goals.some(goal => goal.mode === 'current' && goal.metric === metric);
+  const [follows, subs] = await Promise.all([
+    needsTotal('follows') ? FollowRelationshipLedgerSchema.countDocuments({ platform: 'twitch', followed_id: channel, status: 'active' }) : 0,
+    needsTotal('subs') ? StreamSubscriptionLedgerSchema.countDocuments({ platform: 'twitch', streamer_id: channel, status: 'active' }) : 0
+  ]);
   const goals = await Promise.all((state?.goals ?? []).map(async goal => {
-    const rows = await GoalContribution.aggregate<{ total: number }>([
+    const rows = goal.mode === 'current' ? [{ total: goal.metric === 'follows' ? follows : subs }] : await GoalContribution.aggregate<{ total: number }>([
       { $match: { channel, goal: goal.id, occurredAt: { $gte: goal.startsAt, ...(goal.mode === 'rolling' ? { $gt: now - goal.windowSeconds! * 1000 } : {}), $lte: now, ...(goal.mode === 'fixed' ? { $lt: goal.endsAt } : {}) } } },
       { $group: { _id: null, total: { $sum: '$amount' } } }
     ]);

@@ -170,16 +170,20 @@ try {
   assert(await dialog.locator('option[value="bits"]').isDisabled());
   await dialog.getByLabel('Goal name',{exact:true}).fill('Community follows');
   await dialog.getByLabel('Target amount').fill('100');
+  await dialog.getByLabel('Counting mode').selectOption('current');
+  await dialog.getByText('Use the current active follower or subscriber total shown on your dashboard, including people counted before this goal. Progress can decrease after unfollows or subscriptions end.').waitFor();
   failNext=true;
   await dialog.getByRole('button',{name:'Save goal',exact:true}).click();
   await dialog.getByText('Could not save. Your input has been kept. Try again.').waitFor();
   assert.equal(await dialog.getByLabel('Goal name',{exact:true}).inputValue(),'Community follows');
   await dialog.getByRole('button',{name:'Save goal',exact:true}).click();
   await dialog.waitFor({state:'hidden'});
+  assert.equal(goalsState.goals[0].mode,'current');
+  await panel.getByText('Current total',{exact:false}).first().waitFor();
   await panel.getByRole('button',{name:'New goal',exact:true}).click();
   await dialog.getByLabel('Goal name',{exact:true}).fill('Weekend subs');
   await dialog.getByLabel('Count',{exact:true}).selectOption('subs');
-  await dialog.getByLabel('Time mode').selectOption('fixed');
+  await dialog.getByLabel('Counting mode').selectOption('fixed');
   await dialog.getByRole('button',{name:'Save goal',exact:true}).click();
   await dialog.getByText('Choose a current or future start and an end after the start.').waitFor();
   const local=value=>{const d=new Date(value);d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16);};
@@ -191,7 +195,7 @@ try {
   await dialog.getByRole('button',{name:'Save goal',exact:true}).click();await dialog.waitFor({state:'hidden'});
   assert(await panel.getByRole('button',{name:'New goal',exact:true}).isDisabled());
   await panel.getByRole('button',{name:'Edit Community follows',exact:true}).click();
-  await dialog.getByLabel('Time mode').waitFor({state:'detached'});
+  await dialog.getByLabel('Counting mode').waitFor({state:'detached'});
   await dialog.getByLabel('Target amount').fill('200');
   await dialog.getByRole('button',{name:'Save goal',exact:true}).click();await dialog.waitFor({state:'hidden'});
   await panel.getByRole('button',{name:'Delete Weekend subs',exact:true}).click();
@@ -201,7 +205,7 @@ try {
   await panel.getByRole('button',{name:'New goal',exact:true}).click();
   await dialog.getByLabel('Goal name',{exact:true}).fill('Subs this hour');
   await dialog.getByLabel('Count',{exact:true}).selectOption('subs');
-  await dialog.getByLabel('Time mode').selectOption('rolling');
+  await dialog.getByLabel('Counting mode').selectOption('rolling');
   await dialog.getByLabel('Look back').fill('1');
   await dialog.getByRole('button',{name:'Save goal',exact:true}).click(); await dialog.waitFor({state:'hidden'});
   assert.equal(goalsState.goals[1].windowSeconds,3600);
@@ -209,7 +213,10 @@ try {
   await panel.getByText('2 of 3 goals').waitFor({timeout:10000});
   await panel.getByRole('button',{name:'New goal',exact:true}).click();
   await dialog.getByLabel('Goal name',{exact:true}).fill('Bits celebration');
+  await dialog.getByLabel('Counting mode').selectOption('current');
   await dialog.getByLabel('Count',{exact:true}).selectOption('bits');
+  await dialog.locator('option[value="current"]').waitFor({state:'detached'});
+  assert.equal(await dialog.getByLabel('Counting mode').inputValue(),'total','Bits falls back to since creation');
   await dialog.getByRole('button',{name:'Save goal',exact:true}).click(); await dialog.waitFor({state:'hidden'});
   assert(await panel.getByRole('button',{name:'New goal',exact:true}).isDisabled());
   goalsState.goals[0]={...goalsState.goals[0],current:125,percent:62.5};
@@ -220,6 +227,6 @@ try {
   assert.deepEqual(axe.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>n.failureSummary)})),[]);
   assert.deepEqual(errors,[]);
   await context.close();
-  console.log(`PASS ${width}px ${theme}: total/fixed/rolling, free and premium limits, Bits gating, errors preserve drafts, edit/delete, progress, axe, no overflow`);
+  console.log(`PASS ${width}px ${theme}: current/since-creation/fixed/rolling, Bits excludes current totals, free and premium limits, Bits gating, errors preserve drafts, edit/delete, progress, axe, no overflow`);
  }
 } finally {await browser.close();}

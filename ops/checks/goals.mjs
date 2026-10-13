@@ -5,6 +5,8 @@ import { getMongoDBConnection } from '/app/dist/utils/databases/mongodb.database
 import { getDragonflyClient } from '/app/dist/utils/databases/dragonfly.database.js';
 import Users from '/app/dist/schemas/users.schema.js';
 import Eventsub from '/app/dist/schemas/eventsub.schema.js';
+import { FollowRelationshipLedgerSchema as Follows } from '/app/dist/schemas/follow_relationship_ledger.schema.js';
+import { StreamSubscriptionLedgerSchema as Subs } from '/app/dist/schemas/stream_subscription_ledger.schema.js';
 import { AdminSchema } from '/app/dist/schemas/admin.schema.js';
 import { DomainEventDeliverySchema } from '/app/dist/schemas/domain_event_delivery.schema.js';
 import { ingestDomainEvent } from '/app/dist/domain_events/domain_event_producers.js';
@@ -98,6 +100,35 @@ await changeGoal(channel, 'delete', {}, 5, state.goals[0].id);
 assert.equal(await GoalContribution.countDocuments({ goal: state.goals[0].id }), 0);
 await applyGoalEvent(follow); assert.equal((await goalSnapshot(channel)).goals.length, 3);
 console.log('PASS durable goals: all plan limits, concurrent slots, follows/subs/gifts/shared resubs/Bits, retries, legacy Bits, historical/test/cross-channel exclusion, fixed late delivery, rolling expiration, edits and downgrade preservation.');
+// Current totals include pre-goal active relationships, not event receipts.
+const beforeGoal = new Date(Date.now() - 86400000);
+for (const [user, status] of [['one', 'active'], ['two', 'active'], ['ended', 'ended']]) {
+  await Follows.collection.insertOne({ platform: 'twitch', followed_id: other, follower_id: user, status, followed_at: beforeGoal });
+  await Subs.collection.insertOne({ platform: 'twitch', streamer_id: other, user_id: user, status, is_gift: user === 'two', subbed_at: beforeGoal });
+}
+await Follows.collection.insertOne({ platform: 'twitch', followed_id: channel, follower_id: 'unrelated', status: 'active' });
+await Subs.collection.insertOne({ platform: 'twitch', streamer_id: channel, user_id: 'unrelated', status: 'active' });
+for (const [metric, revision] of [['follows', 0], ['subs', 1]]) {
+  const body = { ...input, name: 'Current ' + metric, metric, mode: 'current', target: 2 };
+  if (target === 'api') await request('POST', other, body, revision, 200, other);
+  else await changeGoal(other, 'create', body, revision);
+}
+let totals = await goalSnapshot(other);
+assert.deepEqual(totals.goals.map(g => [g.current, g.status]), [[2, 'reached'], [2, 'reached']]);
+await send('channel.follow', {}, crypto.randomUUID(), Date.now(), other);
+await send('channel.subscribe', { is_gift: false }, crypto.randomUUID(), Date.now(), other);
+assert.equal(await GoalContribution.countDocuments({ channel: other }), 0, 'current mode never accumulates contribution receipts');
+await Follows.updateOne({ followed_id: other, follower_id: 'two' }, { $set: { status: 'ended' } });
+await Subs.updateOne({ streamer_id: other, user_id: 'two' }, { $set: { status: 'ended' } });
+totals = target === 'api' ? await request('GET', other, null, undefined, 200, other) : await goalSnapshot(other);
+assert.deepEqual(totals.goals.map(g => [g.current, g.status]), [[1, 'active'], [1, 'active']], 'unfollows and expired subscriptions reduce current totals');
+await Follows.updateMany({ followed_id: other }, { $set: { status: 'ended' } });
+await Subs.updateMany({ streamer_id: other }, { $set: { status: 'ended' } });
+assert.deepEqual((await goalSnapshot(other)).goals.map(g => g.current), [0, 0]);
+await Users.updateOne({ 'accounts.id': channel }, { $set: { plan_tier: 'pro' } });
+await assert.rejects(() => changeGoal(channel, 'create', { ...input, metric: 'bits', mode: 'current' }, 6), e => e.code === 'invalid');
+if (target === 'api') await request('POST', channel, { ...input, metric: 'bits', mode: 'current' }, 6, 400);
+console.log('PASS current totals: pre-existing active follows/subs, gifts, ended/other-channel exclusion, falling totals, zero, no event double-counting and Bits rejection.');
 const tests = spawnSync('node', ['--test', 'dist/goals/model.test.js', 'dist/domain_events/domain_event_consumers.test.js', 'dist/domain_events/domain_event_producers.test.js', 'dist/utils/domain_event_consumer.test.js'], { encoding: 'utf8', timeout: 30000, env: { ...process.env, NODE_OPTIONS: '' } });
 process.stdout.write(tests.stdout); process.stderr.write(tests.stderr); assert.equal(tests.status, 0);
 console.log('PASS runtime target: ' + target + (target === 'cron' ? ', real supervisor and goals consumer' : ', real API entrypoint'));

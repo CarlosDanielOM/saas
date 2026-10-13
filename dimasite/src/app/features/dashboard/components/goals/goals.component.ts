@@ -35,6 +35,7 @@ export class GoalsComponent {
   readonly editing = signal<Goal | null>(null);
   readonly deleting = signal(false);
   readonly mode = signal('total');
+  readonly metric = signal('follows');
   readonly attempted = signal(false);
   readonly form = this.fb.nonNullable.group({
     name: ['', [Validators.required, Validators.maxLength(80)]], metric: ['follows'], mode: ['total'],
@@ -43,6 +44,10 @@ export class GoalsComponent {
   });
   constructor() {
     this.form.controls.mode.valueChanges.pipe(takeUntilDestroyed()).subscribe(mode => this.mode.set(mode));
+    this.form.controls.metric.valueChanges.pipe(takeUntilDestroyed()).subscribe(metric => {
+      this.metric.set(metric);
+      if (metric === 'bits' && this.form.controls.mode.value === 'current') this.form.controls.mode.setValue('total');
+    });
     effect(cleanup => {
       const channel = this.channelID();
       this.data.set(null); this.loadError.set(false);

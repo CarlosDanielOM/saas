@@ -51,7 +51,7 @@
         <p id="goal-target-error" class="error">@if (attempted() && form.controls.target.invalid) { {{ t('targetError') }} }</p>
         @if (!editing()) {
           <label for="goal-mode">{{ t('mode') }}</label>
-          <select id="goal-mode" formControlName="mode"><option value="total">{{ t('modes.total') }}</option><option value="fixed">{{ t('modes.fixed') }}</option><option value="rolling">{{ t('modes.rolling') }}</option></select>
+          <select id="goal-mode" formControlName="mode"><option value="total">{{ t('modes.total') }}</option>@if (metric() !== 'bits') { <option value="current">{{ t('modes.current') }}</option> }<option value="fixed">{{ t('modes.fixed') }}</option><option value="rolling">{{ t('modes.rolling') }}</option></select>
           <p class="note">{{ t('modeHints.' + mode()) }}</p>
           @if (mode() === 'fixed') {
             <label for="goal-start">{{ t('start') }}</label><input id="goal-start" type="datetime-local" formControlName="startsAt" [attr.aria-invalid]="attempted() && invalidTime()" aria-describedby="goal-time-error" />

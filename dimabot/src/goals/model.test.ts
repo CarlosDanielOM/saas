@@ -8,6 +8,15 @@ test('plan limits and Bits entitlement', () => {
   assert.throws(() => newGoal({ ...base, metric: 'bits' }, 'free', 'g', now));
   assert.equal(newGoal({ ...base, metric: 'bits' }, 'premium', 'g', now).metric, 'bits');
 });
+test('current total supports follows/subs only and never accumulates events', () => {
+  for (const metric of ['follows', 'subs']) {
+    const goal = newGoal({ ...base, metric, mode: 'current' }, 'free', 'g', now);
+    assert.equal(goal.mode, 'current');
+    assert.equal(eligible(goal, now, now), false);
+  }
+  for (const plan of ['premium', 'pro'] as const) assert.throws(() => newGoal({ ...base, metric: 'bits', mode: 'current' }, plan, 'g', now));
+  assert.equal(newGoal(base, 'free', 'g', now).mode, 'total', 'existing since-creation mode keeps its identity');
+});
 test('invalid inputs never become goals', () => {
   for (const target of [0, -1, 1.5, NaN, Infinity, '100', 1_000_000_001]) assert.throws(() => newGoal({ ...base, target }, 'free', 'g', now));
   for (const value of [null, [], {}, { ...base, name: '   ' }, { ...base, metric: 'donations' }, { ...base, mode: 'unknown' }, { ...base, mode: 'rolling', windowSeconds: 90 * 86400 + 1 }]) assert.throws(() => newGoal(value, 'free', 'g', now));

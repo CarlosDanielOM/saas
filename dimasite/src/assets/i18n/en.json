@@ -7436,9 +7436,10 @@
       "bits": "Bits"
     },
     "modes": {
-      "total": "Total since creation",
+      "total": "Since creation",
       "fixed": "Fixed period",
-      "rolling": "Rolling window"
+      "rolling": "Rolling window",
+      "current": "Current total"
     },
     "status": {
       "scheduled": "Scheduled",
@@ -7451,7 +7452,7 @@
     "delete": "Delete",
     "editNamed": "Edit {{name}}",
     "deleteNamed": "Delete {{name}}",
-    "counting": "Counts new events from creation. Subs include gifts and shared resubscriptions. Rolling progress can fall as events leave the window. Updates every 5 seconds.",
+    "counting": "Current-total goals use your dashboard’s active follower/subscriber totals. Other modes count new events from creation, including gifts and shared resubscriptions. Rolling progress can fall as events leave the window. Updates every 5 seconds.",
     "planHint": "Free: 2 follow/sub goals · Premium: 3 goals + Bits · Pro: 4 goals. Existing goals keep their progress after a plan change.",
     "newTitle": "Create a goal",
     "editTitle": "Edit goal",
@@ -7463,11 +7464,12 @@
     "bitsPremium": "Bits · Premium",
     "target": "Target amount",
     "targetError": "Enter a whole number from 1 to 1,000,000,000.",
-    "mode": "Time mode",
+    "mode": "Counting mode",
     "modeHints": {
       "total": "Count new events from now, with no deadline.",
       "fixed": "Count events between these dates. Times use your local timezone; past events are not added.",
-      "rolling": "Count events in the most recent window, starting when you create the goal. Up to 90 days."
+      "rolling": "Count events in the most recent window, starting when you create the goal. Up to 90 days.",
+      "current": "Use the current active follower or subscriber total shown on your dashboard, including people counted before this goal. Progress can decrease after unfollows or subscriptions end."
     },
     "start": "Starts at",
     "end": "Ends at",
