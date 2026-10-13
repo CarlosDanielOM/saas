@@ -21,7 +21,7 @@ used. The check covers owner authorization, all filters, removed/private voices,
 custom defaults in both speech modes, explicit `tts.fish` aliases and raw IDs,
 single-use socket tickets, private playback,
 per-preview cost, insufficient credits, concurrent requests, failure billing,
-backend selection (`s2.1-pro` active default; `drama-3-preview` temporarily disabled) and
+backend selection (`drama-3` active primary; `s2.1-pro` fallback) and
 separation from the stream's speech queue.
 
 ## Browser

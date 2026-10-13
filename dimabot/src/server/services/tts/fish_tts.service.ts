@@ -20,8 +20,8 @@ export const FISH_VOICE_NAMES = Object.keys(FISH_VOICES) as string[];
 export const DEFAULT_FISH_TTS_REFERENCE_ID = FISH_VOICES['gojo'];
 
 const FISH_TTS_BACKENDS = [
+    'drama-3',
     's2.1-pro',
-    // 'drama-3-preview', // Temporarily disabled due to synthesis reliability issues.
 ] as const;
 const FISH_ATTEMPT_TIMEOUT_MS = 20_000;
 
