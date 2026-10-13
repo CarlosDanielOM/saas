@@ -411,6 +411,9 @@ class Ops:
         check = self.check_file(check)
         saved_check = path / ("behavior-check" + check.suffix)
         shutil.copyfile(check, saved_check)
+        # Test containers may run as a non-root user. The enclosing state
+        # directory stays private; only the copied behavior script is readable.
+        saved_check.chmod(0o644)
         receipt["status"] = "verifying"
         receipt["check_digest"] = digest(saved_check.read_bytes())
         self.save(path, receipt)

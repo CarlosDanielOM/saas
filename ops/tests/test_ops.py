@@ -199,6 +199,17 @@ class OpsTests(unittest.TestCase):
         self.assertEqual(self.ops.calls, [])
         self.assertEqual(self.saved()["status"], "deployed")
 
+    def test_behavior_script_is_readable_by_non_root_candidate(self):
+        check = self.root / "check.mjs"
+        check.write_text("process.exit(0)")
+        check.chmod(0o600)
+        with patch.object(self.ops, "verify_container") as verify:
+            self.ops.verify(RUN, check)
+        copied = verify.call_args.args[3]
+        self.assertEqual(copied.stat().st_mode & 0o777, 0o644)
+        self.assertEqual(copied.read_bytes(), check.read_bytes())
+        self.assertEqual(self.ops.state.stat().st_mode & 0o777, 0o700)
+
     def test_failed_behavior_check_cleans_up_and_blocks_deploy(self):
         check = self.root / "check.py"
         check.write_text("raise RuntimeError('test failure')")
