@@ -1,0 +1,169 @@
+/* Owner-only access management (stepped grant form + who has access). */
+:host {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+fieldset,
+p {
+  margin: 0;
+}
+button:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.obs-head {
+  align-items: flex-start;
+}
+.obs-head .lf-note {
+  margin-top: 0.2rem;
+}
+.obs-mono {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+}
+.obs-id {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.obs-fine {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+.obs-pad {
+  padding: 0.75rem 1rem 1rem;
+  border-top: 1px solid var(--line);
+}
+.obs-tiny {
+  min-height: 1.35rem;
+  padding: 0.05rem 0.45rem;
+  font-size: 0.68rem;
+}
+.obs-chips--wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.obs-chips--wrap > .lf-chip {
+  min-height: 2.75rem;
+}
+.obs-inline {
+  border-top: 0;
+}
+.obs-inline > summary {
+  justify-content: flex-start;
+  padding-inline: 0;
+  color: var(--accent);
+}
+.obs-inline .lf-more__body {
+  display: grid;
+  gap: 0.6rem;
+  padding: 0;
+}
+.obs-seg {
+  display: inline-grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  justify-self: start;
+  gap: 0.25rem;
+  margin-bottom: 0.6rem;
+  padding: 0.25rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--input-bg);
+}
+.obs-seg button {
+  min-height: 2.5rem;
+  padding: 0.3rem 0.9rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+.obs-seg button[aria-checked='true'] {
+  background: var(--accent-solid);
+  color: #fff;
+}
+/* Phones answer "who has access?" before the form; desktop keeps the form in the wide column. */
+.obs-holders {
+  order: -1;
+}
+.obs-grant__form {
+  display: grid;
+  gap: 1.35rem;
+}
+.obs-fieldset {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+}
+.obs-fieldset > legend {
+  margin-bottom: 0.6rem;
+  padding: 0;
+}
+.obs-lookup {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 0.5rem;
+}
+.obs-lookup .lf-btn {
+  min-height: 2.9rem;
+}
+.obs-who {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--accent-line);
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+}
+.obs-choices {
+  grid-template-columns: minmax(0, 1fr);
+}
+.obs-grant__submit {
+  width: 100%;
+}
+.obs-grantrow {
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+.obs-grantrow .lf-row__main {
+  flex-basis: calc(100% - 3.25rem);
+}
+.obs-grantrow__actions {
+  display: flex;
+  gap: 0.4rem;
+  margin-left: 3.25rem;
+}
+
+
+@media (min-width: 640px) {
+  .obs-pad {
+    padding-inline: 1.25rem;
+  }
+  .obs-choices {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .obs-grant__submit {
+    width: auto;
+    justify-self: start;
+  }
+  .obs-grantrow {
+    flex-wrap: nowrap;
+    align-items: center;
+  }
+  .obs-grantrow .lf-row__main {
+    flex-basis: auto;
+  }
+  .obs-grantrow__actions {
+    margin-left: 0;
+  }
+}

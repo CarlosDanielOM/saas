@@ -1,0 +1,26 @@
+<dialog #dialog class="lf-dialog obs-trace" aria-labelledby="obs-trace-title" (cancel)="$event.preventDefault(); close()" (click)="onBackdrop($event)">
+  <div class="lf-dialog__head">
+    <div>
+      <h2 id="obs-trace-title">Request timeline</h2>
+      @if (root(); as r) {
+        <p class="lf-note"><span class="obs-name">{{ r.name }}</span> · {{ ms(duration()) }} · {{ trace().spans.length }} {{ trace().spans.length === 1 ? 'step' : 'steps' }}</p>
+      }
+    </div>
+    <button type="button" class="lf-btn lf-btn--ghost lf-btn--icon lf-btn--sm" aria-label="Close" (click)="close()"><app-icon name="x" /></button>
+  </div>
+  <div class="lf-dialog__body trace-detail">
+    <p class="obs-fine">{{ trace().partial ? 'Partial trace: only steps that were kept, and that your access covers, are shown.' : "Bars that overlap ran at the same time, so their durations don't add up." }}</p>
+    <ol class="obs-spans">
+      @for (span of trace().spans; track span.span_id) {
+        <li class="obs-span">
+          <div class="obs-span__label">
+            <strong class="obs-name">{{ span.name }}</strong>
+            <span class="obs-span__meta">{{ label(span) }}</span>
+          </div>
+          <span class="obs-span__value" [class.obs-bad]="isFailed(span.outcome)">{{ ms(span.duration) }}{{ isFailed(span.outcome) ? ' · ' + span.outcome : '' }}</span>
+          <div class="obs-span__track" aria-hidden="true"><span [style.margin-left.%]="offset(span)" [style.width.%]="width(span)" [class.is-failed]="isFailed(span.outcome)"></span></div>
+        </li>
+      }
+    </ol>
+  </div>
+</dialog>

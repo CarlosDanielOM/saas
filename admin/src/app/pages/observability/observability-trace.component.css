@@ -1,0 +1,81 @@
+.obs-name {
+  font-family: var(--mono);
+  font-size: 0.86rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.obs-fine {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+.obs-bad {
+  color: var(--danger);
+}
+.obs-trace .lf-dialog__head p {
+  margin-top: 0.2rem;
+}
+.obs-spans {
+  display: grid;
+  padding: 0;
+  list-style: none;
+}
+.obs-span {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.35rem 0.75rem;
+  padding: 0.65rem 0;
+  border-top: 1px solid var(--line);
+}
+.obs-span:first-child {
+  border-top: 0;
+}
+.obs-span__label {
+  display: grid;
+  min-width: 0;
+}
+.obs-span__meta {
+  color: var(--muted);
+  font-size: 0.74rem;
+  overflow-wrap: anywhere;
+}
+.obs-span__value {
+  font-size: 0.82rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+.obs-span__track {
+  grid-column: 1 / -1;
+  height: 0.6rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--line);
+}
+.obs-span__track > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent-solid);
+}
+.obs-span__track > span.is-failed {
+  background: #dc2626;
+}
+
+@media (min-width: 640px) {
+  .obs-span {
+    grid-template-columns: minmax(0, 14rem) minmax(0, 1fr) 5.5rem;
+    align-items: center;
+  }
+  .obs-span__track {
+    grid-column: auto;
+    order: 1;
+  }
+  .obs-span__value {
+    order: 2;
+    text-align: right;
+  }
+  dialog.obs-trace {
+    width: min(48rem, calc(100% - 2rem));
+  }
+}

@@ -1,0 +1,172 @@
+@if (notice()) {
+  <div class="lf-status lf-status--ok" role="status"><app-icon name="ok" /><div class="lf-status__body"><p class="lf-status__title">{{ notice() }}</p></div></div>
+}
+@if (accessError()) {
+  <div class="lf-status lf-status--live" role="alert"><app-icon name="alert" /><div class="lf-status__body"><p class="lf-status__title">{{ accessError() }}</p></div></div>
+}
+<div class="lf-panels">
+  <div class="lf-col">
+    <section class="lf-tile obs-grant" id="grant-form" aria-labelledby="obs-grant-title">
+      <div class="lf-tile__head obs-head">
+        <div>
+          <h2 class="lf-h2" id="obs-grant-title"><app-icon name="key" />Give someone access</h2>
+          <p class="lf-note">Invite a Twitch account to analytics without making them staff. Nothing changes until you confirm.</p>
+        </div>
+      </div>
+      <form class="obs-grant__form" (submit)="$event.preventDefault(); reviewGrant()" novalidate>
+        <div class="lf-step">
+          <span class="lf-step__label"><span class="lf-step__num">1</span>Who?</span>
+          @if (grantUser() && grantUserName()) {
+            <div class="obs-who">
+              <app-avatar [name]="grantUserName()!" />
+              <div class="lf-row__main"><strong>{{ grantUserName() }}</strong><span class="obs-mono obs-id">Twitch user ID: {{ grantUser() }}</span></div>
+              <button type="button" class="lf-btn lf-btn--sm" (click)="clearGrantUser()">Change</button>
+            </div>
+          } @else {
+            <div class="obs-lookup">
+              <label class="lf-field">
+                <span class="lf-label">Twitch name</span>
+                <input class="lf-input" name="grantLogin" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="e.g. pixelpilot" [value]="grantLogin()" (input)="grantLogin.set($any($event.target).value); lookupState.set('idle')" (keydown.enter)="$event.preventDefault(); lookupLogin()" />
+              </label>
+              <button type="button" class="lf-btn" (click)="lookupLogin()" [disabled]="!grantLogin().trim() || lookupState() === 'busy'">
+                @if (lookupState() === 'busy') { <span class="lf-spin"></span> } @else { <app-icon name="search" /> }Find
+              </button>
+            </div>
+            @if (lookupState() === 'missing') {
+              <p class="lf-error" role="alert">No Twitch account called "{{ grantLogin() }}". Check the spelling, or use the user ID below.</p>
+            }
+            <details class="lf-more obs-inline" [open]="!!grantUser() && !grantUserName()">
+              <summary>Use a Twitch user ID instead<app-icon name="down" /></summary><div class="lf-more__body">
+              <label class="lf-field">
+                <span class="lf-label">Twitch user ID</span>
+                <input class="lf-input" name="grantUser" inputmode="numeric" autocomplete="off" [value]="grantUser()" (input)="setGrantUserId($any($event.target).value)" [attr.aria-invalid]="grantAttempted() && !!grantProblems()['user']" />
+              </label></div>
+            </details>
+          }
+          @if (grantAttempted() && grantProblems()['user']) {
+            <p class="lf-error">{{ grantProblems()['user'] }}</p>
+          }
+        </div>
+
+        <fieldset class="lf-step obs-fieldset">
+          <legend class="lf-step__label"><span class="lf-step__num">2</span>What can they open?</legend>
+          <div class="lf-choices obs-choices">
+            <label class="lf-choice">
+              <input type="radio" name="grantRole" value="viewer" [checked]="grantRole() === 'viewer'" (change)="grantRole.set('viewer')" />
+              <span class="lf-choice__icon"><app-icon name="chart" /></span>
+              <span class="lf-choice__body"><span class="lf-choice__title">Viewer</span><span class="lf-choice__copy">Charts and numbers: calls, chat, queues, and servers when not limited to channels.</span></span>
+            </label>
+            <label class="lf-choice">
+              <input type="radio" name="grantRole" value="investigator" [checked]="grantRole() === 'investigator'" (change)="grantRole.set('investigator')" />
+              <span class="lf-choice__icon"><app-icon name="search" /></span>
+              <span class="lf-choice__body"><span class="lf-choice__title">Investigator</span><span class="lf-choice__copy">Everything a viewer sees, plus logs and single-request traces.</span></span>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="lf-step obs-fieldset">
+          <legend class="lf-step__label"><span class="lf-step__num">3</span>Which channels?</legend>
+          <div class="obs-seg" role="radiogroup" aria-label="Channels">
+            <button type="button" role="radio" [attr.aria-checked]="grantAllChannels()" (click)="grantAllChannels.set(true)">All channels</button>
+            <button type="button" role="radio" [attr.aria-checked]="!grantAllChannels()" (click)="grantAllChannels.set(false)">Only some</button>
+          </div>
+          @if (!grantAllChannels()) {
+            @if (knownChannels().length) {
+              <div class="obs-chips obs-chips--wrap" role="group" aria-label="Allowed channels">
+                @for (item of knownChannels(); track item.id) {
+                  <button type="button" class="lf-chip" [attr.aria-pressed]="grantChannels().includes(item.id)" (click)="toggle(grantChannels, item.id)">
+                    @if (grantChannels().includes(item.id)) { <app-icon name="check" /> }{{ item.name }}
+                  </button>
+                }
+              </div>
+            }
+            <label class="lf-field">
+              <span class="lf-label">Other channel IDs</span>
+              <input class="lf-input" name="channels" autocomplete="off" placeholder="Comma-separated, e.g. 123456, 987654" [value]="grantExtraChannels()" (input)="grantExtraChannels.set($any($event.target).value)" />
+            </label>
+          }
+          @if (grantAttempted() && grantProblems()['channels']) {
+            <p class="lf-error">{{ grantProblems()['channels'] }}</p>
+          }
+          <details class="lf-more obs-inline">
+            <summary>Limit to some services{{ grantServices().length ? ' · ' + grantServices().length + ' picked' : '' }}<app-icon name="down" /></summary><div class="lf-more__body">
+            <p class="obs-fine">Leave all off to allow every service.</p>
+            <div class="obs-chips obs-chips--wrap" role="group" aria-label="Allowed services">
+              @for (svc of services; track svc.id) {
+                <button type="button" class="lf-chip" [attr.aria-pressed]="grantServices().includes(svc.id)" (click)="toggle(grantServices, svc.id)">
+                  @if (grantServices().includes(svc.id)) { <app-icon name="check" /> }{{ svc.label }}
+                </button>
+              }
+            </div></div>
+          </details>
+        </fieldset>
+
+        <fieldset class="lf-step obs-fieldset">
+          <legend class="lf-step__label"><span class="lf-step__num">4</span>For how long?</legend>
+          <div class="obs-chips obs-chips--wrap" role="radiogroup" aria-label="Access ends">
+            @for (option of expiries; track option.id) {
+              <button type="button" class="lf-chip" role="radio" [attr.aria-checked]="grantExpiry() === option.id" (click)="grantExpiry.set(option.id)">{{ option.label }}</button>
+            }
+          </div>
+          @if (grantExpiry() === 'custom') {
+            <label class="lf-field">
+              <span class="lf-label">Access ends</span>
+              <input class="lf-input" type="datetime-local" name="expires" [value]="grantCustomExpiry()" (input)="grantCustomExpiry.set($any($event.target).value)" [attr.aria-invalid]="grantAttempted() && !!grantProblems()['expiry']" />
+            </label>
+          }
+          @if (grantAttempted() && grantProblems()['expiry']) {
+            <p class="lf-error">{{ grantProblems()['expiry'] }}</p>
+          }
+        </fieldset>
+
+        <button type="submit" class="lf-btn lf-btn--primary obs-grant__submit">Review access grant</button>
+      </form>
+    </section>
+  </div>
+
+  <div class="lf-col">
+    <section class="lf-tile lf-tile--flush obs-holders" aria-labelledby="obs-grants-title">
+      <div class="lf-tile__head">
+        <h2 class="lf-h2" id="obs-grants-title"><app-icon name="users" />Who has access</h2>
+        <span class="lf-chip lf-chip--muted">{{ grants().length }}</span>
+      </div>
+      @if (grants().length) {
+        <ul class="lf-rows">
+          @for (item of grants(); track item.user_id) {
+            <li class="lf-row obs-grantrow">
+              <app-avatar [name]="channelName(item.user_id)" [fetch]="!!channelNames()[item.user_id]" />
+              <div class="lf-row__main">
+                <span class="lf-row__title">{{ channelName(item.user_id) }}
+                  <span class="lf-chip obs-tiny" [class.lf-chip--accent]="item.role === 'investigator'">{{ roleLabel(item.role) }}</span>
+                  @if (isExpired(item)) { <span class="lf-chip lf-chip--warn obs-tiny">Expired</span> }
+                </span>
+                <span class="lf-row__meta">{{ item.channels.length ? channelList(item.channels) : 'All channels' }} · {{ item.services.length ? serviceList(item.services) : 'All services' }}</span>
+                <span class="lf-row__meta">{{ item.expires_at ? (isExpired(item) ? 'Ended ' : 'Ends ') + (item.expires_at | date: 'MMM d, y, HH:mm') : 'No end date' }} · <span class="obs-mono">{{ item.user_id }}</span></span>
+              </div>
+              <div class="obs-grantrow__actions">
+                <button type="button" class="lf-btn lf-btn--sm" (click)="editGrant(item)" [attr.aria-label]="'Edit access for ' + channelName(item.user_id)">Edit</button>
+                <button type="button" class="lf-btn lf-btn--sm lf-btn--danger" (click)="revoke(item.user_id)" [attr.aria-label]="'Revoke access for ' + channelName(item.user_id)">Revoke</button>
+              </div>
+            </li>
+          }
+        </ul>
+      } @else if (!loading()) {
+        <div class="lf-empty"><app-icon name="key" /><strong>Only you have access</strong><span>People you add appear here.</span></div>
+      }
+      <p class="obs-fine obs-pad">You always have full access as the owner. Changes are recorded in the audit log.</p>
+    </section>
+  </div>
+</div>
+
+<app-confirm-modal
+  [open]="confirmation() !== null"
+  [title]="confirmation() === 'save' ? 'Give analytics access?' : 'Revoke analytics access?'"
+  [message]="confirmation() === 'save' ? grantSummary() : channelLabel(revokeTarget() || '') + ' loses access to analytics right away.'"
+  [warning]="confirmation() === 'save' && grantRole() === 'investigator' ? 'Investigators can read sanitized logs and traces, including streamer names and request paths.' : null"
+  [confirmLabel]="confirmation() === 'save' ? 'Confirm' : 'Revoke access'"
+  [busyLabel]="confirmation() === 'save' ? 'Saving…' : 'Revoking…'"
+  [isDanger]="confirmation() !== 'save'"
+  [loading]="saving()"
+  (confirmed)="confirmAccess()"
+  (cancelled)="confirmation.set(null)"
+/>

@@ -1,92 +1,761 @@
-<div class="lf-main">
-  <header class="page-head"><div><p class="eyebrow">{{ t('eyebrow') }}</p><h1>{{ t('title') }}</h1><p class="muted">{{ t('intro') }}</p></div>
-    @if (grant()) { <span class="chip">{{ t(grant()!.role) }}</span> }
-  </header>
-  @if (!auth.token()) {
-    <section class="lf-tile state"><h2>{{ t('signIn') }}</h2><p>{{ t('private') }}</p><button class="primary" (click)="login()">{{ t('login') }}</button></section>
-  } @else {
-    @if (error()) { <div class="status warning" role="alert"><span>{{ error() }}</span><button (click)="grant() ? refresh() : initialize()">{{ t('retry') }}</button></div> }
-    @if (grant() && !denied()) {
-      <nav class="tabs" [attr.aria-label]="t('views')">
-        @for (item of tabs(); track item) { <button [class.active]="tab() === item" [attr.aria-pressed]="tab() === item" (click)="selectTab(item)">{{ t(item) }}</button> }
-      </nav>
-      @if (tab() !== 'access') {
-        <form class="filters" (ngSubmit)="refresh()">
-          <label>{{ t('range') }}<select name="range" [(ngModel)]="minutes"><option [ngValue]="15">15 {{ t('minutes') }}</option><option [ngValue]="60">1 {{ t('hour') }}</option><option [ngValue]="360">6 {{ t('hours') }}</option><option [ngValue]="1440">24 {{ t('hours') }}</option><option [ngValue]="10080">7 {{ t('days') }}</option></select></label>
-          <label>{{ t('service') }}<select name="service" [(ngModel)]="service"><option value="">{{ t('allServices') }}</option><option value="api">API</option><option value="bot">Bot</option><option value="cron">Workers</option><option value="queues">Queues</option>@if(tab()==='resources'){<option value="dragonfly">Dragonfly</option><option value="mongodb">MongoDB</option><option value="qdrant">Qdrant</option><option value="postgres">PostgreSQL</option>}</select></label>
-          <label>{{ t('streamer') }}<select name="channel" [(ngModel)]="channel" [attr.aria-label]="t('streamer')"><option value="">{{ t('allChannels') }}</option>@if(channel && channelNames()[channel] === undefined){<option [value]="channel">{{ channelLabel(channel) }}</option>}@for(item of knownChannels();track item.id){<option [value]="item.id">{{ item.name }}</option>}</select>@if(channel){<small class="channel-id">{{ t('channelId') }}: {{ channel }}</small>}</label>
-          @if(tab()==='logs'){<label>{{ t('search') }}<input name="search" [(ngModel)]="search" maxlength="80" /></label>}
-          <button type="submit" [disabled]="loading()">{{ t(loading() ? 'loading' : 'apply') }}</button>
-        </form>
-      }
-      @if (loading() && !data() && tab()==='overview') { <p role="status">{{ t('loading') }}</p> }
-      @if (data()?.truncated) { <p class="status warning">{{ t('truncated') }}</p> }
-      @if (stale()) { <p class="status warning">{{ t('stale') }} {{ data()?.lastAt | date:'short' }}</p> }
-      @if (tab()==='overview') {
-        @if (data(); as overview) {
-          <div class="metric-grid">
-            <article class="lf-tile metric"><span>{{ t('httpCount') }}</span><strong>{{ overview.http.count | number }}</strong><small>{{ t('completed') }}</small></article>
-            <article class="lf-tile metric"><span>{{ t('latencyP95') }}</span><strong>{{ overview.http.p95 === null ? '—' : (overview.http.p95 | number:'1.0-0') }} <small>ms</small></strong><small>{{ t('bucketBound') }}</small></article>
-            <article class="lf-tile metric"><span>{{ t('chatCount') }}</span><strong>{{ overview.chat.count | number }}</strong><small>{{ t('processed') }}</small></article>
-            <article class="lf-tile metric"><span>{{ t('failures') }}</span><strong>{{ overview.http.errors + overview.chat.errors | number }}</strong><small>{{ t('failureMeaning') }}</small></article>
+<div class="lf obs">
+  <div class="lf-main">
+    <header class="lf-head">
+      <div class="lf-head__row">
+        <div class="obs-intro">
+          <h1 class="lf-title">System analytics</h1>
+          <p class="lf-sub">Is everything running smoothly, and if not, where is the problem?</p>
+        </div>
+        @if (grant()) {
+          <div class="lf-head__actions">
+            <button type="button" class="lf-btn lf-btn--sm obs-refresh" aria-label="Refresh" (click)="retry()" [disabled]="loading()">
+              <app-icon name="refresh" [class.lf-spinning]="loading()" /><span class="obs-refresh__text">Refresh</span>
+            </button>
           </div>
-          <section class="lf-tile chart-tile"><div class="section-head"><h2>{{ t('traffic') }}</h2><span class="muted">{{ t('rps') }}</span></div>
-            <p class="legend"><span class="violet">● {{ t('http') }}</span><span class="green">● {{ t('chat') }}</span><span>{{ t('scale') }} {{ chartMax() | number:'1.0-2' }}</span></p>
-            @if (overview.timeline.length) {
-              <svg viewBox="0 0 680 180" preserveAspectRatio="none" class="traffic-chart" role="img" [attr.aria-label]="t('chartLabel')">
-                <path d="M0 15H680M0 87H680M0 160H680" class="gridline" />
-                @for (path of chartPaths('httpRps'); track $index) { <path [attr.d]="path" class="series http" /> }
-                @for (path of chartPaths('chatRps'); track $index) { <path [attr.d]="path" class="series chat" /> }
-              </svg>
-              <div class="axis"><span>{{ t('selectedStart') }}</span><span>{{ overview.generatedAt | date:'shortTime' }}</span></div>
-            } @else { <p class="empty">{{ t('noData') }}</p> }
-            <p class="note">{{ t('chartNote') }}</p>
-            <details><summary>{{ t('chartData') }}</summary><div class="data-table"><table><thead><tr><th>{{ t('time') }}</th><th>HTTP RPS</th><th>{{ t('chat') }} RPS</th></tr></thead><tbody>@for(point of overview.timeline;track point.at){<tr><td>{{ point.at | date:'shortTime' }}</td><td>{{ point.httpRps | number:'1.0-2' }}</td><td>{{ point.chatRps | number:'1.0-2' }}</td></tr>}</tbody></table></div></details>
-          </section>
-          <div class="two-col"><section class="lf-tile"><h2>{{ t('contribution') }}</h2><p class="note">{{ t('contributionNote') }}</p>
-            @for(row of streamers();track row.channel){<button class="streamer-row" (click)="channel=row.channel;refresh()"><span><strong>{{ channelName(row.channel) }}</strong><small class="channel-id">{{ t('channelId') }}: {{ row.channel }}</small><small>{{ row.events | number }} {{ t('events') }} · {{ row.commands | number }} {{ t('commands') }}</small></span><span>{{ row.calls | number }}<small>{{ t('dependencyCalls') }}</small></span></button>} @empty {<p class="empty">{{ t('noData') }}</p>}
-          </section><section class="lf-tile"><h2>{{ t('lifecycle') }}</h2>
-            @for(row of lifecycle();track row.name+row.channel){<div class="plain-row"><span><strong>{{ channelName(row.channel) }}</strong><small class="channel-id">{{ t('channelId') }}: {{ row.channel }}</small><small>{{ t(row.name === 'stream.started' ? 'online' : 'offline') }}</small></span><time>{{ row.lastAt | date:'short' }}</time></div>} @empty {<p class="empty">{{ t('noTransitions') }}</p>}
-            <p class="note">{{ t('lifecycleNote') }}</p>
-          </section></div>
         }
+      </div>
+      @if (grant(); as g) {
+        <div class="lf-head__chips">
+          @if (stale()) {
+            <span class="lf-chip lf-chip--warn"><span class="lf-dot"></span>No new data</span>
+          } @else if (data()?.lastAt) {
+            <span class="lf-chip lf-chip--ok" title="Updates every 15 seconds"><span class="lf-dot"></span>Live{{ refreshedAt() ? ' · ' + (refreshedAt() | date: 'HH:mm:ss') : '' }}</span>
+          }
+          <span class="lf-chip lf-chip--muted">{{ roleLabel(g.role) }} access</span>
+          @if (g.channels.length) {
+            <span class="lf-chip lf-chip--accent">Limited to {{ g.channels.length === 1 ? channelName(g.channels[0]) : g.channels.length + ' channels' }}</span>
+          }
+        </div>
       }
-      @if (tab()==='endpoints' || tab()==='chat' || tab()==='queues') {
-        <section class="lf-tile"><h2>{{ t(tab()) }}</h2><p class="note">{{ t(tab()==='queues'?'queueNote':'timingNote') }}</p>
-          <div class="operation-head"><span>{{ t('operation') }}</span><span>{{ t('count') }}</span><span>{{ t('average') }}</span><span>p95 / p99</span><span>{{ t('failures') }}</span></div>
-          @for(row of rows();track row.service+row.kind+row.name+row.channel){
-            <article class="operation"><div class="operation-name"><strong>{{ row.name }}</strong><small>{{ row.service }} · {{ row.kind }} @if(row.channel){ · {{ channelLabel(row.channel) }} }</small></div>
-              @if(row.kind==='queue'){<div class="gauge"><span>{{ t('latest') }}</span><strong>{{ row.lastValue | number:'1.0-1' }} {{ row.name.endsWith('_ms') ? 'ms' : '' }}</strong><small>{{ row.lastAt | date:'shortTime' }}</small></div>}
-              @else {<div><span class="mobile-label">{{ t('count') }}</span>{{ row.count | number }}</div><div><span class="mobile-label">{{ t('average') }}</span>{{ row.average | number:'1.0-1' }} ms</div><div><span class="mobile-label">p95 / p99</span>{{ row.p95 ?? '—' }} / {{ row.p99 ?? '—' }} ms</div><div [class.error-number]="row.errors>0"><span class="mobile-label">{{ t('failures') }}</span>{{ row.errors }}</div>}
-            </article>
-          } @empty {<p class="empty">{{ t('noData') }}</p>}
-        </section>
+    </header>
+
+    @if (!auth.token()) {
+      <section class="lf-tile obs-state">
+        <app-icon name="key" />
+        <h2 class="lf-h2">Sign in to view analytics</h2>
+        <p class="lf-note">Analytics access is granted separately from staff or channel permissions.</p>
+        <button type="button" class="lf-btn lf-btn--primary" (click)="login()">Sign in</button>
+      </section>
+    } @else {
+      @if (error()) {
+        <div class="lf-status lf-status--live" role="alert">
+          <app-icon name="alert" />
+          <div class="lf-status__body">
+            <p class="lf-status__title">{{ error() }}</p>
+            @if (!denied()) {
+              <div class="lf-status__actions"><button type="button" class="lf-btn lf-btn--sm" (click)="retry()">Retry</button></div>
+            }
+          </div>
+        </div>
       }
-      @if (tab()==='resources') {
-        <section class="lf-tile"><h2>{{ t('resources') }}</h2><p class="note">{{ t('resourceNote') }}</p>
-          <div class="resource-grid">@for(row of latestResources();track row.service+row.name){<article class="resource"><span>{{ row.service }}</span><strong>{{ row.name.endsWith('collector_up') ? t(row.value ? 'available' : 'unavailable') : resourceValue(row) }}</strong><small>{{ row.name }}</small><time>{{ row.at | date:'shortTime' }}</time></article>} @empty {<p class="empty">{{ t('noData') }}</p>}</div>
-          <h3>{{ t('processes') }}</h3><div class="resource-grid">@for(row of runtime();track row.service+row.name){<article class="resource"><span>{{ row.service }}</span><strong>{{ resourceValue(row) }}</strong><small>{{ row.name }}</small><time>{{ row.lastAt | date:'shortTime' }}</time></article>}</div>
-        </section>
+
+      @if (!grant() && loading()) {
+        <div class="lf-status" role="status" aria-label="Loading analytics">
+          <app-skeleton variant="circle" width="1.35rem" height="1.35rem" />
+          <div class="lf-status__body"><app-skeleton width="45%" height="1.1rem" /><app-skeleton width="70%" height="0.9rem" /></div>
+        </div>
       }
-      @if (tab()==='traces') {
-        @if(selectedTrace();as trace){<section class="lf-tile trace-detail"><div class="section-head"><h2>{{ t('traceDetail') }}</h2><button (click)="selectedTrace.set(null)">{{ t('close') }}</button></div><p class="note">{{ t(trace.partial?'partialTrace':'sampledTrace') }}</p>
-          @for(span of trace.spans;track span.span_id){<div class="span-row"><div><strong>{{ span.name }}</strong><small>{{ span.service }} · {{ span.kind }} · {{ channelLabel(span.channel) }} · {{ span.outcome }} · {{ span.duration | number:'1.0-1' }} ms</small></div><div class="span-track"><span [style.margin-left.%]="traceOffset(span)" [style.width.%]="traceWidth(span)" [class.failed]="span.outcome==='error'"></span></div></div>}
-        </section>}
-        <section class="lf-tile"><h2>{{ t('traces') }}</h2><p class="note">{{ t('traceNote') }}</p>
-          @for(span of spans();track span.span_id){<button class="trace-row" (click)="openTrace(span.trace_id)"><span><strong>{{ span.name }}</strong><small>{{ span.at | date:'short' }} · {{ span.service }} · {{ channelLabel(span.channel) }}</small></span><span>{{ span.duration | number:'1.0-1' }} ms<small>{{ span.outcome }} @if(span.partial){ · {{ t('partial') }} }</small></span></button>} @empty {<p class="empty">{{ t('noTraces') }}</p>}
-        </section>
+
+      @if (grant() && !denied()) {
+        <nav class="obs-tabs" aria-label="Analytics views">
+          @for (item of tabs(); track item) {
+            <button type="button" class="obs-tab" [class.is-active]="tab() === item" [attr.aria-pressed]="tab() === item" (click)="selectTab(item)">
+              {{ tabLabel(item) }}
+            </button>
+          }
+        </nav>
+
+        @if (tab() !== 'access') {
+          <section class="obs-filters" aria-label="Filters">
+            <div class="obs-filterbar">
+              <div class="obs-range" role="group" aria-label="Time range">
+                @for (range of ranges; track range.minutes) {
+                  <button type="button" class="obs-range__btn" [attr.aria-pressed]="minutes() === range.minutes" [attr.aria-label]="'Last ' + range.long" (click)="setRange(range.minutes)">
+                    {{ range.label }}
+                  </button>
+                }
+              </div>
+              <button type="button" class="lf-btn lf-btn--icon obs-filter-toggle" aria-label="Service and streamer filters" aria-controls="obs-selects" [attr.aria-expanded]="showFilters()" (click)="showFilters.set(!showFilters())">
+                <app-icon name="settings" />
+                @if ((service() ? 1 : 0) + (channel() ? 1 : 0); as active) { <span class="obs-filter-count">{{ active }}</span> }
+              </button>
+            </div>
+            <div class="obs-selects" id="obs-selects" [class.is-open]="showFilters()">
+              <label class="lf-field">
+                <span class="lf-label">Service</span>
+                <select class="lf-input" name="service" [value]="service()" (change)="setService($any($event.target).value)">
+                  <option value="">All services</option>
+                  @for (option of serviceOptions(); track option.id) {
+                    <option [value]="option.id" [selected]="service() === option.id">{{ option.label }}</option>
+                  }
+                </select>
+              </label>
+              <label class="lf-field">
+                <span class="lf-label">Streamer</span>
+                <select class="lf-input" name="channel" (change)="setChannel($any($event.target).value)">
+                  <option value="" [selected]="!channel()">All channels</option>
+                  @if (channel() && channelNames()[channel()] === undefined) {
+                    <option [value]="channel()" selected>{{ channelLabel(channel()) }}</option>
+                  }
+                  @for (item of knownChannels(); track item.id) {
+                    <option [value]="item.id" [selected]="channel() === item.id">{{ item.name }}</option>
+                  }
+                </select>
+              </label>
+            </div>
+            @if (service() || channel()) {
+              <div class="obs-active">
+                @if (channel()) {
+                  <button type="button" class="lf-chip" (click)="setChannel('')" [attr.aria-label]="'Stop filtering by ' + channelName(channel())">
+                    {{ channelName(channel()) }} <span class="obs-mono">{{ channel() }}</span><app-icon name="x" />
+                  </button>
+                }
+                @if (service()) {
+                  <button type="button" class="lf-chip" (click)="setService('')" [attr.aria-label]="'Stop filtering by ' + serviceLabel(service())">
+                    {{ serviceLabel(service()) }}<app-icon name="x" />
+                  </button>
+                }
+              </div>
+            }
+          </section>
+        }
+
+        @if (data()?.truncated && ['overview', 'endpoints', 'chat', 'queues', 'resources'].includes(tab())) {
+          <p class="lf-notice" role="status">This range hit the row limit, so totals are incomplete. Pick a shorter range or filter by service or streamer.</p>
+        }
+
+        <div class="obs-body" [class.is-refreshing]="loading() && !!data()">
+          <!-- ================= Overview ================= -->
+          @if (tab() === 'overview') {
+            @if (data(); as overview) {
+              @if (health(); as h) {
+                <section class="lf-tile lf-tile--flush obs-health" [class]="'obs-health--' + h.tone" aria-labelledby="obs-health-title">
+                  <div class="obs-health__head">
+                    <app-icon [name]="h.icon" />
+                    <div>
+                      <h2 class="obs-health__title" id="obs-health-title">{{ h.title }}</h2>
+                      <p class="obs-health__text">{{ h.text }}</p>
+                    </div>
+                  </div>
+                  @if (attention().length) {
+                    <ul class="lf-rows obs-attention">
+                      @for (item of attention(); track item.title) {
+                        <li>
+                          @if (item.action; as action) {
+                            <button type="button" class="lf-row lf-row--link obs-rowbtn obs-attention__row" (click)="follow(action)">
+                              <span class="obs-attention__dot" [class.is-live]="item.tone === 'live'" aria-hidden="true"></span>
+                              <span class="lf-row__main">
+                                <span class="lf-row__title">{{ item.title }}</span>
+                                <span class="lf-row__meta">{{ item.text }}</span>
+                                <span class="obs-attention__go">{{ action.label }}</span>
+                              </span>
+                              <app-icon class="lf-row__chev" name="chevron" />
+                            </button>
+                          } @else {
+                            <div class="lf-row obs-attention__row">
+                              <span class="obs-attention__dot" [class.is-live]="item.tone === 'live'" aria-hidden="true"></span>
+                              <span class="lf-row__main">
+                                <span class="lf-row__title">{{ item.title }}</span>
+                                <span class="lf-row__meta">{{ item.text }}</span>
+                              </span>
+                            </div>
+                          }
+                        </li>
+                      }
+                    </ul>
+                  }
+                </section>
+              }
+
+              <section class="lf-metrics" aria-label="Totals">
+                <article class="lf-metric">
+                  <span class="lf-metric__label">API requests</span>
+                  <strong class="lf-metric__value obs-figure">{{ num(overview.http.count) }}</strong>
+                  <span class="lf-metric__note">≈ {{ rate(perMinute()) }} a minute</span>
+                </article>
+                <article class="lf-metric">
+                  <span class="lf-metric__label">API speed (95%)</span>
+                  <strong class="lf-metric__value obs-figure">{{ bound(overview.http.p95, overview.http.count) }}</strong>
+                  <span class="lf-metric__note">Typical {{ bound(overview.http.p50, overview.http.count) }}</span>
+                </article>
+                <article class="lf-metric">
+                  <span class="lf-metric__label">Chat messages</span>
+                  <strong class="lf-metric__value obs-figure">{{ num(overview.chat.count) }}</strong>
+                  <span class="lf-metric__note">{{ overview.chat.count ? ms(overview.chat.average) + ' on average' : 'None handled' }}</span>
+                </article>
+                <article class="lf-metric" [class.obs-metric--bad]="failures().total > 0">
+                  <span class="lf-metric__label">Failures</span>
+                  <strong class="lf-metric__value obs-figure">{{ num(failures().total) }}</strong>
+                  <span class="lf-metric__note">API {{ num(failures().api) }} · chat {{ num(failures().chat) }} · other {{ num(failures().other) }}</span>
+                </article>
+              </section>
+
+              <div class="lf-panels">
+                <div class="lf-col">
+                  <section class="lf-tile obs-chart" aria-labelledby="obs-traffic-title">
+                    <div class="lf-tile__head">
+                      <h2 class="lf-h2" id="obs-traffic-title"><app-icon name="chart" />Traffic</h2>
+                      <div class="obs-legend" aria-hidden="true">
+                        <span><i class="obs-key obs-key--http"></i>API</span>
+                        <span><i class="obs-key obs-key--chat"></i>Chat</span>
+                      </div>
+                    </div>
+                    @if (timeline().length) {
+                      <div
+                        class="obs-plot"
+                        tabindex="0"
+                        role="img"
+                        [attr.aria-label]="'API and chat operations per second over the last ' + rangeLong() + '. Use the arrow keys to read values; exact values are in the table below.'"
+                        (pointermove)="onChartPointer($event)"
+                        (pointerdown)="onChartPointer($event)"
+                        (pointerleave)="hoverIndex.set(null)"
+                        (keydown)="onChartKey($event)"
+                        (blur)="hoverIndex.set(null)"
+                      >
+                        <span class="obs-plot__max">{{ rate(chartMax()) }}/s</span>
+                        <svg [attr.viewBox]="'0 0 ' + chartW + ' ' + chartH" preserveAspectRatio="none" aria-hidden="true">
+                          <path class="obs-grid" [attr.d]="'M0 ' + chartTop + 'H' + chartW + 'M0 ' + (chartTop + (chartH - chartTop) / 2) + 'H' + chartW + 'M0 ' + (chartH - 0.5) + 'H' + chartW" />
+                          @for (path of chartPaths().http; track $index) {
+                            <path class="obs-line obs-line--http" [attr.d]="path" />
+                          }
+                          @for (path of chartPaths().chat; track $index) {
+                            <path class="obs-line obs-line--chat" [attr.d]="path" />
+                          }
+                          @if (hoverPoint(); as p) {
+                            <path class="obs-cross" [attr.d]="'M' + p.x + ' 0V' + chartH" />
+                          }
+                        </svg>
+                        @if (hoverPoint(); as p) {
+                          <span class="obs-dot obs-dot--http" [style.left.%]="(p.x / chartW) * 100" [style.top.%]="(chartY(p.httpRps) / chartH) * 100"></span>
+                          <span class="obs-dot obs-dot--chat" [style.left.%]="(p.x / chartW) * 100" [style.top.%]="(chartY(p.chatRps) / chartH) * 100"></span>
+                          <div class="obs-tip" [style.left.%]="p.left">
+                            <span class="obs-tip__time">{{ p.at | date: (minutes() > 1440 ? 'MMM d, HH:mm' : 'HH:mm') }}</span>
+                            <span><i class="obs-key obs-key--http"></i><strong>{{ rate(p.httpRps) }}/s</strong> API</span>
+                            <span><i class="obs-key obs-key--chat"></i><strong>{{ rate(p.chatRps) }}/s</strong> chat</span>
+                          </div>
+                        }
+                      </div>
+                      <div class="obs-axis" aria-hidden="true">
+                        @for (tick of chartTicks(); track $index) {
+                          <span>{{ tick | date: (minutes() > 1440 ? 'MMM d' : 'HH:mm') }}</span>
+                        }
+                      </div>
+                      <p class="obs-fine">Gaps mean nothing was recorded, not zero traffic. The newest minute may still be filling in.</p>
+                    } @else {
+                      <div class="lf-empty"><app-icon name="chart" /><strong>No traffic recorded yet</strong><span>The chart fills in as the API and bot handle requests.</span></div>
+                    }
+                    @if (timeline().length) {
+                      <details class="lf-more">
+                        <summary>Chart data as a table<app-icon name="down" /></summary><div class="lf-more__body">
+                        <div class="obs-table">
+                          <table>
+                            <thead><tr><th scope="col">Time</th><th scope="col">API / s</th><th scope="col">Chat / s</th></tr></thead>
+                            <tbody>
+                              @for (point of timeline(); track point.at) {
+                                <tr><td>{{ point.at | date: (minutes() > 1440 ? 'MMM d, HH:mm' : 'HH:mm') }}</td><td>{{ rate(point.httpRps) }}</td><td>{{ rate(point.chatRps) }}</td></tr>
+                              }
+                            </tbody>
+                          </table>
+                        </div></div>
+                      </details>
+                    }
+                  </section>
+
+                  <section class="lf-tile lf-tile--flush" aria-labelledby="obs-sinks-title">
+                    <div class="lf-tile__head">
+                      <h2 class="lf-h2" id="obs-sinks-title"><app-icon name="timer" />Where the time goes</h2>
+                      <button type="button" class="lf-btn lf-btn--sm lf-btn--ghost" (click)="follow({ label: '', tab: 'endpoints', kind: 'all', sort: 'slowest' })">All calls<app-icon name="chevron" /></button>
+                    </div>
+                    @if (timeSinks().length) {
+                      <ul class="lf-rows">
+                        @for (sink of timeSinks(); track sink.service + sink.kind + sink.name) {
+                          <li class="lf-row obs-sink">
+                            <div class="lf-row__main">
+                              <span class="lf-row__title obs-name">{{ sink.kind === 'command' ? '!' + sink.name : sink.name }}</span>
+                              <span class="lf-row__meta">{{ kindLabel(sink.kind) }} · {{ serviceLabel(sink.service) }} · {{ num(sink.merged.count) }} × {{ ms(sink.merged.average) }}</span>
+                              <span class="obs-bar" aria-hidden="true"><span [style.width.%]="sink.share"></span></span>
+                            </div>
+                            <span class="lf-row__value">{{ ms(sink.merged.totalMs) }}</span>
+                          </li>
+                        }
+                      </ul>
+                      <p class="obs-fine obs-pad">Total busy time per operation. Totals overlap: an API request's time includes the database calls it makes.</p>
+                    } @else {
+                      <div class="lf-empty"><strong>Nothing timed yet</strong></div>
+                    }
+                  </section>
+                </div>
+
+                <div class="lf-col">
+                  <section class="lf-tile lf-tile--flush" aria-labelledby="obs-streamers-title">
+                    <div class="lf-tile__head">
+                      <h2 class="lf-h2" id="obs-streamers-title"><app-icon name="users" />Busiest streamers</h2>
+                      <span class="lf-chip lf-chip--muted">{{ streamers().length }}</span>
+                    </div>
+                    @if (streamers().length) {
+                      <ul class="lf-rows">
+                        @for (row of visibleStreamers(); track row.channel; let i = $index) {
+                          <li>
+                            <button type="button" class="lf-row lf-row--link obs-rowbtn streamer-row" (click)="focusStreamer(row.channel)" [attr.aria-label]="'Show only ' + channelName(row.channel)">
+                              <app-avatar [name]="channelName(row.channel)" [fetch]="i < 6 && !!channelNames()[row.channel]" />
+                              <span class="lf-row__main">
+                                <strong class="lf-row__title">{{ channelName(row.channel) }}</strong>
+                                <span class="lf-row__meta">{{ num(row.events) }} {{ plural(row.events, 'event', 'events') }} · {{ num(row.commands) }} {{ plural(row.commands, 'command', 'commands') }} · {{ num(row.calls) }} backend {{ plural(row.calls, 'call', 'calls') }}</span>
+                                <span class="obs-bar" aria-hidden="true"><span [style.width.%]="row.share"></span></span>
+                                <span class="obs-mono obs-id">Channel ID: {{ row.channel }}</span>
+                              </span>
+                              <app-icon class="lf-row__chev" name="chevron" />
+                            </button>
+                          </li>
+                        }
+                      </ul>
+                      @if (streamers().length > 6) {
+                        <button type="button" class="obs-showmore" (click)="showAllStreamers.set(!showAllStreamers())">
+                          {{ showAllStreamers() ? 'Show fewer' : 'Show all ' + streamers().length }}
+                        </button>
+                      }
+                      <p class="obs-fine obs-pad">Ranked by Twitch events. This is observed workload, not a share of CPU or memory. Tap one to filter everything to that streamer.</p>
+                    } @else {
+                      <div class="lf-empty"><strong>No streamer activity in this range</strong></div>
+                    }
+                  </section>
+
+                  <section class="lf-tile lf-tile--flush" aria-labelledby="obs-streams-title">
+                    <div class="lf-tile__head"><h2 class="lf-h2" id="obs-streams-title"><app-icon name="pulse" />Went live / offline</h2></div>
+                    @if (lifecycle().length) {
+                      <ul class="lf-rows">
+                        @for (row of lifecycle(); track row.name + row.channel) {
+                          <li class="lf-row">
+                            <span class="lf-dot" [class.lf-dot--live]="row.name === 'stream.started'" [class.obs-dot-off]="row.name !== 'stream.started'" aria-hidden="true"></span>
+                            <div class="lf-row__main">
+                              <span class="lf-row__title">{{ channelName(row.channel) }}</span>
+                              <span class="lf-row__meta">{{ row.name === 'stream.started' ? 'Went live' : 'Went offline' }} · {{ row.lastAt | date: 'MMM d, HH:mm' }}</span>
+                            </div>
+                          </li>
+                        }
+                      </ul>
+                      <p class="obs-fine obs-pad">Latest change per streamer. Compare traffic around these times; timing alone doesn't prove a cause.</p>
+                    } @else {
+                      <div class="lf-empty"><span>No one went live or offline in this range.</span></div>
+                    }
+                  </section>
+                </div>
+              </div>
+            } @else if (loading()) {
+              <div class="lf-status" role="status" aria-label="Loading analytics">
+                <app-skeleton variant="circle" width="1.35rem" height="1.35rem" />
+                <div class="lf-status__body"><app-skeleton width="45%" height="1.1rem" /><app-skeleton width="70%" height="0.9rem" /></div>
+              </div>
+              <div class="lf-metrics">
+                @for (i of [1, 2, 3, 4]; track i) {
+                  <div class="lf-metric"><app-skeleton width="60%" height="0.8rem" /><app-skeleton width="80%" height="1.6rem" /></div>
+                }
+              </div>
+            }
+          }
+
+          <!-- ================= Calls ================= -->
+          @if (tab() === 'endpoints') {
+            <section class="lf-tile lf-tile--flush" aria-labelledby="obs-calls-title">
+              <div class="lf-tile__head obs-head">
+                <div>
+                  <h2 class="lf-h2" id="obs-calls-title"><app-icon name="bolt" />Calls</h2>
+                  <p class="lf-note">{{ num(callSummary().calls) }} calls · {{ num(callSummary().failed) }} failed · last {{ rangeLong() }}</p>
+                </div>
+              </div>
+              <div class="obs-toolbar">
+                <div class="obs-chips" role="group" aria-label="Call type">
+                  @for (kind of callKinds; track kind.id) {
+                    <button type="button" class="lf-chip" [attr.aria-pressed]="callKind() === kind.id" (click)="setCallKind(kind.id)">
+                      {{ kind.label }} <span class="obs-count">{{ callCounts()[kind.id] }}</span>
+                    </button>
+                  }
+                </div>
+                <div class="obs-toolbar__row">
+                  <div class="obs-sort" role="group" aria-label="Sort calls">
+                    <button type="button" [attr.aria-pressed]="callSort() === 'busiest'" (click)="setCallSort('busiest')">Busiest</button>
+                    <button type="button" [attr.aria-pressed]="callSort() === 'slowest'" (click)="setCallSort('slowest')">Slowest</button>
+                    <button type="button" [attr.aria-pressed]="callSort() === 'failing'" (click)="setCallSort('failing')">Failing</button>
+                  </div>
+                  @if (callCounts()[callKind()] > 8 || callQuery()) {
+                    <label class="lf-search obs-search">
+                      <app-icon name="search" />
+                      <span class="sr-only">Find a call</span>
+                      <input class="lf-input" type="search" placeholder="Find a call or streamer" [value]="callQuery()" (input)="callQuery.set($any($event.target).value); callLimit.set(30)" />
+                    </label>
+                  }
+                </div>
+              </div>
+              <div class="obs-ophead" aria-hidden="true"><span>Operation</span><span>Calls</span><span>Average</span><span>95% within</span><span>Failed</span></div>
+              @if (visibleCalls().length) {
+                <ul class="lf-rows obs-ops">
+                  @for (row of visibleCalls(); track row.service + row.kind + row.name + row.channel) {
+                    <li class="obs-op" [class.obs-op--bad]="row.errors > 0">
+                      <div class="obs-op__name">
+                        <strong class="obs-name">{{ row.name }}</strong>
+                        <span class="obs-op__meta">
+                          {{ kindLabel(row.kind) }} · {{ serviceLabel(row.service) }}
+                          @if (row.channel) { · {{ channelName(row.channel) }} }
+                          @if (isStream(row)) { <span class="lf-chip lf-chip--muted obs-tiny">Live connection</span> }
+                        </span>
+                      </div>
+                      <div class="obs-op__num"><span class="obs-op__label">Calls</span>{{ num(row.count) }}</div>
+                      <div class="obs-op__num"><span class="obs-op__label">Average</span>{{ ms(row.average) }}</div>
+                      <div class="obs-op__num obs-op__p95">
+                        <span class="obs-op__label">95% within</span>{{ bound(row.p95, row.count) }}
+                        @if (!isStream(row)) {
+                          <span class="obs-bar obs-bar--thin" aria-hidden="true"><span [style.width.%]="barWidth(row.p95, callScale())" [class.is-slow]="row.p95 === null || row.p95 >= 2500"></span></span>
+                        }
+                      </div>
+                      <div class="obs-op__num" [class.obs-bad]="row.errors > 0"><span class="obs-op__label">Failed</span>{{ num(row.errors) }}</div>
+                    </li>
+                  }
+                </ul>
+                @if (callRows().length > visibleCalls().length) {
+                  <button type="button" class="obs-showmore" (click)="callLimit.set(callLimit() + 30)">Show {{ Math.min(30, callRows().length - visibleCalls().length) }} more of {{ callRows().length - visibleCalls().length }}</button>
+                }
+              } @else {
+                <div class="lf-empty"><app-icon name="bolt" /><strong>No calls match</strong><span>{{ callQuery() ? 'Try a different search.' : 'Nothing of this type was recorded in this range.' }}</span></div>
+              }
+              <details class="lf-more">
+                <summary>How to read these numbers<app-icon name="down" /></summary><div class="lf-more__body">
+                <p class="obs-fine">Durations include waiting. "95% within" is the upper edge of a timing bucket, so it's a ceiling, not an exact value. Outside-service timings stop when the response headers arrive. Each streamer gets its own row because percentiles can't be added together. Live connections (like analytics streams) stay open on purpose and aren't counted as slow.</p></div>
+              </details>
+            </section>
+          }
+
+          <!-- ================= Chat ================= -->
+          @if (tab() === 'chat') {
+            @if (data(); as overview) {
+              <div class="lf-status" [class.lf-status--live]="overview.chat.errors > 0" [class.lf-status--ok]="!overview.chat.errors && overview.chat.count" [class.lf-status--muted]="!overview.chat.count" role="status">
+                <app-icon [name]="overview.chat.errors ? 'alert' : overview.chat.count ? 'ok' : 'info'" />
+                <div class="lf-status__body">
+                  @if (overview.chat.count) {
+                    <p class="lf-status__title">The bot handles a chat message in {{ ms(overview.chat.average) }} on average</p>
+                    <p class="lf-status__text">
+                      95% within {{ bound(overview.chat.p95, overview.chat.count) }} · {{ num(overview.chat.count) }} messages
+                      @if (overview.chat.errors) { · <strong class="obs-bad">{{ num(overview.chat.errors) }} failed</strong> }
+                    </p>
+                  } @else {
+                    <p class="lf-status__title">No chat messages handled in this range</p>
+                    <p class="lf-status__text">Pick a longer range, or check that the bot is connected.</p>
+                  }
+                </div>
+              </div>
+
+              @if (pipeline().length) {
+                <section class="lf-tile" aria-labelledby="obs-pipeline-title">
+                  <div class="lf-tile__head">
+                    <h2 class="lf-h2" id="obs-pipeline-title"><app-icon name="message" />What happens to a message</h2>
+                  </div>
+                  <div class="obs-stack" aria-hidden="true">
+                    @for (stage of pipeline(); track stage.name; let i = $index) {
+                      <span [style.flex-grow]="stage.share" [class]="'obs-stack__seg obs-stack__seg--' + i"></span>
+                    }
+                  </div>
+                  <ol class="obs-steps">
+                    @for (stage of pipeline(); track stage.name; let i = $index) {
+                      <li class="obs-step">
+                        <span [class]="'obs-step__key obs-stack__seg--' + i" aria-hidden="true"></span>
+                        <span class="obs-step__body">
+                          <strong>{{ stage.label }}</strong>
+                          <span class="obs-step__hint">{{ stage.hint }}</span>
+                        </span>
+                        <span class="obs-step__value">
+                          <strong>{{ ms(stage.merged!.average) }}</strong>
+                          <span>{{ num(stage.merged!.count) }}@if (stage.merged!.errors) { · <span class="obs-bad">{{ num(stage.merged!.errors) }} failed</span> }</span>
+                        </span>
+                      </li>
+                    }
+                  </ol>
+                  <p class="obs-fine">Average time per step across all streamers in this range. Not every message reaches every step.</p>
+                </section>
+              }
+
+              <div class="lf-panels">
+                <div class="lf-col">
+                  <section class="lf-tile lf-tile--flush" aria-labelledby="obs-commands-title">
+                    <div class="lf-tile__head"><h2 class="lf-h2" id="obs-commands-title"><app-icon name="command" />Commands</h2></div>
+                    @if (commands().length) {
+                      <ul class="lf-rows">
+                        @for (row of commands(); track row.service + row.kind + row.name + row.channel) {
+                          <li class="lf-row obs-cmd">
+                            <div class="lf-row__main">
+                              <span class="lf-row__title"><span class="obs-name">{{ commandName(row) }}</span>@if (row.kind === 'command_body') {<span class="lf-chip lf-chip--muted obs-tiny">handler only</span>}</span>
+                              <span class="lf-row__meta">{{ row.channel ? channelName(row.channel) : 'All channels' }} · {{ num(row.count) }} {{ plural(row.count, 'run', 'runs') }} · avg {{ ms(row.average) }}@if (row.errors) { · <span class="obs-bad">{{ num(row.errors) }} failed</span> }</span>
+                              <span class="obs-bar obs-bar--thin" aria-hidden="true"><span [style.width.%]="barWidth(row.p95, commandScale())" [class.is-slow]="row.p95 === null || row.p95 >= 2500"></span></span>
+                            </div>
+                            <span class="obs-cmd__p95"><span class="obs-op__label">95% within</span>{{ bound(row.p95, row.count) }}</span>
+                          </li>
+                        }
+                      </ul>
+                    } @else {
+                      <div class="lf-empty"><span>No commands ran in this range.</span></div>
+                    }
+                  </section>
+                </div>
+                <div class="lf-col">
+                  <section class="lf-tile lf-tile--flush" aria-labelledby="obs-events-title">
+                    <div class="lf-tile__head"><h2 class="lf-h2" id="obs-events-title"><app-icon name="twitch" />Twitch events received</h2></div>
+                    @if (events().length) {
+                      <ul class="lf-rows">
+                        @for (event of events(); track event.name) {
+                          <li class="lf-row">
+                            <div class="lf-row__main">
+                              <span class="lf-row__title">{{ event.label }}</span>
+                              <span class="obs-mono obs-id">{{ event.name }}</span>
+                              <span class="obs-bar" aria-hidden="true"><span [style.width.%]="event.share"></span></span>
+                            </div>
+                            <span class="lf-row__value">{{ num(event.count) }}</span>
+                          </li>
+                        }
+                      </ul>
+                    } @else {
+                      <div class="lf-empty"><span>No Twitch events in this range.</span></div>
+                    }
+                  </section>
+                </div>
+              </div>
+            }
+          }
+
+          <!-- ================= Queues ================= -->
+          @if (tab() === 'queues') {
+            @if (data()) {
+              <section class="lf-tile lf-tile--flush" aria-labelledby="obs-queues-title">
+                <div class="lf-tile__head obs-head">
+                  <div>
+                    <h2 class="lf-h2" id="obs-queues-title"><app-icon name="wrap" />Queues</h2>
+                    <p class="lf-note">Background jobs: how long they wait, how long they run, and whether they fail.</p>
+                  </div>
+                </div>
+                @if (queues().length) {
+                  <ul class="lf-rows">
+                    @for (queue of queues(); track queue.key) {
+                      <li class="obs-queue" [class.obs-queue--bad]="queue.failures > 0">
+                        <div class="obs-queue__top">
+                          <div class="lf-row__main">
+                            <span class="lf-row__title">{{ queue.label }}
+                              @if (queue.failures) { <span class="lf-chip lf-chip--danger obs-tiny">{{ num(queue.failures) }} failed</span> }
+                              @if (queue.wait && (queue.wait.worstP95 === null || queue.wait.worstP95 >= 300000)) { <span class="lf-chip lf-chip--warn obs-tiny">Slow to start</span> }
+                            </span>
+                            <span class="obs-mono obs-id">{{ queue.key }}</span>
+                          </div>
+                          <span class="obs-queue__jobs"><strong>{{ num(queue.jobs) }}</strong> jobs</span>
+                        </div>
+                        <dl class="obs-queue__stats">
+                          @if (queue.waiting !== null) {
+                            <div><dt>Waiting now</dt><dd>{{ num(queue.waiting) }}@if (queue.oldestWait) {<small>oldest {{ ms(queue.oldestWait) }}</small>}</dd></div>
+                          }
+                          @if (queue.wait; as w) {
+                            <div><dt>Wait to start</dt><dd>{{ ms(w.average) }}<small>up to {{ w.worstP95 === null ? '> 5 min' : ms(w.worstP95) }}</small></dd></div>
+                          }
+                          @for (run of queue.runs; track run.name) {
+                            <div><dt>Run{{ run.name ? ' · ' + run.name : '' }}</dt><dd>{{ ms(run.merged.average) }}<small>up to {{ run.merged.worstP95 === null ? '> 5 min' : ms(run.merged.worstP95) }}</small></dd></div>
+                          }
+                          @if (queue.total; as t) {
+                            <div><dt>Start to finish</dt><dd>{{ ms(t.average) }}<small>up to {{ t.worstP95 === null ? '> 5 min' : ms(t.worstP95) }}</small></dd></div>
+                          }
+                        </dl>
+                      </li>
+                    }
+                  </ul>
+                  <details class="lf-more">
+                    <summary>How to read these numbers<app-icon name="down" /></summary><div class="lf-more__body">
+                    <p class="obs-fine">Averages are exact across streamers. "Up to" is the worst 95% ceiling of any single streamer. "Waiting now" is a sample taken every 30 seconds{{ queues()[0]?.gaugeAt ? ', last at ' + (queues()[0].gaugeAt | date: 'HH:mm:ss') : '' }}. Wait, run and start-to-finish are measured separately, so they don't add up exactly.</p></div>
+                  </details>
+                } @else {
+                  <div class="lf-empty"><app-icon name="wrap" /><strong>No queue activity in this range</strong></div>
+                }
+              </section>
+            }
+          }
+
+          <!-- ================= Servers ================= -->
+          @if (tab() === 'resources') {
+            @if (resourcesLimited()) {
+              <p class="lf-notice" role="status">Showing only the most recent samples for this range.</p>
+            }
+            @if (dependencies().length) {
+              <div class="obs-deps">
+                @for (dep of dependencies(); track dep.service) {
+                  <section class="lf-tile obs-dep" [class.obs-dep--down]="dep.up === false" [attr.aria-label]="dep.label">
+                    <div class="obs-dep__head">
+                      <div>
+                        <h2 class="obs-dep__title">{{ dep.label }}</h2>
+                        <p class="obs-dep__role">{{ dep.role }}</p>
+                      </div>
+                      @if (dep.up === false) {
+                        <span class="lf-chip lf-chip--danger"><span class="lf-dot"></span>Not reporting</span>
+                      } @else if (dep.up) {
+                        <span class="lf-chip lf-chip--ok"><span class="lf-dot"></span>Reporting</span>
+                      }
+                    </div>
+                    @if (dep.meter; as m) {
+                      <div class="obs-meter">
+                        <div class="obs-meter__label"><span>{{ m.label }}</span><strong>{{ bytes(m.used) }} <span>of {{ bytes(m.limit) }}</span></strong></div>
+                        <div class="lf-bar" role="progressbar" [attr.aria-label]="dep.label + ' ' + m.label.toLowerCase()" [attr.aria-valuenow]="Math.round(m.pct)" aria-valuemin="0" aria-valuemax="100">
+                          <span [style.width.%]="m.pct" [class.obs-meter--warn]="m.pct >= 80" [class.obs-meter--bad]="m.pct >= 90"></span>
+                        </div>
+                      </div>
+                    }
+                    @if (dep.spark) {
+                      <div class="obs-spark">
+                        <span>{{ dep.sparkLabel }} trend</span>
+                        <svg viewBox="0 0 120 30" preserveAspectRatio="none" aria-hidden="true"><path [attr.d]="dep.spark" /></svg>
+                      </div>
+                    }
+                    <dl class="obs-facts">
+                      @for (fact of dep.facts; track fact.label) {
+                        <div><dt>{{ fact.label }}</dt><dd [class.obs-warn]="fact.warn">{{ fact.value }}</dd></div>
+                      }
+                    </dl>
+                    @if (dep.at) {
+                      <p class="obs-fine">Sampled {{ dep.at | date: 'HH:mm:ss' }}</p>
+                    }
+                  </section>
+                }
+              </div>
+            } @else if (!loading()) {
+              <div class="lf-tile lf-empty"><app-icon name="monitor" /><strong>No server samples in this range</strong><span>The collector samples databases every 30 seconds.</span></div>
+            }
+
+            <section class="lf-tile lf-tile--flush" aria-labelledby="obs-proc-title">
+              <div class="lf-tile__head obs-head">
+                <div>
+                  <h2 class="lf-h2" id="obs-proc-title"><app-icon name="monitor" />Our processes</h2>
+                  <p class="lf-note">Latest reading from the API, bot and each worker.</p>
+                </div>
+              </div>
+              @if (processes().length) {
+                <div class="obs-prochead" aria-hidden="true"><span>Process</span><span>Memory</span><span>Heap</span><span>CPU</span><span>Stalls</span></div>
+                <ul class="lf-rows">
+                  @for (proc of processes(); track proc.key) {
+                    <li class="obs-proc" [class.obs-proc--bad]="(proc.lag ?? 0) >= 200">
+                      <div class="obs-proc__name">
+                        <strong>{{ proc.label }}</strong>
+                        <span class="obs-op__meta">{{ serviceLabel(proc.service) }}@if (proc.dropped) { · <span class="obs-warn">{{ num(proc.dropped) }} telemetry dropped</span> }</span>
+                        <span class="obs-bar obs-bar--thin" aria-hidden="true"><span [style.width.%]="barWidth(proc.rss, processScale())"></span></span>
+                      </div>
+                      <div class="obs-op__num"><span class="obs-op__label">Memory</span>{{ bytes(proc.rss) }}</div>
+                      <div class="obs-op__num"><span class="obs-op__label">Heap</span>{{ bytes(proc.heap) }}</div>
+                      <div class="obs-op__num"><span class="obs-op__label">CPU</span>{{ proc.cpu === null ? '—' : pct(proc.cpu) }}</div>
+                      <div class="obs-op__num" [class.obs-warn]="(proc.lag ?? 0) >= 200"><span class="obs-op__label">Stalls</span>{{ ms(proc.lag) }}</div>
+                    </li>
+                  }
+                </ul>
+                <p class="obs-fine obs-pad">CPU is the share of one core. "Stalls" is the 99th-percentile event-loop delay: above 200 ms, requests and chat in that process feel slow.</p>
+              } @else {
+                <div class="lf-empty"><span>No process readings in this range.</span></div>
+              }
+            </section>
+          }
+
+          <!-- ================= Traces ================= -->
+          @if (tab() === 'traces') {
+            <section class="lf-tile lf-tile--flush" aria-labelledby="obs-traces-title">
+              <div class="lf-tile__head obs-head">
+                <div>
+                  <h2 class="lf-h2" id="obs-traces-title"><app-icon name="pulse" />Traces</h2>
+                  <p class="lf-note">Single requests, step by step. A 1% sample, plus every slow (1 s+) or failed one.</p>
+                </div>
+              </div>
+              <div class="obs-toolbar">
+                <div class="obs-chips" role="group" aria-label="Show traces">
+                  <button type="button" class="lf-chip" [attr.aria-pressed]="traceFilter() === 'all'" (click)="traceFilter.set('all')">All <span class="obs-count">{{ spans().length }}</span></button>
+                  <button type="button" class="lf-chip" [attr.aria-pressed]="traceFilter() === 'failed'" (click)="traceFilter.set('failed')">Failed</button>
+                  <button type="button" class="lf-chip" [attr.aria-pressed]="traceFilter() === 'slow'" (click)="traceFilter.set('slow')">Slow (1 s+)</button>
+                </div>
+              </div>
+              @if (visibleSpans().length) {
+                <ul class="lf-rows">
+                  @for (span of visibleSpans(); track span.span_id) {
+                    <li>
+                      <button type="button" class="lf-row lf-row--link obs-rowbtn trace-row" (click)="openTrace(span.trace_id)">
+                        <span class="lf-row__main">
+                          <strong class="lf-row__title"><span class="obs-name">{{ span.name }}</span>
+                            @if (isFailed(span.outcome)) { <span class="lf-chip lf-chip--danger obs-tiny">{{ span.outcome }}</span> }
+                            @if (span.partial) { <span class="lf-chip lf-chip--muted obs-tiny">partial</span> }
+                          </strong>
+                          <span class="lf-row__meta">{{ span.at | date: 'MMM d, HH:mm:ss' }} · {{ kindLabel(span.kind) }} · {{ serviceLabel(span.service) }} · {{ channelLabel(span.channel) }}</span>
+                        </span>
+                        <span class="lf-row__value" [class.obs-warn]="span.duration >= 1000">{{ ms(span.duration) }}</span>
+                        <app-icon class="lf-row__chev" name="chevron" />
+                      </button>
+                    </li>
+                  }
+                </ul>
+                <p class="obs-fine obs-pad">This list isn't a count of requests; use Calls for totals.</p>
+              } @else if (!loading()) {
+                <div class="lf-empty"><app-icon name="pulse" /><strong>No traces here</strong><span>{{ traceFilter() === 'all' ? 'Nothing was kept for this range. Totals in Calls still count every request.' : 'None match this filter.' }}</span></div>
+              }
+            </section>
+          }
+
+          <!-- ================= Logs ================= -->
+          @if (tab() === 'logs') {
+            <section class="lf-tile lf-tile--flush" aria-labelledby="obs-logs-title">
+              <div class="lf-tile__head obs-head">
+                <div>
+                  <h2 class="lf-h2" id="obs-logs-title"><app-icon name="files" />Logs</h2>
+                  <p class="lf-note">Warnings and errors. Messages, chat text, request bodies and tokens are never stored.</p>
+                </div>
+              </div>
+              <div class="obs-toolbar">
+                <label class="lf-search obs-search">
+                  <app-icon name="search" />
+                  <span class="sr-only">Search log names</span>
+                  <input class="lf-input" type="search" name="search" maxlength="80" placeholder="Search log names" [value]="search()" (input)="setSearch($any($event.target).value)" />
+                </label>
+                <div class="obs-chips" role="group" aria-label="Log level">
+                  <button type="button" class="lf-chip" [attr.aria-pressed]="logLevel() === 'all'" (click)="logLevel.set('all')">All <span class="obs-count">{{ logs().length }}</span></button>
+                  <button type="button" class="lf-chip" [attr.aria-pressed]="logLevel() === 'error'" (click)="logLevel.set('error')">Errors <span class="obs-count">{{ logCounts().errors }}</span></button>
+                  <button type="button" class="lf-chip" [attr.aria-pressed]="logLevel() === 'warn'" (click)="logLevel.set('warn')">Warnings <span class="obs-count">{{ logCounts().warnings }}</span></button>
+                </div>
+              </div>
+              @if (visibleLogs().length) {
+                <ul class="lf-rows">
+                  @for (log of visibleLogs(); track $index) {
+                    <li class="obs-log log-row" [class.obs-log--error]="log.level !== 'warn'">
+                      <div class="obs-log__top">
+                        <span class="lf-chip obs-tiny" [class.lf-chip--danger]="log.level !== 'warn'" [class.lf-chip--warn]="log.level === 'warn'">{{ log.level === 'warn' ? 'Warning' : log.level === 'fatal' ? 'Fatal' : 'Error' }}</span>
+                        <strong class="obs-name">{{ log.name }}</strong>
+                      </div>
+                      <span class="lf-row__meta">{{ log.at | date: 'MMM d, HH:mm:ss' }} · {{ serviceLabel(log.service) }} · {{ channelLabel(log.channel) }}</span>
+                      @if (fieldEntries(log).length) {
+                        <div class="obs-fields">
+                          @for (field of fieldEntries(log); track field.key) {
+                            <span class="obs-field"><span>{{ field.key }}</span>{{ field.value }}</span>
+                          }
+                        </div>
+                      }
+                      @if (log.trace_id) {
+                        <button type="button" class="lf-btn lf-btn--sm obs-log__trace" (click)="openLogTrace(log.trace_id)"><app-icon name="pulse" />Open related trace</button>
+                      }
+                    </li>
+                  }
+                </ul>
+              } @else if (!loading()) {
+                <div class="lf-empty"><app-icon name="ok" /><strong>No warnings or errors</strong><span>{{ search() ? 'Nothing matches "' + search() + '".' : 'Nothing was logged in this range.' }}</span></div>
+              }
+            </section>
+          }
+
+          <!-- ================= Access ================= -->
+          @if (tab() === 'access' && grant()?.role === 'owner') {
+            <app-observability-access [grants]="grants()" [channelNames]="channelNames()" [loading]="loading()" (changed)="refresh(false)" (namesFound)="mergeNames($event)" />
+          }
+        </div>
+
+        <footer class="obs-footer">
+          Kept for: 10-second detail 2 days · minute detail 30 days · hourly 1 year · traces 3 days · logs 7 days
+          @if (data()?.lastAt) { · Last observation {{ data()!.lastAt | date: 'MMM d, HH:mm:ss' }} }
+        </footer>
       }
-      @if (tab()==='logs') {<section class="lf-tile"><h2>{{ t('logs') }}</h2><p class="note">{{ t('logsNote') }}</p>@for(log of logs();track $index){<article class="log-row"><div class="section-head"><strong>{{ log.name }}</strong><span class="chip">{{ log.level }}</span></div><small>{{ log.at | date:'short' }} · {{ log.service }} · {{ channelLabel(log.channel) }}</small><p>{{ fields(log) }}</p>@if(log.trace_id){<button (click)="tab.set('traces');openTrace(log.trace_id)">{{ t('openTrace') }}</button>}</article>}@empty{<p class="empty">{{ t('noLogs') }}</p>}</section>}
-      @if (tab()==='access' && grant()?.role==='owner') {
-        <section class="lf-tile"><h2>{{ t('access') }}</h2><p>{{ t('accessNote') }}</p>
-          <form class="grant-form" (ngSubmit)="confirmation.set('save')"><label>{{ t('userId') }}<input name="grantUser" [(ngModel)]="grantUser" required pattern="[0-9]{1,30}" /></label><label>{{ t('role') }}<select name="role" [(ngModel)]="grantRole"><option value="viewer">{{ t('viewer') }}</option><option value="investigator">{{ t('investigator') }}</option></select></label><label>{{ t('allowedChannels') }}<input name="channels" [(ngModel)]="grantChannels" /></label><label>{{ t('allowedServices') }}<input name="services" [(ngModel)]="grantServices" /></label><label>{{ t('expires') }}<input type="datetime-local" name="expires" [(ngModel)]="grantExpires" /></label><button class="primary" type="submit">{{ t('reviewGrant') }}</button></form>
-          <p class="note">{{ t('scopeNote') }}</p>
-          @if(confirmation();as action){<div class="confirmation" role="alert"><strong>{{ t(action==='save'?'confirmGrant':'confirmRevoke') }} {{ action==='save'?grantUser:action }}</strong>@if(action==='save'){<p>{{ t(grantRole) }} · {{ grantChannels || t('allChannels') }} · {{ grantServices || t('allServices') }}</p>}<div><button (click)="confirmation.set(null)">{{ t('cancel') }}</button><button class="primary" [disabled]="saving()" (click)="confirmAccess()">{{ t('confirm') }}</button></div></div>}
-          @if(notice()){<p role="status">{{ notice() }}</p>}
-          @for(item of grants();track item.user_id){<div class="plain-row"><span><strong>{{ channelLabel(item.user_id) }} · {{ t(item.role) }}</strong><small>{{ channelList(item.channels) || t('allChannels') }} · {{ item.services.join(', ') || t('allServices') }}</small><small>{{ item.expires_at ? (item.expires_at | date:'short') : t('noExpiry') }}</small></span><button (click)="confirmation.set(item.user_id)">{{ t('revoke') }}</button></div>}@empty{<p class="empty">{{ t('noGrants') }}</p>}
-        </section>
-      }
-      <footer class="note">{{ t('retention') }} @if(data()?.lastAt){ · {{ t('updated') }} {{ data()?.lastAt | date:'short' }} } </footer>
     }
+  </div>
+
+  @if (selectedTrace(); as trace) {
+    <app-observability-trace [trace]="trace" [channelNames]="channelNames()" (closed)="selectedTrace.set(null)" />
   }
 </div>
