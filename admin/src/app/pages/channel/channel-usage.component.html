@@ -94,16 +94,24 @@
 
       <section class="lf-metrics usage-metrics" aria-label="Credit totals">
         <article class="lf-metric">
-          <span class="lf-metric__label">Credits left</span>
-          @if (data.credits.available) {
-            <strong class="lf-metric__value">{{ compact(data.credits.balance) }}</strong>
-            <div class="lf-bar us-mini-bar" role="progressbar" aria-label="Credits used this period" [attr.aria-valuenow]="usedPercent()" aria-valuemin="0" aria-valuemax="100">
-              <span [style.width.%]="usedPercent()"></span>
-            </div>
-            <span class="lf-metric__note">{{ format(data.credits.used) }} used of {{ format(data.credits.limit) }}</span>
+          <span class="lf-metric__label">{{ display()?.estimated ? 'Estimated credits left' : 'Credits left' }}</span>
+          @if (display()?.credits; as credits) {
+            @if (credits.available) {
+              <strong class="lf-metric__value">{{ compact(credits.balance) }}</strong>
+              <div class="lf-bar us-mini-bar" role="progressbar" aria-label="Credits used this period" [attr.aria-valuenow]="usedPercent()" aria-valuemin="0" aria-valuemax="100">
+                <span [style.width.%]="usedPercent()"></span>
+              </div>
+              <span class="lf-metric__note">{{ format(credits.used) }} used of {{ format(credits.limit) }}</span>
+              @if (display()?.estimated) {
+                <span class="lf-metric__note">Based on current-period allowance and recorded activity.</span>
+              }
+            } @else {
+              <strong class="lf-metric__value">—</strong>
+              <span class="lf-metric__note">No credit account yet</span>
+            }
           } @else {
             <strong class="lf-metric__value">—</strong>
-            <span class="lf-metric__note">No credit account yet</span>
+            <span class="lf-metric__note">Waiting for usage history</span>
           }
         </article>
         <article class="lf-metric">
@@ -113,7 +121,7 @@
         </article>
         <article class="lf-metric">
           <span class="lf-metric__label">Projected by reset</span>
-          @if (data.pacing; as pace) {
+          @if (display()?.pacing; as pace) {
             <strong class="lf-metric__value">{{ compact(pace.projectedPeriodCredits) }}</strong>
             <span class="lf-metric__note">{{ days(pace.remainingPeriodDays) }} left in period</span>
           } @else {

@@ -11,6 +11,7 @@ import {
 import { ChannelApiService } from '../../services/channel-api.service';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { SkeletonComponent } from '../../shared/skeleton/skeleton.component';
+import { buildUsageDisplay } from './usage-display';
 
 const CATEGORIES: UsageCategory[] = [
   'tts',
@@ -55,6 +56,11 @@ export class ChannelUsageComponent {
   readonly channelID = this.route.snapshot.paramMap.get('channelID') || '';
   readonly channelName = signal<string | null>(null);
   readonly summary = signal<UsageSummary | null>(null);
+  private readonly cycleSummary = signal<UsageSummary | null>(null);
+  readonly display = computed(() => {
+    const cycle = this.cycleSummary();
+    return cycle ? buildUsageDisplay(cycle) : null;
+  });
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
   readonly rangeError = signal<string | null>(null);
@@ -77,7 +83,7 @@ export class ChannelUsageComponent {
       .sort((a, b) => b.grantedCredits + b.debitedCredits - (a.grantedCredits + a.debitedCredits)),
   );
   readonly usedPercent = computed(() => {
-    const credits = this.summary()?.credits;
+    const credits = this.display()?.credits;
     if (!credits?.available || !credits.limit) return 0;
     return Math.min(100, Math.max(0, Math.round((credits.used / credits.limit) * 100)));
   });
@@ -87,22 +93,32 @@ export class ChannelUsageComponent {
   readonly forecast = computed<{ tone: Tone; title: string; text: string } | null>(() => {
     const data = this.summary();
     if (!data) return null;
-    const credits = data.credits;
-    const pace = data.pacing;
-    const left = this.format(credits.balance);
-    if (!credits.available) {
+    const display = this.display();
+    if (!display) return null;
+    const credits = display.credits;
+    const pace = display.pacing;
+    if (!data.credits.available) {
       return {
         tone: 'muted',
         title: 'No credit account yet',
         text: "This channel has no billing account linked, so there's no balance to forecast.",
       };
     }
+    if (!credits) {
+      return { tone: 'muted', title: 'Credit history still syncing',
+        text: 'The remaining-credit estimate and forecast will appear when the current period’s activity is ready.' };
+    }
+    const left = this.format(credits.balance);
     if (!pace) {
       return { tone: 'muted', title: `${left} credits left`, text: 'Not enough history to forecast yet.' };
     }
     const resetIn = this.days(pace.remainingPeriodDays);
     const daily = this.format(pace.averageDailyCredits);
     if (pace.status === 'exhausted' || credits.balance <= 0) {
+      if (display.estimated) {
+        return { tone: 'live', title: 'Estimated allowance fully used',
+          text: `Recorded activity has used this period’s allowance. The period resets in ${resetIn}.` };
+      }
       return {
         tone: 'live',
         title: 'Out of credits',
@@ -237,6 +253,7 @@ export class ChannelUsageComponent {
     this.error.set(null);
     this.rangeError.set(null);
     this.summary.set(null);
+    this.cycleSummary.set(null);
     this.transactions.set([]);
     this.nextCursor.set(null);
     this.transactionsError.set(null);
@@ -244,6 +261,17 @@ export class ChannelUsageComponent {
       const response = await firstValueFrom(this.api.getSummary(this.channelID, this.range()));
       if (response.error || !response.data) throw new Error(response.message || "Couldn't load usage");
       if (version !== this.requestVersion) return;
+      let cycle = response.data;
+      // A date filter changes activity totals, never the current balance or forecast.
+      if (cycle.planTier === 'free' && this.customRange()) {
+        const current = await firstValueFrom(this.api.getSummary(this.channelID, {
+          timezone: this.range().timezone,
+        }));
+        if (current.error || !current.data) throw new Error(current.message || "Couldn't load current period");
+        if (version !== this.requestVersion) return;
+        cycle = current.data;
+      }
+      this.cycleSummary.set(cycle);
       this.summary.set(response.data);
       await this.loadTransactions(true);
     } catch (error) {

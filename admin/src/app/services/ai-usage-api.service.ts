@@ -20,6 +20,8 @@ export interface UsageAdjustmentTotal {
 
 export interface UsagePeriod {
   source: string;
+  startsAt?: string;
+  endsAt?: string;
   from: string;
   to: string;
   totalDayCount: number;
@@ -37,6 +39,7 @@ export interface UsageSummary {
     averageDailyCredits: number;
     projectedPeriodCredits: number;
     remainingPeriodDays: number;
+    forecastRateBasis?: 'current_cycle' | 'retention_history';
     expectedToExhaustWithinPeriod?: boolean;
     estimatedDaysUntilExhaustion?: number | null;
   } | null;
@@ -45,6 +48,7 @@ export interface UsageSummary {
     totalSpentCredits: number;
     averageDailySpentCredits: number;
     grantedCredits: number;
+    adjustmentDebitedCredits?: number;
     netConsumedCredits: number;
     transactionCount: number;
     adjustments?: UsageAdjustmentTotal[];
