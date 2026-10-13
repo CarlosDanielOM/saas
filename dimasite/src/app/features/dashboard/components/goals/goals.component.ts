@@ -7,8 +7,11 @@ import { catchError, exhaustMap, interval, of, startWith, Subject, merge } from 
 import { LanguageService } from '../../../../services/language.service';
 import { LinksService } from '../../../../services/links.service';
 
+interface GoalAction { type: 'message' | 'ast'; text: string }
 interface Goal {
   id: string; name: string; metric: string; mode: string; target: number; current: number; percent: number;
+  actions?: { completion?: GoalAction; failure?: GoalAction };
+  outcome?: { phase: string; actionStatus: string };
   startsAt: number; endsAt?: number; windowSeconds?: number; status: string;
 }
 interface Snapshot { plan: string; limit: number; metrics: string[]; revision: number; goals: Goal[]; canManage: boolean }
@@ -34,13 +37,15 @@ export class GoalsComponent {
   readonly saving = signal(false);
   readonly editing = signal<Goal | null>(null);
   readonly deleting = signal(false);
+  readonly actionKinds = ['completion', 'failure'] as const;
   readonly mode = signal('total');
   readonly metric = signal('follows');
   readonly attempted = signal(false);
   readonly form = this.fb.nonNullable.group({
     name: ['', [Validators.required, Validators.maxLength(80)]], metric: ['follows'], mode: ['total'],
     target: [100, [Validators.required, Validators.min(1), Validators.max(1_000_000_000), Validators.pattern(/^\d+$/)]],
-    startsAt: [''], endsAt: [''], windowAmount: [1], windowUnit: [3600]
+    startsAt: [''], endsAt: [''], windowAmount: [1], windowUnit: [3600],
+    completionType: ['none'], completionText: [''], failureType: ['none'], failureText: ['']
   });
   constructor() {
     this.form.controls.mode.valueChanges.pipe(takeUntilDestroyed()).subscribe(mode => this.mode.set(mode));
@@ -65,7 +70,7 @@ export class GoalsComponent {
   open(goal: Goal | null = null, remove = false): void {
     this.editing.set(goal); this.deleting.set(remove); this.saveError.set(''); this.attempted.set(false);
     const date = new Date(); date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
-    this.form.reset({ name: goal?.name ?? '', target: goal?.target ?? 100, metric: goal?.metric ?? 'follows', mode: goal?.mode ?? 'total', startsAt: date.toISOString().slice(0, 16), endsAt: '', windowAmount: 1, windowUnit: 3600 });
+    this.form.reset({ name: goal?.name ?? '', target: goal?.target ?? 100, metric: goal?.metric ?? 'follows', mode: goal?.mode ?? 'total', startsAt: date.toISOString().slice(0, 16), endsAt: '', windowAmount: 1, windowUnit: 3600, completionType: goal?.actions?.completion?.type ?? 'none', completionText: goal?.actions?.completion?.text ?? '', failureType: goal?.actions?.failure?.type ?? 'none', failureText: goal?.actions?.failure?.text ?? '' });
     this.mode.set(goal?.mode ?? 'total');
     this.dialog().nativeElement.showModal();
   }
@@ -81,13 +86,25 @@ export class GoalsComponent {
     const duration = Number(value.windowAmount) * Number(value.windowUnit);
     return value.mode === 'rolling' && (!Number.isSafeInteger(duration) || duration < 1 || duration > 90 * 86400);
   }
+  invalidAction(kind: 'completion' | 'failure'): boolean {
+    const value = this.form.getRawValue(), type = value[`${kind}Type`], text = value[`${kind}Text`];
+    if (kind === 'failure' && !['fixed', 'rolling'].includes(this.mode())) return false;
+    return type !== 'none' && (!text.trim() || text.length > (type === 'message' ? 500 : 4000));
+  }
   save(): void {
     if (this.saving()) return;
     this.attempted.set(true); this.saveError.set('');
     const state = this.data(); if (!state) return;
-    if (!this.deleting() && (this.form.invalid || !this.form.controls.name.value.trim() || this.invalidTime())) return;
+    if (!this.deleting() && (this.form.invalid || !this.form.controls.name.value.trim() || this.invalidTime() || this.invalidAction('completion') || this.invalidAction('failure'))) return;
     const goal = this.editing(), value = this.form.getRawValue();
-    const body = goal ? { name: value.name, target: value.target } : {
+    const actions: { completion?: GoalAction; failure?: GoalAction } = {};
+    for (const kind of ['completion', 'failure'] as const) {
+      if (kind === 'failure' && !['fixed', 'rolling'].includes(value.mode)) continue;
+      const type = value[`${kind}Type`];
+      if (type === 'message' || type === 'ast') actions[kind] = { type, text: value[`${kind}Text`] };
+    }
+    const body = goal ? { name: value.name, target: value.target, actions } : {
+      actions,
       name: value.name, target: value.target, metric: value.metric, mode: value.mode,
       ...(value.mode === 'fixed' ? { startsAt: new Date(value.startsAt).toISOString(), endsAt: new Date(value.endsAt).toISOString() } : {}),
       ...(value.mode === 'rolling' ? { windowSeconds: Number(value.windowAmount) * Number(value.windowUnit) } : {})

@@ -7486,7 +7486,7 @@
     "days": "Days",
     "periodError": "Choose a current or future start and an end after the start.",
     "windowError": "Choose a window between 1 minute and 90 days.",
-    "editHint": "Name and target can change without losing progress. Create a new goal to change its metric or time window.",
+    "editHint": "Edit the name, target or actions. Create another goal to change its metric or time window.",
     "cancel": "Cancel",
     "save": "Save goal",
     "saving": "Saving…",
@@ -7497,6 +7497,35 @@
       "permission_required": "Only the owner or a full-access channel admin can manage goals.",
       "invalid": "Check the goal fields and time period, then try again.",
       "save": "Could not save. Your input has been kept. Try again."
+    },
+    "actionTitle": "Outcome actions",
+    "actionLabels": {
+      "completion": "On completion",
+      "failure": "On failure"
+    },
+    "actionTypes": {
+      "none": "No action",
+      "message": "Chat message",
+      "ast": "AST function / expression"
+    },
+    "astSource": "AST source",
+    "messageText": "Message",
+    "astHint": "Use the same $(...) syntax as commands. Any returned text is sent to chat. Your current plan’s function limits apply. Up to 4,000 characters.",
+    "messageHint": "Sent exactly as written; AST is not evaluated. Up to 500 characters.",
+    "actionError": "Enter action text within the character limit.",
+    "rollingActionsHint": "Completion runs each time the goal reaches its target. Failure runs when it falls below target after succeeding; recovery can complete it again.",
+    "fixedActionsHint": "Completion runs once when the target is reached. Failure runs if the deadline passes below target before completion. Late events update the count but do not repeat a finished outcome.",
+    "completionHint": "Completion runs once when the target is reached, including a current total already above target.",
+    "deliveryHint": "Actions run in the background. Failed or interrupted attempts are not retried automatically because an action may already have taken effect. Editing actions does not replay a past outcome.",
+    "outcomes": {
+      "completed": "Completion action",
+      "failed": "Failure action"
+    },
+    "actionStatus": {
+      "running": "Running",
+      "finished": "Attempt finished",
+      "error": "Delivery failed · not retried",
+      "unknown": "Result unknown · not retried"
     }
   }
 }

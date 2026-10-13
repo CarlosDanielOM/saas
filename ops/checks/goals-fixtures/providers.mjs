@@ -25,7 +25,11 @@ globalThis.fetch=async(input,options={})=>{
    return json({data:remote,pagination:{},total:remote.length});
   }
   if(url.pathname==='/helix/polls'||url.pathname==='/helix/predictions')return json({data:read(url.pathname.endsWith('/polls')?'poll-recovery':'prediction-recovery',[])});
-  if(url.pathname==='/helix/chat/messages')throw new Error('Overlay widgets must not send chat');
+  if(url.pathname==='/helix/chat/messages') {
+   const body=JSON.parse(options.body);fs.appendFileSync(`${directory}/goal-messages.jsonl`,JSON.stringify(body)+'\n');
+   if(body.message==='fixture delivery failure')return json({error:'fixture_failure',message:'Fixture rejected'},503);
+   return json({data:[{message_id:crypto.randomUUID(),is_sent:true}]});
+  }
   return json({data:[],pagination:{},total:0});
  }
  throw new Error(`External request blocked in overlay interaction test: ${url.origin}${url.pathname}`);
@@ -36,7 +40,7 @@ add('utils/databases/qdrant.database','export const getQdrantConnection=async()=
 
 add('utils/opentelemetry_posthog','export default()=>({start:()=>{}});');
 if(process.env.SAAS_GOALS_TARGET==='api')add('utils/qdrant/start_up.qdrant','export const QdrantStartUp=async()=>{};');
-globalThis.__interactionSpawn=(...args)=>String(args[1][0]).endsWith('/domain_events.worker.js')?spawn(...args):null;
+globalThis.__interactionSpawn=(...args)=>/\/(domain_events|goals)\.worker\.js$/.test(String(args[1][0]))?spawn(...args):null;
 registerHooks({
  resolve(specifier,context,nextResolve){
   if(specifier==='node:child_process'&&context.parentURL?.endsWith('/workers/cron.index.js')){

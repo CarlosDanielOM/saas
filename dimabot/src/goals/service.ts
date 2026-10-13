@@ -7,11 +7,11 @@ import { FollowRelationshipLedgerSchema } from '../schemas/follow_relationship_l
 import { StreamSubscriptionLedgerSchema } from '../schemas/stream_subscription_ledger.schema.js';
 import type { DomainEventEnvelope } from '../domain_events/domain_event.types.js';
 import { CANONICAL_BITS_EVENT_TYPE, isLegacyBitsEventType } from '../utils/eventsub.js';
-import { eligible, GoalError, goalInteger, goalLabel, goalLimit, goalMetrics, newGoal, object, type Goal, type GoalMetric, type GoalPlan } from './model.js';
+import { eligible, goalActions, GoalError, goalInteger, goalLabel, goalLimit, goalMetrics, newGoal, object, type Goal, type GoalOutcome, type GoalMetric, type GoalPlan } from './model.js';
 
-interface StoredGoals { _id: string; revision: number; goals: Goal[] }
+interface StoredGoals { _id: string; revision: number; goals: Goal[]; outcomes?: Record<string, GoalOutcome> }
 interface Contribution { _id: string; channel: string; goal: string; occurredAt: number; amount: number; expiresAt?: Date }
-export const GoalSet = model<StoredGoals>('ChannelGoals', new Schema<StoredGoals>({ _id: String, revision: Number, goals: [Schema.Types.Mixed] }, { collection: 'channel_goals', versionKey: false }));
+export const GoalSet = model<StoredGoals>('ChannelGoals', new Schema<StoredGoals>({ _id: String, revision: Number, goals: [Schema.Types.Mixed], outcomes: { type: Schema.Types.Mixed, default: {} } }, { collection: 'channel_goals', versionKey: false }));
 const contributionSchema = new Schema<Contribution>({ _id: String, channel: String, goal: String, occurredAt: Number, amount: Number, expiresAt: Date }, { collection: 'goal_contributions', versionKey: false });
 contributionSchema.index({ channel: 1, goal: 1, occurredAt: 1 });
 contributionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
@@ -39,7 +39,8 @@ export async function goalSnapshot(channel: string, now = Date.now()) {
       { $group: { _id: null, total: { $sum: '$amount' } } }
     ]);
     const current = rows[0]?.total ?? 0;
-    return { ...goal, current, percent: Math.min(100, current / goal.target * 100), status: now < goal.startsAt ? 'scheduled' : current >= goal.target ? 'reached' : goal.mode === 'fixed' && now >= goal.endsAt! ? 'ended' : 'active' };
+    const outcome = state?.outcomes?.[goal.id];
+    return { ...goal, outcome: outcome?.actionStatus === 'running' && now - outcome.at > 300_000 ? { ...outcome, actionStatus: 'unknown' as const } : outcome, current, percent: Math.min(100, current / goal.target * 100), status: now < goal.startsAt ? 'scheduled' : current >= goal.target ? 'reached' : goal.mode === 'fixed' && now >= goal.endsAt! ? 'ended' : 'active' };
   }));
   return { plan, limit: goalLimit(plan), metrics: goalMetrics(plan), revision: state?.revision ?? 0, goals, serverTime: now };
 }
@@ -58,13 +59,13 @@ export async function changeGoal(channel: string, action: 'create' | 'edit' | 'd
     if (action === 'delete') goals.splice(index, 1);
     else {
       const value = object(input);
-      if (Object.keys(value).some(key => !['name', 'target'].includes(key))) throw new GoalError('invalid', 'Only name and target can be edited');
-      goals[index] = { ...goals[index], name: goalLabel(value.name), target: goalInteger(value.target) };
+      if (Object.keys(value).some(key => !['name', 'target', 'actions'].includes(key))) throw new GoalError('invalid', 'Only name, target and actions can be edited');
+      goals[index] = { ...goals[index], name: goalLabel(value.name), target: goalInteger(value.target), ...(value.actions !== undefined ? { actions: goalActions(value.actions, goals[index].mode) } : {}) };
     }
   }
   try {
     if (!state) await GoalSet.create([{ _id: channel, goals, revision: 1 }], { writeConcern: durable });
-    else if (!(await GoalSet.updateOne({ _id: channel, revision: expectedRevision }, { $set: { goals }, $inc: { revision: 1 } }, { writeConcern: durable })).modifiedCount) throw new GoalError('conflict', 'Goals changed. Refresh and try again.', 409);
+    else if (!(await GoalSet.updateOne({ _id: channel, revision: expectedRevision }, { $set: { goals }, $inc: { revision: 1 }, ...(action === 'delete' ? { $unset: { [`outcomes.${id}`]: 1 } } : {}) }, { writeConcern: durable })).modifiedCount) throw new GoalError('conflict', 'Goals changed. Refresh and try again.', 409);
   } catch (error) {
     if ((error as { code?: number }).code === 11000) throw new GoalError('conflict', 'Goals changed. Refresh and try again.', 409);
     throw error;

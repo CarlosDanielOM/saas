@@ -23,15 +23,18 @@ p { line-height:1.5; }
 button { min-height:44px; padding:.5rem .85rem; border:1px solid var(--line,rgba(15,17,21,.08)); border-radius:999px; background:var(--btn,#eef0f5); color:inherit; font:inherit; font-size:.8rem; font-weight:700; cursor:pointer; }
 button.primary { background:var(--goal-accent); border-color:var(--goal-accent); color:#fff; }
 button:disabled { opacity:.55; cursor:default; }
-button:focus-visible,input:focus-visible,select:focus-visible { outline:2px solid var(--accent,#7c3aed); outline-offset:3px; }
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible { outline:2px solid var(--accent,#7c3aed); outline-offset:3px; }
 .error { color:var(--goal-danger); font-size:.85rem; margin-top:.5rem; }.error:empty { display:none; }
 .plan-note { color:var(--goal-gold); font-size:.78rem; }
 dialog { width:100%; max-width:100%; max-height:92dvh; margin:auto 0 0; padding:0; border:1px solid var(--line,rgba(15,17,21,.08)); border-radius:1.25rem 1.25rem 0 0; background:var(--tile,#fff); color:var(--fg,#14151a); box-shadow:0 16px 60px #0005; }
 dialog::backdrop { background:rgba(0,0,0,.65); }
 .dialog-body { padding:1.25rem; } .dialog-body h2 { margin-bottom:1rem; }
 label { display:block; margin:1rem 0 .4rem; font-size:.85rem; font-weight:700; }
-input,select { width:100%; min-width:0; min-height:46px; border:1px solid var(--line,rgba(15,17,21,.08)); border-radius:.65rem; padding:.65rem; font:inherit; font-size:16px; background:var(--bg,#f4f5f8); color:inherit; color-scheme:light; }
-:host-context(html.dark) input,:host-context(html.dark) select { color-scheme:dark; }
+input,select,textarea { width:100%; min-width:0; min-height:46px; border:1px solid var(--line,rgba(15,17,21,.08)); border-radius:.65rem; padding:.65rem; font:inherit; font-size:16px; background:var(--bg,#f4f5f8); color:inherit; color-scheme:light; }
+:host-context(html.dark) input,:host-context(html.dark) select,:host-context(html.dark) textarea { color-scheme:dark; }
 .duration { display:grid; grid-template-columns:1fr 1fr; gap:.6rem; }
 footer { position:sticky; bottom:0; display:flex; justify-content:flex-end; gap:.6rem; border-top:1px solid var(--line,rgba(15,17,21,.08)); padding:1rem 1.25rem; background:var(--tile,#fff); }
 @media(min-width:640px) { dialog { max-width:480px; margin:auto; border-radius:1.25rem; } }
+
+textarea { resize:vertical; }
+.outcome-settings { margin-top:1.25rem; padding-top:1rem; border-top:1px solid var(--line,rgba(15,17,21,.08)); }

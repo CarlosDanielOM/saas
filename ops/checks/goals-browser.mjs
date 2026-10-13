@@ -172,6 +172,11 @@ try {
   await dialog.getByLabel('Target amount').fill('100');
   await dialog.getByLabel('Counting mode').selectOption('current');
   await dialog.getByText('Use the current active follower or subscriber total shown on your dashboard, including people counted before this goal. Progress can decrease after unfollows or subscriptions end.').waitFor();
+  await dialog.getByLabel('On failure',{exact:true}).waitFor({state:'detached'});
+  await dialog.getByLabel('On completion',{exact:true}).selectOption('message');
+  await dialog.getByRole('button',{name:'Save goal',exact:true}).click();
+  await dialog.getByText('Enter action text within the character limit.').waitFor();
+  await dialog.getByLabel('Message',{exact:true}).fill('We did it! $(literal)');
   failNext=true;
   await dialog.getByRole('button',{name:'Save goal',exact:true}).click();
   await dialog.getByText('Could not save. Your input has been kept. Try again.').waitFor();
@@ -179,6 +184,7 @@ try {
   await dialog.getByRole('button',{name:'Save goal',exact:true}).click();
   await dialog.waitFor({state:'hidden'});
   assert.equal(goalsState.goals[0].mode,'current');
+  assert.deepEqual(goalsState.goals[0].actions,{completion:{type:'message',text:'We did it! $(literal)'}});
   await panel.getByText('Current total',{exact:false}).first().waitFor();
   await panel.getByRole('button',{name:'New goal',exact:true}).click();
   await dialog.getByLabel('Goal name',{exact:true}).fill('Weekend subs');
@@ -189,6 +195,10 @@ try {
   const local=value=>{const d=new Date(value);d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16);};
   await dialog.getByLabel('Starts at').fill(local(Date.now()+60000));
   await dialog.getByLabel('Ends at').fill(local(Date.now()+86400000));
+  await dialog.getByLabel('On completion',{exact:true}).selectOption('ast');
+  await dialog.getByLabel('AST source',{exact:true}).fill('$(chat.send Goal reached!)');
+  await dialog.getByLabel('On failure',{exact:true}).selectOption('message');
+  await dialog.getByLabel('Message',{exact:true}).fill('Try again next time');
   await dialog.screenshot({path:screenshots+`/editor-${width}-${theme}.png`});
   let axe=await new AxeBuilder({page}).include('app-channel-goals dialog').withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();
   assert.deepEqual(axe.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>n.failureSummary)})),[]);
@@ -196,6 +206,8 @@ try {
   assert(await panel.getByRole('button',{name:'New goal',exact:true}).isDisabled());
   await panel.getByRole('button',{name:'Edit Community follows',exact:true}).click();
   await dialog.getByLabel('Counting mode').waitFor({state:'detached'});
+  assert.equal(await dialog.getByLabel('Message',{exact:true}).inputValue(),'We did it! $(literal)');
+  await dialog.getByLabel('On completion',{exact:true}).selectOption('none');
   await dialog.getByLabel('Target amount').fill('200');
   await dialog.getByRole('button',{name:'Save goal',exact:true}).click();await dialog.waitFor({state:'hidden'});
   await panel.getByRole('button',{name:'Delete Weekend subs',exact:true}).click();
@@ -207,6 +219,8 @@ try {
   await dialog.getByLabel('Count',{exact:true}).selectOption('subs');
   await dialog.getByLabel('Counting mode').selectOption('rolling');
   await dialog.getByLabel('Look back').fill('1');
+  await dialog.getByLabel('On failure',{exact:true}).selectOption('ast');
+  await dialog.getByLabel('AST source',{exact:true}).fill('$(chat.send Below target)');
   await dialog.getByRole('button',{name:'Save goal',exact:true}).click(); await dialog.waitFor({state:'hidden'});
   assert.equal(goalsState.goals[1].windowSeconds,3600);
   goalsState={...goalsState,plan:'premium',limit:3,metrics:['follows','subs','bits']};
@@ -219,7 +233,7 @@ try {
   assert.equal(await dialog.getByLabel('Counting mode').inputValue(),'total','Bits falls back to since creation');
   await dialog.getByRole('button',{name:'Save goal',exact:true}).click(); await dialog.waitFor({state:'hidden'});
   assert(await panel.getByRole('button',{name:'New goal',exact:true}).isDisabled());
-  goalsState.goals[0]={...goalsState.goals[0],current:125,percent:62.5};
+  goalsState.goals[0]={...goalsState.goals[0],current:125,percent:62.5,outcome:{phase:'completed',actionStatus:'error'}};
   await panel.getByText('125',{exact:false}).first().waitFor({timeout:10000});
   await panel.screenshot({path:screenshots+`/goals-${width}-${theme}.png`});
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'page overflow');
@@ -227,6 +241,6 @@ try {
   assert.deepEqual(axe.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>n.failureSummary)})),[]);
   assert.deepEqual(errors,[]);
   await context.close();
-  console.log(`PASS ${width}px ${theme}: current/since-creation/fixed/rolling, Bits excludes current totals, free and premium limits, Bits gating, errors preserve drafts, edit/delete, progress, axe, no overflow`);
+  console.log(`PASS ${width}px ${theme}: completion/failure message/AST controls and validation, action edits and result, current/since-creation/fixed/rolling, Bits excludes current totals, free and premium limits, Bits gating, errors preserve drafts, edit/delete, progress, axe, no overflow`);
  }
 } finally {await browser.close();}

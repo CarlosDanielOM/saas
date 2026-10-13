@@ -1,5 +1,7 @@
 // saas-ops only: real candidate runtime, isolated Mongo/Redis, goals-fixtures.
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import { settleGoalChannel } from '/app/dist/goals/completion.js';
 import { spawnSync } from 'node:child_process';
 import { getMongoDBConnection } from '/app/dist/utils/databases/mongodb.database.js';
 import { getDragonflyClient } from '/app/dist/utils/databases/dragonfly.database.js';
@@ -31,7 +33,10 @@ if (target === 'api') {
   await request('POST', channel, input, undefined, 400);
   await request('POST', channel, { ...input, target: 0 }, 0, 400);
   await request('POST', channel, { ...input, metric: 'bits' }, 0, 403);
-  let state = await request('POST', channel, input, 0); assert.equal(state.goals.length, 1);
+  await request('POST', channel, { ...input, actions:{completion:{type:'message',text:' '}} }, 0, 400);
+  await request('POST', channel, { ...input, actions:{failure:{type:'message',text:'invalid mode'}} }, 0, 400);
+  let state = await request('POST', channel, {...input,actions:{completion:{type:'ast',text:'$(upper saved)'}}}, 0); assert.equal(state.goals.length, 1);
+  assert.equal(state.goals[0].actions.completion.type,'ast');
   await request('POST', channel, input, 0, 409);
   const id = state.goals[0].id;
   await request('PATCH', channel + '/' + id, { name: 'Changed', target: 20, metric: 'bits' }, 1, 400);
@@ -129,6 +134,62 @@ await Users.updateOne({ 'accounts.id': channel }, { $set: { plan_tier: 'pro' } }
 await assert.rejects(() => changeGoal(channel, 'create', { ...input, metric: 'bits', mode: 'current' }, 6), e => e.code === 'invalid');
 if (target === 'api') await request('POST', channel, { ...input, metric: 'bits', mode: 'current' }, 6, 400);
 console.log('PASS current totals: pre-existing active follows/subs, gifts, ended/other-channel exclusion, falling totals, zero, no event double-counting and Bits rejection.');
+// Exercise actual message sender and AST parser against a captured Twitch provider.
+await redis.set('app:twitch:token', 'fixture-app-token');
+const messages = () => fs.existsSync('/tmp/saas-fixtures/goal-messages.jsonl') ? fs.readFileSync('/tmp/saas-fixtures/goal-messages.jsonl','utf8').trim().split('\n').filter(Boolean).map(line=>JSON.parse(line)) : [];
+const actionChannel='991904';
+await Users.collection.insertOne({plan_tier:'pro',accounts:[{type:'twitch',id:actionChannel,name:'goalactions',actived:true}]});
+await redis.hSet('token:fixture-'+actionChannel,{id:actionChannel,login:'goalactions',display_name:'Fixture'});
+await redis.hSet(`accounts:twitch:${actionChannel}:data`,{id:actionChannel,name:'goalactions',plan_tier:'pro'});
+async function createActionGoal(body) {
+ const state=await goalSnapshot(actionChannel);
+ if(target==='api')await request('POST',actionChannel,{...input,...body},state.revision,200,actionChannel);
+ else await changeGoal(actionChannel,'create',{...input,...body},state.revision);
+ return (await goalSnapshot(actionChannel)).goals.at(-1);
+}
+async function progress(goal,amount,time=Date.now()) {
+ await GoalContribution.create({_id:crypto.randomUUID(),channel:actionChannel,goal:goal.id,occurredAt:time,amount});
+}
+async function settleAndWait(goal,sequence,status='finished') {
+ if(target==='api')await Promise.all([settleGoalChannel(actionChannel),settleGoalChannel(actionChannel)]);
+ await until(async()=>{const outcome=(await goalSnapshot(actionChannel)).goals.find(g=>g.id===goal.id)?.outcome;return outcome?.sequence===sequence&&outcome?.actionStatus===status;});
+}
+const literal=await createActionGoal({target:1,actions:{completion:{type:'message',text:'$(chat.send must stay literal)'}}});
+await progress(literal,1);await settleAndWait(literal,1);
+await Promise.all([settleGoalChannel(actionChannel),settleGoalChannel(actionChannel)]);
+assert.equal(messages().filter(m=>m.message==='$(chat.send must stay literal)').length,1);
+const rolling=await createActionGoal({mode:'rolling',target:1,windowSeconds:60,actions:{completion:{type:'ast',text:'$(chat.send "AST effect")$(upper recovered)'},failure:{type:'message',text:'Rolling slipped'}}});
+assert.equal((await goalSnapshot(actionChannel)).goals.find(g=>g.id===rolling.id).outcome,undefined);
+await progress(rolling,1);await settleAndWait(rolling,1);
+assert.equal(messages().filter(m=>m.message==='AST effect').length,1);
+assert.equal(messages().filter(m=>m.message==='RECOVERED').length,1);
+// Advance the fixture receipt age; real worker must notice expiry with no new events.
+await GoalContribution.updateMany({goal:rolling.id},{$set:{occurredAt:Date.now()-61000}});
+await settleAndWait(rolling,2);
+await Promise.all([settleGoalChannel(actionChannel),settleGoalChannel(actionChannel)]);
+assert.equal(messages().filter(m=>m.message==='Rolling slipped').length,1);
+await progress(rolling,1);await settleAndWait(rolling,3);
+assert.equal(messages().filter(m=>m.message==='AST effect').length,2);
+const failed=await createActionGoal({mode:'fixed',startsAt:new Date().toISOString(),endsAt:new Date(Date.now()+60000).toISOString(),actions:{failure:{type:'message',text:'fixture delivery failure'}}});
+await GoalSet.updateOne({_id:actionChannel,'goals.id':failed.id},{$set:{'goals.$.endsAt':Date.now()-1}});
+await settleAndWait(failed,1,'error');
+await settleGoalChannel(actionChannel);await settleGoalChannel(actionChannel);
+assert.equal(messages().filter(m=>m.message==='fixture delivery failure').length,1,'failed delivery never automatically repeats');
+// Editing action settings preserves outcome; adding a completion action never replays it.
+let actionState=await goalSnapshot(actionChannel);
+await changeGoal(actionChannel,'edit',{name:literal.name,target:1,actions:{completion:{type:'message',text:'must not replay'}}},actionState.revision,literal.id);
+await settleGoalChannel(actionChannel);
+assert(!messages().some(m=>m.message==='must not replay'));
+// Simulate process loss after the durable claim: uncertainty remains visible, no resend.
+const interrupted=await createActionGoal({target:1,actions:{completion:{type:'message',text:'must not duplicate interrupted'}}});
+await GoalSet.updateOne({_id:actionChannel},{$set:{[`outcomes.${interrupted.id}`]:{phase:'completed',sequence:1,at:Date.now()-310000,actionStatus:'running'}}});
+await progress(interrupted,1);await settleGoalChannel(actionChannel);
+assert.equal((await goalSnapshot(actionChannel)).goals.find(g=>g.id===interrupted.id).outcome.actionStatus,'unknown');
+assert(!messages().some(m=>m.message==='must not duplicate interrupted'));
+actionState=await goalSnapshot(actionChannel);
+await changeGoal(actionChannel,'delete',{},actionState.revision,literal.id);
+assert.equal((await GoalSet.findById(actionChannel).lean()).outcomes[literal.id],undefined);
+console.log('PASS outcome actions: real AST side effects and returned text, literal chat, concurrent claims, no repeat, rolling expiry/failure/recovery without events, fixed deadline, provider failure, edits, interrupted attempt and deletion.');
 const tests = spawnSync('node', ['--test', 'dist/goals/model.test.js', 'dist/domain_events/domain_event_consumers.test.js', 'dist/domain_events/domain_event_producers.test.js', 'dist/utils/domain_event_consumer.test.js'], { encoding: 'utf8', timeout: 30000, env: { ...process.env, NODE_OPTIONS: '' } });
 process.stdout.write(tests.stdout); process.stderr.write(tests.stderr); assert.equal(tests.status, 0);
 console.log('PASS runtime target: ' + target + (target === 'cron' ? ', real supervisor and goals consumer' : ', real API entrypoint'));

@@ -2,6 +2,14 @@ export type GoalMetric = 'follows' | 'subs' | 'bits';
 // Keep `total` as the persisted since-creation mode for existing goals.
 export type GoalMode = 'total' | 'current' | 'fixed' | 'rolling';
 export type GoalPlan = 'free' | 'premium' | 'pro';
+export interface GoalAction { type: 'message' | 'ast'; text: string }
+export interface GoalActions { completion?: GoalAction; failure?: GoalAction }
+export interface GoalOutcome {
+  phase: 'completed' | 'failed';
+  sequence: number;
+  at: number;
+  actionStatus: 'none' | 'running' | 'finished' | 'error' | 'unknown';
+}
 export interface Goal {
   id: string;
   name: string;
@@ -10,6 +18,7 @@ export interface Goal {
   target: number;
   createdAt: number;
   startsAt: number;
+  actions?: GoalActions;
   endsAt?: number;
   windowSeconds?: number;
 }
@@ -48,6 +57,7 @@ export function newGoal(value: unknown, plan: GoalPlan, id: string, now: number)
     goal.startsAt = Math.max(now, goal.startsAt);
   }
   if (mode === 'rolling') goal.windowSeconds = goalInteger(input.windowSeconds, 90 * 86400);
+  goal.actions = goalActions(input.actions, mode);
   return goal;
 }
 export function eligible(goal: Goal, occurredAt: number, now: number): boolean {
@@ -56,4 +66,30 @@ export function eligible(goal: Goal, occurredAt: number, now: number): boolean {
   if (goal.mode === 'fixed') return occurredAt < goal.endsAt!;
   if (goal.mode === 'rolling') return occurredAt > now - goal.windowSeconds! * 1000;
   return true;
+}
+
+export function goalActions(value: unknown, mode: GoalMode): GoalActions {
+  if (value === undefined) return {};
+  const input = object(value), actions: GoalActions = {};
+  if (Object.keys(input).some(key => !['completion', 'failure'].includes(key))) throw new GoalError('invalid', 'Unknown goal action');
+  for (const key of ['completion', 'failure'] as const) {
+    if (input[key] === undefined) continue;
+    if (key === 'failure' && mode !== 'fixed' && mode !== 'rolling') throw new GoalError('invalid', 'Failure actions require a fixed or rolling goal');
+    const action = object(input[key]);
+    if (Object.keys(action).some(key => !['type', 'text'].includes(key)) || (action.type !== 'message' && action.type !== 'ast')) throw new GoalError('invalid', 'Choose a message or AST action');
+    const max = action.type === 'message' ? 500 : 4000;
+    if (typeof action.text !== 'string' || !action.text.trim() || action.text.length > max) throw new GoalError('invalid', `Action text must be 1–${max} characters`);
+    actions[key] = { type: action.type as GoalAction['type'], text: action.text.trim() };
+  }
+  return actions;
+}
+
+// Terminal outcomes latch except rolling goals, which can recover and fail again.
+export function nextGoalOutcome(goal: Goal, current: number, previous: GoalOutcome | undefined, now: number): GoalOutcome['phase'] | null {
+  if (now < goal.startsAt) return null;
+  if (previous && goal.mode !== 'rolling') return null;
+  if (current >= goal.target) return previous?.phase === 'completed' ? null : 'completed';
+  if (goal.mode === 'fixed' && now >= goal.endsAt!) return 'failed';
+  if (goal.mode === 'rolling' && previous?.phase === 'completed') return 'failed';
+  return null;
 }

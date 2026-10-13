@@ -7486,7 +7486,7 @@
     "days": "Días",
     "periodError": "Elige un inicio actual o futuro y un final posterior al inicio.",
     "windowError": "Elige una ventana entre 1 minuto y 90 días.",
-    "editHint": "Puedes cambiar el nombre y el objetivo sin perder progreso. Crea otra meta para cambiar qué cuenta o su período.",
+    "editHint": "Edita el nombre, el objetivo o las acciones. Crea otra meta para cambiar la métrica o el período.",
     "cancel": "Cancelar",
     "save": "Guardar meta",
     "saving": "Guardando…",
@@ -7497,6 +7497,35 @@
       "permission_required": "Solo el propietario o un administrador con acceso completo puede gestionar metas.",
       "invalid": "Revisa los campos y el período e inténtalo de nuevo.",
       "save": "No se pudo guardar. Tus datos se han conservado. Inténtalo de nuevo."
+    },
+    "actionTitle": "Acciones de resultado",
+    "actionLabels": {
+      "completion": "Al completar",
+      "failure": "Al fallar"
+    },
+    "actionTypes": {
+      "none": "Sin acción",
+      "message": "Mensaje de chat",
+      "ast": "Función / expresión AST"
+    },
+    "astSource": "Código AST",
+    "messageText": "Mensaje",
+    "astHint": "Usa la misma sintaxis $(...) que en los comandos. El texto devuelto se envía al chat. Se aplican los límites de funciones de tu plan actual. Hasta 4000 caracteres.",
+    "messageHint": "Se envía tal como lo escribes; no se evalúa AST. Hasta 500 caracteres.",
+    "actionError": "Escribe el texto de la acción dentro del límite de caracteres.",
+    "rollingActionsHint": "La acción de completar se ejecuta cada vez que se alcanza el objetivo. La de fallo se ejecuta al bajar del objetivo tras completarlo; al recuperarse puede completarse de nuevo.",
+    "fixedActionsHint": "La acción de completar se ejecuta una vez al alcanzar el objetivo. La de fallo se ejecuta si vence el plazo sin completarlo. Los eventos tardíos actualizan el conteo, pero no repiten un resultado finalizado.",
+    "completionHint": "La acción de completar se ejecuta una vez al alcanzar el objetivo, incluso si el total actual ya lo supera.",
+    "deliveryHint": "Las acciones se ejecutan en segundo plano. Los intentos fallidos o interrumpidos no se reintentan automáticamente porque podrían haber surtido efecto. Editar las acciones no repite un resultado anterior.",
+    "outcomes": {
+      "completed": "Acción de completar",
+      "failed": "Acción de fallo"
+    },
+    "actionStatus": {
+      "running": "En ejecución",
+      "finished": "Intento finalizado",
+      "error": "Error de envío · sin reintento",
+      "unknown": "Resultado desconocido · sin reintento"
     }
   }
 }

@@ -19,6 +19,9 @@
         @if (goal.mode === 'rolling') { <p class="detail">{{ t('window', { hours: (goal.windowSeconds! / 3600 | number:'1.0-2')! }) }}</p> }
         <div class="numbers"><strong>{{ goal.current | number }} <span>/ {{ goal.target | number }}</span></strong><span>{{ goal.percent | number:'1.0-0' }}%</span></div>
         <div class="progress" role="progressbar" [attr.aria-label]="goal.name" [attr.aria-valuenow]="goal.current" [attr.aria-valuemin]="0" [attr.aria-valuemax]="goal.current > goal.target ? goal.current : goal.target" [attr.aria-valuetext]="goal.current + ' / ' + goal.target"><span [style.width.%]="goal.percent"></span></div>
+        @if (goal.outcome && goal.outcome.actionStatus !== 'none') {
+          <p class="detail" [class.error]="goal.outcome.actionStatus === 'error' || goal.outcome.actionStatus === 'unknown'">{{ t('outcomes.' + goal.outcome.phase) }} · {{ t('actionStatus.' + goal.outcome.actionStatus) }}</p>
+        }
         @if (state.canManage) {
           <div class="actions"><button type="button" (click)="open(goal)" [attr.aria-label]="t('editNamed', { name: goal.name })">{{ t('edit') }}</button><button type="button" (click)="open(goal, true)" [attr.aria-label]="t('deleteNamed', { name: goal.name })">{{ t('delete') }}</button></div>
         }
@@ -63,6 +66,25 @@
           }
           <p id="goal-time-error" class="error">@if (attempted() && invalidTime()) { {{ t(mode() === 'fixed' ? 'periodError' : 'windowError') }} }</p>
         } @else { <p class="note">{{ t('editHint') }}</p> }
+        <div class="outcome-settings">
+          <h3>{{ t('actionTitle') }}</h3>
+          <p class="note">{{ t(mode() === 'rolling' ? 'rollingActionsHint' : mode() === 'fixed' ? 'fixedActionsHint' : 'completionHint') }}</p>
+          @for (kind of actionKinds; track kind) {
+            @if (kind === 'completion' || mode() === 'fixed' || mode() === 'rolling') {
+              <label [for]="'goal-' + kind + '-type'">{{ t('actionLabels.' + kind) }}</label>
+              <select [id]="'goal-' + kind + '-type'" [formControlName]="kind + 'Type'">
+                <option value="none">{{ t('actionTypes.none') }}</option><option value="message">{{ t('actionTypes.message') }}</option><option value="ast">{{ t('actionTypes.ast') }}</option>
+              </select>
+              @if (form.get(kind + 'Type')?.value !== 'none') {
+                <label [for]="'goal-' + kind + '-text'">{{ t(form.get(kind + 'Type')?.value === 'ast' ? 'astSource' : 'messageText') }}</label>
+                <textarea [id]="'goal-' + kind + '-text'" [formControlName]="kind + 'Text'" rows="3" [maxlength]="form.get(kind + 'Type')?.value === 'ast' ? 4000 : 500" [attr.aria-describedby]="'goal-' + kind + '-help'"></textarea>
+                <p class="note" [id]="'goal-' + kind + '-help'">{{ t(form.get(kind + 'Type')?.value === 'ast' ? 'astHint' : 'messageHint') }}</p>
+                @if (attempted() && invalidAction(kind)) { <p class="error" role="alert">{{ t('actionError') }}</p> }
+              }
+            }
+          }
+          <p class="note">{{ t('deliveryHint') }}</p>
+        </div>
       }
       @if (saveError()) { <p class="error" role="alert">{{ t('errors.' + saveError()) }}</p> }
     </div>
