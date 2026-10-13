@@ -7705,6 +7705,8 @@
     "noGrants": "No additional accounts have access.",
     "noAccess": "Analytics access has not been granted to your account.",
     "retention": "10-second metrics: 48h · minute metrics: 30d · hourly metrics: 1y · traces: 3d · logs: 7d",
-    "updated": "Last observation"
+    "updated": "Last observation",
+    "unknownChannel": "Unknown channel",
+    "channelId": "Channel ID"
   }
 }

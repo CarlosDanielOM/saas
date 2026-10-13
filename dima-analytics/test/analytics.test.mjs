@@ -19,14 +19,15 @@ test('real PostgreSQL persistence, replay safety, API permissions and Redis inge
  try{
   for(const[token,id]of[['owner','1'],['viewer','2'],['investigator','3'],['stranger','4'],['expired','5']])await redis.hSet('token:'+token,{id,login:token});
   assert.equal((await call('/api/overview','bad')).status,401);assert.equal((await call('/api/overview','stranger')).status,403);
+  await redis.hSet('accounts:twitch:channel-a:data',{name:'pixelpilot',email:'private@example.invalid',access_token:'private-token'});await redis.hSet('accounts:twitch:channel-b:data',{name:'lunastreams'});
   const one=batch(),two=batch('channel-b',75);one.spans=[{at:Date.now(),traceId:'a'.repeat(32),spanId:'b'.repeat(16),parentId:null,channel:'channel-a',kind:'chat',name:'message',outcome:'ok',duration:10,partial:false}];two.spans=[{...one.spans[0],spanId:'c'.repeat(16),channel:'channel-b'}];one.logs=[{at:Date.now(),level:'error',name:'fixture',channel:'channel-a',traceId:'a'.repeat(32),fields:{code:'test'}}];
   assert.equal(await ingest(pool,one),true);assert.equal(await ingest(pool,one),false);await ingest(pool,two);
   assert.equal((await overview(pool,{channels:[],services:[]},{minutes:60})).chat.count,175);assert.equal((await overview(pool,{channels:[],services:[]},{minutes:10080})).chat.count,175);
   for(const[id,role]of[['2','viewer'],['3','investigator']])assert.equal((await call('/api/grants/'+id,'owner','PUT',{role,channels:['channel-a'],services:[],expiresAt:null})).status,200);
   assert.equal((await call('/api/grants/9','viewer','PUT',{role:'viewer',channels:[],services:[],expiresAt:null})).status,403);
-  assert.equal((await call('/api/overview','viewer')).body.chat.count,100);assert.equal((await call('/api/overview?channel=channel-b','viewer')).body.chat.count,0);
+  const named=await call('/api/overview','viewer');assert.equal(named.body.chat.count,100);assert.deepEqual(named.body.channelNames,{'channel-a':'pixelpilot'});assert(!JSON.stringify(named.body).includes('private-token'));assert(!JSON.stringify(named.body).includes('private@example'));assert.deepEqual((await call('/api/session','viewer')).body.channelNames,{'channel-a':'pixelpilot'});const deniedChannel=await call('/api/overview?channel=channel-b','viewer');assert.equal(deniedChannel.body.chat.count,0);assert.deepEqual(deniedChannel.body.channelNames,{'channel-a':'pixelpilot'});
   for(const path of ['/api/resources','/api/traces','/api/logs'])assert.equal((await call(path,'viewer')).status,403);
-  const detail=await call('/api/traces/'+'a'.repeat(32),'investigator');assert.equal(detail.body.spans.length,1);assert.equal(detail.body.spans[0].channel,'channel-a');assert.equal(detail.body.partial,true);
+  const detail=await call('/api/traces/'+'a'.repeat(32),'investigator');assert.equal(detail.body.spans.length,1);assert.equal(detail.body.spans[0].channel,'channel-a');assert.equal(detail.body.partial,true);assert.deepEqual(detail.body.channelNames,{'channel-a':'pixelpilot'});
   assert.equal((await call('/api/logs','investigator')).body.logs.length,1);assert.equal((await call('/api/overview?minutes=9999999')).status,400);
   await pool.query("INSERT INTO analytics_grants(user_id,role,granted_by,expires_at) VALUES('5','viewer','1',now()-interval '1 second')");assert.equal((await call('/api/overview','expired')).status,403);
   await call('/api/grants/2','owner','DELETE');assert.equal((await call('/api/overview','viewer')).status,403);

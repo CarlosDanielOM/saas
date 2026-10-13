@@ -105,5 +105,7 @@ export const OBSERVABILITY_TEXT: Record<string, string> = {
   "noGrants": "No additional accounts have access.",
   "noAccess": "Analytics access has not been granted to your account.",
   "retention": "10-second metrics: 48h \u00b7 minute metrics: 30d \u00b7 hourly metrics: 1y \u00b7 traces: 3d \u00b7 logs: 7d",
-  "updated": "Last observation"
+  "updated": "Last observation",
+  "unknownChannel": "Unknown channel",
+  "channelId": "Channel ID"
 };

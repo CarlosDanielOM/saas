@@ -3,6 +3,7 @@ import { createClient } from 'redis';
 import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { makePool, migrate, retain, ingest, overview, scopeSql, rangeQuery } from './store.mjs';
+import { createChannelNames } from './channel-names.mjs';
 import { createCollectors } from './collectors.mjs';
 
 export function configFromEnv(env=process.env) {
@@ -10,7 +11,7 @@ export function configFromEnv(env=process.env) {
     mongoUrl:env.MONGO_METRICS_URI, qdrantUrl:env.QDRANT_URL, qdrantKey:env.QDRANT_API_KEY, port:Number(env.PORT||3210), collectors:env.COLLECTORS_DISABLED!=='true' };
 }
 const asyncRoute = fn => (req,res,next) => Promise.resolve(fn(req,res,next)).catch(next);
-export function createApp({pool,redis,config,health,validateToken}) {
+export function createApp({pool,redis,config,health,validateToken,channelNames=createChannelNames({redis})}) {
   const app=express();
   app.disable('x-powered-by');
   app.use(express.json({limit:'16kb'}));
@@ -47,8 +48,12 @@ export function createApp({pool,redis,config,health,validateToken}) {
     if(!req.grant)return res.status(403).json({message:'Analytics access has not been granted to your account'});
     next();
   }));
-  app.get('/api/session',(req,res)=>res.json({user:req.identity,grant:req.grant}));
-  app.get('/api/overview',asyncRoute(async(req,res)=>res.json(await overview(pool,req.grant,req.query))));
+  app.get('/api/session',asyncRoute(async(req,res)=>res.json({user:req.identity,grant:req.grant,channelNames:await channelNames.resolve(req.grant.channels)})));
+  app.get('/api/overview',asyncRoute(async(req,res)=>{
+    const data=await overview(pool,req.grant,req.query);
+    const selected=typeof req.query.channel==='string'&&(!req.grant.channels.length||req.grant.channels.includes(req.query.channel))?[req.query.channel]:[];
+    res.json({...data,channelNames:await channelNames.resolve([...selected,...req.grant.channels,...data.groups.map(row=>row.channel)])});
+  }));
   app.get('/api/resources',asyncRoute(async(req,res)=>{
     if(req.grant.channels.length)return res.status(403).json({message:'System resources require a system-wide grant'});
     const {minutes}=rangeQuery(req.query),params=[Math.min(minutes,43200)];
@@ -61,24 +66,27 @@ export function createApp({pool,redis,config,health,validateToken}) {
     const {minutes}=rangeQuery(req.query),params=[Math.min(minutes,4320)];
     const scope=scopeSql(req.grant,params,req.query);
     const rows=await pool.query(`SELECT at,trace_id,span_id,parent_id,service,channel,kind,name,outcome,duration,partial FROM analytics_spans WHERE at>=now()-($1::int*interval '1 minute')${scope} ORDER BY at DESC LIMIT 100`,params);
-    res.json({spans:rows.rows});
+    res.json({spans:rows.rows,channelNames:await channelNames.resolve(rows.rows.map(row=>row.channel))});
   }));
   app.get('/api/traces/:id',investigate,asyncRoute(async(req,res)=>{
     if(!/^[a-f0-9]{32}$/.test(req.params.id))return res.status(400).json({message:'Invalid trace ID'});
     const params=[req.params.id],scope=scopeSql(req.grant,params);
     const rows=await pool.query(`SELECT at,trace_id,span_id,parent_id,service,channel,kind,name,outcome,duration,partial FROM analytics_spans WHERE trace_id=$1 AND at>=now()-interval '3 days'${scope} ORDER BY at LIMIT 501`,params);
     if(!rows.rowCount)return res.status(404).json({message:'Trace not found in your scope'});
-    res.json({spans:rows.rows.slice(0,500),partial:rows.rowCount>500||req.grant.channels.length>0||req.grant.services.length>0||rows.rows.some(r=>r.partial)});
+    res.json({spans:rows.rows.slice(0,500),channelNames:await channelNames.resolve(rows.rows.slice(0,500).map(row=>row.channel)),partial:rows.rowCount>500||req.grant.channels.length>0||req.grant.services.length>0||rows.rows.some(r=>r.partial)});
   }));
   app.get('/api/logs',investigate,asyncRoute(async(req,res)=>{
     const {minutes}=rangeQuery(req.query),params=[Math.min(minutes,10080)];
     let scope=scopeSql(req.grant,params,{channel:req.query.channel,service:req.query.service});
     if(req.query.search){params.push('%'+String(req.query.search).slice(0,80).replace(/[\\%_]/g,'\\$&')+'%');scope+=` AND name ILIKE $${params.length}`;}
     const rows=await pool.query(`SELECT at,service,channel,level,name,trace_id,fields FROM analytics_logs WHERE at>=now()-($1::int*interval '1 minute')${scope} ORDER BY at DESC LIMIT 100`,params);
-    res.json({logs:rows.rows});
+    res.json({logs:rows.rows,channelNames:await channelNames.resolve(rows.rows.map(row=>row.channel))});
   }));
   const owner=(req,res,next)=>req.grant.role!=='owner'?res.status(403).json({message:'Only the owner can manage analytics access'}):next();
-  app.get('/api/grants',owner,asyncRoute(async(_req,res)=>res.json({grants:(await pool.query('SELECT user_id,role,channels,services,expires_at,updated_at FROM analytics_grants ORDER BY updated_at DESC LIMIT 500')).rows})));
+  app.get('/api/grants',owner,asyncRoute(async(_req,res)=>{
+    const grants=(await pool.query('SELECT user_id,role,channels,services,expires_at,updated_at FROM analytics_grants ORDER BY updated_at DESC LIMIT 500')).rows;
+    res.json({grants,channelNames:await channelNames.resolve(grants.flatMap(grant=>[grant.user_id,...grant.channels]))});
+  }));
   app.put('/api/grants/:id',owner,asyncRoute(async(req,res)=>{
     const id=req.params.id,{role,channels,services,expiresAt}=req.body;
     if(!/^\d{1,30}$/.test(id)||id===config.ownerId||!['viewer','investigator'].includes(role)||![channels,services].every(a=>Array.isArray(a)&&a.length<=100&&a.every(v=>typeof v==='string'&&/^[a-zA-Z0-9_.:-]{1,80}$/.test(v)))
@@ -108,7 +116,8 @@ export async function start(config=configFromEnv()) {
   await redis.connect();await migrate(pool);
   const health={ingestedAt:null,invalidBatches:0,ingestionErrors:0,collectorError:false};
   const collectors=createCollectors({pool,redis,config});
-  const app=createApp({pool,redis,config,health});
+  const channelNames=createChannelNames({redis,mongoUrl:config.mongoUrl});
+  const app=createApp({pool,redis,config,health,channelNames});
   const server=app.listen(config.port,'0.0.0.0');
   let stopping=false,busy=false;
   const drain=async()=>{
@@ -134,7 +143,7 @@ export async function start(config=configFromEnv()) {
   const timers=[setInterval(()=>void drain(),1000)];
   if(config.collectors){const collect=()=>collectors.sample().then(()=>{health.collectorError=false;}).catch(()=>{health.collectorError=true;});timers.push(setInterval(()=>void collect(),30000));void collect();}
   timers.push(setInterval(()=>void retain(pool).catch(()=>{health.collectorError=true;}),3600000));
-  const close=async()=>{stopping=true;timers.forEach(clearInterval);server.close();await collectors.close();await redis.quit().catch(()=>redis.destroy());await pool.end();};
+  const close=async()=>{stopping=true;timers.forEach(clearInterval);server.close();await collectors.close();await channelNames.close();await redis.quit().catch(()=>redis.destroy());await pool.end();};
   return {server,close,health,pool,redis};
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){

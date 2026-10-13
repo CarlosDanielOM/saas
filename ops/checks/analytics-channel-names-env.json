@@ -1,0 +1,9 @@
+{
+  "DATABASE_URL": "postgres://postgres@postgres:5432/observability_test",
+  "REDIS_URL": "redis://redis:6379",
+  "OWNER_TWITCH_ID": "1",
+  "COLLECTORS_DISABLED": "true",
+  "ANALYTICS_TEST": "1",
+  "ANALYTICS_TEST_URL": "http://127.0.0.1:3210",
+  "MONGO_METRICS_URI": "mongodb://mongo:27017/analytics_accounts_test"
+}

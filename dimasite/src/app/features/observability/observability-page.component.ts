@@ -9,9 +9,10 @@ import { LanguageService } from '../../services/language.service';
 import { ThemeService } from '../../services/theme.service';
 import { environment } from '../../../environments/environment';
 
+interface NamedChannels { channelNames?: Record<string, string | null> }
 interface Summary { count: number; average: number | null; p50: number | null; p95: number | null; p99: number | null; errors: number; max: number }
 interface Group extends Summary { service: string; kind: string; name: string; channel: string; lastAt: string; lastValue: number }
-interface Overview { lastAt: string | null; generatedAt: string; truncated: boolean; http: Summary; chat: Summary; groups: Group[]; timeline: Array<{ at: number; httpRps: number; chatRps: number }>; minutes: number }
+interface Overview extends NamedChannels { lastAt: string | null; generatedAt: string; truncated: boolean; http: Summary; chat: Summary; groups: Group[]; timeline: Array<{ at: number; httpRps: number; chatRps: number }>; minutes: number }
 interface Grant { role: 'owner' | 'viewer' | 'investigator'; channels: string[]; services: string[] }
 interface AccessGrant extends Grant { user_id: string; expires_at: string | null }
 interface Span { at: string; trace_id: string; span_id: string; parent_id: string | null; service: string; channel: string; kind: string; name: string; outcome: string; duration: number; partial: boolean }
@@ -34,6 +35,8 @@ export class ObservabilityPageComponent implements OnInit {
   private readonly destroy = inject(DestroyRef);
   private readonly base = `${environment.DIMA_API}/observability/api`;
   readonly grant = signal<Grant | null>(null);
+  readonly channelNames = signal<Record<string, string | null>>({});
+  readonly knownChannels = computed(() => Object.entries(this.channelNames()).map(([id,name]) => ({id,name:name || `${this.t('unknownChannel')} (${id})`})).sort((a,b) => a.name.localeCompare(b.name)));
   readonly data = signal<Overview | null>(null);
   readonly tab = signal<Tab>('overview');
   readonly loading = signal(false);
@@ -101,8 +104,8 @@ export class ObservabilityPageComponent implements OnInit {
   async initialize(): Promise<void> {
     this.loading.set(true); this.error.set('');
     try {
-      const session = await firstValueFrom(this.http.get<{ grant: Grant }>(this.base + '/session'));
-      this.grant.set(session.grant); this.denied.set(false);
+      const session = await firstValueFrom(this.http.get<{ grant: Grant } & NamedChannels>(this.base + '/session'));
+      this.grant.set(session.grant); this.channelNames.set(session.channelNames || {}); this.denied.set(false);
       if (!this.tabs().includes(this.tab())) this.tab.set('overview');
       await this.refresh(false);
     } catch (error) { this.handleError(error); } finally { this.loading.set(false); }
@@ -117,12 +120,12 @@ export class ObservabilityPageComponent implements OnInit {
     if(this.channel)params=params.set('channel',this.channel);
     if(this.search)params=params.set('search',this.search);
     try {
-      if (tab === 'access') { const value=await firstValueFrom(this.http.get<{grants:AccessGrant[]}>(this.base+'/grants'));if(id===this.request)this.grants.set(value.grants); }
-      else if(tab==='traces'){const value=await firstValueFrom(this.http.get<{spans:Span[]}>(this.base+'/traces',{params}));if(id===this.request)this.spans.set(value.spans);}
-      else if(tab==='logs'){const value=await firstValueFrom(this.http.get<{logs:Log[]}>(this.base+'/logs',{params}));if(id===this.request)this.logs.set(value.logs);}
+      if (tab === 'access') { const value=await firstValueFrom(this.http.get<{grants:AccessGrant[]} & NamedChannels>(this.base+'/grants'));if(id===this.request){this.grants.set(value.grants);this.mergeNames(value);} }
+      else if(tab==='traces'){const value=await firstValueFrom(this.http.get<{spans:Span[]} & NamedChannels>(this.base+'/traces',{params}));if(id===this.request){this.spans.set(value.spans);this.mergeNames(value);}}
+      else if(tab==='logs'){const value=await firstValueFrom(this.http.get<{logs:Log[]} & NamedChannels>(this.base+'/logs',{params}));if(id===this.request){this.logs.set(value.logs);this.mergeNames(value);}}
       else {
         const [value,resources]=await Promise.all([firstValueFrom(this.http.get<Overview>(this.base+'/overview',{params})),tab==='resources'?firstValueFrom(this.http.get<{samples:Resource[]}>(this.base+'/resources',{params})):Promise.resolve(null)]);
-        if(id===this.request){this.data.set(value);if(resources)this.resources.set(resources.samples);}
+        if(id===this.request){this.data.set(value);this.mergeNames(value);if(resources)this.resources.set(resources.samples);}
       }
     } catch(error){if(id===this.request)this.handleError(error);}finally{if(id===this.request)this.loading.set(false);}
   }
@@ -131,9 +134,13 @@ export class ObservabilityPageComponent implements OnInit {
     else this.error.set(this.t('unavailable'));
   }
   async openTrace(id: string): Promise<void> {
-    try { this.selectedTrace.set(await firstValueFrom(this.http.get<{spans:Span[];partial:boolean}>(this.base+'/traces/'+id))); }
+    try { const value=await firstValueFrom(this.http.get<{spans:Span[];partial:boolean} & NamedChannels>(this.base+'/traces/'+id));this.selectedTrace.set(value);this.mergeNames(value); }
     catch(error){this.handleError(error);}
   }
+  private mergeNames(value: NamedChannels): void { if(value.channelNames)this.channelNames.update(current => Object.fromEntries(Object.entries({...current,...value.channelNames}).slice(-1000))); }
+  channelName(id: string): string { return id ? this.channelNames()[id] || this.t('unknownChannel') : this.t('system'); }
+  channelLabel(id: string): string { return id ? `${this.channelName(id)} (${id})` : this.t('system'); }
+  channelList(ids: string[]): string { return ids.map(id=>this.channelLabel(id)).join(', '); }
   traceOffset(span: Span): number { return Math.max(0,(Date.parse(span.at)-this.traceStart())/this.traceDuration()*100); }
   traceWidth(span: Span): number { return Math.max(.5,span.duration/this.traceDuration()*100); }
   chartPaths(series:'httpRps'|'chatRps'): string[] {

@@ -7705,6 +7705,8 @@
     "noGrants": "Ninguna cuenta adicional tiene acceso.",
     "noAccess": "Tu cuenta no tiene permiso para acceder a la analítica.",
     "retention": "Métricas de 10 segundos: 48h · por minuto: 30d · por hora: 1 año · trazas: 3d · registros: 7d",
-    "updated": "Última observación"
+    "updated": "Última observación",
+    "unknownChannel": "Canal desconocido",
+    "channelId": "ID del canal"
   }
 }
