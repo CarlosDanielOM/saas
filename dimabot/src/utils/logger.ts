@@ -1,3 +1,4 @@
+import { recordLog } from './observability/telemetry.js';
 import { getDragonflyClient } from './databases/dragonfly.database.js';
 import { logs } from '@opentelemetry/api-logs';
 
@@ -95,6 +96,7 @@ async function logToCache(entry: LogEntry): Promise<LogResponse> {
 }
 
 async function log(level: string, data: any, options?: LogOptions): Promise<LogResponse> {
+    recordLog(level, data, options?.channelId);
     const destination = options?.destination || DEFAULT_DESTINATION;
     const platform = options?.platform || DEFAULT_PLATFORM;
     const channelId = options?.channelId;

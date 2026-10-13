@@ -11,9 +11,40 @@ scripts/saas-ops list
 scripts/saas-ops plan piper
 ```
 
-No arguments prints help. `list` and `plan` do not change containers or files. Only the targets printed by `list` are accepted: `api`, `bot`, `cron`, `piper`, `embeddings`, `dimafx-server`, `dimadb`, `site`, `admin`, `docs`. There is no `all`, wildcard, free-form container name, automatic Git pull, stack shutdown, or prune command.
+No arguments prints help. `list` and `plan` do not change containers or files. Only the targets printed by `list` are accepted: `analytics`, `api`, `bot`, `cron`, `piper`, `embeddings`, `dimafx-server`, `dimadb`, `site`, `admin`, `docs`. There is no `all`, wildcard, free-form container name, automatic Git pull, stack shutdown, or prune command.
 
 The script checks the container's Compose project, service, checkout, and configuration against the selected target. It talks only to the local Unix Docker socket, ignoring Docker/Compose environment overrides. It refuses configuration/environment drift rather than guessing which live configuration to replace. This workflow delivers code/assets; Compose, nginx, networking, credentials, and database migrations need a separately reviewed procedure.
+
+## Analytics first install and releases
+
+`dima-analytics` has a separate first-install procedure because it needs a dedicated PostgreSQL database/role and a read-only MongoDB monitoring account. Do not use `saas-ops deploy analytics` until the service has been installed once.
+
+First, verify the project against disposable PostgreSQL and Dragonfly containers. The bootstrap builds the source and runs integration checks using only those disposable dependencies; verification does not read from or write to production services or data. It removes its temporary containers/network and records a private receipt:
+
+```bash
+python3 ops/bootstrap_analytics.py verify /root/saas/dima-analytics /path/to/analytics-receipt.json
+```
+
+After verification, install the exact image named in that receipt:
+
+```bash
+python3 ops/bootstrap_analytics.py install /path/to/analytics-receipt.json
+```
+
+The install command is intentionally first-install only. It refuses if a `dima-analytics` container already exists or if the analytics PostgreSQL role/database already exist during initial provisioning. It creates a mode-`0600` `dima-analytics/.env`, provisions only `observability_app` / `observability` in the existing PostgreSQL service, and creates the MongoDB `observability_monitor` account with `clusterMonitor` plus read access to the application database. It starts only the analytics Compose service with the verified image and applies the Compose configuration hash label expected by the standard `analytics` helper target. The script checks that `/root/databases/docker-compose.yaml` is unchanged before and after installation; it does not edit or redeploy the database Compose project. If a post-start readiness or image check fails, it removes only the new analytics container after confirming its image and Compose-project ownership; the generated `.env` and any database/MongoDB accounts remain for inspection. If provisioning stops partway through, inspect the receipt, `.env`, and created accounts before retrying; it deliberately does not roll back or rotate those credentials automatically.
+
+For later analytics code releases, use the ordinary helper target and supply a behavior check that exercises the changed analytics behavior:
+
+```bash
+scripts/saas-ops list
+scripts/saas-ops plan analytics
+scripts/saas-ops build analytics
+scripts/saas-ops verify analytics-<run-id> --check <analytics-behavior-check>
+scripts/saas-ops deploy analytics-<run-id>
+scripts/saas-ops cleanup analytics-<run-id>
+```
+
+The helper deploys the exact verified image and manages only the `analytics` service. Database/schema and Compose configuration changes remain separately reviewed operations.
 
 ## Container workflow
 
@@ -45,7 +76,7 @@ scripts/saas-ops verify api-<run-id> \
   --check /path/to/api-behavior.mjs
 ```
 
-`--test-env` accepts a JSON object of uppercase environment names and string values. Use dummy credentials and URLs such as `mongodb://mongo:27017/saas_ops_test` and `redis://redis:6379`, with the variable names required by the service's source. No production `.env` is loaded. The two allowlisted dependency images must already be present locally; each runs in disposable storage on a new internal network with `mongo`/`redis` aliases. They are not attached to production networks. API/bot/worker tests may also need provider mocks or test-mode initialization; prepare those as part of the feature task. The tool fails verification instead of falling back to production dependencies. It does not supply a complete fixture environment for every backend feature.
+`--test-env` accepts a JSON object of uppercase environment names and string values. Use dummy credentials and URLs such as `mongodb://mongo:27017/saas_ops_test` and `redis://redis:6379`, with the variable names required by the service's source. No production `.env` is loaded. The three allowlisted dependency images—PostgreSQL, MongoDB, and Dragonfly—must already be present locally; each runs in disposable storage on a new internal network with `postgres`, `mongo`, or `redis` aliases. They are not attached to production networks. API/bot/worker tests may also need provider mocks or test-mode initialization; prepare those as part of the feature task. The tool fails verification instead of falling back to production dependencies. It does not supply a complete fixture environment for every backend feature.
 
 `deploy` requires a passed verification receipt, cleaned-up tests, an unchanged candidate, unchanged production configuration, and the same baseline production container. It preserves the previous image, then uses a single-service Compose configuration with the **exact tested image ID**, `--no-build`, `--no-deps`, and `--pull never`. It never rebuilds the candidate during deployment. Startup/readiness failure triggers a targeted rollback. Perform any additional feature-specific, non-destructive production checks required by the task; an HTTP readiness check cannot establish all external integrations.
 

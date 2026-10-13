@@ -1,3 +1,4 @@
+import { startTelemetry, instrumentFetch } from '../utils/observability/telemetry.js';
 import dotenv from 'dotenv';
 import path from 'path';
 
@@ -27,6 +28,9 @@ if(isDev) {
 }
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+
+startTelemetry();
+instrumentFetch();
 
 await getDragonflyClient('Bot');
 await getMongoDBConnection('Bot');

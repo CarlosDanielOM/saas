@@ -1,0 +1,26 @@
+import assert from 'node:assert/strict';
+import {createRequire} from 'node:module';
+const {chromium}=createRequire('/tmp/saas-cooldown-browser/package.json')('playwright');
+const base=process.env.SAAS_PREVIEW_URL;assert(base);const origin=new URL(base).origin;
+const now=Date.now(),date=new Date(now).toISOString();
+const summary={count:6000,average:20,p50:25,p95:50,p99:100,errors:2,max:83};
+const groups=[['http','POST /eventsub'],['chat','message'],['command','!hello'],['queue_wait','tts'],['event','channel.chat.message'],['lifecycle','stream.ended']].map(([kind,name])=>({...summary,kind,name,service:'bot',channel:'123',lastAt:date,lastValue:25}));
+const overview={generatedAt:date,lastAt:date,truncated:false,http:summary,chat:summary,groups,minutes:60,timeline:Array.from({length:60},(_,i)=>({at:now-(59-i)*60000,httpRps:i<30?100:75,chatRps:35}))};
+const span={at:date,trace_id:'a'.repeat(32),span_id:'b'.repeat(16),parent_id:null,service:'bot',channel:'123',kind:'command',name:'!hello',outcome:'ok',duration:25,partial:false};
+const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+try{
+ for(const width of [1280,390,320]){
+ const context=await browser.newContext({viewport:{width,height:900},colorScheme:'dark'});let role='owner',failure=false,mutations=0;
+ await context.addInitScript(()=>{localStorage.setItem('language','en');localStorage.setItem('dimasite.session.v1',JSON.stringify({version:2,token:'test-only',createdAt:new Date().toISOString(),expiresAt:new Date(Date.now()+3600000).toISOString(),twitchUser:{id:'1',login:'tester',display_name:'Tester'},appUser:{name:'Tester',language:'en',actived:true,twitch_user_id:'1',administrating:[]},permissions:{}}));});
+ await context.route('**/*',async route=>{const url=new URL(route.request().url());if(url.origin===origin)return route.continue();if(url.hostname!=='api.domdimabot.com')return route.abort();
+ let json={error:false,status:200,data:{}};if(url.pathname.includes('/observability/api/')){assert.equal(route.request().headers().authorization,'Bearer test-only');const name=url.pathname.split('/api/')[1];if(failure)return route.fulfill({status:503,json:{error:'unavailable'}});json=name==='session'?{grant:{role,channels:role==='viewer'?['123']:[],services:[]}}:name==='overview'?overview:name==='resources'?{samples:[{at:date,service:'dragonfly',name:'used_memory_bytes',value:2048000}]}:name==='traces'?{spans:[span]}:name.startsWith('traces/')?{spans:[span],partial:true}:name==='logs'?{logs:[{at:date,service:'bot',channel:'123',level:'error',name:'command',trace_id:span.trace_id,fields:{code:'TEST'}}]}:{grants:[]};if(route.request().method()!=='GET')mutations++;}
+ if(url.pathname==='/auth/session')json={error:false,status:200,data:{twitch:{id:'1',login:'tester',display_name:'Tester'},app:{name:'Tester',language:'en',actived:true,twitch_user_id:'1',administrating:[]}}};return route.fulfill({status:200,json});});
+ const page=await context.newPage();page.setDefaultTimeout(15000);const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto(base+'/observability');await page.getByRole('button',{name:'Endpoints',exact:true}).waitFor();await page.getByText('6,000',{exact:true}).first().waitFor();
+ for(const theme of ['dark','light']){if(theme==='light')await page.getByRole('button',{name:'Light',exact:true}).click();await page.addScriptTag({path:'/tmp/saas-cooldown-browser/node_modules/axe-core/axe.min.js'});const accessibility=await page.evaluate(()=>window.axe.run(document.querySelector('app-observability-page'),{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}}));assert.deepEqual(accessibility.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>n.target)})),[],`accessibility ${width} ${theme}`);await page.screenshot({path:`/tmp/observability-${width}-${theme}.png`,fullPage:true});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'horizontal overflow');}
+ for(const tab of ['Endpoints','Chat & events','Queues','Resources','Traces','Logs','Access']){await page.getByRole('button',{name:tab,exact:true}).click();await page.waitForTimeout(150);assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`overflow ${tab}`);}
+ await page.getByRole('button',{name:'Traces',exact:true}).click();await page.getByRole('button').filter({hasText:'!hello'}).click();await page.getByRole('heading',{name:'Request timeline',exact:true}).waitFor();
+ failure=true;await page.getByRole('button',{name:'Overview',exact:true}).click();await page.getByRole('alert').waitFor();failure=false;
+ role='viewer';await page.goto(base+'/observability');await page.getByRole('button',{name:'Endpoints',exact:true}).waitFor();assert.equal(await page.getByRole('button',{name:'Access',exact:true}).count(),0);assert.equal(await page.getByRole('button',{name:'Resources',exact:true}).count(),0);assert.equal(mutations,0);assert.deepEqual(errors,[]);await context.close();
+ }
+ console.log('Observability desktop/mobile dark/light, tabs, trace, failure and scoped-viewer checks passed');
+}finally{await browser.close();}

@@ -1,3 +1,4 @@
+import { bindChannel } from '../utils/observability/telemetry.js';
 import type { NextFunction, Request, Response } from 'express';
 import { getDragonflyClient } from '../utils/databases/dragonfly.database.js';
 import type {
@@ -213,6 +214,7 @@ export async function authMiddleware(req: AuthRequest, res: Response, next: Next
         const cachedUser = await getCachedToken(token);
         if (cachedUser) {
             req.user = cachedUser;
+            bindChannel(req.params.channelID || cachedUser.id);
             await touchLastAppActivity(cachedUser.id);
             next();
             return;
@@ -243,6 +245,7 @@ export async function authMiddleware(req: AuthRequest, res: Response, next: Next
         if (userResult.user) {
             await cacheToken(token, userResult.user);
             req.user = userResult.user;
+            bindChannel(req.params.channelID || userResult.user.id);
             await touchLastAppActivity(userResult.user.id);
             next();
         }

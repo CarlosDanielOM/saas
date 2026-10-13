@@ -1,3 +1,4 @@
+import { telemetryContext, observe } from './observability/telemetry.js';
 import { Types, type HydratedDocument } from 'mongoose';
 import type {
     DomainEventEnvelope,
@@ -115,7 +116,7 @@ export async function journalDomainEvent(input: JournalDomainEventInput): Promis
             occurredAt,
             journaledAt,
             payload: input.payload,
-            metadata: input.metadata || {},
+            metadata: { ...input.metadata, ...(telemetryContext() ? { observability: telemetryContext() } : {}) },
             dispatchPending: true,
             expiresAt
         });
@@ -138,6 +139,7 @@ export async function journalDomainEvent(input: JournalDomainEventInput): Promis
     }
 
     const event = toEnvelope(eventDocument);
+    if (inserted && ['stream.started', 'stream.ended'].includes(event.type)) observe('lifecycle', event.type, 0, 'ok', event.channelID);
     domainEventWakeups.publish();
     return {
         event,

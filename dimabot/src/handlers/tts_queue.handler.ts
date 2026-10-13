@@ -1,3 +1,4 @@
+import { telemetryContext, restoreContext, traced, observe, type TraceContext } from '../utils/observability/telemetry.js';
 import { studioHasSource, publishStudioMedia } from '../overlays/bridge.js';
 import type { RedisClientType } from "redis";
 import { randomUUID } from "node:crypto";
@@ -61,6 +62,7 @@ export interface TtsRequestPayload {
 }
 
 export interface TtsQueueItem extends TtsRequestPayload {
+  observability?: TraceContext;
   speechID: string;
   timestamp: number;
   piperFallbackVoice?: string;
@@ -171,6 +173,7 @@ class TtsQueueHandler {
     const usageRequestID = randomUUID();
     const queueItem: TtsQueueItem = {
       ...payload,
+      observability: telemetryContext(),
       speechID,
       timestamp: Date.now(),
       piperFallbackVoice: settings.voices[payload.language],
@@ -279,6 +282,7 @@ class TtsQueueHandler {
         const usageRequestID = queueItem.usageRequestID ||= randomUUID();
         const usageEntryID = queueItem.usageEntryID ||= randomUUID();
         queueItem.timestamp ||= Date.now();
+        observe('queue_wait', 'tts', Math.max(0, Date.now() - queueItem.timestamp), 'ok', channelID);
         const requestedProvider = queueItem.provider;
         let fallbackReason: string | undefined;
 
@@ -345,7 +349,7 @@ class TtsQueueHandler {
           continue;
         }
 
-        const synthesize = async () => {
+        const synthesize = () => restoreContext(queueItem.observability, channelID, () => traced('queue_run', `tts.${queueItem.provider}`, async () => {
           const ttsService = this.services[queueItem.provider] || piperTtsService;
           try {
             return await promiseWithTimeout(
@@ -375,7 +379,7 @@ class TtsQueueHandler {
                   : String(synthesisError),
             };
           }
-        };
+        }, channelID));
 
         let synthesisResult = await synthesize();
         if ((synthesisResult.error || !synthesisResult.outputPath || !synthesisResult.publicPath)
@@ -507,6 +511,7 @@ class TtsQueueHandler {
         }
         this.dispatchedSpeechIds.set(channelID, speechID);
         this.armPlaybackTimeout(channelID, speechID, playbackTimeoutMs);
+        observe('queue_total', 'tts.ready', Math.max(0, Date.now() - queueItem.timestamp), 'ok', channelID);
         console.log('TTS dispatched', { channelID, speechID, readyMs: Date.now() - queueItem.timestamp });
 
         await publishStudioMedia(channelID, 'tts', { type: 'audio', title: queueItem.text, volume: 1 }, synthesisResult.outputPath, synthesisResult.mimeType || 'audio/wav', queueItem.text);

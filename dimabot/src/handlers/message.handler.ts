@@ -1,3 +1,4 @@
+import { traced, traceOutcome, observe, beginSpan } from '../utils/observability/telemetry.js';
 import { deliverAstMessage } from '../utils/ast_command_delivery.js';
 import TwitchStreamers from "../classes/twitch_streamers.class.js";
 import ChatHistory from "../classes/chat_history.js";
@@ -50,7 +51,7 @@ const CHANNEL_INSTANCES = new Map<string, COOLDOWN>();
 let isMod = false;
 let tries = 0;
 
-export const messageHandler = async (channelID: string, messageEventData: IChatMessage) => {
+export const messageHandler = async (channelID: string, messageEventData: IChatMessage) => traced('chat', 'message', async () => {
     const receivedAt = Date.now();
     const metricTracker = startMessageHandlerMetric();
     let messageHandlerFailed = false;
@@ -63,7 +64,7 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
 
         // Full identity resolution: legacy numeric level + complete role-tag
         // set (editor/admin from the canonical twitch: cache keys).
-        const identity: UserIdentity = await resolveUserIdentity(channelID, messageEventData);
+        const identity: UserIdentity = await traced('chat_stage', 'identity', () => resolveUserIdentity(channelID, messageEventData));
         const userLevel = identity.level;
 
         const formattedBadges = await formatBadges({ badges: messageEventData.badges });
@@ -99,12 +100,13 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
 
         // Every chat message passes through moderation before command or timer
         // dispatch. A taken action stops the rest of the message pipeline.
-        const moderationResult = await runChatModeration(channelID, messageEventData, identity, receivedAt);
+        const moderationResult = await traced('chat_stage', 'moderation', () => runChatModeration(channelID, messageEventData, identity, receivedAt));
         if (moderationResult.actionTaken) {
+            traceOutcome('moderated');
             return;
         }
 
-        await handleKeywords(channelID, messageEventData, identity).catch(async error => {
+        await traced('chat_stage', 'keywords', () => handleKeywords(channelID, messageEventData, identity)).catch(async error => {
             await logError({ function: 'messageHandler.keywords', channelID,
                 error: error instanceof Error ? error.message : String(error) }, { channelId: channelID, destination: 'both' });
         });
@@ -121,6 +123,7 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
         if(messageEventData.badges.some(badge => MODERATOR_BADGE_IDS.has(badge.set_id)) || messageEventData.chatter_user_id === channelID) isMod = true;
 
         const [raw, command, argument] = messageEventData.message.text.match(commandsRegex) || [];
+        observe('chat_stage', 'receive_to_route', Date.now() - receivedAt, raw ? 'command' : 'message', channelID);
         const streamerArgument = argument ? argument.trim() : '';
 
         const tags = {
@@ -405,11 +408,13 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
             on_cooldown = true;
         }
 
-        if(on_cooldown) return;
+        if(on_cooldown) { traceOutcome('cooldown'); return; }
         
         const shouldTrackCommandUsage = !commandDBData.error && !!commandDBData.command;
         let res = null;
         
+        const commandSpan = beginSpan('command', commandDBData.command?.cmd || 'unconfigured', channelID);
+        try {
         switch(commandFunc) {
             case 'sumimetro':
                 res = await indexCommands.sumimetro(channelID, messageEventData.chatter_user_login!, messageEventData.message.text.split(`!${command}`)[1].trim(), command);
@@ -750,6 +755,9 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
                 break;
             }
 
+        } catch (error) { commandSpan.end('error'); throw error; }
+        finally { commandSpan.end(res?.error ? 'error' : 'ok'); }
+
         // Track command execution in PostHog
         trackCommand({
             channelID,
@@ -791,7 +799,7 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
         }
 
         if (!res) return;
-        await deliverAstMessage(channelID, { parsedText: res.message || '', commandReferences: res.commandReferences });
+        await traced('chat_stage', 'delivery', () => deliverAstMessage(channelID, { parsedText: res!.message || '', commandReferences: res!.commandReferences }));
     } catch (err) {
         messageHandlerFailed = true;
         await logError({
@@ -800,8 +808,9 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
         }, { channelId: channelID, destination: 'both' });
     } finally {
         endMessageHandlerMetric(metricTracker, messageHandlerFailed);
+        if (messageHandlerFailed) traceOutcome('error');
     }
-}
+}, channelID);
 
 /**
  * Legacy wrapper kept for numeric call sites: delegates to the full identity

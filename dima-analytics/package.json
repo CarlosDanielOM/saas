@@ -1,0 +1,8 @@
+{
+  "name": "dima-analytics",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "start": "node src/index.mjs", "test": "node --test test/*.test.mjs", "check": "node --check src/index.mjs && node --check src/store.mjs && node --check src/collectors.mjs" },
+  "dependencies": { "express": "^4.21.2", "pg": "^8.16.3", "redis": "^5.10.0", "mongodb": "^6.6.2" }
+}

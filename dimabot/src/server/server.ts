@@ -1,3 +1,5 @@
+import { httpTelemetry } from '../utils/observability/telemetry.js';
+import { observabilityRoute } from './routes/observability.route.js';
 import { widgetsRoute } from './routes/widgets.route.js';
 import { goalsRoute } from './routes/goals.route.js';
 import { overlayStudioRoute } from './routes/overlay-studio.route.js';
@@ -45,6 +47,7 @@ const __dirname = getDirname(import.meta.url);
 export const server = async (): Promise<Express.Application> => {
     try {
         let app = express();
+        app.use(httpTelemetry);
 
         // Setup webhooks first (raw body required for signature validation)
         app.use('/polar/webhook', polarshWebhook);
@@ -54,6 +57,7 @@ export const server = async (): Promise<Express.Application> => {
         app.use(express.urlencoded({ extended: true }));
         app.use(express.static(path.join(__dirname, 'routes', 'public')));
         app.use(cors());
+        app.use('/observability', observabilityRoute);
 
         // Setup file routes
         app.use('/video', fileRoute);

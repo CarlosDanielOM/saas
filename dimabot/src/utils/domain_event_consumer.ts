@@ -1,3 +1,4 @@
+import { restoreContext, traced, observe } from './observability/telemetry.js';
 import { randomUUID } from 'node:crypto';
 import { DomainEventPrerequisiteMissingError } from '../domain_events/domain_event.types.js';
 import { DomainEventContractError, validateDomainEventContract } from '../domain_events/domain_event_contracts.js';
@@ -285,7 +286,9 @@ async function processDelivery(
             if (['twitch-eventsub', 'twitch-eventsub-test', 'polar-webhook'].includes(event.source)) {
                 validateDomainEventContract(envelope);
             }
-            await handler(envelope);
+            observe('queue_wait', policy.consumer, Math.max(0, Date.now() - envelope.journaledAt.getTime()), 'ok', envelope.channelID);
+            await restoreContext(envelope.metadata.observability, envelope.channelID || '', () => traced('queue_run', policy.consumer, () => handler(envelope), envelope.channelID));
+            observe('queue_total', policy.consumer, Math.max(0, Date.now() - envelope.journaledAt.getTime()), 'ok', envelope.channelID);
             clearInterval(heartbeat);
             await renewal;
             assertLease();

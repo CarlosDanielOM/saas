@@ -715,7 +715,9 @@ export class LoginPageComponent implements OnInit {
     this.stage.set('redirecting');
     this.pushDebug(`Navigating to /${streamer}/dashboard (id=${channelID})`);
 
-    const didNavigate = await this.router.navigate(['/', streamer, 'dashboard']);
+    const analyticsReturn = sessionStorage.getItem('dimasite.observability-return') === '1';
+    sessionStorage.removeItem('dimasite.observability-return');
+    const didNavigate = await this.router.navigate(analyticsReturn ? ['/observability'] : ['/', streamer, 'dashboard']);
     if (!didNavigate) {
       throw new Error(this.t('login.errors.navigationFailed'));
     }

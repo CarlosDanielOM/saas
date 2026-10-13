@@ -1,3 +1,4 @@
+import { startTelemetry, beginSpan, observe } from '../observability/telemetry.js';
 import { createClient } from "redis";
 import type { RedisClientType } from "redis";
 
@@ -49,7 +50,29 @@ export const getDragonflyClient = async (caller: string = 'unknown'): Promise<Dr
 
         try {
             await client.connect();
-            return client as DragonflyClient;
+            startTelemetry();
+            const methods = new Set(['get', 'set', 'hGet', 'hGetAll', 'hSet', 'exists', 'del', 'zAdd', 'zPopMin', 'zCard', 'lPush', 'rPush', 'lPop', 'rPop', 'eval']);
+            const wrappers = new Map<string, (...args: unknown[]) => unknown>();
+            return new Proxy(client, {
+                get(target, property, receiver) {
+                    if (typeof property !== 'string' || !methods.has(property)) {
+                        const value = Reflect.get(target, property, target);
+                        return typeof value === 'function' ? value.bind(target) : value;
+                    }
+                    if (!wrappers.has(property)) {
+                        wrappers.set(property, async (...args: unknown[]) => {
+                            const span = beginSpan('cache', property);
+                            try {
+                                const result = await (Reflect.get(target, property) as (...args: unknown[]) => Promise<unknown>).apply(target, args);
+                                span.end();
+                                if (['get', 'hGet'].includes(property)) observe('cache_lookup', property, 0, result === null ? 'miss' : 'hit');
+                                return result;
+                            } catch (error) { span.end('error'); throw error; }
+                        });
+                    }
+                    return wrappers.get(property);
+                }
+            }) as DragonflyClient;
         } catch (error) {
             logDragonflyError(caller, error);
             connectionPromise = null;

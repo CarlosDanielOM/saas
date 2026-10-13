@@ -49,6 +49,7 @@ class Target:
 
 
 TARGETS = {
+    "analytics": Target("dima-analytics", "analytics", "dima-analytics", command=("node", "src/index.mjs"), port=3210, health="/health"),
     "api": Target("dimabot", "api-server", "dima-server", command=("node", "dist/server/index.js"), port=3000, health="/config/site/analytics"),
     "bot": Target("dimabot", "chat-bot", "dima-bot", command=("node", "dist/bot/index.js")),
     "cron": Target("dimabot", "dima-cron", "dima-cron", command=("node", "dist/workers/cron.index.js")),
@@ -61,6 +62,7 @@ TARGETS = {
     "docs": Target("dimadocs", "dimadocs", "dimadocs", compose="docker-compose.yml", output="dist"),
 }
 DEPENDENCIES = {
+    "postgres": ("pgvector/pgvector:0.8.1-pg17", ("sh", "-c", "export POSTGRES_HOST_AUTH_METHOD=trust POSTGRES_DB=observability_test; exec docker-entrypoint.sh postgres")),
     "mongo": ("mongo:8.2.6", ("mongod", "--bind_ip_all")),
     "redis": ("ghcr.io/dragonflydb/dragonfly:latest", ("--logtostderr", "--proactor_threads=1")),
 }

@@ -1,3 +1,4 @@
+import { httpTelemetry, bindChannel, observe } from '../utils/observability/telemetry.js';
 import crypto from 'crypto';
 import express from 'express';
 import type { ITwitchEventData, ITwitchSubscriptionData } from '../interfaces/twitch/eventsub.interface.js';
@@ -57,6 +58,7 @@ export function createTwitchEventsubApp({
         throw new Error('TWITCH_EVENTSUB_SECRET is not set');
     }
     const app = express();
+    app.use(httpTelemetry);
 
     const TWITCH_MESSAGE_ID = 'Twitch-Eventsub-Message-Id'.toLocaleLowerCase();
     const TWITCH_MESSAGE_TIMESTAMP = 'Twitch-Eventsub-Message-Timestamp'.toLocaleLowerCase();
@@ -163,6 +165,8 @@ export function createTwitchEventsubApp({
                     res.sendStatus(400);
                     return;
                 }
+                bindChannel(notification.event?.broadcaster_user_id || notification.event?.to_broadcaster_user_id);
+                observe('event', eventType, 0);
                 observeEventsubNotification(eventType, payloadBytes);
 
                 const producerInput = {

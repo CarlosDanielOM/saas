@@ -1,0 +1,100 @@
+<a class="skip" href="#observability-main">{{ t('skip') }}</a>
+<header class="portal-nav">
+  <a routerLink="/" class="brand"><span class="pulse"></span>dima <span>{{ t('title') }}</span></a>
+  <div class="nav-tools">
+    <button type="button" (click)="language.toggleLanguage()" [attr.aria-label]="t('language')">{{ language.currentLanguage().toUpperCase() }}</button>
+    <button type="button" (click)="theme.toggleTheme()">{{ t(theme.isDarkMode() ? 'light' : 'dark') }}</button>
+  </div>
+</header>
+<main id="observability-main" class="lf-main">
+  <header class="page-head"><div><p class="eyebrow">{{ t('eyebrow') }}</p><h1>{{ t('title') }}</h1><p class="muted">{{ t('intro') }}</p></div>
+    @if (grant()) { <span class="chip">{{ t(grant()!.role) }}</span> }
+  </header>
+  @if (!auth.token()) {
+    <section class="lf-tile state"><h2>{{ t('signIn') }}</h2><p>{{ t('private') }}</p><button class="primary" (click)="login()">{{ t('login') }}</button></section>
+  } @else {
+    @if (error()) { <div class="status warning" role="alert"><span>{{ error() }}</span><button (click)="grant() ? refresh() : initialize()">{{ t('retry') }}</button></div> }
+    @if (grant() && !denied()) {
+      <nav class="tabs" [attr.aria-label]="t('views')">
+        @for (item of tabs(); track item) { <button [class.active]="tab() === item" [attr.aria-pressed]="tab() === item" (click)="selectTab(item)">{{ t(item) }}</button> }
+      </nav>
+      @if (tab() !== 'access') {
+        <form class="filters" (ngSubmit)="refresh()">
+          <label>{{ t('range') }}<select name="range" [(ngModel)]="minutes"><option [ngValue]="15">15 {{ t('minutes') }}</option><option [ngValue]="60">1 {{ t('hour') }}</option><option [ngValue]="360">6 {{ t('hours') }}</option><option [ngValue]="1440">24 {{ t('hours') }}</option><option [ngValue]="10080">7 {{ t('days') }}</option></select></label>
+          <label>{{ t('service') }}<select name="service" [(ngModel)]="service"><option value="">{{ t('allServices') }}</option><option value="api">API</option><option value="bot">Bot</option><option value="cron">Workers</option><option value="queues">Queues</option>@if(tab()==='resources'){<option value="dragonfly">Dragonfly</option><option value="mongodb">MongoDB</option><option value="qdrant">Qdrant</option><option value="postgres">PostgreSQL</option>}</select></label>
+          <label>{{ t('streamer') }}<input name="channel" [(ngModel)]="channel" [placeholder]="t('channelPlaceholder')" maxlength="80" /></label>
+          @if(tab()==='logs'){<label>{{ t('search') }}<input name="search" [(ngModel)]="search" maxlength="80" /></label>}
+          <button type="submit" [disabled]="loading()">{{ t(loading() ? 'loading' : 'apply') }}</button>
+        </form>
+      }
+      @if (loading() && !data() && tab()==='overview') { <p role="status">{{ t('loading') }}</p> }
+      @if (data()?.truncated) { <p class="status warning">{{ t('truncated') }}</p> }
+      @if (stale()) { <p class="status warning">{{ t('stale') }} {{ data()?.lastAt | date:'short' }}</p> }
+      @if (tab()==='overview') {
+        @if (data(); as overview) {
+          <div class="metric-grid">
+            <article class="lf-tile metric"><span>{{ t('httpCount') }}</span><strong>{{ overview.http.count | number }}</strong><small>{{ t('completed') }}</small></article>
+            <article class="lf-tile metric"><span>{{ t('latencyP95') }}</span><strong>{{ overview.http.p95 === null ? '—' : (overview.http.p95 | number:'1.0-0') }} <small>ms</small></strong><small>{{ t('bucketBound') }}</small></article>
+            <article class="lf-tile metric"><span>{{ t('chatCount') }}</span><strong>{{ overview.chat.count | number }}</strong><small>{{ t('processed') }}</small></article>
+            <article class="lf-tile metric"><span>{{ t('failures') }}</span><strong>{{ overview.http.errors + overview.chat.errors | number }}</strong><small>{{ t('failureMeaning') }}</small></article>
+          </div>
+          <section class="lf-tile chart-tile"><div class="section-head"><h2>{{ t('traffic') }}</h2><span class="muted">{{ t('rps') }}</span></div>
+            <p class="legend"><span class="violet">● {{ t('http') }}</span><span class="green">● {{ t('chat') }}</span><span>{{ t('scale') }} {{ chartMax() | number:'1.0-2' }}</span></p>
+            @if (overview.timeline.length) {
+              <svg viewBox="0 0 680 180" preserveAspectRatio="none" class="traffic-chart" role="img" [attr.aria-label]="t('chartLabel')">
+                <path d="M0 15H680M0 87H680M0 160H680" class="gridline" />
+                @for (path of chartPaths('httpRps'); track $index) { <path [attr.d]="path" class="series http" /> }
+                @for (path of chartPaths('chatRps'); track $index) { <path [attr.d]="path" class="series chat" /> }
+              </svg>
+              <div class="axis"><span>{{ t('selectedStart') }}</span><span>{{ overview.generatedAt | date:'shortTime' }}</span></div>
+            } @else { <p class="empty">{{ t('noData') }}</p> }
+            <p class="note">{{ t('chartNote') }}</p>
+            <details><summary>{{ t('chartData') }}</summary><div class="data-table"><table><thead><tr><th>{{ t('time') }}</th><th>HTTP RPS</th><th>{{ t('chat') }} RPS</th></tr></thead><tbody>@for(point of overview.timeline;track point.at){<tr><td>{{ point.at | date:'shortTime' }}</td><td>{{ point.httpRps | number:'1.0-2' }}</td><td>{{ point.chatRps | number:'1.0-2' }}</td></tr>}</tbody></table></div></details>
+          </section>
+          <div class="two-col"><section class="lf-tile"><h2>{{ t('contribution') }}</h2><p class="note">{{ t('contributionNote') }}</p>
+            @for(row of streamers();track row.channel){<button class="streamer-row" (click)="channel=row.channel;refresh()"><span><strong>{{ row.channel }}</strong><small>{{ row.events | number }} {{ t('events') }} · {{ row.commands | number }} {{ t('commands') }}</small></span><span>{{ row.calls | number }}<small>{{ t('dependencyCalls') }}</small></span></button>} @empty {<p class="empty">{{ t('noData') }}</p>}
+          </section><section class="lf-tile"><h2>{{ t('lifecycle') }}</h2>
+            @for(row of lifecycle();track row.name+row.channel){<div class="plain-row"><span><strong>{{ row.channel }}</strong><small>{{ t(row.name === 'stream.started' ? 'online' : 'offline') }}</small></span><time>{{ row.lastAt | date:'short' }}</time></div>} @empty {<p class="empty">{{ t('noTransitions') }}</p>}
+            <p class="note">{{ t('lifecycleNote') }}</p>
+          </section></div>
+        }
+      }
+      @if (tab()==='endpoints' || tab()==='chat' || tab()==='queues') {
+        <section class="lf-tile"><h2>{{ t(tab()) }}</h2><p class="note">{{ t(tab()==='queues'?'queueNote':'timingNote') }}</p>
+          <div class="operation-head"><span>{{ t('operation') }}</span><span>{{ t('count') }}</span><span>{{ t('average') }}</span><span>p95 / p99</span><span>{{ t('failures') }}</span></div>
+          @for(row of rows();track row.service+row.kind+row.name+row.channel){
+            <article class="operation"><div class="operation-name"><strong>{{ row.name }}</strong><small>{{ row.service }} · {{ row.kind }} @if(row.channel){ · {{ row.channel }} }</small></div>
+              @if(row.kind==='queue'){<div class="gauge"><span>{{ t('latest') }}</span><strong>{{ row.lastValue | number:'1.0-1' }} {{ row.name.endsWith('_ms') ? 'ms' : '' }}</strong><small>{{ row.lastAt | date:'shortTime' }}</small></div>}
+              @else {<div><span class="mobile-label">{{ t('count') }}</span>{{ row.count | number }}</div><div><span class="mobile-label">{{ t('average') }}</span>{{ row.average | number:'1.0-1' }} ms</div><div><span class="mobile-label">p95 / p99</span>{{ row.p95 ?? '—' }} / {{ row.p99 ?? '—' }} ms</div><div [class.error-number]="row.errors>0"><span class="mobile-label">{{ t('failures') }}</span>{{ row.errors }}</div>}
+            </article>
+          } @empty {<p class="empty">{{ t('noData') }}</p>}
+        </section>
+      }
+      @if (tab()==='resources') {
+        <section class="lf-tile"><h2>{{ t('resources') }}</h2><p class="note">{{ t('resourceNote') }}</p>
+          <div class="resource-grid">@for(row of latestResources();track row.service+row.name){<article class="resource"><span>{{ row.service }}</span><strong>{{ row.name.endsWith('collector_up') ? t(row.value ? 'available' : 'unavailable') : resourceValue(row) }}</strong><small>{{ row.name }}</small><time>{{ row.at | date:'shortTime' }}</time></article>} @empty {<p class="empty">{{ t('noData') }}</p>}</div>
+          <h3>{{ t('processes') }}</h3><div class="resource-grid">@for(row of runtime();track row.service+row.name){<article class="resource"><span>{{ row.service }}</span><strong>{{ resourceValue(row) }}</strong><small>{{ row.name }}</small><time>{{ row.lastAt | date:'shortTime' }}</time></article>}</div>
+        </section>
+      }
+      @if (tab()==='traces') {
+        @if(selectedTrace();as trace){<section class="lf-tile trace-detail"><div class="section-head"><h2>{{ t('traceDetail') }}</h2><button (click)="selectedTrace.set(null)">{{ t('close') }}</button></div><p class="note">{{ t(trace.partial?'partialTrace':'sampledTrace') }}</p>
+          @for(span of trace.spans;track span.span_id){<div class="span-row"><div><strong>{{ span.name }}</strong><small>{{ span.service }} · {{ span.kind }} · {{ span.outcome }} · {{ span.duration | number:'1.0-1' }} ms</small></div><div class="span-track"><span [style.margin-left.%]="traceOffset(span)" [style.width.%]="traceWidth(span)" [class.failed]="span.outcome==='error'"></span></div></div>}
+        </section>}
+        <section class="lf-tile"><h2>{{ t('traces') }}</h2><p class="note">{{ t('traceNote') }}</p>
+          @for(span of spans();track span.span_id){<button class="trace-row" (click)="openTrace(span.trace_id)"><span><strong>{{ span.name }}</strong><small>{{ span.at | date:'short' }} · {{ span.service }} · {{ span.channel || t('system') }}</small></span><span>{{ span.duration | number:'1.0-1' }} ms<small>{{ span.outcome }} @if(span.partial){ · {{ t('partial') }} }</small></span></button>} @empty {<p class="empty">{{ t('noTraces') }}</p>}
+        </section>
+      }
+      @if (tab()==='logs') {<section class="lf-tile"><h2>{{ t('logs') }}</h2><p class="note">{{ t('logsNote') }}</p>@for(log of logs();track $index){<article class="log-row"><div class="section-head"><strong>{{ log.name }}</strong><span class="chip">{{ log.level }}</span></div><small>{{ log.at | date:'short' }} · {{ log.service }} · {{ log.channel || t('system') }}</small><p>{{ fields(log) }}</p>@if(log.trace_id){<button (click)="tab.set('traces');openTrace(log.trace_id)">{{ t('openTrace') }}</button>}</article>}@empty{<p class="empty">{{ t('noLogs') }}</p>}</section>}
+      @if (tab()==='access' && grant()?.role==='owner') {
+        <section class="lf-tile"><h2>{{ t('access') }}</h2><p>{{ t('accessNote') }}</p>
+          <form class="grant-form" (ngSubmit)="confirmation.set('save')"><label>{{ t('userId') }}<input name="grantUser" [(ngModel)]="grantUser" required pattern="[0-9]{1,30}" /></label><label>{{ t('role') }}<select name="role" [(ngModel)]="grantRole"><option value="viewer">{{ t('viewer') }}</option><option value="investigator">{{ t('investigator') }}</option></select></label><label>{{ t('allowedChannels') }}<input name="channels" [(ngModel)]="grantChannels" /></label><label>{{ t('allowedServices') }}<input name="services" [(ngModel)]="grantServices" /></label><label>{{ t('expires') }}<input type="datetime-local" name="expires" [(ngModel)]="grantExpires" /></label><button class="primary" type="submit">{{ t('reviewGrant') }}</button></form>
+          <p class="note">{{ t('scopeNote') }}</p>
+          @if(confirmation();as action){<div class="confirmation" role="alert"><strong>{{ t(action==='save'?'confirmGrant':'confirmRevoke') }} {{ action==='save'?grantUser:action }}</strong>@if(action==='save'){<p>{{ t(grantRole) }} · {{ grantChannels || t('allChannels') }} · {{ grantServices || t('allServices') }}</p>}<div><button (click)="confirmation.set(null)">{{ t('cancel') }}</button><button class="primary" [disabled]="saving()" (click)="confirmAccess()">{{ t('confirm') }}</button></div></div>}
+          @if(notice()){<p role="status">{{ notice() }}</p>}
+          @for(item of grants();track item.user_id){<div class="plain-row"><span><strong>{{ item.user_id }} · {{ t(item.role) }}</strong><small>{{ item.channels.join(', ') || t('allChannels') }} · {{ item.services.join(', ') || t('allServices') }}</small><small>{{ item.expires_at ? (item.expires_at | date:'short') : t('noExpiry') }}</small></span><button (click)="confirmation.set(item.user_id)">{{ t('revoke') }}</button></div>}@empty{<p class="empty">{{ t('noGrants') }}</p>}
+        </section>
+      }
+      <footer class="note">{{ t('retention') }} @if(data()?.lastAt){ · {{ t('updated') }} {{ data()?.lastAt | date:'short' }} } </footer>
+    }
+  }
+</main>

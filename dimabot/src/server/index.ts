@@ -1,3 +1,4 @@
+import { startTelemetry, instrumentFetch } from '../utils/observability/telemetry.js';
 import path from 'path';
 import dotenv from 'dotenv';
 
@@ -25,6 +26,9 @@ import { info, error } from '../utils/logger.js';
 import { reconcileLiveSessionsOnStartup, startStreamAnalyticsWorker } from '../utils/stream_analytics.js';
 import { startSiteAnalytics, refreshSiteAnalyticsSnapshot } from '../utils/siteanalytics.js';
 import startSDKLogger from '../utils/opentelemetry_posthog.js';
+
+startTelemetry();
+instrumentFetch();
 
 await getDragonflyClient('Server');
 await getMongoDBConnection('Server');

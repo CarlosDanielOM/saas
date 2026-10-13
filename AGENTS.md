@@ -53,6 +53,7 @@ The helper snapshots current project files, tests a candidate, promotes the exac
 | `dimabot` | Helper targets `api`, `bot`, `cron`, `piper`, `embeddings` use `dimabot/docker-compose.yaml` |
 | `dimafx` server | Helper target `dimafx-server` uses `dimafx/docker-compose.yml` |
 | `dimadb` | Helper target `dimadb` uses `dimadb/docker-compose.yaml`; `dimadb/data/` is persistent production data |
+| `dima-analytics` | First install uses `ops/bootstrap_analytics.py`; later releases use helper target `analytics` and `dima-analytics/docker-compose.yaml` |
 
 The static sites have their own Compose files in their project directories. Nginx Proxy Manager fronts them; it does not own their Compose lifecycle. Content updates do not require nginx restarts. Nginx configuration changes require validation and a targeted reload.
 
@@ -60,7 +61,7 @@ Changes limited to repository guidance (such as `AGENTS.md` or architecture Mark
 
 ## Monorepo Structure
 
-This workspace is a **single git repository** (`saas/`) containing six related projects. There are no nested `.git` folders. Run repository operations from the relevant checkout root; use isolated worktrees/copies when required by the production workflow above.
+This workspace is a **single git repository** (`saas/`) containing seven related projects. There are no nested `.git` folders. Run repository operations from the relevant checkout root; use isolated worktrees/copies when required by the production workflow above.
 
 - Each subproject manages its own `package.json` and `package-lock.json`.
 - Root `.gitignore` explicitly allows per-project lockfiles.
@@ -76,6 +77,7 @@ This workspace is a **single git repository** (`saas/`) containing six related p
 | `dimadocs/` | Documentation site (public)          | Astro + MDX                 | `astro.config.mjs`, `src/content/docs/`       |
 | `dimafx/`   | Twitch Extension (client + server)   | HTML/JS + Node.js           | `server/src/server.ts`, `panel.html`, `config.html` |
 | `dimadb/`   | Internal DB console (Redis first)    | Angular v22 + Node          | `src/app/app.routes.ts`, `server/index.mjs`         |
+| `dima-analytics/` | Private observability and resource analytics service | Node.js / Express + PostgreSQL | `src/index.mjs`, `src/store.mjs`, `src/collectors.mjs` |
 
 **Rule**: When asked to make a change, first identify which project owns the feature, then read that project's `AGENTS.md` (if present) before editing.
 
@@ -229,6 +231,7 @@ Each major project now contains its own `AGENTS.md` for domain-specific rules:
 - `dimadocs/AGENTS.md` – Astro + MDX documentation authoring guidelines.
 - `dimafx/AGENTS.md` – Twitch Extension client/server patterns.
 - `dimadb/AGENTS.md` – Internal DB console (single Node container, Angular CSR).
+- `dima-analytics/AGENTS.md` – Private analytics service, data scopes, retention, and first-install workflow.
 
 Root rules in this file always take precedence. Project-specific files add detail, never contradict.
 

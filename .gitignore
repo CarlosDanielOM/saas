@@ -167,3 +167,5 @@ dev-agent.md
 # Source logo archives — processed copies live in app asset folders
 /logos.zip
 /dimafx-logos.zip
+
+!dima-analytics/package-lock.json

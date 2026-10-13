@@ -1,3 +1,4 @@
+import { traced, observe } from '../utils/observability/telemetry.js';
 import { publishStudioMedia } from '../overlays/bridge.js';
 import type { RedisClientType } from 'redis';
 import { getDragonflyClient } from '../utils/databases/dragonfly.database.js';
@@ -139,6 +140,7 @@ class ClipQueueHandler {
             return;
         }
 
+        observe('queue_wait', 'clips', Math.max(0, Date.now() - clipData.timestamp), 'ok', channelID);
         const timeoutKey = `${channelID}:${clipData.clipID}`;
         this.activeClipIds.set(channelID, clipData.clipID);
         let timeoutSeconds = 60;
@@ -169,7 +171,7 @@ class ClipQueueHandler {
 
             await deleteOldClip(channelID, downloadDir);
 
-            const downloadResult = await downloadClip(clipData.clipUrl, channelID, downloadDir);
+            const downloadResult = await traced('queue_run', 'clips.download', () => downloadClip(clipData.clipUrl, channelID, downloadDir), channelID);
 
             if (downloadResult.error) {
                 console.error(`Download failed for channel ${channelID}, clipID: ${clipData.clipID}:`, {

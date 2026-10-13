@@ -1,3 +1,4 @@
+import { traced, traceOutcome } from '../utils/observability/telemetry.js';
 import type { CommandReferenceState, CommandReferenceRequest } from '../utils/ast_parser/types.js';
 import { getDragonflyClient } from '../utils/databases/dragonfly.database.js';
 import type { ITwitchEventData } from '../interfaces/twitch/eventsub.interface.js';
@@ -105,7 +106,7 @@ async function commandHandler(
         };
     }
 
-    return executeCustomCommand(channelID, messageEventData, cmdDB.command, command, argument, authorization, referenceState);
+    return traced('command_body', cmdDB.command.cmd || 'custom', () => executeCustomCommand(channelID, messageEventData, cmdDB.command!, command, argument, authorization, referenceState), channelID);
 }
 
 /** Shared authored AST execution; activation matching belongs to the caller. */

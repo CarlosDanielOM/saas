@@ -9,6 +9,7 @@ import { streamerRouteShapeGuard, validStreamerGuard } from './guards/streamer-r
 import { overlayDraftGuard } from './features/overlays/overlay-draft.guard';
 
 export const routes: Routes = [
+  { path: 'observability', loadComponent: () => import('./features/observability/observability-page.component').then(m => m.ObservabilityPageComponent), title: 'Observability | DomDimaBot' },
   { path: 'overlays/:publicId', loadComponent: () => import('./features/overlays/overlay-runtime.component').then(m => m.OverlayRuntimeComponent), title: 'Overlay Studio' },
   { path: 'overlays/duel/:channelID/leaderboard', loadComponent: () => import('./features/widgets/duel/duel-leaderboard-overlay.component').then(m => m.DuelLeaderboardOverlayComponent), title: 'Duel Leaderboard' },
   { path: 'overlays/duel/:channelID', loadComponent: () => import('./features/widgets/duel/duel-overlay.component').then(m => m.DuelOverlayComponent), title: 'Duel Overlay' },
