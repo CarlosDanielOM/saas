@@ -47,7 +47,7 @@
             @if (credit.available) {
               <div class="lf-hero__top">
                 <div>
-                  <p class="lf-label">{{ t('usage.balance.remaining') }}</p>
+                  <p class="lf-label">{{ t(creditsEstimated() ? 'usage.balance.estimatedRemaining' : 'usage.balance.remaining') }}</p>
                   <p class="lf-hero__value">
                     {{ formatCredits(credit.balance) }}
                     <span>{{ t('usage.hero.creditsUnit') }}</span>
@@ -60,6 +60,9 @@
                 }
               </div>
 
+              @if (creditsEstimated()) {
+                <p class="lf-note">{{ t('usage.balance.estimateNote') }}</p>
+              }
               <div class="lf-meter" [class.lf-meter--live]="creditsExhausted()">
                 <div class="lf-meter__track" aria-hidden="true">
                   <span class="lf-meter__fill" [style.width.%]="creditPercent()"></span>
@@ -87,7 +90,7 @@
               <p class="lf-hero__value lf-hero__value--sm">{{ t('usage.balance.unavailable') }}</p>
             }
           } @else {
-            <p class="lf-hero__value lf-hero__value--sm">—</p>
+            <p class="lf-hero__value lf-hero__value--sm">{{ creditsEstimated() ? t('usage.balance.syncing') : '—' }}</p>
           }
         </article>
 

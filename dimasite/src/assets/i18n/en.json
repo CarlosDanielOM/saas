@@ -2123,6 +2123,7 @@
       "autoChipOn": "Auto after streams: on",
       "autoChipOff": "Auto after streams: off",
       "balanceChip": "{{credits}} credits left",
+      "estimatedBalance": "Estimated balance: {{credits}} credits",
       "viewOnly": "View only",
       "momentsTitle": "Moments to review",
       "momentsHint": "Newest stream first. Tap a preview to watch it.",
@@ -2569,6 +2570,7 @@
       "featureSpotlightValue": "Event Heatmap",
       "featureSpotlightHint": "Reserved for your next feature.",
       "aiCredits": "AI Credits",
+      "aiCreditsEstimated": "AI credits · estimated",
       "aiCreditsExhaustedFree": "Upgrade to Premium or Pro",
       "aiCreditsExhaustedPremium": "Upgrade to Pro",
       "aiCreditsExhaustedPro": "Buy more credits",
@@ -2709,6 +2711,9 @@
       "kicker": "Credit balance",
       "refresh": "Refresh credit usage",
       "remaining": "Remaining",
+      "estimatedRemaining": "Estimated remaining",
+      "estimateNote": "Based on your allowance and recorded activity this period.",
+      "syncing": "Credit history is syncing.",
       "buyCredits": "Buy more credits",
       "unavailable": "AI credits are not available for this account."
     },
@@ -2784,6 +2789,7 @@
     },
     "forecast": {
       "exhausted": "You're out of credits. AI features pause until your credits reset on {{date}}, or until you top up.",
+      "estimatedExhausted": "Recorded activity has used this period’s allowance. Your credits reset on {{date}}.",
       "runOut": "At about {{daily}} a day, you'll run out in ~{{days}} days, {{gap}} days before your credits reset on {{date}}.",
       "runOutSoon": "At about {{daily}} a day, you'll run out within a day, {{gap}} days before your credits reset on {{date}}.",
       "onTrack": "At about {{daily}} a day, your credits will last until they reset on {{date}}.",
@@ -2819,7 +2825,8 @@
       "label": "Your balance",
       "daysLeft": "≈ {{days}} days left at your pace",
       "dayLeft": "Runs out in about a day",
-      "empty": "You're out of credits"
+      "empty": "You're out of credits",
+      "estimatedEmpty": "Estimated allowance fully used"
     },
     "recipient": {
       "account": "Credits go to @{{account}}",

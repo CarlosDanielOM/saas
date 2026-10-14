@@ -28,6 +28,7 @@ import { UpgradeService } from '../../services/upgrade.service';
 import { UsageApiService } from '../../services/usage-api.service';
 import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 import { getRouteParam } from '../../shared/utils/route-param.util';
+import { usageCreditDisplay } from '../../shared/utils/credit-display.util';
 import { CreditGiftComponent } from './gift/credit-gift.component';
 import { GiftStatusComponent } from './gift/gift-status.component';
 
@@ -66,6 +67,7 @@ export class CreditPacksPageComponent {
 
   readonly catalog = signal<CreditPackCatalogData | null>(null);
   readonly usage = signal<AiUsageSummaryData | null>(null);
+  readonly creditDisplay = computed(() => usageCreditDisplay(this.usage()));
   readonly loading = signal(true);
   readonly errorMessage = signal<string | null>(null);
   readonly checkingOutId = signal<string | null>(null);
@@ -133,7 +135,7 @@ export class CreditPacksPageComponent {
 
   /** Cheapest eligible pack that covers the shortfall projected for this billing period. */
   readonly pacedRecommendationId = computed(() => {
-    const overage = this.usage()?.pacing?.projectedOverageCredits ?? 0;
+    const overage = this.creditDisplay().pacing?.projectedOverageCredits ?? 0;
     const catalog = this.catalog();
     if (!catalog || !Number.isFinite(overage) || overage <= 0) return null;
     return catalog.offers
@@ -154,16 +156,18 @@ export class CreditPacksPageComponent {
   });
 
   readonly balance = computed(() => {
-    const credits = this.usage()?.credits;
+    const credits = this.creditDisplay().credits;
     return credits?.available ? Math.max(0, credits.balance) : null;
   });
   readonly balanceNote = computed<{ text: string; warn: boolean } | null>(() => {
     const summary = this.usage();
     if (!summary) return null;
-    if (summary.credits.status === 'exhausted' || (summary.credits.available && summary.credits.balance <= 0)) {
-      return { text: this.t('creditPacks.balance.empty'), warn: true };
+    const display = this.creditDisplay();
+    if (!display.credits) return null;
+    if (display.credits.status === 'exhausted' || (display.credits.available && display.credits.balance <= 0)) {
+      return { text: this.t(display.estimated ? 'creditPacks.balance.estimatedEmpty' : 'creditPacks.balance.empty'), warn: true };
     }
-    const days = summary.pacing?.estimatedDaysUntilExhaustion;
+    const days = display.pacing?.estimatedDaysUntilExhaustion;
     if (days === null || days === undefined || !Number.isFinite(days)) return null;
     const rounded = Math.max(0, Math.floor(days));
     return {
@@ -342,7 +346,7 @@ export class CreditPacksPageComponent {
 
   /** Days this pack would last at the purchaser's recent average spend. */
   paceDays(pack: CreditPackOffer): number | null {
-    const average = this.usage()?.pacing?.averageDailyCredits ?? 0;
+    const average = this.creditDisplay().pacing?.averageDailyCredits ?? 0;
     if (!Number.isFinite(average) || average <= 0) return null;
     const days = Math.floor(pack.credits / average);
     return days >= 1 ? days : null;
@@ -354,7 +358,7 @@ export class CreditPacksPageComponent {
    */
   unusedBeforeExpiry(pack: CreditPackOffer): number | null {
     const catalog = this.catalog();
-    const average = this.usage()?.pacing?.averageDailyCredits ?? 0;
+    const average = this.creditDisplay().pacing?.averageDailyCredits ?? 0;
     const days = catalog?.rechargeExpiryDays;
     if (pack.kind !== 'recharge' || !catalog?.hasActivePaidSubscription) return null;
     if (days === null || days === undefined || !Number.isFinite(average) || average <= 0) return null;

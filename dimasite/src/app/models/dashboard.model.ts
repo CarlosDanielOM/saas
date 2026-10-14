@@ -117,6 +117,8 @@ export interface AiCreditsData {
   updatedAt: string;
   available: boolean;
   status?: 'unavailable' | 'available' | 'exhausted';
+  /** Presentation only; raw balance/status above remain the billing snapshot. */
+  display?: { estimated: boolean; credits: AiCreditsData | null };
 }
 
 export type AiCreditsResponse = ApiEnvelope<AiCreditsData>;

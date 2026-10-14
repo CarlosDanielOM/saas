@@ -18,7 +18,7 @@
 
         @if (mode() === 'self' && balance() !== null) {
           <div class="lf-balance" [class.lf-balance--warn]="balanceNote()?.warn">
-            <span class="lf-balance__label">{{ t('creditPacks.balance.label') }}</span>
+            <span class="lf-balance__label">{{ t(creditDisplay().estimated ? 'usage.balance.estimatedRemaining' : 'creditPacks.balance.label') }}</span>
             <span class="lf-balance__value">
               {{ formatCredits(balance()!) }} <span>{{ t('creditPacks.creditsLabel') }}</span>
             </span>

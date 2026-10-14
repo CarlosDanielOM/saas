@@ -2123,6 +2123,7 @@
       "autoChipOn": "Auto tras directos: activado",
       "autoChipOff": "Auto tras directos: desactivado",
       "balanceChip": "Te quedan {{credits}} créditos",
+      "estimatedBalance": "Saldo estimado: {{credits}} créditos",
       "viewOnly": "Solo lectura",
       "momentsTitle": "Momentos por revisar",
       "momentsHint": "El directo más reciente primero. Toca una vista previa para verla.",
@@ -2569,6 +2570,7 @@
       "featureSpotlightValue": "Mapa de Calor de Eventos",
       "featureSpotlightHint": "Reservado para tu proxima feature.",
       "aiCredits": "Créditos de IA",
+      "aiCreditsEstimated": "Créditos de IA · estimados",
       "aiCreditsExhaustedFree": "Mejora a Premium o Pro",
       "aiCreditsExhaustedPremium": "Mejora a Pro",
       "aiCreditsExhaustedPro": "Comprar más créditos",
@@ -2709,6 +2711,9 @@
       "kicker": "Saldo de créditos",
       "refresh": "Actualizar uso de créditos",
       "remaining": "Restantes",
+      "estimatedRemaining": "Restantes estimados",
+      "estimateNote": "Según tu asignación y la actividad registrada en este periodo.",
+      "syncing": "Se está sincronizando el historial de créditos.",
       "buyCredits": "Comprar más créditos",
       "unavailable": "Los créditos de IA no están disponibles para esta cuenta."
     },
@@ -2784,6 +2789,7 @@
     },
     "forecast": {
       "exhausted": "Te has quedado sin créditos. Las funciones de IA se pausan hasta que se renueven el {{date}} o hasta que recargues.",
+      "estimatedExhausted": "La actividad registrada ha consumido la asignación de este periodo. Tus créditos se renuevan el {{date}}.",
       "runOut": "Con unos {{daily}} al día, te quedarás sin créditos en ~{{days}} días, {{gap}} días antes de que se renueven el {{date}}.",
       "runOutSoon": "Con unos {{daily}} al día, te quedarás sin créditos en menos de un día, {{gap}} días antes de que se renueven el {{date}}.",
       "onTrack": "Con unos {{daily}} al día, tus créditos durarán hasta que se renueven el {{date}}.",
@@ -2819,7 +2825,8 @@
       "label": "Tu saldo",
       "daysLeft": "≈ {{days}} días restantes a tu ritmo",
       "dayLeft": "Se agota en aproximadamente un día",
-      "empty": "Te has quedado sin créditos"
+      "empty": "Te has quedado sin créditos",
+      "estimatedEmpty": "Asignación estimada consumida"
     },
     "recipient": {
       "account": "Los créditos van a @{{account}}",

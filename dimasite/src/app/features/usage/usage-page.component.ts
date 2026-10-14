@@ -27,6 +27,7 @@ import { UpgradeService } from '../../services/upgrade.service';
 import { UsageApiService } from '../../services/usage-api.service';
 import { LfIconComponent, type LfIconName } from '../../shared/lf-icon/lf-icon.component';
 import { getRouteParam } from '../../shared/utils/route-param.util';
+import { usageCreditDisplay } from '../../shared/utils/credit-display.util';
 
 interface ChannelResolutionState {
   streamer: string;
@@ -122,7 +123,9 @@ export class UsagePageComponent {
   readonly selectedCategory = signal<AiUsageReceiptCategory | null>(null);
   readonly categoryFilters = TRANSACTION_CATEGORIES;
 
-  readonly credits = computed(() => this.summary()?.credits ?? null);
+  readonly creditDisplay = computed(() => usageCreditDisplay(this.summary()));
+  readonly creditsEstimated = computed(() => this.creditDisplay().estimated);
+  readonly credits = computed(() => this.creditDisplay().credits);
   readonly creditsAvailable = computed(() => this.credits()?.available ?? false);
   readonly creditsUsed = computed(() => this.credits()?.used ?? 0);
   readonly creditsLimit = computed(() => this.credits()?.limit ?? 0);
@@ -183,7 +186,7 @@ export class UsagePageComponent {
     return this.t('creditPacks.recharge.expiresInDays', { days });
   });
 
-  readonly pacing = computed<AiUsagePacing | null>(() => this.summary()?.pacing ?? null);
+  readonly pacing = computed<AiUsagePacing | null>(() => this.creditDisplay().pacing);
   readonly billingPeriod = computed(() => this.summary()?.billingPeriod ?? null);
   readonly analytics = computed(() => this.summary()?.analytics ?? null);
   readonly dailySpend = computed(() => this.analytics()?.daily ?? []);
@@ -209,7 +212,8 @@ export class UsagePageComponent {
     if (!pace || !date) return null;
     const daily = this.formatCredits(pace.averageDailyCredits);
     if (pace.status === 'exhausted' || this.creditsExhausted()) {
-      return { tone: 'live', text: this.t('usage.forecast.exhausted', { date }) };
+      return { tone: 'live', text: this.t(this.creditsEstimated()
+        ? 'usage.forecast.estimatedExhausted' : 'usage.forecast.exhausted', { date }) };
     }
     if (pace.status === 'no_usage') {
       return { tone: 'muted', text: this.t('usage.forecast.noUsage', { date }) };

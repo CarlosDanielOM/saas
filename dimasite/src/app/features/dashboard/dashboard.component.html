@@ -276,7 +276,7 @@
 
         <article class="lf-tile lf-ai lf-metric--ai">
           <div class="lf-spotlight__head">
-            <p class="lf-label lf-label--inline">{{ t('dashboard.kpis.aiCredits') }}</p>
+            <p class="lf-label lf-label--inline">{{ t(aiCreditsEstimated() ? 'dashboard.kpis.aiCreditsEstimated' : 'dashboard.kpis.aiCredits') }}</p>
             <span class="lf-chip" [class.lf-chip--gold]="planTier() !== 'free'">{{ planLabel() }}</span>
           </div>
           @if (aiCreditsAvailable()) {

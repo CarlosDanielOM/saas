@@ -23,6 +23,7 @@ import {
 import { getAiUsageRetentionDays } from '../../utils/ai_usage_ledger.js';
 
 import { getAiUsageDashboard } from '../../utils/ai_usage_dashboard.js';
+import { getFreeAiCreditDisplay } from '../../utils/ai_credit_display.js';
 import { queryAiUsageTransactions, usageLedgerStatus } from '../../utils/ai_usage_queries.js';
 import { createCreditGiftCheckout, CreditGiftRequestError, findGiftRecipient, searchGiftRecipients, getCreditGift } from '../../utils/credit_gifts.js';
 import { getGiftPackCatalog } from '../../utils/credit_gift_provider.js';
@@ -507,12 +508,13 @@ router.get('/ai-credits', authMiddleware as any, async (req: Request, res: Respo
         }
 
         const credits = await getAiCredits(targetUser, requestedChannelID);
+        const display = await getFreeAiCreditDisplay(targetUser, requestedChannelID, credits);
 
         return res.status(200).json({
             error: false,
             message: 'AI credits fetched successfully',
             status: 200,
-            data: credits
+            data: { ...credits, display }
         });
     } catch (error) {
         console.error('Error in GET /billing/ai-credits:', {
@@ -574,6 +576,10 @@ router.get('/ai-usage/summary', authMiddleware as any, async (req: Request, res:
             credits, billingPeriod: cycle.billingPeriod, history: dashboard?.history,
             historyComplete: ledger?.status !== 'pending'
         });
+        const creditDisplay = await getFreeAiCreditDisplay(target.user, target.channelID, credits,
+            period.billingPeriod.source === 'free_monthly'
+                ? { billingPeriod: cycle.billingPeriod, summary, history: dashboard?.history, ledger }
+                : undefined);
 
         return res.status(200).json({
             error: false,
@@ -583,6 +589,7 @@ router.get('/ai-usage/summary', authMiddleware as any, async (req: Request, res:
                 planTier,
                 capabilities,
                 credits,
+                creditDisplay,
                 billingPeriod: period.billingPeriod,
                 ledger,
                 summaryUpdatedAt: dashboard?.refreshedAt || null,

@@ -120,6 +120,7 @@ export interface AiUsageSummaryData {
   planTier: AiUsagePlanTier;
   capabilities: AiUsageCapabilities;
   credits: AiCreditsData;
+  creditDisplay?: { estimated: boolean; credits: AiCreditsData | null; pacing: AiUsagePacing | null };
   billingPeriod: AiUsageBillingPeriod;
   pacing: AiUsagePacing | null;
   analytics: AiUsageSummary | null;

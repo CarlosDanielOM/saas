@@ -19,6 +19,8 @@ import { SessionAuthService } from '../../services/session-auth.service';
 import { ToastService } from '../../services/toast.service';
 import { DashboardApiService } from '../../services/dashboard-api.service';
 import { getRouteParam } from '../../shared/utils/route-param.util';
+import type { AiCreditsData } from '../../models/dashboard.model';
+import { creditDisplay } from '../../shared/utils/credit-display.util';
 import {
   ClipRecommendation,
   ClipRecommendationCandidate,
@@ -75,6 +77,12 @@ export class ClipRecommendationsPageComponent implements OnInit, OnDestroy {
   readonly planTier = signal<'free' | 'premium' | 'pro'>('free');
   readonly pricing = signal<Pricing>(DEFAULT_PRICING);
   readonly creditBalance = signal<number | null>(null);
+  private readonly creditSnapshot = signal<AiCreditsData | null>(null);
+  readonly creditDisplay = computed(() => creditDisplay(this.creditSnapshot(), this.planTier()));
+  readonly displayCreditBalance = computed(() => {
+    const credits = this.creditDisplay().credits;
+    return credits?.available ? Math.max(0, credits.balance) : null;
+  });
   readonly pendingCandidates = signal<ReadonlySet<string>>(new Set());
   readonly confirmingVod = signal<TwitchVodInfo | null>(null);
   readonly preview = signal<PreviewState | null>(null);
@@ -138,6 +146,7 @@ export class ClipRecommendationsPageComponent implements OnInit, OnDestroy {
         });
       this.dashboardApi.getAiCredits(channelID).subscribe((response) => {
         const data = response?.data;
+        this.creditSnapshot.set(data ?? null);
         this.creditBalance.set(data?.available ? Math.max(0, Number(data.balance) || 0) : null);
       });
       void Promise.all([this.loadAll(false), this.loadVods(false)]);

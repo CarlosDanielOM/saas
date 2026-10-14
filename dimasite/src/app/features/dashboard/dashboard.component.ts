@@ -30,6 +30,7 @@ import { SessionAuthService } from '../../services/session-auth.service';
 import { ThemeService } from '../../services/theme.service';
 import { CountUpDirective } from '../../shared/directives/count-up.directive';
 import { getRouteParam, watchRouteParam } from '../../shared/utils/route-param.util';
+import { creditDisplay } from '../../shared/utils/credit-display.util';
 import { StreamHealthStatus } from './components/stream-health.component';
 import { AverageToggleComponent, type AverageMode } from './components/average-toggle.component';
 import { LoadingIndicatorComponent } from '../../components/loading';
@@ -252,7 +253,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly totalFollowers = computed(() => this.bootstrap()?.totalFollowers ?? 0);
   readonly totalSubs = computed(() => this.bootstrap()?.totalSubs ?? 0);
   // AI Credits (5th KPI tile)
-  readonly aiCreditsData = computed(() => this.dashboardApi.aiCredits());
+  readonly aiCreditDisplay = computed(() => creditDisplay(this.dashboardApi.aiCredits(), this.planTier()));
+  readonly aiCreditsData = computed(() => this.aiCreditDisplay().credits);
+  readonly aiCreditsEstimated = computed(() => this.aiCreditDisplay().estimated);
   readonly aiCreditsAvailable = computed(() => this.aiCreditsData()?.available ?? false);
   readonly aiCreditsUsed = computed(() => this.aiCreditsData()?.used ?? 0);
   readonly aiCreditsLimit = computed(() => this.aiCreditsData()?.limit ?? 0);
@@ -280,7 +283,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return this.t('dashboard.kpis.aiCreditsExhaustedPro');
   });
   readonly aiCreditsNotAvailableLabel = computed(() =>
-    this.t('dashboard.kpis.aiCreditsNotAvailable')
+    this.t(this.aiCreditsEstimated() ? 'usage.balance.syncing' : 'dashboard.kpis.aiCreditsNotAvailable')
   );
 
   readonly currentTimeContext = signal(new Date());

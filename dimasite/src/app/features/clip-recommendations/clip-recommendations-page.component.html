@@ -17,8 +17,8 @@
         <span class="lf-chip" [class.lf-chip--ok]="autoAnalyzeEnabled()">
           {{ autoAnalyzeEnabled() ? t('clipRecommendations.v2.autoChipOn') : t('clipRecommendations.v2.autoChipOff') }}
         </span>
-        @if (creditBalance() !== null) {
-          <a class="lf-chip lf-chip--link" [routerLink]="creditsPath()">{{ t('clipRecommendations.v2.balanceChip', { credits: formatNumber(creditBalance()!) }) }}</a>
+        @if (displayCreditBalance() !== null) {
+          <a class="lf-chip lf-chip--link" [routerLink]="creditsPath()">{{ t(creditDisplay().estimated ? 'clipRecommendations.v2.estimatedBalance' : 'clipRecommendations.v2.balanceChip', { credits: formatNumber(displayCreditBalance()!) }) }}</a>
         }
         <span class="lf-chip lf-chip--muted">{{ t('clipRecommendations.alphaBadge') }}</span>
         @if (!canManage() && channelID()) {
@@ -281,11 +281,13 @@
         <div id="clip-confirm-desc" class="lf-confirm">
           <p class="lf-confirm__cost">{{ t('clipRecommendations.v2.confirmCost', { credits: formatNumber(estimate(vod.durationMinutes)) }) }}</p>
           <p class="lf-copy">{{ t('clipRecommendations.v2.confirmCopy') }}</p>
-          @if (creditBalance() !== null) {
-            @if (canAfford(vod)) {
-              <p class="lf-note">{{ t('clipRecommendations.v2.confirmBalance', { credits: formatNumber(creditBalance()!) }) }}</p>
+          @if (displayCreditBalance() !== null) {
+            @if (creditDisplay().estimated) {
+              <p class="lf-note">{{ t('clipRecommendations.v2.estimatedBalance', { credits: formatNumber(displayCreditBalance()!) }) }}</p>
+            } @else if (canAfford(vod)) {
+              <p class="lf-note">{{ t('clipRecommendations.v2.confirmBalance', { credits: formatNumber(displayCreditBalance()!) }) }}</p>
             } @else {
-              <p class="lf-note lf-note--warn" role="alert">{{ t('clipRecommendations.v2.confirmShort', { credits: formatNumber(creditBalance()!) }) }}</p>
+              <p class="lf-note lf-note--warn" role="alert">{{ t('clipRecommendations.v2.confirmShort', { credits: formatNumber(displayCreditBalance()!) }) }}</p>
             }
           }
         </div>
