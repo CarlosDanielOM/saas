@@ -99,7 +99,7 @@ assert.ok(selected.length > 0 && Number.isInteger(repeats) && repeats >= 1 && re
 const evaluations = Array.from({ length: repeats }, () => selected).flat();
 for (const [label, messageText, ban, context = [], categories] of evaluations) {
     const started = Date.now();
-    const result = await evaluateSemanticDecision({ rule: spamRuleForContext(context, { spamProtection: { enabled: true, reviewAllMessages: false, categories } }), username: 'synthetic-viewer', messageText, context, matches: [], deadline: new Date(Date.now() + 4000) }, model);
+    const result = await evaluateSemanticDecision({ channelID: 'provider-check', rule: spamRuleForContext(context, { spamProtection: { enabled: true, reviewAllMessages: false, categories } }), username: 'synthetic-viewer', messageText, context, matches: [], deadline: new Date(Date.now() + 4000) }, model);
     console.log(JSON.stringify({ label, verdict: result.verdict, status: result.status, scores: result.scores, model: result.model, inputTokens: result.inputTokens, providerCost: result.cost, latencyMs: Date.now() - started }));
     assert.ok(['completed', 'uncertain'].includes(result.status), `${label}: ${result.status}`);
     const valid = ban === 'flag_or_uncertain' ? result.verdict !== 'allow' : (result.verdict === 'violation') === ban;

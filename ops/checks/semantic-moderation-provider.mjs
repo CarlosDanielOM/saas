@@ -17,7 +17,7 @@ const cases = [
 ];
 for (const [label, policy, messageText, expected, context = [], examples = []] of cases) {
     const patterns = parseAdvancedRule({ type: 'blacklist', patterns: [{ id: 'candidate', source: policy.includes('Rinn') ? 'r+i+(?:n+i+)*n+' : 'f(?:u|a)?ck(?:ing|y)?' }] }).patterns;
-    const result = await evaluateSemanticDecision({ rule: { semantic: { enabled: true, policy, examples, onUncertain: 'allow_and_log' } },
+    const result = await evaluateSemanticDecision({ channelID: 'provider-check', rule: { semantic: { enabled: true, policy, examples, onUncertain: 'allow_and_log' } },
         username: 'test', messageText, context, matches: findBlacklistMatches(messageText, ['fuck'], patterns), deadline: new Date(Date.now() + 4000) });
     console.log(JSON.stringify({ label, verdict: result.verdict, status: result.status, scores: result.scores, model: result.model, inputTokens: result.inputTokens, providerCost: result.cost }));
     assert.equal(result.verdict, expected, label);

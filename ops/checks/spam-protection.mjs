@@ -139,7 +139,8 @@ try {
     await review('tier-switch', 'last-paid', 'Hello everyone!');
     await until(async () => (await decision('last-paid'))?.charge.status === 'recorded', 'last credit charged');
     assert.equal((await decision('last-paid')).model, 'typesafe/jev-1.13');
-    assert.equal(JSON.parse(await redis.get('twitch:tier-switch:ai:credits')).balance, 0);
+    assert.equal(JSON.parse(await redis.get('twitch:tier-switch:ai:credits')).balance,
+        1 - (await decision('last-paid')).charge.credits, 'the final review deducts its recorded cost, including overdraw');
     await review('tier-switch', 'exhausted-later', 'Do not buy viewers; those sites are scams.');
     await review('tier-switch', 'exhausted-first', 'Hello everyone!', 'new-exhausted');
     for (const id of ['exhausted-later', 'exhausted-first']) {

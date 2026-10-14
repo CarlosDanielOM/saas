@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { OPENROUTER_APP_HEADERS } from '../ai/openrouter/app_attribution.util.js';
 import RE2 from 're2';
 import { escapeRegExp, foldText } from './normalize.js';
 import { findBlacklistMatches, type ModerationPattern } from './advanced.js';
@@ -189,11 +190,12 @@ export function museVariationRequest(terms: string[]) {
         provider: { require_parameters: true }
     };
 }
-export async function generateMuseVariations(terms: string[], signal: AbortSignal) {
+export async function generateMuseVariations(terms: string[], signal: AbortSignal, channelID: string) {
+    if (!channelID?.trim()) throw new Error('channel_context_required');
     if (!process.env.OPENROUTER_API_KEY) throw new Error('generation_unavailable');
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST', headers: { Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(museVariationRequest(terms)), signal
+        method: 'POST', headers: { Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`, 'Content-Type': 'application/json', ...OPENROUTER_APP_HEADERS },
+        body: JSON.stringify({ ...museVariationRequest(terms), user: channelID }), signal
     });
     if (!response.ok) throw new Error('generation_unavailable');
     const raw = await response.json() as { choices?: Array<{ finish_reason?: string; message?: { content?: string } }>; model?: string; usage?: { prompt_tokens?: number; completion_tokens?: number; cost?: number } };

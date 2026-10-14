@@ -87,7 +87,7 @@ export async function processNextVariationJob(): Promise<boolean> {
         for (let index = 0; index < missing.length; index += 20) {
             const remaining = job.deadline.getTime() - Date.now();
             if (remaining <= 0) throw new Error('generation_timeout');
-            const result = await generateMuseVariations(missing.slice(index, index + 20), AbortSignal.timeout(Math.min(60_000, remaining)));
+            const result = await generateMuseVariations(missing.slice(index, index + 20), AbortSignal.timeout(Math.min(60_000, remaining)), job.channelID);
             // Record actual provider usage even though generation charges zero credits.
             await Jobs.updateOne({ _id: job._id }, { $push: { providerUsage: { model: result.model, ...result.usage } } });
             if (Date.now() >= job.deadline.getTime()) throw new Error('generation_timeout');

@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { generateMuseVariations, rulePatterns, VARIATION_MODEL } from '/app/dist/utils/moderation/variations.js';
 import { findBlacklistMatches } from '/app/dist/utils/moderation/advanced.js';
-const result = await generateMuseVariations(['fuck', 'rinn', 'café', 'bad word'], AbortSignal.timeout(60000));
+const result = await generateMuseVariations(['fuck', 'rinn', 'café', 'bad word'], AbortSignal.timeout(60000), 'provider-check');
 assert.equal(result.model, VARIATION_MODEL);
 assert.equal(result.entries.length, 4);
 const patterns = rulePatterns({ variations: { mode: 'broad', entries: result.entries } });

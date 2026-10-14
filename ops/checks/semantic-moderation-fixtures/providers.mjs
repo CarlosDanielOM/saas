@@ -7,11 +7,17 @@ const log = value => fs.appendFileSync(`${directory}/calls.jsonl`, JSON.stringif
 globalThis.fetch = async (input, options = {}) => {
     const url = new URL(typeof input === 'string' || input instanceof URL ? input : input.url);
     if (url.hostname === '127.0.0.1') return originalFetch(input, options);
+    if (url.hostname === 'openrouter.ai') {
+        const headers = new Headers(options.headers);
+        const payload = JSON.parse(options.body);
+        if (headers.get('HTTP-Referer') !== 'https://domdimabot.com' || headers.get('X-OpenRouter-Title') !== 'DomDimaBot'
+            || typeof payload.user !== 'string' || !payload.user) throw new Error('OpenRouter moderation attribution missing');
+    }
     if (url.hostname === 'openrouter.ai' && url.pathname === '/api/v1/chat/completions') {
         const payload = JSON.parse(options.body);
         if (payload.model !== 'meta/muse-spark-1.3-contributor') throw new Error('Wrong variation model');
         const terms = JSON.parse(payload.messages[1].content).terms;
-        log({ generation: terms, model: payload.model });
+        log({ generation: terms, model: payload.model, user: payload.user });
         if (terms.includes('unavailablegen')) return json({}, 503);
         const entries = terms.map(term => ({ term, spellings: term === 'fuck' ? ['fcky', 'facky', 'fucky', 'fucking'] : term === 'rinn' ? ['rin', 'rinin'] : term === 'invalidgen' ? ['.*'] : [] }));
         return json({ model: payload.model, choices: [{ finish_reason: 'stop', message: { content: JSON.stringify({ entries }) } }], usage: { prompt_tokens: 200, completion_tokens: 100, cost: 0.00004 } });
@@ -21,7 +27,7 @@ globalThis.fetch = async (input, options = {}) => {
         const state = JSON.parse(payload.state);
         const text = state.targetMessage.text;
         const instructions = payload.questions.violation.criteria.true;
-        log({ review: text, state, at: Date.now() });
+        log({ review: text, state, user: payload.user, at: Date.now() });
         if (text.includes('TIMEOUT')) await new Promise(resolve => setTimeout(resolve, 4500));
         if (text.includes('SLOW')) await new Promise(resolve => setTimeout(resolve, 700));
         if (text.includes('UNAVAILABLE')) return json({}, 503);

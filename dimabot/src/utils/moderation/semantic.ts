@@ -1,4 +1,5 @@
 import type { IModerationDecision } from '../../schemas/moderation_decision.schema.js';
+import { OPENROUTER_APP_HEADERS } from '../ai/openrouter/app_attribution.util.js';
 import { DEFAULT_SPAM_THRESHOLD, SPAM_CLASSIFIER_MODEL } from './spam_categories.js';
 export const SEMANTIC_USD_PER_MILLION_INPUT_TOKENS = 0.042;
 export const SEMANTIC_PRICING_VERSION = 'span-lite-jev-equivalent-v1';
@@ -111,12 +112,13 @@ export async function evaluateSemanticDecision(decision: IModerationDecision, mo
     const request = semanticRequest(decision, model);
     const remaining = decision.deadline.getTime() - Date.now();
     if (remaining <= 0) return fallbackResult('timeout', request.model);
+    if (!decision.channelID?.trim()) return fallbackResult('invalid_context', request.model);
     if (!process.env.OPENROUTER_API_KEY) return fallbackResult('unavailable', request.model);
     try {
         const response = await fetch('https://openrouter.ai/api/alpha/decisions', {
             method: 'POST',
-            headers: { Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify(request),
+            headers: { Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`, 'Content-Type': 'application/json', ...OPENROUTER_APP_HEADERS },
+            body: JSON.stringify({ ...request, user: decision.channelID }),
             signal: AbortSignal.timeout(remaining)
         });
         if (!response.ok) return fallbackResult(response.status === 429 ? 'rate_limited' : 'unavailable', request.model);

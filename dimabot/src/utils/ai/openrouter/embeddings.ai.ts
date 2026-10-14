@@ -1,6 +1,7 @@
 import { error, debug } from '../../logger.js';
 import { EMBEDDING_DIMENSIONS } from '../constants.js';
 import { createFetchWithRetry } from '../fetch.utils.js';
+import { OPENROUTER_APP_HEADERS } from './app_attribution.util.js';
 
 const EMBEDDING_API_URL = 'https://openrouter.ai/api/v1/embeddings';
 const EMBEDDING_TIMEOUT = 20000;
@@ -11,6 +12,7 @@ export interface IOpenRouterEmbeddingRequest {
     model: string;
     input: string | string[];
     dimensions?: number;
+    user: string;
 }
 
 export interface IOpenRouterEmbeddingResponse {
@@ -77,21 +79,22 @@ export function detectLanguage(text: string, threshold: number = 0.1): string {
     return bestLanguage;
 }
 
-export async function generateEmbedding(text: string, model: string = 'qwen/qwen3-embedding-8b'): Promise<IEmbeddingResult> {
+export async function generateEmbedding(text: string, model: string = 'qwen/qwen3-embedding-8b', channelID?: string): Promise<IEmbeddingResult> {
     try {
+        if (!channelID?.trim()) return { error: true, message: 'Channel context required for OpenRouter embeddings' };
         const startTime = Date.now();
 
         const headers = {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-            'HTTP-Referer': 'https://domdimabot.com',
-            'X-Title': 'DomDimaBot'
+            ...OPENROUTER_APP_HEADERS
         };
 
         const dimensions = EMBEDDING_DIMENSIONS[model];
 
         const requestBody: IOpenRouterEmbeddingRequest = {
             model,
+            user: channelID,
             input: text,
             ...(dimensions && { dimensions })
         };
@@ -158,8 +161,9 @@ export async function generateEmbedding(text: string, model: string = 'qwen/qwen
     }
 }
 
-export async function generateEmbeddings(texts: string[], model: string = 'qwen/qwen3-embedding-8b'): Promise<IBatchEmbeddingResult> {
+export async function generateEmbeddings(texts: string[], model: string = 'qwen/qwen3-embedding-8b', channelID?: string): Promise<IBatchEmbeddingResult> {
     try {
+        if (!channelID?.trim()) return { error: true, message: 'Channel context required for OpenRouter embeddings' };
         if (texts.length === 0) {
             return {
                 error: true,
@@ -168,7 +172,7 @@ export async function generateEmbeddings(texts: string[], model: string = 'qwen/
         }
 
         if (texts.length === 1) {
-            const result = await generateEmbedding(texts[0], model);
+            const result = await generateEmbedding(texts[0], model, channelID);
             if (!result.error && result.embedding) {
                 return {
                     error: false,
@@ -185,14 +189,14 @@ export async function generateEmbeddings(texts: string[], model: string = 'qwen/
         const headers = {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-            'HTTP-Referer': 'https://domdimabot.com',
-            'X-Title': 'DomDimaBot'
+            ...OPENROUTER_APP_HEADERS
         };
 
         const dimensions = EMBEDDING_DIMENSIONS[model];
 
         const requestBody: IOpenRouterEmbeddingRequest = {
             model,
+            user: channelID,
             input: texts,
             ...(dimensions && { dimensions })
         };

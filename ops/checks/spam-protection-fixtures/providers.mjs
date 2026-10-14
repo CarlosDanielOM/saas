@@ -8,12 +8,16 @@ globalThis.fetch = async (input, options = {}) => {
     const url = new URL(typeof input === 'string' || input instanceof URL ? input : input.url);
     if (url.hostname !== 'openrouter.ai' || url.pathname !== '/api/alpha/decisions') return base(input, options);
     const request = JSON.parse(options.body);
+    const headers = new Headers(options.headers);
+    assert.equal(headers.get('HTTP-Referer'), 'https://domdimabot.com');
+    assert.equal(headers.get('X-OpenRouter-Title'), 'DomDimaBot');
+    assert.ok(typeof request.user === 'string' && request.user);
     if (!request.questions.unsafe) return base(input, options);
     assert.ok(['typesafe/jev-1.13', 'respan/span-01', 'respan/span-01-lite'].includes(request.model));
     assert.equal(request.state.output.role, 'assistant');
     const state = { targetMessage: { text: request.state.output.content }, precedingMessages: request.state.input.map(message => JSON.parse(message.content)) };
     const text = state.targetMessage.text;
-    fs.appendFileSync('/tmp/saas-fixtures/calls.jsonl', JSON.stringify({ spamReview: text, state, model: request.model, at: Date.now() }) + '\n');
+    fs.appendFileSync('/tmp/saas-fixtures/calls.jsonl', JSON.stringify({ spamReview: text, state, model: request.model, user: request.user, at: Date.now() }) + '\n');
     if (text.includes('TIMEOUT')) await new Promise(resolve => setTimeout(resolve, 4500));
     if (text.includes('SLOW')) await new Promise(resolve => setTimeout(resolve, 700));
     if (text.includes('UNAVAILABLE')) return new Response('{}', { status: 503 });
