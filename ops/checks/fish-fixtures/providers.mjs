@@ -53,6 +53,12 @@ globalThis.fetch = async (input, options = {}) => {
   }
   if (url.hostname === 'openrouter.ai' && url.pathname === '/api/v1/audio/speech') {
     const payload = JSON.parse(options.body);
+    const headers = new Headers(options.headers);
+    if (headers.get('HTTP-Referer') !== 'https://domdimabot.com' || headers.get('X-OpenRouter-Title') !== 'DomDimaBot'
+      || headers.get('X-OpenRouter-Description') !== 'DomDimaBot is a Twitch chat bot that helps make streams more engaging and fun.'
+      || headers.get('X-OpenRouter-Categories') !== 'general-chat, roleplay' || payload.user !== '999991') {
+      throw new Error('Missing or incorrect OpenRouter speech app/user attribution');
+    }
     if (payload.model === 'fish-audio/drama-3') {
       if (payload.response_format !== 'mp3' || !/^[a-f\d]{32}$/i.test(payload.voice)) throw new Error('Invalid OpenRouter Fish request');
       fs.appendFileSync(logPath, JSON.stringify({ synthesis: { text: payload.input, reference_id: payload.voice, format: 'mp3' },

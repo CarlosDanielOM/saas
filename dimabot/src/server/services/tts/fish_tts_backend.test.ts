@@ -49,9 +49,14 @@ beforeEach(() => {
   globalThis.fetch = async (input, options) => {
     assert.equal(String(input), 'https://openrouter.ai/api/v1/audio/speech');
     assert.equal(options?.method, 'POST');
-    assert.deepEqual(options?.headers, { Authorization: 'Bearer openrouter-test-only', 'Content-Type': 'application/json' });
+    assert.deepEqual(options?.headers, {
+      Authorization: 'Bearer openrouter-test-only', 'Content-Type': 'application/json',
+      'HTTP-Referer': 'https://domdimabot.com', 'X-OpenRouter-Title': 'DomDimaBot',
+      'X-OpenRouter-Description': 'DomDimaBot is a Twitch chat bot that helps make streams more engaging and fun.',
+      'X-OpenRouter-Categories': 'general-chat, roleplay',
+    });
     const body = JSON.parse(String(options?.body));
-    assert.deepEqual(body, { model: 'fish-audio/drama-3', input: request.text, voice: request.voice, response_format: 'mp3' });
+    assert.deepEqual(body, { model: 'fish-audio/drama-3', input: request.text, voice: request.voice, response_format: 'mp3', user: request.channelID });
     assert.ok(options?.signal);
     attempts.push({ route: 'openrouter', model: body.model, voice: body.voice, text: body.input });
     if (primaryFailure === 'network') throw new Error('OpenRouter unreachable');

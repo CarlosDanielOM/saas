@@ -3,6 +3,7 @@ import path from 'path';
 
 import { FishAudioClient, type Backends } from 'fish-audio';
 
+import { OPENROUTER_APP_HEADERS } from '../../../utils/ai/openrouter/app_attribution.util.js';
 import { reinforceFishTtsTags } from '../../../utils/tts/expressive_tts_tags.util.js';
 import { readAudioStream } from '../../../utils/tts/tts_deadline.util.js';
 import { PIPER_PUBLIC_SPEECH_DIR, buildPublicPath } from './piper_tts.service.js';
@@ -56,7 +57,8 @@ async function convertWithBackend(
 async function readBackendAudio(
     text: string,
     referenceId: string,
-    backend: string
+    backend: string,
+    channelID: string
 ): Promise<Buffer> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), FISH_ATTEMPT_TIMEOUT_MS);
@@ -67,9 +69,9 @@ async function readBackendAudio(
             if (!apiKey) throw new Error('OpenRouter API key is not configured');
             const response = await fetch('https://openrouter.ai/api/v1/audio/speech', {
                 method: 'POST',
-                headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+                headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json', ...OPENROUTER_APP_HEADERS },
                 // OpenRouter maps the Fish voice ID to the upstream reference_id.
-                body: JSON.stringify({ model: FISH_OPENROUTER_MODEL, input: text, voice: referenceId, response_format: 'mp3' }),
+                body: JSON.stringify({ model: FISH_OPENROUTER_MODEL, input: text, voice: referenceId, response_format: 'mp3', user: channelID }),
                 signal: controller.signal
             });
             if (!response.ok) {
@@ -111,7 +113,7 @@ class FishTtsService implements TtsProvider {
             const failures: string[] = [];
             for (const backend of FISH_TTS_BACKENDS) {
                 try {
-                    audio = await readBackendAudio(request.text, referenceId, backend);
+                    audio = await readBackendAudio(request.text, referenceId, backend, request.channelID);
                     usedBackend = backend;
                     break;
                 } catch (backendError) {

@@ -26,8 +26,14 @@ test('Kokoro sends preset voices to DeepInfra only and writes playable MP3 outpu
     globalThis.fetch = async (input, options) => {
         calls++;
         assert.equal(String(input), 'https://openrouter.ai/api/v1/audio/speech');
+        assert.deepEqual(options?.headers, {
+            Authorization: 'Bearer test-only', 'Content-Type': 'application/json',
+            'HTTP-Referer': 'https://domdimabot.com', 'X-OpenRouter-Title': 'DomDimaBot',
+            'X-OpenRouter-Description': 'DomDimaBot is a Twitch chat bot that helps make streams more engaging and fun.',
+            'X-OpenRouter-Categories': 'general-chat, roleplay',
+        });
         assert.deepEqual(JSON.parse(String(options?.body)), {
-            model: 'hexgrad/kokoro-82m', input: request.text, voice: 'af_heart', response_format: 'mp3',
+            model: 'hexgrad/kokoro-82m', input: request.text, voice: 'af_heart', response_format: 'mp3', user: request.channelID,
             provider: { only: ['deepinfra'], order: ['deepinfra'], allow_fallbacks: false }
         });
         assert.ok(options?.signal);

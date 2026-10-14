@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
-execFileSync(process.execPath, ['--experimental-test-module-mocks', '--test', '/app/dist/server/services/tts/fish_tts_backend.test.js'], {
+execFileSync(process.execPath, ['--experimental-test-module-mocks', '--test', '/app/dist/server/services/tts/fish_tts_backend.test.js',
+  '/app/dist/server/services/tts/kokoro_tts.test.js'], {
   env: { ...process.env, NODE_OPTIONS: '' }, stdio: 'inherit',
 });
 const require = createRequire('/app/package.json');

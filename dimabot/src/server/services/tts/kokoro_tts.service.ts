@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { OPENROUTER_APP_HEADERS } from '../../../utils/ai/openrouter/app_attribution.util.js';
 import { resolveKokoroVoice } from '../../../utils/tts/kokoro_voices.util.js';
 import { PIPER_PUBLIC_SPEECH_DIR, buildPublicPath } from './piper_tts.service.js';
 import type { TtsProvider, TtsSynthesisRequest, TtsSynthesisResult } from './tts_provider.interface.js';
@@ -21,9 +22,9 @@ class KokoroTtsService implements TtsProvider {
         try {
             const response = await fetch('https://openrouter.ai/api/v1/audio/speech', {
                 method: 'POST',
-                headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+                headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json', ...OPENROUTER_APP_HEADERS },
                 body: JSON.stringify({
-                    model: KOKORO_MODEL, input: request.text, voice, response_format: 'mp3',
+                    model: KOKORO_MODEL, input: request.text, voice, response_format: 'mp3', user: request.channelID,
                     // An outage must never route to Together's more expensive endpoint.
                     provider: { only: ['deepinfra'], order: ['deepinfra'], allow_fallbacks: false }
                 }),
