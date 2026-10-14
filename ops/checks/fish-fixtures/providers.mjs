@@ -44,13 +44,23 @@ globalThis.fetch = async (input, options = {}) => {
       const payload = decode(options.body);
       const headers = options.headers || {};
       const model = typeof headers.get === 'function' ? headers.get('model') : (headers.model ?? headers.Model);
-      fs.appendFileSync(logPath, JSON.stringify({ synthesis: payload, model }) + '\n');
+      if (model !== 's2.1-pro') throw new Error(`Unexpected direct Fish backend: ${model}`);
+      fs.appendFileSync(logPath, JSON.stringify({ synthesis: payload, model, route: 'fish' }) + '\n');
       if (state.slow) await new Promise(resolve => setTimeout(resolve, 300));
       if (state.fail || state.failModel === model) return json({ message: 'Unavailable voice' }, 422);
       return new Response(fs.readFileSync('/tmp/saas-fixtures/sample.mp3'), { headers: { 'Content-Type': 'audio/mpeg' } });
     }
   }
   if (url.hostname === 'openrouter.ai' && url.pathname === '/api/v1/audio/speech') {
+    const payload = JSON.parse(options.body);
+    if (payload.model === 'fish-audio/drama-3') {
+      if (payload.response_format !== 'mp3' || !/^[a-f\d]{32}$/i.test(payload.voice)) throw new Error('Invalid OpenRouter Fish request');
+      fs.appendFileSync(logPath, JSON.stringify({ synthesis: { text: payload.input, reference_id: payload.voice, format: 'mp3' },
+        model: payload.model, route: 'openrouter', request: payload }) + '\n');
+      if (state.slow) await new Promise(resolve => setTimeout(resolve, 300));
+      if (state.fail || state.failModel === payload.model) return json({ error: 'Provider unavailable' }, 503);
+      return new Response(fs.readFileSync('/tmp/saas-fixtures/sample.mp3'), { headers: { 'Content-Type': 'audio/mpeg' } });
+    }
     fs.appendFileSync(logPath, JSON.stringify({ kokoro: JSON.parse(options.body) }) + '\n');
     if (state.slow) await new Promise(resolve => setTimeout(resolve, 300));
     if (state.fail) return json({ error: 'Provider unavailable' }, 503);

@@ -19,20 +19,12 @@ export const FISH_VOICE_NAMES = Object.keys(FISH_VOICES) as string[];
 
 export const DEFAULT_FISH_TTS_REFERENCE_ID = FISH_VOICES['gojo'];
 
+export const FISH_OPENROUTER_MODEL = 'fish-audio/drama-3';
 const FISH_TTS_BACKENDS = [
-    'drama-3',
+    FISH_OPENROUTER_MODEL,
     's2.1-pro',
 ] as const;
 const FISH_ATTEMPT_TIMEOUT_MS = 20_000;
-
-function getFishApiKey(): string | null {
-    const key = process.env.FISH_AUDIO_API_KEY;
-    if (!key || key.trim() === '') {
-        return null;
-    }
-
-    return key.trim();
-}
 
 async function ensureSpeechOutputDir(channelID: string): Promise<string> {
     const outputDir = path.join(PIPER_PUBLIC_SPEECH_DIR, channelID);
@@ -62,7 +54,6 @@ async function convertWithBackend(
 }
 
 async function readBackendAudio(
-    fishAudio: FishAudioClient,
     text: string,
     referenceId: string,
     backend: string
@@ -70,9 +61,32 @@ async function readBackendAudio(
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), FISH_ATTEMPT_TIMEOUT_MS);
     try {
-        // The Fish client clears its own deadline once response headers arrive.
-        // This abort still covers the audio body, which is the read that can hang.
-        const audio = await convertWithBackend(fishAudio, text, referenceId, backend, controller.signal);
+        let audio: ReadableStream<Uint8Array>;
+        if (backend === FISH_OPENROUTER_MODEL) {
+            const apiKey = process.env.OPENROUTER_API_KEY?.trim();
+            if (!apiKey) throw new Error('OpenRouter API key is not configured');
+            const response = await fetch('https://openrouter.ai/api/v1/audio/speech', {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+                // OpenRouter maps the Fish voice ID to the upstream reference_id.
+                body: JSON.stringify({ model: FISH_OPENROUTER_MODEL, input: text, voice: referenceId, response_format: 'mp3' }),
+                signal: controller.signal
+            });
+            if (!response.ok) {
+                await response.body?.cancel();
+                throw new Error(`OpenRouter Fish synthesis failed (HTTP ${response.status})`);
+            }
+            if (!response.headers.get('content-type')?.toLowerCase().startsWith('audio/mpeg') || !response.body) {
+                await response.body?.cancel();
+                throw new Error('OpenRouter Fish returned an unexpected audio format');
+            }
+            audio = response.body;
+        } else {
+            const apiKey = process.env.FISH_AUDIO_API_KEY?.trim();
+            if (!apiKey) throw new Error('Fish Audio API key is not configured');
+            audio = await convertWithBackend(new FishAudioClient({ apiKey }), text, referenceId, backend, controller.signal);
+        }
+        // One deadline covers headers and the full audio body for either route.
         const buffer = await readAudioStream(audio, controller.signal);
         if (buffer.length === 0) {
             throw new Error(`Fish Audio TTS returned empty audio from '${backend}'`);
@@ -88,17 +102,8 @@ class FishTtsService implements TtsProvider {
 
     async synthesize(request: TtsSynthesisRequest): Promise<TtsSynthesisResult> {
         try {
-            const apiKey = getFishApiKey();
-            if (!apiKey) {
-                return {
-                    error: true,
-                    message: 'Fish Audio API key is not configured'
-                };
-            }
-
             const outputDir = await ensureSpeechOutputDir(request.channelID);
             const outputPath = path.join(outputDir, `${request.speechID}.mp3`);
-            const fishAudio = new FishAudioClient({ apiKey });
             const referenceId = String(request.voice).trim();
 
             let audio: Buffer | undefined;
@@ -106,7 +111,7 @@ class FishTtsService implements TtsProvider {
             const failures: string[] = [];
             for (const backend of FISH_TTS_BACKENDS) {
                 try {
-                    audio = await readBackendAudio(fishAudio, request.text, referenceId, backend);
+                    audio = await readBackendAudio(request.text, referenceId, backend);
                     usedBackend = backend;
                     break;
                 } catch (backendError) {

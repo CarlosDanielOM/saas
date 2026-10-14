@@ -114,7 +114,8 @@ assert.equal(result.error, false, JSON.stringify(result)); assert.ok(result.data
 assert.equal(result.data.credits, Math.ceil(result.data.text.length * 1.5)); assert.ok(Buffer.from(result.data.audio, 'base64').length > 100);
 assert.equal(result.data.text.includes('user text'), false);
 assert.equal(synthCount(), count + 1);
-assert.equal(calls().filter(c => c.synthesis).at(-1).model, 'drama-3', 'default backend must be drama-3');
+assert.equal(calls().filter(c => c.synthesis).at(-1).model, 'fish-audio/drama-3', 'default backend must be OpenRouter Drama 3');
+assert.equal(calls().filter(c => c.synthesis).at(-1).route, 'openrouter');
 assert.equal(await redis.hGet(`${channel}:tts:usage`, 'fish_credits'), String(result.data.credits));
 assert.equal(JSON.parse(await redis.get(`twitch:${channel}:ai:credits`)).balance, 10000 - result.data.credits);
 assert.equal(await redis.exists(`twitch:${channel}:tts:processing`), 0);
@@ -124,16 +125,16 @@ await cooldown(); fs.writeFileSync('/tmp/saas-fixtures/state.json', JSON.stringi
 const spent = await redis.hGet(`${channel}:tts:usage`, 'fish_credits');
 const failCount = synthCount();
 assert.equal((await socket.send({ voiceId: 'b'.repeat(32), language: 'en' })).code, 'synthesis_failed');
-assert.deepEqual(calls().filter(c => c.synthesis).slice(failCount).map(c => c.model), ['drama-3', 's2.1-pro'], 'failure must try both backends in order');
+assert.deepEqual(calls().filter(c => c.synthesis).slice(failCount).map(c => c.model), ['fish-audio/drama-3', 's2.1-pro'], 'failure must try both backends in order');
 assert.equal(await redis.hGet(`${channel}:tts:usage`, 'fish_credits'), spent);
 await cooldown();
-fs.writeFileSync('/tmp/saas-fixtures/state.json', JSON.stringify({ failModel: 'drama-3' }));
+fs.writeFileSync('/tmp/saas-fixtures/state.json', JSON.stringify({ failModel: 'fish-audio/drama-3' }));
 const fallbackCount = synthCount();
 const fallbackBalance = JSON.parse(await redis.get(`twitch:${channel}:ai:credits`)).balance;
 result = await socket.send({ voiceId: 'b'.repeat(32), language: 'en' });
 assert.equal(result.error, false, JSON.stringify(result));
 assert.ok(Buffer.from(result.data.audio, 'base64').length > 100);
-assert.deepEqual(calls().filter(c => c.synthesis).slice(fallbackCount).map(c => c.model), ['drama-3', 's2.1-pro']);
+assert.deepEqual(calls().filter(c => c.synthesis).slice(fallbackCount).map(c => c.model), ['fish-audio/drama-3', 's2.1-pro']);
 assert.equal(await redis.hGet(`${channel}:tts:usage`, 'fish_credits'), String(Number(spent) + result.data.credits));
 assert.equal(JSON.parse(await redis.get(`twitch:${channel}:ai:credits`)).balance, fallbackBalance - result.data.credits, 'fallback success charges once');
 await cooldown();
@@ -142,12 +143,13 @@ assert.equal((await socket.send({ voiceId: '0'.repeat(32), language: 'en' })).co
 fs.writeFileSync('/tmp/saas-fixtures/state.json', '{}');
 const overlay = await connect(undefined, channel, 'speech');
 while (!await redis.exists(`twitch:${channel}:tts:connected`)) await new Promise(r => setTimeout(r, 10));
-const finishSpeech = async (expected, backend = 'drama-3') => {
+const finishSpeech = async (expected, backend = 'fish-audio/drama-3') => {
   const event = await overlay.wait(`42/speech/${channel},["speech",`);
   const [, payload] = JSON.parse(event.slice(`42/speech/${channel},`.length));
   const lastSynthesis = calls().filter(c => c.synthesis).at(-1);
   assert.equal(lastSynthesis.synthesis.reference_id, expected);
   assert.equal(lastSynthesis.model, backend, 'queued speech must use the selected Fish backend');
+  assert.equal(lastSynthesis.route, backend === 's2.1-pro' ? 'fish' : 'openrouter');
   overlay.ws.send(`42/speech/${channel},${JSON.stringify(['speech-ended', { speechID: payload.speechID }])}`);
   const deadline = Date.now() + 5000;
   while (await redis.exists(`twitch:${channel}:tts:processing`)) {
@@ -155,7 +157,7 @@ const finishSpeech = async (expected, backend = 'drama-3') => {
     await new Promise(r => setTimeout(r, 10));
   }
 };
-// Mixed sentence and word-level cues survive the HTTP filter and Fish SDK boundary.
+// Mixed sentence and word-level cues survive the HTTP filter and OpenRouter boundary.
 const taggedSpeech = await request('/speech/' + channel, 'POST', {
   mode: 'clone', text: '[happy] Hello <whisper>secret<whisper> and <emphasis>this</emphasis>.', language: 'en',
 });
@@ -163,15 +165,15 @@ assert.equal(taggedSpeech.status, 200);
 await finishSpeech('b'.repeat(32));
 assert.equal(calls().filter(c => c.synthesis).at(-1).synthesis.text,
   '[happy] Hello <whisper>secret<whisper> and <emphasis>this</emphasis>.');
-fs.writeFileSync('/tmp/saas-fixtures/state.json', JSON.stringify({ failModel: 'drama-3' }));
+fs.writeFileSync('/tmp/saas-fixtures/state.json', JSON.stringify({ failModel: 'fish-audio/drama-3' }));
 const fallbackStart = synthCount();
 assert.equal((await request('/speech/' + channel, 'POST', {
   mode: 'clone', text: '[happy] Hello <whisper>secret<whisper>.', language: 'en',
 })).status, 200);
 await finishSpeech('b'.repeat(32), 's2.1-pro');
-assert.deepEqual(calls().filter(c => c.synthesis).slice(fallbackStart).map(c => ({ model: c.model, text: c.synthesis.text })), [
-  { model: 'drama-3', text: '[happy] Hello <whisper>secret<whisper>.' },
-  { model: 's2.1-pro', text: '[happy] [happy] Hello <whisper>secret<whisper>.' },
+assert.deepEqual(calls().filter(c => c.synthesis).slice(fallbackStart).map(c => ({ model: c.model, route: c.route, text: c.synthesis.text })), [
+  { model: 'fish-audio/drama-3', route: 'openrouter', text: '[happy] Hello <whisper>secret<whisper>.' },
+  { model: 's2.1-pro', route: 'fish', text: '[happy] [happy] Hello <whisper>secret<whisper>.' },
 ]);
 fs.writeFileSync('/tmp/saas-fixtures/state.json', '{}');
 for (const mode of ['speak', 'clone']) {
@@ -323,8 +325,8 @@ assert.equal((await request(settingsUrl)).body.data.settings.provider, 'fish', '
 assert.equal(await redis.exists(`twitch:${channel}:tts:processing`), 0);
 assert.equal(await redis.exists(`twitch:${channel}:tts:queue`), 0);
 for (const ws of sockets) ws.close();
-assert.ok(calls().filter(call => call.synthesis).every(call => ['drama-3', 's2.1-pro'].includes(call.model)),
-  'Fish synthesis must use only drama-3 and its s2.1-pro fallback');
+assert.ok(calls().filter(call => call.synthesis).every(call => ['fish-audio/drama-3', 's2.1-pro'].includes(call.model)),
+  'Fish synthesis must use only OpenRouter Drama 3 and direct Fish s2.1-pro');
 await redis.quit();
 console.log('PASS TTS previews: Fish compatibility/catalog/AST, Kokoro rounded credits and DeepInfra routing, metered Piper at exhausted/negative/unavailable balances, authentication, validation, shared concurrency, failures, saved choices and file cleanup.');
 process.exit(0);

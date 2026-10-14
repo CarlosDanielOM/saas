@@ -15,14 +15,16 @@ scripts/saas-ops verify api-<run> --dependency mongo --dependency redis \
 ```
 
 The normal API entrypoint starts with disposable Mongo/Redis. A test-only Node preload
-mocks Fish, Qdrant and Polar requests; other external fetches fail closed. It generates
-a short tone using the image's ffmpeg. No real accounts, provider keys or credits are
-used. The check covers owner authorization, all filters, removed/private voices,
-custom defaults in both speech modes, explicit `tts.fish` aliases and raw IDs,
-single-use socket tickets, private playback,
-per-preview cost, insufficient credits, concurrent requests, failure billing,
-backend selection (`drama-3` active primary; `s2.1-pro` fallback) and
-separation from the stream's speech queue.
+mocks OpenRouter, Fish, Qdrant and Polar requests; other external fetches fail closed.
+It generates a short tone using the image's ffmpeg. No real accounts, provider keys or
+credits are used. The check covers owner authorization, all filters, removed/private
+voices, custom defaults in both speech modes, explicit `tts.fish` aliases and raw IDs,
+single-use socket tickets, private playback, per-preview cost, insufficient credits,
+concurrent requests, failure billing, and separation from the stream's speech queue.
+Catalog and favorites stay on direct Fish. Synthesis uses OpenRouter
+`fish-audio/drama-3`, then falls back to direct Fish `s2.1-pro`; the check covers both
+routes, the same voice ID on fallback, provider deadlines, and single-charge preview
+billing.
 
 ## Browser
 
