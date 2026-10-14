@@ -45,6 +45,12 @@ export interface BillingCheckoutData {
   allowDiscountCodes: boolean;
 }
 
+export interface BillingPortalData {
+  sessionId: string;
+  url: string;
+  expiresAt: string;
+}
+
 export type CreditPackKind = 'credits' | 'recharge';
 export type CreditPackSize = 'sample' | 'small' | 'starter' | 'medium';
 
@@ -149,6 +155,14 @@ export class BillingService {
   }): Observable<ApiEnvelope<BillingCheckoutData>> {
     return this.http.post<ApiEnvelope<BillingCheckoutData>>(
       `${this.linksService.getApiUrl()}/billing/checkout`,
+      request
+    );
+  }
+
+  /** Opens Polar's customer portal: change plan, cancel, payment method, invoices. */
+  createPortalSession(request: { returnUrl?: string }): Observable<ApiEnvelope<BillingPortalData>> {
+    return this.http.post<ApiEnvelope<BillingPortalData>>(
+      `${this.linksService.getApiUrl()}/billing/portal`,
       request
     );
   }

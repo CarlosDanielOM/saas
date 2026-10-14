@@ -130,6 +130,26 @@
             } @else {
               <p class="lf-note lf-note--ok">{{ t('profile.subscription.maxTierNote') }}</p>
             }
+
+            @if (canManageSubscription()) {
+              <div class="lf-plan__manage">
+                <button
+                  type="button"
+                  class="lf-btn"
+                  [disabled]="portalOpening()"
+                  [attr.aria-busy]="portalOpening()"
+                  aria-describedby="profile-plan-manage-hint"
+                  (click)="openBillingPortal()"
+                >
+                  <app-lf-icon name="settings" [size]="16"></app-lf-icon>
+                  {{ portalOpening() ? t('profile.subscription.manageOpening') : t('profile.subscription.manageCta') }}
+                </button>
+                <p class="lf-note" id="profile-plan-manage-hint">{{ t('profile.subscription.manageHint') }}</p>
+                @if (portalError()) {
+                  <p class="lf-note lf-note--error" role="alert">{{ t('profile.subscription.manageError') }}</p>
+                }
+              </div>
+            }
           </section>
 
           <nav class="lf-tile lf-card" aria-labelledby="profile-shortcuts-title">

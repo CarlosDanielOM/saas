@@ -1,5 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
+
+import { BillingService } from '../../services/billing.service';
 
 import { LanguageService, SupportedLanguage } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
@@ -32,6 +35,7 @@ export class ProfilePageComponent {
   private readonly languageService = inject(LanguageService);
   private readonly sessionAuth = inject(SessionAuthService);
   private readonly upgradeService = inject(UpgradeService);
+  private readonly billingService = inject(BillingService);
   private readonly themeService = inject(ThemeService);
   private readonly route = inject(ActivatedRoute);
 
@@ -49,6 +53,9 @@ export class ProfilePageComponent {
     return 'free';
   });
   readonly showUpgradeCta = computed(() => this.planTier() !== 'pro');
+  readonly canManageSubscription = computed(() => this.planTier() !== 'free');
+  readonly portalOpening = signal(false);
+  readonly portalError = signal(false);
   readonly emailVisible = signal(false);
 
   readonly login = computed(() => (this.sessionAuth.session()?.twitchUser.login || '').trim().toLowerCase());
@@ -161,5 +168,27 @@ export class ProfilePageComponent {
 
   onUpgradeClick(): void {
     void this.upgradeService.promptUpgradeForAnyPlan('profile_page');
+  }
+
+  async openBillingPortal(): Promise<void> {
+    if (this.portalOpening()) {
+      return;
+    }
+    this.portalOpening.set(true);
+    this.portalError.set(false);
+    try {
+      const response = await firstValueFrom(
+        this.billingService.createPortalSession({
+          returnUrl: `${window.location.origin}${window.location.pathname}`
+        })
+      );
+      if (response.error || !response.data?.url) {
+        throw new Error(response.message || 'Missing portal URL');
+      }
+      window.location.assign(response.data.url);
+    } catch {
+      this.portalError.set(true);
+      this.portalOpening.set(false);
+    }
   }
 }
