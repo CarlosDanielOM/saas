@@ -44,7 +44,6 @@ interface Group extends Summary {
 interface Overview extends NamedChannels {
   lastAt: string | null;
   generatedAt: string;
-  truncated: boolean;
   http: Summary;
   chat: Summary;
   groups: Group[];

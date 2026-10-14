@@ -34,3 +34,20 @@ test('real PostgreSQL persistence, replay safety, API permissions and Redis inge
   if(process.env.ANALYTICS_TEST_URL){const queued=batch('channel-c',25);await redis.lPush('observability:v1:inbox',JSON.stringify(queued));for(let i=0;i<50;i++){if((await pool.query('SELECT id FROM analytics_batches WHERE id=$1',[queued.id])).rowCount)break;await new Promise(r=>setTimeout(r,100));}assert.equal((await pool.query('SELECT id FROM analytics_batches WHERE id=$1',[queued.id])).rowCount,1);const r=await fetch(process.env.ANALYTICS_TEST_URL+'/api/overview',{headers:{Authorization:'Bearer owner'}});assert.equal(r.status,200);assert.equal((await r.json()).chat.count,200);}
  }finally{await new Promise(r=>server.close(r));await redis.quit();await pool.end();}
 });
+test('long ranges aggregate every bucket and keep the latest value fresh',{skip:!process.env.ANALYTICS_TEST},async()=>{
+ assert.match(process.env.DATABASE_URL,/observability_test/);
+ const pool=makePool(process.env.DATABASE_URL);await migrate(pool);
+ const insert=(resolution,slots,unit,value)=>pool.query(`INSERT INTO analytics_metrics SELECT $1,date_trunc('${unit}',now())-s*interval '1 ${unit}','bulk','http','route-'||r,'',CASE WHEN r=0 THEN 'error' ELSE 'ok' END,2,2*$2,$2,$3::bigint[] FROM generate_series(0,$4) s CROSS JOIN generate_series(0,24) r ON CONFLICT DO NOTHING`,[resolution,value,BOUNDS.map((_,i)=>i===2?2:0),slots]);
+ try{
+  await insert(60,1438,'minute',10);await insert(3600,20,'hour',10);
+  await pool.query(`INSERT INTO analytics_metrics VALUES(10,to_timestamp(floor(extract(epoch FROM now())/10)*10),'bulk','http','route-1','','ok',1,99,99,$1::bigint[])`,[BOUNDS.map((_,i)=>i===10?1:0)]);
+  const day=await overview(pool,{channels:[],services:[]},{minutes:1440,service:'bulk'});
+  assert.equal(day.resolution,60);assert.equal(day.http.count,2*1439*25);assert.equal(day.http.errors,2*1439);assert.equal(day.groups.length,25);assert.equal(day.truncated,undefined);
+  assert.equal(day.timeline.reduce((sum,t)=>sum+t.http,0),2*1439*25);assert.equal(day.groups.find(g=>g.name==='route-0').count,2*1439);
+  const fresh=day.groups.find(g=>g.name==='route-1');assert.equal(fresh.lastValue,99);assert(Date.now()-new Date(fresh.lastAt).getTime()<20000);assert.equal(day.groups.find(g=>g.name==='route-2').lastValue,10);
+  const week=await overview(pool,{channels:[],services:[]},{minutes:10080,service:'bulk'});
+  assert.equal(week.resolution,3600);assert.equal(week.http.count,2*21*25);assert.equal(week.groups.find(g=>g.name==='route-1').lastValue,99);
+  const minuteGauge=new Date(week.groups.find(g=>g.name==='route-2').lastAt).getTime();assert(Date.now()-minuteGauge<70000);
+  assert.equal((await overview(pool,{channels:['other'],services:[]},{minutes:1440,service:'bulk'})).http.count,0);
+ }finally{await pool.query("DELETE FROM analytics_metrics WHERE service='bulk'");await pool.end();}
+});

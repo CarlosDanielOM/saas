@@ -135,7 +135,8 @@ export async function ingest(pool, batch) {
 export function rangeQuery(query) {
   const minutes = Number(query.minutes || 60);
   if (![15, 60, 360, 1440, 10080, 43200, 525600].includes(minutes)) throw Object.assign(new Error('Unsupported time range'), { status: 400 });
-  return { minutes, resolution: minutes <= 1440 ? 10 : minutes <= 43200 ? 60 : 3600 };
+  // Every resolution stores the same sums and histograms, so wide ranges read the coarsest buckets their chart needs.
+  return { minutes, resolution: minutes <= 60 ? 10 : minutes <= 1440 ? 60 : 3600 };
 }
 export function scopeSql(grant, params, filters = {}) {
   const parts = [];
@@ -149,27 +150,49 @@ export function scopeSql(grant, params, filters = {}) {
   return parts.length ? ' AND ' + parts.join(' AND ') : '';
 }
 
+const HISTOGRAM_SUM = `ARRAY[${BOUNDS.map((_, i) => `sum(histogram[${i + 1}])`).join(',')}]`;
 export async function overview(pool, grant, query) {
   const { minutes, resolution } = rangeQuery(query);
-  const params = [resolution, minutes];
+  const now = Date.now(), since = new Date(now - minutes * 60000), step = minutes > 1440 ? 3600 : 60;
+  const params = [resolution, since];
   const scope = scopeSql(grant, params, query);
-  const result = await pool.query(`SELECT at,service,kind,name,channel,outcome,count,sum,max,histogram FROM analytics_metrics
-    WHERE resolution=$1 AND at>=now()-($2::int*interval '1 minute')${scope} ORDER BY at DESC LIMIT 25001`, params);
-  const truncated = result.rows.length > 25000;
-  const rows = result.rows.slice(0, 25000), grouped = new Map(), times = new Map();
-  for (const row of rows) {
+  // Aggregate in PostgreSQL: one row per series and outcome, so totals are complete for every range.
+  const totalsQuery = pool.query(`SELECT service,kind,name,channel,outcome,sum(count) AS count,sum(sum) AS sum,max(max) AS max,${HISTOGRAM_SUM} AS histogram,
+      max(at) AS last_at,(array_agg(sum/count ORDER BY at DESC))[1] AS last_value
+    FROM analytics_metrics WHERE resolution=$1 AND at>=$2${scope} GROUP BY service,kind,name,channel,outcome`, params);
+  const timelineQuery = pool.query(`SELECT floor(extract(epoch FROM at)/${step})*${step}*1000 AS at,kind,sum(count) AS count
+    FROM analytics_metrics WHERE resolution=$1 AND at>=$2 AND kind IN ('http','chat')${scope} GROUP BY 1,2`, params);
+  // Coarse buckets would blur gauges and freshness, so the latest value per series comes from recent fine buckets.
+  const recentParams = [new Date(Math.max(since, now - 900000))];
+  let fine = '(resolution=10 AND at>=$1)';
+  if (resolution === 3600) { recentParams.push(new Date(Math.max(since, now - 86400000))); fine += ' OR (resolution=60 AND at>=$2)'; }
+  const recentScope = scopeSql(grant, recentParams, query);
+  const recentQuery = resolution === 10 ? { rows: [] } : pool.query(`SELECT service,kind,name,channel,max(at) AS at,(array_agg(sum/count ORDER BY at DESC,resolution))[1] AS value
+    FROM analytics_metrics WHERE (${fine})${recentScope}
+    GROUP BY service,kind,name,channel`, recentParams);
+  const [totalRows, timeRows, recentRows] = (await Promise.all([totalsQuery, timelineQuery, recentQuery])).map(result => result.rows);
+  const grouped = new Map(), latest = new Map(), times = new Map();
+  for (const row of recentRows) latest.set(JSON.stringify([row.service, row.kind, row.name, row.channel]), row);
+  for (const row of totalRows) {
     const key = JSON.stringify([row.service, row.kind, row.name, row.channel]);
     if (!grouped.has(key)) grouped.set(key, []);
     grouped.get(key).push(row);
-    if (!['http','chat'].includes(row.kind)) continue;
-    const bucket = Math.floor(new Date(row.at).getTime() / (minutes > 1440 ? 3600000 : 60000)) * (minutes > 1440 ? 3600000 : 60000);
-    const current = times.get(bucket) || { at: bucket, http: 0, chat: 0 };
-    current[row.kind] += Number(row.count); times.set(bucket, current);
   }
-  const groups = [...grouped.values()].map(items => ({ service: items[0].service, kind: items[0].kind, name: items[0].name, channel: items[0].channel, ...summarize(items), lastAt: items[0].at, lastValue: Number(items[0].sum) / Number(items[0].count) }));
-  const http = summarize(rows.filter(r => r.kind === 'http'));
-  const chat = summarize(rows.filter(r => r.kind === 'chat'));
-  const timeline = [...times.values()].sort((a,b)=>a.at-b.at).map(t=>({...t, httpRps:t.http/(minutes>1440?3600:60), chatRps:t.chat/(minutes>1440?3600:60)}));
-  return { minutes, resolution, generatedAt: new Date().toISOString(), lastAt: rows[0]?.at || null, truncated, http, chat,
+  for (const row of timeRows) {
+    const at = Number(row.at), current = times.get(at) || { at, http: 0, chat: 0 };
+    current[row.kind] += Number(row.count); times.set(at, current);
+  }
+  const groups = [...grouped].map(([key, items]) => {
+    let last = items.reduce((a, b) => b.last_at > a.last_at ? b : a);
+    last = { at: last.last_at, value: Number(last.last_value) };
+    const recentRow = latest.get(key);
+    if (recentRow && recentRow.at >= last.at) last = { at: recentRow.at, value: Number(recentRow.value) };
+    return { service: items[0].service, kind: items[0].kind, name: items[0].name, channel: items[0].channel, ...summarize(items), lastAt: last.at, lastValue: last.value };
+  });
+  const http = summarize(totalRows.filter(r => r.kind === 'http'));
+  const chat = summarize(totalRows.filter(r => r.kind === 'chat'));
+  const lastAt = groups.reduce((a, g) => !a || g.lastAt > a ? g.lastAt : a, null);
+  const timeline = [...times.values()].sort((a,b)=>a.at-b.at).map(t=>({...t, httpRps:t.http/step, chatRps:t.chat/step}));
+  return { minutes, resolution, generatedAt: new Date(now).toISOString(), lastAt, http, chat,
     timeline, groups: groups.sort((a,b)=>b.count-a.count), measured: 'completed operations; latency percentiles are histogram upper bounds; missing buckets are not zero' };
 }

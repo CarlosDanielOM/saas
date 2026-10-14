@@ -120,10 +120,6 @@
           </section>
         }
 
-        @if (data()?.truncated && ['overview', 'endpoints', 'chat', 'queues', 'resources'].includes(tab())) {
-          <p class="lf-notice" role="status">This range hit the row limit, so totals are incomplete. Pick a shorter range or filter by service or streamer.</p>
-        }
-
         <div class="obs-body" [class.is-refreshing]="loading() && !!data()">
           <!-- ================= Overview ================= -->
           @if (tab() === 'overview') {

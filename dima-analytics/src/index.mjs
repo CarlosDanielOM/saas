@@ -56,10 +56,12 @@ export function createApp({pool,redis,config,health,validateToken,channelNames=c
   }));
   app.get('/api/resources',asyncRoute(async(req,res)=>{
     if(req.grant.channels.length)return res.status(403).json({message:'System resources require a system-wide grant'});
-    const {minutes}=rangeQuery(req.query),params=[Math.min(minutes,43200)];
+    const {minutes}=rangeQuery(req.query),span=Math.min(minutes,43200),params=[span,Math.max(30,Math.ceil(span*60/360))];
     const scope=scopeSql(req.grant,params,{service:req.query.service});
-    const result=await pool.query(`SELECT at,service,name,value FROM analytics_resources WHERE at>=now()-($1::int*interval '1 minute')${scope} ORDER BY at DESC LIMIT 5000`,params);
-    res.json({samples:result.rows,limited:result.rows.length===5000,status:health});
+    // Keep the newest sample per series in each slot (~360 per range): long ranges stay whole and the latest value stays exact.
+    const result=await pool.query(`SELECT at,service,name,value FROM (SELECT DISTINCT ON (service,name,floor(extract(epoch FROM at)/$2::int)) at,service,name,value
+      FROM analytics_resources WHERE at>=now()-($1::int*interval '1 minute')${scope} ORDER BY service,name,floor(extract(epoch FROM at)/$2::int),at DESC) slots ORDER BY at DESC LIMIT 20001`,params);
+    res.json({samples:result.rows.slice(0,20000),limited:result.rows.length>20000,status:health});
   }));
   const investigate=(req,res,next)=>req.grant.role==='viewer'?res.status(403).json({message:'Investigator access is required'}):next();
   app.get('/api/traces',investigate,asyncRoute(async(req,res)=>{

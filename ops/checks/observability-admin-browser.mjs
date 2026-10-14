@@ -59,7 +59,7 @@ const summaryOf = (healthy, kind) => kind === 'http'
   : { count: 1341, average: 23, p50: 25, p95: 50, p99: 100, errors: 0, max: 1163 };
 const timeline = Array.from({ length: 60 }, (_, i) => ({ at: Math.floor((now - (59 - i) * 60000) / 60000) * 60000, httpRps: 0.4 + Math.sin(i / 6) * 0.2 + (i === 40 ? 1.2 : 0), chatRps: 0.25 + Math.cos(i / 8) * 0.1 })).filter((_, i) => i < 20 || i > 24);
 const channelNames = { '123': 'pixelpilot', '456': null, '789': 'nightowl_tv' };
-const overview = healthy => ({ channelNames, generatedAt: date, lastAt: iso(5000), truncated: false, minutes: 60, http: summaryOf(healthy, 'http'), chat: summaryOf(healthy, 'chat'), groups: groups(healthy), timeline });
+const overview = healthy => ({ channelNames, generatedAt: date, lastAt: iso(5000), minutes: 60, http: summaryOf(healthy, 'http'), chat: summaryOf(healthy, 'chat'), groups: groups(healthy), timeline });
 function samples(healthy) {
   const rows = [];
   for (let i = 0; i < 20; i++) {
@@ -186,6 +186,8 @@ try {
     await openTab('Chat & events');
     await page.getByText('The bot handles a chat message in 23 ms on average').waitFor();
     assert.equal(await page.locator('.obs-step').count(), 5);
+    // Overviews are aggregated server-side, so 24h+ ranges never show a row-limit notice.
+    assert.equal(await page.getByText('row limit').count(), 0);
     await page.getByText('Subs, gifts & announcements').or(page.getByText('Bits', { exact: true })).first().waitFor();
     await openTab('Queues');
     const tts = page.locator('.obs-queue').filter({ hasText: 'Text to speech' });
