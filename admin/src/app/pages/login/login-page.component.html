@@ -2,7 +2,7 @@
   <header class="auth__nav">
     <span class="auth__brand">
       <span class="auth__mark"><img src="/assets/brand/mark-on-dark.png" alt="" width="20" height="22" /></span>
-      dima<span class="auth__tag">admin</span>
+      dima<span class="auth__tag">workspace</span>
     </span>
     <a class="lf-btn lf-btn--sm lf-btn--ghost" href="https://domdimabot.com">Dima site<app-icon name="external" /></a>
   </header>
@@ -10,7 +10,7 @@
     <section class="lf-tile auth__card" aria-labelledby="login-heading">
       <span class="lf-kicker">Private workspace</span>
       <h1 id="login-heading" class="auth__title">Welcome back.</h1>
-      <p class="lf-sub">Sign in with the Twitch account that has admin access.</p>
+      <p class="lf-sub">Sign in with the Twitch account that has admin or analytics access.</p>
       @if (stage() === 'idle') {
         <button type="button" class="lf-btn lf-btn--primary auth__twitch" (click)="loginWithTwitch()">
           <app-icon name="twitch" />Continue with Twitch
@@ -42,7 +42,7 @@
           }
         </p>
       }
-      <p class="lf-note auth__note"><app-icon name="shield" />Authorized administrators only. You'll come back here after Twitch.</p>
+      <p class="lf-note auth__note"><app-icon name="shield" />Invited accounts only. You'll come back here after Twitch.</p>
     </section>
 
     <section class="lf-tile auth__intro" aria-labelledby="intro-heading">

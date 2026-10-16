@@ -1,5 +1,6 @@
 import express, { type Request, type Response } from "express";
 import { authMiddleware } from "../../middleware/auth.middleware.js";
+import { workspaceOwnerMiddleware } from '../../middleware/workspace-owner.middleware.js';
 import { readFile } from "../../utils/fs.js";
 
 const router = express.Router();
@@ -12,7 +13,7 @@ function isPathAllowed(filePath: string): boolean {
     return ALLOWED_BASE_PATHS.some(base => normalizedPath.startsWith(base));
 }
 
-router.get('/read-file', authMiddleware as any, async (req: Request, res: Response) => {
+router.get('/read-file', authMiddleware as any, workspaceOwnerMiddleware, async (req: Request, res: Response) => {
     try {
         const filePath = req.query.path as string;
 

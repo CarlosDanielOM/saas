@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 
 import { adminAuthGuard } from './guards/admin-auth.guard';
+import { analyticsAuthGuard } from './guards/analytics-auth.guard';
 import { LayoutComponent } from './features/layout/layout.component';
 
 export const routes: Routes = [
@@ -24,15 +25,23 @@ export const routes: Routes = [
     title: 'Access Denied | DimaBot Admin',
   },
   {
+    path: 'observability',
+    component: LayoutComponent,
+    canActivate: [analyticsAuthGuard],
+    children: [
+      {
+        path: '',
+        loadComponent: () => import('./pages/observability/observability-page.component').then(m => m.ObservabilityPageComponent),
+        title: 'System analytics | DimaBot',
+      },
+    ],
+  },
+  {
     path: '',
     component: LayoutComponent,
     canActivate: [adminAuthGuard],
+    canActivateChild: [adminAuthGuard],
     children: [
-      {
-        path: 'observability',
-        loadComponent: () => import('./pages/observability/observability-page.component').then(m => m.ObservabilityPageComponent),
-        title: 'System analytics | DimaBot Admin',
-      },
       {
         path: 'dashboard',
         loadComponent: () =>

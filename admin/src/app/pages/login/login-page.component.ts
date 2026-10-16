@@ -8,10 +8,10 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, ParamMap, Router } from '@angular/router';
-import { firstValueFrom } from 'rxjs';
 
 import { SessionAuthService } from '../../services/session-auth.service';
 import { IconComponent } from '../../shared/icon/icon.component';
+import { isAdmin } from '../../config/admin-whitelist';
 
 type LoginStage = 'idle' | 'validating' | 'syncing' | 'redirecting' | 'error';
 
@@ -41,6 +41,10 @@ export class LoginPageComponent implements OnInit {
    * Redirect to main site login, which will handle OAuth and redirect back with token
    */
   loginWithTwitch(): void {
+    const destination = this.route.snapshot.queryParamMap.get('returnTo');
+    if (destination?.split('?')[0] === '/observability') {
+      sessionStorage.setItem('dima-workspace.returnTo', destination);
+    }
     // Redirect to main site's login page with returnTo parameter
     const returnTo = encodeURIComponent('https://admin.domdimabot.com');
     window.location.href = `https://domdimabot.com/login?returnTo=${returnTo}`;
@@ -93,14 +97,9 @@ export class LoginPageComponent implements OnInit {
 
       this.stage.set('redirecting');
 
-      // Clean up URL
-      await this.router.navigate([], {
-        queryParams: { token: null },
-        queryParamsHandling: 'merge',
-        replaceUrl: true,
-      });
-
-      await this.router.navigate(['/dashboard']);
+      // Replace the callback URL in one navigation. Removing its query first would
+      // re-enter handleQueryState and consume the saved destination twice.
+      await this.resumeAuthenticatedSession();
     } catch (err) {
       this.stage.set('error');
       this.errorMessage.set('Failed to restore session from main site.');
@@ -109,6 +108,12 @@ export class LoginPageComponent implements OnInit {
   }
 
   private async resumeAuthenticatedSession(): Promise<void> {
-    await this.router.navigate(['/dashboard']);
+    const destination = sessionStorage.getItem('dima-workspace.returnTo')
+      || this.route.snapshot.queryParamMap.get('returnTo');
+    sessionStorage.removeItem('dima-workspace.returnTo');
+    const userId = this.sessionAuth.getSessionSnapshot()?.twitchUser.id;
+    await this.router.navigateByUrl(destination?.split('?')[0] === '/observability'
+      ? destination
+      : userId && isAdmin(userId) ? '/dashboard' : '/observability', { replaceUrl: true });
   }
 }

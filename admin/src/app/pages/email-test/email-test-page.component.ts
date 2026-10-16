@@ -87,8 +87,10 @@ export class EmailTestPageComponent {
     this.copyFeedback.set(null);
 
     try {
+      const token = this.sessionAuth.getSessionSnapshot()?.token;
       const response = await fetch(
         `${environment.DIMA_API}/email/test?type=${this.emailType()}&to=${encodeURIComponent(email)}&lang=${this.language()}&theme=${this.theme()}`,
+        { headers: token ? { Authorization: `Bearer ${token}` } : {} },
       );
       const envelope = (await response.json()) as {
         error: boolean;

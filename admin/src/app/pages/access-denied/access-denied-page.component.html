@@ -2,16 +2,28 @@
   <header class="auth__nav">
     <span class="auth__brand">
       <span class="auth__mark"><img src="/assets/brand/mark-on-dark.png" alt="" width="20" height="22" /></span>
-      dima<span class="auth__tag">admin</span>
+      dima<span class="auth__tag">workspace</span>
     </span>
   </header>
   <main class="auth__main auth__main--single">
     <section class="lf-tile auth__card" aria-labelledby="denied-heading">
-      <span class="lf-kicker">Admin access required</span>
-      <h1 id="denied-heading" class="auth__title">This workspace is private.</h1>
+      <span class="lf-kicker">{{ analytics ? 'Analytics access' : 'Admin access required' }}</span>
+      <h1 id="denied-heading" class="auth__title">{{ unavailable ? 'Analytics is unavailable.' : 'This workspace is private.' }}</h1>
       <p class="lf-sub">
+        @if (unavailable) {
+          We couldn’t check your analytics access. Try again shortly.
+        } @else if (analytics) {
+          Your Twitch account doesn’t have active analytics access. Ask the owner to grant or renew access for this account.
+        } @else {
         Your Twitch account doesn’t have access to Dima Admin. If you should have access, ask an administrator to add you — then sign in again.
+        }
       </p>
+      @if (analytics) {
+        <a class="lf-btn lf-btn--primary auth__twitch" routerLink="/observability"><app-icon name="refresh" />{{ unavailable ? 'Retry' : 'Check access again' }}</a>
+      }
+      @if (admin) {
+        <a class="lf-btn auth__twitch" routerLink="/dashboard">Admin overview</a>
+      }
       <button type="button" class="lf-btn lf-btn--primary auth__twitch" (click)="logout()"><app-icon name="logout" />Sign out</button>
       <button type="button" class="lf-btn auth__twitch" (click)="goHome()"><app-icon name="external" />Go to Dima</button>
     </section>

@@ -12,6 +12,7 @@ import { filter, map } from 'rxjs';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { ThemeService } from '../../services/theme.service';
 import { IconComponent } from '../icon/icon.component';
+import { isAdmin } from '../../config/admin-whitelist';
 
 @Component({
   selector: 'app-navbar',
@@ -25,6 +26,8 @@ export class NavbarComponent {
   private readonly sessionAuth = inject(SessionAuthService);
   readonly theme = inject(ThemeService);
   readonly user = computed(() => this.sessionAuth.getSessionSnapshot()?.twitchUser);
+  readonly admin = computed(() => isAdmin(this.user()?.id || ''));
+  readonly home = computed(() => this.admin() ? '/dashboard' : '/observability');
   readonly accountOpen = signal(false);
   private readonly currentPath = toSignal(
     this.router.events.pipe(
@@ -42,13 +45,13 @@ export class NavbarComponent {
     );
   }
 
-  readonly navItems = [
+  readonly navItems = computed(() => this.admin() ? [
     { label: 'Overview', route: '/dashboard', icon: 'overview' },
     { label: 'Analytics', route: '/observability', icon: 'overview' },
     { label: 'Users', route: '/users', icon: 'users' },
     { label: 'Files', route: '/read-tool', icon: 'files' },
     { label: 'Email', route: '/email-test', icon: 'mail' },
-  ];
+  ] : [{ label: 'Analytics', route: '/observability', icon: 'overview' }]);
   @HostListener('document:keydown.escape') closeAccount(): void {
     this.accountOpen.set(false);
   }

@@ -1,11 +1,12 @@
 /**
  * Email Test Routes
  *
- * Development-only endpoints for testing email templates.
- * These routes should NOT be mounted in production.
+ * Owner-only internal endpoints for testing email templates.
  */
 
 import express, { type Request, type Response } from 'express';
+import { authMiddleware } from '../../middleware/auth.middleware.js';
+import { workspaceOwnerMiddleware } from '../../middleware/workspace-owner.middleware.js';
 import type { ReactElement } from 'react';
 import { sendEmail, DASHBOARD_URL, DEFAULT_DISCOUNT_CODE, EMAIL_AUTH_BASE_URL, signEmailActivationToken } from '../../utils/email/email.service.js';
 import { ActivationReminderEmail, getActivationReminderSubject } from '../../utils/email/templates/activation-reminder.js';
@@ -21,7 +22,7 @@ interface TestEmailQuery {
     theme?: 'light' | 'dark';
 }
 
-router.get('/test', async (req: Request<{}, {}, {}, TestEmailQuery>, res: Response) => {
+router.get('/test', authMiddleware as any, workspaceOwnerMiddleware, async (req: Request<{}, {}, {}, TestEmailQuery>, res: Response) => {
     const { type = 'welcome', to, lang = 'en', theme = 'dark' } = req.query;
 
     // Default test email

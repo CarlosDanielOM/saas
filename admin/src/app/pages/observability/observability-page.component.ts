@@ -637,7 +637,7 @@ export class ObservabilityPageComponent implements OnInit {
     if (sort && ['busiest', 'slowest', 'failing'].includes(sort)) this.callSort.set(sort);
     if (this.auth.token()) await this.initialize();
     const timer = setInterval(() => {
-      if (!document.hidden && this.grant() && !this.loading() && this.tab() !== 'access' && !this.selectedTrace()) void this.refresh(false);
+      if (!document.hidden && this.grant() && !this.loading() && this.tab() !== 'access') void this.refresh(false);
     }, 15000);
     this.destroy.onDestroy(() => {
       clearInterval(timer);
@@ -788,6 +788,17 @@ export class ObservabilityPageComponent implements OnInit {
   private handleError(error: unknown): void {
     if (error instanceof HttpErrorResponse) {
       this.denied.set(error.status === 401 || error.status === 403);
+      if (this.denied()) {
+        this.grant.set(null);
+        this.data.set(null);
+        this.selectedTrace.set(null);
+        this.resources.set([]);
+        this.spans.set([]);
+        this.logs.set([]);
+        this.grants.set([]);
+        this.channelNames.set({});
+        if (error.status === 401) this.auth.clearSession();
+      }
       this.error.set(
         error.status === 403
           ? "Your account doesn't have analytics access."
