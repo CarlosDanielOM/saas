@@ -8,7 +8,12 @@ export function attachDesktopWebsocket(server: Server): void {
         handleProtocols: protocols => protocols.has('dima.desktop.v1') ? 'dima.desktop.v1' : false });
     const connections = new Map<WebSocket, { token: string; sessionID: string; alive: boolean; checking: boolean }>();
     server.on('upgrade', (req, socket, head) => {
-        const url = new URL(req.url || '/', 'http://localhost');
+        let url: URL;
+        try { url = new URL(req.url || '/', 'http://localhost'); }
+        catch {
+            socket.end('HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n');
+            return;
+        }
         if (url.pathname !== '/v1/desktop/ws') {
             if (!url.pathname.startsWith('/socket.io/')) socket.end('HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n');
             return;

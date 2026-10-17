@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { randomBytes, createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { once } from 'node:events';
+import { createConnection } from 'node:net';
 const { WebSocket } = createRequire('/app/package.json')('ws');
 const { getMongoDBConnection } = await import('/app/dist/utils/databases/mongodb.database.js');
 const { getDragonflyClient } = await import('/app/dist/utils/databases/dragonfly.database.js');
@@ -78,6 +79,18 @@ assert.ok(result.body.scopes_supported.includes('credits:read'));
 assert.ok(!result.body.scopes_supported.includes('pet:interact'));
 assert.ok(result.body.beta.planned_scopes.includes('pet:playback:select'));
 assert.match(result.headers.get('cache-control'), /no-store/);
+// Malformed origin-form targets must not throw out of the HTTP upgrade listener.
+const malformedUpgrade = await new Promise((resolve, reject) => {
+  const socket = createConnection({ host: '127.0.0.1', port: 3000 });
+  let response = '';
+  socket.setTimeout(3000, () => { socket.destroy(); reject(new Error('Malformed upgrade timed out')); });
+  socket.on('connect', () => socket.write('GET //% HTTP/1.1\r\nHost: localhost\r\nConnection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: YWJjZGVmZ2hpamtsbW5vcA==\r\n\r\n'));
+  socket.on('data', data => { response += data.toString(); });
+  socket.on('end', () => { socket.destroy(); resolve(response); });
+  socket.on('error', reject);
+});
+assert.match(malformedUpgrade, /^HTTP\/1\.1 400/);
+assert.equal((await call('/oauth/metadata')).status, 200, 'API remains healthy after malformed upgrade');
 for (const override of [
   { code_challenge_method: 'plain' }, { state: '' }, { code_challenge: 'short' },
   { redirect_uri: 'https://evil.invalid/oauth/callback' }, { redirect_uri: 'http://localhost:42781/oauth/callback' },
