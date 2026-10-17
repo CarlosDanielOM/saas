@@ -5719,6 +5719,9 @@
         },
         "editHint": "Reorder, resize or remove what each side shows. Bot status and AI credits always stay.",
         "order": "Order of {{pane}}"
+      },
+      "sbrief": {
+        "goodSub": "And where your followers come from"
       }
     }
   },

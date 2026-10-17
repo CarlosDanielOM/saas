@@ -5719,6 +5719,9 @@
         },
         "editHint": "Ordena, cambia el tamaño o quita lo que muestra cada lado. El estado del bot y los créditos de IA siempre se quedan.",
         "order": "Orden de {{pane}}"
+      },
+      "sbrief": {
+        "goodSub": "Y de dónde vienen tus seguidores"
       }
     }
   },

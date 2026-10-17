@@ -449,6 +449,14 @@ export const routes: Routes = [
             title: 'Dashboard · Split + Widgets | DomDimaBot'
           },
           {
+            path: 'dashboard-split-briefing',
+            loadComponent: () =>
+              import('./features/landing-mocks/dev/dashboard-split-briefing-mock.component').then(
+                (m) => m.DashboardSplitBriefingMockComponent
+              ),
+            title: 'Dashboard · Split + Briefing | DomDimaBot'
+          },
+          {
             path: 'prod-commands',
             loadComponent: () =>
               import('./features/landing-mocks/dev/prod-commands-mock.component').then(

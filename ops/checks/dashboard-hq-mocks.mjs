@@ -1,5 +1,6 @@
 // Behaviour check for the "channel + bot" dashboard proposals:
-// /mocks/dev/dashboard-split, -widgets, -briefing and -mix (split + widgets).
+// /mocks/dev/dashboard-split, -widgets, -briefing, -mix (split + widgets) and
+// -split-briefing (split + briefing).
 // Mocks must never need the API; every call is answered with an empty envelope.
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
@@ -62,7 +63,8 @@ const mocks = {
   split: { path: '/mocks/dev/dashboard-split', ready: /habits to fix, found in your own streams/ },
   widgets: { path: '/mocks/dev/dashboard-widgets', ready: /tips to fix this week/ },
   briefing: { path: '/mocks/dev/dashboard-briefing', ready: /things to fix this week/ },
-  mix: { path: '/mocks/dev/dashboard-mix', ready: /habits to fix, found in your own streams/ }
+  mix: { path: '/mocks/dev/dashboard-mix', ready: /habits to fix, found in your own streams/ },
+  splitBriefing: { path: '/mocks/dev/dashboard-split-briefing', ready: /things to fix this week/ }
 };
 
 try {
@@ -351,8 +353,73 @@ try {
     await context.close();
   }
 
+  // ------------------------------------------- Split + Briefing (1 + 3)
+  {
+    const { context, page } = await open(mocks.splitBriefing.path);
+    await page.getByText(mocks.splitBriefing.ready).waitFor();
+    assert.equal(await page.getByRole('button', { name: 'Turn the bot off' }).count(), 1, 'one bot control');
+    const mainWidth = await page.locator('main').evaluate((m) => m.getBoundingClientRect().width);
+    assert.ok(mainWidth >= 1240, `main is ${mainWidth}px wide at 1280`);
+    const health = page.getByRole('region', { name: 'Bot health' });
+    await health.getByText('Bot in chat').waitFor();
+    await health.getByRole('link', { name: 'Buy credits' }).waitFor();
+    assert.ok(!(await page.locator('.strip').isVisible()), 'phone strip hidden on desktop');
+    const channel = page.getByRole('region', { name: /^Your channel/ });
+    const botSide = page.getByRole('region', { name: /^What your bot did/ });
+    assert.deepEqual(await channel.locator('.fix__n').allInnerTexts(), ['1', '2', '3', '4'], 'numbered fixes');
+    assert.equal(await channel.locator('.br-grid .br-card').count(), 4, "what's working: tip, games, days, raids");
+    for (const h of ['Automod', 'Sanctions', 'Top commands', 'Top emotes']) await botSide.getByRole('heading', { name: h, exact: true }).waitFor();
+    // Sides start on the same line.
+    const [ct, bt] = await Promise.all([channel, botSide].map((l) => l.evaluate((e) => e.getBoundingClientRect().top)));
+    assert.ok(Math.abs(ct - bt) < 2, 'sides aligned');
+
+    // Hide + restore a fix.
+    await page.getByRole('button', { name: 'Hide the tip: Raiding back' }).click();
+    await waitCount(page, '.fix:not(.fix--locked)', 3, 'fix hidden');
+    await page.getByText('1 tip hidden.').waitFor();
+    await page.getByRole('button', { name: 'Show them again' }).click();
+    await waitCount(page, '.fix:not(.fix--locked)', 4, 'fix restored');
+
+    // Topics, remembered after reload; an empty bot side says so, health stays.
+    const topics = page.getByRole('group', { name: 'Show me' });
+    for (const name of ['Moderation', 'Commands', 'Emotes']) await topics.getByRole('button', { name }).click();
+    await botSide.getByText('Nothing to show. Pick a topic above.').waitFor();
+    await page.reload();
+    await page.getByText(mocks.splitBriefing.ready).waitFor();
+    assert.equal(await page.getByRole('heading', { name: 'Automod', exact: true }).count(), 0, 'topics remembered');
+    assert.ok(await health.isVisible(), 'bot health always shown');
+    for (const name of ['Moderation', 'Commands', 'Emotes']) await topics.getByRole('button', { name }).click();
+    await botSide.getByRole('heading', { name: 'Automod', exact: true }).waitFor();
+
+    // Free: one fix + one upsell.
+    await preview(page).getByRole('button', { name: 'Free', exact: true }).click();
+    await waitCount(page, '.fix--locked', 1, 'locked fixes');
+    assert.equal(await count(page, '.fix:not(.fix--locked)'), 1);
+    assert.equal(await page.getByRole('link', { name: 'Upgrade to see them' }).count(), 1, 'one upsell');
+    await context.close();
+  }
+  {
+    const { context, page } = await open(mocks.splitBriefing.path, { width: 1920 });
+    await page.getByText(mocks.splitBriefing.ready).waitFor();
+    const w = await page.locator('main').evaluate((m) => m.getBoundingClientRect().width);
+    assert.ok(w >= 1700, `main is ${w}px wide at 1920`);
+    await context.close();
+  }
+  {
+    const { context, page } = await open(mocks.splitBriefing.path, { width: 390 });
+    await page.getByText(mocks.splitBriefing.ready).waitFor();
+    assert.ok(await page.locator('.strip').isVisible(), 'bot strip on phones');
+    assert.ok(!(await page.getByRole('region', { name: 'Bot health' }).isVisible()), 'full health row hidden on phones');
+    const swipe = await page.locator('.fixes').evaluate((e) => e.scrollWidth > e.clientWidth + 50);
+    assert.ok(swipe, 'fixes swipe sideways on phones');
+    await page.getByRole('group', { name: 'Dashboard section' }).getByRole('button', { name: 'Your bot' }).click();
+    await page.getByRole('heading', { name: 'Top emotes' }).waitFor({ state: 'visible' });
+    assert.ok(!(await page.locator('.fixes').isVisible()), 'channel side hidden on bot tab');
+    await context.close();
+  }
+
   // Spanish copy renders from es.json.
-  for (const [name, text] of [['split', /hábitos para mejorar/], ['widgets', /consejos para mejorar esta semana/], ['briefing', /cosas para mejorar esta semana/], ['mix', /hábitos para mejorar/]]) {
+  for (const [name, text] of [['split', /hábitos para mejorar/], ['widgets', /consejos para mejorar esta semana/], ['briefing', /cosas para mejorar esta semana/], ['mix', /hábitos para mejorar/], ['splitBriefing', /cosas para mejorar esta semana/]]) {
     const { context, page } = await open(mocks[name].path, { lang: 'es', width: 390 });
     await page.getByText(text).waitFor();
     await layout(page, `${name} es`);
@@ -374,7 +441,7 @@ try {
   }
 
   assert.deepEqual(errors, [], 'page errors');
-  console.log('dashboard hq mocks (split, widgets, briefing, mix): ok');
+  console.log('dashboard hq mocks (split, widgets, briefing, mix, split-briefing): ok');
 } finally {
   await browser.close();
 }

@@ -1,0 +1,120 @@
+/* Dashboard proposal "Split + Briefing": the weekly report, channel | bot. */
+
+/* Use the width: wide screens get more columns, not wider margins. */
+.lf-main.sb { width: min(100%, 110rem); padding-inline: clamp(0.8rem, 2.2vw, 2rem); }
+
+.br-week { display: block; margin-bottom: 0.15rem; color: var(--accent); font-size: 0.74rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+
+/* Bot health row (tablet and up) */
+.bs { display: none; gap: 0.6rem; }
+.bs__item {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 0.6rem;
+  min-height: 3.2rem; padding: 0.55rem 0.8rem; border: 1px solid var(--line); border-radius: 1rem; background: var(--tile);
+  font-size: 0.8rem; color: var(--muted); line-height: 1.35;
+}
+.bs__item span { min-width: 0; }
+.bs__item b { display: block; color: var(--fg); font-size: 0.88rem; }
+.bs__item[data-tone='ok'] app-lf-icon { color: var(--ok); }
+.bs__item[data-tone='warn'] { border-color: color-mix(in srgb, var(--warn) 45%, transparent); background: linear-gradient(90deg, var(--warn-soft), transparent 85%), var(--tile); }
+.bs__item[data-tone='warn'] app-lf-icon, .bs__item[data-tone='warn'] b { color: var(--warn); }
+.bs__buy {
+  display: inline-flex; align-items: center; min-height: 36px; padding: 0 0.8rem; border: 1px solid var(--btn-border); border-radius: 999px;
+  color: var(--fg); background: var(--btn); font-size: 0.78rem; font-weight: 750; text-decoration: none; white-space: nowrap;
+}
+.bs__buy--primary { color: #fff; background: #7c3aed; border-color: #7c3aed; }
+.bs__buy:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Bot strip (phones) */
+.strip {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.9rem; padding: 0.6rem 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--ok) 30%, transparent); border-radius: 1rem;
+  color: var(--fg); background: linear-gradient(90deg, var(--ok-soft), transparent 80%), var(--tile);
+  font-size: 0.8rem; font-weight: 700; text-decoration: none;
+}
+.strip--warn { border-color: color-mix(in srgb, var(--warn) 40%, transparent); background: linear-gradient(90deg, var(--warn-soft), transparent 80%), var(--tile); }
+.strip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.strip__item { display: inline-flex; align-items: center; gap: 0.4rem; white-space: nowrap; }
+.strip__item:first-child { color: var(--ok); }
+.strip__item--warn, .strip__item--warn:first-child { color: var(--warn); }
+
+.sb-jump { display: grid; gap: 0.6rem; }
+
+/* Topics */
+.topics { display: grid; gap: 0.5rem; padding: 0.75rem 0.9rem; border: 1px dashed var(--line); border-radius: 1.1rem; }
+.topics__title { display: inline-flex; align-items: center; gap: 0.4rem; margin: 0; font-size: 0.86rem; font-weight: 800; }
+.topics__title app-lf-icon { color: var(--accent); }
+.topics__chips { display: flex; gap: 0.4rem; overflow-x: auto; scrollbar-width: none; padding-bottom: 0.15rem; }
+.topic { flex: none; min-height: 40px; padding: 0.3rem 0.85rem; color: var(--muted); background: transparent; font: inherit; font-size: 0.82rem; font-weight: 700; cursor: pointer; }
+.topic[aria-pressed='true'] { color: #fff; background: #7c3aed; border-color: #7c3aed; }
+.topics__hidden { margin: 0; color: var(--muted); font-size: 0.8rem; }
+
+.tabs { display: grid; grid-template-columns: 1fr 1fr; }
+.tabs button { min-height: 44px; font-size: 0.9rem; }
+
+/* Sides */
+.sp { display: grid; gap: 1.25rem; }
+.pane { display: grid; gap: 1rem; align-content: start; min-width: 0; container-type: inline-size; }
+.pane--off { display: none; }
+.sec-title--pane { font-size: 1.2rem; }
+.sub-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.1rem 0.5rem; margin: 0; font-size: 0.98rem; font-weight: 800; }
+.sub-title span { color: var(--muted); font-size: 0.78rem; font-weight: 600; }
+.br-sec { display: grid; gap: 0.6rem; }
+
+/* Numbered fixes */
+.fixes { display: grid; gap: 0.75rem; margin: 0; padding: 0; list-style: none; }
+/* Phones: swipe through the fixes instead of a long stack */
+@container (max-width: 37.99rem) {
+  .fixes {
+    grid-auto-flow: column; grid-auto-columns: 86%; margin-inline: -0.8rem; padding: 0.1rem 0.8rem 0.5rem;
+    overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding: 0 0.8rem;
+  }
+  .fixes > li { scroll-snap-align: start; }
+}
+.fix { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.8rem; align-items: start; }
+.fix__n {
+  display: grid; place-items: center; width: 2.3rem; height: 2.3rem; border-radius: 0.85rem;
+  color: #fff; background: #7c3aed; font-size: 1.1rem; font-weight: 800; font-variant-numeric: tabular-nums;
+}
+.fix__n--gold { color: #1a1205; background: #fbbf24; }
+.fix__body { min-width: 0; }
+.fix--locked .fix__body { display: grid; gap: 0.6rem; }
+.fix--locked .btn { justify-self: start; }
+
+.br-grid { display: grid; gap: 0.75rem; }
+.br-card { display: grid; }
+.br-card--good { border-color: color-mix(in srgb, var(--ok) 25%, transparent); }
+
+/* Column counts follow each side's own width */
+@container (min-width: 38rem) {
+  .fixes, .br-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* an odd last card takes the whole row instead of leaving a hole */
+  .fixes > :last-child:nth-child(odd), .br-grid > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+  /* the bot side stays one column until it's really wide, so both sides end close together */
+  .br-grid--bot { grid-template-columns: 1fr; }
+}
+@container (min-width: 52rem) {
+  .br-grid--bot { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (min-width: 640px) {
+  .bs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .strip { display: none; }
+  .topics { grid-template-columns: auto minmax(0, 1fr); align-items: center; }
+  .topics__chips { flex-wrap: wrap; overflow: visible; }
+  .topics__hidden { grid-column: 1 / -1; }
+}
+
+@media (min-width: 960px) {
+  .bs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .bs__item { grid-template-columns: auto minmax(0, 1fr); }
+  .bs__buy { grid-column: 2; justify-self: start; }
+  .tabs { display: none; }
+  .sp { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); align-items: start; }
+  .pane--off { display: grid; }
+  .pane { padding-top: 0.9rem; }
+  .pane--bot {
+    padding: 0.9rem; border: 1px solid var(--line); border-radius: calc(var(--radius) + 0.3rem);
+    background: color-mix(in srgb, var(--tile) 45%, transparent);
+  }
+  .pane--bot .lf-tile { box-shadow: none; }
+}

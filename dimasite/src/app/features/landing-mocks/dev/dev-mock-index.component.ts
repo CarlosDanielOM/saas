@@ -163,6 +163,13 @@ export class DevMockIndexComponent {
         'Current landing kept as is: chat demo when nobody is live, 2×2 counters, 8 features, 3-step start, honest plan value cues. Toggle "Someone live" at the bottom.'
     },
     {
+      id: 'dashboard-split-briefing',
+      title: 'Dashboard · Split + Briefing',
+      badge: 'Channel + bot · for approval',
+      description:
+        'Split and Briefing combined: bot health and shortcuts on top, then your channel (numbered things to fix this week, what is working, raids) next to what your bot did. "Show me" chips pick the topics; tips can be hidden. Uses the full screen width.'
+    },
+    {
       id: 'dashboard-mix',
       title: 'Dashboard · Split + Widgets',
       badge: 'Channel + bot · for approval',
