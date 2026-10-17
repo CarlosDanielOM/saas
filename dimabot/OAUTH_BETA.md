@@ -12,6 +12,8 @@ This guide describes the current Dima OAuth beta contract for a native desktop c
 - Authorization-server metadata: `https://api.domdimabot.com/.well-known/oauth-authorization-server`
 - Browser connection management: `https://domdimabot.com/oauth/connections`
 
+Set `User-Agent: DimaDesktop/<app-version>` on HTTP requests and the WebSocket handshake. The web edge may treat generic automated-client user agents differently, so identify the native client explicitly.
+
 Start a system-browser authorization-code flow. Bind a loopback listener before opening the browser, on an ephemeral, non-default port, and use exactly `/oauth/callback` as the path. The supported redirect hosts are `127.0.0.1` and `[::1]`; the URI must be plain HTTP and contain no user info, query, or fragment. Preserve the exact selected URI for the token exchange, including host and port. For example: `http://127.0.0.1:49152/oauth/callback`.
 
 Generate a cryptographically random PKCE verifier (43–128 characters from `A-Z a-z 0-9 . _ ~ -`), a fresh random `state` of 43 base64url characters, and `code_challenge = BASE64URL(SHA256(ASCII(code_verifier)))` without padding. Send these authorization parameters:
