@@ -1,0 +1,137 @@
+<div class="lf" [class.lf--live]="live()" [attr.data-plan]="plan()">
+  <main class="lf-main">
+    <app-growth-mock-header [(live)]="live" [(plan)]="plan" [(botOn)]="botOn">
+      <p answer class="answer">
+        <strong>{{ t(fixCount() === 1 ? 'devMocks.hq.split.answerOne' : 'devMocks.hq.split.answer', { count: fixCount() }) }}</strong>
+        {{ t('devMocks.hq.split.answerRest', { game: topGame.label, share: topGame.share, day: day(bestDay.weekday) }) }}
+      </p>
+    </app-growth-mock-header>
+
+    <section class="sq" aria-labelledby="sq-title">
+      <div class="sec-bar">
+        <h2 class="sec-title" id="sq-title">{{ t('devMocks.hq.modules.title') }}</h2>
+        <span class="sec-sub">{{ t('devMocks.hq.modules.sub') }}</span>
+      </div>
+      <app-hq-modules />
+    </section>
+
+    <!-- Phones: one-line bot strip that stays visible on both tabs -->
+    <a class="strip" href="#sp-bot" (click)="pane.set('bot')" [class.strip--warn]="!botOn() || !credits().lastsUntilReset">
+      <span class="strip__item" [class.strip__item--warn]="!botOn()"><span class="dot" aria-hidden="true"></span>{{ botOn() ? t('devMocks.hq.strip.in') : t('devMocks.hq.strip.out') }}</span>
+      <span class="strip__item">{{ t('devMocks.hq.strip.events', { on: bot.eventsOn, total: bot.eventsTotal }) }}</span>
+      <span class="strip__item" [class.strip__item--warn]="!credits().lastsUntilReset">{{ t('devMocks.hq.strip.credits', { pct: credits().pctLeft }) }}</span>
+      <span class="strip__item">{{ t('devMocks.hq.strip.automod', { count: automod.actions }) }}</span>
+    </a>
+
+    <div class="tabs seg" role="group" [attr.aria-label]="t('devMocks.hq.split.tabs')">
+      <button type="button" [attr.aria-pressed]="pane() === 'channel'" (click)="pane.set('channel')">{{ t('devMocks.hq.split.channel') }}</button>
+      <button type="button" [attr.aria-pressed]="pane() === 'bot'" (click)="pane.set('bot')">{{ t('devMocks.hq.split.bot') }}</button>
+    </div>
+
+    <div class="sp">
+      <!-- Channel -->
+      <section class="sp__pane" [class.sp__pane--off]="pane() !== 'channel'" aria-labelledby="sp-channel">
+        <div class="sec-bar">
+          <h2 class="sec-title" id="sp-channel">{{ t('devMocks.hq.split.channel') }}</h2>
+          <span class="sec-sub">{{ t('devMocks.hq.split.channelSub') }}</span>
+          <button type="button" class="btn btn--sm btn--ghost sec-act" (click)="openPicker()">
+            <app-lf-icon name="sliders" [size]="15"></app-lf-icon>{{ t('devMocks.hq.pick.open') }}
+            @if (hiddenCount()) { <span class="count">{{ t('devMocks.hq.pick.hidden', { count: hiddenCount() }) }}</span> }
+          </button>
+        </div>
+
+        @if (tipsOn().length) {
+          <div class="tips">
+            @for (h of tipsShown(); track h.key) {
+              <article class="lf-tile tip" [attr.data-tone]="h.tone">
+                <app-hq-habit [habit]="h" [hideable]="true" (hide)="hideTip(h.key)" />
+              </article>
+            }
+            @if (tipsLocked()) {
+              <article class="lf-tile tip tip--locked">
+                <p class="lock-kicker"><app-lf-icon name="lock" [size]="14"></app-lf-icon>{{ t('devMocks.hq.split.lockedKicker') }}</p>
+                <h3 class="lock-say">{{ t('devMocks.hq.split.lockedSay', { count: tipsLocked() }) }}</h3>
+                <a class="btn btn--gold" routerLink="/mocks/dev/prod-settings">{{ t('devMocks.hq.split.lockedCta') }}</a>
+              </article>
+            }
+          </div>
+        }
+
+        <div class="cards cards--channel">
+          @for (k of shownChannel(); track k) {
+            <article class="lf-tile card" [attr.aria-labelledby]="'sp-card-' + k">
+              <app-hq-card [kind]="k" size="m" [plan]="plan()" [botOn]="botOn()" [headingId]="'sp-card-' + k" />
+            </article>
+          }
+        </div>
+        @if (!shownChannel().length && !tipsOn().length) {
+          <p class="empty">{{ t('devMocks.hq.split.emptyChannel') }} <button type="button" class="lnk-btn" (click)="openPicker()">{{ t('devMocks.hq.pick.open') }}</button></p>
+        }
+      </section>
+
+      <!-- Bot -->
+      <section class="sp__pane sp__pane--bot" id="sp-bot" [class.sp__pane--off]="pane() !== 'bot'" aria-labelledby="sp-bot-title">
+        <div class="sec-bar">
+          <h2 class="sec-title" id="sp-bot-title">{{ t('devMocks.hq.split.bot') }}</h2>
+          <span class="sec-sub">{{ t('devMocks.hq.split.botSub') }}</span>
+        </div>
+        <div class="cards cards--bot">
+          @for (k of shownBot(); track k) {
+            <article class="lf-tile card" [attr.data-kind]="k" [attr.aria-labelledby]="'sp-card-' + k">
+              <app-hq-card [kind]="k" size="m" [plan]="plan()" [botOn]="botOn()" [headingId]="'sp-card-' + k" />
+            </article>
+          }
+        </div>
+      </section>
+    </div>
+
+    <!-- What you see -->
+    <dialog #picker class="pick" aria-labelledby="pick-title" (click)="backdrop($event)">
+      <div class="pick__sheet">
+        <div class="pick__head">
+          <h2 class="lf-h2" id="pick-title">{{ t('devMocks.hq.pick.title') }}</h2>
+          <button type="button" class="icon-btn" (click)="closePicker()" [attr.aria-label]="t('devMocks.hq.pick.close')"><app-lf-icon name="close" [size]="18"></app-lf-icon></button>
+        </div>
+        <p class="lf-note">{{ t('devMocks.hq.pick.sub') }}</p>
+
+        <fieldset class="pick__group">
+          <legend>{{ t('devMocks.hq.pick.channel') }}</legend>
+          @for (k of channelCards; track k) {
+            <label class="pick__row">
+              <input type="checkbox" class="sw" [checked]="isCardOn(k)" (change)="toggleCard(k)" />
+              <span class="pick__name">{{ t('devMocks.hq.card.' + k + '.title') }}<small>{{ t('devMocks.hq.card.' + k + '.hint') }}</small></span>
+            </label>
+          }
+        </fieldset>
+
+        <fieldset class="pick__group">
+          <legend>{{ t('devMocks.hq.pick.tips') }}</legend>
+          @for (h of allHabits; track h.key) {
+            <label class="pick__row">
+              <input type="checkbox" class="sw" [checked]="isTipOn(h.key)" (change)="toggleTip(h.key)" />
+              <span class="pick__name">{{ t('devMocks.hq.habit.' + h.key + '.name') }}<small>{{ t('devMocks.hq.habit.tone.' + h.tone) }}</small></span>
+            </label>
+          }
+        </fieldset>
+
+        <fieldset class="pick__group">
+          <legend>{{ t('devMocks.hq.pick.bot') }}</legend>
+          @for (k of botCards; track k) {
+            <label class="pick__row" [class.pick__row--pinned]="isPinned(k)">
+              <input type="checkbox" class="sw" [checked]="isCardOn(k)" [disabled]="isPinned(k)" (change)="toggleCard(k)" />
+              <span class="pick__name">
+                {{ t('devMocks.hq.card.' + k + '.title') }}
+                <small>{{ isPinned(k) ? t('devMocks.hq.pick.always') : t('devMocks.hq.card.' + k + '.hint') }}</small>
+              </span>
+            </label>
+          }
+        </fieldset>
+
+        <div class="pick__foot">
+          <button type="button" class="btn btn--ghost" (click)="showAll()">{{ t('devMocks.hq.pick.showAll') }}</button>
+          <button type="button" class="btn btn--primary" (click)="closePicker()">{{ t('devMocks.hq.pick.done') }}</button>
+        </div>
+      </div>
+    </dialog>
+  </main>
+</div>

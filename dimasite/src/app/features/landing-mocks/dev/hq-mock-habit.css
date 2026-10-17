@@ -1,0 +1,36 @@
+/* A habit tip: plain sentence, evidence bars, one thing to try. */
+:host { display: grid; gap: 0.65rem; align-content: start; min-width: 0; }
+:host *, :host *::before, :host *::after { box-sizing: border-box; }
+
+.hh__tag {
+  display: inline-flex; align-items: center; justify-self: start; gap: 0.35rem; margin: 0;
+  padding: 0.15rem 0.6rem; border-radius: 999px; color: var(--warn); background: var(--warn-soft);
+  font-size: 0.7rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase;
+}
+.hh__tag[data-tone='good'] { color: var(--ok); background: var(--ok-soft); }
+.hh__say { margin: 0; font-size: 1rem; font-weight: 750; line-height: 1.4; letter-spacing: -0.01em; }
+
+.hh__bars { display: grid; gap: 0.35rem; margin: 0; padding: 0; list-style: none; }
+.hh__bar { display: grid; grid-template-columns: 5.6rem minmax(0, 1fr) 4.4rem; align-items: center; gap: 0.5rem; }
+.hh__label { color: var(--muted); font-size: 0.74rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hh__track { height: 0.55rem; overflow: hidden; border-radius: 999px; background: var(--input-bg); }
+.hh__track span { display: block; height: 100%; border-radius: 999px; background: color-mix(in srgb, var(--muted) 40%, transparent); }
+.hh__bar[data-mark='bad'] .hh__track span { background: #d97706; }
+.hh__bar[data-mark='good'] .hh__track span { background: linear-gradient(90deg, #7c3aed, #a78bfa); }
+.hh__bar[data-mark] .hh__label { color: var(--fg); }
+.hh__val { text-align: right; font-size: 0.8rem; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.hh__val small { margin-left: 0.15rem; color: var(--muted); font-size: 0.66rem; font-weight: 700; }
+
+.hh__try {
+  margin: 0; padding: 0.55rem 0.7rem; border-left: 3px solid #7c3aed; border-radius: 0 0.7rem 0.7rem 0;
+  background: var(--accent-soft); font-size: 0.85rem; line-height: 1.45;
+}
+.hh__try b { color: var(--accent); }
+
+.hh__hide {
+  display: inline-flex; align-items: center; justify-self: start; gap: 0.35rem; min-height: 36px; padding: 0 0.7rem;
+  border: 1px solid var(--line); border-radius: 999px; color: var(--muted); background: transparent;
+  font: inherit; font-size: 0.78rem; font-weight: 700; cursor: pointer;
+}
+.hh__hide:hover { color: var(--fg); }
+.hh__hide:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

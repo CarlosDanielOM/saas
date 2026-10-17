@@ -163,6 +163,27 @@ export class DevMockIndexComponent {
         'Current landing kept as is: chat demo when nobody is live, 2×2 counters, 8 features, 3-step start, honest plan value cues. Toggle "Someone live" at the bottom.'
     },
     {
+      id: 'dashboard-split',
+      title: 'Dashboard · Split',
+      badge: 'Channel + bot · for approval',
+      description:
+        'Your channel on one side, your bot on the other: habit tips, most watched games, best days, raids | bot status, credits, automod, sanctions, top commands and emotes. Quick buttons to your most used modules; choose which cards you see.'
+    },
+    {
+      id: 'dashboard-widgets',
+      title: 'Dashboard · Widgets',
+      badge: 'Channel + bot · for approval',
+      description:
+        'A home screen you build: small widgets show one number (tap for the full card), large ones show the card. Customize to move, resize, add or remove, with presets; module shortcuts live in a dock.'
+    },
+    {
+      id: 'dashboard-briefing',
+      title: 'Dashboard · Briefing',
+      badge: 'Channel + bot · for approval',
+      description:
+        'Reads like a weekly report: bot health always on top, then numbered things to fix this week, what is working, raids, and what the bot did. "Show me" chips pick the topics; any tip can be hidden.'
+    },
+    {
       id: 'dashboard-pulse',
       title: 'Dashboard · Pulse',
       badge: 'Growth · for approval',

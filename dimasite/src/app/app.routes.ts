@@ -415,6 +415,30 @@ export const routes: Routes = [
             title: 'Dashboard · Coach | DomDimaBot'
           },
           {
+            path: 'dashboard-split',
+            loadComponent: () =>
+              import('./features/landing-mocks/dev/dashboard-split-mock.component').then(
+                (m) => m.DashboardSplitMockComponent
+              ),
+            title: 'Dashboard · Split | DomDimaBot'
+          },
+          {
+            path: 'dashboard-widgets',
+            loadComponent: () =>
+              import('./features/landing-mocks/dev/dashboard-widgets-mock.component').then(
+                (m) => m.DashboardWidgetsMockComponent
+              ),
+            title: 'Dashboard · Widgets | DomDimaBot'
+          },
+          {
+            path: 'dashboard-briefing',
+            loadComponent: () =>
+              import('./features/landing-mocks/dev/dashboard-briefing-mock.component').then(
+                (m) => m.DashboardBriefingMockComponent
+              ),
+            title: 'Dashboard · Briefing | DomDimaBot'
+          },
+          {
             path: 'prod-commands',
             loadComponent: () =>
               import('./features/landing-mocks/dev/prod-commands-mock.component').then(

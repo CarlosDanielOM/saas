@@ -1,0 +1,139 @@
+<div class="lf" [class.lf--live]="live()" [attr.data-plan]="plan()">
+  <main class="lf-main">
+    <app-growth-mock-header [(live)]="live" [(plan)]="plan" [(botOn)]="botOn">
+      <p answer class="answer">
+        <span class="br-week">{{ weekLabel() }}</span>
+        <strong>{{ t(fixes().length === 1 ? 'devMocks.hq.brief.answerOne' : 'devMocks.hq.brief.answer', { count: fixes().length }) }}</strong>
+        {{ t('devMocks.hq.brief.answerRest', { streams: week.now.streams, follows: week.now.follows, change: pct(followChange), actions: automod.actions }) }}
+      </p>
+    </app-growth-mock-header>
+
+    <!-- Bot health: always on top, can't be hidden -->
+    <section class="bs" [attr.aria-label]="t('devMocks.hq.brief.health')">
+      <div class="bs__item" [attr.data-tone]="botOn() ? 'ok' : 'warn'">
+        <app-lf-icon [name]="botOn() ? 'check' : 'alert'" [size]="16"></app-lf-icon>
+        <span><b>{{ botOn() ? t('devMocks.hq.strip.in') : t('devMocks.hq.strip.out') }}</b>{{ t('devMocks.hq.brief.replies', { count: bot.repliesWeek }) }}</span>
+      </div>
+      <div class="bs__item" data-tone="ok">
+        <app-lf-icon name="check" [size]="16"></app-lf-icon>
+        <span><b>{{ t('devMocks.hq.strip.events', { on: bot.eventsOn, total: bot.eventsTotal }) }}</b>{{ t('devMocks.hq.brief.eventsSub') }}</span>
+      </div>
+      <div class="bs__item" [attr.data-tone]="credits().lastsUntilReset ? 'ok' : 'warn'">
+        <app-lf-icon name="zap" [size]="16"></app-lf-icon>
+        <span>
+          <b>{{ t('devMocks.hq.strip.credits', { pct: credits().pctLeft }) }}</b>
+          {{ credits().lastsUntilReset ? t('devMocks.hq.brief.creditsOk', { days: credits().daysToReset }) : t('devMocks.hq.brief.creditsShort', { days: credits().daysLeft }) }}
+        </span>
+        <a class="bs__buy" [class.bs__buy--primary]="!credits().lastsUntilReset" routerLink="/mocks/dev/prod-settings">{{ t('devMocks.growth.credits.buy') }}</a>
+      </div>
+      <div class="bs__item" data-tone="ok">
+        <app-lf-icon name="shield" [size]="16"></app-lf-icon>
+        <span><b>{{ t('devMocks.hq.strip.automod', { count: automod.actions }) }}</b>{{ t('devMocks.hq.brief.automodSub') }}</span>
+      </div>
+    </section>
+
+    <section class="br-jump" aria-labelledby="br-jump-title">
+      <h2 class="sec-title" id="br-jump-title">{{ t('devMocks.hq.brief.jump') }}</h2>
+      <app-hq-modules variant="row" />
+    </section>
+
+    <!-- What this briefing covers -->
+    <section class="topics" aria-labelledby="br-topics-title">
+      <h2 class="topics__title" id="br-topics-title"><app-lf-icon name="sliders" [size]="15"></app-lf-icon>{{ t('devMocks.hq.brief.showMe') }}</h2>
+      <div class="topics__chips" role="group" aria-labelledby="br-topics-title">
+        @for (tp of topics; track tp) {
+          <button type="button" class="chip topic" [attr.aria-pressed]="on(tp)" (click)="toggle(tp)">
+            @if (on(tp)) { <app-lf-icon name="check" [size]="13"></app-lf-icon> }
+            {{ t('devMocks.hq.brief.topic.' + tp) }}
+          </button>
+        }
+      </div>
+      @if (hiddenCount()) {
+        <p class="topics__hidden">{{ t(hiddenCount() === 1 ? 'devMocks.hq.brief.hiddenOne' : 'devMocks.hq.brief.hidden', { count: hiddenCount() }) }} <button type="button" class="lnk-btn" (click)="restore()">{{ t('devMocks.hq.brief.restore') }}</button></p>
+      }
+    </section>
+
+    @if (on('tips') && (fixes().length || fixesLocked())) {
+      <section class="br-sec" aria-labelledby="br-fix">
+        <div class="sec-bar">
+          <h2 class="sec-title" id="br-fix">{{ t('devMocks.hq.brief.fixTitle') }}</h2>
+          <span class="sec-sub">{{ t('devMocks.hq.brief.fixSub') }}</span>
+        </div>
+        <ol class="fixes">
+          @for (h of fixesShown(); track h.key; let i = $index) {
+            <li class="lf-tile fix">
+              <span class="fix__n" aria-hidden="true">{{ i + 1 }}</span>
+              <app-hq-habit class="fix__body" [habit]="h" [hideable]="true" (hide)="hide(h.key)" />
+            </li>
+          }
+          @if (fixesLocked()) {
+            <li class="lf-tile lockcard fix fix--locked">
+              <span class="fix__n fix__n--gold" aria-hidden="true"><app-lf-icon name="lock" [size]="18"></app-lf-icon></span>
+              <div class="fix__body">
+                <p class="lock-kicker">{{ t('devMocks.hq.split.lockedKicker') }}</p>
+                <h3 class="lock-say">{{ t('devMocks.hq.brief.lockedSay', { count: fixesLocked() }) }}</h3>
+                <a class="btn btn--gold" routerLink="/mocks/dev/prod-settings">{{ t('devMocks.hq.split.lockedCta') }}</a>
+              </div>
+            </li>
+          }
+        </ol>
+      </section>
+    }
+
+    @if ((on('tips') && goods().length) || on('games') || on('days')) {
+      <section class="br-sec" aria-labelledby="br-good">
+        <div class="sec-bar">
+          <h2 class="sec-title" id="br-good">{{ t('devMocks.hq.brief.goodTitle') }}</h2>
+          <span class="sec-sub">{{ t('devMocks.hq.brief.goodSub') }}</span>
+        </div>
+        <div class="br-grid">
+          @if (on('tips')) {
+            @for (h of goods(); track h.key) {
+              <article class="lf-tile br-card br-card--good"><app-hq-habit [habit]="h" [hideable]="true" (hide)="hide(h.key)" /></article>
+            }
+          }
+          @if (on('games')) {
+            <article class="lf-tile br-card" aria-labelledby="br-games"><app-hq-card kind="games" headingId="br-games" /></article>
+          }
+          @if (on('days')) {
+            <article class="lf-tile br-card" aria-labelledby="br-days"><app-hq-card kind="days" headingId="br-days" /></article>
+          }
+        </div>
+      </section>
+    }
+
+    @if (on('raids')) {
+      <section class="br-sec" aria-labelledby="br-raids-title">
+        <div class="sec-bar">
+          <h2 class="sec-title" id="br-raids-title">{{ t('devMocks.hq.brief.raidsTitle') }}</h2>
+        </div>
+        <article class="lf-tile br-card" aria-labelledby="br-raids"><app-hq-card kind="raids" headingId="br-raids" /></article>
+      </section>
+    }
+
+    @if (on('moderation') || on('commands') || on('emotes')) {
+      <section class="br-sec" aria-labelledby="br-bot">
+        <div class="sec-bar">
+          <h2 class="sec-title" id="br-bot">{{ t('devMocks.hq.brief.botTitle') }}</h2>
+          <span class="sec-sub">{{ weekLabel() }}</span>
+        </div>
+        <div class="br-grid br-grid--bot">
+          @if (on('moderation')) {
+            <article class="lf-tile br-card" aria-labelledby="br-automod"><app-hq-card kind="automod" headingId="br-automod" /></article>
+            <article class="lf-tile br-card" aria-labelledby="br-sanctions"><app-hq-card kind="sanctions" headingId="br-sanctions" /></article>
+          }
+          @if (on('commands')) {
+            <article class="lf-tile br-card" aria-labelledby="br-commands"><app-hq-card kind="commands" headingId="br-commands" /></article>
+          }
+          @if (on('emotes')) {
+            <article class="lf-tile br-card" aria-labelledby="br-emotes"><app-hq-card kind="emotes" headingId="br-emotes" /></article>
+          }
+        </div>
+      </section>
+    }
+
+    @if (!anyChannel() && !on('moderation') && !on('commands') && !on('emotes')) {
+      <p class="empty">{{ t('devMocks.hq.brief.empty') }}</p>
+    }
+  </main>
+</div>

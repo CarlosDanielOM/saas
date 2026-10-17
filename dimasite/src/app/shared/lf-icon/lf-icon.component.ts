@@ -37,6 +37,17 @@ import {
   Wrench,
   X,
   Zap,
+  ShieldCheck,
+  Smile,
+  Gamepad2,
+  CalendarDays,
+  SlidersHorizontal,
+  Lightbulb,
+  Pin,
+  Minus,
+  Terminal,
+  Swords,
+  Mic,
   type LucideIconData
 } from 'lucide-angular';
 
@@ -77,7 +88,18 @@ export type LfIconName =
   | 'play'
   | 'eye-off'
   | 'shuffle'
-  | 'gift';
+  | 'gift'
+  | 'shield'
+  | 'smile'
+  | 'gamepad'
+  | 'calendar'
+  | 'sliders'
+  | 'bulb'
+  | 'pin'
+  | 'minus'
+  | 'terminal'
+  | 'swords'
+  | 'mic';
 
 const ICONS: Record<LfIconName, LucideIconData> = {
   close: X,
@@ -116,7 +138,18 @@ const ICONS: Record<LfIconName, LucideIconData> = {
   play: Play,
   'eye-off': EyeOff,
   shuffle: Shuffle,
-  gift: Gift
+  gift: Gift,
+  shield: ShieldCheck,
+  smile: Smile,
+  gamepad: Gamepad2,
+  calendar: CalendarDays,
+  sliders: SlidersHorizontal,
+  bulb: Lightbulb,
+  pin: Pin,
+  minus: Minus,
+  terminal: Terminal,
+  swords: Swords,
+  mic: Mic
 };
 
 /** Shared inline Lucide icon with a stable, centered pixel box. */

@@ -5413,6 +5413,299 @@
           "spent": "3 créditos usados"
         }
       }
+    },
+    "hq": {
+      "modules": {
+        "title": "Ir a",
+        "sub": "Tus módulos más usados",
+        "label": "Módulos más usados",
+        "tts": {
+          "name": "TTS",
+          "stat": "{{n}} leídos esta semana"
+        },
+        "chatEvents": {
+          "name": "Eventos de chat",
+          "stat": "{{n}} disparados esta semana"
+        },
+        "triggers": {
+          "name": "Triggers",
+          "stat": "{{n}} reproducciones esta semana"
+        },
+        "moderation": {
+          "name": "Moderación",
+          "stat": "{{n}} acciones esta semana"
+        },
+        "commands": {
+          "name": "Comandos",
+          "stat": "{{n}} respuestas esta semana"
+        },
+        "dimafx": {
+          "name": "DimaFX",
+          "stat": "{{n}} compras esta semana"
+        },
+        "duel": {
+          "name": "Duelos",
+          "stat": "{{n}} duelos esta semana"
+        },
+        "clips": {
+          "name": "Clips",
+          "stat": "{{n}} clips esta semana"
+        }
+      },
+      "strip": {
+        "in": "Bot en el chat",
+        "out": "Bot fuera del chat",
+        "events": "Eventos de Twitch {{on}}/{{total}}",
+        "credits": "Créditos: queda {{pct}}%",
+        "automod": "Automod: {{count}} esta semana"
+      },
+      "split": {
+        "answer": "{{count}} hábitos para mejorar, sacados de tus propios directos.",
+        "answerOne": "1 hábito para mejorar, sacado de tus propios directos.",
+        "answerRest": "{{game}} trae el {{share}}% de tus horas vistas y el {{day}} es tu mejor día.",
+        "tabs": "Sección del panel",
+        "channel": "Tu canal",
+        "bot": "Tu bot",
+        "channelSub": "Últimas 14 semanas",
+        "botSub": "Esta semana · siempre visible",
+        "lockedKicker": "Premium",
+        "lockedSay": "{{count}} consejos más sacados de tus directos.",
+        "lockedCta": "Mejorar plan para verlos",
+        "emptyChannel": "Ocultaste todas las tarjetas del canal."
+      },
+      "pick": {
+        "open": "Elegir tarjetas",
+        "hidden": "{{count}} ocultas",
+        "title": "Elige qué ver",
+        "close": "Cerrar",
+        "sub": "Los cambios se ven al instante. El estado del bot y los créditos de IA siempre se quedan.",
+        "channel": "Tu canal",
+        "tips": "Consejos",
+        "bot": "Tu bot",
+        "always": "Siempre visible",
+        "showAll": "Mostrar todo",
+        "done": "Listo"
+      },
+      "card": {
+        "bot": {
+          "title": "Estado del bot",
+          "when": "Ahora",
+          "hint": "¿Está el bot en el chat y recibe los eventos de Twitch?",
+          "ok": "Tu bot está funcionando.",
+          "off": "Tu bot no está en tu chat.",
+          "inChat": "En tu chat",
+          "outChat": "Fuera de tu chat: comandos y automod apagados",
+          "events": "Eventos de Twitch: {{on}} de {{total}} activos",
+          "replies": "Respondió {{count}} comandos esta semana",
+          "uptime": "{{days}} días funcionando sin reiniciarse"
+        },
+        "credits": {
+          "title": "Créditos de IA",
+          "when": "Este mes",
+          "hint": "Cuánto queda y si te alcanza",
+          "left": "restantes · {{pct}}%"
+        },
+        "automod": {
+          "title": "Automod",
+          "when": "Esta semana",
+          "hint": "Qué atraparon tus filtros, por regla",
+          "say": "El automod actuó sobre {{count}} mensajes.",
+          "sub": "{{change}} vs la semana pasada · {{checked}} mensajes revisados",
+          "a": {
+            "delete": "Borrados",
+            "warn": "Avisos",
+            "timeout": "Timeouts",
+            "ban": "Baneos"
+          },
+          "one": {
+            "delete": "Borrado",
+            "warn": "Aviso",
+            "timeout": "Timeout",
+            "ban": "Baneado"
+          },
+          "repeat": "{{user}} cayó {{count}} veces esta semana.",
+          "open": "Abrir moderación"
+        },
+        "sanctions": {
+          "title": "Sanciones",
+          "when": "Esta semana",
+          "hint": "A quién se avisó, se le dio timeout o se baneó",
+          "offense": "falta {{n}}",
+          "all": "Ver todo en moderación"
+        },
+        "commands": {
+          "title": "Comandos más usados",
+          "when": "Esta semana",
+          "hint": "Lo que más usa tu chat y lo que nadie usa",
+          "unused": "{{count}} comandos no se usaron en 30 días: {{list}}.",
+          "tidy": "Ordenar"
+        },
+        "emotes": {
+          "title": "Emotes más usados",
+          "when": "Esta semana",
+          "hint": "Los emotes que más usa tu chat"
+        },
+        "games": {
+          "title": "Juegos más vistos",
+          "when": "14 semanas",
+          "hint": "De dónde vienen tus horas vistas",
+          "say": "{{game}} trae el {{share}}% de tus horas vistas.",
+          "nums": "{{hours}} h vistas · {{avg}} espectadores de media · {{rate}} follows/h",
+          "basis": "Horas vistas = espectadores de media × horas en directo."
+        },
+        "days": {
+          "title": "Mejores días",
+          "when": "14 semanas",
+          "hint": "Qué días de la semana traen seguidores",
+          "say": "El {{day1}} y el {{day2}} traen más seguidores nuevos.",
+          "basis": "Seguidores nuevos por directo. Sin contar directos con raid."
+        },
+        "raids": {
+          "title": "Raids",
+          "when": "14 semanas",
+          "hint": "Raids recibidas, enviadas y a quién devolverla",
+          "say": "{{count}} raids te trajeron {{follows}} seguidores (el {{share}}% de todos los nuevos).",
+          "owed": "Aún sin devolver",
+          "back": "Raid devuelta",
+          "out": "Hiciste {{sent}} raids en {{streams}} directos. Devuélvele la raid a {{who}}."
+        }
+      },
+      "habit": {
+        "tone": {
+          "fix": "A mejorar",
+          "good": "Sigue así"
+        },
+        "hide": "Ocultar este consejo",
+        "hideAria": "Ocultar el consejo: {{tip}}",
+        "unit": {
+          "perHour": "/h",
+          "perStream": "/directo",
+          "follows": " follows",
+          "perWeek": "/semana"
+        },
+        "shortStreams": {
+          "name": "Directos cortos",
+          "say": "{{count}} de tus últimos {{total}} directos duraron menos de 2,5 h. Traen un {{less}}% menos de seguidores por hora que tu mejor duración.",
+          "chart": "Seguidores nuevos por hora según la duración",
+          "try": "Si un día tienes poco tiempo, sáltate el directo de 2 horas y haz uno más largo otro día."
+        },
+        "weakDay": {
+          "name": "Día más flojo",
+          "say": "El {{worst}} es tu día más flojo: los directos del {{best}} traen {{ratio}}× más seguidores nuevos.",
+          "chart": "Seguidores nuevos por directo según el día",
+          "try": "Mueve tu directo de {{game}} del {{worst}} al {{best}}, o prueba otro juego el {{worst}}."
+        },
+        "raidBack": {
+          "name": "Devolver raids",
+          "say": "{{received}} canales te hicieron raid, pero tú solo hiciste {{sent}} raids en {{streams}} directos.",
+          "chart": "Seguidores que te trajo cada raid",
+          "try": "Termina tu próximo directo con una raid a {{who}}: su raid te trajo {{follows}} seguidores."
+        },
+        "quietWeeks": {
+          "name": "Semanas flojas",
+          "say": "Tus {{quiet}} semanas con solo 1–2 directos trajeron {{quietAvg}} seguidores cada una, frente a {{busyAvg}} en semanas con 4 o más.",
+          "chart": "Seguidores nuevos por semana",
+          "try": "Cuando una semana se complica, planea los directos que sí puedes hacer en vez de saltarte la semana.",
+          "busy": "4+ directos",
+          "quiet": "1–2 directos"
+        },
+        "sweetSpot": {
+          "name": "Tu mejor duración",
+          "say": "Los directos de {{sweet}} son los que más te hacen crecer: {{rate}} seguidores nuevos por hora.",
+          "chart": "Seguidores nuevos por hora según la duración",
+          "try": "Mantén la mayoría de tus directos en unas 4 horas."
+        }
+      },
+      "widgets": {
+        "answer": "{{count}} consejos para mejorar esta semana.",
+        "answerRest": "Toca un widget pequeño para ver detalles, o Personalizar para armar tu pantalla.",
+        "title": "Tus widgets",
+        "presets": "Plantillas",
+        "preset": {
+          "growth": "Crecimiento",
+          "moderation": "Moderación",
+          "everything": "Todo"
+        },
+        "reset": "Restablecer",
+        "done": "Listo",
+        "customize": "Personalizar",
+        "dockTitle": "Accesos directos",
+        "dockSub": "{{count}} de 4 elegidos",
+        "moveUp": "Mover {{name}} antes",
+        "moveDown": "Mover {{name}} después",
+        "sizeOf": "Tamaño de {{name}}",
+        "small": "Pequeño",
+        "large": "Grande",
+        "remove": "Quitar {{name}}",
+        "openAria": "{{name}}: {{value}}, {{label}}. Abrir detalles",
+        "tip": {
+          "title": "Consejos",
+          "hint": "Un consejo de hábitos a la vez, sacado de tus directos",
+          "count": "{{n}} de {{total}}",
+          "next": "Siguiente consejo",
+          "locked": "{{count}} consejos más con Premium"
+        },
+        "add": "Añadir widget ({{count}} disponibles)",
+        "allOn": "Todos los widgets están en tu pantalla",
+        "catalog": "Añadir widgets",
+        "addOne": "Añadir {{name}}",
+        "addShort": "Añadir",
+        "moved": "{{name}} movido a la posición {{pos}} de {{total}}",
+        "removed": "{{name}} quitado",
+        "added": "{{name}} añadido",
+        "presetApplied": "Plantilla {{name}} aplicada",
+        "resetDone": "Volviste al diseño por defecto"
+      },
+      "glance": {
+        "botOn": "En el chat",
+        "botOnLabel": "El bot funciona",
+        "botOff": "Fuera",
+        "botOffLabel": "El bot no está en tu chat",
+        "creditsOk": "de créditos, alcanza hasta el reinicio",
+        "creditsShort": "de créditos, ~{{days}} días a este ritmo",
+        "automod": "acciones del automod esta semana",
+        "sanctions": "sanciones esta semana",
+        "commands": "comando top · {{uses}} usos",
+        "emotes": "emote top · {{uses}} usos",
+        "games": "{{share}}% de tus horas vistas",
+        "days": "tu mejor día para stremear",
+        "raids": "seguidores de {{count}} raids",
+        "tips": "hábitos para mejorar"
+      },
+      "brief": {
+        "week": "Semana del {{from}} al {{to}}",
+        "answer": "{{count}} cosas para mejorar esta semana.",
+        "answerOne": "1 cosa para mejorar esta semana.",
+        "answerRest": "{{streams}} directos, {{follows}} seguidores nuevos ({{change}} vs la semana anterior) y tu bot gestionó {{actions}} mensajes.",
+        "health": "Salud del bot",
+        "replies": "Respondió {{count}} comandos esta semana",
+        "eventsSub": "Follows, subs, raids y bits llegan al bot",
+        "creditsOk": "Alcanza hasta el reinicio en {{days}} días",
+        "creditsShort": "Se acaban en ~{{days}} días a este ritmo",
+        "automodSub": "Gestionados por tus filtros",
+        "jump": "Volver a",
+        "showMe": "Mostrarme",
+        "topic": {
+          "tips": "Consejos",
+          "games": "Juegos",
+          "days": "Mejores días",
+          "raids": "Raids",
+          "moderation": "Moderación",
+          "commands": "Comandos",
+          "emotes": "Emotes"
+        },
+        "hidden": "{{count}} consejos ocultos.",
+        "hiddenOne": "1 consejo oculto.",
+        "restore": "Mostrarlos otra vez",
+        "fixTitle": "A mejorar esta semana",
+        "fixSub": "De tus últimas 14 semanas de directos",
+        "lockedSay": "{{count}} cosas más para mejorar, encontradas en tus directos.",
+        "goodTitle": "Lo que funciona",
+        "goodSub": "Sigue haciendo esto",
+        "raidsTitle": "Raids",
+        "botTitle": "Lo que hizo tu bot",
+        "empty": "No hay nada que mostrar. Elige un tema arriba."
+      }
     }
   },
   "raidSessions": {

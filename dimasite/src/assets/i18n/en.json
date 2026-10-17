@@ -5413,6 +5413,299 @@
           "spent": "3 credits used"
         }
       }
+    },
+    "hq": {
+      "modules": {
+        "title": "Jump to",
+        "sub": "Your most used modules",
+        "label": "Most used modules",
+        "tts": {
+          "name": "TTS",
+          "stat": "{{n}} read this week"
+        },
+        "chatEvents": {
+          "name": "Chat events",
+          "stat": "{{n}} fired this week"
+        },
+        "triggers": {
+          "name": "Triggers",
+          "stat": "{{n}} plays this week"
+        },
+        "moderation": {
+          "name": "Moderation",
+          "stat": "{{n}} actions this week"
+        },
+        "commands": {
+          "name": "Commands",
+          "stat": "{{n}} replies this week"
+        },
+        "dimafx": {
+          "name": "DimaFX",
+          "stat": "{{n}} purchases this week"
+        },
+        "duel": {
+          "name": "Duels",
+          "stat": "{{n}} duels this week"
+        },
+        "clips": {
+          "name": "Clips",
+          "stat": "{{n}} clips this week"
+        }
+      },
+      "strip": {
+        "in": "Bot in chat",
+        "out": "Bot not in chat",
+        "events": "Twitch events {{on}}/{{total}}",
+        "credits": "Credits {{pct}}% left",
+        "automod": "Automod: {{count}} this week"
+      },
+      "split": {
+        "answer": "{{count}} habits to fix, found in your own streams.",
+        "answerOne": "1 habit to fix, found in your own streams.",
+        "answerRest": "{{game}} brings {{share}}% of your watch time and {{day}} is your best day.",
+        "tabs": "Dashboard section",
+        "channel": "Your channel",
+        "bot": "Your bot",
+        "channelSub": "Last 14 weeks",
+        "botSub": "This week · always here",
+        "lockedKicker": "Premium",
+        "lockedSay": "{{count}} more tips from your own streams.",
+        "lockedCta": "Upgrade to see them",
+        "emptyChannel": "You've hidden every channel card."
+      },
+      "pick": {
+        "open": "Choose cards",
+        "hidden": "{{count}} hidden",
+        "title": "Choose what you see",
+        "close": "Close",
+        "sub": "Changes show right away. Bot status and AI credits always stay.",
+        "channel": "Your channel",
+        "tips": "Tips",
+        "bot": "Your bot",
+        "always": "Always on",
+        "showAll": "Show everything",
+        "done": "Done"
+      },
+      "card": {
+        "bot": {
+          "title": "Bot status",
+          "when": "Now",
+          "hint": "Is the bot in chat and hearing Twitch?",
+          "ok": "Your bot is working.",
+          "off": "Your bot is out of your chat.",
+          "inChat": "In your chat",
+          "outChat": "Not in your chat: commands and automod are off",
+          "events": "Twitch events: {{on}} of {{total}} on",
+          "replies": "Answered {{count}} commands this week",
+          "uptime": "Running {{days}} days without a restart"
+        },
+        "credits": {
+          "title": "AI credits",
+          "when": "This month",
+          "hint": "What's left and whether it lasts",
+          "left": "left · {{pct}}%"
+        },
+        "automod": {
+          "title": "Automod",
+          "when": "This week",
+          "hint": "What your filters caught, by rule",
+          "say": "Automod acted on {{count}} messages.",
+          "sub": "{{change}} vs last week · {{checked}} messages checked",
+          "a": {
+            "delete": "Deleted",
+            "warn": "Warned",
+            "timeout": "Timeouts",
+            "ban": "Bans"
+          },
+          "one": {
+            "delete": "Deleted",
+            "warn": "Warned",
+            "timeout": "Timeout",
+            "ban": "Banned"
+          },
+          "repeat": "{{user}} was caught {{count}} times this week.",
+          "open": "Open moderation"
+        },
+        "sanctions": {
+          "title": "Sanctions",
+          "when": "This week",
+          "hint": "Who got warned, timed out or banned",
+          "offense": "offense {{n}}",
+          "all": "See all in moderation"
+        },
+        "commands": {
+          "title": "Top commands",
+          "when": "This week",
+          "hint": "What chat uses most, and what nobody uses",
+          "unused": "{{count}} commands weren't used in 30 days: {{list}}.",
+          "tidy": "Tidy up"
+        },
+        "emotes": {
+          "title": "Top emotes",
+          "when": "This week",
+          "hint": "The emotes your chat loves"
+        },
+        "games": {
+          "title": "Most watched games",
+          "when": "14 weeks",
+          "hint": "Where your watch time comes from",
+          "say": "{{game}} brings {{share}}% of your watch time.",
+          "nums": "{{hours}} h watched · {{avg}} avg viewers · {{rate}} follows/h",
+          "basis": "Hours watched = average viewers × hours live."
+        },
+        "days": {
+          "title": "Best days",
+          "when": "14 weeks",
+          "hint": "Which weekdays bring followers",
+          "say": "{{day1}} and {{day2}} bring the most new followers.",
+          "basis": "New followers per stream. Raided streams are left out."
+        },
+        "raids": {
+          "title": "Raids",
+          "when": "14 weeks",
+          "hint": "Raids in, raids out, who to raid back",
+          "say": "{{count}} raids brought you {{follows}} followers ({{share}}% of all new ones).",
+          "owed": "Not raided back yet",
+          "back": "Raided back",
+          "out": "You raided out {{sent}} times in {{streams}} streams. Raid {{who}} back next."
+        }
+      },
+      "habit": {
+        "tone": {
+          "fix": "Fix this",
+          "good": "Keep doing this"
+        },
+        "hide": "Hide this tip",
+        "hideAria": "Hide the tip: {{tip}}",
+        "unit": {
+          "perHour": "/h",
+          "perStream": "/stream",
+          "follows": " follows",
+          "perWeek": "/week"
+        },
+        "shortStreams": {
+          "name": "Short streams",
+          "say": "{{count}} of your last {{total}} streams were under 2.5 h. They bring {{less}}% fewer followers per hour than your best length.",
+          "chart": "New followers per hour by stream length",
+          "try": "On a busy day, skip the 2-hour stream and do a longer one another day."
+        },
+        "weakDay": {
+          "name": "Weakest day",
+          "say": "{{worst}} is your weakest day: {{best}} streams bring {{ratio}}× more new followers.",
+          "chart": "New followers per stream by weekday",
+          "try": "Move your {{worst}} {{game}} stream to {{best}}, or try another game on {{worst}}."
+        },
+        "raidBack": {
+          "name": "Raiding back",
+          "say": "{{received}} channels raided you, but you raided out only {{sent}} times in {{streams}} streams.",
+          "chart": "Followers each raid brought you",
+          "try": "End your next stream with a raid to {{who}}: their raid brought you {{follows}} followers."
+        },
+        "quietWeeks": {
+          "name": "Skipped weeks",
+          "say": "Your {{quiet}} weeks with only 1–2 streams brought {{quietAvg}} followers each, against {{busyAvg}} in weeks with 4 or more.",
+          "chart": "New followers per week",
+          "try": "When a week gets busy, plan the streams you can keep instead of skipping the week.",
+          "busy": "4+ streams",
+          "quiet": "1–2 streams"
+        },
+        "sweetSpot": {
+          "name": "Your best stream length",
+          "say": "{{sweet}} streams grow you the most: {{rate}} new followers per hour.",
+          "chart": "New followers per hour by stream length",
+          "try": "Keep most streams around 4 hours."
+        }
+      },
+      "widgets": {
+        "answer": "{{count}} tips to fix this week.",
+        "answerRest": "Tap a small widget for details, or Customize to build your own screen.",
+        "title": "Your widgets",
+        "presets": "Presets",
+        "preset": {
+          "growth": "Growth",
+          "moderation": "Moderation",
+          "everything": "Everything"
+        },
+        "reset": "Reset",
+        "done": "Done",
+        "customize": "Customize",
+        "dockTitle": "Shortcuts",
+        "dockSub": "{{count}} of 4 chosen",
+        "moveUp": "Move {{name}} earlier",
+        "moveDown": "Move {{name}} later",
+        "sizeOf": "Size of {{name}}",
+        "small": "Small",
+        "large": "Large",
+        "remove": "Remove {{name}}",
+        "openAria": "{{name}}: {{value}}, {{label}}. Open details",
+        "tip": {
+          "title": "Tips",
+          "hint": "One habit tip at a time, from your streams",
+          "count": "{{n}} of {{total}}",
+          "next": "Next tip",
+          "locked": "{{count}} more tips with Premium"
+        },
+        "add": "Add widget ({{count}} available)",
+        "allOn": "Every widget is on your screen",
+        "catalog": "Add widgets",
+        "addOne": "Add {{name}}",
+        "addShort": "Add",
+        "moved": "{{name}} moved to position {{pos}} of {{total}}",
+        "removed": "{{name}} removed",
+        "added": "{{name}} added",
+        "presetApplied": "{{name}} preset applied",
+        "resetDone": "Back to the default layout"
+      },
+      "glance": {
+        "botOn": "In chat",
+        "botOnLabel": "Bot is working",
+        "botOff": "Out",
+        "botOffLabel": "Bot isn't in your chat",
+        "creditsOk": "credits left, lasts until the reset",
+        "creditsShort": "credits left, ~{{days}} days at this pace",
+        "automod": "automod actions this week",
+        "sanctions": "sanctions this week",
+        "commands": "top command · {{uses}} uses",
+        "emotes": "top emote · {{uses}} uses",
+        "games": "{{share}}% of your watch time",
+        "days": "your best day to stream",
+        "raids": "followers from {{count}} raids",
+        "tips": "habits to fix"
+      },
+      "brief": {
+        "week": "Week of {{from}} – {{to}}",
+        "answer": "{{count}} things to fix this week.",
+        "answerOne": "1 thing to fix this week.",
+        "answerRest": "{{streams}} streams, {{follows}} new followers ({{change}} vs the week before), and your bot handled {{actions}} messages.",
+        "health": "Bot health",
+        "replies": "Answered {{count}} commands this week",
+        "eventsSub": "Follows, subs, raids and bits reach the bot",
+        "creditsOk": "Lasts until the reset in {{days}} days",
+        "creditsShort": "Runs out in ~{{days}} days at this pace",
+        "automodSub": "Handled by your filters",
+        "jump": "Jump back in",
+        "showMe": "Show me",
+        "topic": {
+          "tips": "Tips",
+          "games": "Games",
+          "days": "Best days",
+          "raids": "Raids",
+          "moderation": "Moderation",
+          "commands": "Commands",
+          "emotes": "Emotes"
+        },
+        "hidden": "{{count}} tips hidden.",
+        "hiddenOne": "1 tip hidden.",
+        "restore": "Show them again",
+        "fixTitle": "Fix this week",
+        "fixSub": "From your last 14 weeks of streams",
+        "lockedSay": "{{count}} more things to fix, found in your own streams.",
+        "goodTitle": "What's working",
+        "goodSub": "Keep doing these",
+        "raidsTitle": "Raids",
+        "botTitle": "What your bot did",
+        "empty": "Nothing to show. Pick a topic above."
+      }
     }
   },
   "raidSessions": {
