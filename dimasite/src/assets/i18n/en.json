@@ -5132,6 +5132,287 @@
         "defense": "All quiet",
         "open": "Open"
       }
+    },
+    "growth": {
+      "devbar": "Mock preview",
+      "live": "Live",
+      "offline": "Offline",
+      "liveFor": "Live · {{time}}",
+      "lastStream": "Last stream {{date}}",
+      "botIn": "Bot in your chat",
+      "botOut": "Bot not in chat",
+      "botOffWarn": "The bot isn't in your chat, so commands, alerts and moderation won't work on your next stream.",
+      "liveLabel": "Your stream right now",
+      "f": {
+        "watching": "Watching",
+        "peak": "Peak",
+        "follows": "Follows",
+        "subs": "Subs",
+        "bits": "Bits",
+        "avgViewers": "Avg viewers",
+        "tips": "Tips"
+      },
+      "u": {
+        "avg": "avg",
+        "follows": "follows",
+        "subs": "subs"
+      },
+      "openTimeline": "Open in Stream Timeline",
+      "raidFrom": "Raid from {{who}} · {{viewers}}",
+      "raidShort": "raid by {{who}}",
+      "editGoals": "Edit goals",
+      "upgrade": "Upgrade",
+      "goal": {
+        "follows": "New followers in October",
+        "subs": "New subs in October",
+        "onPace": "On pace: about {{projected}} by Oct 31.",
+        "short": "At this pace you'll end October around {{projected}}, {{short}} short."
+      },
+      "credits": {
+        "title": "AI credits",
+        "left": "· {{left}} left",
+        "fine": "Enough until your monthly reset in {{days}} days.",
+        "short": "At your pace you'll run out in ~{{days}} days, {{gap}} days before the reset.",
+        "usage": "See usage",
+        "buy": "Buy credits",
+        "shortOne": "At your pace you'll run out in ~{{days}} days, a day before the reset."
+      },
+      "pulse": {
+        "answer": "+{{follows}} followers and {{pct}}% more viewers in the last 30 days.",
+        "answerRest": "Pick a number below to see how it moved.",
+        "label": "Your growth",
+        "pick": "Choose a number",
+        "metric": {
+          "followers": "Followers",
+          "viewers": "Avg viewers",
+          "subs": "New subs",
+          "bits": "Bits",
+          "hours": "Hours streamed"
+        },
+        "big": {
+          "followers": "Followers today",
+          "viewers": "Average viewers · last {{range}} days",
+          "subs": "New subs · last {{range}} days",
+          "bits": "Bits · last {{range}} days",
+          "hours": "Time on air · last {{range}} days"
+        },
+        "say": {
+          "followers": {
+            "up": "You gained {{gained}} in {{range}} days, {{pct}}% more than the {{range}} days before.",
+            "down": "You gained {{gained}} in {{range}} days, {{pct}}% fewer than the {{range}} days before."
+          },
+          "viewers": {
+            "up": "{{pct}}% more people watching on average than the {{range}} days before.",
+            "down": "{{pct}}% fewer people watching on average than the {{range}} days before."
+          },
+          "subs": {
+            "up": "{{pct}}% more new subs than the {{range}} days before.",
+            "down": "{{pct}}% fewer new subs than the {{range}} days before."
+          },
+          "bits": {
+            "up": "{{pct}}% more bits than the {{range}} days before.",
+            "down": "{{pct}}% fewer bits than the {{range}} days before."
+          },
+          "hours": {
+            "up": "You streamed {{pct}}% more than the {{range}} days before.",
+            "down": "You streamed {{pct}}% less than the {{range}} days before."
+          }
+        },
+        "range": "{{days}}d",
+        "rangeLabel": "Time range",
+        "chartLabel": "{{metric}} over time. Use the arrow keys to read each point.",
+        "keyStream": "Stream",
+        "keyRaid": "Raid",
+        "hint": "Drag across the chart to read any day. Let go on a stream to open it.",
+        "ledgerFree": "Who are these followers? Follow Ledger lists every follower and highlights mutuals. Premium and Pro.",
+        "ledgerPro": "See every follower and spot mutuals in Follow Ledger.",
+        "ledgerOpen": "Open Follow Ledger",
+        "lastStream": "Last stream",
+        "thatStream": "That stream",
+        "bestInRange": "Best of the last {{days}} days",
+        "vsAvg": "Percentages compare with your average stream in the last 30 days.",
+        "top": {
+          "followers": "Most new followers · {{days}} days",
+          "viewers": "Most viewers · {{days}} days",
+          "subs": "Most subs · {{days}} days",
+          "bits": "Most bits · {{days}} days",
+          "hours": "Longest streams · {{days}} days"
+        },
+        "goalsTitle": "Goals",
+        "goalMilestone": "Next milestone: {{target}} followers",
+        "milestoneEta": "{{left}} to go, about {{days}} days ({{date}}).",
+        "everyStream": "Every stream · last {{days}} days ({{count}})"
+      },
+      "path": {
+        "partner": "Growing channel",
+        "newChannel": "Brand-new channel",
+        "answer": "Viewers up {{pct}}% in the last 30 days, and {{next}} followers is about {{days}} days away.",
+        "answerRest": "You set {{records}} personal records in the last 30 days.",
+        "kicker": {
+          "partner": "Path to Partner · last 30 days",
+          "affiliate": "Path to Affiliate · last 30 days"
+        },
+        "progress": {
+          "partner": "{{done}} of {{total}} Partner goals done",
+          "affiliate": "{{done}} of {{total}} Affiliate goals done"
+        },
+        "allDone": {
+          "partner": "You meet every Partner goal. You can apply now.",
+          "affiliate": "You meet every Affiliate goal. Twitch should invite you soon."
+        },
+        "goal": {
+          "hours": "Hours streamed",
+          "days": "Different days",
+          "viewers": "Average viewers",
+          "followers": "Followers",
+          "minutes": "Minutes streamed"
+        },
+        "lastStep": "Average viewers is the last step: {{current}} of {{target}}.",
+        "viewerPace": "Yours grew {{pct}}% in the last 30 days. If that keeps up, you'd get there in about {{months}} months.",
+        "left": {
+          "followers": "{{left}} more followers to go.",
+          "minutes": "{{left}} more minutes on air.",
+          "days": "Stream on {{left}} more different days.",
+          "viewers": "{{left}} more average viewers.",
+          "hours": "{{left}} more hours on air."
+        },
+        "twitchNote": {
+          "partner": "These are Twitch's Path to Partner goals for the last 30 days. Reaching them lets you apply; Twitch makes the final call.",
+          "affiliate": "These are Twitch's Path to Affiliate goals for the last 30 days. Twitch invites you once you reach all four."
+        },
+        "howToGrow": "See what grows your viewers",
+        "nextTitle": "Next: {{target}} followers",
+        "nextSub": "{{left}} to go · about {{date}} at your pace of ~{{pace}} a day",
+        "reached": "Reached {{date}}",
+        "youAreHere": "You're here · {{pct}}% of the way to the next one",
+        "eta": "About {{date}}",
+        "etaRange": "Between {{from}} and {{to}}",
+        "celebrate": "Celebrate it on stream: when you hit {{target}}, the bot can post in chat or play an alert.",
+        "celebrateCta": "Set it up",
+        "yourGoals": "Your goals",
+        "goalCount": "{{used}} of {{limit}}",
+        "addGoal": "Add a goal",
+        "goalLimit": "Free includes 2 goals. Premium gets 3 and Pro 4.",
+        "vsTitle": "You vs you",
+        "vsSub": "Last 30 days against the 30 days before",
+        "before": "30 days before",
+        "now": "Last 30 days",
+        "vs": {
+          "viewers": "Average viewers",
+          "follows": "New followers",
+          "subs": "New subs",
+          "bits": "Bits",
+          "hours": "Hours streamed",
+          "streams": "Streams"
+        },
+        "verdict": "The last 30 days win {{now}}–{{before}}.",
+        "dropped": {
+          "viewers": "Average viewers went down: {{now}} vs {{before}}.",
+          "follows": "New followers went down: {{now}} vs {{before}}.",
+          "subs": "New subs went down: {{now}} vs {{before}}.",
+          "bits": "Bits went down: {{now}} vs {{before}}.",
+          "hours": "Hours streamed went down: {{now}} vs {{before}}.",
+          "streams": "You streamed less often: {{now}} vs {{before}}."
+        },
+        "recordsTitle": "Personal records",
+        "newRecords": "{{count}} new in the last 30 days",
+        "new": "New",
+        "record": {
+          "peak": "Most viewers at once",
+          "avg": "Best average viewers",
+          "follows": "Most follows in one stream",
+          "bits": "Most bits in one stream",
+          "subs": "Most subs in one stream",
+          "long": "Longest stream"
+        }
+      },
+      "coach": {
+        "answer": "You're growing: {{viewers}}% more viewers and {{follows}}% more new followers than the 30 days before.",
+        "answerRest": "Your best lever right now: stream on {{day1}} and {{day2}}, for {{sweet}}.",
+        "scoreLabel": "Last 30 days",
+        "score": {
+          "viewers": "Avg viewers",
+          "follows": "New followers",
+          "subs": "New subs",
+          "bits": "Bits"
+        },
+        "scoreNote": "Last 30 days compared with the 30 days before.",
+        "insightsTitle": "What grows your channel",
+        "insightsSub": "Worked out from your {{count}} streams since {{date}}.",
+        "try": "Try:",
+        "days": {
+          "kicker": "Best days",
+          "say": "{{day1}} and {{day2}} streams bring {{ratio}}× the new followers of {{worst}} streams.",
+          "chart": "New followers per stream by weekday",
+          "basis": "New followers per stream, by weekday. Raided streams are left out so one big raid doesn't skew it.",
+          "try": "Swap your {{worst}} stream for another {{day1}} one."
+        },
+        "length": {
+          "kicker": "Stream length",
+          "say": "Followers per hour peak at {{sweet}} ({{rate}} an hour). Past 4.5 h it drops to {{long}}.",
+          "b": {
+            "short": "Under 2.5 h",
+            "mid": "2.5–3.5 h",
+            "sweet": "3.5–4.5 h",
+            "long": "Over 4.5 h"
+          },
+          "basis": "New followers per hour on air, raids left out.",
+          "try": "Aim for about 4 hours. On long days, ending a bit earlier keeps the rate up."
+        },
+        "habit": {
+          "kicker": "Streaming habit",
+          "say": "Weeks with 4 or more streams brought {{ratio}}× the followers of weeks with only 1 or 2.",
+          "chart": "Calendar of the last 14 weeks; brighter squares had more viewers",
+          "less": "Fewer viewers",
+          "more": "More",
+          "basis": "{{busy}} busy weeks averaged {{busyAvg}} new followers; {{quiet}} quiet weeks averaged {{quietAvg}}. Orange outline = raid.",
+          "try": "Keep 4 streams a week, even short ones, when you travel or get busy."
+        },
+        "games": {
+          "kicker": "Games",
+          "say": "{{top}} brings the most new followers: {{rate}} an hour. {{low}} brings the fewest ({{lowRate}} an hour).",
+          "streams": "· {{count}} streams",
+          "basis": "Followers per hour and average viewers by game, raids left out.",
+          "try": "Put {{top}} on your best days and keep the others for variety."
+        },
+        "raids": {
+          "kicker": "Raids",
+          "say": "{{count}} raids brought {{follows}} followers ({{share}}% of all). {{best}}'s was the biggest: +{{bestFollows}}.",
+          "viewers": "{{count}} viewers",
+          "basis": "Follows in the 30 minutes after each raid landed.",
+          "try": "Raid them back and thank them with a shoutout.",
+          "cta": "Set up shoutouts"
+        },
+        "forecast": {
+          "kicker": "Forecast",
+          "say": "At your pace you'll hit 4,500 followers around {{d4500}} and 5,000 around {{d5000}}.",
+          "chart": "Followers so far and the range for reaching 5,000: {{from}} to {{to}}",
+          "past": "60 days ago",
+          "today": "Today",
+          "basis": "Based on your last 30 days. Your fastest and slowest weeks give a range of {{from}} to {{to}}."
+        },
+        "locked": {
+          "kicker": "Premium and Pro",
+          "say": "3 more insights from your own streams: which games grow you, how much raids help, and when you'll hit your next milestones.",
+          "cta": "Upgrade to see them"
+        },
+        "ai": {
+          "title": "Ask about your streams",
+          "cost": "Uses AI credits · ~3 per answer",
+          "sub": "Ask in your own words. Answers come from your stream history.",
+          "examples": "Example questions",
+          "q": {
+            "best": "Why was my best stream so good?",
+            "drop": "Why did follows dip in August?",
+            "worst": "What should I change on my weakest day?"
+          },
+          "bestA": "On {{date}}, {{raider}} raided with {{viewers}} viewers. You got {{follows}} follows that day and peaked at {{peak}} viewers, both your records.",
+          "dropA": "You streamed once a week for two weeks starting {{date}}. Weeks like that brought {{quietAvg}} new followers on average, against {{busyAvg}} in weeks with 4 or more streams.",
+          "satA": "{{worst}} brings you the fewest new followers per stream. {{game}} brings the most ({{rate}} an hour), so try {{game}} on {{worst}} for a few weeks and compare.",
+          "thinking": "Thinking…",
+          "spent": "3 credits used"
+        }
+      }
     }
   },
   "raidSessions": {

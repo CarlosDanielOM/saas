@@ -5132,6 +5132,287 @@
         "defense": "Todo tranquilo",
         "open": "Abrir"
       }
+    },
+    "growth": {
+      "devbar": "Vista de prueba",
+      "live": "En directo",
+      "offline": "Desconectado",
+      "liveFor": "En directo · {{time}}",
+      "lastStream": "Último directo {{date}}",
+      "botIn": "Bot en tu chat",
+      "botOut": "Bot fuera del chat",
+      "botOffWarn": "El bot no está en tu chat, así que los comandos, las alertas y la moderación no funcionarán en tu próximo directo.",
+      "liveLabel": "Tu directo ahora mismo",
+      "f": {
+        "watching": "Viendo",
+        "peak": "Pico",
+        "follows": "Follows",
+        "subs": "Subs",
+        "bits": "Bits",
+        "avgViewers": "Media de espectadores",
+        "tips": "Propinas"
+      },
+      "u": {
+        "avg": "media",
+        "follows": "follows",
+        "subs": "subs"
+      },
+      "openTimeline": "Abrir en la línea de tiempo",
+      "raidFrom": "Raid de {{who}} · {{viewers}}",
+      "raidShort": "raid de {{who}}",
+      "editGoals": "Editar metas",
+      "upgrade": "Mejorar plan",
+      "goal": {
+        "follows": "Seguidores nuevos en octubre",
+        "subs": "Subs nuevos en octubre",
+        "onPace": "Vas a buen ritmo: unos {{projected}} para el 31 de octubre.",
+        "short": "A este ritmo cerrarás octubre con unos {{projected}}, te faltarán {{short}}."
+      },
+      "credits": {
+        "title": "Créditos de IA",
+        "left": "· quedan {{left}}",
+        "fine": "Te alcanzan hasta la renovación mensual, en {{days}} días.",
+        "short": "A tu ritmo se acabarán en ~{{days}} días, {{gap}} días antes de la renovación.",
+        "usage": "Ver uso",
+        "buy": "Comprar créditos",
+        "shortOne": "A tu ritmo se acabarán en ~{{days}} días, un día antes de la renovación."
+      },
+      "pulse": {
+        "answer": "+{{follows}} seguidores y {{pct}}% más espectadores en los últimos 30 días.",
+        "answerRest": "Elige un número abajo para ver cómo ha cambiado.",
+        "label": "Tu crecimiento",
+        "pick": "Elige un número",
+        "metric": {
+          "followers": "Seguidores",
+          "viewers": "Media de espectadores",
+          "subs": "Subs nuevos",
+          "bits": "Bits",
+          "hours": "Horas en directo"
+        },
+        "big": {
+          "followers": "Seguidores hoy",
+          "viewers": "Media de espectadores · últimos {{range}} días",
+          "subs": "Subs nuevos · últimos {{range}} días",
+          "bits": "Bits · últimos {{range}} días",
+          "hours": "Tiempo en directo · últimos {{range}} días"
+        },
+        "say": {
+          "followers": {
+            "up": "Ganaste {{gained}} en {{range}} días, un {{pct}}% más que en los {{range}} días anteriores.",
+            "down": "Ganaste {{gained}} en {{range}} días, un {{pct}}% menos que en los {{range}} días anteriores."
+          },
+          "viewers": {
+            "up": "Un {{pct}}% más de gente viéndote de media que en los {{range}} días anteriores.",
+            "down": "Un {{pct}}% menos de gente viéndote de media que en los {{range}} días anteriores."
+          },
+          "subs": {
+            "up": "Un {{pct}}% más de subs nuevos que en los {{range}} días anteriores.",
+            "down": "Un {{pct}}% menos de subs nuevos que en los {{range}} días anteriores."
+          },
+          "bits": {
+            "up": "Un {{pct}}% más de bits que en los {{range}} días anteriores.",
+            "down": "Un {{pct}}% menos de bits que en los {{range}} días anteriores."
+          },
+          "hours": {
+            "up": "Transmitiste un {{pct}}% más que en los {{range}} días anteriores.",
+            "down": "Transmitiste un {{pct}}% menos que en los {{range}} días anteriores."
+          }
+        },
+        "range": "{{days}} d",
+        "rangeLabel": "Periodo",
+        "chartLabel": "{{metric}} a lo largo del tiempo. Usa las flechas para leer cada punto.",
+        "keyStream": "Directo",
+        "keyRaid": "Raid",
+        "hint": "Arrastra por el gráfico para leer cualquier día. Suelta sobre un directo para abrirlo.",
+        "ledgerFree": "¿Quiénes son estos seguidores? Follow Ledger muestra cada seguidor y destaca a quienes se siguen mutuamente. Premium y Pro.",
+        "ledgerPro": "Mira cada seguidor y detecta seguimientos mutuos en Follow Ledger.",
+        "ledgerOpen": "Abrir Follow Ledger",
+        "lastStream": "Último directo",
+        "thatStream": "Ese directo",
+        "bestInRange": "El mejor de los últimos {{days}} días",
+        "vsAvg": "Los porcentajes comparan con tu directo medio de los últimos 30 días.",
+        "top": {
+          "followers": "Más seguidores nuevos · {{days}} días",
+          "viewers": "Más espectadores · {{days}} días",
+          "subs": "Más subs · {{days}} días",
+          "bits": "Más bits · {{days}} días",
+          "hours": "Directos más largos · {{days}} días"
+        },
+        "goalsTitle": "Metas",
+        "goalMilestone": "Próximo hito: {{target}} seguidores",
+        "milestoneEta": "Faltan {{left}}, unos {{days}} días ({{date}}).",
+        "everyStream": "Todos los directos · últimos {{days}} días ({{count}})"
+      },
+      "path": {
+        "partner": "Canal en crecimiento",
+        "newChannel": "Canal recién creado",
+        "answer": "Espectadores +{{pct}}% en los últimos 30 días, y los {{next}} seguidores están a unos {{days}} días.",
+        "answerRest": "Has batido {{records}} récords personales en los últimos 30 días.",
+        "kicker": {
+          "partner": "Camino a Partner · últimos 30 días",
+          "affiliate": "Camino a Afiliado · últimos 30 días"
+        },
+        "progress": {
+          "partner": "{{done}} de {{total}} metas de Partner cumplidas",
+          "affiliate": "{{done}} de {{total}} metas de Afiliado cumplidas"
+        },
+        "allDone": {
+          "partner": "Cumples todas las metas de Partner. Ya puedes solicitarlo.",
+          "affiliate": "Cumples todas las metas de Afiliado. Twitch debería invitarte pronto."
+        },
+        "goal": {
+          "hours": "Horas en directo",
+          "days": "Días distintos",
+          "viewers": "Media de espectadores",
+          "followers": "Seguidores",
+          "minutes": "Minutos en directo"
+        },
+        "lastStep": "La media de espectadores es el último paso: {{current}} de {{target}}.",
+        "viewerPace": "La tuya creció un {{pct}}% en los últimos 30 días. Si sigues así, llegarías en unos {{months}} meses.",
+        "left": {
+          "followers": "Faltan {{left}} seguidores.",
+          "minutes": "Faltan {{left}} minutos en directo.",
+          "days": "Transmite {{left}} días distintos más.",
+          "viewers": "Faltan {{left}} espectadores de media.",
+          "hours": "Faltan {{left}} horas en directo."
+        },
+        "twitchNote": {
+          "partner": "Son las metas del Camino a Partner de Twitch para los últimos 30 días. Cumplirlas te permite solicitarlo; Twitch decide.",
+          "affiliate": "Son las metas del Camino a Afiliado de Twitch para los últimos 30 días. Twitch te invita cuando cumples las cuatro."
+        },
+        "howToGrow": "Mira qué hace crecer a tus espectadores",
+        "nextTitle": "Siguiente: {{target}} seguidores",
+        "nextSub": "Faltan {{left}} · hacia el {{date}} a tu ritmo de ~{{pace}} al día",
+        "reached": "Logrado el {{date}}",
+        "youAreHere": "Estás aquí · {{pct}}% del camino al siguiente",
+        "eta": "Hacia el {{date}}",
+        "etaRange": "Entre el {{from}} y el {{to}}",
+        "celebrate": "Celébralo en directo: cuando llegues a {{target}}, el bot puede escribir en el chat o lanzar una alerta.",
+        "celebrateCta": "Configurarlo",
+        "yourGoals": "Tus metas",
+        "goalCount": "{{used}} de {{limit}}",
+        "addGoal": "Añadir meta",
+        "goalLimit": "Free incluye 2 metas. Premium tiene 3 y Pro 4.",
+        "vsTitle": "Tú contra ti",
+        "vsSub": "Últimos 30 días frente a los 30 anteriores",
+        "before": "30 días antes",
+        "now": "Últimos 30 días",
+        "vs": {
+          "viewers": "Media de espectadores",
+          "follows": "Seguidores nuevos",
+          "subs": "Subs nuevos",
+          "bits": "Bits",
+          "hours": "Horas en directo",
+          "streams": "Directos"
+        },
+        "verdict": "Los últimos 30 días ganan {{now}}–{{before}}.",
+        "dropped": {
+          "viewers": "La media de espectadores bajó: {{now}} frente a {{before}}.",
+          "follows": "Los seguidores nuevos bajaron: {{now}} frente a {{before}}.",
+          "subs": "Los subs nuevos bajaron: {{now}} frente a {{before}}.",
+          "bits": "Los bits bajaron: {{now}} frente a {{before}}.",
+          "hours": "Las horas en directo bajaron: {{now}} frente a {{before}}.",
+          "streams": "Transmitiste menos veces: {{now}} frente a {{before}}."
+        },
+        "recordsTitle": "Récords personales",
+        "newRecords": "{{count}} nuevos en los últimos 30 días",
+        "new": "Nuevo",
+        "record": {
+          "peak": "Más espectadores a la vez",
+          "avg": "Mejor media de espectadores",
+          "follows": "Más follows en un directo",
+          "bits": "Más bits en un directo",
+          "subs": "Más subs en un directo",
+          "long": "Directo más largo"
+        }
+      },
+      "coach": {
+        "answer": "Estás creciendo: un {{viewers}}% más de espectadores y un {{follows}}% más de seguidores nuevos que en los 30 días anteriores.",
+        "answerRest": "Tu mejor palanca ahora mismo: transmitir el {{day1}} y el {{day2}}, durante {{sweet}}.",
+        "scoreLabel": "Últimos 30 días",
+        "score": {
+          "viewers": "Media de espectadores",
+          "follows": "Seguidores nuevos",
+          "subs": "Subs nuevos",
+          "bits": "Bits"
+        },
+        "scoreNote": "Últimos 30 días comparados con los 30 anteriores.",
+        "insightsTitle": "Qué hace crecer tu canal",
+        "insightsSub": "Calculado con tus {{count}} directos desde el {{date}}.",
+        "try": "Prueba:",
+        "days": {
+          "kicker": "Mejores días",
+          "say": "Los directos del {{day1}} y el {{day2}} traen {{ratio}}× los seguidores nuevos de los del {{worst}}.",
+          "chart": "Seguidores nuevos por directo según el día de la semana",
+          "basis": "Seguidores nuevos por directo, por día de la semana. Los directos con raid no cuentan, para que un raid grande no lo distorsione.",
+          "try": "Cambia tu directo del {{worst}} por otro el {{day1}}."
+        },
+        "length": {
+          "kicker": "Duración del directo",
+          "say": "Los seguidores por hora tocan techo en {{sweet}} ({{rate}} por hora). Pasadas las 4,5 h bajan a {{long}}.",
+          "b": {
+            "short": "Menos de 2,5 h",
+            "mid": "2,5–3,5 h",
+            "sweet": "3,5–4,5 h",
+            "long": "Más de 4,5 h"
+          },
+          "basis": "Seguidores nuevos por hora en directo, sin contar raids.",
+          "try": "Apunta a unas 4 horas. En días largos, terminar un poco antes mantiene el ritmo."
+        },
+        "habit": {
+          "kicker": "Constancia",
+          "say": "Las semanas con 4 directos o más trajeron {{ratio}}× los seguidores de las semanas con solo 1 o 2.",
+          "chart": "Calendario de las últimas 14 semanas; los cuadros más brillantes tuvieron más espectadores",
+          "less": "Menos espectadores",
+          "more": "Más",
+          "basis": "{{busy}} semanas activas promediaron {{busyAvg}} seguidores nuevos; {{quiet}} semanas tranquilas, {{quietAvg}}. Borde naranja = raid.",
+          "try": "Mantén 4 directos por semana, aunque sean cortos, cuando viajes o tengas mucho lío."
+        },
+        "games": {
+          "kicker": "Juegos",
+          "say": "{{top}} es el que más seguidores trae: {{rate}} por hora. {{low}} es el que menos ({{lowRate}} por hora).",
+          "streams": "· {{count}} directos",
+          "basis": "Seguidores por hora y media de espectadores por juego, sin contar raids.",
+          "try": "Pon {{top}} en tus mejores días y deja los demás para variar."
+        },
+        "raids": {
+          "kicker": "Raids",
+          "say": "{{count}} raids trajeron {{follows}} seguidores (el {{share}}% del total). El de {{best}} fue el mayor: +{{bestFollows}}.",
+          "viewers": "{{count}} espectadores",
+          "basis": "Follows en los 30 minutos posteriores a cada raid.",
+          "try": "Devuélveles el raid y agradéceselo con un shoutout.",
+          "cta": "Configurar shoutouts"
+        },
+        "forecast": {
+          "kicker": "Previsión",
+          "say": "A tu ritmo llegarás a 4.500 seguidores hacia el {{d4500}} y a 5.000 hacia el {{d5000}}.",
+          "chart": "Seguidores hasta hoy y el margen para llegar a 5.000: del {{from}} al {{to}}",
+          "past": "Hace 60 días",
+          "today": "Hoy",
+          "basis": "Según tus últimos 30 días. Tu semana más rápida y la más lenta dan un margen del {{from}} al {{to}}."
+        },
+        "locked": {
+          "kicker": "Premium y Pro",
+          "say": "3 análisis más con tus propios directos: qué juegos te hacen crecer, cuánto ayudan los raids y cuándo llegarás a tus próximos hitos.",
+          "cta": "Mejorar plan para verlos"
+        },
+        "ai": {
+          "title": "Pregunta sobre tus directos",
+          "cost": "Usa créditos de IA · ~3 por respuesta",
+          "sub": "Pregunta con tus palabras. Las respuestas salen de tu historial de directos.",
+          "examples": "Preguntas de ejemplo",
+          "q": {
+            "best": "¿Por qué fue tan bueno mi mejor directo?",
+            "drop": "¿Por qué bajaron los follows en agosto?",
+            "worst": "¿Qué cambio en mi peor día?"
+          },
+          "bestA": "El {{date}}, {{raider}} te hizo raid con {{viewers}} espectadores. Ese día conseguiste {{follows}} follows y llegaste a {{peak}} espectadores, tus dos récords.",
+          "dropA": "Transmitiste una vez por semana durante dos semanas desde el {{date}}. Esas semanas trajeron {{quietAvg}} seguidores nuevos de media, frente a {{busyAvg}} en semanas con 4 directos o más.",
+          "satA": "El {{worst}} es el día que menos seguidores nuevos te trae por directo. {{game}} es el que más trae ({{rate}} por hora), así que prueba {{game}} el {{worst}} durante unas semanas y compara.",
+          "thinking": "Pensando…",
+          "spent": "3 créditos usados"
+        }
+      }
     }
   },
   "raidSessions": {

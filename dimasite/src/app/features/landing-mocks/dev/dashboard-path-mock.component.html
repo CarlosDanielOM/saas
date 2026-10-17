@@ -1,0 +1,205 @@
+<div class="lf" [class.lf--live]="live()" [attr.data-plan]="plan()">
+  <main class="lf-main">
+    <app-growth-mock-header [(live)]="live" [(plan)]="plan" [(botOn)]="botOn">
+      <div devbar class="seg">
+        <button type="button" [attr.aria-pressed]="track() === 'partner'" (click)="track.set('partner')">{{ t('devMocks.growth.path.partner') }}</button>
+        <button type="button" [attr.aria-pressed]="track() === 'affiliate'" (click)="track.set('affiliate')">{{ t('devMocks.growth.path.newChannel') }}</button>
+      </div>
+      <p answer class="answer">
+        <strong>{{ t('devMocks.growth.path.answer', { pct: viewerGrowth, next: n(next.target), days: next.etaDays?.days ?? 0 }) }}</strong>
+        {{ t('devMocks.growth.path.answerRest', { records: freshRecords }) }}
+      </p>
+    </app-growth-mock-header>
+
+    <!-- 1. Path to Partner / Affiliate -->
+    <section class="lf-tile pp" [class.pp--aff]="track() === 'affiliate'" aria-labelledby="pp-title">
+      <div class="pp__head">
+        <p class="lf-kicker">{{ t('devMocks.growth.path.kicker.' + track()) }}</p>
+        <h2 class="pp__title" id="pp-title">
+          @if (missing().length === 0) {
+            {{ t('devMocks.growth.path.allDone.' + track()) }}
+          } @else {
+            {{ t('devMocks.growth.path.progress.' + track(), { done: doneCount(), total: goals().length }) }}
+          }
+        </h2>
+      </div>
+
+      <ul class="pp__rings">
+        @for (g of goals(); track g.key) {
+          <li class="pring" [class.pring--done]="g.done">
+            <svg viewBox="0 0 100 100" aria-hidden="true">
+              <circle class="pring__track" cx="50" cy="50" r="42" />
+              <circle class="pring__fill" cx="50" cy="50" r="42" [attr.stroke-dasharray]="ringDash(g)" />
+            </svg>
+            <span class="pring__center">
+              @if (g.done) {
+                <app-lf-icon name="check" [size]="22"></app-lf-icon>
+              }
+              <strong>{{ goalValue(g) }}</strong>
+              <span>/ {{ n(g.target) }}</span>
+            </span>
+            <span class="pring__label">{{ t('devMocks.growth.path.goal.' + g.key) }}</span>
+          </li>
+        }
+      </ul>
+
+      @for (g of missing(); track g.key) {
+        <p class="pp__next">
+          <app-lf-icon name="forward" [size]="16"></app-lf-icon>
+          <span>
+            @if (track() === 'partner' && g.key === 'viewers' && viewerMonths) {
+              <strong>{{ t('devMocks.growth.path.lastStep', { current: g.current, target: g.target }) }}</strong>
+              {{ t('devMocks.growth.path.viewerPace', { pct: viewerGrowth, months: viewerMonths }) }}
+            } @else {
+              <strong>{{ t('devMocks.growth.path.left.' + g.key, { left: n(g.target - g.current) }) }}</strong>
+            }
+          </span>
+        </p>
+      }
+      <p class="lf-note">{{ t('devMocks.growth.path.twitchNote.' + track()) }}</p>
+      @if (track() === 'partner') {
+        <a class="lnk" routerLink="/mocks/dev/dashboard-coach">{{ t('devMocks.growth.path.howToGrow') }} →</a>
+      }
+    </section>
+
+    <div class="pa-cols">
+      <!-- 2. Milestone road -->
+      <section class="lf-tile pr" aria-labelledby="pr-title">
+        <div class="pr__head">
+          <h2 class="lf-h2" id="pr-title">{{ t('devMocks.growth.path.nextTitle', { target: n(next.target) }) }}</h2>
+          <p class="lf-note">{{ t('devMocks.growth.path.nextSub', { left: next.target - followers, date: inDays(next.etaDays?.days ?? 0), pace: n(pace, 1) }) }}</p>
+        </div>
+
+        <ol class="road">
+          @for (m of passed; track m.key) {
+            <li class="road__stop road__stop--passed">
+              <span class="road__pin" aria-hidden="true"><app-lf-icon name="check" [size]="14"></app-lf-icon></span>
+              <span class="road__copy">
+                <strong>{{ n(m.target) }}</strong>
+                <span>{{ t('devMocks.growth.path.reached', { date: date(m.reached!) }) }}</span>
+              </span>
+            </li>
+          }
+          <li class="road__stop road__stop--you">
+            <span class="road__pin" aria-hidden="true">N</span>
+            <span class="road__copy">
+              <strong>{{ n(followers) }}</strong>
+              <span>{{ t('devMocks.growth.path.youAreHere', { pct: toNextPct }) }}</span>
+            </span>
+          </li>
+          @for (m of upcoming; track m.key; let first = $first) {
+            <li class="road__stop" [class.road__stop--next]="first">
+              <span class="road__pin" aria-hidden="true"><app-lf-icon name="star" [size]="14"></app-lf-icon></span>
+              <span class="road__copy">
+                <strong>{{ n(m.target) }}</strong>
+                @if (m.etaDays; as eta) {
+                  @if (eta.days <= 45) {
+                    <span>{{ t('devMocks.growth.path.eta', { date: inDays(eta.days) }) }}</span>
+                  } @else {
+                    <span>{{ t('devMocks.growth.path.etaRange', { from: inDays(eta.soonest), to: inDays(eta.latest) }) }}</span>
+                  }
+                }
+              </span>
+            </li>
+          }
+        </ol>
+
+        <div class="pr__celebrate">
+          <app-lf-icon name="gift" [size]="18"></app-lf-icon>
+          <span>{{ t('devMocks.growth.path.celebrate', { target: n(next.target) }) }}</span>
+          <a class="btn btn--sm" routerLink="/mocks/dev/prod-modules">{{ t('devMocks.growth.path.celebrateCta') }}</a>
+        </div>
+
+        <div class="pr__goals">
+          <div class="pr__goalsHead">
+            <h3 class="pr__h3">{{ t('devMocks.growth.path.yourGoals') }}</h3>
+            <span class="chip chip--xs">{{ t('devMocks.growth.path.goalCount', { used: 2, limit: plan() === 'pro' ? 4 : 2 }) }}</span>
+          </div>
+          @for (g of goalsMonth; track g.key) {
+            <div class="pr__goal">
+              <div class="pr__row"><span>{{ t('devMocks.growth.goal.' + g.key) }}</span><strong>{{ g.current }} / {{ g.target }}</strong></div>
+              <div class="bar" [class.bar--gold]="g.key === 'subs'" aria-hidden="true"><span [style.width.%]="(g.current / g.target) * 100"></span></div>
+              <p class="lf-note">{{ g.onPace ? t('devMocks.growth.goal.onPace', { projected: g.projected }) : t('devMocks.growth.goal.short', { projected: g.projected, short: g.target - g.projected }) }}</p>
+            </div>
+          }
+          @if (plan() === 'pro') {
+            <a class="btn btn--sm pr__add" routerLink="/mocks/dev/prod-modules"><app-lf-icon name="plus" [size]="14"></app-lf-icon>{{ t('devMocks.growth.path.addGoal') }}</a>
+          } @else {
+            <div class="pr__limit">
+              <span>{{ t('devMocks.growth.path.goalLimit') }}</span>
+              <a class="btn btn--sm btn--gold" routerLink="/mocks/dev/prod-settings">{{ t('devMocks.growth.upgrade') }}</a>
+            </div>
+          }
+        </div>
+      </section>
+
+      <!-- 3. You vs you -->
+      <section class="lf-tile pv" aria-labelledby="pv-title">
+        <div class="pv__head">
+          <h2 class="lf-h2" id="pv-title">{{ t('devMocks.growth.path.vsTitle') }}</h2>
+          <p class="lf-note">{{ t('devMocks.growth.path.vsSub') }}</p>
+        </div>
+        <div class="pv__score" aria-hidden="true">
+          <span class="pv__side pv__side--before">
+            <span class="pv__label">{{ t('devMocks.growth.path.before') }}</span>
+            <strong>{{ score.before }}</strong>
+          </span>
+          <span class="pv__vs">VS</span>
+          <span class="pv__side pv__side--now">
+            <span class="pv__label">{{ t('devMocks.growth.path.now') }}</span>
+            <strong>{{ score.now }}</strong>
+          </span>
+        </div>
+        <ul class="pv__rows">
+          @for (row of versus; track row.key) {
+            <li class="pv__row" [attr.data-winner]="row.winner">
+              <span class="pv__metric">{{ t('devMocks.growth.path.vs.' + row.key) }}</span>
+              <span class="pv__val pv__val--before">{{ versusValue(row, 'before') }}</span>
+              <span class="pv__bar" aria-hidden="true">
+                <span class="pv__bar-before" [style.width.%]="100 - row.share"></span>
+                <span class="pv__bar-now" [style.width.%]="row.share"></span>
+              </span>
+              <span class="pv__val pv__val--now">{{ versusValue(row, 'now') }}</span>
+            </li>
+          }
+        </ul>
+        <p class="pv__verdict">
+          <strong>{{ t('devMocks.growth.path.verdict', { now: score.now, before: score.before }) }}</strong>
+          @for (row of versus; track row.key) {
+            @if (row.winner === 'before') {
+              {{ t('devMocks.growth.path.dropped.' + row.key, { now: versusValue(row, 'now'), before: versusValue(row, 'before') }) }}
+            }
+          }
+        </p>
+      </section>
+    </div>
+
+    <!-- 4. Records -->
+    <section class="lf-tile prc" aria-labelledby="prc-title">
+      <div class="pr__head pr__head--row">
+        <h2 class="lf-h2" id="prc-title">{{ t('devMocks.growth.path.recordsTitle') }}</h2>
+        @if (freshRecords) {
+          <span class="chip chip--gold">{{ t('devMocks.growth.path.newRecords', { count: freshRecords }) }}</span>
+        }
+      </div>
+      <ul class="prc__grid">
+        @for (r of records; track r.key) {
+          <li class="trophy" [class.trophy--fresh]="r.fresh">
+            <span class="trophy__icon" aria-hidden="true"><app-lf-icon [name]="recordIcon(r)" [size]="18"></app-lf-icon></span>
+            <span class="trophy__value">{{ recordValue(r) }}</span>
+            <span class="trophy__label">{{ t('devMocks.growth.path.record.' + r.key) }}</span>
+            <span class="trophy__when">
+              <span class="trophy__day">{{ day(r.stream.weekday) }}</span> {{ date(r.stream.date) }} · {{ gameName(r.stream.game) }}
+              @if (r.stream.raid) { · {{ t('devMocks.growth.raidShort', { who: r.stream.raid.from }) }} }
+            </span>
+            @if (r.fresh) {
+              <span class="trophy__new">{{ t('devMocks.growth.path.new') }}</span>
+            }
+          </li>
+        }
+      </ul>
+    </section>
+
+    <app-growth-mock-credits [plan]="plan()" />
+  </main>
+</div>

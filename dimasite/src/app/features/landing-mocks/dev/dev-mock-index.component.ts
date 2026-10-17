@@ -163,6 +163,27 @@ export class DevMockIndexComponent {
         'Current landing kept as is: chat demo when nobody is live, 2×2 counters, 8 features, 3-step start, honest plan value cues. Toggle "Someone live" at the bottom.'
     },
     {
+      id: 'dashboard-pulse',
+      title: 'Dashboard · Pulse',
+      badge: 'Growth · for approval',
+      description:
+        'One big number you can switch (followers, viewers, subs, bits, hours) and drag across like a finance app; tap any stream to see how it went, best streams, goals with dates.'
+    },
+    {
+      id: 'dashboard-path',
+      title: 'Dashboard · Path',
+      badge: 'Growth · for approval',
+      description:
+        'Growth as a journey: Twitch Partner/Affiliate rings, the next follower milestone with a date at your pace, you vs you last month (duel style) and personal records.'
+    },
+    {
+      id: 'dashboard-coach',
+      title: 'Dashboard · Coach',
+      badge: 'Growth · for approval',
+      description:
+        'What makes you grow, from your own streams: best days, stream length sweet spot, streaming habit calendar, games, raids, forecast, plus "ask your stats".'
+    },
+    {
       id: 'dashboard-refresh',
       title: 'Dashboard A · Refresh',
       badge: 'For approval',

@@ -1,0 +1,175 @@
+<div class="lf" [class.lf--live]="live()" [attr.data-plan]="plan()">
+  <main class="lf-main">
+    <app-growth-mock-header [(live)]="live" [(plan)]="plan" [(botOn)]="botOn">
+      <p answer class="answer">
+        <strong>{{ t('devMocks.growth.coach.answer', { viewers: headline().viewers, follows: headline().follows }) }}</strong>
+        {{ t('devMocks.growth.coach.answerRest', { day1: day(topDays[0].weekday, 'long'), day2: day(topDays[1].weekday, 'long'), sweet: t('devMocks.growth.coach.length.b.' + sweet.key) }) }}
+      </p>
+    </app-growth-mock-header>
+
+    <!-- Scoreboard: four numbers, one line each -->
+    <section class="lf-tile cs" [attr.aria-label]="t('devMocks.growth.coach.scoreLabel')">
+      @for (s of score; track s.key) {
+        <div class="cs__item">
+          <span class="cs__label">{{ t('devMocks.growth.coach.score.' + s.key) }}</span>
+          <span class="cs__value">{{ s.key === 'bits' ? c(s.value) : n(s.value) }}</span>
+          <span class="cs__delta" [class.up]="s.delta > 0" [class.down]="s.delta < 0">{{ pct(s.delta) }}</span>
+          <svg class="cs__spark" viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true"><path [attr.d]="s.spark" vector-effect="non-scaling-stroke" /></svg>
+        </div>
+      }
+      <p class="cs__note">{{ t('devMocks.growth.coach.scoreNote') }}</p>
+    </section>
+
+    <h2 class="cx-title">
+      {{ t('devMocks.growth.coach.insightsTitle') }}
+      <span>{{ t('devMocks.growth.coach.insightsSub', { count: sample, date: date(sinceDate) }) }}</span>
+    </h2>
+
+    <div class="cx">
+      <!-- 1. Best days -->
+      <article class="lf-tile ins">
+        <p class="ins__kicker"><app-lf-icon name="timer" [size]="14"></app-lf-icon>{{ t('devMocks.growth.coach.days.kicker') }}</p>
+        <h3 class="ins__say">{{ t('devMocks.growth.coach.days.say', { day1: day(topDays[0].weekday, 'long'), day2: day(topDays[1].weekday, 'long'), ratio: n(dayRatio, 1), worst: day(worstDay.weekday, 'long') }) }}</h3>
+        <ul class="vbars" [attr.aria-label]="t('devMocks.growth.coach.days.chart')">
+          @for (d of days; track d.weekday) {
+            <li class="vbar" [class.vbar--top]="isTopDay(d.weekday)" [class.vbar--none]="!d.streams">
+              <span class="vbar__val">{{ d.streams ? n(d.followsPerStream, 0) : '–' }}</span>
+              <span class="vbar__col"><span [style.height.%]="d.streams ? (d.followsPerStream / daysMax) * 100 : 0"></span></span>
+              <span class="vbar__day">{{ day(d.weekday) }}</span>
+            </li>
+          }
+        </ul>
+        <p class="ins__basis">{{ t('devMocks.growth.coach.days.basis') }}</p>
+        <p class="ins__try"><b>{{ t('devMocks.growth.coach.try') }}</b> {{ t('devMocks.growth.coach.days.try', { worst: day(worstDay.weekday, 'long'), day1: day(topDays[1].weekday, 'long') }) }}</p>
+      </article>
+
+      <!-- 2. Stream length -->
+      <article class="lf-tile ins">
+        <p class="ins__kicker"><app-lf-icon name="timer" [size]="14"></app-lf-icon>{{ t('devMocks.growth.coach.length.kicker') }}</p>
+        <h3 class="ins__say">{{ t('devMocks.growth.coach.length.say', { sweet: t('devMocks.growth.coach.length.b.' + sweet.key), rate: n(sweet.followsPerHour, 1), long: n(longest.followsPerHour, 1) }) }}</h3>
+        <ul class="hbars">
+          @for (b of lengths; track b.key) {
+            <li class="hbar" [class.hbar--top]="b.key === sweet.key">
+              <span class="hbar__label">{{ t('devMocks.growth.coach.length.b.' + b.key) }}</span>
+              <span class="hbar__track"><span [style.width.%]="(b.followsPerHour / lengthMax) * 100"></span></span>
+              <span class="hbar__val">{{ n(b.followsPerHour, 1) }}<small>/h</small></span>
+            </li>
+          }
+        </ul>
+        <p class="ins__basis">{{ t('devMocks.growth.coach.length.basis') }}</p>
+        <p class="ins__try"><b>{{ t('devMocks.growth.coach.try') }}</b> {{ t('devMocks.growth.coach.length.try') }}</p>
+      </article>
+
+      <!-- 3. Consistency -->
+      <article class="lf-tile ins">
+        <p class="ins__kicker"><app-lf-icon name="grid" [size]="14"></app-lf-icon>{{ t('devMocks.growth.coach.habit.kicker') }}</p>
+        <h3 class="ins__say">{{ t('devMocks.growth.coach.habit.say', { ratio: n(consistency.ratio, 1) }) }}</h3>
+        <div class="cal" role="img" [attr.aria-label]="t('devMocks.growth.coach.habit.chart')">
+          @for (w of weeks; track $index) {
+            <div class="cal__week">
+              @for (cell of w; track $index) {
+                <span class="cal__cell" [class.cal__cell--future]="!cell.date" [attr.data-level]="cell.stream ? cellLevel(cell.stream.avgViewers) : 0" [class.cal__cell--raid]="cell.stream?.raid"></span>
+              }
+            </div>
+          }
+        </div>
+        <p class="cal__legend" aria-hidden="true">
+          <span>{{ t('devMocks.growth.coach.habit.less') }}</span>
+          <span class="cal__cell" data-level="0"></span><span class="cal__cell" data-level="1"></span><span class="cal__cell" data-level="2"></span><span class="cal__cell" data-level="3"></span><span class="cal__cell" data-level="4"></span>
+          <span>{{ t('devMocks.growth.coach.habit.more') }}</span>
+        </p>
+        <p class="ins__basis">{{ t('devMocks.growth.coach.habit.basis', { busy: consistency.busyWeeks, quiet: consistency.quietWeeks, busyAvg: n(consistency.busyAvg), quietAvg: n(consistency.quietAvg) }) }}</p>
+        <p class="ins__try"><b>{{ t('devMocks.growth.coach.try') }}</b> {{ t('devMocks.growth.coach.habit.try') }}</p>
+      </article>
+
+      @if (plan() === 'free') {
+        <!-- One upsell: the rest of the insights -->
+        <article class="lf-tile ins ins--locked">
+          <p class="ins__kicker ins__kicker--gold"><app-lf-icon name="lock" [size]="14"></app-lf-icon>{{ t('devMocks.growth.coach.locked.kicker') }}</p>
+          <h3 class="ins__say">{{ t('devMocks.growth.coach.locked.say') }}</h3>
+          <ul class="locked">
+            <li><app-lf-icon name="monitor" [size]="16"></app-lf-icon>{{ t('devMocks.growth.coach.games.kicker') }}</li>
+            <li><app-lf-icon name="zap" [size]="16"></app-lf-icon>{{ t('devMocks.growth.coach.raids.kicker') }}</li>
+            <li><app-lf-icon name="trend" [size]="16"></app-lf-icon>{{ t('devMocks.growth.coach.forecast.kicker') }}</li>
+          </ul>
+          <a class="btn btn--gold" routerLink="/mocks/dev/prod-settings">{{ t('devMocks.growth.coach.locked.cta') }}</a>
+        </article>
+      } @else {
+        <!-- 4. Games -->
+        <article class="lf-tile ins">
+          <p class="ins__kicker"><app-lf-icon name="monitor" [size]="14"></app-lf-icon>{{ t('devMocks.growth.coach.games.kicker') }}</p>
+          <h3 class="ins__say">{{ t('devMocks.growth.coach.games.say', { top: gameName(games[0].game), rate: n(games[0].followsPerHour, 1), low: gameName(games[games.length - 1].game), lowRate: n(games[games.length - 1].followsPerHour, 1) }) }}</h3>
+          <ul class="games">
+            @for (g of games; track g.game; let first = $first) {
+              <li class="games__row" [class.games__row--top]="first">
+                <span class="games__name">{{ gameName(g.game) }} <small>{{ t('devMocks.growth.coach.games.streams', { count: g.streams }) }}</small></span>
+                <span class="hbar__track"><span [style.width.%]="(g.followsPerHour / gamesMax) * 100"></span></span>
+                <span class="games__nums"><b>{{ n(g.followsPerHour, 1) }}</b>/h · {{ g.avgViewers }} {{ t('devMocks.growth.u.avg') }}</span>
+              </li>
+            }
+          </ul>
+          <p class="ins__basis">{{ t('devMocks.growth.coach.games.basis') }}</p>
+          <p class="ins__try"><b>{{ t('devMocks.growth.coach.try') }}</b> {{ t('devMocks.growth.coach.games.try', { top: gameName(games[0].game) }) }}</p>
+        </article>
+
+        <!-- 5. Raids -->
+        <article class="lf-tile ins">
+          <p class="ins__kicker"><app-lf-icon name="zap" [size]="14"></app-lf-icon>{{ t('devMocks.growth.coach.raids.kicker') }}</p>
+          <h3 class="ins__say">{{ t('devMocks.growth.coach.raids.say', { count: raids.raids.length, follows: raids.raidFollows, share: raids.share, best: bestRaid.from, bestFollows: bestRaid.follows }) }}</h3>
+          <ul class="raids">
+            @for (r of raids.raids; track r.date) {
+              <li class="raids__row" [class.raids__row--top]="r.from === bestRaid.from">
+                <span class="raids__avatar" aria-hidden="true">{{ r.from.charAt(0).toUpperCase() }}</span>
+                <span class="raids__who"><strong>{{ r.from }}</strong><span>{{ date(r.date) }} · {{ t('devMocks.growth.coach.raids.viewers', { count: r.viewers }) }}</span></span>
+                <span class="raids__gain">+{{ r.follows }}</span>
+              </li>
+            }
+          </ul>
+          <p class="ins__basis">{{ t('devMocks.growth.coach.raids.basis') }}</p>
+          <p class="ins__try"><b>{{ t('devMocks.growth.coach.try') }}</b> {{ t('devMocks.growth.coach.raids.try') }} <a class="lnk" routerLink="/mocks/dev/prod-modules">{{ t('devMocks.growth.coach.raids.cta') }}</a></p>
+        </article>
+
+        <!-- 6. Forecast -->
+        <article class="lf-tile ins">
+          <p class="ins__kicker"><app-lf-icon name="trend" [size]="14"></app-lf-icon>{{ t('devMocks.growth.coach.forecast.kicker') }}</p>
+          <h3 class="ins__say">{{ t('devMocks.growth.coach.forecast.say', { d4500: inDays(eta4500.days), d5000: inDays(eta5000.days) }) }}</h3>
+          <svg class="fc" [attr.viewBox]="'0 0 ' + forecast.W + ' ' + forecast.H" preserveAspectRatio="none" role="img" [attr.aria-label]="t('devMocks.growth.coach.forecast.chart', { from: inDays(eta5000.soonest), to: inDays(eta5000.latest) })">
+            <line class="fc__goal" x1="0" [attr.x2]="forecast.W" [attr.y1]="forecast.goalY" [attr.y2]="forecast.goalY" vector-effect="non-scaling-stroke" />
+            <path class="fc__cone" [attr.d]="forecast.cone" />
+            <path class="fc__pace" [attr.d]="forecast.pace" vector-effect="non-scaling-stroke" />
+            <path class="fc__line" [attr.d]="forecast.line" vector-effect="non-scaling-stroke" />
+            <line class="fc__now" [attr.x1]="forecast.nowX" [attr.x2]="forecast.nowX" y1="0" [attr.y2]="forecast.H" vector-effect="non-scaling-stroke" />
+          </svg>
+          <p class="fc__axis" aria-hidden="true"><span>{{ t('devMocks.growth.coach.forecast.past') }}</span><span>{{ t('devMocks.growth.coach.forecast.today') }}</span><span>5,000</span></p>
+          <p class="ins__basis">{{ t('devMocks.growth.coach.forecast.basis', { from: inDays(eta5000.soonest), to: inDays(eta5000.latest) }) }}</p>
+        </article>
+      }
+    </div>
+
+    <!-- Ask your stats (uses credits) -->
+    <section class="lf-tile ca" aria-labelledby="ca-title">
+      <div class="ca__head">
+        <h2 class="lf-h2" id="ca-title"><app-lf-icon name="chat" [size]="18"></app-lf-icon>{{ t('devMocks.growth.coach.ai.title') }}</h2>
+        <span class="chip chip--gold chip--xs">{{ t('devMocks.growth.coach.ai.cost') }}</span>
+      </div>
+      <p class="lf-note">{{ t('devMocks.growth.coach.ai.sub') }}</p>
+      <div class="ca__chips" role="group" [attr.aria-label]="t('devMocks.growth.coach.ai.examples')">
+        @for (q of questions; track q) {
+          <button type="button" class="chip ca__q" [attr.aria-pressed]="asked() === q" (click)="ask(q)">{{ t('devMocks.growth.coach.ai.q.' + q) }}</button>
+        }
+      </div>
+      @if (asked()) {
+        <div class="ca__answer" role="status">
+          @if (thinking()) {
+            <span class="ca__typing" [attr.aria-label]="t('devMocks.growth.coach.ai.thinking')"><span></span><span></span><span></span></span>
+          } @else {
+            <p>{{ answer() }}</p>
+            <span class="ca__spent">{{ t('devMocks.growth.coach.ai.spent') }}</span>
+          }
+        </div>
+      }
+    </section>
+
+    <app-growth-mock-credits [plan]="plan()" />
+  </main>
+</div>

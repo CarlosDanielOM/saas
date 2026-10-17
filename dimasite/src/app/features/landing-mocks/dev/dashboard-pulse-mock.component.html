@@ -1,0 +1,238 @@
+<div class="lf" [class.lf--live]="live()" [attr.data-plan]="plan()">
+  <main class="lf-main">
+    <app-growth-mock-header [(live)]="live" [(plan)]="plan" [(botOn)]="botOn">
+      <p answer class="answer">
+        <strong>{{ t('devMocks.growth.pulse.answer', { follows: n(answer.follows), pct: answer.viewers }) }}</strong>
+        {{ t('devMocks.growth.pulse.answerRest') }}
+      </p>
+    </app-growth-mock-header>
+
+    <!-- The one big number -->
+    <section class="lf-tile pz" [attr.aria-label]="t('devMocks.growth.pulse.label')">
+      <div class="pz-strip" role="group" [attr.aria-label]="t('devMocks.growth.pulse.pick')">
+        @for (k of cards(); track k.metric) {
+          <button type="button" class="pz-card" [attr.aria-pressed]="metric() === k.metric" (click)="selectMetric(k.metric)">
+            <span class="pz-card__label">{{ metricLabel(k.metric) }}</span>
+            <span class="pz-card__value">{{ k.metric === 'hours' ? hours(k.value) : c(k.value) }}</span>
+            <span class="pz-card__delta" [class.up]="k.delta > 0" [class.down]="k.delta < 0">{{ pct(k.delta) }}</span>
+            <svg class="pz-card__spark" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true">
+              <path [attr.d]="k.spark" vector-effect="non-scaling-stroke" />
+            </svg>
+          </button>
+        }
+      </div>
+
+      <div class="pz-top">
+        <div class="pz-big" aria-live="polite">
+          <p class="pz-big__label">
+            @if (active(); as p) {
+              {{ metricLabel(metric()) }} · {{ date(p.date) }}
+              @if (p.stream) { · {{ game(p.stream) }} }
+            } @else {
+              {{ t('devMocks.growth.pulse.big.' + metric(), { range: range() }) }}
+            }
+          </p>
+          <p class="pz-big__value">
+            @if (active(); as p) {
+              {{ pointValue(p) }}
+            } @else {
+              {{ display(metric(), card().value) }}
+            }
+            @if (!active()) {
+              <span class="pz-delta" [class.up]="card().delta > 0" [class.down]="card().delta < 0">{{ pct(card().delta) }}</span>
+            }
+          </p>
+          <p class="pz-big__say">{{ sentence() }}</p>
+        </div>
+        <div class="seg pz-range" role="group" [attr.aria-label]="t('devMocks.growth.pulse.rangeLabel')">
+          @for (r of ranges; track r) {
+            <button type="button" [attr.aria-pressed]="range() === r" (click)="selectRange(r)">{{ t('devMocks.growth.pulse.range', { days: r }) }}</button>
+          }
+        </div>
+      </div>
+
+      <div
+        class="pz-chart"
+        role="slider"
+        tabindex="0"
+        [attr.aria-label]="t('devMocks.growth.pulse.chartLabel', { metric: metricLabel(metric()) })"
+        aria-valuemin="0"
+        [attr.aria-valuemax]="points().length - 1"
+        [attr.aria-valuenow]="scrub() ?? points().length - 1"
+        [attr.aria-valuetext]="ariaValue()"
+        (pointerdown)="onMove($event)"
+        (pointermove)="onMove($event)"
+        (pointerup)="onUp()"
+        (pointerleave)="onLeave($event)"
+        (keydown)="onKey($event)"
+        (blur)="scrub.set(null)"
+      >
+        <svg [attr.viewBox]="'0 0 ' + W + ' ' + H" preserveAspectRatio="none" aria-hidden="true">
+          <defs>
+            <linearGradient id="pz-fill" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stop-color="currentColor" stop-opacity="0.32" />
+              <stop offset="100%" stop-color="currentColor" stop-opacity="0" />
+            </linearGradient>
+          </defs>
+          <line class="pz-grid" x1="0" [attr.x2]="W" [attr.y1]="H * 0.33" [attr.y2]="H * 0.33" />
+          <line class="pz-grid" x1="0" [attr.x2]="W" [attr.y1]="H * 0.66" [attr.y2]="H * 0.66" />
+          <path class="pz-area" [attr.d]="areaPath()" />
+          <path class="pz-line" [attr.d]="linePath()" vector-effect="non-scaling-stroke" />
+          @if (active(); as p) {
+            <line class="pz-cross" [attr.x1]="p.x" [attr.x2]="p.x" y1="0" [attr.y2]="H" vector-effect="non-scaling-stroke" />
+          }
+        </svg>
+        @for (p of streamDots(); track p.date) {
+          <span
+            class="pz-dot"
+            [class.pz-dot--raid]="p.stream?.raid"
+            [class.pz-dot--sel]="p.date === selected().date"
+            [style.left.%]="(p.x / W) * 100"
+            [style.top.%]="(p.y / H) * 100"
+          ></span>
+        }
+        @if (active(); as p) {
+          <span class="pz-knob" [style.left.%]="(p.x / W) * 100" [style.top.%]="(p.y / H) * 100"></span>
+        }
+      </div>
+      <div class="pz-x" aria-hidden="true">
+        @for (tk of ticks(); track tk.date) {
+          <span [style.left.%]="(tk.x / W) * 100">{{ date(tk.date) }}</span>
+        }
+      </div>
+      <p class="pz-hint">
+        <span class="pz-key"><span class="pz-key__dot"></span>{{ t('devMocks.growth.pulse.keyStream') }}</span>
+        <span class="pz-key"><span class="pz-key__dot pz-key__dot--raid"></span>{{ t('devMocks.growth.pulse.keyRaid') }}</span>
+        <span>{{ t('devMocks.growth.pulse.hint') }}</span>
+      </p>
+
+      @if (metric() === 'followers') {
+        <div class="pz-ledger" [class.pz-ledger--gold]="plan() === 'free'">
+          <app-lf-icon name="users" [size]="16"></app-lf-icon>
+          @if (plan() === 'free') {
+            <span>{{ t('devMocks.growth.pulse.ledgerFree') }}</span>
+            <a class="btn btn--sm btn--gold" [routerLink]="['/mocks/dev/prod-settings']">{{ t('devMocks.growth.upgrade') }}</a>
+          } @else {
+            <span>{{ t('devMocks.growth.pulse.ledgerPro') }}</span>
+            <a class="lnk" [routerLink]="['/mocks/dev/prod-modules']">{{ t('devMocks.growth.pulse.ledgerOpen') }} →</a>
+          }
+        </div>
+      }
+    </section>
+
+    <div class="pz-cols">
+      <div class="pz-col">
+        <!-- The stream you tapped (last stream by default) -->
+        <section class="lf-tile ps" aria-labelledby="ps-title">
+          <div class="ps__head">
+            <h2 class="lf-h2" id="ps-title">
+              {{ selected().date === lastDate ? t('devMocks.growth.pulse.lastStream') : t('devMocks.growth.pulse.thatStream') }}
+            </h2>
+            <span class="chip">{{ day(selected().weekday) }} {{ date(selected().date) }} · {{ hours(selected().hours) }}</span>
+          </div>
+          <p class="ps__title">{{ selected().title }}</p>
+          <div class="chips">
+            <span class="chip chip--xs">{{ game(selected()) }}</span>
+            @if (selected().raid; as r) {
+              <span class="chip chip--xs chip--accent"><app-lf-icon name="zap" [size]="12"></app-lf-icon>{{ t('devMocks.growth.raidFrom', { who: r.from, viewers: r.viewers }) }}</span>
+            }
+            @if (isBest(selected())) {
+              <span class="chip chip--xs chip--gold"><app-lf-icon name="star" [size]="12"></app-lf-icon>{{ t('devMocks.growth.pulse.bestInRange', { days: range() }) }}</span>
+            }
+          </div>
+          <dl class="ps__facts">
+            <div>
+              <dt>{{ t('devMocks.growth.f.avgViewers') }}</dt>
+              <dd>{{ selected().avgViewers }} <span class="pz-delta pz-delta--sm" [class.up]="selectedVs().viewers > 0" [class.down]="selectedVs().viewers < 0">{{ pct(selectedVs().viewers) }}</span></dd>
+            </div>
+            <div><dt>{{ t('devMocks.growth.f.peak') }}</dt><dd>{{ selected().peakViewers }}</dd></div>
+            <div>
+              <dt>{{ t('devMocks.growth.f.follows') }}</dt>
+              <dd>+{{ selected().follows }} <span class="pz-delta pz-delta--sm" [class.up]="selectedVs().follows > 0" [class.down]="selectedVs().follows < 0">{{ pct(selectedVs().follows) }}</span></dd>
+            </div>
+            <div><dt>{{ t('devMocks.growth.f.subs') }}</dt><dd>+{{ selected().subs }}</dd></div>
+            <div>
+              <dt>{{ t('devMocks.growth.f.bits') }}</dt>
+              <dd>{{ n(selected().bits) }} <span class="pz-delta pz-delta--sm" [class.up]="selectedVs().bits > 0" [class.down]="selectedVs().bits < 0">{{ pct(selectedVs().bits) }}</span></dd>
+            </div>
+            <div><dt>{{ t('devMocks.growth.f.tips') }}</dt><dd>${{ selected().tips }}</dd></div>
+          </dl>
+          <p class="lf-note">{{ t('devMocks.growth.pulse.vsAvg') }}</p>
+          <a class="lnk" [routerLink]="['/mocks/dev/prod-modules']">{{ t('devMocks.growth.openTimeline') }} →</a>
+        </section>
+
+        <!-- Best streams for the chosen number -->
+        <section class="lf-tile pt" aria-labelledby="pt-title">
+          <h2 class="lf-h2" id="pt-title">{{ t('devMocks.growth.pulse.top.' + metric(), { days: range() }) }}</h2>
+          <ol class="pt__list">
+            @for (row of top(); track row.stream.date; let i = $index) {
+              <li>
+                <button type="button" class="pt__row" [attr.aria-pressed]="row.stream.date === selected().date" (click)="pick(row.stream)">
+                  <span class="pt__medal" [attr.data-place]="i + 1">{{ i + 1 }}</span>
+                  <span class="pt__copy">
+                    <strong>{{ day(row.stream.weekday) }} {{ date(row.stream.date) }}</strong>
+                    <span>{{ game(row.stream) }}@if (row.stream.raid) { · {{ t('devMocks.growth.raidShort', { who: row.stream.raid.from }) }} }</span>
+                  </span>
+                  <span class="pt__value">{{ metric() === 'hours' ? hours(row.value) : (metric() === 'followers' ? '+' : '') + n(row.value) }}</span>
+                </button>
+              </li>
+            }
+          </ol>
+        </section>
+      </div>
+
+      <div class="pz-col">
+        <!-- Goals, with when you'll get there -->
+        <section class="lf-tile pg" aria-labelledby="pg-title">
+          <div class="ps__head">
+            <h2 class="lf-h2" id="pg-title">{{ t('devMocks.growth.pulse.goalsTitle') }}</h2>
+            <a class="lnk" [routerLink]="['/mocks/dev/prod-modules']">{{ t('devMocks.growth.editGoals') }}</a>
+          </div>
+          @for (g of goals; track g.key) {
+            <div class="pg__goal">
+              <div class="pg__row"><span>{{ t('devMocks.growth.goal.' + g.key) }}</span><strong>{{ g.current }} / {{ g.target }}</strong></div>
+              <div class="bar" [class.bar--gold]="g.key === 'subs'" aria-hidden="true"><span [style.width.%]="(g.current / g.target) * 100"></span></div>
+              <p class="lf-note">
+                {{ g.onPace ? t('devMocks.growth.goal.onPace', { projected: g.projected }) : t('devMocks.growth.goal.short', { projected: g.projected, short: g.target - g.projected }) }}
+              </p>
+            </div>
+          }
+          <div class="pg__goal">
+            <div class="pg__row"><span>{{ t('devMocks.growth.pulse.goalMilestone', { target: n(nextMilestone) }) }}</span><strong>{{ n(followersNow) }}</strong></div>
+            <div class="bar bar--gold" aria-hidden="true"><span [style.width.%]="((followersNow - 4000) / (nextMilestone - 4000)) * 100"></span></div>
+            @if (milestoneEta; as eta) {
+              <p class="lf-note">{{ t('devMocks.growth.pulse.milestoneEta', { left: nextMilestone - followersNow, days: eta.days, date: date(addDaysIso(eta.days)) }) }}</p>
+            }
+          </div>
+        </section>
+
+        <app-growth-mock-credits [plan]="plan()" />
+      </div>
+    </div>
+
+    <details class="lf-tile ph">
+      <summary>
+        <span>{{ t('devMocks.growth.pulse.everyStream', { days: range(), count: history().length }) }}</span>
+        <app-lf-icon name="chevron-down" [size]="16"></app-lf-icon>
+      </summary>
+      <ul class="ph__rows">
+        @for (s of history(); track s.date) {
+          <li>
+            <button type="button" class="ph__row" (click)="pick(s)">
+              <span class="ph__date"><strong>{{ date(s.date) }}</strong><span>{{ day(s.weekday) }}</span></span>
+              <span class="ph__nums">
+                <span>{{ game(s) }}</span>
+                <span><b>{{ hours(s.hours) }}</b></span>
+                <span><b>{{ s.avgViewers }}</b> {{ t('devMocks.growth.u.avg') }}</span>
+                <span><b>+{{ s.follows }}</b> {{ t('devMocks.growth.u.follows') }}</span>
+                <span><b>{{ s.subs }}</b> {{ t('devMocks.growth.u.subs') }}</span>
+                <span><b>{{ n(s.bits) }}</b> bits</span>
+                @if (s.raid) { <span class="chip chip--xs chip--accent">{{ t('devMocks.growth.raidShort', { who: s.raid.from }) }}</span> }
+              </span>
+            </button>
+          </li>
+        }
+      </ul>
+    </details>
+  </main>
+</div>

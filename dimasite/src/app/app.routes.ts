@@ -391,6 +391,30 @@ export const routes: Routes = [
             title: 'Dashboard proposal B | DomDimaBot'
           },
           {
+            path: 'dashboard-pulse',
+            loadComponent: () =>
+              import('./features/landing-mocks/dev/dashboard-pulse-mock.component').then(
+                (m) => m.DashboardPulseMockComponent
+              ),
+            title: 'Dashboard · Pulse | DomDimaBot'
+          },
+          {
+            path: 'dashboard-path',
+            loadComponent: () =>
+              import('./features/landing-mocks/dev/dashboard-path-mock.component').then(
+                (m) => m.DashboardPathMockComponent
+              ),
+            title: 'Dashboard · Path | DomDimaBot'
+          },
+          {
+            path: 'dashboard-coach',
+            loadComponent: () =>
+              import('./features/landing-mocks/dev/dashboard-coach-mock.component').then(
+                (m) => m.DashboardCoachMockComponent
+              ),
+            title: 'Dashboard · Coach | DomDimaBot'
+          },
+          {
             path: 'prod-commands',
             loadComponent: () =>
               import('./features/landing-mocks/dev/prod-commands-mock.component').then(
