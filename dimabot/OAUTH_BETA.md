@@ -57,7 +57,17 @@ The successful response is standard top-level JSON fields, not a `{data: ...}` e
 
 Access tokens last 600 seconds. Refresh tokens have a rolling 30-day idle limit and a 90-day absolute session limit. Refresh rotates the refresh token on every successful call and returns the same response shape with a new access and refresh token. Serialize refresh operations per session: concurrent refreshes or replay of an old refresh token revoke the session. If a refresh response is lost, do not blindly retry the old token; require the user to authorize again if the new token was not safely received and persisted.
 
-To sign out this installation, send `DELETE https://api.domdimabot.com/v1/desktop/session` with `Authorization: Bearer <access_token>`. The app may also revoke a token using form-encoded `client_id=dima-desktop&token=<refresh_token>` at `/oauth/revoke`. Users can revoke one desktop connection or the whole Dima Desktop grant at the website connection-management page. The desktop application owns secure storage of access and refresh tokens in the platform’s credential store; this guide does not prescribe or change Windows/Linux app storage code.
+For refresh, POST these form-encoded fields to `/oauth/token`:
+
+```text
+grant_type=refresh_token
+client_id=dima-desktop
+refresh_token=<latest refresh token>
+```
+
+The optional `scope` field may be omitted or must exactly match the originally issued scope string; this beta rejects any other value. As a desktop storage recommendation, keep access tokens in memory and persist refresh credentials only in the platform credential store. This guide makes no Windows or Linux app changes.
+
+To sign out this installation, send `DELETE https://api.domdimabot.com/v1/desktop/session` with `Authorization: Bearer <access_token>`. The app may also revoke a token using form-encoded `client_id=dima-desktop&token=<refresh_token>` at `/oauth/revoke`. Users can revoke one desktop connection or the whole Dima Desktop grant at the website connection-management page.
 
 ## Active desktop API and WebSocket
 
@@ -67,12 +77,12 @@ For the native WebSocket, connect to `wss://api.domdimabot.com/v1/desktop/ws` wi
 
 ## Beta boundary
 
-This release provides the scoped authentication and identity foundation only. Pet listing, configuration, interaction, control, and playback are not implemented. The pet-related scopes shown in metadata are planned and cannot currently be requested or issued. One-active-playback behavior is also planned; it is not part of this beta contract.
+This release provides the scoped authentication and identity foundation only. Pet listing, configuration, interaction, control, and playback are not implemented. `usage:read` and the pet-related scopes shown in metadata are planned and cannot currently be requested or issued. One-active-playback behavior is also planned; it is not part of this beta contract.
 
 For the isolated API candidate behavior check, use the helper-generated API run ID and the disposable fixtures:
 
 ```bash
-scripts/saas-ops verify api-<run-id> --fixtures ops/checks/oauth-beta-fixtures --check ops/checks/oauth-beta.mjs
+scripts/saas-ops verify api-<run-id> --dependency mongo --dependency redis --fixtures ops/checks/oauth-beta-fixtures --test-env ops/checks/oauth-beta-fixtures/test-env.json --check ops/checks/oauth-beta.mjs
 ```
 
 This command documents the required verification path; it does not mean the candidate check or deployment has passed.
