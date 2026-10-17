@@ -1,0 +1,59 @@
+<div class="lf">
+  <header class="lf-nav">
+    <a routerLink="/" class="brand" aria-label="DomDimaBot"><app-brand-logo /></a>
+    <div class="tools">
+      <button type="button" (click)="language.toggleLanguage()" [attr.aria-label]="t('oauth.language')">{{ language.currentLanguage().toUpperCase() }}</button>
+      <button type="button" (click)="theme.toggleTheme()">{{ t(theme.isDarkMode() ? 'landing.theme.dark' : 'landing.theme.light') }}</button>
+    </div>
+  </header>
+  <main class="lf-main">
+    <section class="lf-tile" aria-labelledby="oauth-title" [attr.aria-busy]="loading() || busy()">
+      <p class="kicker">{{ t('oauth.beta') }}</p>
+      <h1 id="oauth-title">{{ t(management ? 'oauth.connectionsTitle' : 'oauth.title') }}</h1>
+      @if (error()) { <p role="alert" class="error">{{ t(error()) }}</p> }
+      @if (loading()) {
+        <p role="status">{{ t('oauth.loading') }}</p>
+      } @else if (completed()) {
+        <p role="status">{{ t('oauth.completed') }}</p>
+      } @else if (management || details()) {
+        @if (!signedIn()) {
+          <p>{{ t('oauth.signInDescription') }}</p>
+          <button type="button" class="primary" (click)="signIn()">{{ t('oauth.signIn') }}</button>
+        } @else {
+          <div class="account">
+            <p>{{ t('oauth.signedIn', { name: accountName() }) }}</p>
+            <button type="button" (click)="signOut()" [disabled]="busy()">{{ t('oauth.signOut') }}</button>
+          </div>
+          @if (management) {
+            <p>{{ t('oauth.connectionsDescription') }}</p>
+            @for (connection of connections(); track connection._id) {
+              <article class="connection">
+                <h2>{{ connection.device_name }}</h2>
+                <p>{{ connection.client_id }}</p>
+                <ul>@for (scope of connection.scopes; track scope) { <li>{{ t('oauth.scopes.' + scope) }}</li> }</ul>
+                <div class="actions">
+                  <button type="button" (click)="revoke(connection)" [disabled]="busy()">{{ t('oauth.disconnect') }}</button>
+                  <button type="button" (click)="revoke(connection, true)" [disabled]="busy()">{{ t('oauth.disconnectApp') }}</button>
+                </div>
+              </article>
+            } @empty { <p>{{ t('oauth.noConnections') }}</p> }
+          } @else {
+            <p>{{ t('oauth.request', { app: details()!.client_name, device: details()!.device_name }) }}</p>
+            <ul class="permissions">
+              @for (scope of details()!.scopes; track scope) {
+                <li><strong>{{ t('oauth.scopes.' + scope) }}</strong><p>{{ t('oauth.descriptions.' + scope) }}</p></li>
+              }
+            </ul>
+            <p class="note">{{ t('oauth.ownAccount') }}</p>
+            <p class="note">{{ t('oauth.initiated') }}</p>
+            <div class="actions">
+              <button type="button" (click)="decide(false)" [disabled]="busy()">{{ t('oauth.deny') }}</button>
+              <button type="button" class="primary" (click)="decide(true)" [disabled]="busy()">{{ t(busy() ? 'oauth.working' : 'oauth.allow') }}</button>
+            </div>
+            <a routerLink="/oauth/connections" class="manage">{{ t('oauth.manage') }}</a>
+          }
+        }
+      }
+    </section>
+  </main>
+</div>

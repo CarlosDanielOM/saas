@@ -8307,5 +8307,42 @@
     "updated": "Last observation",
     "unknownChannel": "Unknown channel",
     "channelId": "Channel ID"
+  },
+  "oauth": {
+    "beta": "Desktop connection · Beta",
+    "title": "Connect Dima Desktop",
+    "connectionsTitle": "Connected applications",
+    "language": "Change language",
+    "loading": "Loading connection details…",
+    "signInDescription": "Sign in to approve access to your own streamer account.",
+    "signIn": "Sign in with Twitch",
+    "signedIn": "Signed in as {{name}}",
+    "signOut": "Sign out",
+    "embedded": "Open this page directly in your browser to continue.",
+    "request": "{{app}} on “{{device}}” is requesting permission to:",
+    "ownAccount": "Access is limited to your own streamer account. You can revoke it at any time.",
+    "initiated": "Only approve if you started this connection from Dima Desktop. This beta does not enable pet playback or paid actions.",
+    "deny": "Deny",
+    "allow": "Allow connection",
+    "working": "Connecting…",
+    "completed": "Returning to Dima Desktop. You can close this page once the app connects.",
+    "manage": "Manage connected applications",
+    "connectionsDescription": "Disconnect a computer, or revoke this application on every computer. Your Twitch bot connection stays connected.",
+    "disconnect": "Disconnect this computer",
+    "disconnectApp": "Disconnect app on all computers",
+    "noConnections": "No applications are currently connected.",
+    "loginExpired": "Your sign-in expired. Sign in again to continue.",
+    "expired": "This connection request is invalid or expired. Start a new connection from the app.",
+    "failed": "We could not complete this request. Try again in a moment.",
+    "scopes": {
+      "profile:read": "View your Dima profile",
+      "credits:read": "View your AI credit balance",
+      "desktop:connect": "Connect this desktop installation"
+    },
+    "descriptions": {
+      "profile:read": "Your display name and linked streamer identity. Your email and credentials are not shared.",
+      "credits:read": "Your current balance and allowance. This permission cannot spend credits or make purchases.",
+      "desktop:connect": "Maintain an authenticated connection to DomDimaBot. Additional features require their own permissions."
+    }
   }
 }

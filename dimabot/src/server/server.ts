@@ -41,6 +41,7 @@ import { clipRecommendationsRoute } from "./routes/clip-recommendations.route.js
 import { dimafxRoute } from "./routes/dimafx.route.js";
 import { getSiteAnalyticsSnapshot } from "../utils/siteanalytics.js";
 import { getReservedCommandsPayload } from "./services/command_defaults.service.js";
+import { oauthRoute, oauthApiRoute, oauthMetadata } from './oauth/routes.js';
 
 const __dirname = getDirname(import.meta.url);
 
@@ -55,6 +56,10 @@ export const server = async (): Promise<Express.Application> => {
         app.use('/overlay-studio', express.json({ limit: '5mb' }));
         app.use(express.json());
         app.use(express.urlencoded({ extended: true }));
+        // OAuth has its own origin policy; keep it ahead of legacy permissive CORS.
+        app.use('/oauth', oauthRoute);
+        app.use('/v1', oauthApiRoute);
+        app.get('/.well-known/oauth-authorization-server', oauthMetadata);
         app.use(express.static(path.join(__dirname, 'routes', 'public')));
         app.use(cors());
         app.use('/observability', observabilityRoute);

@@ -8307,5 +8307,42 @@
     "updated": "Última observación",
     "unknownChannel": "Canal desconocido",
     "channelId": "ID del canal"
+  },
+  "oauth": {
+    "beta": "Conexión de escritorio · Beta",
+    "title": "Conectar Dima Desktop",
+    "connectionsTitle": "Aplicaciones conectadas",
+    "language": "Cambiar idioma",
+    "loading": "Cargando detalles de conexión…",
+    "signInDescription": "Inicia sesión para aprobar el acceso a tu propia cuenta de streamer.",
+    "signIn": "Iniciar sesión con Twitch",
+    "signedIn": "Sesión iniciada como {{name}}",
+    "signOut": "Cerrar sesión",
+    "embedded": "Abre esta página directamente en tu navegador para continuar.",
+    "request": "{{app}} en «{{device}}» solicita permiso para:",
+    "ownAccount": "El acceso se limita a tu propia cuenta de streamer. Puedes revocarlo en cualquier momento.",
+    "initiated": "Aprueba solo si iniciaste esta conexión desde Dima Desktop. Esta beta no permite reproducir la mascota ni realizar acciones de pago.",
+    "deny": "Denegar",
+    "allow": "Permitir conexión",
+    "working": "Conectando…",
+    "completed": "Volviendo a Dima Desktop. Puedes cerrar esta página cuando la app se conecte.",
+    "manage": "Administrar aplicaciones conectadas",
+    "connectionsDescription": "Desconecta un ordenador o revoca esta aplicación en todos los ordenadores. La conexión de tu bot con Twitch seguirá activa.",
+    "disconnect": "Desconectar este ordenador",
+    "disconnectApp": "Desconectar app en todos los ordenadores",
+    "noConnections": "No hay aplicaciones conectadas.",
+    "loginExpired": "Tu sesión ha caducado. Inicia sesión de nuevo para continuar.",
+    "expired": "La solicitud no es válida o ha caducado. Inicia una nueva conexión desde la app.",
+    "failed": "No se pudo completar la solicitud. Inténtalo de nuevo en un momento.",
+    "scopes": {
+      "profile:read": "Ver tu perfil de Dima",
+      "credits:read": "Ver tu saldo de créditos de IA",
+      "desktop:connect": "Conectar esta instalación de escritorio"
+    },
+    "descriptions": {
+      "profile:read": "Tu nombre visible y tu identidad de streamer vinculada. No se comparten tu correo ni tus credenciales.",
+      "credits:read": "Tu saldo y asignación actuales. Este permiso no permite gastar créditos ni realizar compras.",
+      "desktop:connect": "Mantener una conexión autenticada con DomDimaBot. Las funciones adicionales requieren sus propios permisos."
+    }
   }
 }

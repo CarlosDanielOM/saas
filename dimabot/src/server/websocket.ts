@@ -13,6 +13,7 @@ import { registerDimafxOverlay } from './services/dimafx-overlay.service.js';
 import { registerVoicePreview } from './services/tts/voice_preview.service.js';
 import { getCachedLiveStatus, getSiteAnalytics } from "../utils/siteanalytics.js";
 import { getLiveSessionMetrics } from "../utils/stream_analytics.js";
+import { attachDesktopWebsocket } from './oauth/desktop-websocket.js';
 
 const DASHBOARD_LIVE_STATUS_INTERVAL_MS = Math.max(1000, Number(process.env.DASHBOARD_LIVE_STATUS_INTERVAL_MS || 1000));
 
@@ -41,8 +42,10 @@ export const websocket = async (app: any): Promise<HttpServer | null> => {
         cacheClient = await getDragonflyClient('Websocket');
         let server = http.createServer(app);
         io = new SocketIOServer(server, {
-            connectionStateRecovery: {}
+            connectionStateRecovery: {},
+            destroyUpgrade: false
         });
+        attachDesktopWebsocket(server);
 
         registerVoicePreview(io);
         registerRouletteOverlay(io);

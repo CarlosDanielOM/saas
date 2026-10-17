@@ -19,6 +19,7 @@ import { unsubscribeTwitchEvent } from './eventsub.js';
 import { cleanupChannelMediaOwnership } from './media_cleanup.js';
 import { decrementSiteAnalytics } from './siteanalytics.js';
 import { deleteChannelMemoryEmbeddingsByChannel } from './qdrant/functions/memory/sync_memory.qdrant.js';
+import { revokeUserOAuth } from '../server/oauth/service.js';
 
 export interface IDeleteAccountOptions {
     channelID: string;
@@ -57,6 +58,9 @@ export async function deleteAccountPermanently(options: IDeleteAccountOptions): 
     if (!channelID || !userID) {
         throw new Error('channelID and userID are required for account deletion');
     }
+
+    // Revoke before deletion; cached access tokens must fail immediately afterward.
+    await revokeUserOAuth(userID);
 
     console.log('[ACCOUNT_DELETION] Starting permanent deletion', {
         channelID,

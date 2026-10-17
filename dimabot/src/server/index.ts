@@ -26,12 +26,14 @@ import { info, error } from '../utils/logger.js';
 import { reconcileLiveSessionsOnStartup, startStreamAnalyticsWorker } from '../utils/stream_analytics.js';
 import { startSiteAnalytics, refreshSiteAnalyticsSnapshot } from '../utils/siteanalytics.js';
 import startSDKLogger from '../utils/opentelemetry_posthog.js';
+import { initializeOAuth } from './oauth/service.js';
 
 startTelemetry();
 instrumentFetch();
 
 await getDragonflyClient('Server');
 await getMongoDBConnection('Server');
+await initializeOAuth();
 await getQdrantConnection('Server');
 await getPolarShClient('Server');
 // Initialize PubSub for clip queue

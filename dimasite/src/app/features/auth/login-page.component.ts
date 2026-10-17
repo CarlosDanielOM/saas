@@ -15,6 +15,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
 import { Check, LucideAngularModule, Moon, Sun, X } from 'lucide-angular';
 import { firstValueFrom } from 'rxjs';
+import { consumeOAuthReturn } from './oauth-return';
 
 import { DashboardApiService } from '../../services/dashboard-api.service';
 import { AnalyticsService } from '../../services/analytics.service';
@@ -355,7 +356,7 @@ export class LoginPageComponent implements OnInit {
       const expectedState = this.sessionAuth.consumeOAuthState();
       this.pushDebug(`Expected local state=${expectedState ?? 'none'}`);
 
-      if (expectedState && returnedState && expectedState !== returnedState) {
+      if (!expectedState || !returnedState || expectedState !== returnedState) {
         this.stage.set('error');
         this.errorMessage.set(this.t('login.errors.stateMismatch'));
         return;
@@ -382,6 +383,11 @@ export class LoginPageComponent implements OnInit {
         loginResult.data
       );
       sessionEstablished = true;
+      const oauthReturn = consumeOAuthReturn();
+      if (oauthReturn) {
+        await this.router.navigateByUrl(oauthReturn);
+        return;
+      }
       this.analytics.capture('auth_completed', {
         source: 'oauth_callback',
         primary_channel_id: loginResult.data.twitch_user_id,
@@ -567,6 +573,12 @@ export class LoginPageComponent implements OnInit {
         this.stage.set('error');
         this.errorMessage.set(this.t('login.errors.sessionExpired'));
         this.queueReturnToLogin('session_expired_resume');
+        return;
+      }
+
+      const oauthReturn = consumeOAuthReturn();
+      if (oauthReturn) {
+        await this.router.navigateByUrl(oauthReturn);
         return;
       }
 
