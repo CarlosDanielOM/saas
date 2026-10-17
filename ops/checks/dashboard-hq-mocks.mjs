@@ -1,5 +1,5 @@
 // Behaviour check for the "channel + bot" dashboard proposals:
-// /mocks/dev/dashboard-split, /mocks/dev/dashboard-widgets, /mocks/dev/dashboard-briefing.
+// /mocks/dev/dashboard-split, -widgets, -briefing and -mix (split + widgets).
 // Mocks must never need the API; every call is answered with an empty envelope.
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
@@ -61,7 +61,8 @@ const preview = (page) => page.getByRole('group', { name: 'Mock preview' });
 const mocks = {
   split: { path: '/mocks/dev/dashboard-split', ready: /habits to fix, found in your own streams/ },
   widgets: { path: '/mocks/dev/dashboard-widgets', ready: /tips to fix this week/ },
-  briefing: { path: '/mocks/dev/dashboard-briefing', ready: /things to fix this week/ }
+  briefing: { path: '/mocks/dev/dashboard-briefing', ready: /things to fix this week/ },
+  mix: { path: '/mocks/dev/dashboard-mix', ready: /habits to fix, found in your own streams/ }
 };
 
 try {
@@ -253,8 +254,105 @@ try {
     await context.close();
   }
 
+  // ------------------------------------------------- Mix (split + widgets)
+  {
+    const { context, page } = await open(mocks.mix.path);
+    await page.getByText(mocks.mix.ready).waitFor();
+    assert.equal(await page.getByRole('button', { name: 'Turn the bot off' }).count(), 1, 'one bot control');
+    // Uses the width: at 1280 the content spans nearly the whole viewport.
+    const mainWidth = await page.locator('main').evaluate((m) => m.getBoundingClientRect().width);
+    assert.ok(mainWidth >= 1240, `main is ${mainWidth}px wide at 1280`);
+    const channel = page.getByRole('region', { name: /^Your channel/ });
+    const botSide = page.getByRole('region', { name: /^Your bot/ });
+    assert.equal(await channel.locator('.wd').count(), 8, 'channel widgets');
+    assert.equal(await botSide.locator('.wd').count(), 6, 'bot widgets');
+    assert.equal(await page.locator('.gl').count(), 8, 'small widgets');
+    await botSide.getByText('Automod acted on 46 messages.').waitFor();
+    // Bot pane columns sit side by side (two small widgets on one row).
+    const [a, b] = await botSide.locator('.gl').evaluateAll((els) => els.slice(0, 2).map((e) => e.getBoundingClientRect().top));
+    assert.equal(Math.round(a), Math.round(b), 'bot status and credits share a row');
+
+    // Small tip opens the full tip.
+    await page.getByRole('button', { name: /^Short streams: −\d+%/ }).click();
+    const detail = page.getByRole('dialog', { name: 'Short streams' });
+    await detail.getByText(/of your last 55 streams were under 2\.5 h/).waitFor();
+    await page.keyboard.press('Escape');
+    await until(async () => !(await detail.isVisible()), 'detail closed');
+
+    // Hiding a tip removes that widget.
+    await page.getByRole('button', { name: 'Hide the tip: Weakest day' }).click();
+    await until(async () => (await channel.locator('.wd').count()) === 7, 'tip widget removed');
+
+    // Customize: a list per side.
+    await page.getByRole('button', { name: 'Customize' }).click();
+    await waitCount(page, '.erow', 13, 'edit rows');
+    assert.equal(await page.getByRole('button', { name: 'Remove Bot status' }).count(), 0, 'bot status stays');
+    assert.equal(await page.getByRole('button', { name: 'Remove AI credits' }).count(), 0, 'credits stay');
+    const order = () => channel.locator('.erow').evaluateAll((els) => els.map((e) => e.dataset.kind));
+    const before = await order();
+    await page.getByRole('button', { name: 'Move Raids earlier' }).click();
+    await until(async () => (await order()).indexOf('raids') === before.indexOf('raids') - 1, 'raids moved');
+    await page.getByRole('group', { name: 'Size of Best days' }).getByRole('button', { name: 'Large' }).click();
+    await channel.getByRole('button', { name: /Add widget \(1 available\)/ }).click();
+    const cat = page.getByRole('dialog', { name: 'Add to Your channel' });
+    await cat.getByRole('button', { name: 'Add Weakest day' }).click();
+    await until(async () => !(await cat.isVisible()), 'catalog closes when nothing is left');
+    await waitCount(page, '.erow', 14, 'tip added back');
+    // Up to six shortcuts.
+    const shortcuts = page.getByRole('group', { name: /Shortcuts: \d of 6 chosen/ });
+    await shortcuts.getByRole('button', { name: 'Commands' }).click();
+    await shortcuts.getByRole('button', { name: 'DimaFX' }).click();
+    await until(async () => (await page.locator('nav .hm__btn').count()) === 6, 'six shortcuts');
+    assert.ok(await shortcuts.getByRole('button', { name: 'Duels' }).isDisabled(), 'seventh blocked');
+    await axe(page, 'mix edit mode');
+    await page.getByRole('button', { name: 'Done' }).click();
+    await waitCount(page, '.erow', 0, 'edit closed');
+    await channel.locator('.wd[data-kind="days"].wd--m').waitFor();
+
+    // Saved across reloads, presets apply to both sides.
+    await page.reload();
+    await page.getByText(mocks.mix.ready).waitFor();
+    assert.equal(await page.locator('nav .hm__btn').count(), 6, 'saved shortcuts');
+    await page.getByRole('button', { name: 'Customize' }).click();
+    await page.getByRole('group', { name: 'Presets' }).getByRole('button', { name: 'Moderation' }).click();
+    await page.getByRole('button', { name: 'Done' }).click();
+    await until(async () => (await channel.locator('.wd').count()) === 4, 'moderation preset channel');
+    assert.equal(await botSide.locator('.wd--m').count(), 4, 'moderation preset bot');
+    await page.getByRole('button', { name: 'Customize' }).click();
+    await page.getByRole('button', { name: 'Reset' }).click();
+    await page.getByRole('button', { name: 'Done' }).click();
+
+    // Free: first tip stays, the rest become one upsell.
+    await preview(page).getByRole('button', { name: 'Free', exact: true }).click();
+    await waitCount(page, '.lockcard', 1, 'locked tips');
+    assert.equal(await page.getByRole('link', { name: 'Upgrade to see them' }).count(), 1, 'one upsell');
+    await page.getByText('4 more tips from your own streams.').waitFor();
+    await context.close();
+  }
+
+  // Mix on wide screens and phones.
+  {
+    const { context, page } = await open(mocks.mix.path, { width: 1920 });
+    await page.getByText(mocks.mix.ready).waitFor();
+    const w = await page.locator('main').evaluate((m) => m.getBoundingClientRect().width);
+    assert.ok(w >= 1700, `main is ${w}px wide at 1920`);
+    await context.close();
+  }
+  {
+    const { context, page } = await open(mocks.mix.path, { width: 390 });
+    await page.getByText(mocks.mix.ready).waitFor();
+    assert.ok(await page.locator('.strip').isVisible(), 'bot strip on phones');
+    assert.ok(!(await page.getByRole('heading', { name: 'Top commands' }).isVisible()), 'bot side hidden on channel tab');
+    await page.getByRole('group', { name: 'Dashboard section' }).getByRole('button', { name: 'Your bot' }).click();
+    await page.getByRole('heading', { name: 'Top commands' }).waitFor({ state: 'visible' });
+    await page.getByRole('button', { name: 'Customize' }).click();
+    await waitCount(page, '.pane:not(.pane--off) .erow', 6, 'bot edit rows on phone');
+    await layout(page, 'mix phone edit');
+    await context.close();
+  }
+
   // Spanish copy renders from es.json.
-  for (const [name, text] of [['split', /hábitos para mejorar/], ['widgets', /consejos para mejorar esta semana/], ['briefing', /cosas para mejorar esta semana/]]) {
+  for (const [name, text] of [['split', /hábitos para mejorar/], ['widgets', /consejos para mejorar esta semana/], ['briefing', /cosas para mejorar esta semana/], ['mix', /hábitos para mejorar/]]) {
     const { context, page } = await open(mocks[name].path, { lang: 'es', width: 390 });
     await page.getByText(text).waitFor();
     await layout(page, `${name} es`);
@@ -276,7 +374,7 @@ try {
   }
 
   assert.deepEqual(errors, [], 'page errors');
-  console.log('dashboard hq mocks: ok');
+  console.log('dashboard hq mocks (split, widgets, briefing, mix): ok');
 } finally {
   await browser.close();
 }

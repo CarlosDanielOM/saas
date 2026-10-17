@@ -439,6 +439,14 @@ export const routes: Routes = [
             title: 'Dashboard · Briefing | DomDimaBot'
           },
           {
+            path: 'dashboard-mix',
+            loadComponent: () =>
+              import('./features/landing-mocks/dev/dashboard-mix-mock.component').then(
+                (m) => m.DashboardMixMockComponent
+              ),
+            title: 'Dashboard · Split + Widgets | DomDimaBot'
+          },
+          {
             path: 'prod-commands',
             loadComponent: () =>
               import('./features/landing-mocks/dev/prod-commands-mock.component').then(

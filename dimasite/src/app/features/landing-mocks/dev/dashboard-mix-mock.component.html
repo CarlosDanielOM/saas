@@ -1,0 +1,185 @@
+<div class="lf" [class.lf--live]="live()" [attr.data-plan]="plan()">
+  <main class="lf-main mx" [class.is-editing]="editing()">
+    <app-growth-mock-header [(live)]="live" [(plan)]="plan" [(botOn)]="botOn">
+      <p answer class="answer">
+        <strong>{{ t(fixCount === 1 ? 'devMocks.hq.split.answerOne' : 'devMocks.hq.split.answer', { count: fixCount }) }}</strong>
+        {{ t('devMocks.hq.split.answerRest', { game: topGame.label, share: topGame.share, day: day(bestDayNum) }) }}
+      </p>
+    </app-growth-mock-header>
+
+    <!-- Shortcuts -->
+    <section class="mx-jump" aria-labelledby="mx-jump-title">
+      <div class="sec-bar">
+        <h2 class="sec-title" id="mx-jump-title">{{ t('devMocks.hq.modules.title') }}</h2>
+        <span class="sec-sub">{{ t('devMocks.hq.modules.sub') }}</span>
+        @if (!editing()) {
+          <button type="button" class="btn btn--sm sec-act" (click)="editing.set(true)">
+            <app-lf-icon name="sliders" [size]="15"></app-lf-icon>{{ t('devMocks.hq.widgets.customize') }}
+          </button>
+        }
+      </div>
+      @if (editing()) {
+        <div class="mx-edit">
+          <p class="mx-edit__hint">{{ t('devMocks.hq.mix.editHint') }}</p>
+          <div class="seg mx-presets" role="group" [attr.aria-label]="t('devMocks.hq.widgets.presets')">
+            @for (p of presets; track p) {
+              <button type="button" (click)="applyPreset(p)">{{ t('devMocks.hq.widgets.preset.' + p) }}</button>
+            }
+          </div>
+          <button type="button" class="btn btn--sm btn--ghost" (click)="reset()">{{ t('devMocks.hq.widgets.reset') }}</button>
+          <button type="button" class="btn btn--sm btn--primary" (click)="editing.set(false)">
+            <app-lf-icon name="check" [size]="15"></app-lf-icon>{{ t('devMocks.hq.widgets.done') }}
+          </button>
+        </div>
+      }
+      <app-hq-modules [keys]="dock()" variant="fluid" />
+      @if (editing()) {
+        <div class="dockedit" role="group" [attr.aria-label]="t('devMocks.hq.mix.dockLabel', { count: dock().length, max: maxShortcuts })">
+          <span class="dockedit__sub">{{ t('devMocks.hq.mix.dockLabel', { count: dock().length, max: maxShortcuts }) }}</span>
+          @for (m of modules; track m.key) {
+            <button type="button" class="chip dockchip" [attr.aria-pressed]="inDock(m.key)" [disabled]="!inDock(m.key) && dock().length >= maxShortcuts" (click)="toggleDock(m.key)">
+              <app-lf-icon [name]="m.icon" [size]="14"></app-lf-icon>{{ t('devMocks.hq.modules.' + m.key + '.name') }}
+            </button>
+          }
+        </div>
+      }
+    </section>
+
+    <!-- Phones: one-line bot strip that stays visible on both tabs -->
+    <a class="strip" href="#mx-bot" (click)="pane.set('bot')" [class.strip--warn]="!botOn() || !credits().lastsUntilReset">
+      <span class="strip__item" [class.strip__item--warn]="!botOn()"><span class="dot" aria-hidden="true"></span>{{ botOn() ? t('devMocks.hq.strip.in') : t('devMocks.hq.strip.out') }}</span>
+      <span class="strip__item">{{ t('devMocks.hq.strip.events', { on: bot.eventsOn, total: bot.eventsTotal }) }}</span>
+      <span class="strip__item" [class.strip__item--warn]="!credits().lastsUntilReset">{{ t('devMocks.hq.strip.credits', { pct: credits().pctLeft }) }}</span>
+      <span class="strip__item">{{ t('devMocks.hq.strip.automod', { count: automod.actions }) }}</span>
+    </a>
+
+    <div class="tabs seg" role="group" [attr.aria-label]="t('devMocks.hq.split.tabs')">
+      <button type="button" [attr.aria-pressed]="pane() === 'channel'" (click)="pane.set('channel')">{{ t('devMocks.hq.split.channel') }}</button>
+      <button type="button" [attr.aria-pressed]="pane() === 'bot'" (click)="pane.set('bot')">{{ t('devMocks.hq.split.bot') }}</button>
+    </div>
+    <p class="visually-hidden" role="status">{{ status() }}</p>
+
+    <div class="sp">
+      @for (pk of panes; track pk) {
+        <section class="pane" [class.pane--bot]="pk === 'bot'" [class.pane--off]="pane() !== pk" [id]="pk === 'bot' ? 'mx-bot' : null" [attr.aria-labelledby]="'mx-pane-' + pk">
+          <div class="sec-bar">
+            <h2 class="sec-title" [id]="'mx-pane-' + pk">{{ t('devMocks.hq.split.' + pk) }}</h2>
+            <span class="sec-sub">{{ t(pk === 'bot' ? 'devMocks.hq.split.botSub' : 'devMocks.hq.split.channelSub') }}</span>
+          </div>
+
+          @if (editing()) {
+            <ol class="elist" [attr.aria-label]="t('devMocks.hq.mix.order', { pane: t('devMocks.hq.split.' + pk) })">
+              @for (wd of layout()[pk]; track wd.kind; let i = $index; let first = $first; let last = $last) {
+                <li class="erow" [attr.data-kind]="wd.kind">
+                  <span class="erow__icon" aria-hidden="true"><app-lf-icon [name]="icon(wd.kind)" [size]="16"></app-lf-icon></span>
+                  <span class="erow__name">{{ name(wd.kind) }}<small>{{ isPinned(wd.kind) ? t('devMocks.hq.pick.always') : hint(wd.kind) }}</small></span>
+                  <div class="erow__ctl">
+                    <button type="button" class="ebtn" [disabled]="first" (click)="move(pk, i, -1)" [attr.aria-label]="t('devMocks.hq.widgets.moveUp', { name: name(wd.kind) })"><app-lf-icon name="sort-asc" [size]="15"></app-lf-icon></button>
+                    <button type="button" class="ebtn" [disabled]="last" (click)="move(pk, i, 1)" [attr.aria-label]="t('devMocks.hq.widgets.moveDown', { name: name(wd.kind) })"><app-lf-icon name="sort-desc" [size]="15"></app-lf-icon></button>
+                    <div class="eseg" role="group" [attr.aria-label]="t('devMocks.hq.widgets.sizeOf', { name: name(wd.kind) })">
+                      <button type="button" [attr.aria-pressed]="wd.size === 's'" (click)="resize(pk, i, 's')">{{ t('devMocks.hq.widgets.small') }}</button>
+                      <button type="button" [attr.aria-pressed]="wd.size === 'm'" (click)="resize(pk, i, 'm')">{{ t('devMocks.hq.widgets.large') }}</button>
+                    </div>
+                    @if (isPinned(wd.kind)) {
+                      <span class="ebtn ebtn--pin" [title]="t('devMocks.hq.pick.always')"><app-lf-icon name="pin" [size]="15"></app-lf-icon><span class="visually-hidden">{{ t('devMocks.hq.pick.always') }}</span></span>
+                    } @else {
+                      <button type="button" class="ebtn ebtn--x" (click)="remove(pk, wd.kind)" [attr.aria-label]="t('devMocks.hq.widgets.remove', { name: name(wd.kind) })"><app-lf-icon name="minus" [size]="15"></app-lf-icon></button>
+                    }
+                  </div>
+                </li>
+              }
+            </ol>
+            <button type="button" class="addtile" (click)="openCatalog(pk)" [disabled]="!missing()[pk].length">
+              <app-lf-icon name="plus" [size]="18"></app-lf-icon>
+              {{ missing()[pk].length ? t('devMocks.hq.widgets.add', { count: missing()[pk].length }) : t('devMocks.hq.widgets.allOn') }}
+            </button>
+          } @else {
+          <ul class="wg">
+            @for (it of items()[pk]; track it.type === 'widget' ? it.w.kind : 'lock') {
+              @if (it.type === 'lock') {
+                <li class="wd wd--m">
+                  <article class="lf-tile lockcard">
+                    <p class="lock-kicker"><app-lf-icon name="lock" [size]="14"></app-lf-icon>{{ t('devMocks.hq.split.lockedKicker') }}</p>
+                    <h3 class="lock-say">{{ t('devMocks.hq.split.lockedSay', { count: it.count }) }}</h3>
+                    <a class="btn btn--gold" routerLink="/mocks/dev/prod-settings">{{ t('devMocks.hq.split.lockedCta') }}</a>
+                  </article>
+                </li>
+              } @else {
+                @let wd = it.w;
+                <li class="wd" [class.wd--m]="wd.size === 'm'" [attr.data-kind]="wd.kind">
+                  @if (wd.size === 's') {
+                    @let g = glance(wd.kind);
+                    <button type="button" class="lf-tile gl" [attr.data-tone]="g.tone || null" (click)="open(wd.kind)" [attr.aria-label]="t('devMocks.hq.widgets.openAria', { name: name(wd.kind), value: g.value, label: g.label })">
+                      <span class="gl__top"><app-lf-icon [name]="icon(wd.kind)" [size]="15"></app-lf-icon>{{ name(wd.kind) }}</span>
+                      <span class="gl__value">
+                        @if (g.img) { <img [src]="g.img" alt="" width="28" height="28" /> }
+                        {{ g.value }}
+                      </span>
+                      <span class="gl__label">{{ g.label }}</span>
+                    </button>
+                  } @else if (habitOf(wd.kind); as h) {
+                    <article class="lf-tile wc wc--tip" [attr.data-tone]="h.tone">
+                      <app-hq-habit [habit]="h" [hideable]="true" (hide)="remove(pk, wd.kind)" />
+                    </article>
+                  } @else {
+                    <article class="lf-tile wc" [attr.aria-labelledby]="'mx-card-' + wd.kind">
+                      <app-hq-card [kind]="asCard(wd.kind)" size="m" [plan]="plan()" [botOn]="botOn()" [headingId]="'mx-card-' + wd.kind" />
+                    </article>
+                  }
+                </li>
+              }
+            }
+          </ul>
+          }
+          @if (!layout()[pk].length && !editing()) {
+            <p class="empty">{{ t('devMocks.hq.split.emptyChannel') }}</p>
+          }
+        </section>
+      }
+    </div>
+
+    <!-- Small widget opened -->
+    <dialog #detail class="pick" aria-labelledby="mx-detail-title" (click)="backdrop($event, 'detail')" (close)="opened.set(null)">
+      <div class="pick__sheet">
+        <div class="pick__head">
+          <h2 class="lf-h2" id="mx-detail-title">{{ opened() ? name(opened()!) : '' }}</h2>
+          <button type="button" class="icon-btn" (click)="closeDetail()" [attr.aria-label]="t('devMocks.hq.pick.close')"><app-lf-icon name="close" [size]="18"></app-lf-icon></button>
+        </div>
+        @if (opened(); as k) {
+          @if (habitOf(k); as h) {
+            <app-hq-habit class="detail-body" [habit]="h" />
+          } @else {
+            <app-hq-card class="detail-body" [kind]="asCard(k)" size="m" [plan]="plan()" [botOn]="botOn()" headingId="mx-detail-card" />
+          }
+        }
+        <div class="pick__foot">
+          <button type="button" class="btn btn--primary" (click)="closeDetail()">{{ t('devMocks.hq.pick.close') }}</button>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- Add to a side -->
+    <dialog #catalog class="pick" aria-labelledby="mx-cat-title" (click)="backdrop($event, 'catalog')">
+      <div class="pick__sheet">
+        <div class="pick__head">
+          <h2 class="lf-h2" id="mx-cat-title">{{ t('devMocks.hq.mix.catalog', { pane: t('devMocks.hq.split.' + catalogPane()) }) }}</h2>
+          <button type="button" class="icon-btn" (click)="closeCatalog()" [attr.aria-label]="t('devMocks.hq.pick.close')"><app-lf-icon name="close" [size]="18"></app-lf-icon></button>
+        </div>
+        <ul class="cat">
+          @for (k of missing()[catalogPane()]; track k) {
+            <li class="cat__row">
+              <span class="cat__icon" aria-hidden="true"><app-lf-icon [name]="icon(k)" [size]="16"></app-lf-icon></span>
+              <span class="pick__name">{{ name(k) }}<small>{{ hint(k) }}</small></span>
+              <button type="button" class="btn btn--sm" (click)="add(k)" [attr.aria-label]="t('devMocks.hq.widgets.addOne', { name: name(k) })"><app-lf-icon name="plus" [size]="14"></app-lf-icon>{{ t('devMocks.hq.widgets.addShort') }}</button>
+            </li>
+          } @empty {
+            <li class="empty">{{ t('devMocks.hq.widgets.allOn') }}</li>
+          }
+        </ul>
+        <div class="pick__foot">
+          <button type="button" class="btn btn--primary" (click)="closeCatalog()">{{ t('devMocks.hq.pick.done') }}</button>
+        </div>
+      </div>
+    </dialog>
+  </main>
+</div>

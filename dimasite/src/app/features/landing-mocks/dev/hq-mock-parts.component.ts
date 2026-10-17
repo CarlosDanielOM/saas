@@ -410,7 +410,7 @@ export class HqHabitComponent extends HqText {
 })
 export class HqModulesComponent extends HqText {
   readonly keys = input<ModuleKey[]>(MOST_USED);
-  readonly variant = input<'grid' | 'row' | 'dock'>('grid');
+  readonly variant = input<'grid' | 'fluid' | 'row' | 'dock'>('grid');
   readonly items = computed(() => this.keys().map((k) => MODULES.find((m) => m.key === k)!));
 }
 

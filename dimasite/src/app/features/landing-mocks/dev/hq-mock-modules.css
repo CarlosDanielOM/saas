@@ -35,4 +35,6 @@
 
 @media (min-width: 640px) {
   .hm { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  /* fluid: as many as fit, so 4–6 shortcuts fill a wide row */
+  .hm[data-variant='fluid'] { grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); }
 }

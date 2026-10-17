@@ -5705,6 +5705,20 @@
         "raidsTitle": "Raids",
         "botTitle": "Lo que hizo tu bot",
         "empty": "No hay nada que mostrar. Elige un tema arriba."
+      },
+      "mix": {
+        "dockLabel": "Accesos directos: {{count}} de {{max}} elegidos",
+        "catalog": "Añadir a {{pane}}",
+        "glance": {
+          "shortStreams": "menos seguidores/h en directos de menos de 2,5 h",
+          "weakDay": "día más flojo: el {{best}} trae {{ratio}}× más seguidores",
+          "raidBack": "canales a los que no devolviste la raid",
+          "quietWeeks": "seguidores por semana: flojas vs completas",
+          "sweetSpot": "tu mejor duración: {{rate}} seguidores/h",
+          "bot": "Eventos de Twitch {{on}}/{{total}} activos"
+        },
+        "editHint": "Ordena, cambia el tamaño o quita lo que muestra cada lado. El estado del bot y los créditos de IA siempre se quedan.",
+        "order": "Orden de {{pane}}"
       }
     }
   },

@@ -163,6 +163,13 @@ export class DevMockIndexComponent {
         'Current landing kept as is: chat demo when nobody is live, 2×2 counters, 8 features, 3-step start, honest plan value cues. Toggle "Someone live" at the bottom.'
     },
     {
+      id: 'dashboard-mix',
+      title: 'Dashboard · Split + Widgets',
+      badge: 'Channel + bot · for approval',
+      description:
+        'Split and Widgets combined: your channel | your bot side by side (tabs + bot strip on phones), each side a widget grid you can customize (move, resize, add, remove, presets) and up to 6 shortcuts. Uses the full screen width.'
+    },
+    {
       id: 'dashboard-split',
       title: 'Dashboard · Split',
       badge: 'Channel + bot · for approval',
