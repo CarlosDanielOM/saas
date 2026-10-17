@@ -27,6 +27,7 @@
 - Reusable functions (Helix calls, chat actions, moderation) live in `src/functions/`.
 - Handlers for EventSub, chat messages, redemptions, etc. are in `src/handlers/`.
 - Heavy or scheduled work belongs in `src/workers/` (see root AGENTS.md for worker criteria).
+- **Account records have distinct roles.** The `accounts` array embedded in `src/schemas/users.schema.ts` stores a user's streaming-platform identities and credentials, such as Twitch or Kick. The separate model in `src/schemas/accounts.schema.ts` stores external non-streaming account records; a Riot account is a possible future example, not an implemented integration. Neither model represents an application authorized to access DomDimaBot. If Dima OAuth clients, grants, or device sessions are added, keep them in separate models linked to `users._id`; this OAuth client/grant system is proposed and is not currently implemented.
 - **Moderation actions are always executed by the bot account** (`TWITCH_BOT_ACCOUNT_ID` in `src/utils/header.ts`), whether triggered by the streamer, a mod, a `!`command, or the AI via AST. Helix moderation endpoints require `moderator_id` to match the token owner — always pair the bot token with `moderator_id=TWITCH_BOT_ACCOUNT_ID` via `getTwitchModeratorHeader()`. Never pass a chatter/streamer ID as `moderator_id`.
 
 ## Verification & Production Deployment
