@@ -121,6 +121,7 @@ export interface ChannelOverview {
 
 export interface AiCreditsGrantResponse {
   granted: number;
+  chatAnnouncement?: 'sent' | 'skipped' | 'failed';
   before: {
     used: number;
     limit: number;
@@ -330,11 +331,12 @@ export class ChannelApiService {
     );
   }
 
-  grantAiCredits(channelID: string, credits: number, reason: string): Observable<{ error: boolean; message: string; data?: AiCreditsGrantResponse }> {
+  grantAiCredits(channelID: string, credits: number, reason: string, announceInChat: boolean): Observable<{ error: boolean; message: string; data?: AiCreditsGrantResponse }> {
     const url = `${this.linksService.getApiUrl()}/admin-site/users/${channelID}/ai-credits/grant`;
     return this.http.post<{ error: boolean; message: string; data?: AiCreditsGrantResponse }>(url, {
       credits,
-      reason
+      reason,
+      announceInChat
     });
   }
 

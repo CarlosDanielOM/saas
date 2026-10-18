@@ -7,6 +7,7 @@ import { getTwitchAppHeader } from '../../utils/header.js';
 import { getTwitchHelixUrl } from '../../utils/links.js';
 import { getDragonflyClient } from '../../utils/databases/dragonfly.database.js';
 import { grantPolarAiCredits } from '../../utils/polarsh.js';
+import { sendTwitchChatMessage } from '../../functions/chats/send_message.chat.js';
 import {
     AI_CREDITS_CACHE_SCHEMA_VERSION,
     AI_CREDITS_CACHE_TTL_SECONDS,
@@ -858,6 +859,11 @@ router.post('/users/:channelID/ai-credits/grant', authMiddleware as any, async (
         const channelIdStr = Array.isArray(channelID) ? channelID[0] : channelID;
         const credits = parseCreditGrantAmount(req.body?.credits);
         const reason = String(req.body?.reason || 'admin_manual_credit_grant').trim().slice(0, 180);
+        const announceInChat = req.body?.announceInChat ?? true;
+
+        if (typeof announceInChat !== 'boolean') {
+            return res.status(400).json({ error: true, message: 'announceInChat must be a boolean', status: 400 });
+        }
 
         if (!credits || credits <= 0) {
             return res.status(400).json({
@@ -934,12 +940,30 @@ router.post('/users/:channelID/ai-credits/grant', authMiddleware as any, async (
             await Promise.all(exhaustKeys.map((key) => cache.del(key)));
         }
 
+        // Chat delivery must never turn an applied grant into a retryable error.
+        // Keep the internal reason and operator identity out of public chat.
+        let chatAnnouncement: 'sent' | 'skipped' | 'failed' = 'skipped';
+        if (announceInChat) {
+            chatAnnouncement = 'failed';
+            try {
+                const amount = new Intl.NumberFormat(user.language === 'es' ? 'es-ES' : 'en-US').format(credits);
+                const message = user.language === 'es'
+                    ? `🎁 Un administrador añadió ${amount} créditos de IA a este canal. ¡Ya están disponibles!`
+                    : `🎁 An admin added ${amount} AI credits to this channel. The credits are ready to use!`;
+                const result = await sendTwitchChatMessage(channelIdStr, message);
+                if (!result.error && result.data?.is_sent === true) chatAnnouncement = 'sent';
+            } catch {
+                console.warn('Admin credits applied, but chat announcement failed', { channelID: channelIdStr });
+            }
+        }
+
         return res.status(200).json({
             error: false,
             message: `Granted ${credits} AI credits to channel ${channelIdStr}`,
             status: 200,
             data: {
                 granted: credits,
+                chatAnnouncement,
                 before,
                 after
             }

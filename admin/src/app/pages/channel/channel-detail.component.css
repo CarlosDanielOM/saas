@@ -64,6 +64,18 @@
   flex-wrap: wrap;
   gap: 0.45rem;
 }
+.grant-chat-option {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 2.75rem;
+  cursor: pointer;
+}
+.grant-chat-option input {
+  width: 1.25rem;
+  height: 1.25rem;
+  accent-color: var(--accent);
+}
 .grant-presets .lf-chip {
   min-height: 2.75rem;
   min-width: 5.5rem;

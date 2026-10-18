@@ -300,6 +300,15 @@
         [disabled]="isGrantingCredits()"
       />
     </label>
+    <div class="lf-step">
+      <span class="lf-step__label"><span class="lf-step__num">3</span>Chat announcement</span>
+      <label class="grant-chat-option">
+        <input type="checkbox" [checked]="announceInChat()"
+          (change)="announceInChat.set($any($event.target).checked)" [disabled]="isGrantingCredits()" />
+        <span>Announce in chat</span>
+      </label>
+      <p class="lf-hint">Posts the added amount in this channel’s chat, in the streamer’s language. Your reason stays private. Uncheck to skip.</p>
+    </div>
     @if (!grantError()) {
       <p class="lf-summary grant-summary">
         Adds <strong>{{ formatExact(grantAmount()) }}</strong> credits.
@@ -307,6 +316,7 @@
           Balance goes from {{ formatExact(aiCreditsBalance()) }} to
           <strong>{{ formatExact(aiCreditsBalance() + grantAmount()) }}</strong>.
         }
+        {{ announceInChat() ? 'A chat message will announce the added credits.' : 'No chat message will be sent.' }}
       </p>
     }
   </app-confirm-modal>

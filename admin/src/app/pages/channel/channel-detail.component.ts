@@ -61,6 +61,7 @@ export class ChannelDetailComponent implements OnInit {
   readonly creditPresets = [25000, 200000, 800000] as const;
   readonly customCreditAmount = signal('');
   readonly creditReason = signal('');
+  readonly announceInChat = signal(true);
   readonly isGrantingCredits = signal(false);
   // Granting is a two-step flow: pick the amount, then confirm in the dialog.
   readonly grantOpen = signal(false);
@@ -341,6 +342,7 @@ export class ChannelDetailComponent implements OnInit {
 
   openGrant(): void {
     this.grantSubmitAttempted.set(false);
+    this.announceInChat.set(true);
     this.grantOpen.set(true);
   }
 
@@ -367,7 +369,7 @@ export class ChannelDetailComponent implements OnInit {
     this.isGrantingCredits.set(true);
     const reason = this.creditReason().trim() || 'admin_manual_credit_grant';
 
-    this.channelApi.grantAiCredits(channelID, credits, reason).subscribe({
+    this.channelApi.grantAiCredits(channelID, credits, reason, this.announceInChat()).subscribe({
       next: (response) => {
         this.isGrantingCredits.set(false);
         const granted = response.data?.granted ?? credits;
@@ -383,7 +385,13 @@ export class ChannelDetailComponent implements OnInit {
           } as AiCreditsData);
         }
         const suffix = after ? ` They now have ${this.formatCredits(after.balance)} left.` : '';
-        this.toast.success(`Added ${this.formatCredits(granted)} AI credits.${suffix}`);
+        const announcement = response.data?.chatAnnouncement;
+        if (announcement === 'failed') {
+          this.toast.warning(`Added ${this.formatCredits(granted)} AI credits.${suffix} Chat announcement failed. Do not repeat the grant.`, 10000);
+        } else {
+          const chatSuffix = announcement === 'sent' ? ' Announced in chat.' : announcement === 'skipped' ? ' No chat message sent.' : '';
+          this.toast.success(`Added ${this.formatCredits(granted)} AI credits.${suffix}${chatSuffix}`);
+        }
         this.customCreditAmount.set('');
         this.creditReason.set('');
         this.grantPreset.set(200000);
