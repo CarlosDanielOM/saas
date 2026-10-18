@@ -4,7 +4,7 @@ export const OAUTH_SCOPES = {
     'credits:read': { active: true, key: 'credits' },
     'desktop:connect': { active: true, key: 'connect' },
     'usage:read': { active: false, key: 'usage' },
-    'pet:read': { active: false, key: 'petRead' },
+    'pet:read': { active: true, key: 'petRead' },
     'pet:write': { active: false, key: 'petWrite' },
     'pet:receive': { active: false, key: 'petReceive' },
     'pet:interact': { active: false, key: 'petInteract' },

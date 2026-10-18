@@ -30,6 +30,9 @@ export async function initializeOAuth(): Promise<void> {
         redirect_uris: ['http://127.0.0.1/oauth/callback', 'http://[::1]/oauth/callback'],
         allowed_scopes: Object.entries(OAUTH_SCOPES).filter(([, value]) => value.active).map(([key]) => key)
     } }, { upsert: true });
+    // Advertise configuration reads for the built-in desktop client. Existing grants and
+    // sessions retain their original scopes; users must explicitly authorize pet:read.
+    await OAuthClient.updateOne({ client_id: DESKTOP_CLIENT_ID }, { $addToSet: { allowed_scopes: 'pet:read' } });
 }
 
 export async function getClient(clientID: unknown) {

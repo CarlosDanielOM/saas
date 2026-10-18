@@ -1,0 +1,81 @@
+<div class="lf">
+  <main class="lf-main">
+    <header class="lf-head">
+      <a class="back" [routerLink]="modulePath()"><app-lf-icon name="back" [size]="16" />{{ t('back') }}</a>
+      <div class="title-row"><div><span class="eyebrow">{{ t('app') }}</span><h1>{{ t('title') }}</h1></div><span class="badge">{{ t('beta') }}</span></div>
+      <p>{{ t('description') }}</p>
+    </header>
+
+    @if (loading()) {
+      <section class="lf-tile state" role="status">{{ t('loading') }}</section>
+    } @else if (!config()) {
+      <section class="lf-tile state" role="alert"><p>{{ t('loadError') }}</p><button class="lf-btn" (click)="load()">{{ t('retry') }}</button></section>
+    } @else {
+      <form [formGroup]="form" (ngSubmit)="save()">
+        <section class="lf-tile overview">
+          <div class="pet-mark" aria-hidden="true"><app-lf-icon name="smile" [size]="30" /></div>
+          <div class="overview-copy"><h2>{{ draft().name || t('title') }}</h2><p>{{ t(draft().enabled ? 'ready' : 'paused') }}</p></div>
+          <label class="toggle"><input type="checkbox" formControlName="enabled"><span>{{ t('enabled') }}</span></label>
+          <p class="notice">{{ t('appNotice') }}</p>
+        </section>
+
+        <div class="lf-bento">
+          <section class="lf-tile voice-tile" aria-labelledby="voice-title">
+            <div class="section-head"><span class="section-icon"><app-lf-icon name="audio" /></span><div><h2 id="voice-title">{{ t('voiceTitle') }}</h2><p>{{ t('voiceHint') }}</p></div></div>
+            <label class="field">{{ t('name') }}<input formControlName="name" maxlength="40" autocomplete="off"></label>
+            <label class="toggle row-toggle"><span>{{ t('speechEnabled') }}</span><input type="checkbox" formControlName="speechEnabled"></label>
+            <fieldset class="providers"><legend>{{ t('provider') }}</legend><div class="choices">
+              @for (provider of providers; track provider) {
+                <button type="button" class="choice" [class.selected]="draft().tts.provider === provider" [attr.aria-pressed]="draft().tts.provider === provider" [disabled]="saving()" (click)="chooseProvider(provider)"><strong>{{ t(provider) }}</strong><small>{{ t(provider + 'Hint') }}</small></button>
+              }
+            </div></fieldset>
+            @if (draft().tts.provider !== 'piper') { <p class="credit-note">{{ t('credits') }}</p> }
+            <div class="field-pair">
+              <label class="field">{{ t('language') }}<select formControlName="language" (change)="ensureVoice()"><option value="en">English</option><option value="es">Español</option></select></label>
+              <label class="field">{{ t('voice') }}<select formControlName="voice">
+                @if (customFishVoice()) { <option [value]="draft().tts.voice">{{ t('customVoice') }}</option> }
+                @for (voice of voices(); track voice.id) { <option [value]="voice.id">{{ voice.name }}</option> }
+              </select></label>
+            </div>
+            @if (draft().tts.provider === 'fish') {
+              <details><summary>{{ t('customVoice') }}</summary><label class="field">{{ t('voiceId') }}<input formControlName="voice" maxlength="32" spellcheck="false" [attr.aria-describedby]="'voice-id-help'"></label><p id="voice-id-help">{{ t('voiceIdHint') }}</p></details>
+            }
+          </section>
+
+          <section class="lf-tile personality-tile" aria-labelledby="personality-title">
+            <div class="section-head"><span class="section-icon"><app-lf-icon name="smile" /></span><div><h2 id="personality-title">{{ t('personalityTitle') }}</h2><p>{{ t('personalityHint') }}</p></div></div>
+            <label class="field">{{ t('personalitySource') }}<select formControlName="personalitySource"><option value="custom">{{ t('customPersonality') }}</option><option value="profile">{{ t('savedProfile') }}</option></select></label>
+            @if (draft().personality.source === 'profile') {
+              <label class="field">{{ t('profile') }}<select formControlName="profileId"><option value="">{{ t('selectProfile') }}</option>@for (profile of config()!.profiles; track profile.id) { <option [value]="profile.id">{{ profile.name }}</option> }</select></label>
+              @if (!config()!.profiles.length) { <p>{{ t('noProfiles') }}</p> }
+              <p>{{ t('profileHint') }}</p><a class="text-link" [routerLink]="personalityPath()">{{ t('manageProfiles') }} <app-lf-icon name="forward" [size]="16" /></a>
+            } @else {
+              <label class="field">{{ t('prompt') }}<textarea formControlName="prompt" rows="7" maxlength="4000" [attr.aria-describedby]="'prompt-help'"></textarea></label><p id="prompt-help">{{ t('promptHint') }}</p>
+            }
+            @if (config()!.runtime.issues.length) { <p class="error" role="alert">{{ t('profileMissing') }}</p> }
+          </section>
+
+          <section class="lf-tile rules-tile" aria-labelledby="rules-title">
+            <div class="section-head"><span class="section-icon"><app-lf-icon name="shield" /></span><div><h2 id="rules-title">{{ t('rulesTitle') }}</h2><p>{{ t('rulesHint') }}</p></div></div>
+            <label class="field">{{ t('rules') }}<textarea formControlName="rules" rows="5" [attr.placeholder]="t('rulesPlaceholder')" [attr.aria-describedby]="'rules-help'"></textarea></label><p id="rules-help">{{ t('rulesLimit') }}</p>
+          </section>
+
+          <section class="lf-tile behavior-tile" aria-labelledby="behavior-title">
+            <div class="section-head"><span class="section-icon"><app-lf-icon name="settings" /></span><div><h2 id="behavior-title">{{ t('behaviorTitle') }}</h2><p>{{ t('behaviorHint') }}</p></div></div>
+            <label class="toggle row-toggle"><span>{{ t('respondToChat') }}</span><input type="checkbox" formControlName="respondToChat"></label>
+            <label class="toggle row-toggle"><span>{{ t('respondToEvents') }}</span><input type="checkbox" formControlName="respondToEvents"></label>
+            <div class="field-pair"><label class="field">{{ t('cooldown') }}<input type="number" min="0" max="3600" step="1" formControlName="cooldownSeconds"></label><label class="field">{{ t('maxLength') }}<input type="number" min="30" max="500" step="1" formControlName="maxReplyLength"></label></div>
+          </section>
+        </div>
+
+        <div class="lf-save-bar" [class.is-active]="dirty() || saving() || error()">
+          <div aria-live="polite"><strong>{{ t(saving() ? 'saving' : dirty() ? 'unsaved' : saved() ? 'saved' : 'upToDate') }}</strong>
+            @if (error()) { <p class="error" role="alert">{{ t(error()) }}</p> }
+            @if (dirty() && !valid()) { <p class="error">{{ t('invalid') }}</p> }
+          </div>
+          <div class="save-actions"><button type="button" class="lf-btn" [disabled]="!dirty() || saving()" (click)="reset()">{{ t('discard') }}</button><button type="submit" class="lf-btn primary" [disabled]="!dirty() || !valid() || saving()">{{ t('save') }}</button></div>
+        </div>
+      </form>
+    }
+  </main>
+</div>

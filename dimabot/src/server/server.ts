@@ -42,6 +42,7 @@ import { dimafxRoute } from "./routes/dimafx.route.js";
 import { getSiteAnalyticsSnapshot } from "../utils/siteanalytics.js";
 import { getReservedCommandsPayload } from "./services/command_defaults.service.js";
 import { oauthRoute, oauthApiRoute, oauthMetadata } from './oauth/routes.js';
+import { petRoute } from './routes/pet.route.js';
 
 const __dirname = getDirname(import.meta.url);
 
@@ -105,6 +106,7 @@ export const server = async (): Promise<Express.Application> => {
 
         // Setup aiPersonality routes
         app.use('/ai-personality', aiPersonalityRoute);
+        app.use('/pets', petRoute);
 
         // Setup memories routes
         app.use('/memories', memoriesRoute);

@@ -33,6 +33,7 @@ const MODULE_CHILDREN = new Map<string, ReadonlySet<string> | null>([
   ['triggers', null],
   ['dimafx', null],
   ['ai-personality', null],
+  ['pet', null],
   ['memories', null],
   ['referrals', null],
   ['redemptions', null],

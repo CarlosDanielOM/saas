@@ -20,6 +20,7 @@ import {
   LucideAngularModule,
   MessagesSquare,
   MonitorPlay,
+  PawPrint,
   Scissors,
   Shield,
   ShieldAlert,
@@ -89,6 +90,7 @@ const CORE_MODULE_IDS: readonly ModuleId[] = [
 ];
 
 const MODULE_GOALS: Readonly<Record<ModuleId, Goal>> = {
+  pet: 'stream',
   overlays: 'stream',
   roulette: 'stream',
   widgets: 'stream',
@@ -122,6 +124,7 @@ const RECENT_STORAGE_PREFIX = 'dimasite.modules.recent.';
 
 /** Matches the page guards. Overlay Studio remains broadcaster-only. */
 const MODULE_VIEW_PERMISSIONS: Readonly<Record<ModuleId, string | null>> = {
+  pet: null,
   overlays: null,
   roulette: '*',
   widgets: '*',
@@ -144,6 +147,7 @@ const MODULE_VIEW_PERMISSIONS: Readonly<Record<ModuleId, string | null>> = {
 };
 
 const MODULE_ICONS: Record<ModuleId, LucideIconData> = {
+  pet: PawPrint,
   roulette: Dices,
   widgets: MonitorPlay,
   overlays: Layers,
@@ -235,6 +239,7 @@ export class ModulesPageComponent {
         userPlanTier
       ),
       this.buildModule('dimafx', 'DimaFX', 'modules.dimafx.description', streamerName, userPlanTier),
+      this.buildModule('pet', this.t('pet.title'), 'pet.description', streamerName, userPlanTier),
       this.buildModule(
         'tts',
         'Text to Speech',

@@ -7,6 +7,7 @@ import { ErrorPageComponent } from './features/errors/error-page.component';
 import { channelOwnerGuard, permissionGuard } from './guards/permission.guard';
 import { streamerRouteShapeGuard, validStreamerGuard } from './guards/streamer-route.guard';
 import { overlayDraftGuard } from './features/overlays/overlay-draft.guard';
+import { petPlanGuard } from './features/pet/pet-plan.guard';
 
 export const routes: Routes = [
   { path: 'oauth/authorize', loadComponent: () => import('./features/auth/oauth-page.component').then(m => m.OAuthPageComponent), title: 'Connect an application | DomDimaBot' },
@@ -934,6 +935,12 @@ export const routes: Routes = [
               permission: 'ai:view'
             },
             title: 'AI Personality | DomDimaBot'
+          },
+          {
+            path: 'pet',
+            loadComponent: () => import('./features/pet/pet-page.component').then(m => m.PetPageComponent),
+            canActivate: [channelOwnerGuard, petPlanGuard],
+            title: 'Pet | DomDimaBot'
           },
           {
             path: 'memories',

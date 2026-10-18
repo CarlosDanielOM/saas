@@ -1,0 +1,100 @@
+:host {
+  display: block;
+  --bg: #f4f5f8;
+  --tile: #fff;
+  --fg: #14151a;
+  --muted: #596273;
+  --line: rgba(15, 17, 21, .12);
+  --accent: #6d28d9;
+  --accent-soft: #f0eafa;
+  --live: #166534;
+  --gold: #92400e;
+  --radius: 1.3rem;
+  --shadow: 0 12px 32px rgba(15, 17, 21, .04);
+  --font: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
+  --input: #f8f9fc;
+  --danger: #b91c1c;
+}
+:host-context(html.dark) {
+  --bg: #0f1115;
+  --tile: #171a21;
+  --fg: #f5f7fb;
+  --muted: #a7b0c2;
+  --line: rgba(255, 255, 255, .12);
+  --accent: #c4b5fd;
+  --accent-soft: #29233b;
+  --live: #86efac;
+  --gold: #fbbf24;
+  --input: #11141b;
+  --danger: #fca5a5;
+  --shadow: 0 12px 32px rgba(0, 0, 0, .12);
+}
+.lf { color: var(--fg); font-family: var(--font); min-height: calc(100dvh - 4rem); }
+.lf *, .lf *::before, .lf *::after { box-sizing: border-box; }
+.lf-main { width: min(100%, 74rem); margin: auto; padding: 1.25rem .8rem 2rem; }
+.lf-head { margin-bottom: 1.3rem; }
+.back, .text-link { display: inline-flex; align-items: center; gap: .5rem; min-height: 44px; color: var(--accent); font-weight: 650; text-decoration: none; }
+.title-row { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-top: .5rem; }
+.eyebrow { color: var(--muted); font-size: .75rem; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
+h1 { margin: .15rem 0; font-size: clamp(1.9rem, 4vw, 2.6rem); font-weight: 800; letter-spacing: -.05em; }
+h2 { margin: 0; font-size: 1.08rem; font-weight: 750; letter-spacing: -.02em; }
+p { margin: .4rem 0 0; font-size: .88rem; line-height: 1.6; color: var(--muted); overflow-wrap: anywhere; }
+.lf-head > p { max-width: 44rem; font-size: .95rem; }
+.badge { padding: .4rem .7rem; border: 1px solid var(--line); border-radius: 99px; color: var(--accent); font-size: .75rem; font-weight: 750; }
+form { display: grid; gap: 1rem; }
+.lf-tile { min-width: 0; padding: 1.15rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--tile); box-shadow: var(--shadow); }
+.overview { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: .8rem; }
+.pet-mark, .section-icon { display: grid; place-items: center; color: var(--accent); background: var(--accent-soft); border-radius: 1rem; }
+.pet-mark { width: 3.5rem; height: 3.5rem; }
+.overview-copy { min-width: 0; }
+.overview-copy h2 { font-size: 1.25rem; overflow-wrap: anywhere; }
+.overview > .toggle { grid-column: 1 / -1; }
+.notice { grid-column: 1 / -1; margin: 0; padding-top: .9rem; border-top: 1px solid var(--line); }
+.lf-bento { display: grid; gap: 1rem; }
+.lf-bento > section { display: grid; gap: 1rem; align-content: start; }
+.section-head { display: flex; align-items: flex-start; gap: .75rem; margin-bottom: .2rem; }
+.section-icon { flex: 0 0 2.6rem; height: 2.6rem; border-radius: .8rem; }
+.section-head p { margin-top: .25rem; }
+.field { display: grid; gap: .5rem; min-width: 0; color: var(--fg); font-size: .85rem; font-weight: 650; }
+.field-pair { display: grid; gap: 1rem; }
+input:not([type=checkbox]), select, textarea { width: 100%; min-width: 0; min-height: 46px; border: 1px solid var(--line); border-radius: .8rem; padding: .7rem .8rem; color: var(--fg); background: var(--input); font-family: inherit; font-size: 16px; font-weight: 450; }
+textarea { resize: vertical; line-height: 1.6; }
+textarea::placeholder { color: var(--muted); opacity: 1; }
+input[type=checkbox] { flex: 0 0 22px; width: 22px; height: 22px; accent-color: #7c3aed; }
+.toggle { display: flex; align-items: center; gap: .7rem; min-height: 44px; font-size: .88rem; font-weight: 650; cursor: pointer; }
+.row-toggle { justify-content: space-between; border-bottom: 1px solid var(--line); padding-bottom: .7rem; }
+.providers { min-width: 0; margin: 0; padding: 0; border: 0; }
+legend { padding: 0 0 .5rem; font-size: .85rem; font-weight: 650; }
+.choices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .45rem; }
+.choice { display: grid; align-content: center; gap: .25rem; min-height: 76px; border: 1px solid var(--line); border-radius: .8rem; padding: .6rem .3rem; background: var(--input); color: var(--fg); cursor: pointer; font-family: inherit; }
+.choice strong { font-size: .88rem; }
+.choice small { color: var(--muted); font-size: .69rem; }
+.choice.selected { background: var(--accent-soft); border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.credit-note { margin: 0; color: var(--gold); }
+details { padding-top: .2rem; }
+summary { display: flex; align-items: center; min-height: 44px; color: var(--accent); font-size: .88rem; font-weight: 650; cursor: pointer; }
+summary::after { content: '+'; margin-left: auto; }
+details[open] summary::after { content: '−'; }
+.lf-save-bar { display: grid; gap: .8rem; padding: 1rem; border: 1px solid var(--line); border-radius: 1rem; color: var(--fg); background: var(--tile); box-shadow: 0 5px 24px #0002; }
+.lf-save-bar.is-active { position: sticky; bottom: .6rem; z-index: 5; }
+.lf-save-bar strong { font-size: .85rem; }
+.save-actions { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+.lf-btn { display: inline-flex; justify-content: center; align-items: center; min-height: 46px; border: 1px solid var(--line); border-radius: .75rem; padding: .6rem .9rem; background: var(--input); color: var(--fg); font-family: inherit; font-size: .88rem; font-weight: 750; cursor: pointer; }
+.lf-btn.primary { background: #6d28d9; border-color: #6d28d9; color: #fff; }
+button:disabled { opacity: .5; cursor: default; }
+.error { color: var(--danger); }
+.state { min-height: 8rem; display: grid; align-content: center; gap: 1rem; }
+:is(a, button, input, select, textarea, summary):focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+@media (min-width: 480px) { .field-pair { grid-template-columns: 1fr 1fr; } }
+@media (min-width: 640px) {
+  .lf-main { padding: 1.6rem 1.5rem 2rem; }
+  .overview { grid-template-columns: auto 1fr auto; }
+  .overview > .toggle { grid-column: auto; }
+  .lf-save-bar { display: flex; align-items: center; justify-content: space-between; }
+  .save-actions { flex-shrink: 0; }
+  .lf-tile { padding: 1.4rem; }
+}
+@media (min-width: 960px) {
+  .lf-bento { grid-template-columns: 1fr 1fr; align-items: stretch; }
+  .lf-head { margin-bottom: 1.5rem; }
+}

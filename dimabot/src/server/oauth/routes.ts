@@ -5,6 +5,7 @@ import { OAuthGrant } from '../../schemas/oauth_grant.schema.js';
 import { OAuthSession } from '../../schemas/oauth_session.schema.js';
 import { getAiCredits } from '../../utils/billing.js';
 import { getFreeAiCreditDisplay } from '../../utils/ai_credit_display.js';
+import { getPetConfiguration, PetSettingsError } from '../services/pet_settings.service.js';
 import { ACCESS_TTL_SECONDS, DESKTOP_CLIENT_ID, OAuthError, OAUTH_SCOPES } from './catalog.js';
 import { approveAuthorization, authenticateAccess, exchangeCode, getAuthorization, getClient,
     oauthIssuer, oauthWebsite, rateLimit, refreshAccess, revokeSession, revokeToken,
@@ -183,6 +184,17 @@ oauthApiRoute.get('/me/credits', asyncRoute(async (req, res) => {
     const credits = await getAiCredits(user, identity.channel_id);
     const display = await getFreeAiCreditDisplay(user, identity.channel_id, credits);
     res.json({ ...credits, ...(display ? { display } : {}) });
+}));
+oauthApiRoute.get('/me/pet', asyncRoute(async (req, res) => {
+    const identity = await access(req, 'pet:read');
+    try {
+        const { profiles: _profiles, voices: _voices, ...configuration } =
+            await getPetConfiguration(identity.user_id, identity.channel_id);
+        res.json(configuration);
+    } catch (error) {
+        if (error instanceof PetSettingsError) throw new OAuthError(error.code, error.status);
+        throw error;
+    }
 }));
 oauthApiRoute.get('/desktop/session', asyncRoute(async (req, res) => {
     const identity = await access(req, 'desktop:connect');
