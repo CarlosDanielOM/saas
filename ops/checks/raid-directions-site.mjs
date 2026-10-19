@@ -133,11 +133,16 @@ const SITE_EVENTS = [
 ].map(event=>({...event,version:'1',description:{en:'Raid fixture',es:'Raid fixture'},icon:'Users',color:'#7c3aed',textColor:'#fff',releaseStage:'stable',enabled:false,
  config:[{id:'message',type:'text',label:{en:'Optional message',es:'Mensaje opcional'},value:'',canDisable:true}]}));
 function raidData(o,days=7){
- const totals=o.raidEmpty?[]:[{_id:'incoming',raids:2,viewers:80,biggest:50,followsAfter:12,evaluatedRaids:2},{_id:'outgoing',raids:1,viewers:25,biggest:25,followsAfter:0,evaluatedRaids:0}];
+ const totals=o.raidEmpty?[]:[{_id:'incoming',raids:4,viewers:106,biggest:40,followsAfter:o.raidUncounted?0:o.raidZero?0:64,evaluatedRaids:o.raidUncounted?0:4},{_id:'outgoing',raids:2,viewers:25,biggest:25,followsAfter:0,evaluatedRaids:0}];
  return {summary:o.raidPending?null:{days,from:daysAgo(days-1),to:new Date().toISOString(),totals,
- incoming:[{peerID:'p1',peerName:'FriendlyRaider',peerLogin:'friendly',viewers:50,occurredAt:daysAgo(1),followsAfter:8,lastOutgoingAt:daysAgo(2)}],
+ incoming:[
+ {peerID:'p4',peerName:o.raidLong?'A_very_long_streamer_name_that_needs_to_wrap':'Arcadia88',peerLogin:'arcadia88',viewers:22,occurredAt:daysAgo(1),followsAfter:13,lastOutgoingAt:null},
+ {peerID:'p3',peerName:'PixelPancho',peerLogin:'pixelpancho',viewers:40,occurredAt:daysAgo(2),followsAfter:24,lastOutgoingAt:null},
+ {peerID:'p2',peerName:'MidnightMoth',peerLogin:'midnightmoth',viewers:26,occurredAt:daysAgo(3),followsAfter:16,lastOutgoingAt:daysAgo(4)},
+ {peerID:'p1',peerName:'FriendlyRaider',peerLogin:'friendly',viewers:18,occurredAt:daysAgo(5),followsAfter:11,lastOutgoingAt:daysAgo(2)}
+ ].map(row=>({...row,followsAfter:o.raidUncounted?null:o.raidZero?0:row.followsAfter})),
  outgoing:[{peerID:'p2',peerName:'DestinationStreamer',peerLogin:'destination',viewers:25,occurredAt:daysAgo(1),followsAfter:null}],
- topIncoming:[{_id:'p1',name:'FriendlyRaider',login:'friendly',count:2,viewers:80,lastAt:daysAgo(1)}],
+ topIncoming:[{_id:'p1',name:'FriendlyRaider',login:'friendly',count:1,viewers:18,lastAt:daysAgo(5)}],
  topOutgoing:[{_id:'p2',name:'DestinationStreamer',login:'destination',count:1,viewers:25,lastAt:daysAgo(1)}]},
  tracking:{incoming:true,outgoing:!o.trackingOff},pending:!!o.raidPending,stale:!!o.raidStale,updatedAt:new Date().toISOString()};
 }
@@ -151,7 +156,7 @@ function envelope(data) {
  */
 async function newPage(browser, viewport, o) {
   const context = await browser.newContext({ viewport, deviceScaleFactor: 1, timezoneId: 'UTC', colorScheme: o.theme });
-  const state = { chatEnabled: o.chatEnabled, toggles: [], writes: [], stored:SITE_EVENTS.map((event,i)=>({_id:'raid-'+i,type:event.type,enabled:true,message:'',condition:event.type==='channel.raid'?{to_broadcaster_user_id:CHANNEL_ID}:{from_broadcaster_user_id:CHANNEL_ID}})) };
+  const state = { chatEnabled: o.chatEnabled, toggles: [], writes: [], avatarReads:[], stored:SITE_EVENTS.map((event,i)=>({_id:'raid-'+i,type:event.type,enabled:true,message:'',condition:event.type==='channel.raid'?{to_broadcaster_user_id:CHANNEL_ID}:{from_broadcaster_user_id:CHANNEL_ID}})) };
   const app = {
     name: 'Test Streamer', email: 'test@example.invalid', language: o.language ?? 'en', plan_tier: 'premium', actived: true,
     chat_enabled: o.chatEnabled, twitch_user_id: CHANNEL_ID, has_permissions: true, up_to_date_permissions: true, administrating: []
@@ -175,6 +180,7 @@ async function newPage(browser, viewport, o) {
     const req = route.request();
     const url = new URL(req.url());
     if (url.origin === origin) return route.continue();
+    if(url.hostname==='avatars.test')return route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><rect width="40" height="40" fill="#7c3aed"/></svg>'});
     if (url.hostname !== 'api.domdimabot.com') return route.abort();
 
     const p = url.pathname;
@@ -211,7 +217,12 @@ async function newPage(browser, viewport, o) {
       data = { chatEnabled: state.chatEnabled };
     } else if (p.startsWith('/goals/')) {
       data = { plan: 'premium', limit: 3, metrics: ['follows'], revision: 1, goals: [], canManage: true };
-    } else if (p === '/users') data = { id: CHANNEL_ID, username: 'test', profile_image_url: '' };
+    } else if (p === '/users') {
+      const login=url.searchParams.get('username');
+      state.avatarReads.push(login);
+      if(login==='midnightmoth')return route.fulfill({status:404,json:{error:true}});
+      data = { id: CHANNEL_ID, username: login||'test', profile_image_url:login==='friendly'?'https://avatars.test/friendly.svg':'' };
+    }
     return route.fulfill({ status: 200, json: envelope(data) });
   });
 
@@ -266,11 +277,25 @@ const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
 try {
  for(const theme of ['dark','light']) for(const width of [320,390,1280]) {
   const {context,page,errors,state}=await newPage(browser,{width,height:1000},{chatEnabled:true,automodOn:true,theme});
-  const widget=page.locator('app-dashboard-raid-card');await widget.getByText('12 recorded follows after incoming raids').waitFor();
-  assert.match(await widget.innerText(),/80/);
-  await widget.getByText('Recent raids',{exact:true}).click();await widget.getByText('FriendlyRaider',{exact:true}).first().waitFor();
-  await widget.getByText('No outgoing raid to this channel recorded since this raid.',{exact:true}).waitFor();
-  await widget.getByRole('button',{name:'Outgoing',exact:true}).click();await widget.getByText('DestinationStreamer',{exact:true}).first().waitFor();
+  const widget=page.locator('app-dashboard-raid-card');await widget.getByText('4 incoming raids. 64 follows recorded afterward.').waitFor();
+  await widget.getByRole('list',{name:'Recent raids',exact:true}).getByText('FriendlyRaider',{exact:true}).waitFor();
+  assert.equal(await widget.locator('.raid-row').count(),4);
+  await widget.getByText('Raided back',{exact:true}).waitFor();
+  assert.equal(await widget.getByText('No raid back recorded',{exact:true}).count(),3);
+  await widget.getByText('+24',{exact:true}).waitFor();
+  await widget.getByText('Consider raiding PixelPancho next.',{exact:true}).waitFor();
+  await until(()=>widget.locator('.raid-avatar img').count(),'real profile image');
+  await noOverflow(page,`${theme}-${width}-incoming`);await axe(page,`${theme}-${width}-incoming`);
+  const cardAxe=await new AxeBuilder({page}).include('app-dashboard-raid-card').withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();assert.deepEqual(cardAxe.violations,[]);
+  const card=page.locator('[data-testid=dashboard-raids]');
+  const box=await card.boundingBox();await page.setViewportSize({width,height:Math.max(1000,Math.ceil(box.height)+250)});
+  await card.scrollIntoViewIfNeeded();await page.evaluate(()=>window.scrollBy(0,-120));
+  await card.screenshot({path:`${shots}/incoming-${theme}-${width}.png`});
+  await page.setViewportSize({width,height:1000});
+  const avatarReads=state.avatarReads.length;
+  await widget.getByRole('button',{name:'Refresh raid history',exact:true}).click();await widget.getByRole('button',{name:'Refresh raid history',exact:true}).waitFor({state:'visible'});
+  await page.waitForTimeout(150);assert.equal(state.avatarReads.length,avatarReads,'refresh reuses public profile lookups');
+  await widget.getByRole('button',{name:'Outgoing',exact:true}).click();await widget.getByRole('list',{name:'Recent raids',exact:true}).getByText('DestinationStreamer',{exact:true}).waitFor();
   await widget.getByLabel('Period',{exact:true}).selectOption('30');await page.waitForTimeout(100);
   await noOverflow(page,`${theme}-${width}`);await axe(page,`${theme}-${width}`);assert.deepEqual(errors,[]);
   await widget.screenshot({path:`${shots}/widget-${theme}-${width}.png`});
@@ -297,17 +322,21 @@ try {
   assert.equal(state.writes.at(-1).payload.type,'channel.raid.outgoing');assert.deepEqual(state.writes.at(-1).payload.condition,{from_broadcaster_user_id:CHANNEL_ID});
   assert.deepEqual(errors,[]);await context.close();
  }
- for(const scenario of [{raidEmpty:true},{trackingOff:true},{raidFail:true},{raidPending:true},{raidStale:true}]) {
+ for(const scenario of [{raidEmpty:true},{trackingOff:true},{raidFail:true},{raidPending:true},{raidStale:true},{raidUncounted:true},{raidZero:true},{raidLong:true}]) {
   const {context,page}=await newPage(browser,{width:390,height:1000},{chatEnabled:true,automodOn:true,theme:'dark',...scenario});
   const widget=page.locator('app-dashboard-raid-card');
   if(scenario.raidEmpty)await widget.getByText('No raids recorded for this direction in this period.').waitFor();
-  if(scenario.trackingOff){await widget.getByRole('button',{name:'Outgoing',exact:true}).click();await widget.getByText(/Tracking is off for this direction/).waitFor();}
+  if(scenario.raidUncounted){await widget.getByText('4 incoming raids recorded.',{exact:true}).waitFor();assert.equal(await widget.getByText('Not counted yet',{exact:true}).count(),4);assert.equal(await widget.getByText('0',{exact:true}).count(),0);}
+  if(scenario.raidZero){await widget.getByText('4 incoming raids. 0 follows recorded afterward.').waitFor();assert.equal(await widget.getByText('0',{exact:true}).count(),4);}
+  if(scenario.raidLong){await widget.getByText('A_very_long_streamer_name_that_needs_to_wrap',{exact:true}).waitFor();await noOverflow(page,'long raider name');}
+  if(scenario.trackingOff){await widget.getByText('Raid-back tracking is off',{exact:true}).first().waitFor();assert.equal(await widget.getByText('No raid back recorded',{exact:true}).count(),0);await widget.getByRole('button',{name:'Outgoing',exact:true}).click();await widget.getByText(/Tracking is off for this direction/).waitFor();}
   if(scenario.raidFail)await widget.getByRole('button',{name:'Retry',exact:true}).waitFor();
   if(scenario.raidPending)await widget.getByText(/Preparing the latest summary/).waitFor();
   if(scenario.raidStale)await widget.getByText(/Showing the last saved summary/).waitFor();
   await context.close();
  }
  const {context,page}=await newPage(browser,{width:390,height:1000},{chatEnabled:true,automodOn:true,theme:'dark',language:'es'});
+ await page.locator('app-dashboard-raid-card').getByText('4 raids entrantes. 64 follows registrados después.').waitFor();
  await page.locator('app-dashboard-raid-card').getByRole('button',{name:'Salientes',exact:true}).waitFor();
  await page.goto(`${base}/test/modules/chat-events`);await page.getByRole('heading',{name:'Raid saliente',exact:true}).waitFor();await context.close();
  console.log('PASS RAID SITE: real dashboard card, direction/range controls, recent/partner history, silent message, independent toggles and delete/re-add confirmations, empty/off/pending/stale/error, Spanish, 320/390/1280 dark/light axe and overflow');

@@ -1,32 +1,48 @@
 :host { display: block; min-width: 0; }
-.raid-head { display: flex; align-items: center; gap: .6rem; }
-.raid-head h3 { font-size: .94rem; font-weight: 800; margin: 0; flex: 1; }
-.raid-icon { display: grid; place-items: center; color: var(--accent); background: var(--accent-soft); width: 2rem; height: 2rem; border-radius: .65rem; }
-.raid-intro,.raid-note { font-size: .76rem; color: var(--muted); line-height: 1.6; }
-.raid-tools { display: flex; align-items: end; flex-wrap: wrap; gap: .65rem; margin: .85rem 0; }
-.raid-tabs { display: flex; gap: .15rem; border: 1px solid var(--line); border-radius: .8rem; padding: .2rem; }
-button,select { font: inherit; color: var(--fg); background: var(--btn); border: 1px solid var(--line); border-radius: .65rem; min-height: 44px; padding: .4rem .65rem; cursor: pointer; }
+.raid-head { display: flex; align-items: center; gap: .65rem; }
+.raid-head h3 { font-size: 1.05rem; font-weight: 800; margin: 0; flex: 1; }
+.raid-icon { display: grid; place-items: center; color: var(--accent); background: var(--accent-soft); width: 2.25rem; height: 2.25rem; border-radius: .75rem; flex-shrink: 0; }
+button, select { font: inherit; color: var(--fg); background: var(--btn); border: 1px solid var(--line); border-radius: .65rem; min-height: 44px; padding: .4rem .65rem; cursor: pointer; }
+select { font-size: 16px; max-width: 8rem; }
+.raid-tabs { display: flex; gap: .15rem; width: fit-content; max-width: 100%; border: 1px solid var(--line); border-radius: .8rem; padding: .2rem; margin-top: 1rem; }
 .raid-tabs button { border: 0; background: transparent; font-size: .78rem; font-weight: 700; }
 .raid-tabs button[aria-pressed=true] { background: #7c3aed; color: white; }
-.raid-range { display: flex; flex-direction: column; gap: .2rem; color: var(--muted); font-size: .7rem; flex: 1; }
-select { font-size: 16px; width: 100%; }
-button:focus-visible,select:focus-visible,summary:focus-visible,a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+button:focus-visible, select:focus-visible, summary:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 button:disabled { opacity: .6; cursor: wait; }
-.raid-stats { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: .5rem; margin: 1rem 0; }
-.raid-stats dt { color: var(--muted); font-size: .7rem; line-height: 1.5; }
-.raid-stats dd { font-size: 1.35rem; font-weight: 800; margin: .2rem 0 0; font-variant-numeric: tabular-nums; }
-.raid-follow { font-size: .85rem; font-weight: 700; }
-.raid-follow small { display: block; color: var(--muted); font-size: .72rem; font-weight: 400; margin-top: .2rem; }
-.raid-detail { border-top: 1px solid var(--line); margin-top: .65rem; padding-top: .35rem; }
-summary { cursor: pointer; font-size: .78rem; font-weight: 700; min-height: 44px; align-content: center; }
-.raid-list { padding: 0; margin: 0; list-style: none; }
-.raid-list li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .3rem .6rem; padding: .6rem 0; border-top: 1px solid var(--line); font-size: .78rem; }
-.raid-list li div { min-width: 0; }
-.raid-list strong { overflow-wrap: anywhere; }
-.raid-list time,.raid-list small { display: block; color: var(--muted); font-size: .7rem; }
-.raid-list small { flex-basis: 100%; }
+.raid-headline { font-size: 1.08rem; line-height: 1.5; font-weight: 800; margin: 1.15rem 0 .4rem; text-wrap: pretty; }
+.raid-context { color: var(--muted); font-size: .78rem; margin: 0; line-height: 1.6; }
+.raid-note { color: var(--muted); font-size: .73rem; line-height: 1.6; margin: .4rem 0; }
+.raid-list, .raid-partners { padding: 0; margin: .85rem 0 0; list-style: none; }
+.raid-row { display: grid; grid-template-columns: 2.5rem minmax(0,1fr) auto; align-items: start; gap: .7rem; padding: 1rem 0; }
+.raid-row + .raid-row { border-top: 1px solid var(--line); }
+.raid-avatar { display: grid; place-items: center; width: 2.5rem; height: 2.5rem; border-radius: 50%; overflow: hidden; color: var(--fg); background: var(--accent-soft); font-size: 1rem; font-weight: 800; }
+.raid-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.raid-person { min-width: 0; }
+.raid-person strong { font-size: .94rem; font-weight: 800; line-height: 1.4; overflow-wrap: anywhere; }
+.raid-meta { margin: .12rem 0 0; color: var(--muted); font-size: .73rem; line-height: 1.5; }
+.raid-return { margin: .45rem 0 0; color: var(--muted); font-size: .73rem; font-weight: 700; line-height: 1.5; }
+.raid-return--done { color: var(--ok); }
+.raid-return--waiting { color: var(--warn); }
+.raid-gain { text-align: right; max-width: 4.5rem; font-variant-numeric: tabular-nums; }
+.raid-gain strong { display: block; font-size: 1.2rem; line-height: 1.4; font-weight: 800; }
+.raid-gain--positive strong { color: var(--ok); }
+.raid-gain small { display: block; color: var(--muted); font-size: .63rem; line-height: 1.4; margin-top: .1rem; }
+.raid-list-caption { margin: 0 0 .85rem; }
+.raid-insight { display: flex; align-items: start; gap: .65rem; border-radius: .85rem; background: var(--btn); padding: .85rem; }
+.raid-insight app-lf-icon { color: var(--accent); flex-shrink: 0; margin-top: .15rem; }
+.raid-insight p { font-size: .8rem; line-height: 1.65; margin: 0; }
+.raid-insight span { display: block; }
+.raid-detail { border-top: 1px solid var(--line); margin-top: .65rem; }
+summary { cursor: pointer; font-size: .76rem; font-weight: 700; min-height: 44px; align-content: center; }
+.raid-partners { margin: 0; }
+.raid-partners li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .3rem .6rem; padding: .6rem 0; font-size: .76rem; }
+.raid-partners strong { overflow-wrap: anywhere; }
+.raid-partners span { color: var(--muted); }
+.raid-footer { display: flex; align-items: center; gap: .65rem; margin-top: .65rem; }
+.raid-footer .raid-note { flex: 1; min-width: 0; }
+.raid-refresh { display: grid; place-items: center; width: 44px; flex-shrink: 0; }
+.raid-method p { color: var(--muted); font-size: .73rem; line-height: 1.6; }
 .raid-notice { background: var(--warn-soft,var(--btn)); border-left: 2px solid var(--warn); padding: .65rem; font-size: .78rem; line-height: 1.6; }
 a { color: var(--accent); font-weight: 700; }
-.raid-method p { color: var(--muted); font-size: .72rem; line-height: 1.6; }
 .raid-empty { color: var(--muted); font-size: .85rem; padding: .7rem 0; }
-@media (min-width:640px) { .raid-range { flex: 0 1 10rem; margin-left: auto; } }
+@media (min-width: 640px) { .raid-headline { font-size: 1.15rem; } .raid-row { gap: .85rem; } .raid-gain { max-width: 6rem; } }

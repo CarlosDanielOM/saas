@@ -1,11 +1,13 @@
-<div class="raid-head"><span class="raid-icon" aria-hidden="true"><app-lf-icon name="users" [size]="18" /></span><h3>{{ t('title') }}</h3><button type="button" class="raid-refresh" (click)="load()" [disabled]="loading()" [attr.aria-label]="t('refresh')"><app-lf-icon name="refresh" [size]="16" /></button></div>
-<p class="raid-intro">{{ t('intro') }}</p>
-<div class="raid-tools">
-  <div class="raid-tabs" [attr.aria-label]="t('direction')">
-    <button type="button" [attr.aria-pressed]="direction() === 'incoming'" (click)="direction.set('incoming')">{{ t('incoming') }}</button>
-    <button type="button" [attr.aria-pressed]="direction() === 'outgoing'" (click)="direction.set('outgoing')">{{ t('outgoing') }}</button>
-  </div>
-  <label class="raid-range">{{ t('range') }}<select [attr.aria-label]="t('range')" [value]="days()" (change)="days.set(+$any($event.target).value)"><option value="7">{{ t('days7') }}</option><option value="30">{{ t('days30') }}</option></select></label>
+<div class="raid-head">
+  <span class="raid-icon" aria-hidden="true"><app-lf-icon name="users" [size]="19" /></span>
+  <h3>{{ t('title') }}</h3>
+  <select [attr.aria-label]="t('range')" [value]="days()" (change)="days.set(+$any($event.target).value)">
+    <option value="7">{{ t('shortDays7') }}</option><option value="30">{{ t('shortDays30') }}</option>
+  </select>
+</div>
+<div class="raid-tabs" [attr.aria-label]="t('direction')">
+  <button type="button" [attr.aria-pressed]="direction() === 'incoming'" (click)="direction.set('incoming')">{{ t('incoming') }}</button>
+  <button type="button" [attr.aria-pressed]="direction() === 'outgoing'" (click)="direction.set('outgoing')">{{ t('outgoing') }}</button>
 </div>
 @if (loading() && !data()) { <p role="status">{{ t('loading') }}</p> }
 @if (error()) { <p class="raid-notice" role="alert">{{ t('error') }} <button type="button" (click)="load()">{{ t('retry') }}</button></p> }
@@ -15,22 +17,55 @@
   @if (view.stale) { <p class="raid-notice">{{ t('stale') }}</p> }
   @if (view.summary) {
     @if (total(); as stats) {
-      <dl class="raid-stats"><div><dt>{{ t('raidCount') }}</dt><dd>{{ number(stats.raids) }}</dd></div><div><dt>{{ t('announcedViewers') }}</dt><dd>{{ number(stats.viewers) }}</dd></div><div><dt>{{ t('biggest') }}</dt><dd>{{ number(stats.biggest) }}</dd></div></dl>
-      @if (direction() === 'incoming') {
-        <p class="raid-follow">{{ t('followCount', { count: number(stats.followsAfter) }) }} <small>{{ t('followCoverage', { count: stats.evaluatedRaids, total: stats.raids }) }}</small></p>
-      }
-      <details class="raid-detail"><summary>{{ t('recent') }}</summary><ul class="raid-list">
+      <p class="raid-headline">{{ headline() }}</p>
+      <p class="raid-context">{{ t('viewers', { count: number(stats.viewers) }) }} · {{ t('biggestWithCount', { count: number(stats.biggest) }) }}</p>
+      @if (direction() === 'incoming') { <p class="raid-note">@if (stats.evaluatedRaids < stats.raids) { {{ t('followCoverage', { count: stats.evaluatedRaids, total: stats.raids }) }} } {{ t('timingNote') }}</p> }
+      <ul class="raid-list" [attr.aria-label]="t('recent')">
         @for (raid of recent(); track $index) {
-          <li><div><strong>{{ raid.peerName || raid.peerLogin }}</strong><time>{{ date(raid.occurredAt) }}</time></div><span>{{ t('viewers', { count: number(raid.viewers) }) }}</span>
-            @if (direction() === 'incoming') { <small>{{ hasRaidedSince(raid) ? t('lastOutgoing', { date: date(raid.lastOutgoingAt!) }) : t('noRecordedReturn') }}</small> }
+          <li class="raid-row">
+            <span class="raid-avatar" aria-hidden="true">
+              @if (avatars()[raid.peerLogin]; as photo) { <img [src]="photo" alt="" width="40" height="40" loading="lazy" (error)="avatarFailed(raid.peerLogin)" /> }
+              @else { {{ initial(raid) }} }
+            </span>
+            <div class="raid-person">
+              <strong>{{ raid.peerName || raid.peerLogin }}</strong>
+              <p class="raid-meta"><time [attr.datetime]="raid.occurredAt" [title]="date(raid.occurredAt)">{{ shortDate(raid.occurredAt) }}</time> · {{ t('viewers', { count: number(raid.viewers) }) }}</p>
+              @if (direction() === 'incoming') {
+                <p class="raid-return" [class.raid-return--done]="hasRaidedSince(raid)" [class.raid-return--waiting]="!hasRaidedSince(raid) && view.tracking.outgoing" [title]="raid.lastOutgoingAt ? t('lastOutgoing', { date: date(raid.lastOutgoingAt) }) : t('noRecordedReturn')">
+                  {{ hasRaidedSince(raid) ? t('raidedBack') : view.tracking.outgoing ? t('noRaidBack') : t('returnTrackingOff') }}
+                </p>
+              }
+            </div>
+            @if (direction() === 'incoming') {
+              <div class="raid-gain" [class.raid-gain--positive]="raid.followsAfter !== null && raid.followsAfter > 0">
+                <strong>{{ raid.followsAfter === null ? '—' : (raid.followsAfter > 0 ? '+' : '') + number(raid.followsAfter) }}</strong>
+                <small>{{ t(raid.followsAfter === null ? 'notCounted' : 'followsAfter') }}</small>
+              </div>
+            }
           </li>
         }
-      </ul></details>
-      <details class="raid-detail"><summary>{{ t(direction() === 'incoming' ? 'topIncoming' : 'topOutgoing') }}</summary><ul class="raid-list">
+      </ul>
+      @if (stats.raids > recent().length) { <p class="raid-note raid-list-caption">{{ t('latestShown', { count: recent().length, total: stats.raids }) }}</p> }
+      @if (direction() === 'incoming') {
+        <div class="raid-insight">
+          <app-lf-icon name="bulb" [size]="18" aria-hidden="true" />
+          <p>
+            @if (!view.tracking.outgoing) { {{ t('outgoingTrackingHint') }} <a [routerLink]="settingsLink()">{{ t('configure') }}</a> }
+            @else {
+              {{ t('outgoingRecorded', { count: number(outgoingTotal()) }) }}
+              @if (suggestion(); as peer) { <span>{{ t('raidSuggestion', { name: peer.peerName || peer.peerLogin }) }}</span> }
+            }
+          </p>
+        </div>
+      }
+      <details class="raid-detail"><summary>{{ t(direction() === 'incoming' ? 'topIncoming' : 'topOutgoing') }}</summary><ul class="raid-partners">
         @for (peer of partners(); track peer._id) { <li><strong>{{ peer.name || peer.login }}</strong><span>{{ t('times', { count: peer.count }) }} · {{ t('viewers', { count: number(peer.viewers) }) }}</span></li> }
       </ul></details>
     } @else { <p class="raid-empty">{{ t('empty') }}</p> }
-    @if (view.updatedAt) { <p class="raid-note">{{ t('updated', { date: date(view.updatedAt) }) }}</p> }
+    <div class="raid-footer">
+      @if (view.updatedAt) { <p class="raid-note">{{ t('updated', { date: date(view.updatedAt) }) }}</p> }
+      <button type="button" class="raid-refresh" (click)="load()" [disabled]="loading()" [attr.aria-label]="t('refresh')"><app-lf-icon name="refresh" [size]="16" /></button>
+    </div>
     <details class="raid-detail raid-method"><summary>{{ t('about') }}</summary><p>{{ t('method') }}</p><p>{{ t('followMethod') }}</p><p>{{ t('history') }}</p></details>
   }
 }
