@@ -46,6 +46,16 @@ globalThis.fetch = async (input, options = {}) => {
             }
             return json({ data: remote, total: remote.length, pagination: {} });
         }
+        if (url.pathname === '/helix/chat/emotes' || url.pathname === '/helix/chat/emotes/global') {
+            const channel = url.searchParams.get('broadcaster_id') || 'global';
+            log({ emoteCatalog: channel });
+            const modePath = `${directory}/emote-mode-${channel}`;
+            const mode = fs.existsSync(modePath) ? fs.readFileSync(modePath, 'utf8') : '';
+            if (mode === 'fail') return new Response('{}', { status: 503 });
+            if (mode === 'malformed') return json({ data: [{ name: 'missing-id' }] });
+            const path = `${directory}/emotes-${channel}.json`;
+            return json({ data: fs.existsSync(path) ? JSON.parse(fs.readFileSync(path, 'utf8')) : [] });
+        }
         log({ endpoint: url.pathname, method: options.method || 'GET' });
         if (url.pathname === '/helix/moderation/bans') {
             const user=JSON.parse(options.body).data.user_id;

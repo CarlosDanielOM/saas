@@ -26,3 +26,7 @@ summary { cursor: pointer; min-height: 44px; align-content: center; font-size: .
 .usage-footer { display: flex; align-items: center; gap: .6rem; margin-top: .35rem; }
 .usage-footer p { flex: 1; min-width: 0; }
 .usage-footer button { display: grid; place-items: center; width: 44px; flex-shrink: 0; }
+
+.usage-scope { display: flex; gap: .2rem; flex-wrap: wrap; margin-top: .85rem; padding: .2rem; border: 1px solid var(--line); border-radius: .75rem; background: var(--btn); width: fit-content; max-width: 100%; }
+.usage-scope button { border: 0; background: transparent; font-size: .75rem; font-weight: 700; }
+.usage-scope button[aria-pressed=true] { background: #7c3aed; color: #fff; }

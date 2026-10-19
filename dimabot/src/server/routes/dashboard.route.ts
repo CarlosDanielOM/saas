@@ -55,13 +55,19 @@ router.get('/:channelID/insights', authMiddleware as any, async (req: DashboardR
 router.get('/:channelID/activity', authMiddleware as any, async (req: DashboardRequest, res: Response) => {
     try {
         const channelID = String(req.params.channelID), days = Number(req.query.days || 7);
+        const emoteScope = String(req.query.emoteScope || 'streamer');
+        if (!['streamer', 'all'].includes(emoteScope)) return res.status(400).json({ error: true, message: 'Invalid emote scope' });
         if (!/^\d{1,30}$/.test(channelID) || ![7, 30].includes(days)) return res.status(400).json({ error: true, message: 'Invalid activity range' });
         if (!req.user || !(await getAccessContext(req.user.id, channelID)).allowed) return res.status(403).json({ error: true, message: 'Dashboard access required' });
         const state = await DashboardActivitySummarySchema.findById(channelID).maxTimeMS(1500).lean();
-        if (!state) await queueDashboardActivity(channelID);
+        const period = state?.payload?.[String(days)];
+        if (!state || !period?.emoteCatalog) await queueDashboardActivity(channelID);
+        const summary = period ? { ...period, emotes: emoteScope === 'streamer' ? period.streamerEmotes ?? [] : period.emotes,
+            emoteUses: emoteScope === 'streamer' ? period.streamerEmoteUses ?? null : period.emoteUses, emoteScope } : null;
+        if (summary) { delete summary.streamerEmotes; delete summary.streamerEmoteUses; }
         res.set('Cache-Control', 'no-store');
-        return res.json({ error: false, data: { summary: state?.payload?.[String(days)] || null,
-            updatedAt: state?.updatedAt || null, pending: !state?.payload || Boolean(state.dirtyAt && state.updatedAt && +state.dirtyAt > +state.updatedAt),
+        return res.json({ error: false, data: { summary,
+            updatedAt: state?.updatedAt || null, pending: !period?.emoteCatalog || Boolean(state?.dirtyAt && state?.updatedAt && +state.dirtyAt > +state.updatedAt),
             stale: Boolean(state?.error || state?.updatedAt && Date.now() - +state.updatedAt > 180000) } });
     } catch (error) { console.error('Dashboard activity read failed', error); return res.status(500).json({ error: true, message: 'Unable to load activity' }); }
 });
@@ -78,7 +84,7 @@ router.get('/:channelID/raids', authMiddleware as any, async (req: DashboardRequ
         if (!state) await queueRaidSummary(channelID);
         res.set('Cache-Control', 'no-store');
         return res.json({ error: false, data: { summary: state?.payload?.[String(days)] || null,
-            updatedAt: state?.updatedAt || null, pending: !state?.payload || Boolean(state.dirtyAt && state.updatedAt && +state.dirtyAt > +state.updatedAt),
+            updatedAt: state?.updatedAt || null, pending: !state?.payload || Boolean(state?.dirtyAt && state?.updatedAt && +state.dirtyAt > +state.updatedAt),
             stale: Boolean(state?.error || state?.updatedAt && Date.now() - +state.updatedAt > 180000),
             tracking: { incoming: configs.some(row => row.enabled && row.condition?.to_broadcaster_user_id === channelID),
                 outgoing: configs.some(row => row.enabled && row.condition?.from_broadcaster_user_id === channelID) },

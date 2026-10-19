@@ -2,6 +2,8 @@ import { createHash, randomUUID } from 'node:crypto';
 import { StreamActivitySchema as Activity, StreamActivityStateSchema as State } from '../schemas/stream_activity.schema.js';
 import { DashboardActivityDailySchema as Daily, DashboardActivitySummarySchema as Summary } from '../schemas/dashboard_activity.schema.js';
 
+import { getChannelEmoteCatalog, type ChannelEmoteCatalog } from './twitch_emotes.js';
+
 const DAY = 86400000;
 const hash = (...values: unknown[]) => createHash('sha256').update(JSON.stringify(values)).digest('hex');
 export const dashboardDayStart = (at: Date) => new Date(Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), at.getUTCDate()));
@@ -74,7 +76,7 @@ export async function projectDashboardActivityBatch(limit = 500) {
     } finally { clearInterval(heartbeat); await State.updateOne({ _id: stateID, owner }, { $set: { leaseUntil: new Date(0) } }); }
 }
 
-async function buildPeriod(channelID: string, days: number, now: Date) {
+async function buildPeriod(channelID: string, days: number, now: Date, catalog: ChannelEmoteCatalog) {
     const from = dashboardRangeStart(days, now);
     const [rows, remaining] = await Promise.all([
         Daily.aggregate([{ $match: { channelID, day: { $gte: from, $lte: now }, expiresAt: { $gt: now } } },
@@ -83,6 +85,8 @@ async function buildPeriod(channelID: string, days: number, now: Date) {
             { $facet: {
                 commands: [{ $match: { '_id.kind': 'command' } }, { $limit: 5 }],
                 emotes: [{ $match: { '_id.kind': 'emote' } }, { $limit: 5 }],
+                streamerEmotes: [{ $match: { '_id.kind': 'emote', '_id.key': { $in: catalog.emotes.map(emote => `twitch:${emote.id}`) } } }, { $limit: 5 }],
+                streamerTotal: [{ $match: { '_id.kind': 'emote', '_id.key': { $in: catalog.emotes.map(emote => `twitch:${emote.id}`) } } }, { $group: { _id: null, count: { $sum: '$count' } } }],
                 totals: [{ $group: { _id: '$_id.kind', count: { $sum: '$count' }, distinct: { $sum: 1 }, firstAt: { $min: '$firstAt' } } }]
             } }]).option({ maxTimeMS: 3000 }),
         Activity.exists({ channelID, dashboardProcessed: null, kind: { $in: ['command', 'message'] },
@@ -90,7 +94,9 @@ async function buildPeriod(channelID: string, days: number, now: Date) {
     ]);
     const data = rows[0];
     const items = (kind: string) => data[kind].map((row: { _id: { key: string }; label: string; count: number }) => ({ key: row._id.key, label: row.label, count: row.count }));
-    return { days, from, to: now, commands: items('commands'), emotes: items('emotes'), pending: Boolean(remaining),
+    return { days, from, to: now, streamerEmotes: catalog.status === 'unavailable' ? null : items('streamerEmotes'),
+        streamerEmoteUses: catalog.status === 'unavailable' ? null : data.streamerTotal[0]?.count || 0,
+        emoteCatalog: { status: catalog.status, checkedAt: catalog.checkedAt }, commands: items('commands'), emotes: items('emotes'), pending: Boolean(remaining),
         commandRuns: data.totals.find((row: { _id: string }) => row._id === 'command')?.count || 0,
         emoteUses: data.totals.find((row: { _id: string }) => row._id === 'emote')?.count || 0,
         coverageStartedAt: data.totals.find((row: { _id: string }) => row._id === 'coverage')?.firstAt || null };
@@ -102,7 +108,8 @@ export async function refreshDashboardActivityOnce() {
         { $set: { owner, leaseUntil: new Date(+now + 60000) } }, { new: true, sort: { nextRefreshAt: 1 } }).lean();
     if (!state) return false;
     try {
-        const payload = { '7': await buildPeriod(state._id!, 7, now), '30': await buildPeriod(state._id!, 30, now) };
+        const catalog = await getChannelEmoteCatalog(state._id!);
+        const payload = { '7': await buildPeriod(state._id!, 7, now, catalog), '30': await buildPeriod(state._id!, 30, now, catalog) };
         await Summary.updateOne({ _id: state._id, owner }, { $set: { payload, updatedAt: now, error: false } });
         await Summary.updateOne({ _id: state._id, owner, dirtyAt: { $lte: now } }, { $set: { nextRefreshAt: new Date(+now + 60000) } });
     } catch (error) {

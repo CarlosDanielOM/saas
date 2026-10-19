@@ -3,14 +3,22 @@
   <h3>{{ t(kind() + 'Title') }}</h3>
   <select [attr.aria-label]="t(kind() + 'Period')" [value]="days()" (change)="days.set(+$any($event.target).value)"><option value="7">{{ t('days7') }}</option><option value="30">{{ t('days30') }}</option></select>
 </div>
+@if (kind() === 'emotes') {
+  <div class="usage-scope" role="group" [attr.aria-label]="t('emoteScope')">
+    <button type="button" [attr.aria-pressed]="emoteScope() === 'streamer'" (click)="emoteScope.set('streamer')">{{ t('streamerEmotes') }}</button>
+    <button type="button" [attr.aria-pressed]="emoteScope() === 'all'" (click)="emoteScope.set('all')">{{ t('allEmotes') }}</button>
+  </div>
+}
 @if (loading() && !data()) { <p class="usage-state" role="status">{{ t('loading') }}</p> }
 @if (error()) { <p class="usage-notice" role="alert">{{ t('error') }} <button type="button" (click)="load()">{{ t('retry') }}</button></p> }
 @if (data(); as view) {
   @if (pending()) { <p class="usage-note" role="status">{{ t('processing') }}</p> }
   @if (view.stale) { <p class="usage-notice">{{ t('stale') }}</p> }
+  @if (ownershipStale()) { <p class="usage-notice">{{ t('ownershipStale') }}</p> }
   @if (view.summary) {
-    @if (items().length) {
-      <p class="usage-headline">{{ t(kind() + 'Summary', { count: number(total()) }) }}</p>
+    @if (ownershipUnavailable()) { <p class="usage-notice" role="status">{{ t('ownershipUnavailable') }} <button type="button" (click)="emoteScope.set('all')">{{ t('showAllEmotes') }}</button></p> }
+    @if (!ownershipUnavailable() && items().length) {
+      <p class="usage-headline">{{ t(kind() === 'emotes' && emoteScope() === 'streamer' ? 'streamerEmotesSummary' : kind() + 'Summary', { count: number(total()) }) }}</p>
       <ol class="usage-list" [attr.aria-label]="t(kind() + 'Title')">
         @for (item of items(); track item.key; let index = $index) {
           <li>
@@ -23,9 +31,9 @@
         }
       </ol>
       <p class="usage-note">{{ t('topFive') }}</p>
-    } @else if (!pending()) { <p class="usage-state">{{ t(kind() + 'Empty') }}</p> }
+    } @else if (!pending() && !ownershipUnavailable()) { <p class="usage-state">{{ t(kind() === 'emotes' && emoteScope() === 'streamer' ? 'streamerEmotesEmpty' : kind() + 'Empty') }}</p> }
     <p class="usage-note">{{ t('coverage') }}</p>
-    <details class="usage-detail"><summary>{{ t('about') }}</summary><p>{{ t(kind() + 'Method') }}</p><p>{{ t('retention') }}</p>@if (view.summary.coverageStartedAt) { <p>{{ t('firstRecorded', { date: date(view.summary.coverageStartedAt) }) }}</p> }</details>
+    <details class="usage-detail"><summary>{{ t('about') }}</summary><p>{{ t(kind() + 'Method') }}</p>@if (kind() === 'emotes') { <p>{{ t('emoteScopeMethod') }}</p> }<p>{{ t('retention') }}</p>@if (view.summary.coverageStartedAt) { <p>{{ t('firstRecorded', { date: date(view.summary.coverageStartedAt) }) }}</p> }</details>
     <div class="usage-footer">
       @if (view.updatedAt) { <p class="usage-note">{{ t('updated', { date: date(view.updatedAt) }) }}</p> }
       <button type="button" (click)="load()" [disabled]="loading()" [attr.aria-label]="t(kind() + 'Refresh')"><app-lf-icon name="refresh" [size]="16" /></button>

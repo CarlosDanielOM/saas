@@ -6,7 +6,7 @@ import { LinksService } from '../../../services/links.service';
 import { LfIconComponent } from '../../../shared/lf-icon/lf-icon.component';
 
 interface UsageItem { key: string; label: string; count: number; }
-interface UsageSummary { days: number; commands: UsageItem[]; emotes: UsageItem[]; commandRuns: number; emoteUses: number; coverageStartedAt: string | null; pending: boolean; }
+interface UsageSummary { days: number; commands: UsageItem[]; emotes: UsageItem[]; commandRuns: number; emoteUses: number | null; emoteScope?: 'streamer' | 'all'; emoteCatalog?: { status: 'ready' | 'stale' | 'unavailable'; checkedAt: string | null };  coverageStartedAt: string | null; pending: boolean; }
 interface UsageResponse { summary: UsageSummary | null; updatedAt: string | null; pending: boolean; stale: boolean; }
 
 @Component({
@@ -21,6 +21,9 @@ export class DashboardUsageCardComponent {
   readonly channelID = input.required<string>();
   readonly kind = input.required<'commands' | 'emotes'>();
   readonly days = signal(7);
+  readonly emoteScope = signal<'streamer' | 'all'>('streamer');
+  readonly ownershipUnavailable = computed(() => this.kind() === 'emotes' && this.emoteScope() === 'streamer' && this.data()?.summary?.emoteCatalog?.status === 'unavailable');
+  readonly ownershipStale = computed(() => this.kind() === 'emotes' && this.emoteScope() === 'streamer' && this.data()?.summary?.emoteCatalog?.status === 'stale');
   readonly data = signal<UsageResponse | null>(null);
   readonly loading = signal(true);
   readonly error = signal(false);
@@ -31,7 +34,7 @@ export class DashboardUsageCardComponent {
   private sequence = 0;
   private poll?: ReturnType<typeof setTimeout>;
   constructor() {
-    effect(() => { const channel = this.channelID(), days = this.days(); this.data.set(null); void this.load(channel, days); });
+    effect(() => { const channel = this.channelID(), days = this.days(), scope = this.emoteScope(); this.data.set(null); void this.load(channel, days, scope); });
     this.destroyRef.onDestroy(() => { this.sequence++; clearTimeout(this.poll); });
   }
   t(key: string, params?: Record<string, string | number>): string { return this.language.translate(`dashboardUsage.${key}`, params); }
@@ -42,11 +45,11 @@ export class DashboardUsageCardComponent {
     return match && !this.failedImages().has(item.key) ? `https://static-cdn.jtvnw.net/emoticons/v2/${match[1]}/default/dark/2.0` : null;
   }
   imageFailed(key: string): void { this.failedImages.update(previous => new Set([...previous, key])); }
-  async load(channelID = this.channelID(), days = this.days()): Promise<void> {
+  async load(channelID = this.channelID(), days = this.days(), scope = this.emoteScope()): Promise<void> {
     const sequence = ++this.sequence;
     clearTimeout(this.poll); this.loading.set(true); this.error.set(false);
     try {
-      const response = await firstValueFrom(this.http.get<{ error: boolean; data: UsageResponse }>(`${this.links.getApiUrl()}/dashboard/${channelID}/activity?days=${days}`));
+      const response = await firstValueFrom(this.http.get<{ error: boolean; data: UsageResponse }>(`${this.links.getApiUrl()}/dashboard/${channelID}/activity?days=${days}&emoteScope=${scope}`));
       if (sequence !== this.sequence) return;
       if (response.error || !response.data) throw new Error('activity');
       this.data.set(response.data);

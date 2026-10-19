@@ -156,7 +156,7 @@ function envelope(data) {
  */
 async function newPage(browser, viewport, o) {
   const context = await browser.newContext({ viewport, deviceScaleFactor: 1, timezoneId: 'UTC', colorScheme: o.theme });
-  const state = { chatEnabled: o.chatEnabled, toggles: [], writes: [], avatarReads:[], activityRanges:[], insightRanges:[], stored:SITE_EVENTS.map((event,i)=>({_id:'raid-'+i,type:event.type,enabled:true,message:'',condition:event.type==='channel.raid'?{to_broadcaster_user_id:CHANNEL_ID}:{from_broadcaster_user_id:CHANNEL_ID}})) };
+  const state = { chatEnabled: o.chatEnabled, toggles: [], writes: [], avatarReads:[], activityRanges:[], emoteScopes:[], insightRanges:[], stored:SITE_EVENTS.map((event,i)=>({_id:'raid-'+i,type:event.type,enabled:true,message:'',condition:event.type==='channel.raid'?{to_broadcaster_user_id:CHANNEL_ID}:{from_broadcaster_user_id:CHANNEL_ID}})) };
   const app = {
     name: 'Test Streamer', email: 'test@example.invalid', language: o.language ?? 'en', plan_tier: 'premium', actived: true,
     chat_enabled: o.chatEnabled, twitch_user_id: CHANNEL_ID, has_permissions: true, up_to_date_permissions: true, administrating: []
@@ -203,11 +203,13 @@ async function newPage(browser, viewport, o) {
     }
     else if (p.endsWith('/activity')) {
       state.activityRanges.push(Number(url.searchParams.get('days')));
+      const ownScope=url.searchParams.get('emoteScope')!=='all';state.emoteScopes.push(ownScope?'streamer':'all');
       if(o.activityFail)return route.fulfill({status:503,json:{error:true}});
       const multiplier=url.searchParams.get('days')==='30'?3:1;
       data={summary:o.activityCold?null:{days:7,commands:o.activityEmpty?[]:[{key:'hello',label:o.activityLong?'!averylongcommandname_that_has_to_wrap_on_a_phone':'!hello',count:60*multiplier},{key:'uptime',label:'!uptime',count:40*multiplier}],
-       emotes:o.activityEmpty?[]:[{key:'twitch:25',label:'Kappa',count:60*multiplier},{key:'twitch:88',label:'PogChamp',count:30*multiplier}],
-       commandRuns:100*multiplier,emoteUses:90*multiplier,coverageStartedAt:daysAgo(3),pending:!!o.activityPending},
+       emotes:o.activityEmpty||ownScope&&o.ownershipUnavailable?[]:ownScope?[{key:'twitch:owner_1',label:'TestHype',count:30*multiplier}]:[{key:'twitch:25',label:'Kappa',count:40*multiplier},{key:'twitch:owner_1',label:'TestHype',count:30*multiplier},{key:'twitch:88',label:'PogChamp',count:20*multiplier}],
+       emoteScope:ownScope?'streamer':'all',emoteCatalog:{status:o.ownershipUnavailable?'unavailable':o.ownershipStale?'stale':'ready',checkedAt:new Date().toISOString()},
+       commandRuns:100*multiplier,emoteUses:ownScope&&o.ownershipUnavailable?null:(ownScope?30:90)*multiplier,coverageStartedAt:daysAgo(3),pending:!!o.activityPending},
        updatedAt:new Date().toISOString(),pending:!!o.activityCold,stale:!!o.activityStale};
     }
     else if (p.endsWith('/raids')) { if(o.raidFail)return route.fulfill({status:503,json:{error:true}}); data=raidData(o,Number(url.searchParams.get('days')||7)); }
@@ -307,6 +309,8 @@ try {
   assert.equal(await page.locator('#dash-bot app-dashboard-usage-card').count(),2);
   assert.equal(await page.locator('#dash-channel app-dashboard-usage-card').count(),0);
   await commands.getByText('100 recorded command runs.',{exact:true}).waitFor();
+  await emotes.getByText('Your Twitch emotes used 30 times.',{exact:true}).waitFor();
+  await emotes.getByRole('button',{name:'All emotes',exact:true}).click();
   await emotes.getByText('Native Twitch emotes used 90 times.',{exact:true}).waitFor();
   await commands.getByText('!hello',{exact:true}).waitFor();await emotes.getByText('Kappa',{exact:true}).waitFor();
   assert.equal(await commands.locator('.usage-list li').count(),2);
@@ -316,7 +320,7 @@ try {
   await emotes.getByLabel('Emote period').selectOption('30');await emotes.getByText('Native Twitch emotes used 270 times.',{exact:true}).waitFor();
   assert.ok(state.activityRanges.includes(7)&&state.activityRanges.includes(30));
   await emotes.getByText('PogChamp',{exact:true}).waitFor();
-  await page.waitForTimeout(150);assert.equal(await emotes.locator('.usage-emote img').count(),1,'broken emote keeps its label and fallback');
+  await page.waitForTimeout(150);assert.equal(await emotes.locator('.usage-emote img').count(),2,'broken emote keeps its label and fallback');
   await noOverflow(page,`${theme}-${width}`);
   const result=await new AxeBuilder({page}).include('app-dashboard-usage-card').withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();assert.deepEqual(result.violations,[]);
   assert.deepEqual(errors,[]);
@@ -340,7 +344,7 @@ try {
  const {context,page}=await newPage(browser,{width:390,height:1000},{chatEnabled:true,automodOn:true,theme:'dark',language:'es'});
  await page.getByRole('button',{name:'Tu bot',exact:true}).click();
  await page.locator('[data-testid=dashboard-commands]').getByText('100 ejecuciones de comandos registradas.').waitFor();
- await page.locator('[data-testid=dashboard-emotes]').getByText('Emotes nativos de Twitch usados 90 veces.').waitFor();await context.close();
+ await page.locator('[data-testid=dashboard-emotes]').getByText('Tus emotes de Twitch se usaron 30 veces.').waitFor();await context.close();
  console.log('PASS DASHBOARD ACTIVITY SITE: bot-section cards, independent 7/30-day ranges, native emote images/fallbacks, ranked commands, loading/pending/empty/stale/error, Spanish, 320/390/1280 dark/light accessibility and overflow');
 }finally{await browser.close();}
 

@@ -1,5 +1,15 @@
 {
   "dashboardUsage": {
+    "emoteScope": "Emotes que se incluyen",
+    "streamerEmotes": "Tus emotes",
+    "allEmotes": "Todos los emotes",
+    "streamerEmotesSummary": "Tus emotes de Twitch se usaron {{count}} veces.",
+    "streamerEmotesEmpty": "No se registró el uso de ninguno de tus emotes actuales en este periodo. Prueba Todos los emotes para ver el resto del chat.",
+    "ownershipUnavailable": "No se pudieron consultar los emotes de tu canal. Sus estadísticas no están disponibles por ahora.",
+    "showAllEmotes": "Mostrar todos los emotes",
+    "ownershipStale": "Se usa el último catálogo disponible de tu canal. Puede estar desactualizado.",
+    "emoteScopeMethod": "Tus emotes compara los ID registrados con el catálogo actual de tu canal de Twitch, actualizado aproximadamente cada hora. Todos los emotes incluye los tuyos, los de otros canales y los globales usados en el chat registrado. Los emotes eliminados siguen en Todos los emotes; no es un archivo de propiedad histórica.",
+
     "commandsTitle": "Comandos más usados",
     "emotesTitle": "Emotes más usados",
     "commandsPeriod": "Periodo de comandos",
