@@ -2,6 +2,8 @@
 
 `dima-analytics` is the private service that stores and serves application observability and infrastructure resource data. The API server forwards the analytics UI's requests to it on the internal `databases` network. The service authenticates Twitch sessions against the shared Dragonfly session cache (and Twitch validation when needed), applies channel/service grants, and stores data in its dedicated PostgreSQL database.
 
+For streamer-facing analytics coverage and planned work, see the [tracking checklist](TRACKING_CHECKLIST.md). This service's metrics describe application and infrastructure health; they are separate from per-channel stream analytics.
+
 The runtime is `node src/index.mjs` on port `3210`. `/health` checks PostgreSQL and reports whether the Redis buffer is ready and when the last batch was ingested. The Compose service has no published host port; its database/network access comes from the external `databases` network.
 
 ## Configuration
