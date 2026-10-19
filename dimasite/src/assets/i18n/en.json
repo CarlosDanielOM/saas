@@ -2570,6 +2570,192 @@
     }
   },
   "dashboard": {
+    "brief": {
+      "week": "Last 7 days · {{from}} – {{to}}",
+      "weekShort": "Last 7 days",
+      "liveFor": "Live for {{time}}",
+      "lastStream": "Last stream {{date}}",
+      "noRecent": "No streams in 30 days",
+      "botIn": "Bot in your chat",
+      "botOut": "Bot not in your chat",
+      "botInSub": "Commands, alerts and automod are working",
+      "botOutSub": "Commands, alerts and automod are paused",
+      "botOffWarn": "The bot isn't in your chat, so commands, alerts and automod won't work until it joins.",
+      "answer": {
+        "none": "No streams in the last 7 days.",
+        "streams": "{{count}} streams, {{hours}} live.",
+        "streamsOne": "1 stream, {{hours}} live.",
+        "follows": "{{count}} new followers.",
+        "followsChange": "{{count}} new followers ({{change}} vs the week before).",
+        "last": "Your last stream was on {{date}}.",
+        "automod": "Automod stepped in {{count}} times.",
+        "automodNone": "Automod had nothing to do."
+      },
+      "liveLabel": "Live right now",
+      "f": {
+        "watching": "Watching",
+        "peak": "Peak",
+        "follows": "Follows",
+        "subs": "Subs",
+        "bits": "Bits",
+        "messages": "Messages"
+      },
+      "openTimeline": "Open live timeline",
+      "health": "Bot health",
+      "events": "{{on}} of {{total}} chat events on",
+      "eventsShort": "{{on}}/{{total}} events",
+      "eventsTitle": "Chat events",
+      "eventsSub": "Alerts for follows, subs, raids and more",
+      "eventsNone": "Turn some on so chat sees alerts",
+      "unavailable": "Couldn't load right now",
+      "open": "Open",
+      "creditsTitle": "AI credits",
+      "creditsLeft": "{{pct}}% credits left",
+      "creditsShort": "{{pct}}% credits",
+      "credits": {
+        "lasts": "Should last until they reset on {{date}}",
+        "runOut": "Runs out in ~{{days}} days, {{gap}} days before reset",
+        "runOutOne": "Runs out in ~{{days}} days, 1 day before reset",
+        "runOutSoon": "Runs out within a day, {{gap}} days before reset",
+        "out": "Out of credits until {{date}}, or top up",
+        "outNow": "Out of credits, top up to keep AI on",
+        "noUsage": "No AI use yet. Resets on {{date}}",
+        "left": "Left this period"
+      },
+      "buy": "Buy credits",
+      "usage": "Usage",
+      "automodCount": "{{count}} automod actions",
+      "automodShort": "Automod {{count}}",
+      "automodSub": "Deleted, warned or timed out this week",
+      "automodOffSub": "Spam and links get through until you turn it on",
+      "jump": "Jump back in",
+      "allModules": "All modules",
+      "modules": {
+        "tts": {
+          "name": "Text to speech",
+          "sub": "Voices that read chat"
+        },
+        "chatEvents": {
+          "name": "Chat events",
+          "sub": "Follow, sub and raid alerts"
+        },
+        "triggers": {
+          "name": "Triggers",
+          "sub": "Sounds and clips on command"
+        },
+        "moderation": {
+          "name": "Moderation",
+          "sub": "Automod rules and logs"
+        }
+      },
+      "showMe": "Show me",
+      "topic": {
+        "tips": "Tips",
+        "games": "Games",
+        "days": "Best days",
+        "raids": "Raids",
+        "moderation": "Moderation",
+        "commands": "Commands",
+        "emotes": "Emotes"
+      },
+      "tabs": "Dashboard sides",
+      "channel": "Your channel",
+      "channelSub": "How you're growing and what to change",
+      "bot": "Your bot",
+      "botTitle": "What your bot did",
+      "weekTitle": "Your week",
+      "weekSub": "vs the 7 days before",
+      "analytics": "Analytics",
+      "wf": {
+        "streams": "Streams",
+        "hours": "Hours live",
+        "follows": "New followers",
+        "viewers": "Avg viewers",
+        "subs": "New subs",
+        "bits": "Bits"
+      },
+      "fixTitle": "Fix these first",
+      "goodTitle": "What's working",
+      "goodSub": "keep doing these",
+      "comingSoon": "Coming soon",
+      "soon": {
+        "tips": {
+          "title": "Tips from your own streams",
+          "text": "Numbered fixes worked out from your history: stream lengths and days that bring fewer followers, quiet weeks, and raids you haven't returned. Each with the numbers behind it and one thing to try."
+        },
+        "games": {
+          "title": "Most watched games",
+          "text": "Which games bring the most watch time, viewers and followers per hour."
+        },
+        "days": {
+          "title": "Best days to stream",
+          "text": "Followers per stream for each weekday, so you know when to go live."
+        },
+        "raids": {
+          "title": "Raids",
+          "text": "Who raided you, how many followers each raid brought, and who you still owe one."
+        },
+        "commands": {
+          "title": "Top commands",
+          "text": "The commands chat uses most this week, and the ones nobody uses any more."
+        },
+        "emotes": {
+          "title": "Top emotes",
+          "text": "The emotes your chat uses most this week, with the change from last week."
+        }
+      },
+      "empty": "Nothing picked for this side. Choose topics in “Show me”.",
+      "mod": {
+        "automod": {
+          "title": "Automod",
+          "when": "Last 7 days",
+          "say": "Automod stepped in {{count}} times",
+          "sayOne": "Automod stepped in once",
+          "change": "{{change}} vs the week before",
+          "none": "Nothing to act on this week",
+          "noneSub": "Chat stayed clean. Automod keeps watching.",
+          "off": "Automod is off",
+          "offSub": "Turn it on to delete spam, links and blocked words for you.",
+          "turnOn": "Turn on automod",
+          "repeat": "{{user}} was sanctioned {{count}} times this week."
+        },
+        "sanctions": {
+          "title": "Latest sanctions",
+          "when": "Newest first",
+          "offense": "offense {{n}}",
+          "none": "No sanctions yet.",
+          "all": "See all in Moderation"
+        },
+        "did": {
+          "delete": "Deleted",
+          "warn": "Warned",
+          "timeout": "Timeouts",
+          "ban": "Bans"
+        },
+        "one": {
+          "off": "Counted",
+          "delete": "Deleted",
+          "warn": "Warned",
+          "timeout": "Timed out",
+          "ban": "Banned"
+        },
+        "error": "Couldn't load moderation right now.",
+        "open": "Open Moderation"
+      },
+      "moreLabel": "History and goals",
+      "historyTitle": "Stream history",
+      "historySub": "Chart and every stream from the last 30 days",
+      "row": {
+        "live": "live",
+        "viewers": "avg viewers",
+        "follows": "follows",
+        "subs": "subs",
+        "bits": "bits",
+        "tips": "tips"
+      },
+      "goalsTitle": "Goals",
+      "goalsSub": "{{followers}} followers · {{subs}} subs"
+    },
     "pageLabel": "Home",
     "title": "Channel Dashboard",
     "subtitle": "See how the channel is doing, and turn the bot on before you go live.",

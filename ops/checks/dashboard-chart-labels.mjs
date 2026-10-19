@@ -158,23 +158,26 @@ try {
     page.on('pageerror', (error) => errors.push(error.message));
 
     await page.goto(`${base}/test/dashboard`);
-    await page.waitForSelector('.lf-chart__canvas canvas', { timeout: 15000 });
+    // The chart lives in the folded "Stream history" section.
+    await page.waitForSelector('.fold > summary', { timeout: 15000 });
+    await page.locator('.fold > summary').first().click();
+    await page.waitForSelector('.chart canvas', { timeout: 15000 });
     await page.waitForTimeout(700);
 
     const chart = await page.evaluate(() => {
-      const host = document.querySelector('.lf-chart__canvas');
+      const host = document.querySelector('.chart');
       const canvas = host?.querySelector('canvas');
-      const chipRow = document.querySelector('.lf-axis-chips');
+      const chipRow = document.querySelector('.axis-chips');
       return {
         hostWidth: host ? Math.round(host.getBoundingClientRect().width) : 0,
         hostScrollWidth: host ? host.scrollWidth : 0,
         canvasWidth: canvas ? Math.round(canvas.getBoundingClientRect().width) : 0,
         canvasHeight: canvas ? Math.round(canvas.getBoundingClientRect().height) : 0,
-        chipCount: chipRow ? chipRow.querySelectorAll('.lf-axis-chip').length : 0,
+        chipCount: chipRow ? chipRow.querySelectorAll('.axis-chip').length : 0,
         chips: chipRow
-          ? [...chipRow.querySelectorAll('.lf-axis-chip')].map((chip) => ({
+          ? [...chipRow.querySelectorAll('.axis-chip')].map((chip) => ({
               label: chip.textContent?.trim() ?? '',
-              dots: [...chip.querySelectorAll('.lf-axis-chip__dot')].map((dot) => {
+              dots: [...chip.querySelectorAll('.axis-chip__dot')].map((dot) => {
                 const rect = dot.getBoundingClientRect();
                 return Math.round(rect.width);
               })
@@ -205,9 +208,9 @@ try {
       });
     }
 
-    await page.locator('.lf-chart').scrollIntoViewIfNeeded();
+    await page.locator('.fold').first().scrollIntoViewIfNeeded();
     await page.waitForTimeout(300);
-    await page.locator('.lf-chart').screenshot({ path: `/tmp/dashboard-chart-${mode}.png` });
+    await page.locator('.fold').first().screenshot({ path: `/tmp/dashboard-chart-${mode}.png` });
     await page.screenshot({ path: `/tmp/dashboard-page-${mode}.png`, fullPage: false });
     assert.deepEqual(errors, [], `${mode}: browser errors`);
     await context.close();

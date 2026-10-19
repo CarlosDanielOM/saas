@@ -12,37 +12,54 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import * as echarts from 'echarts';
 import { EChartsOption } from 'echarts';
-import { Clock, Lock, LucideAngularModule } from 'lucide-angular';
 import { NgxEchartsDirective, provideEchartsCore } from 'ngx-echarts';
 import { distinctUntilChanged, map, of, shareReplay, Subscription, switchMap } from 'rxjs';
 
-import { ActivityCounters } from '../../models/activity.model';
 import {
-  DashboardKpis,
   DashboardStreamHistoryPoint,
-  LiveSessionMetrics,
-  AiCreditsData
+  LiveSessionMetrics
 } from '../../models/dashboard.model';
+import type { ModerationActionLogEntry } from '../../models/moderation.model';
+import type { AiUsageSummaryData } from '../../models/usage.model';
 import { DashboardApiService } from '../../services/dashboard-api.service';
 import { DashboardChartConfigService } from '../../services/dashboard-chart-config.service';
 import { LanguageService } from '../../services/language.service';
+import { ModerationApiService } from '../../services/moderation-api.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { ThemeService } from '../../services/theme.service';
-import { CountUpDirective } from '../../shared/directives/count-up.directive';
+import { UsageApiService } from '../../services/usage-api.service';
+import { LfIconComponent, LfIconName } from '../../shared/lf-icon/lf-icon.component';
 import { getRouteParam, watchRouteParam } from '../../shared/utils/route-param.util';
-import { creditDisplay } from '../../shared/utils/credit-display.util';
-import { StreamHealthStatus } from './components/stream-health.component';
-import { AverageToggleComponent, type AverageMode } from './components/average-toggle.component';
+import { creditDisplay, usageCreditDisplay } from '../../shared/utils/credit-display.util';
 import { LoadingIndicatorComponent } from '../../components/loading';
 import {
   ReferralPromoBannerComponent,
   ReferralPromoReward
 } from '../../shared/referral-promo-banner/referral-promo-banner.component';
 import { environment } from '../../../environments/environment';
+import { ChatEventsService } from '../chat-events/chat-events.service';
 import { GoalsComponent } from './components/goals/goals.component';
+import { DashboardModerationCardComponent, ModLoad } from './components/dashboard-moderation-card.component';
+import { compareWeeks, pctChange, summarizeAutomod } from './dashboard-week.util';
 
 type TimeRange = '7d' | '15d' | '30d';
-type MobilePanel = 'chart' | 'goals';
+type Topic = 'tips' | 'games' | 'days' | 'raids' | 'moderation' | 'commands' | 'emotes';
+type Pane = 'channel' | 'bot';
+
+const TOPICS: Topic[] = ['tips', 'games', 'days', 'raids', 'moderation', 'commands', 'emotes'];
+const CHANNEL_TOPICS: Topic[] = ['tips', 'games', 'days', 'raids'];
+const BOT_TOPICS: Topic[] = ['moderation', 'commands', 'emotes'];
+const TOPICS_KEY = 'dimasite.dashboard.topics';
+
+/** Cards still being built: shown as "coming soon" so the layout is final. */
+const SOON_ICONS: Partial<Record<Topic, LfIconName>> & Record<'tips', LfIconName> = {
+  tips: 'bulb',
+  games: 'gamepad',
+  days: 'calendar',
+  raids: 'users',
+  commands: 'terminal',
+  emotes: 'smile'
+};
 
 interface DailySeriesBucket {
   bits: number;
@@ -56,32 +73,29 @@ interface DailySeriesBucket {
 
 type DashboardViewerRole = 'owner' | 'admin' | 'viewer';
 
-type UpcomingTier = 'premium' | 'pro';
-
-type UpcomingMetric = 'follows' | 'subs';
-
-type AverageMetric = 'hours' | 'bits' | 'donations' | 'follows' | 'subs';
-
-interface UpcomingTile {
-  id: string;
-  requiredTier: UpcomingTier;
-  metric: UpcomingMetric | null;
-  mode: AverageMode;
-  unlocked: boolean;
-  label: string;
+interface WeekFact {
+  key: 'streams' | 'hours' | 'follows' | 'viewers' | 'subs' | 'bits';
   value: string;
+  change: number | null;
 }
 
+/**
+ * Streamer dashboard ("Split + Briefing"): bot health on top, shortcuts to
+ * the most used modules, then the channel's week next to what the bot did.
+ * Phones switch sides with two tabs and keep a one-line bot strip. "Show me"
+ * chips choose the topics. Cards whose data isn't collected yet show as
+ * "coming soon". The 30-day chart, stream list and goals sit in folded
+ * sections at the bottom.
+ */
 @Component({
   selector: 'app-dashboard',
   imports: [
     GoalsComponent,
     NgxEchartsDirective,
-    CountUpDirective,
     LoadingIndicatorComponent,
     ReferralPromoBannerComponent,
-    LucideAngularModule,
-    AverageToggleComponent,
+    LfIconComponent,
+    DashboardModerationCardComponent,
     RouterLink
   ],
   templateUrl: './dashboard.component.html',
@@ -96,6 +110,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private readonly languageService = inject(LanguageService);
   private readonly sessionAuth = inject(SessionAuthService);
   private readonly themeService = inject(ThemeService);
+  private readonly moderationApi = inject(ModerationApiService);
+  private readonly usageApi = inject(UsageApiService);
+  private readonly chatEvents = inject(ChatEventsService);
   private readonly numberFormatter = new Intl.NumberFormat();
   private readonly compactNumberFormatter = new Intl.NumberFormat(undefined, {
     notation: 'compact',
@@ -113,9 +130,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     notation: 'compact',
     maximumFractionDigits: 1
   });
-  private readonly averageFormatter = new Intl.NumberFormat(undefined, {
-    maximumFractionDigits: 1
-  });
   private readonly tableDateFormatter = new Intl.DateTimeFormat(undefined, {
     month: 'short',
     day: 'numeric',
@@ -129,14 +143,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
   );
 
   private dashboardLoadSub?: Subscription;
+  private extrasSub = new Subscription();
   private timeContextInterval: number | null = null;
-  private streamHealthInterval: number | null = null;
   private overviewChartInstance: echarts.EChartsType | null = null;
   private activeTooltipDataIndex: number | null = null;
   private viewportResizeHandler: (() => void) | null = null;
 
   readonly selectedTimeRange = signal<TimeRange>('30d');
-  readonly selectedMobilePanel = signal<MobilePanel>('chart');
   readonly timeRanges: TimeRange[] = ['7d', '15d', '30d'];
   readonly isMobileViewport = signal(false);
   readonly streamer = toSignal(this.streamerParam$, {
@@ -145,13 +158,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly channelID = signal<string | null>(null);
   readonly bootstrap = computed(() => this.dashboardApi.bootstrapData()?.data ?? null);
   readonly loading = computed(() => this.dashboardApi.loading());
-  readonly connectionStatus = computed(() => this.dashboardApi.connectionStatus());
-  readonly connectionTooltip = computed(() =>
-    this.t(`dashboard.connectionTooltip.${this.connectionStatus()}`)
-  );
   readonly errorMessage = signal<string | null>(null);
 
-  readonly kpis = computed<DashboardKpis>(() => this.bootstrap()?.kpis ?? this.emptyKpis());
   readonly planTier = computed(() => this.sessionAuth.getPlanTierForStreamer(this.streamer()));
   readonly planLabel = computed(() => {
     const tier = this.planTier();
@@ -159,53 +167,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (tier === 'pro') return this.t('navbar.planPro');
     return this.t('navbar.planFree');
   });
-  readonly lockIcon = Lock;
-  readonly soonIcon = Clock;
 
-  private readonly AVERAGE_MODES_STORAGE_KEY = 'dimasite.dashboard.average_modes';
-  readonly averageModes = signal<Record<AverageMetric, AverageMode>>(this.readAverageModes());
-  readonly averages = computed<Record<AverageMetric, number>>(() => {
-    const kpis = this.kpis();
-    const hours = this.monthlyHoursTotal();
-    const divide = (total: number, metric: AverageMetric): number => {
-      const divisor = this.averageDivisor(metric);
-      return divisor > 0 ? total / divisor : 0;
-    };
-
-    return {
-      hours: divide(hours, 'hours'),
-      bits: divide(kpis.totalBits, 'bits'),
-      donations: divide(kpis.totalDonations, 'donations'),
-      follows: divide(kpis.activeFollows, 'follows'),
-      subs: divide(kpis.activeSubs, 'subs')
-    };
-  });
-  private readonly monthlyHoursTotal = computed(() =>
-    (this.bootstrap()?.streamHistory ?? []).reduce((sum, point) => sum + (point.hours ?? 0), 0)
-  );
-
-  readonly upcomingTiles = computed<UpcomingTile[]>(() => {
-    this.languageService.currentLanguage();
-    const modes = this.averageModes();
-    const currentRank = this.planRank(this.planTier());
-    const slots: { id: string; requiredTier: UpcomingTier; metric: UpcomingMetric | null }[] = [
-      { id: 'premium-follows', requiredTier: 'premium', metric: 'follows' },
-      { id: 'premium-subs', requiredTier: 'premium', metric: 'subs' },
-      { id: 'pro-1', requiredTier: 'pro', metric: null },
-      { id: 'pro-2', requiredTier: 'pro', metric: null }
-    ];
-
-    return slots.map((slot) => {
-      const unlocked = currentRank >= this.planRank(slot.requiredTier);
-      return {
-        ...slot,
-        mode: slot.metric ? modes[slot.metric] : 'day',
-        unlocked,
-        label: this.upcomingTileLabel(slot.metric, slot.requiredTier),
-        value: this.upcomingTileValue(slot.metric, unlocked)
-      };
-    });
-  });
   readonly channelName = computed(() => this.bootstrap()?.channel.name ?? '');
   readonly profileImageUrl = signal<string | null>(null);
   readonly displayName = computed(() => {
@@ -241,6 +203,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     return '';
   });
+  readonly isOwner = computed(() => this.viewerRole() === 'owner');
   readonly streamHistoryData = computed<DashboardStreamHistoryPoint[]>(() => {
     const history = this.getDisplayStreamHistory();
     return this.filterByTimeRange(history);
@@ -252,43 +215,149 @@ export class DashboardComponent implements OnInit, OnDestroy {
   });
   readonly totalFollowers = computed(() => this.bootstrap()?.totalFollowers ?? 0);
   readonly totalSubs = computed(() => this.bootstrap()?.totalSubs ?? 0);
-  // AI Credits (5th KPI tile)
+
+  // ---------------------------------------------------------------- AI credits
+  readonly usageSummary = signal<AiUsageSummaryData | null>(null);
   readonly aiCreditDisplay = computed(() => creditDisplay(this.dashboardApi.aiCredits(), this.planTier()));
   readonly aiCreditsData = computed(() => this.aiCreditDisplay().credits);
   readonly aiCreditsEstimated = computed(() => this.aiCreditDisplay().estimated);
   readonly aiCreditsAvailable = computed(() => this.aiCreditsData()?.available ?? false);
-  readonly aiCreditsUsed = computed(() => this.aiCreditsData()?.used ?? 0);
-  readonly aiCreditsLimit = computed(() => this.aiCreditsData()?.limit ?? 0);
-  readonly aiCreditsPercent = computed(() => {
-    const used = this.aiCreditsUsed();
-    const limit = this.aiCreditsLimit();
-    if (!limit || limit <= 0) return 0;
-    return Math.min(100, Math.max(0, Math.round((used / limit) * 100)));
+  readonly aiCreditsPercentLeft = computed(() => {
+    const data = this.aiCreditsData();
+    if (!data?.limit || data.limit <= 0) return 0;
+    return Math.min(100, Math.max(0, Math.round(((data.limit - data.used) / data.limit) * 100)));
   });
   readonly aiCreditsExhausted = computed(() => {
     const data = this.aiCreditsData();
-    if (!data) return false;
-    return data.available && data.balance <= 0;
+    return !!data && data.available && data.balance <= 0;
   });
-  readonly aiCreditsLabel = computed(() => {
-    const used = this.formatAiCredits(this.aiCreditsUsed());
-    const limit = this.formatAiCredits(this.aiCreditsLimit());
-    return `${used} / ${limit}`;
+  /** Short "will my credits last?" line for the health row. */
+  readonly creditsForecast = computed<{ warn: boolean; text: string }>(() => {
+    const summary = this.usageSummary();
+    const pace = usageCreditDisplay(summary).pacing;
+    const endsAt = summary?.billingPeriod?.endsAt;
+    const date = endsAt ? this.shortDate(endsAt) : '';
+    if (!this.aiCreditsAvailable()) {
+      return {
+        warn: false,
+        text: this.t(this.aiCreditsEstimated() ? 'usage.balance.syncing' : 'dashboard.kpis.aiCreditsNotAvailable')
+      };
+    }
+    if (this.aiCreditsExhausted() || pace?.status === 'exhausted') {
+      return { warn: true, text: date ? this.t('dashboard.brief.credits.out', { date }) : this.t('dashboard.brief.credits.outNow') };
+    }
+    if (!pace || !date) {
+      return { warn: false, text: this.t('dashboard.brief.credits.left') };
+    }
+    if (pace.status === 'no_usage') {
+      return { warn: false, text: this.t('dashboard.brief.credits.noUsage', { date }) };
+    }
+    const runout = pace.estimatedDaysUntilExhaustion;
+    if (pace.expectedToExhaustWithinPeriod && runout !== null) {
+      const gap = Math.max(1, Math.round(pace.remainingPeriodDays - runout));
+      return runout < 1
+        ? { warn: true, text: this.t('dashboard.brief.credits.runOutSoon', { gap }) }
+        : {
+            warn: true,
+            text: this.t(gap === 1 ? 'dashboard.brief.credits.runOutOne' : 'dashboard.brief.credits.runOut', {
+              days: Math.floor(runout),
+              gap
+            })
+          };
+    }
+    return { warn: false, text: this.t('dashboard.brief.credits.lasts', { date }) };
   });
-  readonly aiCreditsUpsell = computed(() => {
-    if (!this.aiCreditsExhausted()) return '';
-    const tier = this.planTier();
-    if (tier === 'free') return this.t('dashboard.kpis.aiCreditsExhaustedFree');
-    if (tier === 'premium') return this.t('dashboard.kpis.aiCreditsExhaustedPremium');
-    return this.t('dashboard.kpis.aiCreditsExhaustedPro');
+
+  // ----------------------------------------------------------- bot + automod
+  readonly chatEnabled = computed(() => this.bootstrap()?.channel.chatEnabled ?? false);
+  readonly isTogglingChat = signal<boolean>(false);
+
+  readonly modState = signal<ModLoad>('loading');
+  readonly modLogs = signal<ModerationActionLogEntry[]>([]);
+  readonly modTotal = signal(0);
+  readonly modEnabled = signal<boolean | null>(null);
+  readonly automod = computed(() => summarizeAutomod(this.modLogs(), this.modTotal(), this.currentTimeContext()));
+  readonly automodCount = computed(() => {
+    const week = this.automod();
+    return `${this.formatNumber(week.actions)}${week.capped ? '+' : ''}`;
   });
-  readonly aiCreditsNotAvailableLabel = computed(() =>
-    this.t(this.aiCreditsEstimated() ? 'usage.balance.syncing' : 'dashboard.kpis.aiCreditsNotAvailable')
-  );
+
+  readonly eventsState = signal<ModLoad>('loading');
+  readonly eventsOn = signal(0);
+  readonly eventsTotal = signal(0);
+
+  // ------------------------------------------------------------- live + week
+  readonly isLive = computed(() => this.dashboardApi.liveStatus()?.data?.isLive ?? false);
+  readonly liveStream = computed(() => this.dashboardApi.liveStatus()?.data?.stream ?? null);
+  readonly liveSession = computed(() => this.dashboardApi.liveSessionMetrics());
+  readonly liveFor = computed(() => this.formatHours((this.liveSession()?.durationMinutes ?? 0) / 60));
 
   readonly currentTimeContext = signal(new Date());
   readonly serverTimeDisplay = computed(() => this.formatTimeContext(this.currentTimeContext(), 'UTC'));
   readonly localTimeDisplay = computed(() => this.formatTimeContext(this.currentTimeContext()));
+
+  readonly week = computed(() => compareWeeks(this.getDisplayStreamHistory(), this.currentTimeContext()));
+  readonly weekLabel = computed(() =>
+    this.t('dashboard.brief.week', { from: this.shortDate(this.week().from), to: this.shortDate(this.week().to) })
+  );
+  readonly followChange = computed(() => pctChange(this.week().now.follows, this.week().before.follows));
+  readonly weekFacts = computed<WeekFact[]>(() => {
+    const { now, before } = this.week();
+    return [
+      { key: 'streams', value: this.formatNumber(now.streams), change: pctChange(now.streams, before.streams) },
+      { key: 'hours', value: this.formatHours(now.hours), change: pctChange(now.hours, before.hours) },
+      { key: 'follows', value: this.formatNumber(now.follows), change: pctChange(now.follows, before.follows) },
+      { key: 'viewers', value: this.formatNumber(now.viewers), change: pctChange(now.viewers, before.viewers) },
+      { key: 'subs', value: this.formatNumber(now.subs), change: pctChange(now.subs, before.subs) },
+      { key: 'bits', value: this.formatCompactNumber(now.bits), change: pctChange(now.bits, before.bits) }
+    ];
+  });
+  readonly answerHeadline = computed(() => {
+    const now = this.week().now;
+    if (!now.streams) return this.t('dashboard.brief.answer.none');
+    return this.t(now.streams === 1 ? 'dashboard.brief.answer.streamsOne' : 'dashboard.brief.answer.streams', {
+      count: now.streams,
+      hours: this.formatHours(now.hours)
+    });
+  });
+  readonly answerRest = computed(() => {
+    const { now, lastStream } = this.week();
+    const parts: string[] = [];
+    if (now.streams) {
+      const change = this.followChange();
+      parts.push(
+        change === null
+          ? this.t('dashboard.brief.answer.follows', { count: this.formatNumber(now.follows) })
+          : this.t('dashboard.brief.answer.followsChange', { count: this.formatNumber(now.follows), change: this.signedPct(change) })
+      );
+    } else if (lastStream) {
+      parts.push(this.t('dashboard.brief.answer.last', { date: this.shortDate(lastStream) }));
+    }
+    if (this.modState() === 'ready' && this.modEnabled() !== false) {
+      parts.push(
+        this.automod().actions
+          ? this.t('dashboard.brief.answer.automod', { count: this.automodCount() })
+          : this.t('dashboard.brief.answer.automodNone')
+      );
+    }
+    return parts.join(' ');
+  });
+
+  // ----------------------------------------------------------- layout choices
+  readonly pane = signal<Pane>('channel');
+  readonly topics = TOPICS;
+  readonly chosenTopics = signal<Topic[]>(this.readTopics());
+  readonly anyChannel = computed(() => CHANNEL_TOPICS.some((t) => this.chosenTopics().includes(t)));
+  readonly anyBot = computed(() => BOT_TOPICS.some((t) => this.chosenTopics().includes(t)));
+  readonly soonIcons = SOON_ICONS as Record<Topic, LfIconName>;
+  readonly goodSoon: Topic[] = ['games', 'days', 'raids'];
+  readonly botSoon: Topic[] = ['commands', 'emotes'];
+  readonly shortcuts: Array<{ key: string; icon: LfIconName; path: string }> = [
+    { key: 'tts', icon: 'mic', path: 'tts' },
+    { key: 'chatEvents', icon: 'chat', path: 'chat-events' },
+    { key: 'triggers', icon: 'play', path: 'triggers' },
+    { key: 'moderation', icon: 'shield', path: 'moderation' }
+  ];
 
   readonly overviewChartOption = signal<EChartsOption>({});
 
@@ -307,34 +376,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     { id: 'bits', label: this.t('dashboard.charts.axes.bits'), colors: ['#f59e0b'] },
     { id: 'donations', label: this.t('dashboard.charts.axes.donations'), colors: ['#ec4899'] }
   ]);
-
-  // Live stream status
-  readonly isLive = computed(() => this.dashboardApi.liveStatus()?.data?.isLive ?? false);
-  readonly liveStream = computed(() => this.dashboardApi.liveStatus()?.data?.stream ?? null);
-
-  // Chat enabled status
-  readonly chatEnabled = computed(() => this.bootstrap()?.channel.chatEnabled ?? false);
-  readonly isTogglingChat = signal<boolean>(false);
-
-  readonly activityCounters = computed<ActivityCounters>(() => {
-    const liveMetrics = this.dashboardApi.liveSessionMetrics();
-
-    return {
-      follows: liveMetrics?.follows ?? 0,
-      subs: liveMetrics?.subs ?? 0,
-      bits: liveMetrics?.bits ?? 0,
-      donations: liveMetrics?.donations ?? 0,
-      messages: liveMetrics?.messages ?? 0,
-      commands: liveMetrics?.commands ?? 0
-    };
-  });
-
-  // Stream health
-  readonly streamHealth = signal<StreamHealthStatus>({
-    isConnected: false,
-    responseTimeMs: 0,
-    lastChecked: new Date().toISOString()
-  });
 
   private readonly REFERRAL_PROMO_DISMISS_KEY = 'dimasite.referral_promo.dismissed_at';
   private readonly REFERRAL_PROMO_DISMISS_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -368,16 +409,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.isMobileViewport();
       this.buildChart(this.streamHistoryData());
     });
-
-    effect(() => {
-      const panel = this.selectedMobilePanel();
-      const isMobile = this.isMobileViewport();
-      if (!isMobile || panel !== 'chart') {
-        return;
-      }
-
-      this.scheduleChartResize();
-    });
   }
 
   ngOnInit(): void {
@@ -394,19 +425,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
             return of(null);
           }
 
-           void this.loadChannelAvatar(streamer);
+          void this.loadChannelAvatar(streamer);
 
-           return this.sessionAuth.resolveChannelID(streamer).pipe(
-             switchMap((channelID) => {
-               if (!channelID) {
-                 this.errorMessage.set(this.t('dashboard.errors.missingChannel'));
-                 return of(null);
-               }
+          return this.sessionAuth.resolveChannelID(streamer).pipe(
+            switchMap((channelID) => {
+              if (!channelID) {
+                this.errorMessage.set(this.t('dashboard.errors.missingChannel'));
+                return of(null);
+              }
 
-               this.channelID.set(channelID);
-               return this.dashboardApi.getBootstrap(channelID);
-             })
-           );
+              this.channelID.set(channelID);
+              return this.dashboardApi.getBootstrap(channelID);
+            })
+          );
         })
       )
       .subscribe({
@@ -421,12 +452,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
             return;
           }
 
-           this.errorMessage.set(null);
-           this.dashboardApi.startLiveStatusPolling(channelID);
-           this.dashboardApi.startAiCreditsPolling(channelID);
-           this.updateStreamHealth();
-           this.startStreamHealthMonitoring();
-           this.checkAndShowReferralPromo();
+          this.errorMessage.set(null);
+          this.dashboardApi.startLiveStatusPolling(channelID);
+          this.dashboardApi.startAiCreditsPolling(channelID);
+          this.loadExtras(channelID);
+          this.checkAndShowReferralPromo();
         },
         error: () => {
           this.errorMessage.set(this.t('dashboard.errors.loadFailed'));
@@ -436,9 +466,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.dashboardLoadSub?.unsubscribe();
+    this.extrasSub.unsubscribe();
     this.dashboardApi.stopLiveStatusPolling();
     this.dashboardApi.resetState();
-    this.stopStreamHealthMonitoring();
 
     if (this.timeContextInterval !== null) {
       window.clearInterval(this.timeContextInterval);
@@ -455,105 +485,63 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return this.languageService.translate(key, params);
   }
 
-  usageLink(): string[] {
-    return ['/', this.streamer(), 'usage'];
+  link(...parts: string[]): string[] {
+    return ['/', this.streamer(), ...parts];
   }
 
-  upcomingTierLabel(tier: UpcomingTier): string {
-    return this.t(`dashboard.upcoming.${tier}`);
+  // ------------------------------------------------------------------ topics
+  on(topic: Topic): boolean {
+    return this.chosenTopics().includes(topic);
   }
 
-  setAverageMode(metric: AverageMetric, mode: AverageMode): void {
-    this.averageModes.update((modes) => ({ ...modes, [metric]: mode }));
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(this.AVERAGE_MODES_STORAGE_KEY, JSON.stringify(this.averageModes()));
-    }
-  }
-
-  onUpcomingModeChange(tile: UpcomingTile, mode: AverageMode): void {
-    if (tile.metric) {
-      this.setAverageMode(tile.metric, mode);
-    }
-  }
-
-  averageLabel(metric: AverageMetric): string {
-    const suffix = this.averageModes()[metric] === 'stream' ? 'PerStream' : 'PerDay';
-    return this.t(`dashboard.kpis.averages.${metric}${suffix}`);
-  }
-
-  averageValue(metric: AverageMetric): string {
-    const value = this.averages()[metric];
-    if (metric === 'hours') {
-      return this.formatHours(value);
-    }
-    if (metric === 'donations') {
-      return this.formatCurrency(value);
-    }
-    return this.formatAverage(value);
-  }
-
-  formatAverage(value: number): string {
-    return this.averageFormatter.format(Math.max(0, value));
-  }
-
-  private averageDivisor(metric: AverageMetric): number {
-    return this.averageModes()[metric] === 'stream' ? this.kpis().totalStreams : 30;
-  }
-
-  private readAverageModes(): Record<AverageMetric, AverageMode> {
-    const modes: Record<AverageMetric, AverageMode> = {
-      hours: 'day',
-      bits: 'day',
-      donations: 'day',
-      follows: 'day',
-      subs: 'day'
-    };
-
-    if (typeof localStorage === 'undefined') {
-      return modes;
-    }
-
+  toggleTopic(topic: Topic): void {
+    const now = this.chosenTopics();
+    const next = now.includes(topic) ? now.filter((t) => t !== topic) : TOPICS.filter((t) => t === topic || now.includes(t));
+    this.chosenTopics.set(next);
     try {
-      const stored = JSON.parse(
-        localStorage.getItem('dimasite.dashboard.average_modes') || '{}'
-      ) as Partial<Record<AverageMetric, AverageMode>>;
-      for (const metric of Object.keys(modes) as AverageMetric[]) {
-        if (stored[metric] === 'stream' || stored[metric] === 'day') {
-          modes[metric] = stored[metric] as AverageMode;
-        }
+      localStorage.setItem(TOPICS_KEY, JSON.stringify(next));
+    } catch {
+      // storage may be blocked
+    }
+  }
+
+  private readTopics(): Topic[] {
+    try {
+      const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(TOPICS_KEY) : null;
+      if (raw) {
+        const saved = JSON.parse(raw) as unknown;
+        if (Array.isArray(saved)) return TOPICS.filter((t) => saved.includes(t));
       }
     } catch {
-      // keep defaults
+      // ignore broken saved state
     }
-
-    return modes;
+    return [...TOPICS];
   }
 
-  private upcomingTileLabel(metric: UpcomingMetric | null, tier: UpcomingTier): string {
-    if (metric) {
-      return this.averageLabel(metric);
+  /** Bot pane on phones: jump there from the one-line strip. */
+  showBotPane(event: Event): void {
+    event.preventDefault();
+    this.pane.set('bot');
+    if (typeof document !== 'undefined') {
+      document.getElementById('dash-bot')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
-    return this.t('dashboard.upcoming.title', { tier: this.upcomingTierLabel(tier) });
   }
 
-  private upcomingTileValue(metric: UpcomingMetric | null, unlocked: boolean): string {
-    if (!unlocked) {
-      return this.t('dashboard.upcoming.locked');
+  onHistoryToggle(event: Event): void {
+    if ((event.target as HTMLDetailsElement).open) {
+      this.scheduleChartResize();
     }
-    if (metric) {
-      return this.averageValue(metric);
-    }
-    return this.t('dashboard.upcoming.comingSoon');
   }
 
-  private planRank(tier: string): number {
-    if (tier === 'pro') {
-      return 2;
-    }
-    if (tier === 'premium') {
-      return 1;
-    }
-    return 0;
+  // -------------------------------------------------------------- formatting
+  signedPct(value: number): string {
+    return `${value > 0 ? '+' : value < 0 ? '−' : ''}${Math.abs(value)}%`;
+  }
+
+  shortDate(value: string | Date): string {
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleDateString(this.getDashboardLocale(), { month: 'short', day: 'numeric' });
   }
 
   formatHistoryDate(value: string): string {
@@ -598,28 +586,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return this.currencyFormatter.format(Math.max(0, value));
   }
 
-  formatPercent(value: number): string {
-    return `${value}%`;
-  }
-
-  formatAiCredits(value: number): string {
-    if (!value || value <= 0) return '0';
-    if (value >= 1000) {
-      const k = value / 1000;
-      return k % 1 === 0 ? `${k}k` : `${k.toFixed(1)}k`;
-    }
-    return Math.round(value).toString();
-  }
-
   selectTimeRange(range: TimeRange): void {
     this.selectedTimeRange.set(range);
-  }
-
-  selectMobilePanel(panel: MobilePanel): void {
-    this.selectedMobilePanel.set(panel);
-    if (panel === 'chart') {
-      this.scheduleChartResize();
-    }
   }
 
   private getDisplayStreamHistory(): DashboardStreamHistoryPoint[] {
@@ -1223,51 +1191,23 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return this.formatNumber(value);
   }
 
-  private emptyKpis(): DashboardKpis {
-    return {
-      activeViewers: 0,
-      averageViewers: 0,
-      monthlyAverageViewers: 0,
-      averageHoursPerStream: 0,
-      totalBits: 0,
-      totalStreams: 0,
-      totalDonations: 0,
-      activeFollows: 0,
-      activeSubs: 0,
-      monthlyGoalSubs: 1000,
-      subsProgressPct: 0
-    };
-  }
-
-  onChatEnabledChange(enabled: boolean): void {
-    // Optimistically update the local state
-    const currentBootstrap = this.dashboardApi.bootstrapData();
-    if (currentBootstrap?.data) {
-      this.dashboardApi.bootstrapData.set({
-        ...currentBootstrap,
-        data: {
-          ...currentBootstrap.data,
-          channel: {
-            ...currentBootstrap.data.channel,
-            chatEnabled: enabled
-          }
-        }
-      });
-    }
-  }
 
   toggleChatCompact(): void {
     const channelID = this.channelID();
     if (!channelID || this.isTogglingChat()) return;
 
-    const newEnabledState = !this.chatEnabled();
+    const enabled = !this.chatEnabled();
     this.isTogglingChat.set(true);
 
-    this.dashboardApi.toggleChat(channelID, newEnabledState).subscribe({
+    this.dashboardApi.toggleChat(channelID, enabled).subscribe({
       next: (response) => {
         this.isTogglingChat.set(false);
-        if (!response.error) {
-          this.onChatEnabledChange(newEnabledState);
+        const current = this.dashboardApi.bootstrapData();
+        if (!response.error && current?.data) {
+          this.dashboardApi.bootstrapData.set({
+            ...current,
+            data: { ...current.data, channel: { ...current.data.channel, chatEnabled: enabled } }
+          });
         }
       },
       error: () => {
@@ -1276,54 +1216,64 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
   }
 
-  private updateStreamHealth(): void {
-    const startTime = performance.now();
-    const channelID = this.channelID();
-    if (!channelID) return;
+  /** Bot-side numbers: automod, chat events and the credits forecast. Each fails on its own. */
+  private loadExtras(channelID: string): void {
+    this.extrasSub.unsubscribe();
+    this.extrasSub = new Subscription();
 
-    this.dashboardApi.getLiveStatus(channelID).subscribe({
-      next: () => {
-        const responseTime = Math.round(performance.now() - startTime);
-        this.streamHealth.set({
-          isConnected: true,
-          responseTimeMs: responseTime,
-          lastChecked: new Date().toISOString()
-        });
-      },
-      error: () => {
-        this.streamHealth.set({
-          isConnected: false,
-          responseTimeMs: 0,
-          lastChecked: new Date().toISOString()
-        });
-      }
-    });
-  }
-
-  private startStreamHealthMonitoring(): void {
-    this.stopStreamHealthMonitoring();
-    this.streamHealthInterval = window.setInterval(() => this.updateStreamHealth(), 30000);
-  }
-
-  private stopStreamHealthMonitoring(): void {
-    if (this.streamHealthInterval !== null) {
-      window.clearInterval(this.streamHealthInterval);
-      this.streamHealthInterval = null;
-    }
+    this.extrasSub.add(
+      this.moderationApi.getLogs(channelID, 1, 100).subscribe({
+        next: (response) => {
+          if (response.error || !response.data) {
+            this.modState.set('error');
+            return;
+          }
+          this.modLogs.set(response.data.logs ?? []);
+          this.modTotal.set(response.data.total ?? 0);
+          this.modState.set('ready');
+        },
+        error: () => this.modState.set('error')
+      })
+    );
+    this.extrasSub.add(
+      this.moderationApi.getSettings(channelID).subscribe({
+        next: (response) => this.modEnabled.set(response.data ? response.data.enabled : null),
+        error: () => this.modEnabled.set(null)
+      })
+    );
+    this.extrasSub.add(
+      this.chatEvents.getEvents(channelID).subscribe({
+        next: (events) => {
+          this.eventsTotal.set(events.length);
+          this.eventsOn.set(events.filter((event) => event.enabled).length);
+          this.eventsState.set('ready');
+        },
+        error: () => this.eventsState.set('error')
+      })
+    );
+    this.extrasSub.add(
+      this.usageApi.getSummary(channelID).subscribe({
+        next: (response) => this.usageSummary.set(response.data ?? null),
+        error: () => this.usageSummary.set(null)
+      })
+    );
   }
 
   private resetDashboardView(): void {
     this.dashboardApi.stopLiveStatusPolling();
     this.dashboardApi.resetState();
-    this.stopStreamHealthMonitoring();
+    this.extrasSub.unsubscribe();
     this.channelID.set(null);
     this.errorMessage.set(null);
     this.profileImageUrl.set(null);
-    this.streamHealth.set({
-      isConnected: false,
-      responseTimeMs: 0,
-      lastChecked: new Date().toISOString()
-    });
+    this.usageSummary.set(null);
+    this.modState.set('loading');
+    this.modLogs.set([]);
+    this.modTotal.set(0);
+    this.modEnabled.set(null);
+    this.eventsState.set('loading');
+    this.eventsOn.set(0);
+    this.eventsTotal.set(0);
   }
 
   private async loadChannelAvatar(login: string): Promise<void> {

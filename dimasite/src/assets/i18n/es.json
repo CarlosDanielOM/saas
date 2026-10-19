@@ -2570,6 +2570,192 @@
     }
   },
   "dashboard": {
+    "brief": {
+      "week": "Últimos 7 días · {{from}} – {{to}}",
+      "weekShort": "Últimos 7 días",
+      "liveFor": "En directo desde hace {{time}}",
+      "lastStream": "Último directo {{date}}",
+      "noRecent": "Sin directos en 30 días",
+      "botIn": "Bot en tu chat",
+      "botOut": "Bot fuera de tu chat",
+      "botInSub": "Comandos, alertas y automod funcionando",
+      "botOutSub": "Comandos, alertas y automod en pausa",
+      "botOffWarn": "El bot no está en tu chat: los comandos, las alertas y el automod no funcionarán hasta que entre.",
+      "answer": {
+        "none": "Sin directos en los últimos 7 días.",
+        "streams": "{{count}} directos, {{hours}} en vivo.",
+        "streamsOne": "1 directo, {{hours}} en vivo.",
+        "follows": "{{count}} seguidores nuevos.",
+        "followsChange": "{{count}} seguidores nuevos ({{change}} frente a la semana anterior).",
+        "last": "Tu último directo fue el {{date}}.",
+        "automod": "El automod actuó {{count}} veces.",
+        "automodNone": "El automod no tuvo nada que hacer."
+      },
+      "liveLabel": "En directo ahora",
+      "f": {
+        "watching": "Viendo",
+        "peak": "Pico",
+        "follows": "Follows",
+        "subs": "Subs",
+        "bits": "Bits",
+        "messages": "Mensajes"
+      },
+      "openTimeline": "Abrir la línea de tiempo",
+      "health": "Estado del bot",
+      "events": "{{on}} de {{total}} eventos de chat activos",
+      "eventsShort": "{{on}}/{{total}} eventos",
+      "eventsTitle": "Eventos de chat",
+      "eventsSub": "Alertas de follows, subs, raids y más",
+      "eventsNone": "Activa algunos para que el chat vea alertas",
+      "unavailable": "No se pudo cargar ahora",
+      "open": "Abrir",
+      "creditsTitle": "Créditos de IA",
+      "creditsLeft": "Te queda el {{pct}}% de créditos",
+      "creditsShort": "{{pct}}% créditos",
+      "credits": {
+        "lasts": "Deberían durar hasta que se renueven el {{date}}",
+        "runOut": "Se acaban en ~{{days}} días, {{gap}} días antes de renovarse",
+        "runOutOne": "Se acaban en ~{{days}} días, 1 día antes de renovarse",
+        "runOutSoon": "Se acaban en menos de un día, {{gap}} días antes de renovarse",
+        "out": "Sin créditos hasta el {{date}}, o recarga",
+        "outNow": "Sin créditos: recarga para seguir usando la IA",
+        "noUsage": "Aún sin uso de IA. Se renuevan el {{date}}",
+        "left": "Disponibles este periodo"
+      },
+      "buy": "Comprar créditos",
+      "usage": "Uso",
+      "automodCount": "{{count}} acciones del automod",
+      "automodShort": "Automod {{count}}",
+      "automodSub": "Borrados, avisos o timeouts esta semana",
+      "automodOffSub": "El spam y los enlaces pasan hasta que lo actives",
+      "jump": "Vuelve a lo tuyo",
+      "allModules": "Todos los módulos",
+      "modules": {
+        "tts": {
+          "name": "Texto a voz",
+          "sub": "Voces que leen el chat"
+        },
+        "chatEvents": {
+          "name": "Eventos de chat",
+          "sub": "Alertas de follow, sub y raid"
+        },
+        "triggers": {
+          "name": "Triggers",
+          "sub": "Sonidos y clips con comandos"
+        },
+        "moderation": {
+          "name": "Moderación",
+          "sub": "Reglas y registros del automod"
+        }
+      },
+      "showMe": "Muéstrame",
+      "topic": {
+        "tips": "Consejos",
+        "games": "Juegos",
+        "days": "Mejores días",
+        "raids": "Raids",
+        "moderation": "Moderación",
+        "commands": "Comandos",
+        "emotes": "Emotes"
+      },
+      "tabs": "Lados del panel",
+      "channel": "Tu canal",
+      "channelSub": "Cómo creces y qué cambiar",
+      "bot": "Tu bot",
+      "botTitle": "Lo que hizo tu bot",
+      "weekTitle": "Tu semana",
+      "weekSub": "frente a los 7 días anteriores",
+      "analytics": "Analíticas",
+      "wf": {
+        "streams": "Directos",
+        "hours": "Horas en vivo",
+        "follows": "Seguidores nuevos",
+        "viewers": "Media de viewers",
+        "subs": "Subs nuevos",
+        "bits": "Bits"
+      },
+      "fixTitle": "Arregla esto primero",
+      "goodTitle": "Lo que funciona",
+      "goodSub": "sigue haciéndolo",
+      "comingSoon": "Muy pronto",
+      "soon": {
+        "tips": {
+          "title": "Consejos sacados de tus directos",
+          "text": "Mejoras numeradas a partir de tu historial: duraciones y días que traen menos seguidores, semanas flojas y raids que no has devuelto. Cada una con sus números y una cosa que probar."
+        },
+        "games": {
+          "title": "Juegos más vistos",
+          "text": "Qué juegos traen más tiempo visto, más viewers y más seguidores por hora."
+        },
+        "days": {
+          "title": "Mejores días para emitir",
+          "text": "Seguidores por directo en cada día de la semana, para saber cuándo emitir."
+        },
+        "raids": {
+          "title": "Raids",
+          "text": "Quién te hizo raid, cuántos seguidores trajo cada una y a quién le debes una."
+        },
+        "commands": {
+          "title": "Comandos más usados",
+          "text": "Los comandos que más usa el chat esta semana y los que ya nadie usa."
+        },
+        "emotes": {
+          "title": "Emotes más usados",
+          "text": "Los emotes que más usa tu chat esta semana, con el cambio frente a la anterior."
+        }
+      },
+      "empty": "No hay nada elegido para este lado. Elige temas en “Muéstrame”.",
+      "mod": {
+        "automod": {
+          "title": "Automod",
+          "when": "Últimos 7 días",
+          "say": "El automod actuó {{count}} veces",
+          "sayOne": "El automod actuó una vez",
+          "change": "{{change}} frente a la semana anterior",
+          "none": "Nada que hacer esta semana",
+          "noneSub": "El chat estuvo limpio. El automod sigue vigilando.",
+          "off": "El automod está apagado",
+          "offSub": "Actívalo para borrar spam, enlaces y palabras bloqueadas por ti.",
+          "turnOn": "Activar el automod",
+          "repeat": "{{user}} fue sancionado {{count}} veces esta semana."
+        },
+        "sanctions": {
+          "title": "Últimas sanciones",
+          "when": "Más recientes primero",
+          "offense": "falta {{n}}",
+          "none": "Aún no hay sanciones.",
+          "all": "Ver todo en Moderación"
+        },
+        "did": {
+          "delete": "Borrados",
+          "warn": "Avisos",
+          "timeout": "Timeouts",
+          "ban": "Baneos"
+        },
+        "one": {
+          "off": "Contado",
+          "delete": "Borrado",
+          "warn": "Avisado",
+          "timeout": "Timeout",
+          "ban": "Baneado"
+        },
+        "error": "No se pudo cargar la moderación ahora.",
+        "open": "Abrir Moderación"
+      },
+      "moreLabel": "Historial y metas",
+      "historyTitle": "Historial de directos",
+      "historySub": "Gráfica y cada directo de los últimos 30 días",
+      "row": {
+        "live": "en vivo",
+        "viewers": "viewers de media",
+        "follows": "follows",
+        "subs": "subs",
+        "bits": "bits",
+        "tips": "propinas"
+      },
+      "goalsTitle": "Metas",
+      "goalsSub": "{{followers}} seguidores · {{subs}} subs"
+    },
     "pageLabel": "Inicio",
     "title": "Panel del Canal",
     "subtitle": "Mira cómo va el canal y enciende el bot antes de salir en vivo.",
