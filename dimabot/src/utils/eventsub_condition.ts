@@ -11,7 +11,13 @@ export function buildExpectedEventsubCondition(
 ): ICondition {
     const condition = { ...subscription.condition };
     if (subscription.type === 'channel.raid') {
-        condition.to_broadcaster_user_id = channelID;
+        if (condition.from_broadcaster_user_id) {
+            delete condition.to_broadcaster_user_id;
+            condition.from_broadcaster_user_id = channelID;
+        } else {
+            delete condition.from_broadcaster_user_id;
+            condition.to_broadcaster_user_id = channelID;
+        }
     } else if (subscription.type === 'user.update') {
         condition.user_id = channelID;
     } else {

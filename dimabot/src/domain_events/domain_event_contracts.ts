@@ -3,6 +3,8 @@ import type { IChatNotification } from '../interfaces/twitch/eventsub.interface.
 import type { JournalDomainEventInput } from './domain_event.types.js';
 import { DOMAIN_EVENT_RETENTION_SECONDS } from './domain_event.types.js';
 import type { PolarBillingPayload } from './polar_events.js';
+import { raidDirection } from '../utils/raid_direction.js';
+import type { ICondition } from '../schemas/eventsub.schema.js';
 
 export class DomainEventContractError extends Error {
     readonly permanent = true;
@@ -177,8 +179,10 @@ export function validateDomainEventContract(input: JournalDomainEventInput, mode
     const original = metadata.originalEventType;
 
     if (twitch) {
+        const raidSubscription = input.payload.subscription as { condition?: ICondition } | undefined;
+        const outgoingRaid = original === 'channel.raid' && raidDirection(raidSubscription?.condition) === 'outgoing';
         requireContract(Object.hasOwn(TWITCH_DOMAIN_EVENT_TYPES, original)
-            && TWITCH_DOMAIN_EVENT_TYPES[original as keyof typeof TWITCH_DOMAIN_EVENT_TYPES] === input.type
+            && (outgoingRaid ? 'channel.raid.sent' : TWITCH_DOMAIN_EVENT_TYPES[original as keyof typeof TWITCH_DOMAIN_EVENT_TYPES]) === input.type
             && input.topic === 'channel', 'Twitch source/type/topic/originalEventType mismatch');
         // Before 75e22ef, Twitch schema 1 used channelID without subject/owner or durable-effect markers.
         // Only that complete retained shape may omit the subject; payload checks below remain identical.
@@ -217,7 +221,11 @@ export function validateDomainEventContract(input: JournalDomainEventInput, mode
         for (const [field, value] of [['subscriptionID', subscription.id], ['subscriptionVersion', subscription.version]] as const) {
             if (metadata[field] !== undefined) requireContract(metadata[field] === (value ?? ''), `metadata.${field} mismatch`);
         }
-        const channelField = original === 'channel.raid' ? 'to_broadcaster_user_id' : 'broadcaster_user_id';
+        if (original === 'channel.raid') {
+            const condition = subscription.condition as ICondition | undefined;
+            requireContract(!(condition?.from_broadcaster_user_id && condition.to_broadcaster_user_id), 'raid condition must specify one direction');
+        }
+        const channelField = original === 'channel.raid' ? outgoingRaid ? 'from_broadcaster_user_id' : 'to_broadcaster_user_id' : 'broadcaster_user_id';
         text(event[channelField], `event.${channelField}`);
         requireContract(event[channelField] === input.channelID, 'Twitch payload/channelID mismatch');
         if (event.broadcaster_user_id !== undefined) requireContract(event.broadcaster_user_id === input.channelID, 'Twitch broadcaster/channelID mismatch');
@@ -282,7 +290,7 @@ export function validateDomainEventContract(input: JournalDomainEventInput, mode
             if (metadata[field] !== undefined) requireContract(typeof metadata[field] === 'boolean', `metadata.${field} must be boolean`);
         }
         if (metadata.durableDefenseHandled === true) requireContract(input.source === 'twitch-eventsub'
-            && ['channel.follow', 'channel.raid'].includes(original), 'invalid durableDefenseHandled scope');
+            && !outgoingRaid && ['channel.follow', 'channel.raid'].includes(original), 'invalid durableDefenseHandled scope');
         return;
     }
 

@@ -11,6 +11,8 @@ import {
 } from './eventsub.js';
 import { buildExpectedEventsubCondition } from './eventsub_condition.js';
 import { shouldTripEventsubCircuitBreaker } from './eventsub_reconciliation_policy.js';
+import { raidDirection } from './raid_direction.js';
+import { shouldRepairRaid, isRaidDeleted } from './raid_subscriptions.js';
 
 interface RemoteEventsub {
     id: string;
@@ -45,7 +47,9 @@ function remoteIsHealthy(remote: RemoteEventsub): boolean {
 
 function stableCondition(condition: ICondition): string {
     return JSON.stringify(Object.fromEntries(
-        Object.entries(condition || {}).sort(([left], [right]) => left.localeCompare(right))
+        Object.entries(condition || {})
+            .filter(([, value]) => value !== '' && value != null)
+            .sort(([left], [right]) => left.localeCompare(right))
     ));
 }
 
@@ -57,6 +61,7 @@ function resolveRemoteChannelID(remote: RemoteEventsub): string {
     return String(
         remote.condition?.broadcaster_user_id
         || remote.condition?.to_broadcaster_user_id
+        || remote.condition?.from_broadcaster_user_id
         || remote.condition?.user_id
         || ''
     );
@@ -241,7 +246,7 @@ export async function reconcileEventsubs(options?: {
     }).lean() as Array<IEventsub & { _id: unknown }>;
     const localGroups = new Map<string, Array<IEventsub & { _id: unknown }>>();
     const localByKey = new Map<string, IEventsub & { _id: unknown }>();
-    for (const local of currentLocalSubscriptions) {
+    for (const local of [...localSubscriptions, ...currentLocalSubscriptions] as Array<IEventsub & { _id: unknown }>) {
         const key = subscriptionKey(local.type, local.version, local.condition);
         const group = localGroups.get(key) || [];
         group.push(local);
@@ -302,6 +307,11 @@ export async function reconcileEventsubs(options?: {
             const condition = buildExpectedEventsubCondition(subscription, channelID);
             const key = subscriptionKey(subscription.type, subscription.version, condition);
             const remote = healthyRemoteByKey.get(key);
+            if (subscription.type === 'channel.raid' && await isRaidDeleted(channelID, raidDirection(condition))) continue;
+            if (subscription.type === 'channel.raid' && !await shouldRepairRaid(channelID, raidDirection(condition))) {
+                // Existing outbound subscriptions predate preference rows only in fixtures/legacy imports.
+                if (!condition.from_broadcaster_user_id || !remote || !localByKey.has(key)) continue;
+            }
             const preservedConfig = eventsubConfig(localByKey.get(key));
             if (remote) {
                 await EventsubSchema.findOneAndUpdate({ id: remote.id }, {

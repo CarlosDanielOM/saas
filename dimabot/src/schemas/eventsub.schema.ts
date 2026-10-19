@@ -75,6 +75,8 @@ const eventsubSchema = new Schema<IEventsub>({
     remote_missing_since: { type: Date, default: null },
 });
 
+eventsubSchema.index({ channelID: 1, type: 1 });
+eventsubSchema.index({ id: 1 });
 const EventsubSchema = model('eventsub', eventsubSchema);
 
 export default EventsubSchema;

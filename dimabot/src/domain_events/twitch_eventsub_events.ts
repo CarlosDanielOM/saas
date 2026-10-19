@@ -1,6 +1,8 @@
 import type { DomainEventProducer, JournalDomainEventInput } from './domain_event.types.js';
 import { resolveDomainEventOwner } from './domain_event_identity.js';
 import { DomainEventContractError, TWITCH_DOMAIN_EVENT_TYPES } from './domain_event_contracts.js';
+import { raidDirection } from '../utils/raid_direction.js';
+import type { ICondition } from '../schemas/eventsub.schema.js';
 export type { TwitchEventsubPayload } from './domain_event_contracts.js';
 
 interface TwitchEventsubSubscriptionLike {
@@ -62,8 +64,9 @@ export function normalizeTwitchEventsubDomainEvent(
         throw new DomainEventContractError('Twitch event must be a record');
     }
 
+    const outgoing = originalEventType === 'channel.raid' && raidDirection(input.subscription.condition as ICondition) === 'outgoing';
     const channelID = firstString(originalEventType === 'channel.raid'
-        ? input.event.to_broadcaster_user_id : input.event.broadcaster_user_id);
+        ? outgoing ? input.event.from_broadcaster_user_id : input.event.to_broadcaster_user_id : input.event.broadcaster_user_id);
     if (!channelID) {
         throw new DomainEventContractError(`Durable Twitch event ${originalEventType} is missing a channel ID`);
     }
@@ -75,7 +78,7 @@ export function normalizeTwitchEventsubDomainEvent(
     return {
         source: input.source || 'twitch-eventsub',
         sourceEventId: firstString(input.messageId),
-        type: normalizedType,
+        type: outgoing ? 'channel.raid.sent' : normalizedType,
         topic: 'channel',
         schemaVersion: 1,
         ...(originalEventType.startsWith('channel.poll.') || originalEventType.startsWith('channel.prediction.') ? { retentionSeconds: 86400 } : {}),
@@ -90,7 +93,7 @@ export function normalizeTwitchEventsubDomainEvent(
         metadata: {
             ...(input.durableChatHandled ? { durableChatHandled: true } : {}),
             ...(input.durableDefenseHandled && (input.source || 'twitch-eventsub') === 'twitch-eventsub'
-                && (originalEventType === 'channel.follow' || originalEventType === 'channel.raid')
+                && (originalEventType === 'channel.follow' || originalEventType === 'channel.raid' && !outgoing)
                 ? { durableDefenseHandled: true } : {}),
             originalEventType,
             subscriptionID: firstString(input.subscription.id),

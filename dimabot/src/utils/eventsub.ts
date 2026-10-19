@@ -6,6 +6,7 @@ import TwitchStreamers from '../classes/twitch_streamers.class.js';
 import EventsubSchema, { type IEventsub, type ICondition } from '../schemas/eventsub.schema.js';
 import { buildBitsEventsubConfig, type EventsubConfig } from './eventsub_bits_config.js';
 import { WATCH_STREAK_MESSAGES } from './chat_notification_defaults.js';
+import { raidConfigType } from './raid_direction.js';
 
 export const CANONICAL_BITS_EVENT_TYPE = 'channel.bits.use';
 export const LEGACY_BITS_EVENT_TYPES = ['channel.cheer', 'channel.bit.use'] as const;
@@ -37,6 +38,7 @@ export interface SubscriptionType {
     version: string;
     condition: ICondition;
     config?: EventsubConfig;
+    autoSubscribe?: boolean;
 }
 
 export interface SubscribeTwitchEventResponse {
@@ -90,7 +92,9 @@ function sortValueDeep(value: unknown): unknown {
 }
 
 function serializeCondition(condition: ICondition): string {
-    return JSON.stringify(sortValueDeep((condition || {}) as Record<string, unknown>));
+    // Twitch can include the unused raid direction as an empty field.
+    const populated = Object.fromEntries(Object.entries(condition || {}).filter(([, value]) => value !== '' && value != null));
+    return JSON.stringify(sortValueDeep(populated));
 }
 
 function toEventsubResponse(eventsub: Partial<IEventsub> & { _id?: unknown }): SubscribeTwitchEventResponse {
@@ -98,7 +102,7 @@ function toEventsubResponse(eventsub: Partial<IEventsub> & { _id?: unknown }): S
         _id: eventsub._id ? String(eventsub._id) : undefined,
         id: String(eventsub.id || ''),
         status: String(eventsub.status || ''),
-        type: String(eventsub.type || ''),
+        type: raidConfigType(String(eventsub.type || ''), eventsub.condition),
         version: String(eventsub.version || ''),
         condition: (eventsub.condition || {}) as ICondition,
         created_at: String(eventsub.created_at || ''),
@@ -202,6 +206,8 @@ export const SUBSCRIPTION_TYPES: SubscriptionType[] = [
             clipEnabled: true
         }
     },
+    { type: 'channel.raid', version: '1', condition: { from_broadcaster_user_id: '698614112' },
+        config: { message: '', minViewers: 0, clipEnabled: false }, autoSubscribe: false },
     ...Object.values(INTERACTION_SUBSCRIPTIONS).flatMap(types => types.map(type => ({ type, version: '1', condition: { broadcaster_user_id: '698614112' } }))),
     {
         type: 'channel.hype_train.begin',

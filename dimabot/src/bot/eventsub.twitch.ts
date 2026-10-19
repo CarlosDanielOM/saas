@@ -165,7 +165,12 @@ export function createTwitchEventsubApp({
                     res.sendStatus(400);
                     return;
                 }
-                bindChannel(notification.event?.broadcaster_user_id || notification.event?.to_broadcaster_user_id);
+                if (eventType === 'channel.raid') {
+                    const { acceptsRaidNotification } = await import('../utils/raid_subscriptions.js');
+                    if (!await acceptsRaidNotification(notification.subscription, notification.event)) { res.sendStatus(204); return; }
+                }
+                bindChannel(notification.event?.broadcaster_user_id
+                    || (notification.subscription.condition?.from_broadcaster_user_id ? notification.event?.from_broadcaster_user_id : notification.event?.to_broadcaster_user_id));
                 observe('event', eventType, 0);
                 observeEventsubNotification(eventType, payloadBytes);
 

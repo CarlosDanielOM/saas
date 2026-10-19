@@ -41,6 +41,7 @@ const STREAM_EVENT_TYPES: readonly string[] = ['stream.online', 'stream.offline'
 const EVENT_ORDER: readonly string[] = [
   'channel.follow',
   'channel.raid',
+  'channel.raid.outgoing',
   'channel.shoutout.receive',
   'channel.bits.use',
   'channel.subscribe',
@@ -204,6 +205,7 @@ export class ChatEventsPageComponent implements OnInit {
   }
 
   eventLabel(event: ChatEvent): string {
+    if (event.type === 'channel.raid' || event.type === 'channel.raid.outgoing') return this.t(`raidAnalytics.${event.type === 'channel.raid' ? 'incomingEvent' : 'outgoingEvent'}`);
     return event.type === CHAT_NOTIFICATION_TYPE && !event.notice ? this.t('chatEvents.notificationsName') : event.name;
   }
 
@@ -224,6 +226,8 @@ export class ChatEventsPageComponent implements OnInit {
     }
 
     const newStatus = !event.enabled;
+    if (['channel.raid', 'channel.raid.outgoing'].includes(event.type)
+      && !confirm(this.t(`raidAnalytics.${newStatus ? 'enableConfirmation' : 'disableConfirmation'}`, { event: this.eventLabel(event) }))) return;
     this.setPendingAction(event.type, newStatus ? 'enabling' : 'disabling');
 
     this.chatEventsService.updateEventStatus(channelId, event.type, newStatus, { label: this.eventLabel(event) }).subscribe({
@@ -387,7 +391,7 @@ export class ChatEventsPageComponent implements OnInit {
     }
 
     const confirmed = confirm(
-      `${this.t('chatEvents.deleteConfirmation.areYouSure')} "${this.eventLabel(event)}"?\n\n${this.t('chatEvents.deleteConfirmation.warning')}`
+      `${this.t('chatEvents.deleteConfirmation.areYouSure')} "${this.eventLabel(event)}"?\n\n${this.t(['channel.raid', 'channel.raid.outgoing'].includes(event.type) ? 'raidAnalytics.deleteWarning' : 'chatEvents.deleteConfirmation.warning')}`
     );
 
     if (!confirmed) {

@@ -86,7 +86,7 @@ export class ChatEventsService {
   private readonly http = inject(HttpClient);
   private readonly linksService = inject(LinksService);
   private readonly toastService = inject(ToastService);
-  private readonly cacheKeyPrefix = 'eventsCache:v7';
+  private readonly cacheKeyPrefix = 'eventsCache:v8';
 
   private readonly eventsCacheByChannel = new Map<string, Observable<ChatEvent[]>>();
 

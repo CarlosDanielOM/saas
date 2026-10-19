@@ -25,6 +25,7 @@ import {
     migrateLegacyBitsEventsubs
 } from "../utils/eventsub.js";
 import type { BitsEventsubMigrationResult } from "../utils/eventsub.js";
+import { raidDirection } from '../utils/raid_direction.js';
 //* TODO Redeem handler
 //* TODO Functions
 
@@ -42,6 +43,23 @@ export const eventsubHandler = async (
     // tests use this immediate path; other chat notice types have no effects.
     if (subscriptionData.type === 'channel.chat.notification'
         && (options.durableChatHandled || !isSupportedChatNotice((eventData as unknown as Record<string, unknown>).notice_type))) return;
+
+    if (subscriptionData.type === 'channel.raid' && raidDirection(subscriptionData.condition) === 'outgoing') {
+        const raid = eventData as IRaidEventData;
+        const config = await EventsubSchema.findOne({ channelID: raid.from_broadcaster_user_id, type: 'channel.raid',
+            'condition.from_broadcaster_user_id': raid.from_broadcaster_user_id,
+            ...(subscriptionData.id ? { id: subscriptionData.id } : {}) }).lean();
+        if (!config?.enabled || !config.message.trim()) return;
+        const streamer = await TwitchStreamers.getTwitchAccountById(raid.from_broadcaster_user_id);
+        if (!streamer || streamer.chat_enabled === 'false') return;
+        await sendTwitchChatMessage(raid.from_broadcaster_user_id, config.message, null, {
+            channelID: raid.from_broadcaster_user_id, eventsubData: config,
+            eventData: { ...raid, raid_direction: 'outgoing', broadcaster_user_id: raid.from_broadcaster_user_id,
+                broadcaster_user_name: raid.from_broadcaster_user_name, broadcaster_user_login: raid.from_broadcaster_user_login,
+                user_id: raid.to_broadcaster_user_id, user_name: raid.to_broadcaster_user_name, user_login: raid.to_broadcaster_user_login }
+        });
+        return;
+    }
 
     const cache = await getDragonflyClient('Eventsub');
     let chatEnabled = true;
@@ -110,7 +128,8 @@ export const eventsubHandler = async (
     } else {
         eventsubData = await EventsubSchema.findOne({
             channelID: STREAMER.id,
-            type: canonicalType
+            type: canonicalType,
+            ...(type === 'channel.raid' ? { 'condition.to_broadcaster_user_id': STREAMER.id } : {})
         });
     }
 

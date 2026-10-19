@@ -19,6 +19,10 @@ import type { ICheerTiers } from "../../schemas/eventsub.schema.js";
 import { eventsubHandler } from "../../handlers/eventsub.handler.js";
 import { normalizeTwitchEventsubDomainEvent } from "../../domain_events/twitch_eventsub_events.js";
 import { journalDomainEvent } from "../../utils/domain_events.js";
+import type { ICondition } from '../../schemas/eventsub.schema.js';
+import { OUTGOING_RAID_EVENT, isRaidEvent, raidConfigType, raidDirection, raidCondition } from '../../utils/raid_direction.js';
+import { RaidSubscriptionPreferenceSchema as RaidPreferences } from '../../schemas/raid_subscription_preference.schema.js';
+import { raidPreferenceID } from '../../utils/raid_subscriptions.js';
 
 const router = express.Router();
 const NON_DISABLEABLE_EVENT_TYPES = new Set(['stream.online', 'stream.offline']);
@@ -201,14 +205,14 @@ async function findEventTemplateByType(type: string) {
         || null;
 }
 
-function normalizeEventsubResponseType<T extends { type?: string }>(eventsub: T): T {
+function normalizeEventsubResponseType<T extends { type?: string; condition?: ICondition }>(eventsub: T): T {
     if (typeof eventsub.type !== 'string') {
         return eventsub;
     }
 
     return {
         ...eventsub,
-        type: canonicalizeEventsubType(eventsub.type)
+        type: raidConfigType(canonicalizeEventsubType(eventsub.type), eventsub.condition)
     };
 }
 
@@ -259,11 +263,11 @@ function choosePreferredEventsub<T extends { type?: string } & Record<string, un
         : current;
 }
 
-function dedupeNormalizedEventsubs<T extends { type?: string; channelID?: string }>(eventsubs: T[]): T[] {
+function dedupeNormalizedEventsubs<T extends { type?: string; channelID?: string; condition?: ICondition }>(eventsubs: T[]): T[] {
     const byKey = new Map<string, T>();
 
     for (const eventsub of eventsubs) {
-        const key = `${eventsub.channelID || ''}:${canonicalizeEventsubType(typeof eventsub.type === 'string' ? eventsub.type : '')}`;
+        const key = `${eventsub.channelID || ''}:${raidConfigType(canonicalizeEventsubType(typeof eventsub.type === 'string' ? eventsub.type : ''), eventsub.condition)}`;
         byKey.set(key, choosePreferredEventsub(byKey.get(key), eventsub));
     }
 
@@ -274,7 +278,7 @@ function dedupeNormalizedEventsubs<T extends { type?: string; channelID?: string
 router.get('/standard', async (req: Request, res: Response) => {
     try {
         const standardTypes = SUBSCRIPTION_TYPES.map(sub => ({
-            type: sub.type,
+            type: raidConfigType(sub.type, sub.condition),
             version: sub.version,
             condition: sub.condition,
             config: sub.config || null
@@ -341,11 +345,12 @@ router.post('/:channelID/test', authMiddleware as any, async (req: EventsubReque
         const conditionData = subscriptionData.condition && typeof subscriptionData.condition === 'object'
             ? subscriptionData.condition as Record<string, unknown>
             : {};
+        const outgoing = subscriptionData.type === 'channel.raid' && raidDirection(conditionData as ICondition) === 'outgoing';
         const addressedChannelIDs = [
             eventData.broadcaster_user_id,
-            eventData.to_broadcaster_user_id,
+            outgoing ? eventData.from_broadcaster_user_id : eventData.to_broadcaster_user_id,
             conditionData.broadcaster_user_id,
-            conditionData.to_broadcaster_user_id,
+            outgoing ? conditionData.from_broadcaster_user_id : conditionData.to_broadcaster_user_id,
             ...(subscriptionData.type === 'user.update' ? [eventData.user_id, conditionData.user_id] : [])
         ].filter((value) => value !== undefined && value !== null && String(value).trim().length > 0)
             .map((value) => String(value).trim());
@@ -357,11 +362,13 @@ router.post('/:channelID/test', authMiddleware as any, async (req: EventsubReque
             });
         }
         eventData.broadcaster_user_id = channelIdStr;
-        if ('to_broadcaster_user_id' in eventData) eventData.to_broadcaster_user_id = channelIdStr;
+        if (outgoing) eventData.from_broadcaster_user_id = channelIdStr;
+        else if ('to_broadcaster_user_id' in eventData) eventData.to_broadcaster_user_id = channelIdStr;
         if (subscriptionData.type === 'user.update') eventData.user_id = channelIdStr;
         if (subscriptionData.condition && typeof subscriptionData.condition === 'object') {
             if ('broadcaster_user_id' in conditionData) conditionData.broadcaster_user_id = channelIdStr;
-            if ('to_broadcaster_user_id' in conditionData) conditionData.to_broadcaster_user_id = channelIdStr;
+            if (outgoing) conditionData.from_broadcaster_user_id = channelIdStr;
+            else if ('to_broadcaster_user_id' in conditionData) conditionData.to_broadcaster_user_id = channelIdStr;
             if (subscriptionData.type === 'user.update') conditionData.user_id = channelIdStr;
         }
 
@@ -447,7 +454,8 @@ router.get('/:channelID', authMiddleware as any, async (req: EventsubRequest, re
             } else if (type) {
                 eventsub = await EventsubSchema.find({
                     channelID: channelIdStr,
-                    type: { $in: getEquivalentEventsubTypes(type) }
+                    type: { $in: getEquivalentEventsubTypes(type === OUTGOING_RAID_EVENT ? 'channel.raid' : type) },
+                    ...(isRaidEvent(type) ? { [`condition.${type === OUTGOING_RAID_EVENT ? 'from' : 'to'}_broadcaster_user_id`]: channelIdStr } : {})
                 }).lean();
             } else {
                 eventsub = await EventsubSchema.find({ channelID: channelIdStr }).lean();
@@ -520,6 +528,22 @@ router.get('/:channelID', authMiddleware as any, async (req: EventsubRequest, re
             }
 
             const normalizedType = canonicalizeEventsubType(type);
+            const requestedRaid = isRaidEvent(normalizedType);
+            const direction = normalizedType === OUTGOING_RAID_EVENT ? 'outgoing' : raidDirection(condition as ICondition);
+            if (requestedRaid) {
+                const expected = raidCondition(channelIdStr, direction);
+                const provided = condition as ICondition;
+                if (version !== '1' || provided.from_broadcaster_user_id && provided.to_broadcaster_user_id
+                    || Object.entries(expected).some(([key, value]) => provided[key as keyof ICondition] !== value)) {
+                    return res.status(400).json({ error: true, message: 'Raid condition must match this channel and one direction' });
+                }
+                const allowed = new Set(['enabled', 'message', 'clipEnabled', 'minViewers', 'delay']);
+                if (config && (Object.keys(config).some(key => !allowed.has(key))
+                    || config.enabled !== undefined && typeof config.enabled !== 'boolean'
+                    || config.message !== undefined && typeof config.message !== 'string')) {
+                    return res.status(400).json({ error: true, message: 'Invalid raid event settings' });
+                }
+            }
 
             const userPlan = await getUserPlanTier(channelIdStr);
 
@@ -550,7 +574,8 @@ router.get('/:channelID', authMiddleware as any, async (req: EventsubRequest, re
                 }
             }
 
-            const eventsub = await subscribeTwitchEvent(channelIdStr, normalizedType, version, condition, config);
+            const eventsub = await subscribeTwitchEvent(channelIdStr, requestedRaid ? 'channel.raid' : normalizedType, version,
+                requestedRaid ? raidCondition(channelIdStr, direction) : condition, config);
 
             if (!eventsub || (eventsub as any).error) {
                 return res.status(400).send({
@@ -559,6 +584,9 @@ router.get('/:channelID', authMiddleware as any, async (req: EventsubRequest, re
                     status: 400
                 });
             }
+
+            if (requestedRaid) await RaidPreferences.updateOne({ _id: raidPreferenceID(channelIdStr, direction) },
+                { $set: { channelID: channelIdStr, direction, deleted: false, operation: randomUUID(), updatedAt: new Date() } }, { upsert: true });
 
             return res.status(201).send({
                 error: false,
@@ -623,9 +651,23 @@ router.delete('/:channelID/:id', authMiddleware as any, async (req: EventsubRequ
                 });
             }
 
-            const result = await unsubscribeTwitchEvent(eventsub.id);
+            const direction = raidDirection(eventsub.condition);
+            const preferenceID = raidPreferenceID(channelIdStr, direction), operation = randomUUID();
+            const prior = eventsub.type === 'channel.raid' ? await RaidPreferences.findById(preferenceID).lean() : null;
+            if (eventsub.type === 'channel.raid') await RaidPreferences.updateOne({ _id: preferenceID }, {
+                $set: { channelID: channelIdStr, direction, deleted: true, operation, updatedAt: new Date() }
+            }, { upsert: true });
+            let result;
+            try { result = await unsubscribeTwitchEvent(eventsub.id); }
+            catch (error) {
+                if (eventsub.type === 'channel.raid') await RaidPreferences.updateOne({ _id: preferenceID, operation },
+                    { $set: { deleted: prior?.deleted || false, updatedAt: new Date() } });
+                throw error;
+            }
 
             if ((result as any).error) {
+                if (eventsub.type === 'channel.raid') await RaidPreferences.updateOne({ _id: preferenceID, operation },
+                    { $set: { deleted: prior?.deleted || false, updatedAt: new Date() } });
                 return res.status((result as any).status).send({
                     error: (result as any).error,
                     message: (result as any).message,
@@ -704,6 +746,14 @@ router.patch('/:channelID/:id', authMiddleware as any, async (req: EventsubReque
                     message: 'Eventsub not found',
                     status: 404
                 });
+            }
+
+            if (eventsub.type === 'channel.raid') {
+                const allowed = new Set(['enabled', 'message', 'clipEnabled', 'minViewers', 'delay']);
+                if (Object.keys(body).some(key => !allowed.has(key)) || body.enabled !== undefined && typeof body.enabled !== 'boolean'
+                    || body.message !== undefined && typeof body.message !== 'string') {
+                    return res.status(400).json({ error: true, message: 'Invalid raid event settings' });
+                }
             }
 
             if (

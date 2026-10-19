@@ -123,7 +123,25 @@ export const SUBSCRIPTION_CHAT_EVENTS = [
     }]
 } satisfies Omit<IEvent, '_id' | 'createdAt' | 'updatedAt' | 'tierLimits'>));
 
-const BUILTIN_CHAT_EVENTS = [CHAT_NOTIFICATION_EVENT, SHOUTOUT_RECEIVED_EVENT, ...SUBSCRIPTION_CHAT_EVENTS] as const;
+export const OUTGOING_RAID_CHAT_EVENT = {
+    name: 'Outgoing raid', type: 'channel.raid.outgoing', version: '1', condition: { from_broadcaster_user_id: 'user' },
+    icon: 'Users', color: '#7c3aed', textColor: '#ffffff', releaseStage: 'stable', enabled: false, plan_tier: 'free',
+    description: { EN: 'Track channels you raid for your dashboard. An empty message tracks silently. Disabling or deleting stops outgoing tracking only; recorded history remains.',
+        ES: 'Registra los canales a los que haces raid para tu panel. Un mensaje vacío registra en silencio. Desactivar o eliminar solo detiene el registro de salida; el historial se conserva.' },
+    config: [{ id: 'message', label: { EN: 'Optional message · $(raid.channel), $(raid.login), $(raid.viewers)',
+        ES: 'Mensaje opcional · $(raid.channel), $(raid.login), $(raid.viewers)' }, type: 'text', value: '', canDisable: true }]
+} satisfies Omit<IEvent, '_id' | 'createdAt' | 'updatedAt' | 'tierLimits'>;
+
+export const INCOMING_RAID_CHAT_EVENT = {
+    ...OUTGOING_RAID_CHAT_EVENT, name: 'Incoming raid', type: 'channel.raid', condition: { to_broadcaster_user_id: 'user' },
+    description: { EN: 'Incoming raid protection, announcements, clips and shoutouts. Independent of outgoing tracking.',
+        ES: 'Protección ante raids entrantes, anuncios, clips y shoutouts. Independiente del registro de salida.' },
+    config: [{ id: 'message', label: { EN: 'Announcement', ES: 'Anuncio' }, type: 'text', value: '$(raid.channel) is raiding with $(raid.viewers) viewers!', canDisable: true },
+        { id: 'enableClip', dbId: 'clipEnabled', label: { EN: 'Show a clip', ES: 'Mostrar un clip' }, type: 'checkbox', value: true, canDisable: true },
+        { id: 'minViewers', label: { EN: 'Minimum viewers for announcements', ES: 'Espectadores mínimos para anuncios' }, type: 'number', value: 2, canDisable: true }]
+} satisfies Omit<IEvent, '_id' | 'createdAt' | 'updatedAt' | 'tierLimits'>;
+
+const BUILTIN_CHAT_EVENTS = [CHAT_NOTIFICATION_EVENT, SHOUTOUT_RECEIVED_EVENT, INCOMING_RAID_CHAT_EVENT, OUTGOING_RAID_CHAT_EVENT, ...SUBSCRIPTION_CHAT_EVENTS] as const;
 
 export function getBuiltinChatEvent(type: string) {
     return BUILTIN_CHAT_EVENTS.find(event => event.type === type);

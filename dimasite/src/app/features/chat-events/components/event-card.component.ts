@@ -235,6 +235,7 @@ export class EventCardComponent {
   readonly alwaysOn = computed(() => this.event().enabled && !this.canDisable());
 
   getEventName(): string {
+    if (this.event().type === 'channel.raid' || this.event().type === 'channel.raid.outgoing') return this.t(`raidAnalytics.${this.event().type === 'channel.raid' ? 'incomingEvent' : 'outgoingEvent'}`);
     const subscriptionNames: Record<string, string> = {
       'channel.subscribe': 'new',
       'channel.subscription.gift': 'gift',
@@ -254,6 +255,7 @@ export class EventCardComponent {
   }
 
   getEventDescription(description: { en: string; es: string }): string {
+    if (this.event().type === 'channel.raid' || this.event().type === 'channel.raid.outgoing') return this.t(`raidAnalytics.${this.event().type === 'channel.raid' ? 'incomingDescription' : 'outgoingDescription'}`);
     if (!description || typeof description !== 'object') {
       return 'Invalid description';
     }

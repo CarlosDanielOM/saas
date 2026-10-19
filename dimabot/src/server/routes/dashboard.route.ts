@@ -7,6 +7,9 @@ import { StreamSubscriptionLedgerSchema } from '../../schemas/stream_subscriptio
 import UsersSchema from '../../schemas/users.schema.js';
 import { getCachedLiveStatus } from '../../utils/siteanalytics.js';
 import { getDashboardAnalytics, getLiveSessionMetrics } from '../../utils/stream_analytics.js';
+import EventsubSchema from '../../schemas/eventsub.schema.js';
+import { RaidAnalyticsSummarySchema } from '../../schemas/raid_analytics.schema.js';
+import { queueRaidSummary } from '../../utils/raid_analytics.js';
 
 interface DashboardRequest extends Request {
     user?: {
@@ -28,6 +31,26 @@ function normalizePlanTier(planTier: string | undefined): PlanTier {
 }
 
 const router = express.Router();
+
+router.get('/:channelID/raids', authMiddleware as any, async (req: DashboardRequest, res: Response) => {
+    try {
+        const channelID = String(req.params.channelID), days = Number(req.query.days || 7);
+        if (!/^\d{1,30}$/.test(channelID) || ![7, 30].includes(days)) return res.status(400).json({ error: true, message: 'Invalid raid range' });
+        if (!req.user || !(await getAccessContext(req.user.id, channelID)).allowed) return res.status(403).json({ error: true, message: 'Dashboard access required' });
+        const [state, configs] = await Promise.all([
+            RaidAnalyticsSummarySchema.findById(channelID).maxTimeMS(1500).lean(),
+            EventsubSchema.find({ channelID, type: 'channel.raid' }).select('enabled condition').maxTimeMS(1500).lean()
+        ]);
+        if (!state) await queueRaidSummary(channelID);
+        res.set('Cache-Control', 'no-store');
+        return res.json({ error: false, data: { summary: state?.payload?.[String(days)] || null,
+            updatedAt: state?.updatedAt || null, pending: !state?.payload || Boolean(state.dirtyAt && state.updatedAt && +state.dirtyAt > +state.updatedAt),
+            stale: Boolean(state?.error || state?.updatedAt && Date.now() - +state.updatedAt > 180000),
+            tracking: { incoming: configs.some(row => row.enabled && row.condition?.to_broadcaster_user_id === channelID),
+                outgoing: configs.some(row => row.enabled && row.condition?.from_broadcaster_user_id === channelID) },
+            retentionDays: 90, followWindowMinutes: 5 } });
+    } catch (error) { console.error('Raid dashboard read failed', error); return res.status(500).json({ error: true, message: 'Unable to load raids' }); }
+});
 
 async function getLiveStatus(channelID: string): Promise<{ isLive: boolean; stream: Record<string, unknown> | null; liveSession: Awaited<ReturnType<typeof getLiveSessionMetrics>> }> {
     const live = await getCachedLiveStatus(channelID);

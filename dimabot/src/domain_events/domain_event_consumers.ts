@@ -11,6 +11,11 @@ const twitchSources = { $in: ['twitch-eventsub', 'twitch-eventsub-test'] };
 
 export const DOMAIN_EVENT_CONSUMERS: readonly DomainEventConsumerDefinition[] = [
     {
+        consumer: 'raid-history-v1', topics: ['channel'], schemaVersions: [1], adminReplay: true,
+        eventFilter: { source: 'twitch-eventsub', type: { $in: ['channel.raid.received', 'channel.raid.sent'] } },
+        handler: async event => (await import('../utils/raid_analytics.js')).applyRaidAnalyticsEvent(event)
+    },
+    {
         consumer: 'stream-timeline-v1', topics: ['channel'], schemaVersions: [1], adminReplay: true,
         eventFilter: { source: 'twitch-eventsub', type: { $in: ['channel.follow.received', 'channel.subscription.received',
             'channel.subscription.gifted', 'channel.bits.received', 'channel.raid.received'] } },

@@ -35,6 +35,8 @@ import { decrypt } from "../../utils/crypto.js";
 import { refreshTwitchToken } from "../../utils/tokens.js";
 import { deleteAccountPermanently } from "../../utils/account_deletion.js";
 import { buildExpectedEventsubCondition } from '../../utils/eventsub_condition.js';
+import { raidDirection } from '../../utils/raid_direction.js';
+import { shouldRepairRaid } from '../../utils/raid_subscriptions.js';
 
 const __dirname = getDirname(import.meta.url);
 
@@ -156,6 +158,7 @@ async function createReservedCommands(channelID: string, channelName: string): P
 async function subscribeAllEventSubs(channelID: string): Promise<void> {
     for (const subscription of SUBSCRIPTION_TYPES) {
         const condition = buildExpectedEventsubCondition(subscription, channelID);
+        if (subscription.type === 'channel.raid' && !await shouldRepairRaid(channelID, raidDirection(condition))) continue;
 
         const response = await subscribeTwitchEvent(
             channelID,
@@ -1442,17 +1445,18 @@ router.post('/repair', authMiddleware as any, async (req: any, res: Response) =>
 
             const legacyBitsCleanup = await migrateLegacyBitsEventsubs(channelID);
 
-            const existingEventSubs = await EventsubSchema.find({ channelID }).select('type').lean();
-            const existingTypes = existingEventSubs.map(es => es.type);
+            const existingEventSubs = await EventsubSchema.find({ channelID }).select('type condition').lean();
 
             const missingSubscriptions = SUBSCRIPTION_TYPES.filter(
-                sub => !existingTypes.includes(sub.type)
+                sub => !existingEventSubs.some(existing => existing.type === sub.type
+                    && (sub.type !== 'channel.raid' || raidDirection(existing.condition) === raidDirection(sub.condition)))
             );
 
             let subscribedCount = 0;
 
             for (const subscription of missingSubscriptions) {
                 const condition = buildExpectedEventsubCondition(subscription, channelID);
+                if (subscription.type === 'channel.raid' && !await shouldRepairRaid(channelID, raidDirection(condition))) continue;
 
                 const response = await subscribeTwitchEvent(
                     channelID,

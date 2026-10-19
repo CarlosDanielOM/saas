@@ -85,16 +85,14 @@ const raidViewersHandler: FunctionHandler = async (_args, ctx) => {
 
 const raidChannelHandler: FunctionHandler = async (_args, ctx) => {
     const eventData = getEventData(ctx);
-    const channelName = getStringField(eventData, [
-        'from_broadcaster_user_name',
-        'from_broadcaster_user_login'
-    ]);
+    const channelName = getStringField(eventData, eventData.raid_direction === 'outgoing'
+        ? ['to_broadcaster_user_name', 'to_broadcaster_user_login'] : ['from_broadcaster_user_name', 'from_broadcaster_user_login']);
     return channelName || 'unknown';
 };
 
 const raidLoginHandler: FunctionHandler = async (_args, ctx) => {
     const eventData = getEventData(ctx);
-    const channelLogin = getStringField(eventData, ['from_broadcaster_user_login']);
+    const channelLogin = getStringField(eventData, [eventData.raid_direction === 'outgoing' ? 'to_broadcaster_user_login' : 'from_broadcaster_user_login']);
     return channelLogin || 'unknown';
 };
 
