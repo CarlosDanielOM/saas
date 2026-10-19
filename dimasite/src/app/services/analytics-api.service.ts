@@ -1,4 +1,4 @@
-import { StreamTimeline, TimelineResponse, TimelineStreamList } from '../models/stream-timeline.model';
+import { StreamTimeline, TimelineResponse, TimelineStreamList, TimelinePeople, TimelineCredits, TimelineEvent } from '../models/stream-timeline.model';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { catchError, throwError } from 'rxjs';
@@ -46,6 +46,13 @@ export class AnalyticsApiService {
   private timelineUrl(channel: string): string { return `${this.linksService.getApiUrl()}/analytics/streams/${encodeURIComponent(channel)}`; }
   getTimelineStreams(channel: string, page: number) { return this.http.get<TimelineResponse<TimelineStreamList>>(`${this.timelineUrl(channel)}?page=${page}`); }
   getStreamTimeline(channel: string, session: string) { return this.http.get<TimelineResponse<StreamTimeline>>(`${this.timelineUrl(channel)}/${encodeURIComponent(session)}`); }
+  getTimelineComparison(channel: string, session: string, other: string) { return this.http.get<TimelineResponse<StreamTimeline>>(`${this.timelineUrl(channel)}/${session}/compare/${other}`); }
+  getTimelineMoments(channel: string, session: string, params: URLSearchParams) { return this.http.get<TimelineResponse<{ events: TimelineEvent[]; cursor: string | null }>>(`${this.timelineUrl(channel)}/${session}/moments?${params}`); }
+  getTimelinePeople(channel: string, session: string, kind: string, key: string, cursor = '') {
+    const params = new URLSearchParams({ kind, key, ...(cursor ? { cursor } : {}) });
+    return this.http.get<TimelineResponse<TimelinePeople>>(`${this.timelineUrl(channel)}/${session}/people?${params}`);
+  }
+  getTimelineCredits(channel: string, session: string) { return this.http.get<TimelineResponse<TimelineCredits>>(`${this.timelineUrl(channel)}/${session}/credits`); }
   saveTimelineMarker(channel: string, session: string, key: string, body: { label: string; offsetSeconds: number }) {
     return this.http.put<TimelineResponse<unknown>>(`${this.timelineUrl(channel)}/${encodeURIComponent(session)}/markers/${encodeURIComponent(key)}`, body);
   }

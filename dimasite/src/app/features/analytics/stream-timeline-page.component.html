@@ -31,6 +31,19 @@
         <section class="lf-tile chart-panel" aria-labelledby="activity-heading">
           <h2 id="activity-heading">{{ t('activity') }}</h2>
           <p>{{ t('chartHint') }}</p>
+          <div class="range-tools">
+            <div class="actions" [attr.aria-label]="t('zoom')">
+              <button type="button" (click)="zoom(1800)">{{ t('zoom30') }}</button>
+              <button type="button" (click)="zoom(3600)">{{ t('zoom60') }}</button>
+              <button type="button" (click)="zoom(0)">{{ t('fullStream') }}</button>
+            </div>
+            <div class="range-fields">
+              <label>{{ t('fromMinutes') }}<input #rangeFrom type="number" min="0" step="1" [value]="rangeStart() / 60" /></label>
+              <label>{{ t('toMinutes') }}<input #rangeTo type="number" min="0" step="1" [value]="rangeEnd() / 60" /></label>
+              <button type="button" (click)="applyRange(rangeFrom.value, rangeTo.value)">{{ t('applyRange') }}</button>
+            </div>
+            @if (rangeError()) { <p class="error" role="alert">{{ t('rangeError') }}</p> }
+          </div>
           @if (!data.points.length) { <p class="notice">{{ t('noSamples') }}</p> }
           @for (chart of charts(); track chart.key) {
             <div class="chart" [class]="'chart chart--' + chart.key">
@@ -39,15 +52,25 @@
                 <svg viewBox="0 0 1000 130" preserveAspectRatio="none" role="img" [attr.aria-label]="t(chart.key) + '. ' + t('chartAccessible')" (click)="chartSelect($event)">
                   <line x1="0" y1="115" x2="1000" y2="115" class="grid-line" />
                   <line x1="0" y1="65" x2="1000" y2="65" class="grid-line" />
-                  @for (event of data.events; track event.id) { <line [attr.x1]="x(event.offsetSeconds)" y1="5" [attr.x2]="x(event.offsetSeconds)" y2="115" class="event-line" /> }
+                  @for (event of events(); track event.id) { <line [attr.x1]="x(event.offsetSeconds)" y1="5" [attr.x2]="x(event.offsetSeconds)" y2="115" class="event-line" /> }
                   <path [attr.d]="chart.path" class="series" />
+                  @if (chart.comparePath) { <path [attr.d]="chart.comparePath" class="comparison-series" /> }
                   @for (dot of chart.dots; track $index) { <circle [attr.cx]="dot.x" [attr.cy]="dot.y" r="2.5" class="point" /> }
                   <line [attr.x1]="x(selectedOffset())" y1="0" [attr.x2]="x(selectedOffset())" y2="120" class="cursor" />
                 </svg>
               } @else { <div class="chart-empty">{{ t(chart.key === 'chatters' ? 'noChatters' : 'noSamples') }}</div> }
             </div>
           }
-          <div class="axis"><span>00:00:00</span><span>{{ time(data.session.durationSeconds / 2) }}</span><span>{{ time(data.session.durationSeconds) }}</span></div>
+          <div class="axis"><span>{{ time(rangeStart()) }}</span><span>{{ time((rangeStart() + rangeEnd()) / 2) }}</span><span>{{ time(rangeEnd()) }}</span></div>
+          @if (data.activity?.capabilities?.comparison) {
+            <label class="compare-select">{{ t('compare') }}
+              <select [attr.aria-label]="t('compare')" [value]="compareID()" (change)="compare($any($event.target).value)" [disabled]="detailLoading()">
+                <option value="">{{ t('noComparison') }}</option>
+                @for (stream of streams(); track stream.id) { @if (stream.id !== selectedID()) { <option [value]="stream.id">{{ date(stream.startedAt) }}</option> } }
+              </select>
+            </label>
+            @if (comparison(); as other) { <p class="notice">{{ t('comparisonHint', { peak: comparisonPeak() }) }} {{ t('duration') }} {{ time(other.session.durationSeconds) }}</p> }
+          }
           <div class="inspection">
             <label>{{ t('inspect') }}
               <select [attr.aria-label]="t('inspect')" [value]="selectedOffset()" (change)="selectPoint($event)" [disabled]="!inspectionOffsets().length">
@@ -59,6 +82,7 @@
               @if (selectedPoint(); as point) {
                 <span>{{ t('viewers') }} <b>{{ point.viewers }}</b></span>
                 <span>{{ t('messages') }} <b>{{ point.messagesPerMinute ?? '—' }}</b></span>
+                @if (data.activity?.capabilities?.trends) { <span>{{ t('commands') }} <b>{{ point.commandsPerMinute ?? '—' }}</b></span> }
                 <span class="readout-context">{{ point.game }} · {{ point.title }}</span>
                 <small>{{ t('nearest', { time: time(point.offsetSeconds) }) }}</small>
                 @if (point.gap) { <small class="notice">{{ t('gap') }}</small> }
@@ -71,19 +95,72 @@
         <section class="lf-tile event-panel" aria-labelledby="events-heading">
           <div class="event-heading"><h2 id="events-heading">{{ t('events') }}</h2><span class="chip">{{ events().length }}</span></div>
           <label>{{ t('eventFilter') }}<select [attr.aria-label]="t('eventFilter')" [value]="filter()" (change)="filter.set($any($event.target).value)">@for (kind of eventKinds; track kind) { <option [value]="kind">{{ t('kind.' + kind) }}</option> }</select></label>
+          <label class="moment-search">{{ t('searchMoments') }}<input type="search" [value]="search()" (input)="search.set($any($event.target).value)" /></label>
+          <details class="method"><summary>{{ t('multipleKinds') }}</summary><div class="actions">
+            @for (kind of eventKinds.slice(1); track kind) { <button type="button" [attr.aria-pressed]="momentKinds().includes(kind)" (click)="toggleMoment(kind)">{{ t('kind.' + kind) }}</button> }
+          </div></details>
           <ol class="events">
             @for (event of events(); track event.id) {
               <li>
                 <button class="event-button" type="button" (click)="selectedOffset.set(event.offsetSeconds)" [attr.aria-pressed]="selectedOffset() === event.offsetSeconds">
-                  <time>{{ time(event.offsetSeconds) }}</time><span><small>{{ t('kind.' + event.kind) }}</small><strong>{{ event.label || t('unknown') }}</strong>@if (event.kind === 'raid') { <small>{{ t('raidViewers', { count: event.value ?? 0 }) }}</small> }</span>
+                  <time>{{ time(event.offsetSeconds) }}</time><span><small>{{ t('kind.' + event.kind) }}</small><strong>{{ event.label || t('unknown') }}</strong>@if (event.kind === 'raid') { <small>{{ t('raidViewers', { count: event.value ?? 0 }) }}</small> }
+                    @if (event.kind === 'bits' || event.kind === 'gift') { <small>{{ t(event.kind === 'bits' ? 'bitsAmount' : 'giftAmount', { count: event.value ?? 0 }) }}</small> }
+                    @if (event.kind === 'redemption' && event.cost !== undefined) { <small>{{ t('rewardCost', { count: event.cost }) }}</small> }
+                  </span>
                 </button>
                 @if (event.kind === 'note' && data.canAnnotate) { <button class="remove" type="button" (click)="openMarker(event)" [attr.aria-label]="t('removeNamed', { name: event.label })"><app-lf-icon name="trash" /></button> }
               </li>
             } @empty { <li class="empty-events">{{ t('noEvents') }}</li> }
           </ol>
+          <div class="actions">
+            <button type="button" (click)="loadMoments(true)" [disabled]="momentsLoading()">{{ t('loadRange') }}</button>
+            @if (momentCursor()) { <button type="button" (click)="loadMoments()" [disabled]="momentsLoading()">{{ t('moreMoments') }}</button> }
+          </div>
+          @if (momentsError()) { <p class="error" role="alert">{{ t('detailError') }}</p> }
+          <p class="event-footnote">{{ t('loadedSearch') }}</p>
           <p class="event-footnote">{{ t('eventHint') }}</p>
         </section>
       </div>
+      @if (data.activity; as activity) {
+        <section class="lf-tile activity-detail" aria-labelledby="activity-detail-heading">
+          <h2 id="activity-detail-heading">{{ t('activityDetail') }}</h2>
+          @if (activity.updatedAt) { <p class="event-footnote">{{ t('recordedActivity') }} {{ date(activity.updatedAt) }}</p> }
+          @if (activity.pending) { <p class="notice" role="status">{{ t('processing') }}</p> }
+          @if (!activity.totals) { <p>{{ t('noActivity') }}</p> }
+          @if (activity.totals; as totals) {
+            <p class="activity-summary">{{ t('activitySummary', { commands: totals.commands, emotes: totals.emotes, messages: totals.emoteMessages }) }}</p>
+          }
+          <div class="rankings">
+            @for (kind of ['command', 'emote']; track kind) {
+              <div><h3>{{ t(kind === 'command' ? 'topCommands' : 'topEmotes') }}</h3>
+                <ol class="rank-list">
+                  @for (row of kind === 'command' ? activity.commands : activity.emotes; track row.key) {
+                    <li><span><strong>{{ row.label || row.key }}</strong>@if (row.errors !== undefined) { <small>{{ t('errors', { count: row.errors }) }}</small> }@if (row.messages !== undefined) { <small>{{ t('emoteMessages', { count: row.messages }) }}</small> }</span><b>{{ row.count }}</b>
+                      @if (activity.capabilities.users) { <button type="button" (click)="loadPeople(kind, row)" [disabled]="detailLoading()">{{ t('users') }}</button> }
+                    </li>
+                  } @empty { <li>{{ t('noRecordedUsage') }}</li> }
+                </ol>
+              </div>
+            }
+          </div>
+          @if (activity.planTier !== 'pro') { <p class="tier-hint">{{ t('tierHint') }}</p> }
+          <p class="event-footnote">{{ t('trackingCoverage') }}</p>
+          @if (people(); as detail) {
+            <div class="people-detail" aria-live="polite"><h3>{{ t('usersFor', { name: peopleLabel() }) }}</h3>
+              <ul class="rank-list">@for (person of detail.items; track person.id) { <li><span>{{ person.label }}</span><b>{{ person.count }}</b></li> } @empty { <li>{{ t('noRecordedUsage') }}</li> }</ul>
+              @if (detail.cursor) { <button type="button" (click)="loadPeople(peopleKind(), { key: peopleKey(), label: peopleLabel(), count: 0 }, true)" [disabled]="detailLoading()">{{ t('moreUsers') }}</button> }
+            </div>
+          }
+          @if (data.canSeeCredits) { <button type="button" (click)="loadCredits()" [disabled]="detailLoading()">{{ t('showCredits') }}</button> }
+          @if (credits(); as detail) {
+            <h3>{{ t('creditActivity') }}</h3><p class="event-footnote">{{ t('creditAttribution') }}</p>
+            <ul class="rank-list">@for (credit of detail.items; track credit.id) { <li><time>{{ time(credit.offsetSeconds) }}</time><span>{{ t('creditCategory.' + credit.category) }}<small>{{ credit.provider }} {{ credit.model }}</small></span><b>{{ t('creditAmount', { count: credit.credits }) }}</b></li> } @empty { <li>{{ t('noCreditHistory') }}</li> }</ul>
+            @if (detail.truncated) { <p class="notice">{{ t('creditTruncated') }} <a [routerLink]="['/', streamer(), 'usage']">{{ t('openUsage') }}</a></p> }
+          }
+          @if (detailLoading()) { <p role="status">{{ t('loadingDetail') }}</p> }
+          @if (detailError()) { <p class="error" role="alert">{{ t('detailError') }}</p> }
+        </section>
+      }
     } @else if (!listError()) {
       <div class="lf-tile state"><app-lf-icon name="trend" [size]="28" /><h2>{{ t('emptyTitle') }}</h2><p>{{ t('emptyHint') }}</p></div>
     }

@@ -35,6 +35,7 @@ interface ManagedWorker {
 }
 
 const WORKERS: WorkerDefinition[] = [
+    { name: 'stream-activity', sourceEntry: 'src/workers/stream_activity.worker.ts', distEntry: 'dist/workers/stream_activity.worker.js' },
     { name: 'goals', sourceEntry: 'src/workers/goals.worker.ts', distEntry: 'dist/workers/goals.worker.js' },
     { name: 'duel', sourceEntry: 'src/workers/duel.worker.ts', distEntry: 'dist/workers/duel.worker.js' },
     { name: 'widgets', sourceEntry: 'src/workers/widgets.worker.ts', distEntry: 'dist/workers/widgets.worker.js' },

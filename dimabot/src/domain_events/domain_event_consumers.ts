@@ -11,6 +11,12 @@ const twitchSources = { $in: ['twitch-eventsub', 'twitch-eventsub-test'] };
 
 export const DOMAIN_EVENT_CONSUMERS: readonly DomainEventConsumerDefinition[] = [
     {
+        consumer: 'stream-timeline-v1', topics: ['channel'], schemaVersions: [1], adminReplay: true,
+        eventFilter: { source: 'twitch-eventsub', type: { $in: ['channel.follow.received', 'channel.subscription.received',
+            'channel.subscription.gifted', 'channel.bits.received', 'channel.raid.received'] } },
+        handler: async event => (await import('./stream_analytics_events.js')).applyTimelineDomainEvent(event)
+    },
+    {
         consumer: 'channel-goals-v1', topics: ['channel'], schemaVersions: [1], adminReplay: true,
         eventFilter: { source: 'twitch-eventsub', type: { $in: ['channel.follow.received', 'channel.subscription.received', 'channel.subscription.gifted', 'channel.bits.received'] } },
         handler: async event => (await import('../goals/service.js')).applyGoalEvent(event)

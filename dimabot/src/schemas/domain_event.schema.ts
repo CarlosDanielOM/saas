@@ -45,6 +45,7 @@ domainEventSchema.index({ eventKey: 1 }, { unique: true });
 domainEventSchema.index({ source: 1, sourceEventId: 1, type: 1 }, { unique: true });
 domainEventSchema.index({ topic: 1, _id: 1 });
 domainEventSchema.index({ topic: 1, source: 1, _id: 1 });
+domainEventSchema.index({ channelID: 1, source: 1, type: 1, occurredAt: 1, _id: 1 });
 domainEventSchema.index({ dispatchPending: 1, _id: 1 }, { partialFilterExpression: { dispatchPending: true } });
 domainEventSchema.index({ topic: 1, 'metadata.durableChatHandled': 1, _id: 1 }, {
     partialFilterExpression: { 'metadata.durableChatHandled': true }

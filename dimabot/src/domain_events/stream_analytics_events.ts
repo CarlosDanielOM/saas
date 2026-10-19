@@ -10,6 +10,7 @@ import {
     recordSubscriptionLedgerStart
 } from '../utils/stream_analytics.js';
 import { CANONICAL_BITS_EVENT_TYPE, isLegacyBitsEventType } from '../utils/eventsub.js';
+import { recordTimelineMoment } from '../utils/stream_timeline.js';
 
 interface SubscriptionEventData extends Record<string, unknown> {
     broadcaster_user_id?: string;
@@ -38,6 +39,23 @@ function resolveTier(source: SubscriptionEventData): string | undefined {
 function resolveGiftQuantity(source: SubscriptionEventData): number {
     const total = Number(source.total);
     return Number.isFinite(total) && total > 0 ? Math.round(total) : 1;
+}
+
+export async function applyTimelineDomainEvent(event: DomainEventEnvelope): Promise<void> {
+    if (event.source !== 'twitch-eventsub' || !event.channelID) return;
+    const raw = payloadRecord(event, 'event');
+    const original = String(event.metadata.originalEventType || '');
+    const kinds = { 'channel.follow.received': 'follow', 'channel.subscription.received': 'sub',
+        'channel.subscription.gifted': 'gift', 'channel.bits.received': 'bits', 'channel.raid.received': 'raid' } as const;
+    const kind = kinds[event.type as keyof typeof kinds];
+    if (!kind) return;
+    if (kind === 'bits' && await shouldSkipLegacyBitsEvent(event, original)) return;
+    const value = kind === 'bits' ? Number(raw.bits) : kind === 'raid' ? Number(raw.viewers)
+        : kind === 'gift' ? resolveGiftQuantity(raw) : kind === 'sub' && (raw.is_gift || original === 'channel.subscription.message') ? 0 : 1;
+    if (!Number.isFinite(value) || value < 0) return;
+    await recordTimelineMoment({ channelID: event.channelID, eventID: event.eventKey, kind, at: event.occurredAt,
+        label: String(kind === 'raid' ? raw.from_broadcaster_user_name || raw.from_broadcaster_user_login || 'Raid'
+            : raw.user_name || raw.user_login || kind), value });
 }
 
 async function shouldSkipLegacyBitsEvent(event: DomainEventEnvelope, originalEventType: string): Promise<boolean> {

@@ -20,6 +20,24 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,su
 .chip { display:inline-flex; align-items:center; border:1px solid var(--line); border-radius:999px; padding:.25rem .6rem; font-size:.75rem; color:var(--muted); } .live { color:var(--live); }
 .chart-panel > p { font-size:.8rem; margin-bottom:.85rem; }
 .chart { --series:var(--accent); margin:.6rem 0 0; } .chart--messages { --series:var(--messages); } .chart--chatters { --series:var(--chat); }
+.chart--commands { --series:var(--gold); } .chart--emotes { --series:var(--chat); }
+.comparison-series { fill:none; stroke:var(--gold); stroke-width:2; stroke-dasharray:6 4; vector-effect:non-scaling-stroke; }
+.range-tools { display:grid; gap:.75rem; margin:1rem 0; padding-bottom:1rem; border-bottom:1px solid var(--line); }
+.range-fields { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); align-items:end; gap:.5rem; }
+.range-fields button { grid-column:1/-1; }
+.compare-select,.moment-search { margin-top:1rem; }
+.activity-detail { display:grid; gap:.75rem; }
+.rankings { display:grid; gap:1rem; }
+.rank-list { list-style:none; padding:0; margin:.5rem 0; }
+.rank-list li { display:flex; gap:.75rem; align-items:center; min-height:44px; padding:.5rem 0; border-bottom:1px solid var(--line); font-size:.85rem; }
+.rank-list li > span { flex:1; min-width:0; overflow-wrap:anywhere; }
+.rank-list small { display:block; color:var(--muted); font-size:.75rem; }
+.rank-list b { font-variant-numeric:tabular-nums; }
+.rank-list time { color:var(--muted); font-size:.75rem; }
+.tier-hint { border-left:3px solid var(--gold); padding-left:.75rem; color:var(--gold); font-size:.85rem; }
+.activity-summary { font-size:.9rem; }
+.actions button[aria-pressed=true] { color:white; background:#7c3aed; }
+@media(min-width:640px) { .rankings { grid-template-columns:repeat(2,minmax(0,1fr)); } .range-fields { grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto; } .range-fields button { grid-column:auto; } }
 .chart-heading { display:flex; justify-content:space-between; align-items:center; gap:.5rem; color:var(--series); } .chart-heading span { color:var(--muted); font-size:.7rem; }
 svg { width:100%; height:110px; overflow:visible; cursor:crosshair; display:block; }
 .grid-line { stroke:var(--line); stroke-width:1; } .series { fill:none; stroke:var(--series); stroke-width:2; vector-effect:non-scaling-stroke; } .point { fill:var(--series); }

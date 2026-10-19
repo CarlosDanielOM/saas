@@ -16,11 +16,14 @@ const marker = new Schema({
     channelID: { type: String, required: true },
     session_id: { type: Schema.Types.ObjectId, required: true },
     key: { type: String, required: true },
-    kind: { type: String, enum: ['note', 'redemption'], required: true },
+    kind: { type: String, enum: ['note', 'redemption', 'follow', 'sub', 'gift', 'bits', 'raid'], required: true },
     label: { type: String, required: true, maxlength: 120 },
+    value: Number, rewardID: String, cost: Number, status: String,
     occurredAt: { type: Date, required: true },
     expiresAt: { type: Date, required: true }
 }, { versionKey: false });
 marker.index({ channelID: 1, session_id: 1, key: 1 }, { unique: true });
+marker.index({ channelID: 1, session_id: 1, occurredAt: 1, _id: 1 });
+marker.index({ channelID: 1, session_id: 1, kind: 1, occurredAt: 1, _id: 1 });
 marker.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 export const StreamMarkerSchema = model('stream_marker', marker);

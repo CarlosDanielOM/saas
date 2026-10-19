@@ -39,6 +39,7 @@ import { createCommand, deleteCommand, editCommand } from "../commands/command_m
 import { createTimer, deleteTimer, editTimer, listTimers } from "../commands/timer_manager.command.js";
 import { incrementSiteAnalytics } from "../utils/siteanalytics.js";
 import { recordStreamCommandEvent, recordStreamMessageEvent } from "../utils/stream_analytics.js";
+import { captureStreamActivity } from '../utils/stream_activity.js';
 import { appendAssistantTurnToThread, resolveUserThreadForMessage } from "../utils/ai/threading/thread_router.js";
 import { endMessageHandlerMetric, recordRedisOpsEstimate, startMessageHandlerMetric } from "../utils/observability/bot_runtime_metrics.js";
 import { trackCommand } from "../utils/posthog_events.js";
@@ -80,7 +81,7 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
             });
         });
 
-        void recordStreamMessageEvent({ channelID, userID: messageEventData.chatter_user_id, receivedAt }).catch((analyticsError) => {
+        void recordStreamMessageEvent({ channelID, userID: messageEventData.chatter_user_id, actorLabel: messageEventData.chatter_user_name, receivedAt, messageID: messageEventData.message_id, message: messageEventData.message }).catch((analyticsError) => {
             console.error('Error recording stream message analytics from message handler:', {
                 function: 'messageHandler.recordStreamMessageEvent',
                 channelID,
@@ -242,6 +243,11 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
                     timestamp: new Date().toISOString()
                 });
             });
+
+            await captureStreamActivity({ channelID, eventID: messageEventData.message_id, kind: 'command',
+                key: commandLower, label: `!${commandLower}`, actor: messageEventData.chatter_user_id,
+                actorLabel: messageEventData.chatter_user_name, occurredAt: new Date(receivedAt),
+                outcome: timerResponse.error ? 'error' : 'ok' }).catch(error => console.error('Command tracking failed', error));
 
             sendTwitchChatMessage(channelID, timerResponse.message);
             return;
@@ -412,6 +418,7 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
         
         const shouldTrackCommandUsage = !commandDBData.error && !!commandDBData.command;
         let res = null;
+        let commandFailed = false;
         
         const commandSpan = beginSpan('command', commandDBData.command?.cmd || 'unconfigured', channelID);
         try {
@@ -749,14 +756,22 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
                     origin: 'chat',
                     identity
                 });
+                commandFailed = cmdResult.error;
                 if (!cmdResult.error) {
                     res = { error: false, message: cmdResult.message, commandReferences: cmdResult.commandReferences };
                 }
                 break;
             }
 
-        } catch (error) { commandSpan.end('error'); throw error; }
-        finally { commandSpan.end(res?.error ? 'error' : 'ok'); }
+        } catch (error) { commandFailed = true; commandSpan.end('error'); throw error; }
+        finally {
+            commandSpan.end(res?.error || commandFailed ? 'error' : 'ok');
+            if (shouldTrackCommandUsage) await captureStreamActivity({ channelID, eventID: messageEventData.message_id,
+                kind: 'command', key: String(commandDBData.command?.cmd || commandLower).toLowerCase(),
+                label: `!${commandDBData.command?.cmd || commandLower}`, actor: messageEventData.chatter_user_id,
+                actorLabel: messageEventData.chatter_user_name, occurredAt: new Date(receivedAt),
+                outcome: res?.error || commandFailed ? 'error' : 'ok' }).catch(error => console.error('Command tracking failed', error));
+        }
 
         // Track command execution in PostHog
         trackCommand({

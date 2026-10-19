@@ -1,4 +1,6 @@
 import { recordTimelineParticipant } from './stream_timeline.js';
+import { captureStreamActivity, extractTimelineEmotes } from './stream_activity.js';
+import type { IChatMessage } from '../interfaces/twitch/eventsub.interface.js';
 import { StreamSessionSchema } from '../schemas/stream_session.schema.js';
 import { StreamViewerSnapshotSchema } from '../schemas/stream_viewer_snapshot.schema.js';
 import { StreamSubscriptionLedgerSchema } from '../schemas/stream_subscription_ledger.schema.js';
@@ -943,7 +945,7 @@ export async function recordStreamDonationEvent(input: { channelID: string; amou
     }
 }
 
-export async function recordStreamMessageEvent(input: { channelID: string; quantity?: number; userID?: string; receivedAt?: number }): Promise<void> {
+export async function recordStreamMessageEvent(input: { channelID: string; quantity?: number; userID?: string; receivedAt?: number; messageID?: string; actorLabel?: string; message?: IChatMessage['message'] }): Promise<void> {
     const channelID = String(input.channelID || '').trim();
     if (!channelID) {
         return;
@@ -959,7 +961,11 @@ export async function recordStreamMessageEvent(input: { channelID: string; quant
         }, {
             $inc: { messages: quantity }
         }, { new: true }).select('_id started_at').lean();
-        if (session && input.userID) await recordTimelineParticipant(channelID, session._id, session.started_at, input.userID, new Date(input.receivedAt || Date.now()));
+        if (session && input.userID && !input.messageID) await recordTimelineParticipant(channelID, session._id, session.started_at, input.userID, new Date(input.receivedAt || Date.now()));
+        if (session && input.messageID && input.message) await captureStreamActivity({
+            channelID, session, eventID: input.messageID, kind: 'message', actor: input.userID, actorLabel: input.actorLabel,
+            occurredAt: new Date(input.receivedAt || Date.now()), emotes: extractTimelineEmotes(input.message)
+        });
     } catch (error) {
         logAnalyticsError('recordStreamMessageEvent', {
             channelID,

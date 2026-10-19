@@ -6,6 +6,8 @@ import { StreamSessionSchema as Sessions } from '/app/dist/schemas/stream_sessio
 import { StreamViewerSnapshotSchema as Snapshots } from '/app/dist/schemas/stream_viewer_snapshot.schema.js';
 import { StreamParticipantSchema as Participants, StreamMarkerSchema as Markers } from '/app/dist/schemas/stream_timeline.schema.js';
 import { DomainEventSchema as Events } from '/app/dist/schemas/domain_event.schema.js';
+import { StreamActivitySchema as Activity } from '/app/dist/schemas/stream_activity.schema.js';
+import { projectStreamActivityBatch } from '/app/dist/utils/stream_activity.js';
 import { recordStreamMessageEvent } from '/app/dist/utils/stream_analytics.js';
 import { recordTimelineRedemption, getStreamTimeline } from '/app/dist/utils/stream_timeline.js';
 const mongo=await getMongoDBConnection('timeline-check'), redis=await getDragonflyClient('timeline-check');
@@ -66,11 +68,19 @@ if(process.env.SAAS_TARGET==='bot'){
  assert.equal(r.status,204);
  for(let i=0;i<50&&!await Markers.exists({key:'redemption:ingress-redemption'});i++)await new Promise(r=>setTimeout(r,100));
  assert.ok(await Markers.exists({key:'redemption:ingress-redemption'}));
- const chatPayload=JSON.stringify({subscription:{type:'channel.chat.message',version:'1'},event:{broadcaster_user_id:channel,broadcaster_user_login:'fixture',broadcaster_user_name:'Fixture',chatter_user_id:'chat-ingress-user',chatter_user_login:'viewer',chatter_user_name:'Viewer',message_id:randomUUID(),message:{text:'hello',fragments:[{type:'text',text:'hello',cheermote:null,emote:null,mention:null}]},message_type:'text',badges:[],color:'',cheer:null}});
+ const chatPayload=JSON.stringify({subscription:{type:'channel.chat.message',version:'1'},event:{broadcaster_user_id:channel,broadcaster_user_login:'fixture',broadcaster_user_name:'Fixture',chatter_user_id:'chat-ingress-user',chatter_user_login:'viewer',chatter_user_name:'Viewer',message_id:randomUUID(),message:{text:'Kappa',fragments:[{type:'emote',text:'Kappa',cheermote:null,emote:{id:'25',emote_set_id:'0',owner_id:'0',format:['static']},mention:null}]},message_type:'text',badges:[],color:'',cheer:null}});
  const chatID=randomUUID(),chatAt=new Date().toISOString(),chatSignature='sha256='+createHmac('sha256',process.env.TWITCH_EVENTSUB_SECRET).update(chatID+chatAt+chatPayload).digest('hex');
  const chatResponse=await fetch('http://127.0.0.1:3333/eventsub',{method:'POST',headers:{'Content-Type':'application/json','Twitch-Eventsub-Message-Id':chatID,'Twitch-Eventsub-Message-Timestamp':chatAt,'Twitch-Eventsub-Message-Signature':chatSignature,'Twitch-Eventsub-Message-Type':'notification'},body:chatPayload});assert.equal(chatResponse.status,204);
- for(let i=0;i<80&&!await Participants.exists({user_id:'chat-ingress-user'});i++)await new Promise(r=>setTimeout(r,100));
- assert.ok(await Participants.exists({user_id:'chat-ingress-user'}));
- console.log('PASS BOT runtime: signed chat and reward ingress records participants and redemptions');
+ for(let i=0;i<80&&!await Activity.exists({actor:'chat-ingress-user'});i++)await new Promise(r=>setTimeout(r,100));
+ const tracked=await Activity.findOne({actor:'chat-ingress-user'}).lean();assert.ok(tracked);assert.equal(tracked.emotes[0].key,'twitch:25');
+ const commandEvent=JSON.parse(chatPayload);commandEvent.event.chatter_user_id=channel;commandEvent.event.badges=[{set_id:'broadcaster',id:'1',info:''}];
+ commandEvent.event.message_id=randomUUID();commandEvent.event.message={text:'!timer invalid PRIVATE_ARGUMENT',fragments:[{type:'text',text:'!timer invalid PRIVATE_ARGUMENT'}]};
+ const commandPayload=JSON.stringify(commandEvent),commandID=randomUUID(),commandAt=new Date().toISOString();
+ const commandSignature='sha256='+createHmac('sha256',process.env.TWITCH_EVENTSUB_SECRET).update(commandID+commandAt+commandPayload).digest('hex');
+ assert.equal((await fetch('http://127.0.0.1:3333/eventsub',{method:'POST',headers:{'Content-Type':'application/json','Twitch-Eventsub-Message-Id':commandID,'Twitch-Eventsub-Message-Timestamp':commandAt,'Twitch-Eventsub-Message-Signature':commandSignature,'Twitch-Eventsub-Message-Type':'notification'},body:commandPayload})).status,204);
+ for(let i=0;i<80&&!await Activity.exists({kind:'command'});i++)await new Promise(r=>setTimeout(r,100));
+ const commandReceipt=await Activity.findOne({kind:'command'}).lean();assert.ok(commandReceipt);assert.equal(commandReceipt.key,'timer');assert.equal(commandReceipt.outcome,'error');assert.doesNotMatch(JSON.stringify(commandReceipt),/PRIVATE_ARGUMENT/);
+ await projectStreamActivityBatch();
+ console.log('PASS BOT runtime: signed chat, command and reward ingress records metadata/emotes/outcomes without command arguments');
 }
 process.exit(0);
