@@ -34,8 +34,10 @@ export interface BillingContextData {
 }
 
 export interface BillingCheckoutData {
+  flow?: 'checkout' | 'customer_portal';
   checkoutUrl: string;
-  checkoutId: string;
+  checkoutId: string | null;
+  portalSessionId?: string;
   scenario: BillingScenario;
   appliedDiscount: {
     id: string | null;

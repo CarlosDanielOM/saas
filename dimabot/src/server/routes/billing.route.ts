@@ -381,11 +381,15 @@ router.post('/checkout', authMiddleware as any, async (req: Request, res: Respon
 
         return res.status(201).json({
             error: false,
-            message: 'Checkout created successfully',
+            message: checkout.flow === 'customer_portal'
+                ? 'Subscription management session created successfully'
+                : 'Checkout created successfully',
             status: 201,
             data: {
+                flow: checkout.flow,
                 checkoutUrl: checkout.checkoutUrl,
                 checkoutId: checkout.checkoutId,
+                portalSessionId: checkout.portalSessionId,
                 scenario: checkout.scenario,
                 appliedDiscount: {
                     id: checkout.selectedDiscountId,

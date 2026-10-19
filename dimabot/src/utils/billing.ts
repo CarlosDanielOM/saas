@@ -62,11 +62,13 @@ interface BillingContext {
 }
 
 interface CheckoutDecision {
+    flow: 'checkout' | 'customer_portal';
     scenario: BillingScenario;
     selectedDiscountId: string | null;
     selectedDiscountCode: string | null;
     selectedDiscountReason: 'referral' | 'promo' | 'winback' | 'upgrade' | 'change' | null;
-    checkoutId: string;
+    checkoutId: string | null;
+    portalSessionId?: string;
     checkoutUrl: string;
     allowDiscountCodes: boolean;
 }
@@ -734,13 +736,8 @@ function inferScenario({
     winbackEligible: boolean;
     hasAnySubscriptionHistory: boolean;
 }): BillingScenario {
-    if (requestedAction !== 'auto') {
-        if (requestedAction === 'new') return 'new';
-        if (requestedAction === 'upgrade') return 'upgrade';
-        if (requestedAction === 'change') return 'change';
-        return winbackEligible ? 'returning_winback' : 'reactivate';
-    }
-
+    // Polar's current subscription wins over a caller's requested action.
+    // Otherwise action=new could buy a second plan or bypass the same-plan guard.
     if (hasActiveSubscription) {
         if (targetPlan === currentPlan) {
             return 'active_no_change';
@@ -753,6 +750,13 @@ function inferScenario({
         return 'change';
     }
 
+    if (requestedAction !== 'auto') {
+        if (requestedAction === 'new') return 'new';
+        if (requestedAction === 'upgrade') return 'upgrade';
+        if (requestedAction === 'change') return 'change';
+        return winbackEligible ? 'returning_winback' : 'reactivate';
+    }
+
     if (hasAnySubscriptionHistory && winbackEligible) {
         return 'returning_winback';
     }
@@ -763,6 +767,7 @@ function inferScenario({
 function getCurrentPlanFromActiveSubscription(userPlan: PlanTier, activeProductId?: string): PlanTier {
     if (activeProductId === PRODUCT_IDS.PRO) return 'pro';
     if (activeProductId === PRODUCT_IDS.PREMIUM) return 'premium';
+    if (activeProductId === PRODUCT_IDS.FREE) return 'free';
     return userPlan;
 }
 
@@ -807,7 +812,8 @@ export async function getBillingContext(
         listSubscriptions(customerId)
     ]);
 
-    const activeSubscription = activeSubscriptions[0];
+    const activeSubscription = getPaidSubscriptionFromSubscriptions(activeSubscriptions)?.subscription
+        ?? activeSubscriptions.find(subscription => subscription.product_id === PRODUCT_IDS.FREE);
     const hasActiveSubscription = Boolean(activeSubscription);
     const hasAnySubscriptionHistory = allSubscriptions.length > 0;
     const hasReferralDiscountEligibility = Boolean(user.referralCodeUsed) && !hasAnySubscriptionHistory;
@@ -994,6 +1000,24 @@ export async function createBillingCheckout(request: CheckoutCreateRequest): Pro
         throw new Error('You are already subscribed to this plan.');
     }
 
+    if (context.activeProductId === PRODUCT_IDS.PREMIUM || context.activeProductId === PRODUCT_IDS.PRO) {
+        // Paid-to-paid changes require Polar's subscription change confirmation.
+        // Checkout subscription_id only supports upgrading a free-priced subscription.
+        // Never fall back to a new purchase if creating this portal session fails.
+        const session = await createCustomerPortalSession({ user: request.user, returnUrl: request.returnUrl });
+        return {
+            flow: 'customer_portal',
+            scenario: context.scenario,
+            selectedDiscountId: null,
+            selectedDiscountCode: null,
+            selectedDiscountReason: null,
+            checkoutId: null,
+            portalSessionId: session.sessionId,
+            checkoutUrl: session.url,
+            allowDiscountCodes: false
+        };
+    }
+
     const discountCandidates: Array<{ reason: CheckoutDecision['selectedDiscountReason']; discount: DiscountLike }> = [];
 
     if (context.isReferralEligible && process.env.POLARSH_REFERRAL_DISCOUNT_ID) {
@@ -1062,6 +1086,7 @@ export async function createBillingCheckout(request: CheckoutCreateRequest): Pro
 
     const checkoutPayload: Record<string, unknown> = {
         products: [targetProductId],
+        subscription_id: context.activeProductId === PRODUCT_IDS.FREE ? context.activeSubscriptionId : undefined,
         customer_id: validCustomerId,
         external_customer_id: request.user._id.toString(),
         customer_email: request.user.email,
@@ -1113,6 +1138,7 @@ export async function createBillingCheckout(request: CheckoutCreateRequest): Pro
     }
 
     return {
+        flow: 'checkout',
         scenario: context.scenario,
         selectedDiscountId: bestDiscount?.discount.id || null,
         selectedDiscountCode: bestDiscount?.discount.code || null,
