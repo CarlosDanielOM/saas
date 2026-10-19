@@ -1,6 +1,6 @@
 # ==========================================
 # COMMAND VARIABLES & LOGIC (generated from the AST function registry)
-# Catalog version: ce4cad52bbb2
+# Catalog version: 9a798d0e2eb2
 # ==========================================
 
 # AST SYNTAX CORE (for command & reward message fields)
@@ -283,12 +283,18 @@
 #   Example: $(set.voice favorite_alias)
 # $(tts message) - Speaks a message out loud using the channel default TTS voice. (aliases: tts.ai)
 #   Example: $(tts Hello chat!)
+# $(tts.clear) - Stops current TTS playback and removes all waiting TTS requests.
+#   Example: $(tts.clear)
 # $(tts.clone voice_name message) - Speaks a message with a named Fish Audio cloned voice. First argument is the voice name or voice ID, the rest is the message. (aliases: tts.fish)
 #   Example: $(tts.clone gojo Hello chat!)
 #   Example: $(tts.clone rias_gremory Welcome!)
 # $(tts.kokoro voice_name text) - Speaks text with a Kokoro preset voice using DeepInfra only. Costs one credit per 15 characters, rounded up; falls back to Piper when credits are exhausted or synthesis fails.
 #   Example: $(tts.kokoro af_heart Hello chat!)
 #   Example: $(tts.kokoro ef_dora Hola chat!)
+# $(tts.refresh) - Resets connected speech playback and reconnects overlay sockets, discarding interrupted speech while preserving waiting TTS requests. An offline OBS source must be reopened manually.
+#   Example: $(tts.refresh)
+# $(tts.skip) - Stops the current TTS item and advances to the next waiting request.
+#   Example: $(tts.skip)
 # $(tts.speak message) - Speaks a message using Piper (1 credit per 50 characters, rounded up), including after credit exhaustion. (aliases: tts.piper)
 #   Example: $(tts Hello chat!)
 #

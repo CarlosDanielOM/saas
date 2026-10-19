@@ -1,5 +1,5 @@
 import { telemetryContext, restoreContext, traced, observe, type TraceContext } from '../utils/observability/telemetry.js';
-import { studioHasSource, publishStudioMedia } from '../overlays/bridge.js';
+import { studioHasSource, publishStudioMedia, controlStudioTts } from '../overlays/bridge.js';
 import type { RedisClientType } from "redis";
 import { randomUUID } from "node:crypto";
 import fs from "fs/promises";
@@ -85,6 +85,8 @@ export interface QueueTtsResponse {
 class TtsQueueHandler {
   private cache: RedisClientType | null = null;
   private initialized = false;
+  private controls = new Map<string, Promise<void>>();
+  private dispatches = new Map<string, Promise<void>>();
   private processingChannels = new Set<string>();
   private activeSpeechIds = new Map<string, string>();
   private dispatchedSpeechIds = new Map<string, string>();
@@ -231,7 +233,7 @@ class TtsQueueHandler {
       await this.init();
     }
 
-    if (this.processingChannels.has(channelID)) {
+    if (this.controls.has(channelID) || this.processingChannels.has(channelID)) {
       return;
     }
     this.processingChannels.add(channelID);
@@ -239,6 +241,10 @@ class TtsQueueHandler {
     let activeSpeechID: string | undefined;
     try {
       while (true) {
+        if (this.controls.has(channelID)) {
+          this.processingChannels.delete(channelID);
+          return;
+        }
         if (!this.hasOverlayConnection(channelID)) {
           this.processingChannels.delete(channelID);
           this.interruptedSpeechIds.delete(channelID);
@@ -274,7 +280,7 @@ class TtsQueueHandler {
           continue;
         }
 
-        if (this.interruptedSpeechIds.get(channelID) === speechID || !this.hasOverlayConnection(channelID)) {
+        if (this.controls.has(channelID) || this.interruptedSpeechIds.get(channelID) === speechID || !this.hasOverlayConnection(channelID)) {
           await this.cleanupSpeech(channelID, speechID, true);
           continue;
         }
@@ -491,7 +497,7 @@ class TtsQueueHandler {
           synthesisResult.outputPath,
         );
 
-        if (this.interruptedSpeechIds.get(channelID) === speechID || !this.hasOverlayConnection(channelID)) {
+        if (this.controls.has(channelID) || this.interruptedSpeechIds.get(channelID) === speechID || !this.hasOverlayConnection(channelID)) {
           await this.cleanupSpeech(channelID, speechID, true);
           continue;
         }
@@ -505,7 +511,7 @@ class TtsQueueHandler {
 
         const playbackTimeoutMs = await getTtsPlaybackTimeoutMs(synthesisResult.outputPath);
         // Duration inspection yields; a disconnect may have happened meanwhile.
-        if (this.interruptedSpeechIds.get(channelID) === speechID || !this.hasOverlayConnection(channelID)) {
+        if (this.controls.has(channelID) || this.interruptedSpeechIds.get(channelID) === speechID || !this.hasOverlayConnection(channelID)) {
           await this.cleanupSpeech(channelID, speechID, true);
           continue;
         }
@@ -514,7 +520,13 @@ class TtsQueueHandler {
         observe('queue_total', 'tts.ready', Math.max(0, Date.now() - queueItem.timestamp), 'ok', channelID);
         console.log('TTS dispatched', { channelID, speechID, readyMs: Date.now() - queueItem.timestamp });
 
-        await publishStudioMedia(channelID, 'tts', { type: 'audio', title: queueItem.text, volume: 1 }, synthesisResult.outputPath, synthesisResult.mimeType || 'audio/wav', queueItem.text);
+        const dispatch = publishStudioMedia(channelID, 'tts', { type: 'audio', title: queueItem.text, volume: 1 }, synthesisResult.outputPath, synthesisResult.mimeType || 'audio/wav', queueItem.text);
+        this.dispatches.set(channelID, dispatch);
+        try { await dispatch; }
+        finally { if (this.dispatches.get(channelID) === dispatch) this.dispatches.delete(channelID); }
+        // A control can arrive while Studio persists the media handoff. It waits
+        // for that handoff and cancels its delivery; never emit stale audio after reset.
+        if (this.controls.has(channelID) || this.dispatchedSpeechIds.get(channelID) !== speechID) return;
         io.of(`/speech/${channelID}`).emit("speech", {
           speechID,
           audioUrl: synthesisResult.publicPath,
@@ -583,6 +595,49 @@ class TtsQueueHandler {
     console.log('TTS finished', { channelID, speechID, reason });
     await this.cleanupSpeech(channelID, speechID);
     void this.processNext(channelID);
+  }
+
+  /** Serialize controls while retaining the synthesis producer lock until it settles. */
+  async control(channelID: string, action: 'skip' | 'clear' | 'refresh'): Promise<void> {
+    const previous = this.controls.get(channelID) ?? Promise.resolve();
+    const pending = previous.catch(() => {}).then(async () => {
+      if (!this.cache) await this.init();
+      await this.dispatches.get(channelID)?.catch(() => {});
+      const speechID = this.activeSpeechIds.get(channelID);
+      if (speechID) this.interruptedSpeechIds.set(channelID, speechID);
+      const io = getIO();
+      const namespace = io?.of(`/speech/${channelID}`);
+      // Clear/reset also cancels any stale browser-side backlog. Completion is
+      // claimed on the server; late acknowledgements cannot finish the next item.
+      namespace?.emit('speech-reset');
+      if (action === 'clear') {
+        const key = `twitch:${channelID}:tts:queue`;
+        const waiting = await this.cache!.zRange(key, 0, -1);
+        if (waiting.length) {
+          const transaction = this.cache!.multi().zRem(key, waiting);
+          for (const id of waiting) transaction.del(`twitch:${channelID}:tts:queue:data:${id}`);
+          await transaction.exec();
+        }
+      }
+      await controlStudioTts(channelID, action);
+      if (action === 'refresh') {
+        for (const socket of namespace?.sockets.values() ?? []) {
+          socket.data.ttsReady = false;
+          socket.conn.close();
+        }
+      }
+      if (speechID && this.dispatchedSpeechIds.get(channelID) === speechID) {
+        await this.handleSpeechEnded(channelID, speechID, action);
+      }
+    });
+    this.controls.set(channelID, pending);
+    try { await pending; }
+    finally {
+      if (this.controls.get(channelID) === pending) {
+        this.controls.delete(channelID);
+        await this.resumeIfIdle(channelID);
+      }
+    }
   }
 
   async releaseStaleProcessingLocks(): Promise<void> {

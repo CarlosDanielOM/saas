@@ -204,6 +204,25 @@ const ttsKokoroHandler: FunctionHandler = async (args, ctx) => {
 };
 
 export function registerTtsFunctions(): void {
+    for (const action of ['skip', 'clear', 'refresh'] as const) {
+        const name = `tts.${action}`;
+        const description = {
+            skip: 'Stops the current TTS item and advances to the next waiting request.',
+            clear: 'Stops current TTS playback and removes all waiting TTS requests.',
+            refresh: 'Resets connected speech playback and reconnects overlay sockets, discarding interrupted speech while preserving waiting TTS requests. An offline OBS source must be reopened manually.'
+        }[action];
+        registerFunction(name, async (args, ctx) => {
+            if (args.length) return `Usage: $(${name})`;
+            if (ctx.platform !== 'twitch') return 'Error: TTS controls currently require a Twitch channel';
+            const { controlTts } = await import('../../../functions/chats/control_tts.chat.js');
+            const result = await controlTts(ctx.broadcasterId, action);
+            return result.error ? `Error: ${result.message}` : '';
+        }, {
+            description, syntax: name, category: 'tts', examples: [name],
+            minUserLevel: 7, destructive: true,
+            keywords: ['tts', action, 'speech', 'queue', 'voz', 'cola']
+        });
+    }
     registerFunction('tts.kokoro', ttsKokoroHandler, {
         description: 'Speaks text with a Kokoro preset voice using DeepInfra only. Costs one credit per 15 characters, rounded up; falls back to Piper when credits are exhausted or synthesis fails.',
         syntax: 'tts.kokoro voice_name text', category: 'tts',

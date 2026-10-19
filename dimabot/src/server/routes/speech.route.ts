@@ -396,6 +396,26 @@ router.get('/:channelID', async (req: Request, res: Response) => {
     }
 });
 
+// Recovery controls remain available when TTS is disabled or its overlay is offline.
+router.post('/:channelID/control', authMiddleware as any, async (req: AuthRequest, res: Response) => {
+    try {
+        const channelID = normalizeRouteParam(req.params.channelID);
+        if (!/^\d+$/.test(channelID)) return res.status(400).json({ error: true, message: 'Invalid channel', status: 400 });
+        if (!req.user || await getTtsAccess(req.user.id, channelID, 'tts:manage') === 'none') {
+            return res.status(403).json({ error: true, message: 'TTS management permission required', status: 403 });
+        }
+        const action = req.body?.action;
+        if (!['skip', 'clear', 'refresh'].includes(action)) {
+            return res.status(400).json({ error: true, message: 'Invalid TTS control action', status: 400 });
+        }
+        await ttsQueueHandler.control(channelID, action);
+        return res.json({ error: false, message: 'TTS control applied', status: 200 });
+    } catch (error) {
+        console.error('TTS control failed', error);
+        return res.status(500).json({ error: true, message: 'Unable to control TTS playback', status: 500 });
+    }
+});
+
 router.post('/:channelID', async (req: Request, res: Response) => {
     try {
         const channelID = normalizeRouteParam(req.params.channelID);

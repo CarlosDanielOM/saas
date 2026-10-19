@@ -218,6 +218,28 @@ export async function controlStudio(channel: string, rawAction: unknown, rawPlat
   return queueStatus(channel);
 }
 
+/** Scope speech controls to TTS deliveries; alerts, clips and triggers keep playing. */
+export async function controlStudioTts(channel: string, action: 'skip' | 'clear' | 'refresh'): Promise<void> {
+  await restore();
+  for (const peer of [...peers.values()].filter(p => p.channel === channel)) {
+    const active = new Set(peer.playback?.active ?? []);
+    const selected = [...pending.values()].filter(item => item.channel === channel && item.event.kind === 'tts'
+      && item.recipients.has(peer.key) && (action === 'clear' || active.has(item.event.id)));
+    // The existing expiry protocol stops both active and queued IDs. Removing
+    // recipients durably also prevents reconnect from replaying cancelled speech.
+    peer.socket?.emit('overlay-expired', selected.map(item => item.event.id));
+    for (const item of selected) {
+      item.recipients.delete(peer.key);
+      if (item.recipients.size) await saveDelivery(item);
+      else await discard(item.event.id);
+    }
+    if (action === 'refresh' && accepts(peer, 'tts')) {
+      peer.socket?.emit('overlay-updated', { revision: peer.state.revision });
+      peer.socket?.conn.close(); // Transport close lets Socket.IO reconnect automatically.
+    }
+  }
+}
+
 export function interactionKinds(scene: { widgets: { visible: boolean; kind: string }[] }): InteractionKind[] {
   return (['poll', 'prediction'] as const).filter(kind => scene.widgets.some(widget => widget.visible && widget.kind === kind));
 }
@@ -353,4 +375,4 @@ export function registerStudio(io: Server): void {
   io.on('close', () => { clearInterval(timer); pending.clear(); peers.clear(); channels.clear(); restoring = undefined; pollingFailed = false; });
 }
 
-registerStudioBridge({ hasSource: studioHasSource, media: publishStudioMedia, trigger: publishStudioTrigger });
+registerStudioBridge({ hasSource: studioHasSource, media: publishStudioMedia, trigger: publishStudioTrigger, controlTts: controlStudioTts });

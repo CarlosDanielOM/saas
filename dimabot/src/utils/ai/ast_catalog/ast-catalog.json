@@ -1,9 +1,9 @@
 {
-  "version": "ce4cad52bbb2",
-  "generatedAt": "2026-10-02T19:40:05.047Z",
+  "version": "9a798d0e2eb2",
+  "generatedAt": "2026-10-19T20:59:38.670Z",
   "model": "lfm2.5-embedding-350m",
   "dim": 1024,
-  "functionCount": 107,
+  "functionCount": 110,
   "entries": [
     {
       "name": "overlay.skip",
@@ -1904,6 +1904,78 @@
       ],
       "destructive": false,
       "surfaces": [
+        "authoring"
+      ]
+    },
+    {
+      "name": "tts.skip",
+      "description": "Stops the current TTS item and advances to the next waiting request.",
+      "syntax": "tts.skip",
+      "category": "tts",
+      "examples": [
+        "tts.skip"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "tts",
+        "skip",
+        "speech",
+        "queue",
+        "voz",
+        "cola"
+      ],
+      "destructive": true,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "tts.clear",
+      "description": "Stops current TTS playback and removes all waiting TTS requests.",
+      "syntax": "tts.clear",
+      "category": "tts",
+      "examples": [
+        "tts.clear"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "tts",
+        "clear",
+        "speech",
+        "queue",
+        "voz",
+        "cola"
+      ],
+      "destructive": true,
+      "surfaces": [
+        "action",
+        "authoring"
+      ]
+    },
+    {
+      "name": "tts.refresh",
+      "description": "Resets connected speech playback and reconnects overlay sockets, discarding interrupted speech while preserving waiting TTS requests. An offline OBS source must be reopened manually.",
+      "syntax": "tts.refresh",
+      "category": "tts",
+      "examples": [
+        "tts.refresh"
+      ],
+      "aliases": [],
+      "minUserLevel": 7,
+      "keywords": [
+        "tts",
+        "refresh",
+        "speech",
+        "queue",
+        "voz",
+        "cola"
+      ],
+      "destructive": true,
+      "surfaces": [
+        "action",
         "authoring"
       ]
     },
