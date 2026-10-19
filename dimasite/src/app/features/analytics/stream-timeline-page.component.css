@@ -248,6 +248,22 @@ button.stat:hover { border-color: var(--accent); }
 .server-more { display: grid; gap: .45rem; margin-top: .75rem; padding-top: .75rem; border-top: 1px solid var(--line); }
 .moments > .hint:last-child { margin-top: .75rem; }
 
+/* ── Scroll boxes: long lists scroll inside a capped box instead of stretching the page ── */
+.scroll-box {
+  --sb: var(--bg);
+  overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin;
+  background:
+    linear-gradient(var(--sb) 30%, transparent) center top / 100% 1.5rem no-repeat local,
+    linear-gradient(transparent, var(--sb) 70%) center bottom / 100% 1.5rem no-repeat local,
+    radial-gradient(farthest-side at 50% 0, rgba(0, 0, 0, .22), transparent) center top / 100% .55rem no-repeat scroll,
+    radial-gradient(farthest-side at 50% 100%, rgba(0, 0, 0, .22), transparent) center bottom / 100% .55rem no-repeat scroll,
+    var(--sb);
+}
+.scroll-box:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.rank-list.scroll-box { --sb: var(--tile); max-height: 21rem; padding: 0 .6rem; border: 1px solid var(--line); border-radius: .85rem; }
+.credit-list.scroll-box { --sb: var(--bg); max-height: 20rem; border-color: transparent; margin-bottom: .6rem; }
+.events.scroll-box { --sb: var(--tile); max-height: 28rem; border: 1px solid var(--line); border-radius: .85rem; padding: 0 .3rem; }
+
 /* ── Activity ─────────────────────────────────────────── */
 .activity { display: grid; gap: .75rem; }
 .activity .card-head { margin-bottom: 0; }
@@ -267,7 +283,7 @@ button.stat:hover { border-color: var(--accent); }
 .rank-bar span { display: block; height: 100%; border-radius: inherit; background: var(--accent); opacity: .7; }
 .people { margin-top: .5rem; padding: .6rem .75rem; border-radius: .85rem; background: var(--bg); display: grid; gap: .4rem; }
 .people h4 { font-size: .78rem; color: var(--muted); }
-.people ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .2rem; max-height: 16rem; overflow-y: auto; }
+.people ul { list-style: none; margin: 0; padding: 0 .1rem; display: grid; gap: .2rem; max-height: 16rem; }
 .people li { display: flex; justify-content: space-between; gap: .5rem; font-size: .82rem; padding: .2rem 0; }
 .people .tl-btn { justify-self: start; }
 .upsell { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem .9rem; padding: .7rem .85rem; border-radius: 1rem; background: var(--gold-soft); }
@@ -320,5 +336,6 @@ dialog .hint { margin-top: -.45rem; }
   .recap > .games, .recap > .totals, .recap > .notice { grid-column: 1; }
   .timeline-layout { grid-template-columns: minmax(0, 1.75fr) minmax(19rem, 1fr); align-items: start; }
   .moments { position: sticky; top: 5rem; max-height: calc(100dvh - 6rem); display: flex; flex-direction: column; }
+  .moments .events.scroll-box { max-height: none; border: 0; padding: 0; }
   .moments .events { overflow-y: auto; min-height: 0; flex: 1 1 auto; margin-inline: -.35rem; padding-inline: .35rem; }
 }

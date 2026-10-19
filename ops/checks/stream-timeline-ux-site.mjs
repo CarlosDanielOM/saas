@@ -14,6 +14,7 @@ const open = async (plan, width = 390) => {
   const go = async () => { await page.goto(`${url}/fixture/modules/analytics/timeline`); await section.getByRole('heading', { name: 'Audience & chat', exact: true }).waitFor(); };
   return { page, errors, state, until, section, go, readout: () => section.locator('.readout__time').innerText() };
 };
+const scrolls = loc => loc.evaluate(el => getComputedStyle(el).overflowY === 'auto' && el.scrollHeight > el.clientHeight + 4);
 let current;
 try {
   // ── Pro owner on a phone ──
@@ -41,6 +42,9 @@ try {
   assert.equal(await section.locator('.events li').count(), 6);
   await section.getByRole('button', { name: 'Show all 20 moments', exact: true }).click();
   await until(async () => await section.locator('.events li').count() === 20, 'all moments');
+  // Expanded lists scroll inside their own box instead of stretching the page.
+  assert.ok(await scrolls(section.locator('.events')), 'moments scroll box');
+  assert.ok(await section.locator('.events').evaluate(el => el.getBoundingClientRect().height) <= 28 * 16 + 4, 'moments box capped');
   const lastMoment = section.getByRole('button', { name: /Chess.*2:30:00/ });
   await lastMoment.click(); await until(async () => await readout() === '2:30:00', 'moment from expanded list');
   // Each moment shows the audience at that time.
@@ -50,12 +54,24 @@ try {
   assert.equal(await commands.locator('.rank-list > li').count(), 5);
   await commands.getByRole('button', { name: 'Show all 6', exact: true }).click();
   await until(async () => await commands.locator('.rank-list > li').count() === 6, 'all commands');
+  assert.equal(await commands.locator('.rank-list').evaluate(el => [el.classList.contains('scroll-box'), getComputedStyle(el).overflowY, el.tabIndex].join()), 'true,auto,0');
   await commands.getByRole('button', { name: 'Show top 5', exact: true }).click();
   // Zoom keeps the cursor in view and only offers sizes shorter than the stream.
   await section.getByRole('button', { name: '1 hour', exact: true }).click();
   await until(() => new URL(page.url()).searchParams.get('from') === '7200', 'zoom 1h centred and clamped');
   await until(async () => await section.getByRole('button', { name: '1 hour', exact: true }).getAttribute('aria-pressed') === 'true', '1 hour pressed');
   await section.getByRole('button', { name: 'Full stream', exact: true }).click();
+  // Credits: 40 receipts stay in a capped scroll box.
+  const before = await page.evaluate(() => document.documentElement.scrollHeight);
+  await section.getByText('Show credit activity', { exact: true }).click();
+  const credits = section.locator('.credit-list');
+  await until(async () => await credits.locator('li').count() === 40, 'credits loaded');
+  assert.ok(await scrolls(credits), 'credits scroll box');
+  const boxHeight = await credits.evaluate(el => el.getBoundingClientRect().height), grew = await page.evaluate(() => document.documentElement.scrollHeight) - before;
+  assert.ok(boxHeight <= 20 * 16 + 4, `credits box ${boxHeight}px`);
+  assert.ok(grew < 700, `credits grew page by ${grew}px`); // 40 rows unboxed would be ~2000px
+  await credits.focus(); await page.keyboard.press('End');
+  await until(async () => await credits.evaluate(el => el.scrollTop > 0), 'credits keyboard scroll');
   // Pro has no upgrade offers.
   assert.equal(await section.locator('.upsell, .metric--locked').count(), 0);
   // Phone touch targets for primary controls.
@@ -64,6 +80,8 @@ try {
     assert.ok(h >= 40, `${sel} height ${h}`);
   }
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'phone overflow');
+  await page.addScriptTag({ path: '/tmp/saas-cooldown-browser/node_modules/axe-core/axe.min.js' });
+  assert.deepEqual(await page.evaluate(async () => (await window.axe.run(document.querySelector('app-stream-timeline-page'), { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa'] } })).violations.map(v => v.id)), [], 'axe with expanded lists');
   assert.deepEqual(errors, []);
   await page.close();
 
@@ -85,7 +103,7 @@ try {
   assert.match(await current.section.locator('#recap-heading').innerText(), /^You're live with \d+ viewers\. Peak so far: 77\.$/);
   await current.section.locator('.chip--live .pulse').waitFor();
   assert.deepEqual(current.errors, []);
-  console.log('PASS TIMELINE UX: recap answer, rise/drop causes, per-game split, totals, game band, cause tap reveals chart, phone moment cap + show all, viewers per moment, ranking top 5 toggle, clamped zoom, owner-only upsell + upgrade prompt, live answer, touch targets, phone overflow');
+  console.log('PASS TIMELINE UX: recap answer, rise/drop causes, per-game split, totals, game band, cause tap reveals chart, phone moment cap + show all, viewers per moment, ranking top 5 toggle, scroll boxes for expanded moments/rankings/credits (keyboard + axe), clamped zoom, owner-only upsell + upgrade prompt, live answer, touch targets, phone overflow');
 } catch (error) {
   if (current) { console.error('PAGE', current.page.url(), current.errors); console.error((await current.page.locator('body').innerText().catch(() => '')).slice(-5000)); }
   throw error;

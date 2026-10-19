@@ -58,7 +58,7 @@ export async function mockApi(page, url, opts = {}) {
       if (path === '/auth/session') response = { twitch, app: state.app };
       else if (path.includes('/access')) response = { allowed: true };
       else if (path.endsWith('/people')) response = { items: [{ id: 'viewer-1', label: 'ChatViewer', count: 12, errors: 1 }, { id: 'viewer-2', label: 'pixelpanda', count: 7, errors: 0 }], cursor: null };
-      else if (path.endsWith('/credits')) response = { items: [{ id: 'credit-1', offsetSeconds: 1800, category: 'tts', operation: 'synthesize', provider: 'piper', model: null, credits: 12, entryKind: 'usage' }, { id: 'credit-2', offsetSeconds: 4200, category: 'ai_chat', operation: 'chat', provider: 'openai', model: 'mini', credits: 3.5, entryKind: 'usage' }], truncated: false };
+      else if (path.endsWith('/credits')) response = { items: Array.from({ length: 40 }, (_, i) => ({ id: `credit-${i}`, offsetSeconds: 10500 - i * 240, category: i % 7 ? 'tts' : 'ai_chat', operation: 'synthesize', provider: i % 7 ? 'fish' : 'openrouter', model: null, credits: 60 + (i * 37) % 140, entryKind: 'usage' })), truncated: false };
       else if (path.endsWith('/moments')) response = { events: [{ id: 'follow-new', kind: 'follow', label: 'NewFollower', offsetSeconds: 2500, value: 1 }], cursor: null };
       else if (path.includes('/compare/')) response = { ...data, session: { ...sessions[1], durationSeconds: 8100 }, canAnnotate: false, points: data.points.slice(0, 28).map(p => ({ ...p, viewers: Math.max(5, p.viewers - 12) })) };
       else if (path.includes('/markers/')) {
