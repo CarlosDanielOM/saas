@@ -116,3 +116,25 @@ test('control during the Studio handoff never delivers stale audio after the res
   assert.ok(events.some(e => e.channel === '/speech/handoff' && e.event === 'speech-reset'));
   assert.ok(!data.has('twitch:handoff:tts:processing'));
 });
+
+test('read-only status distinguishes preparing from playing, counts waiting speech and never advances the queue', async () => {
+  registerStudioBridge({ hasSource: () => false, media: async () => {}, trigger: async () => {},
+    ttsStatus: async () => ({ connected: true, playing: false, queueLength: 2 }) });
+  seed('status', 'status-a', 'status-b');
+  const before = synthesized.length;
+  const status = await handler.getStatus('status');
+  assert.deepEqual(status, { connected: true, playing: false, preparing: false, queueLength: 4 });
+  assert.equal(synthesized.length, before);
+  assert.deepEqual(queues.get('twitch:status:tts:queue'), ['status-a', 'status-b']);
+  let release!: (value: any) => void;
+  const original = synthesize;
+  synthesize = () => new Promise(done => { release = done; });
+  const processing = handler.processNext('status');
+  await until(() => !!release);
+  assert.deepEqual(await handler.getStatus('status'), { connected: true, playing: false, preparing: true, queueLength: 3 });
+  synthesize = original;
+  release(await original({}));
+  await processing;
+  assert.deepEqual(await handler.getStatus('status'), { connected: true, playing: true, preparing: false, queueLength: 3 });
+  await handler.control('status', 'clear');
+});

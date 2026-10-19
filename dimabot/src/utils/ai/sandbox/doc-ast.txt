@@ -1,6 +1,6 @@
 # ==========================================
 # COMMAND VARIABLES & LOGIC (generated from the AST function registry)
-# Catalog version: 9a798d0e2eb2
+# Catalog version: e585b9e5fefe
 # ==========================================
 
 # AST SYNTAX CORE (for command & reward message fields)
@@ -288,15 +288,21 @@
 # $(tts.clone voice_name message) - Speaks a message with a named Fish Audio cloned voice. First argument is the voice name or voice ID, the rest is the message. (aliases: tts.fish)
 #   Example: $(tts.clone gojo Hello chat!)
 #   Example: $(tts.clone rias_gremory Welcome!)
+# $(tts.connected) - Returns a boolean: true when a speech overlay or TTS-enabled Studio source is connected. False when disconnected or lookup fails. Read-only.
+#   Example: $(tts.connected)
 # $(tts.kokoro voice_name text) - Speaks text with a Kokoro preset voice using DeepInfra only. Costs one credit per 15 characters, rounded up; falls back to Piper when credits are exhausted or synthesis fails.
 #   Example: $(tts.kokoro af_heart Hello chat!)
 #   Example: $(tts.kokoro ef_dora Hola chat!)
+# $(tts.queue.length) - Returns the number of waiting TTS messages, including retained Studio deliveries, excluding current speech. Duplicate OBS sources count once. Returns -1 if lookup fails. Read-only.
+#   Example: $(tts.queue.length)
 # $(tts.refresh) - Resets connected speech playback and reconnects overlay sockets, discarding interrupted speech while preserving waiting TTS requests. An offline OBS source must be reopened manually.
 #   Example: $(tts.refresh)
 # $(tts.skip) - Stops the current TTS item and advances to the next waiting request.
 #   Example: $(tts.skip)
 # $(tts.speak message) - Speaks a message using Piper (1 credit per 50 characters, rounded up), including after credit exhaustion. (aliases: tts.piper)
 #   Example: $(tts Hello chat!)
+# $(tts.status) - Reports the channel speech overlay connection, playing/preparing/idle state and waiting TTS count. Includes Global Overlay Studio. Read-only.
+#   Example: $(tts.status)
 #
 # --- twitch-data ---
 # $(followage [username]) - Returns how long a user has been following the channel (years, months, days, hours). Defaults to the caller.

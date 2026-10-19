@@ -21,7 +21,7 @@ type Public = Awaited<ReturnType<typeof publicState>>;
 type RuntimeIssue = 'snapshot' | 'event' | 'media' | 'autoplay';
 interface Health { revision: number; issue: RuntimeIssue | null; reportedAt: number; issueAt: number | null }
 interface Peer { interactionVersion?: string; commands: QueueCommand[]; playback?: { active: string[]; queued: string[] }; connectedAt: number; health?: Health; activationFailed?: boolean; activationRetryAt?: number; dropped?: number; stateFailed?: boolean; key: string; publicId: string; channel: string; socket?: Socket; disconnectedAt?: number; state: Public; since: number }
-interface Pending { event: LiveEvent; channel: string; recipients: Set<string>; mediaId?: string; bytes?: number; expiresAt: Date; mime?: string; raw?: Record<string, unknown> }
+interface Pending { speechID?: string; event: LiveEvent; channel: string; recipients: Set<string>; mediaId?: string; bytes?: number; expiresAt: Date; mime?: string; raw?: Record<string, unknown> }
 const peers = new Map<string, Peer>();
 let pollingFailed = false;
 const pending = new Map<string, Pending>();
@@ -112,12 +112,12 @@ async function deliver(item: Pending, selected: Peer[]) {
   for (const peer of selected) peer.socket?.emit('overlay-event', item.event);
 }
 /** Copy generated media BEFORE releasing its producer. Files live until every subscriber finishes. */
-export async function publishStudioMedia(channel: string, kind: 'clip' | 'tts', media: LiveMedia, file: string, mime: string, text?: string, platform: OverlayPlatform = 'twitch'): Promise<void> {
+export async function publishStudioMedia(channel: string, kind: 'clip' | 'tts', media: LiveMedia, file: string, mime: string, text?: string, platform: OverlayPlatform = 'twitch', speechID?: string): Promise<void> {
   await restore();
   const selected = recipients(channel, kind, true); if (!selected.length) return;
   const id = randomUUID();
   const retained = await retainFile(file);
-  await deliver({ channel, event: { id, kind, media, text, platform }, ...retained, mime, expiresAt: new Date(Date.now() + DELIVERY_TTL_MS), recipients: new Set(selected.map(p => p.key)) }, selected);
+  await deliver({ channel, speechID, event: { id, kind, media, text, platform }, ...retained, mime, expiresAt: new Date(Date.now() + DELIVERY_TTL_MS), recipients: new Set(selected.map(p => p.key)) }, selected);
 }
 export async function publishStudioTrigger(channel: string, body: Record<string, unknown>, platform: OverlayPlatform = 'twitch'): Promise<void> {
   await restore();
@@ -216,6 +216,21 @@ export async function controlStudio(channel: string, rawAction: unknown, rawPlat
     }
   }
   return queueStatus(channel);
+}
+
+/** Read the retained TTS ledger without creating Studio configuration or changing playback. */
+export async function studioTtsStatus(channel: string, currentSpeechID?: string) {
+  await restore();
+  const sources = [...peers.values()].filter(peer => peer.channel === channel && accepts(peer, 'tts')
+    && (peer.socket?.connected || reconnecting(peer)));
+  const connected = sources.some(peer => peer.socket?.connected);
+  const active = new Set(sources.filter(peer => peer.socket?.connected).flatMap(peer => peer.playback?.active ?? []));
+  const keys = new Set(sources.map(peer => peer.key));
+  const speech = [...pending.values()].filter(item => item.channel === channel && item.event.kind === 'tts'
+    && item.expiresAt.getTime() > Date.now() && [...item.recipients].some(key => keys.has(key)));
+  return { connected, playing: speech.some(item => active.has(item.event.id)),
+    queueLength: new Set(speech.filter(item => !active.has(item.event.id) && (!currentSpeechID || item.speechID !== currentSpeechID))
+      .map(item => item.speechID ?? item.event.id)).size };
 }
 
 /** Scope speech controls to TTS deliveries; alerts, clips and triggers keep playing. */
@@ -375,4 +390,4 @@ export function registerStudio(io: Server): void {
   io.on('close', () => { clearInterval(timer); pending.clear(); peers.clear(); channels.clear(); restoring = undefined; pollingFailed = false; });
 }
 
-registerStudioBridge({ hasSource: studioHasSource, media: publishStudioMedia, trigger: publishStudioTrigger, controlTts: controlStudioTts });
+registerStudioBridge({ hasSource: studioHasSource, media: publishStudioMedia, trigger: publishStudioTrigger, controlTts: controlStudioTts, ttsStatus: studioTtsStatus });

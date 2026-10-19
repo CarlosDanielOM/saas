@@ -396,6 +396,21 @@ router.get('/:channelID', async (req: Request, res: Response) => {
     }
 });
 
+router.get('/:channelID/status', authMiddleware as any, async (req: AuthRequest, res: Response) => {
+    res.set('Cache-Control', 'no-store');
+    try {
+        const channelID = normalizeRouteParam(req.params.channelID);
+        if (!/^\d+$/.test(channelID)) return res.status(400).json({ error: true, message: 'Invalid channel', status: 400 });
+        if (!req.user || await getTtsAccess(req.user.id, channelID, 'tts:view') === 'none') {
+            return res.status(403).json({ error: true, message: 'TTS view permission required', status: 403 });
+        }
+        return res.json({ error: false, message: 'TTS status', status: 200, data: await ttsQueueHandler.getStatus(channelID) });
+    } catch (error) {
+        console.error('TTS status failed', error);
+        return res.status(500).json({ error: true, message: 'Unable to read TTS status', status: 500 });
+    }
+});
+
 // Recovery controls remain available when TTS is disabled or its overlay is offline.
 router.post('/:channelID/control', authMiddleware as any, async (req: AuthRequest, res: Response) => {
     try {

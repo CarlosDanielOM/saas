@@ -1,3 +1,4 @@
+import { formatTtsStatus } from '../../tts/tts_status.js';
 import { queueDefaultTts } from '../../../utils/tts/queue_default_tts.util.js';
 import { registerFunction, type FunctionHandler } from '../evaluator.js';
 import { trackTts } from '../../../utils/posthog_events.js';
@@ -204,6 +205,26 @@ const ttsKokoroHandler: FunctionHandler = async (args, ctx) => {
 };
 
 export function registerTtsFunctions(): void {
+    for (const name of ['tts.status', 'tts.connected', 'tts.queue.length'] as const) {
+        registerFunction(name, async (args, ctx) => {
+            const failedValue = () => name === 'tts.connected' ? false : name === 'tts.queue.length' ? -1 : 'Error: Unable to read TTS status';
+            if (args.length || ctx.platform !== 'twitch') return name === 'tts.status'
+                ? (args.length ? `Usage: $(${name})` : 'Error: TTS status currently requires a Twitch channel') : failedValue();
+            const { getTtsStatus } = await import('../../../functions/chats/control_tts.chat.js');
+            const result = await getTtsStatus(ctx.broadcasterId);
+            if (result.error) return name === 'tts.status' ? `Error: ${result.message}` : failedValue();
+            return name === 'tts.connected' ? result.data.connected
+                : name === 'tts.queue.length' ? result.data.queueLength : formatTtsStatus(result.data);
+        }, {
+            description: {
+                'tts.status': 'Reports the channel speech overlay connection, playing/preparing/idle state and waiting TTS count. Includes Global Overlay Studio. Read-only.',
+                'tts.connected': 'Returns a boolean: true when a speech overlay or TTS-enabled Studio source is connected. False when disconnected or lookup fails. Read-only.',
+                'tts.queue.length': 'Returns the number of waiting TTS messages, including retained Studio deliveries, excluding current speech. Duplicate OBS sources count once. Returns -1 if lookup fails. Read-only.'
+            }[name],
+            syntax: name, category: 'tts', examples: [name], minUserLevel: 1,
+            keywords: ['tts', 'status', 'connected', 'queue', 'estado', 'cola']
+        });
+    }
     for (const action of ['skip', 'clear', 'refresh'] as const) {
         const name = `tts.${action}`;
         const description = {

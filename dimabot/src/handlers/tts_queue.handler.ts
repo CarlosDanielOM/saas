@@ -1,5 +1,6 @@
+import type { TtsStatusData } from '../utils/tts/tts_status.js';
 import { telemetryContext, restoreContext, traced, observe, type TraceContext } from '../utils/observability/telemetry.js';
-import { studioHasSource, publishStudioMedia, controlStudioTts } from '../overlays/bridge.js';
+import { studioHasSource, publishStudioMedia, controlStudioTts, studioTtsStatus } from '../overlays/bridge.js';
 import type { RedisClientType } from "redis";
 import { randomUUID } from "node:crypto";
 import fs from "fs/promises";
@@ -113,6 +114,21 @@ class TtsQueueHandler {
 
   async isOverlayConnected(channelID: string): Promise<boolean> {
     return this.hasOverlayConnection(channelID);
+  }
+
+  async getStatus(channelID: string): Promise<TtsStatusData> {
+    if (!this.cache) await this.init();
+    const currentSpeechID = this.activeSpeechIds.get(channelID);
+    const studio = await studioTtsStatus(channelID, currentSpeechID);
+    const sockets = getIO()?.of(`/speech/${channelID}`).sockets;
+    const connected = studio.connected || !!sockets && [...sockets.values()].some(socket => socket.connected && socket.data.ttsReady);
+    return {
+      connected,
+      playing: studio.playing || !!sockets && [...sockets.values()].some(socket => socket.connected && socket.data.ttsReady)
+        && this.dispatchedSpeechIds.has(channelID),
+      preparing: !!currentSpeechID && !this.dispatchedSpeechIds.has(channelID),
+      queueLength: await this.cache!.zCard(`twitch:${channelID}:tts:queue`) + studio.queueLength,
+    };
   }
 
   private hasOverlayConnection(channelID: string): boolean {
@@ -520,7 +536,7 @@ class TtsQueueHandler {
         observe('queue_total', 'tts.ready', Math.max(0, Date.now() - queueItem.timestamp), 'ok', channelID);
         console.log('TTS dispatched', { channelID, speechID, readyMs: Date.now() - queueItem.timestamp });
 
-        const dispatch = publishStudioMedia(channelID, 'tts', { type: 'audio', title: queueItem.text, volume: 1 }, synthesisResult.outputPath, synthesisResult.mimeType || 'audio/wav', queueItem.text);
+        const dispatch = publishStudioMedia(channelID, 'tts', { type: 'audio', title: queueItem.text, volume: 1 }, synthesisResult.outputPath, synthesisResult.mimeType || 'audio/wav', queueItem.text, 'twitch', speechID);
         this.dispatches.set(channelID, dispatch);
         try { await dispatch; }
         finally { if (this.dispatches.get(channelID) === dispatch) this.dispatches.delete(channelID); }
