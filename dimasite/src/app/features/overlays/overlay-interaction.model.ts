@@ -1,4 +1,10 @@
+import type { OverlayWidget } from './overlay.model';
+
 export type InteractionKind = 'poll' | 'prediction';
+/** Namespaced module config wins; legacy flattened scenes keep their original preset. */
+export function interactionDesign(widget: OverlayWidget): 'card' | 'compact' {
+  return (widget.config?.['interactionDesign'] ?? widget.interactionDesign) === 'compact' ? 'compact' : 'card';
+}
 export interface InteractionChoice { id: string; title: string; votes: number; channelPointsVotes?: number; users: number; points: number; color?: string }
 export interface InteractionState {
   kind: InteractionKind; id: string; title: string; phase: 'active' | 'locked' | 'completed' | 'terminated' | 'archived' | 'resolved' | 'canceled';

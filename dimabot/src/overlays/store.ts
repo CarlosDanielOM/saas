@@ -6,6 +6,7 @@ import { getMongoDBConnection } from '../utils/databases/mongodb.database.js';
 import { CLIP_DESIGN_VARIANTS, ALERT_TRANSITIONS, ALERT_LOOPS, ALERT_EVENTS, EVENT_KINDS, type AlertLayout, type AlertVariant, type AlertDesign, type OverlayScene, type OverlayWidget, makeDesign, makeScene } from './model.js';
 import { initialQueueState, type QueueState } from './controls.js';
 import { parseTemplate } from './ast.js';
+import { parseWidgetModuleConfig } from './widget-contract.js';
 
 export class OverlayError extends Error { constructor(message: string, readonly status = 400) { super(message); } }
 export interface StudioState { schemaVersion: 1; revision: number; scenes: OverlayScene[]; designs: AlertDesign[] }
@@ -29,8 +30,12 @@ function canvas(v: Record<string, unknown>) { return { width: number(v.width, 10
 function widgets(value: unknown, nested: boolean): OverlayWidget[] {
   return unique(list(value, 60).map(raw => {
     const w = object(raw); const kind = string(w.kind) as OverlayWidget['kind'];
-    if (!(nested ? ['text', 'image', 'video', 'animation', 'shape'] : ['poll', 'prediction', 'tts', 'clip', 'trigger', 'alert', 'text', 'image', 'video', 'shape']).includes(kind)) throw new OverlayError('Invalid layer type');
+    const moduleConfig = parseWidgetModuleConfig(w, nested ? 'design' : 'scene');
+    if (!moduleConfig) throw new OverlayError('Invalid widget module configuration');
     const item: OverlayWidget = { id: id(w.id), kind, x: number(w.x, -16000, 16000), y: number(w.y, -16000, 16000), width: number(w.width, 20, 16000), height: number(w.height, 20, 16000), visible: boolean(w.visible), locked: boolean(w.locked) };
+    if (moduleConfig.configVersion !== undefined) item.configVersion = moduleConfig.configVersion;
+    if (moduleConfig.config !== undefined) item.config = moduleConfig.config;
+    Object.assign(item, moduleConfig.legacy);
     if (w.keyframes !== undefined) {
       if (!nested || !validKeyframes(w.keyframes)) throw new OverlayError('Invalid object keyframes');
       // Rebuild the accepted data rather than storing unrecognized client fields.
@@ -47,10 +52,6 @@ function widgets(value: unknown, nested: boolean): OverlayWidget[] {
     if (w.showTtsText !== undefined) {
       if (kind !== 'tts') throw new OverlayError('Spoken text settings require a TTS widget');
       item.showTtsText = boolean(w.showTtsText);
-    }
-    if (w.interactionDesign !== undefined) {
-      if (!['poll', 'prediction'].includes(kind) || !['card', 'compact'].includes(String(w.interactionDesign))) throw new OverlayError('Invalid poll or prediction design');
-      item.interactionDesign = w.interactionDesign as OverlayWidget['interactionDesign'];
     }
     if (w.clipDesign !== undefined) {
       if (kind !== 'clip' || !CLIP_DESIGN_VARIANTS.includes(w.clipDesign as never)) throw new OverlayError('Invalid clip design');

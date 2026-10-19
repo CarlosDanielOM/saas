@@ -1,4 +1,7 @@
-import { interactionSnapshot, resyncInteractions } from './interactions.js';
+import { resyncInteractions } from './interactions.js';
+import { widgetStateRegistry, legacyInteractions } from './widget-state-providers.js';
+import { getWidgetDefinition, validWidgetModuleConfig } from './widget-contract.js';
+import type { WidgetStateReadScope } from './widget-state.js';
 import type { InteractionKind, InteractionSnapshot } from './interaction-model.js';
 import { selectAlertLayout } from './model.js';
 import { ALERT_DOMAIN_TYPES, AlertEventFilter } from './alert-events.js';
@@ -20,7 +23,7 @@ export interface LiveEvent { platform: OverlayPlatform; id: string; kind: EventK
 type Public = Awaited<ReturnType<typeof publicState>>;
 type RuntimeIssue = 'snapshot' | 'event' | 'media' | 'autoplay';
 interface Health { revision: number; issue: RuntimeIssue | null; reportedAt: number; issueAt: number | null }
-interface Peer { interactionVersion?: string; commands: QueueCommand[]; playback?: { active: string[]; queued: string[] }; connectedAt: number; health?: Health; activationFailed?: boolean; activationRetryAt?: number; dropped?: number; stateFailed?: boolean; key: string; publicId: string; channel: string; socket?: Socket; disconnectedAt?: number; state: Public; since: number }
+interface Peer { widgetStateVersion?: string; interactionVersion?: string; commands: QueueCommand[]; playback?: { active: string[]; queued: string[] }; connectedAt: number; health?: Health; activationFailed?: boolean; activationRetryAt?: number; dropped?: number; stateFailed?: boolean; key: string; publicId: string; channel: string; socket?: Socket; disconnectedAt?: number; state: Public; since: number }
 interface Pending { speechID?: string; event: LiveEvent; channel: string; recipients: Set<string>; mediaId?: string; bytes?: number; expiresAt: Date; mime?: string; raw?: Record<string, unknown> }
 const peers = new Map<string, Peer>();
 let pollingFailed = false;
@@ -256,11 +259,19 @@ export async function controlStudioTts(channel: string, action: 'skip' | 'clear'
 }
 
 export function interactionKinds(scene: { widgets: { visible: boolean; kind: string }[] }): InteractionKind[] {
-  return (['poll', 'prediction'] as const).filter(kind => scene.widgets.some(widget => widget.visible && widget.kind === kind));
+  return (['poll', 'prediction'] as const).filter(kind => scene.widgets.some(widget => widget.visible && validWidgetModuleConfig(widget as unknown as Record<string, unknown>, 'scene') && getWidgetDefinition(widget.kind)?.state?.stateKey === kind));
+}
+export async function publicWidgetStateFor(state: Public, scope?: WidgetStateReadScope) {
+  const { widgetStates, serverTime, failedSources } = await widgetStateRegistry.snapshot(state.channel, state.snapshot.widgets, scope);
+  // Legacy clients have no failure metadata. An omitted envelope preserves their
+  // last known state; fabricated nulls would incorrectly clear it on reconnect.
+  const interactions = failedSources.includes('twitch-interactions') ? undefined : legacyInteractions(widgetStates, serverTime);
+  return { widgetStates, serverTime, interactions, failedSources };
 }
 export async function interactionsFor(state: Public): Promise<InteractionSnapshot> {
-  const kinds = interactionKinds(state.snapshot), snapshot = await interactionSnapshot(state.channel);
-  return { poll: kinds.includes('poll') ? snapshot.poll : null, prediction: kinds.includes('prediction') ? snapshot.prediction : null, serverTime: snapshot.serverTime };
+  const { interactions } = await publicWidgetStateFor(state);
+  if (!interactions) throw new OverlayError('Overlay interaction state unavailable', 503);
+  return interactions;
 }
 export function registerStudio(io: Server): void {
   const pattern = /^\/overlay-studio\/[a-f0-9]{48}$/;
@@ -289,9 +300,11 @@ export function registerStudio(io: Server): void {
     await savePeer(peer);
     if (!socket.connected) { peer.socket = undefined; peer.disconnectedAt = Date.now(); await savePeer(peer); return; }
     if (!channels.has(peer.channel)) channels.set(peer.channel, { after: Types.ObjectId.createFromTime(Math.floor(Date.now() / 1000)), busy: false });
-    const interactions = await interactionsFor(state);
-    peer.interactionVersion = JSON.stringify([interactions.poll?.revision, interactions.prediction?.revision]);
-    socket.emit('overlay-state', { interactions, publicId: state.publicId, revision: state.revision, snapshot: state.snapshot, controls: state.controls, commands: peer.commands, pendingIds: [...pending.values()].filter(item => item.recipients.has(key)).map(item => item.event.id) });
+    const { interactions, widgetStates, serverTime, failedSources } = await publicWidgetStateFor(state);
+    peer.stateFailed = failedSources.length > 0;
+    peer.widgetStateVersion = JSON.stringify([widgetStates, failedSources]);
+    if (interactions) peer.interactionVersion = JSON.stringify([interactions.poll?.revision, interactions.prediction?.revision]);
+    socket.emit('overlay-state', { widgetStates, serverTime, failedSources, interactions, publicId: state.publicId, revision: state.revision, snapshot: state.snapshot, controls: state.controls, commands: peer.commands, pendingIds: [...pending.values()].filter(item => item.recipients.has(key)).map(item => item.event.id) });
     for (const item of pending.values()) if (item.recipients.has(key)) socket.emit('overlay-event', item.event);
     socket.on('overlay-control-ack', (id: unknown) => {
       if (peers.get(key) === peer && typeof id === 'string') { peer.commands = peer.commands.filter(command => command.id !== id); void savePeer(peer); }
@@ -354,21 +367,22 @@ export function registerStudio(io: Server): void {
           // A transient database failure keeps the current version and queue.
         }
       }
-      const interactionStates = new Map<string, InteractionSnapshot>();
+      const widgetReadScope = widgetStateRegistry.createReadScope();
       for (const peer of peers.values()) {
         if (!peer.socket?.connected) continue;
-        if (!interactionKinds(peer.state.snapshot).length) {
-          if (peer.interactionVersion !== '[null,null]') { peer.socket.emit('overlay-interactions', { poll: null, prediction: null, serverTime: Date.now() }); peer.interactionVersion = '[null,null]'; }
-          continue;
+        const { widgetStates, serverTime, interactions, failedSources } = await publicWidgetStateFor(peer.state, widgetReadScope);
+        if (failedSources.length) peer.stateFailed = true;
+        const widgetVersion = JSON.stringify([widgetStates, failedSources]);
+        if (widgetVersion !== peer.widgetStateVersion) {
+          peer.socket.emit('overlay-widget-states', { widgetStates, serverTime, failedSources }); peer.widgetStateVersion = widgetVersion;
         }
-        let snapshot = interactionStates.get(peer.channel);
-        if (!snapshot) { snapshot = await interactionSnapshot(peer.channel); interactionStates.set(peer.channel, snapshot); }
         const kinds = interactionKinds(peer.state.snapshot);
-        const overdue = kinds.filter(kind => { const state = snapshot![kind]; return state?.phase === 'active' && !!state.deadline && Date.parse(state.deadline) + 5000 < Date.now(); });
+        const overdue = kinds.filter(kind => { const state = interactions?.[kind]; return state?.phase === 'active' && !!state.deadline && Date.parse(state.deadline) + 5000 < Date.now(); });
         if (overdue.length) void resyncInteractions(peer.channel, overdue).catch(() => { peer.stateFailed = true; });
-        const filtered = { poll: kinds.includes('poll') ? snapshot.poll : null, prediction: kinds.includes('prediction') ? snapshot.prediction : null, serverTime: snapshot.serverTime };
-        const version = JSON.stringify([filtered.poll?.revision, filtered.prediction?.revision]);
-        if (version !== peer.interactionVersion) { peer.socket.emit('overlay-interactions', filtered); peer.interactionVersion = version; }
+        if (interactions) {
+          const version = JSON.stringify([interactions.poll?.revision, interactions.prediction?.revision]);
+          if (version !== peer.interactionVersion) { peer.socket.emit('overlay-interactions', interactions); peer.interactionVersion = version; }
+        }
       }
       const cache = await getDragonflyClient('overlay-presence');
       for (const [channel, cursor] of channels) {

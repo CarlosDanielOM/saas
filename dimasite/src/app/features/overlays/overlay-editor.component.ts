@@ -1,6 +1,7 @@
-import { OverlayInteractionComponent } from './overlay-interaction.component';
+import { OverlayWidgetHostComponent } from './overlay-widget-host.component';
+import { OverlayWidgetSettingsComponent } from './overlay-widget-settings.component';
+import { createWidget, getWidgetModule, widgetModuleFor, widgetPalette } from './overlay-widget-registry';
 import { OverlayInteractionSetupComponent } from './overlay-interaction-setup.component';
-import { sampleInteraction, type InteractionKind, type InteractionPreview } from './overlay-interaction.model';
 import { waitForOverlayImages } from './overlay-image-readiness';
 import { OverlayKeyframeEditorComponent } from './overlay-keyframe-editor.component';
 import { OverlayAppearanceComponent } from './overlay-appearance.component';
@@ -43,7 +44,7 @@ interface MockEvent { texts?: Record<string, string>; preparing?: boolean; id: n
 interface MediaJob { cancel?: () => void; timer?: ReturnType<typeof setTimeout>; pending: Set<string>; started: Set<string> }
 
 @Component({
-  selector: 'app-overlay-editor', imports: [OverlayInteractionComponent, OverlayInteractionSetupComponent, OverlayKeyframeEditorComponent, OverlayAppearanceComponent, OverlayVariantsComponent, OverlayTimelineComponent, OverlaySoundComponent, OverlayQueueComponent, RouterLink, LucideAngularModule, OverlayMediaComponent, OverlayLayerComponent, AssetLibraryDialogComponent, OverlayConnectionsComponent, OverlayClipComponent, OverlayTriggerFilterComponent], providers: [OverlayTestMediaService, OverlayDraftStorage],
+  selector: 'app-overlay-editor', imports: [OverlayWidgetHostComponent, OverlayWidgetSettingsComponent, OverlayInteractionSetupComponent, OverlayKeyframeEditorComponent, OverlayAppearanceComponent, OverlayVariantsComponent, OverlayTimelineComponent, OverlaySoundComponent, OverlayQueueComponent, RouterLink, LucideAngularModule, OverlayMediaComponent, OverlayLayerComponent, AssetLibraryDialogComponent, OverlayConnectionsComponent, OverlayClipComponent, OverlayTriggerFilterComponent], providers: [OverlayTestMediaService, OverlayDraftStorage],
   templateUrl: './overlay-editor.component.html', styleUrl: './overlay-editor.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '(document:visibilitychange)': 'pauseHiddenTimeline()', '(window:pointermove)': 'onPointerMove($event)', '(window:pointerup)': 'stopPointer()', '(window:pointercancel)': 'stopPointer()', '(window:beforeunload)': 'protectDraft($event)', '(window:pagehide)': 'saveLocalRecovery()', '(window:keydown)': 'onHistoryKeydown($event)', '(window:keyup)': 'onHistoryKeyup($event)', '(focusout)': 'endHistoryGroup()' }
@@ -139,13 +140,12 @@ export class OverlayEditorComponent {
   readonly canvasWidth = computed(() => this.designDraft()?.width ?? this.scene()?.width ?? 1920);
   readonly canvasHeight = computed(() => this.designDraft()?.height ?? this.scene()?.height ?? 1080);
   readonly widgets = computed(() => this.editingLayout()?.widgets ?? this.scene()?.widgets ?? []);
-  readonly palette = computed<WidgetKind[]>(() => this.designDraft() ? ['text', 'image', 'video', 'animation', 'shape'] : ['poll', 'prediction', 'tts', 'trigger', 'clip', 'alert', 'image', 'video', 'shape']);
-  readonly interactionPreview = signal<InteractionPreview>('progress');
-  readonly pollPreview = computed(() => sampleInteraction('poll', this.interactionPreview(), key => this.t(key)));
-  readonly predictionPreview = computed(() => sampleInteraction('prediction', this.interactionPreview(), key => this.t(key)));
-  readonly interactionStages = computed<InteractionPreview[]>(() => this.selected()?.kind === 'prediction' ? ['begin', 'progress', 'locked', 'result', 'canceled'] : ['begin', 'progress', 'result', 'tie', 'canceled']);
-  setInteractionDesign(event: Event): void { const design = this.value(event); if (design === 'card' || design === 'compact') this.patchSelected({ interactionDesign: design }); }
-  setInteractionPreview(event: Event): void { this.interactionPreview.set(this.value(event) as InteractionPreview); }
+  readonly widgetPlacement = computed(() => this.designDraft() ? 'design' as const : 'scene' as const);
+  readonly palette = computed(() => widgetPalette(this.widgetPlacement()));
+  /** Local-only sample controls belong to an instance, never to the shared live state. */
+  readonly widgetPreviews = signal<Partial<Record<string, string>>>({});
+  setWidgetPreview(id: string, fixture: string): void { this.widgetPreviews.update(all => ({ ...all, [id]: fixture })); }
+  widgetModule(widget: OverlayWidget) { return widgetModuleFor(widget, this.widgetPlacement()); }
   readonly selectedId = signal<string | null>('alert-1');
   /** Remembered so the exact-numbers section stays open while hopping between sources. */
   readonly exactOpen = signal(false);
@@ -356,14 +356,11 @@ export class OverlayEditorComponent {
     if (this.selected()?.kind === asset.kind) this.patchSelected({ assetId: asset.id, mediaUrl: undefined });
     this.assetPickerOpen.set(false);
   }
-  widgetIcon(kind: WidgetKind) { return ({ poll: Radio, prediction: Sparkles, tts: Volume2, trigger: Zap, clip: Clapperboard, alert: Bell, text: Type, image: Image, video: Play, animation: Sparkles, shape: Layers3 })[kind]; }
-  widgetName(widget: OverlayWidget): string { return widget.name || this.t(`${widget.kind}Name`); }
+  widgetIcon(kind: WidgetKind) { return getWidgetModule(kind)?.icon ?? Layers3; }
+  widgetName(widget: OverlayWidget): string { return widget.name || this.t(getWidgetModule(widget.kind)?.nameKey ?? 'canvasItem'); }
   addWidget(kind: WidgetKind, position?: { x: number; y: number }): void {
-    const width = kind === 'poll' || kind === 'prediction' ? 560 : kind === 'tts' ? 580 : kind === 'alert' ? 640 : kind === 'text' ? 400 : 300;
-    const height = kind === 'poll' ? 360 : kind === 'prediction' ? 460 : kind === 'tts' ? 160 : kind === 'alert' ? 192 : kind === 'text' ? 80 : 180;
-    const widget: OverlayWidget = { id: this.id(kind), kind, x: position?.x ?? 40, y: position?.y ?? 40, width, height, visible: true, locked: false,
-      ...(['poll', 'prediction'].includes(kind) ? { interactionDesign: 'card' as const } : {}),
-      ...(kind === 'alert' ? { designId: this.designs()[0].id, events: [...ALERT_EVENTS] } : {}), ...(kind === 'text' ? { text: '$(user)' } : {}) };
+    const widget = createWidget(kind, { id: this.id(kind), placement: this.widgetPlacement(), position, defaultDesignId: this.designs()[0]?.id });
+    if (!widget) return;
     this.updateWidgets(all => [...all, widget]); this.select(widget.id);
   }
   onPaletteDrag(event: DragEvent, kind: WidgetKind): void { event.dataTransfer?.setData('application/x-overlay-widget', kind); }

@@ -1,8 +1,9 @@
 import type { AlertKeyframes } from './overlay-keyframes.model';
 import type { ClipDesignVariant } from '../clips/clips.model';
+import type { WidgetKind } from './overlay-widget-contract.generated';
+export type { WidgetKind } from './overlay-widget-contract.generated';
 export type AlertEvent = 'sub' | 'bits' | 'follow' | 'raid';
 export type EventKind = 'tts' | 'trigger' | 'clip' | AlertEvent;
-export type WidgetKind = 'poll' | 'prediction' | 'tts' | 'trigger' | 'clip' | 'alert' | 'text' | 'image' | 'video' | 'animation' | 'shape';
 export const ALERT_TRANSITIONS = ['none', 'fade', 'slide-left', 'slide-right', 'slide-up', 'slide-down', 'zoom', 'bounce', 'flip', 'spin'] as const;
 export const ALERT_LOOPS = ['none', 'pulse', 'float', 'sway', 'spin'] as const;
 export interface AlertMotion {
@@ -11,6 +12,10 @@ export interface AlertMotion {
 }
 export interface OverlayWidget {
   id: string; kind: WidgetKind; name?: string;
+  /** Absent on legacy scenes; each module treats omission as its original v1 config. */
+  configVersion?: number;
+  /** Module-owned, validated configuration for new modules; legacy flattened fields remain supported. */
+  config?: Record<string, unknown>;
   x: number; y: number; width: number; height: number;
   visible: boolean; locked: boolean;
   /** TTS stays active when captions are off; omitted settings default to audio-only. */

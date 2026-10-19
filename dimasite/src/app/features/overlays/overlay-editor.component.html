@@ -158,13 +158,13 @@
             @for (widget of widgets(); track widget.id; let layerIndex = $index) {
               @if (widget.visible) {
                 @let placement = previewPlacement(widget);
-                <div class="widget" role="group" tabindex="0" [attr.data-kind]="widget.kind" [class.selected]="selectedId() === widget.id" [class.is-preview]="isPlaying(widget)" [class.is-locked]="widget.locked"
+                <div class="widget" role="group" tabindex="0" [attr.data-kind]="widget.kind" [attr.data-delivery]="widgetModule(widget)?.definition?.delivery" [class.selected]="selectedId() === widget.id" [class.is-preview]="isPlaying(widget)" [class.is-locked]="widget.locked"
                   [style.left.%]="placement.x / canvasWidth() * 100" [style.top.%]="placement.y / canvasHeight() * 100" [style.width.%]="placement.width / canvasWidth() * 100" [style.height.%]="placement.height / canvasHeight() * 100" [style.z-index]="layerIndex"
                   (pointerdown)="startPointer($event, widget, 'move')" (click)="select(widget.id)" (keydown)="onWidgetKeydown($event, widget)" [attr.aria-label]="widgetName(widget) + ' ' + t('canvasItem')">
                   <div class="widget__content" [class.widget__content--alert]="widget.kind === 'alert'">
-                    @switch (widget.kind) {
-                      @case ('poll') { <app-overlay-interaction [state]="pollPreview()" [design]="widget.interactionDesign ?? 'card'" [preview]="true" /> }
-                      @case ('prediction') { <app-overlay-interaction [state]="predictionPreview()" [design]="widget.interactionDesign ?? 'card'" [preview]="true" /> }
+                    @if (widgetModule(widget)?.renderer) {
+                      <app-overlay-widget-host [widget]="widget" [placement]="widgetPlacement()" [preview]="true" [previewFixture]="widgetPreviews()[widget.id] ?? ''" />
+                    } @else if (widgetModule(widget)) { @switch (widget.kind) {
                       @case ('alert') {
                         @if (designFor(widget); as design) {
                           <div class="alert-render">
@@ -194,7 +194,7 @@
                       @case ('clip') {
                         @if (!mediaEvents(widget).length) { <app-overlay-clip [design]="widget.clipDesign ?? 'classic'" [streamer]="streamer" /> }
                       }
-                    }
+                    } }
                   </div>
                   @for (event of mediaEvents(widget); track event.id) {
                     @if (event.media; as media) {
@@ -270,11 +270,7 @@
             <p class="lf-note">{{ t('instanceHint') }}</p>
           </fieldset>
         }
-        @if (item.kind === 'poll' || item.kind === 'prediction') {
-          <label class="lf-field"><span>{{ t('interactionDesign') }}</span><select [attr.aria-label]="t('interactionDesign')" [value]="item.interactionDesign ?? 'card'" (change)="setInteractionDesign($event)"><option value="card">{{ t('interactionDesignCard') }}</option><option value="compact">{{ t('interactionDesignCompact') }}</option></select></label>
-          <label class="lf-field"><span>{{ t('interactionPreview') }}</span><select [attr.aria-label]="t('interactionPreview')" [value]="interactionPreview()" (change)="setInteractionPreview($event)">@for (stage of interactionStages(); track stage) { <option [value]="stage">{{ t('interactionPreview_' + stage) }}</option> }</select></label>
-          <p class="lf-note">{{ t('interactionPresetHint') }}</p>
-        }
+        <app-overlay-widget-settings [widget]="item" [placement]="widgetPlacement()" [previewFixture]="widgetPreviews()[item.id] ?? ''" (configChange)="patchSelected($event)" (previewChange)="setWidgetPreview(item.id, $event)" />
         @if (item.kind === 'clip') {
           <label class="lf-field"><span>{{ t('clipDesign') }}</span><select [attr.aria-label]="t('clipDesign')" [value]="item.clipDesign ?? 'classic'" (change)="selectClipDesign($event)">
             @for (design of clipDesigns(); track design.variant) { <option [value]="design.variant" [disabled]="design.isLocked" [selected]="design.variant === (item.clipDesign ?? 'classic')">{{ design.name }}{{ design.isLocked ? ' · ' + language.translate('clips.premiumRequired') : '' }}</option> }

@@ -1,5 +1,5 @@
 import { activateInteraction, interactionReadiness } from '../../overlays/interaction-subscriptions.js';
-import { interactionsFor } from '../../overlays/live.js';
+import { publicWidgetStateFor } from '../../overlays/live.js';
 import { prepareTest, previewMedia, testFile, withTestLock } from '../../overlays/test-playback.js';
 import { recoverCopies } from '../../overlays/recover.js';
 import { pipeline } from 'node:stream/promises';
@@ -19,7 +19,7 @@ const wrap = (fn: (req: Request, res: Response) => Promise<unknown>) => (req: Re
 const param = (req: Request, key: string) => string(req.params[key]);
 const ok = (res: Response, data: unknown) => res.json({ error: false, status: 200, message: 'OK', data });
 overlayStudioRoute.use((_req, res, next) => { res.setHeader('Cache-Control', 'no-store'); res.setHeader('Referrer-Policy', 'no-referrer'); next(); });
-overlayStudioRoute.get('/public/:publicId', wrap(async (req, res) => { const state = await publicState(param(req, 'publicId')); return ok(res, { publicId: state.publicId, revision: state.revision, snapshot: state.snapshot, controls: state.controls, interactions: await interactionsFor(state) }); }));
+overlayStudioRoute.get('/public/:publicId', wrap(async (req, res) => { const state = await publicState(param(req, 'publicId')); return ok(res, { publicId: state.publicId, revision: state.revision, snapshot: state.snapshot, controls: state.controls, ...await publicWidgetStateFor(state) }); }));
 overlayStudioRoute.get('/public/:publicId/assets/:assetId', wrap(async (req, res) => {
   const state = await publicState(param(req, 'publicId'));
   const id = param(req, 'assetId');

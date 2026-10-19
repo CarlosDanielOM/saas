@@ -149,6 +149,8 @@ Older surfaces may still use `:root` / `.dark` tokens (`--surface`, `--text`, `-
 - Prefer inline templates for small components.
 - When using external templates/styles, use paths relative to the component `.ts` file.
 
+Overlay Studio widgets use a shared generated contract and module registry. See [`../dimabot/OVERLAY_WIDGET_MODULES.md`](../dimabot/OVERLAY_WIDGET_MODULES.md) before adding or changing a module.
+
 ---
 
 ## When to Create a New Component vs. Extend Existing

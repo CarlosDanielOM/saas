@@ -3,6 +3,7 @@ import { CLIP_DESIGN_VARIANTS } from '../clips/clips.model';
 import { DOCUMENT } from '@angular/common';
 import { Injectable, inject } from '@angular/core';
 import { ALERT_EVENTS, EVENT_KINDS, ALERT_TRANSITIONS, ALERT_LOOPS, type AlertDesign, type AlertEvent, type OverlayScene, type OverlayWidget } from './overlay.model';
+import { validWidgetModuleConfig, type WidgetPlacement } from './overlay-widget-contract.generated';
 
 export type DraftScene = Omit<OverlayScene, 'publicId' | 'published' | 'revision'>;
 export interface LocalOverlayDraft {
@@ -29,10 +30,10 @@ function validMotion(value: unknown): boolean {
     const n = value[key]; return finite(n) && n >= Number(min) && n <= Number(max);
   });
 }
-function validWidgets(value: unknown): value is OverlayWidget[] {
+function validWidgets(value: unknown, placement: WidgetPlacement): value is OverlayWidget[] {
   return Array.isArray(value) && value.length <= 1000 && value.every(w => record(w)
     && typeof w['id'] === 'string' && typeof w['kind'] === 'string'
-    && ['tts', 'trigger', 'clip', 'alert', 'text', 'image', 'video', 'animation', 'shape'].includes(w['kind'])
+    && validWidgetModuleConfig(w, placement)
     && ['x', 'y', 'width', 'height'].every(key => finite(w[key]))
     && typeof w['visible'] === 'boolean' && typeof w['locked'] === 'boolean'
     && (w['showTtsText'] === undefined || w['kind'] === 'tts' && typeof w['showTtsText'] === 'boolean')
@@ -59,7 +60,7 @@ function validStyle(w: Record<string, unknown>): boolean {
   const shadow = w['shadow'];
   return shadow === undefined || record(shadow) && color(shadow['color']) && finite(shadow['blur']) && shadow['blur'] >= 0 && shadow['blur'] <= 100 && ['x','y'].every(key => finite(shadow[key]) && Math.abs(shadow[key]) <= 100);
 }
-function validLayout(layout: unknown): boolean { return record(layout) && finite(layout['duration']) && layout['duration'] >= 1 && layout['duration'] <= 120 && validWidgets(layout['widgets']) && validSound(layout['sound']); }
+function validLayout(layout: unknown): boolean { return record(layout) && finite(layout['duration']) && layout['duration'] >= 1 && layout['duration'] <= 120 && validWidgets(layout['widgets'], 'design') && validSound(layout['sound']); }
 function validDesign(value: unknown): value is AlertDesign {
   if (!record(value) || typeof value['id'] !== 'string' || typeof value['name'] !== 'string'
     || !finite(value['width']) || !finite(value['height']) || !finite(value['revision'])) return false;
@@ -84,7 +85,7 @@ function parseDraft(serialized: string, channel: string): LocalOverlayDraft | nu
     const scenes = value['scenes'], designs = value['designs'];
     if (!Array.isArray(scenes) || !scenes.length || scenes.length > 1000
       || !scenes.every(s => record(s) && typeof s['id'] === 'string' && typeof s['name'] === 'string'
-        && finite(s['width']) && finite(s['height']) && validWidgets(s['widgets'])
+        && finite(s['width']) && finite(s['height']) && validWidgets(s['widgets'], 'scene')
         && Array.isArray(s['waitFor']) && s['waitFor'].every(kind => EVENT_KINDS.includes(kind)))
       || !Array.isArray(designs) || !designs.length || designs.length > 1000 || !designs.every(validDesign)
       || !(value['designDraft'] === null || validDesign(value['designDraft']))) return null;

@@ -959,4 +959,4 @@ app-overlay-queue { order: 3; }
 
 .random-bounds { position: absolute; border: 1px dashed #c4b5fd; background: rgba(124, 58, 237, .06); pointer-events: none; }
 
-.widget:is([data-kind="poll"],[data-kind="prediction"]) .widget__content { padding:0; display:block; }
+.widget[data-delivery="state"] .widget__content { padding:0; display:block; }

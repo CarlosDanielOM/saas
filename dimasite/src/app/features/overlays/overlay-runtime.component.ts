@@ -1,5 +1,8 @@
-import { OverlayInteractionComponent } from './overlay-interaction.component';
-import type { InteractionSnapshot, InteractionState } from './overlay-interaction.model';
+import { OverlayWidgetHostComponent } from './overlay-widget-host.component';
+import type { InteractionSnapshot } from './overlay-interaction.model';
+import type { WidgetStates, WidgetStateSnapshot } from './overlay-widget-contract.generated';
+import { acceptWidgetStates, stateForWidget, WidgetStateTransport, type WidgetStateMessage } from './overlay-widget-state';
+import { widgetModuleFor } from './overlay-widget-registry';
 import { OverlayAssetCache, type PreparedAsset } from './overlay-asset-cache';
 import { OverlaySoundComponent } from './overlay-sound.component';
 import type { QueueState, QueueCommand, OverlayPlatform } from './overlay-queue.model';
@@ -24,14 +27,14 @@ const retryDelay = (attempt: number) => Math.min(1000 * 2 ** Math.min(attempt, 5
 const retryable = (error: unknown) => error instanceof TimeoutError || error instanceof HttpErrorResponse && (error.status === 0 || error.status === 408 || error.status === 429 || error.status >= 500);
 interface Playing { assets: Map<string, PreparedAsset>; event: Event; widgets: OverlayWidget[]; snapshot: Snapshot; pending: Set<string>; timers: Map<string, ReturnType<typeof setTimeout>> }
 @Component({
-  selector: 'app-overlay-runtime', imports: [OverlayInteractionComponent, OverlaySoundComponent, OverlayMediaComponent, OverlayLayerComponent, OverlayClipComponent], changeDetection: ChangeDetectionStrategy.OnPush,
+  selector: 'app-overlay-runtime', imports: [OverlayWidgetHostComponent, OverlaySoundComponent, OverlayMediaComponent, OverlayLayerComponent, OverlayClipComponent], changeDetection: ChangeDetectionStrategy.OnPush,
   template: `@if (snapshot(); as scene) {
     <div class="canvas" [style.width.px]="scene.width" [style.height.px]="scene.height" [style.transform]="fit(scene)">
-      @for (w of scene.widgets; track w.id) { @if (w.visible && ['image','video','text','shape'].includes(w.kind)) {
+      @for (w of scene.widgets; track w.id) { @if (w.visible && delivery(w) === 'static') {
         <div class="placement art" [style.left.px]="w.x" [style.top.px]="w.y" [style.width.px]="w.width" [style.height.px]="w.height" [style.z-index]="scene.widgets.indexOf(w)"><app-overlay-layer [publicId]="publicId" [layer]="w" (failed)="reportIssue('media')" /></div>
       } }
-      @for (w of scene.widgets; track w.id) { @if (w.visible && (w.kind === 'poll' || w.kind === 'prediction')) {
-        <div class="placement interaction" [attr.data-interaction]="w.kind" [style.left.px]="w.x" [style.top.px]="w.y" [style.width.px]="w.width" [style.height.px]="w.height" [style.z-index]="scene.widgets.indexOf(w)"><app-overlay-interaction [state]="interactionFor(w.kind)" [design]="w.interactionDesign ?? 'card'" [clockOffset]="clockOffset()" /></div>
+      @for (w of scene.widgets; track w.id) { @if (w.visible && delivery(w) === 'state') {
+        <div class="placement interaction" [attr.data-interaction]="w.kind" [style.left.px]="w.x" [style.top.px]="w.y" [style.width.px]="w.width" [style.height.px]="w.height" [style.z-index]="scene.widgets.indexOf(w)"><app-overlay-widget-host [widget]="w" [state]="widgetState(w)" [clockOffset]="clockOffset()" /></div>
       } }
       @for (job of playing(); track job.event.id) {
         @for (sound of soundsFor(job); track sound.id) { <app-overlay-sound [sound]="sound.config" [duration]="sound.duration" [playbackKey]="job.event.id" [publicId]="publicId" [preparedSource]="job.assets.get(sound.config.assetId)?.url || ''" (failed)="reportIssue('media')" (playbackBlocked)="reportIssue('autoplay')" (started)="soundStarted()" /> }
@@ -61,14 +64,23 @@ interface Playing { assets: Map<string, PreparedAsset>; event: Event; widgets: O
 })
 export class OverlayRuntimeComponent {
   readonly snapshot = signal<Snapshot | null>(null);
-  readonly interactions = signal<InteractionSnapshot | null>(null);
+  readonly widgetStates = signal<WidgetStates>({});
   readonly clockOffset = signal(0);
-  interactionFor(kind: string): InteractionState | null { return kind === 'poll' ? this.interactions()?.poll ?? null : this.interactions()?.prediction ?? null; }
+  private readonly stateTransport = new WidgetStateTransport();
+  delivery(widget: OverlayWidget) { return widgetModuleFor(widget, 'scene')?.definition.delivery; }
+  widgetState(widget: OverlayWidget): unknown { return stateForWidget(widget, this.widgetStates()); }
+  private acceptState(data: WidgetStateMessage): void {
+    const accepted = this.stateTransport.accept(data);
+    if (accepted) this.acceptStateSnapshot(accepted.widgetStates, accepted.serverTime, accepted.failedSources);
+  }
+  private acceptStateSnapshot(states: WidgetStates, serverTime?: number, failedSources?: readonly string[]): void {
+    if (serverTime !== undefined && Number.isFinite(serverTime)) {
+      this.clockOffset.set(serverTime - Date.now());
+    }
+    this.widgetStates.set(acceptWidgetStates(this.widgetStates(), states, this.snapshot()?.widgets ?? [], failedSources));
+  }
   private acceptInteractions(data?: InteractionSnapshot): void {
-    if (!data) return;
-    const old = this.interactions();
-    this.interactions.set({ ...data, poll: data.poll && old?.poll && data.poll.revision < old.poll.revision ? old.poll : data.poll, prediction: data.prediction && old?.prediction && data.prediction.revision < old.prediction.revision ? old.prediction : data.prediction });
-    if (Number.isFinite(data.serverTime)) this.clockOffset.set(data.serverTime - Date.now());
+    if (data) this.acceptState({ interactions: data });
   }
   readonly playing = signal<Playing[]>([]);
   private readonly api = inject(OverlayApi);
@@ -109,9 +121,10 @@ export class OverlayRuntimeComponent {
     const view = doc.defaultView, measure = () => this.viewport.set({ width: view?.innerWidth ?? 0, height: view?.innerHeight ?? 0 });
     measure(); view?.addEventListener('resize', measure);
     this.socket.on('overlay-state', state => {
-      this.acceptInteractions(state.interactions);
+      this.stateTransport.begin(state);
       this.batching = true;
       if (state.revision >= this.revision) { this.revision = state.revision; this.snapshot.set(state.snapshot); this.warmAssets(state.snapshot); this.snapshotRecovered(); }
+      this.acceptState(state);
       if (Array.isArray(state.pendingIds)) {
         const retained = new Set<string>(state.pendingIds);
         for (const event of [...this.queue, ...this.inFlight.values()]) if (!retained.has(event.id)) this.finish(event.id);
@@ -121,6 +134,7 @@ export class OverlayRuntimeComponent {
       this.batching = false; this.next(); this.reportHealth(); this.reportPlayback();
     });
     this.socket.on('overlay-interactions', (state: InteractionSnapshot) => this.acceptInteractions(state));
+    this.socket.on('overlay-widget-states', (state: WidgetStateSnapshot) => this.acceptState(state));
     this.socket.on('overlay-queue-state', (state: QueueState) => this.applyQueueState(state));
     this.socket.on('overlay-control', (command: QueueCommand) => this.applyControl(command));
     this.socket.on('overlay-updated', (state?: { revision: number }) => {
@@ -187,11 +201,11 @@ export class OverlayRuntimeComponent {
     const generation = this.generation;
     let shouldRetry = true;
     try {
-      const state = await this.api.request<{ revision: number; snapshot: Snapshot; interactions?: InteractionSnapshot }>('GET', `public/${this.publicId}`);
+      const state = await this.api.request<{ revision: number; snapshot: Snapshot; interactions?: InteractionSnapshot } & Partial<WidgetStateSnapshot>>('GET', `public/${this.publicId}`);
       if (this.disposed || generation !== this.generation) return;
       if (state.revision >= this.revision) {
-        this.acceptInteractions(state.interactions);
         this.revision = state.revision; this.snapshot.set(state.snapshot); this.warmAssets(state.snapshot);
+        this.acceptState(state);
         this.snapshotRecovered(); this.reportHealth();
       }
     } catch (error) {
@@ -257,7 +271,7 @@ export class OverlayRuntimeComponent {
   /** Alerts of any category queue per alert widget, even when their category does not wait for others. */
   private alertBoxes(event: Event): string[] {
     if (!ALERT_EVENTS.includes(event.kind as AlertEvent)) return [];
-    return (this.snapshot()?.widgets ?? []).filter(w => w.visible && w.kind === 'alert' && w.events?.includes(event.kind as AlertEvent)).map(w => w.id);
+    return (this.snapshot()?.widgets ?? []).filter(w => w.visible && this.delivery(w) === 'event' && w.kind === 'alert' && w.events?.includes(event.kind as AlertEvent)).map(w => w.id);
   }
   private async start(event: Event) {
     const generation = this.generation;
@@ -267,7 +281,7 @@ export class OverlayRuntimeComponent {
       this.cancelEventRetry(event.id);
       if (this.issue === 'event' && !this.eventRetries.size) { this.issue = null; this.reportHealth(); }
       const snapshot = full.snapshot ?? this.snapshot(); if (!snapshot) { this.finish(event.id); return; }
-      const widgets = snapshot.widgets.filter(w => w.visible && (w.kind === event.kind && (event.kind !== 'trigger' || matchesTrigger(w, full.triggerId)) || w.kind === 'alert' && w.events?.includes(event.kind as AlertEvent)))
+      const widgets = snapshot.widgets.filter(w => w.visible && this.delivery(w) === 'event' && (w.kind === event.kind && (event.kind !== 'trigger' || matchesTrigger(w, full.triggerId)) || w.kind === 'alert' && w.events?.includes(event.kind as AlertEvent)))
         .map(w => placeTrigger(w, snapshot, full.id));
       if (!widgets.length) { this.finish(event.id); return; }
       if (full.media?.url.startsWith('/')) full.media.url = this.api.base + full.media.url;
@@ -350,5 +364,5 @@ export class OverlayRuntimeComponent {
     if (this.active === id) this.active = null;
     this.next(); this.reportPlayback();
   }
-  private clear() { this.interactions.set(null); this.generation++; this.assetCache.clear(); this.playing().forEach(p => p.assets.forEach(asset => asset.release())); clearTimeout(this.snapshotRetry.timer); this.snapshotRetry = { attempts: 0 }; this.targetRevision = -1; this.refreshing = false; this.eventRetries.forEach(retry => clearTimeout(retry.timer)); this.eventRetries.clear(); this.playing().forEach(p => p.timers.forEach(clearTimeout)); this.playing.set([]); this.queue = []; this.inFlight.clear(); this.boxes.clear(); this.active = null; this.snapshot.set(null); }
+  private clear() { this.widgetStates.set({}); this.stateTransport.reset(); this.generation++; this.assetCache.clear(); this.playing().forEach(p => p.assets.forEach(asset => asset.release())); clearTimeout(this.snapshotRetry.timer); this.snapshotRetry = { attempts: 0 }; this.targetRevision = -1; this.refreshing = false; this.eventRetries.forEach(retry => clearTimeout(retry.timer)); this.eventRetries.clear(); this.playing().forEach(p => p.timers.forEach(clearTimeout)); this.playing.set([]); this.queue = []; this.inFlight.clear(); this.boxes.clear(); this.active = null; this.snapshot.set(null); }
 }

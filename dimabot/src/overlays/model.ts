@@ -1,9 +1,10 @@
 import type { AlertKeyframes } from './keyframes.js';
+import type { WidgetKind } from './widget-contract.js';
+export type { WidgetKind } from './widget-contract.js';
 export const CLIP_DESIGN_VARIANTS = ['classic', 'third', 'tile', 'cinema', 'orbit', 'pill', 'hud', 'slash'] as const;
 export type ClipDesignVariant = typeof CLIP_DESIGN_VARIANTS[number];
 export type AlertEvent = 'sub' | 'bits' | 'follow' | 'raid';
 export type EventKind = 'tts' | 'trigger' | 'clip' | AlertEvent;
-export type WidgetKind = 'poll' | 'prediction' | 'tts' | 'trigger' | 'clip' | 'alert' | 'text' | 'image' | 'video' | 'animation' | 'shape';
 export const ALERT_TRANSITIONS = ['none', 'fade', 'slide-left', 'slide-right', 'slide-up', 'slide-down', 'zoom', 'bounce', 'flip', 'spin'] as const;
 export const ALERT_LOOPS = ['none', 'pulse', 'float', 'sway', 'spin'] as const;
 export interface AlertMotion {
@@ -12,6 +13,9 @@ export interface AlertMotion {
 }
 export interface OverlayWidget {
   id: string; kind: WidgetKind; name?: string;
+  /** Missing on legacy widgets; absence means version 1. */
+  configVersion?: number;
+  config?: Record<string, unknown>;
   x: number; y: number; width: number; height: number;
   visible: boolean; locked: boolean;
   /** TTS stays active when captions are off; omitted settings default to audio-only. */

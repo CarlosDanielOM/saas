@@ -16,7 +16,7 @@ globalThis.fetch=async(input,options={})=>{
    let remote=read('remote',[]);
    if(options.method==='DELETE'){remote=remote.filter(item=>item.id!==url.searchParams.get('id'));write('remote',remote);return new Response(null,{status:204});}
    if(options.method==='POST'){
-    const body=JSON.parse(options.body);fs.appendFileSync(`${directory}/calls.jsonl`,JSON.stringify({type:body.type,authorization:options.headers.Authorization})+'\n');
+    const body=JSON.parse(options.body);fs.appendFileSync(`${directory}/calls.jsonl`,JSON.stringify({type:body.type,authorization:new Headers(options.headers).get('authorization')})+'\n');
     if(read('failure',false))return json({error:'mock_failure'},500);
     if(remote.some(item=>item.type===body.type&&item.status==='enabled'))return json({error:'Conflict'},409);
     const subscription={...body,id:crypto.randomUUID(),status:read('pending',false)?'webhook_callback_verification_pending':'enabled',cost:0,created_at:new Date().toISOString()};
