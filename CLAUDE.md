@@ -79,6 +79,10 @@ This workspace is a **single git repository** (`saas/`) containing six related p
 
 **Rule**: When asked to make a change, first identify which project owns the feature, then read that project's `AGENTS.md` (if present) before editing.
 
+## Reuse-First Discovery
+
+Before implementing data-dependent features or functions that may duplicate existing behavior, search and trace the relevant collectors, schemas, registries, events, workers, caches/aggregations, APIs/services, and their callers. Record which existing sources are reusable and the specific gap that remains. Prefer direct reuse or a safe extension before adding a parallel path. A derived read model or rollup is appropriate when it serves a distinct query need and reuses existing data. A dedicated function is appropriate when adapting an existing path would be too coupled or costly; where real logic overlaps, consider a small modular shared core. Do not force a universal abstraction, and do not add a confirmation gate for this discovery or routine reuse decision.
+
 ## Documentation Work
 
 - When the active agent or harness provides GPT-6 Luna, use GPT-6 Luna in **high reasoning/thinking mode** for documentation updates.
