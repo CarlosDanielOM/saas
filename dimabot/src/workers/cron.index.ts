@@ -35,6 +35,7 @@ interface ManagedWorker {
 }
 
 const WORKERS: WorkerDefinition[] = [
+    { name: 'dashboard-activity', sourceEntry: 'src/workers/dashboard_activity.worker.ts', distEntry: 'dist/workers/dashboard_activity.worker.js' },
     { name: 'raid-analytics', sourceEntry: 'src/workers/raid_analytics.worker.ts', distEntry: 'dist/workers/raid_analytics.worker.js' },
     { name: 'stream-activity', sourceEntry: 'src/workers/stream_activity.worker.ts', distEntry: 'dist/workers/stream_activity.worker.js' },
     { name: 'goals', sourceEntry: 'src/workers/goals.worker.ts', distEntry: 'dist/workers/goals.worker.js' },

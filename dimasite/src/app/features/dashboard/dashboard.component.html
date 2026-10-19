@@ -273,16 +273,9 @@
                   <app-dashboard-moderation-card kind="sanctions" headingId="dash-sanctions" [state]="modState()" [week]="automod()" [logs]="modLogs()" [link]="link('modules', 'moderation')" />
                 </article>
               }
-              @for (k of botSoon; track k) {
-                @if (on(k)) {
-                  <article class="lf-tile soon">
-                    <span class="soon__icon" aria-hidden="true"><app-lf-icon [name]="soonIcons[k]" [size]="18"></app-lf-icon></span>
-                    <div class="soon__body">
-                      <p class="soon__head"><b>{{ t('dashboard.brief.soon.' + k + '.title') }}</b><span class="soon__chip">{{ t('dashboard.brief.comingSoon') }}</span></p>
-                      <p class="soon__text">{{ t('dashboard.brief.soon.' + k + '.text') }}</p>
-                    </div>
-                  </article>
-                }
+              @if (channelID(); as activityChannel) {
+                @if (on('commands')) { <article class="lf-tile" data-testid="dashboard-commands"><app-dashboard-usage-card kind="commands" [channelID]="activityChannel" /></article> }
+                @if (on('emotes')) { <article class="lf-tile" data-testid="dashboard-emotes"><app-dashboard-usage-card kind="emotes" [channelID]="activityChannel" /></article> }
               }
             </div>
           } @else {

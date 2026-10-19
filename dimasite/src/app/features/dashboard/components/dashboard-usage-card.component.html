@@ -1,0 +1,34 @@
+<div class="usage-head">
+  <span class="usage-icon" aria-hidden="true"><app-lf-icon [name]="kind() === 'commands' ? 'terminal' : 'smile'" [size]="19" /></span>
+  <h3>{{ t(kind() + 'Title') }}</h3>
+  <select [attr.aria-label]="t(kind() + 'Period')" [value]="days()" (change)="days.set(+$any($event.target).value)"><option value="7">{{ t('days7') }}</option><option value="30">{{ t('days30') }}</option></select>
+</div>
+@if (loading() && !data()) { <p class="usage-state" role="status">{{ t('loading') }}</p> }
+@if (error()) { <p class="usage-notice" role="alert">{{ t('error') }} <button type="button" (click)="load()">{{ t('retry') }}</button></p> }
+@if (data(); as view) {
+  @if (pending()) { <p class="usage-note" role="status">{{ t('processing') }}</p> }
+  @if (view.stale) { <p class="usage-notice">{{ t('stale') }}</p> }
+  @if (view.summary) {
+    @if (items().length) {
+      <p class="usage-headline">{{ t(kind() + 'Summary', { count: number(total()) }) }}</p>
+      <ol class="usage-list" [attr.aria-label]="t(kind() + 'Title')">
+        @for (item of items(); track item.key; let index = $index) {
+          <li>
+            @if (kind() === 'emotes') {
+              <span class="usage-emote" aria-hidden="true">@if (image(item); as url) { <img [src]="url" alt="" width="32" height="32" loading="lazy" (error)="imageFailed(item.key)" /> } @else { <app-lf-icon name="smile" [size]="22" /> }</span>
+            } @else { <span class="usage-rank" aria-hidden="true">{{ index + 1 }}</span> }
+            <strong class="usage-label" [class.usage-label--command]="kind() === 'commands'">{{ item.label || item.key }}</strong>
+            <span class="usage-count"><b>{{ number(item.count) }}</b><small>{{ t(kind() === 'commands' ? 'runs' : 'uses') }}</small></span>
+          </li>
+        }
+      </ol>
+      <p class="usage-note">{{ t('topFive') }}</p>
+    } @else if (!pending()) { <p class="usage-state">{{ t(kind() + 'Empty') }}</p> }
+    <p class="usage-note">{{ t('coverage') }}</p>
+    <details class="usage-detail"><summary>{{ t('about') }}</summary><p>{{ t(kind() + 'Method') }}</p><p>{{ t('retention') }}</p>@if (view.summary.coverageStartedAt) { <p>{{ t('firstRecorded', { date: date(view.summary.coverageStartedAt) }) }}</p> }</details>
+    <div class="usage-footer">
+      @if (view.updatedAt) { <p class="usage-note">{{ t('updated', { date: date(view.updatedAt) }) }}</p> }
+      <button type="button" (click)="load()" [disabled]="loading()" [attr.aria-label]="t(kind() + 'Refresh')"><app-lf-icon name="refresh" [size]="16" /></button>
+    </div>
+  }
+}

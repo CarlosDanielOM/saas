@@ -9,12 +9,14 @@ const activity = new Schema({
     actor: { type: String, default: '' }, actorLabel: { type: String, default: '' },
     value: { type: Number, default: 1 }, outcome: { type: String, default: '' },
     emotes: [{ _id: false, key: String, label: String, count: Number }],
-    processed: { type: Boolean, default: false }, expiresAt: { type: Date, required: true }
+    processed: { type: Boolean, default: false }, dashboardProcessed: { type: Boolean, default: null }, expiresAt: { type: Date, required: true }
 }, { versionKey: false });
 activity.index({ processed: 1, occurredAt: 1, _id: 1 });
 activity.index({ channelID: 1, session_id: 1, processed: 1, expiresAt: 1 });
 activity.index({ channelID: 1, session_id: 1, kind: 1, occurredAt: 1, _id: 1 });
 activity.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+activity.index({ dashboardProcessed: 1, kind: 1, occurredAt: 1, _id: 1 });
+activity.index({ channelID: 1, dashboardProcessed: 1, kind: 1, occurredAt: 1 });
 export const StreamActivitySchema = model('stream_activity', activity);
 
 // Scalar batch fences avoid an ever-growing array of event receipts in aggregates.

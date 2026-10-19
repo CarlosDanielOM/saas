@@ -10,6 +10,8 @@ import { getDashboardAnalytics, getLiveSessionMetrics } from '../../utils/stream
 import EventsubSchema from '../../schemas/eventsub.schema.js';
 import { RaidAnalyticsSummarySchema } from '../../schemas/raid_analytics.schema.js';
 import { queueRaidSummary } from '../../utils/raid_analytics.js';
+import { DashboardActivitySummarySchema } from '../../schemas/dashboard_activity.schema.js';
+import { queueDashboardActivity } from '../../utils/dashboard_activity.js';
 
 interface DashboardRequest extends Request {
     user?: {
@@ -31,6 +33,20 @@ function normalizePlanTier(planTier: string | undefined): PlanTier {
 }
 
 const router = express.Router();
+
+router.get('/:channelID/activity', authMiddleware as any, async (req: DashboardRequest, res: Response) => {
+    try {
+        const channelID = String(req.params.channelID), days = Number(req.query.days || 7);
+        if (!/^\d{1,30}$/.test(channelID) || ![7, 30].includes(days)) return res.status(400).json({ error: true, message: 'Invalid activity range' });
+        if (!req.user || !(await getAccessContext(req.user.id, channelID)).allowed) return res.status(403).json({ error: true, message: 'Dashboard access required' });
+        const state = await DashboardActivitySummarySchema.findById(channelID).maxTimeMS(1500).lean();
+        if (!state) await queueDashboardActivity(channelID);
+        res.set('Cache-Control', 'no-store');
+        return res.json({ error: false, data: { summary: state?.payload?.[String(days)] || null,
+            updatedAt: state?.updatedAt || null, pending: !state?.payload || Boolean(state.dirtyAt && state.updatedAt && +state.dirtyAt > +state.updatedAt),
+            stale: Boolean(state?.error || state?.updatedAt && Date.now() - +state.updatedAt > 180000) } });
+    } catch (error) { console.error('Dashboard activity read failed', error); return res.status(500).json({ error: true, message: 'Unable to load activity' }); }
+});
 
 router.get('/:channelID/raids', authMiddleware as any, async (req: DashboardRequest, res: Response) => {
     try {

@@ -41,6 +41,7 @@ import { ChatEventsService } from '../chat-events/chat-events.service';
 import { GoalsComponent } from './components/goals/goals.component';
 import { DashboardModerationCardComponent, ModLoad } from './components/dashboard-moderation-card.component';
 import { compareWeeks, pctChange, summarizeAutomod } from './dashboard-week.util';
+import { DashboardUsageCardComponent } from './components/dashboard-usage-card.component';
 import { DashboardRaidCardComponent } from './components/dashboard-raid-card.component';
 
 type TimeRange = '7d' | '15d' | '30d';
@@ -98,6 +99,7 @@ interface WeekFact {
     LfIconComponent,
     DashboardModerationCardComponent,
     DashboardRaidCardComponent,
+    DashboardUsageCardComponent,
     RouterLink
   ],
   templateUrl: './dashboard.component.html',
@@ -353,7 +355,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly anyBot = computed(() => BOT_TOPICS.some((t) => this.chosenTopics().includes(t)));
   readonly soonIcons = SOON_ICONS as Record<Topic, LfIconName>;
   readonly goodSoon: Topic[] = ['games', 'days'];
-  readonly botSoon: Topic[] = ['commands', 'emotes'];
   readonly shortcuts: Array<{ key: string; icon: LfIconName; path: string }> = [
     { key: 'tts', icon: 'mic', path: 'tts' },
     { key: 'chatEvents', icon: 'chat', path: 'chat-events' },

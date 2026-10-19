@@ -8,8 +8,7 @@
  *    on tablet/desktop and the one-line strip on phones;
  *  - shortcuts to TTS / chat events / triggers / moderation;
  *  - "Your week" facts, automod + sanctions cards from moderation logs;
- *  - "coming soon" tiles for data still being built (tips, games, days,
- *    raids, commands, emotes) and "Show me" chips that hide/show them and
+ *  - "coming soon" tiles for data still being built (tips, games, days) and "Show me" chips that hide/show them and
  *    persist across reloads;
  *  - phone tabs between "Your channel" and "Your bot";
  *  - folded stream history (chart sizes once opened, one row per stream) and goals;
@@ -186,6 +185,7 @@ async function newPage(browser, viewport, o) {
     let data = {};
     if (p === '/auth/session') data = { twitch: TWITCH, app };
     else if (p.startsWith('/auth/access/')) data = { allowed: true, role: 'owner' };
+    else if (p.endsWith('/activity')) data = {summary:{commands:[],emotes:[],commandRuns:0,emoteUses:0,pending:false,coverageStartedAt:null},pending:false,stale:false,updatedAt:new Date().toISOString()};
     else if (/^\/dashboard\/[^/]+\/bootstrap$/.test(p)) data = bootstrapData({ chatEnabled: state.chatEnabled });
     else if (/^\/dashboard\/[^/]+\/access$/.test(p)) data = { allowed: true, role: 'owner', channelID: CHANNEL_ID, channelName: 'Test Streamer', planTier: 'premium' };
     else if (/^\/dashboard\/[^/]+\/live-status$/.test(p)) {
@@ -312,10 +312,12 @@ try {
     assert.match(facts[0], /Streams\s+3\s+\+50%/, `${label}: streams fact ${facts[0]}`);
     assert.match(facts[2], /New followers\s+30\s+\+20%/, `${label}: follows fact ${facts[2]}`);
 
-    // Coming soon tiles: tips/games/days/raids on the channel, commands/emotes on the bot
-    assert.equal(await page.locator('.pane:not(.pane--bot) .soon').count(), 4, `${label}: channel coming-soon tiles`);
-    assert.equal(await page.locator('.pane--bot .soon').count(), 2, `${label}: bot coming-soon tiles`);
+    // Only tips/games/days are placeholders; raids and bot usage have real cards.
+    assert.equal(await page.locator('.pane:not(.pane--bot) .soon').count(), 3, `${label}: channel coming-soon tiles`);
+    assert.equal(await page.locator('.pane--bot .soon').count(), 0, `${label}: bot coming-soon tiles`);
     assert.equal(await page.locator('.soon__chip').first().innerText(), 'COMING SOON', `${label}: coming soon chip`);
+
+    assert.equal(await page.locator('#dash-bot app-dashboard-usage-card').count(), 2, `${label}: commands and emotes cards`);
 
     // Automod + sanctions from logs
     const automod = await text(page, '[aria-labelledby="dash-automod"]');
@@ -353,7 +355,7 @@ try {
     const chip = page.locator('.topic', { hasText: 'Games' });
     assert.equal(await chip.getAttribute('aria-pressed'), 'true');
     await chip.click();
-    await until(async () => (await page.locator('.pane:not(.pane--bot) .soon').count()) === 3, 'games tile hidden after chip click');
+    await until(async () => (await page.locator('.pane:not(.pane--bot) .soon').count()) === 2, 'games tile hidden after chip click');
     await page.locator('.topic', { hasText: 'Moderation' }).click();
     await until(async () => (await page.locator('app-dashboard-moderation-card').count()) === 0, 'moderation cards hidden');
     for (const name of ['Commands', 'Emotes']) await page.locator('.topic', { hasText: name }).click();
@@ -361,7 +363,7 @@ try {
     await page.reload();
     await page.waitForSelector('.gh__title');
     assert.equal(await page.locator('.topic', { hasText: 'Games' }).getAttribute('aria-pressed'), 'false', 'chip choice persisted');
-    assert.equal(await page.locator('.pane:not(.pane--bot) .soon').count(), 3, 'games tile still hidden after reload');
+    assert.equal(await page.locator('.pane:not(.pane--bot) .soon').count(), 2, 'games tile still hidden after reload');
     // Credits within pace
     await until(async () => (await page.locator('.bs__item').nth(2).innerText()).includes('Should last until they reset on'), 'credits on-track text');
     assert.equal(await page.locator('.bs__item').nth(2).getAttribute('data-tone'), 'ok');
