@@ -156,7 +156,7 @@ function envelope(data) {
  */
 async function newPage(browser, viewport, o) {
   const context = await browser.newContext({ viewport, deviceScaleFactor: 1, timezoneId: 'UTC', colorScheme: o.theme });
-  const state = { chatEnabled: o.chatEnabled, toggles: [], writes: [], avatarReads:[], activityRanges:[], stored:SITE_EVENTS.map((event,i)=>({_id:'raid-'+i,type:event.type,enabled:true,message:'',condition:event.type==='channel.raid'?{to_broadcaster_user_id:CHANNEL_ID}:{from_broadcaster_user_id:CHANNEL_ID}})) };
+  const state = { chatEnabled: o.chatEnabled, toggles: [], writes: [], avatarReads:[], activityRanges:[], insightRanges:[], stored:SITE_EVENTS.map((event,i)=>({_id:'raid-'+i,type:event.type,enabled:true,message:'',condition:event.type==='channel.raid'?{to_broadcaster_user_id:CHANNEL_ID}:{from_broadcaster_user_id:CHANNEL_ID}})) };
   const app = {
     name: 'Test Streamer', email: 'test@example.invalid', language: o.language ?? 'en', plan_tier: 'premium', actived: true,
     chat_enabled: o.chatEnabled, twitch_user_id: CHANNEL_ID, has_permissions: true, up_to_date_permissions: true, administrating: []
@@ -191,6 +191,16 @@ async function newPage(browser, viewport, o) {
     let data = {};
     if (p === '/auth/session') data = { twitch: TWITCH, app };
     else if (p.startsWith('/auth/access/')) data = { allowed: true, role: 'owner' };
+    else if (p.endsWith('/insights')) {
+      state.insightRanges.push({ days: url.searchParams.get('days'), raids: url.searchParams.get('raids') });
+      if(o.insightFail)return route.fulfill({status:503,json:{error:true}});
+      const week=url.searchParams.get('days')==='7',include=url.searchParams.get('raids')==='include';
+      const game=o.insightLong?'A very long game name that wraps cleanly on a narrow phone display':'Celeste';
+      data={summary:o.insightCold?null:{days:week?7:30,timeZone:'UTC',streams:o.insightEmpty?0:week?2:8,excludedStreams:include?0:1,
+        weekdays:Array.from({length:7},(_,i)=>({weekday:(i+1)%7,streams:i%3===0?0:week?1:3,hours:i%3===0?0:6,follows:i*3,followsPerStream:i%3===0?null:i===1?8:i,followsPerHour:i%3===0?null:i/2,averageViewers:i%3===0?null:30,coverage:.9,eligible:!week})),
+        games:o.insightNoGames?[]:[{game,streams:week?1:4,hours:4,viewerHours:80,averageViewers:20,follows:8,followsPerHour:2,eligible:!week},{game:'Stardew Valley',streams:week?1:4,hours:2,viewerHours:60,averageViewers:30,follows:0,followsPerHour:0,eligible:!week}],
+        gameCount:2,bestDay:week?null:2,bestGrowthGame:week?null:game,limited:!!o.insightLimited,sampledHours:10,hours:12},pending:!!o.insightCold,stale:!!o.insightStale,updatedAt:new Date().toISOString()};
+    }
     else if (p.endsWith('/activity')) {
       state.activityRanges.push(Number(url.searchParams.get('days')));
       if(o.activityFail)return route.fulfill({status:503,json:{error:true}});
@@ -286,6 +296,8 @@ async function primaryButtonsPainted(page, label) {
   assert.deepEqual(transparent, [], `${label}: primary buttons without a background`);
 }
 
+export { newPage, noOverflow };
+if (!process.env.SAAS_DASHBOARD_FIXTURE_ONLY) {
 const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
 try {
  for(const theme of ['dark','light'])for(const width of [320,390,1280]){
@@ -331,3 +343,5 @@ try {
  await page.locator('[data-testid=dashboard-emotes]').getByText('Emotes nativos de Twitch usados 90 veces.').waitFor();await context.close();
  console.log('PASS DASHBOARD ACTIVITY SITE: bot-section cards, independent 7/30-day ranges, native emote images/fallbacks, ranked commands, loading/pending/empty/stale/error, Spanish, 320/390/1280 dark/light accessibility and overflow');
 }finally{await browser.close();}
+
+}

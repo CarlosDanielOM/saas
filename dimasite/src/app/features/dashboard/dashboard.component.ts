@@ -44,6 +44,8 @@ import { compareWeeks, pctChange, summarizeAutomod } from './dashboard-week.util
 import { DashboardUsageCardComponent } from './components/dashboard-usage-card.component';
 import { DashboardRaidCardComponent } from './components/dashboard-raid-card.component';
 
+import { DashboardInsightsCardComponent } from './components/dashboard-insights-card.component';
+
 type TimeRange = '7d' | '15d' | '30d';
 type Topic = 'tips' | 'games' | 'days' | 'raids' | 'moderation' | 'commands' | 'emotes';
 type Pane = 'channel' | 'bot';
@@ -100,6 +102,7 @@ interface WeekFact {
     DashboardModerationCardComponent,
     DashboardRaidCardComponent,
     DashboardUsageCardComponent,
+    DashboardInsightsCardComponent,
     RouterLink
   ],
   templateUrl: './dashboard.component.html',
@@ -354,7 +357,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly anyChannel = computed(() => CHANNEL_TOPICS.some((t) => this.chosenTopics().includes(t)));
   readonly anyBot = computed(() => BOT_TOPICS.some((t) => this.chosenTopics().includes(t)));
   readonly soonIcons = SOON_ICONS as Record<Topic, LfIconName>;
-  readonly goodSoon: Topic[] = ['games', 'days'];
   readonly shortcuts: Array<{ key: string; icon: LfIconName; path: string }> = [
     { key: 'tts', icon: 'mic', path: 'tts' },
     { key: 'chatEvents', icon: 'chat', path: 'chat-events' },

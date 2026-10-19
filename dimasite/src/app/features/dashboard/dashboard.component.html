@@ -234,16 +234,9 @@
             <section class="br-sec" aria-labelledby="dash-good">
               <h3 class="sub-title" id="dash-good">{{ t('dashboard.brief.goodTitle') }} <span>{{ t('dashboard.brief.goodSub') }}</span></h3>
               <div class="br-grid">
-                @for (k of goodSoon; track k) {
-                  @if (on(k)) {
-                    <article class="lf-tile soon">
-                      <span class="soon__icon" aria-hidden="true"><app-lf-icon [name]="soonIcons[k]" [size]="18"></app-lf-icon></span>
-                      <div class="soon__body">
-                        <p class="soon__head"><b>{{ t('dashboard.brief.soon.' + k + '.title') }}</b><span class="soon__chip">{{ t('dashboard.brief.comingSoon') }}</span></p>
-                        <p class="soon__text">{{ t('dashboard.brief.soon.' + k + '.text') }}</p>
-                      </div>
-                    </article>
-                  }
+                @if (channelID(); as insightsChannel) {
+                  @if (on('games')) { <article class="lf-tile" data-testid="dashboard-games"><app-dashboard-insights-card kind="games" [channelID]="insightsChannel" /></article> }
+                  @if (on('days')) { <article class="lf-tile" data-testid="dashboard-days"><app-dashboard-insights-card kind="days" [channelID]="insightsChannel" /></article> }
                 }
                 @if (on('raids') && channelID(); as raidChannel) {
                   <article class="lf-tile" data-testid="dashboard-raids"><app-dashboard-raid-card [channelID]="channelID()!" [streamer]="streamer() || ''" /></article>

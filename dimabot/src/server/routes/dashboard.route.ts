@@ -13,6 +13,9 @@ import { queueRaidSummary } from '../../utils/raid_analytics.js';
 import { DashboardActivitySummarySchema } from '../../schemas/dashboard_activity.schema.js';
 import { queueDashboardActivity } from '../../utils/dashboard_activity.js';
 
+import { DashboardInsightsSchema } from '../../schemas/dashboard_insights.schema.js';
+import { queueDashboardInsights } from '../../utils/dashboard_insights.js';
+
 interface DashboardRequest extends Request {
     user?: {
         id: string;
@@ -33,6 +36,21 @@ function normalizePlanTier(planTier: string | undefined): PlanTier {
 }
 
 const router = express.Router();
+
+router.get('/:channelID/insights', authMiddleware as any, async (req: DashboardRequest, res: Response) => {
+    try {
+        const channelID = String(req.params.channelID), days = Number(req.query.days || 30);
+        const raids = String(req.query.raids || 'exclude');
+        if (!/^\d{1,30}$/.test(channelID) || ![7, 30].includes(days) || !['include', 'exclude'].includes(raids)) return res.status(400).json({ error: true, message: 'Invalid insights range' });
+        if (!req.user || !(await getAccessContext(req.user.id, channelID)).allowed) return res.status(403).json({ error: true, message: 'Dashboard access required' });
+        const state = await DashboardInsightsSchema.findById(channelID).maxTimeMS(1500).lean();
+        await queueDashboardInsights(channelID);
+        res.set('Cache-Control', 'no-store');
+        return res.json({ error: false, data: { summary: state?.expiresAt && state.expiresAt > new Date() ? state.payload?.[`${days}:${raids}`] || null : null,
+            updatedAt: state?.updatedAt || null, pending: !state?.payload || !state.expiresAt || state.expiresAt <= new Date(),
+            stale: Boolean(state?.error || state?.updatedAt && Date.now() - +state.updatedAt > 900000) } });
+    } catch (error) { console.error('Dashboard insights read failed', error); return res.status(500).json({ error: true, message: 'Unable to load insights' }); }
+});
 
 router.get('/:channelID/activity', authMiddleware as any, async (req: DashboardRequest, res: Response) => {
     try {

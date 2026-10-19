@@ -1,0 +1,58 @@
+<div class="insight-head">
+  <span class="insight-icon" aria-hidden="true"><app-lf-icon [name]="kind() === 'days' ? 'calendar' : 'gamepad'" [size]="19" /></span>
+  <h3>{{ t(kind() + 'Title') }}</h3>
+</div>
+<div class="insight-controls">
+  <div class="insight-period" role="group" [attr.aria-label]="t(kind() + 'Period')">
+    @for (period of [7, 30]; track period) { <button type="button" [attr.aria-pressed]="days() === period" (click)="days.set(period)">{{ t('period', { days: period }) }}</button> }
+  </div>
+  <label class="insight-filter"><input type="checkbox" [checked]="excludeRaids()" (change)="excludeRaids.set($any($event.target).checked)" />{{ t('excludeRaids') }}</label>
+</div>
+@if (loading() && !data()) { <p class="insight-state" role="status">{{ t('loading') }}</p> }
+@if (error()) { <p class="insight-notice" role="alert">{{ t('error') }} <button type="button" (click)="load()">{{ t('retry') }}</button></p> }
+@if (data(); as view) {
+  @if (view.pending) { <p class="insight-state" role="status">{{ t('processing') }}</p> }
+  @if (view.stale) { <p class="insight-notice">{{ t('stale') }}</p> }
+  @if (view.summary; as report) {
+    @if (report.limited) { <p class="insight-notice">{{ t('limited') }}</p> }
+    @if (report.streams) {
+      @if (kind() === 'days') {
+        <p class="insight-headline">@if (report.bestDay !== null) { {{ t('bestDay', { day: weekday(report.bestDay, true) }) }} } @else { {{ t('limitedHistory') }} }</p>
+        <p class="insight-note">{{ t('dayMetric') }}</p>
+        <ol class="insight-chart" [attr.aria-label]="t('dayMetric')">
+          @for (day of report.weekdays; track day.weekday) {
+            <li [class.insight-chart--best]="report.bestDay === day.weekday">
+              <b>{{ number(day.followsPerStream) }}</b>
+              <span class="insight-chart__track" aria-hidden="true"><span [style.height.%]="(day.followsPerStream || 0) / maxDay() * 100" [class.insight-chart__zero]="day.streams && !day.follows" [class.insight-chart__missing]="!day.streams"></span></span>
+              <span>{{ weekday(day.weekday) }}</span>
+            </li>
+          }
+        </ol>
+        <details class="insight-detail"><summary>{{ t('dayDetails') }}</summary>
+          <ul class="insight-days">@for (day of report.weekdays; track day.weekday) {
+            <li><strong>{{ weekday(day.weekday, true) }}</strong><span>{{ t('sample', { streams: day.streams, hours: number(day.hours) }) }}</span>
+              @if (day.streams) { <span>{{ t('dayGrowthRate', { count: number(day.followsPerHour) }) }} · {{ t('averageViewers', { count: number(day.averageViewers) }) }}</span> }
+            </li>
+          }</ul>
+        </details>
+      } @else {
+        @if (report.games.length) {
+          <p class="insight-headline">{{ t('mostWatched', { game: report.games[0].game }) }}</p>
+          <p class="insight-note">{{ t('gameMetric') }}</p>
+          <ol class="insight-games">@for (game of report.games; track game.game) {
+            <li><div class="insight-game-title"><strong>{{ game.game }}</strong><span><b>{{ number(game.viewerHours) }}</b><small>{{ t('viewerHours') }}</small></span></div>
+              <p>{{ t('sample', { streams: game.streams, hours: number(game.hours) }) }} · {{ t('averageViewers', { count: number(game.averageViewers) }) }}</p>
+              <p>{{ t('growthRate', { count: number(game.followsPerHour) }) }}@if (!game.eligible) { <span> · {{ t('smallSample') }}</span> }</p>
+            </li>
+          }</ol>
+          @if (report.bestGrowthGame) { <p class="insight-growth">{{ t('growthGame', { game: report.bestGrowthGame }) }}</p> }
+        } @else { <p class="insight-state">{{ t('noGameSamples') }}</p> }
+      }
+      <p class="insight-note">{{ t('sample', { streams: report.streams, hours: number(report.hours) }) }} · {{ report.timeZone }}</p>
+      <p class="insight-note">{{ t('sampled', { hours: number(report.sampledHours) }) }}</p>
+    } @else { <p class="insight-state">{{ t('empty') }}</p> }
+    @if (report.excludedStreams) { <p class="insight-note">{{ t('excluded', { count: report.excludedStreams }) }}</p> }
+    <details class="insight-detail"><summary>{{ t('about') }}</summary><p>{{ t(kind() + 'Method') }}</p><p>{{ t('raidCoverage') }}</p><p>{{ t('minimum') }}</p><p>{{ t('coverage') }}</p></details>
+    <div class="insight-footer"><p class="insight-note">@if (view.updatedAt) { {{ t('updated', { date: date(view.updatedAt) }) }} }</p><button type="button" (click)="load()" [disabled]="loading()" [attr.aria-label]="t(kind() + 'Refresh')"><app-lf-icon name="refresh" [size]="16" /></button></div>
+  }
+}
