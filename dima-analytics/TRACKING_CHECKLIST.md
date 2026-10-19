@@ -18,7 +18,37 @@ Status: `[x]` the stated source fact is present; `[ ]` remaining work. A checked
   - [ ] Add useful totals/rankings; decide whether cost/completion outcomes are needed. Distinguish reward definitions from redeemed instances and avoid user-entered redemption text.
 - [ ] **STR-06 · P0 · Emote usage.** No per-emote usage aggregate was found in the audited analytics path. Count by stable emote ID and provider/platform, with channel/session/time dimensions; define both occurrence count and messages containing an emote, plus how repeated emotes in one message count. Parse emote metadata without retaining chat text.
 - [x] **STR-07 · P1 · Stream timeline context — source partial.** Timeline includes viewer snapshots, title/game changes, raids, and redemption markers. Existing source: [`stream_timeline.ts`](../dimabot/src/utils/stream_timeline.ts).
-  - [ ] Add clear coverage indicators, event-family counts, and cross-stream comparison; snapshots and event lists are bounded and may be incomplete.
+  - [ ] Expand in phases under [TLN-01–05](#stream-timeline-expansion-roadmap); preserve coverage indicators and bounded/incomplete-data semantics.
+
+## Stream timeline expansion roadmap
+
+Goal: help the streamer answer “what happened during my stream, and what changed audience engagement?” Timeline alignment can reveal correlation, not prove that an event caused an audience change. All TLN items are future work; links to existing code/checks are evidence, not completion claims.
+
+**Current baseline (source-audited):** [`stream_timeline.ts`](../dimabot/src/utils/stream_timeline.ts) returns sampled viewers and messages/minute, five-minute distinct chatter counts (initial partial coverage is `null`), title/game changes, raids, redemption-title markers, owner notes, and coverage/truncation indicators. Reads are capped at 2,000 rows; the query horizon is 90 days, participant/marker TTLs are 90 days, and source event expiry can differ. Viewer snapshots store cumulative command counts ([schema](../dimabot/src/schemas/stream_viewer_snapshot.schema.ts)), but the timeline does not return command-rate points. Durable Twitch channel-topic events default to 90 days ([retention defaults](../dimabot/src/domain_events/domain_event.types.ts)); follows, subscriptions, bits, and raids use that topic, while poll/prediction events override it to one day ([producer](../dimabot/src/domain_events/twitch_eventsub_events.ts)). Each row's `expiresAt` is authoritative, including older records. Access checks `analytics:view`; the timeline has no plan-tier gate ([route](../dimabot/src/server/routes/stream_timeline.route.ts)).
+
+**Phase 1 — use data already collected**
+
+- [ ] **TLN-01 · P0 · Add sampled command-rate series from existing snapshots.** Compute nonnegative `commands` deltas divided by elapsed sample time, labeled as sampled rate rather than event-time counts. Mark gaps and counter resets unknown; do not interpolate activity across them. Source: [snapshot schema](../dimabot/src/schemas/stream_viewer_snapshot.schema.ts). Related: [STR-04](#stream-activity-and-engagement).
+- [ ] **TLN-02 · P0 · Add retained event markers from existing journal rows.** Add eligible follow, subscription/resub/gift, and bits markers where supported. Use provider occurrence time, source event IDs/dedupe, and existing canonical bits/gift quantity semantics; avoid counting aliases or gifted subs as both individual starts and gift bundles. Respect each stored `expiresAt`. Related: [GRW-01](#growth-support-and-modules), [GRW-02](#growth-support-and-modules).
+
+**Phase 2 — make exploration easier**
+
+- [ ] **TLN-03 · P1 · Improve timeline navigation.** Add zoom/time-range selection, event tracks with multi-filter/search, and focused range detail; preserve stream selection in the URL and keep notes/add/remove behavior. Consider live refresh separately. Existing UI has stream selection/pagination, sample/event selection, one event-type filter, manual refresh, and owner notes, but no zoom, range comparison, or live refresh ([component](../dimasite/src/app/features/analytics/stream-timeline-page.component.ts), [template](../dimasite/src/app/features/analytics/stream-timeline-page.component.html)). Preserve mobile keyboard/touch and read-only delegated access.
+
+**Phase 3 — add new collection only where needed**
+
+- [ ] **TLN-04 · P1 · Collect command detail.** Add command rankings and outcomes from a verified command event source. Attribute chatter only when available and authorized; do not infer it from billing-customer identity. Related: [STR-04](#stream-activity-and-engagement), [TIER-01–05](#plan-tier-enforcement-tasks).
+- [ ] **TLN-05 · P0 · Collect emote usage.** Store stable emote ID/provider and count occurrences separately from messages containing emotes. Missing emote metadata stays unknown; never fabricate or recover historical counts from chat text. Related: [STR-06](#stream-activity-and-engagement).
+- [ ] **TLN-06 · P1 · Enrich redemption markers.** Add reward ID, cost, and status only where the provider supplies them; distinguish reward configuration from redemption instances and keep user-entered text out. Related: [STR-05](#stream-activity-and-engagement).
+- [ ] **TLN-07 · P1 · Align credit usage to stream time.** Add timestamped credit activity and source attribution only where a reliable receipt can be tied to the channel/session. Preserve the current Pro-only detailed AI transaction gate and billing permissions until policy changes; do not equate customer identity with chatter identity. Related: [CREDIT-01–04](#credit-usage-and-spending-transparency).
+
+**Phase 4 — add comparisons and agreed tier detail**
+
+- [ ] **TLN-08 · P1 · Compare sessions and apply agreed tier detail.** Compare selected ranges/sessions for viewers, chat rate, chatters, and event counts with coverage shown for each. Keep the current timeline under `analytics:view`; do not gate the whole page. Resolve granularity, retention, plan transitions, and server-side query/export checks through [TIER-01–05](#plan-tier-enforcement-tasks). Free summary, Premium trends/comparison, and Pro attributed drilldowns remain proposals, not approved entitlements.
+
+**Acceptance and limits**
+
+- [ ] **TLN-09 · P0 · Verify timeline truth, coverage, and isolation.** Attribute events to provider occurrence time/session; test duplicate, late, pre-start/post-end, expired, gap, and truncation cases. Respect source `expiresAt`, disclose bounded caps and unknown history, and never imply causal impact. Keep billing-customer and chatter identity distinct; verify owner/read-only access and tenant boundaries. Extend [backend behavior check](../ops/checks/stream-timeline.mjs) and [site behavior check](../ops/checks/stream-timeline-site.mjs) when implementation begins.
 
 ## Growth, support, and modules
 
