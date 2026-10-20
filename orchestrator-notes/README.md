@@ -31,6 +31,8 @@ Do not record secrets, credentials, private user data, or raw logs. Prefer short
 
 First verified coding-performance observation: [2026-10-20 shared chat origin handling](2026-10-20-shared-chat.md). The current tier includes the user's Grok insertion above; no empirical tier reordering has been established.
 
+2026-10-20 — Scoped Rust MongoDB connection utility: DeepSeek V4.1 Flash at high via OpenCode implemented the utility; GPT-6.1 Sol led review and integration of runtime-lifetime documentation corrections and stronger checks. Verified with four default unit tests and eight isolated authenticated MongoDB fixture cases. Evidence: `dima-rust/src/utils/mongo.rs`, `dima-rust/tests/mongo_connection.rs`. Confidence: single task. This supports the existing scoped-implementation routing; it does not change the model-tier baseline. No runtime performance claim.
+
 ## Blank observation template
 
 Copy this block for each meaningful outcome:

@@ -1,9 +1,11 @@
 //! Basic Rust library scaffold for incremental future worker and server
 //! migrations.
 //!
-//! This crate currently defines no functions, types, workers, servers, routes,
-//! clients, or database access. It only establishes the foundational dependency
-//! set so later ports can be added deliberately:
+//! The crate currently exposes one narrow database utility: a lazily
+//! initialized, process-wide MongoDB client in [`utils::mongo`]. It does not
+//! implement workers, servers, routes, or a generic database framework. The
+//! remaining dependencies establish the foundational set so later ports can be
+//! added deliberately:
 //!
 //! - [`mongodb`] for MongoDB, including [`mongodb::bson`] for BSON documents
 //! - [`serde`] for mapping BSON documents into explicit structs
@@ -17,3 +19,5 @@
 //! connected, and this crate has no supported deployment target yet. Future
 //! ports must preserve the existing application's collection names, field
 //! types, defaults, and indexes.
+
+pub mod utils;
