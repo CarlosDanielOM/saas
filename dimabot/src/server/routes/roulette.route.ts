@@ -5,7 +5,7 @@ import type { AuthRequest } from '../../middleware/types.js';
 import { getTwitchUserByLogin } from '../../functions/users/get_user_by_login.users.js';
 import type { DrawActor } from '../../roulette/action-model.js';
 import { RouletteError, object, text, integer, fail } from '../../roulette/model.js';
-import { execute, requirePremium, snapshot, overlayTokenState, updateOverlayToken, authorizeOverlay, overlaySnapshot, type Action } from '../../roulette/service.js';
+import { execute, snapshot, overlayTokenState, updateOverlayToken, authorizeOverlay, overlaySnapshot, type Action } from '../../roulette/service.js';
 
 export const rouletteRoute = express.Router();
 const param = (req: Request, name: string) => text(req.params[name], name, 100);
@@ -25,7 +25,6 @@ rouletteRoute.use('/:channelID', (req: AuthRequest, res, next) => {
   void (async () => {
     const access = await getChannelAccessContext(req.user?.id, req.params.channelID as string, '*');
     if (!access.allowed) { res.status(403).json({ error: true, status: 403, code: 'permission_required', message: 'Channel owner or full-access admin required' }); return; }
-    await requirePremium(param(req, 'channelID'));
     next();
   })().catch(next);
 });

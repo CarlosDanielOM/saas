@@ -1,4 +1,4 @@
-import { RouletteChannel, actionDue, hasPremium, snapshot } from './service.js';
+import { RouletteChannel, actionDue, snapshot } from './service.js';
 import type { WinnerAction } from './action-model.js';
 import { getMongoDBConnection } from '../utils/databases/mongodb.database.js';
 
@@ -27,7 +27,7 @@ export async function executeWinnerAction(channelId: string, job: WinnerAction):
   const actor = job.actor?.userId ? job.actor : { userId: channelId, userLogin: owner?.name ?? '', userDisplayName: owner?.name ?? '' };
   const rendered = await parseSpecialCommands(job.source, {
     channelID: channelId, scopeType: 'roulette', scopeName: job.rouletteId,
-    userPlan: 'pro', userLevel: 10, literalArguments: true, argument: actor.argument ?? '',
+    userPlan: owner?.plan_tier ?? 'free', userLevel: 10, literalArguments: true, argument: actor.argument ?? '',
     eventData: { chatter_user_id: actor.userId, chatter_user_login: actor.userLogin, chatter_user_name: actor.userDisplayName },
     variables: { roulette_id: job.rouletteId, roulette_draw_id: job.drawId, roulette_item_id: job.itemId, roulette_item: job.label },
   });
@@ -40,15 +40,12 @@ export async function runDueActions(execute = executeWinnerAction): Promise<void
   const rows = await RouletteChannel.find({ actionDueAt: { $ne: null, $lte: Date.now() } }, { _id: 1 }).sort({ actionDueAt: 1 }).limit(4).lean();
   await Promise.all(rows.map(async row => {
     // Database outages before a claim leave the job pending for the next poll.
-    const entitled = await hasPremium(row._id);
     await snapshot(row._id); // Completion/removal must be durable before any side effect.
     const job = await claimAction(row._id);
     if (!job) return;
-    let status: WinnerAction['status'] = entitled ? 'done' : 'skipped';
-    if (entitled) {
-      try { await execute(row._id, job); }
-      catch { status = 'failed'; console.error('Roulette winner action failed', { channelId: row._id, drawId: job.drawId }); }
-    }
+    let status: WinnerAction['status'] = 'done';
+    try { await execute(row._id, job); }
+    catch { status = 'failed'; console.error('Roulette winner action failed', { channelId: row._id, drawId: job.drawId }); }
     await RouletteChannel.updateOne({ _id: row._id, actions: { $elemMatch: { drawId: job.drawId, status: 'running' } } }, {
       $set: { 'actions.$.status': status, 'actions.$.finishedAt': Date.now() }, $inc: { revision: 1 },
     });

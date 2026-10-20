@@ -4,18 +4,8 @@ import { Schema, model } from 'mongoose';
 import { getMongoDBConnection } from '../utils/databases/mongodb.database.js';
 import * as domain from './model.js';
 import type { State } from './model.js';
-import Users from '../schemas/users.schema.js';
 import { parse } from '../utils/ast_parser/parser.js';
 import type { DrawActor, WinnerAction } from './action-model.js';
-
-/** Alpha entitlement follows the broadcaster, never the command caller. */
-export async function hasPremium(channelId: string): Promise<boolean> {
-  await getMongoDBConnection('roulette-entitlement');
-  return !!await Users.exists({ accounts: { $elemMatch: { type: 'twitch', id: channelId } }, plan_tier: { $in: ['premium', 'pro'] } });
-}
-export async function requirePremium(channelId: string): Promise<void> {
-  if (!await hasPremium(channelId)) domain.fail('premium_required', 'Roulette Alpha requires Premium', 403);
-}
 
 interface Receipt { key: string; fingerprint: string; result: string; at: number }
 interface Stored { _id: string; revision: number; state: State; tokenHash: string | null; overlayToken?: { iv: string; content: string } | null; dueAt: number | null; receipts: Receipt[]; actions: WinnerAction[]; actionDueAt: number | null }
@@ -75,7 +65,6 @@ function apply(state: State, action: Action, now: number): string {
 }
 /** One channel document is the atomic boundary across API, bot and cron processes. */
 export async function execute(channelId: string, action: Action, requestKey?: string, expectedRevision?: number, actor?: DrawActor) {
-  await requirePremium(channelId);
   if ((action.operation === 'add' || action.operation === 'update') && action.data?.action !== undefined) {
     const source = domain.actionSource(action.data.action);
     if (source && parse(source).error) domain.fail('invalid_action', 'Invalid AST syntax in item action');
@@ -140,9 +129,8 @@ function overlayTokenStore(id: string): OverlayTokenStore {
     },
   };
 }
-export async function overlayTokenState(id: string) { await requirePremium(id); return readOverlayToken(overlayTokenStore(id)); }
+export async function overlayTokenState(id: string) { return readOverlayToken(overlayTokenStore(id)); }
 export async function updateOverlayToken(id: string, input: unknown) {
-  await requirePremium(id);
   const result = await manageOverlayToken(overlayTokenStore(id), input, domain.fail);
   return result;
 }
@@ -153,7 +141,7 @@ export async function rotateToken(id: string): Promise<string> {
 }
 export async function authorizeOverlay(id: string, token: unknown): Promise<boolean> {
   if (typeof token !== 'string' || !/^[\w-]{43}$/.test(token)) return false;
-  const allowed = await hasPremium(id) && !!await RouletteChannel.exists({ _id: channel(id), tokenHash: hash(token) });
+  const allowed = !!await RouletteChannel.exists({ _id: channel(id), tokenHash: hash(token) });
   if (allowed) await rememberOverlayToken(overlayTokenStore(id), token).catch(() => { /* Recovery must not interrupt an existing OBS source. */ });
   return allowed;
 }

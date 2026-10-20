@@ -6297,12 +6297,8 @@
   "roulette": {
     "modules": "Modules",
     "alpha": "Alpha",
-    "premium": "Premium",
     "title": "Roulette",
     "subtitle": "Spin a wheel, reel, cards or a last-one-standing knockout on stream. The server picks the winner, everyone sees the same result.",
-    "premiumOnly": "Roulette Alpha is available with Premium",
-    "premiumDescription": "Create wheel, reel, card and knockout overlays, with saved prizes and command automation.",
-    "upgrade": "Explore Premium",
     "refresh": "Refresh",
     "loading": "Loading your roulettes…",
     "library": "Your roulettes",

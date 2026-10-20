@@ -1,4 +1,4 @@
-<div class="lf" data-plan="premium">
+<div class="lf" [attr.data-plan]="planTier()">
   <main class="lf-main">
     <header class="lf-head">
       <a class="lf-back" [routerLink]="['/', streamer, 'modules']"
@@ -6,7 +6,7 @@
       >
       <div class="lf-head__row">
         <h1 class="lf-title">{{ t('title') }}</h1>
-        @if (state() && premium()) {
+        @if (state()) {
           <button
             type="button"
             class="lf-btn lf-btn--primary"
@@ -20,7 +20,6 @@
       <p class="lf-copy">{{ t('subtitle') }}</p>
       <div class="lf-head__chips">
         <span class="lf-chip lf-chip--accent">{{ t('alpha') }}</span>
-        <span class="lf-chip lf-chip--gold lf-chip--premium">{{ t('premium') }}</span>
         @if (state(); as s) {
           @if (onStream()) {
             <span class="lf-chip lf-chip--live"
@@ -45,15 +44,6 @@
       </div>
     </header>
 
-    @if (!premium()) {
-      <section class="lf-tile lf-card lf-gate">
-        <h2 class="lf-h2">{{ t('premiumOnly') }}</h2>
-        <p class="lf-copy">{{ t('premiumDescription') }}</p>
-        <button type="button" class="lf-btn lf-btn--primary" (click)="upgradePlan()">
-          {{ t('upgrade') }}
-        </button>
-      </section>
-    } @else {
       @if (error()) {
         <div class="lf-banner" role="alert">
           <p class="lf-banner__title">{{ error() }}</p>
@@ -666,7 +656,6 @@
           }
         }
       }
-    }
   </main>
 </div>
 

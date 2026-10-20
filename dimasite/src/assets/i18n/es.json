@@ -6297,12 +6297,8 @@
   "roulette": {
     "modules": "Módulos",
     "alpha": "Alfa",
-    "premium": "Premium",
     "title": "Ruleta",
     "subtitle": "Gira una rueda, un carrete, cartas o una eliminatoria en directo. El servidor elige al ganador y todos ven el mismo resultado.",
-    "premiumOnly": "Ruleta Alfa está disponible con Premium",
-    "premiumDescription": "Crea overlays de rueda, carrete, cartas y eliminatoria, con premios guardados y automatización por comandos.",
-    "upgrade": "Ver Premium",
     "refresh": "Actualizar",
     "loading": "Cargando tus ruletas…",
     "library": "Tus ruletas",

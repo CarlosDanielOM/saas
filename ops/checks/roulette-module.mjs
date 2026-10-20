@@ -105,7 +105,7 @@ try {
       name: "Viewer",
       email: "test@example.invalid",
       language: "en",
-      plan_tier: "premium",
+      plan_tier: "free",
       actived: true,
       chat_enabled: true,
       twitch_user_id: user.id,
@@ -462,16 +462,16 @@ try {
       if (shots) await page.screenshot({ path: `${shots}/roulette-${width}-${theme}.png`, fullPage: true });
     }
     assert.deepEqual(errors, []);
-    for (const tier of ["free"]) {
+    for (const tier of ["premium", "pro", "free"]) {
       app.plan_tier = tier;
       const before = writes;
       await page.reload();
-      await module.getByRole("heading", { name: "Roulette Alpha is available with Premium" }).waitFor();
-      assert.equal(await module.getByRole("button", { name: "Start draw", exact: true }).count(), 0);
+      await module.getByRole("button", { name: "Start draw", exact: true }).waitFor();
+      assert.equal(await module.locator(".lf-gate, .lf-chip--premium").count(), 0, "no roulette paywall or Premium badge");
       assert.equal(writes, before);
       await page.goto(`${base}/viewer/modules`);
       await card.waitFor();
-      assert.equal(await card.getAttribute("href"), null, "Roulette cannot open below Premium");
+      assert.match(await card.getAttribute("href"), /\/modules\/roulette$/, "Roulette opens on every plan");
       await page.goto(`${base}/viewer/modules/roulette`);
     }
     app.plan_tier = "pro";
@@ -546,7 +546,7 @@ try {
   await page.locator("app-roulette-display").waitFor({ state: "detached" });
   await context.close();
   console.log(
-    "PASS Roulette: redesigned page at 320/390/1280 (prize dialog, capacity, odds, remove confirm, target user, draft preview + save bar, conflict recovery, OBS link, create/switch/delete), all four styles incl. last one standing land on the saved winner, overlay reconnect/visibility/revoke, Premium gating and full-access admins, en/es parity and axe in dark + light.",
+    "PASS Roulette: page at 320/390/1280 (prize dialog, capacity, odds, remove confirm, target user, draft preview + save bar, conflict recovery, OBS link, create/switch/delete), all four styles land on the saved winner, overlay reconnect/visibility/revoke, Free/Premium/Pro access and full-access admins, en/es parity and axe in dark + light.",
   );
 } finally {
   await browser.close();

@@ -15,8 +15,6 @@ import { firstValueFrom } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
-import { isModuleAccessible, MODULE_TIER_REQUIREMENTS } from '../modules/module-tier.model';
-import { UpgradeService } from '../../services/upgrade.service';
 import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
 import { getRouteParam } from '../../shared/utils/route-param.util';
 import {
@@ -57,7 +55,6 @@ export class RoulettePageComponent {
   private readonly api = inject(RouletteApi);
   private readonly auth = inject(SessionAuthService);
   private readonly language = inject(LanguageService);
-  private readonly upgrade = inject(UpgradeService);
   private readonly fb = inject(FormBuilder).nonNullable;
   private readonly destroy = inject(DestroyRef);
   private readonly host = inject(ElementRef<HTMLElement>);
@@ -68,7 +65,7 @@ export class RoulettePageComponent {
   readonly palettes = Object.entries(PALETTES).map(([id, colors]) => ({ id, colors }));
   readonly commands = COMMANDS;
   readonly streamer = getRouteParam(inject(ActivatedRoute), 'streamer') ?? '';
-  readonly premium = computed(() => isModuleAccessible(MODULE_TIER_REQUIREMENTS.roulette, this.auth.getPlanTierForStreamer(this.streamer)));
+  readonly planTier = computed(() => this.auth.getPlanTierForStreamer(this.streamer));
   readonly state = signal<RouletteState | null>(null);
   readonly selectedId = signal('');
   readonly selected = computed(
@@ -231,10 +228,6 @@ export class RoulettePageComponent {
   }
   async init(): Promise<void> {
     this.loading.set(true);
-    if (!this.premium()) {
-      this.loading.set(false);
-      return;
-    }
     try {
       this.channel = (await firstValueFrom(this.auth.resolveChannelID(this.streamer))) ?? '';
       if (!this.channel) throw new Error('channel');
@@ -534,9 +527,6 @@ export class RoulettePageComponent {
     } catch {
       this.error.set(this.t('copyError'));
     }
-  }
-  upgradePlan(): void {
-    void this.upgrade.promptUpgradeForModule({ moduleId: 'roulette', source: 'roulette_alpha' });
   }
   closeTop(): void {
     if (this.removing()) this.removing.set(null);
