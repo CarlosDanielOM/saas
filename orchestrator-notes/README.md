@@ -12,6 +12,8 @@ The user's initial ascending capability coding tier is a user-provided starting 
 4. GPT-6.1 Sol
 5. GPT-6 Astra
 
+Grok 4.7 is also available through Cursor and the Grok provider/CLI in the current live catalog. It remains unranked relative to this user-provided baseline until the user places it or evidence supports task-specific routing. It can be considered for delegated exploration or implementation under the same scope and verification rules; no capability or cost advantage is assumed.
+
 This is not a mandatory sequential escalation ladder. Choose the best available model for the task up front. Verified outcomes or user feedback may justify revising the working tier as well as routing by task category without another approval request. Keep the original baseline above, and record the date, reason, and supporting evidence for each adjustment.
 
 For GPT-led UI/UX and design tasks, start with DeepSeek V4.1 Flash or GPT-6.1 Sol using the existing effort preferences. The user may manually ask Claude to refine the work later. This preference applies only to GPT-led sessions; it does not set a default for Claude-led sessions.
