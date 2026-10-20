@@ -19,6 +19,8 @@ This is not a mandatory sequential escalation ladder. Choose the best available 
 
 For GPT-led UI/UX and design tasks, start with DeepSeek V4.1 Flash or GPT-6.1 Sol using the existing effort preferences. The user may manually ask Claude to refine the work later. This preference applies only to GPT-led sessions; it does not set a default for Claude-led sessions.
 
+On 2026-10-20, the user set a runtime preference for delegated work: default to full access for non-Claude delegates when the live catalog advertises it and the parent/platform permits it; use MiniMax `bypassPermissions` for full-access work when advertised. Do not use full access or bypassed permissions for Claude as Unix root (UID 0). Honor live catalog and parent limits, and use an authorized supported alternative if a mode is unavailable or refused. This preference does not change the model-tier baseline above.
+
 ## Routing observations
 
 Keep observations brief and tied to a task category, scope, and concrete evidence. Consider exploration, single-file or function work, multi-file integration and consistency, optimization, and UI/UX design separately. Confidence should reflect how much evidence exists and how well it transfers to similar tasks. One result can inform a hypothesis; repeated, comparable results support a stronger routing change.

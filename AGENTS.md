@@ -61,9 +61,9 @@ Changes limited to repository guidance (such as `AGENTS.md` or architecture Mark
 
 ## Monorepo Structure
 
-This workspace is a **single git repository** (`saas/`) containing seven related projects. There are no nested `.git` folders. Run repository operations from the relevant checkout root; use isolated worktrees/copies when required by the production workflow above.
+This workspace is a **single git repository** (`saas/`) containing seven existing application projects and the `dima-rust/` Rust library scaffold. There are no nested `.git` folders. Run repository operations from the relevant checkout root; use isolated worktrees/copies when required by the production workflow above.
 
-- Each subproject manages its own `package.json` and `package-lock.json`.
+- Each application subproject manages its own `package.json` and `package-lock.json`; `dima-rust/` uses Cargo manifests and a tracked `Cargo.lock`.
 - Root `.gitignore` explicitly allows per-project lockfiles.
 - Branch policy: `master` (do not rename without explicit request).
 
@@ -78,6 +78,9 @@ This workspace is a **single git repository** (`saas/`) containing seven related
 | `dimafx/`   | Twitch Extension (client + server)   | HTML/JS + Node.js           | `server/src/server.ts`, `panel.html`, `config.html` |
 | `dimadb/`   | Internal DB console (Redis first)    | Angular v22 + Node          | `src/app/app.routes.ts`, `server/index.mjs`         |
 | `dima-analytics/` | Private observability and resource analytics service | Node.js / Express + PostgreSQL | `src/index.mjs`, `src/store.mjs`, `src/collectors.mjs` |
+| `dima-rust/` | Rust library scaffold for incremental future worker/server migrations | Rust | `Cargo.toml`, `src/lib.rs` |
+
+`dima-rust/` is a library scaffold only. It does not currently implement workers, servers, or production connections, and it has no supported deployment target.
 
 **Rule**: When asked to make a change, first identify which project owns the feature, then read that project's `AGENTS.md` (if present) before editing.
 
@@ -92,7 +95,7 @@ Before implementing data-dependent features or functions that may duplicate exis
 - GPT-led sessions must delegate substantive implementation through bounded tasks by default. Direct edits are appropriate for truly small tasks, such as an isolated typo, a short copy change, or a tiny mechanical adjustment; this exception does not cover a feature or multi-file implementation.
 - Choose delegates by task: DeepSeek V4.1 Flash via OpenCode Go suits scoped exploration at high or max; based on the user's experience, Grok 4.7 is their preferred option with stronger reasoning for more demanding/deeper exploration, and is also available for scoped implementation through Cursor and Grok CLI. Use Grok 4.7 at high or xhigh when the live catalog advertises those effort levels. This is a user routing preference, not a verified benchmark. MiniMax Code M3.1 Flash is suitable for exploration or implementation at high, xhigh, or max, scaled to complexity; GPT-6 Luna at high is mainly for exploration and documentation; GPT-6.1 at high/xhigh and GPT-6 Astra at medium/high are preferred for substantial coding. Avoid using GPT-6.1 or Astra for routine exploration. DeepSeek and MiniMax are also good implementation choices when the scope fits.
 - Before delegation, inspect the live `orchestrator_capabilities` catalog for provider/model availability, exact selection identifiers, supported options, and native child-task support. Use native subagents for supported same-provider models; use T3 `delegate_task` for cross-provider work or models unavailable through native subagents. Do not hardcode stale IDs or invent effort settings. If a preferred model exposes only a thinking variant or lacks the requested high/xhigh/max control, preserve the preference as far as its advertised options allow and report the limitation; do not fabricate options.
-- For delegated OpenCode or MiniMax Code work, explicitly pass `runtimeMode: 'auto'` by default when advertised; for MiniMax, also select advertised `permissionMode: 'auto'` when available. Do not use Ask, approval-required, or auto-accept-edits modes. Auto does not override platform checks or parent limits. Use full access only if specifically requested and the parent thread permits it; if T3 refuses a broader child mode, report that limitation and use an authorized alternative rather than relaunching with per-command approval or bypassing the parent limit. Stay within the task's authorization and the production workflow above, and never fabricate unavailable options.
+- For delegated non-Claude work, default to `runtimeMode: 'full-access'` when advertised and permitted by the parent and platform. For MiniMax full-access work, use `permissionMode: 'bypassPermissions'` when advertised. Do not launch Claude as Unix root (UID 0) with full access or bypassed permissions; use a supported mode or another provider. Always inspect the live catalog and honor parent limits. If a requested mode is refused or unavailable, report the limitation and use an authorized supported alternative; do not invent options, bypass a refusal, or add an approval gate. Stay within the task's authorization and the production workflow above.
 - The GPT lead defines bounded tasks, shares only the context each needs, and assigns parallel work only to independent scopes within actual concurrency capacity. Do not recursively delegate by default. The lead reviews findings and changes, integrates them, and owns the required verification, deployment, and final report under the existing workflows. Delegation adds no approval gate.
 
 ## Documentation Work
@@ -246,6 +249,7 @@ Each major project now contains its own `AGENTS.md` for domain-specific rules:
 - `dimafx/AGENTS.md` – Twitch Extension client/server patterns.
 - `dimadb/AGENTS.md` – Internal DB console (single Node container, Angular CSR).
 - `dima-analytics/AGENTS.md` – Private analytics service, data scopes, retention, and first-install workflow.
+- `dima-rust/AGENTS.md` – Rust scaffold boundaries, dependency usage, and local verification commands.
 
 Root rules in this file always take precedence. Project-specific files add detail, never contradict.
 
