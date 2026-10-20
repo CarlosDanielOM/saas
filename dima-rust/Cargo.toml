@@ -11,7 +11,7 @@ garde = { version = "0.23.0", features = ["derive"] }
 # compat-3-3-0 keeps BSON 3 only; compat-3-0-0 would also pull BSON 2.
 mongodb = { version = "3.9.1", default-features = false, features = ["compat-3-3-0", "bson-3", "rustls-tls", "dns-resolver"] }
 # MongoDB and SQLx enable rustls/ring; redis-rs inherits the unified ring provider.
-redis = { version = "1.7.1", default-features = false, features = ["tokio-rustls-comp", "script"] }
+redis = { version = "1.7.1", default-features = false, features = ["tokio-rustls-comp", "script", "connection-manager"] }
 serde = { version = "1.0.229", features = ["derive"] }
 sqlx = { version = "0.9.0", default-features = false, features = ["postgres", "runtime-tokio", "tls-rustls-ring"] }
 tokio = { version = "1.54.0", features = ["rt-multi-thread", "macros", "signal", "sync", "time", "net"] }

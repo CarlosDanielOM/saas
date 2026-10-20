@@ -4,3 +4,4 @@
 //! framework or a parallel data-access layer.
 
 pub mod mongo;
+pub mod redis;

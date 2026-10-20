@@ -33,6 +33,8 @@ First verified coding-performance observation: [2026-10-20 shared chat origin ha
 
 2026-10-20 — Scoped Rust MongoDB connection utility: DeepSeek V4.1 Flash at high via OpenCode implemented the utility; GPT-6.1 Sol led review and integration of runtime-lifetime documentation corrections and stronger checks. Verified with four default unit tests and eight isolated authenticated MongoDB fixture cases. Evidence: `dima-rust/src/utils/mongo.rs`, `dima-rust/tests/mongo_connection.rs`. Confidence: single task. This supports the existing scoped-implementation routing; it does not change the model-tier baseline. No runtime performance claim.
 
+2026-10-20 — Scoped Rust Redis/Dragonfly connection utility: DeepSeek V4.1 Flash at high via OpenCode implemented the utility; GPT-6.1 Sol led review, integration, and disposable Dragonfly runtime checks. Verification covered 15 unit tests, two doctests, formatting, check, clippy, build, and 13 isolated runtime cases for configuration rejection, shared-client behavior, Lua/TTL, failed-init retry, handshake timeout/retry, reconnect after a dropped socket, and blocking-command behavior with a subsequent `PING`. During fixture review, GPT-6.1 corrected the Lua fixture key TTL to 60 seconds to match its comment, and the success-case recheck passed. Confidence: single task. This supports the existing scoped-implementation routing; it does not change the model-tier baseline. No runtime performance claim.
+
 ## Blank observation template
 
 Copy this block for each meaningful outcome:
