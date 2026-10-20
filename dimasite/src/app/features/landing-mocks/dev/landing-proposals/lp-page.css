@@ -1,0 +1,231 @@
+/* Page layout shared by the three landing proposals. */
+.lp-main {
+  max-width: 76rem;
+  margin: 0 auto;
+  padding: 0.75rem 1rem 1rem;
+  display: grid;
+  gap: 2.5rem;
+}
+
+.lp-title {
+  margin: 0;
+  font-size: clamp(1.85rem, 5.4vw, 3rem);
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+  font-weight: 800;
+  overflow-wrap: break-word;
+}
+
+.lp-title span {
+  display: block;
+  color: var(--title-accent);
+}
+
+.lp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.lp-section {
+  display: grid;
+  gap: 1rem;
+  scroll-margin-top: 0;
+}
+
+.lp-section__head {
+  display: grid;
+  gap: 0.35rem;
+  max-width: 44rem;
+}
+
+.lp-section__head .lp-kicker {
+  margin: 0;
+}
+
+.lp-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.lp-feature {
+  display: grid;
+  gap: 0.5rem;
+  align-content: start;
+}
+
+.lp-feature__icon {
+  display: inline-grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.85rem;
+  background: var(--accent-soft);
+  color: var(--kicker);
+}
+
+.lp-steps {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.lp-steps > li {
+  counter-increment: step;
+  display: grid;
+  grid-template-columns: 2.2rem 1fr;
+  gap: 0.2rem 0.75rem;
+  align-items: start;
+}
+
+.lp-steps > li::before {
+  content: counter(step);
+  grid-row: span 2;
+  display: inline-grid;
+  place-items: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 999px;
+  background: #7c3aed;
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.9rem;
+}
+
+.lp-steps strong {
+  font-size: 0.98rem;
+}
+
+.lp-steps p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.lp-cta {
+  display: grid;
+  gap: 1rem;
+  padding: 1.5rem;
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, #2e1065, #5b21b6 55%, #7c3aed);
+  color: #fff;
+  box-shadow: var(--shadow);
+}
+
+.lp-cta h2 {
+  margin: 0;
+  font-size: clamp(1.4rem, 3.6vw, 2rem);
+  letter-spacing: -0.03em;
+}
+
+.lp-cta p {
+  margin: 0.35rem 0 0;
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.lp-cta .lp-btn {
+  justify-self: start;
+  background: #fff;
+  border-color: #fff;
+  color: #2e1065;
+}
+
+.lp-proof {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.45rem;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.lp-proof strong {
+  color: var(--fg);
+  font-size: 1.15rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-faq {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.lp-faq details {
+  padding: 0;
+}
+
+.lp-faq summary {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 52px;
+  padding: 0 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+
+.lp-faq summary::-webkit-details-marker {
+  display: none;
+}
+
+.lp-faq summary::after {
+  content: '+';
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 1.2rem;
+}
+
+.lp-faq details[open] summary::after {
+  content: '–';
+}
+
+.lp-faq details p {
+  margin: 0;
+  padding: 0 1.1rem 1rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+@media (min-width: 640px) {
+  .lp-main {
+    padding: 1rem 1.25rem 1.5rem;
+    gap: 3.25rem;
+  }
+
+  .lp-grid--3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .lp-grid--2,
+  .lp-grid--4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .lp-cta {
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    padding: 2rem;
+  }
+
+  .lp-cta .lp-btn {
+    justify-self: end;
+  }
+}
+
+@media (min-width: 960px) {
+  .lp-grid--4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .lp-steps--row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+  }
+}

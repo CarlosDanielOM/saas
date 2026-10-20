@@ -1,0 +1,129 @@
+<app-lp-chrome [links]="links()">
+  <div class="lp-main">
+    <section class="sg-hero" id="goal" aria-labelledby="sg-title">
+      <div class="sg-intro">
+        <p class="lp-kicker">{{ c.t('start.kicker') }}</p>
+        <h1 class="lp-title" id="sg-title">{{ c.t('start.title') }} <span>{{ c.t('start.titleAccent') }}</span></h1>
+        <p class="lp-copy">{{ c.t('start.copy') }}</p>
+      </div>
+
+      <div class="sg-goals" role="group" [attr.aria-label]="c.t('start.goalTitle')">
+        <p class="sg-goals__title">{{ c.t('start.goalTitle') }}</p>
+        @for (g of goals; track g.key) {
+          <button
+            type="button"
+            class="sg-goal"
+            [attr.aria-pressed]="goal() === g.key"
+            [attr.data-goal]="g.key"
+            (click)="goal.set(g.key)"
+          >
+            <span class="sg-goal__icon"><lucide-icon class="lp-ico" [name]="g.icon" aria-hidden="true" /></span>
+            <span class="sg-goal__text">
+              <strong>{{ c.pair('start.goals.' + g.key)[0] }}</strong>
+              <small>{{ c.pair('start.goals.' + g.key)[1] }}</small>
+            </span>
+          </button>
+        }
+      </div>
+
+      <div class="sg-plan">
+        <article class="lp-tile sg-steps" aria-labelledby="sg-plan-title">
+          <div class="sg-steps__head">
+            <h2 class="lp-h3" id="sg-plan-title">{{ c.t('start.planTitle') }}</h2>
+            <p class="lp-note" aria-live="polite">{{ total() }}</p>
+          </div>
+          <ol class="lp-steps">
+            @for (s of steps(); track $index) {
+              <li [class.sg-step--goal]="s.goal">
+                <strong>{{ s.title }} <span class="sg-time">{{ s.time }}</span></strong>
+                <p>{{ s.copy }}</p>
+              </li>
+            }
+          </ol>
+          <button type="button" class="lp-btn lp-btn--primary sg-cta" (click)="live.start()">{{ c.t('start.cta') }}</button>
+        </article>
+
+        <article class="lp-tile sg-preview" aria-labelledby="sg-preview-title">
+          <h2 class="lp-kicker" id="sg-preview-title">{{ c.t('start.preview') }}</h2>
+          <app-lp-stage [scene]="current().scene" [compact]="true" />
+        </article>
+      </div>
+    </section>
+
+    <section class="lp-section" id="finder" aria-labelledby="finder-title">
+      <div class="lp-section__head">
+        <p class="lp-kicker">{{ c.t('start.finderKicker') }}</p>
+        <h2 class="lp-h2" id="finder-title">{{ c.t('start.finderTitle') }}</h2>
+      </div>
+      <div class="lp-tile sg-finder">
+        <div class="sg-q">
+          <p id="q1">{{ c.t('start.q1') }}</p>
+          <div class="sg-seg" role="group" aria-labelledby="q1">
+            <button type="button" [attr.aria-pressed]="!wantsGames()" (click)="wantsGames.set(false)">{{ c.t('start.no') }}</button>
+            <button type="button" [attr.aria-pressed]="wantsGames()" (click)="wantsGames.set(true)">{{ c.t('start.yes') }}</button>
+          </div>
+        </div>
+        <div class="sg-q">
+          <p id="q2">{{ c.t('start.q2') }}</p>
+          <div class="sg-seg" role="group" aria-labelledby="q2">
+            <button type="button" [attr.aria-pressed]="!wantsAnalytics()" (click)="wantsAnalytics.set(false)">{{ c.t('start.no') }}</button>
+            <button type="button" [attr.aria-pressed]="wantsAnalytics()" (click)="wantsAnalytics.set(true)">{{ c.t('start.yes') }}</button>
+          </div>
+        </div>
+        <div class="sg-q">
+          <p id="q3">{{ c.t('start.q3') }}</p>
+          <div class="sg-seg sg-seg--3" role="group" aria-labelledby="q3">
+            <button type="button" [attr.aria-pressed]="aiUse() === 'a'" (click)="aiUse.set('a')">{{ c.t('start.q3a') }}</button>
+            <button type="button" [attr.aria-pressed]="aiUse() === 'b'" (click)="aiUse.set('b')">{{ c.t('start.q3b') }}</button>
+            <button type="button" [attr.aria-pressed]="aiUse() === 'c'" (click)="aiUse.set('c')">{{ c.t('start.q3c') }}</button>
+          </div>
+        </div>
+        <div class="sg-result" aria-live="polite" [attr.data-plan]="recommended()">
+          <strong>{{ result() }}</strong>
+          <span>{{ c.t('start.resultNote') }}</span>
+        </div>
+      </div>
+      <app-lp-plans [recommended]="recommended()" />
+    </section>
+
+    <section class="lp-section" id="later" aria-labelledby="later-title">
+      <div class="lp-section__head">
+        <p class="lp-kicker">{{ c.t('start.laterKicker') }}</p>
+        <h2 class="lp-h2" id="later-title">{{ c.t('start.laterTitle') }}</h2>
+        <p class="lp-copy">{{ c.t('start.laterCopy') }}</p>
+      </div>
+      <div class="sg-groups">
+        @for (g of groups(); track g.cat; let first = $first) {
+          <details class="lp-tile sg-group" [open]="first || wide">
+            <summary><strong>{{ g.label }}</strong><span>{{ g.count }}</span></summary>
+            <ul>
+              @for (m of g.rows; track m.id) {
+                <li>
+                  <div>
+                    <strong>{{ m.name }}</strong>
+                    <small>{{ m.copy }}</small>
+                  </div>
+                  <span class="sg-chips">
+                    @if (m.status === 'alpha' || m.status === 'beta') {
+                      <span class="lp-chip lp-chip--muted">{{ c.t('common.' + m.status) }}</span>
+                    }
+                    <span class="lp-chip" [class.lp-chip--free]="m.plan === 'free'" [class.lp-chip--gold]="m.plan !== 'free'">{{ c.t('common.' + m.plan) }}</span>
+                  </span>
+                </li>
+              }
+            </ul>
+          </details>
+        }
+      </div>
+    </section>
+
+    <section class="lp-cta sg-final" aria-labelledby="cta-title">
+      <div>
+        <h2 id="cta-title">{{ c.t('start.ctaTitle') }}</h2>
+        <p>{{ c.t('start.ctaCopy') }}</p>
+      </div>
+      <button type="button" class="lp-btn" (click)="live.start()">{{ c.t('nav.loginLong') }}</button>
+    </section>
+    <app-lp-live-strip />
+  </div>
+</app-lp-chrome>

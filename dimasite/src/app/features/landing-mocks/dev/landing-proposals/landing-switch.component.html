@@ -1,0 +1,167 @@
+<app-lp-chrome [links]="links()">
+  <div class="lp-main">
+    <section class="sw-hero" id="tools" aria-labelledby="sw-title">
+      <div class="sw-intro">
+        <p class="lp-kicker">{{ c.t('switch.kicker') }}</p>
+        <h1 class="lp-title" id="sw-title">{{ c.t('switch.title') }} <span>{{ c.t('switch.titleAccent') }}</span></h1>
+        <p class="lp-copy">{{ c.t('switch.copy') }}</p>
+        <div class="lp-actions">
+          <button type="button" class="lp-btn lp-btn--primary" (click)="live.start()">{{ c.t('nav.loginLong') }}</button>
+        </div>
+        <ul class="lp-checks">
+          <li><lucide-icon class="lp-ico" [name]="icons.check" aria-hidden="true" />{{ c.t('common.checkFree') }}</li>
+          <li><lucide-icon class="lp-ico" [name]="icons.check" aria-hidden="true" />{{ c.t('common.checkLang') }}</li>
+        </ul>
+      </div>
+
+      <div class="lp-tile sw-picker">
+        <div class="sw-picker__head">
+          <h2 class="lp-h3">{{ c.t('switch.pickTitle') }}</h2>
+          <p class="lp-note">{{ c.t('switch.pickHint') }}</p>
+        </div>
+        <div class="sw-uses" role="group" [attr.aria-label]="c.t('switch.pickTitle')">
+          @for (key of uses; track key) {
+            <button type="button" class="lp-chipbtn sw-use" [attr.aria-pressed]="isPicked(key)" (click)="toggle(key)">
+              @if (isPicked(key)) { <lucide-icon class="lp-ico" [name]="icons.check" aria-hidden="true" /> }
+              {{ c.t('switch.uses.' + key) }}
+            </button>
+          }
+        </div>
+
+        <p class="sw-summary" aria-live="polite">{{ summary() }}</p>
+
+        @if (covered().length) {
+          <div class="sw-cover">
+            <p class="sw-cover__title">{{ c.t('switch.coveredTitle') }}</p>
+            <ul class="sw-rows">
+              @for (row of covered(); track row.key) {
+                <li>
+                  <span class="sw-rows__from">{{ row.label }}</span>
+                  <span class="sw-rows__to">
+                    @for (cv of row.covers; track cv.name) {
+                      <span class="sw-mod">
+                        {{ cv.name }}
+                        <span class="lp-chip" [class.lp-chip--free]="cv.plan === 'free'" [class.lp-chip--gold]="cv.plan !== 'free'">{{ c.t('common.' + cv.plan) }}</span>
+                      </span>
+                    }
+                  </span>
+                </li>
+              }
+            </ul>
+          </div>
+        }
+
+        <div class="sw-cover sw-cover--extra">
+          <p class="sw-cover__title">{{ c.t('switch.extraTitle') }}</p>
+          <ul class="sw-extra">
+            <li><lucide-icon class="lp-ico" [name]="icons.bot" aria-hidden="true" />{{ c.pair('modules.ai-personality')[0] }}</li>
+            <li><lucide-icon class="lp-ico" [name]="icons.shield" aria-hidden="true" />{{ c.pair('modules.follow-defense')[0] }}</li>
+            <li><lucide-icon class="lp-ico" [name]="icons.clip" aria-hidden="true" />{{ c.pair('modules.clip-recommendations')[0] }}</li>
+            <li><lucide-icon class="lp-ico" [name]="icons.recap" aria-hidden="true" />{{ c.pair('modules.stream-summaries')[0] }}</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    @if (proof().length || live.channels().length) {
+      <section class="sw-proof" [attr.aria-label]="c.t('switch.proofKicker')">
+        @if (proof().length) {
+          <div class="sw-proof__nums">
+            <p class="lp-kicker">{{ c.t('switch.proofKicker') }}</p>
+            @for (p of proof(); track p.label) {
+              <p class="sw-num"><strong>{{ c.number(p.n) }}</strong><span>{{ p.label }}</span></p>
+            }
+          </div>
+        }
+        <app-lp-live-strip [plain]="true" />
+      </section>
+    }
+
+    <section class="lp-section" id="beyond" aria-labelledby="beyond-title">
+      <div class="lp-section__head">
+        <p class="lp-kicker">{{ c.t('switch.beyondKicker') }}</p>
+        <h2 class="lp-h2" id="beyond-title">{{ c.t('switch.beyondTitle') }}</h2>
+      </div>
+      <div class="lp-grid lp-grid--4">
+        <article class="lp-tile lp-feature sw-b">
+          <div class="sw-demo sw-demo--chat" aria-hidden="true">
+            <span class="sw-demo__q">&#64;DomDimaBot …?</span>
+            <span class="sw-demo__a">{{ c.t('switch.b1Demo') }}</span>
+          </div>
+          <h3 class="lp-h3">{{ c.t('switch.b1Title') }}</h3>
+          <p class="lp-copy">{{ c.t('switch.b1Copy') }}</p>
+          <span class="lp-chip lp-chip--free">{{ c.t('common.free') }}</span>
+        </article>
+        <article class="lp-tile lp-feature sw-b">
+          <div class="sw-demo sw-demo--bars" aria-hidden="true">
+            @for (h of [12, 16, 10, 14, 92, 100, 30, 12]; track $index) { <i [style.height.%]="h" [class.hot]="h > 50"></i> }
+            <span>{{ c.t('switch.b2Demo') }}</span>
+          </div>
+          <h3 class="lp-h3">{{ c.t('switch.b2Title') }}</h3>
+          <p class="lp-copy">{{ c.t('switch.b2Copy') }}</p>
+          <span class="lp-chip lp-chip--free">{{ c.t('common.free') }}</span>
+        </article>
+        <article class="lp-tile lp-feature sw-b">
+          <div class="sw-demo sw-demo--clips" aria-hidden="true">
+            <div class="sw-demo__track"><i style="left: 18%"></i><i style="left: 52%"></i><i style="left: 81%"></i></div>
+            <span>{{ c.t('switch.b3Demo') }}</span>
+          </div>
+          <h3 class="lp-h3">{{ c.t('switch.b3Title') }}</h3>
+          <p class="lp-copy">{{ c.t('switch.b3Copy') }}</p>
+          <span class="lp-chip lp-chip--gold">{{ c.t('common.credits') }}</span>
+        </article>
+        <article class="lp-tile lp-feature sw-b">
+          <div class="sw-demo sw-demo--recap" aria-hidden="true">
+            <strong>{{ c.t('switch.b4Demo') }}</strong>
+            <i></i><i></i><i class="short"></i>
+          </div>
+          <h3 class="lp-h3">{{ c.t('switch.b4Title') }}</h3>
+          <p class="lp-copy">{{ c.t('switch.b4Copy') }}</p>
+          <span class="lp-chip lp-chip--free">{{ c.t('common.free') }}</span>
+        </article>
+      </div>
+    </section>
+
+    <section class="lp-section" id="move" aria-labelledby="move-title">
+      <div class="lp-section__head">
+        <p class="lp-kicker">{{ c.t('switch.moveKicker') }}</p>
+        <h2 class="lp-h2" id="move-title">{{ c.t('switch.moveTitle') }}</h2>
+      </div>
+      <ul class="lp-tile sw-move">
+        <li><span class="lp-feature__icon"><lucide-icon class="lp-ico" [name]="icons.both" aria-hidden="true" /></span><div><strong>{{ c.t('switch.m1Title') }}</strong><p>{{ c.t('switch.m1Copy') }}</p></div></li>
+        <li><span class="lp-feature__icon"><lucide-icon class="lp-ico" [name]="icons.commands" aria-hidden="true" /></span><div><strong>{{ c.t('switch.m2Title') }}</strong><p>{{ c.t('switch.m2Copy') }}</p></div></li>
+        <li><span class="lp-feature__icon"><lucide-icon class="lp-ico" [name]="icons.link" aria-hidden="true" /></span><div><strong>{{ c.t('switch.m3Title') }}</strong><p>{{ c.t('switch.m3Copy') }}</p></div></li>
+        <li><span class="lp-feature__icon"><lucide-icon class="lp-ico" [name]="icons.mods" aria-hidden="true" /></span><div><strong>{{ c.t('switch.m4Title') }}</strong><p>{{ c.t('switch.m4Copy') }}</p></div></li>
+      </ul>
+    </section>
+
+    <section class="lp-section" id="plans" aria-labelledby="plans-title">
+      <div class="lp-section__head">
+        <p class="lp-kicker">{{ c.t('switch.freeKicker') }}</p>
+        <h2 class="lp-h2" id="plans-title">{{ c.t('switch.freeTitle', { n: freeModules, total: totalModules }) }}</h2>
+        <p class="lp-copy">{{ c.t('switch.freeCopy') }}</p>
+        <p class="sw-paid">
+          @for (m of paidModules(); track m.id) { <span class="lp-chip lp-chip--gold">{{ m.name }}</span> }
+        </p>
+      </div>
+      <app-lp-plans />
+    </section>
+
+    <section class="lp-section" aria-labelledby="faq-title">
+      <h2 class="lp-h2" id="faq-title">{{ c.t('switch.faqTitle') }}</h2>
+      <div class="lp-faq">
+        <details class="lp-tile"><summary>{{ c.t('switch.q1') }}</summary><p>{{ c.t('switch.a1') }}</p></details>
+        <details class="lp-tile"><summary>{{ c.t('switch.q2') }}</summary><p>{{ c.t('switch.a2') }}</p></details>
+        <details class="lp-tile"><summary>{{ c.t('switch.q3') }}</summary><p>{{ c.t('switch.a3') }}</p></details>
+      </div>
+    </section>
+
+    <section class="lp-cta" aria-labelledby="cta-title">
+      <div>
+        <h2 id="cta-title">{{ c.t('switch.ctaTitle') }}</h2>
+        <p>{{ c.t('switch.ctaCopy') }}</p>
+      </div>
+      <button type="button" class="lp-btn" (click)="live.start()">{{ c.t('nav.loginLong') }}</button>
+    </section>
+  </div>
+</app-lp-chrome>

@@ -1,0 +1,85 @@
+<app-lp-chrome [links]="links()">
+  <div class="lp-main">
+    <section class="sc-hero" id="see" aria-labelledby="sc-title">
+      <div class="sc-intro">
+        <div class="sc-intro__copy">
+          <p class="lp-kicker">{{ c.t('showcase.kicker') }}</p>
+          <h1 class="lp-title" id="sc-title">{{ c.t('showcase.title') }} <span>{{ c.t('showcase.titleAccent') }}</span></h1>
+          <p class="lp-copy">{{ c.t('showcase.copy') }}</p>
+        </div>
+        <div class="sc-intro__side">
+          <div class="lp-actions">
+            <button type="button" class="lp-btn lp-btn--primary" (click)="live.start()">{{ c.t('nav.loginLong') }}</button>
+          </div>
+          <ul class="lp-checks">
+            <li><lucide-icon class="lp-ico" [name]="icons.check" aria-hidden="true" />{{ c.t('common.checkFree') }}</li>
+            <li><lucide-icon class="lp-ico" [name]="icons.check" aria-hidden="true" />{{ c.t('common.checkTime') }}</li>
+            <li><lucide-icon class="lp-ico" [name]="icons.check" aria-hidden="true" />{{ c.t('common.checkLang') }}</li>
+          </ul>
+          @if (live.stats().messagesReceived > 0) {
+            <p class="lp-proof"><strong>{{ c.number(live.stats().messagesReceived) }}</strong> {{ c.t('common.messages') }}</p>
+          }
+        </div>
+      </div>
+
+      <div class="lp-tile sc-stage">
+        <app-lp-stage />
+      </div>
+
+      <app-lp-live-strip />
+    </section>
+
+    <section class="lp-section" id="why" aria-labelledby="why-title">
+      <div class="lp-section__head">
+        <p class="lp-kicker">{{ c.t('showcase.whyKicker') }}</p>
+        <h2 class="lp-h2" id="why-title">{{ c.t('showcase.whyTitle') }}</h2>
+      </div>
+      <div class="lp-grid lp-grid--3">
+        <article class="lp-tile lp-feature">
+          <span class="lp-feature__icon"><lucide-icon class="lp-ico" [name]="icons.one" aria-hidden="true" /></span>
+          <h3 class="lp-h3">{{ c.t('showcase.why1Title') }}</h3>
+          <p class="lp-copy">{{ c.t('showcase.why1Copy') }}</p>
+        </article>
+        <article class="lp-tile lp-feature">
+          <span class="lp-feature__icon"><lucide-icon class="lp-ico" [name]="icons.extra" aria-hidden="true" /></span>
+          <h3 class="lp-h3">{{ c.t('showcase.why2Title') }}</h3>
+          <p class="lp-copy">{{ c.t('showcase.why2Copy') }}</p>
+        </article>
+        <article class="lp-tile lp-feature">
+          <span class="lp-feature__icon"><lucide-icon class="lp-ico" [name]="icons.tips" aria-hidden="true" /></span>
+          <h3 class="lp-h3">{{ c.t('showcase.why3Title') }}</h3>
+          <p class="lp-copy">{{ c.t('showcase.why3Copy') }}</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="lp-section" id="start" aria-labelledby="start-title">
+      <div class="lp-section__head">
+        <p class="lp-kicker">{{ c.t('showcase.startKicker') }}</p>
+        <h2 class="lp-h2" id="start-title">{{ c.t('showcase.startTitle') }}</h2>
+      </div>
+      <ol class="lp-tile lp-steps lp-steps--row">
+        <li><strong>{{ c.t('showcase.s1') }}</strong><p>{{ c.t('showcase.s1Copy') }}</p></li>
+        <li><strong>{{ c.t('showcase.s2') }}</strong><p>{{ c.t('showcase.s2Copy') }}</p></li>
+        <li><strong>{{ c.t('showcase.s3') }}</strong><p>{{ c.t('showcase.s3Copy') }}</p></li>
+      </ol>
+    </section>
+
+    <section class="lp-section" id="plans" aria-labelledby="plans-title">
+      <div class="lp-section__head">
+        <p class="lp-kicker">{{ c.t('plans.kicker') }}</p>
+        <h2 class="lp-h2" id="plans-title">{{ c.t('plans.title') }}</h2>
+        <p class="lp-copy">{{ c.t('plans.subtitle') }}</p>
+      </div>
+      <app-lp-plans />
+    </section>
+
+    <section class="lp-cta" aria-labelledby="cta-title">
+      <div>
+        <h2 id="cta-title">{{ c.t('showcase.ctaTitle') }}</h2>
+        <p>{{ c.t('showcase.ctaCopy') }}</p>
+      </div>
+      <button type="button" class="lp-btn" (click)="live.start()">{{ c.t('nav.loginLong') }}</button>
+    </section>
+  </div>
+</app-lp-chrome>

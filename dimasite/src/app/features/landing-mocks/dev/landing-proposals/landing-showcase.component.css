@@ -1,0 +1,66 @@
+.sc-hero {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.sc-intro {
+  display: grid;
+  gap: 1rem;
+  padding: 0.5rem 0 0;
+}
+
+.sc-intro__copy {
+  display: grid;
+  gap: 0.6rem;
+  max-width: 44rem;
+}
+
+.sc-intro__copy .lp-kicker {
+  margin: 0;
+}
+
+.sc-intro__side {
+  display: grid;
+  gap: 0.75rem;
+  align-content: start;
+}
+
+.sc-intro__side .lp-btn--primary {
+  width: 100%;
+}
+
+.sc-intro__side .lp-checks {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.sc-stage {
+  padding: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .sc-intro__side .lp-btn--primary {
+    width: auto;
+  }
+
+  .sc-intro__side .lp-checks {
+    display: flex;
+  }
+}
+
+@media (min-width: 960px) {
+  .sc-intro {
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+    align-items: end;
+    gap: 2rem;
+    padding-top: 1rem;
+  }
+
+  .sc-intro__side .lp-checks {
+    display: grid;
+  }
+
+  .sc-stage {
+    padding: 1rem;
+  }
+}

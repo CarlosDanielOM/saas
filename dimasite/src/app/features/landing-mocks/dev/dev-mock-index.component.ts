@@ -156,6 +156,27 @@ export class DevMockIndexComponent {
       translated: true
     },
     {
+      id: 'landing-showcase',
+      title: 'Landing · Showcase',
+      badge: 'See what it does · for approval',
+      description:
+        'The hero is a stream with chat that plays each feature: alerts, TTS, Bits shop, a real duel, the real roulette wheel, AI co-host, moderation, Follow Defense. Live channels only when someone is live, plus the messages-handled total.'
+    },
+    {
+      id: 'landing-switch',
+      title: 'Landing · Switch',
+      badge: 'Why switch · for approval',
+      description:
+        'Tap the tools you use today and see what covers each one here (with its plan) and what you would gain. Proof band with only the strong totals, "beyond the basics", an honest "moving over" list and an FAQ.'
+    },
+    {
+      id: 'landing-start',
+      title: 'Landing · Start',
+      badge: 'Get set up fast · for approval',
+      description:
+        'Pick what you want first and get your first 10 minutes step by step, with times and a preview of what viewers will see. Three-question plan finder and every module with its plan and status.'
+    },
+    {
       id: 'landing-next',
       title: 'Landing · Live First polish',
       badge: 'For approval',

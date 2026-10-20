@@ -1,0 +1,184 @@
+<section class="st" [class.st--compact]="compact()" [attr.data-scene]="current()" [attr.data-done]="t() >= duration()" [attr.aria-label]="c.t('stage.label')">
+  @if (!compact()) {
+    <div class="st__bar">
+      <div class="st__tabs" role="group" [attr.aria-label]="c.t('stage.label')">
+        @for (id of scenes(); track id) {
+          <button type="button" class="lp-chipbtn st__tab" [attr.aria-pressed]="current() === id" (click)="pick(id)">
+            <lucide-icon class="lp-ico" [name]="SCENES[id].icon" aria-hidden="true" />
+            {{ c.t('stage.tabs.' + id) }}
+            @if (playing() && current() === id) {
+              <span class="st__progress" aria-hidden="true" [style.--d.ms]="duration()" [attr.data-run]="run()"></span>
+            }
+          </button>
+        }
+      </div>
+      <button type="button" class="st__ctl" (click)="togglePlay()" [attr.aria-label]="playing() ? c.t('stage.pause') : c.t('stage.play')">
+        <lucide-icon class="lp-ico" [name]="playing() ? icons.pause : icons.play" aria-hidden="true" />
+      </button>
+    </div>
+  }
+
+  <div class="st__body">
+    <div class="st__screen" aria-hidden="true">
+      <div class="scene">
+        <div class="scene__sky"></div>
+        <div class="scene__sun"></div>
+        <div class="scene__hills"></div>
+        <div class="scene__grid"></div>
+      </div>
+      <div class="hud">
+        <span class="hud__live"><span class="hud__dot"></span>{{ c.t('stage.live') }}</span>
+        <span class="hud__viewers">{{ c.t('stage.watching') }}</span>
+      </div>
+      <div class="cam"><span>{{ c.t('stage.streamer') }}</span></div>
+
+      @for (r of [run()]; track r) {
+        @switch (current()) {
+          @case ('alerts') {
+            @if (t() >= 500 && t() < 4600) {
+              <div class="ov-alert">
+                <span class="ov-alert__icon"><lucide-icon class="lp-ico" [name]="icons.heart" /></span>
+                <strong>{{ c.t('stage.alert.who') }}</strong>
+                <span>{{ c.t('stage.alert.what') }}</span>
+                <i class="spark s1"></i><i class="spark s2"></i><i class="spark s3"></i><i class="spark s4"></i>
+              </div>
+            }
+            @if (t() >= 5000) {
+              <div class="ov-alert ov-alert--sub">
+                <span class="ov-alert__icon"><lucide-icon class="lp-ico" [name]="icons.star" /></span>
+                <strong>lunatica_v</strong>
+                <span>6 ×</span>
+                <i class="spark s1"></i><i class="spark s2"></i><i class="spark s3"></i><i class="spark s4"></i>
+              </div>
+            }
+          }
+          @case ('tts') {
+            @if (t() >= 900) {
+              <div class="ov-tts">
+                <div class="ov-tts__head">
+                  <span class="ov-tts__av">T</span>
+                  <span>{{ c.t('stage.tts.who') }}</span>
+                </div>
+                <p>{{ c.t('stage.tts.text') }}</p>
+                <div class="ov-tts__foot">
+                  <span class="wave" [class.wave--on]="t() < 6500">
+                    @for (b of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]; track b) { <i [style.--i]="b"></i> }
+                  </span>
+                  <span>{{ c.t('stage.tts.voice') }}</span>
+                </div>
+              </div>
+            }
+          }
+          @case ('dimafx') {
+            <div class="ov-fx">
+              <p class="ov-fx__head"><lucide-icon class="lp-ico" [name]="icons.gem" />{{ c.t('stage.fx.panel') }}</p>
+              <div class="ov-fx__grid">
+                <div class="ov-fx__tile" [class.ov-fx__tile--buy]="t() >= 1300 && t() < 2000" [class.ov-fx__tile--sent]="t() >= 2000">
+                  <span class="ov-fx__thumb ov-fx__thumb--a"></span>
+                  <span class="ov-fx__name">{{ c.t('stage.fx.airhorn') }}</span>
+                  <span class="ov-fx__price">{{ t() >= 2000 ? c.t('stage.fx.onWay') : '50' }}</span>
+                </div>
+                <div class="ov-fx__tile">
+                  <span class="ov-fx__thumb ov-fx__thumb--b"></span>
+                  <span class="ov-fx__name">{{ c.t('stage.fx.confetti') }}</span>
+                  <span class="ov-fx__price">100</span>
+                </div>
+                <div class="ov-fx__tile">
+                  <span class="ov-fx__thumb ov-fx__thumb--c"></span>
+                  <span class="ov-fx__name">{{ c.t('stage.fx.say') }}</span>
+                  <span class="ov-fx__price">200</span>
+                </div>
+              </div>
+            </div>
+            @if (t() >= 2200 && t() < 5200) {
+              <div class="ov-burst"><span>{{ c.t('stage.fx.burst') }}</span></div>
+            }
+          }
+          @case ('duel') {
+            @if (t() >= DUEL_START_MS) {
+              <div class="ov-duel">
+                <app-duel-stage
+                  quality="high"
+                  [names]="duelNames"
+                  [battle]="battle()"
+                  [elapsed]="duelElapsed()"
+                  [started]="true"
+                  [transparent]="true"
+                  [locale]="c.lang() === 'es' ? 'es' : 'en'"
+                />
+              </div>
+            }
+          }
+          @case ('roulette') {
+            <div class="ov-roulette">
+              <app-roulette-display [roulette]="roulette()" [draw]="draw()" [serverTime]="drawTime()" [locale]="c.lang() === 'es' ? 'es' : 'en'" />
+            </div>
+          }
+          @case ('ai') {
+            <div class="ov-ai">
+              <span class="ov-ai__icon"><lucide-icon class="lp-ico" [name]="icons.bot" /></span>
+              <span><strong>{{ c.t('stage.ai.card') }}</strong><small>{{ c.t('stage.ai.cardSub') }}</small></span>
+            </div>
+            @if (t() >= 1800) {
+              <div class="ov-ai-bubble"><lucide-icon class="lp-ico" [name]="icons.speech" />{{ c.t('stage.chat.ai.b1') }}</div>
+            }
+          }
+          @case ('moderation') {
+            @if (t() >= 1500) {
+              <div class="ov-toast"><lucide-icon class="lp-ico" [name]="icons.shield" />{{ c.t('stage.mod.toast') }}</div>
+            }
+          }
+          @case ('defense') {
+            <div class="ov-def" [class.ov-def--warn]="t() >= 2400 && t() < 6600" [class.ov-def--ok]="t() >= 6600">
+              <strong>{{ c.t('stage.defense.count', { n: defenseCount() }) }}</strong>
+              @if (t() >= 2400) {
+                <span>
+                  <lucide-icon class="lp-ico" [name]="t() >= 6600 ? icons.shield : icons.alert" />
+                  {{ t() >= 6600 ? c.t('stage.defense.safe') : c.t('stage.defense.paused') }}
+                </span>
+              }
+            </div>
+            @if (t() >= 600 && t() < 2400) {
+              <div class="ov-flood">
+                @for (n of [1, 2, 3, 4, 5, 6]; track n) { <i [style.--i]="n"></i> }
+              </div>
+            }
+          }
+        }
+      }
+    </div>
+
+    <div class="st__chat">
+      <p class="st__chat-head">{{ c.t('stage.chatLabel') }}</p>
+      <ul class="st__lines" [attr.aria-label]="c.t('stage.chatLabel')">
+        @for (line of lines(); track line.key) {
+          <li class="ln" [class]="'ln ln--' + line.kind" [class.ln--removed]="line.removed">
+            @if (line.kind === 'event') {
+              <span class="ln__event">{{ line.text }}</span>
+            } @else {
+              <span class="ln__who" [attr.data-tone]="tone(line.who)">{{ line.who }}</span>
+              <span class="ln__text">{{ line.text }}</span>
+            }
+          </li>
+        }
+      </ul>
+    </div>
+  </div>
+
+  @if (!compact()) {
+    <div class="st__caption">
+      <span class="st__cap-icon"><lucide-icon class="lp-ico" [name]="def().icon" aria-hidden="true" /></span>
+      <p>{{ c.t('stage.caption.' + current()) }}</p>
+      <div class="st__cap-tags">
+        <span class="lp-chip" [class.lp-chip--free]="def().plan === 'free'" [class.lp-chip--gold]="def().plan !== 'free'">{{ c.t('common.' + def().plan) }}</span>
+        @if (def().credits) {
+          <span class="lp-chip lp-chip--gold">{{ c.t('common.credits') }}</span>
+        }
+        <a class="lp-link" [href]="'https://docs.domdimabot.com' + (c.lang() === 'es' ? '/es' : '') + def().docs">{{ c.t('common.guide') }} →</a>
+        <button type="button" class="st__replay" (click)="replay()" [attr.aria-label]="c.t('stage.replay')">
+          <lucide-icon class="lp-ico" [name]="icons.replay" aria-hidden="true" />
+        </button>
+      </div>
+    </div>
+  }
+</section>

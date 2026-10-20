@@ -363,6 +363,30 @@ export const routes: Routes = [
         title: 'Landing proposal | DomDimaBot'
       },
       {
+        path: 'landing-showcase',
+        loadComponent: () =>
+          import('./features/landing-mocks/dev/landing-proposals/landing-showcase.component').then(
+            (m) => m.LandingShowcaseComponent
+          ),
+        title: 'DomDimaBot · Twitch bot, alerts and AI co-host'
+      },
+      {
+        path: 'landing-switch',
+        loadComponent: () =>
+          import('./features/landing-mocks/dev/landing-proposals/landing-switch.component').then(
+            (m) => m.LandingSwitchComponent
+          ),
+        title: 'DomDimaBot · Twitch bot, alerts and AI co-host'
+      },
+      {
+        path: 'landing-start',
+        loadComponent: () =>
+          import('./features/landing-mocks/dev/landing-proposals/landing-start.component').then(
+            (m) => m.LandingStartComponent
+          ),
+        title: 'DomDimaBot · Twitch bot, alerts and AI co-host'
+      },
+      {
         path: '',
         loadComponent: () =>
           import('./features/landing-mocks/dev/dev-mock-shell.component').then(
