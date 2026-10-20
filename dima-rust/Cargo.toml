@@ -6,6 +6,7 @@ publish = false
 
 [dependencies]
 axum = { version = "0.8.9", default-features = false, features = ["http1", "json", "tokio"] }
+dotenvy = "0.15.7"
 garde = { version = "0.23.0", features = ["derive"] }
 # compat-3-3-0 keeps BSON 3 only; compat-3-0-0 would also pull BSON 2.
 mongodb = { version = "3.9.1", default-features = false, features = ["compat-3-3-0", "bson-3", "rustls-tls", "dns-resolver"] }

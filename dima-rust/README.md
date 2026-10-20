@@ -2,11 +2,33 @@
 
 `dima-rust` is a small Rust library for incremental future migrations of selected workers and server components. It now includes a lazy native MongoDB client utility, but has no implemented workers, servers, or deployed integration. The application projects remain the source of production behavior.
 
-The dependency set provides MongoDB with `mongodb::bson`, Serde, Garde, Tokio, SQLx with PostgreSQL support, the Redis crate (`redis-rs`) for Dragonfly-compatible Redis operations, and Axum. Adding a dependency does not imply that its service is configured or connected.
+The dependency set provides MongoDB with `mongodb::bson`, Serde, Garde, Tokio, SQLx with PostgreSQL support, the Redis crate (`redis-rs`) for Dragonfly-compatible Redis operations, Axum, and `dotenvy` for explicit environment-file loading. Adding a dependency does not imply that its service is configured or connected.
 
 Use Serde to map BSON documents into explicit structs. Garde checks additional field and business constraints only when `validate()` is called. Future ports must explicitly preserve existing collection names, field types, defaults, and indexes.
 
 `dima_rust::utils::mongo::get_mongo_client().await` returns `mongodb::error::Result<&'static Client>`. On first call it reads `MONGO_URI` directly from the process environment (it does not load dotenv files), creates a native MongoDB client, and pings `admin` before caching it in a Tokio `OnceCell`. Failed initialization can be retried. Use the cached client within the application's long-lived Tokio runtime and share it across tasks and threads. Static storage does not keep the driver's originating runtime alive, so do not reuse the client after that runtime or the client has been shut down. Clone the native handle when an owned handle is needed; clones share the same pool. Callers select their database explicitly. A URI database name is available through the driver's default-database behavior, but the utility adds no implicit fallback.
+
+Adding `dotenvy` does not load files automatically. A future executable should load each explicitly selected file synchronously in `main`, before building the Tokio runtime and before calling `get_mongo_client()`. `from_path` propagates missing-file and parse errors, leaves variables already provided by Docker or the host unchanged, and preserves values from earlier files when files are loaded in sequence. For example:
+
+```rust,no_run
+async fn run_application() -> Result<(), Box<dyn std::error::Error>> {
+    // Start the application and use get_mongo_client() here.
+    Ok(())
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    dotenvy::from_path("path/to/.env.local")?;
+    dotenvy::from_path("path/to/.env")?;
+
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()?;
+    runtime.block_on(run_application())?;
+    Ok(())
+}
+```
+
+Replace the example paths with the files the executable is configured to load. The library has no runnable entry point today; adding `dotenvy` alone does not load any environment files.
 
 From this directory, the library can be checked with:
 
