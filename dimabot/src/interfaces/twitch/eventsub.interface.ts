@@ -149,11 +149,11 @@ export interface IChatMessage extends ITwitchEventBase {
     color: string;
     reply?: IReply;
     channel_points_custom_reward_id?: string;
-    source_broadcaster_user_id?: string;
-    source_broadcaster_user_name?: string;
-    source_broadcaster_user_login?: string;
-    source_message_id?: string;
-    source_badges?: IBadge[];
+    source_broadcaster_user_id?: string | null;
+    source_broadcaster_user_name?: string | null;
+    source_broadcaster_user_login?: string | null;
+    source_message_id?: string | null;
+    source_badges?: IBadge[] | null;
     is_source_only?: boolean;
 }
 

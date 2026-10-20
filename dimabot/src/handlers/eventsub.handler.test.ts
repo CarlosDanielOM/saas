@@ -4,6 +4,7 @@ import type { IEventsub } from '../schemas/eventsub.schema.js';
 import type { IFollowEvent, IRaidEventData, ITwitchEventData, ITwitchSubscriptionData } from '../interfaces/twitch/eventsub.interface.js';
 
 let effects: string[];
+let lookups = 0;
 let enabled = true;
 let minViewers = 0;
 mock.module('../classes/chat_history.js', { defaultExport: {} });
@@ -12,7 +13,7 @@ mock.module('../utils/keyword_cache.js', { namedExports: { keywordIndexCache: {
     invalidate: () => { effects.push('keyword-release'); }
 } } });
 mock.module('../classes/twitch_streamers.class.js', { defaultExport: {
-    getTwitchAccountById: async () => ({ id: 'channel', chat_enabled: 'true' })
+    getTwitchAccountById: async (id: string) => { lookups++; return { id, chat_enabled: 'true' }; }
 } });
 mock.module('../schemas/eventsub.schema.js', { defaultExport: { findOne: async () => ({
     enabled, minViewers, message: 'configured', clipEnabled: false, type: 'test', cheerTiers: []
@@ -55,7 +56,7 @@ const raid = {
     from_broadcaster_user_id: 'raider', from_broadcaster_user_login: 'raider', from_broadcaster_user_name: 'Raider', viewers: 10
 } as IRaidEventData;
 const config = { enabled: true, minViewers: 0, message: 'configured', clipEnabled: false } as IEventsub;
-beforeEach(() => { effects = []; enabled = true; minViewers = 0; });
+beforeEach(() => { effects = []; lookups = 0; enabled = true; minViewers = 0; });
 
 test('stream keyword cache lifecycle runs even when announcements are disabled or durably handled', async () => {
     enabled = false;
@@ -103,4 +104,36 @@ test('legacy raid minimum-viewer and disabled EventSub gates remain intact', asy
     await eventsubHandler({ type: 'channel.raid' } as ITwitchSubscriptionData, raid as ITwitchEventData);
     await eventsubHandler({ type: 'channel.follow' } as ITwitchSubscriptionData, follow);
     assert.deepEqual(effects, []);
+});
+
+for (const type of ['channel.chat.message', 'channel.chat.notification']) {
+    test(`${type} ignores shared-chat copies in both directions before account lookup`, async () => {
+        for (const [origin, receiver] of [['channel-a', 'channel-b'], ['channel-b', 'channel-a']]) {
+            await eventsubHandler({ type } as ITwitchSubscriptionData, {
+                broadcaster_user_id: receiver, source_broadcaster_user_id: origin,
+                notice_type: 'watch_streak', is_source_only: true
+            } as unknown as ITwitchEventData);
+        }
+        assert.equal(lookups, 0);
+        assert.deepEqual(effects, []);
+    });
+}
+
+test('local chat messages accept missing, null, empty and same-channel source metadata', async () => {
+    for (const source of [undefined, null, '', 'channel']) {
+        for (const is_source_only of [true, false]) {
+            await eventsubHandler({ type: 'channel.chat.message' } as ITwitchSubscriptionData, {
+                broadcaster_user_id: 'channel', source_broadcaster_user_id: source,
+                is_source_only, source_message_id: 'unrelated-id', chatter_user_id: 'another-channel'
+            } as unknown as ITwitchEventData);
+        }
+    }
+    assert.deepEqual(effects, Array(8).fill('messageHandler'));
+});
+
+test('source metadata does not suppress receiver-targeted moderation events', async () => {
+    await eventsubHandler({ type: 'channel.ban' } as ITwitchSubscriptionData, {
+        broadcaster_user_id: 'channel', source_broadcaster_user_id: 'other-channel'
+    } as unknown as ITwitchEventData);
+    assert.deepEqual(effects, ['banHandler']);
 });

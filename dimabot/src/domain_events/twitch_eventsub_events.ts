@@ -2,6 +2,7 @@ import type { DomainEventProducer, JournalDomainEventInput } from './domain_even
 import { resolveDomainEventOwner } from './domain_event_identity.js';
 import { DomainEventContractError, TWITCH_DOMAIN_EVENT_TYPES } from './domain_event_contracts.js';
 import { raidDirection } from '../utils/raid_direction.js';
+import { isForeignSharedChatEvent } from '../utils/shared_chat_origin.js';
 import type { ICondition } from '../schemas/eventsub.schema.js';
 export type { TwitchEventsubPayload } from './domain_event_contracts.js';
 
@@ -63,6 +64,8 @@ export function normalizeTwitchEventsubDomainEvent(
     if (!input.event || typeof input.event !== 'object' || Array.isArray(input.event)) {
         throw new DomainEventContractError('Twitch event must be a record');
     }
+
+    if (isForeignSharedChatEvent(originalEventType, input.event)) return null;
 
     const outgoing = originalEventType === 'channel.raid' && raidDirection(input.subscription.condition as ICondition) === 'outgoing';
     const channelID = firstString(originalEventType === 'channel.raid'

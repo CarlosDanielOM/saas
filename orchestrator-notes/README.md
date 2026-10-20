@@ -24,7 +24,7 @@ Separate implementation performance (correctness, consistency, rework, and time 
 
 Do not record secrets, credentials, private user data, or raw logs. Prefer short summaries and references to commits, task records, or check results.
 
-No coding-performance observations have been evaluated in this note set yet.
+First verified coding-performance observation: [2026-10-20 shared chat origin handling](2026-10-20-shared-chat.md). The user-provided working tier is unchanged.
 
 ## Blank observation template
 

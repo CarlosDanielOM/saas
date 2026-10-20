@@ -26,6 +26,7 @@ import {
 } from "../utils/eventsub.js";
 import type { BitsEventsubMigrationResult } from "../utils/eventsub.js";
 import { raidDirection } from '../utils/raid_direction.js';
+import { isForeignSharedChatEvent } from '../utils/shared_chat_origin.js';
 //* TODO Redeem handler
 //* TODO Functions
 
@@ -39,6 +40,9 @@ export const eventsubHandler = async (
     eventData: ITwitchEventData,
     options: EventsubHandlerOptions = {}
 ) => {
+    // Reject receiver copies before account, cache, command, history or billing work.
+    if (isForeignSharedChatEvent(subscriptionData.type, eventData)) return;
+
     // Production notices announce through the durable consumer. Manual event
     // tests use this immediate path; other chat notice types have no effects.
     if (subscriptionData.type === 'channel.chat.notification'

@@ -23,12 +23,12 @@ test('watch streak notices preserve provider data with independent event identit
     assert.ok(getTestableEventTypes().includes('channel.chat.notification'));
 });
 
-test('resubs, anonymous gifts, shared chat and future notices retain nullable fields', () => {
+test('local resubs, anonymous gifts and future notices retain nullable fields', () => {
     for (const notice_type of ['resub', 'sub_gift', 'shared_chat_resub', 'future_notice']) {
         const input = notification();
         Object.assign(input.event, { notice_type, watch_streak: null, sub: null,
             resub: { cumulative_months: 10, streak_months: null, sub_plan: '1000' },
-            source_broadcaster_user_id: '4321', source_message_id: 'source-notice',
+            source_broadcaster_user_id: null, source_message_id: 'source-notice',
             chatter_is_anonymous: true, chatter_user_id: '', chatter_user_login: '', chatter_user_name: '' });
         const event = normalizeTwitchEventsubDomainEvent(input);
         assert.ok(event);
@@ -49,4 +49,30 @@ test('malformed chat notices fail contract validation', () => {
         assert.ok(event);
         assert.throws(() => validateDomainEventContract(event, 'ingest'), /Domain event contract/);
     }
+});
+
+test('foreign shared-chat notifications are excluded before durable journaling', () => {
+    for (const [origin, receiver] of [['4321', '1234'], ['1234', '4321']]) {
+        const input = notification();
+        Object.assign(input.event, { broadcaster_user_id: receiver, source_broadcaster_user_id: origin });
+        assert.equal(normalizeTwitchEventsubDomainEvent(input), null);
+    }
+});
+
+test('local notification origins accept missing, null, empty and matching IDs', () => {
+    for (const source of [undefined, null, '', '1234']) {
+        const input = notification();
+        Object.assign(input.event, { source_broadcaster_user_id: source, is_source_only: false, source_message_id: 'copy-id' });
+        assert.ok(normalizeTwitchEventsubDomainEvent(input));
+    }
+});
+
+test('source metadata on receiver-targeted lifecycle events is preserved', () => {
+    const payload = generateTestPayload('stream.online', '1234');
+    const event = normalizeTwitchEventsubDomainEvent({ messageId: 'local-lifecycle',
+        subscription: { ...payload.subscription },
+        event: { ...payload.event, source_broadcaster_user_id: '4321' } });
+    assert.ok(event);
+    assert.equal(event.channelID, '1234');
+    assert.equal((event.payload.event as Record<string, unknown>).source_broadcaster_user_id, '4321');
 });

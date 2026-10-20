@@ -440,3 +440,25 @@ test('chat notification controls silence each notice independently and respect t
     }), createDependencies(calls));
     assert.deepEqual(calls, [], 'anniversaries from another broadcaster are ignored');
 });
+
+test('pending or replayed foreign chat notices have no receiver dependencies or effects', async () => {
+    for (const notice_type of ['watch_streak', 'modiversary']) {
+        const calls: string[] = [];
+        const event = createEvent('channel.chat.notification', 'channel.chat.notification', {
+            notice_type, source_broadcaster_user_id: 'other-channel', is_source_only: true
+        });
+        await applyChatAnnouncementDomainEvent(event, createDependencies(calls));
+        await applyChatAnnouncementDomainEvent(event, createDependencies(calls));
+        assert.deepEqual(calls, []);
+    }
+});
+
+test('local durable notification origins still announce independently of source flags', async () => {
+    for (const source of [undefined, null, '', 'channel-1']) {
+        const calls: string[] = [];
+        await applyChatAnnouncementDomainEvent(createEvent('channel.chat.notification', 'channel.chat.notification', {
+            notice_type: 'watch_streak', source_broadcaster_user_id: source, is_source_only: false
+        }), createDependencies(calls));
+        assert.ok(calls.some(call => call.startsWith('send:channel-1:')));
+    }
+});

@@ -1,5 +1,6 @@
 import type { DomainEventEnvelope } from './domain_event.types.js';
 import { isSupportedChatNotice, resolveChatNotificationMessage } from '../utils/chat_notification_defaults.js';
+import { isForeignSharedChatEvent } from '../utils/shared_chat_origin.js';
 import { getBitsMessageText } from '../utils/bits_message.js';
 
 interface ChatEventsubConfig {
@@ -197,6 +198,8 @@ export async function applyChatAnnouncementDomainEvent(
         || !SUPPORTED_EVENT_TYPES.has(event.type)) return;
     if (!event.channelID) throw new Error('Chat announcements require a channel identity');
     const rawEvent = payloadEvent(event);
+    // Retained deliveries and admin replay can predate the ingress origin filter.
+    if (isForeignSharedChatEvent(event.type, rawEvent, event.channelID)) return;
     if (event.type === 'channel.chat.notification' && !isSupportedChatNotice(rawEvent.notice_type)) return;
 
     const dependencies = injectedDependencies || await getDependencies();

@@ -75,6 +75,8 @@ export const sendTwitchChatMessage = async (
             broadcaster_id: channelID,
             sender_id: MODERATOR_ID,
             message: finalMessage,
+            // App-token replies belong only to the channel that executed them.
+            for_source_only: true,
         }
 
         if(replyToMessageId) {
