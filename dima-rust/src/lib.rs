@@ -1,12 +1,14 @@
 //! Basic Rust library scaffold for incremental future worker and server
 //! migrations.
 //!
-//! The crate currently exposes two narrow data-store utilities: a lazily
-//! initialized, process-wide MongoDB client in [`utils::mongo`] and a
-//! Redis/Dragonfly connection manager in [`utils::redis`]. It does not implement
-//! workers, servers, routes, or a generic database framework. The remaining
-//! dependencies establish the foundational set so later ports can be added
-//! deliberately:
+//! The crate exposes two narrow data-store utilities: a lazily initialized,
+//! process-wide MongoDB client in [`utils::mongo`] and a Redis/Dragonfly
+//! connection manager in [`utils::redis`]. It also provides the bounded MongoDB
+//! stream-activity projector in [`workers::stream_activity`] and a manual
+//! `stream_activity` binary. The binary is not registered with dimabot's worker
+//! supervisor or Compose services, and this crate has no supported deployment
+//! target. The remaining dependencies establish the foundational set for
+//! deliberate ports:
 //!
 //! - [`mongodb`] for MongoDB, including [`mongodb::bson`] for BSON documents
 //! - [`serde`] for mapping BSON documents into explicit structs
@@ -15,12 +17,14 @@
 //! - [`sqlx`] with PostgreSQL support
 //! - [`redis`] (redis-rs) for Dragonfly-compatible Redis operations
 //! - [`axum`] for future HTTP surfaces
-//! - [`dotenvy`] for explicitly loading environment files from a future executable
+//! - [`dotenvy`] for explicitly loading environment files in a binary
 //!
-//! Adding a dependency does not mean its backing service is configured or
-//! connected, and this crate has no supported deployment target yet. Future
-//! ports must preserve the existing application's collection names, field
-//! types, defaults, and indexes.
+//! Merely adding or importing a dependency does not connect to its service.
+//! The MongoDB and Redis utilities connect only when explicitly called, and the
+//! projector runs only when its public API is called or its manual binary is
+//! invoked. Nothing starts these paths automatically. This crate has no
+//! supported deployment target. Future ports must preserve the existing
+//! application's collection names, field types, defaults, and indexes.
 //!
 //! [`utils::redis::get_redis_client`] reads `DRAGONFLY_HOST` and
 //! `DRAGONFLY_PORT` from the process environment and connects over plain TCP to
@@ -35,30 +39,12 @@
 //! separate dedicated connections when implemented. The utility does not load
 //! dotenv files.
 //!
-//! Adding `dotenvy` does not load files automatically. A future executable should load
-//! its explicitly selected files synchronously in `main`, before constructing
-//! the Tokio runtime and before calling [`utils::mongo::get_mongo_client`].
-//! `from_path` propagates missing-file and parse errors; existing process
-//! variables (including values provided by Docker) win, and earlier files win
-//! over later files. The library currently has no runnable entry point.
-//!
-//! ```no_run
-//! async fn run_application() -> Result<(), Box<dyn std::error::Error>> {
-//!     // Start the application and use dima_rust::utils::mongo::get_mongo_client() here.
-//!     Ok(())
-//! }
-//!
-//! fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     dotenvy::from_path("path/to/.env.local")?;
-//!     dotenvy::from_path("path/to/.env")?;
-//!
-//!     let runtime = tokio::runtime::Builder::new_multi_thread()
-//!         .enable_all()
-//!         .build()?;
-//!     runtime.block_on(run_application())?;
-//!     Ok(())
-//! }
-//! ```
+//! Adding `dotenvy` does not load files automatically. The manual
+//! `stream_activity` binary loads only paths passed with repeatable
+//! `--env-file PATH` arguments, synchronously before its two-thread Tokio
+//! runtime. Existing process variables take precedence; when files are loaded
+//! in sequence, earlier files take precedence over later ones. The client
+//! utilities themselves do not load dotenv files.
 //!
 //! Redis commands can use the driver's `AsyncCommands` API:
 //!
@@ -73,3 +59,4 @@
 //! ```
 
 pub mod utils;
+pub mod workers;

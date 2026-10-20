@@ -1,8 +1,8 @@
 # dima-rust Agent Guide
 
-`dima-rust/` is a Rust library for incremental future worker/server migrations. Read the root [`AGENTS.md`](../AGENTS.md) first; its production-host and scope rules take precedence.
+`dima-rust/` contains a Rust library and a manually invoked stream-activity projector binary for incremental future worker/server migrations. Read the root [`AGENTS.md`](../AGENTS.md) first; its production-host and scope rules take precedence.
 
-The library includes lazy native MongoDB and Redis/Dragonfly client utilities, but has no implemented workers, servers, or deployed integration and no supported deployment target. Keep additions within an explicitly requested scope. Do not treat either utility as authorization to connect to production services or migrate existing application behavior. Future deployments require a reviewed supported workflow; do not start services or consume production data just to verify this library.
+The library includes lazy native MongoDB and Redis/Dragonfly client utilities and a bounded MongoDB stream-activity projector. Its binary is an explicit manual entry point, not registered with dimabot's supervisor or Compose services; there is no supported deployment target. Keep additions within an explicitly requested scope. Do not treat a utility or the manual binary as authorization to connect to production services or migrate existing application behavior. Use isolated, disposable MongoDB data for runtime checks.
 
 Dependencies include MongoDB and its `mongodb::bson` module, Serde, Garde, Tokio, SQLx with PostgreSQL support, `redis-rs` for Dragonfly-compatible Redis operations, and Axum. Map BSON documents into explicit structs with Serde, and call Garde `validate()` for additional field or business constraints. Future ports must preserve existing collection names, field types, defaults, and indexes.
 
@@ -20,4 +20,4 @@ cargo build --locked
 cargo test --locked
 ```
 
-There is no binary entry point, so `cargo run` does not apply. Build checks and default tests need no database or cache services; live MongoDB and Redis integration tests use external fixtures and are ignored by default. Use only isolated, disposable data when running those tests. Keep `Cargo.lock` tracked and use `--locked` for the documented checks.
+Use `cargo run --bin stream_activity -- --help` for the manual binary. Cargo build checks and default Rust tests need no database or cache services; the MongoDB and Redis integration tests use external fixtures and are ignored by default. The stream-activity parity harness is a separate manual Node command documented in [`STREAM_ACTIVITY.md`](STREAM_ACTIVITY.md). Run service-backed checks only against isolated, disposable data. Keep `Cargo.lock` tracked and use `--locked` for the documented checks.

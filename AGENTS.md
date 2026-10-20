@@ -61,7 +61,7 @@ Changes limited to repository guidance (such as `AGENTS.md` or architecture Mark
 
 ## Monorepo Structure
 
-This workspace is a **single git repository** (`saas/`) containing seven existing application projects and the `dima-rust/` Rust library scaffold. There are no nested `.git` folders. Run repository operations from the relevant checkout root; use isolated worktrees/copies when required by the production workflow above.
+This workspace is a **single git repository** (`saas/`) containing seven existing application projects and the `dima-rust/` Rust project. There are no nested `.git` folders. Run repository operations from the relevant checkout root; use isolated worktrees/copies when required by the production workflow above.
 
 - Each application subproject manages its own `package.json` and `package-lock.json`; `dima-rust/` uses Cargo manifests and a tracked `Cargo.lock`.
 - Root `.gitignore` explicitly allows per-project lockfiles.
@@ -78,9 +78,9 @@ This workspace is a **single git repository** (`saas/`) containing seven existin
 | `dimafx/`   | Twitch Extension (client + server)   | HTML/JS + Node.js           | `server/src/server.ts`, `panel.html`, `config.html` |
 | `dimadb/`   | Internal DB console (Redis first)    | Angular v22 + Node          | `src/app/app.routes.ts`, `server/index.mjs`         |
 | `dima-analytics/` | Private observability and resource analytics service | Node.js / Express + PostgreSQL | `src/index.mjs`, `src/store.mjs`, `src/collectors.mjs` |
-| `dima-rust/` | Rust library scaffold for incremental future worker/server migrations | Rust | `Cargo.toml`, `src/lib.rs` |
+| `dima-rust/` | Rust library plus manually invoked stream-activity projector | Rust | `Cargo.toml`, `src/lib.rs`, `src/workers/stream_activity/`, `src/bin/stream_activity.rs` |
 
-`dima-rust/` is a library scaffold only. It does not currently implement workers, servers, or production connections, and it has no supported deployment target.
+`dima-rust/` contains shared library utilities, a stream-activity projection module, and a manually invoked `stream_activity` binary. The binary is not registered with the dimabot worker supervisor or Compose services; the Rust project has no supported deployment target. See [`dima-rust/STREAM_ACTIVITY.md`](dima-rust/STREAM_ACTIVITY.md) for its scope and manual operation.
 
 **Rule**: When asked to make a change, first identify which project owns the feature, then read that project's `AGENTS.md` (if present) before editing.
 
@@ -249,7 +249,7 @@ Each major project now contains its own `AGENTS.md` for domain-specific rules:
 - `dimafx/AGENTS.md` – Twitch Extension client/server patterns.
 - `dimadb/AGENTS.md` – Internal DB console (single Node container, Angular CSR).
 - `dima-analytics/AGENTS.md` – Private analytics service, data scopes, retention, and first-install workflow.
-- `dima-rust/AGENTS.md` – Rust scaffold boundaries, dependency usage, and local verification commands.
+- `dima-rust/AGENTS.md` – Rust library and manual projector boundaries, dependency usage, and local verification commands.
 
 Root rules in this file always take precedence. Project-specific files add detail, never contradict.
 

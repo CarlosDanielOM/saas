@@ -1,0 +1,139 @@
+{
+  "date": "2026-10-20",
+  "scope": "Synthetic isolated stream activity projector; not production or API throughput",
+  "versions": {
+    "node": "v26.8.2",
+    "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+    "mongodb": "8.2.6"
+  },
+  "fixture": {
+    "mongoCpuLimit": 1,
+    "mongoMemoryMiB": 768,
+    "wiredTigerCacheGiB": 0.25,
+    "ttlMonitorEnabled": false,
+    "batchSize": 500,
+    "eventsPerRun": 6000,
+    "runsPerLanguage": 3,
+    "workerNice": 10
+  },
+  "summaryMedians": {
+    "typescript": {
+      "peakRssMiB": 128.90234375,
+      "wholeProcessCpuSeconds": 1.53,
+      "afterFirstBatchEventsPerSecond": 4915.379305441282,
+      "startupInclusiveElapsedMs": 1611.6851449999995,
+      "startupInclusiveEventsPerSecond": 3722.8115048488594
+    },
+    "rust": {
+      "peakRssMiB": 11.953125,
+      "wholeProcessCpuSeconds": 0.18000000000000002,
+      "afterFirstBatchEventsPerSecond": 6717.554380282098,
+      "startupInclusiveElapsedMs": 919.1854870000006,
+      "startupInclusiveEventsPerSecond": 6527.51820482126
+    },
+    "relative": {
+      "peakRssReductionPercent": 90.72699172702204,
+      "wholeProcessCpuReductionPercent": 88.23529411764706,
+      "afterFirstBatchThroughputGainPercent": 36.66400826576748
+    }
+  },
+  "benchmark": [
+    {
+      "language": "typescript",
+      "iteration": 0,
+      "events": 6000,
+      "total": 6000,
+      "batches": 12,
+      "firstBatchMs": 191.39507600000002,
+      "remainingMs": 1221.4291309999999,
+      "projectMs": 1412.829528,
+      "elapsedMs": 1700.3725520000007,
+      "peakRssKiB": 132760,
+      "userCpuSeconds": 1.48,
+      "systemCpuSeconds": 0.13,
+      "startupInclusiveEventsPerSecond": 3528.6384698122306,
+      "afterFirstBatchEventsPerSecond": 4502.921913690628
+    },
+    {
+      "language": "rust",
+      "iteration": 0,
+      "events": 6000,
+      "total": 6000,
+      "batches": 12,
+      "firstBatchMs": 84.439983,
+      "remainingMs": 818.7503499999999,
+      "projectMs": 903.190775,
+      "elapsedMs": 919.1854870000006,
+      "peakRssKiB": 12016,
+      "userCpuSeconds": 0.14,
+      "systemCpuSeconds": 0.04,
+      "startupInclusiveEventsPerSecond": 6527.51820482126,
+      "afterFirstBatchEventsPerSecond": 6717.554380282098
+    },
+    {
+      "language": "rust",
+      "iteration": 1,
+      "events": 6000,
+      "total": 6000,
+      "batches": 12,
+      "firstBatchMs": 85.80761100000001,
+      "remainingMs": 823.217758,
+      "projectMs": 909.02573,
+      "elapsedMs": 926.5717349999995,
+      "peakRssKiB": 12292,
+      "userCpuSeconds": 0.13,
+      "systemCpuSeconds": 0.04,
+      "startupInclusiveEventsPerSecond": 6475.483519902539,
+      "afterFirstBatchEventsPerSecond": 6681.099802028323
+    },
+    {
+      "language": "typescript",
+      "iteration": 1,
+      "events": 6000,
+      "total": 6000,
+      "batches": 12,
+      "firstBatchMs": 196.27118000000002,
+      "remainingMs": 1118.937046,
+      "projectMs": 1315.2125649999998,
+      "elapsedMs": 1595.3296559999999,
+      "peakRssKiB": 131996,
+      "userCpuSeconds": 1.38,
+      "systemCpuSeconds": 0.11,
+      "startupInclusiveEventsPerSecond": 3760.978163625387,
+      "afterFirstBatchEventsPerSecond": 4915.379305441282
+    },
+    {
+      "language": "typescript",
+      "iteration": 2,
+      "events": 6000,
+      "total": 6000,
+      "batches": 12,
+      "firstBatchMs": 206.31960799999996,
+      "remainingMs": 1103.972162,
+      "projectMs": 1310.295966,
+      "elapsedMs": 1611.6851449999995,
+      "peakRssKiB": 131492,
+      "userCpuSeconds": 1.43,
+      "systemCpuSeconds": 0.1,
+      "startupInclusiveEventsPerSecond": 3722.8115048488594,
+      "afterFirstBatchEventsPerSecond": 4982.009682233273
+    },
+    {
+      "language": "rust",
+      "iteration": 2,
+      "events": 6000,
+      "total": 6000,
+      "batches": 12,
+      "firstBatchMs": 81.579993,
+      "remainingMs": 806.184922,
+      "projectMs": 887.765256,
+      "elapsedMs": 905.4851359999993,
+      "peakRssKiB": 12240,
+      "userCpuSeconds": 0.15,
+      "systemCpuSeconds": 0.04,
+      "startupInclusiveEventsPerSecond": 6626.282156883472,
+      "afterFirstBatchEventsPerSecond": 6822.256097714514
+    }
+  ],
+  "methodology": "Same generated input, source indexes, batch 500 and disposable Mongo fixture. Release Rust versus compiled JavaScript Node, one long-lived process per run. GNU time peak RSS and user+system CPU include startup/shutdown; harness elapsed includes spawn. afterFirstBatch excludes first 500 events, includes final empty poll. TS reference omits cron telemetry/bootstrap. Mongo CPU/RAM and whole-host effects are not attributed to worker process. First batch is a limited warmup, not a full JIT stabilization study."
+}

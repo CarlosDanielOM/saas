@@ -1,6 +1,6 @@
 # dima-rust
 
-`dima-rust` is a small Rust library for incremental future migrations of selected workers and server components. It includes lazy native MongoDB and Redis/Dragonfly client utilities, but has no implemented workers, servers, or deployed integration. The application projects remain the source of production behavior.
+`dima-rust` is a Rust library for incremental migrations of selected worker and server components. It includes lazy native MongoDB and Redis/Dragonfly client utilities and a manually invoked stream-activity projector binary. That binary is not wired into the dimabot supervisor or Compose services, and the Rust project has no supported deployment target; the application projects remain the source of production behavior.
 
 The dependency set provides MongoDB with `mongodb::bson`, Serde, Garde, Tokio, SQLx with PostgreSQL support, the Redis crate (`redis-rs`) for Dragonfly-compatible Redis operations, Axum, and `dotenvy` for explicit environment-file loading. A dependency alone does not configure or connect its backing service.
 
@@ -22,7 +22,7 @@ async fn read_cache_value() -> Result<Option<String>, Box<dyn std::error::Error>
 }
 ```
 
-Adding `dotenvy` does not load files automatically. A future executable should load each explicitly selected file synchronously in `main`, before building the Tokio runtime and before calling `get_mongo_client()` or `get_redis_client()`. `from_path` propagates missing-file and parse errors, leaves variables already provided by Docker or the host unchanged, and preserves values from earlier files when files are loaded in sequence. For example:
+Adding `dotenvy` does not load files automatically. The manual `stream_activity` executable accepts repeatable `--env-file PATH` arguments and loads those files synchronously before building its two-thread Tokio runtime. Existing process variables take precedence, and earlier files take precedence over later files. The MongoDB and Redis library utilities never load dotenv files. For custom executables, load explicitly selected files before creating Tokio and calling either client utility. For example:
 
 ```rust,no_run
 async fn run_application() -> Result<(), Box<dyn std::error::Error>> {
@@ -42,7 +42,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-Replace the example paths with the files the executable is configured to load. The library has no runnable entry point today; adding `dotenvy` alone does not load any environment files.
+Replace the example paths with the files the executable is configured to load. The library itself does not load environment files.
+
+The `stream_activity` binary is a manual projection tool. Its reuse boundaries, database requirements, command options, parity fixture, and benchmark methodology are documented in [STREAM_ACTIVITY.md](STREAM_ACTIVITY.md).
 
 From this directory, the library can be checked with:
 
@@ -54,4 +56,4 @@ cargo build --locked
 cargo test --locked
 ```
 
-This is a library, so there is no `cargo run` entry point. Build checks and default tests do not require database or cache services; live MongoDB and Redis integration tests use external fixtures and are ignored by default. Run them only against isolated, disposable data. `Cargo.lock` is tracked and `--locked` ensures the checked dependency graph matches it.
+Build checks and default Rust tests do not require database or cache services; the MongoDB and Redis integration tests use external fixtures and are ignored by default. The stream-activity parity harness is a separate manual Node command documented in [STREAM_ACTIVITY.md](STREAM_ACTIVITY.md). Run service-backed checks only against isolated, disposable data. `cargo run --bin stream_activity -- --help` shows the manual binary options. `Cargo.lock` is tracked and `--locked` ensures the checked dependency graph matches it.

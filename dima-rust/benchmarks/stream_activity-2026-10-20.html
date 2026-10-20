@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Stream activity projector benchmark — 20 October 2026</title>
+  <style>
+    :root { color-scheme: light dark; }
+    * { box-sizing: border-box; }
+    html, body, main { margin: 0; padding: 0; background: transparent; }
+    body {
+      color: var(--foreground, light-dark(#202124, #eeeeef));
+      font: 14px/1.5 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    main { width: 100%; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    col:first-child { width: 38%; }
+    col:not(:first-child) { width: 20.666%; }
+    caption {
+      text-align: left;
+      padding: 0 0 12px;
+      color: var(--muted-foreground, light-dark(#5c616a, #b2b5bd));
+      font-size: 12px;
+    }
+    th, td {
+      padding: 14px 6px;
+      border-bottom: 1px solid var(--border, light-dark(#dcdfe3, #3b3e46));
+      text-align: right;
+      vertical-align: middle;
+      font-variant-numeric: tabular-nums;
+    }
+    th:first-child { text-align: left; padding-left: 0; }
+    th:last-child, td:last-child { padding-right: 0; }
+    thead th { padding-top: 0; padding-bottom: 10px; font-size: 12px; font-weight: 600; }
+    tbody th { font-weight: 500; overflow-wrap: break-word; }
+    abbr { text-decoration: none; }
+    .unit { display: block; font-size: 12px; color: var(--muted-foreground, light-dark(#5c616a, #b2b5bd)); }
+    .change { color: var(--chart-1, light-dark(#08754c, #71d5ab)); font-weight: 650; white-space: nowrap; }
+    .note {
+      margin: 12px 0 0;
+      color: var(--muted-foreground, light-dark(#5c616a, #b2b5bd));
+      font-size: 12px;
+      line-height: 1.6;
+    }
+    @media (min-width: 480px) {
+      body { font-size: 15px; }
+      th, td { padding: 16px 12px; }
+      .unit { display: inline; font-size: inherit; color: inherit; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <table aria-describedby="methodology">
+      <caption>Medians of 3 runs per language · 6,000 events/run · batch 500 · MongoDB 8.2.6</caption>
+      <colgroup><col><col><col><col></colgroup>
+      <thead>
+        <tr><th scope="col">Metric</th><th scope="col"><abbr title="TypeScript compiled to JavaScript">TS</abbr></th><th scope="col">Rust</th><th scope="col">Change</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">Peak RSS</th>
+          <td>128.9<span class="unit"> MiB</span></td>
+          <td>12.0<span class="unit"> MiB</span></td>
+          <td class="change">−90.7%</td>
+        </tr>
+        <tr>
+          <th scope="row">Whole-process CPU</th>
+          <td>1.53<span class="unit"> s</span></td>
+          <td>0.18<span class="unit"> s</span></td>
+          <td class="change">−88.2%</td>
+        </tr>
+        <tr>
+          <th scope="row">Events/s after first 500 events</th>
+          <td>4,915</td>
+          <td>6,718</td>
+          <td class="change">+36.7%</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="note" id="methodology">Release Rust versus compiled JavaScript on Node. CPU and RSS include startup/shutdown; throughput excludes the first batch, a limited warmup. Worker-only measurements exclude MongoDB resources. Synthetic fixture on a shared host; no production or API performance guarantee. TS telemetry and bootstrap excluded.</p>
+  </main>
+</body>
+</html>
