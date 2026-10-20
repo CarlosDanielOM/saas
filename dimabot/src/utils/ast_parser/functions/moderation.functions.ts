@@ -474,7 +474,8 @@ const banModHandler: FunctionHandler = async (args, ctx) => {
         return modStatus.message || 'Unable to determine whether the user is a moderator';
     }
 
-    if (shouldRemoveModerator(modStatus)) {
+    const wasModerator = shouldRemoveModerator(modStatus);
+    if (wasModerator) {
         const removeModeratorResult = await ChannelFunctions.removeChannelModerator(ctx.broadcasterId, targetUserId);
         if (removeModeratorResult.error) {
             return removeModeratorResult.message || 'Unable to remove moderator status before banning';
@@ -493,7 +494,9 @@ const banModHandler: FunctionHandler = async (args, ctx) => {
         return banResult.message || 'Error applying ban/timeout';
     }
 
-    if (!returnMod || !parsedDuration) {
+    // Restoration must use the role observed before unmod/timeout. A viewer
+    // opting into return_mod must never receive a new moderator grant.
+    if (!returnMod || !parsedDuration || !wasModerator) {
         return '';
     }
 
