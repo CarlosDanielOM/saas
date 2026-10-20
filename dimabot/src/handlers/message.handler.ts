@@ -641,14 +641,6 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
                     res = { error: false, message: duelResult.message };
                 }
                 break;
-            case 'miyuloot':
-                const miyulootResult = await indexCommands.miyuloot(channelID, tags);
-                if (miyulootResult.error) {
-                    res = { error: true, message: miyulootResult.message || 'Error en miyuloot' };
-                } else {
-                    res = { error: false, message: miyulootResult.message };
-                }
-                break;
             case 'vip':
                 if (!streamerArgument) {
                     res = { error: true, message: 'Usage: !vip @username [duration]' };
