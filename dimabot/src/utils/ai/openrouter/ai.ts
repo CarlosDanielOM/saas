@@ -143,6 +143,8 @@ export interface IRouterResponse {
 }
 
 export interface AIHarnessOptions {
+  /** Commands remain available when mention-based chat replies are disabled. */
+  invocation?: 'chat' | 'command';
   channelID: string;
   message: string;
   streamer: IStreamerData;
@@ -761,6 +763,7 @@ export async function chat(
     tags = { badges: [] },
     options: extraOptions = [],
     disableTools = false,
+    invocation = 'chat',
   } = options;
 
   const cacheClient = await getDragonflyClient("Messages");
@@ -776,7 +779,7 @@ export async function chat(
   const effectivePersonality =
     personality || getDefaultPersonality(channelID, streamerData);
 
-  if (effectivePersonality.enabled === false) {
+  if (invocation !== 'command' && effectivePersonality.enabled === false) {
     return {
       error: true,
       message: "AI chat responses are disabled for this channel",

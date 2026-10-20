@@ -5,7 +5,7 @@
  * Now uses the main chat harness which includes tool calling (AST_PARSER, search, code_execution).
  */
 
-import { chat, getChannelPersonality, type IRouterResponse } from './ai.js';
+import { chat, type IRouterResponse } from './ai.js';
 import { error } from '../../logger.js';
 
 // ============================================================================
@@ -99,17 +99,10 @@ export async function executeAiCommand(
     }
 
     try {
-        const personality = await getChannelPersonality(channelID);
-        if (personality?.enabled === false) {
-            return {
-                error: false,
-                message: '[AI: Chat responses disabled]'
-            };
-        }
-
         // Call the main chat harness which supports tool calling
         const response: IRouterResponse = await chat({
             channelID,
+            invocation: 'command',
             message: prompt,
             streamer: streamer as any,
             history: [],  // No history for command-style $(ai) calls

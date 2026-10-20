@@ -963,9 +963,9 @@
       "unlimited": "Unlimited",
       "masterToggle": {
         "kicker": "Chat AI control",
-        "title": "AI chat responses",
-        "enabledHint": "Mention replies and $(ai) commands are active for this channel.",
-        "disabledHint": "AI chat responses are disabled. Learning, summaries, and recommendations can still run if enabled below."
+        "title": "Direct AI replies",
+        "enabledHint": "The bot replies when mentioned. $(ai) commands work independently of this switch.",
+        "disabledHint": "The bot will not reply when mentioned. $(ai) commands remain available. Learning, summaries, and recommendations have their own switches."
       },
       "featureToggles": {
         "streamSummaries": "Stream summaries",
@@ -1140,8 +1140,8 @@
       "footer": "Save when you are happy with the current profile, memory policy, learning automation, rules, and known-user context.",
       "v2": {
         "subtitle": "Decide how the bot talks in chat, which rules it always follows and which regulars it knows.",
-        "chatOn": "AI chat on",
-        "chatOff": "AI chat off",
+        "chatOn": "Direct replies on",
+        "chatOff": "Direct replies off",
         "usingChip": "In chat: {{name}}",
         "viewOnly": "View only",
         "memoriesLink": "AI memories",
@@ -1180,7 +1180,7 @@
         "aboutPlaceholder": "Loves horror games, always says hi in Portuguese",
         "removeUser": "Remove {{name}}",
         "switchesTitle": "On or off",
-        "chatHint": "Replies when someone mentions the bot and powers $(ai) commands.",
+        "chatHint": "Reply when someone mentions the bot. Turn this off to stop direct conversations; $(ai) still works in commands and templates.",
         "summariesHint": "Writes a recap after each stream and saves what the bot learned.",
         "memoryTitle": "What it can remember",
         "memoryHint": "The bot can learn from chat. You review what it learns in AI memories.",

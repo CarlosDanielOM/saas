@@ -35,9 +35,9 @@ test('ordinary AI helper supports explicitly disabled tools', async () => {
     assert.deepEqual(result, { error: false, message: 'A fresh roast' });
     assert.deepEqual(chat.mock.calls[0].arguments, [{
         channelID: 'test-channel', message: 'Roast my bad luck', streamer, history: [],
-        tags: { badges: [], username: 'TestViewer', userLevel: 1 }, disableTools: true
+        tags: { badges: [], username: 'TestViewer', userLevel: 1 }, disableTools: true, invocation: 'command'
     }]);
-    assert.deepEqual(getChannelPersonality.mock.calls[0].arguments, ['test-channel']);
+    assert.equal(getChannelPersonality.mock.callCount(), 0, 'the shared harness loads personality');
 });
 test('ordinary AI commands retain tools by default', async () => {
     await executeAiCommand(streamer, user, 'An ordinary command');
@@ -96,13 +96,14 @@ test('Miyuloot does not consult the channel personality', async context => {
     assert.equal(getChannelPersonality.mock.callCount(), 0);
 });
 
-test('ordinary AI commands still stop when channel AI is disabled', async () => {
+test('ordinary AI commands still run when direct chat responses are disabled', async () => {
     getChannelPersonality.mock.mockImplementation(async () => ({ enabled: false }));
     try {
         assert.deepEqual(await executeAiCommand(streamer, user, 'An ordinary command'), {
-            error: false, message: '[AI: Chat responses disabled]'
+            error: false, message: 'A fresh roast'
         });
-        assert.equal(chat.mock.callCount(), 0);
+        assert.equal(chat.mock.callCount(), 1);
+        assert.equal((chat.mock.calls[0].arguments[0] as { invocation?: string }).invocation, 'command');
         assert.equal(generateStandaloneText.mock.callCount(), 0);
     } finally {
         getChannelPersonality.mock.mockImplementation(async () => ({ enabled: true }));

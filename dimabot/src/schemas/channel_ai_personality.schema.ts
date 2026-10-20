@@ -69,7 +69,7 @@ export interface IChannelAIPersonality {
     _id: Types.ObjectId;
     channelID: string;
     channel: string;
-    /** Controls mention-based AI chat responses and $(ai) command execution only. */
+    /** Controls direct mention-based AI chat responses only; $(ai) commands remain available. */
     enabled: boolean;
     /** Controls post-stream summary generation and summary emails independently of chat/learning. */
     streamSummariesEnabled: boolean;
@@ -240,7 +240,7 @@ const channelAIPersonalitySchema = new Schema<IChannelAIPersonality>({
     channel: { type: String, required: true },
     /**
      * AI chat response switch only.
-     * When false, mention-based AI chat responses and the $(ai) command are disabled.
+     * When false, mention-based AI chat responses are disabled; $(ai) commands remain available.
      * Learning, stream summaries, and recommendations are controlled separately.
      */
     enabled: { type: Boolean, default: true },

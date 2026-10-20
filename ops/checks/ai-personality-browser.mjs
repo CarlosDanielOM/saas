@@ -18,15 +18,16 @@ const seed = () => ({ channelID: user.id, channel: user.login, enabled: true, st
   tier: { isPremiumPlus: true, isPremium: true, limits: { profiles: 3, rules: 'unlimited', knownUsers: 'unlimited', contextWindow: 35 } } });
 const errors = [];
 const browser = await chromium.launch({ args: ['--no-sandbox'] });
-async function open({ theme = 'dark', width = 1280, manage = true } = {}) {
+async function open({ theme = 'dark', width = 1280, manage = true, language = 'en' } = {}) {
   let doc = seed(); const writes = [];
+  const localizedApp = { ...app, language };
   const context = await browser.newContext({ viewport: { width, height: width < 640 ? 844 : 900 }, reducedMotion: 'reduce' });
-  await context.addInitScript(({ user, app, theme }) => { localStorage.setItem('theme', theme); localStorage.setItem('userLanguage', 'en'); localStorage.setItem('dimasite.session.v1', JSON.stringify({ version: 2, token: 'fixture-only', createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 3600000).toISOString(), twitchUser: user, appUser: app, permissions: {} })); }, { user, app, theme });
+  await context.addInitScript(({ user, app, theme, language }) => { localStorage.setItem('theme', theme); localStorage.setItem('userLanguage', language); localStorage.setItem('dimasite.session.v1', JSON.stringify({ version: 2, token: 'fixture-only', createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 3600000).toISOString(), twitchUser: user, appUser: app, permissions: {} })); }, { user, app: localizedApp, theme, language });
   await context.routeWebSocket(/./, ws => ws.close());
   await context.route('**/*', async route => {
     const request = route.request(), url = new URL(request.url()), method = request.method();
     if (url.origin === new URL(base).origin) {
-      if (url.pathname.startsWith('/persona_owner/')) return route.fulfill({ response: await route.fetch({ url: base + '/index.csr.html' }) });
+      if (url.pathname.startsWith('/persona_owner/')) return route.fulfill({ response: await route.fetch({ url: base + (process.env.SAAS_DEV_PREVIEW ? '/index.html' : '/index.csr.html') }) });
       return route.continue();
     }
     if (url.origin !== api) return route.abort();
@@ -39,7 +40,7 @@ async function open({ theme = 'dark', width = 1280, manage = true } = {}) {
       if (method === 'PUT') { const body = request.postDataJSON(); writes.push(body); doc = { ...doc, ...body }; }
       return ok(doc);
     }
-    if (url.pathname === '/auth/session') return ok({ twitch: user, app });
+    if (url.pathname === '/auth/session') return ok({ twitch: user, app: localizedApp });
     if (url.pathname.endsWith('/access')) return ok({ allowed: true, role: 'owner', planTier: 'pro' });
     return ok({});
   });
@@ -59,7 +60,24 @@ try {
   {
     const { context, page, writes } = await open();
     const head = page.locator('.lf-head');
-    assert.match(await head.innerText(), /AI chat on[\s\S]*In chat: Chill co-host[\s\S]*Pro[\s\S]*AI memories/);
+    assert.match(await head.innerText(), /Direct replies on[\s\S]*In chat: Chill co-host[\s\S]*Pro[\s\S]*AI memories/);
+    const directReplies = page.getByRole('checkbox', { name: 'Direct AI replies' });
+    await page.getByText('Reply when someone mentions the bot.', { exact: false }).waitFor();
+    await page.getByText('$(ai) still works in commands and templates.', { exact: false }).waitFor();
+    await directReplies.uncheck();
+    await head.getByText('Direct replies off').waitFor();
+    await page.locator('.lf-save-bar').getByRole('button', { name: 'Save changes' }).click();
+    await page.locator('.lf-save-bar').getByText('All changes saved').waitFor();
+    assert.equal(writes.at(-1).enabled, false);
+    assert.equal(writes.at(-1).streamSummariesEnabled, true);
+    assert.equal(writes.at(-1).recommendationsEnabled, true);
+    assert.equal(writes.at(-1).learningConfig.enabled, true);
+    await page.reload();
+    await page.locator('.lf-profile').first().waitFor();
+    assert.equal(await directReplies.isChecked(), false, 'direct reply preference survives reload');
+    await directReplies.check();
+    await page.locator('.lf-save-bar').getByRole('button', { name: 'Save changes' }).click();
+    await page.locator('.lf-save-bar').getByText('All changes saved').waitFor();
     const row = name => page.locator('.lf-profile').filter({ hasText: name });
     assert.match(await row('Chill co-host').innerText(), /In chat now[\s\S]*Reply in Spanish/);
     // Editing another personality does not switch the bot to it.
@@ -171,6 +189,19 @@ try {
       await page.waitForTimeout(250);
       await axe(page, 'delete dialog axe');
     }
+    await context.close();
+  }
+  for (const theme of ['dark', 'light']) for (const width of [320, 390, 1280]) {
+    const { context, page, writes } = await open({ theme, width, language: 'es' });
+    const toggle = page.getByRole('checkbox', { name: 'Respuestas directas de IA' });
+    await page.getByText('$(ai) sigue funcionando en comandos y plantillas.', { exact: false }).waitFor();
+    await toggle.uncheck();
+    await page.locator('.lf-head').getByText('Respuestas directas desactivadas').waitFor();
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `Spanish overflow ${theme} ${width}`);
+    await axe(page, `Spanish axe ${theme} ${width}`);
+    await page.locator('.lf-save-bar').getByRole('button', { name: 'Guardar cambios' }).click();
+    await page.locator('.lf-save-bar').getByText('Todos los cambios guardados').waitFor();
+    assert.equal(writes.at(-1).enabled, false);
     await context.close();
   }
   assert.deepEqual(errors, []);

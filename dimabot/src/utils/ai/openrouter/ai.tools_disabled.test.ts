@@ -40,6 +40,7 @@ mock.module('../../../functions/moderation/index.js', { namedExports: {
     ban: async () => assert.fail('No moderation while generating an insult')
 } });
 const { chat, generateStandaloneText } = await import('./ai.js');
+const { executeAiCommand } = await import('./command.ai.js');
 const { miyulootCommand } = await import('../../../commands/miyuloot.command.js');
 const { MODELS } = await import('../constants.js');
 const options = { channelID: 'test-channel', streamer: { user_id: 'test-channel', name: 'miyu', plan_tier: 'pro' as const }, message: 'Roast my bad luck' };
@@ -211,3 +212,23 @@ for (const exhausted of [false, true]) {
         assert.equal(executeTool.mock.callCount(), 0);
     });
 }
+
+for (const disableTools of [false, true]) {
+    test(`AI commands generate with direct replies off (disableTools=${disableTools})`, async () => {
+        personality.enabled = false;
+        assistantMessage = { role: 'assistant', content: 'Command response $100%' };
+        const result = await executeAiCommand(options.streamer, { username: 'Viewer', userLevel: 1 },
+            'A custom command', 'commands', { disableTools });
+        assert.deepEqual(result, { error: false, message: String.raw`Command response \$100\%` });
+        assert.equal(provider.mock.callCount(), 1);
+        const request = JSON.parse((provider.mock.calls[0].arguments[1] as RequestInit).body as string);
+        assert.deepEqual(request.tools, disableTools ? [] : definitions);
+        assert.equal(constructChatSystemMessages.mock.callCount(), 1, 'commands still use the channel personality');
+    });
+}
+
+test('direct replies stay blocked with tools disabled or when the message contains $(ai)', async () => {
+    personality.enabled = false;
+    assert.equal((await chat({ ...options, disableTools: true, message: '$(ai answer me)' })).error, true);
+    assert.equal(provider.mock.callCount(), 0);
+});

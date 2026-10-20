@@ -963,9 +963,9 @@
       "unlimited": "Ilimitado",
       "masterToggle": {
         "kicker": "Control de IA en chat",
-        "title": "Respuestas IA en chat",
-        "enabledHint": "Las respuestas por mencion y comandos $(ai) estan activos para este canal.",
-        "disabledHint": "Las respuestas IA en chat estan desactivadas. El aprendizaje, resumenes y recomendaciones pueden seguir activos si estan habilitados abajo."
+        "title": "Respuestas directas de IA",
+        "enabledHint": "El bot responde cuando lo mencionan. Los comandos $(ai) funcionan independientemente de este interruptor.",
+        "disabledHint": "El bot no responderá cuando lo mencionen. Los comandos $(ai) siguen disponibles. El aprendizaje, los resúmenes y las recomendaciones tienen sus propios interruptores."
       },
       "featureToggles": {
         "streamSummaries": "Resumenes de stream",
@@ -1140,8 +1140,8 @@
       "footer": "Guarda cuando estes conforme con el perfil actual, la politica de memoria, la automatizacion de aprendizaje, las reglas y el contexto de usuarios conocidos.",
       "v2": {
         "subtitle": "Decide cómo habla el bot en el chat, qué reglas sigue siempre y a qué habituales conoce.",
-        "chatOn": "Chat IA activado",
-        "chatOff": "Chat IA desactivado",
+        "chatOn": "Respuestas directas activadas",
+        "chatOff": "Respuestas directas desactivadas",
         "usingChip": "En el chat: {{name}}",
         "viewOnly": "Solo lectura",
         "memoriesLink": "Memorias de IA",
@@ -1180,7 +1180,7 @@
         "aboutPlaceholder": "Le encantan los juegos de terror, siempre saluda en portugués",
         "removeUser": "Quitar a {{name}}",
         "switchesTitle": "Activar o desactivar",
-        "chatHint": "Responde cuando alguien menciona al bot y hace funcionar los comandos $(ai).",
+        "chatHint": "Responde cuando alguien menciona al bot. Desactívalo para detener las conversaciones directas; $(ai) sigue funcionando en comandos y plantillas.",
         "summariesHint": "Escribe un resumen después de cada directo y guarda lo que aprendió el bot.",
         "memoryTitle": "Qué puede recordar",
         "memoryHint": "El bot puede aprender del chat. Tú revisas lo que aprende en Memorias de IA.",

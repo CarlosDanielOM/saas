@@ -6,6 +6,7 @@ import { getMongoDBConnection } from '/app/dist/utils/databases/mongodb.database
 import { getDragonflyClient } from '/app/dist/utils/databases/dragonfly.database.js';
 import { chat } from '/app/dist/utils/ai/openrouter/ai.js';
 import { executeAiCommand } from '/app/dist/utils/ai/openrouter/command.ai.js';
+import { messageHandler } from '/app/dist/handlers/message.handler.js';
 import { AiResponse } from '/app/dist/utils/ai/openrouter/messages.ai.js';
 import { parseSpecialCommands } from '/app/dist/handlers/special_parser.handler.js';
 import { getThreadLimitsForTier } from '/app/dist/utils/ai/threading/thread_limits.js';
@@ -34,7 +35,7 @@ if (process.env.SAAS_TARGET === 'cron') {
     });
     assert.ok(cmdlines.some(cmd => cmd.includes('dist/workers/timer.worker.js')), 'cron supervisor starts timer consumer');
 }
-const tests = spawnSync(process.execPath, ['--test', 'dist/utils/ai/constants.test.js', 'dist/utils/ai_credit_status.test.js', 'dist/utils/ai/chat_context.test.js', 'dist/utils/ai/prompts.ai.test.js'], { encoding: 'utf8' });
+const tests = spawnSync(process.execPath, ['--test', '--experimental-test-module-mocks', 'dist/utils/ai/openrouter/command.ai.test.js', 'dist/utils/ai/openrouter/ai.tools_disabled.test.js', 'dist/utils/ai/constants.test.js', 'dist/utils/ai_credit_status.test.js', 'dist/utils/ai/chat_context.test.js', 'dist/utils/ai/prompts.ai.test.js'], { encoding: 'utf8' });
 assert.equal(tests.status, 0, tests.stdout + tests.stderr);
 const memoryTests = spawnSync(process.execPath, ['dist/scripts/test_ai_memory_context.script.js'], { encoding: 'utf8' });
 assert.equal(memoryTests.status, 0, memoryTests.stdout + memoryTests.stderr);
@@ -113,6 +114,39 @@ for (const [tier, expected] of [['free', 10], ['premium', 40], ['pro', 100]]) {
     assert.equal(exhaustedRequest.model, 'meta/muse-spark-1.3-contributor');
     assert.equal(exhaustedRequest.tools.length, 8, 'fallback retains the normal tool definitions');
 
+    // Direct replies can be disabled without disabling command/template AI.
+    const personalityKey = `twitch:${channelID}:chatbot:personality`;
+    const savedPersonality = JSON.parse(await redis.get(personalityKey));
+    await redis.set(personalityKey, JSON.stringify({ ...savedPersonality, enabled: false }));
+    let offset = calls().length;
+    assert.equal((await chat({ ...options, disableTools: true })).error, true);
+    await messageHandler(channelID, {
+        chatter_user_id: 'viewer-id', chatter_user_login: 'viewer', chatter_user_name: 'Viewer',
+        message_id: `disabled-mention-${tier}`, badges: [], message: { text: '@DomDimaBot hello', fragments: [] }
+    });
+    assert.equal(calls().slice(offset).filter(call => call.provider === 'openrouter').length, 0,
+        'disabled direct replies never reach the provider, including real chat mentions');
+    for (const disableTools of [false, true]) {
+        const generated = await executeAiCommand({ ...streamer, user_id: channelID },
+            { username: 'Viewer', userLevel: 1 }, 'A command with direct replies disabled', 'commands', { disableTools });
+        assert.equal(generated.error, false);
+        assert.equal(generated.message, '@Alice Fixture response.');
+        const request = calls().filter(call => call.provider === 'openrouter').at(-1).body;
+        assert.match(request.messages[0].content, /Dry humor in Spanish/);
+        assert.equal(request.tools.length, disableTools ? 0 : 8);
+        assert.equal(request.model, 'meta/muse-spark-1.3-contributor', 'exhausted credit routing is retained');
+    }
+    const disabledTemplate = await parseSpecialCommands('$(ai Congratulate $(user)!)', {
+        channelID, eventData: { chatter_user_name: 'Viewer', chatter_user_login: 'viewer', chatter_user_id: 'viewer-id' }
+    });
+    assert.equal(disabledTemplate.parsedText, '@Alice Fixture response.', 'real AST works while direct replies are off');
+    // Command tools still respect the requesting chatter's authority.
+    offset = calls().length;
+    await executeAiCommand({ ...streamer, user_id: channelID },
+        { username: 'Viewer', userLevel: 1 }, 'REQUEST_TITLE_ACTION');
+    assert.equal(calls().slice(offset).filter(call => call.provider === 'twitch' && call.method === 'PATCH').length, 0);
+    await redis.set(personalityKey, JSON.stringify(savedPersonality));
+
     const simpleResponse = await AiResponse(channelID, 'Congratulate Viewer on a 15-stream streak.');
     assert.equal(simpleResponse, '@Alice Fixture response.');
     assert.equal(calls().filter(call => call.provider === 'openrouter').at(-1).body.model,
@@ -129,6 +163,6 @@ for (const [tier, expected] of [['free', 10], ['premium', 40], ['pro', 100]]) {
     assert.equal(streakRequest.model, 'meta/muse-spark-1.3-contributor');
     assert.match(streakRequest.messages.at(-1).content, /racha de 15 días/);
 }
-console.log(`PASS ${process.env.SAAS_TARGET}: exhausted Muse Spark routing and actual streak template for all tiers; unchanged non-exhausted routing; chat/tool/credit regressions`);
+console.log(`PASS ${process.env.SAAS_TARGET}: independent direct replies and AST AI commands; exhausted Muse Spark routing and actual streak template for all tiers; unchanged non-exhausted routing; chat/tool/credit regressions`);
 await redis.quit();
 process.exit(0);
