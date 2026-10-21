@@ -32,7 +32,9 @@ For one batch against a disposable fixture, set `STREAM_ACTIVITY_FIXTURE_URI` an
 MONGO_URI="$STREAM_ACTIVITY_FIXTURE_URI" cargo run --locked --release --bin stream_activity -- --database "$STREAM_ACTIVITY_FIXTURE_DB" --once
 ```
 
-`--once` makes one batch attempt and exits; it can return zero when no rows are pending or another owner holds the lease. Without it, the executable continues until SIGTERM or Ctrl-C, finishing the active batch before shutdown and waiting one second only when no rows were projected. `--batch-size` sets the batch limit within the 1–1000 clamp.
+`--once` makes one batch attempt and exits; it can return zero when no rows are pending or another owner holds the lease. Without it, the executable continues until SIGTERM or Ctrl-C, finishing the active batch before shutdown and applying the adaptive idle wait described below when no rows were projected. `--batch-size` sets the batch limit within the 1–1000 clamp.
+
+Continuous mode now adapts its idle polling delay. After successive empty batches, it waits 1, 2, 4, then 5 seconds; the delay stays capped at 5 seconds. Empty results from lease contention use the same backoff, while command errors return immediately. Any positive batch resets the delay and starts the next batch immediately, so queued work drains without idle sleeps. When the worker is idle, new work is normally picked up within about 5 seconds plus the next database query and scheduling time; this is not a hard latency bound. SIGINT or SIGTERM interrupts the idle wait promptly. If a signal arrives during a batch, the process finishes that batch before exiting. The idle fixture for this policy is `tests/stream_activity_idle.mjs`.
 
 The driver uses MongoDB client-level `bulk_write`, which requires MongoDB 8.0 or later. The parity harness currently checks for MongoDB 8.2 or later; the runtime parity checks for this port used MongoDB 8.2.6. This evidence does not establish runtime behavior on MongoDB 8.0 or 8.1.
 
@@ -60,6 +62,16 @@ node tests/stream_activity_cli.mjs
 
 This harness also creates and drops only uniquely named `stream_activity_fixture_cli_` databases under the explicitly supplied fixture URI.
 
+The idle polling fixture observes only the worker's pending activity query in its task-owned MongoDB profiler and checks the 1, 2, 4, 5, 5-second intervals, discovery of inserted work within the cap plus query/scheduling allowance, immediate backlog drain, reset to a 1-second delay, and prompt SIGINT/SIGTERM interruption. It requires an isolated MongoDB fixture URI and profiler access:
+
+```sh
+node tests/stream_activity_idle.mjs
+```
+
+It creates and removes only two task-owned databases named with the `stream_activity_fixture_idle_` prefix.
+
+The isolated fixture passed against the current binary: it measured the capped 1/2/4/5/5-second sequence, observed pending work within the cap and immediate backlog draining, and confirmed the delay resets to one second. SIGINT during the five-second idle wait and SIGTERM after reset both exited promptly. Its filtered level-1 profiler assertions did not capture other namespaces.
+
 The optional `--benchmark` mode generates a shared workload and verifies persisted parity for every run. Defaults are 6,000 events and three runs; supported values are 1,000–100,000 events and one to five runs:
 
 ```sh
@@ -79,4 +91,33 @@ The harness alternates which implementation runs first. RSS and CPU include work
 
 These are measurements of this synthetic fixture and configuration. They do not establish API throughput, production traffic behavior, or memory savings for 40 workers, and they do not isolate which individual implementation choices caused the difference. The full run data is in [stream_activity-2026-10-20.json](benchmarks/stream_activity-2026-10-20.json); the test procedure is in [stream_activity_parity.mjs](tests/stream_activity_parity.mjs).
 
-Future work should profile before changing the implementation. The current code already hashes borrowed tuples and reuses its per-event metric buffer. Further experiments could measure logical-identity grouping or buffer reservations, vary batch size, profile the existing MongoDB queries and indexes, or try adaptive idle backoff with its latency tradeoff. A future Rust worker host could share one MongoDB client pool across workers; this standalone binary does not provide that integration. Channel partitioning would change the checkpoint and lease protocol and needs a designed migration and parity coverage; do not parallelize the single global projector lease blindly.
+### Batch-size comparison
+
+A separate matrix of 48 worker runs compared batch sizes 100, 250, 500, and 1,000 in TypeScript and Rust on repeated-key and diverse-key synthetic workloads: 24 runs per implementation across three repetitions. Each language/workload/batch cell is the median of three runs of 6,000 events, with a fixed 1,000-event warmup. The table reports Rust worker-process metrics; throughput is measured after warmup, CPU and peak RSS include process startup and shutdown, and batch latency covers successful nonempty batches only.
+
+| Workload | Batch | After-warmup events/s | Peak RSS | CPU | Median batch service time | Median per-run p95 batch service time |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Repeated keys | 100 | 3,363.6 | 10.98 MiB | 0.47 s | 29.3 ms | 38.4 ms |
+| Repeated keys | 250 | 4,413.9 | 11.77 MiB | 0.30 s | 56.3 ms | 72.4 ms |
+| Repeated keys | 500 | 6,860.5 | 11.95 MiB | 0.17 s | 71.3 ms | 94.8 ms |
+| Repeated keys | 1,000 | 9,830.0 | 12.51 MiB | 0.11 s | 94.2 ms | 134.8 ms |
+| Diverse keys | 100 | 1,622.1 | 12.49 MiB | 0.67 s | 59.8 ms | 70.9 ms |
+| Diverse keys | 250 | 2,095.7 | 14.69 MiB | 0.45 s | 114.2 ms | 142.1 ms |
+| Diverse keys | 500 | 2,610.2 | 17.32 MiB | 0.32 s | 185.1 ms | 229.4 ms |
+| Diverse keys | 1,000 | 2,877.4 | 23.27 MiB | 0.27 s | 330.2 ms | 392.6 ms |
+
+The repeated workload used 3 channels, 300 actors, one time bucket, and 10 emotes; the diverse workload used 24 channels, 1,200 actors, 12 buckets, and 80 emotes. All 48 outputs had exact persisted parity. All 48 recorded pending-query plans used `processed_1_occurredAt_1__id_1`, required no blocking sort, and in the fresh unexpired fixtures examined one key and document per returned row. This does not guarantee the same scan behavior for aged or expired outbox data. MongoDB query plans were captured before each measured run, which also warmed the relevant collection/index pages.
+
+Batch 1,000 delivered 43.3% more throughput than 500 on repeated keys for 0.56 MiB more peak RSS. On diverse keys it delivered 10.2% more throughput but used 34.3% more RSS than batch 500, and median successful batch service time rose from 185 ms to 330 ms. These p95 figures describe batch execution service time, not queueing or end-user latency; at batch 1,000 the diverse run had only six nonempty batches (five after warmup), so its p95 is based on very few observations. Smaller batches reduced per-batch service time and RSS, but also reduced throughput and increased measured worker CPU. The 500-event default remains a balanced choice for the tested mixed workloads, not a universal optimum.
+
+The matrix used Node.js 26.8.2, Rust 1.99.1, MongoDB 8.2.6, one MongoDB CPU, 768 MiB MongoDB memory, a 0.25 GiB WiredTiger cache, TTL monitoring disabled, and `nice -n 10` for worker processes. Reproduce it after building the release fixture with:
+
+```sh
+node tests/stream_activity_parity.mjs --benchmark --benchmark-count 6000 --benchmark-runs 3 --benchmark-batches 100,250,500,1000 --benchmark-workloads repeated,diverse
+```
+
+Run order rotated across the three repetitions, which reduces but does not eliminate order bias or shared-host drift. Source compilation was outside the measured child processes; the TypeScript reference ran compiled JavaScript without cron bootstrap or telemetry. These worker-only synthetic measurements exclude MongoDB CPU/RAM and do not establish production/API throughput. Raw data is in [stream_activity-batches-2026-10-21.json](benchmarks/stream_activity-batches-2026-10-21.json), and the compact [HTML report](benchmarks/stream_activity-batches-2026-10-21.html) presents the Rust workload comparison.
+
+Grouping rows by logical identity before hashing remains deferred pending a decision. The current code already hashes borrowed tuples and reuses its per-event metric buffer; profile the hot path before proposing additional allocation changes. Adaptive idle backoff is implemented above, trading lower idle query frequency for a pickup delay of up to about five seconds plus database and scheduling time.
+
+A future Rust worker host could share one MongoDB client pool across workers; this standalone binary does not provide that integration. The current dimabot cron supervisor starts each worker as an OS child process and restarts the failed child. A Tokio supervisor can isolate task panics and returned errors, but it cannot contain process OOM, abort, native crashes, or runtime-wide stalls. Preserve OS-process boundaries for bot-critical jobs; group only workloads with compatible failure impact, or retain dedicated processes where needed. Separate processes still share container and host resource limits, so process separation alone does not contain container- or host-wide resource failures. Channel partitioning would change the checkpoint and lease protocol and needs a designed migration and parity coverage; do not parallelize the single global projector lease blindly.

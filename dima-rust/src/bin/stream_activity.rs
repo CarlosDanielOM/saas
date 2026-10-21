@@ -6,7 +6,31 @@ use dima_rust::{
 };
 use tokio::sync::watch;
 
-const HELP: &str = "Usage: stream_activity [--dry-run] [--once] [--batch-size N] [--database NAME] [--env-file PATH]...\n\nManual MongoDB 8.0+ stream-activity projector. No automatic .env loading.\nMONGO_URI must name a database, or supply --database. Existing environment wins.\nDefault batch: 500 (clamped 1–1000); continuous mode waits 1s only when idle.";
+const HELP: &str = "Usage: stream_activity [--dry-run] [--once] [--batch-size N] [--database NAME] [--env-file PATH]...\n\nManual MongoDB 8.0+ stream-activity projector. No automatic .env loading.\nMONGO_URI must name a database, or supply --database. Existing environment wins.\nDefault batch: 500 (clamped 1–1000); idle polling backs off from 1s to 5s and resets after work. Backlog is processed without waiting.";
+
+/// Consecutive empty batches back off; any work restores responsive polling.
+struct IdleBackoff {
+    next_seconds: u64,
+}
+
+impl Default for IdleBackoff {
+    fn default() -> Self {
+        Self { next_seconds: 1 }
+    }
+}
+
+impl IdleBackoff {
+    fn after_batch(&mut self, count: usize) -> Option<Duration> {
+        if count > 0 {
+            self.next_seconds = 1;
+            None
+        } else {
+            let wait = Duration::from_secs(self.next_seconds);
+            self.next_seconds = (self.next_seconds * 2).min(5);
+            Some(wait)
+        }
+    }
+}
 
 #[derive(Default)]
 struct Args {
@@ -135,17 +159,23 @@ async fn run(args: Args) -> Result<(), &'static str> {
         let _ = stopping.send(true);
     });
     let result = async {
+        let mut idle = IdleBackoff::default();
         while !*stopped.borrow() {
             // Never cancel an active batch on a shutdown signal.
-            let count = projector.project_batch(args.batch_size.unwrap_or(500)).await
+            let count = projector
+                .project_batch(args.batch_size.unwrap_or(500))
+                .await
                 .map_err(|_| "Stream activity projection failed; checkpoint retained for retry")?;
-            if args.once || *stopped.borrow() { break; }
-            if count == 0 {
-                tokio::select! { _ = tokio::time::sleep(Duration::from_secs(1)) => {}, _ = stopped.changed() => {} }
+            if args.once || *stopped.borrow() {
+                break;
+            }
+            if let Some(wait) = idle.after_batch(count) {
+                tokio::select! { _ = tokio::time::sleep(wait) => {}, _ = stopped.changed() => {} }
             }
         }
         Ok(())
-    }.await;
+    }
+    .await;
     signal_task.abort();
     let _ = signal_task.await;
     result
@@ -153,7 +183,22 @@ async fn run(args: Args) -> Result<(), &'static str> {
 
 #[cfg(test)]
 mod tests {
-    use super::Args;
+    use super::{Args, IdleBackoff};
+    use std::time::Duration;
+
+    #[test]
+    fn idle_polling_is_bounded_and_work_resets_without_waiting() {
+        let mut idle = IdleBackoff::default();
+        for seconds in [1, 2, 4, 5, 5, 5] {
+            assert_eq!(idle.after_batch(0), Some(Duration::from_secs(seconds)));
+        }
+        // Both a small batch and a full backlog batch resume immediately.
+        for count in [1, 500, usize::MAX] {
+            assert_eq!(idle.after_batch(count), None);
+            assert_eq!(idle.after_batch(0), Some(Duration::from_secs(1)));
+            assert_eq!(idle.after_batch(0), Some(Duration::from_secs(2)));
+        }
+    }
 
     #[test]
     fn explicit_files_and_arguments_only() {

@@ -33,9 +33,20 @@ export function streamActivityFixtures(ObjectId) {
     return rows;
 }
 
-export function benchmarkFixtures(ObjectId, count) {
+export function benchmarkFixtures(ObjectId, count, workload = 'repeated') {
+    if (!['repeated', 'diverse'].includes(workload)) throw new Error('unknown benchmark workload');
     const session = new ObjectId('0123456789abcdef01234567');
     const start = Date.parse('2100-01-01T00:00:00Z');
+    if (workload === 'diverse') return Array.from({ length: count }, (_, index) => ({
+        _id: `bench-${String(index).padStart(8, '0')}`, channelID: `fixture-channel-${index % 24}`,
+        session_id: session, occurredAt: new Date(start + index), expiresAt: new Date('2101-01-01T00:00:00Z'),
+        offset: Math.floor(index / 500) * 300 + index % 300, kind: index % 5 ? 'message' : 'command',
+        actor: `actor-${index % 1200}`, actorLabel: `Actor ${index % 1200}`, key: `command-${index % 80}`,
+        outcome: index % 17 ? 'ok' : 'error', emotes: index % 3 ? [] : [
+            { key: `twitch:${index % 120}`, label: 'Emote', count: 2 },
+            { key: `twitch:${(index + 13) % 120}`, label: 'Other emote', count: 1 }
+        ]
+    }));
     return Array.from({ length: count }, (_, index) => ({
         _id: `bench-${String(index).padStart(8, '0')}`, channelID: `fixture-channel-${index % 3}`,
         session_id: session, occurredAt: new Date(start + index), expiresAt: new Date('2101-01-01T00:00:00Z'),
