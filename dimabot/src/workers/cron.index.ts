@@ -20,6 +20,7 @@ export interface SupervisorConfig {
     raidAnalyticsRuntime?: string;
     followDefenseBaselineRuntime?: string;
     rouletteCompletionRuntime?: string;
+    aiUsageReceiptsRuntime?: string;
     once: boolean;
     dryRun: boolean;
     restartDelayMs: number;
@@ -132,8 +133,7 @@ export function resolveWorkerLaunch(worker: WorkerDefinition, config: Supervisor
     const flags = [...(config.dryRun ? ['--dry-run'] : []), ...(config.once ? ['--once'] : [])];
     if (native && metadata) {
         const childEnv: NodeJS.ProcessEnv = {};
-        const allowed = ['MONGO_URI', 'PATH', 'TZ', 'LANG', 'LC_ALL', 'SSL_CERT_FILE', 'SSL_CERT_DIR'];
-        if (worker.name === 'follow-defense-baseline') allowed.push('DRAGONFLY_HOST', 'DRAGONFLY_PORT');
+        const allowed = ['MONGO_URI', 'PATH', 'TZ', 'LANG', 'LC_ALL', 'SSL_CERT_FILE', 'SSL_CERT_DIR', ...metadata.extraEnv];
         for (const key of allowed) {
             if (env[key] !== undefined) childEnv[key] = env[key];
         }
@@ -292,8 +292,8 @@ export class WorkerSupervisor {
     }
 }
 
-export function resolveNativeRuntimes(env: NodeJS.ProcessEnv): Pick<SupervisorConfig, 'streamActivityRuntime' | 'raidAnalyticsRuntime' | 'followDefenseBaselineRuntime' | 'rouletteCompletionRuntime'> {
-    const result: Pick<SupervisorConfig, 'streamActivityRuntime' | 'raidAnalyticsRuntime' | 'followDefenseBaselineRuntime' | 'rouletteCompletionRuntime'> = {};
+export function resolveNativeRuntimes(env: NodeJS.ProcessEnv): Pick<SupervisorConfig, 'streamActivityRuntime' | 'raidAnalyticsRuntime' | 'followDefenseBaselineRuntime' | 'rouletteCompletionRuntime' | 'aiUsageReceiptsRuntime'> {
+    const result: Pick<SupervisorConfig, 'streamActivityRuntime' | 'raidAnalyticsRuntime' | 'followDefenseBaselineRuntime' | 'rouletteCompletionRuntime' | 'aiUsageReceiptsRuntime'> = {};
     for (const metadata of Object.values(NATIVE_WORKERS)) {
         const value = env[metadata.runtimeEnv];
         if (value !== undefined && !['rust', 'typescript'].includes(value)) {
@@ -324,6 +324,7 @@ async function bootstrap(): Promise<void> {
         raidAnalyticsRuntime: config.raidAnalyticsRuntime || (config.runtime === 'tsx' ? 'typescript' : 'rust'),
         followDefenseBaselineRuntime: config.followDefenseBaselineRuntime || (config.runtime === 'tsx' ? 'typescript' : 'rust'),
         rouletteCompletionRuntime: config.rouletteCompletionRuntime || (config.runtime === 'tsx' ? 'typescript' : 'rust'),
+        aiUsageReceiptsRuntime: config.aiUsageReceiptsRuntime || (config.runtime === 'tsx' ? 'typescript' : 'rust'),
         restartDelayMs: config.restartDelayMs, workers: WORKERS.filter(worker => !worker.enabledEnv || process.env[worker.enabledEnv] !== 'false').map(worker => worker.name),
         mode: config.once ? 'once' : 'normal', dryRun: config.dryRun }, { destination: 'console' });
     supervisor.start();

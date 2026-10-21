@@ -507,3 +507,76 @@ test('roulette sampler emits only roulette runtime metrics', async () => {
     assert(samples.some(row => row[1] === 'roulette_completion_rust.cpu_cores'));
     assert(samples.every(row => String(row[1]).startsWith('roulette_completion_rust.')));
 });
+
+const receiptsFrame = (row: Record<string, unknown>): string => `ai_usage_receipts:${JSON.stringify(row)}\n`;
+
+test('receipts protocol is strictly batch-only with bounded counts and durations', () => {
+    const samples: unknown[][] = [];
+    const feed = nativeProgressParser((...args) => { samples.push(args); }, 'ai-usage-receipts');
+    const batch = { event: 'batch', events: 1000, durationMs: 300000, success: true };
+    for (const events of [-1, 1001, .5, '1', null, Number.MAX_SAFE_INTEGER]) feed(receiptsFrame({ ...batch, events }));
+    for (const durationMs of [-1, 300001, '1', null, 1e309]) feed(receiptsFrame({ ...batch, durationMs }));
+    feed(receiptsFrame({ ...batch, success: false }));
+    feed(receiptsFrame({ ...batch, success: 'true' }));
+    for (const extra of [{ phases: { queueMs: 1 } }, { channelID: 'private' }, { receipt: 'private' },
+        { dueChannels: 1 }, { hasPending: false }, { inserted: 3 }]) feed(receiptsFrame({ ...batch, ...extra }));
+    // No health frame exists for this protocol; it must stay silent like any other unknown event.
+    feed(receiptsFrame({ event: 'health', success: true, dueChannels: 1 }));
+    feed(receiptsFrame({ event: 'receipt', events: 1, durationMs: 1, success: true }));
+    feed('ai_usage_receipts:{invalid}\nai_usage_receipts:null\nai_usage_receipts:[]\nprivate output secret\n');
+    feed(`ai_usage_receipts:${' '.repeat(1100)}{}\n`);
+    for (const prefix of ['stream_activity:', 'raid_analytics:', 'follow_defense_baseline:', 'roulette_completion:']) {
+        feed(`${prefix}${JSON.stringify(batch)}\n`);
+    }
+    assert.deepEqual(samples, []);
+    const valid = receiptsFrame(batch);
+    feed(Buffer.from(valid.slice(0, 19))); assert.deepEqual(samples, []);
+    feed(Buffer.from(valid.slice(19)));
+    feed(receiptsFrame({ ...batch, events: 0, durationMs: 0 }));
+    feed(receiptsFrame({ ...batch, events: 0, durationMs: 300000, success: false }));
+    feed(receiptsFrame({ ...batch, events: 1, durationMs: .5 }));
+    assert.deepEqual(samples, [
+        ['worker', 'ai_usage_receipts_rust.batch_receipts', 1000, 'ok'],
+        ['queue_run', 'ai_usage_receipts_rust.project_batch', 300000, 'ok'],
+        ['worker', 'ai_usage_receipts_rust.batch_receipts', 0, 'idle'],
+        ['queue_run', 'ai_usage_receipts_rust.project_batch', 0, 'idle'],
+        ['worker', 'ai_usage_receipts_rust.batch_receipts', 0, 'error'],
+        ['queue_run', 'ai_usage_receipts_rust.project_batch', 300000, 'error'],
+        ['worker', 'ai_usage_receipts_rust.batch_receipts', 1, 'ok'],
+        ['queue_run', 'ai_usage_receipts_rust.project_batch', .5, 'ok'],
+    ]);
+});
+
+test('receipts frames stay inside their own parser and other workers ignore them', () => {
+    const samples: unknown[][] = [];
+    for (const worker of ['stream-activity', 'raid-analytics', 'follow-defense-baseline', 'roulette-completion'] as const) {
+        const feed = nativeProgressParser((...args) => { samples.push(args); }, worker);
+        feed(receiptsFrame({ event: 'batch', events: 1, durationMs: 2, success: true }));
+        feed(receiptsFrame({ event: 'health', success: true }));
+    }
+    assert.deepEqual(samples, []);
+    telemetryTesting.reset(); telemetryTesting.enable();
+    try {
+        const feed = nativeProgressParser(observe, 'ai-usage-receipts');
+        feed(receiptsFrame({ event: 'batch', events: 7, durationMs: 12, success: true }));
+        const { metrics, spans, logs } = telemetryTesting.snapshot();
+        assert.deepEqual(spans, []); assert.deepEqual(logs, []);
+        assert.equal(metrics.length, 2);
+        assert(metrics.every(row => row.channel === '' && row.name.startsWith('ai_usage_receipts_rust.')));
+        assert.equal(metrics.find(row => row.name.endsWith('.batch_receipts'))?.sum, 7);
+        assert(!metrics.some(row => row.kind === 'lifecycle' || /\.(health_query|health_errors)$/.test(row.name)));
+    } finally { telemetryTesting.reset(); telemetryTesting.stop(); }
+});
+
+test('receipts sampler emits only receipts runtime metrics', async () => {
+    let reads = 0;
+    const samples: unknown[][] = [];
+    const stop = startNativeWorkerMetrics(42, {
+        read: async () => snapshot(BigInt(++reads * 100)), ticks: async () => 100,
+        now: () => reads * 1000, intervalMs: 2, observe: (...args) => { samples.push(args); },
+    }, 'ai-usage-receipts');
+    await delay(15); stop();
+    assert(samples.some(row => row[1] === 'ai_usage_receipts_rust.rss_bytes'));
+    assert(samples.some(row => row[1] === 'ai_usage_receipts_rust.cpu_cores'));
+    assert(samples.every(row => String(row[1]).startsWith('ai_usage_receipts_rust.')));
+});

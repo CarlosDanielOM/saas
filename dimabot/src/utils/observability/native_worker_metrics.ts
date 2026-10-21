@@ -66,27 +66,45 @@ function emitStreamHealth(row: Record<string, unknown>, emit: Observer): void {
     }
 }
 
+/** Queue-health thresholds and receipt settings inherited by the native receipts child. */
+const AI_USAGE_RECEIPTS_ENV = ['AI_USAGE_RECEIPTS_ENABLED', 'AI_USAGE_RECEIPTS_INTERVAL_MS', 'AI_USAGE_RECEIPTS_BATCH_SIZE',
+    'AI_USAGE_RECEIPTS_LOCK_KEY', 'AI_USAGE_RECEIPTS_LOCK_TTL_SECONDS'] as const;
+const AI_USAGE_QUEUE_HEALTH_ENV = ['AI_USAGE_QUEUE_MAX_AGE_SECONDS', 'AI_USAGE_PROCESSING_MAX_AGE_SECONDS',
+    'AI_USAGE_QUEUE_FAILURE_THRESHOLD'] as const;
+// Existing Dragonfly client contract: host and port only, never credentials.
+const DRAGONFLY_ENV = ['DRAGONFLY_HOST', 'DRAGONFLY_PORT'] as const;
+
 /** Only these registered workers may use the native launch and telemetry path. */
 export const NATIVE_WORKERS = {
     'stream-activity': {
         command: '/usr/local/bin/stream_activity', args: ['--batch-size', '500', '--telemetry-json'],
         runtimeConfig: 'streamActivityRuntime', runtimeEnv: 'STREAM_ACTIVITY_RUNTIME',
         protocol: 'stream_activity:', metricPrefix: 'stream_activity_rust', batchMetric: 'batch_events', maxEvents: 1000, maxDurationMs: 300000,
+        extraEnv: [] as readonly string[],
     },
     'follow-defense-baseline': {
         command: '/usr/local/bin/follow_defense_baseline', args: ['--telemetry-json'],
         runtimeConfig: 'followDefenseBaselineRuntime', runtimeEnv: 'FOLLOW_DEFENSE_BASELINE_RUNTIME',
         protocol: 'follow_defense_baseline:', metricPrefix: 'follow_defense_baseline_rust', batchMetric: 'batch_channels', maxEvents: 1, maxDurationMs: 300000,
+        extraEnv: DRAGONFLY_ENV,
     },
     'roulette-completion': {
         command: '/usr/local/bin/roulette_completion', args: ['--telemetry-json'],
         runtimeConfig: 'rouletteCompletionRuntime', runtimeEnv: 'ROULETTE_COMPLETION_RUNTIME',
         protocol: 'roulette_completion:', metricPrefix: 'roulette_completion_rust', batchMetric: 'batch_channels', maxEvents: 100, maxDurationMs: 300000,
+        extraEnv: [] as readonly string[],
     },
     'raid-analytics': {
         command: '/usr/local/bin/raid_analytics', args: ['--telemetry-json'],
         runtimeConfig: 'raidAnalyticsRuntime', runtimeEnv: 'RAID_ANALYTICS_RUNTIME',
         protocol: 'raid_analytics:', metricPrefix: 'raid_analytics_rust', batchMetric: 'batch_channels', maxEvents: 1, maxDurationMs: Number.MAX_VALUE,
+        extraEnv: [] as readonly string[],
+    },
+    'ai-usage-receipts': {
+        command: '/usr/local/bin/ai_usage_receipts', args: ['--telemetry-json'],
+        runtimeConfig: 'aiUsageReceiptsRuntime', runtimeEnv: 'AI_USAGE_RECEIPTS_RUNTIME',
+        protocol: 'ai_usage_receipts:', metricPrefix: 'ai_usage_receipts_rust', batchMetric: 'batch_receipts', maxEvents: 1000, maxDurationMs: 300000,
+        extraEnv: [...DRAGONFLY_ENV, ...AI_USAGE_RECEIPTS_ENV, ...AI_USAGE_QUEUE_HEALTH_ENV],
     },
 } as const;
 export type NativeWorkerName = keyof typeof NATIVE_WORKERS;
@@ -221,6 +239,8 @@ export function startNativeWorkerMetrics(pid: number, dependencies: Partial<Samp
 export function nativeProgressParser(emit: Observer = observe, worker: NativeWorkerName = 'stream-activity'): (chunk: Buffer | string) => void {
     const metadata = NATIVE_WORKERS[worker];
     const phases = worker === 'raid-analytics' ? RAID_PHASES : worker === 'follow-defense-baseline' ? BASELINE_PHASES : undefined;
+    // Batch-only protocols accept no health or phase frames and no private fields.
+    const batchOnly = worker === 'roulette-completion' || worker === 'ai-usage-receipts';
     let pending = '', discard = false;
     return chunk => {
         // Iterate without concatenating arbitrary pipe chunks into a large buffer.
@@ -236,7 +256,7 @@ export function nativeProgressParser(emit: Observer = observe, worker: NativeWor
                                 if (row.event === 'health') { emitStreamHealth(row, emit); pending = ''; discard = false; continue; }
                                 if (!onlyFields(row, BATCH_FIELDS)) { pending = ''; discard = false; continue; }
                             }
-                            if (worker === 'roulette-completion' && !onlyFields(row, BATCH_FIELDS)) {
+                            if (batchOnly && !onlyFields(row, BATCH_FIELDS)) {
                                 pending = ''; discard = false; continue;
                             }
                             if (phases) {

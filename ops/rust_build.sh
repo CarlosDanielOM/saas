@@ -64,10 +64,12 @@ fi
 cargo check --locked --all-targets --no-default-features --features "$SAAS_RUST_BASELINE_FEATURES"
 cargo clippy --locked --all-targets --no-default-features --features "$SAAS_RUST_BASELINE_FEATURES" -- -D warnings
 cargo test --locked --no-default-features --features "$SAAS_RUST_BASELINE_FEATURES"
-cargo build --locked --release --no-default-features --features "$SAAS_RUST_BASELINE_FEATURES" --bin follow_defense_baseline
+cargo build --locked --release --no-default-features --features "$SAAS_RUST_BASELINE_FEATURES" --bin follow_defense_baseline --bin ai_usage_receipts
 install -m 0755 /target-cache/release/follow_defense_baseline /artifacts/follow_defense_baseline
+install -m 0755 /target-cache/release/ai_usage_receipts /artifacts/ai_usage_receipts
 # This exercises the actual release binary with no database/environment needed.
 /artifacts/stream_activity --dry-run
 /artifacts/raid_analytics --dry-run
 /artifacts/roulette_completion --dry-run
 /artifacts/follow_defense_baseline --dry-run
+/artifacts/ai_usage_receipts --dry-run

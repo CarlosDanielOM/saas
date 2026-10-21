@@ -33,6 +33,11 @@ name = "roulette_completion"
 path = "src/bin/roulette_completion.rs"
 required-features = ["mongo"]
 
+[[bin]]
+name = "ai_usage_receipts"
+path = "src/bin/ai_usage_receipts.rs"
+required-features = ["mongo", "redis"]
+
 [[example]]
 name = "stream_activity_fixture"
 path = "examples/stream_activity_fixture.rs"

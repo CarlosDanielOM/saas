@@ -30,7 +30,7 @@ IMAGE_RE = re.compile(r"sha256:[0-9a-f]{64}\Z")
 EXCLUDED = {"node_modules", "dist", "target", ".saas-native", ".git", ".angular", ".astro", "data", "coverage"}
 # Rust 1.99.1 on Alpine/musl, using the already validated immutable image.
 RUST_BUILD_IMAGE = "rust@sha256:557a94c82b485a14b569120e00867267108c734efe33f10cc31ca0cd5dd1eca9"
-RUST_BINARIES = ("stream_activity", "raid_analytics", "follow_defense_baseline", "roulette_completion")
+RUST_BINARIES = ("stream_activity", "raid_analytics", "follow_defense_baseline", "roulette_completion", "ai_usage_receipts")
 GIB = 1024 ** 3
 RUST_BUILD_CPUS = 6
 RUST_BUILD_MEMORY_GIB = 6
@@ -52,13 +52,13 @@ exec sh /rust-build.sh'''
 
 
 def rust_worker_profiles():
-    # Preserve the Mongo-only profile/receipt fields for these workers; only
-    # the baseline worker needs a Redis client.
+    # Preserve the Mongo-only profile/receipt fields for these workers; the
+    # baseline and AI usage receipt workers need a Redis/Dragonfly client.
     return {
         "mongo": {"features": RUST_FEATURES, "default_features": False,
                   "binaries": ["stream_activity", "raid_analytics", "roulette_completion"], "graph": "worker-dependencies.txt"},
         "mongo-redis": {"features": RUST_BASELINE_FEATURES, "default_features": False,
-                        "binaries": ["follow_defense_baseline"], "graph": "baseline-worker-dependencies.txt"},
+                        "binaries": ["follow_defense_baseline", "ai_usage_receipts"], "graph": "baseline-worker-dependencies.txt"},
     }
 
 
@@ -788,8 +788,8 @@ class Ops:
         name = prefix + "app"
         self.add_resource(path, receipt, "container", name)
         env_args = [part for key, value in env.items() for part in ("--env", key + "=" + value)]
-        # Cron alone supervises a less-privileged native child. It needs these
-        # three capabilities to drop UID/GID and subsequently signal that child.
+        # Cron alone supervises less-privileged native children. It needs these
+        # three capabilities to drop UID/GID and subsequently signal each child.
         child_caps = [part for cap in ("SETUID", "SETGID", "KILL") for part in ("--cap-add", cap)] if receipt["target"] == "cron" else []
         self.docker("create", "--pull=never", "--name", name, *self.labels(receipt["run"]),
                     "--network", network, "--memory", "3g", "--cpus", "2", "--pids-limit", "512",

@@ -10,6 +10,8 @@ const stream = WORKERS.find(worker => worker.name === 'stream-activity')!;
 const raid = WORKERS.find(worker => worker.name === 'raid-analytics')!;
 const baseline = WORKERS.find(worker => worker.name === 'follow-defense-baseline')!;
 const roulette = WORKERS.find(worker => worker.name === 'roulette-completion')!;
+const receipts = WORKERS.find(worker => worker.name === 'ai-usage-receipts')!;
+const nativeDefinitions = [stream, raid, baseline, roulette, receipts];
 const config: SupervisorConfig = { runtime: 'node', once: false, dryRun: false, restartDelayMs: 5 };
 class FakeChild extends EventEmitter {
     pid = 123;
@@ -45,7 +47,7 @@ function fixture(once = false, definitions: WorkerDefinition[] = [stream]) {
     return { supervisor, children, metrics, commands, stops: () => stops };
 }
 
-test('only four known workers use Rust; flags, privilege drop and environment are explicit', () => {
+test('only five known workers use Rust; flags, privilege drop and environment are explicit', () => {
     assert.equal(WORKERS.filter(worker => worker.name === 'stream-activity').length, 1);
     const env = { MONGO_URI: 'fixture-only', PATH: '/usr/bin', TZ: 'UTC', SECRET_KEY: 'secret', TWITCH_TOKEN: 'private', DRAGONFLY_HOST: 'redis', DRAGONFLY_PORT: '6379' };
     const native = resolveWorkerLaunch(stream, { ...config, once: true, dryRun: true }, env, 0);
@@ -68,7 +70,7 @@ test('only four known workers use Rust; flags, privilege drop and environment ar
     assert(!resolveWorkerLaunch(baseline, { ...config, runtime: 'tsx' }, env, 0).native);
     assert(resolveWorkerLaunch(baseline, { ...config, runtime: 'tsx', followDefenseBaselineRuntime: 'rust' }, env, 0).native);
     assert(resolveWorkerLaunch(baseline, { ...config, raidAnalyticsRuntime: 'typescript', streamActivityRuntime: 'typescript' }, env, 0).native);
-    for (const definition of WORKERS.filter(worker => worker !== stream && worker !== raid && worker !== baseline && worker !== roulette)) assert(!resolveWorkerLaunch(definition, config, env, 0).native);
+    for (const definition of WORKERS.filter(worker => !nativeDefinitions.includes(worker))) assert(!resolveWorkerLaunch(definition, config, env, 0).native);
     assert(!resolveWorkerLaunch(stream, { ...config, streamActivityRuntime: 'typescript' }, env, 0).native);
     assert(!resolveWorkerLaunch(stream, { ...config, runtime: 'tsx' }, env, 0).native);
     assert(resolveWorkerLaunch(stream, { ...config, runtime: 'tsx', streamActivityRuntime: 'rust' }, env, 0).native);
@@ -89,9 +91,12 @@ test('only four known workers use Rust; flags, privilege drop and environment ar
 
 test('all runtime environment selectors reject invalid values before bootstrap starts workers', () => {
     assert.deepEqual(resolveNativeRuntimes({ STREAM_ACTIVITY_RUNTIME: 'rust', RAID_ANALYTICS_RUNTIME: 'typescript' }),
-        { streamActivityRuntime: 'rust', raidAnalyticsRuntime: 'typescript', followDefenseBaselineRuntime: undefined, rouletteCompletionRuntime: undefined });
-    assert.deepEqual(resolveNativeRuntimes({}), { streamActivityRuntime: undefined, raidAnalyticsRuntime: undefined, followDefenseBaselineRuntime: undefined, rouletteCompletionRuntime: undefined });
-    for (const key of ['STREAM_ACTIVITY_RUNTIME', 'RAID_ANALYTICS_RUNTIME', 'FOLLOW_DEFENSE_BASELINE_RUNTIME', 'ROULETTE_COMPLETION_RUNTIME']) {
+        { streamActivityRuntime: 'rust', raidAnalyticsRuntime: 'typescript', followDefenseBaselineRuntime: undefined,
+            rouletteCompletionRuntime: undefined, aiUsageReceiptsRuntime: undefined });
+    assert.deepEqual(resolveNativeRuntimes({}), { streamActivityRuntime: undefined, raidAnalyticsRuntime: undefined,
+        followDefenseBaselineRuntime: undefined, rouletteCompletionRuntime: undefined, aiUsageReceiptsRuntime: undefined });
+    for (const key of ['STREAM_ACTIVITY_RUNTIME', 'RAID_ANALYTICS_RUNTIME', 'FOLLOW_DEFENSE_BASELINE_RUNTIME',
+        'ROULETTE_COMPLETION_RUNTIME', 'AI_USAGE_RECEIPTS_RUNTIME']) {
         for (const value of ['', 'Rust', '/tmp/arbitrary']) assert.throws(() => resolveNativeRuntimes({ [key]: value }), new RegExp(key));
     }
 });
@@ -277,4 +282,84 @@ test('roulette process failure restarts only roulette and fences late telemetry'
     f.children[4].stdout.write(frame); await closing;
     assert.equal(f.metrics.filter(name => name === 'roulette_completion_rust.batch_channels').length, 1);
     assert.equal(f.stops(), 5);
+});
+
+test('receipts child receives only its own queue settings, Dragonfly host/port and unprivileged identity', () => {
+    assert.equal(WORKERS.filter(worker => worker.name === 'ai-usage-receipts').length, 1);
+    const env = {
+        MONGO_URI: 'fixture-only', PATH: '/usr/bin', TZ: 'UTC', LANG: 'C',
+        DRAGONFLY_HOST: 'redis', DRAGONFLY_PORT: '6379', DRAGONFLY_PASSWORD: 'private',
+        AI_USAGE_RECEIPTS_ENABLED: 'true', AI_USAGE_RECEIPTS_INTERVAL_MS: '250', AI_USAGE_RECEIPTS_BATCH_SIZE: '50',
+        AI_USAGE_RECEIPTS_LOCK_KEY: 'fixture:lock', AI_USAGE_RECEIPTS_LOCK_TTL_SECONDS: '120',
+        AI_USAGE_QUEUE_MAX_AGE_SECONDS: '600', AI_USAGE_PROCESSING_MAX_AGE_SECONDS: '600', AI_USAGE_QUEUE_FAILURE_THRESHOLD: '5',
+        POLAR_ACCESS_TOKEN: 'private', STRIPE_SECRET_KEY: 'private', TWITCH_TOKEN: 'private', SECRET_KEY: 'private',
+    };
+    const native = resolveWorkerLaunch(receipts, { ...config, once: true, dryRun: true }, env, 0);
+    assert(native.native);
+    assert.equal(native.command, '/usr/local/bin/ai_usage_receipts');
+    assert.deepEqual(native.args, ['--telemetry-json', '--dry-run', '--once']);
+    assert.deepEqual(native.options.env, {
+        MONGO_URI: 'fixture-only', PATH: '/usr/bin', TZ: 'UTC', LANG: 'C',
+        DRAGONFLY_HOST: 'redis', DRAGONFLY_PORT: '6379',
+        AI_USAGE_RECEIPTS_ENABLED: 'true', AI_USAGE_RECEIPTS_INTERVAL_MS: '250', AI_USAGE_RECEIPTS_BATCH_SIZE: '50',
+        AI_USAGE_RECEIPTS_LOCK_KEY: 'fixture:lock', AI_USAGE_RECEIPTS_LOCK_TTL_SECONDS: '120',
+        AI_USAGE_QUEUE_MAX_AGE_SECONDS: '600', AI_USAGE_PROCESSING_MAX_AGE_SECONDS: '600', AI_USAGE_QUEUE_FAILURE_THRESHOLD: '5',
+    });
+    assert.equal(native.options.uid, 65534); assert.equal(native.options.gid, 65534);
+    assert.equal(resolveWorkerLaunch(receipts, config, env, 1000).options.uid, undefined);
+    // Unset settings stay unset: the child must apply its own defaults.
+    assert.deepEqual(resolveWorkerLaunch(receipts, config, { MONGO_URI: 'fixture-only', PATH: '/usr/bin' }, 1000).options.env,
+        { MONGO_URI: 'fixture-only', PATH: '/usr/bin' });
+    const dev = resolveWorkerLaunch(receipts, { ...config, runtime: 'tsx' }, env, 0);
+    assert(!dev.native); assert.equal(dev.command, 'tsx');
+    assert(dev.args[0].endsWith('/src/workers/ai_usage_receipts.worker.ts'));
+    assert(resolveWorkerLaunch(receipts, { ...config, runtime: 'tsx', aiUsageReceiptsRuntime: 'rust' }, env, 0).native);
+    const rollback = resolveWorkerLaunch(receipts, { ...config, aiUsageReceiptsRuntime: 'typescript' }, env, 0);
+    assert(!rollback.native); assert.equal(rollback.command, process.execPath);
+    assert(rollback.args[0].endsWith('/workers/ai_usage_receipts.worker.js'));
+    assert.equal(rollback.options.env?.CRON_WORKER_NAME, 'ai-usage-receipts');
+    // Other worker selectors never move the receipts child off its own choice.
+    for (const worker of [stream, raid, baseline, roulette]) {
+        assert(resolveWorkerLaunch(worker, { ...config, aiUsageReceiptsRuntime: 'typescript' }, env, 0).native);
+    }
+    assert(resolveWorkerLaunch(receipts, { ...config, streamActivityRuntime: 'typescript', raidAnalyticsRuntime: 'typescript',
+        followDefenseBaselineRuntime: 'typescript', rouletteCompletionRuntime: 'typescript' }, env, 0).native);
+    assert.equal(resolveNativeRuntimes({ AI_USAGE_RECEIPTS_RUNTIME: 'rust' }).aiUsageReceiptsRuntime, 'rust');
+    assert.equal(resolveNativeRuntimes({ AI_USAGE_RECEIPTS_RUNTIME: 'typescript' }).aiUsageReceiptsRuntime, 'typescript');
+});
+
+test('receipts missing executable records errors and retries native without fallback', async () => {
+    const commands: string[] = [], metrics: string[] = [];
+    const supervisor = new WorkerSupervisor(config, [receipts], {
+        spawn: ((command: string) => { commands.push(command); throw Object.assign(new Error('fixture'), { code: 'ENOENT' }); }) as typeof spawnType,
+        info: async () => ({ success: true }), warn: async () => ({ success: true }), error: async () => ({ success: true }),
+        observe: (_kind, name) => { metrics.push(name); }, recordLog: () => {},
+    });
+    supervisor.start(); await delay(15);
+    await supervisor.shutdown('SIGTERM', 50);
+    assert(commands.length >= 2);
+    assert(commands.every(command => command === '/usr/local/bin/ai_usage_receipts'));
+    assert(metrics.includes('ai_usage_receipts_rust.errors'));
+    assert(metrics.includes('ai_usage_receipts_rust.restarts'));
+});
+
+test('receipts process failure restarts only receipts and fences late telemetry', async () => {
+    const f = fixture(false, [...nativeDefinitions]); f.supervisor.start(); await delay(0);
+    const child = f.children[4];
+    const frame = 'ai_usage_receipts:{"event":"batch","events":1000,"durationMs":250000,"success":true}\n';
+    child.stdout.write(frame);
+    assert(f.metrics.includes('ai_usage_receipts_rust.batch_receipts'));
+    const before = f.metrics.length;
+    child.emit('error', new Error('fixture failure')); child.stdout.write(frame); child.finish(1);
+    await delay(15);
+    assert.equal(f.children.length, 6);
+    assert.deepEqual(f.commands.slice(4), ['/usr/local/bin/ai_usage_receipts', '/usr/local/bin/ai_usage_receipts']);
+    assert.deepEqual(f.supervisor.workers.map(worker => worker.restartCount), [0, 0, 0, 0, 1]);
+    for (let index = 0; index < 4; index++) assert.equal(f.supervisor.workers[index].process, f.children[index]);
+    assert.deepEqual(f.metrics.slice(before), ['ai_usage_receipts_rust.errors', 'ai_usage_receipts_rust.restarts']);
+    for (const active of [f.children[0], f.children[1], f.children[2], f.children[3], f.children[5]]) active.closeOnTerm = true;
+    const closing = f.supervisor.shutdown('SIGTERM', 50);
+    f.children[5].stdout.write(frame); await closing;
+    assert.equal(f.metrics.filter(name => name === 'ai_usage_receipts_rust.batch_receipts').length, 1);
+    assert.equal(f.stops(), 6);
 });
