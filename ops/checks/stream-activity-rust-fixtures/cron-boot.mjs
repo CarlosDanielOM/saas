@@ -20,7 +20,8 @@ if (process.argv[1]?.endsWith('/dist/workers/cron.index.js')) {
                     supervisor: process.pid, scope: process.env.STREAM_ACTIVITY_FIXTURE_SCOPE || 'main', ...value
                 }) + '\\n');
                 export const spawn = (command, args, options) => {
-                    const worker = command === '/usr/local/bin/stream_activity' ? 'stream-activity' : options?.env?.CRON_WORKER_NAME;
+                    const worker = command === '/usr/local/bin/stream_activity' ? 'stream-activity'
+                        : command === '/usr/local/bin/raid_analytics' ? 'raid-analytics' : options?.env?.CRON_WORKER_NAME;
                     let child;
                     if (worker === 'stream-activity') {
                         if (command !== '/usr/local/bin/stream_activity' || !args.includes('--telemetry-json')) {

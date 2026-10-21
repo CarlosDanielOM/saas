@@ -1,3 +1,5 @@
+#![cfg(feature = "redis")]
+
 //! Opt-in integration coverage for
 //! [`dima_rust::utils::redis::get_redis_client`].
 //!

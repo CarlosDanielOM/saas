@@ -5,7 +5,7 @@ import { spawn, type ChildProcess, type SpawnOptions } from 'node:child_process'
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { error as logError, info as logInfo, warn as logWarn } from '../utils/logger.js';
 import { observe, recordLog, startTelemetry } from '../utils/observability/telemetry.js';
-import { nativeProgressParser, startNativeWorkerMetrics } from '../utils/observability/native_worker_metrics.js';
+import { NATIVE_WORKERS, nativeWorker, nativeProgressParser, startNativeWorkerMetrics, type NativeWorkerName } from '../utils/observability/native_worker_metrics.js';
 
 export interface WorkerDefinition {
     name: string;
@@ -17,6 +17,7 @@ export interface WorkerDefinition {
 export interface SupervisorConfig {
     runtime: 'tsx' | 'node';
     streamActivityRuntime?: string;
+    raidAnalyticsRuntime?: string;
     once: boolean;
     dryRun: boolean;
     restartDelayMs: number;
@@ -122,16 +123,17 @@ export function resolveWorkerLaunch(worker: WorkerDefinition, config: Supervisor
     env: NodeJS.ProcessEnv = process.env, uid: number | undefined = process.getuid?.()): {
     command: string; args: string[]; options: SpawnOptions; native: boolean;
 } {
-    const native = worker.name === 'stream-activity'
-        && (config.streamActivityRuntime === 'rust'
-            || (config.streamActivityRuntime !== 'typescript' && config.runtime !== 'tsx'));
+    const metadata = nativeWorker(worker.name);
+    const selectedRuntime = metadata ? config[metadata.runtimeConfig] : undefined;
+    const native = Boolean(metadata && (selectedRuntime === 'rust'
+        || (selectedRuntime !== 'typescript' && config.runtime !== 'tsx')));
     const flags = [...(config.dryRun ? ['--dry-run'] : []), ...(config.once ? ['--once'] : [])];
-    if (native) {
+    if (native && metadata) {
         const childEnv: NodeJS.ProcessEnv = {};
         for (const key of ['MONGO_URI', 'PATH', 'TZ', 'LANG', 'LC_ALL', 'SSL_CERT_FILE', 'SSL_CERT_DIR']) {
             if (env[key] !== undefined) childEnv[key] = env[key];
         }
-        return { command: '/usr/local/bin/stream_activity', args: ['--batch-size', '500', '--telemetry-json', ...flags],
+        return { command: metadata.command, args: [...metadata.args, ...flags],
             options: { stdio: ['ignore', 'pipe', 'inherit'], env: childEnv, ...(uid === 0 ? { uid: 65534, gid: 65534 } : {}) }, native };
     }
     const entry = config.runtime === 'tsx' ? path.resolve(process.cwd(), worker.sourceEntry)
@@ -157,6 +159,7 @@ export class WorkerSupervisor {
     private readonly dependencies: SupervisorDependencies;
     private readonly restarts = new Map<ManagedWorker, ReturnType<typeof setTimeout>>();
     private readonly children = new Map<ChildProcess, Promise<void>>();
+    private readonly stopSampling = new Map<ChildProcess, () => void>();
 
     constructor(private readonly config: SupervisorConfig, definitions: WorkerDefinition[] = WORKERS,
         dependencies: Partial<SupervisorDependencies> = {}) {
@@ -181,7 +184,7 @@ export class WorkerSupervisor {
     private scheduleRestart(managed: ManagedWorker, native: boolean): void {
         if (this.stopping || this.config.once || this.restarts.has(managed)) return;
         managed.restartCount += 1;
-        if (native) this.dependencies.observe('worker', 'stream_activity_rust.restarts', 1, 'error');
+        if (native) this.dependencies.observe('worker', `${nativeWorker(managed.definition.name)!.metricPrefix}.restarts`, 1, 'error');
         const timer = setTimeout(() => {
             this.restarts.delete(managed);
             if (!this.stopping) this.startWorker(managed);
@@ -206,13 +209,22 @@ export class WorkerSupervisor {
         let resolveClosed!: () => void;
         this.children.set(child, new Promise<void>(resolve => { resolveClosed = resolve; }));
         const stop = (): void => { stopMetrics?.(); stopMetrics = undefined; };
+        this.stopSampling.set(child, stop);
         child.once('spawn', () => {
-            if (launch.native && child.pid && !this.stopping && !exited) stopMetrics = this.dependencies.metrics(child.pid);
+            if (launch.native && child.pid && !this.stopping && !exited && !failed) {
+                stopMetrics = this.dependencies.metrics(child.pid, {}, managed.definition.name as NativeWorkerName);
+            }
             void this.dependencies.info({ worker: 'cron_supervisor', message: 'Started cron worker process',
                 name: managed.definition.name, pid: child.pid, runtime: launch.native ? 'rust' : this.config.runtime,
                 restartCount: managed.restartCount }, { destination: 'console' });
         });
-        if (launch.native && child.stdout) child.stdout.on('data', this.dependencies.progress(this.dependencies.observe));
+        if (launch.native && child.stdout) {
+            const progress = this.dependencies.progress(this.dependencies.observe, managed.definition.name as NativeWorkerName);
+            child.stdout.on('data', chunk => {
+                // Pipes may drain after exit; close is the ownership fence.
+                if (!this.stopping && !failed && !finalized && managed.process === child) progress(chunk);
+            });
+        }
         child.once('error', error => { failed = true; stop(); this.workerError(managed, launch.native, 'process', error); });
         child.once('exit', () => { exited = true; stop(); });
         // close follows exit or failed spawn and also waits for pipe teardown.
@@ -220,6 +232,7 @@ export class WorkerSupervisor {
         child.once('close', (code, signal) => {
             if (finalized) return;
             finalized = true; stop();
+            this.stopSampling.delete(child);
             this.children.delete(child); resolveClosed();
             if (managed.process !== child) return;
             managed.process = null;
@@ -240,8 +253,9 @@ export class WorkerSupervisor {
         void this.dependencies.error({ worker: 'cron_supervisor', message: 'Cron worker process failed',
             name: managed.definition.name, step, code }, { destination: 'console' });
         if (native) {
-            this.dependencies.observe('worker', 'stream_activity_rust.errors', 1, 'error');
-            this.dependencies.recordLog('error', { function: 'stream_activity_rust', step, code });
+            const prefix = nativeWorker(managed.definition.name)!.metricPrefix;
+            this.dependencies.observe('worker', `${prefix}.errors`, 1, 'error');
+            this.dependencies.recordLog('error', { function: prefix, step, code });
         }
     }
 
@@ -257,6 +271,7 @@ export class WorkerSupervisor {
         void this.dependencies.info({ worker: 'cron_supervisor', message: 'Shutting down cron supervisor', signal,
             workers: this.workers.map(worker => ({ name: worker.definition.name, pid: worker.process?.pid ?? null })) }, { destination: 'console' });
         const children = [...this.children.keys()];
+        for (const stop of this.stopSampling.values()) stop();
         const signalChildren = (signal: NodeJS.Signals): void => {
             for (const child of children) {
                 if (this.children.has(child) && child.exitCode === null && child.signalCode === null) child.kill(signal);
@@ -273,16 +288,25 @@ export class WorkerSupervisor {
     }
 }
 
+export function resolveNativeRuntimes(env: NodeJS.ProcessEnv): Pick<SupervisorConfig, 'streamActivityRuntime' | 'raidAnalyticsRuntime'> {
+    const result: Pick<SupervisorConfig, 'streamActivityRuntime' | 'raidAnalyticsRuntime'> = {};
+    for (const metadata of Object.values(NATIVE_WORKERS)) {
+        const value = env[metadata.runtimeEnv];
+        if (value !== undefined && !['rust', 'typescript'].includes(value)) {
+            throw new Error(`${metadata.runtimeEnv} must be rust or typescript`);
+        }
+        result[metadata.runtimeConfig] = value;
+    }
+    return result;
+}
+
 async function bootstrap(): Promise<void> {
     if (process.env.NODE_ENV !== 'production') dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
     dotenv.config({ path: path.resolve(process.cwd(), '.env') });
-    const streamActivityRuntime = process.env.STREAM_ACTIVITY_RUNTIME;
-    if (streamActivityRuntime !== undefined && !['rust', 'typescript'].includes(streamActivityRuntime)) {
-        throw new Error('STREAM_ACTIVITY_RUNTIME must be rust or typescript');
-    }
+    const runtimes = resolveNativeRuntimes(process.env);
     const configuredDelay = Number(process.env.CRON_WORKER_RESTART_DELAY_MS || 5000);
     const config: SupervisorConfig = {
-        runtime: process.env.CRON_WORKER_RUNTIME === 'tsx' ? 'tsx' : 'node', streamActivityRuntime,
+        runtime: process.env.CRON_WORKER_RUNTIME === 'tsx' ? 'tsx' : 'node', ...runtimes,
         once: process.argv.includes('--once'), dryRun: process.argv.includes('--dry-run'),
         restartDelayMs: Number.isFinite(configuredDelay) ? Math.max(1000, configuredDelay) : 5000,
     };
@@ -292,7 +316,8 @@ async function bootstrap(): Promise<void> {
         process.once(signal, () => { void supervisor.shutdown(signal).then(() => process.exit(0)); });
     }
     await logInfo({ worker: 'cron_supervisor', message: 'Starting cron supervisor', runtime: config.runtime,
-        streamActivityRuntime: streamActivityRuntime || (config.runtime === 'tsx' ? 'typescript' : 'rust'),
+        streamActivityRuntime: config.streamActivityRuntime || (config.runtime === 'tsx' ? 'typescript' : 'rust'),
+        raidAnalyticsRuntime: config.raidAnalyticsRuntime || (config.runtime === 'tsx' ? 'typescript' : 'rust'),
         restartDelayMs: config.restartDelayMs, workers: WORKERS.filter(worker => !worker.enabledEnv || process.env[worker.enabledEnv] !== 'false').map(worker => worker.name),
         mode: config.once ? 'once' : 'normal', dryRun: config.dryRun }, { destination: 'console' });
     supervisor.start();

@@ -6,8 +6,25 @@ import { observe } from './telemetry.js';
 const SAMPLE_INTERVAL_MS = 10000;
 const PROC_LIMIT = 16384;
 const PROGRESS_LIMIT = 1024;
-const METRIC_PREFIX = 'stream_activity_rust';
 type Observer = typeof observe;
+
+/** Only these two projectors may use the native launch and telemetry path. */
+export const NATIVE_WORKERS = {
+    'stream-activity': {
+        command: '/usr/local/bin/stream_activity', args: ['--batch-size', '500', '--telemetry-json'],
+        runtimeConfig: 'streamActivityRuntime', runtimeEnv: 'STREAM_ACTIVITY_RUNTIME',
+        protocol: 'stream_activity:', metricPrefix: 'stream_activity_rust', batchMetric: 'batch_events', maxEvents: 1000, maxDurationMs: 300000,
+    },
+    'raid-analytics': {
+        command: '/usr/local/bin/raid_analytics', args: ['--telemetry-json'],
+        runtimeConfig: 'raidAnalyticsRuntime', runtimeEnv: 'RAID_ANALYTICS_RUNTIME',
+        protocol: 'raid_analytics:', metricPrefix: 'raid_analytics_rust', batchMetric: 'batch_channels', maxEvents: 1, maxDurationMs: Number.MAX_VALUE,
+    },
+} as const;
+export type NativeWorkerName = keyof typeof NATIVE_WORKERS;
+export function nativeWorker(name: string): typeof NATIVE_WORKERS[NativeWorkerName] | undefined {
+    return Object.hasOwn(NATIVE_WORKERS, name) ? NATIVE_WORKERS[name as NativeWorkerName] : undefined;
+}
 
 export interface NativeSnapshot {
     startTicks: bigint;
@@ -100,7 +117,9 @@ interface SamplerDependencies {
 }
 
 /** One in-flight bounded read at a time; stop also fences already pending reads. */
-export function startNativeWorkerMetrics(pid: number, dependencies: Partial<SamplerDependencies> = {}): () => void {
+export function startNativeWorkerMetrics(pid: number, dependencies: Partial<SamplerDependencies> = {},
+    worker: NativeWorkerName = 'stream-activity'): () => void {
+    const metadata = NATIVE_WORKERS[worker];
     const deps: SamplerDependencies = {
         read: readNativeSnapshot, ticks: linuxClockTicks, now: () => performance.now(),
         observe, intervalMs: SAMPLE_INTERVAL_MS, ...dependencies,
@@ -118,8 +137,8 @@ export function startNativeWorkerMetrics(pid: number, dependencies: Partial<Samp
             if (snapshot) {
                 const result = tracker.sample(snapshot, deps.now(), ticks);
                 if (!result) { stop(); return; }
-                deps.observe('runtime', `${METRIC_PREFIX}.rss_bytes`, result.rssBytes);
-                if (result.cpuCores !== undefined) deps.observe('runtime', `${METRIC_PREFIX}.cpu_cores`, result.cpuCores);
+                deps.observe('runtime', `${metadata.metricPrefix}.rss_bytes`, result.rssBytes);
+                if (result.cpuCores !== undefined) deps.observe('runtime', `${metadata.metricPrefix}.cpu_cores`, result.cpuCores);
             } else { tracker.missing(); }
         } catch { tracker.missing(); }
         finally {
@@ -131,25 +150,26 @@ export function startNativeWorkerMetrics(pid: number, dependencies: Partial<Samp
 }
 
 /** Accept only bounded protocol metadata; arbitrary child output is discarded. */
-export function nativeProgressParser(emit: Observer = observe): (chunk: Buffer | string) => void {
+export function nativeProgressParser(emit: Observer = observe, worker: NativeWorkerName = 'stream-activity'): (chunk: Buffer | string) => void {
+    const metadata = NATIVE_WORKERS[worker];
     let pending = '', discard = false;
     return chunk => {
         // Iterate without concatenating arbitrary pipe chunks into a large buffer.
         for (const byte of chunk) {
             const character = typeof byte === 'number' ? String.fromCharCode(byte) : byte;
             if (character === '\n') {
-                if (!discard && pending.startsWith('stream_activity:')) {
+                if (!discard && pending.startsWith(metadata.protocol)) {
                     try {
-                        const value: unknown = JSON.parse(pending.slice('stream_activity:'.length));
+                        const value: unknown = JSON.parse(pending.slice(metadata.protocol.length));
                         if (value && typeof value === 'object') {
                             const row = value as Record<string, unknown>;
                             if (row.event === 'batch' && typeof row.events === 'number' && Number.isInteger(row.events)
-                                && row.events >= 0 && row.events <= 1000 && typeof row.durationMs === 'number'
-                                && Number.isFinite(row.durationMs) && row.durationMs >= 0 && row.durationMs <= 300000
+                                && row.events >= 0 && row.events <= metadata.maxEvents && typeof row.durationMs === 'number'
+                                && Number.isFinite(row.durationMs) && row.durationMs >= 0 && row.durationMs <= metadata.maxDurationMs
                                 && typeof row.success === 'boolean' && (row.success || row.events === 0)) {
                                 const outcome = row.success ? (row.events > 0 ? 'ok' : 'idle') : 'error';
-                                emit('worker', `${METRIC_PREFIX}.batch_events`, row.events, outcome);
-                                emit('queue_run', `${METRIC_PREFIX}.project_batch`, row.durationMs, outcome);
+                                emit('worker', `${metadata.metricPrefix}.${metadata.batchMetric}`, row.events, outcome);
+                                emit('queue_run', `${metadata.metricPrefix}.project_batch`, row.durationMs, outcome);
                             }
                         }
                     } catch { /* Invalid frames never leave the process. */ }

@@ -69,3 +69,41 @@ test('progress frames are bounded, split-safe and export only validated metadata
     ]);
     assert(!JSON.stringify(samples).includes('secret'));
 });
+
+test('raid frames count only zero or one refreshed channel and cannot spoof stream metrics', () => {
+    const samples: unknown[][] = [];
+    const feed = nativeProgressParser((...args) => { samples.push(args); }, 'raid-analytics');
+    const frame = (events: unknown, durationMs: unknown, success: unknown = true) =>
+        `raid_analytics:${JSON.stringify({ event: 'batch', events, durationMs, success })}\n`;
+    const valid = frame(1, 12);
+    feed(Buffer.from(valid.slice(0, 10))); feed(Buffer.from(valid.slice(10)));
+    feed(frame(0, 1)); feed(frame(0, 2, false));
+    feed(frame(2, 1)); feed(frame(-1, 1)); feed(frame(0.5, 1)); feed(frame('secret', 1));
+    feed(frame(1, -1)); feed(frame(1, 1, false));
+    feed(frame(1, null)); feed(frame(1, 3, 'true'));
+    feed('stream_activity:{"event":"batch","events":1,"durationMs":3,"success":true}\n');
+    feed('raid_analytics:{invalid}\nprivate output secret\n');
+    feed(`raid_analytics:${'x'.repeat(2000)}\n`); feed(frame(1, 300001));
+    assert.deepEqual(samples, [
+        ['worker', 'raid_analytics_rust.batch_channels', 1, 'ok'], ['queue_run', 'raid_analytics_rust.project_batch', 12, 'ok'],
+        ['worker', 'raid_analytics_rust.batch_channels', 0, 'idle'], ['queue_run', 'raid_analytics_rust.project_batch', 1, 'idle'],
+        ['worker', 'raid_analytics_rust.batch_channels', 0, 'error'], ['queue_run', 'raid_analytics_rust.project_batch', 2, 'error'],
+        ['worker', 'raid_analytics_rust.batch_channels', 1, 'ok'], ['queue_run', 'raid_analytics_rust.project_batch', 300001, 'ok'],
+    ]);
+});
+
+test('raid sampler uses its own resource prefix and permanently fences PID reuse', async () => {
+    let reads = 0;
+    const samples: unknown[][] = [];
+    const stop = startNativeWorkerMetrics(42, {
+        read: async () => snapshot(BigInt(++reads * 100), reads > 2 ? 9999n : 1234n),
+        ticks: async () => 100, now: () => reads * 1000, intervalMs: 2,
+        observe: (...args) => { samples.push(args); },
+    }, 'raid-analytics');
+    await delay(40); stop();
+    assert.equal(reads, 3);
+    assert.deepEqual(samples, [
+        ['runtime', 'raid_analytics_rust.rss_bytes', 4096],
+        ['runtime', 'raid_analytics_rust.rss_bytes', 4096], ['runtime', 'raid_analytics_rust.cpu_cores', 1],
+    ]);
+});

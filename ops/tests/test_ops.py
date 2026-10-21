@@ -403,25 +403,206 @@ class OpsTests(unittest.TestCase):
             self.ops.snapshot(mod.Target("dima-rust", "", ""), self.path / "unsafe", rust_only=True)
 
     def test_rust_compiler_has_hard_caps_private_source_and_no_production_mounts(self):
-        args = self.ops.rust_container_args(self.path, self.receipt, NEW)
+        cache = {"cargo": str(self.root.parent / "cache/cargo"), "target": str(self.root.parent / "cache/target")}
+        args = self.ops.rust_container_args(self.path, self.receipt, NEW, cache)
         for option in ("--cpus=4", "--memory=4g", "--memory-swap=4g", "--pids-limit=256", "--env=CARGO_BUILD_JOBS=2"):
             self.assertIn(option, args)
-        self.assertEqual(args[-3:], [NEW, "sh", "/rust-build.sh"])
+        self.assertEqual(args[-4:], [NEW, "sh", "-ceu", mod.RUST_CACHE_HYGIENE])
         self.assertIn(mod.OWNER + ".rust-build=true", args)
         mounts = [args[i + 1] for i, arg in enumerate(args) if arg == "--mount"]
-        self.assertEqual(len(mounts), 4)
-        self.assertTrue(all(mount.startswith("type=bind,src=" + str(self.path) + "/") for mount in mounts))
+        self.assertEqual(len(mounts), 6)
+        self.assertTrue(all(mount.startswith("type=bind,src=" + str(self.path) + "/") for mount in mounts[:4]))
+        self.assertEqual(mounts[-2:], [f"type=bind,src={cache['cargo']},dst=/cargo-cache", f"type=bind,src={cache['target']},dst=/target-cache"])
+        self.assertIn("--env=CARGO_HOME=/cargo-cache", args)
+        self.assertIn("--env=CARGO_TARGET_DIR=/target-cache", args)
+        self.assertIn("--env=SAAS_RUST_FEATURES=mongo", args)
+        self.assertIn("--env=SAAS_RUST_FEATURE_MATRIX=0", args)
+        matrix_args = self.ops.rust_container_args(self.path, {**self.receipt, "rust_feature_matrix": True}, NEW, cache)
+        self.assertIn("--env=SAAS_RUST_FEATURE_MATRIX=1", matrix_args)
+        with patch.object(mod, "RUST_FEATURES", "mongo,postgres"), self.assertRaises(mod.OpsError):
+            self.ops.rust_container_args(self.path, self.receipt, NEW, cache)
         self.assertTrue(any("dst=/source,readonly" in mount for mount in mounts))
         self.assertNotIn("--privileged", args)
         self.assertNotIn("--env-file", args)
         self.assertNotIn("--network=host", args)
         self.assertFalse(any("docker.sock" in arg or ".env" in arg for arg in args))
 
+    def test_rust_release_cache_hygiene_runs_before_recipe_and_fails_closed(self):
+        # Execute only tiny mocked commands: no host Cargo/toolchain is invoked.
+        commands = self.root.parent / "fake-toolchain"
+        commands.mkdir()
+        log = self.root.parent / "hygiene.log"
+        scripts = {
+            "rustup": '#!/bin/sh\nprintf "%s\\n" "fixture-musl (default)"\n',
+            "cargo": '#!/bin/sh\nprintf "%s\\n" "$RUSTUP_TOOLCHAIN" "$@" > "$HYGIENE_LOG"\nexit "$CLEAN_EXIT"\n',
+            "sh": '#!/bin/sh\nprintf "%s\\n" "recipe:$1" >> "$HYGIENE_LOG"\n',
+        }
+        for name, source in scripts.items():
+            (commands / name).write_text(source)
+            (commands / name).chmod(0o755)
+        for code in (0, 7):
+            with self.subTest(clean_exit=code):
+                result = subprocess.run(["/bin/sh", "-ceu", mod.RUST_CACHE_HYGIENE],
+                                        env={"PATH": str(commands), "HYGIENE_LOG": str(log), "CLEAN_EXIT": str(code)},
+                                        capture_output=True, text=True, check=False)
+                self.assertEqual(result.returncode, code)
+                lines = log.read_text().splitlines()
+                self.assertEqual(lines[:6], ["fixture-musl", "clean", "--locked", "--release", "--package", "dima-rust"])
+                self.assertEqual(lines[6:], ["recipe:/rust-build.sh"] if code == 0 else [])
+
     def test_rust_compiler_lock_is_global_across_checkout_state(self):
         with patch.object(Path, "home", return_value=self.root):
             with self.ops.rust_build_lock(), self.assertRaises(mod.OpsError):
                 with mod.Ops(self.root, self.root / "other-state").rust_build_lock():
                     pass
+
+    def prepared_rust_cache(self, receipt=None):
+        source = self.path / "rust-source"
+        source.mkdir(exist_ok=True)
+        for filename in ("Cargo.toml", "Cargo.lock"):
+            if not (source / filename).exists():
+                (source / filename).write_text("fixture " + filename)
+        if receipt is None:
+            receipt = {"rust_toolchain_image": NEW, "rust_recipe_digest": "recipe-v1"}
+        with patch.object(Path, "home", return_value=self.root.parent):
+            return self.ops.prepare_rust_cache(self.path, receipt)
+
+    def test_rust_cache_reuses_identical_inputs_across_runs_and_worktrees(self):
+        first = self.prepared_rust_cache()
+        (Path(first["target"]) / "compiled-dependency.rlib").write_text("retained")
+        second = self.prepared_rust_cache()
+        self.assertFalse(first["hit"])
+        self.assertTrue(second["hit"])
+        self.assertEqual(first["key"], second["key"])
+        with patch.object(mod, "RUST_CACHE_HYGIENE", mod.RUST_CACHE_HYGIENE + "\n# hygiene audit only"):
+            self.assertEqual(self.prepared_rust_cache()["key"], first["key"], "cache hygiene does not invalidate dependency artifacts")
+        other_root = self.root.parent / "worktree"
+        other_root.mkdir()
+        other_ops = mod.Ops(other_root, self.root.parent / "other-state")
+        with patch.object(Path, "home", return_value=self.root.parent):
+            other = other_ops.prepare_rust_cache(self.path, {"rust_toolchain_image": NEW, "rust_recipe_digest": "recipe-v1"})
+        self.assertEqual(first["entry"], other["entry"])
+        self.assertEqual((Path(other["target"]) / "compiled-dependency.rlib").read_text(), "retained")
+        self.assertNotIn(self.root, Path(first["entry"]).parents)
+
+    def test_rust_cache_identity_changes_with_toolchain_manifest_lock_recipe_or_features(self):
+        original = self.prepared_rust_cache()
+        for field in ("rust_toolchain_image", "rust_recipe_digest"):
+            receipt = {"rust_toolchain_image": NEW, "rust_recipe_digest": "recipe-v1"}
+            receipt[field] += "changed"
+            self.assertNotEqual(self.prepared_rust_cache(receipt)["key"], original["key"])
+        for filename in ("Cargo.toml", "Cargo.lock"):
+            path = self.path / "rust-source" / filename
+            previous = path.read_text()
+            path.write_text(previous + " changed")
+            self.assertNotEqual(self.prepared_rust_cache()["key"], original["key"])
+            path.write_text(previous)
+        with patch.object(mod, "RUST_FEATURES", "mongo,redis"):
+            self.assertNotEqual(self.prepared_rust_cache()["key"], original["key"])
+
+    def test_rust_cache_rejects_symlinked_roots_and_paths_inside_checkout(self):
+        external = self.root.parent / "external"
+        external.mkdir(mode=0o700)
+        linked = self.root.parent / "linked-cache"
+        linked.symlink_to(external, target_is_directory=True)
+        for root in (linked, linked / "child", self.root / "host-target"):
+            with self.subTest(root=root), patch.object(self.ops, "rust_cache_root", return_value=root), self.assertRaises(mod.OpsError):
+                self.prepared_rust_cache()
+        self.assertEqual(list(external.iterdir()), [])
+
+    def test_rust_cache_rejects_nonprivate_or_unmarked_directories(self):
+        root = self.root.parent / "unsafe-cache"
+        root.mkdir(mode=0o755)
+        with patch.object(self.ops, "rust_cache_root", return_value=root), self.assertRaises(mod.OpsError):
+            self.prepared_rust_cache()
+        root.chmod(0o700)
+        (root / "host-artifact").write_text("never import")
+        with patch.object(self.ops, "rust_cache_root", return_value=root), self.assertRaises(mod.OpsError):
+            self.prepared_rust_cache()
+        self.assertEqual((root / "host-artifact").read_text(), "never import")
+
+    def test_rust_cache_rejects_directory_and_marker_ownership_mismatch(self):
+        cache = self.prepared_rust_cache()
+        owner = os.geteuid()
+        if owner != 0:
+            self.skipTest("different-owner fixture requires root; ownership checks remain active")
+        entry = Path(cache["entry"])
+        os.chown(entry, 65534, 65534)
+        try:
+            with self.assertRaises(mod.OpsError):
+                self.ops.rust_cache_usage(cache)
+        finally:
+            os.chown(entry, owner, os.getegid())
+        marker = entry / mod.RUST_CACHE_MARKER
+        os.chown(marker, 65534, 65534)
+        with self.assertRaises(mod.OpsError):
+            self.ops.rust_cache_usage(cache)
+
+    def test_rust_cache_rejects_tampered_markers_and_nested_symlinks_without_following(self):
+        cache = self.prepared_rust_cache()
+        marker = Path(cache["entry"]) / mod.RUST_CACHE_MARKER
+        previous = marker.read_text()
+        marker.write_text('{"owner":"another tool"}')
+        with self.assertRaises(mod.OpsError):
+            self.ops.rust_cache_usage(cache)
+        marker.write_text(previous)
+        sentinel = self.root.parent / "private-sentinel"
+        sentinel.write_text("keep")
+        (Path(cache["cargo"]) / "unsafe-link").symlink_to(sentinel)
+        with self.assertRaises(mod.OpsError):
+            self.ops.rust_cache_usage(cache)
+        self.assertEqual(sentinel.read_text(), "keep")
+
+    def test_rust_cache_evicts_only_validated_inactive_entries_and_bounds_active_entry(self):
+        first = self.prepared_rust_cache()
+        second = self.prepared_rust_cache({"rust_toolchain_image": NEW, "rust_recipe_digest": "recipe-v2"})
+        (Path(first["target"]) / "old-dependency").write_bytes(b"x" * 600_000)
+        (Path(second["target"]) / "active-dependency").write_bytes(b"x" * 600_000)
+        sentinel = self.root.parent / "unrelated"
+        sentinel.write_text("keep")
+        with patch.object(mod, "RUST_CACHE_LIMIT", 1024 ** 2):
+            self.assertLessEqual(self.ops.rust_cache_usage(second), 1024 ** 2)
+            self.assertFalse(Path(first["entry"]).exists())
+            self.assertTrue(Path(second["target"]).is_dir())
+            (Path(second["target"]) / "too-large").write_bytes(b"x" * 1024 ** 2)
+            with self.assertRaisesRegex(mod.OpsError, "8 GiB limit"):
+                self.ops.rust_cache_usage(second)
+        self.assertEqual(sentinel.read_text(), "keep")
+
+    def test_rust_cache_refuses_unknown_entries_instead_of_pruning_them(self):
+        cache = self.prepared_rust_cache()
+        unowned = Path(cache["root"]) / ("f" * 64)
+        unowned.mkdir(mode=0o700)
+        (unowned / "host-artifact").write_text("keep")
+        with patch.object(mod, "RUST_CACHE_LIMIT", 0), self.assertRaises(mod.OpsError):
+            self.ops.rust_cache_usage(cache)
+        self.assertTrue((unowned / "host-artifact").is_file())
+
+    def test_rust_feature_matrix_is_explicit_and_only_available_for_cron(self):
+        for target in mod.TARGETS:
+            if target == "cron":
+                continue
+            with contextlib.redirect_stderr(io.StringIO()), patch.object(mod, "Ops") as engine, self.assertRaises(SystemExit):
+                mod.main(["build", target, "--rust-feature-matrix"])
+            engine.assert_not_called()
+        with patch.object(mod, "Ops") as engine:
+            mod.main(["build", "cron", "--rust-feature-matrix"])
+            engine.return_value.build.assert_called_once_with("cron", None, rust_feature_matrix=True)
+        with patch.object(mod, "Ops") as engine:
+            mod.main(["build", "cron"])
+            engine.return_value.build.assert_called_once_with("cron", None, rust_feature_matrix=False)
+
+    def test_cron_plan_exposes_worker_features_cache_caps_and_optional_matrix_without_writes(self):
+        output = io.StringIO()
+        with patch.object(mod, "Ops") as engine, contextlib.redirect_stdout(output):
+            engine.return_value.baseline.return_value = ({"Image": NEW}, {}, "hash", "digest")
+            engine.return_value.rust_cache_root.return_value = self.root.parent / "private-cache"
+            mod.main(["plan", "cron"])
+            engine.return_value.lock.assert_not_called()
+        details = json.loads(output.getvalue())["rust"]
+        self.assertEqual(details["features"], "mongo")
+        self.assertEqual(details["cache_limit_bytes"], 8 * mod.GIB)
+        self.assertEqual(details["optional_feature_matrix"], "build cron --rust-feature-matrix")
 
     def test_rust_build_refuses_orphaned_compiler_before_copying_source(self):
         with patch.object(self.ops, "docker", return_value="orphan-id\n"), \
@@ -442,7 +623,7 @@ class OpsTests(unittest.TestCase):
              patch.object(mod.os, "getloadavg", return_value=(1000, 0, 0)), self.assertRaises(mod.OpsError):
             self.ops.rust_headroom()
 
-    def simulated_rust_build(self, *, exit_code=0, wrong_limits=False):
+    def simulated_rust_build(self, *, exit_code=0, wrong_limits=False, raid_artifact="valid", cache_bytes=0):
         self.rust_source()
         (self.path / "source").mkdir()
         self.ops.objects[("image", mod.RUST_BUILD_IMAGE)] = {"Id": NEW}
@@ -456,7 +637,17 @@ class OpsTests(unittest.TestCase):
                                    "Memory": 4 * mod.GIB, "MemorySwap": 4 * mod.GIB, "PidsLimit": 256},
                     "State": {"Running": False, "ExitCode": exit_code}}
             elif args[0] == "start":
+                (self.path / "rust-artifacts/worker-dependencies.txt").write_text("dima-rust v0.1.0\nmongodb v3.9.1\n")
+                if cache_bytes:
+                    (Path(self.receipt["rust_cache"]["target"]) / "dependency").write_bytes(b"x" * cache_bytes)
                 (self.path / "rust-artifacts/stream_activity").write_bytes(b"\x7fELFfixture")
+                raid = self.path / "rust-artifacts/raid_analytics"
+                if raid_artifact == "valid":
+                    raid.write_bytes(b"\x7fELFraidfixture")
+                elif raid_artifact == "invalid":
+                    raid.write_bytes(b"unverified host artifact")
+                elif raid_artifact == "symlink":
+                    raid.symlink_to(self.path / "rust-artifacts/stream_activity")
                 (self.path / "rust-artifacts/toolchain.txt").write_text("host: x86_64-unknown-linux-musl")
             return original_docker(*args, **kwargs)
         return patch.object(self.ops, "docker", side_effect=docker)
@@ -464,20 +655,47 @@ class OpsTests(unittest.TestCase):
     def test_rust_build_records_immutable_toolchain_source_artifact_and_cleans_compiler(self):
         simulation = self.simulated_rust_build()
         with simulation, patch.object(self.ops, "rust_headroom", return_value={}), \
-             patch.object(Path, "home", return_value=self.root):
+             patch.object(Path, "home", return_value=self.root.parent):
             self.ops.build_rust(self.path, self.receipt)
         self.assertEqual(self.receipt["rust_toolchain_image"], NEW)
         self.assertEqual(self.receipt["rust_source_digest"], mod.tree_hash(self.path / "rust-source"))
         self.assertEqual(self.receipt["rust_binary_digest"], mod.digest(b"\x7fELFfixture"))
+        self.assertEqual(self.receipt["rust_worker_dependencies_digest"], mod.digest(b"dima-rust v0.1.0\nmongodb v3.9.1\n"))
+        self.assertEqual(self.receipt["rust_binary_digests"], {
+            "stream_activity": mod.digest(b"\x7fELFfixture"), "raid_analytics": mod.digest(b"\x7fELFraidfixture")})
         staged = self.path / "source/.saas-native/stream_activity"
         self.assertEqual(staged.read_bytes(), b"\x7fELFfixture")
         self.assertEqual(staged.stat().st_mode & 0o777, 0o755)
+        raid_staged = self.path / "source/.saas-native/raid_analytics"
+        self.assertEqual(raid_staged.read_bytes(), b"\x7fELFraidfixture")
+        self.assertEqual(raid_staged.stat().st_mode & 0o777, 0o755)
         self.assertEqual(self.receipt["resources"], [])
         self.assertFalse((self.path / "rust-work").exists())
         self.assertNotIn(("container", "saas-ops-" + RUN + "-rust-build"), self.ops.objects)
+        self.assertTrue(Path(self.receipt["rust_cache"]["cargo"]).is_dir())
+        self.assertTrue(Path(self.receipt["rust_cache"]["target"]).is_dir())
+        self.assertEqual(self.receipt["rust_features"], "mongo")
+        self.assertFalse(self.receipt["rust_feature_matrix"])
+        self.assertTrue(self.receipt["rust_cache"]["project_release_clean"])
+        self.assertEqual(self.receipt["rust_cache_hygiene_digest"], mod.digest(mod.RUST_CACHE_HYGIENE.encode()))
+        self.ops.cleanup(RUN)
+        self.assertFalse((self.path / "rust-source").exists())
+        self.assertTrue(Path(self.receipt["rust_cache"]["cargo"]).is_dir())
+        self.assertTrue(Path(self.receipt["rust_cache"]["target"]).is_dir())
+
+    def test_oversized_active_rust_cache_stops_build_then_cleans_only_after_compiler_removal(self):
+        simulation = self.simulated_rust_build(cache_bytes=128 * 1024)
+        with simulation, patch.object(self.ops, "rust_headroom", return_value={}), \
+             patch.object(Path, "home", return_value=self.root.parent), \
+             patch.object(mod, "RUST_CACHE_LIMIT", 64 * 1024), self.assertRaises(mod.OpsError):
+            self.ops.build_rust(self.path, self.receipt)
+        self.assertEqual(self.receipt["resources"], [])
+        self.assertNotIn(("container", "saas-ops-" + RUN + "-rust-build"), self.ops.objects)
+        self.assertFalse(Path(self.receipt["rust_cache"]["entry"]).exists())
+        self.assertFalse((self.path / "source/.saas-native").exists())
 
     def test_rust_build_failure_or_wrong_cgroups_never_stages_artifact(self):
-        for failure in ("checks", "limits"):
+        for failure in ("checks", "limits", "missing", "invalid", "symlink"):
             with self.subTest(failure=failure):
                 # Each simulation uses the same task-owned directories, cleared here.
                 for directory in ("dima-rust",):
@@ -487,9 +705,10 @@ class OpsTests(unittest.TestCase):
                     if (self.path / directory).exists():
                         mod.shutil.rmtree(self.path / directory)
                 simulation = self.simulated_rust_build(exit_code=1 if failure == "checks" else 0,
-                                                       wrong_limits=failure == "limits")
+                                                       wrong_limits=failure == "limits",
+                                                       raid_artifact=failure if failure in ("missing", "invalid", "symlink") else "valid")
                 with simulation, patch.object(self.ops, "rust_headroom", return_value={}), \
-                     patch.object(Path, "home", return_value=self.root), self.assertRaises(mod.OpsError):
+                     patch.object(Path, "home", return_value=self.root.parent), self.assertRaises(mod.OpsError):
                     self.ops.build_rust(self.path, self.receipt)
                 self.assertFalse((self.path / "source/.saas-native").exists())
                 self.assertFalse((self.path / "rust-work").exists())

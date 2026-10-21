@@ -78,9 +78,9 @@ This workspace is a **single git repository** (`saas/`) containing seven existin
 | `dimafx/`   | Twitch Extension (client + server)   | HTML/JS + Node.js           | `server/src/server.ts`, `panel.html`, `config.html` |
 | `dimadb/`   | Internal DB console (Redis first)    | Angular v22 + Node          | `src/app/app.routes.ts`, `server/index.mjs`         |
 | `dima-analytics/` | Private observability and resource analytics service | Node.js / Express + PostgreSQL | `src/index.mjs`, `src/store.mjs`, `src/collectors.mjs` |
-| `dima-rust/` | Rust library and native stream-activity worker used by the existing cron host | Rust | `Cargo.toml`, `src/lib.rs`, `src/workers/stream_activity/`, `src/bin/stream_activity.rs` |
+| `dima-rust/` | Rust library and native stream-activity and raid-analytics workers used by the existing cron host | Rust | `Cargo.toml`, `src/lib.rs`, `src/workers/`, `src/bin/` |
 
-`dima-rust/` contains shared library utilities, a stream-activity projection module, and a `stream_activity` binary wired as a separately supervised child of the existing dimabot cron host. The native Rust projector is active in production; the TypeScript implementation remains an explicit rollback option. `scripts/saas-ops build cron` builds and stages this binary into the cron image; no additional production service or Compose container is introduced. See [`dima-rust/STREAM_ACTIVITY.md`](dima-rust/STREAM_ACTIVITY.md) for its behavior, telemetry, fixture checks, and rollout evidence.
+`dima-rust/` contains shared library utilities and native projectors wired as separately supervised children of the existing dimabot cron host. The stream-activity Rust projector is active in production; its TypeScript implementation remains an explicit rollback option. Raid analytics was deployed as a Rust child on 2026-10-21 in cron run `cron-b24a505b7fc8`; its initial 165-second production acceptance watch passed, with ongoing ordinary-load observation retained as follow-up. The TypeScript implementation remains the explicit rollback option. `scripts/saas-ops build cron` builds and stages these binaries into the cron image; no additional production service or Compose container is introduced. See [`migration-notes/README.md`](migration-notes/README.md) for the current status of both migrations, with detailed stream behavior and benchmarks in [`dima-rust/STREAM_ACTIVITY.md`](dima-rust/STREAM_ACTIVITY.md).
 
 **Rule**: When asked to make a change, first identify which project owns the feature, then read that project's `AGENTS.md` (if present) before editing.
 
@@ -148,6 +148,8 @@ dimabot/src/workers/cron.index.ts  →  dist/workers/cron.index.js
 - `cron.index.ts` is a lightweight supervisor.
 - It starts all registered workers, monitors them, and **self-heals** by restarting only the failed worker (not the entire process).
 - Workers run in the **background**, outside the main Twitch message loop.
+
+Redeploying the `cron` target replaces the `dima-cron` container and restarts its entire process tree once, including all worker children. Worker-level recovery still restarts only the failed child. A cron release does not replace unrelated Compose services or containers; do not promise that unrelated cron worker PIDs survive a release.
 
 ### When to Create a Worker
 

@@ -4,17 +4,43 @@ version = "0.1.0"
 edition = "2024"
 publish = false
 
+[features]
+# Preserve the original complete foundation for manual/library consumers.
+# Deployed MongoDB workers select only `--no-default-features --features mongo`.
+default = ["mongo", "redis", "postgres", "http"]
+mongo = ["dep:mongodb", "dep:garde", "dep:futures-util", "dep:serde", "dep:serde_json", "dep:sha2", "dep:dotenvy", "dep:tokio", "dep:rustls"]
+redis = ["dep:redis", "dep:tokio", "dep:rustls"]
+postgres = ["dep:sqlx", "dep:tokio"]
+http = ["dep:axum", "dep:tokio"]
+
+[[bin]]
+name = "stream_activity"
+path = "src/bin/stream_activity.rs"
+required-features = ["mongo"]
+
+[[bin]]
+name = "raid_analytics"
+path = "src/bin/raid_analytics.rs"
+required-features = ["mongo"]
+
+[[example]]
+name = "stream_activity_fixture"
+path = "examples/stream_activity_fixture.rs"
+required-features = ["mongo"]
+
 [dependencies]
-axum = { version = "0.8.9", default-features = false, features = ["http1", "json", "tokio"] }
-dotenvy = "0.15.7"
-garde = { version = "0.23.0", features = ["derive"] }
-futures-util = "0.3.34"
+axum = { version = "0.8.9", optional = true, default-features = false, features = ["http1", "json", "tokio"] }
+dotenvy = { version = "0.15.7", optional = true }
+garde = { version = "0.23.0", optional = true, features = ["derive"] }
+futures-util = { version = "0.3.34", optional = true }
 # compat-3-3-0 keeps BSON 3 only; compat-3-0-0 would also pull BSON 2.
-mongodb = { version = "3.9.1", default-features = false, features = ["compat-3-3-0", "bson-3", "rustls-tls", "dns-resolver"] }
-# MongoDB and SQLx enable rustls/ring; redis-rs inherits the unified ring provider.
-redis = { version = "1.7.1", default-features = false, features = ["tokio-rustls-comp", "script", "connection-manager"] }
-serde = { version = "1.0.229", features = ["derive"] }
-serde_json = "1.0.154"
-sha2 = "0.10.9"
-sqlx = { version = "0.9.0", default-features = false, features = ["postgres", "runtime-tokio", "tls-rustls-ring"] }
-tokio = { version = "1.54.0", features = ["rt-multi-thread", "macros", "signal", "sync", "time", "net"] }
+mongodb = { version = "3.9.1", optional = true, default-features = false, features = ["compat-3-3-0", "bson-3", "rustls-tls", "dns-resolver"] }
+redis = { version = "1.7.1", optional = true, default-features = false, features = ["tokio-rustls-comp", "script", "connection-manager"] }
+# MongoDB selects ring itself. Redis TLS needs an explicit provider when built
+# alone; it must not depend on MongoDB or SQLx feature unification for one.
+rustls = { version = "0.23.46", optional = true, default-features = false, features = ["ring", "std", "tls12"] }
+serde = { version = "1.0.229", optional = true, features = ["derive"] }
+serde_json = { version = "1.0.154", optional = true }
+sha2 = { version = "0.10.9", optional = true }
+sqlx = { version = "0.9.0", optional = true, default-features = false, features = ["postgres", "runtime-tokio", "tls-rustls-ring"] }
+tokio = { version = "1.54.0", optional = true, features = ["rt-multi-thread", "macros", "signal", "sync", "time", "net"] }

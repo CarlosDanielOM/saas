@@ -1,3 +1,5 @@
+#![cfg(feature = "mongo")]
+
 //! Opt-in integration coverage for
 //! [`dima_rust::utils::mongo::get_mongo_client`].
 //!
