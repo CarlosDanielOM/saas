@@ -811,7 +811,7 @@ async function sendStreamSummaryEmail(params: SendStreamSummaryEmailParams): Pro
     }, { channelId: params.channelID, destination: 'both' });
 
     // Build the full summary link
-    const fullSummaryLink = `${DASHBOARD_URL}/${params.channelName}/modules/stream-summary/${params.context.session.streamID || 'latest'}`;
+    const fullSummaryLink = `${DASHBOARD_URL}/${encodeURIComponent(params.channelName)}/modules/stream-summaries`;
 
     await logInfo({
         message: '[STREAM SUMMARY EMAIL] Step 2: Sending email via Resend',

@@ -1,39 +1,48 @@
+/**
+ * VOD Clip Analysis Finished Email Template
+ *
+ * Sent when the VOD clip recommender finishes and found moments to review.
+ */
+
+import { Text, Row, Column, Section } from '@react-email/components';
 import {
-    Html,
-    Head,
-    Body,
-    Container,
-    Section,
-    Text,
-    Button,
-    Hr,
-    Img
-} from '@react-email/components';
+    EmailLayout,
+    Paragraph,
+    PrimaryButton,
+    Callout,
+    getPalette,
+    resolveLanguage,
+    type EmailTheme
+} from './components/email-layout.js';
 
 interface VodClipAnalysisFinishedEmailProps {
     streamerName: string;
     approvedCount: number;
     dashboardUrl: string;
-    language?: 'en' | 'es';
-    theme?: 'light' | 'dark';
+    language?: string;
+    theme?: EmailTheme;
 }
 
 const translations = {
     en: {
-        subject: 'Your VOD clip recommendations are ready 🎬',
-        greeting: (name: string) => `Hey ${name}!`,
-        title: 'VOD analysis finished',
-        body: (count: number) => `We found ${count} probable clip moment${count === 1 ? '' : 's'} from your latest VOD.`,
-        cta: 'Review Clip Recommendations',
-        footer: 'Preview clips are temporary. Confirm the moments you want to keep from your dashboard.'
+        subject: 'Your VOD clip moments are ready to review',
+        preview: (count: number) => `We found ${count} likely clip moment${count === 1 ? '' : 's'} in your latest VOD.`,
+        kicker: 'VOD analysis finished',
+        title: (name: string) => `${name}, your clip picks are ready`,
+        countLabel: (count: number) => `likely clip moment${count === 1 ? '' : 's'} in your latest VOD`,
+        body: 'Watch each preview, keep the ones you like and skip the rest.',
+        temporary: 'Previews are temporary. Confirm the moments you want to keep from your dashboard.',
+        cta: 'Review clip moments'
     },
     es: {
-        subject: 'Tus recomendaciones de clips del VOD estan listas 🎬',
-        greeting: (name: string) => `¡Hey ${name}!`,
-        title: 'Analisis de VOD terminado',
-        body: (count: number) => `Encontramos ${count} posible${count === 1 ? '' : 's'} momento${count === 1 ? '' : 's'} para clip de tu ultimo VOD.`,
-        cta: 'Revisar recomendaciones',
-        footer: 'Los previews son temporales. Confirma los momentos que quieras guardar desde tu dashboard.'
+        subject: 'Tus momentos para clip del VOD están listos',
+        preview: (count: number) => `Encontramos ${count} posible${count === 1 ? '' : 's'} momento${count === 1 ? '' : 's'} para clip en tu último VOD.`,
+        kicker: 'Análisis del VOD terminado',
+        title: (name: string) => `${name}, tus clips sugeridos están listos`,
+        countLabel: (count: number) => `posible${count === 1 ? '' : 's'} momento${count === 1 ? '' : 's'} para clip en tu último VOD`,
+        body: 'Mira cada preview, guarda los que te gusten y descarta el resto.',
+        temporary: 'Los previews son temporales. Confirma los momentos que quieras guardar desde tu panel.',
+        cta: 'Revisar momentos'
     }
 };
 
@@ -41,48 +50,47 @@ export function VodClipAnalysisFinishedEmail({
     streamerName,
     approvedCount,
     dashboardUrl,
-    language = 'en',
+    language,
     theme = 'dark'
 }: VodClipAnalysisFinishedEmailProps) {
-    const t = translations[language];
-    const isDark = theme === 'dark';
+    const lang = resolveLanguage(language);
+    const t = translations[lang];
+    const p = getPalette(theme);
+    const count = Math.max(0, Number(approvedCount) || 0);
 
     return (
-        <Html>
-            <Head>
-                <style>{`
-                    body { background-color: ${isDark ? '#0c0717' : '#f5f5f5'}; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; margin: 0; padding: 0; }
-                    .container { max-width: 600px; margin: 0 auto; padding: 40px 20px; }
-                    .card { background-color: ${isDark ? '#140c24' : '#ffffff'}; border-radius: 16px; padding: 40px; border: ${isDark ? '1px solid #2f1d4f' : '1px solid #eeeeee'}; }
-                    .logo { max-width: 150px; margin-bottom: 28px; }
-                    .kicker { color: #facc15; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; font-size: 12px; }
-                    .title { font-size: 28px; font-weight: 700; color: ${isDark ? '#f8fafc' : '#111827'}; margin: 8px 0 16px; }
-                    .text { font-size: 16px; line-height: 1.6; color: ${isDark ? '#cbd5e1' : '#374151'}; margin-bottom: 16px; }
-                    .count { font-size: 48px; line-height: 1; color: #facc15; font-weight: 800; margin: 18px 0; }
-                    .button { display: inline-block; background: linear-gradient(135deg, #7c3aed, #facc15); color: #111827 !important; text-decoration: none; padding: 14px 28px; border-radius: 9999px; font-weight: 700; font-size: 16px; margin: 20px 0; }
-                    .footer { margin-top: 32px; font-size: 14px; color: ${isDark ? '#94a3b8' : '#6b7280'}; text-align: center; }
-                `}</style>
-            </Head>
-            <Body>
-                <Container className="container">
-                    <Section className="card">
-                        <Img src="https://cdn.domdimabot.com/emails/logo.png" alt="DomDimaBot" className="logo" />
-                        <Text className="kicker">{t.greeting(streamerName)}</Text>
-                        <Text className="title">{t.title}</Text>
-                        <Text className="count">{approvedCount}</Text>
-                        <Text className="text">{t.body(approvedCount)}</Text>
-                        <Section style={{ textAlign: 'center' }}>
-                            <Button href={dashboardUrl} className="button">{t.cta}</Button>
-                        </Section>
-                        <Hr style={{ margin: '30px 0', borderColor: isDark ? '#2f1d4f' : '#eeeeee' }} />
-                        <Text className="footer">{t.footer}</Text>
-                    </Section>
-                </Container>
-            </Body>
-        </Html>
+        <EmailLayout
+            preview={t.preview(count)}
+            language={lang}
+            palette={p}
+            kicker={t.kicker}
+            kickerTone="gold"
+            title={t.title(streamerName)}
+        >
+            <Section style={{ backgroundColor: p.raised, border: `1px solid ${p.line}`, borderRadius: '16px', padding: '18px 20px', margin: '0 0 18px' }}>
+                <Row>
+                    <Column style={{ width: '1%', whiteSpace: 'nowrap', paddingRight: '18px', verticalAlign: 'middle' }}>
+                        <Text style={{ margin: 0, fontSize: '52px', lineHeight: '56px', fontWeight: 800, color: p.gold, letterSpacing: '-0.02em' }}>{count}</Text>
+                    </Column>
+                    <Column style={{ verticalAlign: 'middle' }}>
+                        <Text style={{ margin: 0, fontSize: '16px', lineHeight: '23px', fontWeight: 700, color: p.fg }}>{t.countLabel(count)}</Text>
+                    </Column>
+                </Row>
+            </Section>
+
+            <Paragraph palette={p}>{t.body}</Paragraph>
+
+            <Callout palette={p} tone="gold">
+                <Text style={{ margin: 0, fontSize: '14px', lineHeight: '21px', color: p.muted }}>
+                    <span style={{ color: p.gold, fontWeight: 800 }}>⏱&nbsp; </span>{t.temporary}
+                </Text>
+            </Callout>
+
+            <PrimaryButton href={dashboardUrl}>{t.cta}</PrimaryButton>
+        </EmailLayout>
     );
 }
 
-export function getVodClipAnalysisFinishedSubject(language: 'en' | 'es' = 'en'): string {
-    return translations[language].subject;
+export function getVodClipAnalysisFinishedSubject(language: string = 'en'): string {
+    return translations[resolveLanguage(language)].subject;
 }

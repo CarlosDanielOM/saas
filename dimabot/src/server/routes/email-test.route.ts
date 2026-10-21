@@ -88,7 +88,7 @@ router.get('/test', authMiddleware as any, workspaceOwnerMiddleware, async (req:
                         donations: 50
                     },
                     memoryCount: 3,
-                    fullSummaryLink: `${DASHBOARD_URL}/teststreamer/modules/stream-summary/latest`,
+                    fullSummaryLink: `${DASHBOARD_URL}/teststreamer/modules/stream-summaries`,
                     dashboardLink: DASHBOARD_URL,
                     language,
                     theme

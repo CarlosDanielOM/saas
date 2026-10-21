@@ -1,57 +1,73 @@
 /**
  * Welcome Email Template
  *
- * Sent right after user successfully activates their account.
+ * Sent right after the user activates the bot (approves its Twitch permissions).
+ * Steps mirror the docs "Getting Started" guide from step 3 onward.
  */
 
+import { Text } from '@react-email/components';
 import {
-    Html,
-    Head,
-    Body,
-    Container,
-    Section,
-    Text,
-    Button,
-    Hr,
-    Img
-} from '@react-email/components';
+    EmailLayout,
+    Paragraph,
+    PrimaryButton,
+    Steps,
+    Callout,
+    SectionLabel,
+    getPalette,
+    resolveLanguage,
+    docsUrl,
+    DISCORD_URL,
+    type EmailTheme
+} from './components/email-layout.js';
 
 interface WelcomeEmailProps {
     streamerName: string;
     discountCode?: string;
     dashboardLink: string;
-    language?: 'en' | 'es';
-    theme?: 'light' | 'dark';
+    language?: string;
+    theme?: EmailTheme;
 }
 
 const translations = {
     en: {
-        title: (name: string) => `Welcome to DomDimaBot, ${name}! 🎉`,
-        line1: "Your account is now activated and ready to go. You've taken the first step toward enhancing your stream with AI-powered features.",
-        discountLabel: "As a special welcome gift, here's your discount code:",
-        discountEmpty: "Your discount code will be coming soon!",
-        nextSteps: "Here's what you can do next:",
-        feature1: "Customize your AI personality",
-        feature2: "Set up custom commands and triggers",
-        feature3: "View your stream analytics",
-        buttonText: "Go to Dashboard",
-        line2: "If you have any questions, just reply to this email - we're always here to help!",
-        footer: "DomDimaBot - Making streams smarter, one chat at a time.",
-        subject: "Welcome to DomDimaBot! 🎮"
+        preview: 'The bot is connected. Three quick steps and it’s live in your chat.',
+        kicker: 'Account active',
+        title: (name: string) => `You’re in, ${name}!`,
+        lead: 'DomDimaBot is connected to your Twitch channel. Three quick steps and it’s answering in your chat — about 5 minutes.',
+        stepsLabel: 'Get it running',
+        steps: [
+            { title: 'Turn the bot on', body: 'On your dashboard, open Quick Actions and click “Turn the bot on”.' },
+            { title: 'Add your first command', body: 'Go to Commands → Add Command, name it hello, save, and type !hello in your chat.' },
+            { title: 'Pick your modules', body: 'Text to speech, alerts, chat moderation, clips and analytics. Each card shows its plan.' }
+        ],
+        giftLabel: 'Welcome gift',
+        giftBody: 'Use this code at checkout if you upgrade to Premium or Pro.',
+        button: 'Open my dashboard',
+        helpPrefix: 'Stuck on a step? The ',
+        helpGuide: 'getting started guide',
+        helpMiddle: ' walks through each one, or ask us on ',
+        helpSuffix: '.',
+        subject: 'Welcome to DomDimaBot — let’s get your bot live'
     },
     es: {
-        title: (name: string) => `¡Bienvenido a DomDimaBot, ${name}! 🎉`,
-        line1: "Tu cuenta ahora está activada y lista para usar. Has dado el primer paso para mejorar tu stream con funciones potenciadas por IA.",
-        discountLabel: "Como regalo de bienvenida especial, aquí está tu código de descuento:",
-        discountEmpty: "¡Tu código de descuento llegará pronto!",
-        nextSteps: "Esto es lo que puedes hacer ahora:",
-        feature1: "Personaliza tu personalidad de IA",
-        feature2: "Configura comandos personalizados y disparadores",
-        feature3: "Ve tus análisis de stream",
-        buttonText: "Ir al Panel",
-        line2: "Si tienes alguna pregunta, simplemente responde a este correo - ¡siempre estamos aquí para ayudar!",
-        footer: "DomDimaBot - Haciendo streams más inteligentes, un chat a la vez.",
-        subject: "¡Bienvenido a DomDimaBot! 🎮"
+        preview: 'El bot ya está conectado. Tres pasos rápidos y estará en tu chat.',
+        kicker: 'Cuenta activa',
+        title: (name: string) => `¡Ya estás dentro, ${name}!`,
+        lead: 'DomDimaBot ya está conectado a tu canal de Twitch. Tres pasos rápidos y estará respondiendo en tu chat — unos 5 minutos.',
+        stepsLabel: 'Ponlo en marcha',
+        steps: [
+            { title: 'Enciende el bot', body: 'En tu panel, abre Acciones Rápidas y haz clic en “Encender el bot”.' },
+            { title: 'Agrega tu primer comando', body: 'Ve a Comandos → Agregar Comando, llámalo hello, guarda y escribe !hello en tu chat.' },
+            { title: 'Elige tus módulos', body: 'Texto a voz, alertas, moderación del chat, clips y analíticas. Cada tarjeta muestra su plan.' }
+        ],
+        giftLabel: 'Regalo de bienvenida',
+        giftBody: 'Usa este código al pagar si mejoras a Premium o Pro.',
+        button: 'Abrir mi panel',
+        helpPrefix: '¿Te atoraste en un paso? La ',
+        helpGuide: 'guía de inicio',
+        helpMiddle: ' explica cada uno, o pregúntanos en ',
+        helpSuffix: '.',
+        subject: 'Bienvenido a DomDimaBot — pongamos tu bot en marcha'
     }
 };
 
@@ -59,170 +75,53 @@ export function WelcomeEmail({
     streamerName,
     discountCode,
     dashboardLink,
-    language = 'en',
+    language,
     theme = 'dark'
 }: WelcomeEmailProps) {
-    const t = translations[language];
-    const isDark = theme === 'dark';
+    const lang = resolveLanguage(language);
+    const t = translations[lang];
+    const p = getPalette(theme);
+    const link = { color: p.accentText, textDecoration: 'underline' };
 
     return (
-        <Html>
-            <Head>
-                <style>{`
-                    body {
-                        background-color: ${isDark ? '#0c0717' : '#f5f5f5'};
-                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-                        margin: 0;
-                        padding: 0;
-                    }
-                    .container {
-                        max-width: 600px;
-                        margin: 0 auto;
-                        padding: 40px 20px;
-                    }
-                    .card {
-                        background-color: ${isDark ? '#140c24' : '#ffffff'};
-                        border-radius: 12px;
-                        padding: 40px;
-                        box-shadow: ${isDark ? '0 10px 30px rgba(0, 0, 0, 0.4), 0 0 1px rgba(168, 85, 247, 0.4)' : '0 2px 4px rgba(0, 0, 0, 0.1)'};
-                        border: ${isDark ? '1px solid #2f1d4f' : '1px solid #eeeeee'};
-                    }
-                    .logo {
-                        max-width: 150px;
-                        margin-bottom: 30px;
-                    }
-                    .title {
-                        font-size: 24px;
-                        font-weight: 600;
-                        color: ${isDark ? '#f8fafc' : '#1a1a1a'};
-                        margin-bottom: 20px;
-                    }
-                    .text {
-                        font-size: 16px;
-                        line-height: 1.6;
-                        color: ${isDark ? '#a9b2c3' : '#4a4a4a'};
-                        margin-bottom: 16px;
-                    }
-                    .highlight {
-                        background-color: ${isDark ? '#1e1435' : '#fef9e6'};
-                        border-left: 4px solid ${isDark ? '#a855f7' : '#ffc107'};
-                        padding: 16px 20px;
-                        margin: 20px 0;
-                        border-radius: 6px;
-                    }
-                    .discount-code {
-                        font-family: 'Courier New', monospace;
-                        font-size: 20px;
-                        font-weight: 700;
-                        color: #a855f7;
-                        letter-spacing: 2px;
-                    }
-                    .button {
-                        display: inline-block;
-                        background: linear-gradient(135deg, #7c3aed, #a855f7);
-                        background-color: #9146ff;
-                        color: #ffffff !important;
-                        text-decoration: none;
-                        padding: 14px 28px;
-                        border-radius: 9999px;
-                        font-weight: 600;
-                        font-size: 16px;
-                        margin: 20px 0;
-                        box-shadow: ${isDark ? '0 4px 15px rgba(124, 58, 237, 0.4)' : 'none'};
-                    }
-                    .footer {
-                        margin-top: 40px;
-                        font-size: 14px;
-                        color: ${isDark ? '#6b7280' : '#888888'};
-                        text-align: center;
-                    }
-                    .features {
-                        margin: 20px 0;
-                    }
-                    .feature {
-                        display: flex;
-                        align-items: center;
-                        margin-bottom: 12px;
-                    }
-                    .feature-icon {
-                        margin-right: 12px;
-                    }
-                `}</style>
-            </Head>
-            <Body>
-                <Container className="container">
-                    <Section className="card">
-                        <Img
-                            src="https://cdn.domdimabot.com/emails/logo.png"
-                            alt="DomDimaBot"
-                            className="logo"
-                        />
- 
-                        <Text className="title">{t.title(streamerName)}</Text>
- 
-                        <Text className="text">
-                            {t.line1}
-                        </Text>
- 
-                        {discountCode ? (
-                            <Section className="highlight">
-                                <Text className="text" style={{ marginBottom: 8, color: isDark ? '#a9b2c3' : '#4a4a4a' }}>
-                                    {t.discountLabel}
-                                </Text>
-                                <Text className="discount-code">{discountCode}</Text>
-                            </Section>
-                        ) : (
-                            <Section className="highlight">
-                                <Text className="text" style={{ marginBottom: 0, color: isDark ? '#a9b2c3' : '#4a4a4a' }}>
-                                    {t.discountEmpty}
-                                </Text>
-                            </Section>
-                        )}
- 
-                        <Text className="text">
-                            {t.nextSteps}
-                        </Text>
- 
-                        <Section className="features">
-                            <div className="feature">
-                                <span className="feature-icon">🎨</span>
-                                <Text className="text" style={{ marginBottom: 0, color: isDark ? '#a9b2c3' : '#4a4a4a' }}>{t.feature1}</Text>
-                            </div>
-                            <div className="feature">
-                                <span className="feature-icon">⚡</span>
-                                <Text className="text" style={{ marginBottom: 0, color: isDark ? '#a9b2c3' : '#4a4a4a' }}>{t.feature2}</Text>
-                            </div>
-                            <div className="feature">
-                                <span className="feature-icon">📊</span>
-                                <Text className="text" style={{ marginBottom: 0, color: isDark ? '#a9b2c3' : '#4a4a4a' }}>{t.feature3}</Text>
-                            </div>
-                        </Section>
- 
-                        <Section style={{ textAlign: 'center' }}>
-                            <Button
-                                href={dashboardLink}
-                                className="button"
-                            >
-                                {t.buttonText}
-                            </Button>
-                        </Section>
- 
-                        <Text className="text">
-                            {t.line2}
-                        </Text>
- 
-                        <Hr style={{ margin: '30px 0', borderColor: isDark ? '#2f1d4f' : '#eeeeee' }} />
- 
-                        <Text className="footer">
-                            {t.footer}
-                        </Text>
-                    </Section>
-                </Container>
-            </Body>
-        </Html>
+        <EmailLayout
+            preview={t.preview}
+            language={lang}
+            palette={p}
+            kicker={t.kicker}
+            kickerTone="ok"
+            title={t.title(streamerName)}
+            lead={t.lead}
+            dashboardLink={dashboardLink}
+        >
+            <SectionLabel palette={p}>{t.stepsLabel}</SectionLabel>
+            <Steps palette={p} items={t.steps} />
+
+            {discountCode ? (
+                <Callout palette={p} tone="gold">
+                    <Text style={{ margin: '0 0 6px', fontSize: '12px', lineHeight: '16px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: p.gold }}>
+                        {t.giftLabel}
+                    </Text>
+                    <Text style={{ margin: '0 0 6px', fontSize: '22px', lineHeight: '28px', fontWeight: 800, letterSpacing: '0.12em', color: p.fg, fontFamily: "'SFMono-Regular', Menlo, Consolas, 'Courier New', monospace" }}>
+                        {discountCode}
+                    </Text>
+                    <Text style={{ margin: 0, fontSize: '14px', lineHeight: '20px', color: p.muted }}>{t.giftBody}</Text>
+                </Callout>
+            ) : null}
+
+            <PrimaryButton href={dashboardLink}>{t.button}</PrimaryButton>
+
+            <Paragraph palette={p} style={{ margin: '22px 0 0', fontSize: '14px', lineHeight: '21px' }}>
+                {t.helpPrefix}
+                <a href={docsUrl(lang, 'getting-started/')} style={link}>{t.helpGuide}</a>
+                {t.helpMiddle}
+                <a href={DISCORD_URL} style={link}>Discord</a>
+                {t.helpSuffix}
+            </Paragraph>
+        </EmailLayout>
     );
 }
 
-export function getWelcomeEmailSubject(language: 'en' | 'es' = 'en'): string {
-    return translations[language].subject;
+export function getWelcomeEmailSubject(language: string = 'en'): string {
+    return translations[resolveLanguage(language)].subject;
 }
