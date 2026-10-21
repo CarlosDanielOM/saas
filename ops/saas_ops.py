@@ -26,7 +26,9 @@ ROOT = Path(__file__).resolve().parents[1]
 OWNER = "io.domdimabot.saas-ops"
 RUN_RE = re.compile(r"[a-z][a-z0-9-]*-[0-9a-f]{12}\Z")
 IMAGE_RE = re.compile(r"sha256:[0-9a-f]{64}\Z")
-EXCLUDED = {"node_modules", "dist", ".git", ".angular", ".astro", "data", "coverage"}
+EXCLUDED = {"node_modules", "dist", "target", ".saas-native", ".git", ".angular", ".astro", "data", "coverage"}
+RUST_BUILD_IMAGE = "rust:alpine"
+GIB = 1024 ** 3
 
 
 class OpsError(Exception):
@@ -236,7 +238,7 @@ class Ops:
         require(Path(top).resolve() == source, "Source must be a worktree root")
         return source
 
-    def snapshot(self, target, destination, source_dir=None):
+    def snapshot(self, target, destination, source_dir=None, *, rust_only=False):
         source_root = self.source_root(source_dir)
         source = source_root / target.project / target.context
         relative = source.relative_to(source_root)
@@ -247,6 +249,8 @@ class Ops:
             file = source_root / name
             rel = file.relative_to(source)
             if any(part in EXCLUDED or part.startswith(".env") for part in rel.parts):
+                continue
+            if rust_only and rel.parts[0] not in {"Cargo.toml", "Cargo.lock", "rust-toolchain.toml", "src", "tests", "examples"}:
                 continue
             require(not file.is_symlink() and source in file.resolve().parents, f"Unsafe build input: {name}")
             if not file.exists():  # tracked deletions are part of the candidate
@@ -260,6 +264,114 @@ class Ops:
         for directory in [destination, *(p for p in destination.rglob("*") if p.is_dir())]:
             directory.chmod(0o755)
         require(any(destination.iterdir()), "Empty build context")
+
+    @contextlib.contextmanager
+    def rust_build_lock(self):
+        # One compiler across worktrees/checkouts, not merely one per Ops receipt.
+        lock_path = Path.home() / ".local/state/saas-ops-rust-build.lock"
+        lock_path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        require(not lock_path.is_symlink(), "Rust compiler lock must not be a symlink")
+        with lock_path.open("a") as lock:
+            try:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError as exc:
+                raise OpsError("Another capped Rust compiler is running") from exc
+            yield
+
+    def rust_headroom(self, *, starting=False):
+        available = next(int(line.split()[1]) * 1024 for line in Path("/proc/meminfo").read_text().splitlines()
+                         if line.startswith("MemAvailable:"))
+        load = os.getloadavg()[0]
+        minimum = (12 if starting else 8) * GIB
+        require(available >= minimum, "Rust build stopped: insufficient production memory headroom")
+        require(load < max(1, os.cpu_count() or 1) * 0.85, "Rust build stopped: production host load is too high")
+        require(shutil.disk_usage(self.state).free >= 5 * GIB, "Rust build stopped: less than 5 GiB disk headroom")
+        return {"mem_available_bytes": available, "load_1m": load}
+
+    def rust_container_args(self, path, receipt, image):
+        return ["create", "--name", "saas-ops-" + receipt["run"] + "-rust-build", *self.labels(receipt["run"]),
+                "--label", OWNER + ".rust-build=true",
+                "--cpus=4", "--memory=4g", "--memory-swap=4g", "--pids-limit=256",
+                "--security-opt=no-new-privileges",
+                "--env=CARGO_BUILD_JOBS=2", "--env=CARGO_HOME=/work/cargo", "--env=CARGO_TARGET_DIR=/work/target",
+                "--mount", f"type=bind,src={path / 'rust-source'},dst=/source,readonly",
+                "--mount", f"type=bind,src={path / 'rust-work'},dst=/work",
+                "--mount", f"type=bind,src={path / 'rust-artifacts'},dst=/artifacts",
+                "--mount", f"type=bind,src={path / 'rust-build.sh'},dst=/rust-build.sh,readonly",
+                "--workdir=/source", image, "sh", "/rust-build.sh"]
+
+    def build_rust(self, path, receipt, source_dir=None):
+        """Compile in a hard-capped musl container; never invoke host Cargo/BuildKit Cargo."""
+        with self.rust_build_lock():
+            # SIGKILL releases flock but may leave Docker work running. Never
+            # overlap that orphan; its original receipt must clean it up.
+            require(not self.docker("container", "ls", "--filter", "label=" + OWNER + ".rust-build=true", "--quiet", capture=True).strip(),
+                    "A capped Rust compiler is already running; clean up its owning run first")
+            receipt["rust_headroom_start"] = self.rust_headroom(starting=True)
+            self.snapshot(Target("dima-rust", "", ""), path / "rust-source", source_dir, rust_only=True)
+            receipt["rust_source_digest"] = tree_hash(path / "rust-source")
+            for filename in ("Cargo.toml", "Cargo.lock", "rust-toolchain.toml"):
+                require((path / "rust-source" / filename).is_file(), "Missing Rust build manifest: " + filename)
+            recipe = Path(__file__).with_name("rust_build.sh")
+            shutil.copy2(recipe, path / "rust-build.sh")
+            receipt["rust_recipe_digest"] = digest(recipe.read_bytes())
+            for name in ("rust-work", "rust-artifacts"):
+                (path / name).mkdir(mode=0o755)
+            image = self.inspect("image", RUST_BUILD_IMAGE, missing=True)
+            if not image:
+                self.docker("pull", RUST_BUILD_IMAGE)
+                image = self.inspect("image", RUST_BUILD_IMAGE)
+            require(bool(IMAGE_RE.fullmatch(image["Id"])), "Cannot resolve immutable Rust toolchain image")
+            receipt["rust_toolchain_image"] = image["Id"]
+            self.rust_headroom(starting=True)
+            name = "saas-ops-" + receipt["run"] + "-rust-build"
+            self.add_resource(path, receipt, "container", name)
+            try:
+                self.docker(*self.rust_container_args(path, receipt, image["Id"]), capture=True)
+                obj = self.inspect("container", name)
+                self.owned(obj, receipt["run"], "container")
+                limits = obj["HostConfig"]
+                require(limits.get("NanoCpus") == 4_000_000_000 and limits.get("Memory") == 4 * GIB and
+                        limits.get("MemorySwap") == 4 * GIB and limits.get("PidsLimit") == 256,
+                        "Rust compiler cgroup limits do not match the required policy")
+                self.docker("start", obj["Id"], capture=True)
+                started = time.monotonic()
+                next_report = started
+                while True:
+                    current = self.inspect("container", name)
+                    if not current["State"]["Running"]:
+                        break
+                    headroom = self.rust_headroom()
+                    require(time.monotonic() - started < 7200, "Rust build exceeded the two-hour time limit")
+                    if time.monotonic() >= next_report:
+                        print(f"Capped Rust build running (4 CPUs/4 GiB, available {headroom['mem_available_bytes'] / GIB:.1f} GiB)", flush=True)
+                        next_report = time.monotonic() + 45
+                    time.sleep(3)
+                require(current["State"].get("ExitCode") == 0 and not current["State"].get("OOMKilled"),
+                        f"Rust compiler/checks failed; inspect private log {path / 'rust-build.log'} (no host fallback)")
+                artifact = path / "rust-artifacts/stream_activity"
+                require(artifact.is_file() and not artifact.is_symlink() and artifact.read_bytes()[:4] == b"\x7fELF",
+                        "Capped Rust build did not export an ELF binary")
+                artifact.chmod(0o755)
+                receipt["rust_toolchain_version"] = (path / "rust-artifacts/toolchain.txt").read_text().strip()
+                receipt["rust_binary_digest"] = digest(artifact.read_bytes())
+                # Docker COPY includes this only for cron; other dimabot targets stay unchanged.
+                staged = path / "source/.saas-native"
+                require(not staged.exists(), "Reserved native artifact directory already exists in source")
+                staged.mkdir(mode=0o755)
+                shutil.copy2(artifact, staged / "stream_activity")
+                self.save(path, receipt)
+            finally:
+                try:
+                    obj = self.inspect("container", name, missing=True)
+                    if obj:
+                        self.owned(obj, receipt["run"], "container")
+                        log = self.docker("logs", obj["Id"], capture=True, combine_stderr=True)
+                        (path / "rust-build.log").write_text(log)
+                        (path / "rust-build.log").chmod(0o600)
+                finally:
+                    self.cleanup_resources(path, receipt)
+                    shutil.rmtree(path / "rust-work")
 
     def build(self, name, source_dir=None):
         target = TARGETS[name]
@@ -276,6 +388,8 @@ class Ops:
         try:
             atomic_json(path / "compose.json", config)  # private: resolved config contains credentials
             self.snapshot(target, path / "source", source_dir)
+            if name == "cron":
+                self.build_rust(path, receipt, source_dir)
             receipt["source_digest"] = tree_hash(path / "source")
             if target.output:
                 # Install/build only inside an unserved snapshot, never inside the live output.
@@ -483,9 +597,12 @@ class Ops:
         name = prefix + "app"
         self.add_resource(path, receipt, "container", name)
         env_args = [part for key, value in env.items() for part in ("--env", key + "=" + value)]
+        # Cron alone supervises a less-privileged native child. It needs these
+        # three capabilities to drop UID/GID and subsequently signal that child.
+        child_caps = [part for cap in ("SETUID", "SETGID", "KILL") for part in ("--cap-add", cap)] if receipt["target"] == "cron" else []
         self.docker("create", "--pull=never", "--name", name, *self.labels(receipt["run"]),
                     "--network", network, "--memory", "3g", "--cpus", "2", "--pids-limit", "512",
-                    "--security-opt", "no-new-privileges", "--cap-drop", "ALL", *env_args,
+                    "--security-opt", "no-new-privileges", "--cap-drop", "ALL", *child_caps, *env_args,
                     receipt["image"], *target.command, capture=True)
         obj = self.inspect("container", name)
         self.owned(obj, receipt["run"], "container")
@@ -654,7 +771,7 @@ class Ops:
                 self.docker("image", "rm", receipt["tag"], capture=True)  # no force; Docker protects in-use images
             receipt["status"] = "cleaned"
         if receipt["status"] not in {"building", "verifying", "deploying", "rolling-back", "rollback-failed"}:
-            for name in ("source", "fixtures"):
+            for name in ("source", "fixtures", "rust-source", "rust-work", "rust-artifacts"):
                 directory = path / name
                 require(not directory.is_symlink(), "Refusing a symlinked temporary directory")
                 if directory.is_dir():

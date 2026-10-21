@@ -1,6 +1,6 @@
 # dima-rust
 
-`dima-rust` is a Rust library for incremental migrations of selected worker and server components. It includes lazy native MongoDB and Redis/Dragonfly client utilities and a manually invoked stream-activity projector binary. That binary is not wired into the dimabot supervisor or Compose services, and the Rust project has no supported deployment target; the application projects remain the source of production behavior.
+`dima-rust` is a Rust library for incremental migrations of selected worker and server components. It includes lazy native MongoDB and Redis/Dragonfly client utilities, a stream-activity projector, and its executable. The dimabot cron supervisor runs that executable as its native stream-activity child for the Node runtime; `scripts/saas-ops build cron` compiles and stages it in the existing cron image. The native projector is active in production, reusing the existing cron container and Compose service without adding a new service.
 
 The dependency set provides MongoDB with `mongodb::bson`, Serde, Garde, Tokio, SQLx with PostgreSQL support, the Redis crate (`redis-rs`) for Dragonfly-compatible Redis operations, Axum, and `dotenvy` for explicit environment-file loading. A dependency alone does not configure or connect its backing service.
 
@@ -44,7 +44,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 Replace the example paths with the files the executable is configured to load. The library itself does not load environment files.
 
-The `stream_activity` binary is a manual projection tool. Its reuse boundaries, database requirements, command options, parity fixture, and benchmark methodology are documented in [STREAM_ACTIVITY.md](STREAM_ACTIVITY.md).
+The `stream_activity` binary remains manually runnable for isolated checks and is also the executable supervised by the existing cron host. In the updated supervisor source, native Rust is the default for the Node runtime; `STREAM_ACTIVITY_RUNTIME=typescript` explicitly selects the TypeScript fallback. `tsx` development continues to default to TypeScript unless Rust is selected explicitly. A missing or failed Rust binary does not silently switch runtimes. The process receives only MongoDB and basic locale/certificate environment values, runs as UID/GID 65534 when launched by the root cron process, and does not use the Rust Redis utility. See [STREAM_ACTIVITY.md](STREAM_ACTIVITY.md) for runtime selection, telemetry, fixtures, build, and rollout details.
 
 Check the library from this directory using the commands below. On the production VPS, every Cargo command listed is subject to the [production-host Rust build and test policy](AGENTS.md#production-host-rust-build-and-test-policy); do not run these commands directly on the host:
 

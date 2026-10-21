@@ -379,6 +379,136 @@ class OpsTests(unittest.TestCase):
             with mod.Ops(self.root, self.ops.state).lock():
                 pass
 
+    def rust_source(self):
+        subprocess.run(["git", "init", "-q", str(self.root)], check=True)
+        project = self.root / "dima-rust"
+        (project / "src").mkdir(parents=True)
+        for name in ("Cargo.toml", "Cargo.lock", "rust-toolchain.toml"):
+            (project / name).write_text("fixture")
+        (project / "src/lib.rs").write_text("// fixture")
+        return project
+
+    def test_rust_snapshot_excludes_env_host_artifacts_and_non_build_material(self):
+        project = self.rust_source()
+        for name in ("target", "benchmarks", ".saas-native"):
+            (project / name).mkdir()
+            (project / name / "stream_activity").write_text("unverified host artifact")
+        (project / ".env.prod").write_text("SECRET=private")
+        (project / "README.md").write_text("not compiler input")
+        self.ops.snapshot(mod.Target("dima-rust", "", ""), self.path / "rust-source", rust_only=True)
+        self.assertEqual([str(f.relative_to(self.path / "rust-source")) for f in mod.files_under(self.path / "rust-source")],
+                         ["Cargo.lock", "Cargo.toml", "rust-toolchain.toml", "src/lib.rs"])
+        (project / "src/unsafe.rs").symlink_to(project / ".env.prod")
+        with self.assertRaises(mod.OpsError):
+            self.ops.snapshot(mod.Target("dima-rust", "", ""), self.path / "unsafe", rust_only=True)
+
+    def test_rust_compiler_has_hard_caps_private_source_and_no_production_mounts(self):
+        args = self.ops.rust_container_args(self.path, self.receipt, NEW)
+        for option in ("--cpus=4", "--memory=4g", "--memory-swap=4g", "--pids-limit=256", "--env=CARGO_BUILD_JOBS=2"):
+            self.assertIn(option, args)
+        self.assertEqual(args[-3:], [NEW, "sh", "/rust-build.sh"])
+        self.assertIn(mod.OWNER + ".rust-build=true", args)
+        mounts = [args[i + 1] for i, arg in enumerate(args) if arg == "--mount"]
+        self.assertEqual(len(mounts), 4)
+        self.assertTrue(all(mount.startswith("type=bind,src=" + str(self.path) + "/") for mount in mounts))
+        self.assertTrue(any("dst=/source,readonly" in mount for mount in mounts))
+        self.assertNotIn("--privileged", args)
+        self.assertNotIn("--env-file", args)
+        self.assertNotIn("--network=host", args)
+        self.assertFalse(any("docker.sock" in arg or ".env" in arg for arg in args))
+
+    def test_rust_compiler_lock_is_global_across_checkout_state(self):
+        with patch.object(Path, "home", return_value=self.root):
+            with self.ops.rust_build_lock(), self.assertRaises(mod.OpsError):
+                with mod.Ops(self.root, self.root / "other-state").rust_build_lock():
+                    pass
+
+    def test_rust_build_refuses_orphaned_compiler_before_copying_source(self):
+        with patch.object(self.ops, "docker", return_value="orphan-id\n"), \
+             patch.object(Path, "home", return_value=self.root), self.assertRaises(mod.OpsError):
+            self.ops.build_rust(self.path, self.receipt)
+        self.assertFalse((self.path / "rust-source").exists())
+
+    def test_rust_headroom_refuses_unsafe_start_and_running_pressure(self):
+        with patch.object(Path, "read_text", return_value="MemAvailable: 11534336 kB\n"), \
+             patch.object(mod.os, "getloadavg", return_value=(0, 0, 0)), \
+             patch.object(mod.shutil, "disk_usage", return_value=type("Disk", (), {"free": 10 * mod.GIB})()):
+            with self.assertRaises(mod.OpsError):
+                self.ops.rust_headroom(starting=True)
+            self.ops.rust_headroom()
+        with patch.object(Path, "read_text", return_value="MemAvailable: 7340032 kB\n"), self.assertRaises(mod.OpsError):
+            self.ops.rust_headroom()
+        with patch.object(Path, "read_text", return_value="MemAvailable: 16777216 kB\n"), \
+             patch.object(mod.os, "getloadavg", return_value=(1000, 0, 0)), self.assertRaises(mod.OpsError):
+            self.ops.rust_headroom()
+
+    def simulated_rust_build(self, *, exit_code=0, wrong_limits=False):
+        self.rust_source()
+        (self.path / "source").mkdir()
+        self.ops.objects[("image", mod.RUST_BUILD_IMAGE)] = {"Id": NEW}
+        name = "saas-ops-" + RUN + "-rust-build"
+        original_docker = self.ops.docker
+        def docker(*args, **kwargs):
+            if args[0] == "create":
+                self.ops.objects[("container", name)] = {
+                    "Id": "compiler-id", "Config": {"Labels": self.labels()},
+                    "HostConfig": {"NanoCpus": 1 if wrong_limits else 4_000_000_000,
+                                   "Memory": 4 * mod.GIB, "MemorySwap": 4 * mod.GIB, "PidsLimit": 256},
+                    "State": {"Running": False, "ExitCode": exit_code}}
+            elif args[0] == "start":
+                (self.path / "rust-artifacts/stream_activity").write_bytes(b"\x7fELFfixture")
+                (self.path / "rust-artifacts/toolchain.txt").write_text("host: x86_64-unknown-linux-musl")
+            return original_docker(*args, **kwargs)
+        return patch.object(self.ops, "docker", side_effect=docker)
+
+    def test_rust_build_records_immutable_toolchain_source_artifact_and_cleans_compiler(self):
+        simulation = self.simulated_rust_build()
+        with simulation, patch.object(self.ops, "rust_headroom", return_value={}), \
+             patch.object(Path, "home", return_value=self.root):
+            self.ops.build_rust(self.path, self.receipt)
+        self.assertEqual(self.receipt["rust_toolchain_image"], NEW)
+        self.assertEqual(self.receipt["rust_source_digest"], mod.tree_hash(self.path / "rust-source"))
+        self.assertEqual(self.receipt["rust_binary_digest"], mod.digest(b"\x7fELFfixture"))
+        staged = self.path / "source/.saas-native/stream_activity"
+        self.assertEqual(staged.read_bytes(), b"\x7fELFfixture")
+        self.assertEqual(staged.stat().st_mode & 0o777, 0o755)
+        self.assertEqual(self.receipt["resources"], [])
+        self.assertFalse((self.path / "rust-work").exists())
+        self.assertNotIn(("container", "saas-ops-" + RUN + "-rust-build"), self.ops.objects)
+
+    def test_rust_build_failure_or_wrong_cgroups_never_stages_artifact(self):
+        for failure in ("checks", "limits"):
+            with self.subTest(failure=failure):
+                # Each simulation uses the same task-owned directories, cleared here.
+                for directory in ("dima-rust",):
+                    if (self.root / directory).exists():
+                        mod.shutil.rmtree(self.root / directory)
+                for directory in ("source", "rust-source", "rust-artifacts"):
+                    if (self.path / directory).exists():
+                        mod.shutil.rmtree(self.path / directory)
+                simulation = self.simulated_rust_build(exit_code=1 if failure == "checks" else 0,
+                                                       wrong_limits=failure == "limits")
+                with simulation, patch.object(self.ops, "rust_headroom", return_value={}), \
+                     patch.object(Path, "home", return_value=self.root), self.assertRaises(mod.OpsError):
+                    self.ops.build_rust(self.path, self.receipt)
+                self.assertFalse((self.path / "source/.saas-native").exists())
+                self.assertFalse((self.path / "rust-work").exists())
+                self.assertEqual(self.receipt["resources"], [])
+
+    def test_only_cron_candidate_gets_capabilities_for_unprivileged_native_child(self):
+        check = self.root / "check.mjs"
+        check.write_text("process.exit(0)")
+        inspected = {"Id": "test-id", "Config": {"Labels": self.labels()}}
+        for target in ("cron", "bot", "api"):
+            self.ops.calls.clear()
+            self.receipt["target"] = target
+            with patch.object(self.ops, "readiness"), patch.object(self.ops, "inspect", return_value=inspected):
+                self.ops.verify_container(self.path, self.receipt, mod.TARGETS[target], check, None, False, None, ())
+            create = next(call for call in self.ops.calls if call[0] == "create")
+            caps = [create[i + 1] for i, arg in enumerate(create) if arg == "--cap-add"]
+            self.assertEqual(caps, ["SETUID", "SETGID", "KILL"] if target == "cron" else [])
+            self.assertEqual(create[create.index("--cap-drop") + 1], "ALL")
+
     def website(self):
         target = mod.TARGETS["site"]
         output = self.root / target.project / target.output

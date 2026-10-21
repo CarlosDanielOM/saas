@@ -48,6 +48,42 @@ The helper deploys the exact verified image and manages only the `analytics` ser
 
 ## Container workflow
 
+### Rust stream-activity worker in the cron target
+
+```bash
+scripts/saas-ops plan cron
+scripts/saas-ops build cron
+```
+
+Use the exact `cron-<run-id>` printed by `build` for the later steps.
+
+`scripts/saas-ops build cron` first snapshots `dima-rust` read-only and compiles the musl executable and fixture in one globally serialized, task-owned toolchain container. The helper checks host CPU/load, disk, and `MemAvailable` (at least 12 GiB before build and 8 GiB while it runs), verifies the applied limits (4 CPUs, 4 GiB RAM with no swap, 256 PIDs), and sets `CARGO_BUILD_JOBS=2`. Inside those caps it runs formatting, check, Clippy, default tests, the release binary/fixture build, and binary `--dry-run`. It records source/toolchain/binary digests, stages the binary only into the cron candidate snapshot, then builds the ordinary cron image. Cargo never runs on the host or inside BuildKit. A resource or build failure stops the candidate without relaxing limits or using host fallback.
+
+For candidate verification, the behavior check runs the actual cron supervisor and native child against disposable MongoDB and Dragonfly containers. It checks worker selection, Rust/TypeScript parity and checkpoint recovery, telemetry, per-child restart behavior, and signal shutdown. Its source fixtures are copied into a private temporary directory so the test uses the existing Rust fixture generator and analytics validator without duplicating those sources in `ops/`. The check's dummy environment selects native Rust explicitly. The following is the verification invocation used for the deployed run; its fixture-copy steps keep the test source-backed without checking in duplicate fixture sources:
+
+```bash
+set -eu
+STREAM_ACTIVITY_FIXTURES=$(mktemp -d /tmp/stream-activity-rust-fixtures.XXXXXX)
+trap 'rm -rf -- "$STREAM_ACTIVITY_FIXTURES"' EXIT
+cp ops/checks/stream-activity-rust-fixtures/cron-boot.mjs "$STREAM_ACTIVITY_FIXTURES/"
+cp dima-rust/tests/fixtures/stream_activity.mjs "$STREAM_ACTIVITY_FIXTURES/activity.mjs"
+cp dima-analytics/src/store.mjs "$STREAM_ACTIVITY_FIXTURES/analytics-store.mjs"
+scripts/saas-ops verify cron-<run-id> \
+  --dependency mongo --dependency redis \
+  --test-env ops/checks/stream-activity-rust-fixtures/test-env.json \
+  --fixtures "$STREAM_ACTIVITY_FIXTURES" \
+  --check ops/checks/stream-activity-rust.mjs
+```
+
+After a candidate check passes, deploy and clean up that same run:
+
+```bash
+scripts/saas-ops deploy cron-<run-id>
+scripts/saas-ops cleanup cron-<run-id>
+```
+
+The native Rust projector is active in production from run `cron-a4c96242b30a`, deployed on 2026-10-21. That release updated only the existing `dima-cron` image; it added no Compose service/container and did not deploy the API or bot targets. For future changes, use the same exact run ID for deploy and cleanup and verify production before reporting a rollout complete.
+
 ```bash
 scripts/saas-ops build piper
 # Copy the exact run ID printed above into the following commands:

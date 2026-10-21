@@ -1,12 +1,26 @@
-//! Manual executable only; never starts as part of the library or TS supervisor.
-use std::{path::PathBuf, process::ExitCode, time::Duration};
+//! Stream-activity executable for the cron supervisor and explicit manual runs.
+use std::{
+    io::Write,
+    path::PathBuf,
+    process::ExitCode,
+    time::{Duration, Instant},
+};
 
 use dima_rust::{
     utils::mongo::get_mongo_client, workers::stream_activity::StreamActivityProjector,
 };
 use tokio::sync::watch;
 
-const HELP: &str = "Usage: stream_activity [--dry-run] [--once] [--batch-size N] [--database NAME] [--env-file PATH]...\n\nManual MongoDB 8.0+ stream-activity projector. No automatic .env loading.\nMONGO_URI must name a database, or supply --database. Existing environment wins.\nDefault batch: 500 (clamped 1–1000); idle polling backs off from 1s to 5s and resets after work. Backlog is processed without waiting.";
+const HELP: &str = "Usage: stream_activity [--dry-run] [--once] [--telemetry-json] [--batch-size N] [--database NAME] [--env-file PATH]...\n\nManual MongoDB 8.0+ stream-activity projector. No automatic .env loading.\nMONGO_URI must name a database, or supply --database. Existing environment wins.\nDefault batch: 500 (clamped 1–1000); idle polling backs off from 1s to 5s and resets after work. Backlog is processed without waiting.\n--telemetry-json emits bounded batch metadata to stdout for the parent supervisor.";
+
+fn batch_telemetry(events: usize, duration_ms: f64, success: bool) -> String {
+    format!(
+        "stream_activity:{}",
+        serde_json::json!({
+            "event": "batch", "events": events.min(1000), "durationMs": duration_ms, "success": success
+        })
+    )
+}
 
 /// Consecutive empty batches back off; any work restores responsive polling.
 struct IdleBackoff {
@@ -37,6 +51,7 @@ struct Args {
     help: bool,
     dry_run: bool,
     once: bool,
+    telemetry_json: bool,
     batch_size: Option<usize>,
     database: Option<String>,
     env_files: Vec<PathBuf>,
@@ -51,6 +66,7 @@ impl Args {
                 "--help" | "-h" => args.help = true,
                 "--dry-run" => args.dry_run = true,
                 "--once" => args.once = true,
+                "--telemetry-json" => args.telemetry_json = true,
                 "--batch-size" => {
                     args.batch_size = Some(
                         arguments
@@ -162,9 +178,23 @@ async fn run(args: Args) -> Result<(), &'static str> {
         let mut idle = IdleBackoff::default();
         while !*stopped.borrow() {
             // Never cancel an active batch on a shutdown signal.
-            let count = projector
+            let started = Instant::now();
+            let projected = projector
                 .project_batch(args.batch_size.unwrap_or(500))
-                .await
+                .await;
+            if args.telemetry_json {
+                // Reporting cannot turn successful projection into a failure.
+                let _ = writeln!(
+                    std::io::stdout().lock(),
+                    "{}",
+                    batch_telemetry(
+                        projected.as_ref().copied().unwrap_or(0),
+                        started.elapsed().as_secs_f64() * 1000.0,
+                        projected.is_ok()
+                    )
+                );
+            }
+            let count = projected
                 .map_err(|_| "Stream activity projection failed; checkpoint retained for retry")?;
             if args.once || *stopped.borrow() {
                 break;
@@ -183,7 +213,7 @@ async fn run(args: Args) -> Result<(), &'static str> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Args, IdleBackoff};
+    use super::{Args, IdleBackoff, batch_telemetry};
     use std::time::Duration;
 
     #[test]
@@ -211,6 +241,7 @@ mod tests {
                 "--batch-size",
                 "1001",
                 "--once",
+                "--telemetry-json",
             ]
             .into_iter()
             .map(String::from),
@@ -219,7 +250,23 @@ mod tests {
         assert_eq!(args.env_files.len(), 2);
         assert_eq!(args.batch_size.unwrap().clamp(1, 1000), 1000);
         assert!(args.once);
+        assert!(args.telemetry_json);
         assert!(Args::parse(["--database"].into_iter().map(String::from)).is_err());
         assert!(Args::parse(["--batch-size", "nope"].into_iter().map(String::from)).is_err());
+    }
+
+    #[test]
+    fn batch_protocol_contains_only_bounded_metadata() {
+        for (events, success) in [(0, true), (500, true), (0, false), (usize::MAX, true)] {
+            let line = batch_telemetry(events, 12.5, success);
+            assert!(line.len() < 1024);
+            let value: serde_json::Value =
+                serde_json::from_str(line.strip_prefix("stream_activity:").unwrap()).unwrap();
+            assert_eq!(value.as_object().unwrap().len(), 4);
+            assert_eq!(value["event"], "batch");
+            assert_eq!(value["events"], events.min(1000));
+            assert_eq!(value["durationMs"], 12.5);
+            assert_eq!(value["success"], success);
+        }
     }
 }

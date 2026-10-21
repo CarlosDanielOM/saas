@@ -39,6 +39,8 @@ First verified coding-performance observation: [2026-10-20 shared chat origin ha
 
 2026-10-21 — Rust projector batch tuning and idle polling documentation: GPT-6 Luna at high reconciled the implementation policy and benchmark report against the raw fixture artifacts. The 48 worker-run matrix (24 runs per implementation) passed persisted parity, and the isolated idle fixture verified capped backoff, backlog drain, reset, and prompt signal shutdown; see `dima-rust/STREAM_ACTIVITY.md` and `dima-rust/benchmarks/stream_activity-batches-2026-10-21.json`. This supports the existing routing for source-backed documentation; it does not change model-tier ranking or claim a general model capability benchmark.
 
+2026-10-21 — Rust stream-activity production integration: GPT-6.1 Sol led native implementation, integration, and acceptance through Codex; GPT-6 Luna updated the source-backed operational and rollout documentation. The capped cron candidate passed focused parity, checkpoint-recovery, telemetry, child-restart, and signal checks before cron-only deployment; production observation confirmed the Rust projector as the sole stream-activity worker and verified checkpoint progress and analytics metrics. See `dima-rust/STREAM_ACTIVITY.md` for release identity and bounded production observations. Confidence: single task. This supports the existing routing for stateful integration and documentation; no model-tier change or capability/performance ranking is inferred.
+
 ## Blank observation template
 
 Copy this block for each meaningful outcome:

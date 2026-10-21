@@ -1,40 +1,35 @@
 import path from 'node:path';
 import dotenv from 'dotenv';
 
-const isDev = process.env.NODE_ENV !== 'production';
-
-if (isDev) {
-    dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
-}
-
-dotenv.config({ path: path.resolve(process.cwd(), '.env') });
-
-//? Imports after dotenv config
-import { spawn, type ChildProcess } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { spawn, type ChildProcess, type SpawnOptions } from 'node:child_process';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { error as logError, info as logInfo, warn as logWarn } from '../utils/logger.js';
+import { observe, recordLog, startTelemetry } from '../utils/observability/telemetry.js';
+import { nativeProgressParser, startNativeWorkerMetrics } from '../utils/observability/native_worker_metrics.js';
 
-const RESTART_DELAY_MS = Math.max(1000, Number(process.env.CRON_WORKER_RESTART_DELAY_MS || 5000));
-const runtime = process.env.CRON_WORKER_RUNTIME === 'tsx' ? 'tsx' : 'node';
-const isShuttingDown = { value: false };
-const supervisorDryRun = process.argv.includes('--dry-run');
-const supervisorOnce = process.argv.includes('--once');
-
-interface WorkerDefinition {
+export interface WorkerDefinition {
     name: string;
     sourceEntry: string;
     distEntry: string;
     enabledEnv?: string;
 }
 
-interface ManagedWorker {
+export interface SupervisorConfig {
+    runtime: 'tsx' | 'node';
+    streamActivityRuntime?: string;
+    once: boolean;
+    dryRun: boolean;
+    restartDelayMs: number;
+}
+
+export interface ManagedWorker {
     definition: WorkerDefinition;
     process: ChildProcess | null;
     restartCount: number;
     exitCode: number | null;
 }
 
-const WORKERS: WorkerDefinition[] = [
+export const WORKERS: WorkerDefinition[] = [
     { name: 'dashboard-activity', sourceEntry: 'src/workers/dashboard_activity.worker.ts', distEntry: 'dist/workers/dashboard_activity.worker.js' },
     { name: 'raid-analytics', sourceEntry: 'src/workers/raid_analytics.worker.ts', distEntry: 'dist/workers/raid_analytics.worker.js' },
     { name: 'stream-activity', sourceEntry: 'src/workers/stream_activity.worker.ts', distEntry: 'dist/workers/stream_activity.worker.js' },
@@ -123,204 +118,194 @@ const WORKERS: WorkerDefinition[] = [
     }
 ];
 
-function resolveWorkerEntry(worker: WorkerDefinition): { command: string; args: string[] } {
-    let entryPath: string;
-
-    if (runtime === 'tsx') {
-        // tsx mode: resolve from process.cwd() using sourceEntry
-        entryPath = path.resolve(process.cwd(), worker.sourceEntry);
-    } else {
-        // node mode: resolve from compiled supervisor file location using import.meta.url
-        const compiledFileDir = path.dirname(fileURLToPath(import.meta.url));
-        entryPath = path.resolve(compiledFileDir, path.basename(worker.distEntry));
+export function resolveWorkerLaunch(worker: WorkerDefinition, config: SupervisorConfig,
+    env: NodeJS.ProcessEnv = process.env, uid: number | undefined = process.getuid?.()): {
+    command: string; args: string[]; options: SpawnOptions; native: boolean;
+} {
+    const native = worker.name === 'stream-activity'
+        && (config.streamActivityRuntime === 'rust'
+            || (config.streamActivityRuntime !== 'typescript' && config.runtime !== 'tsx'));
+    const flags = [...(config.dryRun ? ['--dry-run'] : []), ...(config.once ? ['--once'] : [])];
+    if (native) {
+        const childEnv: NodeJS.ProcessEnv = {};
+        for (const key of ['MONGO_URI', 'PATH', 'TZ', 'LANG', 'LC_ALL', 'SSL_CERT_FILE', 'SSL_CERT_DIR']) {
+            if (env[key] !== undefined) childEnv[key] = env[key];
+        }
+        return { command: '/usr/local/bin/stream_activity', args: ['--batch-size', '500', '--telemetry-json', ...flags],
+            options: { stdio: ['ignore', 'pipe', 'inherit'], env: childEnv, ...(uid === 0 ? { uid: 65534, gid: 65534 } : {}) }, native };
     }
-
-    const args: string[] = [entryPath];
-
-    if (supervisorDryRun) {
-        args.push('--dry-run');
-    }
-    if (supervisorOnce) {
-        args.push('--once');
-    }
-
-    if (runtime === 'tsx') {
-        return {
-            command: 'tsx',
-            args
-        };
-    }
-    return {
-        command: process.execPath,
-        args
-    };
+    const entry = config.runtime === 'tsx' ? path.resolve(process.cwd(), worker.sourceEntry)
+        : path.resolve(path.dirname(fileURLToPath(import.meta.url)), path.basename(worker.distEntry));
+    return { command: config.runtime === 'tsx' ? 'tsx' : process.execPath, args: [entry, ...flags],
+        options: { stdio: 'inherit', env: { ...env, CRON_SUPERVISOR: 'true', CRON_WORKER_NAME: worker.name } }, native };
 }
 
-function spawnWorker(managed: ManagedWorker): void {
-    const { definition } = managed;
-    const { command, args } = resolveWorkerEntry(definition);
-    const child = spawn(command, args, {
-        stdio: 'inherit',
-        env: {
-            ...process.env,
-            CRON_SUPERVISOR: 'true',
-            CRON_WORKER_NAME: definition.name
+interface SupervisorDependencies {
+    spawn: typeof spawn;
+    metrics: typeof startNativeWorkerMetrics;
+    progress: typeof nativeProgressParser;
+    info: typeof logInfo;
+    warn: typeof logWarn;
+    error: typeof logError;
+    observe: typeof observe;
+    recordLog: typeof recordLog;
+}
+
+export class WorkerSupervisor {
+    readonly workers: ManagedWorker[];
+    stopping = false;
+    private readonly dependencies: SupervisorDependencies;
+    private readonly restarts = new Map<ManagedWorker, ReturnType<typeof setTimeout>>();
+    private readonly children = new Map<ChildProcess, Promise<void>>();
+
+    constructor(private readonly config: SupervisorConfig, definitions: WorkerDefinition[] = WORKERS,
+        dependencies: Partial<SupervisorDependencies> = {}) {
+        this.dependencies = { spawn, metrics: startNativeWorkerMetrics, progress: nativeProgressParser,
+            info: logInfo, warn: logWarn, error: logError, observe, recordLog, ...dependencies };
+        this.workers = definitions.map(definition => ({ definition, process: null, restartCount: 0,
+            exitCode: this.enabled(definition) ? null : 0 }));
+    }
+
+    private enabled(worker: WorkerDefinition): boolean {
+        return !worker.enabledEnv || process.env[worker.enabledEnv] !== 'false';
+    }
+
+    start(): void {
+        for (const managed of this.workers) {
+            if (this.enabled(managed.definition)) this.startWorker(managed);
+            else void this.dependencies.info({ worker: 'cron_supervisor', message: 'Cron worker disabled; not starting',
+                name: managed.definition.name, enabledEnv: managed.definition.enabledEnv }, { destination: 'console' });
         }
-    });
-    managed.process = child;
-    void logInfo({
-        worker: 'cron_supervisor',
-        message: 'Started cron worker process',
-        name: definition.name,
-        pid: child.pid,
-        runtime,
-        restartCount: managed.restartCount
-    }, { destination: 'console' });
-    child.on('exit', (code, signal) => {
-        managed.process = null;
-        managed.exitCode = code ?? (signal ? 1 : 0);
+    }
 
-        void logWarn({
-            worker: 'cron_supervisor',
-            message: 'Cron worker process exited',
-            name: definition.name,
-            code: managed.exitCode,
-            signal,
-            restarting: !isShuttingDown.value && !supervisorOnce
-        }, { destination: 'console' });
-
-        if (isShuttingDown.value) {
-            return;
-        }
-
-        if (supervisorOnce) {
-            return;
-        }
-
+    private scheduleRestart(managed: ManagedWorker, native: boolean): void {
+        if (this.stopping || this.config.once || this.restarts.has(managed)) return;
         managed.restartCount += 1;
-        setTimeout(() => {
-            if (isShuttingDown.value) {
-                return;
-            }
-            spawnWorker(managed);
-        }, RESTART_DELAY_MS);
-    });
-    child.on('error', (error) => {
-        void logError({
-            worker: 'cron_supervisor',
-            message: 'Cron worker process failed',
-            name: definition.name,
-            error: error instanceof Error ? error.message : String(error),
-            stack: error instanceof Error ? error.stack : undefined
-        }, { destination: 'console' });
-    });
-}
-
-function isWorkerEnabled(worker: WorkerDefinition): boolean {
-    return !worker.enabledEnv || process.env[worker.enabledEnv] !== 'false';
-}
-
-function startAllWorkers(): ManagedWorker[] {
-    const managedWorkers: ManagedWorker[] = WORKERS.map((definition) => ({
-        definition,
-        process: null,
-        restartCount: 0,
-        exitCode: isWorkerEnabled(definition) ? null : 0
-    }));
-    for (const managed of managedWorkers) {
-        if (!isWorkerEnabled(managed.definition)) {
-            void logInfo({
-                worker: 'cron_supervisor',
-                message: 'Cron worker disabled; not starting',
-                name: managed.definition.name,
-                enabledEnv: managed.definition.enabledEnv
-            }, { destination: 'console' });
-            continue;
-        }
-        spawnWorker(managed);
+        if (native) this.dependencies.observe('worker', 'stream_activity_rust.restarts', 1, 'error');
+        const timer = setTimeout(() => {
+            this.restarts.delete(managed);
+            if (!this.stopping) this.startWorker(managed);
+        }, this.config.restartDelayMs);
+        this.restarts.set(managed, timer);
     }
-    return managedWorkers;
-}
 
-function allWorkersExited(managedWorkers: ManagedWorker[]): boolean {
-    return managedWorkers.every((managed) => managed.process === null);
-}
-
-function setupShutdown(managedWorkers: ManagedWorker[]): void {
-    const shutdown = async (signal: string): Promise<void> => {
-        if (isShuttingDown.value) {
+    private startWorker(managed: ManagedWorker): void {
+        if (this.stopping || managed.process) return;
+        const launch = resolveWorkerLaunch(managed.definition, this.config);
+        let child: ChildProcess;
+        try { child = this.dependencies.spawn(launch.command, launch.args, launch.options); }
+        catch (error) {
+            managed.exitCode = 1;
+            this.workerError(managed, launch.native, 'spawn', error);
+            this.scheduleRestart(managed, launch.native);
             return;
         }
-        isShuttingDown.value = true;
-        await logInfo({
-            worker: 'cron_supervisor',
-            message: 'Shutting down cron supervisor',
-            signal,
-            workers: managedWorkers.map((managed) => ({
-                name: managed.definition.name,
-                pid: managed.process?.pid ?? null
-            }))
-        }, { destination: 'console' });
-        for (const managed of managedWorkers) {
-            if (!managed.process || managed.process.killed) {
-                continue;
+        managed.process = child;
+        let stopMetrics: (() => void) | undefined;
+        let failed = false, exited = false, finalized = false;
+        let resolveClosed!: () => void;
+        this.children.set(child, new Promise<void>(resolve => { resolveClosed = resolve; }));
+        const stop = (): void => { stopMetrics?.(); stopMetrics = undefined; };
+        child.once('spawn', () => {
+            if (launch.native && child.pid && !this.stopping && !exited) stopMetrics = this.dependencies.metrics(child.pid);
+            void this.dependencies.info({ worker: 'cron_supervisor', message: 'Started cron worker process',
+                name: managed.definition.name, pid: child.pid, runtime: launch.native ? 'rust' : this.config.runtime,
+                restartCount: managed.restartCount }, { destination: 'console' });
+        });
+        if (launch.native && child.stdout) child.stdout.on('data', this.dependencies.progress(this.dependencies.observe));
+        child.once('error', error => { failed = true; stop(); this.workerError(managed, launch.native, 'process', error); });
+        child.once('exit', () => { exited = true; stop(); });
+        // close follows exit or failed spawn and also waits for pipe teardown.
+        // Only this callback retires ownership and schedules a single restart.
+        child.once('close', (code, signal) => {
+            if (finalized) return;
+            finalized = true; stop();
+            this.children.delete(child); resolveClosed();
+            if (managed.process !== child) return;
+            managed.process = null;
+            managed.exitCode = failed ? 1 : (code ?? (signal ? 1 : 0));
+            if (launch.native && !failed && managed.exitCode !== 0 && !this.stopping) {
+                this.workerError(managed, true, 'exit');
             }
-            managed.process.kill('SIGTERM');
-        }
-        setTimeout(() => {
-            process.exit(0);
-        }, 500).unref?.();
-    };
-    process.once('SIGINT', () => {
-        void shutdown('SIGINT');
-    });
-    process.once('SIGTERM', () => {
-        void shutdown('SIGTERM');
-    });
-}
+            void this.dependencies.warn({ worker: 'cron_supervisor', message: 'Cron worker process exited',
+                name: managed.definition.name, code: managed.exitCode, signal,
+                restarting: !this.stopping && !this.config.once }, { destination: 'console' });
+            this.scheduleRestart(managed, launch.native);
+        });
+    }
 
-async function waitForAllWorkers(managedWorkers: ManagedWorker[]): Promise<void> {
-    while (!allWorkersExited(managedWorkers)) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
+    private workerError(managed: ManagedWorker, native: boolean, step: string, error?: unknown): void {
+        const candidate = (error as NodeJS.ErrnoException | undefined)?.code;
+        const code = typeof candidate === 'string' && /^[A-Z0-9_]{1,40}$/.test(candidate) ? candidate : 'NATIVE_WORKER_PROCESS';
+        void this.dependencies.error({ worker: 'cron_supervisor', message: 'Cron worker process failed',
+            name: managed.definition.name, step, code }, { destination: 'console' });
+        if (native) {
+            this.dependencies.observe('worker', 'stream_activity_rust.errors', 1, 'error');
+            this.dependencies.recordLog('error', { function: 'stream_activity_rust', step, code });
+        }
+    }
+
+    async wait(): Promise<void> {
+        while (this.workers.some(worker => worker.process !== null)) await new Promise(resolve => setTimeout(resolve, 50));
+    }
+
+    async shutdown(signal: string, timeoutMs = 25000): Promise<void> {
+        if (this.stopping) return;
+        this.stopping = true;
+        for (const timer of this.restarts.values()) clearTimeout(timer);
+        this.restarts.clear();
+        void this.dependencies.info({ worker: 'cron_supervisor', message: 'Shutting down cron supervisor', signal,
+            workers: this.workers.map(worker => ({ name: worker.definition.name, pid: worker.process?.pid ?? null })) }, { destination: 'console' });
+        const children = [...this.children.keys()];
+        const signalChildren = (signal: NodeJS.Signals): void => {
+            for (const child of children) {
+                if (this.children.has(child) && child.exitCode === null && child.signalCode === null) child.kill(signal);
+            }
+        };
+        signalChildren('SIGTERM');
+        let deadline: ReturnType<typeof setTimeout> | undefined;
+        await Promise.race([
+            Promise.all(children.map(child => this.children.get(child))),
+            new Promise<void>(resolve => { deadline = setTimeout(resolve, timeoutMs); }),
+        ]);
+        if (deadline) clearTimeout(deadline);
+        signalChildren('SIGKILL');
     }
 }
 
 async function bootstrap(): Promise<void> {
-    await logInfo({
-        worker: 'cron_supervisor',
-        message: 'Starting cron supervisor',
-        runtime,
-        restartDelayMs: RESTART_DELAY_MS,
-        workers: WORKERS.filter(isWorkerEnabled).map((worker) => worker.name),
-        disabledWorkers: WORKERS.filter((worker) => !isWorkerEnabled(worker)).map((worker) => worker.name),
-        mode: supervisorOnce ? 'once' : 'normal',
-        dryRun: supervisorDryRun
-    }, { destination: 'console' });
-    const managedWorkers = startAllWorkers();
-
-    if (supervisorOnce) {
-        await waitForAllWorkers(managedWorkers);
-        const allSuccess = managedWorkers.every((managed) => managed.exitCode === 0);
-        await logInfo({
-            worker: 'cron_supervisor',
-            message: 'All workers completed',
-            results: managedWorkers.map((managed) => ({
-                name: managed.definition.name,
-                exitCode: managed.exitCode
-            }))
-        }, { destination: 'console' });
-        process.exit(allSuccess ? 0 : 1);
+    if (process.env.NODE_ENV !== 'production') dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
+    dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+    const streamActivityRuntime = process.env.STREAM_ACTIVITY_RUNTIME;
+    if (streamActivityRuntime !== undefined && !['rust', 'typescript'].includes(streamActivityRuntime)) {
+        throw new Error('STREAM_ACTIVITY_RUNTIME must be rust or typescript');
     }
-
-    setupShutdown(managedWorkers);
+    const configuredDelay = Number(process.env.CRON_WORKER_RESTART_DELAY_MS || 5000);
+    const config: SupervisorConfig = {
+        runtime: process.env.CRON_WORKER_RUNTIME === 'tsx' ? 'tsx' : 'node', streamActivityRuntime,
+        once: process.argv.includes('--once'), dryRun: process.argv.includes('--dry-run'),
+        restartDelayMs: Number.isFinite(configuredDelay) ? Math.max(1000, configuredDelay) : 5000,
+    };
+    startTelemetry();
+    const supervisor = new WorkerSupervisor(config);
+    for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+        process.once(signal, () => { void supervisor.shutdown(signal).then(() => process.exit(0)); });
+    }
+    await logInfo({ worker: 'cron_supervisor', message: 'Starting cron supervisor', runtime: config.runtime,
+        streamActivityRuntime: streamActivityRuntime || (config.runtime === 'tsx' ? 'typescript' : 'rust'),
+        restartDelayMs: config.restartDelayMs, workers: WORKERS.filter(worker => !worker.enabledEnv || process.env[worker.enabledEnv] !== 'false').map(worker => worker.name),
+        mode: config.once ? 'once' : 'normal', dryRun: config.dryRun }, { destination: 'console' });
+    supervisor.start();
+    if (config.once) {
+        await supervisor.wait();
+        if (!supervisor.stopping) process.exit(supervisor.workers.every(worker => worker.exitCode === 0) ? 0 : 1);
+    }
 }
 
-bootstrap().catch(async (error) => {
-    await logError({
-        worker: 'cron_supervisor',
-        message: 'Failed to bootstrap cron supervisor',
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined
-    }, { destination: 'console' });
-    process.exit(1);
-});
+// Importing the bounded supervisor helpers for tests must not load env or spawn.
+if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) {
+    void bootstrap().catch(async () => {
+        await logError({ worker: 'cron_supervisor', message: 'Failed to bootstrap cron supervisor' }, { destination: 'console' });
+        process.exit(1);
+    });
+}

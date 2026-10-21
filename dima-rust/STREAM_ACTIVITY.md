@@ -1,8 +1,20 @@
 # Stream activity projector
 
-The Rust stream-activity projector is a manual port of the batch projection in `dimabot/src/utils/stream_activity.ts`. It does not replace activity capture from `dimabot/src/handlers/message.handler.ts`, the existing TypeScript worker in `dimabot/src/workers/stream_activity.worker.ts`, or the activity read APIs. It adds no Twitch, bot-runtime, or Redis dependency, and it is not registered with the dimabot cron supervisor or Compose services.
+The Rust stream-activity projector is a port of the batch projection in `dimabot/src/utils/stream_activity.ts`. It does not replace activity capture from `dimabot/src/handlers/message.handler.ts` or the activity read APIs. The existing cron supervisor runs its executable as the native stream-activity child instead of the TypeScript projector. It adds no Twitch, bot-runtime, or Redis dependency.
 
 On the production VPS, every Cargo build/run command below is subject to the [production-host Rust build and test policy](AGENTS.md#production-host-rust-build-and-test-policy); do not run Cargo directly on the host.
+
+## Cron integration and rollout
+
+The `stream-activity` worker remains registered once in the existing cron supervisor. With its Node runtime, the supervisor selects Rust by default; `STREAM_ACTIVITY_RUNTIME=typescript` explicitly selects the TypeScript fallback. `tsx` development defaults to TypeScript unless Rust is explicitly selected. The supervisor never starts both projectors for the same worker, and a missing or failed Rust executable does not trigger an automatic TypeScript fallback; only that worker child is restarted. The native executable is built and staged by `scripts/saas-ops build cron` into the existing `dima-cron` candidate image. No new production container or Compose service is introduced.
+
+The supervisor launches the native child as UID/GID 65534 when the supervisor runs as root and passes only `MONGO_URI`, `PATH`, `TZ`, `LANG`, `LC_ALL`, `SSL_CERT_FILE`, and `SSL_CERT_DIR`. Rust does not receive Dragonfly credentials and does not use its Redis utility. With `--telemetry-json`, the executable emits bounded batch metadata that the supervisor validates and sends through existing telemetry: `stream_activity_rust.project_batch` duration and `stream_activity_rust.batch_events`, plus native-child `errors` and `restarts`. Separate `/proc` sampling reports `stream_activity_rust.rss_bytes` and `stream_activity_rust.cpu_cores` every ten seconds. The metrics appear in the existing System analytics → Resources → Our processes view under **Stream activity rust worker**. Native mode has no Node heap or event-loop metrics. On shutdown the supervisor sends SIGTERM and allows up to 25 seconds for children to exit before SIGKILL; the cron container stop timeout is 30 seconds.
+
+## Production rollout
+
+The native projector was deployed to the existing `dima-cron` service on 2026-10-21 using `saas-ops` run `cron-a4c96242b30a` (image `sha256:ed9f76cb48f072d0274618a4832d08fe7ed5bebd7cfaac631810e66ed1ed0b8b`; executable SHA-256 `f3c85b9a09a92ffebf2ffbe672a92bbf4d78d40db90beb72761264017239738d`). Candidate verification exercised checkpoint parity and recovery in both directions, a failed-worker restart, MongoDB validator failure handling, telemetry, and graceful shutdown. Rust was the sole production stream projector after deployment; the TypeScript implementation remains available for explicit rollback through `STREAM_ACTIVITY_RUNTIME=typescript`.
+
+During the initial production watch, the checkpoint advanced from 27,723 to 27,737 over 27 seconds, analytics displayed the Rust worker's RSS/CPU/batch metrics, and no worker errors or restarts were observed. The initial Rust RSS sample was 7.2 MiB versus 66.2 MiB from the earlier TypeScript observation. These are early operational samples, not a controlled comparison or evidence of whole-SaaS resource savings. Only the cron service was replaced; the other 16 production containers retained their IDs, images, and start times.
 
 ## Reused data and schema
 
@@ -14,11 +26,11 @@ Projection record IDs use SHA-256 over the same JSON-array identity tuples as th
 
 The port targets the stored projection contract. It preserves the owner-fenced lease release and adds fresh owner/lease queries before aggregate writes and before acknowledging a batch. It treats only duplicate-key conflicts from aggregate sequence fences as already-applied writes; other write failures remain errors. Neither change alters the capture or dashboard-read path.
 
-## API and manual executable
+## API and executable
 
 `dima_rust::workers::stream_activity::StreamActivityProjector::new(database)` selects the existing collection names without performing I/O. `project_batch(limit: usize)` returns `mongodb::error::Result<usize>`: the number of activity rows projected, or zero when no eligible batch is available or another owner holds the lease. The query clamps `limit` to 1–1000; the executable defaults to 500.
 
-The standalone `stream_activity` binary does not load conventional `.env` files automatically. `--help` and `--dry-run` exit before loading environment files or connecting to MongoDB. For an actual run, pass each selected file with `--env-file PATH`; the executable loads them synchronously before constructing its two-thread Tokio runtime. Existing process environment values take precedence, and earlier files take precedence over later files. Select the database with `--database NAME` or use a database name in `MONGO_URI`.
+The `stream_activity` binary does not load conventional `.env` files automatically. `--help` and `--dry-run` exit before loading environment files or connecting to MongoDB. For an actual manual run, pass each selected file with `--env-file PATH`; the executable loads them synchronously before constructing its two-thread Tokio runtime. Existing process environment values take precedence, and earlier files take precedence over later files. Select the database with `--database NAME` or use a database name in `MONGO_URI`.
 
 Build and inspect the manual command:
 
@@ -122,4 +134,4 @@ Run order rotated across the three repetitions, which reduces but does not elimi
 
 Grouping rows by logical identity before hashing remains deferred pending a decision. The current code already hashes borrowed tuples and reuses its per-event metric buffer; profile the hot path before proposing additional allocation changes. Adaptive idle backoff is implemented above, trading lower idle query frequency for a pickup delay of up to about five seconds plus database and scheduling time.
 
-A future Rust worker host could share one MongoDB client pool across workers; this standalone binary does not provide that integration. The current dimabot cron supervisor starts each worker as an OS child process and restarts the failed child. A Tokio supervisor can isolate task panics and returned errors, but it cannot contain process OOM, abort, native crashes, or runtime-wide stalls. Preserve OS-process boundaries for bot-critical jobs; group only workloads with compatible failure impact, or retain dedicated processes where needed. Separate processes still share container and host resource limits, so process separation alone does not contain container- or host-wide resource failures. Channel partitioning would change the checkpoint and lease protocol and needs a designed migration and parity coverage; do not parallelize the single global projector lease blindly.
+A future Rust worker host could share one MongoDB client pool across Rust workers; the current native projector remains its own OS child and does not share the Node worker runtime or its pools. The cron supervisor restarts only the failed child. A Tokio supervisor can isolate task panics and returned errors, but it cannot contain process OOM, abort, native crashes, or runtime-wide stalls. Preserve OS-process boundaries for bot-critical jobs; group only workloads with compatible failure impact, or retain dedicated processes where needed. Separate processes still share container and host resource limits, so process separation alone does not contain container- or host-wide resource failures. Channel partitioning would change the checkpoint and lease protocol and needs a designed migration and parity coverage; do not parallelize the single global projector lease blindly.

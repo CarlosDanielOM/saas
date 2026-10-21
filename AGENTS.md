@@ -78,9 +78,9 @@ This workspace is a **single git repository** (`saas/`) containing seven existin
 | `dimafx/`   | Twitch Extension (client + server)   | HTML/JS + Node.js           | `server/src/server.ts`, `panel.html`, `config.html` |
 | `dimadb/`   | Internal DB console (Redis first)    | Angular v22 + Node          | `src/app/app.routes.ts`, `server/index.mjs`         |
 | `dima-analytics/` | Private observability and resource analytics service | Node.js / Express + PostgreSQL | `src/index.mjs`, `src/store.mjs`, `src/collectors.mjs` |
-| `dima-rust/` | Rust library plus manually invoked stream-activity projector | Rust | `Cargo.toml`, `src/lib.rs`, `src/workers/stream_activity/`, `src/bin/stream_activity.rs` |
+| `dima-rust/` | Rust library and native stream-activity worker used by the existing cron host | Rust | `Cargo.toml`, `src/lib.rs`, `src/workers/stream_activity/`, `src/bin/stream_activity.rs` |
 
-`dima-rust/` contains shared library utilities, a stream-activity projection module, and a manually invoked `stream_activity` binary. The binary is not registered with the dimabot worker supervisor or Compose services; the Rust project has no supported deployment target. See [`dima-rust/STREAM_ACTIVITY.md`](dima-rust/STREAM_ACTIVITY.md) for its scope and manual operation.
+`dima-rust/` contains shared library utilities, a stream-activity projection module, and a `stream_activity` binary wired as a separately supervised child of the existing dimabot cron host. The native Rust projector is active in production; the TypeScript implementation remains an explicit rollback option. `scripts/saas-ops build cron` builds and stages this binary into the cron image; no additional production service or Compose container is introduced. See [`dima-rust/STREAM_ACTIVITY.md`](dima-rust/STREAM_ACTIVITY.md) for its behavior, telemetry, fixture checks, and rollout evidence.
 
 **Rule**: When asked to make a change, first identify which project owns the feature, then read that project's `AGENTS.md` (if present) before editing.
 
@@ -249,7 +249,7 @@ Each major project now contains its own `AGENTS.md` for domain-specific rules:
 - `dimafx/AGENTS.md` – Twitch Extension client/server patterns.
 - `dimadb/AGENTS.md` – Internal DB console (single Node container, Angular CSR).
 - `dima-analytics/AGENTS.md` – Private analytics service, data scopes, retention, and first-install workflow.
-- `dima-rust/AGENTS.md` – Rust library and manual projector boundaries, dependency usage, and local verification commands.
+- `dima-rust/AGENTS.md` – Rust library and native cron worker boundaries, capped build policy, dependency usage, and verification commands.
 
 Root rules in this file always take precedence. Project-specific files add detail, never contradict.
 
