@@ -54,7 +54,7 @@ async function waitFor(fn, label) {
 try {
   for (const width of [320, 390, 1280]) {
     const context = await browser.newContext({ viewport: { width, height: 960 }, colorScheme: 'dark', hasTouch: width < 600 });
-    const state = { scenario: 'due', overviewCalls: 0, mutations: 0 };
+    const state = { scenario: 'due', overviewCalls: 0, apiCalls: 0, mutations: 0 };
     await context.addInitScript(() => {
       localStorage.setItem('dima-admin.session.v1', JSON.stringify({ version: 2, token: 'raid-test-only', createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 3600000).toISOString(),
         twitchUser: { id: '533538623', login: 'tester', display_name: 'Tester' },
@@ -62,8 +62,11 @@ try {
     });
     await context.route('**/*', async route => {
       const request = route.request(), url = new URL(request.url());
-      if (url.origin === origin) return route.continue();
+      const analytics = url.pathname.includes('/observability/api/');
+      const auth = url.pathname === '/auth/session';
+      if (url.origin === origin && !analytics && !auth) return route.continue();
       if (!['api.domdimabot.com', 'localhost', '127.0.0.1'].includes(url.hostname)) return route.abort();
+      state.apiCalls++;
       assert.equal(request.method(), 'GET', `unexpected mutation ${request.method()} ${url.pathname}`);
       let json = { error: false, status: 200, data: {} };
       if (url.pathname.includes('/observability/api/')) {
@@ -79,6 +82,7 @@ try {
     const page = await context.newPage();
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
+    await page.clock.install();
     await page.goto(base + '/observability?tab=resources');
     const health = page.locator('.obs-raid-health');
     const fact = label => health.locator('dl > div').filter({ has: page.locator('dt', { hasText: label }) }).locator('dd > span').first();
@@ -89,19 +93,74 @@ try {
       await waitFor(async () => state.overviewCalls > count && !(await page.getByRole('button', { name: 'Refresh', exact: true }).isDisabled()), `refresh ${scenario}`);
     };
     await health.waitFor();
+    const isOpen = () => health.evaluate(element => element.open);
+    const toggle = health.locator('summary');
+    const firstFact = health.locator('dl > div').first();
+    const audit = async (theme, disclosure) => {
+      await page.addScriptTag({ path: process.env.AXE_PATH || `${tools}/node_modules/axe-core/axe.min.js` });
+      const axe = await page.evaluate(() => window.axe.run(document.querySelector('app-observability-page'), { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa'] } }));
+      assert.deepEqual(axe.violations.map(v => ({ id: v.id, targets: v.nodes.map(n => n.target) })), [], `accessibility ${width}/${theme}/${disclosure}`);
+      assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `overflow ${width}/${theme}/${disclosure}`);
+      if (screenshots) await page.screenshot({ path: `${screenshots}/raid-health-${width}-${theme}-${disclosure}.png`, fullPage: true });
+    };
+    assert(await page.locator('.obs-worker-health').evaluateAll(elements => elements.length >= 2 && elements.every(element => !element.open)), 'every worker defaults closed');
+    assert.equal(await firstFact.isVisible(), false, 'health facts hidden by default');
     for (const theme of ['dark', 'light']) {
       if (theme === 'light') await page.getByRole('button', { name: 'Switch to light mode', exact: true }).click();
       await change('due');
+      if (await isOpen()) await toggle.click();
+      assert.equal(await isOpen(), false, 'details start this theme closed');
+      assert.equal(await firstFact.isVisible(), false, 'closed health hides facts');
+      assert(await toggle.getByText('Health details', { exact: true }).isVisible(), 'clear details affordance');
+      assert((await toggle.boundingBox()).height >= 44, '44px summary target');
+      const collapsedHeight = (await health.boundingBox()).height;
+      await audit(theme, 'collapsed');
+      const beforeToggleRequests = state.apiCalls;
+      await toggle.focus();
+      await page.keyboard.press('Enter');
+      await waitFor(isOpen, 'Enter expands health');
+      assert(await toggle.evaluate(element => document.activeElement === element && element.matches(':focus-visible') && getComputedStyle(element).outlineStyle !== 'none'), 'keyboard focus stays visible on the summary');
+      assert.equal(await firstFact.isVisible(), true, 'expanded health exposes facts');
+      if (width < 600) assert((await health.boundingBox()).height > collapsedHeight + 120, 'collapsed mobile row removes the tall metadata body');
+      assert(await health.evaluate(element => [...document.querySelectorAll('.obs-worker-health')].filter(other => other !== element).every(other => !other.open)), 'opening one worker leaves all others closed');
+      const peerHealth = page.locator('.obs-stream-health');
+      await peerHealth.locator('summary').click();
+      assert.equal(await isOpen(), true, 'opening another worker preserves this worker');
+      await toggle.focus();
+      await page.keyboard.press('Space');
+      await waitFor(async () => !(await isOpen()), 'Space collapses health');
+      assert.equal(await peerHealth.evaluate(element => element.open), true, 'closing one worker preserves its expanded peer');
+      await peerHealth.locator('summary').click();
+      assert.equal(state.apiCalls, beforeToggleRequests, 'disclosure toggles send no API requests');
+      await toggle.focus();
+      await page.keyboard.press('Space');
+      await waitFor(isOpen, 'Space expands health');
+      await change('due');
+      assert.equal(await isOpen(), true, 'expanded state survives mocked Refresh');
+      if (theme === 'dark') {
+        const beforePoll = state.overviewCalls;
+        await page.clock.fastForward(15000);
+        await waitFor(async () => state.overviewCalls > beforePoll && !(await page.getByRole('button', { name: 'Refresh', exact: true }).isDisabled()), '15-second background refresh');
+        assert.equal(await isOpen(), true, 'expanded state survives automatic polling');
+      }
+      await toggle.click();
+      await change('due');
+      assert.equal(await isOpen(), false, 'closed state survives mocked Refresh');
+      assert.equal(await firstFact.isVisible(), false, 'closed facts stay hidden after Refresh');
+      if (theme === 'dark') {
+        const beforePoll = state.overviewCalls;
+        await page.clock.fastForward(15000);
+        await waitFor(async () => state.overviewCalls > beforePoll && !(await page.getByRole('button', { name: 'Refresh', exact: true }).isDisabled()), 'closed 15-second background refresh');
+        assert.equal(await isOpen(), false, 'closed state survives automatic polling');
+      }
+      await toggle.click();
+
       await waitFor(async () => (await health.innerText()).includes('Channels are waiting for refresh'), 'due status');
       assert.equal(await fact('Pending channels').innerText(), '≈ 6');
       assert.equal(await fact('Oldest overdue').innerText(), '2.0 min');
       assert.equal(await fact('Last successful refresh').innerText(), '45 s ago at sample');
       assert.equal(await page.locator('.obs-proc').filter({ hasText: 'Stream activity rust worker' }).locator('.obs-raid-health').count(), 0, 'stream unchanged');
-      await page.addScriptTag({ path: process.env.AXE_PATH || `${tools}/node_modules/axe-core/axe.min.js` });
-      const axe = await page.evaluate(() => window.axe.run(document.querySelector('app-observability-page'), { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa'] } }));
-      assert.deepEqual(axe.violations.map(v => ({ id: v.id, targets: v.nodes.map(n => n.target) })), [], `accessibility ${width}/${theme}`);
-      assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `overflow ${width}/${theme}`);
-      if (screenshots) await page.screenshot({ path: `${screenshots}/raid-health-${width}-${theme}.png`, fullPage: true });
+      await audit(theme, 'expanded');
 
       await change('empty');
       await waitFor(async () => (await health.innerText()).includes('No channels are due for refresh'), 'empty status');
@@ -110,6 +169,12 @@ try {
       assert.equal(await fact('Last successful refresh').innerText(), 'Unknown');
       await change('failed');
       await waitFor(async () => (await health.innerText()).includes('Backlog check failed'), 'failed status');
+      await toggle.click();
+      assert.equal(await isOpen(), false, 'warning details can remain closed');
+      assert.equal(await firstFact.isVisible(), false, 'warning facts are hidden until requested');
+      assert(await toggle.locator('.obs-warn').isVisible(), 'warning remains visible while closed');
+      assert.match(await toggle.innerText(), /failed/);
+      await toggle.click();
       assert.equal(await fact('Pending channels').innerText(), 'Unknown');
       assert.equal(await fact('Oldest overdue').innerText(), 'Unknown');
       assert.equal(await fact('Last successful refresh').innerText(), '45 s ago at sample');
@@ -120,6 +185,12 @@ try {
       assert.equal(await fact('Last successful refresh').innerText(), 'Unknown');
       await change('stale');
       await waitFor(async () => (await health.innerText()).includes('Refresh health is stale'), 'stale health despite fresh RSS');
+      await toggle.click();
+      assert.equal(await isOpen(), false, 'warning details can remain closed');
+      assert.equal(await firstFact.isVisible(), false, 'warning facts are hidden until requested');
+      assert(await toggle.locator('.obs-warn').isVisible(), 'warning remains visible while closed');
+      assert.match(await toggle.innerText(), /stale/);
+      await toggle.click();
       assert.equal(await fact('Pending channels').innerText(), 'Unknown');
       await change('partial');
       await waitFor(async () => (await health.innerText()).includes('Pending work is unknown'), 'independent unknown backlog');
@@ -149,5 +220,5 @@ try {
     assert.deepEqual(errors, [], 'no browser errors');
     await context.close();
   }
-  console.log('Raid health: due/empty/failed/mixed/stale/partial/legacy/health-only states, independent freshness, phase totals, service filter, 320/390/1280 dark/light, accessibility and overflow passed.');
+  console.log('Raid health: due/empty/failed/mixed/stale/partial/legacy/health-only states, independent freshness, phase totals, service filter, 320/390/1280 dark/light, default-closed independent native disclosures, keyboard toggles, manual/automatic refresh persistence, visible closed warnings, accessibility and overflow passed.');
 } finally { await browser.close(); }

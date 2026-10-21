@@ -654,17 +654,22 @@
                       <div class="obs-op__num"><span class="obs-op__label">CPU</span>{{ proc.cpu === null ? '—' : pct(proc.cpu) }}</div>
                       <div class="obs-op__num" [class.obs-warn]="(proc.lag ?? 0) >= 200"><span class="obs-op__label">Stalls</span>{{ ms(proc.lag) }}</div>
                       @if (proc.refreshHealth; as health) {
-                        <div [class.obs-raid-health]="health.kind !== 'stream'" [class.obs-stream-health]="health.kind === 'stream'" [class.obs-baseline-health]="health.kind === 'baseline'">
-                          <strong [class.obs-warn]="health.warning">{{ health.status }}</strong>
-                          <dl class="obs-raid-health__facts">
-                            @for (fact of health.facts; track fact.label) {
-                              <div><dt>{{ fact.label }}</dt><dd><span>{{ fact.value }}</span>
-                                <span class="obs-fine">@if (fact.at) { {{ fact.stale ? 'Previous sample' : 'Sampled' }} {{ fact.at | date: 'HH:mm:ss' }} } @else { No sample yet }</span></dd>
-                              </div>
-                            }
-                          </dl>
-                          <p class="obs-fine">@if (health.at) { Health checked {{ health.at | date: 'HH:mm:ss' }}. } Checks run every 30 seconds; after 90 seconds readings are stale. Values describe the latest 10-second bucket; ≈ may include multiple samples.@if (health.kind === 'stream') { Pending activity indicates whether work exists; it is not an event count. }</p>
-                        </div>
+                        <details class="lf-more obs-worker-health" [class.obs-raid-health]="health.kind !== 'stream'" [class.obs-stream-health]="health.kind === 'stream'" [class.obs-baseline-health]="health.kind === 'baseline'">
+                          <summary>
+                            <strong [class.obs-warn]="health.warning">{{ health.status }}</strong>
+                            <span class="obs-worker-health__toggle">Health details<app-icon name="down" /></span>
+                          </summary>
+                          <div class="lf-more__body obs-worker-health__body">
+                            <dl class="obs-raid-health__facts">
+                              @for (fact of health.facts; track fact.label) {
+                                <div><dt>{{ fact.label }}</dt><dd><span>{{ fact.value }}</span>
+                                  <span class="obs-fine">@if (fact.at) { {{ fact.stale ? 'Previous sample' : 'Sampled' }} {{ fact.at | date: 'HH:mm:ss' }} } @else { No sample yet }</span></dd>
+                                </div>
+                              }
+                            </dl>
+                            <p class="obs-fine">@if (health.at) { Health checked {{ health.at | date: 'HH:mm:ss' }}. } Checks run every 30 seconds; after 90 seconds readings are stale. Values describe the latest 10-second bucket; ≈ may include multiple samples.@if (health.kind === 'stream') { Pending activity indicates whether work exists; it is not an event count. }</p>
+                          </div>
+                        </details>
                       }
                     </li>
                   }
