@@ -73,6 +73,11 @@ const AI_USAGE_QUEUE_HEALTH_ENV = ['AI_USAGE_QUEUE_MAX_AGE_SECONDS', 'AI_USAGE_P
     'AI_USAGE_QUEUE_FAILURE_THRESHOLD'] as const;
 // Existing Dragonfly client contract: host and port only, never credentials.
 const DRAGONFLY_ENV = ['DRAGONFLY_HOST', 'DRAGONFLY_PORT'] as const;
+/** Twitch app credentials for the native dashboard catalog refresh. */
+const DASHBOARD_TWITCH_ENV = ['CLIENT_ID', 'CLIENT_SECRET'] as const;
+// reqwest reads both spellings; never forward a broader environment.
+const PROXY_ENV = ['HTTPS_PROXY', 'HTTP_PROXY', 'ALL_PROXY', 'NO_PROXY',
+    'https_proxy', 'http_proxy', 'all_proxy', 'no_proxy'] as const;
 
 /** Only these registered workers may use the native launch and telemetry path. */
 export const NATIVE_WORKERS = {
@@ -105,6 +110,11 @@ export const NATIVE_WORKERS = {
         command: '/usr/local/bin/raid_sessions', args: ['--telemetry-json'],
         protocol: 'raid_sessions:', metricPrefix: 'raid_sessions_rust', batchMetric: 'batch_items', maxEvents: 401, maxDurationMs: 300000,
         extraEnv: DRAGONFLY_ENV,
+    },
+    'dashboard-activity': {
+        command: '/usr/local/bin/dashboard_activity', args: ['--telemetry-json'],
+        protocol: 'dashboard_activity:', metricPrefix: 'dashboard_activity_rust', batchMetric: 'batch_events', maxEvents: 502, maxDurationMs: 300000,
+        extraEnv: [...DRAGONFLY_ENV, ...DASHBOARD_TWITCH_ENV, ...PROXY_ENV],
     },
 } as const;
 export type NativeWorkerName = keyof typeof NATIVE_WORKERS;
@@ -240,7 +250,8 @@ export function nativeProgressParser(emit: Observer = observe, worker: NativeWor
     const metadata = NATIVE_WORKERS[worker];
     const phases = worker === 'raid-analytics' ? RAID_PHASES : worker === 'follow-defense-baseline' ? BASELINE_PHASES : undefined;
     // Batch-only protocols accept no health or phase frames and no private fields.
-    const batchOnly = worker === 'roulette-completion' || worker === 'ai-usage-receipts' || worker === 'raid-sessions';
+    const batchOnly = worker === 'roulette-completion' || worker === 'ai-usage-receipts' || worker === 'raid-sessions'
+        || worker === 'dashboard-activity';
     let pending = '', discard = false;
     return chunk => {
         // Iterate without concatenating arbitrary pipe chunks into a large buffer.

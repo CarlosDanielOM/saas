@@ -1,0 +1,12 @@
+{
+  "NODE_OPTIONS": "--import=/tmp/saas-fixtures/cron-boot.mjs",
+  "MONGO_URI": "mongodb://mongo:27017/dashboard_activity_fixture_candidate",
+  "DRAGONFLY_HOST": "redis",
+  "DRAGONFLY_PORT": "6379",
+  "SECRET_KEY": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "CLIENT_ID": "dashboard-fixture-client",
+  "CLIENT_SECRET": "dashboard-fixture-secret",
+  "CRON_WORKER_RESTART_DELAY_MS": "1000",
+  "DASHBOARD_ACTIVITY_FIXTURE_SCOPE": "main",
+  "OTEL_SDK_DISABLED": "true"
+}

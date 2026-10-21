@@ -377,7 +377,7 @@ try {
     const unrelatedKey = 'raid-sessions-fixture:unrelated'; keys.add(unrelatedKey); await redis.set(unrelatedKey, 'preserve', { EX: 300 });
     const { WORKERS, resolveWorkerLaunch } = await import('/app/dist/workers/cron.index.js');
     const { NATIVE_WORKERS } = await import('/app/dist/utils/observability/native_worker_metrics.js');
-    assert.equal(Object.keys(NATIVE_WORKERS).length, 6, 'natural sixth native worker');
+    assert.equal(Object.keys(NATIVE_WORKERS).length, 7, 'natural seventh native worker');
     const definition = WORKERS.find(worker => worker.name === 'raid-sessions'); assert.equal(definition.kind, 'native');
     assert.equal(WORKERS.find(worker => worker.name === 'follow-defense-actions').kind, 'typescript', 'existing executor boundary retained');
     for (const runtime of ['node', 'tsx']) {

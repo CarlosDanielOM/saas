@@ -35,6 +35,7 @@ if (process.argv[1]?.endsWith('/dist/workers/cron.index.js')) {
                     '/usr/local/bin/roulette_completion': 'roulette-completion',
                     '/usr/local/bin/ai_usage_receipts': 'ai-usage-receipts',
                     '/usr/local/bin/raid_sessions': 'raid-sessions',
+                    '/usr/local/bin/dashboard_activity': 'dashboard-activity',
                 };
                 const inert = (worker, command, args, options, native, extra = {}) => {
                     const child = new EventEmitter();

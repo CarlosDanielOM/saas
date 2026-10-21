@@ -31,7 +31,7 @@ EXCLUDED = {"node_modules", "dist", "target", ".saas-native", ".git", ".angular"
 # Rust 1.99.1 on Alpine/musl, using the already validated immutable image.
 RUST_BUILD_IMAGE = "rust@sha256:557a94c82b485a14b569120e00867267108c734efe33f10cc31ca0cd5dd1eca9"
 RUST_BINARIES = ("stream_activity", "raid_analytics", "follow_defense_baseline", "roulette_completion",
-                 "ai_usage_receipts", "raid_sessions")
+                 "ai_usage_receipts", "raid_sessions", "dashboard_activity")
 GIB = 1024 ** 3
 RUST_BUILD_CPUS = 6
 RUST_BUILD_MEMORY_GIB = 6
@@ -42,7 +42,22 @@ RUST_CACHE_MARKER = ".saas-ops-cache.json"
 # Adding a future worker profile also requires reviewing the recipe's graph guard.
 RUST_FEATURES = "mongo"
 RUST_BASELINE_FEATURES = "mongo,redis"
+# Dashboard activity needs the native HTTP client and its ICU collator for
+# JS-compatible locale ties; it must stay out of the six existing worker graphs.
+RUST_DASHBOARD_FEATURES = "mongo,redis,http-client,unicode-collation"
 RUST_PROFILES = "dev,test,release"
+# Keep dev/test debuginfo and incremental artifacts out of the shared cache. These
+# reduce compiler/test artifact size only: release profile and optimization
+# settings are untouched, and all three profiles still run every check.
+RUST_ARTIFACT_ENV = {"CARGO_PROFILE_DEV_DEBUG": "0", "CARGO_PROFILE_TEST_DEBUG": "0",
+                     "CARGO_INCREMENTAL": "0"}
+# Dependency names that must never enter a worker graph; each profile names its
+# own allowed optional clients rather than relying on feature unification.
+RUST_GRAPH_FORBIDDEN = {
+    "mongo": ("sqlx", "axum", "redis", "reqwest", "icu_collator"),
+    "mongo-redis": ("sqlx", "axum", "reqwest", "icu_collator"),
+    "dashboard": ("sqlx", "axum"),
+}
 # Cache hygiene is separate from the dependency recipe: remove only this
 # package's release outputs inside the same capped compiler, retaining its deps.
 RUST_CACHE_HYGIENE = '''RUSTUP_TOOLCHAIN="$(rustup default)"
@@ -55,12 +70,15 @@ exec sh /rust-build.sh'''
 def rust_worker_profiles():
     # Preserve the Mongo-only profile/receipt fields for these workers; the
     # baseline, AI usage receipt, and raid sessions workers need a Redis/Dragonfly
-    # client for their existing cache/queue state.
+    # client, and dashboard activity additionally needs the native HTTP client
+    # plus the ICU collator that preserves Node localeCompare ties.
     return {
         "mongo": {"features": RUST_FEATURES, "default_features": False,
                   "binaries": ["stream_activity", "raid_analytics", "roulette_completion"], "graph": "worker-dependencies.txt"},
         "mongo-redis": {"features": RUST_BASELINE_FEATURES, "default_features": False,
                         "binaries": ["follow_defense_baseline", "ai_usage_receipts", "raid_sessions"], "graph": "baseline-worker-dependencies.txt"},
+        "dashboard": {"features": RUST_DASHBOARD_FEATURES, "default_features": False,
+                      "binaries": ["dashboard_activity"], "graph": "dashboard-worker-dependencies.txt"},
     }
 
 
@@ -409,6 +427,7 @@ class Ops:
         self.rust_cache_marker(root, {"owner": OWNER + ".rust-cache", "schema": 1})
         inputs = {"toolchain": receipt["rust_toolchain_image"], "features": RUST_FEATURES,
                   "profiles": RUST_PROFILES, "worker_profiles": rust_worker_profiles(),
+                  "profile_env": RUST_ARTIFACT_ENV,
                   "recipe": receipt["rust_recipe_digest"],
                   "manifest": digest((path / "rust-source/Cargo.toml").read_bytes()),
                   "lock": digest((path / "rust-source/Cargo.lock").read_bytes())}
@@ -430,14 +449,18 @@ class Ops:
         memory_gib = self.rust_memory_limit(receipt.get("rust_memory_gib", RUST_BUILD_MEMORY_GIB))
         require(RUST_FEATURES == "mongo", "Unsupported worker feature profile; review its dependency graph guard before enabling it")
         require(RUST_BASELINE_FEATURES == "mongo,redis", "Unsupported baseline feature profile; review its dependency graph guard before enabling it")
+        require(RUST_DASHBOARD_FEATURES == "mongo,redis,http-client,unicode-collation",
+                "Unsupported dashboard feature profile; review its dependency graph guard before enabling it")
         return ["create", "--name", "saas-ops-" + receipt["run"] + "-rust-build", *self.labels(receipt["run"]),
                 "--label", OWNER + ".rust-build=true",
                 f"--cpus={RUST_BUILD_CPUS}", f"--memory={memory_gib}g",
                 f"--memory-swap={memory_gib}g", f"--pids-limit={RUST_BUILD_PIDS}",
                 "--security-opt=no-new-privileges",
                 "--env=CARGO_BUILD_JOBS=2", "--env=CARGO_HOME=/cargo-cache", "--env=CARGO_TARGET_DIR=/target-cache",
+                *(f"--env={key}={value}" for key, value in sorted(RUST_ARTIFACT_ENV.items())),
                 "--env=SAAS_RUST_FEATURES=" + RUST_FEATURES,
                 "--env=SAAS_RUST_BASELINE_FEATURES=" + RUST_BASELINE_FEATURES,
+                "--env=SAAS_RUST_DASHBOARD_FEATURES=" + RUST_DASHBOARD_FEATURES,
                 "--env=SAAS_RUST_FEATURE_MATRIX=" + ("1" if receipt.get("rust_feature_matrix") else "0"),
                 "--mount", f"type=bind,src={path / 'rust-source'},dst=/source,readonly",
                 "--mount", f"type=bind,src={path / 'rust-work'},dst=/work",
@@ -473,11 +496,15 @@ class Ops:
             receipt["rust_toolchain_image"] = image["Id"]
             receipt["rust_features"] = RUST_FEATURES
             receipt["rust_worker_profiles"] = rust_worker_profiles()
+            receipt["rust_build_profile_env"] = dict(RUST_ARTIFACT_ENV)
             receipt["rust_feature_matrix"] = bool(feature_matrix)
             receipt["rust_cache"] = cache = self.prepare_rust_cache(path, receipt)
             receipt["rust_cache_hygiene_digest"] = digest(RUST_CACHE_HYGIENE.encode())
             cache["project_release_clean"] = False
-            print(f"Rust worker profiles: mongo={RUST_FEATURES}, mongo-redis={RUST_BASELINE_FEATURES}; private cache {cache['key'][:12]} "
+            print(f"Rust worker profiles: mongo={RUST_FEATURES}, mongo-redis={RUST_BASELINE_FEATURES}, "
+                  f"dashboard={RUST_DASHBOARD_FEATURES}; artifact env: "
+                  + ", ".join(f"{key}={value}" for key, value in sorted(RUST_ARTIFACT_ENV.items()))
+                  + f"; private cache {cache['key'][:12]} "
                   f"({'existing' if cache['hit'] else 'new'}, limit 8 GiB); feature matrix: {bool(feature_matrix)}", flush=True)
             self.rust_headroom(starting=True, memory_gib=memory_gib)
             name = "saas-ops-" + receipt["run"] + "-rust-build"
@@ -517,7 +544,7 @@ class Ops:
                     require(dependencies.is_file() and not dependencies.is_symlink() and dependencies.stat().st_size <= 262144,
                             "Capped Rust build did not export its worker dependency graph: " + profile)
                     graph = dependencies.read_bytes()
-                    forbidden = rb"^(sqlx(?:-[^ ]+)?|axum(?:-[^ ]+)?" + (rb"|redis" if profile == "mongo" else b"") + rb") v"
+                    forbidden = rb"^(" + b"|".join(name.encode() for name in RUST_GRAPH_FORBIDDEN[profile]) + rb")(?:-[^ ]+)? v"
                     require(not re.search(forbidden, graph, re.MULTILINE), "Unexpected dependencies in Rust worker graph: " + profile)
                     metadata["dependency_graph_digest"] = digest(graph)
                 receipt["rust_worker_dependencies_digest"] = receipt["rust_worker_profiles"]["mongo"]["dependency_graph_digest"]
@@ -1048,6 +1075,7 @@ def main(argv=None):
                           "rollback": "rollback RUN", "bulk_operations": False}
         if args.target == "cron":
             details["rust"] = {"features": RUST_FEATURES, "worker_profiles": rust_worker_profiles(), "cache": str(ops.rust_cache_root()),
+                               "profile_env": RUST_ARTIFACT_ENV,
                                "cache_limit_bytes": RUST_CACHE_LIMIT, "jobs": 2,
                                "cpus": RUST_BUILD_CPUS, "memory_bytes": RUST_BUILD_MEMORY_GIB * GIB,
                                "optional_lower_memory": "build cron --rust-memory-gib 4",

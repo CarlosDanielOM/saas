@@ -8,7 +8,7 @@ import { spawnSync } from 'node:child_process';
 
 const checks = fileURLToPath(new URL('../checks/', import.meta.url));
 
-// The six supervised native children. A fixture may execute only its own
+// The seven supervised native children. A fixture may execute only its own
 // binary; every other one must stay an inert double so a release check cannot
 // start a hidden live worker.
 const NATIVE = [
@@ -18,6 +18,7 @@ const NATIVE = [
     ['roulette-completion', '/usr/local/bin/roulette_completion'],
     ['ai-usage-receipts', '/usr/local/bin/ai_usage_receipts'],
     ['raid-sessions', '/usr/local/bin/raid_sessions'],
+    ['dashboard-activity', '/usr/local/bin/dashboard_activity'],
 ];
 
 const FIXTURES = [
@@ -27,12 +28,13 @@ const FIXTURES = [
     ['roulette-completion', 'roulette_completion_fixture_hooks', 'roulette-spawns.jsonl'],
     ['ai-usage-receipts', 'ai_usage_receipts_fixture_hooks', 'ai-usage-spawns.jsonl'],
     ['raid-sessions', 'raid_sessions_fixture_hooks', 'raid-sessions-spawns.jsonl'],
+    ['dashboard-activity', 'dashboard_activity_fixture_hooks', 'dashboard-activity-spawns.jsonl'],
 ];
 
 for (const [name, database, log] of FIXTURES) {
-    // This fixture owns one native binary; the other five must be inert.
+    // This fixture owns one native binary; the other six must be inert.
     const foreign = NATIVE.filter(([worker]) => worker !== name);
-    test(`${name} fixture keeps the other five native children inert`, async () => {
+    test(`${name} fixture keeps the other six native children inert`, async () => {
         const directory = await mkdtemp(path.join(tmpdir(), 'saas-native-hook-'));
         try {
             const workers = path.join(directory, 'dist/workers');
@@ -76,11 +78,11 @@ for (const [name, database, log] of FIXTURES) {
     });
 }
 
-test('the six fixtures collectively recognize all six native workers', () => {
+test('the seven fixtures collectively recognize all seven native workers', () => {
     const covered = new Set(FIXTURES.flatMap(([name]) => NATIVE.filter(([worker]) => worker !== name).map(([worker]) => worker)));
     assert.deepEqual([...covered].sort(), NATIVE.map(([worker]) => worker).sort());
-    assert.equal(NATIVE.length, 6);
-    assert.equal(FIXTURES.length, 6);
+    assert.equal(NATIVE.length, 7);
+    assert.equal(FIXTURES.length, 7);
 });
 
 test('rust-only cron fixture keeps foreign natives inert and exposes ENOENT/nonzero retry paths', async () => {
@@ -97,7 +99,7 @@ test('rust-only cron fixture keeps foreign natives inert and exposes ENOENT/nonz
             import assert from 'node:assert/strict';
             import { spawn } from 'node:child_process';
             const env = { MONGO_URI: process.env.MONGO_URI, PATH: process.env.PATH };
-            for (const command of ['/usr/local/bin/raid_analytics', '/usr/local/bin/follow_defense_baseline', '/usr/local/bin/raid_sessions']) {
+            for (const command of ['/usr/local/bin/raid_analytics', '/usr/local/bin/follow_defense_baseline', '/usr/local/bin/raid_sessions', '/usr/local/bin/dashboard_activity']) {
                 const child = spawn(command, ['--telemetry-json'], { env, uid: 65534, gid: 65534 });
                 assert(child.pid >= 920000, command + ' must remain a fake child');
                 await new Promise(resolve => child.once('spawn', resolve));
@@ -121,7 +123,7 @@ test('rust-only cron fixture keeps foreign natives inert and exposes ENOENT/nonz
         const records = (await readFile(path.join(directory, 'rust-only-spawns.jsonl'), 'utf8'))
             .trim().split('\n').map(JSON.parse);
         const by = (worker, event) => records.filter(record => record.worker === worker && record.event === event);
-        for (const [worker, command] of NATIVE.filter(([name]) => ['raid-analytics', 'follow-defense-baseline', 'raid-sessions'].includes(name))) {
+        for (const [worker, command] of NATIVE.filter(([name]) => ['raid-analytics', 'follow-defense-baseline', 'raid-sessions', 'dashboard-activity'].includes(name))) {
             const [spawn] = by(worker, 'spawn');
             assert.equal(spawn.native, false, `${worker} must stay an inert double`);
             assert.equal(spawn.requestedCommand, command, `${worker} must still request its native command`);

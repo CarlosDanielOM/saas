@@ -653,3 +653,80 @@ test('raid sessions sampler emits only raid sessions runtime metrics', async () 
     assert(samples.some(row => row[1] === 'raid_sessions_rust.cpu_cores'));
     assert(samples.every(row => String(row[1]).startsWith('raid_sessions_rust.')));
 });
+
+const dashboardFrame = (row: Record<string, unknown>): string => `dashboard_activity:${JSON.stringify(row)}\n`;
+
+test('dashboard activity protocol is strictly batch-only with a 502-event bound', () => {
+    const samples: unknown[][] = [];
+    const feed = nativeProgressParser((...args) => { samples.push(args); }, 'dashboard-activity');
+    const batch = { event: 'batch', events: 502, durationMs: 300000, success: true };
+    for (const events of [-1, 503, .5, '1', null, Number.MAX_SAFE_INTEGER]) feed(dashboardFrame({ ...batch, events }));
+    for (const durationMs of [-1, 300001, '1', null, 1e309]) feed(dashboardFrame({ ...batch, durationMs }));
+    feed(dashboardFrame({ ...batch, success: false }));
+    feed(dashboardFrame({ ...batch, success: 'true' }));
+    for (const extra of [{ phases: { queueMs: 1 } }, { channelID: 'private' }, { channel: 'private' },
+        { summary: 'private' }, { dueChannels: 1 }, { hasPending: false }, { admitted: 3 }, { projected: 3 }]) {
+        feed(dashboardFrame({ ...batch, ...extra }));
+    }
+    // No health frame exists for this protocol; it must stay silent like any other unknown event.
+    feed(dashboardFrame({ event: 'health', success: true, dueChannels: 1 }));
+    feed(dashboardFrame({ event: 'batch', events: 2, durationMs: 1, success: true, phases: {} }));
+    feed('dashboard_activity:{invalid}\ndashboard_activity:null\ndashboard_activity:[]\nprivate output secret\n');
+    feed(`dashboard_activity:${' '.repeat(1100)}{}\n`);
+    for (const prefix of ['stream_activity:', 'raid_analytics:', 'follow_defense_baseline:', 'roulette_completion:',
+        'ai_usage_receipts:', 'raid_sessions:']) {
+        feed(`${prefix}${JSON.stringify(batch)}\n`);
+    }
+    assert.deepEqual(samples, []);
+    const valid = dashboardFrame(batch);
+    feed(Buffer.from(valid.slice(0, 19))); assert.deepEqual(samples, []);
+    feed(Buffer.from(valid.slice(19)));
+    feed(dashboardFrame({ ...batch, events: 0, durationMs: 0 }));
+    feed(dashboardFrame({ ...batch, events: 0, durationMs: 300000, success: false }));
+    feed(dashboardFrame({ ...batch, events: 1, durationMs: .5 }));
+    assert.deepEqual(samples, [
+        ['worker', 'dashboard_activity_rust.batch_events', 502, 'ok'],
+        ['queue_run', 'dashboard_activity_rust.project_batch', 300000, 'ok'],
+        ['worker', 'dashboard_activity_rust.batch_events', 0, 'idle'],
+        ['queue_run', 'dashboard_activity_rust.project_batch', 0, 'idle'],
+        ['worker', 'dashboard_activity_rust.batch_events', 0, 'error'],
+        ['queue_run', 'dashboard_activity_rust.project_batch', 300000, 'error'],
+        ['worker', 'dashboard_activity_rust.batch_events', 1, 'ok'],
+        ['queue_run', 'dashboard_activity_rust.project_batch', .5, 'ok'],
+    ]);
+});
+
+test('dashboard activity frames stay inside their own parser and other workers ignore them', () => {
+    const samples: unknown[][] = [];
+    for (const worker of ['stream-activity', 'raid-analytics', 'follow-defense-baseline', 'roulette-completion',
+        'ai-usage-receipts', 'raid-sessions'] as const) {
+        const feed = nativeProgressParser((...args) => { samples.push(args); }, worker);
+        feed(dashboardFrame({ event: 'batch', events: 1, durationMs: 2, success: true }));
+        feed(dashboardFrame({ event: 'health', success: true }));
+    }
+    assert.deepEqual(samples, []);
+    telemetryTesting.reset(); telemetryTesting.enable();
+    try {
+        const feed = nativeProgressParser(observe, 'dashboard-activity');
+        feed(dashboardFrame({ event: 'batch', events: 9, durationMs: 12, success: true }));
+        const { metrics, spans, logs } = telemetryTesting.snapshot();
+        assert.deepEqual(spans, []); assert.deepEqual(logs, []);
+        assert.equal(metrics.length, 2);
+        assert(metrics.every(row => row.channel === '' && row.name.startsWith('dashboard_activity_rust.')));
+        assert.equal(metrics.find(row => row.name.endsWith('.batch_events'))?.sum, 9);
+        assert(!metrics.some(row => row.kind === 'lifecycle' || /\.(health_query|health_errors)$/.test(row.name)));
+    } finally { telemetryTesting.reset(); telemetryTesting.stop(); }
+});
+
+test('dashboard activity sampler emits only dashboard runtime metrics', async () => {
+    let reads = 0;
+    const samples: unknown[][] = [];
+    const stop = startNativeWorkerMetrics(42, {
+        read: async () => snapshot(BigInt(++reads * 100)), ticks: async () => 100,
+        now: () => reads * 1000, intervalMs: 2, observe: (...args) => { samples.push(args); },
+    }, 'dashboard-activity');
+    await delay(15); stop();
+    assert(samples.some(row => row[1] === 'dashboard_activity_rust.rss_bytes'));
+    assert(samples.some(row => row[1] === 'dashboard_activity_rust.cpu_cores'));
+    assert(samples.every(row => String(row[1]).startsWith('dashboard_activity_rust.')));
+});

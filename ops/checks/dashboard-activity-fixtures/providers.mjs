@@ -72,12 +72,11 @@ globalThis.fetch = async (input, options = {}) => {
     throw new Error(`External request blocked in chat notification test: ${url.origin}${url.pathname}`);
 };
 
-// Limit the real cron supervisor to the two affected workers. Unrelated
+// Limit the real cron supervisor to the native dashboard worker. Unrelated
 // workers are provider fixtures; production uses the normal child processes.
 globalThis.__chatNoticeSpawn = (command, args, options) => {
-    const entry = String(args[0]);
-    if (entry.endsWith('/dashboard_activity.worker.js')) {
-        log({ worker: entry });
+    if (command === '/usr/local/bin/dashboard_activity') {
+        log({ worker: command });
         return spawn(command, args, options);
     }
     return null;

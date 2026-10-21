@@ -11,6 +11,11 @@ case "$SAAS_RUST_BASELINE_FEATURES" in
   mongo,redis) ;;
   *) echo 'Unsupported baseline features; review the dependency graph guard before enabling another profile' >&2; exit 1 ;;
 esac
+SAAS_RUST_DASHBOARD_FEATURES="${SAAS_RUST_DASHBOARD_FEATURES:-mongo,redis,http-client,unicode-collation}"
+case "$SAAS_RUST_DASHBOARD_FEATURES" in
+  mongo,redis,http-client,unicode-collation) ;;
+  *) echo 'Unsupported dashboard features; review the dependency graph guard before enabling another profile' >&2; exit 1 ;;
+esac
 
 # Pin the image's installed toolchain instead of allowing rust-toolchain.toml
 # to select/download a moving stable compiler during this release.
@@ -43,8 +48,8 @@ esac
 # our package against this run's frozen read-only /source on every invocation.
 cargo clean --locked --package dima-rust
 cargo tree --locked --no-default-features --features "$SAAS_RUST_FEATURES" --edges normal --prefix none --format '{p}' > /artifacts/worker-dependencies.txt
-if grep -Eq '^(sqlx(-[^ ]+)?|axum(-[^ ]+)?|redis) v' /artifacts/worker-dependencies.txt; then
-    echo 'Mongo worker dependency graph unexpectedly includes SQLx, Axum, or Redis' >&2
+if grep -Eq '^(sqlx(-[^ ]+)?|axum(-[^ ]+)?|redis|reqwest|icu_collator) v' /artifacts/worker-dependencies.txt; then
+    echo 'Mongo worker dependency graph unexpectedly includes SQLx, Axum, Redis, reqwest, or the ICU collator' >&2
     exit 1
 fi
 cargo check --locked --all-targets --no-default-features --features "$SAAS_RUST_FEATURES"
@@ -57,8 +62,8 @@ install -m 0755 /target-cache/release/roulette_completion /artifacts/roulette_co
 # Build sequentially in this same capped compiler. Copy the Mongo-only release
 # outputs first: enabling Redis must never replace those installed artifacts.
 cargo tree --locked --no-default-features --features "$SAAS_RUST_BASELINE_FEATURES" --edges normal --prefix none --format '{p}' > /artifacts/baseline-worker-dependencies.txt
-if grep -Eq '^(sqlx(-[^ ]+)?|axum(-[^ ]+)?) v' /artifacts/baseline-worker-dependencies.txt; then
-    echo 'Baseline worker dependency graph unexpectedly includes SQLx or Axum' >&2
+if grep -Eq '^(sqlx(-[^ ]+)?|axum(-[^ ]+)?|reqwest|icu_collator) v' /artifacts/baseline-worker-dependencies.txt; then
+    echo 'Baseline worker dependency graph unexpectedly includes SQLx, Axum, reqwest, or the ICU collator' >&2
     exit 1
 fi
 cargo check --locked --all-targets --no-default-features --features "$SAAS_RUST_BASELINE_FEATURES"
@@ -68,6 +73,18 @@ cargo build --locked --release --no-default-features --features "$SAAS_RUST_BASE
 install -m 0755 /target-cache/release/follow_defense_baseline /artifacts/follow_defense_baseline
 install -m 0755 /target-cache/release/ai_usage_receipts /artifacts/ai_usage_receipts
 install -m 0755 /target-cache/release/raid_sessions /artifacts/raid_sessions
+# Dashboard activity builds last with the native HTTP client and ICU collator.
+# The two earlier profiles must never inherit reqwest or the collator from this one.
+cargo tree --locked --no-default-features --features "$SAAS_RUST_DASHBOARD_FEATURES" --edges normal --prefix none --format '{p}' > /artifacts/dashboard-worker-dependencies.txt
+if grep -Eq '^(sqlx(-[^ ]+)?|axum(-[^ ]+)?) v' /artifacts/dashboard-worker-dependencies.txt; then
+    echo 'Dashboard worker dependency graph unexpectedly includes SQLx or Axum' >&2
+    exit 1
+fi
+cargo check --locked --all-targets --no-default-features --features "$SAAS_RUST_DASHBOARD_FEATURES"
+cargo clippy --locked --all-targets --no-default-features --features "$SAAS_RUST_DASHBOARD_FEATURES" -- -D warnings
+cargo test --locked --no-default-features --features "$SAAS_RUST_DASHBOARD_FEATURES"
+cargo build --locked --release --no-default-features --features "$SAAS_RUST_DASHBOARD_FEATURES" --bin dashboard_activity
+install -m 0755 /target-cache/release/dashboard_activity /artifacts/dashboard_activity
 # This exercises the actual release binary with no database/environment needed.
 /artifacts/stream_activity --dry-run
 /artifacts/raid_analytics --dry-run
@@ -75,3 +92,4 @@ install -m 0755 /target-cache/release/raid_sessions /artifacts/raid_sessions
 /artifacts/follow_defense_baseline --dry-run
 /artifacts/ai_usage_receipts --dry-run
 /artifacts/raid_sessions --dry-run
+/artifacts/dashboard_activity --dry-run

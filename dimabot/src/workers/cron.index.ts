@@ -42,7 +42,7 @@ export interface ManagedWorker {
 }
 
 export const WORKERS: WorkerDefinition[] = [
-    { kind: 'typescript', name: 'dashboard-activity', sourceEntry: 'src/workers/dashboard_activity.worker.ts', distEntry: 'dist/workers/dashboard_activity.worker.js' },
+    { kind: 'native', name: 'dashboard-activity' },
     { kind: 'native', name: 'raid-analytics' },
     { kind: 'native', name: 'stream-activity' },
     { kind: 'typescript', name: 'goals', sourceEntry: 'src/workers/goals.worker.ts', distEntry: 'dist/workers/goals.worker.js' },

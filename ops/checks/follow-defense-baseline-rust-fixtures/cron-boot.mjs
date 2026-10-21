@@ -21,7 +21,7 @@ if (process.argv[1]?.endsWith('/dist/workers/cron.index.js')) {
                 }) + '\\n');
                 export const spawn = (command, args, options) => {
                     const worker = command === '/usr/local/bin/raid_analytics' ? 'raid-analytics'
-                        : command === '/usr/local/bin/stream_activity' ? 'stream-activity' : command === '/usr/local/bin/follow_defense_baseline' ? 'follow-defense-baseline' : command === '/usr/local/bin/roulette_completion' ? 'roulette-completion' : command === '/usr/local/bin/ai_usage_receipts' ? 'ai-usage-receipts' : command === '/usr/local/bin/raid_sessions' ? 'raid-sessions' : options?.env?.CRON_WORKER_NAME;
+                        : command === '/usr/local/bin/stream_activity' ? 'stream-activity' : command === '/usr/local/bin/follow_defense_baseline' ? 'follow-defense-baseline' : command === '/usr/local/bin/roulette_completion' ? 'roulette-completion' : command === '/usr/local/bin/ai_usage_receipts' ? 'ai-usage-receipts' : command === '/usr/local/bin/raid_sessions' ? 'raid-sessions' : command === '/usr/local/bin/dashboard_activity' ? 'dashboard-activity' : options?.env?.CRON_WORKER_NAME;
                     if (!worker) throw new Error('Unexpected supervisor child in isolated baseline fixture');
                     const native = worker === 'follow-defense-baseline';
                     let child;

@@ -17,3 +17,14 @@ pub mod ai_usage_receipts;
 
 #[cfg(all(feature = "mongo", feature = "redis"))]
 pub mod raid_sessions;
+
+#[cfg(all(feature = "mongo", feature = "unicode-collation"))]
+pub mod dashboard_insights;
+
+#[cfg(all(
+    feature = "mongo",
+    feature = "redis",
+    feature = "http-client",
+    feature = "unicode-collation"
+))]
+pub mod dashboard_activity;

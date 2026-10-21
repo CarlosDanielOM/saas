@@ -13,7 +13,8 @@ const baseline = WORKERS.find(worker => worker.name === 'follow-defense-baseline
 const roulette = WORKERS.find(worker => worker.name === 'roulette-completion')!;
 const receipts = WORKERS.find(worker => worker.name === 'ai-usage-receipts')!;
 const sessions = WORKERS.find(worker => worker.name === 'raid-sessions')!;
-const nativeDefinitions = [stream, raid, baseline, roulette, receipts, sessions];
+const dashboard = WORKERS.find(worker => worker.name === 'dashboard-activity')!;
+const nativeDefinitions = [stream, raid, baseline, roulette, receipts, sessions, dashboard];
 const config: SupervisorConfig = { runtime: 'node', once: false, dryRun: false, restartDelayMs: 5 };
 class FakeChild extends EventEmitter {
     pid = 123;
@@ -49,7 +50,7 @@ function fixture(once = false, definitions: WorkerDefinition[] = [stream], overr
     return { supervisor, children, metrics, commands, stops: () => stops };
 }
 
-test('only six known workers use Rust; flags, privilege drop and environment are explicit', () => {
+test('only seven known workers use Rust; flags, privilege drop and environment are explicit', () => {
     assert.equal(WORKERS.filter(worker => worker.name === 'stream-activity').length, 1);
     const env = { MONGO_URI: 'fixture-only', PATH: '/usr/bin', TZ: 'UTC', SECRET_KEY: 'secret', TWITCH_TOKEN: 'private', DRAGONFLY_HOST: 'redis', DRAGONFLY_PORT: '6379' };
     const native = resolveWorkerLaunch(stream, { ...config, once: true, dryRun: true }, env, 0);
@@ -68,7 +69,46 @@ test('only six known workers use Rust; flags, privilege drop and environment are
     assert.deepEqual(nativeBaseline.args, ['--telemetry-json', '--dry-run', '--once']);
     assert.deepEqual(nativeBaseline.options.env, { ...native.options.env, DRAGONFLY_HOST: 'redis', DRAGONFLY_PORT: '6379' });
     assert.equal(nativeBaseline.options.uid, 65534); assert.equal(nativeBaseline.options.gid, 65534);
+    const nativeDashboard = resolveWorkerLaunch(dashboard, { ...config, once: true, dryRun: true }, env, 0);
+    assert.equal(nativeDashboard.command, '/usr/local/bin/dashboard_activity');
+    assert.deepEqual(nativeDashboard.args, ['--telemetry-json', '--dry-run', '--once']);
+    assert.deepEqual(nativeDashboard.options.env, { ...native.options.env, DRAGONFLY_HOST: 'redis', DRAGONFLY_PORT: '6379' });
+    assert.equal(nativeDashboard.options.uid, 65534); assert.equal(nativeDashboard.options.gid, 65534);
     for (const definition of WORKERS.filter(worker => !nativeDefinitions.includes(worker))) assert(!resolveWorkerLaunch(definition, config, env, 0).native);
+});
+
+test('dashboard child receives only Twitch credentials, proxy settings and Dragonfly host/port beyond the Mongo environment', () => {
+    const env = {
+        MONGO_URI: 'fixture-only', PATH: '/usr/bin', TZ: 'UTC', LANG: 'C', SECRET_KEY: 'secret', TWITCH_TOKEN: 'private',
+        DRAGONFLY_HOST: 'redis', DRAGONFLY_PORT: '6379', DRAGONFLY_PASSWORD: 'private',
+        CLIENT_ID: 'fixture-client', CLIENT_SECRET: 'fixture-secret',
+        HTTPS_PROXY: 'http://proxy.internal:3128', HTTP_PROXY: 'http://proxy.internal:3128',
+        ALL_PROXY: 'socks5://proxy.internal:1080', NO_PROXY: 'localhost,127.0.0.1',
+        https_proxy: 'http://lower.internal:3128', http_proxy: 'http://lower.internal:3128',
+        all_proxy: 'socks5://lower.internal:1080', no_proxy: 'mongo,redis',
+        SSL_CERT_FILE: '/fixtures/ca.pem', SSL_CERT_DIR: '/fixtures/certs',
+    };
+    const native = resolveWorkerLaunch(dashboard, { ...config, once: true, dryRun: true }, env, 0);
+    assert(native.native);
+    assert.equal(native.command, '/usr/local/bin/dashboard_activity');
+    assert.deepEqual(native.args, ['--telemetry-json', '--dry-run', '--once']);
+    assert.deepEqual(native.options.env, {
+        MONGO_URI: 'fixture-only', PATH: '/usr/bin', TZ: 'UTC', LANG: 'C',
+        SSL_CERT_FILE: '/fixtures/ca.pem', SSL_CERT_DIR: '/fixtures/certs',
+        DRAGONFLY_HOST: 'redis', DRAGONFLY_PORT: '6379',
+        CLIENT_ID: 'fixture-client', CLIENT_SECRET: 'fixture-secret',
+        HTTPS_PROXY: 'http://proxy.internal:3128', HTTP_PROXY: 'http://proxy.internal:3128',
+        ALL_PROXY: 'socks5://proxy.internal:1080', NO_PROXY: 'localhost,127.0.0.1',
+        https_proxy: 'http://lower.internal:3128', http_proxy: 'http://lower.internal:3128',
+        all_proxy: 'socks5://lower.internal:1080', no_proxy: 'mongo,redis',
+    });
+    assert.equal(native.options.uid, 65534); assert.equal(native.options.gid, 65534);
+    assert.equal(resolveWorkerLaunch(dashboard, config, env, 1000).options.uid, undefined);
+    // Unset settings stay unset: the child must apply its own defaults.
+    assert.deepEqual(resolveWorkerLaunch(dashboard, config, { MONGO_URI: 'fixture-only', PATH: '/usr/bin' }, 1000).options.env,
+        { MONGO_URI: 'fixture-only', PATH: '/usr/bin' });
+    // No TypeScript fallback entrypoint survives the migration.
+    assert(!('sourceEntry' in dashboard) && !('distEntry' in dashboard));
 });
 
 const retiredSelectors = ['STREAM_ACTIVITY_RUNTIME', 'RAID_ANALYTICS_RUNTIME', 'FOLLOW_DEFENSE_BASELINE_RUNTIME',
@@ -105,8 +145,8 @@ test('RAID_SESSIONS_RUNTIME was never a selector and cannot alter the native rai
     }
 });
 
-test('all six native definitions have no TypeScript entrypoints and ignore obsolete selectors in both runtimes', () => {
-    assert.equal(WORKERS.filter(worker => worker.kind === 'native').length, 6);
+test('all seven native definitions have no TypeScript entrypoints and ignore obsolete selectors in both runtimes', () => {
+    assert.equal(WORKERS.filter(worker => worker.kind === 'native').length, 7);
     for (const worker of nativeDefinitions) {
         assert.equal(worker.kind, 'native');
         assert(!('sourceEntry' in worker)); assert(!('distEntry' in worker));
@@ -373,17 +413,18 @@ test('receipts process failure restarts only receipts and fences late telemetry'
     const before = f.metrics.length;
     child.emit('error', new Error('fixture failure')); child.stdout.write(frame); child.finish(1);
     await delay(15);
-    assert.equal(f.children.length, 7);
+    assert.equal(f.children.length, 8);
     assert.deepEqual(f.commands.slice(4), ['/usr/local/bin/ai_usage_receipts', '/usr/local/bin/raid_sessions',
-        '/usr/local/bin/ai_usage_receipts']);
-    assert.deepEqual(f.supervisor.workers.map(worker => worker.restartCount), [0, 0, 0, 0, 1, 0]);
-    for (const index of [0, 1, 2, 3, 5]) assert.equal(f.supervisor.workers[index].process, f.children[index]);
+        '/usr/local/bin/dashboard_activity', '/usr/local/bin/ai_usage_receipts']);
+    assert.deepEqual(f.supervisor.workers.map(worker => worker.restartCount), [0, 0, 0, 0, 1, 0, 0]);
+    for (const index of [0, 1, 2, 3, 5, 6]) assert.equal(f.supervisor.workers[index].process, f.children[index]);
     assert.deepEqual(f.metrics.slice(before), ['ai_usage_receipts_rust.errors', 'ai_usage_receipts_rust.restarts']);
-    for (const active of [f.children[0], f.children[1], f.children[2], f.children[3], f.children[5], f.children[6]]) active.closeOnTerm = true;
+    for (const active of [f.children[0], f.children[1], f.children[2], f.children[3], f.children[5], f.children[6], f.children[7]])
+        active.closeOnTerm = true;
     const closing = f.supervisor.shutdown('SIGTERM', 50);
-    f.children[6].stdout.write(frame); await closing;
+    f.children[7].stdout.write(frame); await closing;
     assert.equal(f.metrics.filter(name => name === 'ai_usage_receipts_rust.batch_receipts').length, 1);
-    assert.equal(f.stops(), 7);
+    assert.equal(f.stops(), 8);
 });
 
 
@@ -428,10 +469,11 @@ test('native enabledEnv still prevents a disabled receipts child while starting 
 
 
 test('each native child keeps restart isolation, stale-event fencing and shutdown under both launcher modes', async () => {
-    // Protocol prefix and batch metric for each of the six native children; the
-    // raid sessions child is batch-only with a 401-item bound.
-    const protocols = ['stream_activity', 'raid_analytics', 'follow_defense_baseline', 'roulette_completion', 'ai_usage_receipts', 'raid_sessions'];
-    const batches = ['batch_events', 'batch_channels', 'batch_channels', 'batch_channels', 'batch_receipts', 'batch_items'];
+    // Protocol prefix and batch metric for each of the seven native children; the
+    // raid sessions and dashboard activity children are batch-only.
+    const protocols = ['stream_activity', 'raid_analytics', 'follow_defense_baseline', 'roulette_completion',
+        'ai_usage_receipts', 'raid_sessions', 'dashboard_activity'];
+    const batches = ['batch_events', 'batch_channels', 'batch_channels', 'batch_channels', 'batch_receipts', 'batch_items', 'batch_events'];
     for (const runtime of ['node', 'tsx'] as const) for (let index = 0; index < nativeDefinitions.length; index++) {
         const f = fixture(false, nativeDefinitions, { runtime });
         f.supervisor.start(); await delay(0);
