@@ -28,7 +28,8 @@ OWNER = "io.domdimabot.saas-ops"
 RUN_RE = re.compile(r"[a-z][a-z0-9-]*-[0-9a-f]{12}\Z")
 IMAGE_RE = re.compile(r"sha256:[0-9a-f]{64}\Z")
 EXCLUDED = {"node_modules", "dist", "target", ".saas-native", ".git", ".angular", ".astro", "data", "coverage"}
-RUST_BUILD_IMAGE = "rust:alpine"
+# Rust 1.99.1 on Alpine/musl, using the already validated immutable image.
+RUST_BUILD_IMAGE = "rust@sha256:557a94c82b485a14b569120e00867267108c734efe33f10cc31ca0cd5dd1eca9"
 RUST_BINARIES = ("stream_activity", "raid_analytics")
 GIB = 1024 ** 3
 RUST_CACHE_LIMIT = 8 * GIB

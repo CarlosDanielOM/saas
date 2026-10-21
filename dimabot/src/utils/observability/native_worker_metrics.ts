@@ -6,7 +6,40 @@ import { observe } from './telemetry.js';
 const SAMPLE_INTERVAL_MS = 10000;
 const PROC_LIMIT = 16384;
 const PROGRESS_LIMIT = 1024;
+// Matches the analytics ingestion numeric ceiling. Never forward unbounded child values.
+const RAID_METADATA_MAX = 1e15;
+const RAID_PHASES = ['claimMs', 'followQueriesMs', 'followWriteMs', 'period7Ms', 'period30Ms', 'reciprocityMs', 'publishMs', 'releaseMs'] as const;
+const RAID_BATCH_FIELDS = ['event', 'events', 'durationMs', 'success', 'phases'];
+const RAID_HEALTH_FIELDS = ['event', 'success', 'dueChannels', 'oldestDueAgeMs', 'lastSuccessAgeMs'];
 type Observer = typeof observe;
+
+const record = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value);
+const onlyFields = (row: Record<string, unknown>, fields: readonly string[]): boolean => Object.keys(row).every(key => fields.includes(key));
+const raidNumber = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= RAID_METADATA_MAX;
+
+function validRaidPhases(value: unknown): value is Partial<Record<typeof RAID_PHASES[number], number>> {
+    return record(value) && onlyFields(value, RAID_PHASES) && Object.values(value).every(raidNumber);
+}
+
+function emitRaidHealth(row: Record<string, unknown>, emit: Observer): void {
+    if (!onlyFields(row, RAID_HEALTH_FIELDS) || typeof row.success !== 'boolean') return;
+    // Unknown observations stay absent; a failed query must never fabricate an empty backlog.
+    for (const key of ['dueChannels', 'oldestDueAgeMs', 'lastSuccessAgeMs']) {
+        if (row[key] != null && !raidNumber(row[key])) return;
+    }
+    if (row.dueChannels != null && !Number.isSafeInteger(row.dueChannels)) return;
+    if (!row.success && (row.dueChannels != null || row.oldestDueAgeMs != null)) return;
+    if (row.dueChannels === 0 && row.oldestDueAgeMs != null) return;
+    // One outcome keeps same-bucket mixed probes visible as a fractional/unknown status.
+    emit('worker', 'raid_analytics_rust.health_query', row.success ? 1 : 0, 'ok', '');
+    if (!row.success) emit('worker', 'raid_analytics_rust.health_errors', 1, 'error', '');
+    // Gauges are independent observations; health_errors alone counts query errors.
+    for (const [field, metric] of [
+        ['dueChannels', 'backlog_channels'], ['oldestDueAgeMs', 'oldest_due_age_ms'], ['lastSuccessAgeMs', 'last_success_age_ms'],
+    ] as const) {
+        if (raidNumber(row[field])) emit('worker', `raid_analytics_rust.${metric}`, row[field], 'ok', '');
+    }
+}
 
 /** Only these two projectors may use the native launch and telemetry path. */
 export const NATIVE_WORKERS = {
@@ -161,8 +194,14 @@ export function nativeProgressParser(emit: Observer = observe, worker: NativeWor
                 if (!discard && pending.startsWith(metadata.protocol)) {
                     try {
                         const value: unknown = JSON.parse(pending.slice(metadata.protocol.length));
-                        if (value && typeof value === 'object') {
-                            const row = value as Record<string, unknown>;
+                        if (record(value)) {
+                            const row = value;
+                            if (worker === 'raid-analytics') {
+                                if (row.event === 'health') { emitRaidHealth(row, emit); pending = ''; discard = false; continue; }
+                                if (!onlyFields(row, RAID_BATCH_FIELDS) || ('phases' in row && !validRaidPhases(row.phases))) {
+                                    pending = ''; discard = false; continue;
+                                }
+                            }
                             if (row.event === 'batch' && typeof row.events === 'number' && Number.isInteger(row.events)
                                 && row.events >= 0 && row.events <= metadata.maxEvents && typeof row.durationMs === 'number'
                                 && Number.isFinite(row.durationMs) && row.durationMs >= 0 && row.durationMs <= metadata.maxDurationMs
@@ -170,6 +209,12 @@ export function nativeProgressParser(emit: Observer = observe, worker: NativeWor
                                 const outcome = row.success ? (row.events > 0 ? 'ok' : 'idle') : 'error';
                                 emit('worker', `${metadata.metricPrefix}.${metadata.batchMetric}`, row.events, outcome);
                                 emit('queue_run', `${metadata.metricPrefix}.project_batch`, row.durationMs, outcome);
+                                if (worker === 'raid-analytics' && validRaidPhases(row.phases)) {
+                                    for (const phase of RAID_PHASES) {
+                                        const duration = row.phases[phase];
+                                        if (duration !== undefined) emit('queue_run', `raid_analytics_rust.phase.${phase}`, duration, outcome, '');
+                                    }
+                                }
                             }
                         }
                     } catch { /* Invalid frames never leave the process. */ }

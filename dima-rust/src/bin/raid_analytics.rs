@@ -6,18 +6,50 @@ use std::{
     time::{Duration, Instant},
 };
 
-use dima_rust::{utils::mongo::get_mongo_client, workers::raid_analytics::RaidAnalyticsProjector};
+use dima_rust::{
+    utils::mongo::get_mongo_client,
+    workers::raid_analytics::{BacklogHealth, PhaseTimings, RaidAnalyticsProjector},
+};
+use mongodb::bson::DateTime;
 use tokio::sync::watch;
 
-const HELP: &str = "Usage: raid_analytics [--dry-run] [--once] [--telemetry-json] [--database NAME] [--env-file PATH]...\n\nManual MongoDB 8.0+ raid-summary projector. No automatic .env loading.\nMONGO_URI must name a database, or supply --database. Existing environment wins.\nOne channel per pass; at most 25 follow windows and five query tasks at a time.\nIdle polling backs off from 1s to 5s and resets after work. Due channels run immediately.\n--telemetry-json emits bounded channel-batch metadata to stdout for the parent supervisor.";
+const HELP: &str = "Usage: raid_analytics [--dry-run] [--once] [--telemetry-json] [--database NAME] [--env-file PATH]...\n\nManual MongoDB 8.0+ raid-summary projector. No automatic .env loading.\nMONGO_URI must name a database, or supply --database. Existing environment wins.\nOne channel per pass; at most 25 follow windows and five query tasks at a time.\nIdle polling backs off from 1s to 5s and resets after work. Due channels run immediately.\n--telemetry-json emits bounded batch, phase, and periodic health metadata to stdout for the parent supervisor.";
 
-fn batch_telemetry(events: usize, duration_ms: f64, success: bool) -> String {
+const HEALTH_INTERVAL: Duration = Duration::from_secs(30);
+const HEALTH_TIMEOUT: Duration = Duration::from_secs(2);
+const MAX_METRIC_VALUE: f64 = 1_000_000_000_000_000.0;
+
+fn metric_elapsed_ms(started: Instant) -> f64 {
+    (started.elapsed().as_secs_f64() * 1000.0).min(MAX_METRIC_VALUE)
+}
+
+fn batch_telemetry(
+    events: usize,
+    duration_ms: f64,
+    success: bool,
+    phases: &PhaseTimings,
+) -> String {
     format!(
         "raid_analytics:{}",
         serde_json::json!({
-            "event": "batch", "events": events.min(1), "durationMs": duration_ms, "success": success
+            "event": "batch", "events": events.min(1), "durationMs": duration_ms, "success": success,
+            "phases": phases
         })
     )
+}
+
+fn health_telemetry(health: Option<&BacklogHealth>, last_success_age_ms: Option<f64>) -> String {
+    let mut metadata = serde_json::json!({ "event": "health", "success": health.is_some() });
+    if let Some(health) = health {
+        metadata["dueChannels"] = health.due_channels.into();
+        if let Some(age) = health.oldest_due_age_ms {
+            metadata["oldestDueAgeMs"] = age.into();
+        }
+    }
+    if let Some(age) = last_success_age_ms {
+        metadata["lastSuccessAgeMs"] = age.into();
+    }
+    format!("raid_analytics:{metadata}")
 }
 
 /// Consecutive empty batches back off; any work restores responsive polling.
@@ -163,10 +195,18 @@ async fn run(args: Args) -> Result<(), &'static str> {
     });
     let result = async {
         let mut idle = IdleBackoff::default();
+        // Unknown after every restart until a non-idle batch fully succeeds.
+        // Monotonic time keeps clock adjustments out of last-success age.
+        let mut last_success = None;
+        let mut last_health: Option<Instant> = None;
         while !*stopped.borrow() {
             // Never cancel an active batch on a shutdown signal.
             let started = Instant::now();
-            let projected = projector.project_once().await;
+            let observation = projector.project_once_observed().await;
+            let projected = observation.result;
+            if matches!(&projected, Ok(count) if *count > 0) {
+                last_success = Some(Instant::now());
+            }
             if args.telemetry_json {
                 // Reporting cannot turn successful projection into a failure.
                 let _ = writeln!(
@@ -174,10 +214,29 @@ async fn run(args: Args) -> Result<(), &'static str> {
                     "{}",
                     batch_telemetry(
                         projected.as_ref().copied().unwrap_or(0),
-                        started.elapsed().as_secs_f64() * 1000.0,
-                        projected.is_ok()
+                        metric_elapsed_ms(started),
+                        projected.is_ok(),
+                        &observation.phases
                     )
                 );
+                if last_health.is_none_or(|at| at.elapsed() >= HEALTH_INTERVAL) {
+                    // One bounded probe at a time, only between batches. A
+                    // query failure cannot fail projection or invent a zero
+                    // backlog; last-success age remains independently known.
+                    let health = tokio::time::timeout(
+                        HEALTH_TIMEOUT,
+                        projector.backlog_health(DateTime::now()),
+                    )
+                    .await
+                    .ok()
+                    .and_then(Result::ok);
+                    last_health = Some(Instant::now());
+                    let _ = writeln!(
+                        std::io::stdout().lock(),
+                        "{}",
+                        health_telemetry(health.as_ref(), last_success.map(metric_elapsed_ms))
+                    );
+                }
             }
             let count = projected
                 .map_err(|_| "Raid analytics projection failed; channel retained for retry")?;
@@ -198,7 +257,8 @@ async fn run(args: Args) -> Result<(), &'static str> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Args, IdleBackoff, batch_telemetry};
+    use super::{Args, IdleBackoff, batch_telemetry, health_telemetry};
+    use dima_rust::workers::raid_analytics::{BacklogHealth, PhaseTimings};
     use std::time::Duration;
 
     #[test]
@@ -242,15 +302,58 @@ mod tests {
     #[test]
     fn batch_protocol_contains_only_bounded_metadata() {
         for (events, success) in [(0, true), (1, true), (0, false), (usize::MAX, true)] {
-            let line = batch_telemetry(events, 12.5, success);
+            let phases = PhaseTimings {
+                claim_ms: Some(1.0),
+                ..PhaseTimings::default()
+            };
+            let line = batch_telemetry(events, 12.5, success, &phases);
             assert!(line.len() < 1024);
             let value: serde_json::Value =
                 serde_json::from_str(line.strip_prefix("raid_analytics:").unwrap()).unwrap();
-            assert_eq!(value.as_object().unwrap().len(), 4);
+            assert_eq!(value.as_object().unwrap().len(), 5);
             assert_eq!(value["event"], "batch");
             assert_eq!(value["events"], events.min(1));
             assert_eq!(value["durationMs"], 12.5);
             assert_eq!(value["success"], success);
+            assert_eq!(value["phases"], serde_json::json!({ "claimMs": 1.0 }));
+        }
+    }
+
+    #[test]
+    fn health_unknown_empty_and_failed_samples_remain_distinct() {
+        for (health, last_success, expected) in [
+            (
+                None,
+                None,
+                serde_json::json!({ "event": "health", "success": false }),
+            ),
+            (
+                None,
+                Some(123.0),
+                serde_json::json!({ "event": "health", "success": false, "lastSuccessAgeMs": 123.0 }),
+            ),
+            (
+                Some(BacklogHealth {
+                    due_channels: 0,
+                    oldest_due_age_ms: None,
+                }),
+                None,
+                serde_json::json!({ "event": "health", "success": true, "dueChannels": 0 }),
+            ),
+            (
+                Some(BacklogHealth {
+                    due_channels: 3,
+                    oldest_due_age_ms: Some(456),
+                }),
+                Some(12.0),
+                serde_json::json!({ "event": "health", "success": true, "dueChannels": 3, "oldestDueAgeMs": 456, "lastSuccessAgeMs": 12.0 }),
+            ),
+        ] {
+            let line = health_telemetry(health.as_ref(), last_success);
+            assert!(line.len() < 1024);
+            let actual: serde_json::Value =
+                serde_json::from_str(line.strip_prefix("raid_analytics:").unwrap()).unwrap();
+            assert_eq!(actual, expected);
         }
     }
 }

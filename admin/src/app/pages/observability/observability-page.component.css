@@ -639,6 +639,43 @@ summary:focus-visible,
   font-size: 0.68rem;
   font-weight: 650;
 }
+.obs-raid-health {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 0.65rem;
+  min-width: 0;
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+.obs-raid-health__facts {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0;
+}
+.obs-raid-health__facts > div {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+.obs-raid-health__facts dt {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+.obs-raid-health__facts dd {
+  display: grid;
+  gap: 0.15rem;
+  margin: 0;
+  font-weight: 700;
+}
+.obs-phases {
+  min-width: 0;
+}
+@media (min-width: 640px) {
+  .obs-raid-health__facts {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
 .obs-sink .lf-row__value,
 .obs-cmd__p95 {
   font-size: 0.86rem;

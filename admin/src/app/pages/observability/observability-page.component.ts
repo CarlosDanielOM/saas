@@ -92,6 +92,7 @@ interface QueueView {
   label: string;
   wait: Merged | null;
   runs: Array<{ name: string; merged: Merged }>;
+  phases: Array<{ name: string; merged: Merged }>;
   total: Merged | null;
   waiting: number | null;
   oldestWait: number | null;
@@ -120,6 +121,12 @@ interface ProcessView {
   lag: number | null;
   dropped: number | null;
   at: string;
+  raidHealth?: {
+    status: string;
+    warning: boolean;
+    at: string | null;
+    facts: Array<{ label: string; value: string; at: string | null; stale: boolean }>;
+  };
 }
 
 export type Tab = 'overview' | 'endpoints' | 'chat' | 'queues' | 'resources' | 'traces' | 'logs' | 'access';
@@ -175,6 +182,12 @@ const EVENT_LABEL: Record<string, string> = {
   'stream.offline': 'Went offline',
 };
 const RUNTIME_METRIC = /^(.*)\.(cpu_cores|event_loop_p99_ms|heap_bytes|rss_bytes|telemetry_dropped)$/;
+const RAID_PHASE_LABELS: Record<string, string> = {
+  claimMs: 'Claim work', followQueriesMs: 'Read follows', followWriteMs: 'Write follow totals',
+  period7Ms: '7-day summary', period30Ms: '30-day summary', reciprocityMs: 'Reciprocity',
+  publishMs: 'Publish update', releaseMs: 'Release claim',
+};
+const RAID_HEALTH_STALE_MS = 90000;
 const CALL_PAGE = 30;
 const SLOW_API_MS = 2500;
 const SLOW_WAIT_MS = 300000;
@@ -329,7 +342,7 @@ export class ObservabilityPageComponent implements OnInit {
         action: { label: 'See failing calls', tab: 'endpoints', kind: storage[0].kind as CallKind, sort: 'failing' },
       });
     }
-    const jobFails = failing('queue_run');
+    const jobFails = failing('queue_run').filter((row) => !this.isRaidPhase(row));
     const jobErrors = jobFails.reduce((sum, g) => sum + g.errors, 0);
     if (jobErrors) {
       items.push({
@@ -435,7 +448,7 @@ export class ObservabilityPageComponent implements OnInit {
   readonly timeSinks = computed(() => {
     const merged = new Map<string, { service: string; kind: string; name: string; rows: Group[] }>();
     for (const row of this.groups()) {
-      if (!['http', 'http_client', 'database', 'cache', 'command', 'queue_run', 'chat'].includes(row.kind) || this.isStream(row) || !row.count) continue;
+      if (!['http', 'http_client', 'database', 'cache', 'command', 'queue_run', 'chat'].includes(row.kind) || this.isStream(row) || this.isRaidPhase(row) || !row.count) continue;
       const key = `${row.service}|${row.kind}|${row.name}`;
       const entry = merged.get(key) ?? { service: row.service, kind: row.kind, name: row.name, rows: [] };
       entry.rows.push(row);
@@ -541,7 +554,8 @@ export class ObservabilityPageComponent implements OnInit {
     }
     const list = [...byKey.entries()].map(([key, rows]) => {
       const of = (kind: string) => rows.filter((r) => r.kind === kind);
-      const runNames = this.unique(of('queue_run').map((r) => r.name));
+      const runNames = this.unique(of('queue_run').filter((r) => !this.isRaidPhase(r)).map((r) => r.name));
+      const phaseNames = this.unique(of('queue_run').filter((r) => this.isRaidPhase(r)).map((r) => r.name));
       const gauge = (suffix: string) => {
         const latest = of('queue')
           .filter((r) => r.name.endsWith(suffix))
@@ -557,6 +571,7 @@ export class ObservabilityPageComponent implements OnInit {
         label: this.queueLabel(key),
         wait,
         runs,
+        phases: phaseNames.map((name) => ({ name: RAID_PHASE_LABELS[name.slice('raid_analytics_rust.phase.'.length)], merged: this.merge(of('queue_run').filter((r) => r.name === name)) })),
         total,
         waiting: gauge('.waiting'),
         oldestWait: gauge('.oldest_wait_ms'),
@@ -601,6 +616,40 @@ export class ObservabilityPageComponent implements OnInit {
       if (metric === 'event_loop_p99_ms') view.lag = row.lastValue;
       // Dropped counts add up over the range, so use the total rather than the last bucket.
       if (metric === 'telemetry_dropped') view.dropped = (row.average ?? 0) * row.count;
+      byKey.set(key, view);
+    }
+    const healthRows = this.groups().filter((row) => row.service === 'cron' && row.kind === 'worker' && row.channel === ''
+      && ['health_query', 'backlog_channels', 'oldest_due_age_ms', 'last_success_age_ms'].some((metric) => row.name === `raid_analytics_rust.${metric}`));
+    const key = 'cron|raid_analytics_rust';
+    if (byKey.has(key) || healthRows.length) {
+      const view: ProcessView = byKey.get(key) ?? { key, label: this.processLabel('cron', 'raid_analytics_rust'), service: 'cron', rss: null, heap: null, cpu: null, lag: null, dropped: null, at: '' };
+      const latest = (metric: string) => healthRows.filter((row) => row.name === `raid_analytics_rust.${metric}`).sort((a, b) => Date.parse(b.lastAt) - Date.parse(a.lastAt))[0];
+      const check = latest('health_query');
+      const fresh = (row: Group | undefined) => !!row && Number.isFinite(Date.parse(row.lastAt))
+        && Date.now() - Date.parse(row.lastAt) <= RAID_HEALTH_STALE_MS && Date.parse(row.lastAt) <= Date.now() + 10000;
+      const failed = check?.lastValue === 0;
+      const succeeded = check?.lastValue === 1;
+      const backlog = latest('backlog_channels');
+      const currentBacklog = fresh(check) && succeeded && fresh(backlog) && backlog!.lastAt === check!.lastAt;
+      view.raidHealth = {
+        status: !check ? 'Refresh health unknown' : !fresh(check) ? 'Refresh health is stale'
+          : failed ? 'Backlog check failed — pending work is unknown'
+          : !succeeded ? 'Refresh health is uncertain — mixed query results'
+          : !currentBacklog ? 'Pending work is unknown' : backlog!.lastValue === 0 ? 'No channels are due for refresh' : 'Channels are waiting for refresh',
+        warning: !fresh(check) || !succeeded || !currentBacklog,
+        at: check?.lastAt ?? null,
+        facts: [
+          ['backlog_channels', 'Pending channels'], ['oldest_due_age_ms', 'Oldest overdue'], ['last_success_age_ms', 'Last successful refresh'],
+        ].map(([metric, label]) => {
+          const row = latest(metric);
+          const current = fresh(row) && fresh(check) && row!.lastAt === check!.lastAt;
+          const valid = !!row && Number.isFinite(row.lastValue) && row.lastValue >= 0;
+          const available = valid && current && (succeeded || (metric === 'last_success_age_ms' && failed));
+          const empty = metric === 'oldest_due_age_ms' && currentBacklog && backlog!.lastValue === 0;
+          return { label, value: empty ? 'None pending' : !available ? 'Unknown' : metric === 'backlog_channels' ? `${row!.count > 1 ? '≈ ' : ''}${this.num(row!.lastValue)}` : metric === 'last_success_age_ms' ? `${this.ms(row!.lastValue)} ago at sample` : this.ms(row!.lastValue),
+            at: empty ? check!.lastAt : row?.lastAt ?? null, stale: !!row && !current && !empty };
+        }),
+      };
       byKey.set(key, view);
     }
     const lagging = (p: ProcessView) => Number((p.lag ?? 0) >= LAG_MS);
@@ -1010,6 +1059,10 @@ export class ObservabilityPageComponent implements OnInit {
   }
   queueKey(name: string): string {
     return name.split('.')[0];
+  }
+  private isRaidPhase(row: Group): boolean {
+    return row.service === 'cron' && row.kind === 'queue_run' && row.name.startsWith('raid_analytics_rust.phase.')
+      && Object.hasOwn(RAID_PHASE_LABELS, row.name.slice('raid_analytics_rust.phase.'.length));
   }
   queueLabel(key: string): string {
     if (key === 'tts') return 'Text to speech';

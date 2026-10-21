@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { setTimeout as delay } from 'node:timers/promises';
 import { NativeCpuTracker, nativeProgressParser, parseNativeRss, parseNativeStat, startNativeWorkerMetrics, type NativeSnapshot } from './native_worker_metrics.js';
+import { observe, telemetryTesting } from './telemetry.js';
 
 function stat(comm: string, user = '100', system = '50', start = '1234', state = 'S'): string {
     const fields = Array<string>(20).fill('0');
@@ -106,4 +107,128 @@ test('raid sampler uses its own resource prefix and permanently fences PID reuse
         ['runtime', 'raid_analytics_rust.rss_bytes', 4096],
         ['runtime', 'raid_analytics_rust.rss_bytes', 4096], ['runtime', 'raid_analytics_rust.cpu_cores', 1],
     ]);
+});
+
+const raidFrame = (row: Record<string, unknown>): string => `raid_analytics:${JSON.stringify(row)}\n`;
+
+test('raid phase durations preserve failed attempts, omit unreached phases and retain batch compatibility', () => {
+    const samples: unknown[][] = [];
+    const feed = nativeProgressParser((...args) => { samples.push(args); }, 'raid-analytics');
+    feed(raidFrame({ event: 'batch', events: 1, durationMs: 100, success: true, phases: {
+        claimMs: 1, followQueriesMs: 2, followWriteMs: 3, period7Ms: 4,
+        period30Ms: 5, reciprocityMs: 6, publishMs: 7, releaseMs: 8,
+    } }));
+    feed(raidFrame({ event: 'batch', events: 0, durationMs: 9, success: false, phases: { claimMs: 0, followQueriesMs: 9 } }));
+    feed(raidFrame({ event: 'batch', events: 0, durationMs: 1, success: true, phases: { claimMs: 1 } }));
+    feed(raidFrame({ event: 'batch', events: 1, durationMs: 2, success: true }));
+    assert.deepEqual(samples, [
+        ['worker', 'raid_analytics_rust.batch_channels', 1, 'ok'],
+        ['queue_run', 'raid_analytics_rust.project_batch', 100, 'ok'],
+        ...['claimMs', 'followQueriesMs', 'followWriteMs', 'period7Ms', 'period30Ms', 'reciprocityMs', 'publishMs', 'releaseMs']
+            .map((name, index) => ['queue_run', `raid_analytics_rust.phase.${name}`, index + 1, 'ok', '']),
+        ['worker', 'raid_analytics_rust.batch_channels', 0, 'error'],
+        ['queue_run', 'raid_analytics_rust.project_batch', 9, 'error'],
+        ['queue_run', 'raid_analytics_rust.phase.claimMs', 0, 'error', ''],
+        ['queue_run', 'raid_analytics_rust.phase.followQueriesMs', 9, 'error', ''],
+        ['worker', 'raid_analytics_rust.batch_channels', 0, 'idle'],
+        ['queue_run', 'raid_analytics_rust.project_batch', 1, 'idle'],
+        ['queue_run', 'raid_analytics_rust.phase.claimMs', 1, 'idle', ''],
+        ['worker', 'raid_analytics_rust.batch_channels', 1, 'ok'],
+        ['queue_run', 'raid_analytics_rust.project_batch', 2, 'ok'],
+    ]);
+});
+
+test('raid health distinguishes empty, unknown, partial and failed query observations', () => {
+    const samples: unknown[][] = [];
+    const feed = nativeProgressParser((...args) => { samples.push(args); }, 'raid-analytics');
+    const healthy = raidFrame({ event: 'health', success: true, dueChannels: 4, oldestDueAgeMs: 1200, lastSuccessAgeMs: 4500 });
+    feed(Buffer.from(healthy.slice(0, 31))); feed(healthy.slice(31, -1));
+    assert.equal(samples.length, 0, 'incomplete frames emit nothing');
+    feed('\n');
+    feed(raidFrame({ event: 'health', success: true, dueChannels: 0 }));
+    feed(raidFrame({ event: 'health', success: true, dueChannels: null, oldestDueAgeMs: 12, lastSuccessAgeMs: null }));
+    feed(raidFrame({ event: 'health', success: false }));
+    feed(raidFrame({ event: 'health', success: false, dueChannels: null, oldestDueAgeMs: null, lastSuccessAgeMs: 77 }));
+    assert.deepEqual(samples, [
+        ['worker', 'raid_analytics_rust.health_query', 1, 'ok', ''],
+        ['worker', 'raid_analytics_rust.backlog_channels', 4, 'ok', ''],
+        ['worker', 'raid_analytics_rust.oldest_due_age_ms', 1200, 'ok', ''],
+        ['worker', 'raid_analytics_rust.last_success_age_ms', 4500, 'ok', ''],
+        ['worker', 'raid_analytics_rust.health_query', 1, 'ok', ''],
+        ['worker', 'raid_analytics_rust.backlog_channels', 0, 'ok', ''],
+        ['worker', 'raid_analytics_rust.health_query', 1, 'ok', ''],
+        ['worker', 'raid_analytics_rust.oldest_due_age_ms', 12, 'ok', ''],
+        ['worker', 'raid_analytics_rust.health_query', 0, 'ok', ''],
+        ['worker', 'raid_analytics_rust.health_errors', 1, 'error', ''],
+        ['worker', 'raid_analytics_rust.health_query', 0, 'ok', ''],
+        ['worker', 'raid_analytics_rust.health_errors', 1, 'error', ''],
+        ['worker', 'raid_analytics_rust.last_success_age_ms', 77, 'ok', ''],
+    ]);
+});
+
+test('raid schema rejects malformed values and unbounded or private labels without partial exports', () => {
+    const samples: unknown[][] = [];
+    const feed = nativeProgressParser((...args) => { samples.push(args); }, 'raid-analytics');
+    const batch = { event: 'batch', events: 1, durationMs: 10, success: true };
+    const health = { event: 'health', success: true };
+    for (const phases of [null, [], 'claimMs', { channelId: 12 }, { query: 'private' },
+        { claimMs: -1 }, { claimMs: '1' }, { claimMs: null }, { claimMs: 1e15 + 1 },
+        { claimMs: 1, followQueriesMs: false }]) feed(raidFrame({ ...batch, phases }));
+    for (const field of ['dueChannels', 'oldestDueAgeMs', 'lastSuccessAgeMs']) {
+        for (const value of [-1, '1', true, {}, [], 1e15 + 1]) feed(raidFrame({ ...health, [field]: value }));
+    }
+    feed(raidFrame({ ...health, dueChannels: .5 }));
+    feed(raidFrame({ ...health, dueChannels: 0, oldestDueAgeMs: 0 }));
+    feed(raidFrame({ event: 'health', success: false, dueChannels: 0 }));
+    feed(raidFrame({ event: 'health', success: false, oldestDueAgeMs: 1 }));
+    feed(raidFrame({ event: 'health' }));
+    feed(raidFrame({ ...health, success: 'true' }));
+    for (const row of [batch, health]) {
+        feed(raidFrame({ ...row, channelId: 'private' }));
+        feed(raidFrame({ ...row, query: 'private' }));
+        feed(raidFrame({ ...row, name: 'attacker-controlled' }));
+    }
+    feed('raid_analytics:{"event":"batch","events":1,"durationMs":2,"success":true,"phases":{"claimMs":1e309}}\n');
+    feed('raid_analytics:{"event":"health","success":true,"dueChannels":1e309}\n');
+    feed('raid_analytics:{"event":"health","success":true,"oldestDueAgeMs":1e309}\n');
+    feed('raid_analytics:{"event":"health","success":true,"lastSuccessAgeMs":1e309}\n');
+    feed('raid_analytics:null\nraid_analytics:[]\nraid_analytics:{"event":"health"}\n');
+    feed(`raid_analytics:${' '.repeat(1024)}${JSON.stringify(health)}\n`);
+    assert.deepEqual(samples, []);
+    feed(raidFrame({ ...batch, phases: { claimMs: 1e15 } }));
+    assert.equal(samples.length, 3, 'oversized-frame discard recovers at the next newline');
+});
+
+test('stream parser ignores raid health and phases while preserving its original batch output', () => {
+    const samples: unknown[][] = [];
+    const feed = nativeProgressParser((...args) => { samples.push(args); });
+    feed(raidFrame({ event: 'health', success: true, dueChannels: 9 }));
+    feed('stream_activity:{"event":"health","success":true,"dueChannels":9}\n');
+    feed('stream_activity:{"event":"batch","events":1,"durationMs":2,"success":true,"phases":{"claimMs":3}}\n');
+    assert.deepEqual(samples, [
+        ['worker', 'stream_activity_rust.batch_events', 1, 'ok'],
+        ['queue_run', 'stream_activity_rust.project_batch', 2, 'ok'],
+    ]);
+});
+
+test('raid metadata uses the existing bounded telemetry aggregation and keeps health failures separate', () => {
+    telemetryTesting.reset(); telemetryTesting.enable();
+    try {
+        const feed = nativeProgressParser(observe, 'raid-analytics');
+        feed(raidFrame({ event: 'health', success: true, dueChannels: 6, oldestDueAgeMs: 90 }));
+        feed(raidFrame({ event: 'health', success: false, lastSuccessAgeMs: 100 }));
+        feed(raidFrame({ event: 'batch', events: 0, durationMs: 17, success: false, phases: { followQueriesMs: 17 } }));
+        const { metrics, spans, logs } = telemetryTesting.snapshot();
+        assert.deepEqual(spans, []); assert.deepEqual(logs, []);
+        assert.equal(metrics.length, 8);
+        assert(metrics.every(row => row.channel === '' && row.name.startsWith('raid_analytics_rust.') && row.histogram.reduce((a, b) => a + b, 0) === row.count));
+        assert.equal(metrics.find(row => row.name.endsWith('.backlog_channels'))?.sum, 6);
+        assert.equal(metrics.find(row => row.name.endsWith('.oldest_due_age_ms'))?.sum, 90);
+        assert.equal(metrics.find(row => row.name.endsWith('.health_query'))?.count, 2);
+        assert.equal(metrics.find(row => row.name.endsWith('.health_query'))?.sum, 1);
+        assert.equal(metrics.find(row => row.name.endsWith('.health_errors'))?.count, 1);
+        assert.equal(metrics.find(row => row.name.endsWith('.health_errors'))?.outcome, 'error');
+        assert.equal(metrics.find(row => row.name.endsWith('.last_success_age_ms'))?.outcome, 'ok');
+        assert(!metrics.some(row => row.kind === 'lifecycle'), 'health query errors must never become worker restarts');
+    } finally { telemetryTesting.reset(); telemetryTesting.stop(); }
 });

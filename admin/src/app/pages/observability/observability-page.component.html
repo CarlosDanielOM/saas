@@ -553,6 +553,19 @@
                             <div><dt>Start to finish</dt><dd>{{ ms(t.average) }}<small>up to {{ t.worstP95 === null ? '> 5 min' : ms(t.worstP95) }}</small></dd></div>
                           }
                         </dl>
+                        @if (queue.phases.length) {
+                          <details class="lf-more obs-phases">
+                            <summary>Refresh phase timings<app-icon name="down" /></summary>
+                            <div class="lf-more__body">
+                              <dl class="obs-queue__stats">
+                                @for (phase of queue.phases; track phase.name) {
+                                  <div><dt>{{ phase.name }}</dt><dd>{{ ms(phase.merged.average) }}<small>{{ num(phase.merged.count) }} measured attempts@if (phase.merged.errors) { · {{ num(phase.merged.errors) }} during failed refreshes }</small></dd></div>
+                                }
+                              </dl>
+                              <p class="obs-fine">Phases are parts of a refresh, so they do not add jobs or failures to the totals. Unreached phases have no sample.</p>
+                            </div>
+                          </details>
+                        }
                       </li>
                     }
                   </ul>
@@ -637,6 +650,19 @@
                       <div class="obs-op__num"><span class="obs-op__label">Heap</span>{{ bytes(proc.heap) }}</div>
                       <div class="obs-op__num"><span class="obs-op__label">CPU</span>{{ proc.cpu === null ? '—' : pct(proc.cpu) }}</div>
                       <div class="obs-op__num" [class.obs-warn]="(proc.lag ?? 0) >= 200"><span class="obs-op__label">Stalls</span>{{ ms(proc.lag) }}</div>
+                      @if (proc.raidHealth; as health) {
+                        <div class="obs-raid-health">
+                          <strong [class.obs-warn]="health.warning">{{ health.status }}</strong>
+                          <dl class="obs-raid-health__facts">
+                            @for (fact of health.facts; track fact.label) {
+                              <div><dt>{{ fact.label }}</dt><dd><span>{{ fact.value }}</span>
+                                <span class="obs-fine">@if (fact.at) { {{ fact.stale ? 'Previous sample' : 'Sampled' }} {{ fact.at | date: 'HH:mm:ss' }} } @else { No sample yet }</span></dd>
+                              </div>
+                            }
+                          </dl>
+                          <p class="obs-fine">@if (health.at) { Health checked {{ health.at | date: 'HH:mm:ss' }}. } Checks run every 30 seconds; after 90 seconds readings are stale. Values describe the latest 10-second bucket; ≈ may include multiple samples.</p>
+                        </div>
+                      }
                     </li>
                   }
                 </ul>

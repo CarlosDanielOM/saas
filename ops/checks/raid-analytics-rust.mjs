@@ -182,18 +182,24 @@ async function assertNative(root) {
         let command; try { command = await readFile(`/proc/${name}/cmdline`, 'utf8'); } catch { continue; }
         assert(!command.split('\0').some(arg => arg.endsWith('/raid_analytics.worker.js')), 'legacy raid process must not run');
     }
-    for (const row of rows.filter(row => row.event === 'batch')) {
+    for (const row of rows.filter(row => row.event === 'batch' && row.frame.event === 'batch')) {
         const value = row.frame;
         assert.equal(value.event, 'batch'); assert([0, 1].includes(value.events));
         assert(Number.isFinite(value.durationMs) && value.durationMs >= 0); assert.equal(typeof value.success, 'boolean');
+        if (value.phases) for (const [name, elapsed] of Object.entries(value.phases)) {
+            assert(phaseNames.includes(name), 'only fixed source-backed phases');
+            assert(Number.isFinite(elapsed) && elapsed >= 0);
+        }
     }
 }
+const phaseNames = ['claimMs', 'followQueriesMs', 'followWriteMs', 'period7Ms', 'period30Ms', 'reciprocityMs', 'publishMs', 'releaseMs'];
 async function telemetry() {
     const batches = (await redis.lRange('observability:v1:inbox', 0, -1)).map(JSON.parse);
     for (const batch of batches) validateBatch(batch);
     const rows = batches.flatMap(batch => batch.metrics.map(metric => ({ ...metric, service: batch.service })))
         .filter(row => row.name.startsWith('raid_analytics_rust.'));
-    const allowed = new Set(['rss_bytes', 'cpu_cores', 'batch_channels', 'project_batch', 'errors', 'restarts']);
+    const allowed = new Set(['rss_bytes', 'cpu_cores', 'batch_channels', 'project_batch', 'errors', 'restarts',
+        'health_query', 'health_errors', 'backlog_channels', 'oldest_due_age_ms', 'last_success_age_ms', ...phaseNames.map(name => `phase.${name}`)]);
     for (const row of rows) {
         assert(allowed.has(row.name.slice('raid_analytics_rust.'.length)), 'native metrics must not impersonate Node heap/event-loop');
         assert.equal(row.service, 'cron'); assert.equal(row.channel, ''); assert(Number.isFinite(row.sum) && row.sum >= 0);
@@ -204,7 +210,14 @@ async function telemetry() {
         && has('batch_channels', row => row.kind === 'worker' && row.sum > 0)
         && has('project_batch', row => row.kind === 'queue_run' && row.outcome === 'ok')
         && has('project_batch', row => row.kind === 'queue_run' && row.outcome === 'error')
-        && has('errors', row => row.sum > 0) && has('restarts', row => row.sum > 0);
+        && has('errors', row => row.sum > 0) && has('restarts', row => row.sum > 0)
+        && phaseNames.every(name => has(`phase.${name}`, row => row.kind === 'queue_run' && row.outcome === 'ok'))
+        && has('health_errors', row => row.kind === 'worker' && row.outcome === 'error' && row.sum > 0)
+        && has('health_query', row => row.kind === 'worker' && row.outcome === 'ok' && row.sum > 0)
+        && has('backlog_channels', row => row.kind === 'worker' && row.max > 0)
+        && has('backlog_channels', row => row.kind === 'worker' && row.sum === 0 && row.max === 0)
+        && has('oldest_due_age_ms', row => row.kind === 'worker' && row.max > 0)
+        && has('last_success_age_ms', row => row.kind === 'worker');
 }
 
 try {
@@ -218,12 +231,23 @@ try {
         && row.requestedCommand === '/usr/local/bin/stream_activity'), 'node defaults must select both native projectors');
     assert(unrelated.includes('domain-events'), 'event-producing workers must be inert');
     const idle = await waitFor(async () => {
-        const rows = (await records()).filter(row => row.event === 'batch' && row.frame.success && row.frame.events === 0);
+        const rows = (await records()).filter(row => row.event === 'batch' && row.frame.event === 'batch' && row.frame.success && row.frame.events === 0);
         return rows.length >= 3 ? rows.slice(0, 3) : null;
     }, 'natural idle backoff', 12000);
     const gaps = [idle[1].at - idle[0].at, idle[2].at - idle[1].at];
     assert(gaps[0] >= 700 && gaps[1] >= gaps[0] * 1.3, 'idle polling should back off rather than hot-loop');
     console.log('PASS natural idle polling increases its delay without a busy loop');
+    const initialHealth = await waitFor(async () => (await records()).find(row => row.event === 'batch'
+        && row.pid === native.pid && row.frame.event === 'health'), 'initial native health frame');
+    assert.equal(initialHealth.frame.lastSuccessAgeMs, undefined, 'fresh native child must not fabricate last-success age');
+    if (initialHealth.frame.success) {
+        assert.equal(initialHealth.frame.dueChannels, 0);
+        assert.equal(initialHealth.frame.oldestDueAgeMs, undefined);
+    } else {
+        assert.equal(initialHealth.frame.dueChannels, undefined);
+        assert.equal(initialHealth.frame.oldestDueAgeMs, undefined);
+    }
+    assert.equal((await currentNative()).pid, native.pid);
     let paused = await pause();
     await indexes(actual); await indexes(baseline);
     const { rows, events } = fixtures();
@@ -259,9 +283,9 @@ try {
 
     const held = 'fixture-held';
     await queue(actual, held, { owner: 'other-owner', leaseUntil: new Date(Date.now() + 600000) });
-    const before = (await records()).filter(row => row.event === 'batch').length;
+    const before = (await records()).filter(row => row.event === 'batch' && row.frame.event === 'batch').length;
     resume(paused);
-    await waitFor(async () => (await records()).filter(row => row.event === 'batch').length > before, 'worker observes owner-held queue');
+    await waitFor(async () => (await records()).filter(row => row.event === 'batch' && row.frame.event === 'batch').length > before, 'worker observes owner-held queue');
     assert.equal((await actual.collection(names.summary).findOne({ _id: held })).payload, undefined);
     paused = await pause();
     await actual.collection(names.summary).updateOne({ _id: held }, { $set: { leaseUntil: new Date(Date.now() - 1) } });
@@ -300,7 +324,7 @@ try {
         return row?.error === true && +row.leaseUntil === 0 && +row.nextRefreshAt > Date.now();
     }, 'history bulk failure releases lease and schedules retry');
     assert.equal((await actual.collection(names.summary).findOne({ _id: partialChannel })).payload, undefined);
-    await waitFor(async () => (await records()).some(row => row.event === 'batch'
+    await waitFor(async () => (await records()).some(row => row.event === 'batch' && row.frame.event === 'batch'
         && row.pid === partialFailurePid && row.frame.success === false), 'history bulk failed batch protocol');
     await waitFor(async () => { const row = await currentNative(); return row && row.pid !== partialFailurePid; }, 'history bulk failure replacement');
     paused = await pause();
@@ -334,7 +358,7 @@ try {
         return row?.error === true && +row.leaseUntil === 0 && +row.nextRefreshAt > Date.now();
     }, 'MongoDB 121 releases lease and schedules safe retry');
     assert.equal((await actual.collection(names.summary).findOne({ _id: failure })).payload, undefined);
-    await waitFor(async () => (await records()).some(row => row.event === 'batch' && row.frame.success === false), 'actual failed batch protocol');
+    await waitFor(async () => (await records()).some(row => row.event === 'batch' && row.frame.event === 'batch' && row.frame.success === false), 'actual failed batch protocol');
     await waitFor(async () => { const row = await currentNative(); return row && row.pid !== failingPid; }, 'failed native replacement');
     paused = await pause();
     await actual.command({ collMod: names.summary, validator: {}, validationLevel: 'strict' });
@@ -349,11 +373,12 @@ try {
     // Verify replacement actually projects rather than merely remaining alive.
     await queue(actual, 'fixture-after-restart'); await refreshed('fixture-after-restart');
     console.log('PASS SIGKILL replaces only raid Rust, unrelated workers remain untouched, and replacement projects successfully');
-    await waitFor(telemetry, 'actual RSS/CPU, batch/error/restart metrics in analytics-valid Redis envelopes', 35000);
-    console.log('PASS actual native RSS/CPU and batch/error/restart telemetry reaches the existing analytics inbox');
 
     const shutdown = fixtureDatabase('shutdown'), shutdownUri = new URL(uri.href);
     shutdownUri.pathname = `/${shutdown.databaseName}`;
+    await indexes(shutdown);
+    // A leased due row is pending work even though this child cannot claim it.
+    await queue(shutdown, 'fixture-health-held', { owner: 'fixture-held-owner', leaseUntil: new Date(Date.now() + 600000) });
     const child = spawn(process.execPath, ['/app/dist/workers/cron.index.js'], { cwd: '/app',
         env: { ...process.env, MONGO_URI: shutdownUri.href, RAID_ANALYTICS_FIXTURE_SCOPE: 'shutdown' }, stdio: ['ignore', 'pipe', 'pipe'] });
     auxiliary.add(child);
@@ -365,6 +390,48 @@ try {
     child.fixtureCompletion.catch(() => {});
     const ownedChild = await waitFor(() => currentNative('shutdown'), 'auxiliary native startup');
     await waitFor(async () => (await records('shutdown')).some(row => row.event === 'batch'), 'auxiliary native functional idle');
+    const heldHealth = await waitFor(async () => (await records('shutdown')).find(row => row.event === 'batch'
+        && row.pid === ownedChild.pid && row.frame.event === 'health' && row.frame.success), 'actual held backlog health frame');
+    assert.equal(heldHealth.frame.dueChannels, 1);
+    assert(Number.isFinite(heldHealth.frame.oldestDueAgeMs) && heldHealth.frame.oldestDueAgeMs > 0);
+    assert.equal(heldHealth.frame.lastSuccessAgeMs, undefined, 'fresh child has no invented last successful refresh');
+    // Explicitly remove only this fixture's due index after the successful
+    // sample. A missing collection can bypass hint validation in MongoDB;
+    // this existing collection makes the real query failure deterministic.
+    const dueIndex = (await shutdown.collection(names.summary).listIndexes().toArray()).find(index =>
+        JSON.stringify(index.key) === JSON.stringify({ nextRefreshAt: 1, leaseUntil: 1 }));
+    assert(dueIndex);
+    await shutdown.collection(names.summary).dropIndex(dueIndex.name);
+    const failedHealth = await waitFor(async () => (await records('shutdown')).find(row => row.event === 'batch'
+        && row.pid === ownedChild.pid && row.at > heldHealth.at && row.frame.event === 'health' && !row.frame.success),
+        'real dropped-index health query failure', 40000);
+    for (const key of ['dueChannels', 'oldestDueAgeMs', 'lastSuccessAgeMs'])
+        assert.equal(failedHealth.frame[key], undefined, 'failed/unknown gauges must be omitted, never fabricated as zero');
+    assert.equal((await currentNative('shutdown')).pid, ownedChild.pid, 'health failure must not kill the projector');
+    await waitFor(async () => (await records('shutdown')).some(row => row.event === 'batch' && row.pid === ownedChild.pid
+        && row.at >= failedHealth.at && row.frame.event === 'batch' && row.frame.success), 'projection continues after health query failure');
+    await waitFor(async () => {
+        const batches = (await redis.lRange('observability:v1:inbox', 0, -1)).map(JSON.parse);
+        for (const batch of batches) validateBatch(batch);
+        const bucket = Math.floor(failedHealth.at / 10000) * 10000;
+        const failure = batches.find(batch => batch.metrics.some(row => row.name === 'raid_analytics_rust.health_errors'
+            && row.at >= bucket - 10000 && row.at <= bucket)
+            && batch.metrics.some(row => row.name === 'raid_analytics_rust.health_query' && row.sum === 0));
+        if (!failure) return false;
+        const failedAt = failure.metrics.find(row => row.name === 'raid_analytics_rust.health_query' && row.sum === 0).at;
+        assert(!failure.metrics.some(row => ['raid_analytics_rust.backlog_channels', 'raid_analytics_rust.oldest_due_age_ms'].includes(row.name)
+            && row.at === failedAt), 'failed health queries must not create zero backlog/oldest gauges in real Redis envelopes');
+        return true;
+    }, 'failed health query reaches Redis without fabricated backlog gauges', 15000);
+    await shutdown.collection(names.summary).createIndex({ nextRefreshAt: 1, leaseUntil: 1 });
+    await shutdown.collection(names.summary).deleteOne({ _id: 'fixture-health-held' });
+    await waitFor(async () => (await records('shutdown')).some(row => row.event === 'batch' && row.pid === ownedChild.pid
+        && row.frame.event === 'health' && row.frame.success && row.frame.dueChannels === 0
+        && row.frame.oldestDueAgeMs === undefined && row.frame.lastSuccessAgeMs === undefined), 'actual empty backlog health frame', 40000);
+    assert.equal((await currentNative('shutdown')).pid, ownedChild.pid);
+    console.log('PASS real held backlog, dropped-index health failure without worker death/fabricated gauges, and repaired zero backlog reach native health frames');
+    await waitFor(telemetry, 'actual runtime/phase/health/error/restart metrics in analytics-valid Redis envelopes', 35000);
+    console.log('PASS generic runtime/batch metrics plus every phase and health gauge reach analytics-valid Redis envelopes');
     child.kill('SIGTERM');
     const exit = await bounded(child.fixtureCompletion, 15000, 'auxiliary graceful shutdown'); auxiliary.delete(child);
     assert.equal(exit.code, 0, output); assert.equal(exit.signal, null);
