@@ -18,6 +18,7 @@ export interface SupervisorConfig {
     runtime: 'tsx' | 'node';
     streamActivityRuntime?: string;
     raidAnalyticsRuntime?: string;
+    followDefenseBaselineRuntime?: string;
     once: boolean;
     dryRun: boolean;
     restartDelayMs: number;
@@ -130,7 +131,9 @@ export function resolveWorkerLaunch(worker: WorkerDefinition, config: Supervisor
     const flags = [...(config.dryRun ? ['--dry-run'] : []), ...(config.once ? ['--once'] : [])];
     if (native && metadata) {
         const childEnv: NodeJS.ProcessEnv = {};
-        for (const key of ['MONGO_URI', 'PATH', 'TZ', 'LANG', 'LC_ALL', 'SSL_CERT_FILE', 'SSL_CERT_DIR']) {
+        const allowed = ['MONGO_URI', 'PATH', 'TZ', 'LANG', 'LC_ALL', 'SSL_CERT_FILE', 'SSL_CERT_DIR'];
+        if (worker.name === 'follow-defense-baseline') allowed.push('DRAGONFLY_HOST', 'DRAGONFLY_PORT');
+        for (const key of allowed) {
             if (env[key] !== undefined) childEnv[key] = env[key];
         }
         return { command: metadata.command, args: [...metadata.args, ...flags],
@@ -288,8 +291,8 @@ export class WorkerSupervisor {
     }
 }
 
-export function resolveNativeRuntimes(env: NodeJS.ProcessEnv): Pick<SupervisorConfig, 'streamActivityRuntime' | 'raidAnalyticsRuntime'> {
-    const result: Pick<SupervisorConfig, 'streamActivityRuntime' | 'raidAnalyticsRuntime'> = {};
+export function resolveNativeRuntimes(env: NodeJS.ProcessEnv): Pick<SupervisorConfig, 'streamActivityRuntime' | 'raidAnalyticsRuntime' | 'followDefenseBaselineRuntime'> {
+    const result: Pick<SupervisorConfig, 'streamActivityRuntime' | 'raidAnalyticsRuntime' | 'followDefenseBaselineRuntime'> = {};
     for (const metadata of Object.values(NATIVE_WORKERS)) {
         const value = env[metadata.runtimeEnv];
         if (value !== undefined && !['rust', 'typescript'].includes(value)) {
@@ -318,6 +321,7 @@ async function bootstrap(): Promise<void> {
     await logInfo({ worker: 'cron_supervisor', message: 'Starting cron supervisor', runtime: config.runtime,
         streamActivityRuntime: config.streamActivityRuntime || (config.runtime === 'tsx' ? 'typescript' : 'rust'),
         raidAnalyticsRuntime: config.raidAnalyticsRuntime || (config.runtime === 'tsx' ? 'typescript' : 'rust'),
+        followDefenseBaselineRuntime: config.followDefenseBaselineRuntime || (config.runtime === 'tsx' ? 'typescript' : 'rust'),
         restartDelayMs: config.restartDelayMs, workers: WORKERS.filter(worker => !worker.enabledEnv || process.env[worker.enabledEnv] !== 'false').map(worker => worker.name),
         mode: config.once ? 'once' : 'normal', dryRun: config.dryRun }, { destination: 'console' });
     supervisor.start();

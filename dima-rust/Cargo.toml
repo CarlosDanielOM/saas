@@ -23,6 +23,11 @@ name = "raid_analytics"
 path = "src/bin/raid_analytics.rs"
 required-features = ["mongo"]
 
+[[bin]]
+name = "follow_defense_baseline"
+path = "src/bin/follow_defense_baseline.rs"
+required-features = ["mongo", "redis"]
+
 [[example]]
 name = "stream_activity_fixture"
 path = "examples/stream_activity_fixture.rs"

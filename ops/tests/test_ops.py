@@ -416,10 +416,13 @@ class OpsTests(unittest.TestCase):
         self.assertIn("--env=CARGO_HOME=/cargo-cache", args)
         self.assertIn("--env=CARGO_TARGET_DIR=/target-cache", args)
         self.assertIn("--env=SAAS_RUST_FEATURES=mongo", args)
+        self.assertIn("--env=SAAS_RUST_BASELINE_FEATURES=mongo,redis", args)
         self.assertIn("--env=SAAS_RUST_FEATURE_MATRIX=0", args)
         matrix_args = self.ops.rust_container_args(self.path, {**self.receipt, "rust_feature_matrix": True}, NEW, cache)
         self.assertIn("--env=SAAS_RUST_FEATURE_MATRIX=1", matrix_args)
         with patch.object(mod, "RUST_FEATURES", "mongo,postgres"), self.assertRaises(mod.OpsError):
+            self.ops.rust_container_args(self.path, self.receipt, NEW, cache)
+        with patch.object(mod, "RUST_BASELINE_FEATURES", "mongo,redis,http"), self.assertRaises(mod.OpsError):
             self.ops.rust_container_args(self.path, self.receipt, NEW, cache)
         self.assertTrue(any("dst=/source,readonly" in mount for mount in mounts))
         self.assertNotIn("--privileged", args)
@@ -455,6 +458,71 @@ class OpsTests(unittest.TestCase):
             with self.ops.rust_build_lock(), self.assertRaises(mod.OpsError):
                 with mod.Ops(self.root, self.root / "other-state").rust_build_lock():
                     pass
+
+    def test_rust_recipe_checks_separate_profiles_and_guards_each_graph(self):
+        # Run the shell recipe against tiny command mocks, never host Cargo.
+        commands = self.root.parent / "recipe-toolchain"
+        commands.mkdir()
+        scripts = {
+            "rustup": '#!/bin/sh\nprintf "%s\\n" "fixture-musl (default)"\n',
+            "rustc": '#!/bin/sh\nprintf "%s\\n" "host: x86_64-unknown-linux-musl"\n',
+            "apk": '#!/bin/sh\nexit 0\n',
+            "cargo": '''#!/bin/sh
+printf 'cargo %s\\n' "$*" >> "$RECIPE_LOG"
+if [ "$1" = tree ]; then
+  printf '%s\\n' 'dima-rust v0.1.0' 'mongodb v3.9.1'
+  case " $* " in
+    *' --features mongo,redis '*) printf '%s\\n' 'redis v0.32.7'; printf '%s' "$BASELINE_GRAPH_EXTRA" ;;
+    *) printf '%s' "$MONGO_GRAPH_EXTRA" ;;
+  esac
+fi
+''',
+            "install": '''#!/bin/sh
+printf 'install %s\\n' "$*" >> "$RECIPE_LOG"
+for destination do :; done
+printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"' > "$destination"
+/bin/chmod 755 "$destination"
+''',
+        }
+        for name, source in scripts.items():
+            (commands / name).write_text(source)
+            (commands / name).chmod(0o755)
+        recipe = Path(mod.__file__).with_name("rust_build.sh").read_text()
+        cases = (("valid", "", "", "mongo,redis"), ("mongo-redis", "redis v0.32.7\n", "", "mongo,redis"),
+                 ("mongo-sqlx", "sqlx-core v0.8.6\n", "", "mongo,redis"),
+                 ("baseline-axum", "", "axum-core v0.5.0\n", "mongo,redis"),
+                 ("baseline-sqlx", "", "sqlx v0.8.6\n", "mongo,redis"),
+                 ("unsupported", "", "", "mongo,redis,http"))
+        for name, mongo_extra, baseline_extra, baseline_features in cases:
+            with self.subTest(case=name):
+                work = self.root.parent / ("recipe-" + name)
+                work.mkdir()
+                artifacts = work / "artifacts"
+                artifacts.mkdir()
+                log = work / "commands.log"
+                script = recipe.replace("/artifacts", str(artifacts)).replace("/target-cache", str(work / "target"))
+                result = subprocess.run(["/bin/sh", "-ceu", script],
+                                        env={"PATH": str(commands) + ":" + os.defpath, "RECIPE_LOG": str(log),
+                                             "MONGO_GRAPH_EXTRA": mongo_extra, "BASELINE_GRAPH_EXTRA": baseline_extra,
+                                             "SAAS_RUST_BASELINE_FEATURES": baseline_features},
+                                        capture_output=True, text=True, check=False)
+                self.assertEqual(result.returncode, 0 if name == "valid" else 1, result.stderr)
+                lines = log.read_text().splitlines() if log.exists() else []
+                if name != "valid":
+                    self.assertFalse(any(line.startswith("dry-run ") for line in lines))
+                    continue
+                builds = [line for line in lines if line.startswith("cargo build ")]
+                self.assertEqual(builds, [
+                    "cargo build --locked --release --no-default-features --features mongo --bin stream_activity --bin raid_analytics",
+                    "cargo build --locked --release --no-default-features --features mongo,redis --bin follow_defense_baseline"])
+                for features in ("mongo", "mongo,redis"):
+                    self.assertIn("cargo check --locked --all-targets --no-default-features --features " + features, lines)
+                    self.assertIn("cargo clippy --locked --all-targets --no-default-features --features " + features + " -- -D warnings", lines)
+                    self.assertIn("cargo test --locked --no-default-features --features " + features, lines)
+                self.assertEqual(len([line for line in lines if line.startswith("dry-run ") and line.endswith(" --dry-run")]), 3)
+                self.assertLess(next(i for i, line in enumerate(lines) if line.startswith("install ") and line.endswith("/raid_analytics")),
+                                lines.index(builds[1]))
+                self.assertFalse(any("feature-matrix" in line or "--all-features" in line for line in lines))
 
     def prepared_rust_cache(self, receipt=None):
         source = self.path / "rust-source"
@@ -498,6 +566,12 @@ class OpsTests(unittest.TestCase):
             self.assertNotEqual(self.prepared_rust_cache()["key"], original["key"])
             path.write_text(previous)
         with patch.object(mod, "RUST_FEATURES", "mongo,redis"):
+            self.assertNotEqual(self.prepared_rust_cache()["key"], original["key"])
+        with patch.object(mod, "RUST_BASELINE_FEATURES", "mongo"):
+            self.assertNotEqual(self.prepared_rust_cache()["key"], original["key"])
+        profiles = mod.rust_worker_profiles()
+        profiles["mongo-redis"]["binaries"].append("another_worker")
+        with patch.object(mod, "rust_worker_profiles", return_value=profiles):
             self.assertNotEqual(self.prepared_rust_cache()["key"], original["key"])
 
     def test_rust_cache_rejects_symlinked_roots_and_paths_inside_checkout(self):
@@ -601,6 +675,9 @@ class OpsTests(unittest.TestCase):
             engine.return_value.lock.assert_not_called()
         details = json.loads(output.getvalue())["rust"]
         self.assertEqual(details["features"], "mongo")
+        self.assertEqual(details["worker_profiles"]["mongo"]["binaries"], ["stream_activity", "raid_analytics"])
+        self.assertEqual(details["worker_profiles"]["mongo-redis"]["features"], "mongo,redis")
+        self.assertEqual(details["worker_profiles"]["mongo-redis"]["binaries"], ["follow_defense_baseline"])
         self.assertEqual(details["cache_limit_bytes"], 8 * mod.GIB)
         self.assertEqual(details["optional_feature_matrix"], "build cron --rust-feature-matrix")
 
@@ -623,7 +700,8 @@ class OpsTests(unittest.TestCase):
              patch.object(mod.os, "getloadavg", return_value=(1000, 0, 0)), self.assertRaises(mod.OpsError):
             self.ops.rust_headroom()
 
-    def simulated_rust_build(self, *, exit_code=0, wrong_limits=False, raid_artifact="valid", cache_bytes=0):
+    def simulated_rust_build(self, *, exit_code=0, wrong_limits=False, raid_artifact="valid", baseline_artifact="valid",
+                             mongo_extra="", baseline_extra="", cache_bytes=0):
         self.rust_source()
         (self.path / "source").mkdir()
         self.ops.objects[("image", mod.RUST_BUILD_IMAGE)] = {"Id": NEW}
@@ -637,7 +715,8 @@ class OpsTests(unittest.TestCase):
                                    "Memory": 4 * mod.GIB, "MemorySwap": 4 * mod.GIB, "PidsLimit": 256},
                     "State": {"Running": False, "ExitCode": exit_code}}
             elif args[0] == "start":
-                (self.path / "rust-artifacts/worker-dependencies.txt").write_text("dima-rust v0.1.0\nmongodb v3.9.1\n")
+                (self.path / "rust-artifacts/worker-dependencies.txt").write_text("dima-rust v0.1.0\nmongodb v3.9.1\n" + mongo_extra)
+                (self.path / "rust-artifacts/baseline-worker-dependencies.txt").write_text("dima-rust v0.1.0\nmongodb v3.9.1\nredis v0.32.7\n" + baseline_extra)
                 if cache_bytes:
                     (Path(self.receipt["rust_cache"]["target"]) / "dependency").write_bytes(b"x" * cache_bytes)
                 (self.path / "rust-artifacts/stream_activity").write_bytes(b"\x7fELFfixture")
@@ -648,6 +727,13 @@ class OpsTests(unittest.TestCase):
                     raid.write_bytes(b"unverified host artifact")
                 elif raid_artifact == "symlink":
                     raid.symlink_to(self.path / "rust-artifacts/stream_activity")
+                baseline = self.path / "rust-artifacts/follow_defense_baseline"
+                if baseline_artifact == "valid":
+                    baseline.write_bytes(b"\x7fELFbaselinefixture")
+                elif baseline_artifact == "invalid":
+                    baseline.write_bytes(b"unverified host artifact")
+                elif baseline_artifact == "symlink":
+                    baseline.symlink_to(self.path / "rust-artifacts/stream_activity")
                 (self.path / "rust-artifacts/toolchain.txt").write_text("host: x86_64-unknown-linux-musl")
             return original_docker(*args, **kwargs)
         return patch.object(self.ops, "docker", side_effect=docker)
@@ -662,13 +748,28 @@ class OpsTests(unittest.TestCase):
         self.assertEqual(self.receipt["rust_binary_digest"], mod.digest(b"\x7fELFfixture"))
         self.assertEqual(self.receipt["rust_worker_dependencies_digest"], mod.digest(b"dima-rust v0.1.0\nmongodb v3.9.1\n"))
         self.assertEqual(self.receipt["rust_binary_digests"], {
-            "stream_activity": mod.digest(b"\x7fELFfixture"), "raid_analytics": mod.digest(b"\x7fELFraidfixture")})
+            "stream_activity": mod.digest(b"\x7fELFfixture"), "raid_analytics": mod.digest(b"\x7fELFraidfixture"),
+            "follow_defense_baseline": mod.digest(b"\x7fELFbaselinefixture")})
+        for binary in mod.RUST_BINARIES:
+            metadata = self.receipt["rust_binary_metadata"][binary]
+            baseline = binary == "follow_defense_baseline"
+            profile = "mongo-redis" if baseline else "mongo"
+            self.assertEqual(metadata["profile"], profile)
+            self.assertEqual(metadata["features"], "mongo,redis" if baseline else "mongo")
+            self.assertFalse(metadata["default_features"])
+            self.assertEqual(metadata["binary_digest"], self.receipt["rust_binary_digests"][binary])
+            self.assertEqual(metadata["dependency_graph_digest"], self.receipt["rust_worker_profiles"][profile]["dependency_graph_digest"])
+        self.assertNotEqual(self.receipt["rust_worker_profiles"]["mongo"]["dependency_graph_digest"],
+                            self.receipt["rust_worker_profiles"]["mongo-redis"]["dependency_graph_digest"])
         staged = self.path / "source/.saas-native/stream_activity"
         self.assertEqual(staged.read_bytes(), b"\x7fELFfixture")
         self.assertEqual(staged.stat().st_mode & 0o777, 0o755)
         raid_staged = self.path / "source/.saas-native/raid_analytics"
         self.assertEqual(raid_staged.read_bytes(), b"\x7fELFraidfixture")
         self.assertEqual(raid_staged.stat().st_mode & 0o777, 0o755)
+        baseline_staged = self.path / "source/.saas-native/follow_defense_baseline"
+        self.assertEqual(baseline_staged.read_bytes(), b"\x7fELFbaselinefixture")
+        self.assertEqual(baseline_staged.stat().st_mode & 0o777, 0o755)
         self.assertEqual(self.receipt["resources"], [])
         self.assertFalse((self.path / "rust-work").exists())
         self.assertNotIn(("container", "saas-ops-" + RUN + "-rust-build"), self.ops.objects)
@@ -695,7 +796,8 @@ class OpsTests(unittest.TestCase):
         self.assertFalse((self.path / "source/.saas-native").exists())
 
     def test_rust_build_failure_or_wrong_cgroups_never_stages_artifact(self):
-        for failure in ("checks", "limits", "missing", "invalid", "symlink"):
+        for failure in ("checks", "limits", "missing", "invalid", "symlink", "baseline_missing", "baseline_invalid",
+                        "baseline_symlink", "mongo_redis", "mongo_axum", "baseline_sqlx", "baseline_axum"):
             with self.subTest(failure=failure):
                 # Each simulation uses the same task-owned directories, cleared here.
                 for directory in ("dima-rust",):
@@ -706,7 +808,10 @@ class OpsTests(unittest.TestCase):
                         mod.shutil.rmtree(self.path / directory)
                 simulation = self.simulated_rust_build(exit_code=1 if failure == "checks" else 0,
                                                        wrong_limits=failure == "limits",
-                                                       raid_artifact=failure if failure in ("missing", "invalid", "symlink") else "valid")
+                                                       raid_artifact=failure if failure in ("missing", "invalid", "symlink") else "valid",
+                                                       baseline_artifact=failure.removeprefix("baseline_") if failure in ("baseline_missing", "baseline_invalid", "baseline_symlink") else "valid",
+                                                       mongo_extra={"mongo_redis": "redis v0.32.7\n", "mongo_axum": "axum-core v0.5.0\n"}.get(failure, ""),
+                                                       baseline_extra={"baseline_sqlx": "sqlx-core v0.8.6\n", "baseline_axum": "axum v0.8.0\n"}.get(failure, ""))
                 with simulation, patch.object(self.ops, "rust_headroom", return_value={}), \
                      patch.object(Path, "home", return_value=self.root.parent), self.assertRaises(mod.OpsError):
                     self.ops.build_rust(self.path, self.receipt)

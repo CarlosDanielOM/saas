@@ -232,3 +232,41 @@ test('raid metadata uses the existing bounded telemetry aggregation and keeps he
         assert(!metrics.some(row => row.kind === 'lifecycle'), 'health query errors must never become worker restarts');
     } finally { telemetryTesting.reset(); telemetryTesting.stop(); }
 });
+
+test('baseline protocol validates bounded private-free batches independently of other native workers', () => {
+    const samples: unknown[][] = [];
+    const feed = nativeProgressParser((...args) => { samples.push(args); }, 'follow-defense-baseline');
+    const frame = (row: Record<string, unknown>) => `follow_defense_baseline:${JSON.stringify(row)}\n`;
+    const valid = { event: 'batch', events: 1, durationMs: 20, success: true };
+    for (const row of [{ ...valid, events: 2 }, { ...valid, durationMs: 300001 }, { ...valid, success: false },
+        { ...valid, channelID: 'private' }, { ...valid, phases: {} }, { ...valid, events: .5 },
+        { ...valid, durationMs: -1 }, { ...valid, success: 'true' }]) feed(frame(row));
+    feed(`follow_defense_baseline:${' '.repeat(1100)}{}\n`);
+    feed('raid_analytics:{"event":"batch","events":1,"durationMs":2,"success":true}\n');
+    assert.deepEqual(samples, []);
+    feed(frame(valid).slice(0, 25)); assert.deepEqual(samples, []);
+    feed(frame(valid).slice(25));
+    feed(frame({ ...valid, events: 0, success: false }));
+    feed(frame({ ...valid, events: 0 }));
+    assert.deepEqual(samples, [
+        ['worker', 'follow_defense_baseline_rust.batch_channels', 1, 'ok'],
+        ['queue_run', 'follow_defense_baseline_rust.project_batch', 20, 'ok'],
+        ['worker', 'follow_defense_baseline_rust.batch_channels', 0, 'error'],
+        ['queue_run', 'follow_defense_baseline_rust.project_batch', 20, 'error'],
+        ['worker', 'follow_defense_baseline_rust.batch_channels', 0, 'idle'],
+        ['queue_run', 'follow_defense_baseline_rust.project_batch', 20, 'idle'],
+    ]);
+});
+
+test('baseline sampler emits only its registered runtime metric names', async () => {
+    let reads = 0;
+    const samples: unknown[][] = [];
+    const stop = startNativeWorkerMetrics(42, {
+        read: async () => snapshot(BigInt(++reads * 100)), ticks: async () => 100,
+        now: () => reads * 1000, intervalMs: 2, observe: (...args) => { samples.push(args); },
+    }, 'follow-defense-baseline');
+    await delay(15); stop();
+    assert(samples.some(row => row[1] === 'follow_defense_baseline_rust.rss_bytes'));
+    assert(samples.some(row => row[1] === 'follow_defense_baseline_rust.cpu_cores'));
+    assert(samples.every(row => String(row[1]).startsWith('follow_defense_baseline_rust.')));
+});

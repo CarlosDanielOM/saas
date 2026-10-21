@@ -41,12 +41,17 @@ function emitRaidHealth(row: Record<string, unknown>, emit: Observer): void {
     }
 }
 
-/** Only these two projectors may use the native launch and telemetry path. */
+/** Only these registered workers may use the native launch and telemetry path. */
 export const NATIVE_WORKERS = {
     'stream-activity': {
         command: '/usr/local/bin/stream_activity', args: ['--batch-size', '500', '--telemetry-json'],
         runtimeConfig: 'streamActivityRuntime', runtimeEnv: 'STREAM_ACTIVITY_RUNTIME',
         protocol: 'stream_activity:', metricPrefix: 'stream_activity_rust', batchMetric: 'batch_events', maxEvents: 1000, maxDurationMs: 300000,
+    },
+    'follow-defense-baseline': {
+        command: '/usr/local/bin/follow_defense_baseline', args: ['--telemetry-json'],
+        runtimeConfig: 'followDefenseBaselineRuntime', runtimeEnv: 'FOLLOW_DEFENSE_BASELINE_RUNTIME',
+        protocol: 'follow_defense_baseline:', metricPrefix: 'follow_defense_baseline_rust', batchMetric: 'batch_channels', maxEvents: 1, maxDurationMs: 300000,
     },
     'raid-analytics': {
         command: '/usr/local/bin/raid_analytics', args: ['--telemetry-json'],
@@ -201,6 +206,9 @@ export function nativeProgressParser(emit: Observer = observe, worker: NativeWor
                                 if (!onlyFields(row, RAID_BATCH_FIELDS) || ('phases' in row && !validRaidPhases(row.phases))) {
                                     pending = ''; discard = false; continue;
                                 }
+                            }
+                            if (worker === 'follow-defense-baseline' && !onlyFields(row, ['event', 'events', 'durationMs', 'success'])) {
+                                pending = ''; discard = false; continue;
                             }
                             if (row.event === 'batch' && typeof row.events === 'number' && Number.isInteger(row.events)
                                 && row.events >= 0 && row.events <= metadata.maxEvents && typeof row.durationMs === 'number'

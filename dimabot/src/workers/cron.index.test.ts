@@ -8,6 +8,7 @@ import { WORKERS, WorkerSupervisor, resolveNativeRuntimes, resolveWorkerLaunch, 
 
 const stream = WORKERS.find(worker => worker.name === 'stream-activity')!;
 const raid = WORKERS.find(worker => worker.name === 'raid-analytics')!;
+const baseline = WORKERS.find(worker => worker.name === 'follow-defense-baseline')!;
 const config: SupervisorConfig = { runtime: 'node', once: false, dryRun: false, restartDelayMs: 5 };
 class FakeChild extends EventEmitter {
     pid = 123;
@@ -42,9 +43,9 @@ function fixture(once = false, definitions: WorkerDefinition[] = [stream]) {
     return { supervisor, children, metrics, stops: () => stops };
 }
 
-test('only two known projectors use Rust; flags, privilege drop and environment are explicit', () => {
+test('only three known workers use Rust; flags, privilege drop and environment are explicit', () => {
     assert.equal(WORKERS.filter(worker => worker.name === 'stream-activity').length, 1);
-    const env = { MONGO_URI: 'fixture-only', PATH: '/usr/bin', TZ: 'UTC', SECRET_KEY: 'secret', TWITCH_TOKEN: 'private', DRAGONFLY_HOST: 'redis' };
+    const env = { MONGO_URI: 'fixture-only', PATH: '/usr/bin', TZ: 'UTC', SECRET_KEY: 'secret', TWITCH_TOKEN: 'private', DRAGONFLY_HOST: 'redis', DRAGONFLY_PORT: '6379' };
     const native = resolveWorkerLaunch(stream, { ...config, once: true, dryRun: true }, env, 0);
     assert.equal(native.command, '/usr/local/bin/stream_activity');
     assert.deepEqual(native.args, ['--batch-size', '500', '--telemetry-json', '--dry-run', '--once']);
@@ -56,7 +57,16 @@ test('only two known projectors use Rust; flags, privilege drop and environment 
     assert.deepEqual(nativeRaid.args, ['--telemetry-json', '--dry-run', '--once']);
     assert.deepEqual(nativeRaid.options.env, native.options.env);
     assert.equal(nativeRaid.options.uid, 65534); assert.equal(nativeRaid.options.gid, 65534);
-    for (const definition of WORKERS.filter(worker => worker !== stream && worker !== raid)) assert(!resolveWorkerLaunch(definition, config, env, 0).native);
+    const nativeBaseline = resolveWorkerLaunch(baseline, { ...config, once: true, dryRun: true }, env, 0);
+    assert.equal(nativeBaseline.command, '/usr/local/bin/follow_defense_baseline');
+    assert.deepEqual(nativeBaseline.args, ['--telemetry-json', '--dry-run', '--once']);
+    assert.deepEqual(nativeBaseline.options.env, { ...native.options.env, DRAGONFLY_HOST: 'redis', DRAGONFLY_PORT: '6379' });
+    assert.equal(nativeBaseline.options.uid, 65534); assert.equal(nativeBaseline.options.gid, 65534);
+    assert(!resolveWorkerLaunch(baseline, { ...config, followDefenseBaselineRuntime: 'typescript' }, env, 0).native);
+    assert(!resolveWorkerLaunch(baseline, { ...config, runtime: 'tsx' }, env, 0).native);
+    assert(resolveWorkerLaunch(baseline, { ...config, runtime: 'tsx', followDefenseBaselineRuntime: 'rust' }, env, 0).native);
+    assert(resolveWorkerLaunch(baseline, { ...config, raidAnalyticsRuntime: 'typescript', streamActivityRuntime: 'typescript' }, env, 0).native);
+    for (const definition of WORKERS.filter(worker => worker !== stream && worker !== raid && worker !== baseline)) assert(!resolveWorkerLaunch(definition, config, env, 0).native);
     assert(!resolveWorkerLaunch(stream, { ...config, streamActivityRuntime: 'typescript' }, env, 0).native);
     assert(!resolveWorkerLaunch(stream, { ...config, runtime: 'tsx' }, env, 0).native);
     assert(resolveWorkerLaunch(stream, { ...config, runtime: 'tsx', streamActivityRuntime: 'rust' }, env, 0).native);
@@ -75,11 +85,11 @@ test('only two known projectors use Rust; flags, privilege drop and environment 
     assert.equal(jsRaid.options.env?.CRON_WORKER_NAME, 'raid-analytics');
 });
 
-test('both runtime environment selectors reject invalid values before bootstrap starts workers', () => {
+test('all runtime environment selectors reject invalid values before bootstrap starts workers', () => {
     assert.deepEqual(resolveNativeRuntimes({ STREAM_ACTIVITY_RUNTIME: 'rust', RAID_ANALYTICS_RUNTIME: 'typescript' }),
-        { streamActivityRuntime: 'rust', raidAnalyticsRuntime: 'typescript' });
-    assert.deepEqual(resolveNativeRuntimes({}), { streamActivityRuntime: undefined, raidAnalyticsRuntime: undefined });
-    for (const key of ['STREAM_ACTIVITY_RUNTIME', 'RAID_ANALYTICS_RUNTIME']) {
+        { streamActivityRuntime: 'rust', raidAnalyticsRuntime: 'typescript', followDefenseBaselineRuntime: undefined });
+    assert.deepEqual(resolveNativeRuntimes({}), { streamActivityRuntime: undefined, raidAnalyticsRuntime: undefined, followDefenseBaselineRuntime: undefined });
+    for (const key of ['STREAM_ACTIVITY_RUNTIME', 'RAID_ANALYTICS_RUNTIME', 'FOLLOW_DEFENSE_BASELINE_RUNTIME']) {
         for (const value of ['', 'Rust', '/tmp/arbitrary']) assert.throws(() => resolveNativeRuntimes({ [key]: value }), new RegExp(key));
     }
 });
@@ -185,4 +195,19 @@ test('native output can drain after exit but cannot emit telemetry after close',
     assert.equal(f.metrics.filter(name => name === 'raid_analytics_rust.batch_channels').length, 1);
     child.stdout.destroy();
     await f.supervisor.wait();
+});
+
+test('baseline missing executable reports errors and retries native without fallback', async () => {
+    const commands: string[] = [], metrics: string[] = [];
+    const supervisor = new WorkerSupervisor(config, [baseline], {
+        spawn: ((command: string) => { commands.push(command); throw Object.assign(new Error('fixture'), { code: 'ENOENT' }); }) as typeof spawnType,
+        info: async () => ({ success: true }), warn: async () => ({ success: true }), error: async () => ({ success: true }),
+        observe: (_kind, name) => { metrics.push(name); }, recordLog: () => {},
+    });
+    supervisor.start(); await delay(15);
+    await supervisor.shutdown('SIGTERM', 50);
+    assert(commands.length >= 2);
+    assert(commands.every(command => command === '/usr/local/bin/follow_defense_baseline'));
+    assert(metrics.includes('follow_defense_baseline_rust.errors'));
+    assert(metrics.includes('follow_defense_baseline_rust.restarts'));
 });

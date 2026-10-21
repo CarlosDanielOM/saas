@@ -6,6 +6,11 @@ case "$SAAS_RUST_FEATURES" in
   mongo) ;;
   *) echo 'Unsupported worker features; review the dependency graph guard before enabling another profile' >&2; exit 1 ;;
 esac
+SAAS_RUST_BASELINE_FEATURES="${SAAS_RUST_BASELINE_FEATURES:-mongo,redis}"
+case "$SAAS_RUST_BASELINE_FEATURES" in
+  mongo,redis) ;;
+  *) echo 'Unsupported baseline features; review the dependency graph guard before enabling another profile' >&2; exit 1 ;;
+esac
 
 # Pin the image's installed toolchain instead of allowing rust-toolchain.toml
 # to select/download a moving stable compiler during this release.
@@ -48,6 +53,19 @@ cargo test --locked --no-default-features --features "$SAAS_RUST_FEATURES"
 cargo build --locked --release --no-default-features --features "$SAAS_RUST_FEATURES" --bin stream_activity --bin raid_analytics
 install -m 0755 /target-cache/release/stream_activity /artifacts/stream_activity
 install -m 0755 /target-cache/release/raid_analytics /artifacts/raid_analytics
+# Build sequentially in this same capped compiler. Copy the Mongo-only release
+# outputs first: enabling Redis must never replace those installed artifacts.
+cargo tree --locked --no-default-features --features "$SAAS_RUST_BASELINE_FEATURES" --edges normal --prefix none --format '{p}' > /artifacts/baseline-worker-dependencies.txt
+if grep -Eq '^(sqlx(-[^ ]+)?|axum(-[^ ]+)?) v' /artifacts/baseline-worker-dependencies.txt; then
+    echo 'Baseline worker dependency graph unexpectedly includes SQLx or Axum' >&2
+    exit 1
+fi
+cargo check --locked --all-targets --no-default-features --features "$SAAS_RUST_BASELINE_FEATURES"
+cargo clippy --locked --all-targets --no-default-features --features "$SAAS_RUST_BASELINE_FEATURES" -- -D warnings
+cargo test --locked --no-default-features --features "$SAAS_RUST_BASELINE_FEATURES"
+cargo build --locked --release --no-default-features --features "$SAAS_RUST_BASELINE_FEATURES" --bin follow_defense_baseline
+install -m 0755 /target-cache/release/follow_defense_baseline /artifacts/follow_defense_baseline
 # This exercises the actual release binary with no database/environment needed.
 /artifacts/stream_activity --dry-run
 /artifacts/raid_analytics --dry-run
+/artifacts/follow_defense_baseline --dry-run
