@@ -529,15 +529,17 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
                     continue
                 builds = [line for line in lines if line.startswith("cargo build ")]
                 self.assertEqual(builds, [
-                    "cargo build --locked --release --no-default-features --features mongo --bin stream_activity --bin raid_analytics",
+                    "cargo build --locked --release --no-default-features --features mongo --bin stream_activity --bin raid_analytics --bin roulette_completion",
                     "cargo build --locked --release --no-default-features --features mongo,redis --bin follow_defense_baseline"])
                 for features in ("mongo", "mongo,redis"):
                     self.assertIn("cargo check --locked --all-targets --no-default-features --features " + features, lines)
                     self.assertIn("cargo clippy --locked --all-targets --no-default-features --features " + features + " -- -D warnings", lines)
                     self.assertIn("cargo test --locked --no-default-features --features " + features, lines)
-                self.assertEqual(len([line for line in lines if line.startswith("dry-run ") and line.endswith(" --dry-run")]), 3)
-                self.assertLess(next(i for i, line in enumerate(lines) if line.startswith("install ") and line.endswith("/raid_analytics")),
-                                lines.index(builds[1]))
+                self.assertEqual(len([line for line in lines if line.startswith("dry-run ") and line.endswith(" --dry-run")]), 4)
+                for binary in ["stream_activity", "raid_analytics", "roulette_completion"]:
+                    self.assertIn("dry-run " + str(artifacts / binary) + " --dry-run", lines)
+                    self.assertLess(next(i for i, line in enumerate(lines) if line.startswith("install ") and line.endswith("/" + binary)),
+                                    lines.index(builds[1]))
                 self.assertFalse(any("feature-matrix" in line or "--all-features" in line for line in lines))
 
     def prepared_rust_cache(self, receipt=None):
@@ -726,7 +728,7 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
             engine.return_value.lock.assert_not_called()
         details = json.loads(output.getvalue())["rust"]
         self.assertEqual(details["features"], "mongo")
-        self.assertEqual(details["worker_profiles"]["mongo"]["binaries"], ["stream_activity", "raid_analytics"])
+        self.assertEqual(details["worker_profiles"]["mongo"]["binaries"], ["stream_activity", "raid_analytics", "roulette_completion"])
         self.assertEqual(details["worker_profiles"]["mongo-redis"]["features"], "mongo,redis")
         self.assertEqual(details["worker_profiles"]["mongo-redis"]["binaries"], ["follow_defense_baseline"])
         self.assertEqual(details["cache_limit_bytes"], 8 * mod.GIB)
@@ -782,7 +784,7 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
              self.assertRaisesRegex(mod.OpsError, "disk headroom"):
             self.ops.rust_headroom()
 
-    def simulated_rust_build(self, *, exit_code=0, applied_limits=None, raid_artifact="valid", baseline_artifact="valid",
+    def simulated_rust_build(self, *, exit_code=0, applied_limits=None, raid_artifact="valid", baseline_artifact="valid", roulette_artifact="valid",
                              mongo_extra="", baseline_extra="", cache_bytes=0, memory_gib=6):
         self.rust_source()
         (self.path / "source").mkdir()
@@ -816,6 +818,13 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
                     baseline.write_bytes(b"unverified host artifact")
                 elif baseline_artifact == "symlink":
                     baseline.symlink_to(self.path / "rust-artifacts/stream_activity")
+                roulette = self.path / "rust-artifacts/roulette_completion"
+                if roulette_artifact == "valid":
+                    roulette.write_bytes(b"\x7fELFroulettefixture")
+                elif roulette_artifact == "invalid":
+                    roulette.write_bytes(b"unverified host artifact")
+                elif roulette_artifact == "symlink":
+                    roulette.symlink_to(self.path / "rust-artifacts/stream_activity")
                 (self.path / "rust-artifacts/toolchain.txt").write_text("host: x86_64-unknown-linux-musl")
             return original_docker(*args, **kwargs)
         return patch.object(self.ops, "docker", side_effect=docker)
@@ -889,7 +898,8 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
         self.assertEqual(self.receipt["rust_worker_dependencies_digest"], mod.digest(b"dima-rust v0.1.0\nmongodb v3.9.1\n"))
         self.assertEqual(self.receipt["rust_binary_digests"], {
             "stream_activity": mod.digest(b"\x7fELFfixture"), "raid_analytics": mod.digest(b"\x7fELFraidfixture"),
-            "follow_defense_baseline": mod.digest(b"\x7fELFbaselinefixture")})
+            "follow_defense_baseline": mod.digest(b"\x7fELFbaselinefixture"),
+            "roulette_completion": mod.digest(b"\x7fELFroulettefixture")})
         for binary in mod.RUST_BINARIES:
             metadata = self.receipt["rust_binary_metadata"][binary]
             baseline = binary == "follow_defense_baseline"
@@ -910,6 +920,9 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
         baseline_staged = self.path / "source/.saas-native/follow_defense_baseline"
         self.assertEqual(baseline_staged.read_bytes(), b"\x7fELFbaselinefixture")
         self.assertEqual(baseline_staged.stat().st_mode & 0o777, 0o755)
+        roulette_staged = self.path / "source/.saas-native/roulette_completion"
+        self.assertEqual(roulette_staged.read_bytes(), b"\x7fELFroulettefixture")
+        self.assertEqual(roulette_staged.stat().st_mode & 0o777, 0o755)
         self.assertEqual(self.receipt["resources"], [])
         self.assertFalse((self.path / "rust-work").exists())
         self.assertNotIn(("container", "saas-ops-" + RUN + "-rust-build"), self.ops.objects)
@@ -937,7 +950,7 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
 
     def test_rust_build_failure_or_wrong_cgroups_never_stages_artifact(self):
         for failure in ("checks", "limits", "missing", "invalid", "symlink", "baseline_missing", "baseline_invalid",
-                        "baseline_symlink", "mongo_redis", "mongo_axum", "baseline_sqlx", "baseline_axum"):
+                        "baseline_symlink", "roulette_missing", "roulette_invalid", "roulette_symlink", "mongo_redis", "mongo_axum", "baseline_sqlx", "baseline_axum"):
             with self.subTest(failure=failure):
                 # Each simulation uses the same task-owned directories, cleared here.
                 for directory in ("dima-rust",):
@@ -951,6 +964,7 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
                                                                        "MemorySwap": 4 * mod.GIB} if failure == "limits" else None,
                                                        raid_artifact=failure if failure in ("missing", "invalid", "symlink") else "valid",
                                                        baseline_artifact=failure.removeprefix("baseline_") if failure in ("baseline_missing", "baseline_invalid", "baseline_symlink") else "valid",
+                                                       roulette_artifact=failure.removeprefix("roulette_") if failure in ("roulette_missing", "roulette_invalid", "roulette_symlink") else "valid",
                                                        mongo_extra={"mongo_redis": "redis v0.32.7\n", "mongo_axum": "axum-core v0.5.0\n"}.get(failure, ""),
                                                        baseline_extra={"baseline_sqlx": "sqlx-core v0.8.6\n", "baseline_axum": "axum v0.8.0\n"}.get(failure, ""))
                 with simulation, patch.object(self.ops, "rust_headroom", return_value={}), \

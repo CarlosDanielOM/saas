@@ -1,0 +1,10 @@
+{
+  "NODE_OPTIONS": "--import=/tmp/saas-fixtures/cron-boot.mjs",
+  "MONGO_URI": "mongodb://mongo:27017/roulette_completion_fixture_candidate",
+  "DRAGONFLY_HOST": "redis",
+  "DRAGONFLY_PORT": "6379",
+  "SECRET_KEY": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "CRON_WORKER_RESTART_DELAY_MS": "1000",
+  "ROULETTE_COMPLETION_FIXTURE_SCOPE": "main",
+  "OTEL_SDK_DISABLED": "true"
+}

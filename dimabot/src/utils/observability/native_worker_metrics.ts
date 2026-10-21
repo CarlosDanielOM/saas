@@ -12,7 +12,7 @@ const RAID_PHASES = ['claimMs', 'followQueriesMs', 'followWriteMs', 'period7Ms',
 const BASELINE_PHASES = ['queueMs', 'claimMs', 'ledgerMs', 'streamsMs', 'attacksMs', 'publishMs', 'rescheduleMs'] as const;
 const NATIVE_BATCH_FIELDS = ['event', 'events', 'durationMs', 'success', 'phases'];
 const NATIVE_HEALTH_FIELDS = ['event', 'success', 'dueChannels', 'oldestDueAgeMs', 'lastSuccessAgeMs'];
-const STREAM_BATCH_FIELDS = ['event', 'events', 'durationMs', 'success'];
+const BATCH_FIELDS = ['event', 'events', 'durationMs', 'success'];
 const STREAM_HEALTH_FIELDS = ['event', 'success', 'hasPending', 'oldestPendingAgeMs', 'checkpointSeq', 'activeBatchEvents', 'lastSuccessAgeMs'];
 type Observer = typeof observe;
 
@@ -77,6 +77,11 @@ export const NATIVE_WORKERS = {
         command: '/usr/local/bin/follow_defense_baseline', args: ['--telemetry-json'],
         runtimeConfig: 'followDefenseBaselineRuntime', runtimeEnv: 'FOLLOW_DEFENSE_BASELINE_RUNTIME',
         protocol: 'follow_defense_baseline:', metricPrefix: 'follow_defense_baseline_rust', batchMetric: 'batch_channels', maxEvents: 1, maxDurationMs: 300000,
+    },
+    'roulette-completion': {
+        command: '/usr/local/bin/roulette_completion', args: ['--telemetry-json'],
+        runtimeConfig: 'rouletteCompletionRuntime', runtimeEnv: 'ROULETTE_COMPLETION_RUNTIME',
+        protocol: 'roulette_completion:', metricPrefix: 'roulette_completion_rust', batchMetric: 'batch_channels', maxEvents: 100, maxDurationMs: 300000,
     },
     'raid-analytics': {
         command: '/usr/local/bin/raid_analytics', args: ['--telemetry-json'],
@@ -229,7 +234,10 @@ export function nativeProgressParser(emit: Observer = observe, worker: NativeWor
                             const row = value;
                             if (worker === 'stream-activity') {
                                 if (row.event === 'health') { emitStreamHealth(row, emit); pending = ''; discard = false; continue; }
-                                if (!onlyFields(row, STREAM_BATCH_FIELDS)) { pending = ''; discard = false; continue; }
+                                if (!onlyFields(row, BATCH_FIELDS)) { pending = ''; discard = false; continue; }
+                            }
+                            if (worker === 'roulette-completion' && !onlyFields(row, BATCH_FIELDS)) {
+                                pending = ''; discard = false; continue;
                             }
                             if (phases) {
                                 if (row.event === 'health') { emitNativeHealth(row, emit, metadata.metricPrefix); pending = ''; discard = false; continue; }

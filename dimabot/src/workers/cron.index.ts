@@ -19,6 +19,7 @@ export interface SupervisorConfig {
     streamActivityRuntime?: string;
     raidAnalyticsRuntime?: string;
     followDefenseBaselineRuntime?: string;
+    rouletteCompletionRuntime?: string;
     once: boolean;
     dryRun: boolean;
     restartDelayMs: number;
@@ -291,8 +292,8 @@ export class WorkerSupervisor {
     }
 }
 
-export function resolveNativeRuntimes(env: NodeJS.ProcessEnv): Pick<SupervisorConfig, 'streamActivityRuntime' | 'raidAnalyticsRuntime' | 'followDefenseBaselineRuntime'> {
-    const result: Pick<SupervisorConfig, 'streamActivityRuntime' | 'raidAnalyticsRuntime' | 'followDefenseBaselineRuntime'> = {};
+export function resolveNativeRuntimes(env: NodeJS.ProcessEnv): Pick<SupervisorConfig, 'streamActivityRuntime' | 'raidAnalyticsRuntime' | 'followDefenseBaselineRuntime' | 'rouletteCompletionRuntime'> {
+    const result: Pick<SupervisorConfig, 'streamActivityRuntime' | 'raidAnalyticsRuntime' | 'followDefenseBaselineRuntime' | 'rouletteCompletionRuntime'> = {};
     for (const metadata of Object.values(NATIVE_WORKERS)) {
         const value = env[metadata.runtimeEnv];
         if (value !== undefined && !['rust', 'typescript'].includes(value)) {
@@ -322,6 +323,7 @@ async function bootstrap(): Promise<void> {
         streamActivityRuntime: config.streamActivityRuntime || (config.runtime === 'tsx' ? 'typescript' : 'rust'),
         raidAnalyticsRuntime: config.raidAnalyticsRuntime || (config.runtime === 'tsx' ? 'typescript' : 'rust'),
         followDefenseBaselineRuntime: config.followDefenseBaselineRuntime || (config.runtime === 'tsx' ? 'typescript' : 'rust'),
+        rouletteCompletionRuntime: config.rouletteCompletionRuntime || (config.runtime === 'tsx' ? 'typescript' : 'rust'),
         restartDelayMs: config.restartDelayMs, workers: WORKERS.filter(worker => !worker.enabledEnv || process.env[worker.enabledEnv] !== 'false').map(worker => worker.name),
         mode: config.once ? 'once' : 'normal', dryRun: config.dryRun }, { destination: 'console' });
     supervisor.start();

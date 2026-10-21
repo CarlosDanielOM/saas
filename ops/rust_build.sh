@@ -50,9 +50,10 @@ fi
 cargo check --locked --all-targets --no-default-features --features "$SAAS_RUST_FEATURES"
 cargo clippy --locked --all-targets --no-default-features --features "$SAAS_RUST_FEATURES" -- -D warnings
 cargo test --locked --no-default-features --features "$SAAS_RUST_FEATURES"
-cargo build --locked --release --no-default-features --features "$SAAS_RUST_FEATURES" --bin stream_activity --bin raid_analytics
+cargo build --locked --release --no-default-features --features "$SAAS_RUST_FEATURES" --bin stream_activity --bin raid_analytics --bin roulette_completion
 install -m 0755 /target-cache/release/stream_activity /artifacts/stream_activity
 install -m 0755 /target-cache/release/raid_analytics /artifacts/raid_analytics
+install -m 0755 /target-cache/release/roulette_completion /artifacts/roulette_completion
 # Build sequentially in this same capped compiler. Copy the Mongo-only release
 # outputs first: enabling Redis must never replace those installed artifacts.
 cargo tree --locked --no-default-features --features "$SAAS_RUST_BASELINE_FEATURES" --edges normal --prefix none --format '{p}' > /artifacts/baseline-worker-dependencies.txt
@@ -68,4 +69,5 @@ install -m 0755 /target-cache/release/follow_defense_baseline /artifacts/follow_
 # This exercises the actual release binary with no database/environment needed.
 /artifacts/stream_activity --dry-run
 /artifacts/raid_analytics --dry-run
+/artifacts/roulette_completion --dry-run
 /artifacts/follow_defense_baseline --dry-run

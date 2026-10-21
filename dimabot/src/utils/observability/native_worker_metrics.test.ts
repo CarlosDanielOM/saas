@@ -435,3 +435,75 @@ test('stream mixed health probes aggregate into analytics-valid private-free env
             service: 'cron', instance: 'fixture', metrics, spans, logs }));
     } finally { telemetryTesting.reset(); telemetryTesting.stop(); }
 });
+
+const rouletteFrame = (row: Record<string, unknown>): string => `roulette_completion:${JSON.stringify(row)}\n`;
+
+test('roulette validates batch-only processed-channel frames and recovers after malformed output', () => {
+    const samples: unknown[][] = [];
+    const feed = nativeProgressParser((...args) => { samples.push(args); }, 'roulette-completion');
+    const batch = { event: 'batch', events: 100, durationMs: 40000, success: true };
+    for (const events of [-1, 101, .5, '1', null]) feed(rouletteFrame({ ...batch, events }));
+    for (const durationMs of [-1, 300001, '1', null]) feed(rouletteFrame({ ...batch, durationMs }));
+    feed(rouletteFrame({ ...batch, success: false }));
+    feed(rouletteFrame({ ...batch, success: 'true' }));
+    for (const extra of [{ phases: { queueMs: 1 } }, { phases: { claimMs: 1 } }, { channelId: 'private' },
+        { query: 'private' }, { dueChannels: 1 }, { hasPending: false }]) feed(rouletteFrame({ ...batch, ...extra }));
+    feed(rouletteFrame({ event: 'health', success: true, dueChannels: 1 }));
+    feed(rouletteFrame({ event: 'health', success: false }));
+    feed('roulette_completion:{"event":"batch","events":1,"durationMs":1e309,"success":true}\n');
+    feed('roulette_completion:{invalid}\nroulette_completion:null\nroulette_completion:[]\nprivate output secret\n');
+    feed(`roulette_completion:${' '.repeat(1100)}{}\n`);
+    for (const prefix of ['stream_activity:', 'raid_analytics:', 'follow_defense_baseline:']) {
+        feed(`${prefix}${JSON.stringify(batch)}\n`);
+    }
+    assert.deepEqual(samples, []);
+    const valid = rouletteFrame(batch);
+    feed(Buffer.from(valid.slice(0, 17))); assert.deepEqual(samples, []);
+    feed(Buffer.from(valid.slice(17)));
+    feed(rouletteFrame({ ...batch, events: 0, durationMs: 0 }));
+    feed(rouletteFrame({ ...batch, events: 0, durationMs: 300000, success: false }));
+    feed(rouletteFrame({ ...batch, events: 1, durationMs: .5 }));
+    assert.deepEqual(samples, [
+        ['worker', 'roulette_completion_rust.batch_channels', 100, 'ok'],
+        ['queue_run', 'roulette_completion_rust.project_batch', 40000, 'ok'],
+        ['worker', 'roulette_completion_rust.batch_channels', 0, 'idle'],
+        ['queue_run', 'roulette_completion_rust.project_batch', 0, 'idle'],
+        ['worker', 'roulette_completion_rust.batch_channels', 0, 'error'],
+        ['queue_run', 'roulette_completion_rust.project_batch', 300000, 'error'],
+        ['worker', 'roulette_completion_rust.batch_channels', 1, 'ok'],
+        ['queue_run', 'roulette_completion_rust.project_batch', .5, 'ok'],
+    ]);
+});
+
+test('roulette frames cannot enter other native parsers or produce phase/health metrics', () => {
+    const samples: unknown[][] = [];
+    for (const worker of ['stream-activity', 'raid-analytics', 'follow-defense-baseline'] as const) {
+        const feed = nativeProgressParser((...args) => { samples.push(args); }, worker);
+        feed(rouletteFrame({ event: 'batch', events: 1, durationMs: 2, success: true }));
+        feed(rouletteFrame({ event: 'health', success: true }));
+    }
+    assert.deepEqual(samples, []);
+    telemetryTesting.reset(); telemetryTesting.enable();
+    try {
+        const feed = nativeProgressParser(observe, 'roulette-completion');
+        feed(rouletteFrame({ event: 'batch', events: 3, durationMs: 2, success: true }));
+        const { metrics, spans, logs } = telemetryTesting.snapshot();
+        assert.deepEqual(spans, []); assert.deepEqual(logs, []);
+        assert.equal(metrics.length, 2);
+        assert(metrics.every(row => row.channel === '' && row.name.startsWith('roulette_completion_rust.')));
+        assert.equal(metrics.find(row => row.name.endsWith('.batch_channels'))?.sum, 3);
+    } finally { telemetryTesting.reset(); telemetryTesting.stop(); }
+});
+
+test('roulette sampler emits only roulette runtime metrics', async () => {
+    let reads = 0;
+    const samples: unknown[][] = [];
+    const stop = startNativeWorkerMetrics(42, {
+        read: async () => snapshot(BigInt(++reads * 100)), ticks: async () => 100,
+        now: () => reads * 1000, intervalMs: 2, observe: (...args) => { samples.push(args); },
+    }, 'roulette-completion');
+    await delay(15); stop();
+    assert(samples.some(row => row[1] === 'roulette_completion_rust.rss_bytes'));
+    assert(samples.some(row => row[1] === 'roulette_completion_rust.cpu_cores'));
+    assert(samples.every(row => String(row[1]).startsWith('roulette_completion_rust.')));
+});

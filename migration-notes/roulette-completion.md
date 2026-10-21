@@ -1,0 +1,50 @@
+# Roulette completion Rust migration
+
+## Status
+
+Deployed cron run `cron-99f8d5165ff2` is the current release, using image digest `sha256:7b4656ed97fa73431d192c754bef504672b167e020909c7bdc6d4e727f54bcc8`. Its capped Rust build passed in 219.556 seconds with a cache hit, six CPUs, 4 GiB RAM with no swap, 256 PIDs, two Cargo jobs, and the existing pinned Rust 1.99.1 toolchain. Both profiles passed formatting, check, Clippy, unit tests, doc tests, release builds, and binary dry runs. The `mongo` profile passed 37 library, four raid, four roulette, and five stream tests plus one doc test. The `mongo,redis` profile passed 58 library, six baseline, four raid, four roulette, and five stream tests plus one doc test. The focused Node integration suite passed 35/35 cases, operations passed 66/66, isolated supervisor-hook checks passed 3/3, and the real Docker helper smoke check passed with all 17 production container identities preserved.
+
+All four same-image runtime suites exited successfully: roulette completion passed 13 groups in 48.330 seconds, stream activity six groups in 135.321 seconds, raid analytics 11 groups in 91.871 seconds, and follow-defense baseline 11 groups in 114.104 seconds. The earlier roulette run completed its assertions but stayed alive on a test-owned telemetry Redis client; the check now closes that client in `finally`, and the accepted rerun exited zero. The deployed cron container started at `2026-10-21T16:50:17.163525484Z` with restart count zero. The live container contains roulette binary SHA-256 `8524834e2fa37a175635f01b5c9148923da7cfa06d65c265a4b62dcfb3ebf261`.
+
+The production acceptance watch passed across 19 samples from 16:50:34.867 to 16:53:41.253 UTC (186.386 seconds). All four native child PIDs and start ticks stayed stable at UID 65534. Roulette PID 42 RSS ranged from 6,025,216 to 6,041,600 bytes, with a 19-tick CPU delta; this idle, unmatched observation is not a performance comparison. Every sample found three roulette documents, zero due or invalid due documents, no TypeScript completion worker, and zero raid errors. No due production roulette draw occurred during the watch; draw settlement was exercised only with isolated fixtures. No stream batch was active at sampled instants; the stream checkpoint advanced from 32,190 to 32,201 and the dashboard-daily checkpoint from 29,704 to 29,716.
+
+Analytics readback showed 217 idle samples each for roulette `batch_channels` and `project_batch`, 21 successful RSS and CPU samples, and zero native errors or restarts across all four workers. The container identity comparison found only `dima-cron` changed; the other 16 production containers were unchanged. `scripts/saas-ops cleanup cron-99f8d5165ff2` exited zero, retained the release and rollback receipts, and left no task-owned containers or networks from any of the three verification attempts. The sanitized acceptance archive, including suite outputs, check hashes, sanitized probe sources, logs, and production readbacks, is retained at `/root/.local/state/saas-ops/649a957c15888e53/cron-99f8d5165ff2/roulette-acceptance`. The rollback image is `sha256:9208e3d8e0a12b47ae793598fb1dac53e7f70cab0ab4c338097e3fbc5981f0ac` from `cron-240af282cb85`.
+
+Before the release, an idle TypeScript sample at 2026-10-21 16:04:50 UTC showed three roulette documents and zero due documents; the TypeScript child PID 37 had RSS 98,336,768 bytes. This is a single unmatched idle observation, not a controlled benchmark. No runtime or performance improvement is claimed.
+
+## Scope and source contract
+
+This ports only the scheduled completion work from `dimabot/src/workers/roulette.worker.ts` into the `dima-rust` `roulette_completion` binary. It reads and updates the existing `roulette_channels` MongoDB collection, preserving the current document shape and numeric time fields. It introduces no collection, index, schema migration, or new production service. The worker processes at most 100 due channel documents per pass and polls again after one second.
+
+The TypeScript model and service in `dimabot/src/roulette/model.ts` and `dimabot/src/roulette/service.ts` define the behavior to preserve: settle expired draws using the selected winner mode (`keep`, `remove-copy`, or `remove-item`), append bounded history (100 entries), and maintain roulette visibility and auto-hide deadlines. Completion writes use a revision compare-and-set compatible with the existing TypeScript API and bot snapshots. Keeping that CAS contract allows API and bot updates to coexist with the projector's shared MongoDB documents; if the CAS retry budget is exhausted while a document remains busy, the batch fails so the existing supervisor can restart and retry the work, rather than silently skipping or replacing a newer snapshot. Each CAS retry recomputes settlement with a fresh clock value, matching the TypeScript snapshot path. Candidate review also corrected raw channel-ID validation, NaN deadline handling, and BSON int64 promotion at the inclusive ±2^53 boundary: adjacent out-of-range int64 values remain BSON Long, while values inside the JavaScript Number range preserve TypeScript's BSON promotion behavior.
+
+The `roulette-actions` TypeScript worker remains a separate supervised child. It claims and executes the durable winner-action AST. The Rust completion worker does not parse or execute action source. Both workers continue to use the existing cron supervisor and generic native worker telemetry (`roulette_completion_rust` batch, runtime, error, and restart metrics); the batch count reports successful CAS state transitions only, excluding due documents that settle as no-ops. No dedicated admin UI or telemetry schema is introduced. A failed native child is restarted by the supervisor and does not silently fall back to TypeScript.
+
+## Build and candidate checks
+
+The routine cron build now builds four native binaries in the existing two feature profiles. Stream activity, raid analytics, and roulette completion use `--no-default-features --features mongo`; follow-defense baseline continues to use `--no-default-features --features mongo,redis`. The existing capped Rust 1.99.1 toolchain, CPU/memory/PID limits, Cargo jobs, cache boundary, and separate graph guards remain in force. Do not use host Cargo as a fallback.
+
+For a candidate, first run `scripts/saas-ops list`, `scripts/saas-ops plan cron`, and `scripts/saas-ops build cron`. Use the exact run ID printed by the build. Prepare source-backed fixtures and verify roulette completion against that candidate:
+
+```bash
+set -eu
+ROULETTE_FIXTURES=$(mktemp -d /tmp/roulette-completion-rust-fixtures.XXXXXX)
+trap 'rm -rf -- "$ROULETTE_FIXTURES"' EXIT
+cp ops/checks/roulette-completion-rust-fixtures/cron-boot.mjs "$ROULETTE_FIXTURES/"
+cp dima-analytics/src/store.mjs "$ROULETTE_FIXTURES/analytics-store.mjs"
+scripts/saas-ops verify cron-<run-id> \
+  --dependency mongo --dependency redis \
+  --test-env ops/checks/roulette-completion-rust-fixtures/test-env.json \
+  --fixtures "$ROULETTE_FIXTURES" \
+  --check ops/checks/roulette-completion-rust.mjs
+```
+
+The check uses disposable fixture databases and exercises the actual candidate supervisor and native executable. It compares persisted behavior with the TypeScript contract, including numeric timing compatibility, due settlement, all three winner modes, fresh-clock revision retries, shared-document updates, history bounds, visibility and auto-hide deadlines, action-worker separation, successful-transition telemetry counts with no-op exclusion, child environment and UID, and BSON raw-type parity. Deterministic races force a TypeScript API snapshot to win and separately change the revision during Rust's first write; they verify that stale Rust writes cannot overwrite the winner and that a retry reloads state and time. A validator injected into the disposable database rejects otherwise valid completion writes, verifying that no partial removal is persisted when the write fails. Runtime checks also hold an actual Mongo CAS while sending SIGTERM, verify completion and clean exit, exercise the 20-second hung-pass watchdog (initial observation 20,011 ms), and test roulette-only SIGKILL recovery. The fixture must not use production MongoDB or Dragonfly data.
+
+Because cron builds bundle all native children, the stream-activity, raid-analytics, follow-defense baseline, and roulette-completion behavior checks must all pass against the same exact candidate image before deployment. If an admin bundle changes in the same request, verify that bundle separately. Once every scoped check passes, deploy the exact run with `scripts/saas-ops deploy cron-<run-id>`, verify readiness, recent logs, native roulette telemetry, and a scoped production behavior readback, then clean up with `scripts/saas-ops cleanup cron-<run-id>`. The helper's rollback receipt restores the prior cron image if production verification finds a regression.
+
+`ROULETTE_COMPLETION_RUNTIME=typescript` selects the existing TypeScript completion worker through a separate reviewed configuration workflow. The code-only cron helper does not change this setting. Keep that selector distinct from image rollback: the release receipt restores the previous tested cron image, while the runtime selector requires the separately reviewed configuration procedure.
+
+## Evidence limits
+
+The accepted roulette runtime suite covers the 20-second pass watchdog, a held Mongo CAS during SIGTERM, deterministic API/TypeScript and Rust revision races, successful-transition telemetry with no-op exclusion, raw BSON types, and failure recovery. The initial watchdog observation was 20,011 ms. Candidate review corrected raw channel-ID validation, NaN deadline handling, and BSON int64 promotion at the inclusive ±2^53 boundary; adjacent out-of-range int64 values remain BSON Long. The earlier idle TypeScript RSS sample (98,336,768 bytes) and the short Rust RSS samples are unmatched and are not a controlled comparison. No runtime performance improvement is claimed.

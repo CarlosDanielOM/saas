@@ -21,7 +21,7 @@ if (process.argv[1]?.endsWith('/dist/workers/cron.index.js')) {
                 }) + '\\n');
                 export const spawn = (command, args, options) => {
                     const worker = command === '/usr/local/bin/stream_activity' ? 'stream-activity'
-                        : command === '/usr/local/bin/raid_analytics' ? 'raid-analytics' : command === '/usr/local/bin/follow_defense_baseline' ? 'follow-defense-baseline' : options?.env?.CRON_WORKER_NAME;
+                        : command === '/usr/local/bin/raid_analytics' ? 'raid-analytics' : command === '/usr/local/bin/follow_defense_baseline' ? 'follow-defense-baseline' : command === '/usr/local/bin/roulette_completion' ? 'roulette-completion' : options?.env?.CRON_WORKER_NAME;
                     let child;
                     if (worker === 'stream-activity') {
                         if (command !== '/usr/local/bin/stream_activity' || !args.includes('--telemetry-json')) {

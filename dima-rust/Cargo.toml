@@ -28,6 +28,11 @@ name = "follow_defense_baseline"
 path = "src/bin/follow_defense_baseline.rs"
 required-features = ["mongo", "redis"]
 
+[[bin]]
+name = "roulette_completion"
+path = "src/bin/roulette_completion.rs"
+required-features = ["mongo"]
+
 [[example]]
 name = "stream_activity_fixture"
 path = "examples/stream_activity_fixture.rs"
