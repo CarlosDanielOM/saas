@@ -84,7 +84,7 @@
       @if (data.ledger?.status === 'pending') {
         <p class="lf-notice us-sync usage-sync" role="status">
           <span>
-            Still importing older usage and Polar credit grants, so totals, the forecast and the activity list may be missing entries.
+            Still importing older usage and Polar credit grants, so activity totals may be missing entries and the forecast may change. The current balance is shown separately.
             @if (data.ledger?.lastSyncedAt) {
               Last synced {{ date(data.ledger!.lastSyncedAt!) }}.
             }
@@ -92,9 +92,11 @@
         </p>
       }
 
+      <p class="lf-note">Balance and forecast reflect credits available now. Spending and grants show recorded activity for the dates above.</p>
+
       <section class="lf-metrics usage-metrics" aria-label="Credit totals">
         <article class="lf-metric">
-          <span class="lf-metric__label">{{ display()?.estimated ? 'Estimated credits left' : 'Credits left' }}</span>
+          <span class="lf-metric__label">Credits left now</span>
           @if (display()?.credits; as credits) {
             @if (credits.available) {
               <strong class="lf-metric__value">{{ compact(credits.balance) }}</strong>
@@ -102,16 +104,13 @@
                 <span [style.width.%]="usedPercent()"></span>
               </div>
               <span class="lf-metric__note">{{ format(credits.used) }} used of {{ format(credits.limit) }}</span>
-              @if (display()?.estimated) {
-                <span class="lf-metric__note">Based on current-period allowance and recorded activity.</span>
-              }
             } @else {
               <strong class="lf-metric__value">—</strong>
               <span class="lf-metric__note">No credit account yet</span>
             }
           } @else {
             <strong class="lf-metric__value">—</strong>
-            <span class="lf-metric__note">Waiting for usage history</span>
+            <span class="lf-metric__note">Balance unavailable</span>
           }
         </article>
         <article class="lf-metric">

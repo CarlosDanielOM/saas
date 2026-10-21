@@ -97,34 +97,27 @@ export class ChannelUsageComponent {
     if (!display) return null;
     const credits = display.credits;
     const pace = display.pacing;
-    if (!data.credits.available) {
+    if (!credits.available) {
       return {
         tone: 'muted',
         title: 'No credit account yet',
         text: "This channel has no billing account linked, so there's no balance to forecast.",
       };
     }
-    if (!credits) {
-      return { tone: 'muted', title: 'Credit history still syncing',
-        text: 'The remaining-credit estimate and forecast will appear when the current period’s activity is ready.' };
-    }
     const left = this.format(credits.balance);
+    if (credits.balance <= 0) {
+      const reset = pace ? `the period resets in ${this.days(pace.remainingPeriodDays)}` : 'credits renew';
+      return {
+        tone: 'live',
+        title: 'Out of credits',
+        text: `AI replies and paid voices are paused until ${reset}, unless credits are added.`,
+      };
+    }
     if (!pace) {
       return { tone: 'muted', title: `${left} credits left`, text: 'Not enough history to forecast yet.' };
     }
     const resetIn = this.days(pace.remainingPeriodDays);
     const daily = this.format(pace.averageDailyCredits);
-    if (pace.status === 'exhausted' || credits.balance <= 0) {
-      if (display.estimated) {
-        return { tone: 'live', title: 'Estimated allowance fully used',
-          text: `Recorded activity has used this period’s allowance. The period resets in ${resetIn}.` };
-      }
-      return {
-        tone: 'live',
-        title: 'Out of credits',
-        text: `AI replies and paid voices are paused until the period resets in ${resetIn}, unless credits are added.`,
-      };
-    }
     if (pace.status === 'no_usage') {
       return {
         tone: 'muted',
@@ -263,7 +256,7 @@ export class ChannelUsageComponent {
       if (version !== this.requestVersion) return;
       let cycle = response.data;
       // A date filter changes activity totals, never the current balance or forecast.
-      if (cycle.planTier === 'free' && this.customRange()) {
+      if (this.customRange()) {
         const current = await firstValueFrom(this.api.getSummary(this.channelID, {
           timezone: this.range().timezone,
         }));
