@@ -17,7 +17,7 @@ if (process.argv[1]?.endsWith('/dist/workers/cron.index.js')) {
                 import { appendFileSync } from 'node:fs';
                 let fakePid = 900000;
                 const record = value => appendFileSync('/tmp/saas-fixtures/spawns.jsonl', JSON.stringify({
-                    supervisor: process.pid, scope: process.env.STREAM_ACTIVITY_FIXTURE_SCOPE || 'main', ...value
+                    supervisor: process.pid, scope: process.env.STREAM_ACTIVITY_FIXTURE_SCOPE || 'main', at: Date.now(), ...value
                 }) + '\\n');
                 export const spawn = (command, args, options) => {
                     const worker = command === '/usr/local/bin/stream_activity' ? 'stream-activity'
@@ -28,6 +28,17 @@ if (process.argv[1]?.endsWith('/dist/workers/cron.index.js')) {
                             throw new Error('Candidate must supervise native Rust stream activity with metadata protocol');
                         }
                         child = actualSpawn(command, args, options);
+                        let pending = '';
+                        child.stdout.on('data', chunk => {
+                            pending += chunk;
+                            if (pending.length > 8192) throw new Error('Oversized native fixture metadata');
+                            const lines = pending.split('\\n'); pending = lines.pop();
+                            for (const line of lines) if (line.startsWith('stream_activity:')) {
+                                const frame = JSON.parse(line.slice('stream_activity:'.length));
+                                if (!['batch', 'health'].includes(frame.event)) throw new Error('Unexpected native stream frame');
+                                record({ event: frame.event, worker, pid: child.pid, frame });
+                            }
+                        });
                         child.on('exit', (code, signal) => record({ event: 'exit', worker, pid: child.pid, code, signal }));
                     } else {
                         child = new EventEmitter();

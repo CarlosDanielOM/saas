@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { setTimeout as delay } from 'node:timers/promises';
+import { readFile } from 'node:fs/promises';
 import { NativeCpuTracker, nativeProgressParser, parseNativeRss, parseNativeStat, startNativeWorkerMetrics, type NativeSnapshot } from './native_worker_metrics.js';
 import { observe, telemetryTesting } from './telemetry.js';
 
@@ -205,6 +206,7 @@ test('stream parser ignores raid health and phases while preserving its original
     feed(raidFrame({ event: 'health', success: true, dueChannels: 9 }));
     feed('stream_activity:{"event":"health","success":true,"dueChannels":9}\n');
     feed('stream_activity:{"event":"batch","events":1,"durationMs":2,"success":true,"phases":{"claimMs":3}}\n');
+    feed('stream_activity:{"event":"batch","events":1,"durationMs":2,"success":true}\n');
     assert.deepEqual(samples, [
         ['worker', 'stream_activity_rust.batch_events', 1, 'ok'],
         ['queue_run', 'stream_activity_rust.project_batch', 2, 'ok'],
@@ -239,7 +241,7 @@ test('baseline protocol validates bounded private-free batches independently of 
     const frame = (row: Record<string, unknown>) => `follow_defense_baseline:${JSON.stringify(row)}\n`;
     const valid = { event: 'batch', events: 1, durationMs: 20, success: true };
     for (const row of [{ ...valid, events: 2 }, { ...valid, durationMs: 300001 }, { ...valid, success: false },
-        { ...valid, channelID: 'private' }, { ...valid, phases: {} }, { ...valid, events: .5 },
+        { ...valid, channelID: 'private' }, { ...valid, phases: { channelID: 1 } }, { ...valid, events: .5 },
         { ...valid, durationMs: -1 }, { ...valid, success: 'true' }]) feed(frame(row));
     feed(`follow_defense_baseline:${' '.repeat(1100)}{}\n`);
     feed('raid_analytics:{"event":"batch","events":1,"durationMs":2,"success":true}\n');
@@ -269,4 +271,167 @@ test('baseline sampler emits only its registered runtime metric names', async ()
     assert(samples.some(row => row[1] === 'follow_defense_baseline_rust.rss_bytes'));
     assert(samples.some(row => row[1] === 'follow_defense_baseline_rust.cpu_cores'));
     assert(samples.every(row => String(row[1]).startsWith('follow_defense_baseline_rust.')));
+});
+
+const baselineFrame = (row: Record<string, unknown>): string => `follow_defense_baseline:${JSON.stringify(row)}\n`;
+const baselinePhases = ['queueMs', 'claimMs', 'ledgerMs', 'streamsMs', 'attacksMs', 'publishMs', 'rescheduleMs'];
+
+test('baseline phases report every reached attempt with its enclosing batch outcome', () => {
+    const samples: unknown[][] = [];
+    const feed = nativeProgressParser((...args) => { samples.push(args); }, 'follow-defense-baseline');
+    const phases = Object.fromEntries(baselinePhases.map((name, index) => [name, index]));
+    feed(baselineFrame({ event: 'batch', events: 1, durationMs: 7, success: true, phases }));
+    feed(baselineFrame({ event: 'batch', events: 0, durationMs: 2, success: false, phases: { queueMs: 0, ledgerMs: 2 } }));
+    feed(baselineFrame({ event: 'batch', events: 0, durationMs: 1, success: true, phases: { queueMs: 1 } }));
+    feed(baselineFrame({ event: 'batch', events: 1, durationMs: 1, success: true }));
+    assert.deepEqual(samples, [
+        ['worker', 'follow_defense_baseline_rust.batch_channels', 1, 'ok'],
+        ['queue_run', 'follow_defense_baseline_rust.project_batch', 7, 'ok'],
+        ...baselinePhases.map((name, index) => ['queue_run', `follow_defense_baseline_rust.phase.${name}`, index, 'ok', '']),
+        ['worker', 'follow_defense_baseline_rust.batch_channels', 0, 'error'],
+        ['queue_run', 'follow_defense_baseline_rust.project_batch', 2, 'error'],
+        ['queue_run', 'follow_defense_baseline_rust.phase.queueMs', 0, 'error', ''],
+        ['queue_run', 'follow_defense_baseline_rust.phase.ledgerMs', 2, 'error', ''],
+        ['worker', 'follow_defense_baseline_rust.batch_channels', 0, 'idle'],
+        ['queue_run', 'follow_defense_baseline_rust.project_batch', 1, 'idle'],
+        ['queue_run', 'follow_defense_baseline_rust.phase.queueMs', 1, 'idle', ''],
+        ['worker', 'follow_defense_baseline_rust.batch_channels', 1, 'ok'],
+        ['queue_run', 'follow_defense_baseline_rust.project_batch', 1, 'ok'],
+    ]);
+});
+
+test('baseline health preserves unknown and mixed readings without reporting child restarts', () => {
+    telemetryTesting.reset(); telemetryTesting.enable();
+    try {
+        const feed = nativeProgressParser(observe, 'follow-defense-baseline');
+        const first = baselineFrame({ event: 'health', success: true, dueChannels: 6, oldestDueAgeMs: 90 });
+        feed(first.slice(0, 12)); assert.equal(telemetryTesting.snapshot().metrics.length, 0);
+        feed(first.slice(12));
+        feed(baselineFrame({ event: 'health', success: true, dueChannels: 0 }));
+        feed(baselineFrame({ event: 'health', success: true }));
+        feed(baselineFrame({ event: 'health', success: false, lastSuccessAgeMs: 100 }));
+        const { metrics, spans, logs } = telemetryTesting.snapshot();
+        assert.deepEqual(spans, []); assert.deepEqual(logs, []);
+        assert(metrics.every(row => row.channel === '' && row.name.startsWith('follow_defense_baseline_rust.')));
+        assert.equal(metrics.find(row => row.name.endsWith('.health_query'))?.count, 4);
+        assert.equal(metrics.find(row => row.name.endsWith('.health_query'))?.sum, 3);
+        assert.equal(metrics.find(row => row.name.endsWith('.health_errors'))?.count, 1);
+        assert.equal(metrics.find(row => row.name.endsWith('.health_errors'))?.outcome, 'error');
+        assert.equal(metrics.find(row => row.name.endsWith('.backlog_channels'))?.count, 2);
+        assert.equal(metrics.find(row => row.name.endsWith('.backlog_channels'))?.sum, 6);
+        assert.equal(metrics.find(row => row.name.endsWith('.oldest_due_age_ms'))?.count, 1);
+        assert.equal(metrics.find(row => row.name.endsWith('.last_success_age_ms'))?.sum, 100);
+        assert(!metrics.some(row => row.kind === 'lifecycle' || /\.(errors|restarts)$/.test(row.name)));
+    } finally { telemetryTesting.reset(); telemetryTesting.stop(); }
+});
+
+test('baseline strict metadata rejects malformed private or unreached fields as a complete frame', () => {
+    const samples: unknown[][] = [];
+    const feed = nativeProgressParser((...args) => { samples.push(args); }, 'follow-defense-baseline');
+    const batch = { event: 'batch', events: 1, durationMs: 10, success: true };
+    const health = { event: 'health', success: true };
+    for (const phases of [null, [], 'queueMs', { channelId: 12 }, { query: 'private' }, { followQueriesMs: 1 },
+        ...[-1, '1', null, false, 1e15 + 1].map(value => ({ ledgerMs: value }))]) feed(baselineFrame({ ...batch, phases }));
+    for (const field of ['dueChannels', 'oldestDueAgeMs', 'lastSuccessAgeMs']) {
+        for (const value of [-1, '1', true, {}, [], 1e15 + 1]) feed(baselineFrame({ ...health, [field]: value }));
+        feed(`follow_defense_baseline:{"event":"health","success":true,"${field}":1e309}\n`);
+    }
+    for (const row of [{ ...health, dueChannels: .5 }, { ...health, dueChannels: 0, oldestDueAgeMs: 0 },
+        { event: 'health', success: false, dueChannels: 0 }, { event: 'health', success: false, oldestDueAgeMs: 1 },
+        { event: 'health' }, { ...health, success: 'true' }]) feed(baselineFrame(row));
+    for (const row of [batch, health]) for (const field of ['channelId', 'query', 'name']) feed(baselineFrame({ ...row, [field]: 'private' }));
+    feed('follow_defense_baseline:{"event":"batch","events":1,"durationMs":2,"success":true,"phases":{"queueMs":1e309}}\n');
+    feed(`follow_defense_baseline:${' '.repeat(1024)}${JSON.stringify(health)}\n`);
+    assert.deepEqual(samples, []);
+    feed(baselineFrame({ ...batch, phases: { queueMs: 1e15 } }));
+    assert.equal(samples.length, 3);
+});
+
+const streamFrame = (row: Record<string, unknown>): string => `stream_activity:${JSON.stringify(row)}\n`;
+
+test('stream health distinguishes empty and unknown progress, pending work and failed probes', () => {
+    const samples: unknown[][] = [];
+    const feed = nativeProgressParser((...args) => { samples.push(args); });
+    const initial = streamFrame({ event: 'health', success: true, hasPending: false });
+    feed(Buffer.from(initial.slice(0, 31))); feed(initial.slice(31, -1));
+    assert.deepEqual(samples, []);
+    feed('\n');
+    feed(streamFrame({ event: 'health', success: true, hasPending: true, oldestPendingAgeMs: 1200,
+        checkpointSeq: 3, activeBatchEvents: 4, lastSuccessAgeMs: 4500 }));
+    feed(streamFrame({ event: 'health', success: true, hasPending: false, checkpointSeq: 4, activeBatchEvents: 0, lastSuccessAgeMs: 0 }));
+    feed(streamFrame({ event: 'health', success: false }));
+    feed(streamFrame({ event: 'health', success: false, lastSuccessAgeMs: 77 }));
+    assert.deepEqual(samples, [
+        ['worker', 'stream_activity_rust.health_query', 1, 'ok', ''],
+        ['worker', 'stream_activity_rust.pending_work', 0, 'ok', ''],
+        ['worker', 'stream_activity_rust.health_query', 1, 'ok', ''],
+        ['worker', 'stream_activity_rust.pending_work', 1, 'ok', ''],
+        ['worker', 'stream_activity_rust.oldest_pending_age_ms', 1200, 'ok', ''],
+        ['worker', 'stream_activity_rust.checkpoint_seq', 3, 'ok', ''],
+        ['worker', 'stream_activity_rust.active_batch_events', 4, 'ok', ''],
+        ['worker', 'stream_activity_rust.last_success_age_ms', 4500, 'ok', ''],
+        ['worker', 'stream_activity_rust.health_query', 1, 'ok', ''],
+        ['worker', 'stream_activity_rust.pending_work', 0, 'ok', ''],
+        ['worker', 'stream_activity_rust.checkpoint_seq', 4, 'ok', ''],
+        ['worker', 'stream_activity_rust.active_batch_events', 0, 'ok', ''],
+        ['worker', 'stream_activity_rust.last_success_age_ms', 0, 'ok', ''],
+        ['worker', 'stream_activity_rust.health_query', 0, 'ok', ''],
+        ['worker', 'stream_activity_rust.health_errors', 1, 'error', ''],
+        ['worker', 'stream_activity_rust.health_query', 0, 'ok', ''],
+        ['worker', 'stream_activity_rust.health_errors', 1, 'error', ''],
+        ['worker', 'stream_activity_rust.last_success_age_ms', 77, 'ok', ''],
+    ]);
+});
+
+test('stream strict schema rejects malformed, private, foreign and oversized frames atomically', () => {
+    const samples: unknown[][] = [];
+    const feed = nativeProgressParser((...args) => { samples.push(args); });
+    const health = { event: 'health', success: true, hasPending: true };
+    const batch = { event: 'batch', events: 1, durationMs: 2, success: true };
+    for (const field of ['oldestPendingAgeMs', 'checkpointSeq', 'activeBatchEvents', 'lastSuccessAgeMs']) {
+        for (const value of [-1, '1', true, null, {}, [], 1e15 + 1]) feed(streamFrame({ ...health, [field]: value }));
+        feed(`stream_activity:{"event":"health","success":true,"hasPending":true,"${field}":1e309}\n`);
+    }
+    for (const field of ['checkpointSeq', 'activeBatchEvents']) feed(streamFrame({ ...health, [field]: .5 }));
+    for (const row of [{ event: 'health', success: true }, { ...health, hasPending: null }, { ...health, hasPending: 1 },
+        { ...health, success: 'true' }, { ...health, hasPending: false, oldestPendingAgeMs: 0 }, { event: 'health' }]) feed(streamFrame(row));
+    for (const [key, value] of [['hasPending', false], ['oldestPendingAgeMs', 0], ['checkpointSeq', 0], ['activeBatchEvents', 0]]) {
+        feed(streamFrame({ event: 'health', success: false, [String(key)]: value }));
+        feed(streamFrame({ event: 'health', success: false, [String(key)]: null }));
+    }
+    for (const row of [batch, health]) for (const field of ['channelID', 'query', 'name', 'dueChannels', 'phases']) {
+        feed(streamFrame({ ...row, [field]: 'private' }));
+    }
+    feed(raidFrame({ ...health, dueChannels: 9 })); feed(baselineFrame(health));
+    feed('stream_activity:{invalid}\nstream_activity:null\nstream_activity:[]\nprivate output\n');
+    feed(`stream_activity:${' '.repeat(1024)}${JSON.stringify(health)}\n`);
+    assert.deepEqual(samples, []);
+    feed(streamFrame({ ...health, checkpointSeq: 1e15, activeBatchEvents: 1e15, oldestPendingAgeMs: 1e15, lastSuccessAgeMs: 1e15 }));
+    assert.equal(samples.length, 6, 'valid bounded frame recovers after oversized input');
+});
+
+test('stream mixed health probes aggregate into analytics-valid private-free envelopes without lifecycle errors', async () => {
+    telemetryTesting.reset(); telemetryTesting.enable();
+    try {
+        const feed = nativeProgressParser(observe);
+        feed(streamFrame({ event: 'health', success: true, hasPending: true, oldestPendingAgeMs: 90,
+            checkpointSeq: 2, activeBatchEvents: 4 }));
+        feed(streamFrame({ event: 'health', success: false, lastSuccessAgeMs: 100 }));
+        const { metrics, spans, logs } = telemetryTesting.snapshot();
+        assert.deepEqual(spans, []); assert.deepEqual(logs, []);
+        assert(metrics.every(row => row.channel === '' && row.name.startsWith('stream_activity_rust.')));
+        assert.equal(metrics.find(row => row.name.endsWith('.health_query'))?.count, 2);
+        assert.equal(metrics.find(row => row.name.endsWith('.health_query'))?.sum, 1);
+        assert.equal(metrics.find(row => row.name.endsWith('.health_errors'))?.count, 1);
+        assert.equal(metrics.find(row => row.name.endsWith('.health_errors'))?.outcome, 'error');
+        assert.equal(metrics.find(row => row.name.endsWith('.pending_work'))?.count, 1, 'failed probe never fabricates an empty backlog');
+        assert.equal(metrics.find(row => row.name.endsWith('.last_success_age_ms'))?.sum, 100);
+        assert(!metrics.some(row => row.kind === 'lifecycle' || /\.(errors|restarts)$/.test(row.name)));
+        const source = await readFile(new URL('../../../../dima-analytics/src/store.mjs', import.meta.url), 'utf8');
+        assert(source.startsWith("import pg from 'pg';\n"));
+        const moduleUrl = 'data:text/javascript,' + encodeURIComponent(source.replace("import pg from 'pg';", 'const pg = {};'));
+        const { validateBatch } = await import(moduleUrl);
+        assert.doesNotThrow(() => validateBatch({ version: 1, id: '01234567-89ab-cdef-0123-456789abcdef',
+            service: 'cron', instance: 'fixture', metrics, spans, logs }));
+    } finally { telemetryTesting.reset(); telemetryTesting.stop(); }
 });

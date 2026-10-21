@@ -7,37 +7,62 @@ const SAMPLE_INTERVAL_MS = 10000;
 const PROC_LIMIT = 16384;
 const PROGRESS_LIMIT = 1024;
 // Matches the analytics ingestion numeric ceiling. Never forward unbounded child values.
-const RAID_METADATA_MAX = 1e15;
+const NATIVE_METADATA_MAX = 1e15;
 const RAID_PHASES = ['claimMs', 'followQueriesMs', 'followWriteMs', 'period7Ms', 'period30Ms', 'reciprocityMs', 'publishMs', 'releaseMs'] as const;
-const RAID_BATCH_FIELDS = ['event', 'events', 'durationMs', 'success', 'phases'];
-const RAID_HEALTH_FIELDS = ['event', 'success', 'dueChannels', 'oldestDueAgeMs', 'lastSuccessAgeMs'];
+const BASELINE_PHASES = ['queueMs', 'claimMs', 'ledgerMs', 'streamsMs', 'attacksMs', 'publishMs', 'rescheduleMs'] as const;
+const NATIVE_BATCH_FIELDS = ['event', 'events', 'durationMs', 'success', 'phases'];
+const NATIVE_HEALTH_FIELDS = ['event', 'success', 'dueChannels', 'oldestDueAgeMs', 'lastSuccessAgeMs'];
+const STREAM_BATCH_FIELDS = ['event', 'events', 'durationMs', 'success'];
+const STREAM_HEALTH_FIELDS = ['event', 'success', 'hasPending', 'oldestPendingAgeMs', 'checkpointSeq', 'activeBatchEvents', 'lastSuccessAgeMs'];
 type Observer = typeof observe;
 
 const record = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value);
 const onlyFields = (row: Record<string, unknown>, fields: readonly string[]): boolean => Object.keys(row).every(key => fields.includes(key));
-const raidNumber = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= RAID_METADATA_MAX;
+const metadataNumber = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= NATIVE_METADATA_MAX;
 
-function validRaidPhases(value: unknown): value is Partial<Record<typeof RAID_PHASES[number], number>> {
-    return record(value) && onlyFields(value, RAID_PHASES) && Object.values(value).every(raidNumber);
+function validPhases(value: unknown, phases: readonly string[]): value is Record<string, number> {
+    return record(value) && onlyFields(value, phases) && Object.values(value).every(metadataNumber);
 }
 
-function emitRaidHealth(row: Record<string, unknown>, emit: Observer): void {
-    if (!onlyFields(row, RAID_HEALTH_FIELDS) || typeof row.success !== 'boolean') return;
+function emitNativeHealth(row: Record<string, unknown>, emit: Observer, prefix: string): void {
+    if (!onlyFields(row, NATIVE_HEALTH_FIELDS) || typeof row.success !== 'boolean') return;
     // Unknown observations stay absent; a failed query must never fabricate an empty backlog.
     for (const key of ['dueChannels', 'oldestDueAgeMs', 'lastSuccessAgeMs']) {
-        if (row[key] != null && !raidNumber(row[key])) return;
+        if (row[key] != null && !metadataNumber(row[key])) return;
     }
     if (row.dueChannels != null && !Number.isSafeInteger(row.dueChannels)) return;
     if (!row.success && (row.dueChannels != null || row.oldestDueAgeMs != null)) return;
     if (row.dueChannels === 0 && row.oldestDueAgeMs != null) return;
     // One outcome keeps same-bucket mixed probes visible as a fractional/unknown status.
-    emit('worker', 'raid_analytics_rust.health_query', row.success ? 1 : 0, 'ok', '');
-    if (!row.success) emit('worker', 'raid_analytics_rust.health_errors', 1, 'error', '');
+    emit('worker', `${prefix}.health_query`, row.success ? 1 : 0, 'ok', '');
+    if (!row.success) emit('worker', `${prefix}.health_errors`, 1, 'error', '');
     // Gauges are independent observations; health_errors alone counts query errors.
     for (const [field, metric] of [
         ['dueChannels', 'backlog_channels'], ['oldestDueAgeMs', 'oldest_due_age_ms'], ['lastSuccessAgeMs', 'last_success_age_ms'],
     ] as const) {
-        if (raidNumber(row[field])) emit('worker', `raid_analytics_rust.${metric}`, row[field], 'ok', '');
+        if (metadataNumber(row[field])) emit('worker', `${prefix}.${metric}`, row[field], 'ok', '');
+    }
+}
+
+function emitStreamHealth(row: Record<string, unknown>, emit: Observer): void {
+    if (!onlyFields(row, STREAM_HEALTH_FIELDS) || typeof row.success !== 'boolean') return;
+    const gauges = ['oldestPendingAgeMs', 'checkpointSeq', 'activeBatchEvents', 'lastSuccessAgeMs'] as const;
+    for (const key of gauges) if (key in row && !metadataNumber(row[key])) return;
+    for (const key of ['checkpointSeq', 'activeBatchEvents']) {
+        if (key in row && !Number.isSafeInteger(row[key])) return;
+    }
+    if (row.success) {
+        if (typeof row.hasPending !== 'boolean' || (!row.hasPending && 'oldestPendingAgeMs' in row)) return;
+    } else if (['hasPending', 'oldestPendingAgeMs', 'checkpointSeq', 'activeBatchEvents'].some(key => key in row)) return;
+    const prefix = NATIVE_WORKERS['stream-activity'].metricPrefix;
+    emit('worker', `${prefix}.health_query`, row.success ? 1 : 0, 'ok', '');
+    if (!row.success) emit('worker', `${prefix}.health_errors`, 1, 'error', '');
+    if (typeof row.hasPending === 'boolean') emit('worker', `${prefix}.pending_work`, row.hasPending ? 1 : 0, 'ok', '');
+    for (const [field, metric] of [
+        ['oldestPendingAgeMs', 'oldest_pending_age_ms'], ['checkpointSeq', 'checkpoint_seq'],
+        ['activeBatchEvents', 'active_batch_events'], ['lastSuccessAgeMs', 'last_success_age_ms'],
+    ] as const) {
+        if (metadataNumber(row[field])) emit('worker', `${prefix}.${metric}`, row[field], 'ok', '');
     }
 }
 
@@ -190,6 +215,7 @@ export function startNativeWorkerMetrics(pid: number, dependencies: Partial<Samp
 /** Accept only bounded protocol metadata; arbitrary child output is discarded. */
 export function nativeProgressParser(emit: Observer = observe, worker: NativeWorkerName = 'stream-activity'): (chunk: Buffer | string) => void {
     const metadata = NATIVE_WORKERS[worker];
+    const phases = worker === 'raid-analytics' ? RAID_PHASES : worker === 'follow-defense-baseline' ? BASELINE_PHASES : undefined;
     let pending = '', discard = false;
     return chunk => {
         // Iterate without concatenating arbitrary pipe chunks into a large buffer.
@@ -201,14 +227,15 @@ export function nativeProgressParser(emit: Observer = observe, worker: NativeWor
                         const value: unknown = JSON.parse(pending.slice(metadata.protocol.length));
                         if (record(value)) {
                             const row = value;
-                            if (worker === 'raid-analytics') {
-                                if (row.event === 'health') { emitRaidHealth(row, emit); pending = ''; discard = false; continue; }
-                                if (!onlyFields(row, RAID_BATCH_FIELDS) || ('phases' in row && !validRaidPhases(row.phases))) {
+                            if (worker === 'stream-activity') {
+                                if (row.event === 'health') { emitStreamHealth(row, emit); pending = ''; discard = false; continue; }
+                                if (!onlyFields(row, STREAM_BATCH_FIELDS)) { pending = ''; discard = false; continue; }
+                            }
+                            if (phases) {
+                                if (row.event === 'health') { emitNativeHealth(row, emit, metadata.metricPrefix); pending = ''; discard = false; continue; }
+                                if (!onlyFields(row, NATIVE_BATCH_FIELDS) || ('phases' in row && !validPhases(row.phases, phases))) {
                                     pending = ''; discard = false; continue;
                                 }
-                            }
-                            if (worker === 'follow-defense-baseline' && !onlyFields(row, ['event', 'events', 'durationMs', 'success'])) {
-                                pending = ''; discard = false; continue;
                             }
                             if (row.event === 'batch' && typeof row.events === 'number' && Number.isInteger(row.events)
                                 && row.events >= 0 && row.events <= metadata.maxEvents && typeof row.durationMs === 'number'
@@ -217,10 +244,10 @@ export function nativeProgressParser(emit: Observer = observe, worker: NativeWor
                                 const outcome = row.success ? (row.events > 0 ? 'ok' : 'idle') : 'error';
                                 emit('worker', `${metadata.metricPrefix}.${metadata.batchMetric}`, row.events, outcome);
                                 emit('queue_run', `${metadata.metricPrefix}.project_batch`, row.durationMs, outcome);
-                                if (worker === 'raid-analytics' && validRaidPhases(row.phases)) {
-                                    for (const phase of RAID_PHASES) {
+                                if (phases && validPhases(row.phases, phases)) {
+                                    for (const phase of phases) {
                                         const duration = row.phases[phase];
-                                        if (duration !== undefined) emit('queue_run', `raid_analytics_rust.phase.${phase}`, duration, outcome, '');
+                                        if (duration !== undefined) emit('queue_run', `${metadata.metricPrefix}.phase.${phase}`, duration, outcome, '');
                                     }
                                 }
                             }

@@ -93,6 +93,7 @@ interface QueueView {
   wait: Merged | null;
   runs: Array<{ name: string; merged: Merged }>;
   phases: Array<{ name: string; merged: Merged }>;
+  baselinePhases: boolean;
   total: Merged | null;
   waiting: number | null;
   oldestWait: number | null;
@@ -121,7 +122,8 @@ interface ProcessView {
   lag: number | null;
   dropped: number | null;
   at: string;
-  raidHealth?: {
+  refreshHealth?: {
+    kind: 'raid' | 'baseline' | 'stream';
     status: string;
     warning: boolean;
     at: string | null;
@@ -187,7 +189,17 @@ const RAID_PHASE_LABELS: Record<string, string> = {
   period7Ms: '7-day summary', period30Ms: '30-day summary', reciprocityMs: 'Reciprocity',
   publishMs: 'Publish update', releaseMs: 'Release claim',
 };
-const RAID_HEALTH_STALE_MS = 90000;
+const REFRESH_WORKERS = [
+  { key: 'raid_analytics_rust', kind: 'raid' as const, healthLabel: 'Refresh health', lastSuccessLabel: 'Last successful refresh', phases: RAID_PHASE_LABELS },
+  { key: 'follow_defense_baseline_rust', kind: 'baseline' as const, healthLabel: 'Baseline health', lastSuccessLabel: 'Last successful baseline', phases: {
+    queueMs: 'Read due queue', claimMs: 'Claim work', ledgerMs: 'Read follow ledger', streamsMs: 'Read streams',
+    attacksMs: 'Read attacks', publishMs: 'Publish baseline', rescheduleMs: 'Reschedule work',
+  } as Record<string, string> },
+  { key: 'stream_activity_rust', kind: 'stream' as const, healthLabel: 'Activity health', lastSuccessLabel: 'Last successful projection', phases: {} as Record<string, string> },
+];
+const REFRESH_HEALTH_METRICS = ['health_query', 'health_errors', 'backlog_channels', 'oldest_due_age_ms', 'last_success_age_ms',
+  'pending_work', 'oldest_pending_age_ms', 'checkpoint_seq', 'active_batch_events'];
+const REFRESH_HEALTH_STALE_MS = 90000;
 const CALL_PAGE = 30;
 const SLOW_API_MS = 2500;
 const SLOW_WAIT_MS = 300000;
@@ -282,7 +294,7 @@ export class ObservabilityPageComponent implements OnInit {
       chat = 0,
       other = 0;
     for (const row of this.groups()) {
-      if (!row.errors) continue;
+      if (!row.errors || this.isRefreshPhase(row) || this.isRefreshHealth(row)) continue;
       if (row.kind === 'http') api += row.errors;
       else if (row.kind === 'chat') chat += row.errors;
       else if (row.kind !== 'chat_stage' && row.kind !== 'command_body' && row.kind !== 'queue_total') other += row.errors;
@@ -342,7 +354,7 @@ export class ObservabilityPageComponent implements OnInit {
         action: { label: 'See failing calls', tab: 'endpoints', kind: storage[0].kind as CallKind, sort: 'failing' },
       });
     }
-    const jobFails = failing('queue_run').filter((row) => !this.isRaidPhase(row));
+    const jobFails = failing('queue_run').filter((row) => !this.isRefreshPhase(row));
     const jobErrors = jobFails.reduce((sum, g) => sum + g.errors, 0);
     if (jobErrors) {
       items.push({
@@ -448,7 +460,7 @@ export class ObservabilityPageComponent implements OnInit {
   readonly timeSinks = computed(() => {
     const merged = new Map<string, { service: string; kind: string; name: string; rows: Group[] }>();
     for (const row of this.groups()) {
-      if (!['http', 'http_client', 'database', 'cache', 'command', 'queue_run', 'chat'].includes(row.kind) || this.isStream(row) || this.isRaidPhase(row) || !row.count) continue;
+      if (!['http', 'http_client', 'database', 'cache', 'command', 'queue_run', 'chat'].includes(row.kind) || this.isStream(row) || this.isRefreshPhase(row) || !row.count) continue;
       const key = `${row.service}|${row.kind}|${row.name}`;
       const entry = merged.get(key) ?? { service: row.service, kind: row.kind, name: row.name, rows: [] };
       entry.rows.push(row);
@@ -554,8 +566,8 @@ export class ObservabilityPageComponent implements OnInit {
     }
     const list = [...byKey.entries()].map(([key, rows]) => {
       const of = (kind: string) => rows.filter((r) => r.kind === kind);
-      const runNames = this.unique(of('queue_run').filter((r) => !this.isRaidPhase(r)).map((r) => r.name));
-      const phaseNames = this.unique(of('queue_run').filter((r) => this.isRaidPhase(r)).map((r) => r.name));
+      const runNames = this.unique(of('queue_run').filter((r) => !this.isRefreshPhase(r)).map((r) => r.name));
+      const phaseNames = this.unique(of('queue_run').filter((r) => this.isRefreshPhase(r)).map((r) => r.name));
       const gauge = (suffix: string) => {
         const latest = of('queue')
           .filter((r) => r.name.endsWith(suffix))
@@ -571,7 +583,8 @@ export class ObservabilityPageComponent implements OnInit {
         label: this.queueLabel(key),
         wait,
         runs,
-        phases: phaseNames.map((name) => ({ name: RAID_PHASE_LABELS[name.slice('raid_analytics_rust.phase.'.length)], merged: this.merge(of('queue_run').filter((r) => r.name === name)) })),
+        phases: phaseNames.map((name) => ({ name: this.phaseLabel(name)!, merged: this.merge(of('queue_run').filter((r) => r.name === name)) })),
+        baselinePhases: key === 'follow_defense_baseline_rust',
         total,
         waiting: gauge('.waiting'),
         oldestWait: gauge('.oldest_wait_ms'),
@@ -618,35 +631,48 @@ export class ObservabilityPageComponent implements OnInit {
       if (metric === 'telemetry_dropped') view.dropped = (row.average ?? 0) * row.count;
       byKey.set(key, view);
     }
-    const healthRows = this.groups().filter((row) => row.service === 'cron' && row.kind === 'worker' && row.channel === ''
-      && ['health_query', 'backlog_channels', 'oldest_due_age_ms', 'last_success_age_ms'].some((metric) => row.name === `raid_analytics_rust.${metric}`));
-    const key = 'cron|raid_analytics_rust';
-    if (byKey.has(key) || healthRows.length) {
-      const view: ProcessView = byKey.get(key) ?? { key, label: this.processLabel('cron', 'raid_analytics_rust'), service: 'cron', rss: null, heap: null, cpu: null, lag: null, dropped: null, at: '' };
-      const latest = (metric: string) => healthRows.filter((row) => row.name === `raid_analytics_rust.${metric}`).sort((a, b) => Date.parse(b.lastAt) - Date.parse(a.lastAt))[0];
+    for (const worker of REFRESH_WORKERS) {
+      const healthRows = this.groups().filter((row) => row.service === 'cron' && row.kind === 'worker' && row.channel === ''
+        && REFRESH_HEALTH_METRICS.some((metric) => row.name === `${worker.key}.${metric}`));
+      const key = `cron|${worker.key}`;
+      if (!byKey.has(key) && !healthRows.length) continue;
+      const view: ProcessView = byKey.get(key) ?? { key, label: this.processLabel('cron', worker.key), service: 'cron', rss: null, heap: null, cpu: null, lag: null, dropped: null, at: '' };
+      const latest = (metric: string) => healthRows.filter((row) => row.name === `${worker.key}.${metric}`).sort((a, b) => Date.parse(b.lastAt) - Date.parse(a.lastAt))[0];
       const check = latest('health_query');
       const fresh = (row: Group | undefined) => !!row && Number.isFinite(Date.parse(row.lastAt))
-        && Date.now() - Date.parse(row.lastAt) <= RAID_HEALTH_STALE_MS && Date.parse(row.lastAt) <= Date.now() + 10000;
+        && Date.now() - Date.parse(row.lastAt) <= REFRESH_HEALTH_STALE_MS && Date.parse(row.lastAt) <= Date.now() + 10000;
       const failed = check?.lastValue === 0;
       const succeeded = check?.lastValue === 1;
-      const backlog = latest('backlog_channels');
-      const currentBacklog = fresh(check) && succeeded && fresh(backlog) && backlog!.lastAt === check!.lastAt;
-      view.raidHealth = {
-        status: !check ? 'Refresh health unknown' : !fresh(check) ? 'Refresh health is stale'
+      const valid = (row: Group | undefined) => !!row && Number.isFinite(row.lastValue) && row.lastValue >= 0;
+      const stream = worker.kind === 'stream';
+      const backlog = latest(stream ? 'pending_work' : 'backlog_channels');
+      const currentBacklog = fresh(check) && succeeded && fresh(backlog) && valid(backlog) && backlog!.lastAt === check!.lastAt
+        && (!stream || backlog!.lastValue === 0 || backlog!.lastValue === 1);
+      const facts = stream ? [
+        ['pending_work', 'Pending activity'], ['oldest_pending_age_ms', 'Oldest pending'],
+        ['checkpoint_seq', 'Checkpoint sequence'], ['active_batch_events', 'Active batch events'], ['last_success_age_ms', worker.lastSuccessLabel],
+      ] : [
+        ['backlog_channels', 'Pending channels'], ['oldest_due_age_ms', 'Oldest overdue'], ['last_success_age_ms', worker.lastSuccessLabel],
+      ];
+      view.refreshHealth = {
+        kind: worker.kind,
+        status: stream ? (!check ? 'Health unknown' : !fresh(check) ? 'Health unknown — activity check is stale'
+          : failed ? 'Health unknown — activity check failed' : !succeeded ? 'Health unknown — mixed query results'
+          : !currentBacklog ? 'Health unknown — pending activity is unknown' : backlog!.lastValue === 0 ? 'No activity pending' : 'Activity waiting')
+          : !check ? `${worker.healthLabel} unknown` : !fresh(check) ? `${worker.healthLabel} is stale`
           : failed ? 'Backlog check failed — pending work is unknown'
-          : !succeeded ? 'Refresh health is uncertain — mixed query results'
+          : !succeeded ? `${worker.healthLabel} is uncertain — mixed query results`
           : !currentBacklog ? 'Pending work is unknown' : backlog!.lastValue === 0 ? 'No channels are due for refresh' : 'Channels are waiting for refresh',
         warning: !fresh(check) || !succeeded || !currentBacklog,
         at: check?.lastAt ?? null,
-        facts: [
-          ['backlog_channels', 'Pending channels'], ['oldest_due_age_ms', 'Oldest overdue'], ['last_success_age_ms', 'Last successful refresh'],
-        ].map(([metric, label]) => {
+        facts: facts.map(([metric, label]) => {
           const row = latest(metric);
           const current = fresh(row) && fresh(check) && row!.lastAt === check!.lastAt;
-          const valid = !!row && Number.isFinite(row.lastValue) && row.lastValue >= 0;
-          const available = valid && current && (succeeded || (metric === 'last_success_age_ms' && failed));
-          const empty = metric === 'oldest_due_age_ms' && currentBacklog && backlog!.lastValue === 0;
-          return { label, value: empty ? 'None pending' : !available ? 'Unknown' : metric === 'backlog_channels' ? `${row!.count > 1 ? '≈ ' : ''}${this.num(row!.lastValue)}` : metric === 'last_success_age_ms' ? `${this.ms(row!.lastValue)} ago at sample` : this.ms(row!.lastValue),
+          const available = valid(row) && current && (succeeded || (metric === 'last_success_age_ms' && failed))
+            && (metric !== 'pending_work' || currentBacklog);
+          const empty = ['oldest_due_age_ms', 'oldest_pending_age_ms'].includes(metric) && currentBacklog && backlog!.lastValue === 0;
+          return { label, value: empty ? 'None pending' : !available ? 'Unknown' : metric === 'pending_work' ? (row!.lastValue === 1 ? 'Yes' : 'None pending')
+            : ['backlog_channels', 'checkpoint_seq', 'active_batch_events'].includes(metric) ? `${row!.count > 1 ? '≈ ' : ''}${this.num(row!.lastValue)}` : metric === 'last_success_age_ms' ? `${this.ms(row!.lastValue)} ago at sample` : this.ms(row!.lastValue),
             at: empty ? check!.lastAt : row?.lastAt ?? null, stale: !!row && !current && !empty };
         }),
       };
@@ -1060,16 +1086,27 @@ export class ObservabilityPageComponent implements OnInit {
   queueKey(name: string): string {
     return name.split('.')[0];
   }
-  private isRaidPhase(row: Group): boolean {
-    return row.service === 'cron' && row.kind === 'queue_run' && row.name.startsWith('raid_analytics_rust.phase.')
-      && Object.hasOwn(RAID_PHASE_LABELS, row.name.slice('raid_analytics_rust.phase.'.length));
+  private isRefreshPhase(row: Group): boolean {
+    return row.service === 'cron' && row.kind === 'queue_run' && !!this.phaseLabel(row.name);
+  }
+  private isRefreshHealth(row: Group): boolean {
+    return row.service === 'cron' && row.kind === 'worker' && REFRESH_WORKERS.some((worker) =>
+      REFRESH_HEALTH_METRICS.some((metric) => row.name === `${worker.key}.${metric}`));
+  }
+  private phaseLabel(name: string): string | undefined {
+    const worker = REFRESH_WORKERS.find((worker) => name.startsWith(`${worker.key}.phase.`));
+    if (!worker) return undefined;
+    const phase = name.slice(`${worker.key}.phase.`.length);
+    return Object.hasOwn(worker.phases, phase) ? worker.phases[phase] : undefined;
   }
   queueLabel(key: string): string {
     if (key === 'tts') return 'Text to speech';
+    if (key === 'follow_defense_baseline_rust') return 'Follow defense baseline';
     const text = key.replace(/-v\d+$/, '').replace(/[-_]+/g, ' ');
     return text.charAt(0).toUpperCase() + text.slice(1);
   }
   private processLabel(service: string, proc: string): string {
+    if (proc === 'follow_defense_baseline_rust') return 'Follow defense baseline worker';
     if (proc === 'index') return { api: 'API server', bot: 'Chat bot', cron: 'Workers host' }[service] ?? `${this.serviceLabel(service)} process`;
     const text = proc.replace(/\.worker$/, '').replace(/[-_.]+/g, ' ');
     return `${text.charAt(0).toUpperCase()}${text.slice(1)} worker`;

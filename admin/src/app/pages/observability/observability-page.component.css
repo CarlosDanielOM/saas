@@ -639,7 +639,8 @@ summary:focus-visible,
   font-size: 0.68rem;
   font-weight: 650;
 }
-.obs-raid-health {
+.obs-raid-health,
+.obs-stream-health {
   grid-column: 1 / -1;
   display: grid;
   gap: 0.65rem;

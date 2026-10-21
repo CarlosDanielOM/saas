@@ -8,12 +8,72 @@ use std::{
 
 use dima_rust::{
     utils::mongo::get_mongo_client,
-    workers::follow_defense_baseline::FollowDefenseBaselineProjector,
+    workers::follow_defense_baseline::{
+        BacklogHealth, FollowDefenseBaselineProjector, MAX_METRIC_VALUE, PhaseTimings,
+        backlog_health,
+    },
 };
+use mongodb::bson::DateTime;
 use tokio::sync::watch;
 
-const HELP: &str = "Usage: follow_defense_baseline [--dry-run] [--once] [--telemetry-json] [--database NAME] [--env-file PATH]...\n\nRefreshes one due follow-defense baseline per second. MongoDB aggregates are read-only.\nUses the existing Redis due queue and seven-day baseline cache.\nNo automatic .env loading. MONGO_URI must name a database, or supply --database.\nExisting environment wins; explicit environment files load before runtime threads.\nFailed ticks retain the retry receipt and continue; --once reports failure with a nonzero exit.\nA 30-second hung-tick watchdog exits nonzero for supervisor recovery.";
+const HELP: &str = "Usage: follow_defense_baseline [--dry-run] [--once] [--telemetry-json] [--database NAME] [--env-file PATH]...\n\nRefreshes one due follow-defense baseline per tick; drains sequential bursts of eight. MongoDB aggregates are read-only.\nUses the existing Redis due queue and seven-day baseline cache.\nNo automatic .env loading. MONGO_URI must name a database, or supply --database.\nExisting environment wins; explicit environment files load before runtime threads.\nFailed ticks retain the retry receipt and continue; --once reports failure with a nonzero exit.\nIdle polling backs off from 1s to 5s; each eight successful channels has a 1s cooldown.\nA 30-second hung-tick watchdog exits nonzero for supervisor recovery.";
 const WATCHDOG: Duration = Duration::from_secs(30);
+const HEALTH_INTERVAL: Duration = Duration::from_secs(30);
+const HEALTH_TIMEOUT: Duration = Duration::from_secs(2);
+
+fn metric_elapsed_ms(started: Instant) -> f64 {
+    (started.elapsed().as_secs_f64() * 1000.0).min(MAX_METRIC_VALUE as f64)
+}
+
+/// One tick at a time. Work drains immediately until a bounded burst completes;
+/// empty queues and ordinary errors reset the burst independently of health.
+struct Scheduler {
+    idle_seconds: u64,
+    burst_successes: usize,
+}
+
+impl Default for Scheduler {
+    fn default() -> Self {
+        Self {
+            idle_seconds: 1,
+            burst_successes: 0,
+        }
+    }
+}
+
+impl Scheduler {
+    fn after_tick(&mut self, result: &Result<usize, &'static str>) -> Option<Duration> {
+        match result {
+            Ok(count) if *count > 0 => {
+                self.idle_seconds = 1;
+                self.burst_successes += 1;
+                if self.burst_successes == 8 {
+                    self.burst_successes = 0;
+                    Some(Duration::from_secs(1))
+                } else {
+                    None
+                }
+            }
+            Ok(_) => {
+                self.burst_successes = 0;
+                let wait = Duration::from_secs(self.idle_seconds);
+                self.idle_seconds = (self.idle_seconds * 2).min(5);
+                Some(wait)
+            }
+            Err(_) => {
+                self.idle_seconds = 1;
+                self.burst_successes = 0;
+                Some(Duration::from_secs(1))
+            }
+        }
+    }
+}
+
+async fn wait_or_stop(wait: Duration, stopped: &mut watch::Receiver<bool>) {
+    if !*stopped.borrow() {
+        tokio::select! { _ = tokio::time::sleep(wait) => {}, _ = stopped.changed() => {} }
+    }
+}
 
 #[derive(Default)]
 struct Args {
@@ -55,14 +115,32 @@ impl Args {
     }
 }
 
-fn batch_telemetry(result: &Result<usize, &'static str>, duration_ms: f64) -> String {
+fn batch_telemetry(
+    result: &Result<usize, &'static str>,
+    duration_ms: f64,
+    phases: &PhaseTimings,
+) -> String {
     format!(
         "follow_defense_baseline:{}",
         serde_json::json!({
             "event": "batch", "events": result.as_ref().copied().unwrap_or(0).min(1),
-            "durationMs": duration_ms, "success": result.is_ok()
+            "durationMs": duration_ms, "success": result.is_ok(), "phases": phases
         })
     )
+}
+
+fn health_telemetry(health: Option<&BacklogHealth>, last_success_age_ms: Option<f64>) -> String {
+    let mut metadata = serde_json::json!({ "event": "health", "success": health.is_some() });
+    if let Some(health) = health {
+        metadata["dueChannels"] = health.due_channels.into();
+        if let Some(age) = health.oldest_due_age_ms {
+            metadata["oldestDueAgeMs"] = age.into();
+        }
+    }
+    if let Some(age) = last_success_age_ms {
+        metadata["lastSuccessAgeMs"] = age.into();
+    }
+    format!("follow_defense_baseline:{metadata}")
 }
 
 fn main() -> ExitCode {
@@ -111,7 +189,10 @@ fn main() -> ExitCode {
     }
 }
 
-async fn tick(database_name: Option<&str>) -> Result<usize, &'static str> {
+async fn tick(
+    database_name: Option<&str>,
+    phases: &mut PhaseTimings,
+) -> Result<usize, &'static str> {
     // Retryable client initialization is part of the tick/watchdog too, so a
     // transient connection failure does not permanently kill the normal loop.
     let client = get_mongo_client()
@@ -124,7 +205,7 @@ async fn tick(database_name: Option<&str>) -> Result<usize, &'static str> {
             .ok_or("Select a database using --database or MONGO_URI")?,
     };
     FollowDefenseBaselineProjector::new(database)
-        .project_once()
+        .project_once_with_phases(phases)
         .await
 }
 
@@ -150,26 +231,67 @@ async fn run(args: Args) -> Result<(), &'static str> {
         let _ = stopping.send(true);
     });
     let result = async {
+        let mut scheduler = Scheduler::default();
+        // Unknown on startup until one non-idle tick fully succeeds. Monotonic
+        // time prevents host clock changes from corrupting last-success age.
+        let mut last_success: Option<Instant> = None;
+        let mut last_health: Option<Instant> = None;
         while !*stopped.borrow() {
+            if args.telemetry_json && last_health.is_none_or(|at| at.elapsed() >= HEALTH_INTERVAL) {
+                // Only Redis reads, before the first tick and between later
+                // ticks. Failure/timeout cannot fail projection or invent zeros.
+                let health = tokio::time::timeout(HEALTH_TIMEOUT, backlog_health(DateTime::now()))
+                    .await
+                    .ok()
+                    .and_then(Result::ok);
+                last_health = Some(Instant::now());
+                let _ = writeln!(
+                    std::io::stdout().lock(),
+                    "{}",
+                    health_telemetry(health.as_ref(), last_success.map(metric_elapsed_ms))
+                );
+                if *stopped.borrow() {
+                    break;
+                }
+            }
             let started = Instant::now();
-            // Signals only stop subsequent ticks; active work drains, bounded
-            // by the same watchdog as the original TypeScript worker.
-            let attempt = tokio::time::timeout(WATCHDOG, tick(args.database.as_deref())).await;
+            // Keep completed observations outside the cancellable watchdog
+            // future. Signals drain active work before stopping subsequent ticks.
+            let mut phases = PhaseTimings::default();
+            let attempt =
+                tokio::time::timeout(WATCHDOG, tick(args.database.as_deref(), &mut phases)).await;
             let hung = attempt.is_err();
             let result = attempt.unwrap_or(Err("Baseline tick exceeded 30-second watchdog"));
-            if args.telemetry_json {
-                let duration_ms = (started.elapsed().as_secs_f64() * 1000.0).min(1_000_000_000_000_000.0);
-                // A telemetry write failure cannot fail a successful refresh.
-                let _ = writeln!(std::io::stdout().lock(), "{}", batch_telemetry(&result, duration_ms));
+            if matches!(&result, Ok(count) if *count > 0) {
+                last_success = Some(Instant::now());
             }
-            if hung { return Err("Baseline tick exceeded 30-second watchdog"); }
-            if args.once { return result.map(|_| ()); }
-            if let Err(message) = result { eprintln!("follow_defense_baseline_rust: {message}"); }
-            if *stopped.borrow() { break; }
-            tokio::select! { _ = tokio::time::sleep(Duration::from_secs(1)) => {}, _ = stopped.changed() => {} }
+            if args.telemetry_json {
+                // A telemetry write failure cannot fail a successful refresh.
+                let _ = writeln!(
+                    std::io::stdout().lock(),
+                    "{}",
+                    batch_telemetry(&result, metric_elapsed_ms(started), &phases)
+                );
+            }
+            if hung {
+                return Err("Baseline tick exceeded 30-second watchdog");
+            }
+            if args.once {
+                return result.map(|_| ());
+            }
+            if let Err(message) = result {
+                eprintln!("follow_defense_baseline_rust: {message}");
+            }
+            if *stopped.borrow() {
+                break;
+            }
+            if let Some(wait) = scheduler.after_tick(&result) {
+                wait_or_stop(wait, &mut stopped).await;
+            }
         }
         Ok(())
-    }.await;
+    }
+    .await;
     signal_task.abort();
     let _ = signal_task.await;
     result
@@ -178,6 +300,110 @@ async fn run(args: Args) -> Result<(), &'static str> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn scheduler_backs_off_and_resets_after_work_or_errors() {
+        let mut scheduler = Scheduler::default();
+        for seconds in [1, 2, 4, 5, 5] {
+            assert_eq!(
+                scheduler.after_tick(&Ok(0)),
+                Some(Duration::from_secs(seconds))
+            );
+        }
+        assert_eq!(scheduler.after_tick(&Ok(1)), None);
+        assert_eq!(scheduler.after_tick(&Ok(0)), Some(Duration::from_secs(1)));
+        assert_eq!(scheduler.after_tick(&Ok(0)), Some(Duration::from_secs(2)));
+        assert_eq!(
+            scheduler.after_tick(&Err("Redis failed")),
+            Some(Duration::from_secs(1))
+        );
+        assert_eq!(scheduler.after_tick(&Ok(0)), Some(Duration::from_secs(1)));
+    }
+
+    #[test]
+    fn scheduler_drains_eight_sequential_successes_before_cooldown() {
+        let mut scheduler = Scheduler::default();
+        for _ in 0..2 {
+            for _ in 0..7 {
+                assert_eq!(scheduler.after_tick(&Ok(1)), None);
+            }
+            assert_eq!(scheduler.after_tick(&Ok(1)), Some(Duration::from_secs(1)));
+        }
+        for _ in 0..7 {
+            assert_eq!(scheduler.after_tick(&Ok(1)), None);
+        }
+        assert_eq!(
+            scheduler.after_tick(&Err("query failed")),
+            Some(Duration::from_secs(1))
+        );
+        // Error resets the partial burst, so the next tick starts at one.
+        assert_eq!(scheduler.after_tick(&Ok(1)), None);
+        assert_eq!(scheduler.burst_successes, 1);
+        assert_eq!(scheduler.after_tick(&Ok(0)), Some(Duration::from_secs(1)));
+        assert_eq!(scheduler.burst_successes, 0);
+    }
+
+    #[tokio::test]
+    async fn shutdown_interrupts_idle_and_cooldown_waits() {
+        for wait in [Duration::from_secs(5), Duration::from_secs(1)] {
+            let (stopping, mut stopped) = watch::channel(false);
+            let signal = tokio::spawn(async move {
+                let _ = stopping.send(true);
+            });
+            assert!(
+                tokio::time::timeout(Duration::from_millis(100), wait_or_stop(wait, &mut stopped))
+                    .await
+                    .is_ok()
+            );
+            signal.await.unwrap();
+            assert!(*stopped.borrow());
+            // A signal already observed must also bypass the next wait.
+            assert!(
+                tokio::time::timeout(Duration::from_millis(100), wait_or_stop(wait, &mut stopped))
+                    .await
+                    .is_ok()
+            );
+        }
+    }
+
+    #[test]
+    fn health_frames_distinguish_unknown_empty_failed_and_known_success() {
+        for (health, last_success, expected) in [
+            (
+                None,
+                None,
+                serde_json::json!({ "event": "health", "success": false }),
+            ),
+            (
+                None,
+                Some(123.0),
+                serde_json::json!({ "event": "health", "success": false, "lastSuccessAgeMs": 123.0 }),
+            ),
+            (
+                Some(BacklogHealth {
+                    due_channels: 0,
+                    oldest_due_age_ms: None,
+                }),
+                None,
+                serde_json::json!({ "event": "health", "success": true, "dueChannels": 0 }),
+            ),
+            (
+                Some(BacklogHealth {
+                    due_channels: 3,
+                    oldest_due_age_ms: Some(456.5),
+                }),
+                Some(12.0),
+                serde_json::json!({ "event": "health", "success": true, "dueChannels": 3, "oldestDueAgeMs": 456.5, "lastSuccessAgeMs": 12.0 }),
+            ),
+        ] {
+            let line = health_telemetry(health.as_ref(), last_success);
+            assert!(line.len() < 1024);
+            let actual: serde_json::Value =
+                serde_json::from_str(line.strip_prefix("follow_defense_baseline:").unwrap())
+                    .unwrap();
+            assert_eq!(actual, expected);
+        }
+    }
 
     #[test]
     fn arguments_require_explicit_environment_and_accept_supervisor_flags() {
@@ -220,13 +446,17 @@ mod tests {
             (Ok(usize::MAX), 1, true),
             (Err("query failed"), 0, false),
         ] {
-            let line = batch_telemetry(&result, 12.5);
+            let phases = PhaseTimings {
+                queue_ms: Some(0.5),
+                ..PhaseTimings::default()
+            };
+            let line = batch_telemetry(&result, 12.5, &phases);
             let payload: serde_json::Value =
                 serde_json::from_str(line.strip_prefix("follow_defense_baseline:").unwrap())
                     .unwrap();
             assert_eq!(
                 payload,
-                serde_json::json!({ "event": "batch", "events": events, "durationMs": 12.5, "success": success })
+                serde_json::json!({ "event": "batch", "events": events, "durationMs": 12.5, "success": success, "phases": { "queueMs": 0.5 } })
             );
             assert!(line.len() < 256);
         }

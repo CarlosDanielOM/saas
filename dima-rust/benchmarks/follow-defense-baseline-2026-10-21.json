@@ -1,0 +1,109 @@
+{
+  "date": "2026-10-21",
+  "purpose": "Evidence summary for the follow-defense baseline scheduler and health release. This is not a comparative performance benchmark.",
+  "release": {
+    "cron_run": "cron-240af282cb85",
+    "image_sha256": "9208e3d8e0a12b47ae793598fb1dac53e7f70cab0ab4c338097e3fbc5981f0ac",
+    "admin_run": "admin-0fca439bcb95",
+    "admin_artifact_sha256": "4714c791fe7161baeabcc0bc4edee9f6169c86b7df5999973109152185226867",
+    "rollback_cron_run": "cron-443184ebb89e",
+    "rollback_image_sha256": "0b47480982664770a9a4a541b98ad4e746a50f38f2e55400c9124fa107d8afe8"
+  },
+  "compiler": {
+    "rust_build_seconds": 176.782,
+    "cpu_limit": 6,
+    "memory_gib": 4,
+    "swap": "disabled",
+    "pids_limit": 256,
+    "cargo_jobs": 2,
+    "cache_hit": true,
+    "cache_key_prefix": "7d05fe536973",
+    "comparison_claim": "No controlled comparison against the prior 6 GiB build; no build-speedup claim."
+  },
+  "baseline_fixture": {
+    "passed_groups": 11,
+    "synthetic_due_channels": 24,
+    "drain_ms": 4022,
+    "burst_success_limit": 8,
+    "cooldown_ms": 1000,
+    "idle_backoff_seconds": [1, 2, 4, 5],
+    "fixture_scope": "burst-* channels had no matching Mongo history",
+    "interpretation": "Synthetic scheduler fixture timing, not representative full production load or a throughput comparison.",
+    "prior_typescript_wait": "The source-imposed 23-second wait was not measured as TypeScript throughput."
+  },
+  "production_watch": {
+    "started_at": "2026-10-21T05:18:31.313Z",
+    "ended_at": "2026-10-21T05:21:41.314Z",
+    "duration_seconds": 190.001,
+    "samples": 20,
+    "result": "passed",
+    "baseline_natural_refreshes": [
+      "2026-10-21T05:20:32.954Z",
+      "2026-10-21T05:21:14.976Z"
+    ],
+    "baseline_final_cache": {
+      "valid": 29,
+      "expected": 29,
+      "due": 0,
+      "null_thresholds": 8,
+      "configured_ttl_seconds": 604800,
+      "observed_ttl_seconds": [604678, 604720],
+      "ttl_observation_note": "Observed TTL is configured seven-day TTL minus elapsed age; second-level variation is expected.",
+      "refresh_score_delta_ms": [3600004, 3600018],
+      "json_fields_validated": 7
+    },
+    "worker_samples": {
+      "baseline": {
+        "rss_mean_bytes": 6802841.6,
+        "rss_min_bytes": 6664192,
+        "rss_max_bytes": 7086080,
+        "cpu_tick_delta": 7,
+        "cpu_cores_observed": 0.0003684
+      },
+      "stream": {
+        "rss_mean_bytes": 7465779.2,
+        "rss_min_bytes": 7454720,
+        "rss_max_bytes": 7475200,
+        "cpu_tick_delta": 22,
+        "cpu_cores_observed": 0.0011579,
+        "checkpoint_start": 30998,
+        "checkpoint_end": 31011,
+        "active_batches_at_sampled_instants": 0
+      },
+      "raid": {
+        "rss_mean_bytes": 7832371.2,
+        "rss_min_bytes": 7806976,
+        "rss_max_bytes": 7876608,
+        "cpu_tick_delta": 109,
+        "cpu_cores_observed": 0.0057368,
+        "summary_errors": 0
+      }
+    },
+    "health": {
+      "native_errors": 0,
+      "native_restarts": 0,
+      "health_errors": 0,
+      "baseline_health_queries_fresh": true,
+      "stream_pending_work": 0,
+      "stream_checkpoint_and_active_gauges_fresh": true,
+      "baseline_phase_metrics_observed": 7
+    },
+    "process_identity": {
+      "baseline_pid_and_start_ticks_stable_all_samples": true,
+      "native_child_uid": 65534,
+      "typescript_workers": 36,
+      "legacy_typescript_baseline_workers": 0,
+      "cron_restart_count": 0
+    },
+    "container_scope": {
+      "cron_replaced": true,
+      "other_container_count": 16,
+      "other_container_ids_images_and_start_times_unchanged": true,
+      "admin_assets_match_verified_bundle": true,
+      "observability_fallback_passed": true,
+      "cleanup_completed": true,
+      "rollback_artifacts_preserved": true
+    },
+    "qualification": "Short, quiet production observation only. RSS and CPU samples are not peak or steady-state measurements; CPU has no matched TypeScript comparison and supports no throughput or resource-reduction claim."
+  }
+}

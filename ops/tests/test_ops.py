@@ -430,6 +430,22 @@ class OpsTests(unittest.TestCase):
         self.assertNotIn("--network=host", args)
         self.assertFalse(any("docker.sock" in arg or ".env" in arg for arg in args))
 
+    def test_lower_memory_compiler_retains_other_caps_and_disables_swap(self):
+        cache = {"cargo": "/private/cargo", "target": "/private/target"}
+        args = self.ops.rust_container_args(self.path, {**self.receipt, "rust_memory_gib": 4}, NEW, cache)
+        for option in ("--cpus=6", "--memory=4g", "--memory-swap=4g", "--pids-limit=256", "--env=CARGO_BUILD_JOBS=2"):
+            self.assertIn(option, args)
+
+    def test_invalid_memory_caps_are_rejected_in_api_and_receipts(self):
+        for value in (0, 3, 5, 8, True, False, 4.0, 6.0, "4", "6", None):
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(mod.OpsError, "4 or 6 GiB"):
+                    self.ops.rust_headroom(memory_gib=value)
+                with self.assertRaisesRegex(mod.OpsError, "4 or 6 GiB"):
+                    self.ops.rust_container_args(self.path, {**self.receipt, "rust_memory_gib": value}, NEW, {})
+                with self.assertRaisesRegex(mod.OpsError, "4 or 6 GiB"):
+                    self.ops.build_rust(self.path, {**self.receipt, "rust_memory_gib": value})
+
     def test_rust_release_cache_hygiene_runs_before_recipe_and_fails_closed(self):
         # Execute only tiny mocked commands: no host Cargo/toolchain is invoked.
         commands = self.root.parent / "fake-toolchain"
@@ -661,10 +677,45 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
             engine.assert_not_called()
         with patch.object(mod, "Ops") as engine:
             mod.main(["build", "cron", "--rust-feature-matrix"])
-            engine.return_value.build.assert_called_once_with("cron", None, rust_feature_matrix=True)
+            engine.return_value.build.assert_called_once_with("cron", None, rust_feature_matrix=True, rust_memory_gib=None)
         with patch.object(mod, "Ops") as engine:
             mod.main(["build", "cron"])
-            engine.return_value.build.assert_called_once_with("cron", None, rust_feature_matrix=False)
+            engine.return_value.build.assert_called_once_with("cron", None, rust_feature_matrix=False, rust_memory_gib=None)
+
+    def test_rust_memory_option_is_explicit_validated_and_only_available_for_cron(self):
+        for target in mod.TARGETS:
+            if target == "cron":
+                continue
+            for memory_gib in (4, 6):
+                with contextlib.redirect_stderr(io.StringIO()), patch.object(mod, "Ops") as engine, self.assertRaises(SystemExit):
+                    mod.main(["build", target, "--rust-memory-gib", str(memory_gib)])
+                engine.assert_not_called()
+                with patch.object(self.ops, "baseline") as baseline, self.assertRaisesRegex(mod.OpsError, "only supported for cron"):
+                    self.ops.build(target, rust_memory_gib=memory_gib)
+                baseline.assert_not_called()
+        for value in ("3", "5", "8", "4.0", "true"):
+            with contextlib.redirect_stderr(io.StringIO()), patch.object(mod, "Ops") as engine, self.assertRaises(SystemExit):
+                mod.main(["build", "cron", "--rust-memory-gib", value])
+            engine.assert_not_called()
+        for memory_gib in (4, 6):
+            with patch.object(mod, "Ops") as engine:
+                mod.main(["build", "cron", "--rust-memory-gib", str(memory_gib)])
+                engine.return_value.build.assert_called_once_with("cron", None, rust_feature_matrix=False, rust_memory_gib=memory_gib)
+
+    def test_cron_build_persists_memory_option_before_compiling(self):
+        def snapshot(target, destination, source_dir):
+            destination.mkdir()
+        def compile_rust(path, receipt, source_dir, **kwargs):
+            self.assertEqual(receipt["rust_memory_gib"], 4)
+            self.assertEqual(json.loads((path / "receipt.json").read_text())["rust_memory_gib"], 4)
+        with patch.object(self.ops, "baseline", return_value=(self.ops.current, {}, "hash", "digest")), \
+             patch.object(self.ops, "snapshot", side_effect=snapshot), \
+             patch.object(self.ops, "build_rust", side_effect=compile_rust), \
+             patch.object(self.ops, "inspect", return_value={"Id": NEW}), contextlib.redirect_stdout(io.StringIO()):
+            self.ops.build("cron", rust_memory_gib=4)
+        receipts = list(self.ops.state.glob("cron-*/receipt.json"))
+        self.assertEqual(len(receipts), 1)
+        self.assertEqual(json.loads(receipts[0].read_text())["rust_memory_gib"], 4)
 
     def test_cron_plan_exposes_worker_features_cache_caps_and_optional_matrix_without_writes(self):
         output = io.StringIO()
@@ -682,6 +733,7 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
         self.assertEqual(details["jobs"], 2)
         self.assertEqual(details["cpus"], 6)
         self.assertEqual(details["memory_bytes"], 6 * mod.GIB)
+        self.assertEqual(details["optional_lower_memory"], "build cron --rust-memory-gib 4")
         self.assertEqual(details["optional_feature_matrix"], "build cron --rust-feature-matrix")
 
     def test_rust_build_refuses_orphaned_compiler_before_copying_source(self):
@@ -705,6 +757,21 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
                             details = self.ops.rust_headroom(starting=starting)
                             self.assertEqual(details["mem_available_bytes"], available_kib * 1024)
 
+    def test_lower_memory_rust_headroom_requires_12_gib_at_start_and_8_gib_while_running(self):
+        for starting, minimum_gib in ((True, 12), (False, 8)):
+            for offset_kib in (-1, 0, 1):
+                with self.subTest(starting=starting, offset_kib=offset_kib):
+                    available_kib = minimum_gib * 1024 ** 2 + offset_kib
+                    with patch.object(Path, "read_text", return_value=f"MemAvailable: {available_kib} kB\n"), \
+                         patch.object(mod.os, "getloadavg", return_value=(0, 0, 0)), \
+                         patch.object(mod.shutil, "disk_usage", return_value=type("Disk", (), {"free": 10 * mod.GIB})()):
+                        if offset_kib < 0:
+                            with self.assertRaisesRegex(mod.OpsError, "memory headroom"):
+                                self.ops.rust_headroom(starting=starting, memory_gib=4)
+                        else:
+                            details = self.ops.rust_headroom(starting=starting, memory_gib=4)
+                            self.assertEqual(details["mem_available_bytes"], available_kib * 1024)
+
     def test_rust_headroom_refuses_host_load_and_disk_pressure(self):
         with patch.object(Path, "read_text", return_value="MemAvailable: 16777216 kB\n"), \
              patch.object(mod.os, "getloadavg", return_value=(1000, 0, 0)), self.assertRaisesRegex(mod.OpsError, "host load"):
@@ -716,7 +783,7 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
             self.ops.rust_headroom()
 
     def simulated_rust_build(self, *, exit_code=0, applied_limits=None, raid_artifact="valid", baseline_artifact="valid",
-                             mongo_extra="", baseline_extra="", cache_bytes=0):
+                             mongo_extra="", baseline_extra="", cache_bytes=0, memory_gib=6):
         self.rust_source()
         (self.path / "source").mkdir()
         self.ops.objects[("image", mod.RUST_BUILD_IMAGE)] = {"Id": NEW}
@@ -726,8 +793,8 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
             if args[0] == "create":
                 self.ops.objects[("container", name)] = {
                     "Id": "compiler-id", "Config": {"Labels": self.labels()},
-                    "HostConfig": {"NanoCpus": 6_000_000_000, "Memory": 6 * mod.GIB,
-                                   "MemorySwap": 6 * mod.GIB, "PidsLimit": 256, **(applied_limits or {})},
+                    "HostConfig": {"NanoCpus": 6_000_000_000, "Memory": memory_gib * mod.GIB,
+                                   "MemorySwap": memory_gib * mod.GIB, "PidsLimit": 256, **(applied_limits or {})},
                     "State": {"Running": False, "ExitCode": exit_code}}
             elif args[0] == "start":
                 (self.path / "rust-artifacts/worker-dependencies.txt").write_text("dima-rust v0.1.0\nmongodb v3.9.1\n" + mongo_extra)
@@ -773,12 +840,50 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
                 self.assertEqual(self.receipt["resources"], [])
                 self.assertNotIn(("container", "saas-ops-" + RUN + "-rust-build"), self.ops.objects)
 
+    def test_lower_memory_build_uses_receipt_limit_for_start_monitor_and_cgroups(self):
+        self.receipt["rust_memory_gib"] = 4
+        simulation = self.simulated_rust_build(memory_gib=4)
+        original_inspect = self.ops.inspect
+        compiler_inspections = 0
+        def inspect(kind, name, missing=False):
+            nonlocal compiler_inspections
+            obj = original_inspect(kind, name, missing)
+            if kind == "container" and obj:
+                compiler_inspections += 1
+                # The first inspection checks caps; the next simulates running.
+                obj["State"]["Running"] = compiler_inspections == 2
+            return obj
+        with simulation, patch.object(self.ops, "inspect", side_effect=inspect), \
+             patch.object(self.ops, "rust_headroom", return_value={"mem_available_bytes": 8 * mod.GIB}) as headroom, \
+             patch.object(mod.time, "sleep"), patch.object(Path, "home", return_value=self.root.parent):
+            self.ops.build_rust(self.path, self.receipt)
+        self.assertEqual([call.kwargs for call in headroom.call_args_list],
+                         [{"starting": True, "memory_gib": 4}, {"starting": True, "memory_gib": 4}, {"memory_gib": 4}])
+        create = next(call for call in self.ops.calls if call[0] == "create")
+        self.assertIn("--memory=4g", create)
+        self.assertIn("--memory-swap=4g", create)
+        self.assertEqual(self.saved()["rust_memory_gib"], 4)
+        self.assertTrue((self.path / "source/.saas-native/stream_activity").is_file())
+        self.assertEqual(self.receipt["resources"], [])
+
+    def test_lower_memory_build_refuses_default_cgroups_before_start(self):
+        self.receipt["rust_memory_gib"] = 4
+        simulation = self.simulated_rust_build(memory_gib=6)
+        with simulation, patch.object(self.ops, "rust_headroom", return_value={}), \
+             patch.object(Path, "home", return_value=self.root.parent), \
+             self.assertRaisesRegex(mod.OpsError, "cgroup limits"):
+            self.ops.build_rust(self.path, self.receipt)
+        self.assertFalse(any(call[0] == "start" for call in self.ops.calls))
+        self.assertFalse((self.path / "source/.saas-native").exists())
+        self.assertEqual(self.receipt["resources"], [])
+
     def test_rust_build_records_immutable_toolchain_source_artifact_and_cleans_compiler(self):
         simulation = self.simulated_rust_build()
         with simulation, patch.object(self.ops, "rust_headroom", return_value={}), \
              patch.object(Path, "home", return_value=self.root.parent):
             self.ops.build_rust(self.path, self.receipt)
         self.assertEqual(self.receipt["rust_toolchain_image"], NEW)
+        self.assertEqual(self.saved()["rust_memory_gib"], 6)
         self.assertEqual(self.receipt["rust_source_digest"], mod.tree_hash(self.path / "rust-source"))
         self.assertEqual(self.receipt["rust_binary_digest"], mod.digest(b"\x7fELFfixture"))
         self.assertEqual(self.receipt["rust_worker_dependencies_digest"], mod.digest(b"dima-rust v0.1.0\nmongodb v3.9.1\n"))

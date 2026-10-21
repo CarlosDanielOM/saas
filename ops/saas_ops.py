@@ -309,11 +309,18 @@ class Ops:
                 raise OpsError("Another capped Rust compiler is running") from exc
             yield
 
-    def rust_headroom(self, *, starting=False):
+    @staticmethod
+    def rust_memory_limit(memory_gib):
+        require(type(memory_gib) is int and memory_gib in (4, 6),
+                "Rust compiler memory must be 4 or 6 GiB")
+        return memory_gib
+
+    def rust_headroom(self, *, starting=False, memory_gib=RUST_BUILD_MEMORY_GIB):
+        memory_gib = self.rust_memory_limit(memory_gib)
         available = next(int(line.split()[1]) * 1024 for line in Path("/proc/meminfo").read_text().splitlines()
                          if line.startswith("MemAvailable:"))
         load = os.getloadavg()[0]
-        minimum = RUST_MEMORY_HEADROOM + (RUST_BUILD_MEMORY_GIB * GIB if starting else 0)
+        minimum = RUST_MEMORY_HEADROOM + (memory_gib * GIB if starting else 0)
         require(available >= minimum, "Rust build stopped: insufficient production memory headroom")
         require(load < max(1, os.cpu_count() or 1) * 0.85, "Rust build stopped: production host load is too high")
         require(shutil.disk_usage(self.state).free >= 5 * GIB, "Rust build stopped: less than 5 GiB disk headroom")
@@ -418,12 +425,13 @@ class Ops:
         return cache
 
     def rust_container_args(self, path, receipt, image, cache):
+        memory_gib = self.rust_memory_limit(receipt.get("rust_memory_gib", RUST_BUILD_MEMORY_GIB))
         require(RUST_FEATURES == "mongo", "Unsupported worker feature profile; review its dependency graph guard before enabling it")
         require(RUST_BASELINE_FEATURES == "mongo,redis", "Unsupported baseline feature profile; review its dependency graph guard before enabling it")
         return ["create", "--name", "saas-ops-" + receipt["run"] + "-rust-build", *self.labels(receipt["run"]),
                 "--label", OWNER + ".rust-build=true",
-                f"--cpus={RUST_BUILD_CPUS}", f"--memory={RUST_BUILD_MEMORY_GIB}g",
-                f"--memory-swap={RUST_BUILD_MEMORY_GIB}g", f"--pids-limit={RUST_BUILD_PIDS}",
+                f"--cpus={RUST_BUILD_CPUS}", f"--memory={memory_gib}g",
+                f"--memory-swap={memory_gib}g", f"--pids-limit={RUST_BUILD_PIDS}",
                 "--security-opt=no-new-privileges",
                 "--env=CARGO_BUILD_JOBS=2", "--env=CARGO_HOME=/cargo-cache", "--env=CARGO_TARGET_DIR=/target-cache",
                 "--env=SAAS_RUST_FEATURES=" + RUST_FEATURES,
@@ -439,12 +447,13 @@ class Ops:
 
     def build_rust(self, path, receipt, source_dir=None, *, feature_matrix=False):
         """Compile in a hard-capped musl container; never invoke host Cargo/BuildKit Cargo."""
+        receipt["rust_memory_gib"] = memory_gib = self.rust_memory_limit(receipt.get("rust_memory_gib", RUST_BUILD_MEMORY_GIB))
         with self.rust_build_lock():
             # SIGKILL releases flock but may leave Docker work running. Never
             # overlap that orphan; its original receipt must clean it up.
             require(not self.docker("container", "ls", "--filter", "label=" + OWNER + ".rust-build=true", "--quiet", capture=True).strip(),
                     "A capped Rust compiler is already running; clean up its owning run first")
-            receipt["rust_headroom_start"] = self.rust_headroom(starting=True)
+            receipt["rust_headroom_start"] = self.rust_headroom(starting=True, memory_gib=memory_gib)
             self.snapshot(Target("dima-rust", "", ""), path / "rust-source", source_dir, rust_only=True)
             receipt["rust_source_digest"] = tree_hash(path / "rust-source")
             for filename in ("Cargo.toml", "Cargo.lock", "rust-toolchain.toml"):
@@ -468,7 +477,7 @@ class Ops:
             cache["project_release_clean"] = False
             print(f"Rust worker profiles: mongo={RUST_FEATURES}, mongo-redis={RUST_BASELINE_FEATURES}; private cache {cache['key'][:12]} "
                   f"({'existing' if cache['hit'] else 'new'}, limit 8 GiB); feature matrix: {bool(feature_matrix)}", flush=True)
-            self.rust_headroom(starting=True)
+            self.rust_headroom(starting=True, memory_gib=memory_gib)
             name = "saas-ops-" + receipt["run"] + "-rust-build"
             self.add_resource(path, receipt, "container", name)
             try:
@@ -477,8 +486,8 @@ class Ops:
                 self.owned(obj, receipt["run"], "container")
                 limits = obj["HostConfig"]
                 require(limits.get("NanoCpus") == RUST_BUILD_CPUS * 1_000_000_000 and
-                        limits.get("Memory") == RUST_BUILD_MEMORY_GIB * GIB and
-                        limits.get("MemorySwap") == RUST_BUILD_MEMORY_GIB * GIB and
+                        limits.get("Memory") == memory_gib * GIB and
+                        limits.get("MemorySwap") == memory_gib * GIB and
                         limits.get("PidsLimit") == RUST_BUILD_PIDS,
                         "Rust compiler cgroup limits do not match the required policy")
                 self.docker("start", obj["Id"], capture=True)
@@ -488,11 +497,11 @@ class Ops:
                     current = self.inspect("container", name)
                     if not current["State"]["Running"]:
                         break
-                    headroom = self.rust_headroom()
+                    headroom = self.rust_headroom(memory_gib=memory_gib)
                     require(time.monotonic() - started < 7200, "Rust build exceeded the two-hour time limit")
                     if time.monotonic() >= next_report:
                         self.rust_cache_usage(cache)
-                        print(f"Capped Rust build running ({RUST_BUILD_CPUS} CPUs/{RUST_BUILD_MEMORY_GIB} GiB, "
+                        print(f"Capped Rust build running ({RUST_BUILD_CPUS} CPUs/{memory_gib} GiB, "
                               f"available {headroom['mem_available_bytes'] / GIB:.1f} GiB)", flush=True)
                         next_report = time.monotonic() + 45
                     time.sleep(3)
@@ -549,8 +558,11 @@ class Ops:
                         if entry == Path(cache["entry"]) and size > RUST_CACHE_LIMIT:
                             shutil.rmtree(entry)
 
-    def build(self, name, source_dir=None, *, rust_feature_matrix=False):
+    def build(self, name, source_dir=None, *, rust_feature_matrix=False, rust_memory_gib=None):
         require(not rust_feature_matrix or name == "cron", "--rust-feature-matrix is only supported for cron")
+        require(rust_memory_gib is None or name == "cron", "--rust-memory-gib is only supported for cron")
+        if name == "cron":
+            rust_memory_gib = self.rust_memory_limit(RUST_BUILD_MEMORY_GIB if rust_memory_gib is None else rust_memory_gib)
         target = TARGETS[name]
         live, config, config_hash, full_hash = self.baseline(target)
         run_id = name + "-" + uuid.uuid4().hex[:12]
@@ -560,6 +572,8 @@ class Ops:
                    "baseline_container": live["Id"], "baseline_image": live["Image"],
                    "config_hash": config_hash, "config_digest": full_hash,
                    "saved_config_digest": digest(json.dumps(config).encode()), "resources": []}
+        if name == "cron":
+            receipt["rust_memory_gib"] = rust_memory_gib
         self.save(path, receipt)
         print(f"Run: {run_id}", flush=True)
         try:
@@ -993,6 +1007,7 @@ def main(argv=None):
         sub.add_argument("target", choices=TARGETS)
         if command == "build":
             sub.add_argument("--source-dir", type=Path, help="isolated worktree of this repository; production ownership remains here")
+            sub.add_argument("--rust-memory-gib", type=int, choices=(4, 6), help="cron only: compiler memory cap in GiB (default 6); retains 8 GiB production headroom and disables compiler swap")
             sub.add_argument("--rust-feature-matrix", action="store_true", help="cron only: explicitly check optional Rust features inside the capped compiler; routine builds use mongo and mongo,redis worker profiles and a private cache capped at 8 GiB")
     sub = commands.add_parser("preview")
     sub.add_argument("target", choices=[n for n, t in TARGETS.items() if t.output])
@@ -1013,6 +1028,8 @@ def main(argv=None):
         return 0
     if args.command == "build" and args.rust_feature_matrix and args.target != "cron":
         parser.error("--rust-feature-matrix is only supported for cron")
+    if args.command == "build" and args.rust_memory_gib is not None and args.target != "cron":
+        parser.error("--rust-memory-gib is only supported for cron")
     ops = Ops()
     if args.command == "list":
         for name, target in TARGETS.items():
@@ -1031,6 +1048,7 @@ def main(argv=None):
             details["rust"] = {"features": RUST_FEATURES, "worker_profiles": rust_worker_profiles(), "cache": str(ops.rust_cache_root()),
                                "cache_limit_bytes": RUST_CACHE_LIMIT, "jobs": 2,
                                "cpus": RUST_BUILD_CPUS, "memory_bytes": RUST_BUILD_MEMORY_GIB * GIB,
+                               "optional_lower_memory": "build cron --rust-memory-gib 4",
                                "optional_feature_matrix": "build cron --rust-feature-matrix"}
         print(json.dumps(details, indent=2))
         return 0
@@ -1042,7 +1060,8 @@ def main(argv=None):
             _, receipt, _ = ops.load(args.run)
             print(json.dumps(receipt, indent=2))
         elif args.command == "build":
-            ops.build(args.target, args.source_dir, rust_feature_matrix=args.rust_feature_matrix)
+            ops.build(args.target, args.source_dir, rust_feature_matrix=args.rust_feature_matrix,
+                      rust_memory_gib=args.rust_memory_gib)
         elif args.command == "verify":
             ops.verify(args.run, args.check, args.fixtures, args.seed_models, args.test_env, args.dependency)
         else:

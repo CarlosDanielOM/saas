@@ -39,7 +39,8 @@ if (process.argv[1]?.endsWith('/dist/workers/cron.index.js')) {
                             const lines = pending.split('\\n'); pending = lines.pop();
                             for (const line of lines) if (line.startsWith('follow_defense_baseline:')) {
                                 const frame = JSON.parse(line.slice('follow_defense_baseline:'.length));
-                                record({ event: 'batch', worker, pid: child.pid, frame });
+                                if (!['batch', 'health'].includes(frame.event)) throw new Error('Unexpected native baseline frame');
+                                record({ event: frame.event, worker, pid: child.pid, frame });
                             }
                         });
                         child.on('exit', (code, signal) => record({ event: 'exit', worker, pid: child.pid, code, signal }));

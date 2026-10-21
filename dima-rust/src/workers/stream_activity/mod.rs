@@ -17,7 +17,7 @@ use std::{
 use futures_util::TryStreamExt;
 use mongodb::{
     Collection, Database,
-    bson::{DateTime, Document, doc, oid::ObjectId},
+    bson::{Bson, DateTime, Document, doc, oid::ObjectId},
     error::{Error, ErrorKind, Result},
     options::{ReturnDocument, UpdateOneModel},
 };
@@ -28,6 +28,84 @@ use projection::{Activity, Projection, defaults};
 
 const STATE_ID: &str = "projector-v1";
 const LEASE_MS: i64 = 60_000;
+pub const HEALTH_METRIC_MAX: u64 = 1_000_000_000_000_000;
+
+/// Read-only health metadata; checkpoint identifiers never leave the projector.
+#[derive(Debug, PartialEq, Eq)]
+pub struct StreamActivityHealth {
+    pub has_pending: bool,
+    pub oldest_pending_age_ms: Option<u64>,
+    pub checkpoint_seq: Option<u64>,
+    pub active_batch_events: Option<usize>,
+}
+
+fn health_error() -> Error {
+    Error::custom("Invalid stream activity health metadata".to_owned())
+}
+
+fn health_sequence(value: &Bson) -> Result<u64> {
+    let value = match value {
+        Bson::Int32(value) => f64::from(*value),
+        Bson::Int64(value) => *value as f64,
+        Bson::Double(value) => *value,
+        _ => return Err(health_error()),
+    };
+    if !value.is_finite()
+        || !(0.0..=HEALTH_METRIC_MAX as f64).contains(&value)
+        || value.fract() != 0.0
+    {
+        return Err(health_error());
+    }
+    Ok(value as u64)
+}
+
+fn health_metadata(
+    pending: Option<&Document>,
+    state: Option<&Document>,
+    now: DateTime,
+) -> Result<StreamActivityHealth> {
+    let oldest_pending_age_ms = pending
+        .map(|row| {
+            let occurred_at = row.get_datetime("occurredAt").map_err(|_| health_error())?;
+            let age = now
+                .timestamp_millis()
+                .saturating_sub(occurred_at.timestamp_millis())
+                .max(0) as u64;
+            if age > HEALTH_METRIC_MAX {
+                return Err(health_error());
+            }
+            Ok(age)
+        })
+        .transpose()?;
+    let checkpoint_seq = state
+        .and_then(|row| row.get("seq"))
+        .map(health_sequence)
+        .transpose()?;
+    let active_batch_events = state
+        .map(|row| {
+            let active = match row.get("active") {
+                None | Some(Bson::Null) => return Ok(0),
+                Some(Bson::Document(active)) => active,
+                _ => return Err(health_error()),
+            };
+            match active.get("ids") {
+                None => Ok(0),
+                Some(Bson::Array(ids))
+                    if ids.len() <= 1000 && ids.iter().all(|id| matches!(id, Bson::String(_))) =>
+                {
+                    Ok(ids.len())
+                }
+                _ => Err(health_error()),
+            }
+        })
+        .transpose()?;
+    Ok(StreamActivityHealth {
+        has_pending: pending.is_some(),
+        oldest_pending_age_ms,
+        checkpoint_seq,
+        active_batch_events,
+    })
+}
 
 /// A bounded projector using an explicitly selected database. The caller owns
 /// connection configuration, runtime lifetime, scheduling, and shutdown.
@@ -76,6 +154,29 @@ impl StreamActivityProjector {
             states: database.collection("stream_activity_states"),
             database,
         }
+    }
+
+    /// Two bounded reads reuse the pending-event index and checkpoint key.
+    /// Callers also bound the whole probe, including server selection/network I/O.
+    /// This does not acquire a lease, create state, or change projection behavior.
+    pub async fn health(&self, now: DateTime) -> Result<StreamActivityHealth> {
+        let pending = self
+            .activities
+            .find(doc! { "processed": false, "expiresAt": { "$gt": now } })
+            .sort(doc! { "occurredAt": 1, "_id": 1 })
+            .limit(1)
+            .projection(doc! { "_id": 0, "occurredAt": 1 })
+            .max_time(Duration::from_secs(1))
+            .await?
+            .try_next()
+            .await?;
+        let state = self
+            .states
+            .find_one(doc! { "_id": STATE_ID })
+            .projection(doc! { "_id": 0, "seq": 1, "active.ids": 1 })
+            .max_time(Duration::from_secs(1))
+            .await?;
+        health_metadata(pending.as_ref(), state.as_ref(), now)
     }
 
     /// Projects a fixed persisted batch (default caller size 500, clamped 1–1000).
@@ -338,6 +439,98 @@ impl Drop for Heartbeat {
     fn drop(&mut self) {
         if let Some(task) = &self.task {
             task.abort();
+        }
+    }
+}
+
+#[cfg(test)]
+mod health_tests {
+    use super::{HEALTH_METRIC_MAX, StreamActivityHealth, health_metadata, health_sequence};
+    use mongodb::bson::{Bson, DateTime, doc};
+
+    #[test]
+    fn missing_checkpoint_and_empty_checkpoint_have_distinct_health() {
+        let now = DateTime::from_millis(1000);
+        assert_eq!(
+            health_metadata(None, None, now).unwrap(),
+            StreamActivityHealth {
+                has_pending: false,
+                oldest_pending_age_ms: None,
+                checkpoint_seq: None,
+                active_batch_events: None,
+            }
+        );
+        for state in [
+            doc! { "seq": 0 },
+            doc! { "seq": 0, "active": null },
+            doc! { "seq": 0, "active": {} },
+            doc! { "seq": 0, "active": { "ids": [] } },
+        ] {
+            let health = health_metadata(None, Some(&state), now).unwrap();
+            assert_eq!(health.checkpoint_seq, Some(0));
+            assert_eq!(health.active_batch_events, Some(0));
+        }
+    }
+
+    #[test]
+    fn pending_age_is_nonnegative_and_invalid_dates_fail_the_sample() {
+        let now = DateTime::from_millis(1000);
+        for (timestamp, expected) in [(500, 500), (1000, 0), (2000, 0)] {
+            let row = doc! { "occurredAt": DateTime::from_millis(timestamp) };
+            let health = health_metadata(Some(&row), None, now).unwrap();
+            assert!(health.has_pending);
+            assert_eq!(health.oldest_pending_age_ms, Some(expected));
+        }
+        for row in [
+            doc! {},
+            doc! { "occurredAt": "invalid" },
+            doc! { "occurredAt": 1000 },
+            doc! { "occurredAt": DateTime::from_millis(i64::MIN) },
+        ] {
+            assert!(health_metadata(Some(&row), None, now).is_err());
+        }
+    }
+
+    #[test]
+    fn checkpoint_sequence_must_be_a_bounded_nonnegative_safe_integer() {
+        for value in [
+            Bson::Int32(0),
+            Bson::Int64(12),
+            Bson::Double(12.0),
+            Bson::Int64(HEALTH_METRIC_MAX as i64),
+        ] {
+            assert!(health_sequence(&value).is_ok());
+        }
+        for value in [
+            Bson::Int32(-1),
+            Bson::Double(1.5),
+            Bson::Double(f64::NAN),
+            Bson::Double(f64::INFINITY),
+            Bson::Int64(HEALTH_METRIC_MAX as i64 + 1),
+            Bson::String("12".to_owned()),
+            Bson::Null,
+        ] {
+            assert!(health_sequence(&value).is_err());
+            assert!(health_metadata(None, Some(&doc! { "seq": value }), DateTime::now()).is_err());
+        }
+    }
+
+    #[test]
+    fn active_checkpoint_membership_is_bounded_and_never_exposed() {
+        let now = DateTime::now();
+        let ids: Vec<String> = (0..1000).map(|index| format!("private-{index}")).collect();
+        let state = doc! { "seq": 4.0, "active": { "ids": &ids } };
+        let health = health_metadata(None, Some(&state), now).unwrap();
+        assert_eq!(health.active_batch_events, Some(1000));
+        assert_eq!(health.checkpoint_seq, Some(4));
+        assert!(!format!("{health:?}").contains("private-"));
+        for state in [
+            doc! { "active": "invalid" },
+            doc! { "active": { "ids": null } },
+            doc! { "active": { "ids": [1] } },
+            doc! { "active": { "ids": vec!["private"; 1001] } },
+        ] {
+            assert!(health_metadata(None, Some(&state), now).is_err());
         }
     }
 }

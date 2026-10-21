@@ -20,7 +20,7 @@ const client = new MongoClient(uri.href, { serverSelectionTimeoutMS: 5000, timeo
 const redis = createClient({ url: `redis://redis:${process.env.DRAGONFLY_PORT || '6379'}`, socket: { reconnectStrategy: false } });
 redis.on('error', () => {});
 const stopped = new Set(), auxiliary = new Set();
-const deadline = Date.now() + 190000;
+const deadline = Date.now() + 240000;
 const source = await readFile('/tmp/saas-fixtures/analytics-store.mjs', 'utf8');
 assert(source.startsWith("import pg from 'pg';\n"), 'stage exact analytics store source');
 const { validateBatch } = await import('data:text/javascript,' + encodeURIComponent(source.replace("import pg from 'pg';", 'const pg = {};')));
@@ -35,6 +35,8 @@ let referenceRedis;
 const names = { ledger: Ledger.collection.name, streams: Streams.collection.name, attacks: Attacks.collection.name };
 const db = client.db(databaseName);
 const DUE = 'follow:defense:baseline:due', DAY = 86400000;
+const phaseNames = ['queueMs', 'claimMs', 'ledgerMs', 'streamsMs', 'attacksMs', 'publishMs', 'rescheduleMs'];
+const metadataNumber = value => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1e15;
 const key = id => `follow:defense:baseline:${id}`;
 const now = Date.now(), end = Math.floor(now / DAY) * DAY, start = end - 30 * DAY;
 async function waitFor(check, label, timeout = 15000) {
@@ -132,11 +134,23 @@ async function assertNative(root) {
         assert(!cmd.split('\0').some(arg => arg.endsWith('/follow_defense_baseline.worker.js')), 'rollback TS child must be absent');
     }
     for (const row of rows.filter(row => row.event === 'batch')) {
-        assert.deepEqual(Object.keys(row.frame).sort(), ['durationMs', 'event', 'events', 'success']);
+        assert(Object.keys(row.frame).every(name => ['durationMs', 'event', 'events', 'success', 'phases'].includes(name)));
+        assert(row.frame.phases && typeof row.frame.phases === 'object' && !Array.isArray(row.frame.phases));
+        for (const [name, elapsed] of Object.entries(row.frame.phases)) {
+            assert(phaseNames.includes(name), 'native phase names cannot contain private identifiers'); assert(metadataNumber(elapsed));
+        }
         assert.equal(row.frame.event, 'batch'); assert([0, 1].includes(row.frame.events));
         assert(Number.isFinite(row.frame.durationMs) && row.frame.durationMs >= 0 && row.frame.durationMs <= 300000);
         assert.equal(typeof row.frame.success, 'boolean');
         if (!row.frame.success) assert.equal(row.frame.events, 0);
+    }
+    for (const { frame } of rows.filter(row => row.event === 'health')) {
+        assert(Object.keys(frame).every(name => ['event', 'success', 'dueChannels', 'oldestDueAgeMs', 'lastSuccessAgeMs'].includes(name)));
+        assert.equal(typeof frame.success, 'boolean');
+        for (const name of ['dueChannels', 'oldestDueAgeMs', 'lastSuccessAgeMs']) if (frame[name] !== undefined) assert(metadataNumber(frame[name]));
+        if (frame.dueChannels !== undefined) assert(Number.isSafeInteger(frame.dueChannels));
+        if (!frame.success) { assert.equal(frame.dueChannels, undefined); assert.equal(frame.oldestDueAgeMs, undefined); }
+        if (frame.dueChannels === 0) assert.equal(frame.oldestDueAgeMs, undefined);
     }
 }
 async function telemetry() {
@@ -144,7 +158,8 @@ async function telemetry() {
     for (const batch of batches) validateBatch(batch);
     const rows = batches.flatMap(batch => batch.metrics.map(row => ({ ...row, service: batch.service })))
         .filter(row => row.name.startsWith('follow_defense_baseline_rust.'));
-    const allowed = new Set(['rss_bytes', 'cpu_cores', 'batch_channels', 'project_batch', 'errors', 'restarts']);
+    const allowed = new Set(['rss_bytes', 'cpu_cores', 'batch_channels', 'project_batch', 'errors', 'restarts',
+        'health_query', 'health_errors', 'backlog_channels', 'oldest_due_age_ms', 'last_success_age_ms', ...phaseNames.map(name => `phase.${name}`)]);
     for (const row of rows) {
         assert(allowed.has(row.name.slice('follow_defense_baseline_rust.'.length)));
         assert.equal(row.channel, ''); assert.equal(row.service, 'cron'); assert(Number.isFinite(row.sum) && row.sum >= 0);
@@ -155,7 +170,16 @@ async function telemetry() {
         && has('batch_channels', row => row.kind === 'worker' && row.sum > 0)
         && has('project_batch', row => row.outcome === 'error')
         && has('project_batch', row => row.outcome === 'idle')
-        && has('errors', row => row.outcome === 'error') && has('restarts', row => row.outcome === 'error');
+        && has('errors', row => row.outcome === 'error') && has('restarts', row => row.outcome === 'error')
+        && phaseNames.every(name => has(`phase.${name}`, row => row.kind === 'queue_run' && row.outcome === 'ok'))
+        && has('phase.ledgerMs', row => row.kind === 'queue_run' && row.outcome === 'error')
+        && has('phase.queueMs', row => row.kind === 'queue_run' && row.outcome === 'idle')
+        && has('health_query', row => row.kind === 'worker' && row.outcome === 'ok' && row.sum > 0)
+        && has('health_errors', row => row.kind === 'worker' && row.outcome === 'error' && row.sum > 0)
+        && has('backlog_channels', row => row.kind === 'worker' && row.max >= 24)
+        && has('backlog_channels', row => row.kind === 'worker' && row.max === 0)
+        && has('oldest_due_age_ms', row => row.kind === 'worker' && row.max > 0)
+        && has('last_success_age_ms', row => row.kind === 'worker');
 }
 try {
     await client.connect(); await redis.connect();
@@ -165,6 +189,30 @@ try {
     const unrelated = (await records()).filter(row => row.event === 'spawn' && !row.native).map(row => row.worker).sort();
     assert(unrelated.includes('raid-analytics') && unrelated.includes('stream-activity'));
     console.log('PASS real supervisor selects only native baseline with restricted env and UID/GID 65534; other workers inert');
+    const idle = await waitFor(async () => {
+        const rows = (await records()).filter(row => row.event === 'batch' && row.pid === initial.pid && row.frame.success && row.frame.events === 0);
+        return rows.length >= 5 ? rows.slice(0, 5) : null;
+    }, 'actual 1/2/4/5-second idle backoff', 20000);
+    for (const [index, expected] of [1000, 2000, 4000, 5000].entries()) {
+        const gap = idle[index + 1].at - idle[index].at;
+        assert(gap >= expected - 150 && gap <= expected + 1500, `idle gap ${index}: ${gap}ms, expected ${expected}ms`);
+    }
+    const initialHealth = await waitFor(async () => (await records()).find(row => row.event === 'health' && row.pid === initial.pid), 'initial health');
+    assert.equal(initialHealth.frame.success, true); assert.equal(initialHealth.frame.dueChannels, 0);
+    assert.equal(initialHealth.frame.oldestDueAgeMs, undefined); assert.equal(initialHealth.frame.lastSuccessAgeMs, undefined);
+    const pickupAt = Date.now(); await queue('fixture-idle-pickup'); await refreshed('fixture-idle-pickup');
+    assert(Date.now() - pickupAt <= 6500, 'new due work is picked up within capped five-second idle sleep plus tolerance');
+    const resetIdle = await waitFor(async () => {
+        const rows = (await records()).filter(row => row.event === 'batch' && row.at >= pickupAt);
+        const worked = rows.findIndex(row => row.frame.success && row.frame.events === 1);
+        if (worked < 0) return null;
+        const idle = rows.slice(worked + 1).filter(row => row.frame.success && row.frame.events === 0);
+        return idle.length >= 2 ? idle.slice(0, 2) : null;
+    }, 'idle backoff resets after successful work', 6500);
+    const resetGap = resetIdle[1].at - resetIdle[0].at;
+    assert(resetGap >= 850 && resetGap <= 2500, `reset idle gap ${resetGap}ms must return to one second`);
+    console.log('PASS actual idle gaps 1/2/4/5 seconds, bounded new-job pickup, reset after work, and unknown initial last-success age');
+
     let held = await pause();
     for (const kind of ['daily', 'stream', 'floor', 'sparse-days', 'sparse-streams', 'exclusions', 'boundaries']) await seed(`fixture-${kind}`, kind);
     resume(held);
@@ -186,6 +234,30 @@ try {
     console.log('PASS future work is not refreshed or rescheduled');
 
     held = await pause();
+    const backlog = Array.from({ length: 24 }, (_, index) => `fixture-burst-${index}`);
+    for (const id of backlog) await queue(id);
+    const burstAt = Date.now(); resume(held);
+    await waitFor(async () => (await redis.mGet(backlog.map(key))).every(Boolean), '24-channel bounded burst drain', 12000);
+    const drainMs = Date.now() - burstAt;
+    assert(drainMs < 12000, '24 channels drain well below the old mandatory second per channel');
+    const bursts = await waitFor(async () => {
+        const rows = (await records()).filter(row => row.event === 'batch' && row.pid === held.pid && row.at >= burstAt && row.frame.success && row.frame.events === 1);
+        return rows.length >= backlog.length ? rows.slice(0, backlog.length) : null;
+    }, 'all burst frames');
+    for (const boundary of [8, 16]) {
+        const gap = bursts[boundary].at - bursts[boundary - 1].at;
+        assert(gap >= 850, `eight-job burst cooldown must be at least one second (observed ${gap}ms)`);
+    }
+    assert(bursts[7].at - bursts[0].at < 6000 && bursts[15].at - bursts[8].at < 6000,
+        'within each eight-job burst there is no mandatory per-channel second');
+    for (const { frame } of bursts) {
+        assert(phaseNames.every(name => metadataNumber(frame.phases?.[name])), 'successful work reaches every fixed phase');
+        assert.equal(frame.events, 1, 'each completion frame accounts for exactly one sequential job');
+    }
+    console.log(`PASS 24 due channels drained in ${drainMs} ms with bounded eight-job bursts and one-second cooldowns`);
+
+
+    held = await pause();
     const saved = `${names.ledger}_fixture_saved`, badSource = 'fixture_bad_ledger';
     await db.collection(names.ledger).rename(saved);
     await db.collection(badSource).insertOne({ followed_id: 'fixture-failure', invalidFixtureDate: 'not-a-date' });
@@ -193,7 +265,11 @@ try {
     const old = JSON.stringify({ calculatedAt: 123, attackThreshold: 777, fixture: true });
     await redis.set(key('fixture-failure'), old, { EX: 600 });
     const failureAt = Date.now(); await queue('fixture-failure'); resume(held);
-    await waitFor(async () => (await records()).some(row => row.event === 'batch' && row.at >= failureAt && !row.frame.success), 'real Mongo aggregate failure');
+    const failedQuery = await waitFor(async () => (await records()).find(row => row.event === 'batch' && row.at >= failureAt && !row.frame.success), 'real Mongo aggregate failure');
+    assert(metadataNumber(failedQuery.frame.phases?.ledgerMs), 'failed aggregate attempt still emits its reached phase duration');
+    assert(metadataNumber(failedQuery.frame.phases?.claimMs), 'sixty-second retry receipt is timed before querying');
+    assert.equal(failedQuery.frame.phases?.rescheduleMs, undefined, 'failed query cannot reach the next-hour reschedule');
+    assert.equal(failedQuery.frame.phases?.publishMs, undefined, 'failed aggregate must not report an unreached cache publish');
     const retry = Number(await redis.zScore(DUE, 'fixture-failure'));
     assert(retry >= failureAt + 60000 && retry <= Date.now() + 60000, 'failure preserves sixty-second retry receipt');
     assert.equal(await redis.get(key('fixture-failure')), old, 'Mongo failure preserves old cache');
@@ -214,12 +290,21 @@ try {
     const killed = await pause(); stopped.delete(killed.pid); process.kill(killed.pid, 'SIGKILL');
     await waitFor(async () => { const row = await currentNative(); return row && row.pid !== killed.pid ? row : null; }, 'native-only replacement');
     await assertNative(root);
+    const restarted = await currentNative();
+    const restartedHealth = await waitFor(async () => (await records()).find(row => row.event === 'health' && row.pid === restarted.pid), 'replacement initial health');
+    assert.equal(restartedHealth.frame.lastSuccessAgeMs, undefined, 'last successful work is unknown after process replacement');
     assert.deepEqual((await records()).filter(row => row.event === 'spawn' && !row.native).map(row => row.worker).sort(), unrelated);
-    await queue('fixture-after-restart'); await refreshed('fixture-after-restart');
+    await queue('fixture-after-restart'); const restartWork = await refreshed('fixture-after-restart');
     console.log('PASS native restart replaces only failed baseline child and replacement refreshes successfully');
-    await waitFor(telemetry, 'actual baseline metrics in analytics-valid Redis envelopes', 35000);
-    console.log('PASS real RSS/CPU/batch/idle/failure/error/restart telemetry reaches analytics-valid Redis envelopes');
 
+
+    // Pause the main native child so this auxiliary scope alone owns Redis
+    // health failures and its batch timings. All storage is disposable.
+    await waitFor(async () => (await records()).some(row => row.event === 'batch' && row.pid === restarted.pid
+        && row.at >= restartWork.calculatedAt && row.frame.success && row.frame.events === 0), 'main idle before auxiliary ownership');
+    held = await pause(); await redis.del(DUE);
+    const healthBacklog = Array.from({ length: 24 }, (_, index) => `fixture-health-${index}`);
+    for (const id of healthBacklog) await queue(id, Date.now() - 60000);
     const child = spawn(process.execPath, ['/app/dist/workers/cron.index.js'], { cwd: '/app',
         env: { ...process.env, FOLLOW_BASELINE_FIXTURE_SCOPE: 'shutdown' }, stdio: ['ignore', 'pipe', 'pipe'] });
     auxiliary.add(child);
@@ -229,12 +314,43 @@ try {
     child.fixtureCompletion.catch(() => {});
     const owned = await waitFor(() => currentNative('shutdown'), 'auxiliary child startup');
     await waitFor(async () => (await records('shutdown')).some(row => row.event === 'batch'), 'auxiliary functional idle');
+    const healthy = await waitFor(async () => (await records('shutdown')).find(row => row.event === 'health' && row.pid === owned.pid), 'actual positive backlog health');
+    assert.equal(healthy.frame.success, true); assert.equal(healthy.frame.dueChannels, 24);
+    assert(healthy.frame.oldestDueAgeMs >= 60000); assert.equal(healthy.frame.lastSuccessAgeMs, undefined);
+    await waitFor(async () => (await redis.mGet(healthBacklog.map(key))).every(Boolean), 'auxiliary health backlog drain');
+    await redis.del(DUE); await redis.set(DUE, 'fixture-health-wrongtype');
+    const failedHealth = await waitFor(async () => (await records('shutdown')).find(row => row.event === 'health'
+        && row.pid === owned.pid && row.at > healthy.at && !row.frame.success), 'actual Redis health failure', 40000);
+    assert.equal(failedHealth.frame.dueChannels, undefined); assert.equal(failedHealth.frame.oldestDueAgeMs, undefined);
+    assert(metadataNumber(failedHealth.frame.lastSuccessAgeMs), 'known successful work remains known on a failed health query');
+    assert.equal((await currentNative('shutdown')).pid, owned.pid, 'health query failure must not kill child');
+    await waitFor(async () => {
+        const batches = (await redis.lRange('observability:v1:inbox', 0, -1)).map(JSON.parse);
+        for (const batch of batches) validateBatch(batch);
+        const bucket = Math.floor(failedHealth.at / 10000) * 10000;
+        const metrics = batches.flatMap(batch => batch.metrics);
+        if (!metrics.some(row => row.name === 'follow_defense_baseline_rust.health_errors' && row.at === bucket)) return false;
+        assert(!metrics.some(row => ['follow_defense_baseline_rust.backlog_channels', 'follow_defense_baseline_rust.oldest_due_age_ms'].includes(row.name)
+            && row.at === bucket), 'failed probes never fabricate zero backlog/oldest in real Redis telemetry');
+        return true;
+    }, 'failed health reaches analytics-valid envelopes without fabricated gauges', 18000);
+    await redis.del(DUE);
+    const repairedHealth = await waitFor(async () => (await records('shutdown')).find(row => row.event === 'health'
+        && row.pid === owned.pid && row.at > failedHealth.at && row.frame.success), 'repaired empty Redis health', 40000);
+    assert.equal(repairedHealth.frame.dueChannels, 0); assert.equal(repairedHealth.frame.oldestDueAgeMs, undefined);
+    assert(metadataNumber(repairedHealth.frame.lastSuccessAgeMs));
+    assert.equal((await currentNative('shutdown')).pid, owned.pid);
+    await queue('fixture-health-repaired'); await refreshed('fixture-health-repaired');
+    console.log('PASS real Redis positive/failed/repaired-empty health, unknown-to-known success age, no fabricated gauges or health-triggered restart, and post-repair work');
+    await assertNative(root);
+    await waitFor(telemetry, 'actual baseline phase/health/runtime metrics in analytics-valid Redis envelopes', 35000);
+    console.log('PASS real RSS/CPU/batch/idle/failure/error/restart, all phase timings, and health metrics reach analytics-valid Redis envelopes');
     child.kill('SIGTERM');
     const exit = await bounded(child.fixtureCompletion, 15000, 'graceful supervisor shutdown'); auxiliary.delete(child);
     assert.equal(exit.code, 0, output); assert.equal(exit.signal, null);
     await waitFor(async () => (await records('shutdown')).some(row => row.event === 'exit' && row.pid === owned.pid && row.code === 0 && row.signal === null), 'native graceful exit');
     await delay(1200); assert.equal((await records('shutdown')).filter(row => row.event === 'spawn' && row.native).length, 1);
-    assert(await currentNative());
+    assert(await currentNative()); resume(held);
     console.log('PASS real auxiliary supervisor SIGTERM drains baseline and exits without restart');
 } finally {
     for (const pid of stopped) { try { process.kill(pid, 'SIGCONT'); } catch {} }

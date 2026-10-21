@@ -125,12 +125,14 @@ async function assertOneNative(root) {
         assert(!command.split('\0').some(arg => arg.endsWith('/stream_activity.worker.js')), 'legacy TypeScript projector must not be running');
     }
 }
-async function assertTelemetry(requireError = false) {
+async function assertTelemetry(requireError = false, requireHealth = false) {
     const batches = (await redis.lRange('observability:v1:inbox', 0, -1)).map(JSON.parse);
     for (const batch of batches) validateBatch(batch);
     const rows = batches.flatMap(batch => batch.metrics.map(metric => ({ ...metric, service: batch.service })))
         .filter(row => row.name.startsWith('stream_activity_rust.'));
-    const names = new Set(['stream_activity_rust.rss_bytes', 'stream_activity_rust.cpu_cores', 'stream_activity_rust.batch_events', 'stream_activity_rust.project_batch', 'stream_activity_rust.errors', 'stream_activity_rust.restarts']);
+    const names = new Set(['rss_bytes', 'cpu_cores', 'batch_events', 'project_batch', 'errors', 'restarts',
+        'health_query', 'health_errors', 'pending_work', 'oldest_pending_age_ms', 'checkpoint_seq', 'active_batch_events', 'last_success_age_ms']
+        .map(name => `stream_activity_rust.${name}`));
     for (const row of rows) {
         assert(names.has(row.name), 'native metadata must not contain Node heap/event-loop or arbitrary labels');
         assert.equal(row.service, 'cron'); assert.equal(row.channel, '');
@@ -141,7 +143,9 @@ async function assertTelemetry(requireError = false) {
         && has('stream_activity_rust.cpu_cores', row => row.kind === 'runtime')
         && has('stream_activity_rust.batch_events', row => row.kind === 'worker' && row.sum >= 1)
         && has('stream_activity_rust.project_batch', row => row.kind === 'queue_run' && row.outcome === 'ok')
-        && (!requireError || has('stream_activity_rust.project_batch', row => row.outcome === 'error'));
+        && (!requireError || has('stream_activity_rust.project_batch', row => row.outcome === 'error'))
+        && (!requireHealth || ['health_query', 'health_errors', 'pending_work', 'oldest_pending_age_ms', 'checkpoint_seq', 'active_batch_events', 'last_success_age_ms']
+            .every(name => has(`stream_activity_rust.${name}`, row => row.kind === 'worker')));
 }
 
 try {
@@ -152,6 +156,10 @@ try {
     assert.equal(native.command, '/usr/local/bin/stream_activity');
     assert.equal(native.uid, 65534); assert.equal(native.gid, 65534);
     await assertOneNative(root);
+    const initialHealth = await waitFor(async () => (await records()).find(row => row.event === 'health' && row.pid === native.pid), 'initial empty native health');
+    assert.equal(initialHealth.frame.success, true); assert.equal(initialHealth.frame.hasPending, false);
+    assert.equal(initialHealth.frame.oldestPendingAgeMs, undefined);
+    assert.equal(initialHealth.frame.lastSuccessAgeMs, undefined, 'fresh child has no known successful projection');
     const unrelated = (await records()).filter(row => row.event === 'spawn' && !row.native).map(row => row.worker).sort();
     assert(unrelated.length > 0, 'actual supervisor must have unrelated mocked workers');
     await makeCollections(actual); await makeCollections(baseline);
@@ -184,6 +192,8 @@ try {
     const replacement = await waitFor(async () => {
         const child = await currentNative(); return child && child.pid !== killed.pid ? child : null;
     }, 'only failed native child restarts');
+    const restartedHealth = await waitFor(async () => (await records()).find(row => row.event === 'health' && row.pid === replacement.pid), 'replacement initial health');
+    assert.equal(restartedHealth.frame.lastSuccessAgeMs, undefined, 'restart does not inherit monotonic successful-work age');
     await complete(actual, secondIds);
     assert.deepEqual(await snapshot(actual), await snapshot(baseline));
     await assertOneNative(root);
@@ -221,18 +231,76 @@ try {
     assert.deepEqual((await records()).filter(row => row.event === 'spawn' && !row.native).map(row => row.worker).sort(), unrelated);
     console.log('PASS real Rust partial failure hands checkpoint back to TypeScript without duplication; error metadata is observable');
 
+    // The main native child is paused so only the auxiliary probe owns the
+    // native health buckets below. Both supervisors remain real.
+    const mainPaused = await currentNative();
+    process.kill(mainPaused.pid, 'SIGSTOP'); stopped.add(mainPaused.pid);
     const shutdown = fixtureDatabase('shutdown');
+    await makeCollections(shutdown);
+    const pending = extra(4).map(row => ({ ...row, occurredAt: new Date(Date.now() - 120000), expiresAt: new Date(Date.now() + 600000) }));
+    const pendingIds = pending.map(row => row._id);
+    await shutdown.collection(collections[0]).insertMany(pending);
+    await shutdown.collection(collections[2]).insertOne({ _id: stateId, seq: 7, active: { seq: 7, ids: pendingIds },
+        owner: 'fixture-gate', leaseUntil: new Date(Date.now() + 600000) });
     const shutdownUri = new URL(uri.href); shutdownUri.pathname = `/${shutdown.databaseName}`;
     const child = spawn(process.execPath, ['/app/dist/workers/cron.index.js'], { cwd: '/app',
         env: { ...process.env, MONGO_URI: shutdownUri.href, STREAM_ACTIVITY_FIXTURE_SCOPE: 'shutdown' }, stdio: ['ignore', 'pipe', 'pipe'] });
     auxiliary.add(child);
-    let output = ''; child.stdout.on('data', data => { output += data; }); child.stderr.on('data', data => { output += data; });
+    let output = ''; const capture = data => { output = (output + data).slice(-4000); };
+    child.stdout.on('data', capture); child.stderr.on('data', capture);
     const completion = new Promise((resolve, reject) => { child.once('error', reject); child.once('exit', (code, signal) => resolve({ code, signal })); });
     completion.catch(() => {}); child.fixtureCompletion = completion;
     const ownedChild = await waitFor(() => currentNative('shutdown'), 'auxiliary actual supervisor native child');
+    const firstHealth = await waitFor(async () => (await records('shutdown')).find(row => row.event === 'health' && row.pid === ownedChild.pid), 'held pending health');
+    assert.equal(firstHealth.frame.success, true); assert.equal(firstHealth.frame.hasPending, true);
+    assert(firstHealth.frame.oldestPendingAgeMs >= 120000, 'oldest pending age must reflect the actual past event');
+    assert.equal(firstHealth.frame.checkpointSeq, 7); assert.equal(firstHealth.frame.activeBatchEvents, pending.length);
+    assert.equal(firstHealth.frame.lastSuccessAgeMs, undefined, 'lease contention is not successful projection work');
+    await release(shutdown); await complete(shutdown, pendingIds);
+    const knownHealth = await waitFor(async () => (await records('shutdown')).find(row => row.event === 'health'
+        && row.pid === ownedChild.pid && row.at > firstHealth.at && row.frame.success && row.frame.lastSuccessAgeMs !== undefined),
+        'known successful projection health', 40000);
+    assert.equal(knownHealth.frame.hasPending, false); assert.equal(knownHealth.frame.oldestPendingAgeMs, undefined);
+    assert.equal(knownHealth.frame.checkpointSeq, 7); assert.equal(knownHealth.frame.activeBatchEvents, 0);
+    assert(Number.isFinite(knownHealth.frame.lastSuccessAgeMs) && knownHealth.frame.lastSuccessAgeMs >= 0);
+
+    // A held lease makes projection return idle before decoding the state.
+    // Only the read-only health decoder observes this fixture-only bad seq.
+    await gate(shutdown);
+    await shutdown.collection(collections[2]).updateOne({ _id: stateId }, { $set: { seq: 'fixture-invalid-sequence' } });
+    const failedHealth = await waitFor(async () => (await records('shutdown')).find(row => row.event === 'health'
+        && row.pid === ownedChild.pid && row.at > knownHealth.at && !row.frame.success), 'isolated state health read failure', 40000);
+    for (const field of ['hasPending', 'oldestPendingAgeMs', 'checkpointSeq', 'activeBatchEvents']) assert.equal(failedHealth.frame[field], undefined);
+    assert(Number.isFinite(failedHealth.frame.lastSuccessAgeMs) && failedHealth.frame.lastSuccessAgeMs >= knownHealth.frame.lastSuccessAgeMs);
+    assert.equal((await currentNative('shutdown')).pid, ownedChild.pid, 'health failure must not replace the native child');
+    await waitFor(async () => (await records('shutdown')).some(row => row.event === 'batch' && row.pid === ownedChild.pid
+        && row.at >= failedHealth.at && row.frame.success && row.frame.events === 0), 'projection continues idle after health failure');
+    const bucket = Math.floor(failedHealth.at / 10000) * 10000;
     await waitFor(async () => {
-        const state = await shutdown.collection(collections[2]).findOne({ _id: stateId }); return state?.owner && state.leaseUntil <= new Date();
-    }, 'auxiliary native idle');
+        const batches = (await redis.lRange('observability:v1:inbox', 0, -1)).map(JSON.parse);
+        for (const batch of batches) validateBatch(batch);
+        const failure = batches.find(batch => batch.metrics.some(row => row.name === 'stream_activity_rust.health_query' && row.at === bucket && row.sum === 0)
+            && batch.metrics.some(row => row.name === 'stream_activity_rust.health_errors' && row.at === bucket && row.outcome === 'error'));
+        if (!failure) return false;
+        const forbidden = new Set(['pending_work', 'oldest_pending_age_ms', 'checkpoint_seq', 'active_batch_events', 'errors', 'restarts']
+            .map(name => `stream_activity_rust.${name}`));
+        assert(!batches.filter(batch => batch.instance === failure.instance).some(batch => batch.metrics.some(row => row.at === bucket && forbidden.has(row.name))),
+            'failed health must not fabricate progress gauges or lifecycle errors in real analytics envelopes');
+        return true;
+    }, 'health failure reaches analytics-valid Redis envelopes without fabricated gauges', 18000);
+    await shutdown.collection(collections[2]).updateOne({ _id: stateId }, { $set: { seq: 7 } });
+    const repairedHealth = await waitFor(async () => (await records('shutdown')).find(row => row.event === 'health'
+        && row.pid === ownedChild.pid && row.at > failedHealth.at && row.frame.success), 'health read recovery', 40000);
+    assert.equal(repairedHealth.frame.hasPending, false); assert.equal(repairedHealth.frame.oldestPendingAgeMs, undefined);
+    assert.equal(repairedHealth.frame.checkpointSeq, 7); assert.equal(repairedHealth.frame.activeBatchEvents, 0);
+    assert(Number.isFinite(repairedHealth.frame.lastSuccessAgeMs));
+    await release(shutdown);
+    const repaired = { ...pending[0], _id: 'fixture-after-health-repair', processed: false };
+    await shutdown.collection(collections[0]).insertOne(repaired); await complete(shutdown, [repaired._id]);
+    assert.equal((await currentNative('shutdown')).pid, ownedChild.pid);
+    assert.equal((await records('shutdown')).filter(row => row.event === 'spawn' && row.native).length, 1);
+    console.log('PASS real pending/checkpoint/active health, unknown-to-known success, isolated health failure without restart, repaired empty health and post-repair projection');
+    await waitFor(() => assertTelemetry(true, true), 'all stream health metrics in analytics-valid envelopes', 35000);
     child.kill('SIGTERM');
     let shutdownTimer;
     const exit = await Promise.race([completion, new Promise((_, reject) => {
@@ -242,6 +310,7 @@ try {
     assert.equal(exit.code, 0, output.slice(-2000)); assert.equal(exit.signal, null);
     await waitFor(async () => (await records('shutdown')).some(row => row.event === 'exit' && row.pid === ownedChild.pid && row.code === 0 && row.signal === null), 'native graceful supervised shutdown');
     assert.equal((await records('shutdown')).filter(row => row.event === 'spawn' && row.native).length, 1, 'shutdown must not restart native child');
+    process.kill(mainPaused.pid, 'SIGCONT'); stopped.delete(mainPaused.pid);
     console.log('PASS actual auxiliary supervisor SIGTERM gracefully stops native child without restart; main candidate remains running');
 } finally {
     for (const pid of stopped) { try { process.kill(pid, 'SIGCONT'); } catch {} }

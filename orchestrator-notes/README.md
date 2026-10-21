@@ -62,3 +62,5 @@ User feedback:
 Confidence:
 Routing implication:
 ```
+
+2026-10-21 — Combined Rust cron scheduler and health release documentation: GPT-6 Luna reconciled the migration notes, Rust worker guides, ops rollback pointers, and this routing record against candidate receipts and production evidence. Combined cron `cron-240af282cb85` and admin artifact `admin-0fca439bcb95` were deployed after all three worker suites and scoped admin/browser checks passed. The 20-sample, 190.001-second production watch passed: both baseline refreshes completed naturally, all 29 caches were valid with zero due channels, stream checkpoint advanced with no active sampled batches, and no child errors/restarts or health errors appeared. The other 16 production containers were unchanged; served admin assets matched the verified bundle. Fixture burst timing is synthetic, and no TypeScript throughput or build-speedup claim is made. Evidence: `migration-notes/follow-defense-baseline.md`, `migration-notes/stream-activity.md`, `ops/README.md`. Confidence: single release. No model-routing or tier change inferred.
