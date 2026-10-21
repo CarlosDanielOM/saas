@@ -30,7 +30,8 @@ IMAGE_RE = re.compile(r"sha256:[0-9a-f]{64}\Z")
 EXCLUDED = {"node_modules", "dist", "target", ".saas-native", ".git", ".angular", ".astro", "data", "coverage"}
 # Rust 1.99.1 on Alpine/musl, using the already validated immutable image.
 RUST_BUILD_IMAGE = "rust@sha256:557a94c82b485a14b569120e00867267108c734efe33f10cc31ca0cd5dd1eca9"
-RUST_BINARIES = ("stream_activity", "raid_analytics", "follow_defense_baseline", "roulette_completion", "ai_usage_receipts")
+RUST_BINARIES = ("stream_activity", "raid_analytics", "follow_defense_baseline", "roulette_completion",
+                 "ai_usage_receipts", "raid_sessions")
 GIB = 1024 ** 3
 RUST_BUILD_CPUS = 6
 RUST_BUILD_MEMORY_GIB = 6
@@ -53,12 +54,13 @@ exec sh /rust-build.sh'''
 
 def rust_worker_profiles():
     # Preserve the Mongo-only profile/receipt fields for these workers; the
-    # baseline and AI usage receipt workers need a Redis/Dragonfly client.
+    # baseline, AI usage receipt, and raid sessions workers need a Redis/Dragonfly
+    # client for their existing cache/queue state.
     return {
         "mongo": {"features": RUST_FEATURES, "default_features": False,
                   "binaries": ["stream_activity", "raid_analytics", "roulette_completion"], "graph": "worker-dependencies.txt"},
         "mongo-redis": {"features": RUST_BASELINE_FEATURES, "default_features": False,
-                        "binaries": ["follow_defense_baseline", "ai_usage_receipts"], "graph": "baseline-worker-dependencies.txt"},
+                        "binaries": ["follow_defense_baseline", "ai_usage_receipts", "raid_sessions"], "graph": "baseline-worker-dependencies.txt"},
     }
 
 

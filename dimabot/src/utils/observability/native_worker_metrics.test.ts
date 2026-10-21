@@ -477,7 +477,7 @@ test('roulette validates batch-only processed-channel frames and recovers after 
 
 test('roulette frames cannot enter other native parsers or produce phase/health metrics', () => {
     const samples: unknown[][] = [];
-    for (const worker of ['stream-activity', 'raid-analytics', 'follow-defense-baseline'] as const) {
+    for (const worker of ['stream-activity', 'raid-analytics', 'follow-defense-baseline', 'raid-sessions'] as const) {
         const feed = nativeProgressParser((...args) => { samples.push(args); }, worker);
         feed(rouletteFrame({ event: 'batch', events: 1, durationMs: 2, success: true }));
         feed(rouletteFrame({ event: 'health', success: true }));
@@ -549,7 +549,7 @@ test('receipts protocol is strictly batch-only with bounded counts and durations
 
 test('receipts frames stay inside their own parser and other workers ignore them', () => {
     const samples: unknown[][] = [];
-    for (const worker of ['stream-activity', 'raid-analytics', 'follow-defense-baseline', 'roulette-completion'] as const) {
+    for (const worker of ['stream-activity', 'raid-analytics', 'follow-defense-baseline', 'roulette-completion', 'raid-sessions'] as const) {
         const feed = nativeProgressParser((...args) => { samples.push(args); }, worker);
         feed(receiptsFrame({ event: 'batch', events: 1, durationMs: 2, success: true }));
         feed(receiptsFrame({ event: 'health', success: true }));
@@ -579,4 +579,77 @@ test('receipts sampler emits only receipts runtime metrics', async () => {
     assert(samples.some(row => row[1] === 'ai_usage_receipts_rust.rss_bytes'));
     assert(samples.some(row => row[1] === 'ai_usage_receipts_rust.cpu_cores'));
     assert(samples.every(row => String(row[1]).startsWith('ai_usage_receipts_rust.')));
+});
+
+const sessionsFrame = (row: Record<string, unknown>): string => `raid_sessions:${JSON.stringify(row)}\n`;
+
+test('raid sessions protocol is strictly batch-only with a 401-item bound', () => {
+    const samples: unknown[][] = [];
+    const feed = nativeProgressParser((...args) => { samples.push(args); }, 'raid-sessions');
+    const batch = { event: 'batch', events: 401, durationMs: 300000, success: true };
+    for (const events of [-1, 402, .5, '1', null, Number.MAX_SAFE_INTEGER]) feed(sessionsFrame({ ...batch, events }));
+    for (const durationMs of [-1, 300001, '1', null, 1e309]) feed(sessionsFrame({ ...batch, durationMs }));
+    feed(sessionsFrame({ ...batch, success: false }));
+    feed(sessionsFrame({ ...batch, success: 'true' }));
+    for (const extra of [{ phases: { queueMs: 1 } }, { channelID: 'private' }, { request: 'private' },
+        { dueChannels: 1 }, { hasPending: false }, { admitted: 3 }]) feed(sessionsFrame({ ...batch, ...extra }));
+    // No health frame exists for this protocol; it must stay silent like any other unknown event.
+    feed(sessionsFrame({ event: 'health', success: true, dueChannels: 1 }));
+    feed(sessionsFrame({ event: 'request', events: 1, durationMs: 1, success: true }));
+    feed('raid_sessions:{invalid}\nraid_sessions:null\nraid_sessions:[]\nprivate output secret\n');
+    feed(`raid_sessions:${' '.repeat(1100)}{}\n`);
+    for (const prefix of ['stream_activity:', 'raid_analytics:', 'follow_defense_baseline:', 'roulette_completion:', 'ai_usage_receipts:']) {
+        feed(`${prefix}${JSON.stringify(batch)}\n`);
+    }
+    assert.deepEqual(samples, []);
+    const valid = sessionsFrame(batch);
+    feed(Buffer.from(valid.slice(0, 19))); assert.deepEqual(samples, []);
+    feed(Buffer.from(valid.slice(19)));
+    feed(sessionsFrame({ ...batch, events: 0, durationMs: 0 }));
+    feed(sessionsFrame({ ...batch, events: 0, durationMs: 300000, success: false }));
+    feed(sessionsFrame({ ...batch, events: 1, durationMs: .5 }));
+    assert.deepEqual(samples, [
+        ['worker', 'raid_sessions_rust.batch_items', 401, 'ok'],
+        ['queue_run', 'raid_sessions_rust.project_batch', 300000, 'ok'],
+        ['worker', 'raid_sessions_rust.batch_items', 0, 'idle'],
+        ['queue_run', 'raid_sessions_rust.project_batch', 0, 'idle'],
+        ['worker', 'raid_sessions_rust.batch_items', 0, 'error'],
+        ['queue_run', 'raid_sessions_rust.project_batch', 300000, 'error'],
+        ['worker', 'raid_sessions_rust.batch_items', 1, 'ok'],
+        ['queue_run', 'raid_sessions_rust.project_batch', .5, 'ok'],
+    ]);
+});
+
+test('raid sessions frames stay inside their own parser and other workers ignore them', () => {
+    const samples: unknown[][] = [];
+    for (const worker of ['stream-activity', 'raid-analytics', 'follow-defense-baseline', 'roulette-completion', 'ai-usage-receipts'] as const) {
+        const feed = nativeProgressParser((...args) => { samples.push(args); }, worker);
+        feed(sessionsFrame({ event: 'batch', events: 1, durationMs: 2, success: true }));
+        feed(sessionsFrame({ event: 'health', success: true }));
+    }
+    assert.deepEqual(samples, []);
+    telemetryTesting.reset(); telemetryTesting.enable();
+    try {
+        const feed = nativeProgressParser(observe, 'raid-sessions');
+        feed(sessionsFrame({ event: 'batch', events: 9, durationMs: 12, success: true }));
+        const { metrics, spans, logs } = telemetryTesting.snapshot();
+        assert.deepEqual(spans, []); assert.deepEqual(logs, []);
+        assert.equal(metrics.length, 2);
+        assert(metrics.every(row => row.channel === '' && row.name.startsWith('raid_sessions_rust.')));
+        assert.equal(metrics.find(row => row.name.endsWith('.batch_items'))?.sum, 9);
+        assert(!metrics.some(row => row.kind === 'lifecycle' || /\.(health_query|health_errors)$/.test(row.name)));
+    } finally { telemetryTesting.reset(); telemetryTesting.stop(); }
+});
+
+test('raid sessions sampler emits only raid sessions runtime metrics', async () => {
+    let reads = 0;
+    const samples: unknown[][] = [];
+    const stop = startNativeWorkerMetrics(42, {
+        read: async () => snapshot(BigInt(++reads * 100)), ticks: async () => 100,
+        now: () => reads * 1000, intervalMs: 2, observe: (...args) => { samples.push(args); },
+    }, 'raid-sessions');
+    await delay(15); stop();
+    assert(samples.some(row => row[1] === 'raid_sessions_rust.rss_bytes'));
+    assert(samples.some(row => row[1] === 'raid_sessions_rust.cpu_cores'));
+    assert(samples.every(row => String(row[1]).startsWith('raid_sessions_rust.')));
 });

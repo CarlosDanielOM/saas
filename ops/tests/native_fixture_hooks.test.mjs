@@ -8,7 +8,7 @@ import { spawnSync } from 'node:child_process';
 
 const checks = fileURLToPath(new URL('../checks/', import.meta.url));
 
-// The five supervised native children. A fixture may execute only its own
+// The six supervised native children. A fixture may execute only its own
 // binary; every other one must stay an inert double so a release check cannot
 // start a hidden live worker.
 const NATIVE = [
@@ -17,6 +17,7 @@ const NATIVE = [
     ['follow-defense-baseline', '/usr/local/bin/follow_defense_baseline'],
     ['roulette-completion', '/usr/local/bin/roulette_completion'],
     ['ai-usage-receipts', '/usr/local/bin/ai_usage_receipts'],
+    ['raid-sessions', '/usr/local/bin/raid_sessions'],
 ];
 
 const FIXTURES = [
@@ -24,12 +25,14 @@ const FIXTURES = [
     ['raid-analytics', 'raid_analytics_fixture_hooks', 'raid-spawns.jsonl'],
     ['follow-defense-baseline', 'follow_baseline_fixture_hooks', 'baseline-spawns.jsonl'],
     ['roulette-completion', 'roulette_completion_fixture_hooks', 'roulette-spawns.jsonl'],
+    ['ai-usage-receipts', 'ai_usage_receipts_fixture_hooks', 'ai-usage-spawns.jsonl'],
+    ['raid-sessions', 'raid_sessions_fixture_hooks', 'raid-sessions-spawns.jsonl'],
 ];
 
 for (const [name, database, log] of FIXTURES) {
-    // This fixture owns one native binary; all four other names must be inert.
+    // This fixture owns one native binary; the other five must be inert.
     const foreign = NATIVE.filter(([worker]) => worker !== name);
-    test(`${name} fixture keeps the other four native children inert`, async () => {
+    test(`${name} fixture keeps the other five native children inert`, async () => {
         const directory = await mkdtemp(path.join(tmpdir(), 'saas-native-hook-'));
         try {
             const workers = path.join(directory, 'dist/workers');
@@ -55,7 +58,7 @@ for (const [name, database, log] of FIXTURES) {
             const result = spawnSync(process.execPath, ['--import', hook, entry], {
                 env: {
                     PATH: process.env.PATH, MONGO_URI: `mongodb://mongo:27017/${database}`, DRAGONFLY_HOST: 'redis',
-                    AI_USAGE_RECEIPTS_ENABLED: 'true',
+                    DRAGONFLY_PORT: '6379', AI_USAGE_RECEIPTS_ENABLED: 'true',
                 },
                 encoding: 'utf8', timeout: 5000,
             });
@@ -73,10 +76,11 @@ for (const [name, database, log] of FIXTURES) {
     });
 }
 
-test('the four existing fixtures collectively recognize all five native workers', () => {
+test('the six fixtures collectively recognize all six native workers', () => {
     const covered = new Set(FIXTURES.flatMap(([name]) => NATIVE.filter(([worker]) => worker !== name).map(([worker]) => worker)));
     assert.deepEqual([...covered].sort(), NATIVE.map(([worker]) => worker).sort());
-    assert.equal(NATIVE.length, 5);
+    assert.equal(NATIVE.length, 6);
+    assert.equal(FIXTURES.length, 6);
 });
 
 test('rust-only cron fixture keeps foreign natives inert and exposes ENOENT/nonzero retry paths', async () => {
@@ -93,7 +97,7 @@ test('rust-only cron fixture keeps foreign natives inert and exposes ENOENT/nonz
             import assert from 'node:assert/strict';
             import { spawn } from 'node:child_process';
             const env = { MONGO_URI: process.env.MONGO_URI, PATH: process.env.PATH };
-            for (const command of ['/usr/local/bin/raid_analytics', '/usr/local/bin/follow_defense_baseline']) {
+            for (const command of ['/usr/local/bin/raid_analytics', '/usr/local/bin/follow_defense_baseline', '/usr/local/bin/raid_sessions']) {
                 const child = spawn(command, ['--telemetry-json'], { env, uid: 65534, gid: 65534 });
                 assert(child.pid >= 920000, command + ' must remain a fake child');
                 await new Promise(resolve => child.once('spawn', resolve));
@@ -117,7 +121,7 @@ test('rust-only cron fixture keeps foreign natives inert and exposes ENOENT/nonz
         const records = (await readFile(path.join(directory, 'rust-only-spawns.jsonl'), 'utf8'))
             .trim().split('\n').map(JSON.parse);
         const by = (worker, event) => records.filter(record => record.worker === worker && record.event === event);
-        for (const [worker, command] of NATIVE.filter(([name]) => ['raid-analytics', 'follow-defense-baseline'].includes(name))) {
+        for (const [worker, command] of NATIVE.filter(([name]) => ['raid-analytics', 'follow-defense-baseline', 'raid-sessions'].includes(name))) {
             const [spawn] = by(worker, 'spawn');
             assert.equal(spawn.native, false, `${worker} must stay an inert double`);
             assert.equal(spawn.requestedCommand, command, `${worker} must still request its native command`);

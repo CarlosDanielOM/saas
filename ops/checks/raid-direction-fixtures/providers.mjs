@@ -66,13 +66,40 @@ globalThis.fetch = async (input, options = {}) => {
 // workers are provider fixtures; production uses the normal child processes.
 // The retired TypeScript raid projector is native-only since 2026-10-21; the
 // real supervisor now requests the staged binary instead of a JS entrypoint.
+// Native children ignore NODE_OPTIONS, so the supervisor's own spawn hook is
+// the only place that can observe their real pid and metadata.
 globalThis.__chatNoticeSpawn = (command, args, options) => {
     const entry = String(args[0]);
-    if (command === '/usr/local/bin/raid_analytics'
-        || entry.endsWith('/domain_events.worker.js')
-        || process.env.RAID_PROTECTION_REGRESSION === 'true' && ['/raid_sessions.worker.js','/follow_defense_actions.worker.js'].some(worker=>entry.endsWith(worker))) {
-        log({ worker: entry });
-        return spawn(command, args, options);
+    const nativeRaidAnalytics = command === '/usr/local/bin/raid_analytics';
+    const nativeRaidSessions = command === '/usr/local/bin/raid_sessions'
+        && process.env.RAID_PROTECTION_REGRESSION === 'true';
+    const tsWorker = entry.endsWith('/domain_events.worker.js')
+        || process.env.RAID_PROTECTION_REGRESSION === 'true' && entry.endsWith('/follow_defense_actions.worker.js');
+    if (nativeRaidAnalytics || tsWorker || nativeRaidSessions) {
+        log({ worker: nativeRaidSessions ? command : entry });
+        const child = spawn(command, args, options);
+        if (nativeRaidSessions) {
+            // Record readiness only after the first valid batch frame: the probe
+            // below SIGSTOPs this child, and a mere spawn would freeze it before
+            // its clients were connected. Frames stay bounded, and only the pid
+            // is exported; child output is never trusted beyond the prefix.
+            let pending = '', ready = false;
+            child.stdout?.on('data', chunk => {
+                if (ready) return;
+                pending += chunk;
+                if (pending.length > 8192) pending = '';
+                const lines = pending.split('\n'); pending = lines.pop() || '';
+                for (const line of lines) {
+                    if (ready || !line.startsWith('raid_sessions:')) continue;
+                    let frame;
+                    try { frame = JSON.parse(line.slice('raid_sessions:'.length)); } catch { continue; }
+                    if (frame?.event !== 'batch' || !Number.isInteger(frame.events)) continue;
+                    ready = true;
+                    log({ raidReady: child.pid, worker: 'raid-sessions', native: true, firstFrame: true });
+                }
+            });
+        }
+        return child;
     }
     return null;
 };

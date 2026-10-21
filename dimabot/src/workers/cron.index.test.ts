@@ -12,7 +12,8 @@ const raid = WORKERS.find(worker => worker.name === 'raid-analytics')!;
 const baseline = WORKERS.find(worker => worker.name === 'follow-defense-baseline')!;
 const roulette = WORKERS.find(worker => worker.name === 'roulette-completion')!;
 const receipts = WORKERS.find(worker => worker.name === 'ai-usage-receipts')!;
-const nativeDefinitions = [stream, raid, baseline, roulette, receipts];
+const sessions = WORKERS.find(worker => worker.name === 'raid-sessions')!;
+const nativeDefinitions = [stream, raid, baseline, roulette, receipts, sessions];
 const config: SupervisorConfig = { runtime: 'node', once: false, dryRun: false, restartDelayMs: 5 };
 class FakeChild extends EventEmitter {
     pid = 123;
@@ -48,7 +49,7 @@ function fixture(once = false, definitions: WorkerDefinition[] = [stream], overr
     return { supervisor, children, metrics, commands, stops: () => stops };
 }
 
-test('only five known workers use Rust; flags, privilege drop and environment are explicit', () => {
+test('only six known workers use Rust; flags, privilege drop and environment are explicit', () => {
     assert.equal(WORKERS.filter(worker => worker.name === 'stream-activity').length, 1);
     const env = { MONGO_URI: 'fixture-only', PATH: '/usr/bin', TZ: 'UTC', SECRET_KEY: 'secret', TWITCH_TOKEN: 'private', DRAGONFLY_HOST: 'redis', DRAGONFLY_PORT: '6379' };
     const native = resolveWorkerLaunch(stream, { ...config, once: true, dryRun: true }, env, 0);
@@ -73,8 +74,39 @@ test('only five known workers use Rust; flags, privilege drop and environment ar
 const retiredSelectors = ['STREAM_ACTIVITY_RUNTIME', 'RAID_ANALYTICS_RUNTIME', 'FOLLOW_DEFENSE_BASELINE_RUNTIME',
     'ROULETTE_COMPLETION_RUNTIME', 'AI_USAGE_RECEIPTS_RUNTIME'];
 
-test('all five native definitions have no TypeScript entrypoints and ignore obsolete selectors in both runtimes', () => {
-    assert.equal(WORKERS.filter(worker => worker.kind === 'native').length, 5);
+test('raid-sessions runs as the sixth native child with only Dragonfly host/port beyond the Mongo environment', () => {
+    assert.equal(WORKERS.filter(worker => worker.name === 'raid-sessions').length, 1);
+    const env = { MONGO_URI: 'fixture-only', PATH: '/usr/bin', TZ: 'UTC', LANG: 'C', SECRET_KEY: 'secret',
+        DRAGONFLY_HOST: 'redis', DRAGONFLY_PORT: '6379', DRAGONFLY_PASSWORD: 'private', TWITCH_TOKEN: 'private',
+        AI_USAGE_RECEIPTS_ENABLED: 'true' };
+    const native = resolveWorkerLaunch(sessions, { ...config, once: true, dryRun: true }, env, 0);
+    assert(native.native);
+    assert.equal(native.command, '/usr/local/bin/raid_sessions');
+    assert.deepEqual(native.args, ['--telemetry-json', '--dry-run', '--once']);
+    assert.deepEqual(native.options.env, { MONGO_URI: 'fixture-only', PATH: '/usr/bin', TZ: 'UTC', LANG: 'C',
+        DRAGONFLY_HOST: 'redis', DRAGONFLY_PORT: '6379' });
+    assert.equal(native.options.uid, 65534); assert.equal(native.options.gid, 65534);
+    assert.equal(resolveWorkerLaunch(sessions, config, env, 1000).options.uid, undefined);
+    // No TypeScript fallback entrypoint survives the migration.
+    assert(!('sourceEntry' in sessions) && !('distEntry' in sessions));
+});
+
+test('RAID_SESSIONS_RUNTIME was never a selector and cannot alter the native raid-sessions launch', () => {
+    // The five retired keys above had real TypeScript implementations. This key
+    // is a hypothetical rollback switch that never existed; it must stay inert
+    // rather than imply a restorable TypeScript raid-sessions worker.
+    const env = { MONGO_URI: 'fixture-only', PATH: '/usr/bin', DRAGONFLY_HOST: 'redis', DRAGONFLY_PORT: '6379' };
+    const expected = resolveWorkerLaunch(sessions, { ...config, runtime: 'tsx' }, env, 0);
+    for (const value of ['typescript', 'rust', '1', '']) {
+        const launch = resolveWorkerLaunch(sessions, { ...config, runtime: 'tsx' }, { ...env, RAID_SESSIONS_RUNTIME: value }, 0);
+        assert.deepEqual(launch, expected);
+        assert(launch.native);
+        assert.equal(launch.command, '/usr/local/bin/raid_sessions');
+    }
+});
+
+test('all six native definitions have no TypeScript entrypoints and ignore obsolete selectors in both runtimes', () => {
+    assert.equal(WORKERS.filter(worker => worker.kind === 'native').length, 6);
     for (const worker of nativeDefinitions) {
         assert.equal(worker.kind, 'native');
         assert(!('sourceEntry' in worker)); assert(!('distEntry' in worker));
@@ -341,16 +373,17 @@ test('receipts process failure restarts only receipts and fences late telemetry'
     const before = f.metrics.length;
     child.emit('error', new Error('fixture failure')); child.stdout.write(frame); child.finish(1);
     await delay(15);
-    assert.equal(f.children.length, 6);
-    assert.deepEqual(f.commands.slice(4), ['/usr/local/bin/ai_usage_receipts', '/usr/local/bin/ai_usage_receipts']);
-    assert.deepEqual(f.supervisor.workers.map(worker => worker.restartCount), [0, 0, 0, 0, 1]);
-    for (let index = 0; index < 4; index++) assert.equal(f.supervisor.workers[index].process, f.children[index]);
+    assert.equal(f.children.length, 7);
+    assert.deepEqual(f.commands.slice(4), ['/usr/local/bin/ai_usage_receipts', '/usr/local/bin/raid_sessions',
+        '/usr/local/bin/ai_usage_receipts']);
+    assert.deepEqual(f.supervisor.workers.map(worker => worker.restartCount), [0, 0, 0, 0, 1, 0]);
+    for (const index of [0, 1, 2, 3, 5]) assert.equal(f.supervisor.workers[index].process, f.children[index]);
     assert.deepEqual(f.metrics.slice(before), ['ai_usage_receipts_rust.errors', 'ai_usage_receipts_rust.restarts']);
-    for (const active of [f.children[0], f.children[1], f.children[2], f.children[3], f.children[5]]) active.closeOnTerm = true;
+    for (const active of [f.children[0], f.children[1], f.children[2], f.children[3], f.children[5], f.children[6]]) active.closeOnTerm = true;
     const closing = f.supervisor.shutdown('SIGTERM', 50);
-    f.children[5].stdout.write(frame); await closing;
+    f.children[6].stdout.write(frame); await closing;
     assert.equal(f.metrics.filter(name => name === 'ai_usage_receipts_rust.batch_receipts').length, 1);
-    assert.equal(f.stops(), 6);
+    assert.equal(f.stops(), 7);
 });
 
 
@@ -395,12 +428,15 @@ test('native enabledEnv still prevents a disabled receipts child while starting 
 
 
 test('each native child keeps restart isolation, stale-event fencing and shutdown under both launcher modes', async () => {
-    const protocols = ['stream_activity', 'raid_analytics', 'follow_defense_baseline', 'roulette_completion', 'ai_usage_receipts'];
+    // Protocol prefix and batch metric for each of the six native children; the
+    // raid sessions child is batch-only with a 401-item bound.
+    const protocols = ['stream_activity', 'raid_analytics', 'follow_defense_baseline', 'roulette_completion', 'ai_usage_receipts', 'raid_sessions'];
+    const batches = ['batch_events', 'batch_channels', 'batch_channels', 'batch_channels', 'batch_receipts', 'batch_items'];
     for (const runtime of ['node', 'tsx'] as const) for (let index = 0; index < nativeDefinitions.length; index++) {
         const f = fixture(false, nativeDefinitions, { runtime });
         f.supervisor.start(); await delay(0);
         const first = f.children[index], prefix = `${protocols[index]}_rust`;
-        const metric = `${prefix}.${index === 0 ? 'batch_events' : index === 4 ? 'batch_receipts' : 'batch_channels'}`;
+        const metric = `${prefix}.${batches[index]}`;
         const frame = `${protocols[index]}:{"event":"batch","events":1,"durationMs":2,"success":true}\n`;
         first.stdout.write(frame);
         assert.equal(f.metrics.filter(name => name === metric).length, 1);
@@ -408,9 +444,9 @@ test('each native child keeps restart isolation, stale-event fencing and shutdow
         first.emit('error', new Error('fixture child failure'));
         first.stdout.write(frame); first.finish(1);
         await delay(15);
-        const replacement = f.children[5];
-        assert.equal(f.children.length, 6);
-        assert.equal(f.commands[5], f.commands[index]);
+        const replacement = f.children[nativeDefinitions.length];
+        assert.equal(f.children.length, nativeDefinitions.length + 1);
+        assert.equal(f.commands[nativeDefinitions.length], f.commands[index]);
         assert.deepEqual(f.metrics.slice(before), [`${prefix}.errors`, `${prefix}.restarts`]);
         assert.equal(f.supervisor.workers[index].restartCount, 1);
         assert.equal(f.supervisor.workers[index].process, replacement);
@@ -423,7 +459,7 @@ test('each native child keeps restart isolation, stale-event fencing and shutdow
         const closing = f.supervisor.shutdown('SIGTERM', 50);
         replacement.stdout.write(frame); await closing;
         assert.equal(f.metrics.filter(name => name === metric).length, 1);
-        assert.equal(f.stops(), 6);
+        assert.equal(f.stops(), nativeDefinitions.length + 1);
         assert(f.supervisor.workers.every(worker => worker.process === null));
     }
 });

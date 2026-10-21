@@ -38,6 +38,11 @@ name = "ai_usage_receipts"
 path = "src/bin/ai_usage_receipts.rs"
 required-features = ["mongo", "redis"]
 
+[[bin]]
+name = "raid_sessions"
+path = "src/bin/raid_sessions.rs"
+required-features = ["mongo", "redis"]
+
 [[example]]
 name = "stream_activity_fixture"
 path = "examples/stream_activity_fixture.rs"

@@ -26,6 +26,11 @@
       "originalPath": "dimabot/src/workers/ai_usage_receipts.worker.ts",
       "archivePath": "archives/typescript-workers/2026-10-21/dimabot/src/workers/ai_usage_receipts.worker.ts",
       "sha256": "f74991c8dd9a4e81dc31b9a4e33000167a0acde6c1820c52424e287cf4f1f5fa"
+    },
+    {
+      "originalPath": "dimabot/src/workers/raid_sessions.worker.ts",
+      "archivePath": "archives/typescript-workers/2026-10-21/dimabot/src/workers/raid_sessions.worker.ts",
+      "sha256": "479823edceaf2e82aabfe353aaa8f358ad1de688491866eaf622d26789b94a79"
     }
   ]
 }

@@ -404,11 +404,42 @@ class OpsTests(unittest.TestCase):
 
     def test_cron_dockerfile_stages_every_checked_native_binary(self):
         dockerfile = (mod.ROOT / "dimabot" / "dockerfile").read_text()
-        self.assertEqual(len(mod.RUST_BINARIES), 5)
+        self.assertEqual(len(mod.RUST_BINARIES), 6)
+        self.assertIn("raid_sessions", mod.RUST_BINARIES)
         for binary in mod.RUST_BINARIES:
             self.assertIn(f"install -m 0755 .saas-native/{binary} /usr/local/bin/{binary};", dockerfile)
+        # The sixth native child must be installed next to the other five.
+        self.assertIn("install -m 0755 .saas-native/raid_sessions /usr/local/bin/raid_sessions;", dockerfile)
         self.assertIn("if [ -d .saas-native ]", dockerfile)
         self.assertIn("rm -rf .saas-native", dockerfile)
+
+    def test_sixth_native_worker_is_built_installed_and_receipted_in_the_redis_profile(self):
+        # Every declared binary must belong to exactly one dependency profile, and
+        # the sixth worker must use the Redis profile rather than the Mongo-only one.
+        profiles = mod.rust_worker_profiles()
+        assigned = {binary: profile for profile, metadata in profiles.items() for binary in metadata["binaries"]}
+        self.assertEqual(sorted(assigned), sorted(mod.RUST_BINARIES))
+        self.assertEqual(len(assigned), len(mod.RUST_BINARIES))
+        self.assertEqual(assigned["raid_sessions"], "mongo-redis")
+        self.assertEqual(profiles["mongo-redis"]["features"], "mongo,redis")
+        self.assertNotIn("raid_sessions", profiles["mongo"]["binaries"])
+        recipe = (mod.ROOT / "ops" / "rust_build.sh").read_text()
+        redis_build = '--features "$SAAS_RUST_BASELINE_FEATURES" --bin follow_defense_baseline --bin ai_usage_receipts --bin raid_sessions'
+        self.assertIn(redis_build, recipe)
+        mongo_build = '--features "$SAAS_RUST_FEATURES" --bin stream_activity --bin raid_analytics --bin roulette_completion'
+        self.assertIn(mongo_build, recipe)
+        self.assertNotIn("raid_sessions", recipe[recipe.index(mongo_build):recipe.index(redis_build)])
+        self.assertIn("install -m 0755 /target-cache/release/raid_sessions /artifacts/raid_sessions", recipe)
+        self.assertIn("/artifacts/raid_sessions --dry-run", recipe)
+        # The Redis profile must be compiled before its binary can be installed or dry-run.
+        self.assertLess(recipe.index(redis_build), recipe.index("install -m 0755 /target-cache/release/raid_sessions"))
+        self.assertLess(recipe.index("install -m 0755 /target-cache/release/raid_sessions"), recipe.index("/artifacts/raid_sessions --dry-run"))
+        dockerfile = (mod.ROOT / "dimabot" / "dockerfile").read_text()
+        self.assertIn("install -m 0755 .saas-native/raid_sessions /usr/local/bin/raid_sessions;", dockerfile)
+        # Installation happens before the cron image build, and staging is removed.
+        self.assertLess(dockerfile.index("/usr/local/bin/raid_sessions"),
+                        dockerfile.index("RUN npm run build"))
+        self.assertLess(dockerfile.index("/usr/local/bin/raid_sessions"), dockerfile.index("rm -rf .saas-native"))
 
     def test_rust_compiler_has_hard_caps_private_source_and_no_production_mounts(self):
         cache = {"cargo": str(self.root.parent / "cache/cargo"), "target": str(self.root.parent / "cache/target")}
@@ -538,19 +569,21 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
                 builds = [line for line in lines if line.startswith("cargo build ")]
                 self.assertEqual(builds, [
                     "cargo build --locked --release --no-default-features --features mongo --bin stream_activity --bin raid_analytics --bin roulette_completion",
-                    "cargo build --locked --release --no-default-features --features mongo,redis --bin follow_defense_baseline --bin ai_usage_receipts"])
+                    "cargo build --locked --release --no-default-features --features mongo,redis --bin follow_defense_baseline --bin ai_usage_receipts --bin raid_sessions"])
                 for features in ("mongo", "mongo,redis"):
                     self.assertIn("cargo check --locked --all-targets --no-default-features --features " + features, lines)
                     self.assertIn("cargo clippy --locked --all-targets --no-default-features --features " + features + " -- -D warnings", lines)
                     self.assertIn("cargo test --locked --no-default-features --features " + features, lines)
-                self.assertEqual(len([line for line in lines if line.startswith("dry-run ") and line.endswith(" --dry-run")]), 5)
+                self.assertEqual(len([line for line in lines if line.startswith("dry-run ") and line.endswith(" --dry-run")]), 6)
                 for binary in ["stream_activity", "raid_analytics", "roulette_completion"]:
                     self.assertIn("dry-run " + str(artifacts / binary) + " --dry-run", lines)
                     self.assertLess(next(i for i, line in enumerate(lines) if line.startswith("install ") and line.endswith("/" + binary)),
                                     lines.index(builds[1]))
-                for binary in ["follow_defense_baseline", "ai_usage_receipts"]:
+                for binary in ["follow_defense_baseline", "ai_usage_receipts", "raid_sessions"]:
                     self.assertIn("dry-run " + str(artifacts / binary) + " --dry-run", lines)
                     self.assertIn("install -m 0755 " + str(work / "target/release" / binary) + " " + str(artifacts / binary), lines)
+                # raid_sessions needs the Redis profile and must not come from the Mongo-only build.
+                self.assertNotIn("--bin raid_sessions", builds[0])
                 self.assertFalse(any("feature-matrix" in line or "--all-features" in line for line in lines))
 
     def prepared_rust_cache(self, receipt=None):
@@ -741,7 +774,7 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
         self.assertEqual(details["features"], "mongo")
         self.assertEqual(details["worker_profiles"]["mongo"]["binaries"], ["stream_activity", "raid_analytics", "roulette_completion"])
         self.assertEqual(details["worker_profiles"]["mongo-redis"]["features"], "mongo,redis")
-        self.assertEqual(details["worker_profiles"]["mongo-redis"]["binaries"], ["follow_defense_baseline", "ai_usage_receipts"])
+        self.assertEqual(details["worker_profiles"]["mongo-redis"]["binaries"], ["follow_defense_baseline", "ai_usage_receipts", "raid_sessions"])
         self.assertEqual(details["cache_limit_bytes"], 8 * mod.GIB)
         self.assertEqual(details["jobs"], 2)
         self.assertEqual(details["cpus"], 6)
@@ -796,7 +829,7 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
             self.ops.rust_headroom()
 
     def simulated_rust_build(self, *, exit_code=0, applied_limits=None, raid_artifact="valid", baseline_artifact="valid",
-                             roulette_artifact="valid", receipts_artifact="valid",
+                             roulette_artifact="valid", receipts_artifact="valid", sessions_artifact="valid",
                              mongo_extra="", baseline_extra="", cache_bytes=0, memory_gib=6):
         self.rust_source()
         (self.path / "source").mkdir()
@@ -844,6 +877,13 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
                     receipts.write_bytes(b"unverified host artifact")
                 elif receipts_artifact == "symlink":
                     receipts.symlink_to(self.path / "rust-artifacts/stream_activity")
+                sessions = self.path / "rust-artifacts/raid_sessions"
+                if sessions_artifact == "valid":
+                    sessions.write_bytes(b"\x7fELFsessionsfixture")
+                elif sessions_artifact == "invalid":
+                    sessions.write_bytes(b"unverified host artifact")
+                elif sessions_artifact == "symlink":
+                    sessions.symlink_to(self.path / "rust-artifacts/stream_activity")
                 (self.path / "rust-artifacts/toolchain.txt").write_text("host: x86_64-unknown-linux-musl")
             return original_docker(*args, **kwargs)
         return patch.object(self.ops, "docker", side_effect=docker)
@@ -919,10 +959,11 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
             "stream_activity": mod.digest(b"\x7fELFfixture"), "raid_analytics": mod.digest(b"\x7fELFraidfixture"),
             "follow_defense_baseline": mod.digest(b"\x7fELFbaselinefixture"),
             "roulette_completion": mod.digest(b"\x7fELFroulettefixture"),
-            "ai_usage_receipts": mod.digest(b"\x7fELFreceiptsfixture")})
+            "ai_usage_receipts": mod.digest(b"\x7fELFreceiptsfixture"),
+            "raid_sessions": mod.digest(b"\x7fELFsessionsfixture")})
         for binary in mod.RUST_BINARIES:
             metadata = self.receipt["rust_binary_metadata"][binary]
-            baseline = binary in ("follow_defense_baseline", "ai_usage_receipts")
+            baseline = binary in ("follow_defense_baseline", "ai_usage_receipts", "raid_sessions")
             profile = "mongo-redis" if baseline else "mongo"
             self.assertEqual(metadata["profile"], profile)
             self.assertEqual(metadata["features"], "mongo,redis" if baseline else "mongo")
@@ -946,6 +987,14 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
         receipts_staged = self.path / "source/.saas-native/ai_usage_receipts"
         self.assertEqual(receipts_staged.read_bytes(), b"\x7fELFreceiptsfixture")
         self.assertEqual(receipts_staged.stat().st_mode & 0o777, 0o755)
+        sessions_staged = self.path / "source/.saas-native/raid_sessions"
+        self.assertEqual(sessions_staged.read_bytes(), b"\x7fELFsessionsfixture")
+        self.assertEqual(sessions_staged.stat().st_mode & 0o777, 0o755)
+        # The sixth worker shares the baseline Mongo+Redis graph, not the Mongo-only one.
+        self.assertEqual(self.receipt["rust_binary_metadata"]["raid_sessions"]["features"], "mongo,redis")
+        self.assertEqual(self.receipt["rust_binary_metadata"]["raid_sessions"]["profile"], "mongo-redis")
+        self.assertEqual(self.receipt["rust_binary_metadata"]["raid_sessions"]["dependency_graph_digest"],
+                         self.receipt["rust_worker_profiles"]["mongo-redis"]["dependency_graph_digest"])
         self.assertEqual(self.receipt["resources"], [])
         self.assertFalse((self.path / "rust-work").exists())
         self.assertNotIn(("container", "saas-ops-" + RUN + "-rust-build"), self.ops.objects)
@@ -975,6 +1024,7 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
         for failure in ("checks", "limits", "missing", "invalid", "symlink", "baseline_missing", "baseline_invalid",
                         "baseline_symlink", "roulette_missing", "roulette_invalid", "roulette_symlink",
                         "receipts_missing", "receipts_invalid", "receipts_symlink",
+                        "sessions_missing", "sessions_invalid", "sessions_symlink",
                         "mongo_redis", "mongo_axum", "baseline_sqlx", "baseline_axum"):
             with self.subTest(failure=failure):
                 # Each simulation uses the same task-owned directories, cleared here.
@@ -991,6 +1041,7 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
                                                        baseline_artifact=failure.removeprefix("baseline_") if failure in ("baseline_missing", "baseline_invalid", "baseline_symlink") else "valid",
                                                        roulette_artifact=failure.removeprefix("roulette_") if failure in ("roulette_missing", "roulette_invalid", "roulette_symlink") else "valid",
                                                        receipts_artifact=failure.removeprefix("receipts_") if failure in ("receipts_missing", "receipts_invalid", "receipts_symlink") else "valid",
+                                                       sessions_artifact=failure.removeprefix("sessions_") if failure in ("sessions_missing", "sessions_invalid", "sessions_symlink") else "valid",
                                                        mongo_extra={"mongo_redis": "redis v0.32.7\n", "mongo_axum": "axum-core v0.5.0\n"}.get(failure, ""),
                                                        baseline_extra={"baseline_sqlx": "sqlx-core v0.8.6\n", "baseline_axum": "axum v0.8.0\n"}.get(failure, ""))
                 with simulation, patch.object(self.ops, "rust_headroom", return_value={}), \

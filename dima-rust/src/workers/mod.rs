@@ -14,3 +14,6 @@ pub mod roulette_completion;
 
 #[cfg(all(feature = "mongo", feature = "redis"))]
 pub mod ai_usage_receipts;
+
+#[cfg(all(feature = "mongo", feature = "redis"))]
+pub mod raid_sessions;

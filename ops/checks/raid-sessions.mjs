@@ -108,9 +108,19 @@ if (process.env.SAAS_TARGET === 'bot') {
     console.log('PASS BOT: legacy raid entrypoint records a session; manual command scopes it; next raid returns to protection'); process.exit(0);
 }
 
-// Pause only this disposable candidate's moderation workers for deterministic assertions.
+// Pause only this disposable candidate's moderation workers for deterministic
+// assertions. The raid projector is the native raid_sessions binary; its
+// readiness marker is recorded by the fixture after its first bounded batch
+// frame, so the stop lands on an initialized child. The action executor is the
+// unchanged TypeScript worker running against the Twitch mock.
 await until(() => calls().some(c=>c.raidReady) && calls().some(c=>c.ready), 'supervised workers ready');
-const raidPID = calls().find(c=>c.raidReady).raidReady, actionPID=calls().find(c=>c.ready).ready;
+const raidPID = calls().filter(c=>c.raidReady).at(-1).raidReady;
+const actionPID = calls().filter(c=>c.ready).at(-1).ready;
+const raidCommand = fs.readFileSync(`/proc/${raidPID}/cmdline`, 'utf8').split('\0');
+assert.equal(raidCommand[0], '/usr/local/bin/raid_sessions');
+assert(raidCommand.includes('--telemetry-json'));
+assert(!raidCommand.some(arg => /\.worker\.(ts|js)$/.test(arg)));
+if (process.getuid?.() === 0) assert.equal(fs.statSync(`/proc/${raidPID}`).uid, 65534);
 process.kill(raidPID,'SIGSTOP'); process.kill(actionPID,'SIGSTOP');
 
 // 5,000 follows in a minute, split 3,000 / 2,000 at the second raid.
@@ -270,5 +280,5 @@ await recordRaidFollow(follow(42)); await requestRaidBans(channel,workerSession.
 process.kill(raidPID,'SIGCONT');process.kill(actionPID,'SIGCONT');
 await until(async()=>await Actions.countDocuments({followerID:'42',status:'succeeded'})===1,'real workers admit and execute');
 assert.ok(calls().some(c=>c.user==='42'));
-console.log('PASS CRON: actual supervised admission and moderation workers execute against isolated Twitch mock');
+console.log('PASS CRON: actual supervisor runs native raid_sessions admission with the real TypeScript action executor against the isolated Twitch mock');
 process.exit(0);

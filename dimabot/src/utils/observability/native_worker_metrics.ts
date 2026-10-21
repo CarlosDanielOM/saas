@@ -101,6 +101,11 @@ export const NATIVE_WORKERS = {
         protocol: 'ai_usage_receipts:', metricPrefix: 'ai_usage_receipts_rust', batchMetric: 'batch_receipts', maxEvents: 1000, maxDurationMs: 300000,
         extraEnv: [...DRAGONFLY_ENV, ...AI_USAGE_RECEIPTS_ENV, ...AI_USAGE_QUEUE_HEALTH_ENV],
     },
+    'raid-sessions': {
+        command: '/usr/local/bin/raid_sessions', args: ['--telemetry-json'],
+        protocol: 'raid_sessions:', metricPrefix: 'raid_sessions_rust', batchMetric: 'batch_items', maxEvents: 401, maxDurationMs: 300000,
+        extraEnv: DRAGONFLY_ENV,
+    },
 } as const;
 export type NativeWorkerName = keyof typeof NATIVE_WORKERS;
 export function nativeWorker(name: string): typeof NATIVE_WORKERS[NativeWorkerName] | undefined {
@@ -235,7 +240,7 @@ export function nativeProgressParser(emit: Observer = observe, worker: NativeWor
     const metadata = NATIVE_WORKERS[worker];
     const phases = worker === 'raid-analytics' ? RAID_PHASES : worker === 'follow-defense-baseline' ? BASELINE_PHASES : undefined;
     // Batch-only protocols accept no health or phase frames and no private fields.
-    const batchOnly = worker === 'roulette-completion' || worker === 'ai-usage-receipts';
+    const batchOnly = worker === 'roulette-completion' || worker === 'ai-usage-receipts' || worker === 'raid-sessions';
     let pending = '', discard = false;
     return chunk => {
         // Iterate without concatenating arbitrary pipe chunks into a large buffer.

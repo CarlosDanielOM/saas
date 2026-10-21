@@ -18,7 +18,9 @@
 // retired runtime selector set to "typescript". It must still launch native
 // Rust only. stream-activity is a real native child and projects a small fixture
 // batch; ai-usage-receipts fails with ENOENT and roulette-completion exits
-// nonzero so only same-Rust restarts can be observed.
+// nonzero so only same-Rust restarts can be observed. RAID_SESSIONS_RUNTIME is
+// not one of the retired selectors: raid-sessions was added as native Rust and
+// never had a TypeScript runtime switch, so it is only a stale-key no-op probe.
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { readFile, readdir, stat } from 'node:fs/promises';
@@ -42,6 +44,12 @@ const SELECTORS = {
     'roulette-completion': 'ROULETTE_COMPLETION_RUNTIME',
     'ai-usage-receipts': 'AI_USAGE_RECEIPTS_RUNTIME',
 };
+// The sixth native child. It was migrated straight to Rust: RAID_SESSIONS_RUNTIME
+// was never an implemented selector, so it is a hypothetical stale key, not a
+// sixth retired switch. The archived source is still required to stay out of /app.
+const NATIVE_ONLY = { name: 'raid-sessions', file: 'raid_sessions.worker', command: '/usr/local/bin/raid_sessions',
+    staleKey: 'RAID_SESSIONS_RUNTIME' };
+const NATIVE = [...RETIRED, NATIVE_ONLY];
 const spawnLog = '/tmp/saas-fixtures/rust-only-spawns.jsonl';
 const enoentWorker = process.env.RUST_ONLY_FIXTURE_ENOENT;
 const nonzeroWorker = process.env.RUST_ONLY_FIXTURE_NONZERO;
@@ -107,24 +115,24 @@ async function attempts() {
 }
 
 // 1. No archived source, compiled entrypoint, or source map exists in /app.
-for (const worker of RETIRED) {
+for (const worker of NATIVE) {
     await absent(`/app/src/workers/${worker.file}.ts`, 'retired TypeScript source');
     await absent(`/app/dist/workers/${worker.file}.js`, 'retired compiled entrypoint');
     await absent(`/app/dist/workers/${worker.file}.js.map`, 'retired source map');
 }
 await absent('/app/archives', 'the TypeScript worker archive');
-const archived = new Set(RETIRED.map(worker => `${worker.file}.ts`));
+const archived = new Set(NATIVE.map(worker => `${worker.file}.ts`));
 for (const file of await walk('/app')) {
     assert(!archived.has(path.basename(file)), `archived worker source must not be in the app tree: ${file}`);
 }
-console.log('PASS five TypeScript src/dist/source-map entrypoints and the archive are absent from /app');
+console.log('PASS six TypeScript src/dist/source-map entrypoints and the archive are absent from /app');
 
 // 2. Registry definitions are native-only. No retired name carries a
 // TypeScript source or dist entry, and the native metadata has no selector.
 const { WORKERS, resolveWorkerLaunch } = await import('/app/dist/workers/cron.index.js');
 const { NATIVE_WORKERS } = await import('/app/dist/utils/observability/native_worker_metrics.js');
-assert.equal(WORKERS.filter(worker => worker.kind === 'native').length, RETIRED.length);
-for (const item of RETIRED) {
+assert.equal(WORKERS.filter(worker => worker.kind === 'native').length, NATIVE.length);
+for (const item of NATIVE) {
     const definitions = WORKERS.filter(worker => worker.name === item.name);
     assert.equal(definitions.length, 1, `${item.name} must be registered exactly once`);
     const [definition] = definitions;
@@ -139,12 +147,12 @@ for (const item of RETIRED) {
 }
 for (const worker of WORKERS.filter(entry => entry.kind === 'typescript')) {
     assert(worker.sourceEntry && worker.distEntry, `${worker.name} remains an active TypeScript worker`);
-    for (const item of RETIRED) {
+    for (const item of NATIVE) {
         assert(!worker.sourceEntry.includes(item.file) && !worker.distEntry.includes(item.file),
             `${worker.name} must not reference retired ${item.file}`);
     }
 }
-console.log('PASS five registry definitions are native-only; remaining TypeScript workers keep their entries');
+console.log('PASS six registry definitions are native-only; remaining TypeScript workers keep their entries');
 
 // 3. node, tsx, and every retired selector value still resolve native Rust.
 const registryEnv = { MONGO_URI: 'mongodb://mongo:27017/rust_only_fixture_registry', DRAGONFLY_HOST: 'redis', DRAGONFLY_PORT: '6379', PATH: process.env.PATH };
@@ -172,6 +180,24 @@ try {
 } finally {
     for (const key of Object.values(SELECTORS)) delete process.env[key];
 }
+// 3b. RAID_SESSIONS_RUNTIME was never implemented. This stale key must be inert
+// in both runtimes and must not imply a restorable TypeScript raid-sessions worker.
+for (const runtime of ['node', 'tsx']) {
+    const definition = WORKERS.find(worker => worker.name === NATIVE_ONLY.name);
+    for (const value of ['typescript', 'rust', '1', '']) {
+        process.env[NATIVE_ONLY.staleKey] = value;
+        const launch = resolveWorkerLaunch(definition,
+            { runtime, once: true, dryRun: true, restartDelayMs: 1 }, registryEnv, 0);
+        assert.equal(launch.native, true, `${runtime}/${value}/${NATIVE_ONLY.name} must launch Rust`);
+        assert.equal(launch.command, NATIVE_ONLY.command);
+        assert(launch.args.includes('--telemetry-json'), `${NATIVE_ONLY.name} must use the native metadata protocol`);
+        assert(!launch.args.some(arg => /\.worker\.(ts|js)$/.test(arg)),
+            `${NATIVE_ONLY.name} must not receive an archived entrypoint argument`);
+        assert.equal(launch.options.uid, 65534);
+        assert.equal(launch.options.gid, 65534);
+    }
+}
+delete process.env[NATIVE_ONLY.staleKey];
 for (const [runtime, command, suffix] of [
     ['node', process.execPath, '/dist/workers/dashboard_activity.worker.js'],
     ['tsx', 'tsx', '/src/workers/dashboard_activity.worker.ts'],
@@ -182,7 +208,7 @@ for (const [runtime, command, suffix] of [
     assert.equal(launch.command, command);
     assert(launch.args[0].endsWith(suffix), `${runtime} TypeScript entrypoint`);
 }
-console.log('PASS node/tsx and every retired typescript selector resolve only native Rust; active TypeScript workers stay on TypeScript');
+console.log('PASS node/tsx, every retired selector and the stale RAID_SESSIONS_RUNTIME key resolve only native Rust; active TypeScript workers stay on TypeScript');
 
 // 4. The actual supervisor ran the real native stream child and produced work.
 const client = new MongoClient(uri.href, { serverSelectionTimeoutMS: 5000 });
@@ -236,10 +262,10 @@ assert(frame.frame.events >= 1);
 await client.close();
 console.log('PASS the real supervisor ran a real native child that projected fixture activity and emitted native batch metadata');
 
-// 5. Every retired worker was supervised by its native command, never a
+// 5. Every native worker was supervised by its own command, never a
 // process.execPath/tsx launch of an archived entrypoint.
 const rows = await records();
-for (const item of RETIRED) {
+for (const item of NATIVE) {
     // Only spawn attempts identify the requested launch. Frame/exit records do
     // not carry requestedCommand or the launch command.
     const attempts = rows.filter(row => row.worker === item.name
@@ -257,7 +283,7 @@ for (const item of RETIRED) {
 }
 for (const row of rows) {
     const args = Array.isArray(row.args) ? row.args : [];
-    for (const item of RETIRED) {
+    for (const item of NATIVE) {
         for (const retiredPath of [`/${item.file}.js`, `/${item.file}.ts`]) {
             assert(!String(row.requestedCommand).endsWith(retiredPath),
                 `retired entrypoint must not be requested: ${row.requestedCommand}`);
@@ -271,7 +297,7 @@ for (const name of await readdir('/proc')) {
     let command;
     try { command = await readFile(`/proc/${name}/cmdline`, 'utf8'); } catch { continue; }
     const argv = command.split('\0');
-    for (const item of RETIRED) {
+    for (const item of NATIVE) {
         for (const retiredPath of [`/${item.file}.js`, `/${item.file}.ts`]) {
             assert(!argv.some(arg => arg.endsWith(retiredPath)), `retired TypeScript child must not run: ${retiredPath}`);
         }
@@ -295,7 +321,7 @@ for (const row of nonzero) assert.equal(row.worker, 'roulette-completion');
 const before = await attempts();
 await delay(2600);
 const after = await attempts();
-for (const name of ['stream-activity', 'raid-analytics', 'follow-defense-baseline']) {
+for (const name of ['stream-activity', 'raid-analytics', 'follow-defense-baseline', 'raid-sessions']) {
     assert.equal(after[name] || 0, before[name] || 0, `${name} must not restart because another child failed`);
 }
 assert((after[enoentWorker] || 0) > (before[enoentWorker] || 0), 'ENOENT child must retry its native command');
@@ -313,7 +339,7 @@ const replacement = await waitFor(async () => {
 assert.equal(replacement.requestedCommand, '/usr/local/bin/stream_activity');
 assert.equal(replacement.uid, 65534);
 const afterKill = await attempts();
-for (const name of ['raid-analytics', 'follow-defense-baseline']) {
+for (const name of ['raid-analytics', 'follow-defense-baseline', 'raid-sessions']) {
     assert.equal(afterKill[name] || 0, beforeKill[name] || 0, `${name} must not restart with the crashed stream child`);
 }
 assert((afterKill['stream-activity'] || 0) > (beforeKill['stream-activity'] || 0),

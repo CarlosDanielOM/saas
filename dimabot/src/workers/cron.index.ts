@@ -53,7 +53,7 @@ export const WORKERS: WorkerDefinition[] = [
     { kind: 'typescript', name: 'roulette-actions', sourceEntry: 'src/workers/roulette-actions.worker.ts', distEntry: 'dist/workers/roulette-actions.worker.js' },
     { kind: 'native', name: 'roulette-completion' },
     { kind: 'native', name: 'follow-defense-baseline' },
-    { kind: 'typescript', name: 'raid-sessions', sourceEntry: 'src/workers/raid_sessions.worker.ts', distEntry: 'dist/workers/raid_sessions.worker.js' },
+    { kind: 'native', name: 'raid-sessions' },
     {
         kind: 'typescript',
         name: 'follow-defense-actions',
