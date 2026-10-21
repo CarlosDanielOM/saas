@@ -31,3 +31,8 @@ cargo test --locked
 ```
 
 Use `cargo run --bin stream_activity -- --help`, `cargo run --bin raid_analytics -- --help`, or `cargo run --bin follow_defense_baseline -- --help` for the manual binaries. Cargo build checks and default Rust tests need no database or cache services; the MongoDB and Redis integration tests use external fixtures and are ignored by default. The stream-activity parity harness, raid migration candidate check, and baseline candidate check are documented in [`STREAM_ACTIVITY.md`](STREAM_ACTIVITY.md), [`migration-notes/README.md`](../migration-notes/README.md), and [`ops/README.md`](../ops/README.md). Run service-backed checks only against isolated, disposable data. Keep `Cargo.lock` tracked and use `--locked` for the documented checks.
+
+
+## Raid change-driven release notice
+
+Raid analytics release `cron-2ddd455fdd1f` is deployed and accepted. All four exact-image worker suites passed, as did the 124.802-second production acceptance watch. The rollback target is `cron-99f8d5165ff2` (image `sha256:7b4656ed97fa73431d192c754bef504672b167e020909c7bdc6d4e727f54bcc8`). See [`migration-notes/raid-change-driven.md`](../migration-notes/raid-change-driven.md).

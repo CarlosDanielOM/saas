@@ -19,11 +19,14 @@ use mongodb::{
     options::{Acknowledgment, Hint, ReturnDocument, UpdateOneModel, WriteConcern},
 };
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use tokio::{sync::oneshot, task::JoinHandle};
 
 const DAY_MS: i64 = 86_400_000;
 const WINDOW_MS: i64 = 300_000;
 const LEASE_MS: i64 = 60_000;
+const REPAIR_MS: i64 = 15 * 60_000;
+const REFRESH_VERSION: i32 = 1;
 const MAX_METRIC_VALUE: u64 = 1_000_000_000_000_000;
 
 /// Elapsed time for attempted phases, including failures. Unreached phases are
@@ -72,8 +75,8 @@ fn elapsed_ms(started: Instant) -> f64 {
     (started.elapsed().as_secs_f64() * 1000.0).min(MAX_METRIC_VALUE as f64)
 }
 
-/// One leased channel per pass, at most 25 follow windows, five query tasks at a
-/// time, then the unchanged MongoDB 7/30-day aggregation pipelines.
+/// One leased channel per pass and at most 25 follow windows, five query tasks
+/// at a time. Unchanged sources skip all four summary aggregation pipelines.
 #[derive(Clone)]
 pub struct RaidAnalyticsProjector {
     database: Database,
@@ -87,6 +90,38 @@ struct State {
     #[serde(rename = "_id")]
     #[garde(length(min = 1))]
     id: String,
+    #[serde(default, rename = "dirtyAt")]
+    #[garde(skip)]
+    dirty_at: Option<DateTime>,
+    #[serde(default, rename = "nextRefreshAt")]
+    #[garde(skip)]
+    next_refresh_at: Option<DateTime>,
+    #[serde(default)]
+    #[garde(skip)]
+    payload: Option<Document>,
+    #[serde(default, rename = "rustRefresh")]
+    #[garde(skip)]
+    refresh: Option<RefreshState>,
+    #[serde(default, rename = "rustPending")]
+    #[garde(skip)]
+    pending: bool,
+    #[serde(default)]
+    #[garde(skip)]
+    error: bool,
+}
+
+/// Private scheduling metadata in the existing summary document. Nothing is
+/// added to the dashboard payload or the immutable domain-event journal.
+#[derive(Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RefreshState {
+    version: i32,
+    fingerprint: String,
+    next_source_at: Option<DateTime>,
+    next_repair_at: Option<DateTime>,
+    next_open_at: Option<DateTime>,
+    dirty_at: Option<DateTime>,
+    has_follow_windows: bool,
 }
 
 #[derive(Deserialize, Validate)]
@@ -97,6 +132,34 @@ struct FollowRow {
     id: String,
     #[garde(skip)]
     occurred_at: DateTime,
+    #[serde(default)]
+    #[garde(skip)]
+    follows_after: Option<Bson>,
+    #[serde(default)]
+    #[garde(skip)]
+    follow_window_end: Option<DateTime>,
+    #[serde(default)]
+    #[garde(skip)]
+    follows_computed_at: Option<DateTime>,
+}
+
+#[derive(Default)]
+struct FollowRefresh {
+    changed: bool,
+    pending: bool,
+    next_open_at: Option<DateTime>,
+}
+
+struct FollowUpdate {
+    operation: Option<UpdateOneModel>,
+    changed: bool,
+    next_open_at: Option<DateTime>,
+}
+
+struct SourceState {
+    fingerprint: String,
+    next_source_at: Option<DateTime>,
+    has_follow_windows: bool,
 }
 
 #[derive(Deserialize)]
@@ -154,7 +217,8 @@ impl RaidAnalyticsProjector {
         }
     }
 
-    /// Returns zero when idle or one when a channel summary was refreshed.
+    /// Returns one only for a published payload change, zero for idle or a
+    /// successful no-change check. No-change checks preserve updatedAt.
     pub async fn project_once(&self) -> Result<usize> {
         self.project_once_observed().await.result
     }
@@ -242,49 +306,136 @@ impl RaidAnalyticsProjector {
         let heartbeat = Heartbeat::start(self.summaries.clone(), state.id.clone(), owner.clone());
         let result = async {
             state.validate().map_err(|_| malformed())?;
-            self.refresh_follow_counts(&state.id, &owner, now, &heartbeat.lost, phases).await?;
-            let started = Instant::now();
-            let period7 = self.build_period_data(&state.id, 7, now).await;
-            phases.period7_ms = Some(elapsed_ms(started));
-            let mut period7 = period7?;
-            let started = Instant::now();
-            let reciprocity = self.attach_reciprocity(&state.id, &mut period7, now).await;
-            phases.reciprocity_ms = Some(elapsed_ms(started));
-            reciprocity?;
-            let started = Instant::now();
-            let period30 = self.build_period_data(&state.id, 30, now).await;
-            phases.period30_ms = Some(elapsed_ms(started));
-            let mut period30 = period30?;
-            let started = Instant::now();
-            let reciprocity = self.attach_reciprocity(&state.id, &mut period30, now).await;
-            phases.reciprocity_ms = Some((phases.reciprocity_ms.unwrap_or(0.0) + elapsed_ms(started))
-                .min(MAX_METRIC_VALUE as f64));
-            reciprocity?;
-            let payload = doc! {
-                "7": period_payload(period7, 7, now),
-                "30": period_payload(period30, 30, now),
+            let follows = self
+                .refresh_follow_counts(&state.id, &owner, now, &heartbeat.lost, phases)
+                .await?;
+            let previous = state
+                .refresh
+                .as_ref()
+                .filter(|refresh| refresh.version == REFRESH_VERSION && state.payload.is_some());
+            // A quiet repair only needs bounded follow-count checks. Raid
+            // history is immutable except for these derived follow fields; its
+            // existing producer always queues changes through dirtyAt.
+            let source = if needs_source_check(&state, previous, follows.changed, now) {
+                self.source_state(&state.id, now).await?
+            } else {
+                let previous = previous.ok_or_else(malformed)?;
+                SourceState {
+                    fingerprint: previous.fingerprint.clone(),
+                    next_source_at: previous.next_source_at,
+                    has_follow_windows: previous.has_follow_windows,
+                }
             };
+            let rebuild = previous.is_none_or(|refresh| refresh.fingerprint != source.fingerprint);
+            let mut payload = None;
+            if rebuild {
+                let started = Instant::now();
+                let period7 = self.build_period_data(&state.id, 7, now).await;
+                phases.period7_ms = Some(elapsed_ms(started));
+                let mut period7 = period7?;
+                let started = Instant::now();
+                let reciprocity = self.attach_reciprocity(&state.id, &mut period7, now).await;
+                phases.reciprocity_ms = Some(elapsed_ms(started));
+                reciprocity?;
+                let started = Instant::now();
+                let period30 = self.build_period_data(&state.id, 30, now).await;
+                phases.period30_ms = Some(elapsed_ms(started));
+                let mut period30 = period30?;
+                let started = Instant::now();
+                let reciprocity = self.attach_reciprocity(&state.id, &mut period30, now).await;
+                phases.reciprocity_ms = Some(
+                    (phases.reciprocity_ms.unwrap_or(0.0) + elapsed_ms(started))
+                        .min(MAX_METRIC_VALUE as f64),
+                );
+                reciprocity?;
+                let candidate = doc! {
+                    "7": period_payload(period7, 7, now),
+                    "30": period_payload(period30, 30, now),
+                };
+                if !state
+                    .payload
+                    .as_ref()
+                    .is_some_and(|old| same_payload(old, &candidate))
+                {
+                    payload = Some(candidate);
+                }
+            }
+            let refresh = RefreshState {
+                version: REFRESH_VERSION,
+                fingerprint: source.fingerprint,
+                next_source_at: source.next_source_at,
+                next_repair_at: if source.has_follow_windows {
+                    Some(
+                        previous
+                            .and_then(|refresh| refresh.next_repair_at)
+                            .filter(|at| *at > now || follows.pending)
+                            .unwrap_or_else(|| {
+                                DateTime::from_millis(now.timestamp_millis() + REPAIR_MS)
+                            }),
+                    )
+                } else {
+                    None
+                },
+                next_open_at: follows.next_open_at,
+                dirty_at: state.dirty_at,
+                has_follow_windows: source.has_follow_windows,
+            };
+            let next = next_refresh_at(&refresh, follows.pending, now);
             let started = Instant::now();
+            let changed = payload.is_some();
+            let mut published_changed = false;
             let published: Result<()> = async {
-                self.assert_owner(&state.id, &owner, &heartbeat.lost).await?;
-                let saved = self.summaries.update_one(owner_filter(&state.id, &owner),
-                    doc! { "$set": { "payload": payload, "updatedAt": now, "error": false } }).await?;
-                if saved.matched_count == 0 { return Err(lease_error()); }
-                self.assert_owner(&state.id, &owner, &heartbeat.lost).await?;
+                self.assert_owner(&state.id, &owner, &heartbeat.lost)
+                    .await?;
+                let mut values = doc! {
+                    "rustRefresh": mongodb::bson::serialize_to_document(&refresh)
+                        .map_err(|_| malformed())?,
+                    "error": false,
+                    "rustPending": false,
+                };
+                if let Some(payload) = payload {
+                    values.insert("payload", payload);
+                    values.insert("updatedAt", now);
+                }
+                let mut update = doc! { "$set": values };
+                if let Some(next) = next {
+                    update
+                        .get_document_mut("$set")
+                        .map_err(|_| malformed())?
+                        .insert("nextRefreshAt", next);
+                } else {
+                    update.insert("$unset", doc! { "nextRefreshAt": "" });
+                }
                 let mut filter = owner_filter(&state.id, &owner);
-                filter.insert("dirtyAt", doc! { "$lte": now });
-                // A producer queueing a new event during this pass keeps it due.
-                self.summaries.update_one(filter,
-                    doc! { "$set": { "nextRefreshAt": DateTime::from_millis(now.timestamp_millis() + 60_000) } }).await?;
+                // Exact claimed dirtyAt is essential: a queued raid during a
+                // repair must remain due, including deterministic fixture time.
+                // An in-pass producer write with both timestamp values
+                // identical is indistinguishable under the existing TS queue
+                // contract; it supplies no monotonic event generation.
+                filter.insert("dirtyAt", state.dirty_at.map_or(Bson::Null, Bson::DateTime));
+                let saved = self.summaries.update_one(filter, update).await?;
+                if saved.matched_count == 0 {
+                    // A new producer dirty value retains all old metadata and
+                    // the due schedule. Follow writes are safe to rediscover
+                    // from the last successfully persisted source fingerprint.
+                    self.assert_owner(&state.id, &owner, &heartbeat.lost)
+                        .await?;
+                } else {
+                    published_changed = changed;
+                }
                 Ok(())
-            }.await;
+            }
+            .await;
             phases.publish_ms = Some(elapsed_ms(started));
             published?;
-            Ok(1)
-        }.await;
+            Ok(usize::from(published_changed))
+        }
+        .await;
         if result.is_err() {
             // Never mark a replacement owner's summary as failed or postpone it.
-            let _ = self.summaries.update_one(owner_filter(&state.id, &owner),
+            let mut filter = owner_filter(&state.id, &owner);
+            filter.insert("dirtyAt", state.dirty_at.map_or(Bson::Null, Bson::DateTime));
+            let _ = self.summaries.update_one(filter,
                 doc! { "$set": { "error": true, "nextRefreshAt": DateTime::from_millis(DateTime::now().timestamp_millis() + 30_000) } }).await;
         }
         let started = Instant::now();
@@ -328,15 +479,21 @@ impl RaidAnalyticsProjector {
         now: DateTime,
         lost: &AtomicBool,
         phases: &mut PhaseTimings,
-    ) -> Result<()> {
+    ) -> Result<FollowRefresh> {
         let started = Instant::now();
-        let operations: Result<Vec<UpdateOneModel>> = async {
-            let rows: Vec<FollowRow> = self.history.clone_with_type::<FollowRow>().find(doc! {
-                "channelID": channel, "direction": "incoming",
-                "occurredAt": { "$gte": raid_range_start(30, now), "$lte": now }, "expiresAt": { "$gt": now },
-                "$or": [{ "followsComputedAt": Bson::Null }, { "followsComputedAt": { "$lt": DateTime::from_millis(now.timestamp_millis() - 15 * 60_000) } }]
-            }).sort(doc! { "followsComputedAt": 1, "occurredAt": 1 }).limit(25)
-                .max_time(Duration::from_millis(2000)).await?.try_collect().await?;
+        let mut refreshed = FollowRefresh::default();
+        let queried: Result<(Vec<UpdateOneModel>, Vec<String>)> = async {
+            let rows: Vec<FollowRow> = self
+                .history
+                .clone_with_type::<FollowRow>()
+                .find(follow_due_filter(channel, now))
+                .sort(doc! { "followsComputedAt": 1, "occurredAt": 1 })
+                .limit(25)
+                .max_time(Duration::from_millis(2000))
+                .await?
+                .try_collect()
+                .await?;
+            let ids = rows.iter().map(|row| row.id.clone()).collect();
             let mut operations = Vec::with_capacity(rows.len());
             for chunk in rows.chunks(5) {
                 self.assert_owner(channel, owner, lost).await?;
@@ -346,18 +503,41 @@ impl RaidAnalyticsProjector {
                         .map(|row| self.follow_update(channel, row, now)),
                 )
                 .await?;
-                operations.extend(updates);
+                for update in updates {
+                    refreshed.changed |= update.changed;
+                    earliest(&mut refreshed.next_open_at, update.next_open_at);
+                    if let Some(operation) = update.operation {
+                        operations.push(operation);
+                    }
+                }
             }
-            Ok(operations)
-        }.await;
+            Ok((operations, ids))
+        }
+        .await;
         phases.follow_queries_ms = Some(elapsed_ms(started));
-        let operations = operations?;
+        let (operations, ids) = queried?;
         if !operations.is_empty() {
             let started = Instant::now();
             let written: Result<()> = async {
                 self.assert_owner(channel, owner, lost).await?;
-                // Mongoose history writes explicitly require w:1,j:true. Client
-                // bulk writes otherwise inherit client, not collection, concerns.
+                if refreshed.changed {
+                    // Persist before any business-field write. If the bulk,
+                    // a later aggregate, publication, or lease fails, another
+                    // pass must fingerprint even when all counts now match.
+                    let marked = self
+                        .summaries
+                        .update_one(
+                            owner_filter(channel, owner),
+                            doc! { "$set": { "rustPending": true } },
+                        )
+                        .await?;
+                    if marked.matched_count == 0 {
+                        return Err(lease_error());
+                    }
+                }
+                // Keep Mongoose history's explicit w:1,j:true concern. A
+                // partial bulk failure leaves the old source fingerprint in
+                // the summary, so successful siblings cannot hide on retry.
                 self.database
                     .client()
                     .bulk_write(operations)
@@ -375,7 +555,24 @@ impl RaidAnalyticsProjector {
             phases.follow_write_ms = Some(elapsed_ms(started));
             written?;
         }
-        Ok(())
+        let started = Instant::now();
+        let mut due = follow_due_filter(channel, now);
+        // Open windows deliberately retain epoch computedAt. Exclude this
+        // pass's at most 25 checked IDs when deciding whether to drain more
+        // work immediately, otherwise one open window creates a tight loop.
+        due.insert("_id", doc! { "$nin": ids });
+        let pending = self
+            .history
+            .find_one(due)
+            .projection(doc! { "_id": 1 })
+            .max_time(Duration::from_millis(2000))
+            .await;
+        phases.follow_queries_ms = Some(
+            (phases.follow_queries_ms.unwrap_or(0.0) + elapsed_ms(started))
+                .min(MAX_METRIC_VALUE as f64),
+        );
+        refreshed.pending = pending?.is_some();
+        Ok(refreshed)
     }
 
     async fn follow_update(
@@ -383,26 +580,122 @@ impl RaidAnalyticsProjector {
         channel: &str,
         row: &FollowRow,
         now: DateTime,
-    ) -> Result<UpdateOneModel> {
+    ) -> Result<FollowUpdate> {
         row.validate().map_err(|_| malformed())?;
         let next = self.history.clone_with_type::<NextRaid>().find_one(doc! {
             "channelID": channel, "direction": "incoming", "expiresAt": { "$gt": now },
             "$or": [{ "occurredAt": { "$gt": row.occurred_at } }, { "occurredAt": row.occurred_at, "_id": { "$gt": &row.id } }]
         }).sort(doc! { "occurredAt": 1, "_id": 1 }).projection(doc! { "occurredAt": 1 })
             .max_time(Duration::from_millis(1500)).await?;
-        let (end, computed) =
-            follow_window(row.occurred_at, next.map(|next| next.occurred_at), now);
+        let next = next.map(|next| next.occurred_at);
+        let (end, computed) = follow_window(row.occurred_at, next, now);
         let count = self.events.count_documents(doc! {
             "channelID": channel, "source": "twitch-eventsub", "type": "channel.follow.received",
             "occurredAt": { "$gte": row.occurred_at, "$lt": end }, "expiresAt": { "$gt": now }
         }).max_time(Duration::from_millis(2000)).await?;
-        // Match the JS driver's numeric serialization for Mongoose Number:
-        // integral int32 when representable, otherwise a JS numeric double.
-        let count = i32::try_from(count).map_or_else(|_| Bson::Double(count as f64), Bson::Int32);
-        Ok(UpdateOneModel::builder().namespace(self.history.namespace())
-            .filter(doc! { "_id": &row.id })
-            .update(doc! { "$set": { "followsAfter": count, "followWindowEnd": end, "followsComputedAt": computed } })
-            .build())
+        let (values, changed) = follow_values(row, count, end, computed);
+        let next_open_at = (computed.timestamp_millis() == 0).then(|| {
+            DateTime::from_millis(
+                (now.timestamp_millis() + 60_000)
+                    .min(row.occurred_at.timestamp_millis() + WINDOW_MS)
+                    .min(next.map_or(i64::MAX, |next| next.timestamp_millis())),
+            )
+        });
+        Ok(FollowUpdate {
+            operation: (!values.is_empty()).then(|| {
+                UpdateOneModel::builder()
+                    .namespace(self.history.namespace())
+                    .filter(doc! { "_id": &row.id })
+                    .update(doc! { "$set": values })
+                    .build()
+            }),
+            changed,
+            next_open_at,
+        })
+    }
+
+    /// Stream only the existing retained channel history, with constant client
+    /// memory and a server deadline. No ID watermark: insertion ordering does
+    /// not affect late-source repair. This runs only for producer dirtiness,
+    /// actual follow changes, source time boundaries, or one-time adoption.
+    async fn source_state(&self, channel: &str, now: DateTime) -> Result<SourceState> {
+        let mut rows = self
+            .history
+            .find(doc! {
+                "channelID": channel, "expiresAt": { "$gt": now },
+            })
+            .sort(doc! { "occurredAt": -1, "_id": 1 })
+            .projection(doc! {
+                "_id": 1, "direction": 1, "peerID": 1, "peerLogin": 1,
+                "peerName": 1, "viewers": 1, "occurredAt": 1, "expiresAt": 1,
+                "followsAfter": 1, "followWindowEnd": 1,
+            })
+            .batch_size(100)
+            .max_time(Duration::from_millis(3000))
+            .await?;
+        let mut digest = Sha256::new();
+        let mut next_source_at = None;
+        let mut has_follow_windows = false;
+        let mut has_period_rows = false;
+        while let Some(row) = rows.try_next().await? {
+            let occurred = *row.get_datetime("occurredAt").map_err(|_| malformed())?;
+            let expires = *row.get_datetime("expiresAt").map_err(|_| malformed())?;
+            if occurred > now {
+                earliest(&mut next_source_at, Some(occurred.min(expires)));
+                continue;
+            }
+            let in_period = occurred >= raid_range_start(30, now);
+            let outgoing = row.get_str("direction").map_err(|_| malformed())? == "outgoing";
+            if !in_period && !outgoing {
+                continue;
+            }
+            earliest(&mut next_source_at, Some(expires));
+            let mut source = Document::new();
+            let fields: &[&str] = if in_period {
+                has_period_rows = true;
+                has_follow_windows |= !outgoing;
+                &[
+                    "_id",
+                    "direction",
+                    "peerID",
+                    "peerLogin",
+                    "peerName",
+                    "viewers",
+                    "occurredAt",
+                    "followsAfter",
+                    "followWindowEnd",
+                ]
+            } else {
+                // Outgoing history older than 30 days still affects reciprocity.
+                &["_id", "direction", "peerID", "occurredAt"]
+            };
+            for field in fields {
+                if let Some(value) = row.get(*field) {
+                    source.insert(*field, value.clone());
+                }
+            }
+            let bytes = mongodb::bson::serialize_to_vec(&source).map_err(|_| malformed())?;
+            digest.update((bytes.len() as u64).to_le_bytes());
+            digest.update(bytes);
+        }
+        if has_period_rows {
+            // UTC range boundaries change the published from dates as well as
+            // membership. An empty channel needs neither midnight work nor a
+            // repair timer; its existing producer will queue the next raid.
+            digest.update(raid_range_start(7, now).timestamp_millis().to_le_bytes());
+            digest.update(raid_range_start(30, now).timestamp_millis().to_le_bytes());
+            earliest(
+                &mut next_source_at,
+                Some(DateTime::from_millis(
+                    (now.timestamp_millis().div_euclid(DAY_MS) + 1) * DAY_MS,
+                )),
+            );
+        }
+        Ok(SourceState {
+            fingerprint: format!("{:x}", digest.finalize()),
+            next_source_at,
+            has_follow_windows,
+        })
     }
 
     async fn build_period_data(&self, channel: &str, days: u32, now: DateTime) -> Result<Document> {
@@ -453,6 +746,118 @@ impl RaidAnalyticsProjector {
         ]).max_time(Duration::from_millis(2000)).await?.try_collect().await?;
         attach_outgoing(period, &outgoing)
     }
+}
+
+fn needs_source_check(
+    state: &State,
+    previous: Option<&RefreshState>,
+    follows_changed: bool,
+    now: DateTime,
+) -> bool {
+    state.pending || state.error || follows_changed
+        || previous.is_none_or(|refresh| {
+            refresh.dirty_at != state.dirty_at
+                || refresh.next_source_at.is_some_and(|at| at <= now)
+        })
+        // TS queueRaidSummary writes the same timestamp to both fields. A
+        // producer can queue two different raids within one millisecond, so
+        // equal remembered dirtyAt alone is insufficient to detect its write.
+        || state.dirty_at.is_some_and(|at| state.next_refresh_at == Some(at))
+}
+
+fn earliest(current: &mut Option<DateTime>, candidate: Option<DateTime>) {
+    if let Some(candidate) = candidate {
+        *current = Some(current.map_or(candidate, |current| current.min(candidate)));
+    }
+}
+
+fn next_refresh_at(refresh: &RefreshState, pending: bool, now: DateTime) -> Option<DateTime> {
+    if pending {
+        return Some(now);
+    }
+    let mut next = refresh.next_source_at;
+    earliest(&mut next, refresh.next_repair_at);
+    earliest(&mut next, refresh.next_open_at);
+    next
+}
+
+fn follow_due_filter(channel: &str, now: DateTime) -> Document {
+    doc! {
+        "channelID": channel, "direction": "incoming",
+        "occurredAt": { "$gte": raid_range_start(30, now), "$lte": now },
+        "expiresAt": { "$gt": now },
+        "$or": [
+            { "followsComputedAt": Bson::Null },
+            { "followsComputedAt": { "$lte": DateTime::from_millis(now.timestamp_millis() - REPAIR_MS) } },
+        ],
+    }
+}
+
+fn same_count(value: Option<&Bson>, count: u64) -> bool {
+    match value {
+        Some(Bson::Int32(value)) => *value >= 0 && *value as u64 == count,
+        Some(Bson::Int64(value)) => *value >= 0 && *value as u64 == count,
+        Some(Bson::Double(value)) => *value == count as f64,
+        _ => false,
+    }
+}
+
+fn follow_values(
+    row: &FollowRow,
+    count: u64,
+    end: DateTime,
+    computed: DateTime,
+) -> (Document, bool) {
+    let count_changed = !same_count(row.follows_after.as_ref(), count);
+    let finalized = computed.timestamp_millis() != 0;
+    // Moving open-window time is not fresh source data. Retain the last
+    // evaluated end until a count changes or the exact final end is known.
+    let end_changed = (count_changed || finalized) && row.follow_window_end != Some(end);
+    let mut values = Document::new();
+    if count_changed {
+        // Match Mongoose Number's int32-or-JS-double serialization.
+        values.insert(
+            "followsAfter",
+            i32::try_from(count).map_or_else(|_| Bson::Double(count as f64), Bson::Int32),
+        );
+    }
+    if end_changed {
+        values.insert("followWindowEnd", end);
+    }
+    if row.follows_computed_at != Some(computed) {
+        // Closed checks advance only this scheduling field when unchanged;
+        // open checks with no data change perform no history write at all.
+        values.insert("followsComputedAt", computed);
+    }
+    (values, count_changed || end_changed)
+}
+
+fn same_payload(old: &Document, candidate: &Document) -> bool {
+    fn stable(payload: &Document) -> Document {
+        let mut payload = payload.clone();
+        for key in ["7", "30"] {
+            if let Ok(period) = payload.get_document_mut(key) {
+                period.remove("to");
+                // $group does not promise direction order. The recent/top
+                // arrays are explicitly ordered and must remain untouched.
+                if let Ok(totals) = period.get_array_mut("totals") {
+                    totals.sort_by(|left, right| {
+                        let left = left
+                            .as_document()
+                            .and_then(|row| row.get_str("_id").ok())
+                            .unwrap_or("");
+                        let right = right
+                            .as_document()
+                            .and_then(|row| row.get_str("_id").ok())
+                            .unwrap_or("");
+                        left.cmp(right)
+                    });
+                }
+            }
+        }
+        payload
+    }
+    stable(old) == stable(candidate)
 }
 
 fn period_peers(data: &Document) -> Result<Vec<Bson>> {
@@ -622,6 +1027,197 @@ mod tests {
                 "publishMs": 7.0, "releaseMs": 8.0
             })
         );
+    }
+
+    fn followed_row(count: Option<Bson>, end: i64, computed: i64) -> FollowRow {
+        FollowRow {
+            id: "raid".into(),
+            occurred_at: DateTime::from_millis(1_000_000),
+            follows_after: count,
+            follow_window_end: Some(DateTime::from_millis(end)),
+            follows_computed_at: Some(DateTime::from_millis(computed)),
+        }
+    }
+
+    #[test]
+    fn an_unchanged_open_window_does_not_advance_derived_data_or_write_history() {
+        let row = followed_row(Some(Bson::Int32(0)), 1_060_000, 0);
+        let (values, changed) = follow_values(
+            &row,
+            0,
+            DateTime::from_millis(1_120_000),
+            DateTime::from_millis(0),
+        );
+        assert!(!changed);
+        assert!(values.is_empty());
+        let (values, changed) = follow_values(
+            &row,
+            1,
+            DateTime::from_millis(1_120_000),
+            DateTime::from_millis(0),
+        );
+        assert!(changed);
+        assert_eq!(values.get_i32("followsAfter").unwrap(), 1);
+        assert_eq!(
+            *values.get_datetime("followWindowEnd").unwrap(),
+            DateTime::from_millis(1_120_000)
+        );
+    }
+
+    #[test]
+    fn finalization_changes_the_end_once_and_closed_repairs_only_advance_scheduling() {
+        let mut row = followed_row(Some(Bson::Double(3.0)), 1_060_000, 0);
+        let closed = DateTime::from_millis(1_300_000);
+        let (values, changed) = follow_values(&row, 3, closed, closed);
+        assert!(changed);
+        assert!(!values.contains_key("followsAfter"));
+        assert_eq!(*values.get_datetime("followWindowEnd").unwrap(), closed);
+        row.follow_window_end = Some(closed);
+        row.follows_computed_at = Some(closed);
+        let later = DateTime::from_millis(closed.timestamp_millis() + REPAIR_MS);
+        let (values, changed) = follow_values(&row, 3, closed, later);
+        assert!(!changed);
+        assert_eq!(values, doc! { "followsComputedAt": later });
+        let (values, changed) = follow_values(&row, 4, closed, later);
+        assert!(changed);
+        assert_eq!(values.get_i32("followsAfter").unwrap(), 4);
+    }
+
+    #[test]
+    fn unevaluated_zero_is_a_change_and_count_serialization_matches_mongoose() {
+        let row = followed_row(None, 1_060_000, 0);
+        let (values, changed) = follow_values(
+            &row,
+            0,
+            DateTime::from_millis(1_060_000),
+            DateTime::from_millis(0),
+        );
+        assert!(changed);
+        assert_eq!(values.get_i32("followsAfter").unwrap(), 0);
+        let count = i32::MAX as u64 + 1;
+        let (values, changed) = follow_values(
+            &row,
+            count,
+            DateTime::from_millis(1_060_000),
+            DateTime::from_millis(0),
+        );
+        assert!(changed);
+        assert_eq!(values.get_f64("followsAfter").unwrap(), count as f64);
+    }
+
+    #[test]
+    fn no_change_guard_ignores_only_the_moving_to_time() {
+        let from = DateTime::from_millis(0);
+        let mut old = doc! {
+            "7": { "from": from, "to": from, "incoming": [{ "followsAfter": 0 }] },
+            "30": { "from": from, "to": from, "incoming": [] },
+        };
+        let mut candidate = old.clone();
+        candidate
+            .get_document_mut("7")
+            .unwrap()
+            .insert("to", DateTime::from_millis(60_000));
+        candidate
+            .get_document_mut("30")
+            .unwrap()
+            .insert("to", DateTime::from_millis(60_000));
+        assert!(same_payload(&old, &candidate));
+        candidate
+            .get_document_mut("7")
+            .unwrap()
+            .insert("from", DateTime::from_millis(DAY_MS));
+        assert!(!same_payload(&old, &candidate));
+        old.get_document_mut("7")
+            .unwrap()
+            .insert("from", DateTime::from_millis(DAY_MS));
+        assert!(same_payload(&old, &candidate));
+        candidate
+            .get_document_mut("7")
+            .unwrap()
+            .insert("incoming", vec![doc! { "followsAfter": 1 }]);
+        assert!(!same_payload(&old, &candidate));
+    }
+
+    #[test]
+    fn group_order_is_not_a_change_but_recent_order_is() {
+        let old = doc! {
+            "7": {
+                "totals": [{ "_id": "incoming", "raids": 1 }, { "_id": "outgoing", "raids": 2 }],
+                "incoming": [{ "peerID": "first" }, { "peerID": "second" }],
+            },
+            "30": {},
+        };
+        let mut reordered = old.clone();
+        reordered
+            .get_document_mut("7")
+            .unwrap()
+            .get_array_mut("totals")
+            .unwrap()
+            .reverse();
+        assert!(same_payload(&old, &reordered));
+        reordered
+            .get_document_mut("7")
+            .unwrap()
+            .get_array_mut("incoming")
+            .unwrap()
+            .reverse();
+        assert!(!same_payload(&old, &reordered));
+    }
+
+    #[test]
+    fn same_timestamp_producer_queue_still_checks_source_but_scheduled_restart_does_not() {
+        let now = DateTime::from_millis(1_000_000);
+        let scheduled = DateTime::from_millis(now.timestamp_millis() + REPAIR_MS);
+        let mut state: State = mongodb::bson::deserialize_from_document(doc! {
+            "_id": "channel", "dirtyAt": now, "nextRefreshAt": scheduled,
+            "payload": {},
+        })
+        .unwrap();
+        let previous = RefreshState {
+            version: REFRESH_VERSION,
+            fingerprint: "already-published".into(),
+            next_source_at: Some(scheduled),
+            next_repair_at: Some(scheduled),
+            next_open_at: None,
+            dirty_at: Some(now),
+            has_follow_windows: true,
+        };
+        assert!(!needs_source_check(&state, Some(&previous), false, now));
+        // A new outgoing raid uses the same dirtyAt millisecond as the prior
+        // one. Its producer queue resets nextRefreshAt to that timestamp.
+        state.next_refresh_at = Some(now);
+        assert!(needs_source_check(&state, Some(&previous), false, now));
+        state.next_refresh_at = Some(scheduled);
+        // A persisted partial-write marker survives process restart even when
+        // the retry's follow counts and producer timestamps are unchanged.
+        state.pending = true;
+        assert!(needs_source_check(&state, Some(&previous), false, now));
+    }
+
+    #[test]
+    fn pending_windows_drain_immediately_and_empty_channels_wait_for_the_producer() {
+        let now = DateTime::from_millis(1_000_000);
+        let mut refresh = RefreshState {
+            version: REFRESH_VERSION,
+            fingerprint: String::new(),
+            next_source_at: None,
+            next_repair_at: None,
+            next_open_at: None,
+            dirty_at: Some(now),
+            has_follow_windows: false,
+        };
+        assert_eq!(next_refresh_at(&refresh, false, now), None);
+        assert_eq!(next_refresh_at(&refresh, true, now), Some(now));
+        let repair = DateTime::from_millis(now.timestamp_millis() + REPAIR_MS);
+        let open = DateTime::from_millis(now.timestamp_millis() + 60_000);
+        let future = DateTime::from_millis(now.timestamp_millis() + 5_000);
+        refresh.next_repair_at = Some(repair);
+        assert_eq!(next_refresh_at(&refresh, false, now), Some(repair));
+        refresh.next_open_at = Some(open);
+        assert_eq!(next_refresh_at(&refresh, false, now), Some(open));
+        // The same boundary covers future activation and older outgoing expiry.
+        refresh.next_source_at = Some(future);
+        assert_eq!(next_refresh_at(&refresh, false, now), Some(future));
     }
 
     #[test]

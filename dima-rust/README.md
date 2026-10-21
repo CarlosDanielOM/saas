@@ -59,3 +59,8 @@ cargo test --locked
 Build checks and default Rust tests do not require database or cache services; the MongoDB and Redis integration tests use external fixtures and are ignored by default. The stream-activity, raid, baseline, and roulette-completion candidate checks are documented in [STREAM_ACTIVITY.md](STREAM_ACTIVITY.md), [migration-notes/README.md](../migration-notes/README.md), and [ops/README.md](../ops/README.md). Run service-backed checks only against isolated, disposable data. `cargo run --bin stream_activity -- --help`, `cargo run --bin raid_analytics -- --help`, `cargo run --bin follow_defense_baseline -- --help`, and `cargo run --bin roulette_completion -- --help` show the manual binary options. `Cargo.lock` is tracked and `--locked` ensures the checked dependency graph matches it.
 
 The helper keeps Cargo registry and dependency artifacts in a private persistent cache outside the checkout. It explicitly rebuilds all four worker release binaries for each run so executables come from the current frozen source snapshot; the stream fixture example is a manual parity/benchmark tool and is not part of routine cron candidates. This cache reduces repeated compile work; it does not establish Rust worker RAM or CPU savings, since the linker may already remove unused code.
+
+
+## Raid change-driven release notice
+
+Raid analytics release `cron-2ddd455fdd1f` is deployed and accepted. All four exact-image worker suites passed, as did the 124.802-second production acceptance watch. The rollback target is `cron-99f8d5165ff2` (image `sha256:7b4656ed97fa73431d192c754bef504672b167e020909c7bdc6d4e727f54bcc8`). See [migration-notes/raid-change-driven.md](../migration-notes/raid-change-driven.md).

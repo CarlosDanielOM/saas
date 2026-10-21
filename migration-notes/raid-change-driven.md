@@ -1,0 +1,46 @@
+# Raid analytics change-driven refresh
+
+This Rust-only change removes the periodic full summary rebuild from raid analytics. The native projector continues to use the existing `raid_analytics_histories`, `raid_analytics_summaries`, and `domain_events` collections and publishes the existing TypeScript-compatible 7/30-day payload. It adds no collection or index and leaves all TypeScript producers, consumers, API shapes, and rollback code untouched.
+
+## Scheduling and refresh behavior
+
+The projector stores private, versioned `rustRefresh` metadata and a `rustPending` recovery flag on the existing summary document. The metadata records a source fingerprint and persisted deadlines. Producer dirtiness, a due source deadline, a changed follow count, pending/error state, or missing compatible metadata can trigger a source fingerprint check. Full 7/30-day and reciprocity aggregations run only when there is no compatible prior metadata/payload or the fingerprint differs. The candidate payload is written only when its business values differ from the stored payload; moving `to` timestamps or totals-array ordering alone do not count as a payload change. Otherwise the projector writes scheduling metadata only: it does not replace the payload or advance `updatedAt`.
+
+Each pass claims one channel and checks at most 25 due follow windows, with follow-event count queries limited to five concurrent tasks. Closed windows are eligible for repair every 15 minutes. Open windows schedule the next probe no later than one minute away and no later than the window's final boundary. If more than 25 windows remain due, the channel stays immediately scheduled until the bounded queue drains. Empty channels are unscheduled until their producer queues new work. Persisted source deadlines cover history expiry, future raid activation, and UTC 7/30-day range rollover; channels without period rows do not wake solely for midnight.
+
+The source fingerprint scans retained raid history rather than using an ID watermark. A late follow event with a lower ObjectId is found by the bounded occurrence-time event count queries during follow-window repair, which can then change the derived count and trigger fingerprinting. Duplicate queueing, including a newly inserted raid whose producer `dirtyAt` has the same millisecond value as the remembered value, is checked against the fingerprint. First adoption of an old summary cache performs one full source scan and may run the aggregates; if the business payload matches, it preserves the existing payload and `updatedAt`, then later unchanged checks skip the aggregates.
+
+Follow-count writes mark `rustPending` before the unordered history bulk write. Publication uses the exact `dirtyAt` value claimed by the pass, so a different producer timestamp arriving during work remains due. The existing TypeScript queue contract has no monotonic event generation: an in-pass write that reproduces the same millisecond timestamp is unobservable to this compare-and-set. This is an inherited limitation of that contract. Open windows keep their last observed `followWindowEnd` while the count is unchanged; the end advances when the count changes or the window finalizes. The API still marks summary data stale after three minutes based on `updatedAt`, so a quiet but unchanged summary may be reported age-stale even though its fingerprint check is healthy.
+
+## Runtime and rollback
+
+The cron supervisor still runs one raid projector child. The native process reloads its durable fingerprint and deadlines after restart; there is no in-memory checkpoint dependency and no automatic TypeScript fallback. Selecting the existing TypeScript runtime remains the rollback path and keeps its prior periodic-refresh behavior. A cron deployment recreates the cron container and its process tree once, while worker-level supervision continues to isolate a failed child. No API or TypeScript source change is part of this release.
+
+## Candidate checks
+
+The change-driven behavior check is [`ops/checks/raid-analytics-change-driven.mjs`](../ops/checks/raid-analytics-change-driven.mjs). It extends prior parity, lease, failure, restart, shutdown, and telemetry coverage with unchanged passes, queue duplicates, same-timestamp additions, legacy-cache adoption, retained lower-ID late follows, open-window semantics, persisted deadlines, quiet restart recovery, and bounded follow batches. Its 20 runtime groups passed against the exact candidate image. The fixture requires the exact analytics store source and disposable MongoDB/Dragonfly dependencies. Run it only against an isolated candidate as described in [`ops/README.md`](../ops/README.md) and the production-host instructions in [`dima-rust/AGENTS.md`](../dima-rust/AGENTS.md).
+
+### Candidate verification
+
+Candidate `cron-2ddd455fdd1f` was built with image digest `sha256:050be8612ffa176e791c0ec16adeb0fde50b0e287d31ad02364c805fa9bdd783`. The capped Rust build took 225.522 seconds under a six-CPU limit, with a 4 GiB memory and memory-swap cap, 256 PIDs, two Cargo jobs, and warm cache `5bc9757a9fbc`. Formatting, check, and Clippy passed for both feature profiles. The Mongo-only profile passed 44 library, four raid-binary, four roulette-binary, and five stream-binary tests (57 total), plus one doc test. The Mongo/Redis profile passed 65 library, six baseline-binary, four raid-binary, four roulette-binary, and five stream-binary tests (84 total), plus one doc test. The ignored external-service integration tests were not part of these Rust unit-test runs.
+
+All four exact-image runtime suites passed: raid 20 groups, stream 6, baseline 11, and roulette 13. Raid coverage included 75 quiet histories remaining byte-equivalent in payload and `updatedAt` for 70,097 ms across a real child restart, followed by a source-count change that published and a duplicate queue that skipped all four aggregates. It also exercised metadata publication failure/retry, partial bulk recovery across 40 follow windows, lower-ObjectId late-follow repair, UTC rollover, expiry and future activation, cache adoption, same-timestamp queueing, held leases, telemetry/health, restart, and graceful shutdown. Synthetic drains took 1,141 ms for 16 raid channels and 4,020 ms for 24 baseline channels; these are bounded fixture checks, not throughput estimates.
+
+Candidate review by Grok 4.7 at high through Grok CLI found no blockers. The accepted residual constraints remain the same-millisecond in-pass queue limitation, frozen open-window end while unchanged, and the API's three-minute `updatedAt` freshness rule. Telemetry `events` counts changed-payload publications; maintenance-only claims report zero and are classified as idle. `lastSuccessAgeMs` tracks successful publication; admin health status uses fresh health-query/backlog data, and the separate healthy backlog probe continues to run.
+
+An earlier candidate, `cron-fdca7151a666`, stopped on formatting before compilation; only formatter output was applied, then that run was cleaned up. The accepted candidate above has no reported compile failures.
+
+### Production acceptance
+
+Candidate `cron-2ddd455fdd1f` was deployed successfully and started at `2026-10-21T17:13:10.765909499Z` with image `sha256:050be8612ffa176e791c0ec16adeb0fde50b0e287d31ad02364c805fa9bdd783` and restart count zero. Its 124.802-second acceptance window ran from `2026-10-21T17:13:49.531Z` to `2026-10-21T17:15:54.333Z`. Across the window, all 75 summaries retained exactly the same payload hashes, `updatedAt`, and `dirtyAt`; there were zero errors and zero due channels, and eight empty summaries remained unscheduled. Native raid PID 16 and start ticks `358183850` stayed stable. The cron container restart count remained zero. Only `/dima-cron` changed among the 17 production containers; the other 16 retained identical full IDs, images, start times, and restart counts.
+
+The one-time metadata adoption produced 75 sets of period and reciprocity phase samples in the `17:13:40` bucket and published zero payloads because stored business values already matched. From `17:13:50` through `17:15:20`, telemetry recorded three successful health probes with zero backlog and 19 idle, zero-publication batch samples. Those batches reported only the claim phase; there were no period, reciprocity, follow-write, or publish phases, and no error/restart metrics. Worker CPU advanced by six ticks over this short window; this is an observation, not evidence of a general CPU gain. Helper cleanup succeeded, with no task-owned temporary Docker resources remaining; the live release and rollback receipts/images are retained. The release is accepted. Its saved rollback target is `cron-99f8d5165ff2`, image `sha256:7b4656ed97fa73431d192c754bef504672b167e020909c7bdc6d4e727f54bcc8`.
+
+## Source references
+
+- [Rust projector](../dima-rust/src/workers/raid_analytics.rs)
+- [Rust executable](../dima-rust/src/bin/raid_analytics.rs)
+- [Change-driven candidate check](../ops/checks/raid-analytics-change-driven.mjs)
+- [Historical Rust raid release](raid-analytics.md)
+- [TypeScript raid producer and API freshness contract](../dimabot/src/utils/raid_analytics.ts)
+- [Dashboard raid freshness response](../dimabot/src/server/routes/dashboard.route.ts)

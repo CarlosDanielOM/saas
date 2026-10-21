@@ -129,3 +129,8 @@ Only the cron container changed among the 17 checked containers, leaving the oth
 ## Future work
 
 Continue ordinary-load observation after the successful bounded acceptance watch; it is not a steady-state resource profile. The final controlled TypeScript / deployed Rust / release comparison is in `dima-rust/benchmarks/raid-analytics-2026-10-21.json`, while the shared-query experiment remains separately recorded and deferred. Any later query/index tuning or channel parallelism needs its own source-backed parity, recovery, and resource evidence. Do not infer that stream-activity benchmark results transfer to raid analytics.
+
+
+## Current raid change-driven release
+
+The accepted change-driven release `cron-2ddd455fdd1f` passed all four exact-image worker suites and the 124.802-second production watch. Its rollback target is `cron-99f8d5165ff2` (image `sha256:7b4656ed97fa73431d192c754bef504672b167e020909c7bdc6d4e727f54bcc8`). See [raid-change-driven.md](raid-change-driven.md) for the current release record.

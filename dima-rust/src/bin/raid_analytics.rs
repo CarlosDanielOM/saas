@@ -203,6 +203,9 @@ async fn run(args: Args) -> Result<(), &'static str> {
             // Never cancel an active batch on a shutdown signal.
             let started = Instant::now();
             let observation = projector.project_once_observed().await;
+            // A no-change repair publishes zero events but still claims a
+            // channel. Continue draining due channels without idle backoff.
+            let claimed = observation.phases.release_ms.is_some();
             let projected = observation.result;
             if matches!(&projected, Ok(count) if *count > 0) {
                 last_success = Some(Instant::now());
@@ -238,12 +241,12 @@ async fn run(args: Args) -> Result<(), &'static str> {
                     );
                 }
             }
-            let count = projected
+            projected
                 .map_err(|_| "Raid analytics projection failed; channel retained for retry")?;
             if args.once || *stopped.borrow() {
                 break;
             }
-            if let Some(wait) = idle.after_batch(count) {
+            if let Some(wait) = idle.after_batch(usize::from(claimed)) {
                 tokio::select! { _ = tokio::time::sleep(wait) => {}, _ = stopped.changed() => {} }
             }
         }
