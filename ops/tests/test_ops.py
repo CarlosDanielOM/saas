@@ -405,7 +405,7 @@ class OpsTests(unittest.TestCase):
     def test_rust_compiler_has_hard_caps_private_source_and_no_production_mounts(self):
         cache = {"cargo": str(self.root.parent / "cache/cargo"), "target": str(self.root.parent / "cache/target")}
         args = self.ops.rust_container_args(self.path, self.receipt, NEW, cache)
-        for option in ("--cpus=4", "--memory=4g", "--memory-swap=4g", "--pids-limit=256", "--env=CARGO_BUILD_JOBS=2"):
+        for option in ("--cpus=6", "--memory=6g", "--memory-swap=6g", "--pids-limit=256", "--env=CARGO_BUILD_JOBS=2"):
             self.assertIn(option, args)
         self.assertEqual(args[-4:], [NEW, "sh", "-ceu", mod.RUST_CACHE_HYGIENE])
         self.assertIn(mod.OWNER + ".rust-build=true", args)
@@ -679,6 +679,9 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
         self.assertEqual(details["worker_profiles"]["mongo-redis"]["features"], "mongo,redis")
         self.assertEqual(details["worker_profiles"]["mongo-redis"]["binaries"], ["follow_defense_baseline"])
         self.assertEqual(details["cache_limit_bytes"], 8 * mod.GIB)
+        self.assertEqual(details["jobs"], 2)
+        self.assertEqual(details["cpus"], 6)
+        self.assertEqual(details["memory_bytes"], 6 * mod.GIB)
         self.assertEqual(details["optional_feature_matrix"], "build cron --rust-feature-matrix")
 
     def test_rust_build_refuses_orphaned_compiler_before_copying_source(self):
@@ -687,20 +690,32 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
             self.ops.build_rust(self.path, self.receipt)
         self.assertFalse((self.path / "rust-source").exists())
 
-    def test_rust_headroom_refuses_unsafe_start_and_running_pressure(self):
-        with patch.object(Path, "read_text", return_value="MemAvailable: 11534336 kB\n"), \
-             patch.object(mod.os, "getloadavg", return_value=(0, 0, 0)), \
-             patch.object(mod.shutil, "disk_usage", return_value=type("Disk", (), {"free": 10 * mod.GIB})()):
-            with self.assertRaises(mod.OpsError):
-                self.ops.rust_headroom(starting=True)
-            self.ops.rust_headroom()
-        with patch.object(Path, "read_text", return_value="MemAvailable: 7340032 kB\n"), self.assertRaises(mod.OpsError):
+    def test_rust_headroom_requires_14_gib_at_start_and_8_gib_while_running(self):
+        for starting, minimum_gib in ((True, 14), (False, 8)):
+            for offset_kib in (-1, 0, 1):
+                with self.subTest(starting=starting, offset_kib=offset_kib):
+                    available_kib = minimum_gib * 1024 ** 2 + offset_kib
+                    with patch.object(Path, "read_text", return_value=f"MemAvailable: {available_kib} kB\n"), \
+                         patch.object(mod.os, "getloadavg", return_value=(0, 0, 0)), \
+                         patch.object(mod.shutil, "disk_usage", return_value=type("Disk", (), {"free": 10 * mod.GIB})()):
+                        if offset_kib < 0:
+                            with self.assertRaisesRegex(mod.OpsError, "memory headroom"):
+                                self.ops.rust_headroom(starting=starting)
+                        else:
+                            details = self.ops.rust_headroom(starting=starting)
+                            self.assertEqual(details["mem_available_bytes"], available_kib * 1024)
+
+    def test_rust_headroom_refuses_host_load_and_disk_pressure(self):
+        with patch.object(Path, "read_text", return_value="MemAvailable: 16777216 kB\n"), \
+             patch.object(mod.os, "getloadavg", return_value=(1000, 0, 0)), self.assertRaisesRegex(mod.OpsError, "host load"):
             self.ops.rust_headroom()
         with patch.object(Path, "read_text", return_value="MemAvailable: 16777216 kB\n"), \
-             patch.object(mod.os, "getloadavg", return_value=(1000, 0, 0)), self.assertRaises(mod.OpsError):
+             patch.object(mod.os, "getloadavg", return_value=(0, 0, 0)), \
+             patch.object(mod.shutil, "disk_usage", return_value=type("Disk", (), {"free": 5 * mod.GIB - 1})()), \
+             self.assertRaisesRegex(mod.OpsError, "disk headroom"):
             self.ops.rust_headroom()
 
-    def simulated_rust_build(self, *, exit_code=0, wrong_limits=False, raid_artifact="valid", baseline_artifact="valid",
+    def simulated_rust_build(self, *, exit_code=0, applied_limits=None, raid_artifact="valid", baseline_artifact="valid",
                              mongo_extra="", baseline_extra="", cache_bytes=0):
         self.rust_source()
         (self.path / "source").mkdir()
@@ -711,8 +726,8 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
             if args[0] == "create":
                 self.ops.objects[("container", name)] = {
                     "Id": "compiler-id", "Config": {"Labels": self.labels()},
-                    "HostConfig": {"NanoCpus": 1 if wrong_limits else 4_000_000_000,
-                                   "Memory": 4 * mod.GIB, "MemorySwap": 4 * mod.GIB, "PidsLimit": 256},
+                    "HostConfig": {"NanoCpus": 6_000_000_000, "Memory": 6 * mod.GIB,
+                                   "MemorySwap": 6 * mod.GIB, "PidsLimit": 256, **(applied_limits or {})},
                     "State": {"Running": False, "ExitCode": exit_code}}
             elif args[0] == "start":
                 (self.path / "rust-artifacts/worker-dependencies.txt").write_text("dima-rust v0.1.0\nmongodb v3.9.1\n" + mongo_extra)
@@ -737,6 +752,26 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
                 (self.path / "rust-artifacts/toolchain.txt").write_text("host: x86_64-unknown-linux-musl")
             return original_docker(*args, **kwargs)
         return patch.object(self.ops, "docker", side_effect=docker)
+
+    def test_rust_build_rejects_incorrect_applied_limits_before_start(self):
+        for limits in ({"NanoCpus": 4_000_000_000}, {"Memory": 4 * mod.GIB},
+                       {"MemorySwap": 4 * mod.GIB}, {"MemorySwap": 8 * mod.GIB}, {"PidsLimit": 512}):
+            with self.subTest(limits=limits):
+                for directory in (self.root / "dima-rust", self.path / "source", self.path / "rust-source",
+                                  self.path / "rust-artifacts"):
+                    if directory.exists():
+                        mod.shutil.rmtree(directory)
+                self.ops.calls.clear()
+                simulation = self.simulated_rust_build(applied_limits=limits)
+                with simulation, patch.object(self.ops, "rust_headroom", return_value={}), \
+                     patch.object(Path, "home", return_value=self.root.parent), \
+                     self.assertRaisesRegex(mod.OpsError, "cgroup limits"):
+                    self.ops.build_rust(self.path, self.receipt)
+                self.assertFalse(any(call[0] == "start" for call in self.ops.calls))
+                self.assertFalse((self.path / "source/.saas-native").exists())
+                self.assertFalse((self.path / "rust-work").exists())
+                self.assertEqual(self.receipt["resources"], [])
+                self.assertNotIn(("container", "saas-ops-" + RUN + "-rust-build"), self.ops.objects)
 
     def test_rust_build_records_immutable_toolchain_source_artifact_and_cleans_compiler(self):
         simulation = self.simulated_rust_build()
@@ -807,7 +842,8 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
                     if (self.path / directory).exists():
                         mod.shutil.rmtree(self.path / directory)
                 simulation = self.simulated_rust_build(exit_code=1 if failure == "checks" else 0,
-                                                       wrong_limits=failure == "limits",
+                                                       applied_limits={"NanoCpus": 4_000_000_000, "Memory": 4 * mod.GIB,
+                                                                       "MemorySwap": 4 * mod.GIB} if failure == "limits" else None,
                                                        raid_artifact=failure if failure in ("missing", "invalid", "symlink") else "valid",
                                                        baseline_artifact=failure.removeprefix("baseline_") if failure in ("baseline_missing", "baseline_invalid", "baseline_symlink") else "valid",
                                                        mongo_extra={"mongo_redis": "redis v0.32.7\n", "mongo_axum": "axum-core v0.5.0\n"}.get(failure, ""),

@@ -32,6 +32,10 @@ EXCLUDED = {"node_modules", "dist", "target", ".saas-native", ".git", ".angular"
 RUST_BUILD_IMAGE = "rust@sha256:557a94c82b485a14b569120e00867267108c734efe33f10cc31ca0cd5dd1eca9"
 RUST_BINARIES = ("stream_activity", "raid_analytics", "follow_defense_baseline")
 GIB = 1024 ** 3
+RUST_BUILD_CPUS = 6
+RUST_BUILD_MEMORY_GIB = 6
+RUST_BUILD_PIDS = 256
+RUST_MEMORY_HEADROOM = 8 * GIB
 RUST_CACHE_LIMIT = 8 * GIB
 RUST_CACHE_MARKER = ".saas-ops-cache.json"
 # Adding a future worker profile also requires reviewing the recipe's graph guard.
@@ -309,7 +313,7 @@ class Ops:
         available = next(int(line.split()[1]) * 1024 for line in Path("/proc/meminfo").read_text().splitlines()
                          if line.startswith("MemAvailable:"))
         load = os.getloadavg()[0]
-        minimum = (12 if starting else 8) * GIB
+        minimum = RUST_MEMORY_HEADROOM + (RUST_BUILD_MEMORY_GIB * GIB if starting else 0)
         require(available >= minimum, "Rust build stopped: insufficient production memory headroom")
         require(load < max(1, os.cpu_count() or 1) * 0.85, "Rust build stopped: production host load is too high")
         require(shutil.disk_usage(self.state).free >= 5 * GIB, "Rust build stopped: less than 5 GiB disk headroom")
@@ -418,7 +422,8 @@ class Ops:
         require(RUST_BASELINE_FEATURES == "mongo,redis", "Unsupported baseline feature profile; review its dependency graph guard before enabling it")
         return ["create", "--name", "saas-ops-" + receipt["run"] + "-rust-build", *self.labels(receipt["run"]),
                 "--label", OWNER + ".rust-build=true",
-                "--cpus=4", "--memory=4g", "--memory-swap=4g", "--pids-limit=256",
+                f"--cpus={RUST_BUILD_CPUS}", f"--memory={RUST_BUILD_MEMORY_GIB}g",
+                f"--memory-swap={RUST_BUILD_MEMORY_GIB}g", f"--pids-limit={RUST_BUILD_PIDS}",
                 "--security-opt=no-new-privileges",
                 "--env=CARGO_BUILD_JOBS=2", "--env=CARGO_HOME=/cargo-cache", "--env=CARGO_TARGET_DIR=/target-cache",
                 "--env=SAAS_RUST_FEATURES=" + RUST_FEATURES,
@@ -471,8 +476,10 @@ class Ops:
                 obj = self.inspect("container", name)
                 self.owned(obj, receipt["run"], "container")
                 limits = obj["HostConfig"]
-                require(limits.get("NanoCpus") == 4_000_000_000 and limits.get("Memory") == 4 * GIB and
-                        limits.get("MemorySwap") == 4 * GIB and limits.get("PidsLimit") == 256,
+                require(limits.get("NanoCpus") == RUST_BUILD_CPUS * 1_000_000_000 and
+                        limits.get("Memory") == RUST_BUILD_MEMORY_GIB * GIB and
+                        limits.get("MemorySwap") == RUST_BUILD_MEMORY_GIB * GIB and
+                        limits.get("PidsLimit") == RUST_BUILD_PIDS,
                         "Rust compiler cgroup limits do not match the required policy")
                 self.docker("start", obj["Id"], capture=True)
                 started = time.monotonic()
@@ -485,7 +492,8 @@ class Ops:
                     require(time.monotonic() - started < 7200, "Rust build exceeded the two-hour time limit")
                     if time.monotonic() >= next_report:
                         self.rust_cache_usage(cache)
-                        print(f"Capped Rust build running (4 CPUs/4 GiB, available {headroom['mem_available_bytes'] / GIB:.1f} GiB)", flush=True)
+                        print(f"Capped Rust build running ({RUST_BUILD_CPUS} CPUs/{RUST_BUILD_MEMORY_GIB} GiB, "
+                              f"available {headroom['mem_available_bytes'] / GIB:.1f} GiB)", flush=True)
                         next_report = time.monotonic() + 45
                     time.sleep(3)
                 require(current["State"].get("ExitCode") == 0 and not current["State"].get("OOMKilled"),
@@ -1021,7 +1029,8 @@ def main(argv=None):
                           "rollback": "rollback RUN", "bulk_operations": False}
         if args.target == "cron":
             details["rust"] = {"features": RUST_FEATURES, "worker_profiles": rust_worker_profiles(), "cache": str(ops.rust_cache_root()),
-                               "cache_limit_bytes": RUST_CACHE_LIMIT, "jobs": 2, "cpus": 4, "memory_bytes": 4 * GIB,
+                               "cache_limit_bytes": RUST_CACHE_LIMIT, "jobs": 2,
+                               "cpus": RUST_BUILD_CPUS, "memory_bytes": RUST_BUILD_MEMORY_GIB * GIB,
                                "optional_feature_matrix": "build cron --rust-feature-matrix"}
         print(json.dumps(details, indent=2))
         return 0
