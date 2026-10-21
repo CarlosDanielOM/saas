@@ -2,6 +2,8 @@
 
 The Rust stream-activity projector is a manual port of the batch projection in `dimabot/src/utils/stream_activity.ts`. It does not replace activity capture from `dimabot/src/handlers/message.handler.ts`, the existing TypeScript worker in `dimabot/src/workers/stream_activity.worker.ts`, or the activity read APIs. It adds no Twitch, bot-runtime, or Redis dependency, and it is not registered with the dimabot cron supervisor or Compose services.
 
+On the production VPS, every Cargo build/run command below is subject to the [production-host Rust build and test policy](AGENTS.md#production-host-rust-build-and-test-policy); do not run Cargo directly on the host.
+
 ## Reused data and schema
 
 The projector reads the existing `stream_activities` outbox collection and writes the existing `stream_activity_aggregates` and `stream_activity_states` collections in the selected MongoDB database. It mirrors the TypeScript schema's field names, BSON types, event kinds, aggregate identities, counter names, and defaults; the TypeScript capture sets the existing 90-day expiration used by projection. It does not capture events, read projected activity for the dashboard, or migrate data.

@@ -46,7 +46,7 @@ Replace the example paths with the files the executable is configured to load. T
 
 The `stream_activity` binary is a manual projection tool. Its reuse boundaries, database requirements, command options, parity fixture, and benchmark methodology are documented in [STREAM_ACTIVITY.md](STREAM_ACTIVITY.md).
 
-From this directory, the library can be checked with:
+Check the library from this directory using the commands below. On the production VPS, every Cargo command listed is subject to the [production-host Rust build and test policy](AGENTS.md#production-host-rust-build-and-test-policy); do not run these commands directly on the host:
 
 ```sh
 cargo fmt --all -- --check
