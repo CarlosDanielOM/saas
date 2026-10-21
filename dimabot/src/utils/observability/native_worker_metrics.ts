@@ -78,31 +78,26 @@ const DRAGONFLY_ENV = ['DRAGONFLY_HOST', 'DRAGONFLY_PORT'] as const;
 export const NATIVE_WORKERS = {
     'stream-activity': {
         command: '/usr/local/bin/stream_activity', args: ['--batch-size', '500', '--telemetry-json'],
-        runtimeConfig: 'streamActivityRuntime', runtimeEnv: 'STREAM_ACTIVITY_RUNTIME',
         protocol: 'stream_activity:', metricPrefix: 'stream_activity_rust', batchMetric: 'batch_events', maxEvents: 1000, maxDurationMs: 300000,
         extraEnv: [] as readonly string[],
     },
     'follow-defense-baseline': {
         command: '/usr/local/bin/follow_defense_baseline', args: ['--telemetry-json'],
-        runtimeConfig: 'followDefenseBaselineRuntime', runtimeEnv: 'FOLLOW_DEFENSE_BASELINE_RUNTIME',
         protocol: 'follow_defense_baseline:', metricPrefix: 'follow_defense_baseline_rust', batchMetric: 'batch_channels', maxEvents: 1, maxDurationMs: 300000,
         extraEnv: DRAGONFLY_ENV,
     },
     'roulette-completion': {
         command: '/usr/local/bin/roulette_completion', args: ['--telemetry-json'],
-        runtimeConfig: 'rouletteCompletionRuntime', runtimeEnv: 'ROULETTE_COMPLETION_RUNTIME',
         protocol: 'roulette_completion:', metricPrefix: 'roulette_completion_rust', batchMetric: 'batch_channels', maxEvents: 100, maxDurationMs: 300000,
         extraEnv: [] as readonly string[],
     },
     'raid-analytics': {
         command: '/usr/local/bin/raid_analytics', args: ['--telemetry-json'],
-        runtimeConfig: 'raidAnalyticsRuntime', runtimeEnv: 'RAID_ANALYTICS_RUNTIME',
         protocol: 'raid_analytics:', metricPrefix: 'raid_analytics_rust', batchMetric: 'batch_channels', maxEvents: 1, maxDurationMs: Number.MAX_VALUE,
         extraEnv: [] as readonly string[],
     },
     'ai-usage-receipts': {
         command: '/usr/local/bin/ai_usage_receipts', args: ['--telemetry-json'],
-        runtimeConfig: 'aiUsageReceiptsRuntime', runtimeEnv: 'AI_USAGE_RECEIPTS_RUNTIME',
         protocol: 'ai_usage_receipts:', metricPrefix: 'ai_usage_receipts_rust', batchMetric: 'batch_receipts', maxEvents: 1000, maxDurationMs: 300000,
         extraEnv: [...DRAGONFLY_ENV, ...AI_USAGE_RECEIPTS_ENV, ...AI_USAGE_QUEUE_HEALTH_ENV],
     },

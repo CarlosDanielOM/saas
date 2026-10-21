@@ -64,9 +64,12 @@ globalThis.fetch = async (input, options = {}) => {
 
 // Limit the real cron supervisor to the two affected workers. Unrelated
 // workers are provider fixtures; production uses the normal child processes.
+// The retired TypeScript raid projector is native-only since 2026-10-21; the
+// real supervisor now requests the staged binary instead of a JS entrypoint.
 globalThis.__chatNoticeSpawn = (command, args, options) => {
     const entry = String(args[0]);
-    if (entry.endsWith('/domain_events.worker.js') || entry.endsWith('/raid_analytics.worker.js')
+    if (command === '/usr/local/bin/raid_analytics'
+        || entry.endsWith('/domain_events.worker.js')
         || process.env.RAID_PROTECTION_REGRESSION === 'true' && ['/raid_sessions.worker.js','/follow_defense_actions.worker.js'].some(worker=>entry.endsWith(worker))) {
         log({ worker: entry });
         return spawn(command, args, options);

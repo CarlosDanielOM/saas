@@ -2,13 +2,15 @@
 
 **Status: accepted in production.** Candidate run `cron-7b8a6c88303d` with image `sha256:458d9186c5e48e684962bea9f85092d89b1e765cca3d283ebf819696ff50269c` was deployed at `2026-10-21T17:53:10.675491527Z`; the container started with zero restarts. All five exact-image worker suites passed before deployment, including the 18-group AI receipts suite. The 190.624-second production watch, scoped analytics readback, and task cleanup passed. The saved rollback target is run `cron-2ddd455fdd1f`, image `sha256:050be8612ffa176e791c0ec16adeb0fde50b0e287d31ad02364c805fa9bdd783`.
 
-The port moves only the scheduled `ai-usage-receipts` consumer into the existing cron image. It does not add a service, collection, index, schema migration, or dependency. The candidate uses the existing MongoDB and Dragonfly clients and the baseline `mongo,redis` Cargo profile. Native default selection is intended for the production Node supervisor; `AI_USAGE_RECEIPTS_RUNTIME=typescript` remains the explicit TypeScript rollback selector through the separately reviewed configuration workflow. `tsx` continues to use the TypeScript worker by default. A failed native child is restarted by the existing supervisor and never silently falls back to TypeScript.
+This accepted deployment record predates retirement of the scheduled TypeScript entrypoints. `AI_USAGE_RECEIPTS_RUNTIME=typescript` below documents the historical selector only; it no longer selects the archived worker. Polar backfill, receipt producers, API reads, and shared TypeScript helpers remain active. Retirement was accepted in `cron-d02bf5a387d5`; see the [current retirement record](typescript-worker-retirement.md).
+
+The port moves only the scheduled `ai-usage-receipts` consumer into the existing cron image. It does not add a service, collection, index, schema migration, or dependency. The candidate uses the existing MongoDB and Dragonfly clients and the baseline `mongo,redis` Cargo profile. This historical rollout selected the native child under Node; the former `AI_USAGE_RECEIPTS_RUNTIME=typescript` selector and `tsx` TypeScript default are retired. Both Node and `tsx` now use the native child, whose failure is handled by same-worker Rust restart without TypeScript fallback.
 
 ## Existing TypeScript contract
 
 The source contract is implemented across:
 
-- [`ai_usage_receipts.worker.ts`](../dimabot/src/workers/ai_usage_receipts.worker.ts): worker lifecycle, polling, queue operations, plan-tier cache, dashboard refresh cadence, queue health, and shutdown.
+- [`ai_usage_receipts.worker.ts`](../archives/typescript-workers/2026-10-21/dimabot/src/workers/ai_usage_receipts.worker.ts): archived scheduled worker entrypoint; this historical source contract covers worker lifecycle, polling, queue operations, plan-tier cache, dashboard refresh cadence, queue health, and shutdown.
 - [`ai_usage_queue_health.ts`](../dimabot/src/utils/ai_usage_queue_health.ts): Redis queue names and claim, acknowledge, retry, dead-letter, and health-monitoring operations.
 - [`ai_usage_ledger.ts`](../dimabot/src/utils/ai_usage_ledger.ts): receipt validation, idempotent ledger writes, retention, and UTC daily aggregate repair under an account lock.
 - [`ai_usage_lock.ts`](../dimabot/src/utils/ai_usage_lock.ts): global/account owner and heartbeat lock protocol.

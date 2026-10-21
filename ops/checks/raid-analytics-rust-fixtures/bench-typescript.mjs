@@ -1,5 +1,7 @@
 // Unchanged projector, compiled in the real candidate image. Deliberately omit
 // raid_analytics.worker.ts's unconditional 1s sleep for engine-only comparison.
+// Historical benchmark baseline only: it calls the shared raid_analytics utility
+// directly, not an archived worker entrypoint, supervisor selector, or fallback.
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 const require = createRequire('/app/package.json');

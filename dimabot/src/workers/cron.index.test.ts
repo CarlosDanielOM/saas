@@ -1,10 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import path from 'node:path';
 import { EventEmitter } from 'node:events';
 import { PassThrough } from 'node:stream';
 import type { ChildProcess, spawn as spawnType } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
-import { WORKERS, WorkerSupervisor, resolveNativeRuntimes, resolveWorkerLaunch, type SupervisorConfig, type WorkerDefinition } from './cron.index.js';
+import { WORKERS, WorkerSupervisor, resolveWorkerLaunch, type SupervisorConfig, type WorkerDefinition } from './cron.index.js';
 
 const stream = WORKERS.find(worker => worker.name === 'stream-activity')!;
 const raid = WORKERS.find(worker => worker.name === 'raid-analytics')!;
@@ -30,10 +31,10 @@ class FakeChild extends EventEmitter {
         this.emit('exit', code, signal); this.emit('close', code, signal); this.stdout.destroy();
     }
 }
-function fixture(once = false, definitions: WorkerDefinition[] = [stream]) {
+function fixture(once = false, definitions: WorkerDefinition[] = [stream], overrides: Partial<SupervisorConfig> = {}) {
     const children: FakeChild[] = [], metrics: string[] = [], commands: string[] = [];
     let stops = 0;
-    const supervisor = new WorkerSupervisor({ ...config, once }, definitions, {
+    const supervisor = new WorkerSupervisor({ ...config, once, ...overrides }, definitions, {
         spawn: ((command: string) => {
             commands.push(command);
             const child = new FakeChild(); children.push(child);
@@ -66,40 +67,57 @@ test('only five known workers use Rust; flags, privilege drop and environment ar
     assert.deepEqual(nativeBaseline.args, ['--telemetry-json', '--dry-run', '--once']);
     assert.deepEqual(nativeBaseline.options.env, { ...native.options.env, DRAGONFLY_HOST: 'redis', DRAGONFLY_PORT: '6379' });
     assert.equal(nativeBaseline.options.uid, 65534); assert.equal(nativeBaseline.options.gid, 65534);
-    assert(!resolveWorkerLaunch(baseline, { ...config, followDefenseBaselineRuntime: 'typescript' }, env, 0).native);
-    assert(!resolveWorkerLaunch(baseline, { ...config, runtime: 'tsx' }, env, 0).native);
-    assert(resolveWorkerLaunch(baseline, { ...config, runtime: 'tsx', followDefenseBaselineRuntime: 'rust' }, env, 0).native);
-    assert(resolveWorkerLaunch(baseline, { ...config, raidAnalyticsRuntime: 'typescript', streamActivityRuntime: 'typescript' }, env, 0).native);
     for (const definition of WORKERS.filter(worker => !nativeDefinitions.includes(worker))) assert(!resolveWorkerLaunch(definition, config, env, 0).native);
-    assert(!resolveWorkerLaunch(stream, { ...config, streamActivityRuntime: 'typescript' }, env, 0).native);
-    assert(!resolveWorkerLaunch(stream, { ...config, runtime: 'tsx' }, env, 0).native);
-    assert(resolveWorkerLaunch(stream, { ...config, runtime: 'tsx', streamActivityRuntime: 'rust' }, env, 0).native);
-    assert(!resolveWorkerLaunch(raid, { ...config, raidAnalyticsRuntime: 'typescript' }, env, 0).native);
-    assert(!resolveWorkerLaunch(raid, { ...config, runtime: 'tsx' }, env, 0).native);
-    assert(resolveWorkerLaunch(raid, { ...config, runtime: 'tsx', raidAnalyticsRuntime: 'rust' }, env, 0).native);
-    assert(resolveWorkerLaunch(raid, { ...config, streamActivityRuntime: 'typescript' }, env, 0).native);
-    assert(resolveWorkerLaunch(stream, { ...config, raidAnalyticsRuntime: 'typescript' }, env, 0).native);
-    assert(!resolveWorkerLaunch({ ...raid, name: 'constructor' }, config, env, 0).native);
-    const tsRaid = resolveWorkerLaunch(raid, { ...config, runtime: 'tsx' }, env, 0);
-    assert.equal(tsRaid.command, 'tsx');
-    assert(tsRaid.args[0].endsWith('/src/workers/raid_analytics.worker.ts'));
-    const jsRaid = resolveWorkerLaunch(raid, { ...config, raidAnalyticsRuntime: 'typescript' }, env, 0);
-    assert.equal(jsRaid.command, process.execPath);
-    assert(jsRaid.args[0].endsWith('/workers/raid_analytics.worker.js'));
-    assert.equal(jsRaid.options.env?.CRON_WORKER_NAME, 'raid-analytics');
 });
 
-test('all runtime environment selectors reject invalid values before bootstrap starts workers', () => {
-    assert.deepEqual(resolveNativeRuntimes({ STREAM_ACTIVITY_RUNTIME: 'rust', RAID_ANALYTICS_RUNTIME: 'typescript' }),
-        { streamActivityRuntime: 'rust', raidAnalyticsRuntime: 'typescript', followDefenseBaselineRuntime: undefined,
-            rouletteCompletionRuntime: undefined, aiUsageReceiptsRuntime: undefined });
-    assert.deepEqual(resolveNativeRuntimes({}), { streamActivityRuntime: undefined, raidAnalyticsRuntime: undefined,
-        followDefenseBaselineRuntime: undefined, rouletteCompletionRuntime: undefined, aiUsageReceiptsRuntime: undefined });
-    for (const key of ['STREAM_ACTIVITY_RUNTIME', 'RAID_ANALYTICS_RUNTIME', 'FOLLOW_DEFENSE_BASELINE_RUNTIME',
-        'ROULETTE_COMPLETION_RUNTIME', 'AI_USAGE_RECEIPTS_RUNTIME']) {
-        for (const value of ['', 'Rust', '/tmp/arbitrary']) assert.throws(() => resolveNativeRuntimes({ [key]: value }), new RegExp(key));
+const retiredSelectors = ['STREAM_ACTIVITY_RUNTIME', 'RAID_ANALYTICS_RUNTIME', 'FOLLOW_DEFENSE_BASELINE_RUNTIME',
+    'ROULETTE_COMPLETION_RUNTIME', 'AI_USAGE_RECEIPTS_RUNTIME'];
+
+test('all five native definitions have no TypeScript entrypoints and ignore obsolete selectors in both runtimes', () => {
+    assert.equal(WORKERS.filter(worker => worker.kind === 'native').length, 5);
+    for (const worker of nativeDefinitions) {
+        assert.equal(worker.kind, 'native');
+        assert(!('sourceEntry' in worker)); assert(!('distEntry' in worker));
+        for (const runtime of ['node', 'tsx'] as const) {
+            // Stale callers cannot restore the retired configuration switches either.
+            const staleConfig = { ...config, runtime, streamActivityRuntime: 'typescript', raidAnalyticsRuntime: 'typescript',
+                followDefenseBaselineRuntime: 'typescript', rouletteCompletionRuntime: 'typescript', aiUsageReceiptsRuntime: 'typescript' };
+            for (const value of ['typescript', 'rust', '', 'invalid']) {
+                const env = { MONGO_URI: 'fixture-only', PATH: '/usr/bin', ...Object.fromEntries(retiredSelectors.map(key => [key, value])) };
+                const launch = resolveWorkerLaunch(worker, staleConfig, env, 0);
+                assert(launch.native, `${worker.name} must remain native under ${runtime} with retired value ${value}`);
+                assert(launch.command.startsWith('/usr/local/bin/'));
+                assert(!launch.args.some(arg => /\.(?:ts|js)$/.test(arg)));
+                assert.deepEqual(launch.options.env, { MONGO_URI: 'fixture-only', PATH: '/usr/bin' });
+            }
+        }
     }
 });
+
+test('TypeScript definitions retain node and tsx entrypoints, supervisor environment and flags', () => {
+    const env = { MONGO_URI: 'fixture-only', SECRET_KEY: 'fixture-secret' };
+    for (const worker of WORKERS) {
+        if (worker.kind !== 'typescript') continue;
+        for (const runtime of ['node', 'tsx'] as const) {
+            const launch = resolveWorkerLaunch(worker, { ...config, runtime, once: true, dryRun: true }, env, 0);
+            assert.equal(launch.native, false);
+            assert.equal(launch.command, runtime === 'tsx' ? 'tsx' : process.execPath);
+            assert(launch.args[0].endsWith(runtime === 'tsx' ? worker.sourceEntry : `/workers/${path.basename(worker.distEntry)}`));
+            assert.deepEqual(launch.args.slice(1), ['--dry-run', '--once']);
+            assert.deepEqual(launch.options.env, { ...env, CRON_SUPERVISOR: 'true', CRON_WORKER_NAME: worker.name });
+            assert.equal(launch.options.stdio, 'inherit'); assert.equal(launch.options.uid, undefined);
+        }
+    }
+    const custom: WorkerDefinition = { kind: 'typescript', name: 'constructor', sourceEntry: 'src/custom.ts', distEntry: 'dist/custom.js' };
+    assert.equal(resolveWorkerLaunch(custom, config, env, 0).native, false);
+});
+
+// The discriminant also protects future registry entries at compile time.
+// @ts-expect-error A TypeScript worker must declare its entrypoints.
+const missingTypeScriptEntries: WorkerDefinition = { kind: 'typescript', name: 'fixture' };
+// @ts-expect-error A native worker cannot retain a TypeScript fallback entrypoint.
+const nativeWithFallback: WorkerDefinition = { kind: 'native', name: 'raid-analytics', sourceEntry: 'src/fixture.ts', distEntry: 'dist/fixture.js' };
+void missingTypeScriptEntries; void nativeWithFallback;
 
 test('error plus exit and close schedule one restart, stop metrics, and never fall back to TS', async () => {
     const f = fixture(); f.supervisor.start(); await delay(0);
@@ -220,7 +238,7 @@ test('baseline missing executable reports errors and retries native without fall
 });
 
 
-test('roulette selection reuses Mongo-only child privileges and explicit independent runtimes', () => {
+test('roulette selection retains Mongo-only child privileges', () => {
     assert.equal(WORKERS.filter(worker => worker.name === 'roulette-completion').length, 1);
     const env = { MONGO_URI: 'fixture-only', PATH: '/usr/bin', TZ: 'UTC', SECRET_KEY: 'secret',
         DRAGONFLY_HOST: 'redis', DRAGONFLY_PORT: '6379', TWITCH_TOKEN: 'private' };
@@ -231,21 +249,7 @@ test('roulette selection reuses Mongo-only child privileges and explicit indepen
     assert.deepEqual(native.options.env, { MONGO_URI: 'fixture-only', PATH: '/usr/bin', TZ: 'UTC' });
     assert.equal(native.options.uid, 65534); assert.equal(native.options.gid, 65534);
     assert.equal(resolveWorkerLaunch(roulette, config, env, 1000).options.uid, undefined);
-    const dev = resolveWorkerLaunch(roulette, { ...config, runtime: 'tsx' }, env, 0);
-    assert(!dev.native); assert.equal(dev.command, 'tsx');
-    assert(dev.args[0].endsWith('/src/workers/roulette.worker.ts'));
-    assert(resolveWorkerLaunch(roulette, { ...config, runtime: 'tsx', rouletteCompletionRuntime: 'rust' }, env, 0).native);
-    const rollback = resolveWorkerLaunch(roulette, { ...config, rouletteCompletionRuntime: 'typescript' }, env, 0);
-    assert(!rollback.native); assert.equal(rollback.command, process.execPath);
-    assert(rollback.args[0].endsWith('/workers/roulette.worker.js'));
-    assert.equal(rollback.options.env?.CRON_WORKER_NAME, 'roulette-completion');
-    assert(resolveWorkerLaunch(roulette, { ...config, streamActivityRuntime: 'typescript', raidAnalyticsRuntime: 'typescript',
-        followDefenseBaselineRuntime: 'typescript' }, env, 0).native);
-    for (const worker of [stream, raid, baseline]) {
-        assert(resolveWorkerLaunch(worker, { ...config, rouletteCompletionRuntime: 'typescript' }, env, 0).native);
-    }
-    assert.equal(resolveNativeRuntimes({ ROULETTE_COMPLETION_RUNTIME: 'rust' }).rouletteCompletionRuntime, 'rust');
-    assert.equal(resolveNativeRuntimes({ ROULETTE_COMPLETION_RUNTIME: 'typescript' }).rouletteCompletionRuntime, 'typescript');
+
 });
 
 test('roulette missing executable records errors and retries native without fallback', async () => {
@@ -310,22 +314,7 @@ test('receipts child receives only its own queue settings, Dragonfly host/port a
     // Unset settings stay unset: the child must apply its own defaults.
     assert.deepEqual(resolveWorkerLaunch(receipts, config, { MONGO_URI: 'fixture-only', PATH: '/usr/bin' }, 1000).options.env,
         { MONGO_URI: 'fixture-only', PATH: '/usr/bin' });
-    const dev = resolveWorkerLaunch(receipts, { ...config, runtime: 'tsx' }, env, 0);
-    assert(!dev.native); assert.equal(dev.command, 'tsx');
-    assert(dev.args[0].endsWith('/src/workers/ai_usage_receipts.worker.ts'));
-    assert(resolveWorkerLaunch(receipts, { ...config, runtime: 'tsx', aiUsageReceiptsRuntime: 'rust' }, env, 0).native);
-    const rollback = resolveWorkerLaunch(receipts, { ...config, aiUsageReceiptsRuntime: 'typescript' }, env, 0);
-    assert(!rollback.native); assert.equal(rollback.command, process.execPath);
-    assert(rollback.args[0].endsWith('/workers/ai_usage_receipts.worker.js'));
-    assert.equal(rollback.options.env?.CRON_WORKER_NAME, 'ai-usage-receipts');
-    // Other worker selectors never move the receipts child off its own choice.
-    for (const worker of [stream, raid, baseline, roulette]) {
-        assert(resolveWorkerLaunch(worker, { ...config, aiUsageReceiptsRuntime: 'typescript' }, env, 0).native);
-    }
-    assert(resolveWorkerLaunch(receipts, { ...config, streamActivityRuntime: 'typescript', raidAnalyticsRuntime: 'typescript',
-        followDefenseBaselineRuntime: 'typescript', rouletteCompletionRuntime: 'typescript' }, env, 0).native);
-    assert.equal(resolveNativeRuntimes({ AI_USAGE_RECEIPTS_RUNTIME: 'rust' }).aiUsageReceiptsRuntime, 'rust');
-    assert.equal(resolveNativeRuntimes({ AI_USAGE_RECEIPTS_RUNTIME: 'typescript' }).aiUsageReceiptsRuntime, 'typescript');
+
 });
 
 test('receipts missing executable records errors and retries native without fallback', async () => {
@@ -362,4 +351,79 @@ test('receipts process failure restarts only receipts and fences late telemetry'
     f.children[5].stdout.write(frame); await closing;
     assert.equal(f.metrics.filter(name => name === 'ai_usage_receipts_rust.batch_receipts').length, 1);
     assert.equal(f.stops(), 6);
+});
+
+
+test('every native worker retries its own executable under node and tsx when binaries are missing', async () => {
+    const saved = retiredSelectors.map(key => process.env[key]);
+    for (const key of retiredSelectors) process.env[key] = 'typescript';
+    try {
+        for (const runtime of ['node', 'tsx'] as const) for (const definition of nativeDefinitions) {
+            const commands: string[] = [], metrics: string[] = [];
+            const supervisor = new WorkerSupervisor({ ...config, runtime }, [definition], {
+                spawn: ((command: string) => { commands.push(command); throw Object.assign(new Error('fixture'), { code: 'ENOENT' }); }) as typeof spawnType,
+                info: async () => ({ success: true }), warn: async () => ({ success: true }), error: async () => ({ success: true }),
+                observe: (_kind, name) => { metrics.push(name); }, recordLog: () => {},
+            });
+            supervisor.start(); await delay(15);
+            await supervisor.shutdown('SIGTERM', 50);
+            const expected = resolveWorkerLaunch(definition, { ...config, runtime }).command;
+            assert(commands.length >= 2, `${definition.name} retries under ${runtime}`);
+            assert(commands.every(command => command === expected));
+            assert(metrics.some(name => name.endsWith('.errors')));
+            assert(metrics.some(name => name.endsWith('.restarts')));
+        }
+    } finally {
+        retiredSelectors.forEach((key, index) => { if (saved[index] === undefined) delete process.env[key]; else process.env[key] = saved[index]; });
+    }
+});
+
+test('native enabledEnv still prevents a disabled receipts child while starting its sibling', async () => {
+    const previous = process.env.AI_USAGE_RECEIPTS_ENABLED;
+    process.env.AI_USAGE_RECEIPTS_ENABLED = 'false';
+    try {
+        const f = fixture(true, [receipts, stream], { runtime: 'tsx' });
+        f.supervisor.start(); await delay(0);
+        assert.deepEqual(f.commands, ['/usr/local/bin/stream_activity']);
+        assert.equal(f.supervisor.workers[0].exitCode, 0);
+        f.children[0].closeOnTerm = true;
+        await f.supervisor.shutdown('SIGTERM', 50);
+    } finally {
+        if (previous === undefined) delete process.env.AI_USAGE_RECEIPTS_ENABLED; else process.env.AI_USAGE_RECEIPTS_ENABLED = previous;
+    }
+});
+
+
+test('each native child keeps restart isolation, stale-event fencing and shutdown under both launcher modes', async () => {
+    const protocols = ['stream_activity', 'raid_analytics', 'follow_defense_baseline', 'roulette_completion', 'ai_usage_receipts'];
+    for (const runtime of ['node', 'tsx'] as const) for (let index = 0; index < nativeDefinitions.length; index++) {
+        const f = fixture(false, nativeDefinitions, { runtime });
+        f.supervisor.start(); await delay(0);
+        const first = f.children[index], prefix = `${protocols[index]}_rust`;
+        const metric = `${prefix}.${index === 0 ? 'batch_events' : index === 4 ? 'batch_receipts' : 'batch_channels'}`;
+        const frame = `${protocols[index]}:{"event":"batch","events":1,"durationMs":2,"success":true}\n`;
+        first.stdout.write(frame);
+        assert.equal(f.metrics.filter(name => name === metric).length, 1);
+        const before = f.metrics.length;
+        first.emit('error', new Error('fixture child failure'));
+        first.stdout.write(frame); first.finish(1);
+        await delay(15);
+        const replacement = f.children[5];
+        assert.equal(f.children.length, 6);
+        assert.equal(f.commands[5], f.commands[index]);
+        assert.deepEqual(f.metrics.slice(before), [`${prefix}.errors`, `${prefix}.restarts`]);
+        assert.equal(f.supervisor.workers[index].restartCount, 1);
+        assert.equal(f.supervisor.workers[index].process, replacement);
+        first.emit('close', 1, null);
+        assert.equal(f.supervisor.workers[index].process, replacement);
+        f.supervisor.workers.forEach((worker, sibling) => {
+            if (sibling !== index) { assert.equal(worker.process, f.children[sibling]); assert.equal(worker.restartCount, 0); }
+            (worker.process as unknown as FakeChild).closeOnTerm = true;
+        });
+        const closing = f.supervisor.shutdown('SIGTERM', 50);
+        replacement.stdout.write(frame); await closing;
+        assert.equal(f.metrics.filter(name => name === metric).length, 1);
+        assert.equal(f.stops(), 6);
+        assert(f.supervisor.workers.every(worker => worker.process === null));
+    }
 });

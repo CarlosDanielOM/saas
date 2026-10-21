@@ -7,20 +7,28 @@ import { error as logError, info as logInfo, warn as logWarn } from '../utils/lo
 import { observe, recordLog, startTelemetry } from '../utils/observability/telemetry.js';
 import { NATIVE_WORKERS, nativeWorker, nativeProgressParser, startNativeWorkerMetrics, type NativeWorkerName } from '../utils/observability/native_worker_metrics.js';
 
-export interface WorkerDefinition {
-    name: string;
-    sourceEntry: string;
-    distEntry: string;
+interface WorkerOptions {
     enabledEnv?: string;
 }
 
+export interface TypeScriptWorkerDefinition extends WorkerOptions {
+    kind: 'typescript';
+    name: string;
+    sourceEntry: string;
+    distEntry: string;
+}
+
+export interface NativeWorkerDefinition extends WorkerOptions {
+    kind: 'native';
+    name: NativeWorkerName;
+    sourceEntry?: never;
+    distEntry?: never;
+}
+
+export type WorkerDefinition = TypeScriptWorkerDefinition | NativeWorkerDefinition;
+
 export interface SupervisorConfig {
     runtime: 'tsx' | 'node';
-    streamActivityRuntime?: string;
-    raidAnalyticsRuntime?: string;
-    followDefenseBaselineRuntime?: string;
-    rouletteCompletionRuntime?: string;
-    aiUsageReceiptsRuntime?: string;
     once: boolean;
     dryRun: boolean;
     restartDelayMs: number;
@@ -34,88 +42,100 @@ export interface ManagedWorker {
 }
 
 export const WORKERS: WorkerDefinition[] = [
-    { name: 'dashboard-activity', sourceEntry: 'src/workers/dashboard_activity.worker.ts', distEntry: 'dist/workers/dashboard_activity.worker.js' },
-    { name: 'raid-analytics', sourceEntry: 'src/workers/raid_analytics.worker.ts', distEntry: 'dist/workers/raid_analytics.worker.js' },
-    { name: 'stream-activity', sourceEntry: 'src/workers/stream_activity.worker.ts', distEntry: 'dist/workers/stream_activity.worker.js' },
-    { name: 'goals', sourceEntry: 'src/workers/goals.worker.ts', distEntry: 'dist/workers/goals.worker.js' },
-    { name: 'duel', sourceEntry: 'src/workers/duel.worker.ts', distEntry: 'dist/workers/duel.worker.js' },
-    { name: 'widgets', sourceEntry: 'src/workers/widgets.worker.ts', distEntry: 'dist/workers/widgets.worker.js' },
-    { name: 'credit-gifts', sourceEntry: 'src/workers/credit_gifts.worker.ts', distEntry: 'dist/workers/credit_gifts.worker.js' },
-    { name: 'semantic-moderation', sourceEntry: 'src/workers/semantic_moderation.worker.ts', distEntry: 'dist/workers/semantic_moderation.worker.js' },
-    { name: 'roulette-actions', sourceEntry: 'src/workers/roulette-actions.worker.ts', distEntry: 'dist/workers/roulette-actions.worker.js' },
-    { name: 'roulette-completion', sourceEntry: 'src/workers/roulette.worker.ts', distEntry: 'dist/workers/roulette.worker.js' },
-    { name: 'follow-defense-baseline', sourceEntry: 'src/workers/follow_defense_baseline.worker.ts', distEntry: 'dist/workers/follow_defense_baseline.worker.js' },
-    { name: 'raid-sessions', sourceEntry: 'src/workers/raid_sessions.worker.ts', distEntry: 'dist/workers/raid_sessions.worker.js' },
+    { kind: 'typescript', name: 'dashboard-activity', sourceEntry: 'src/workers/dashboard_activity.worker.ts', distEntry: 'dist/workers/dashboard_activity.worker.js' },
+    { kind: 'native', name: 'raid-analytics' },
+    { kind: 'native', name: 'stream-activity' },
+    { kind: 'typescript', name: 'goals', sourceEntry: 'src/workers/goals.worker.ts', distEntry: 'dist/workers/goals.worker.js' },
+    { kind: 'typescript', name: 'duel', sourceEntry: 'src/workers/duel.worker.ts', distEntry: 'dist/workers/duel.worker.js' },
+    { kind: 'typescript', name: 'widgets', sourceEntry: 'src/workers/widgets.worker.ts', distEntry: 'dist/workers/widgets.worker.js' },
+    { kind: 'typescript', name: 'credit-gifts', sourceEntry: 'src/workers/credit_gifts.worker.ts', distEntry: 'dist/workers/credit_gifts.worker.js' },
+    { kind: 'typescript', name: 'semantic-moderation', sourceEntry: 'src/workers/semantic_moderation.worker.ts', distEntry: 'dist/workers/semantic_moderation.worker.js' },
+    { kind: 'typescript', name: 'roulette-actions', sourceEntry: 'src/workers/roulette-actions.worker.ts', distEntry: 'dist/workers/roulette-actions.worker.js' },
+    { kind: 'native', name: 'roulette-completion' },
+    { kind: 'native', name: 'follow-defense-baseline' },
+    { kind: 'typescript', name: 'raid-sessions', sourceEntry: 'src/workers/raid_sessions.worker.ts', distEntry: 'dist/workers/raid_sessions.worker.js' },
     {
+        kind: 'typescript',
         name: 'follow-defense-actions',
         sourceEntry: 'src/workers/follow_defense_actions.worker.ts',
         distEntry: 'dist/workers/follow_defense_actions.worker.js'
     },
     {
+        kind: 'typescript',
         name: 'follow-defense',
         sourceEntry: 'src/workers/follow_defense.worker.ts',
         distEntry: 'dist/workers/follow_defense.worker.js'
     },
     {
+        kind: 'typescript',
         name: 'follow-ledger',
         sourceEntry: 'src/workers/follow_ledger.worker.ts',
         distEntry: 'dist/workers/follow_ledger.worker.js'
     },
     {
+        kind: 'typescript',
         name: 'stream-analytics',
         sourceEntry: 'src/workers/stream_analytics.worker.ts',
         distEntry: 'dist/workers/stream_analytics.worker.js'
     },
     {
+        kind: 'typescript',
         name: 'domain-events',
         sourceEntry: 'src/workers/domain_events.worker.ts',
         distEntry: 'dist/workers/domain_events.worker.js'
     },
     {
+        kind: 'typescript',
         name: 'eventsub-reconciliation',
         sourceEntry: 'src/workers/eventsub_reconciliation.worker.ts',
         distEntry: 'dist/workers/eventsub_reconciliation.worker.js',
         enabledEnv: 'EVENTSUB_RECONCILIATION_ENABLED'
     },
     {
+        kind: 'typescript',
         name: 'free-credit-reset',
         sourceEntry: 'src/workers/free_credit_reset.worker.ts',
         distEntry: 'dist/workers/free_credit_reset.worker.js',
         enabledEnv: 'FREE_CREDIT_RESET_ENABLED'
     },
     {
+        kind: 'native',
         name: 'ai-usage-receipts',
-        sourceEntry: 'src/workers/ai_usage_receipts.worker.ts',
-        distEntry: 'dist/workers/ai_usage_receipts.worker.js',
         enabledEnv: 'AI_USAGE_RECEIPTS_ENABLED'
     },
     {
+        kind: 'typescript',
         name: 'ai-usage-backfill',
         sourceEntry: 'src/workers/ai_usage_backfill.worker.ts',
         distEntry: 'dist/workers/ai_usage_backfill.worker.js',
         enabledEnv: 'AI_USAGE_BACKFILL_ENABLED'
     },
     {
+        kind: 'typescript',
         name: 'stream-memory',
         sourceEntry: 'src/workers/stream_memory.worker.ts',
         distEntry: 'dist/workers/stream_memory.worker.js'
     },
     {
+        kind: 'typescript',
         name: 'temporary-roles',
         sourceEntry: 'src/workers/temporary_roles.worker.ts',
         distEntry: 'dist/workers/temporary_roles.worker.js'
     },
     {
+        kind: 'typescript',
         name: 'timer',
         sourceEntry: 'src/workers/timer.worker.ts',
         distEntry: 'dist/workers/timer.worker.js'
     },
     {
+        kind: 'typescript',
         name: 'activation-reminder',
         sourceEntry: 'src/workers/activation-reminder.worker.ts',
         distEntry: 'dist/workers/activation-reminder.worker.js'
     },
     {
+        kind: 'typescript',
         name: 'vod-clip-recommender',
         sourceEntry: 'src/workers/vod_clip_recommender.worker.ts',
         distEntry: 'dist/workers/vod_clip_recommender.worker.js'
@@ -126,24 +146,21 @@ export function resolveWorkerLaunch(worker: WorkerDefinition, config: Supervisor
     env: NodeJS.ProcessEnv = process.env, uid: number | undefined = process.getuid?.()): {
     command: string; args: string[]; options: SpawnOptions; native: boolean;
 } {
-    const metadata = nativeWorker(worker.name);
-    const selectedRuntime = metadata ? config[metadata.runtimeConfig] : undefined;
-    const native = Boolean(metadata && (selectedRuntime === 'rust'
-        || (selectedRuntime !== 'typescript' && config.runtime !== 'tsx')));
     const flags = [...(config.dryRun ? ['--dry-run'] : []), ...(config.once ? ['--once'] : [])];
-    if (native && metadata) {
+    if (worker.kind === 'native') {
+        const metadata = NATIVE_WORKERS[worker.name];
         const childEnv: NodeJS.ProcessEnv = {};
         const allowed = ['MONGO_URI', 'PATH', 'TZ', 'LANG', 'LC_ALL', 'SSL_CERT_FILE', 'SSL_CERT_DIR', ...metadata.extraEnv];
         for (const key of allowed) {
             if (env[key] !== undefined) childEnv[key] = env[key];
         }
         return { command: metadata.command, args: [...metadata.args, ...flags],
-            options: { stdio: ['ignore', 'pipe', 'inherit'], env: childEnv, ...(uid === 0 ? { uid: 65534, gid: 65534 } : {}) }, native };
+            options: { stdio: ['ignore', 'pipe', 'inherit'], env: childEnv, ...(uid === 0 ? { uid: 65534, gid: 65534 } : {}) }, native: true };
     }
     const entry = config.runtime === 'tsx' ? path.resolve(process.cwd(), worker.sourceEntry)
         : path.resolve(path.dirname(fileURLToPath(import.meta.url)), path.basename(worker.distEntry));
     return { command: config.runtime === 'tsx' ? 'tsx' : process.execPath, args: [entry, ...flags],
-        options: { stdio: 'inherit', env: { ...env, CRON_SUPERVISOR: 'true', CRON_WORKER_NAME: worker.name } }, native };
+        options: { stdio: 'inherit', env: { ...env, CRON_SUPERVISOR: 'true', CRON_WORKER_NAME: worker.name } }, native: false };
 }
 
 interface SupervisorDependencies {
@@ -292,25 +309,12 @@ export class WorkerSupervisor {
     }
 }
 
-export function resolveNativeRuntimes(env: NodeJS.ProcessEnv): Pick<SupervisorConfig, 'streamActivityRuntime' | 'raidAnalyticsRuntime' | 'followDefenseBaselineRuntime' | 'rouletteCompletionRuntime' | 'aiUsageReceiptsRuntime'> {
-    const result: Pick<SupervisorConfig, 'streamActivityRuntime' | 'raidAnalyticsRuntime' | 'followDefenseBaselineRuntime' | 'rouletteCompletionRuntime' | 'aiUsageReceiptsRuntime'> = {};
-    for (const metadata of Object.values(NATIVE_WORKERS)) {
-        const value = env[metadata.runtimeEnv];
-        if (value !== undefined && !['rust', 'typescript'].includes(value)) {
-            throw new Error(`${metadata.runtimeEnv} must be rust or typescript`);
-        }
-        result[metadata.runtimeConfig] = value;
-    }
-    return result;
-}
-
 async function bootstrap(): Promise<void> {
     if (process.env.NODE_ENV !== 'production') dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
     dotenv.config({ path: path.resolve(process.cwd(), '.env') });
-    const runtimes = resolveNativeRuntimes(process.env);
     const configuredDelay = Number(process.env.CRON_WORKER_RESTART_DELAY_MS || 5000);
     const config: SupervisorConfig = {
-        runtime: process.env.CRON_WORKER_RUNTIME === 'tsx' ? 'tsx' : 'node', ...runtimes,
+        runtime: process.env.CRON_WORKER_RUNTIME === 'tsx' ? 'tsx' : 'node',
         once: process.argv.includes('--once'), dryRun: process.argv.includes('--dry-run'),
         restartDelayMs: Number.isFinite(configuredDelay) ? Math.max(1000, configuredDelay) : 5000,
     };
@@ -320,11 +324,7 @@ async function bootstrap(): Promise<void> {
         process.once(signal, () => { void supervisor.shutdown(signal).then(() => process.exit(0)); });
     }
     await logInfo({ worker: 'cron_supervisor', message: 'Starting cron supervisor', runtime: config.runtime,
-        streamActivityRuntime: config.streamActivityRuntime || (config.runtime === 'tsx' ? 'typescript' : 'rust'),
-        raidAnalyticsRuntime: config.raidAnalyticsRuntime || (config.runtime === 'tsx' ? 'typescript' : 'rust'),
-        followDefenseBaselineRuntime: config.followDefenseBaselineRuntime || (config.runtime === 'tsx' ? 'typescript' : 'rust'),
-        rouletteCompletionRuntime: config.rouletteCompletionRuntime || (config.runtime === 'tsx' ? 'typescript' : 'rust'),
-        aiUsageReceiptsRuntime: config.aiUsageReceiptsRuntime || (config.runtime === 'tsx' ? 'typescript' : 'rust'),
+        nativeWorkers: WORKERS.filter(worker => worker.kind === 'native').map(worker => worker.name),
         restartDelayMs: config.restartDelayMs, workers: WORKERS.filter(worker => !worker.enabledEnv || process.env[worker.enabledEnv] !== 'false').map(worker => worker.name),
         mode: config.once ? 'once' : 'normal', dryRun: config.dryRun }, { destination: 'console' });
     supervisor.start();

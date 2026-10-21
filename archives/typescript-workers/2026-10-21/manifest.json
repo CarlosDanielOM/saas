@@ -1,0 +1,31 @@
+{
+  "archivedAt": "2026-10-21",
+  "baseCommit": "2583ebae7914ac0d1f6988abe88e6d0bd4eb2d96",
+  "files": [
+    {
+      "originalPath": "dimabot/src/workers/stream_activity.worker.ts",
+      "archivePath": "archives/typescript-workers/2026-10-21/dimabot/src/workers/stream_activity.worker.ts",
+      "sha256": "e689f20098f4c9cb3e5eb1d3f7a72c83543476971206a81960f6cafa6486f0d4"
+    },
+    {
+      "originalPath": "dimabot/src/workers/raid_analytics.worker.ts",
+      "archivePath": "archives/typescript-workers/2026-10-21/dimabot/src/workers/raid_analytics.worker.ts",
+      "sha256": "642a6cfb9d480f90cd728b0cb6ae9f13e944d4d455d6feea413ab2f45af9b4ef"
+    },
+    {
+      "originalPath": "dimabot/src/workers/follow_defense_baseline.worker.ts",
+      "archivePath": "archives/typescript-workers/2026-10-21/dimabot/src/workers/follow_defense_baseline.worker.ts",
+      "sha256": "ee768d594e2cbcd22ade66edfad429b025914ab50f7427f11c42d4e75f99928f"
+    },
+    {
+      "originalPath": "dimabot/src/workers/roulette.worker.ts",
+      "archivePath": "archives/typescript-workers/2026-10-21/dimabot/src/workers/roulette.worker.ts",
+      "sha256": "0f9bf4b01f1985f8b3182b145f2aa2a8ed04da8454b313d8559ca54b33fd8501"
+    },
+    {
+      "originalPath": "dimabot/src/workers/ai_usage_receipts.worker.ts",
+      "archivePath": "archives/typescript-workers/2026-10-21/dimabot/src/workers/ai_usage_receipts.worker.ts",
+      "sha256": "f74991c8dd9a4e81dc31b9a4e33000167a0acde6c1820c52424e287cf4f1f5fa"
+    }
+  ]
+}

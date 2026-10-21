@@ -164,7 +164,8 @@ const beforeRestart = (await svc.snapshot(channel)).draw.id;
 const { execFileSync } = await import('node:child_process');
 const child = execFileSync('node', ['--input-type=module', '-e', `import {snapshot} from '/app/dist/roulette/service.js'; console.log('DRAW='+(await snapshot('${channel}')).draw.id); process.exit(0);`], { encoding: 'utf8' });
 assert(child.includes('DRAW=' + beforeRestart));
-// Prove the completion worker works without readers or an OBS connection.
+// Check completion without a snapshot reader or OBS connection. The cron
+// variant exercises the native worker; other targets exercise the API service.
 const workerChannel = '990014';
 await Users.collection.insertOne({ accounts: [{ type: 'twitch', id: workerChannel }], plan_tier: 'free' });
 await svc.execute(workerChannel, { operation: 'create', data: { name: 'Worker', alias: 'worker', durationSeconds: 1, settings: { winnerAction: 'remove-item' } } });
@@ -172,9 +173,14 @@ await svc.execute(workerChannel, { operation: 'add', roulette: 'worker', data: {
 await svc.execute(workerChannel, { operation: 'start', roulette: 'worker' });
 await Users.updateOne({ 'accounts.id': workerChannel }, { $set: { plan_tier: 'free' } });
 await new Promise(resolve => setTimeout(resolve, 2200));
-if (process.env.SAAS_TARGET !== 'cron') execFileSync('node', ['/app/dist/workers/roulette.worker.js', '--once'], { encoding: 'utf8' });
+// The TypeScript completion entrypoint was retired on 2026-10-21. This backend
+// check settles due draws through the shared TypeScript API service, the
+// contract reference for the native completion child, not an archived worker
+// entrypoint. Native completion runtime coverage lives in
+// ops/checks/roulette-completion-rust.mjs.
+if (process.env.SAAS_TARGET !== 'cron') await svc.settleDue();
 const workerState = await svc.RouletteChannel.findById(workerChannel).lean();
-assert.equal(workerState.state.history.length, 1, 'worker completes independently of clients');
+assert.equal(workerState.state.history.length, 1, 'completion settles the persisted draw without snapshot readers');
 assert.equal(workerState.state.roulettes[0].items.length, 0);
 // Multiple saved roulettes share one active overlay without losing either list.
 const second = (await request('POST', root + '/roulettes', { name: 'Second', alias: 'second', design: 'wheel' })).result;

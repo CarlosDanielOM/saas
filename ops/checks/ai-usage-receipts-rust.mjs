@@ -156,6 +156,7 @@ async function mongoHoldProxy(db, command, selectedCollection = names.receipts) 
     const sockets = new Set();
     let failure, held, released = false, closing = false, pingSeen = false;
     const parsed = [];
+    const transport = { clientEofs: 0, upstreamEofs: 0, teardownEpipe: 0 };
     const fail = error => {
         failure ||= error instanceof Error ? error : new Error(String(error));
         for (const socket of sockets) socket.destroy();
@@ -164,12 +165,32 @@ async function mongoHoldProxy(db, command, selectedCollection = names.receipts) 
         sockets.add(downstream);
         const upstream = createConnection({ host: 'mongo', port: 27017 });
         sockets.add(upstream);
-        let pending = Buffer.alloc(0), blocked = false;
+        let pending = Buffer.alloc(0), blocked = false, clientEof = false;
         const queued = [];
         let queuedBytes = 0;
-        downstream.on('close', () => { sockets.delete(downstream); upstream.destroy(); });
-        upstream.on('close', () => { sockets.delete(upstream); downstream.destroy(); });
-        for (const socket of [downstream, upstream]) socket.on('error', error => { if (!closing) fail(error); });
+        const stopPair = () => {
+            upstream.unpipe(downstream);
+            upstream.destroy(); downstream.destroy();
+        };
+        // With allowHalfOpen=false, Node changes downstream.write to
+        // writeAfterFIN at 'end'. Waiting for 'close' leaves a window in which
+        // an in-flight Mongo response can be piped into an ended socket.
+        downstream.on('end', () => { clientEof = true; transport.clientEofs++; stopPair(); });
+        downstream.on('close', () => { sockets.delete(downstream); stopPair(); });
+        upstream.on('end', () => {
+            transport.upstreamEofs++;
+            if (!closing && !clientEof) fail(new Error('Mongo fixture upstream EOF before client teardown'));
+            stopPair();
+        });
+        upstream.on('close', () => { sockets.delete(upstream); stopPair(); });
+        for (const [side, socket] of [['client', downstream], ['upstream', upstream]]) socket.on('error', error => {
+            if (closing) return;
+            // Only a write-after-FIN following an observed client EOF belongs
+            // to normal child teardown. Pre-EOF EPIPE and all other errors
+            // still fail the fixture; canceled Mongo requests are not released.
+            if (clientEof && error.code === 'EPIPE') { transport.teardownEpipe++; return; }
+            fail(new Error(`Mongo fixture ${side} transport failed (${error.code || 'unknown'}, clientEof=${clientEof})`, { cause: error }));
+        });
         upstream.pipe(downstream);
         downstream.on('data', chunk => {
             try {
@@ -207,8 +228,10 @@ async function mongoHoldProxy(db, command, selectedCollection = names.receipts) 
                         blocked = true;
                         held = { at: Date.now(), body, release: () => {
                             if (released) return;
+                            assert(!clientEof && !upstream.destroyed && !upstream.writableEnded,
+                                'cannot release held Mongo command after its client/upstream has ended');
                             released = true; blocked = false;
-                            if (!upstream.destroyed) { upstream.write(packet); for (const next of queued) upstream.write(next); }
+                            upstream.write(packet); for (const next of queued) upstream.write(next);
                             queued.length = 0; queuedBytes = 0;
                         } };
                     } else if (blocked) {
@@ -223,6 +246,7 @@ async function mongoHoldProxy(db, command, selectedCollection = names.receipts) 
     server.on('error', fail);
     const proxy = {
         check() { if (failure) throw failure; },
+        snapshot: () => ({ ...transport, held: Boolean(held), released, activeSockets: sockets.size }),
         async held() { return waitFor(() => { proxy.check(); return held; }, `proxy holds actual Mongo ${command}`); },
         release() { proxy.check(); assert(held, 'selected command must be held before release'); held.release(); },
         parsed,
@@ -680,7 +704,15 @@ try {
     const watchdogStarted = Date.now();
     const watchdog = launch(binary, ['--once', '--telemetry-json'], nativeEnv(faultDb, { MONGO_URI: watchdogProxy.uri }), { uid: 65534, gid: 65534 });
     await watchdogProxy.held();
-    const watchdogExit = await finished(watchdog, 28000); watchdogProxy.check();
+    let watchdogExit;
+    try { watchdogExit = await finished(watchdog, 28000); watchdogProxy.check(); }
+    catch (error) {
+        console.error('AI_USAGE_WATCHDOG_PROXY_DIAGNOSTIC:' + JSON.stringify({
+            transport: watchdogProxy.snapshot(), exitCode: watchdog.exitCode, signalCode: watchdog.signalCode, output: watchdog.output.slice(-4000),
+        }));
+        throw error;
+    }
+    assert.equal(watchdogProxy.snapshot().released, false, 'watchdog never forwards the held Mongo write');
     assert.notEqual(watchdogExit.code, 0, watchdogExit.output); assert.equal(watchdogExit.signal, null);
     const watchdogElapsed = Date.now() - watchdogStarted, watchdogFrames = batchFrames(watchdogExit.output);
     assert(watchdogElapsed >= 18000 && watchdogElapsed < 28000, `per-job watchdog ${watchdogElapsed}ms`);

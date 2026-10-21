@@ -12,7 +12,6 @@ import UsersSchema from '/app/dist/schemas/users.schema.js';
 
 const base = 'http://127.0.0.1:3000';
 const callsPath = '/tmp/saas-fixtures/provider-calls.jsonl';
-const receiptWorkerEntry = path.join(process.cwd(), 'dist/workers/ai_usage_receipts.worker.js');
 const backfillWorkerEntry = path.join(process.cwd(), 'dist/workers/ai_usage_backfill.worker.js');
 
 function account(id) {
@@ -111,8 +110,24 @@ for (const [tier, days] of tiers) {
     unit: 'characters', credits: 150, resourceType: 'speech', resourceId: null, itemized: true,
   }));
 }
-const workerOutput = await runWorker(receiptWorkerEntry);
-assert.match(workerOutput, /AI usage receipt batch completed/);
+// The TypeScript receipt consumer entrypoint was retired on 2026-10-21. This
+// pre-migration API check consumes through the same shared queue and ledger
+// utilities, keeping its retention/aggregate assertions meaningful. Native
+// consumer runtime coverage lives in ops/checks/ai-usage-receipts-rust.mjs.
+const { USAGE_QUEUES, claimUsageJob, completeUsageJob } = await import('/app/dist/utils/ai_usage_queue_health.js');
+const { parseQueuedAiUsageReceipt, persistAiUsageReceipt: persistQueuedReceipt } =
+  await import('/app/dist/utils/ai_usage_ledger.js');
+for (let raw = await claimUsageJob(redis, USAGE_QUEUES[0]); typeof raw === 'string' && raw;
+  raw = await claimUsageJob(redis, USAGE_QUEUES[0])) {
+  const receipt = parseQueuedAiUsageReceipt(raw);
+  assert(receipt, 'queued receipt must match the shared ledger contract');
+  const owner = await UsersSchema.findOne({
+    accounts: { $elemMatch: { type: 'twitch', id: receipt.channelID } }
+  }).select('plan_tier').lean().exec();
+  const tier = owner?.plan_tier === 'pro' ? 'pro' : owner?.plan_tier === 'premium' ? 'premium' : 'free';
+  await persistQueuedReceipt(receipt, tier);
+  await completeUsageJob(redis, USAGE_QUEUES[0], raw);
+}
 for (const [tier, days] of tiers) {
   const receipt = await AiUsageReceiptSchema.findOne({ entryId: `queued-${tier}` }).lean();
   assert.equal(receipt.retentionTier, tier);

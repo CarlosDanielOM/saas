@@ -10,7 +10,6 @@ import AiUsageReceiptSchema from '/app/dist/schemas/ai_usage_receipt.schema.js';
 import UsersSchema from '/app/dist/schemas/users.schema.js';
 import { ingestPolarSHEvent } from '/app/dist/utils/polarsh.js';
 
-const receiptWorkerEntry = path.join(process.cwd(), 'dist/workers/ai_usage_receipts.worker.js');
 const backfillWorkerEntry = path.join(process.cwd(), 'dist/workers/ai_usage_backfill.worker.js');
 
 function runWorker(workerEntry) {
@@ -59,8 +58,25 @@ for (const [tier, days] of tiers) {
 }
 assert.equal(await redis.lLen('cron:ai-usage-receipts:queue'), 3);
 
-const output = await runWorker(receiptWorkerEntry);
-assert.match(output, /AI usage receipt batch completed/);
+// The TypeScript receipt consumer entrypoint was retired on 2026-10-21. This
+// pre-migration producer check consumes through the same shared queue and ledger
+// utilities, so its receipt/aggregate assertions stay meaningful. Native
+// consumer runtime coverage lives in ops/checks/ai-usage-receipts-rust.mjs.
+const { USAGE_QUEUES: receiptQueues, claimUsageJob: claimReceiptJob, completeUsageJob: completeReceiptJob } =
+  await import('/app/dist/utils/ai_usage_queue_health.js');
+const { parseQueuedAiUsageReceipt, persistAiUsageReceipt: persistQueuedReceipt } =
+  await import('/app/dist/utils/ai_usage_ledger.js');
+for (let raw = await claimReceiptJob(redis, receiptQueues[0]); typeof raw === 'string' && raw;
+  raw = await claimReceiptJob(redis, receiptQueues[0])) {
+  const receipt = parseQueuedAiUsageReceipt(raw);
+  assert(receipt, 'queued receipt must match the shared ledger contract');
+  const owner = await UsersSchema.findOne({
+    accounts: { $elemMatch: { type: 'twitch', id: receipt.channelID } }
+  }).select('plan_tier').lean().exec();
+  const tier = owner?.plan_tier === 'pro' ? 'pro' : owner?.plan_tier === 'premium' ? 'premium' : 'free';
+  await persistQueuedReceipt(receipt, tier);
+  await completeReceiptJob(redis, receiptQueues[0], raw);
+}
 for (const [tier, days] of tiers) {
   const receipt = await AiUsageReceiptSchema.findOne({ entryId: `producer-${tier}-event` }).lean();
   assert.equal(receipt.retentionTier, tier);

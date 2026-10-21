@@ -2,6 +2,8 @@
 
 This Rust-only change removes the periodic full summary rebuild from raid analytics. The native projector continues to use the existing `raid_analytics_histories`, `raid_analytics_summaries`, and `domain_events` collections and publishes the existing TypeScript-compatible 7/30-day payload. It adds no collection or index and leaves all TypeScript producers, consumers, API shapes, and rollback code untouched.
 
+This is a historical change record. The scheduled TypeScript raid worker entrypoint has since been retired; its former `RAID_ANALYTICS_RUNTIME=typescript` selector is no longer supported. Producers, APIs, and shared TypeScript helpers remain active. Retirement was accepted in `cron-d02bf5a387d5`; see the [current retirement record](typescript-worker-retirement.md).
+
 ## Scheduling and refresh behavior
 
 The projector stores private, versioned `rustRefresh` metadata and a `rustPending` recovery flag on the existing summary document. The metadata records a source fingerprint and persisted deadlines. Producer dirtiness, a due source deadline, a changed follow count, pending/error state, or missing compatible metadata can trigger a source fingerprint check. Full 7/30-day and reciprocity aggregations run only when there is no compatible prior metadata/payload or the fingerprint differs. The candidate payload is written only when its business values differ from the stored payload; moving `to` timestamps or totals-array ordering alone do not count as a payload change. Otherwise the projector writes scheduling metadata only: it does not replace the payload or advance `updatedAt`.
@@ -14,7 +16,7 @@ Follow-count writes mark `rustPending` before the unordered history bulk write. 
 
 ## Runtime and rollback
 
-The cron supervisor still runs one raid projector child. The native process reloads its durable fingerprint and deadlines after restart; there is no in-memory checkpoint dependency and no automatic TypeScript fallback. Selecting the existing TypeScript runtime remains the rollback path and keeps its prior periodic-refresh behavior. A cron deployment recreates the cron container and its process tree once, while worker-level supervision continues to isolate a failed child. No API or TypeScript source change is part of this release.
+The cron supervisor runs one raid projector child. The native process reloads its durable fingerprint and deadlines after restart; there is no in-memory checkpoint dependency and no automatic TypeScript fallback. The former `RAID_ANALYTICS_RUNTIME=typescript` selector records the historical configuration-based rollback path and no longer selects the retired entrypoint. A cron deployment recreates the cron container and its process tree once, while worker-level supervision continues to isolate a failed child. No API or producer source change is part of this historical release.
 
 ## Candidate checks
 

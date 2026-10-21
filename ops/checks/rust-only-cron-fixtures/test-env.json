@@ -1,0 +1,17 @@
+{
+  "NODE_OPTIONS": "--import=/tmp/saas-fixtures/cron-boot.mjs",
+  "MONGO_URI": "mongodb://mongo:27017/rust_only_fixture_candidate",
+  "DRAGONFLY_HOST": "redis",
+  "DRAGONFLY_PORT": "6379",
+  "SECRET_KEY": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "CRON_WORKER_RESTART_DELAY_MS": "1000",
+  "CRON_WORKER_RUNTIME": "tsx",
+  "STREAM_ACTIVITY_RUNTIME": "typescript",
+  "RAID_ANALYTICS_RUNTIME": "typescript",
+  "FOLLOW_DEFENSE_BASELINE_RUNTIME": "typescript",
+  "ROULETTE_COMPLETION_RUNTIME": "typescript",
+  "AI_USAGE_RECEIPTS_RUNTIME": "typescript",
+  "RUST_ONLY_FIXTURE_ENOENT": "ai-usage-receipts",
+  "RUST_ONLY_FIXTURE_NONZERO": "roulette-completion",
+  "OTEL_SDK_DISABLED": "true"
+}

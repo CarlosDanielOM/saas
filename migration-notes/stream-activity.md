@@ -2,9 +2,11 @@
 
 **Status:** Active in production since 2026-10-21. Its six-group stream suite and the combined production watch passed on latest run `cron-7b8a6c88303d`; the earlier combined production watch passed on `cron-99f8d5165ff2`. **Source commit:** `0e0242a`. **Delivery:** first `saas-ops` cron run `cron-a4c96242b30a`, deployed to the existing `dima-cron` service. This record is the migration history; the detailed contract, procedures, fixtures, and benchmark artifacts remain in [`dima-rust/STREAM_ACTIVITY.md`](../dima-rust/STREAM_ACTIVITY.md).
 
+This status and the selector descriptions recorded below are historical deployment facts. The scheduled TypeScript worker entrypoint has since been retired; the former `STREAM_ACTIVITY_RUNTIME=typescript` selector is no longer supported. Retirement was accepted in `cron-d02bf5a387d5`; see [the current retirement record](typescript-worker-retirement.md).
+
 ## Scope and reuse
 
-Rust ports the existing batch projection from `dimabot/src/utils/stream_activity.ts`. It reuses the existing `stream_activities` outbox, `stream_activity_aggregates`, and `stream_activity_states`. The TypeScript capture path in `dimabot/src/handlers/message.handler.ts` and dashboard read APIs remain in place. The TypeScript implementation remains available through the explicit `STREAM_ACTIVITY_RUNTIME=typescript` rollback setting.
+Rust ports the existing batch projection from `dimabot/src/utils/stream_activity.ts`. It reuses the existing `stream_activities` outbox, `stream_activity_aggregates`, and `stream_activity_states`. The TypeScript capture path in `dimabot/src/handlers/message.handler.ts`, shared projection utility, and dashboard read APIs remain in place. The old `STREAM_ACTIVITY_RUNTIME=typescript` setting was a historical rollback selector and is retired; it does not select the archived worker entrypoint.
 
 The native executable runs as a separately supervised child of the existing cron host. It adds no service or Compose container. A failed child is restarted without silently switching implementations. See the technical reference for environment restrictions, telemetry, lease and checkpoint contracts, migration limits, and follow-up opportunities.
 
