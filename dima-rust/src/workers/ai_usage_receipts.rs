@@ -94,6 +94,17 @@ pub struct BatchOutcome {
     pub success: bool,
 }
 
+/// Queue scheduling is separate from the existing attempted-job telemetry.
+#[derive(Debug, PartialEq)]
+pub struct ScheduledBatchOutcome {
+    pub batch: BatchOutcome,
+    pub ready: bool,
+}
+
+fn batch_is_ready(batch: &BatchOutcome, config: &Config, stopping: bool, owned: bool) -> bool {
+    config.enabled && batch.success && batch.processed == config.batch_size && !stopping && owned
+}
+
 pub struct AiUsageReceipts {
     database: Database,
     cache: ConnectionManager,
@@ -172,6 +183,28 @@ impl AiUsageReceipts {
         Ok(Some(true))
     }
     pub async fn run_batch(&mut self, stopped: &watch::Receiver<bool>) -> Result<BatchOutcome> {
+        self.run_batch_with_readiness(stopped)
+            .await
+            .map(|outcome| outcome.batch)
+    }
+    /// A clean full batch may immediately continue. A partial batch already
+    /// observed an empty claim, a stop, or lost ownership; an extra queue probe
+    /// would only add another enqueue race. Failures always retain the normal
+    /// interval, including failures requeued during an otherwise full batch.
+    pub async fn run_batch_with_readiness(
+        &mut self,
+        stopped: &watch::Receiver<bool>,
+    ) -> Result<ScheduledBatchOutcome> {
+        let idle = || ScheduledBatchOutcome {
+            batch: BatchOutcome {
+                processed: 0,
+                success: true,
+            },
+            ready: false,
+        };
+        if !self.config.enabled || *stopped.borrow() {
+            return Ok(idle());
+        }
         let ttl = self.config.lock_ttl_seconds;
         let lease = unit(queue::Lease::acquire(
             &mut self.cache,
@@ -181,10 +214,7 @@ impl AiUsageReceipts {
         ))
         .await?;
         let Some(lease) = lease else {
-            return Ok(BatchOutcome {
-                processed: 0,
-                success: true,
-            });
+            return Ok(idle());
         };
         let result = async {
             if *stopped.borrow() {
@@ -207,10 +237,20 @@ impl AiUsageReceipts {
         }
         .await;
         if result == Err(TIMEOUT) {
-            return result;
+            return Err(TIMEOUT);
         } // Drop retains TTL after cancellation.
-        lease.release().await?;
-        result
+        let owned = !lease.is_lost();
+        // Use the existing compare-owner-and-delete result so a replaced lease
+        // also prevents immediate continuation before its heartbeat notices.
+        let released_owned = lease.release_owned().await?;
+        let batch = result?;
+        let ready = batch_is_ready(
+            &batch,
+            &self.config,
+            *stopped.borrow(),
+            owned && released_owned,
+        );
+        Ok(ScheduledBatchOutcome { batch, ready })
     }
     pub async fn maintain(&mut self, stopped: &watch::Receiver<bool>, once: bool) -> Result<()> {
         if *stopped.borrow() || !once && now() - self.last_maintenance < 10_000 {
@@ -256,5 +296,31 @@ mod tests {
         assert_eq!(config.batch_size, 2);
         assert_eq!(config.interval_ms, 250);
         assert_eq!(config.lock_ttl_seconds, 30);
+    }
+
+    #[test]
+    fn only_clean_full_owned_batches_continue_without_the_interval() {
+        for batch_size in [1, 200, 1000] {
+            let mut config = Config::from_values(|_| None).unwrap();
+            config.batch_size = batch_size;
+            let mut batch = BatchOutcome {
+                processed: batch_size,
+                success: true,
+            };
+            assert!(batch_is_ready(&batch, &config, false, true));
+            assert!(!batch_is_ready(&batch, &config, true, true));
+            assert!(!batch_is_ready(&batch, &config, false, false));
+            config.enabled = false;
+            assert!(!batch_is_ready(&batch, &config, false, true));
+            config.enabled = true;
+
+            // A failure can still consume the entire attempt budget, including
+            // a requeued poison job. An Ok batch must not bypass its delay.
+            batch.success = false;
+            assert!(!batch_is_ready(&batch, &config, false, true));
+            batch.success = true;
+            batch.processed -= 1;
+            assert!(!batch_is_ready(&batch, &config, false, true));
+        }
     }
 }

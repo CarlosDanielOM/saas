@@ -9,7 +9,7 @@ use std::{
 use dima_rust::{utils::mongo::get_mongo_client, workers::roulette_completion::RouletteCompletion};
 use tokio::sync::watch;
 
-const HELP: &str = "Usage: roulette_completion [--help | --dry-run] [--once] [--telemetry-json] [--database NAME] [--env-file PATH]...\n\nSettles due roulette draws in the existing roulette_channels collection.\nNo automatic .env loading; MONGO_URI must name a database, or supply --database.\nExisting environment wins; explicit environment files load after --dry-run and before runtime threads.\nEach pass polls at most 100 indexed dueAt deadlines and compare-and-swaps state with revision.\nPolls every second; a signal finishes the current pass and exits cleanly.\nStorage failures and a 20-second hung-pass watchdog exit nonzero for supervisor recovery.";
+const HELP: &str = "Usage: roulette_completion [--help | --dry-run] [--once] [--telemetry-json] [--database NAME] [--env-file PATH]...\n\nSettles due roulette draws in the existing roulette_channels collection.\nNo automatic .env loading; MONGO_URI must name a database, or supply --database.\nExisting environment wins; explicit environment files load after --dry-run and before runtime threads.\nEach pass polls at most 100 indexed dueAt deadlines and compare-and-swaps state with revision.\nReady due work continues immediately; idle or blocked passes poll every second. A signal finishes the current pass and exits cleanly.\nStorage failures and a 20-second hung-pass watchdog exit nonzero for supervisor recovery.";
 const POLL_INTERVAL: Duration = Duration::from_secs(1);
 /// Below the supervisor's 25-second shutdown grace, so a hung pass can still
 /// end its process before SIGKILL.
@@ -165,11 +165,14 @@ async fn run(args: Args) -> Result<(), &'static str> {
             let started = Instant::now();
             // A signal never cancels the active pass; the bounded write is
             // either fully applied by its single-document CAS or not at all.
-            let result = match tokio::time::timeout(PASS_WATCHDOG, completion.settle_due()).await {
-                Ok(Ok(count)) => Ok(count),
-                Ok(Err(_)) => Err(STORAGE_FAILED),
-                Err(_) => Err(WATCHDOG_EXCEEDED),
-            };
+            let (result, ready) =
+                match tokio::time::timeout(PASS_WATCHDOG, completion.settle_due_with_readiness())
+                    .await
+                {
+                    Ok(Ok(outcome)) => (Ok(outcome.changed), outcome.ready),
+                    Ok(Err(_)) => (Err(STORAGE_FAILED), false),
+                    Err(_) => (Err(WATCHDOG_EXCEEDED), false),
+                };
             if args.telemetry_json {
                 // Reporting cannot turn a pass outcome into another outcome.
                 let _ = writeln!(
@@ -187,7 +190,12 @@ async fn run(args: Args) -> Result<(), &'static str> {
             if *stopped.borrow() {
                 break;
             }
-            wait_or_stop(POLL_INTERVAL, &mut stopped).await;
+            if ready {
+                // Yield between bounded passes for signals and runtime fairness.
+                tokio::task::yield_now().await;
+            } else {
+                wait_or_stop(POLL_INTERVAL, &mut stopped).await;
+            }
         }
         Ok(())
     }

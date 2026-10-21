@@ -11,7 +11,7 @@ use std::{
 };
 use tokio::sync::watch;
 
-const HELP: &str = "Usage: ai_usage_receipts [--help | --dry-run] [--once] [--telemetry-json] [--database NAME] [--env-file PATH]...\n\nConsumes the existing durable AI usage receipts queue, repairs UTC aggregates, refreshes dashboards and queue health.\nNo billing/provider calls or schema/index migration. No automatic dotenv loading.\nMONGO_URI must name a database, or pass --database. Existing environment wins over explicit files.\nSignals stop new jobs and drain the active unit. A 20-second active-unit timeout retains processing payloads and ownership TTLs and exits nonzero for recovery.\nAI_USAGE_RECEIPTS_INTERVAL_MS, AI_USAGE_RECEIPTS_BATCH_SIZE, AI_USAGE_RECEIPTS_LOCK_KEY, AI_USAGE_RECEIPTS_LOCK_TTL_SECONDS and existing queue-health thresholds are honored.";
+const HELP: &str = "Usage: ai_usage_receipts [--help | --dry-run] [--once] [--telemetry-json] [--database NAME] [--env-file PATH]...\n\nConsumes the existing durable AI usage receipts queue, repairs UTC aggregates, refreshes dashboards and queue health.\nNo billing/provider calls or schema/index migration. No automatic dotenv loading.\nMONGO_URI must name a database, or pass --database. Existing environment wins over explicit files.\nSignals stop new jobs and drain the active unit. A 20-second active-unit timeout retains processing payloads and ownership TTLs and exits nonzero for recovery.\nClean full batches continue immediately; idle, nonfatal failed, or unowned batches keep the configured interval.\nAI_USAGE_RECEIPTS_INTERVAL_MS, AI_USAGE_RECEIPTS_BATCH_SIZE, AI_USAGE_RECEIPTS_LOCK_KEY, AI_USAGE_RECEIPTS_LOCK_TTL_SECONDS and existing queue-health thresholds are honored.";
 #[derive(Default)]
 struct Args {
     help: bool,
@@ -157,11 +157,15 @@ async fn run(args: Args, config: Config) -> Result<(), &'static str> {
         while !*stopped.borrow() {
             let started = Instant::now();
             let result = async {
-                let outcome = worker.run_batch(&stopped).await?;
+                let outcome = worker.run_batch_with_readiness(&stopped).await?;
                 worker.maintain(&stopped, args.once).await?;
                 Ok::<_, &'static str>(outcome)
             }
             .await;
+            let (result, ready) = match result {
+                Ok(outcome) => (Ok(outcome.batch), outcome.ready),
+                Err(error) => (Err(error), false),
+            };
             if args.telemetry_json {
                 let _ = writeln!(
                     std::io::stdout().lock(),
@@ -172,12 +176,18 @@ async fn run(args: Args, config: Config) -> Result<(), &'static str> {
                     )
                 );
             }
-            result?;
+            let outcome = result?;
             if args.once {
                 break;
             }
             if !*stopped.borrow() {
-                tokio::select! {_=tokio::time::sleep(interval)=>{},_=stopped.changed()=>{}}
+                if ready && outcome.success {
+                    // Keep a scheduler turn between bounded batches so signal
+                    // handling and lease heartbeats stay fair under backlog.
+                    tokio::task::yield_now().await;
+                } else {
+                    tokio::select! {_=tokio::time::sleep(interval)=>{},_=stopped.changed()=>{}}
+                }
             }
         }
         Ok(())

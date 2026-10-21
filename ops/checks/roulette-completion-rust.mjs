@@ -23,7 +23,7 @@ const client = new MongoClient(uri.href, { serverSelectionTimeoutMS: 5000, timeo
 const redis = createClient({ url: 'redis://redis:6379', socket: { reconnectStrategy: false } });
 redis.on('error', () => {});
 const owned = new Set([databaseName]), stopped = new Set(), children = new Set(), proxies = new Set();
-const deadline = Date.now() + 170000;
+const deadline = Date.now() + 240000;
 const envFile = `/tmp/roulette-completion-fixture-${process.pid}.env`;
 const actual = client.db(databaseName);
 function fixtureDatabase(label) {
@@ -41,6 +41,7 @@ const domain = await import('/app/dist/roulette/model.js');
 const { RouletteChannel, snapshot } = await import('/app/dist/roulette/service.js');
 const { telemetryTesting } = await import('/app/dist/utils/observability/telemetry.js');
 const collection = RouletteChannel.collection.name;
+const binary = '/usr/local/bin/roulette_completion';
 assert.equal(collection, 'roulette_channels');
 const source = await readFile('/tmp/saas-fixtures/analytics-store.mjs', 'utf8');
 assert(source.startsWith("import pg from 'pg';\n"), 'stage exact analytics store source');
@@ -84,19 +85,23 @@ async function pause() {
 }
 function resume(row) { process.kill(row.pid, 'SIGCONT'); stopped.delete(row.pid); }
 function launch(command, args, env, extra = {}) {
+    assert(Date.now() < deadline, '240-second acceptance-suite deadline exceeded before launch');
     const child = spawn(command, args, { cwd: '/app', env, stdio: ['ignore', 'pipe', 'pipe'], ...extra });
     children.add(child);
     let output = '';
     const capture = chunk => { output = (output + chunk).slice(-12000); };
     child.stdout.on('data', capture); child.stderr.on('data', capture);
     child.completion = new Promise((resolve, reject) => {
-        child.once('error', reject); child.once('exit', (code, signal) => resolve({ code, signal, output }));
+        let exitedAt;
+        child.once('error', reject); child.once('exit', () => { exitedAt = performance.now(); });
+        child.once('close', (code, signal) => resolve({ code, signal, output, exitedAt }));
     });
     child.completion.catch(() => {});
     return child;
 }
 async function finished(child, ms = 15000) {
-    const result = await bounded(child.completion, ms, 'fixture child completion');
+    const remaining = deadline - Date.now(); assert(remaining > 0, '240-second acceptance-suite deadline exceeded');
+    const result = await bounded(child.completion, Math.min(ms, remaining), 'fixture child completion');
     children.delete(child); return result;
 }
 const nativeEnv = mongo => ({ MONGO_URI: mongo, PATH: process.env.PATH || '/usr/local/bin:/usr/bin:/bin' });
@@ -157,7 +162,7 @@ async function mongoHoldProxy(db, command) {
                     assert(database === db.databaseName || database === 'admin', 'proxy command escaped owned fixture database');
                     if (database === 'admin') assert(['hello', 'isMaster', 'ismaster', 'ping', 'endSessions'].includes(name), 'unexpected Mongo admin command');
                     if (name === 'ping' && database === 'admin') pingSeen = true;
-                    parsed.push({ name, database });
+                    parsed.push({ name, database, body, at: performance.now() });
                     if (!released && !held && name === command && body[name] === collection && database === db.databaseName) {
                         assert.equal(opcode, 2013, 'held fixture operation must be uncompressed OP_MSG');
                         assert(pingSeen, 'Mongo utility must complete its initial admin ping before the held pass');
@@ -205,6 +210,52 @@ function batchFrames(output) {
         .map(line => JSON.parse(line.slice('roulette_completion:'.length)));
 }
 
+// Use stdout completion timestamps and remove the next pass's measured work.
+// Each boundary is checked independently: aggregate throughput can hide sleeps.
+function observeBatches(child) {
+    const rows = []; let pending = '', failure;
+    child.stdout.on('data', chunk => {
+        try {
+            pending += chunk; assert(pending.length <= 32768, 'continuous metadata buffer is bounded');
+            const lines = pending.split('\n'); pending = lines.pop();
+            for (const line of lines) if (line.startsWith('roulette_completion:')) {
+                const [frame] = batchFrames(line);
+                assert.deepEqual(Object.keys(frame).sort(), ['durationMs', 'event', 'events', 'success']);
+                assert.equal(frame.event, 'batch'); assert.equal(typeof frame.success, 'boolean');
+                assert(Number.isInteger(frame.events) && frame.events >= 0 && frame.events <= 100);
+                assert(Number.isFinite(frame.durationMs) && frame.durationMs >= 0);
+                if (!frame.success) assert.equal(frame.events, 0);
+                assert(rows.length < 100, 'continuous fixture cannot spin unboundedly');
+                rows.push({ ...frame, at: performance.now() });
+            }
+        } catch (error) { failure ||= error; }
+    });
+    return { rows, check() { if (failure) throw failure; } };
+}
+const waitResidual = (before, after) => after.at - before.at - after.durationMs;
+function assertReadyTransitions(rows, label) {
+    for (let i = 1; i < rows.length; i++) assert(waitResidual(rows[i - 1], rows[i]) < 700,
+        `${label} ready transition ${i} introduced ${Math.round(waitResidual(rows[i - 1], rows[i]))}ms residual wait`);
+}
+function assertPaced(before, after, label) {
+    const residual = waitResidual(before, after);
+    assert(residual >= 800, `${label} lost its one-second wait (${Math.round(residual)}ms residual)`);
+}
+function verifySchedulingAssertions() {
+    const synthetic = waits => waits.reduce((rows, wait) => {
+        const durationMs = 2100; rows.push({ at: rows.at(-1).at + durationMs + wait, durationMs }); return rows;
+    }, [{ at: 100, durationMs: 5000 }]);
+    assertReadyTransitions(synthetic([0, 50, 100]), 'ready control');
+    assert.throws(() => assertReadyTransitions(synthetic([0, 0, 1000]), 'full-only control'), /ready transition 3 introduced 1000ms/);
+    assert.throws(() => assertReadyTransitions(synthetic([0, 1000, 0]), 'sleep control'), /ready transition 2 introduced 1000ms/);
+    assert.throws(() => assertReadyTransitions(synthetic([700]), 'threshold control'), /introduced 700ms/);
+    const paced = synthetic([1000]); assertPaced(...paced, 'paced control');
+    assert.throws(() => assertPaced(...synthetic([0]), 'spin control'), /lost its one-second wait/);
+}
+async function stopContinuous(child, observation) {
+    assert(child.kill('SIGTERM')); const result = await finished(child, 7000);
+    observation.check(); assert.equal(result.code, 0, result.output); assert.equal(result.signal, null); return result;
+}
 const fixtureNow = Date.now();
 function fixture(id, { action = 'keep', copies = 3, hide = null, ...options } = {}) {
     const state = domain.emptyState();
@@ -303,13 +354,17 @@ async function telemetry() {
 }
 
 try {
+    verifySchedulingAssertions();
     await client.connect(); await redis.connect();
     const native = await waitFor(() => currentNative(), 'actual default native startup'), root = native.supervisor;
     await assertNative(root);
     const unrelated = (await records()).filter(row => row.event === 'spawn' && !row.native).map(row => row.worker).sort();
     for (const worker of ['roulette-actions', 'domain-events', 'stream-activity', 'raid-analytics', 'follow-defense-baseline']) assert(unrelated.includes(worker));
     const idle = await waitFor(async () => { const rows = (await records()).filter(row => row.event === 'batch' && row.frame.success && row.frame.events === 0); return rows.length >= 3 ? rows.slice(-3) : null; }, 'fixed one-second idle polls');
-    for (let i = 1; i < idle.length; i++) assert(idle[i].at - idle[i - 1].at >= 700 && idle[i].at - idle[i - 1].at < 2400, 'fixed 1s polling without backoff');
+    for (let i = 1; i < idle.length; i++) {
+        assertPaced({ ...idle[i - 1].frame, at: idle[i - 1].at }, { ...idle[i].frame, at: idle[i].at }, 'initial idle roulette poll');
+        assert(idle[i].at - idle[i - 1].at < 2400, 'fixed 1s polling without backoff');
+    }
     console.log('PASS actual default native selection, one isolated unprivileged child, strict environment, and fixed one-second polling');
     let paused = await pause();
     for (const db of [actual, reference]) for (const [keys, options] of RouletteChannel.schema.indexes()) await db.collection(collection).createIndex(keys, options);
@@ -402,8 +457,118 @@ try {
     assert.equal(await batch.collection(collection).countDocuments({ revision: 9 }), 102);
     console.log('PASS real 102-channel burst processes exactly 100 per --once pass and drains remaining deadlines on the next pass');
 
+    const scheduling = fixtureDatabase('scheduling'), readyFuture = fixture('ready-future', { future: true });
+    await seed(scheduling, [...Array.from({ length: 205 }, (_, n) => fixture(`ready-${n}`)), readyFuture]);
+    const scheduleUri = new URL(uri); scheduleUri.pathname = `/${scheduling.databaseName}`;
+    const schedule = launch(binary, ['--telemetry-json'], nativeEnv(scheduleUri.href), { uid: 65534, gid: 65534 });
+    const scheduleFrames = observeBatches(schedule);
+    await waitFor(() => { scheduleFrames.check(); return scheduleFrames.rows.length >= 5; }, 'continuous 205 due channels drain then future-only idle');
+    assert.deepEqual(scheduleFrames.rows.slice(0, 5).map(row => [row.success, row.events]), [[true, 100], [true, 100], [true, 5], [true, 0], [true, 0]]);
+    assertReadyTransitions(scheduleFrames.rows.slice(0, 3), 'roulette ready burst');
+    assertPaced(scheduleFrames.rows[2], scheduleFrames.rows[3], 'partial roulette batch');
+    assertPaced(scheduleFrames.rows[3], scheduleFrames.rows[4], 'future-only roulette batch');
+    await stopContinuous(schedule, scheduleFrames);
+    assert.equal(await scheduling.collection(collection).countDocuments({ revision: 9 }), 205);
+    assert.deepEqual(normalize(await read(scheduling, 'ready-future')), normalize(readyFuture), 'future-only input remains untouched');
+    console.log('PASS continuous 205 due roulette channels drain as bounded 100/100/5 batches without injected waits; partial tail and future-only idle keep default pacing');
+
+    const cleanFull = fixtureDatabase('cleanfull'); await seed(cleanFull, Array.from({ length: 100 }, (_, n) => fixture(`clean-full-${n}`)));
+    const cleanUri = new URL(uri); cleanUri.pathname = `/${cleanFull.databaseName}`;
+    const cleanChild = launch(binary, ['--telemetry-json'], nativeEnv(cleanUri.href), { uid: 65534, gid: 65534 });
+    const cleanFrames = observeBatches(cleanChild);
+    await waitFor(() => { cleanFrames.check(); return cleanFrames.rows.length >= 2; }, 'clean full roulette batch has no ready remainder');
+    assert.deepEqual(cleanFrames.rows.slice(0, 2).map(row => [row.success, row.events]), [[true, 100], [true, 0]]);
+    assertPaced(cleanFrames.rows[0], cleanFrames.rows[1], 'full roulette batch with no due remainder');
+    await stopContinuous(cleanChild, cleanFrames);
+    assert.equal(await cleanFull.collection(collection).countDocuments({ revision: 9 }), 100);
+    console.log('PASS clean full100 roulette batch waits when its fresh bounded due probe finds no ready work');
+
+    // Hold the first real CAS after a raw100 query, then let another writer
+    // settle all fetched rows. A zero changed count cannot hide 105 other due
+    // rows; the fresh due probe must still continue immediately.
+    const noops = fixtureDatabase('clearednoops');
+    const noopSeeds = Array.from({ length: 205 }, (_, n) => fixture(`cleared-noop-${n}`, { action: 'remove-copy' }));
+    await seed(noops, noopSeeds);
+    const noopProxy = await mongoHoldProxy(noops, 'update');
+    const noopChild = launch(binary, ['--telemetry-json'], nativeEnv(noopProxy.uri), { uid: 65534, gid: 65534 });
+    const noopFrames = observeBatches(noopChild);
+    await noopProxy.held();
+    const fetchedQuery = noopProxy.parsed.find(row => row.name === 'find' && row.body.limit === 100);
+    assert(fetchedQuery, 'hold occurs after bounded raw100 selection');
+    const fetchedIds = noopSeeds.slice(0, 100).map(row => row._id);
+    await noops.collection(collection).bulkWrite(noopSeeds.slice(0, 100).map(original => {
+        const state = clone(original.state); assert(domain.settle(state, fixtureNow));
+        return { updateOne: { filter: { _id: original._id, revision: 8 }, update: { $set: { state, dueAt: state.hideAt }, $inc: { revision: 1 } } } };
+    }));
+    noopProxy.release();
+    await waitFor(() => { noopFrames.check(); noopProxy.check(); return noopFrames.rows.length >= 4; }, 'concurrently cleared raw100 no-ops continue remaining due work');
+    assert.deepEqual(noopFrames.rows.slice(0, 4).map(row => [row.success, row.events]), [[true, 0], [true, 100], [true, 5], [true, 0]]);
+    assertReadyTransitions(noopFrames.rows.slice(0, 3), 'zero-CAS raw100 roulette batch');
+    assertPaced(noopFrames.rows[2], noopFrames.rows[3], 'partial roulette tail after concurrent no-ops');
+    await stopContinuous(noopChild, noopFrames); noopProxy.check();
+    const reloadsBeforeProbe = noopProxy.parsed.slice(noopProxy.parsed.indexOf(fetchedQuery) + 1).filter(row => row.name === 'find' && fetchedIds.includes(row.body.filter?._id));
+    assert(new Set(reloadsBeforeProbe.map(row => row.body.filter._id)).size === 100, 'all selected raw100 rows reload even though no worker CAS succeeds');
+    assert.equal(await noops.collection(collection).countDocuments({ revision: 9 }), 205);
+    for (const row of await noops.collection(collection).find().toArray()) {
+        assert.equal(row.state.history.length, 1); assert.equal(row.state.roulettes[0].items[0].multiplier, 2);
+    }
+    await noopProxy.close();
+    console.log('PASS raw100 concurrent no-ops report zero successful CAS changes yet immediately drain other due channels, with exactly one history/removal per document');
+
+    // A partial fetched batch can leave newly ready work: insert only after
+    // its original due query is complete, while its first CAS is held.
+    const partial = fixtureDatabase('partialready'), partialNoop = fixture('partial-concurrent-noop', { action: 'remove-copy' });
+    await seed(partial, [fixture('partial-first', { action: 'remove-copy' }), partialNoop]);
+    const partialProxy = await mongoHoldProxy(partial, 'update');
+    const partialChild = launch(binary, ['--telemetry-json'], nativeEnv(partialProxy.uri), { uid: 65534, gid: 65534 });
+    const partialFrames = observeBatches(partialChild);
+    await partialProxy.held();
+    const partialNoopState = clone(partialNoop.state); assert(domain.settle(partialNoopState, fixtureNow));
+    await partial.collection(collection).updateOne({ _id: partialNoop._id, revision: 8 }, { $set: { state: partialNoopState, dueAt: partialNoopState.hideAt }, $inc: { revision: 1 } });
+    await seed(partial, [fixture('partial-new-ready', { action: 'remove-copy' })]); partialProxy.release();
+    await waitFor(() => { partialFrames.check(); partialProxy.check(); return partialFrames.rows.length >= 3; }, 'partial fetched roulette pass probes newly ready channel');
+    assert.deepEqual(partialFrames.rows.slice(0, 3).map(row => [row.success, row.events]), [[true, 1], [true, 1], [true, 0]]);
+    assertReadyTransitions(partialFrames.rows.slice(0, 2), 'partial fetched roulette batch');
+    assertPaced(partialFrames.rows[1], partialFrames.rows[2], 'partial final roulette batch');
+    await stopContinuous(partialChild, partialFrames); partialProxy.check(); await partialProxy.close();
+    assert.equal(await partial.collection(collection).countDocuments({ revision: 9 }), 3);
+    console.log('PASS a partial fetched roulette batch with a concurrent no-op probes newly due work and continues immediately, rejecting a full-batch-only scheduling policy');
+
+    const persistent = fixtureDatabase('persistentnoop');
+    const staleDues = Array.from({ length: 99 }, (_, n) => {
+        const row = fixture(`persistent-stale-due-${n}`, { future: true }); row.dueAt = fixtureNow - 1000; return row;
+    });
+    await seed(persistent, [...staleDues, fixture('persistent-valid')]);
+    const persistentUri = new URL(uri); persistentUri.pathname = `/${persistent.databaseName}`;
+    const persistentChild = launch(binary, ['--telemetry-json'], nativeEnv(persistentUri.href), { uid: 65534, gid: 65534 });
+    const persistentFrames = observeBatches(persistentChild);
+    await waitFor(() => { persistentFrames.check(); return persistentFrames.rows.length >= 3; }, 'persistent due no-op cannot spin');
+    assert.deepEqual(persistentFrames.rows.slice(0, 3).map(row => [row.success, row.events]), [[true, 1], [true, 0], [true, 0]]);
+    assertPaced(persistentFrames.rows[0], persistentFrames.rows[1], 'mixed full persistent no-op');
+    assertPaced(persistentFrames.rows[1], persistentFrames.rows[2], 'persistent stale due no-op');
+    await stopContinuous(persistentChild, persistentFrames);
+    for (const staleDue of staleDues) assert.deepEqual(normalize(await read(persistent, staleDue._id)), normalize(staleDue));
+    assert.equal((await read(persistent, 'persistent-valid')).revision, 9);
+    console.log('PASS a full raw100 mixed valid/persistent stale due batch and later no-op polls retain default pacing, preserve stale inputs and settle valid work once');
+
+    const continuousFailure = fixtureDatabase('continuousfailure');
+    const continuousFailureSeeds = Array.from({ length: 201 }, (_, n) => fixture(`continuous-failure-${n}`, { action: 'remove-copy' }));
+    await seed(continuousFailure, continuousFailureSeeds);
+    await continuousFailure.command({ collMod: collection, validator: { $or: [{ _id: { $ne: 'continuous-failure-100' } }, { revision: 8 }] }, validationLevel: 'strict', validationAction: 'error' });
+    const continuousFailureUri = new URL(uri); continuousFailureUri.pathname = `/${continuousFailure.databaseName}`;
+    const failureChild = launch(binary, ['--telemetry-json'], nativeEnv(continuousFailureUri.href), { uid: 65534, gid: 65534 });
+    const failureFrames = observeBatches(failureChild);
+    const continuousFailureExit = await finished(failureChild); failureFrames.check();
+    assert.equal(continuousFailureExit.code, 1, continuousFailureExit.output); assert.equal(continuousFailureExit.signal, null);
+    assert.deepEqual(failureFrames.rows.map(row => [row.success, row.events]), [[true, 100], [false, 0]]);
+    assertReadyTransitions(failureFrames.rows, 'full roulette batch before storage failure');
+    assert.equal(await continuousFailure.collection(collection).countDocuments({ revision: 9 }), 100);
+    assert.deepEqual(normalize(await read(continuousFailure, 'continuous-failure-100')), normalize(continuousFailureSeeds[100]));
+    await delay(1100);
+    assert.equal(await continuousFailure.collection(collection).countDocuments({ revision: 9 }), 100, 'failed process cannot silently retry its ready backlog');
+    console.log('PASS continuous full100 roulette batch proceeds to the next failed CAS without a sleep, then emits failed0 and exits nonzero with durable prior progress and untouched failed/backlog documents');
+
     const cli = fixtureDatabase('cli'); await seed(cli, [fixture('cli-due')]);
-    const binary = '/usr/local/bin/roulette_completion';
     const invalid = await finished(launch(binary, ['--definitely-invalid'], nativeEnv(uri.href)));
     assert.notEqual(invalid.code, 0);
     const missing = await finished(launch(binary, ['--once'], { PATH: process.env.PATH })); assert.notEqual(missing.code, 0);
@@ -454,7 +619,8 @@ try {
     console.log(`PASS actual ${watchdogElapsed}ms native watchdog cancels held Mongo pass, emits failed zero-event frame, exits nonzero and preserves whole document`);
 
     const signalDb = fixtureDatabase('signalwrite'), signalSeed = fixture('held-write', { action: 'remove-copy' });
-    await seed(signalDb, [signalSeed]);
+    const signalBacklog = Array.from({ length: 100 }, (_, n) => fixture(`signal-backlog-${n}`, { action: 'remove-copy' }));
+    await seed(signalDb, [signalSeed, ...signalBacklog]);
     const signalProxy = await mongoHoldProxy(signalDb, 'update');
     // Normal polling mode is deliberate: without handling SIGTERM this child
     // would continue polling after the write and fail the bounded exit check.
@@ -469,16 +635,19 @@ try {
     const signaledExit = await finished(signaled, 5000); signalProxy.check();
     assert.equal(signaledExit.code, 0, signaledExit.output); assert.equal(signaledExit.signal, null);
     const successFrames = batchFrames(signaledExit.output);
-    assert.equal(successFrames.length, 1); assert.equal(successFrames[0].success, true); assert.equal(successFrames[0].events, 1);
+    assert.equal(successFrames.length, 1); assert.equal(successFrames[0].success, true); assert.equal(successFrames[0].events, 100);
     const signalExpected = clone(signalSeed); domain.settle(signalExpected.state, fixtureNow);
     signalExpected.revision++; signalExpected.dueAt = signalExpected.state.hideAt;
     const signalPersisted = await read(signalDb, signalSeed._id);
     assert.deepEqual(normalize(signalPersisted), normalize(signalExpected), 'SIGTERM completes exactly one CAS and preserves all unrelated fields');
-    assert.equal(signalProxy.parsed.filter(row => row.name === 'update').length, 1);
+    assert.equal(signalProxy.parsed.filter(row => row.name === 'update').length, 100);
+    assert.equal(await signalDb.collection(collection).countDocuments({ revision: 9 }), 100, 'SIGTERM drains only its current bounded pass');
+    assert.equal((await read(signalDb, signalBacklog.at(-1)._id)).revision, 8, 'ready backlog cannot start another pass after SIGTERM');
     await delay(1100);
     assert.deepEqual(normalize(await read(signalDb, signalSeed._id)), normalize(signalPersisted), 'exited child cannot restart or repeat winner removal');
+    assert.equal(await signalDb.collection(collection).countDocuments({ revision: 9 }), 100);
     await signalProxy.close();
-    console.log('PASS SIGTERM during a held actual Mongo CAS waits, persists one exact completion, and exits cleanly before another poll');
+    console.log('PASS SIGTERM during a held actual Mongo CAS waits, completes its current bounded100 pass exactly once, and exits with ready backlog untouched');
 
     // Force stale-CAS retries rather than relying on process startup timing.
     // First prove a retry reloads both revision and wall clock after an action

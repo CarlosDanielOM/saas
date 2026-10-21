@@ -114,9 +114,13 @@ impl Lease {
     pub fn is_lost(&self) -> bool {
         self.lost.load(Ordering::SeqCst)
     }
-    pub async fn release(mut self) -> Result<()> {
+    pub async fn release(self) -> Result<()> {
+        self.release_owned().await.map(|_| ())
+    }
+    /// Whether the existing owner-fenced release still found our lease.
+    pub async fn release_owned(mut self) -> Result<bool> {
         self.heartbeat.abort();
-        tokio::time::timeout(
+        let released = tokio::time::timeout(
             Duration::from_secs(2),
             eval::<i64>(
                 &mut self.cache,
@@ -127,7 +131,7 @@ impl Lease {
         )
         .await
         .map_err(|_| TIMEOUT)??;
-        Ok(())
+        Ok(released == 1)
     }
 }
 impl Drop for Lease {

@@ -21,7 +21,7 @@ assert([undefined, 'node'].includes(process.env.CRON_WORKER_RUNTIME));
 const client = new MongoClient(uri.href, { serverSelectionTimeoutMS: 5000, timeoutMS: 5000 });
 const redis = createClient({ url: 'redis://redis:6379', socket: { reconnectStrategy: false } }); redis.on('error', () => {});
 const owned = new Set([databaseName]), stopped = new Set(), children = new Set(), proxies = new Set(), files = new Set(), redisKeys = new Set();
-const deadline = Date.now() + 230000;
+const deadline = Date.now() + 270000;
 const actual = client.db(databaseName);
 function fixtureDatabase(label) {
     const name = `ai_usage_receipts_fixture_${process.pid}_${label}`;
@@ -63,13 +63,21 @@ async function waitFor(check, label, ms = 15000) {
     throw new Error(`Timed out: ${label}`);
 }
 function launch(command, args, env, extra = {}) {
+    assert(Date.now() < deadline, '270-second acceptance-suite deadline exceeded before launch');
     const child = spawn(command, args, { cwd: '/app', env, stdio: ['ignore', 'pipe', 'pipe'], ...extra }); children.add(child);
     child.output = ''; const capture = chunk => { child.output = (child.output + chunk).slice(-40000); };
     child.stdout.on('data', capture); child.stderr.on('data', capture);
-    child.completion = new Promise((resolve, reject) => { child.once('error', reject); child.once('exit', (code, signal) => resolve({ code, signal, output: child.output })); });
+    child.completion = new Promise((resolve, reject) => {
+        let exitedAt;
+        child.once('error', reject); child.once('exit', () => { exitedAt = performance.now(); });
+        child.once('close', (code, signal) => resolve({ code, signal, output: child.output, exitedAt }));
+    });
     child.completion.catch(() => {}); return child;
 }
-async function finished(child, ms = 25000) { const result = await bounded(child.completion, ms, 'fixture child completion'); children.delete(child); return result; }
+async function finished(child, ms = 25000) {
+    const remaining = deadline - Date.now(); assert(remaining > 0, '270-second acceptance-suite deadline exceeded');
+    const result = await bounded(child.completion, Math.min(ms, remaining), 'fixture child completion'); children.delete(child); return result;
+}
 async function once(db = actual, extra = {}, args = []) {
     return finished(launch(binary, ['--once', '--telemetry-json', ...args], nativeEnv(db, extra), { uid: 65534, gid: 65534 }));
 }
@@ -152,12 +160,13 @@ async function drained() { return Number(await redis.lLen(queue)) === 0 && Numbe
 // explicitly on any wire form it cannot inspect. Nothing is exposed on the host.
 async function mongoHoldProxy(db, command, selectedCollection = names.receipts) {
     assert.match(db.databaseName, dbPattern); assert(owned.has(db.databaseName));
-    assert(['find', 'update'].includes(command));
+    assert([null, 'find', 'update'].includes(command));
     const sockets = new Set();
     let failure, held, released = false, closing = false, pingSeen = false;
-    const parsed = [];
+    const parsed = [], failures = [];
     const transport = { clientEofs: 0, upstreamEofs: 0, teardownEpipe: 0 };
-    const fail = error => {
+    const fail = (error, detail = { kind: 'proxy' }) => {
+        failures.push({ ...detail, at: performance.now(), held: Boolean(held), released });
         failure ||= error instanceof Error ? error : new Error(String(error));
         for (const socket of sockets) socket.destroy();
     };
@@ -189,7 +198,8 @@ async function mongoHoldProxy(db, command, selectedCollection = names.receipts) 
             // to normal child teardown. Pre-EOF EPIPE and all other errors
             // still fail the fixture; canceled Mongo requests are not released.
             if (clientEof && error.code === 'EPIPE') { transport.teardownEpipe++; return; }
-            fail(new Error(`Mongo fixture ${side} transport failed (${error.code || 'unknown'}, clientEof=${clientEof})`, { cause: error }));
+            fail(new Error(`Mongo fixture ${side} transport failed (${error.code || 'unknown'}, clientEof=${clientEof})`, { cause: error }),
+                { kind: 'transport', side, code: error.code, clientEof });
         });
         upstream.pipe(downstream);
         downstream.on('data', chunk => {
@@ -221,7 +231,7 @@ async function mongoHoldProxy(db, command, selectedCollection = names.receipts) 
                     assert(database === db.databaseName || database === 'admin', 'proxy command escaped owned fixture database');
                     if (database === 'admin') assert(['hello', 'isMaster', 'ismaster', 'ping', 'endSessions'].includes(name), 'unexpected Mongo admin command');
                     if (name === 'ping' && database === 'admin') pingSeen = true;
-                    parsed.push({ name, database });
+                    parsed.push({ name, database, body, at: performance.now() });
                     if (!released && !held && name === command && body[name] === selectedCollection && database === db.databaseName) {
                         assert.equal(opcode, 2013, 'held fixture operation must be uncompressed OP_MSG');
                         assert(pingSeen, 'Mongo utility must complete its initial admin ping before the held pass');
@@ -246,6 +256,14 @@ async function mongoHoldProxy(db, command, selectedCollection = names.receipts) 
     server.on('error', fail);
     const proxy = {
         check() { if (failure) throw failure; },
+        checkConfirmedWatchdogExit(result, elapsed) {
+            assert.equal(result.code, 1); assert.equal(result.signal, null);
+            assert(elapsed >= 18000 && elapsed < 28000);
+            const frames = batchFrames(result.output); assert.equal(frames.length, 1);
+            assert.equal(frames[0].success, false); assert.equal(frames[0].events, 0);
+            assert.match(result.output, /AI usage active work timed out; leases retained for recovery/);
+            assert(held && !released); assertWatchdogResetTiming(failures, result.exitedAt);
+        },
         snapshot: () => ({ ...transport, held: Boolean(held), released, activeSockets: sockets.size }),
         async held() { return waitFor(() => { proxy.check(); return held; }, `proxy holds actual Mongo ${command}`); },
         release() { proxy.check(); assert(held, 'selected command must be held before release'); held.release(); },
@@ -270,6 +288,65 @@ async function mongoHoldProxy(db, command, selectedCollection = names.receipts) 
 function batchFrames(output) {
     return output.split('\n').filter(line => line.startsWith('ai_usage_receipts:'))
         .map(line => JSON.parse(line.slice('ai_usage_receipts:'.length)));
+}
+// Use stdout completion timestamps and remove the next pass's measured work.
+// Each boundary is checked independently: aggregate throughput can hide sleeps.
+function observeBatches(child) {
+    const rows = []; let pending = '', failure;
+    child.stdout.on('data', chunk => {
+        try {
+            pending += chunk; assert(pending.length <= 32768, 'continuous metadata buffer is bounded');
+            const lines = pending.split('\n'); pending = lines.pop();
+            for (const line of lines) if (line.startsWith(protocol)) {
+                const [frame] = batchFrames(line);
+                assert.deepEqual(Object.keys(frame).sort(), ['durationMs', 'event', 'events', 'success']);
+                assert.equal(frame.event, 'batch'); assert.equal(typeof frame.success, 'boolean');
+                assert(Number.isInteger(frame.events) && frame.events >= 0 && frame.events <= 1000);
+                assert(Number.isFinite(frame.durationMs) && frame.durationMs >= 0);
+                if (!frame.success) assert.equal(frame.events, 0);
+                assert(rows.length < 100, 'continuous fixture cannot spin unboundedly');
+                rows.push({ ...frame, at: performance.now() });
+            }
+        } catch (error) { failure ||= error; }
+    });
+    return { rows, check() { if (failure) throw failure; } };
+}
+const waitResidual = (before, after) => after.at - before.at - after.durationMs;
+function assertReadyTransitions(rows, label) {
+    for (let i = 1; i < rows.length; i++) assert(waitResidual(rows[i - 1], rows[i]) < 700,
+        `${label} ready transition ${i} introduced ${Math.round(waitResidual(rows[i - 1], rows[i]))}ms residual wait`);
+}
+function assertPaced(before, after, label) {
+    const residual = waitResidual(before, after);
+    assert(residual >= 800, `${label} lost its one-second wait (${Math.round(residual)}ms residual)`);
+}
+function verifySchedulingAssertions() {
+    const synthetic = waits => waits.reduce((rows, wait) => {
+        const durationMs = 2100; rows.push({ at: rows.at(-1).at + durationMs + wait, durationMs }); return rows;
+    }, [{ at: 100, durationMs: 5000 }]);
+    assertReadyTransitions(synthetic([0, 50, 100]), 'ready control');
+    assert.throws(() => assertReadyTransitions(synthetic([0, 1000, 0]), 'sleep control'), /ready transition 2 introduced 1000ms/);
+    assert.throws(() => assertReadyTransitions(synthetic([700]), 'threshold control'), /introduced 700ms/);
+    const paced = synthetic([1000]); assertPaced(...paced, 'paced control');
+    assert.throws(() => assertPaced(...synthetic([0]), 'spin control'), /lost its one-second wait/);
+}
+function assertWatchdogResetTiming(errors, exitedAt) {
+    assert(Number.isFinite(exitedAt));
+    for (const error of errors) {
+        assert.equal(error.kind, 'transport'); assert.equal(error.side, 'client'); assert.equal(error.code, 'ECONNRESET');
+        assert.equal(error.clientEof, false); assert.equal(error.held, true); assert.equal(error.released, false);
+        assert(Math.abs(error.at - exitedAt) <= 250, 'reset must coincide with independently confirmed watchdog exit');
+    }
+}
+function verifyWatchdogResetClassification() {
+    const reset = { kind: 'transport', side: 'client', code: 'ECONNRESET', clientEof: false, held: true, released: false, at: 1000 };
+    assertWatchdogResetTiming([reset], 1001);
+    for (const change of [{ at: 0 }, { side: 'upstream' }, { code: 'EPIPE' }, { kind: 'proxy' }, { clientEof: true }, { held: false }, { released: true }])
+        assert.throws(() => assertWatchdogResetTiming([{ ...reset, ...change }], 1001));
+}
+async function stopContinuous(child, observation) {
+    assert(child.kill('SIGTERM')); const result = await finished(child, 7000);
+    observation.check(); assert.equal(result.code, 0, result.output); assert.equal(result.signal, null); return result;
 }
 
 async function redisRelay() {
@@ -414,6 +491,7 @@ async function telemetry() {
         && has('errors', row => row.sum > 0) && has('restarts', row => row.sum > 0);
 }
 try {
+    verifySchedulingAssertions(); verifyWatchdogResetClassification();
     await client.connect(); await redis.connect();
     const native = await waitFor(() => currentNative(), 'actual native default startup'), root = native.supervisor;
     await assertNative(root);
@@ -524,6 +602,71 @@ try {
     assert.equal(await actual.collection(names.receipts).countDocuments({ channelID: 'fixture-burst' }), 0);
     console.log('PASS real 1002-job expired receipt burst respects native 1000 claimed-job cap, reports bounded successful telemetry, and drains remaining work without persisting expired receipts');
     await clearQueues();
+    const schedulingDb = fixtureDatabase('scheduling'); await indexes(schedulingDb);
+    const expiredJob = id => JSON.stringify(receipt(id, 'fixture-scheduling', { occurredAt: new Date(now - 31 * DAY).toISOString() }));
+    await enqueue(Array.from({ length: 7 }, (_, n) => expiredJob(`ready-${n}`)));
+    const schedule = launch(binary, ['--telemetry-json'], nativeEnv(schedulingDb, { AI_USAGE_RECEIPTS_BATCH_SIZE: '2' }), { uid: 65534, gid: 65534 });
+    const scheduleFrames = observeBatches(schedule);
+    await waitFor(() => { scheduleFrames.check(); return scheduleFrames.rows.length >= 5; }, 'continuous three full receipt batches plus partial and idle');
+    assert.deepEqual(scheduleFrames.rows.slice(0, 5).map(row => [row.success, row.events]), [[true, 2], [true, 2], [true, 2], [true, 1], [true, 0]]);
+    assertReadyTransitions(scheduleFrames.rows.slice(0, 4), 'receipt ready burst');
+    assertPaced(scheduleFrames.rows[3], scheduleFrames.rows[4], 'partial receipt batch');
+    assert(await drained()); assert.equal(await redis.get('twitch:fixture-scheduling:ai:usage-receipts:generation'), '7');
+    await stopContinuous(schedule, scheduleFrames);
+    await enqueue(Array.from({ length: 6 }, (_, n) => expiredJob(`clean-full-${n}`)));
+    const cleanFull = launch(binary, ['--telemetry-json'], nativeEnv(schedulingDb, { AI_USAGE_RECEIPTS_BATCH_SIZE: '2' }), { uid: 65534, gid: 65534 });
+    const cleanFrames = observeBatches(cleanFull);
+    await waitFor(() => { cleanFrames.check(); return cleanFrames.rows.length >= 5; }, 'clean full batch reaches empty then paced idle');
+    assert.deepEqual(cleanFrames.rows.slice(0, 5).map(row => [row.success, row.events]), [[true, 2], [true, 2], [true, 2], [true, 0], [true, 0]]);
+    assertReadyTransitions(cleanFrames.rows.slice(0, 4), 'clean full receipt batches');
+    assertPaced(cleanFrames.rows[3], cleanFrames.rows[4], 'empty receipt batch');
+    await stopContinuous(cleanFull, cleanFrames); assert(await drained());
+    assert.equal(await schedulingDb.collection(names.receipts).countDocuments(), 0, 'expired scheduling inputs remain unpersisted');
+    console.log('PASS continuous three full receipt batches drain without injected waits, including clean full and partial tails; idle keeps default pacing and all expired generations acknowledge exactly once');
+
+    await clearQueues();
+    const scheduleInvalid = '{invalid-scheduling-json';
+    await enqueue([expiredJob('before-error-0'), expiredJob('before-error-1'), scheduleInvalid, expiredJob('error-batch-good'), expiredJob('after-error')]);
+    const failingSchedule = launch(binary, ['--telemetry-json'], nativeEnv(schedulingDb, { AI_USAGE_RECEIPTS_BATCH_SIZE: '2' }), { uid: 65534, gid: 65534 });
+    const failingFrames = observeBatches(failingSchedule);
+    await waitFor(() => { failingFrames.check(); return failingFrames.rows.length >= 4; }, 'failure after full batch remains paced');
+    assert.deepEqual(failingFrames.rows.slice(0, 4).map(row => [row.success, row.events]), [[true, 2], [false, 0], [true, 1], [true, 0]]);
+    assertReadyTransitions(failingFrames.rows.slice(0, 2), 'full receipt batch before failure');
+    assertPaced(failingFrames.rows[1], failingFrames.rows[2], 'failed full receipt batch');
+    assertPaced(failingFrames.rows[2], failingFrames.rows[3], 'partial recovery receipt batch');
+    await stopContinuous(failingSchedule, failingFrames);
+    assert.deepEqual(await redis.lRange(dead, 0, -1), [scheduleInvalid]); assert(await drained());
+    console.log('PASS continuous failure after an earlier full receipt batch reports unsuccessful zero events and keeps the interval despite a full claimed batch and ready tail');
+
+    await clearQueues();
+    const retryPoison = JSON.stringify(receipt('continuous-poison', 'fixture-scheduling-poison'));
+    await schedulingDb.command({ collMod: names.receipts, validator: { entryId: { $ne: 'continuous-poison' } }, validationLevel: 'strict', validationAction: 'error' });
+    await enqueue([retryPoison]);
+    const poisonLoop = launch(binary, ['--telemetry-json'], nativeEnv(schedulingDb, { AI_USAGE_RECEIPTS_BATCH_SIZE: '2' }), { uid: 65534, gid: 65534 });
+    const poisonFrames = observeBatches(poisonLoop);
+    await waitFor(() => { poisonFrames.check(); return poisonFrames.rows.length >= 3; }, 'requeued poison retries without a hot loop');
+    assert.deepEqual(poisonFrames.rows.slice(0, 3).map(row => [row.success, row.events]), [[false, 0], [false, 0], [true, 0]]);
+    assertPaced(poisonFrames.rows[0], poisonFrames.rows[1], 'requeued poison full batch');
+    assertPaced(poisonFrames.rows[1], poisonFrames.rows[2], 'dead-letter poison partial batch');
+    await stopContinuous(poisonLoop, poisonFrames);
+    assert.deepEqual(await redis.lRange(dead, 0, -1), [retryPoison]); assert(await drained());
+    assert.equal(await redis.hGet('ai-usage:queue-health:receipts', 'failures'), '3');
+    assert.equal(await schedulingDb.collection(names.receipts).countDocuments(), 0);
+    console.log('PASS continuous requeued poison remains paced, preserves original bytes through three failed attempts, dead-letters once, and never persists or spins');
+
+    await clearQueues();
+    const contentionRaw = expiredJob('lease-contended'); await enqueue([contentionRaw]);
+    await redis.set(globalLock, 'fixture-continuous-owner', { EX: 30 });
+    const contended = launch(binary, ['--telemetry-json'], nativeEnv(schedulingDb, { AI_USAGE_RECEIPTS_BATCH_SIZE: '2' }), { uid: 65534, gid: 65534 });
+    const contentionFrames = observeBatches(contended);
+    await waitFor(() => { contentionFrames.check(); return contentionFrames.rows.length >= 3; }, 'contended global lease remains paced despite pending receipts');
+    assert.deepEqual(contentionFrames.rows.slice(0, 3).map(row => [row.success, row.events]), [[true, 0], [true, 0], [true, 0]]);
+    for (let n = 1; n < 3; n++) assertPaced(contentionFrames.rows[n - 1], contentionFrames.rows[n], 'contended global lease');
+    assert.equal(await redis.get(globalLock), 'fixture-continuous-owner'); assert.deepEqual(await redis.lRange(queue, 0, -1), [contentionRaw]);
+    await redis.del(globalLock); await waitFor(drained, 'contended receipt recovers after owner releases');
+    await stopContinuous(contended, contentionFrames);
+    console.log('PASS continuous global lease contention preserves queued payload and owner, waits at the default interval, and recovers after fixture release');
+    await clearQueues();
     const dashboardChannel = 'fixture-dashboard', dashboardCustomer = 'customer-dashboard';
     const template = await actual.collection(names.receipts).findOne({ entryId: 'category-0' }); assert(template);
     const historyDocs = [1, 2, 3, 4].map(n => ({ ...clone(template), _id: new ObjectId(), channelID: dashboardChannel, customerId: dashboardCustomer,
@@ -574,8 +717,12 @@ try {
     // A continuously running child has completed first maintenance before we
     // stage the replay. Its next receipt poll must dirty the snapshot before
     // the ten-second maintenance cadence is reached.
-    const continuous = launch(binary, ['--telemetry-json'], nativeEnv(), { uid: 65534, gid: 65534 });
-    await waitFor(() => batchFrames(continuous.output).length > 0, 'continuous worker initial maintenance');
+    const maintenanceProxy = await mongoHoldProxy(actual, null);
+    const continuous = launch(binary, ['--telemetry-json'], nativeEnv(actual, { MONGO_URI: maintenanceProxy.uri, AI_USAGE_RECEIPTS_BATCH_SIZE: '2' }), { uid: 65534, gid: 65534 });
+    const maintenanceFrames = observeBatches(continuous);
+    const maintenanceQueries = () => maintenanceProxy.parsed.filter(row => row.name === 'find' && row.body.find === names.dashboards);
+    await waitFor(() => { maintenanceFrames.check(); maintenanceProxy.check(); return maintenanceFrames.rows.length > 0; }, 'continuous worker initial maintenance');
+    assert.equal(maintenanceQueries().length, 1);
     await actual.collection(names.dashboards).insertOne(cachedDashboardSeed);
     const freeReplay = inputs.find(row => row.tier === 'free' && JSON.parse(row.raw).id === 'retention-free').raw;
     const expiredReplay = inputs.find(row => JSON.parse(row.raw).id === 'expired').raw;
@@ -583,10 +730,24 @@ try {
     await waitFor(async () => (await actual.collection(names.dashboards).findOne({ _id: cachedDashboardSeed._id }))?.dirty, 'duplicate and expired receipt invalidate dashboard');
     const dirtied = await actual.collection(names.dashboards).findOne({ _id: cachedDashboardSeed._id });
     assert.deepEqual(dirtied.data, cachedDashboardSeed.data); assert.equal(+dirtied.expiresAt, +cachedDashboardSeed.expiresAt);
-    continuous.kill('SIGTERM'); const continuousExit = await finished(continuous); assert.equal(continuousExit.code, 0, continuousExit.output);
+    await waitFor(() => { maintenanceFrames.check(); return maintenanceFrames.rows.some(row => row.events === 2) && maintenanceFrames.rows.at(-1).events === 0; }, 'replay full batch completes before next staged burst');
+    const priorMaintenanceFrames = maintenanceFrames.rows.length;
+    await enqueue(Array.from({ length: 7 }, (_, n) => expiredJob(`maintenance-ready-${n}`)));
+    await waitFor(() => { maintenanceFrames.check(); maintenanceProxy.check(); return maintenanceFrames.rows.slice(priorMaintenanceFrames).filter(row => row.events > 0).length >= 4; }, 'maintenance remains independent of rapid full receipt batches');
+    const maintenanceBurst = maintenanceFrames.rows.slice(priorMaintenanceFrames).filter(row => row.events > 0).slice(0, 4);
+    assert.deepEqual(maintenanceBurst.map(row => row.events), [2, 2, 2, 1]); assertReadyTransitions(maintenanceBurst, 'maintenance-ready burst');
+    assert.equal(maintenanceQueries().length, 1, 'maintenance cannot run once per rapid batch');
+    assert.equal((await actual.collection(names.dashboards).findOne({ _id: cachedDashboardSeed._id })).dirty, true);
+    await waitFor(async () => {
+        maintenanceFrames.check(); maintenanceProxy.check();
+        return (await actual.collection(names.dashboards).findOne({ _id: cachedDashboardSeed._id }))?.dirty === false;
+    }, 'ten-second maintenance eventually refreshes dirtied dashboard', 15000);
+    assert.equal(maintenanceQueries().length, 2);
+    assert(maintenanceQueries()[1].at - maintenanceQueries()[0].at >= 9500, 'ten-second cadence survives busy-loop continuation');
+    await stopContinuous(continuous, maintenanceFrames); maintenanceProxy.check(); await maintenanceProxy.close();
     assert.equal(await actual.collection(names.receipts).countDocuments({ entryId: 'expired' }), 0);
     await actual.collection(names.dashboards).deleteOne({ _id: cachedDashboardSeed._id });
-    console.log('PASS duplicate/expired inputs dirty existing snapshots without inserting expired receipts or overwriting cached request/data/expiry');
+    console.log('PASS duplicate/expired inputs dirty snapshots without overwriting data/expiry; rapid full batches preserve ten-second maintenance cadence and the later refresh completes');
 
     await clearQueues();
     const healthRaw = JSON.stringify({ id: 'fixture-health', enqueuedAt: new Date(now - 3600000).toISOString(), untouched: { original: true } });
@@ -705,7 +866,10 @@ try {
     const watchdog = launch(binary, ['--once', '--telemetry-json'], nativeEnv(faultDb, { MONGO_URI: watchdogProxy.uri }), { uid: 65534, gid: 65534 });
     await watchdogProxy.held();
     let watchdogExit;
-    try { watchdogExit = await finished(watchdog, 28000); watchdogProxy.check(); }
+    try {
+        watchdogExit = await finished(watchdog, 28000);
+        watchdogProxy.checkConfirmedWatchdogExit(watchdogExit, Date.now() - watchdogStarted);
+    }
     catch (error) {
         console.error('AI_USAGE_WATCHDOG_PROXY_DIAGNOSTIC:' + JSON.stringify({
             transport: watchdogProxy.snapshot(), exitCode: watchdog.exitCode, signalCode: watchdog.signalCode, output: watchdog.output.slice(-4000),
@@ -731,8 +895,9 @@ try {
     console.log(`PASS actual ${watchdogElapsed}ms per-job watchdog preserves in-flight raw/global/account leases, exits nonzero and recovers exactly once after fixture lease expiry`);
 
     await clearQueues();
-    const signalReceipt = receipt('signal-held', 'fixture-signal'), signalRaw = JSON.stringify(signalReceipt), afterSignalRaw = JSON.stringify(receipt('signal-next', 'fixture-signal-next'));
-    await enqueue([signalRaw, afterSignalRaw]);
+    const signalReceipt = receipt('signal-held', 'fixture-signal'), signalRaw = JSON.stringify(signalReceipt);
+    const afterSignalRaws = Array.from({ length: 6 }, (_, n) => JSON.stringify(receipt(`signal-next-${n}`, 'fixture-signal-next')));
+    await enqueue([signalRaw, ...afterSignalRaws]);
     const signalProxy = await mongoHoldProxy(faultDb, 'update');
     const signaled = launch(binary, ['--telemetry-json'], nativeEnv(faultDb, { MONGO_URI: signalProxy.uri }), { uid: 65534, gid: 65534 });
     await signalProxy.held(); assert(signaled.kill('SIGTERM')); await delay(350); signalProxy.check();
@@ -742,8 +907,8 @@ try {
     assert.equal(signalExit.code, 0, signalExit.output); assert.equal(signalExit.signal, null);
     const signalFrames = batchFrames(signalExit.output); assert.equal(signalFrames.length, 1); assert.equal(signalFrames[0].success, true); assert.equal(signalFrames[0].events, 1);
     assert.equal(await faultDb.collection(names.receipts).countDocuments({ entryId: signalReceipt.id }), 1);
-    assert.equal(await faultDb.collection(names.receipts).countDocuments({ entryId: 'signal-next' }), 0);
-    assert.deepEqual(await redis.lRange(queue, 0, -1), [afterSignalRaw]); assert.equal(await redis.lLen(processing), 0);
+    assert.equal(await faultDb.collection(names.receipts).countDocuments({ channelID: 'fixture-signal-next' }), 0);
+    assert.deepEqual(await redis.lRange(queue, 0, -1), afterSignalRaws); assert.equal(await redis.lLen(processing), 0);
     assert.equal(await redis.exists(globalLock), 0); assert.equal(await redis.exists(accountLock(signalReceipt.channelID, signalReceipt.customerId)), 0);
     assert.equal(await redis.get(`twitch:${signalReceipt.channelID}:ai:usage-receipts:generation`), '1');
     await signalProxy.close();
@@ -774,20 +939,45 @@ try {
     const lossReceipt = receipt('global-loss-current', 'fixture-lease-loss'), lossRaw = JSON.stringify(lossReceipt), lossNext = JSON.stringify(receipt('global-loss-next', 'fixture-lease-next'));
     await enqueue([lossRaw, lossNext]);
     const lossProxy = await mongoHoldProxy(faultDb, 'update');
-    const loser = launch(binary, ['--once', '--telemetry-json'], nativeEnv(faultDb, { MONGO_URI: lossProxy.uri, AI_USAGE_RECEIPTS_LOCK_TTL_SECONDS: '30' }), { uid: 65534, gid: 65534 });
+    const loser = launch(binary, ['--telemetry-json'], nativeEnv(faultDb, { MONGO_URI: lossProxy.uri, AI_USAGE_RECEIPTS_LOCK_TTL_SECONDS: '30', AI_USAGE_RECEIPTS_BATCH_SIZE: '1' }), { uid: 65534, gid: 65534 });
+    const lossFrames = observeBatches(loser);
     await lossProxy.held();
     await redis.set(globalLock, 'fixture-replacement-global-owner', { EX: 30 });
     const lossAccountLock = accountLock(lossReceipt.channelID, lossReceipt.customerId);
     await redis.set(lossAccountLock, 'fixture-replacement-account-owner', { EX: 30 });
     await delay(10500); lossProxy.check(); lossProxy.release();
-    const lossExit = await finished(loser, 7000); lossProxy.check();
-    assert.equal(lossExit.code, 0, lossExit.output); assert.equal(batchFrames(lossExit.output).at(-1).events, 1);
+    await waitFor(() => { lossFrames.check(); lossProxy.check(); return lossFrames.rows.length >= 2; }, 'lost global lease forces wait before next contended batch', 7000);
+    assert.deepEqual(lossFrames.rows.slice(0, 2).map(row => [row.success, row.events]), [[true, 1], [true, 0]]);
+    assertPaced(lossFrames.rows[0], lossFrames.rows[1], 'lost global lease after full batch');
+    await stopContinuous(loser, lossFrames); lossProxy.check();
     assert.equal(await redis.get(globalLock), 'fixture-replacement-global-owner'); assert.equal(await redis.get(lossAccountLock), 'fixture-replacement-account-owner');
     assert.deepEqual(await redis.lRange(queue, 0, -1), [lossNext]); assert.equal(await redis.lLen(processing), 0);
     assert.equal(await faultDb.collection(names.receipts).countDocuments({ entryId: lossReceipt.id }), 1);
     await lossProxy.close(); await redis.del([globalLock, lossAccountLock]); await successOnce(faultDb);
     assert(await drained()); assert.equal(await faultDb.collection(names.receipts).countDocuments({ entryId: 'global-loss-next' }), 1);
-    console.log('PASS actual global heartbeat detects lease ownership loss, drains current unit only, preserves replacement global/account owners, and resumes after fixture recovery');
+    console.log('PASS actual global heartbeat detects lease loss, drains only the current full-batch unit, waits despite ready work, preserves replacement owners and recovers safely');
+
+    await clearQueues();
+    const earlyLoss = receipt('early-global-loss', 'fixture-early-lease-loss');
+    const earlyNext = JSON.stringify(receipt('early-global-loss-next', 'fixture-early-lease-next'));
+    await enqueue([JSON.stringify(earlyLoss), earlyNext]);
+    const earlyProxy = await mongoHoldProxy(faultDb, 'update');
+    const earlyChild = launch(binary, ['--telemetry-json'], nativeEnv(faultDb, { MONGO_URI: earlyProxy.uri, AI_USAGE_RECEIPTS_LOCK_TTL_SECONDS: '30', AI_USAGE_RECEIPTS_BATCH_SIZE: '1' }), { uid: 65534, gid: 65534 });
+    const earlyFrames = observeBatches(earlyChild); const earlyHeld = await earlyProxy.held();
+    await redis.set(globalLock, 'fixture-early-replacement', { EX: 30 });
+    const earlyAccount = accountLock(earlyLoss.channelID, earlyLoss.customerId);
+    await redis.set(earlyAccount, 'fixture-early-account-replacement', { EX: 30 });
+    assert(Date.now() - earlyHeld.at < 2000, 'ownership replacement must precede the ten-second heartbeat');
+    earlyProxy.release();
+    await waitFor(() => { earlyFrames.check(); earlyProxy.check(); return earlyFrames.rows.length >= 2; }, 'release-owner check paces full batch before heartbeat can notice replacement', 7000);
+    assert.deepEqual(earlyFrames.rows.slice(0, 2).map(row => [row.success, row.events]), [[true, 1], [true, 0]]);
+    assertPaced(earlyFrames.rows[0], earlyFrames.rows[1], 'lease release ownership loss before heartbeat');
+    await stopContinuous(earlyChild, earlyFrames); earlyProxy.check(); await earlyProxy.close();
+    assert.equal(await redis.get(globalLock), 'fixture-early-replacement'); assert.equal(await redis.get(earlyAccount), 'fixture-early-account-replacement');
+    assert.deepEqual(await redis.lRange(queue, 0, -1), [earlyNext]); assert.equal(await redis.lLen(processing), 0);
+    assert.equal(await faultDb.collection(names.receipts).countDocuments({ entryId: earlyLoss.id }), 1);
+    await redis.del([globalLock, earlyAccount]); await successOnce(faultDb); assert(await drained());
+    console.log('PASS a replaced lease before heartbeat is independently detected by owned release, keeps full-batch scheduling paced, preserves replacement owners and retains the ready tail');
 
     await clearQueues();
     const invalidCli = await finished(launch(binary, ['--invalid-fixture-flag'], nativeEnv())); assert.notEqual(invalidCli.code, 0);

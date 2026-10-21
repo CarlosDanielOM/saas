@@ -415,6 +415,49 @@ fn default_document() -> Document {
     }
 }
 
+/// Published changes and scheduler readiness describe different things: another
+/// writer can settle every fetched channel while more due rows remain.
+#[derive(Debug, PartialEq, Eq)]
+pub struct PassOutcome {
+    pub changed: usize,
+    pub fetched: usize,
+    pub ready: bool,
+}
+
+struct DuePass {
+    changed: usize,
+    fetched: usize,
+    blocked: bool,
+}
+
+impl DuePass {
+    fn ready(&self, due_exists: bool) -> bool {
+        self.fetched > 0 && !self.blocked && due_exists
+    }
+}
+
+struct ChannelOutcome {
+    changed: bool,
+    blocked: bool,
+}
+
+fn due_filter(now_ms: i64) -> Document {
+    // `$ne: null` excludes missing deadlines. No sort is added, matching
+    // the TypeScript query and its existing `dueAt` index.
+    doc! {
+        "dueAt": {
+            "$ne": Bson::Null,
+            "$lte": js_number(now_ms as f64),
+        },
+    }
+}
+
+fn deadline_is_due(value: Option<&Bson>, now_ms: i64) -> bool {
+    value
+        .and_then(numeric)
+        .is_some_and(|deadline| deadline <= now_ms as f64)
+}
+
 /// Native completion worker. Construction performs no I/O and selects only the
 /// existing collection.
 #[derive(Clone)]
@@ -432,36 +475,59 @@ impl RouletteCompletion {
     /// One bounded pass. Counts only channels this pass successfully changes;
     /// concurrent no-ops do not count as completed work.
     pub async fn settle_due(&self) -> Result<usize> {
+        self.settle_due_pass().await.map(|pass| pass.changed)
+    }
+
+    /// The long-running consumer additionally checks whether due work remains.
+    /// A stale dueAt whose reloaded state cannot settle forces the idle interval
+    /// instead of repeatedly selecting the same document without making progress.
+    pub async fn settle_due_with_readiness(&self) -> Result<PassOutcome> {
+        let pass = self.settle_due_pass().await?;
+        let due_exists = pass.ready(true)
+            && self
+                .channels
+                .find_one(due_filter(
+                    mongodb::bson::DateTime::now().timestamp_millis(),
+                ))
+                .projection(doc! { "_id": 1 })
+                .await?
+                .is_some();
+        Ok(PassOutcome {
+            changed: pass.changed,
+            fetched: pass.fetched,
+            ready: pass.ready(due_exists),
+        })
+    }
+
+    async fn settle_due_pass(&self) -> Result<DuePass> {
         let now_ms = mongodb::bson::DateTime::now().timestamp_millis();
-        // `$ne: null` excludes missing deadlines. No sort is added, matching
-        // the TypeScript query and its existing `dueAt` index.
-        let due = doc! {
-            "dueAt": {
-                "$ne": Bson::Null,
-                "$lte": js_number(now_ms as f64),
-            },
-        };
         let rows: Vec<Document> = self
             .channels
-            .find(due)
+            .find(due_filter(now_ms))
             .projection(doc! { "_id": 1 })
             .limit(DUE_LIMIT)
             .await?
             .try_collect()
             .await?;
-        let mut processed = 0usize;
+        let mut pass = DuePass {
+            changed: 0,
+            fetched: rows.len(),
+            blocked: false,
+        };
         for row in rows {
             let channel = channel_id(&row)?;
-            if self.settle_channel(&channel).await? {
-                processed += 1;
+            let outcome = self.settle_channel(&channel).await?;
+            if outcome.changed {
+                pass.changed += 1;
             }
+            pass.blocked |= outcome.blocked;
         }
-        Ok(processed)
+        Ok(pass)
     }
 
     /// `snapshot`: reload, settle, and CAS until one write wins or the bounded
     /// retry count is exhausted.
-    async fn settle_channel(&self, channel: &str) -> Result<bool> {
+    async fn settle_channel(&self, channel: &str) -> Result<ChannelOutcome> {
         for _ in 0..CAS_ATTEMPTS {
             let stored = self.load(channel).await?;
             let revision = match stored.get("revision") {
@@ -475,7 +541,12 @@ impl RouletteCompletion {
             // including a retry after another writer wins the revision CAS.
             let now_ms = mongodb::bson::DateTime::now().timestamp_millis();
             if !settle(&mut state, now_ms)? {
-                return Ok(false);
+                return Ok(ChannelOutcome {
+                    changed: false,
+                    // A concurrent completion advances dueAt, while a stale
+                    // dueAt with an unsettleable state would be selected again.
+                    blocked: deadline_is_due(stored.get("dueAt"), now_ms),
+                });
             }
             // The TypeScript write re-serializes the whole Mixed state through
             // the JavaScript BSON rules; normalize numbers the same way.
@@ -493,7 +564,10 @@ impl RouletteCompletion {
                 .update_one(doc! { "_id": channel, "revision": revision }, update)
                 .await?;
             if saved.modified_count > 0 {
-                return Ok(true);
+                return Ok(ChannelOutcome {
+                    changed: true,
+                    blocked: false,
+                });
             }
         }
         Err(Error::custom("Roulette channel is busy".to_owned()))
@@ -528,6 +602,49 @@ mod tests {
     use super::*;
 
     const ENDS: i64 = 1_700_000_000_000;
+
+    #[test]
+    fn readiness_uses_due_work_instead_of_changed_or_fetched_fullness() {
+        for fetched in [1, 99, DUE_LIMIT as usize] {
+            for changed in [0, fetched] {
+                let mut pass = DuePass {
+                    changed,
+                    fetched,
+                    blocked: false,
+                };
+                // Concurrent no-ops still continue to other genuinely due work.
+                assert!(pass.ready(true));
+                // Even a full, changed pass sleeps if only future work remains.
+                assert!(!pass.ready(false));
+                pass.blocked = true;
+                // A stale no-op must not make a busy loop over the same rows.
+                assert!(!pass.ready(true));
+            }
+        }
+        assert!(
+            !DuePass {
+                changed: 0,
+                fetched: 0,
+                blocked: false,
+            }
+            .ready(true)
+        );
+    }
+
+    #[test]
+    fn stale_due_deadlines_are_distinct_from_future_and_cleared_deadlines() {
+        assert!(deadline_is_due(Some(&Bson::Double(ENDS as f64)), ENDS));
+        assert!(deadline_is_due(Some(&Bson::Int64(ENDS - 1)), ENDS));
+        for deadline in [
+            None,
+            Some(Bson::Null),
+            Some(Bson::Double((ENDS + 1) as f64)),
+            Some(Bson::Double(f64::NAN)),
+            Some(Bson::String("0".to_owned())),
+        ] {
+            assert!(!deadline_is_due(deadline.as_ref(), ENDS));
+        }
+    }
 
     fn fixture_state(action: &str, copies: usize) -> Document {
         let winner_keys: Vec<Bson> = (0..copies)
