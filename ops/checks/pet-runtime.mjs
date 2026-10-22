@@ -393,8 +393,21 @@ await acquire(browser);
 await redis.set('pet:test:provider-mode', 'hold');
 const losingVts = await admitPetAction(action('Lose VTS during generation'));
 await until(() => PetRequest.findOne({ _id: losingVts.requestId, status: 'synthesizing' }).lean(), 'VTS-dependent provider phase');
-await desktop.send('pet:ready', { ...ready, vtsReady: false });
-await until(() => PetRequest.findOne({ _id: losingVts.requestId, status: 'cancelled', errorCode: 'vts_unavailable' }).lean(), 'VTS loss invalidates browser audio');
+// The phase is persisted before dispatch. Wait for the mock's actual invocation
+// so this exercises cancellation in flight rather than pre-provider rejection.
+await until(async () => (await redis.lRange('pet:test:provider-calls', 0, -1)).map(JSON.parse)
+  .some(item => item.kind === 'tts' && item.body.text === 'Lose VTS during generation'), 'VTS-dependent provider is in flight');
+assert.equal((await desktop.send('pet:ready', { ...ready, vtsReady: false })).ok, true);
+try {
+  await until(() => PetRequest.findOne({ _id: losingVts.requestId, status: 'cancelled', errorCode: 'vts_unavailable' }).lean(), 'VTS loss invalidates browser audio');
+} catch (error) {
+  console.error('VTS-loss fixture durable state', JSON.stringify({
+    request: await PetRequest.findById(losingVts.requestId).select('status errorCode generation version').lean(),
+    runtime: await PetRuntime.findById(ownerId).select('activeRequestId generation lease').lean(),
+    events: browser.events.slice(-8),
+  }));
+  throw error;
+}
 await redis.del('pet:test:provider-mode');
 await assert.rejects(admitPetAction(action('Still no VTS')), /vts_unavailable/);
 assert.equal((await separateProducer(action('Separate producer also sees lost VTS'))).error, 'vts_unavailable');
