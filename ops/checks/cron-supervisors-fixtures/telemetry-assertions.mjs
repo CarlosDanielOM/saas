@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 // validateBatch checks the envelope/histograms before this narrower ownership check.
 export function standaloneMetricsReady(metrics, workers) {
     const droppedName = 'cron_index_rust.telemetry_dropped';
-    const allowed = new Set([droppedName, ...workers.flatMap(name =>
+    const supervisorResources = ['cron_index_rust.rss_bytes', 'cron_index_rust.cpu_cores'];
+    const allowed = new Set([droppedName, ...supervisorResources, ...workers.flatMap(name =>
         ['rss_bytes', 'cpu_cores', name === 'roulette-completion' ? 'batch_channels' : 'batch_items', 'project_batch']
             .map(metric => `${name.replaceAll('-', '_')}_rust.${metric}`))]);
     assert(metrics.every(row => allowed.has(row.name) && row.channel === ''), 'only selected-worker and fixed supervisor metrics');
@@ -14,7 +15,16 @@ export function standaloneMetricsReady(metrics, workers) {
         for (const value of [row.sum, row.max]) assert(Number.isSafeInteger(value) && value >= 0 && value <= 1e15);
         assert(row.max <= row.sum);
     }
-    return dropped.length > 0 && workers.every(name => {
+    for (const row of metrics.filter(row => supervisorResources.includes(row.name))) {
+        assert.equal(row.kind, 'runtime'); assert.equal(row.outcome, 'ok');
+        assert(Number.isSafeInteger(row.count) && row.count > 0);
+        for (const value of [row.sum, row.max]) {
+            assert(Number.isFinite(value) && value >= 0);
+            if (row.name.endsWith('.rss_bytes')) assert(Number.isSafeInteger(value) && value > 0);
+        }
+        assert(row.max <= row.sum);
+    }
+    return dropped.length > 0 && supervisorResources.every(name => metrics.some(row => row.name === name)) && workers.every(name => {
         const prefix = `${name.replaceAll('-', '_')}_rust.`;
         return metrics.some(row => row.name === prefix + 'rss_bytes' && row.kind === 'runtime' && row.max > 0)
             && metrics.some(row => row.name === prefix + 'cpu_cores' && row.kind === 'runtime')

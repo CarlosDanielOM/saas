@@ -549,12 +549,24 @@ fn batch_payload(instance: &str, rows: &[Metric], logs: &[Value]) -> Result<Stri
     .map_err(|_| ())
 }
 
+/// The exporter owns its self sampler, including cancellation by the core's
+/// shared close deadline. Dropping a JoinHandle alone would detach the sampler.
+struct ExporterSampler(JoinHandle<()>);
+
+impl Drop for ExporterSampler {
+    fn drop(&mut self) {
+        self.0.abort();
+    }
+}
+
 /// Ten-second exporter cadence, then one bounded final flush on true or closed
-/// shutdown receiver. The core should stop/await samplers before signalling it.
+/// shutdown receiver. Stop/await self sampling before the final buffer swap.
 pub async fn run_exporter(telemetry: Telemetry, mut shutdown: watch::Receiver<bool>) {
     if !telemetry.is_enabled() {
         return;
     }
+    let sampler = spawn_sampler(std::process::id(), "cron_index_rust", telemetry.clone());
+    let mut sampler = ExporterSampler(sampler);
     loop {
         if *shutdown.borrow_and_update() {
             break;
@@ -569,6 +581,8 @@ pub async fn run_exporter(telemetry: Telemetry, mut shutdown: watch::Receiver<bo
             }
         }
     }
+    sampler.0.abort();
+    let _ = (&mut sampler.0).await;
     telemetry.flush().await;
 }
 
@@ -846,7 +860,7 @@ mod tests {
     use super::*;
 
     // Port zero can never select a live Redis service. No environment is read
-    // by any of these tests, and no production PID is sampled.
+    // by any of these tests. Exporter tests sample only their own test PID.
     fn telemetry() -> Telemetry {
         Telemetry::new(Some(("127.0.0.1".to_owned(), 0)))
     }
@@ -1368,6 +1382,73 @@ mod tests {
         assert!(finished.is_ok());
         assert_eq!(telemetry.dropped(), 1);
         assert!(telemetry.0.state.lock().unwrap().logs.is_empty());
+    }
+
+    #[tokio::test]
+    async fn disabled_exporter_returns_without_sampling_or_retaining_telemetry() {
+        let telemetry = Telemetry::new(None);
+        let (_sender, receiver) = watch::channel(false);
+        tokio::time::timeout(
+            Duration::from_secs(1),
+            run_exporter(telemetry.clone(), receiver),
+        )
+        .await
+        .unwrap();
+        assert_eq!(Arc::strong_count(&telemetry.0), 1);
+        assert!(telemetry.0.state.lock().unwrap().metrics.is_empty());
+        assert_eq!(telemetry.dropped(), 0);
+    }
+
+    #[cfg(target_os = "linux")]
+    #[tokio::test]
+    async fn exporter_shutdown_and_cancellation_release_the_self_sampler() {
+        for cancel in [false, true] {
+            let telemetry = telemetry();
+            let (sender, receiver) = watch::channel(false);
+            let exporter = tokio::spawn(run_exporter(telemetry.clone(), receiver));
+            tokio::time::timeout(Duration::from_secs(3), async {
+                loop {
+                    let sampled = telemetry
+                        .0
+                        .state
+                        .lock()
+                        .unwrap()
+                        .metrics
+                        .values()
+                        .any(|row| row.name == "cron_index_rust.rss_bytes" && row.sum > 0.0);
+                    if sampled {
+                        break;
+                    }
+                    tokio::task::yield_now().await;
+                }
+            })
+            .await
+            .unwrap();
+            if cancel {
+                exporter.abort();
+            } else {
+                sender.send(true).unwrap();
+            }
+            let result = tokio::time::timeout(Duration::from_secs(3), exporter)
+                .await
+                .unwrap();
+            assert_eq!(result.is_err(), cancel);
+            if !cancel {
+                // Normal shutdown awaits sampling before the final flush.
+                assert_eq!(Arc::strong_count(&telemetry.0), 1);
+                assert!(telemetry.0.state.lock().unwrap().metrics.is_empty());
+                assert!(telemetry.dropped() > 0);
+            }
+            // Forced exporter cancellation aborts its sampler on drop instead
+            // of leaving a detached task retaining telemetry until runtime exit.
+            tokio::time::timeout(Duration::from_secs(1), async {
+                while Arc::strong_count(&telemetry.0) > 1 {
+                    tokio::task::yield_now().await;
+                }
+            })
+            .await
+            .unwrap();
+        }
     }
 
     #[tokio::test]

@@ -7,6 +7,7 @@ import { spawn } from 'node:child_process';
 import { readFile, writeFile, unlink, readdir, chmod } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
 import { createHash } from 'node:crypto';
+import { createServer } from 'node:net';
 import { NATIVE, rustRegistry, processIdentity, diagnosticParser, assertSelectedNatives } from '/tmp/saas-fixtures/native-cron-fixture.mjs';
 import { withCandidateBinaries } from '/tmp/saas-fixtures/candidate-binaries.mjs';
 import { standaloneMetricsReady } from '/tmp/saas-fixtures/telemetry-assertions.mjs';
@@ -244,6 +245,34 @@ try {
             }, 'standalone Rust exports runtime and batch telemetry directly to Dragonfly', 30000);
             nodeFree.kill('SIGTERM'); const result = await finished(nodeFree); observation.check(); assert.equal(result.code, 0); privacy(result.output);
             assert.equal(captured.filter(row => row.event === 'spawn').length, 2);
+            console.log('PASS standalone Rust exports finite positive supervisor RSS and finite nonnegative supervisor CPU with its worker telemetry');
+
+            // A private endpoint catches attempted exports without racing the
+            // other fixture instances that continue writing to shared Redis.
+            let disabledConnections = 0;
+            const disabledEndpoint = createServer(socket => { disabledConnections++; socket.destroy(); });
+            try {
+                await new Promise((resolve, reject) => {
+                    disabledEndpoint.once('error', reject);
+                    disabledEndpoint.listen(0, '127.0.0.1', resolve);
+                });
+                const disabled = standalone('/usr/local/bin/cron_index', args, { ...env, OBSERVABILITY_DISABLED: 'true',
+                    DRAGONFLY_HOST: '127.0.0.1', DRAGONFLY_PORT: String(disabledEndpoint.address().port) },
+                { uid: 65534, gid: 65534, detached: true });
+                const disabledObservation = observe(disabled, substituted);
+                await waitFor(() => { disabledObservation.check(); return disabledObservation.rows.filter(row => row.event === 'batch').length === 2; },
+                    'telemetry-disabled index still supervises workers');
+                // Cover the ten-second sampling/export interval while running,
+                // then check the final shutdown flush is also disabled.
+                await delay(11000);
+                assert.equal(disabled.exitCode, null); assert.equal(disabled.signalCode, null);
+                disabled.kill('SIGTERM'); const disabledResult = await finished(disabled);
+                disabledObservation.check(); assert.equal(disabledResult.code, 0); assert.equal(disabledResult.signal, null); privacy(disabledResult.output);
+                assert.equal(disabledConnections, 0, 'disabled telemetry never connects, including final flush');
+                console.log('PASS telemetry-disabled Rust index keeps worker supervision active and makes no periodic or final export connection');
+            } finally {
+                await new Promise(resolve => disabledEndpoint.close(resolve));
+            }
 
             // Deliberately attach NO reader to index stdout. The shell's
             // independently readable counter proves at least 20,000 accepted
