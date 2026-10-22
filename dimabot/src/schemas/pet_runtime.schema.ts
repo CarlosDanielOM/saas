@@ -30,13 +30,14 @@ export const PetRequest = model<PetRequestRecord>('PetRequest', request);
 export interface PetRuntimeRecord {
     _id: string; channelId: string; generation: number; activeRequestId: string | null;
     lease: { leaseId: string; holderPeerId: string; expiresAt: Date } | null;
-    notBefore: Date; lastAcceptedAt: Date | null;
+    notBefore: Date; lastAcceptedAt: Date | null; admissionClaimId?: string | null;
     tokenHash: string | null; overlayToken: { iv: string; content: string } | null;
 }
 const runtimeSchema = new Schema<PetRuntimeRecord>({
     _id: String, channelId: String, generation: { type: Number, default: 1 }, activeRequestId: { type: String, default: null },
     lease: { type: new Schema({ leaseId: String, holderPeerId: String, expiresAt: Date }, { _id: false }), default: null },
     notBefore: { type: Date, default: () => new Date(0) }, lastAcceptedAt: { type: Date, default: null },
+    admissionClaimId: { type: String, default: null },
     tokenHash: { type: String, default: null }, overlayToken: { iv: String, content: String }
 }, { versionKey: false, collection: 'pet_runtimes' });
 runtimeSchema.index({ tokenHash: 1 }, { unique: true, partialFilterExpression: { tokenHash: { $type: 'string' } } });

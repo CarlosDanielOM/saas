@@ -181,7 +181,7 @@ async function wakeOnce(ownerId: string) {
         const request = await PetRequest.findById(runtime.activeRequestId).lean();
         if (!request) { await invalidatePet(ownerId, 'request_missing'); return; }
         if (PET_TERMINAL.includes(request.status)) {
-            await PetRuntime.updateOne({ _id: ownerId, activeRequestId: request._id }, { $set: { activeRequestId: null } });
+            await PetRuntime.updateOne({ _id: ownerId, activeRequestId: request._id }, { $set: { activeRequestId: null }, $unset: { admissionClaimId: 1 } });
             await cleanAudio(request); return;
         }
         if (!request.admitted || request.status !== 'accepted' || tasks.has(ownerId) || tasks.size >= MAX_ACTIVE_PROVIDERS) return;

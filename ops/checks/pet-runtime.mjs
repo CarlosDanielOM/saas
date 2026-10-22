@@ -34,6 +34,7 @@ async function credits(status = 'available') {
     available: status !== 'unavailable', status, updatedAt: new Date().toISOString() }));
 }
 await credits();
+const mongoOnlyRecovery = process.env.DOMAIN_EVENTS_WAKEUPS_ENABLED?.toLowerCase() === 'false';
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function until(fn, message, timeout = 10_000) {
   const end = Date.now() + timeout;
@@ -91,7 +92,7 @@ async function connect(namespace, auth, reject = false, needsSnapshot = true) {
       const timer = setTimeout(() => { acks.delete(id); rejectAck(new Error(`Missing ack ${event}`)); }, 5000);
       acks.set(id, value => { clearTimeout(timer); resolve(value); }); ws.send(`42${namespace},${id}${JSON.stringify([event, data])}`);
     }); },
-    event(event, predicate = () => true) { return until(() => events.find(item => item.event === event && predicate(item.data))?.data, event); },
+    event(event, predicate = () => true, timeout = 10_000) { return until(() => events.find(item => item.event === event && predicate(item.data))?.data, event, timeout); },
     mark() { return events.length; },
     latestSnapshot() { return events.filter(item => item.event === 'pet:snapshot').at(-1)?.data; }
   };
@@ -171,6 +172,30 @@ async function separateProducer(input, env = {}) {
 }
 const identityFor = (play, seq, phase = 'started') => ({ v: 1, requestId: play.requestId, leaseId: play.leaseId, generation: play.generation, seq, phase, positionMs: phase === 'ended' ? 500 : 0 });
 const assertNoReplay = async client => { await pause(150); assert.equal(client.events.filter(item => item.event === 'pet:play').length, 0); };
+if (mongoOnlyRecovery) {
+  // Neither this API nor its separate producer may publish hints. Recovery must
+  // discover durable acceptance without a healthy notifyPet shortcut.
+  const started = Date.now();
+  const produced = await separateProducer(action('Mongo-only durable recovery'));
+  assert.ok(produced.result, JSON.stringify(produced));
+  assert.equal(produced.result.status, 'accepted');
+  assert.ok(produced.elapsedMs < 2000, 'disabled hints must not delay admission');
+  const requestId = produced.result.requestId;
+  const play = await desktop.event('pet:play', data => data.requestId === requestId, 25_000);
+  assert.ok(Date.now() - started < 25_000, '15-second bounded recovery plus provider/scheduling allowance');
+  const playIndex = desktop.events.findIndex(item => item.event === 'pet:play' && item.data.requestId === requestId);
+  assert.equal(desktop.events[playIndex - 1]?.data.request.status, 'ready');
+  assert.equal((await desktop.send('pet:playback', identityFor(play, 0))).ok, true);
+  assert.equal((await desktop.send('pet:playback', identityFor(play, 1, 'ended'))).ok, true);
+  await desktop.event('pet:request', data => data.request.requestId === requestId && data.request.status === 'completed', 25_000);
+  await until(() => desktop.latestSnapshot()?.active === null && second.latestSnapshot()?.active === null, 'Mongo-only terminal recovery reaches all renderers', 25_000);
+  assert.equal((await PetRequest.findById(requestId).lean()).status, 'completed');
+  assert.equal(desktop.events.filter(item => item.event === 'pet:play' && item.data.requestId === requestId).length, 1);
+  assert.equal((await redis.lRange('pet:test:provider-calls', 0, -1)).map(JSON.parse).filter(item => item.kind === 'tts').length, 1);
+  clearInterval(renewal); for (const socket of sockets) socket.close();
+  console.log('PASS pet Mongo-only recovery: separate producer, hints disabled, bounded play/terminal recovery, no replay');
+  process.exit(0);
+}
 const projected = await PetReadiness.findById(ownerId).lean();
 assert.ok(projected && projected.expiresAt <= projected.authorizationExpiresAt);
 // Isolate malformed projections from the live API refresh loop so every fence case is deterministic.

@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import Users from '../schemas/users.schema.js';
-import { PetRequest, PetRuntime, type PetRequestRecord } from '../schemas/pet_runtime.schema.js';
+import { PetRequest, PetRuntime, PET_TERMINAL, type PetRequestRecord } from '../schemas/pet_runtime.schema.js';
 import { getPetConfiguration } from '../server/services/pet_settings.service.js';
 import { PetError, notifyPet, runtimeFor } from './state.js';
 
@@ -42,7 +42,7 @@ export async function admitPetAction(input: AdmitPetActionInput): Promise<{ requ
             $set: { status: code === 'busy' ? 'failed' : 'expired', errorCode: code }, $inc: { version: 1 }
         }, { new: true }).lean();
         if (rejected) {
-            await PetRuntime.updateOne({ _id: ownerId, activeRequestId: record._id, generation: record.generation }, { $set: { activeRequestId: null } });
+            await PetRuntime.updateOne({ _id: ownerId, activeRequestId: record._id, generation: record.generation }, { $set: { activeRequestId: null }, $unset: { admissionClaimId: 1 } });
             await notifyPet(ownerId);
             return outcome(rejected);
         }
@@ -58,18 +58,34 @@ export async function admitPetAction(input: AdmitPetActionInput): Promise<{ requ
         if (!configuration.runtime.enabled || !configuration.settings.tts.enabled || configuration.revision !== record.settingsRevision || runtime.generation !== record.generation || !runtime.lease || runtime.lease.expiresAt <= now) {
             return rejectUnadmitted(record, 'admission_expired');
         }
-        const claimed = await PetRuntime.updateOne({ _id: ownerId, activeRequestId: null, generation: record.generation,
+        const claimId = randomUUID();
+        // Capture the actual atomic preimage; the earlier runtime read may be stale.
+        const claimed = await PetRuntime.findOneAndUpdate({ _id: ownerId, activeRequestId: null, generation: record.generation,
             'lease.leaseId': runtime.lease.leaseId, 'lease.expiresAt': { $gt: now },
             $or: [{ lastAcceptedAt: null }, { lastAcceptedAt: { $lte: new Date(now.getTime() - configuration.settings.behavior.cooldownSeconds * 1000) } }]
-        }, { $set: { activeRequestId: record._id, lastAcceptedAt: now } });
-        const linked = claimed.modifiedCount || (await PetRuntime.findOne({ _id: ownerId, activeRequestId: record._id, generation: record.generation }).lean());
+        }, { $set: { activeRequestId: record._id, lastAcceptedAt: now, admissionClaimId: claimId } }).lean();
+        const claimFilter = { _id: ownerId, activeRequestId: record._id, generation: record.generation, admissionClaimId: claimId,
+            'lease.leaseId': runtime.lease.leaseId };
+        const linked = claimed || (await PetRuntime.findOne({ _id: ownerId, activeRequestId: record._id, generation: record.generation }).lean());
         if (!linked) return rejectUnadmitted(record, 'busy');
         const admitted = await PetRequest.findOneAndUpdate({ _id: record._id, admitted: false, status: 'accepted' }, { $set: { admitted: true } }, { new: true }).lean();
         if (!admitted) {
-            const current = await admittedOutcome(record._id);
-            if (current) return current;
+            const current = await PetRequest.findById(record._id).lean();
+            if (claimed && (!current || PET_TERMINAL.includes(current.status))) {
+                // A delayed false-admitted reader can reclaim an already completed A.
+                // Undo only this unique claim; renewing the same lease must not block
+                // cleanup, and no lease/token/generation fields are restored.
+                await PetRuntime.updateOne({ ...claimFilter, lastAcceptedAt: now }, {
+                    $set: { activeRequestId: null, lastAcceptedAt: claimed.lastAcceptedAt ?? null }, $unset: { admissionClaimId: 1 }
+                });
+                await notifyPet(ownerId);
+            } else if (claimed && current?.admitted) {
+                await PetRuntime.updateOne(claimFilter, { $unset: { admissionClaimId: 1 } });
+            }
+            if (current && (current.admitted || current.status !== 'accepted')) return outcome(current);
             throw new PetError('admission_expired', 409);
         }
+        if (claimed) await PetRuntime.updateOne(claimFilter, { $unset: { admissionClaimId: 1 } });
         await notifyPet(ownerId);
         return outcome(admitted);
     };

@@ -27,7 +27,7 @@ export async function finishRequest(id: string, status: 'completed' | 'cancelled
         $set: { status, ...(errorCode ? { errorCode } : {}) }, $inc: { version: 1 }
     }, { new: true }).lean();
     if (request) {
-        await PetRuntime.updateOne({ _id: request.ownerId, activeRequestId: id }, { $set: { activeRequestId: null } });
+        await PetRuntime.updateOne({ _id: request.ownerId, activeRequestId: id }, { $set: { activeRequestId: null }, $unset: { admissionClaimId: 1 } });
         await notifyPet(request.ownerId);
     }
     return request;
@@ -36,7 +36,7 @@ export async function finishRequest(id: string, status: 'completed' | 'cancelled
 export async function invalidatePet(ownerId: string, reason: string, expected?: { requestId: string | null; generation: number; leaseId?: string; leaseExpiresAt?: Date }, terminal?: { status: 'expired'; errorCode: string }) {
     const previous = await PetRuntime.findOneAndUpdate({ _id: ownerId, ...(expected ? { activeRequestId: expected.requestId, generation: expected.generation,
         ...(expected.leaseId ? { 'lease.leaseId': expected.leaseId } : {}), ...(expected.leaseExpiresAt ? { 'lease.expiresAt': expected.leaseExpiresAt } : {}) } : {}) }, [{ $set: {
-        generation: { $add: ['$generation', 1] }, lease: null, activeRequestId: null,
+        generation: { $add: ['$generation', 1] }, lease: null, activeRequestId: null, admissionClaimId: null,
         notBefore: { $max: ['$notBefore', { $ifNull: ['$lease.expiresAt', new Date(0)] }] }
     } }]).lean();
     if (!previous) return false;
