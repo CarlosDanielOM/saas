@@ -14,6 +14,13 @@ function wav() {
 }
 globalThis.fetch = async (input, options) => {
   const url = new URL(typeof input === 'string' || input instanceof URL ? input : input.url);
+  if (url.hostname === 'api.polar.sh' && url.pathname.replace(/\/$/, '') === '/v1/events/ingest') {
+    const raw = options?.body ?? (input instanceof Request ? await input.clone().text() : '{}');
+    const { events = [] } = JSON.parse(String(raw));
+    const cache = await redis();
+    for (const event of events) await cache.rPush('pet:test:billing-events', JSON.stringify(event));
+    return Response.json({ inserted: events.length, duplicates: 0 });
+  }
   if (url.hostname !== 'pet-piper.test' && url.hostname !== 'openrouter.ai') return inherited(input, options);
   const cache = await redis();
   const body = JSON.parse(options.body);

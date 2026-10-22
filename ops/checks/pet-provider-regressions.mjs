@@ -9,7 +9,7 @@ const suites = [
   'server/services/tts/kokoro_tts', 'handlers/tts_credit_fallback', 'handlers/tts_queue_credits',
 ];
 const env = { ...process.env }; delete env.NODE_OPTIONS;
-const result = spawnSync(process.execPath, ['--experimental-test-module-mocks', '--test', '--test-force-exit', '--test-concurrency=1',
+const result = spawnSync(process.execPath, ['--experimental-test-module-mocks', '--test', '--test-concurrency=1',
   ...suites.map(name => `/app/dist/${name}.test.js`)], { env, stdio: 'inherit', timeout: 180_000 });
 assert.ifError(result.error);
 assert.equal(result.status, 0, `compiled pet/provider regression exit ${result.status}, signal ${result.signal}`);

@@ -250,6 +250,11 @@ await desktop.event('pet:request', data => data.request.requestId === requestId 
 assert.equal((await admitPetAction(input)).status, 'completed');
 assert.equal((await fetch(base + new URL(play.audio.url).pathname + new URL(play.audio.url).search)).status, 403);
 assert.equal((await redis.lRange('pet:test:provider-calls', 0, -1)).map(JSON.parse).filter(item => item.kind === 'tts').length, 1);
+const firstBilling = (await redis.lRange('pet:test:billing-events', 0, -1)).map(JSON.parse);
+assert.equal(firstBilling.length, 1, 'completed replay performs no duplicate ingest');
+assert.equal(firstBilling[0].external_id, `${requestId}:tts`);
+assert.equal(firstBilling[0].metadata.request_id, `${requestId}:tts`);
+assert.equal(firstBilling[0].metadata.usage_source, 'pet');
 // Redis is advisory even in a real producer process: a refused connection cannot delay Mongo admission.
 const outage = await separateProducer(action('Durable admission while Redis hints are unavailable'), { DRAGONFLY_PORT: '1' });
 assert.ok(outage.result, JSON.stringify(outage));
@@ -299,16 +304,26 @@ await until(() => PetRequest.findOne({ _id: failed.requestId, status: 'failed' }
 assert.equal(await redis.lLen('pet:test:provider-calls'), countBefore + 1, 'no provider retry');
 await redis.del('pet:test:provider-mode');
 // No-tool LLM is raw spoken text; its AST-looking reply never executes.
-const ask = await admitPetAction(action('Say something friendly', 'ask'));
+const askInput = action('Say something friendly', 'ask');
+const ask = await admitPetAction(askInput);
 const askPlay = await desktop.event('pet:play', data => data.requestId === ask.requestId);
 const calls = (await redis.lRange('pet:test:provider-calls', 0, -1)).map(JSON.parse);
 assert.deepEqual(calls.find(item => item.kind === 'llm').body.tools, []);
 assert.ok(calls.some(item => item.kind === 'tts' && item.body.text.includes('$(counter must-not-evaluate)')));
 assert.equal((await desktop.send('pet:playback', identityFor(askPlay, 0))).ok, true);
 assert.equal((await desktop.send('pet:playback', identityFor(askPlay, 1, 'ended'))).ok, true);
-const queued = (await redis.lRange(`twitch:${owner}:ai:polarshevent`, 0, -1)).map(JSON.parse);
-assert.ok(queued.some(item => item.externalId === `${ask.requestId}:llm` && item.metadata.usage_source === 'pet'));
-assert.ok(queued.some(item => item.externalId === `${ask.requestId}:tts` && item.metadata.usage_source === 'pet'));
+const queued = (await redis.lRange('pet:test:billing-events', 0, -1)).map(JSON.parse);
+for (const phase of ['llm', 'tts']) {
+  const billed = queued.filter(item => item.external_id === `${ask.requestId}:${phase}`);
+  assert.equal(billed.length, 1, `exactly one ${phase} ingest`);
+  assert.equal(billed[0].metadata.request_id, `${ask.requestId}:${phase}`);
+  assert.equal(billed[0].metadata.usage_source, 'pet');
+}
+const beforeAskReplay = { providers: await redis.lLen('pet:test:provider-calls'), billing: queued.length };
+assert.equal((await admitPetAction(askInput)).status, 'completed');
+await pause(100);
+assert.equal(await redis.lLen('pet:test:provider-calls'), beforeAskReplay.providers);
+assert.equal(await redis.lLen('pet:test:billing-events'), beforeAskReplay.billing);
 // Exhausted/unverified credits use the existing provider fallback policy.
 await credits('unavailable');
 await save(settings => ({ ...settings, tts: { enabled: true, provider: 'fish', language: 'es', voice: '7b5626abdaa044babfc3829ec15acf31' } }));
@@ -318,7 +333,8 @@ const fallback = await admitPetAction(action('Use free fallback'));
 const fallbackPlay = await desktop.event('pet:play', data => data.requestId === fallback.requestId);
 assert.equal(fallbackPlay.audio.mimeType, 'audio/wav');
 await desktop.send('pet:playback', identityFor(fallbackPlay, 0, 'error'));
-await credits();
+// Keep unavailable-credit Piper fallback for the admission-only crash fixture;
+// paid Fish in this provider fixture deliberately returns HTTP 503.
 // A crash between request insert and runtime CAS is resolved by an identical duplicate.
 const partialInput = action('Recover uncommitted admission');
 const partialState = await runtimeFor(ownerId, owner), partialId = randomUUID();
@@ -331,6 +347,7 @@ assert.equal(partialDuplicate.requestId, partialId);
 assert.equal((await PetRequest.findById(partialId).lean()).admitted, true);
 const partialPlay = await desktop.event('pet:play', data => data.requestId === partialId);
 await desktop.send('pet:playback', identityFor(partialPlay, 0, 'error'));
+await credits();
 // Public capability and original asset ownership/deletion guards.
 const badAssets = { ...configuration.settings, appearance: { kind: 'png', idleAssetId: String(foreignAsset), talkingAssetId: String(assetId) } };
 assert.equal((await call(settingsPath, { method: 'PUT', token: 'pet-owner-token', body: { revision: configuration.revision, settings: badAssets } })).status, 404);
