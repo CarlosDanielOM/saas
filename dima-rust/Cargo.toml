@@ -11,11 +11,24 @@ default = ["mongo", "redis", "postgres", "http"]
 mongo = ["dep:mongodb", "dep:garde", "dep:futures-util", "dep:serde", "dep:serde_json", "dep:sha2", "dep:dotenvy", "dep:tokio", "dep:rustls"]
 redis = ["dep:redis", "dep:tokio", "dep:rustls"]
 postgres = ["dep:sqlx", "dep:tokio"]
-http = ["dep:axum", "dep:tokio"]
+http = ["dep:axum", "dep:tokio", "dep:tower-http"]
 # Outbound HTTPS is independent from the Axum server capability.
 http-client = ["dep:reqwest", "dep:tokio"]
 # The dashboard's localeCompare game ties need ICU, not codepoint ordering.
 unicode-collation = ["dep:icu_collator"]
+# Opt-in service foundations for TypeScript util ports. None is in `default`
+# or in a deployed worker profile; enable each one only where it is used.
+# email, posthog, s3, and otel also compile aws-lc-rs into rustls; see
+# `utils::install_default_tls_provider`.
+socketio = ["http", "dep:socketioxide", "dep:serde_json"]
+email = ["dep:resend-rs", "dep:rustls", "dep:serde_json", "dep:tokio"]
+posthog = ["dep:posthog-rs", "dep:rustls", "dep:serde_json", "dep:tokio"]
+qdrant = ["dep:qdrant-client", "dep:tokio"]
+s3 = ["dep:aws-sdk-s3", "dep:rustls", "dep:tokio"]
+otel = ["dep:opentelemetry", "dep:opentelemetry_sdk", "dep:opentelemetry-otlp", "dep:rustls"]
+jwt = ["dep:jsonwebtoken", "dep:base64", "dep:serde", "dep:serde_json"]
+re2-compat = ["dep:regex"]
+audio = ["dep:symphonia"]
 
 [[bin]]
 name = "stream_activity"
@@ -75,3 +88,20 @@ serde_json = { version = "1.0.154", optional = true, features = ["raw_value"] }
 sha2 = { version = "0.10.9", optional = true }
 sqlx = { version = "0.9.0", optional = true, default-features = false, features = ["postgres", "runtime-tokio", "tls-rustls-ring"] }
 tokio = { version = "1.54.0", optional = true, features = ["rt-multi-thread", "macros", "signal", "sync", "time", "net"] }
+# Service foundations below are optional and outside every worker profile.
+# Each disables crate defaults so TLS stays on rustls (no OpenSSL on musl).
+# Same base64 jsonwebtoken already uses, for Node-identical JWT segments.
+base64 = { version = "0.22.1", optional = true }
+aws-sdk-s3 = { version = "1.154.0", optional = true, default-features = false, features = ["rt-tokio", "default-https-client", "http-1x", "sigv4a"] }
+jsonwebtoken = { version = "11.1.0", optional = true, default-features = false, features = ["rust_crypto"] }
+opentelemetry = { version = "0.33.1", optional = true, default-features = false, features = ["logs"] }
+opentelemetry_sdk = { version = "0.33.1", optional = true, default-features = false, features = ["logs"] }
+opentelemetry-otlp = { version = "0.33.1", optional = true, default-features = false, features = ["http-proto", "logs", "reqwest-blocking-client", "reqwest-rustls"] }
+posthog-rs = { version = "0.27.0", optional = true, default-features = false, features = ["async-client"] }
+# Match the production server minor (qdrant v1.17.0); Qdrant supports one minor of skew.
+qdrant-client = { version = "~1.17.0", optional = true, default-features = false, features = ["serde"] }
+regex = { version = "1.13.1", optional = true }
+resend-rs = { version = "0.35.0", optional = true, default-features = false, features = ["rustls-tls"] }
+socketioxide = { version = "0.18.7", optional = true }
+symphonia = { version = "0.6.1", optional = true, default-features = false, features = ["mp3", "id3v2"] }
+tower-http = { version = "0.7.1", optional = true, features = ["cors"] }

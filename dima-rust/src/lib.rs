@@ -7,7 +7,21 @@
 //! - `redis`: the lazy Dragonfly-compatible Redis connection manager.
 //! - `postgres`: SQLx with PostgreSQL, Tokio, and rustls/ring, available for a
 //!   future telemetry worker without compiling it into MongoDB-only workers.
-//! - `http`: Axum's HTTP/JSON/Tokio foundation for future server surfaces.
+//! - `http`: Axum's HTTP/JSON/Tokio foundation for future server surfaces,
+//!   plus tower-http CORS matching the legacy npm `cors()` defaults.
+//!
+//! Opt-in service foundations for porting `dimabot/src/utils` helpers. None is
+//! in `default` or in a deployed worker profile:
+//!
+//! - `email`: Resend delivery of rendered emails (`utils::email`).
+//! - `posthog`: PostHog capture and `$identify` (`utils::posthog`).
+//! - `qdrant`: the official gRPC Qdrant client (`utils::qdrant`).
+//! - `s3`: S3-compatible uploads/deletes (`utils::s3`).
+//! - `otel`: OpenTelemetry log export to PostHog (`utils::otel`).
+//! - `jwt`: Node-compatible email activation tokens (`utils::jwt`).
+//! - `re2-compat`: RE2-compatible user regexes on `regex` (`utils::re2_compat`).
+//! - `socketio`: socketioxide with socket.io's server defaults (`utils::socketio`).
+//! - `audio`: MP3/WAV durations for TTS playback (`utils::audio`).
 //!
 //! The default enables all four for existing manual/library consumers. Native
 //! cron builds use `--no-default-features --features mongo` to omit unrelated
@@ -50,6 +64,16 @@ pub mod workers;
 mod tls_feature_tests {
     #[test]
     fn tls_configuration_has_a_provider_without_other_database_features() {
+        // These features add aws-lc-rs as a second provider; the documented
+        // startup call selects ring again.
+        #[cfg(any(
+            feature = "email",
+            feature = "posthog",
+            feature = "s3",
+            feature = "otel"
+        ))]
+        crate::utils::install_default_tls_provider();
+
         // Redis uses this exact builder. It panics without a selectable crypto
         // provider; no connection, certificate, or network fixture is needed.
         let config = rustls::ClientConfig::builder()

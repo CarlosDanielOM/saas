@@ -100,6 +100,15 @@ static CLIENT: OnceCell<ConnectionManager> = OnceCell::const_new();
 pub async fn get_redis_client() -> RedisResult<ConnectionManager> {
     CLIENT
         .get_or_try_init(|| async {
+            // Only compiled when another feature adds a second rustls provider.
+            #[cfg(any(
+                feature = "email",
+                feature = "posthog",
+                feature = "s3",
+                feature = "otel"
+            ))]
+            crate::utils::install_default_tls_provider();
+
             let host = read_host()?;
             let port = read_port()?;
 
