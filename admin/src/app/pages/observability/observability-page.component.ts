@@ -16,7 +16,7 @@ import { environment } from '../../../environments/environment';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { AvatarComponent } from '../../shared/avatar/avatar.component';
 import { ObservabilityAccessComponent, type AccessGrant } from './observability-access.component';
-import { KIND_LABEL, SERVICE_LABEL, formatMs, isFailedOutcome } from './observability-format';
+import { KIND_LABEL, SERVICE_LABEL, formatMs, isFailedOutcome, telemetryDroppedReading } from './observability-format';
 import { ObservabilityTraceComponent, type Span } from './observability-trace.component';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { SkeletonComponent } from '../../shared/skeleton/skeleton.component';
@@ -414,9 +414,12 @@ export class ObservabilityPageComponent implements OnInit {
     for (const issue of infraIssues(infra && (sameRange ? infra : { ...infra, series: [] }), this.rangeLong())) {
       items.push({ tone: issue.tone, title: issue.title, text: issue.text, action: { label: issue.container ? 'Open container' : 'Open servers', tab: 'resources', container: issue.container } });
     }
-    const dropped = this.processes().reduce((sum, p) => sum + (p.dropped ?? 0), 0) + this.resourceIncrease('analytics', 'buffer_dropped_batches');
-    if (dropped > 0) {
-      items.push({ tone: 'warn', title: 'Some telemetry was dropped', text: 'A buffer was full or Dragonfly was unreachable, so totals here may be a little low.' });
+    const processDrops = this.processes().some((p) => (p.dropped ?? 0) > 0);
+    const collectorDrops = this.resourceIncrease('analytics', 'buffer_dropped_batches') > 0;
+    if (processDrops || collectorDrops) {
+      items.push({ tone: 'warn', title: 'Some telemetry was dropped', text: processDrops
+        ? `A process reports losses since startup. Its counter resets on restart; losses within this time range are unknown.${collectorDrops ? ' The collector also lost buffered batches.' : ''} Some totals may be low.`
+        : 'The analytics collector lost buffered batches, so totals here may be a little low.' });
     }
     return items;
   });
@@ -640,8 +643,7 @@ export class ObservabilityPageComponent implements OnInit {
       if (metric === 'heap_bytes') view.heap = row.lastValue;
       if (metric === 'cpu_cores') view.cpu = row.lastValue;
       if (metric === 'event_loop_p99_ms') view.lag = row.lastValue;
-      // Dropped counts add up over the range, so use the total rather than the last bucket.
-      if (metric === 'telemetry_dropped') view.dropped = (row.average ?? 0) * row.count;
+      if (metric === 'telemetry_dropped') view.dropped = telemetryDroppedReading(row);
       byKey.set(key, view);
     }
     for (const worker of REFRESH_WORKERS) {

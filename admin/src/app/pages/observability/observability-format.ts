@@ -41,3 +41,14 @@ export function formatMs(value: number | null | undefined): string {
 export function isFailedOutcome(outcome: string): boolean {
   return outcome === 'error' || outcome === 'aborted' || outcome === 'failed';
 }
+
+/**
+ * Producers sample a cumulative, process-lifetime counter. Overview.lastValue is
+ * the latest bucket's sum/count (with recent fine buckets preferred), already
+ * scoped to the requested range. Instance identity is lost at ingestion, so a
+ * window delta or an exact per-instance total cannot be reconstructed here.
+ * Preserve decreases after restarts and averages when instances share a bucket.
+ */
+export function telemetryDroppedReading(row: { lastValue: number }): number | null {
+  return Number.isFinite(row.lastValue) && row.lastValue >= 0 ? row.lastValue : null;
+}

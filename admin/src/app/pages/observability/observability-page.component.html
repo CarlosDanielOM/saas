@@ -638,7 +638,7 @@
               <div class="lf-tile__head obs-head">
                 <div>
                   <h2 class="lf-h2" id="obs-proc-title"><app-icon name="monitor" />Our processes</h2>
-                  <p class="lf-note">Latest reading from the API, bot and each worker.</p>
+                  <p class="lf-note">Latest reading in the selected range from the API, bot and each worker.</p>
                 </div>
               </div>
               @if (processes().length) {
@@ -648,7 +648,7 @@
                     <li class="obs-proc" [class.obs-proc--bad]="(proc.lag ?? 0) >= 200">
                       <div class="obs-proc__name">
                         <strong>{{ proc.label }}</strong>
-                        <span class="obs-op__meta">{{ serviceLabel(proc.service) }}@if (proc.dropped) { · <span class="obs-warn">{{ num(proc.dropped) }} telemetry dropped</span> }</span>
+                        <span class="obs-op__meta">{{ serviceLabel(proc.service) }}@if (proc.dropped !== null) { · <span [class.obs-warn]="proc.dropped > 0">Drop counter: {{ num(proc.dropped) }}</span> }</span>
                         <span class="obs-bar obs-bar--thin" aria-hidden="true"><span [style.width.%]="barWidth(proc.rss, processScale())"></span></span>
                       </div>
                       <div class="obs-op__num"><span class="obs-op__label">Memory</span>{{ bytes(proc.rss) }}</div>
@@ -677,6 +677,7 @@
                   }
                 </ul>
                 <p class="obs-fine obs-pad">CPU is the share of one core. "Stalls" is the 99th-percentile event-loop delay: above 200 ms, requests and chat in that process feel slow.</p>
+                <p class="obs-fine obs-pad">Drop counters show reported telemetry losses since process start and reset on restart. The time filter selects the latest available reading; it cannot show exactly how many records were lost during that period.</p>
               } @else {
                 <div class="lf-empty"><span>No process readings in this range.</span></div>
               }
