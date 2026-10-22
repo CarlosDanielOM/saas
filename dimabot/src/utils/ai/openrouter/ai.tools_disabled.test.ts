@@ -9,13 +9,14 @@ const cache = {
 };
 const getTwitchAccountById = mock.fn(async () => ({ id: 'test-channel', name: 'miyu', plan_tier: 'pro' }));
 const isAiCreditsExhausted = mock.fn(async (..._args: unknown[]) => false);
-const ingestPolarSHEvent = mock.fn((_event: unknown) => {});
+const getAiCredits = mock.fn(async (..._args: unknown[]) => ({ status: 'available' }));
+const ingestPolarSHEvent = mock.fn(async (_event: unknown) => ({ error: false }));
 const constructChatSystemMessages = mock.fn(() => [{ role: 'user', content: 'Roast my bad luck' }]);
 mock.module('../../databases/dragonfly.database.js', { namedExports: { getDragonflyClient: async () => cache } });
 mock.module('../../../classes/twitch_streamers.class.js', { defaultExport: { getTwitchAccountById } });
 mock.module('../../../schemas/channel_ai_personality.schema.js', { namedExports: { ChannelAIPersonalitySchema: {} } });
 mock.module('../../badges.js', { namedExports: { formatBadges: async () => ({ formattedBadges: '' }) } });
-mock.module('../../billing.js', { namedExports: { isAiCreditsExhausted } });
+mock.module('../../billing.js', { namedExports: { isAiCreditsExhausted, getAiCredits } });
 mock.module('../../polarsh.js', { namedExports: { ingestPolarSHEvent } });
 mock.module('../prompts.ai.js', { namedExports: { constructChatSystemMessages } });
 mock.module('../chat_context.js', { namedExports: { mergeChatHistories: () => [] } });
@@ -48,6 +49,8 @@ const options = { channelID: 'test-channel', streamer: { user_id: 'test-channel'
 test.beforeEach(() => {
     personality.enabled = true;
     usage = undefined;
+    getAiCredits.mock.mockImplementation(async () => ({ status: 'available' }));
+    ingestPolarSHEvent.mock.mockImplementation(async () => ({ error: false }));
     provider.mock.mockImplementation(providerResponse);
     isAiCreditsExhausted.mock.mockImplementation(async () => false);
 });
@@ -60,6 +63,7 @@ test.afterEach(() => {
     cache.expire.mock.resetCalls();
     getTwitchAccountById.mock.resetCalls();
     isAiCreditsExhausted.mock.resetCalls();
+    getAiCredits.mock.resetCalls();
     ingestPolarSHEvent.mock.resetCalls();
     constructChatSystemMessages.mock.resetCalls();
 });
@@ -231,4 +235,38 @@ test('direct replies stay blocked with tools disabled or when the message contai
     personality.enabled = false;
     assert.equal((await chat({ ...options, disableTools: true, message: '$(ai answer me)' })).error, true);
     assert.equal(provider.mock.callCount(), 0);
+});
+
+
+test('pet standalone requires verified credits and stable pet usage, without tools or default-path changes', async context => {
+    context.mock.method(globalThis, 'fetch', async (input: string | URL | Request, init?: RequestInit) => provider(String(input), init!));
+    assistantMessage = { role: 'assistant', content: 'A safe pet reply' };
+    usage = { total_tokens: 30, cost_details: { upstream_inference_prompt_cost: 0.01 } };
+    const signal = new AbortController().signal;
+    const result = await generateStandaloneText({ ...options.streamer, polar_sh_customer_id: 'dummy-customer' }, roastMessages, 'pet_ask', {
+        verifyCredits: true, usageRequestId: 'request-a:llm', usageSource: 'pet', singleAttempt: true, signal
+    });
+    assert.equal(result.error, false);
+    assert.deepEqual(getAiCredits.mock.calls[0].arguments[2], { requireVerified: true, signal });
+    const event = ingestPolarSHEvent.mock.calls[0].arguments[0] as { externalId: string; usage: { requestId: string; source: string } };
+    assert.equal(event.externalId, 'request-a:llm');
+    assert.equal(event.usage.requestId, 'request-a:llm'); assert.equal(event.usage.source, 'pet');
+    assert.equal(executeTool.mock.callCount(), 0);
+    assert.deepEqual(JSON.parse(String(provider.mock.calls[0].arguments[1].body)).tools, []);
+});
+test('pet standalone uses exhausted model for unverified credits and preserves missing customer policy', async () => {
+    assistantMessage = { role: 'assistant', content: 'A safe fallback reply' };
+    getAiCredits.mock.mockImplementation(async () => ({ status: 'unavailable' }));
+    assert.equal((await generateStandaloneText({ user_id: 'test-channel' }, roastMessages, 'pet_ask', { verifyCredits: true })).error, false);
+    assert.deepEqual(getAiCredits.mock.calls[0].arguments[0], { plan_tier: 'free', polar_sh_customer_id: '' });
+    assert.equal(JSON.parse(String(provider.mock.calls[0].arguments[1].body)).model, MODELS.exhausted);
+});
+test('pet durable usage failure ends generation while normal standalone keeps asynchronous ingest behavior', async () => {
+    assistantMessage = { role: 'assistant', content: 'A reply' };
+    usage = { total_tokens: 1 };
+    ingestPolarSHEvent.mock.mockImplementation(async () => ({ error: true }));
+    const account = { ...options.streamer, polar_sh_customer_id: 'dummy-customer' };
+    assert.equal((await generateStandaloneText(account, roastMessages, 'pet_ask', { usageRequestId: 'request-fail:llm', usageSource: 'pet' })).error, true);
+    assert.equal((await generateStandaloneText(account, roastMessages, 'ordinary')).error, false);
+    assert.equal(getAiCredits.mock.callCount(), 0, 'ordinary standalone does not add verified-credit I/O');
 });

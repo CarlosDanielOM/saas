@@ -57,6 +57,7 @@ for (const provider of ['fish', 'piper', 'kokoro']) {
     ...(provider === 'piper' ? { PIPER_PUBLIC_SPEECH_DIR: '/tmp/tts-test' } : {}),
   } });
 }
+mock.module('../utils/posthog_events.js', { namedExports: { trackAiOperation: () => {} } });
 const { ttsQueueHandler } = await import('./tts_queue.handler.js');
 
 test('queued Fish requests recheck credits and use Piper when exhausted or unavailable', async () => {
