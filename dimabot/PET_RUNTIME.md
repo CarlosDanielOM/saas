@@ -1,6 +1,23 @@
 # Shared pet runtime (DIMA-030)
 
-Status: final generated-metadata API candidate verified in isolation, including the existing strict runtime fixture. The parent accepted actual API/Rust coordinator/private-WAV/fake-output interoperability on the preceding byte-identical runtime. Not deployed or milestone accepted; cron scheduling, release coordination and real hardware/platform acceptance remain separate work. This is the backend contract for the approved PNG/VTS pet slice. Backend runtime alone does not complete the milestone: command/EventSub AST tags, website renderer and desktop Socket.IO integration need their own integration/acceptance. No microphone, universal plugin system, additional service or Rust server migration is introduced.
+Status: the shared PNG/VTS pet implementation is deployed across API, cron, bot and website. The parent promoted the exact accepted artifacts through `saas-ops` on 2026-10-22 at 23:02–23:05 UTC. Isolated runtime, producer and API/Rust acceptance remains valid; production account/provider playback, real audio/VTS hardware and platform acceptance remain limited as described below. No microphone, universal plugin system, additional service or Rust server migration is introduced.
+
+## Current deployment (2026-10-22)
+
+| Service | Deployed run | Exact artifact SHA-256 |
+| --- | --- | --- |
+| API | `api-cadd5748cb9c` | image `09beb3a509cb3ed8fb4bb60643f405bbb42fc2fe7d7ac0290a53594918031ee1` |
+| Cron | `cron-ea507552f33d` | image `46706ffeb3c55bfcaf67964675d3fc6404dc965a52b55009c787f1a8b1c328c5` |
+| Bot | `bot-d3f31c3ea2b9` | image `9e3be00a7f82221f149cb2f2daaae806e666d4e78112e390de4ea1bb976c5e41` |
+| Website | `site-d67dd0f4094a` | bundle `3b18c6da664258323e3af84bf332ab21b0dc143e42c1b09096f75bdacb3763d9` |
+
+API rollback is `scripts/saas-ops rollback api-cadd5748cb9c`, with prior image `sha256:e35327bf7532b8b33d955ac5466062cbed28315dcb9f5077c86d8221e5b854c1` retained by the helper. All four receipts are `deployed` with `resources: []`; parent cleanup completed at 23:07:27 UTC, preserving rollback artifacts. Superseded `api-ae3fc72dfb9f` and `api-0031d7119456` images were cleaned through the helper without removing a serving container; their logs/receipts remain.
+
+Parent production evidence checked at 23:06:12 UTC records public `/oauth/metadata` HTTP 200 with seven active scopes and `socket_io: {path:'/socket.io/',namespace:'/desktop',protocol_version:1}`, anonymous identity HTTP 401, and a synthetic public pet-page HEAD HTTP 200. Existing API/site routing, URI-preserving reverse proxy and WebSocket upgrade handling remain in place. Native `/v1/desktop/ws` heartbeat/advertisement remains during the coordinated migration; the pet client does not fall back to it.
+
+The parent's startup inspection found zero restarts and no fatal startup diagnostics in the last 500 log lines for all four services. The production cron index supervised seven native children at UID 65534, with all eight binary hashes matching its receipt. These are startup/snapshot observations. Public checks were anonymous and unpaid: no production account, paid provider or hardware playback was exercised, and a synthetic page HEAD does not establish capability validity, private-media delivery or browser autoplay. The desktop remains the same local debug instance, PID `1129545`, not a distributable release.
+
+Source: [production-release.json](/root/projects/dima_app/target/pet-coordination/production-release.json) and selected private receipt metadata. The evidence and verification commands below preserve earlier candidate history, including then-current `verified` statuses and temporary image retention. Use a fresh candidate for future verification; deployed or cleaned receipts are not reusable candidate checks.
 
 The existing TypeScript API owns processing and Socket.IO. Bot/cron may import `src/pets/admission.ts` and call `admitPetAction`; importing it starts no runtime, subscriber, provider or interval. Only API `registerPetSockets` starts the runtime. Current production has one API process; Mongo compare-and-set fences requests/leases if another executor appears, but distributing socket delivery across API replicas is outside this implementation.
 
