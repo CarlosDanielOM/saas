@@ -549,6 +549,53 @@ class OpsTests(unittest.TestCase):
                 with self.assertRaisesRegex(mod.OpsError, "4 or 6 GiB"):
                     self.ops.build_rust(self.path, {**self.receipt, "rust_memory_gib": value})
 
+    def test_lower_cpu_caps_change_only_cpu_creation_argument(self):
+        cache = {"cargo": "/private/cargo", "target": "/private/target"}
+        for memory_gib in (4, 6):
+            receipt = {**self.receipt, "rust_memory_gib": memory_gib}
+            legacy = self.ops.rust_container_args(self.path, receipt, NEW, cache)
+            self.assertIn("--cpus=6", legacy)
+            for cpus in range(1, 7):
+                with self.subTest(cpus=cpus, memory_gib=memory_gib):
+                    args = self.ops.rust_container_args(self.path, {**receipt, "rust_cpus": cpus}, NEW, cache)
+                    self.assertEqual(args, [f"--cpus={cpus}" if arg == "--cpus=6" else arg for arg in legacy])
+
+    def test_invalid_cpu_caps_are_rejected_before_side_effects_in_api_and_receipts(self):
+        for value in (0, -1, 7, 100, True, False, 3.0, 6.0, "3", "6", None):
+            with self.subTest(value=value), patch.object(self.ops, "baseline") as baseline, \
+                 patch.object(self.ops, "docker") as docker, patch.object(self.ops, "rust_build_lock") as lock:
+                if value is not None:  # None in the build API means use the default.
+                    with self.assertRaisesRegex(mod.OpsError, "CPUs must be an integer from 1 to 6"):
+                        self.ops.build("cron", rust_cpus=value)
+                receipt = {**self.receipt, "rust_cpus": value}
+                with self.assertRaisesRegex(mod.OpsError, "CPUs must be an integer from 1 to 6"):
+                    self.ops.rust_container_args(self.path, receipt, NEW, {})
+                with self.assertRaisesRegex(mod.OpsError, "CPUs must be an integer from 1 to 6"):
+                    self.ops.build_rust(self.path, receipt)
+                with self.assertRaisesRegex(mod.OpsError, "CPUs must be an integer from 1 to 6"):
+                    self.ops.verify_rust_limits({}, receipt)
+                baseline.assert_not_called()
+                docker.assert_not_called()
+                lock.assert_not_called()
+
+    def test_selected_cpu_verification_retains_memory_swap_and_pid_guards(self):
+        for cpus in range(1, 7):
+            for memory_gib in (4, 6):
+                receipt = {**self.receipt, "rust_cpus": cpus, "rust_memory_gib": memory_gib}
+                limits = {"NanoCpus": cpus * 1_000_000_000, "Memory": memory_gib * mod.GIB,
+                          "MemorySwap": memory_gib * mod.GIB, "PidsLimit": 256}
+                self.ops.verify_rust_limits({"HostConfig": limits}, receipt)
+                for field, value in (("NanoCpus", (cpus + 1) * 1_000_000_000), ("NanoCpus", 0),
+                                     ("Memory", 0), ("MemorySwap", -1), ("PidsLimit", 512)):
+                    with self.subTest(cpus=cpus, memory_gib=memory_gib, field=field, value=value), \
+                         self.assertRaisesRegex(mod.OpsError, "cgroup limits"):
+                        self.ops.verify_rust_limits({"HostConfig": {**limits, field: value}}, receipt)
+        legacy_limits = {"NanoCpus": 6_000_000_000, "Memory": 6 * mod.GIB,
+                         "MemorySwap": 6 * mod.GIB, "PidsLimit": 256}
+        self.ops.verify_rust_limits({"HostConfig": legacy_limits}, self.receipt)
+        with self.assertRaisesRegex(mod.OpsError, "cgroup limits"):
+            self.ops.verify_rust_limits({"HostConfig": {**legacy_limits, "NanoCpus": 3_000_000_000}}, self.receipt)
+
     def test_rust_release_cache_hygiene_runs_before_recipe_and_fails_closed(self):
         # Execute only tiny mocked commands: no host Cargo/toolchain is invoked.
         commands = self.root.parent / "fake-toolchain"
@@ -859,10 +906,10 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
             engine.assert_not_called()
         with patch.object(mod, "Ops") as engine:
             mod.main(["build", "cron", "--rust-feature-matrix"])
-            engine.return_value.build.assert_called_once_with("cron", None, rust_feature_matrix=True, rust_memory_gib=None)
+            engine.return_value.build.assert_called_once_with("cron", None, rust_feature_matrix=True, rust_memory_gib=None, rust_cpus=None)
         with patch.object(mod, "Ops") as engine:
             mod.main(["build", "cron"])
-            engine.return_value.build.assert_called_once_with("cron", None, rust_feature_matrix=False, rust_memory_gib=None)
+            engine.return_value.build.assert_called_once_with("cron", None, rust_feature_matrix=False, rust_memory_gib=None, rust_cpus=None)
 
     def test_rust_memory_option_is_explicit_validated_and_only_available_for_cron(self):
         for target in mod.TARGETS:
@@ -882,22 +929,72 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
         for memory_gib in (4, 6):
             with patch.object(mod, "Ops") as engine:
                 mod.main(["build", "cron", "--rust-memory-gib", str(memory_gib)])
-                engine.return_value.build.assert_called_once_with("cron", None, rust_feature_matrix=False, rust_memory_gib=memory_gib)
+                engine.return_value.build.assert_called_once_with("cron", None, rust_feature_matrix=False, rust_memory_gib=memory_gib, rust_cpus=None)
 
-    def test_cron_build_persists_memory_option_before_compiling(self):
+    def test_rust_cpu_option_is_explicit_validated_and_cron_only(self):
+        for target in mod.TARGETS:
+            if target == "cron":
+                continue
+            for cpus in (1, 3, 6):
+                with contextlib.redirect_stderr(io.StringIO()), patch.object(mod, "Ops") as engine, self.assertRaises(SystemExit):
+                    mod.main(["build", target, "--rust-cpus", str(cpus)])
+                engine.assert_not_called()
+                with patch.object(self.ops, "baseline") as baseline, self.assertRaisesRegex(mod.OpsError, "only supported for cron"):
+                    self.ops.build(target, rust_cpus=cpus)
+                baseline.assert_not_called()
+        for value in ("0", "-1", "7", "100", "3.0", "true", ""):
+            with contextlib.redirect_stderr(io.StringIO()), patch.object(mod, "Ops") as engine, self.assertRaises(SystemExit):
+                mod.main(["build", "cron", "--rust-cpus", value])
+            engine.assert_not_called()
+        for cpus in range(1, 7):
+            with patch.object(mod, "Ops") as engine:
+                mod.main(["build", "cron", "--rust-cpus", str(cpus), "--rust-memory-gib", "4"])
+                engine.return_value.build.assert_called_once_with("cron", None, rust_feature_matrix=False,
+                                                                 rust_memory_gib=4, rust_cpus=cpus)
+        for command in (["plan", "cron"], ["preview", "site"], ["status", RUN]):
+            with contextlib.redirect_stderr(io.StringIO()), patch.object(mod, "Ops") as engine, self.assertRaises(SystemExit):
+                mod.main([*command, "--rust-cpus", "3"])
+            engine.assert_not_called()
+
+    def test_default_api_dispatch_has_no_cron_cpu_override(self):
+        with patch.object(mod, "Ops") as engine:
+            mod.main(["build", "api"])
+            engine.return_value.build.assert_called_once_with("api", None, rust_feature_matrix=False,
+                                                             rust_memory_gib=None, rust_cpus=None)
+
+    def test_default_api_build_does_not_enter_rust_path_or_record_rust_caps(self):
+        def snapshot(target, destination, source_dir):
+            destination.mkdir()
+        with patch.object(self.ops, "baseline", return_value=(self.ops.current, {}, "hash", "digest")), \
+             patch.object(self.ops, "snapshot", side_effect=snapshot), patch.object(self.ops, "build_rust") as compile_rust, \
+             patch.object(self.ops, "inspect", return_value={"Id": NEW}), contextlib.redirect_stdout(io.StringIO()):
+            self.ops.build("api")
+        compile_rust.assert_not_called()
+        receipts = list(self.ops.state.glob("api-*/receipt.json"))
+        self.assertEqual(len(receipts), 1)
+        receipt = json.loads(receipts[0].read_text())
+        self.assertEqual(receipt["status"], "built")
+        self.assertNotIn("rust_cpus", receipt)
+        self.assertNotIn("rust_memory_gib", receipt)
+        self.assertEqual([call[0] for call in self.ops.calls], ["build"])
+
+    def test_cron_build_persists_resource_options_before_compiling(self):
         def snapshot(target, destination, source_dir):
             destination.mkdir()
         def compile_rust(path, receipt, source_dir, **kwargs):
             self.assertEqual(receipt["rust_memory_gib"], 4)
+            self.assertEqual(receipt["rust_cpus"], 3)
             self.assertEqual(json.loads((path / "receipt.json").read_text())["rust_memory_gib"], 4)
+            self.assertEqual(json.loads((path / "receipt.json").read_text())["rust_cpus"], 3)
         with patch.object(self.ops, "baseline", return_value=(self.ops.current, {}, "hash", "digest")), \
              patch.object(self.ops, "snapshot", side_effect=snapshot), \
              patch.object(self.ops, "build_rust", side_effect=compile_rust), \
              patch.object(self.ops, "inspect", return_value={"Id": NEW}), contextlib.redirect_stdout(io.StringIO()):
-            self.ops.build("cron", rust_memory_gib=4)
+            self.ops.build("cron", rust_memory_gib=4, rust_cpus=3)
         receipts = list(self.ops.state.glob("cron-*/receipt.json"))
         self.assertEqual(len(receipts), 1)
         self.assertEqual(json.loads(receipts[0].read_text())["rust_memory_gib"], 4)
+        self.assertEqual(json.loads(receipts[0].read_text())["rust_cpus"], 3)
 
     def test_cron_plan_exposes_worker_features_cache_caps_and_optional_matrix_without_writes(self):
         output = io.StringIO()
@@ -925,6 +1022,7 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
         self.assertEqual(details["profile_env"], {"CARGO_PROFILE_DEV_DEBUG": "0",
                                                   "CARGO_PROFILE_TEST_DEBUG": "0", "CARGO_INCREMENTAL": "0"})
         self.assertEqual(details["optional_lower_memory"], "build cron --rust-memory-gib 4")
+        self.assertEqual(details["optional_lower_cpus"], "build cron --rust-cpus 3")
         self.assertEqual(details["optional_feature_matrix"], "build cron --rust-feature-matrix")
 
     def test_rust_build_refuses_orphaned_compiler_before_copying_source(self):
@@ -977,7 +1075,7 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
                              roulette_artifact="valid", receipts_artifact="valid", sessions_artifact="valid",
                              dashboard_artifact="valid", supervisor_artifact="valid",
                              mongo_extra="", baseline_extra="", dashboard_extra="", supervisor_extra="",
-                             supervisor_graph="valid", cache_bytes=0, memory_gib=6):
+                             supervisor_graph="valid", cache_bytes=0, memory_gib=6, cpus=6):
         self.rust_source()
         (self.path / "source").mkdir()
         self.ops.objects[("image", mod.RUST_BUILD_IMAGE)] = {"Id": NEW}
@@ -987,7 +1085,7 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
             if args[0] == "create":
                 self.ops.objects[("container", name)] = {
                     "Id": "compiler-id", "Config": {"Labels": self.labels()},
-                    "HostConfig": {"NanoCpus": 6_000_000_000, "Memory": memory_gib * mod.GIB,
+                    "HostConfig": {"NanoCpus": cpus * 1_000_000_000, "Memory": memory_gib * mod.GIB,
                                    "MemorySwap": memory_gib * mod.GIB, "PidsLimit": 256, **(applied_limits or {})},
                     "State": {"Running": False, "ExitCode": exit_code}}
             elif args[0] == "start":
@@ -1079,9 +1177,10 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
                 self.assertEqual(self.receipt["resources"], [])
                 self.assertNotIn(("container", "saas-ops-" + RUN + "-rust-build"), self.ops.objects)
 
-    def test_lower_memory_build_uses_receipt_limit_for_start_monitor_and_cgroups(self):
+    def test_lower_resource_build_uses_receipt_limits_for_start_monitor_and_cgroups(self):
+        self.receipt["rust_cpus"] = 3
         self.receipt["rust_memory_gib"] = 4
-        simulation = self.simulated_rust_build(memory_gib=4)
+        simulation = self.simulated_rust_build(memory_gib=4, cpus=3)
         original_inspect = self.ops.inspect
         compiler_inspections = 0
         def inspect(kind, name, missing=False):
@@ -1092,18 +1191,62 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
                 # The first inspection checks caps; the next simulates running.
                 obj["State"]["Running"] = compiler_inspections == 2
             return obj
-        with simulation, patch.object(self.ops, "inspect", side_effect=inspect), \
+        output = io.StringIO()
+        with simulation, patch.object(self.ops, "inspect", side_effect=inspect), contextlib.redirect_stdout(output), \
+             patch.object(self.ops, "verify_rust_limits", wraps=self.ops.verify_rust_limits) as verify_limits, \
              patch.object(self.ops, "rust_headroom", return_value={"mem_available_bytes": 8 * mod.GIB}) as headroom, \
              patch.object(mod.time, "sleep"), patch.object(Path, "home", return_value=self.root.parent):
             self.ops.build_rust(self.path, self.receipt)
         self.assertEqual([call.kwargs for call in headroom.call_args_list],
                          [{"starting": True, "memory_gib": 4}, {"starting": True, "memory_gib": 4}, {"memory_gib": 4}])
         create = next(call for call in self.ops.calls if call[0] == "create")
+        self.assertIn("--cpus=3", create)
         self.assertIn("--memory=4g", create)
         self.assertIn("--memory-swap=4g", create)
         self.assertEqual(self.saved()["rust_memory_gib"], 4)
+        self.assertEqual(self.saved()["rust_cpus"], 3)
+        self.assertEqual(verify_limits.call_count, 3)  # Before start, while running, and on completion.
+        self.assertIn("3 CPUs/4 GiB", output.getvalue())
         self.assertTrue((self.path / "source/.saas-native/stream_activity").is_file())
         self.assertEqual(self.receipt["resources"], [])
+
+    def test_lower_cpu_build_refuses_default_cpu_cgroups_before_start(self):
+        self.receipt["rust_cpus"] = 3
+        simulation = self.simulated_rust_build()
+        with simulation, patch.object(self.ops, "rust_headroom", return_value={}), \
+             patch.object(Path, "home", return_value=self.root.parent), \
+             self.assertRaisesRegex(mod.OpsError, "cgroup limits"):
+            self.ops.build_rust(self.path, self.receipt)
+        self.assertFalse(any(call[0] == "start" for call in self.ops.calls))
+        self.assertFalse((self.path / "source/.saas-native").exists())
+        self.assertEqual(self.receipt["resources"], [])
+
+    def test_cpu_drift_while_running_or_on_exit_refuses_artifacts_and_cleans_compiler(self):
+        for running in (True, False):
+            with self.subTest(running=running):
+                for directory in (self.root / "dima-rust", self.path / "source", self.path / "rust-source",
+                                  self.path / "rust-artifacts"):
+                    if directory.exists():
+                        mod.shutil.rmtree(directory)
+                self.ops.calls.clear()
+                self.receipt["rust_cpus"] = 3
+                simulation = self.simulated_rust_build(cpus=3)
+                original_inspect = self.ops.inspect
+                def inspect(kind, name, missing=False):
+                    obj = original_inspect(kind, name, missing)
+                    if kind == "container" and obj and any(call[0] == "start" for call in self.ops.calls):
+                        obj["State"]["Running"] = running
+                        obj["HostConfig"]["NanoCpus"] = 6_000_000_000
+                    return obj
+                with simulation, patch.object(self.ops, "inspect", side_effect=inspect), \
+                     patch.object(self.ops, "rust_headroom", return_value={}), \
+                     patch.object(Path, "home", return_value=self.root.parent), \
+                     self.assertRaisesRegex(mod.OpsError, "cgroup limits"):
+                    self.ops.build_rust(self.path, self.receipt)
+                self.assertTrue(any(call[0] == "start" for call in self.ops.calls))
+                self.assertFalse((self.path / "source/.saas-native").exists())
+                self.assertEqual(self.receipt["resources"], [])
+                self.assertNotIn(("container", "saas-ops-" + RUN + "-rust-build"), self.ops.objects)
 
     def test_lower_memory_build_refuses_default_cgroups_before_start(self):
         self.receipt["rust_memory_gib"] = 4
@@ -1123,6 +1266,7 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
             self.ops.build_rust(self.path, self.receipt)
         self.assertEqual(self.receipt["rust_toolchain_image"], NEW)
         self.assertEqual(self.saved()["rust_memory_gib"], 6)
+        self.assertEqual(self.saved()["rust_cpus"], 6)
         self.assertEqual(self.receipt["rust_source_digest"], mod.tree_hash(self.path / "rust-source"))
         self.assertEqual(self.receipt["rust_binary_digest"], mod.digest(b"\x7fELFfixture"))
         self.assertEqual(self.receipt["rust_worker_dependencies_digest"], mod.digest(b"dima-rust v0.1.0\nmongodb v3.9.1\n"))
