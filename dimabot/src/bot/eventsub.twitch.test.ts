@@ -268,3 +268,49 @@ test('unjournaled redemption/chat/ad/ban notifications keep immediate unflagged 
     }
     assert.equal(handled.length, 4);
 });
+
+test('only signed genuine chat ingress supplies opaque effects using Twitch message identity and timestamp', async (context) => {
+    process.env.TWITCH_EVENTSUB_SECRET = SECRET;
+    process.env.SECRET_KEY = 'eventsub-test-encryption-key';
+    const { createTwitchEventsubApp } = await import('./eventsub.twitch.js');
+    const { scopeAstEffectContext, nextPetAction } = await import('../utils/ast_parser/effects.js');
+    const effects: unknown[] = [];
+    const server = createTwitchEventsubApp({
+        async journalEvent() { assert.fail('Chat is not journaled by this adapter'); },
+        async handleEvent(_subscription, _event, options) {
+            effects.push(nextPetAction(scopeAstEffectContext(options?.chatEffectContext, '12345', 'command:fixture'), '12345'));
+        }
+    }).listen(0);
+    await new Promise<void>(resolve => server.once('listening', resolve));
+    context.after(() => new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve())));
+    const body = JSON.stringify({ subscription: { type: 'channel.chat.message' }, event: {
+        broadcaster_user_id: '12345', message_id: 'real-chat-message', chatter_user_id: '42', chatter_user_name: 'Viewer',
+        // Spoofable fields do not choose the effect key or authority.
+        origin: { id: 'injected' }, actionKey: 'injected', badges: [{ set_id: 'broadcaster' }]
+    } });
+    const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/eventsub`;
+    const timestamp = new Date().toISOString();
+    assert.equal((await fetch(url, { method: 'POST', headers: signedHeaders(body, {
+        messageTimestamp: timestamp, messageId: 'delivery-id', signature: 'sha256=invalid'
+    }), body })).status, 403);
+    assert.equal(effects.length, 0);
+    assert.equal((await fetch(url, { method: 'POST', headers: signedHeaders(body, {
+        messageTimestamp: new Date(Date.now() - 20 * 60_000).toISOString(), messageId: 'stale-delivery'
+    }), body })).status, 403);
+    assert.equal(effects.length, 0, 'stale signed chat never reaches the handler/authority mint');
+    assert.equal((await fetch(url, { method: 'POST', headers: signedHeaders(body, {
+        messageTimestamp: timestamp, messageId: 'delivery-id'
+    }), body })).status, 204);
+    assert.equal(effects.length, 1);
+    assert.deepEqual((effects[0] as { origin: unknown }).origin, {
+        kind: 'chat-command', id: 'real-chat-message', occurredAt: timestamp
+    });
+    assert.deepEqual((effects[0] as { actor: unknown }).actor, { userId: '42', displayName: 'Viewer' });
+    assert.notEqual((effects[0] as { actionKey: string }).actionKey, 'injected');
+    // The mock claim admits a duplicate, exercising the identity when ingress dedupe loses a race.
+    assert.equal((await fetch(url, { method: 'POST', headers: signedHeaders(body, {
+        messageTimestamp: timestamp, messageId: 'delivery-id'
+    }), body })).status, 204);
+    assert.equal(effects.length, 2);
+    assert.deepEqual(effects[1], effects[0], 'canonical timestamp and full identity are stable across signed retry');
+});

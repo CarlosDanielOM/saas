@@ -45,6 +45,7 @@ import { endMessageHandlerMetric, recordRedisOpsEstimate, startMessageHandlerMet
 import { trackCommand } from "../utils/posthog_events.js";
 import { splitAiResponseForTwitch, removeAiReplyRecipientTag } from "../utils/twitch/chat_message_chunks.js";
 import { parseTimerFrequencyInput } from "../utils/timer_policy.js";
+import type { AstEffectContext } from '../utils/ast_parser/effects.js';
 
 const modID = '698614112';
 const CHANNEL_INSTANCES = new Map<string, COOLDOWN>();
@@ -52,7 +53,7 @@ const CHANNEL_INSTANCES = new Map<string, COOLDOWN>();
 let isMod = false;
 let tries = 0;
 
-export const messageHandler = async (channelID: string, messageEventData: IChatMessage) => traced('chat', 'message', async () => {
+export const messageHandler = async (channelID: string, messageEventData: IChatMessage, effectContext?: AstEffectContext) => traced('chat', 'message', async () => {
     const receivedAt = Date.now();
     const metricTracker = startMessageHandlerMetric();
     let messageHandlerFailed = false;
@@ -107,7 +108,7 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
             return;
         }
 
-        await traced('chat_stage', 'keywords', () => handleKeywords(channelID, messageEventData, identity)).catch(async error => {
+        await traced('chat_stage', 'keywords', () => handleKeywords(channelID, messageEventData, identity, effectContext)).catch(async error => {
             await logError({ function: 'messageHandler.keywords', channelID,
                 error: error instanceof Error ? error.message : String(error) }, { channelId: channelID, destination: 'both' });
         });
@@ -747,7 +748,7 @@ export const messageHandler = async (channelID: string, messageEventData: IChatM
                 const cmdResult = await commandHandler(channelID, messageEventData, command, argument, {
                     origin: 'chat',
                     identity
-                });
+                }, undefined, effectContext);
                 commandFailed = cmdResult.error;
                 if (!cmdResult.error) {
                     res = { error: false, message: cmdResult.message, commandReferences: cmdResult.commandReferences };

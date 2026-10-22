@@ -17,6 +17,7 @@ import { registerChatFunctions } from './chat.functions.js';
 import { registerDefenseFunctions } from './defense.functions.js';
 import { registerPinFunctions } from './pin.functions.js';
 import { registerStringFunctions } from './string.functions.js';
+import { registerPetFunctions } from './pet.functions.js';
 
 let registered = false;
 
@@ -37,6 +38,7 @@ export function registerAllFunctions(): void {
     registerFollowageFunctions();
     registerEventsubFunctions();
     registerTtsFunctions();
+    registerPetFunctions();
     registerTriggerFunctions();
     registerDelayFunctions();
     registerChatFunctions();

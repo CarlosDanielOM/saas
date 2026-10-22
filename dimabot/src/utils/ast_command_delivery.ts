@@ -15,7 +15,7 @@ const defaultDependencies: DeliveryDependencies = {
     execute: async request => {
         const { commandHandler } = await import('../handlers/commands.handler.js');
         return commandHandler(request.channelID, request.eventData, request.commandName,
-            request.argument, request.authorization, request.state);
+            request.argument, request.authorization, request.state, request.effectContext);
     }
 };
 

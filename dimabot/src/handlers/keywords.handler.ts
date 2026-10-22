@@ -5,8 +5,9 @@ import { getKeywordBody, keywordIndexCache } from '../utils/keyword_cache.js';
 import { keywordMatches, matchKeywords, normalizeKeyword } from '../utils/keywords.js';
 import { executeCustomCommand } from './commands.handler.js';
 import { deliverAstMessage } from '../utils/ast_command_delivery.js';
+import type { AstEffectContext } from '../utils/ast_parser/effects.js';
 
-export async function handleKeywords(channelID: string, event: IChatMessage, identity: UserIdentity): Promise<void> {
+export async function handleKeywords(channelID: string, event: IChatMessage, identity: UserIdentity, effectContext?: AstEffectContext): Promise<void> {
     if (event.chatter_user_id === TWITCH_BOT_ACCOUNT_ID) return;
     const index = await keywordIndexCache.get(channelID);
     const matches = matchKeywords(index, event.message.text);
@@ -17,7 +18,7 @@ export async function handleKeywords(channelID: string, event: IChatMessage, ide
         })) continue;
         // The complete message is the keyword's argument; caller/event context stays intact.
         const result = await executeCustomCommand(channelID, event, keyword, keyword.cmd, event.message.text,
-            { origin: 'chat', identity });
+            { origin: 'chat', identity }, undefined, effectContext);
         if (!result.error) await deliverAstMessage(channelID, {
             parsedText: result.message, commandReferences: result.commandReferences
         });

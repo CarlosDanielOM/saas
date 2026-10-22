@@ -39,16 +39,18 @@ export async function evaluateTimer(
     if ((context.timerDepth ?? 0) >= MAX_TIMER_DEPTH) return fail('maximum nested timer depth reached');
     if (!context.broadcasterId || context.platform !== 'twitch') return fail('requires a Twitch channel');
 
-    const duration = await evaluate(node.args[0], context);
+    // Timers never carry live event-effect authority, including their duration expression.
+    const duration = await evaluate(node.args[0], { ...context, effectContext: undefined });
+    const resumedContext = { ...duration.context, effectContext: context.effectContext };
     const seconds = Number(duration.value);
     if (!Number.isFinite(seconds) || seconds < 1 || seconds > MAX_TIMER_SECONDS) {
-        return fail(`seconds must be between 1 and ${MAX_TIMER_SECONDS}`, duration.context);
+        return fail(`seconds must be between 1 and ${MAX_TIMER_SECONDS}`, resumedContext);
     }
     try {
         await schedule(seconds, { type: 'root', children: node.args.slice(1) }, duration.context);
-        return { value: '', context: duration.context };
+        return { value: '', context: resumedContext };
     } catch (error) {
         console.error('AST timer scheduling failed', { channelID: context.broadcasterId, error });
-        return fail('could not schedule timer', duration.context);
+        return fail('could not schedule timer', resumedContext);
     }
 }

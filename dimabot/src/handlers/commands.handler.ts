@@ -9,6 +9,7 @@ import { getMinimumCommandCooldown } from '../utils/command_cooldown.js';
 import { saveKeywordCount } from '../utils/keyword_cache.js';
 import { parseSpecialCommands } from './special_parser.handler.js';
 import { BROADCASTER_USER_LEVEL, commandAllowed, type UserIdentity } from '../utils/permissions/index.js';
+import { scopeAstEffectContext, type AstEffectContext } from '../utils/ast_parser/effects.js';
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -93,7 +94,8 @@ async function commandHandler(
     command: string,
     argument?: string,
     authorization?: CommandExecutionAuthorization,
-    referenceState?: CommandReferenceState
+    referenceState?: CommandReferenceState,
+    effectContext?: AstEffectContext
 ): Promise<ICommandResponse> {
     const cmdDB = await Commands.getCommandFromDB(channelID, command);
 
@@ -106,7 +108,7 @@ async function commandHandler(
         };
     }
 
-    return traced('command_body', cmdDB.command.cmd || 'custom', () => executeCustomCommand(channelID, messageEventData, cmdDB.command!, command, argument, authorization, referenceState), channelID);
+    return traced('command_body', cmdDB.command.cmd || 'custom', () => executeCustomCommand(channelID, messageEventData, cmdDB.command!, command, argument, authorization, referenceState, effectContext), channelID);
 }
 
 /** Shared authored AST execution; activation matching belongs to the caller. */
@@ -117,7 +119,8 @@ export async function executeCustomCommand(
     command: string,
     argument?: string,
     authorization?: CommandExecutionAuthorization,
-    referenceState?: CommandReferenceState
+    referenceState?: CommandReferenceState,
+    effectContext?: AstEffectContext
 ): Promise<ICommandResponse> {
     const isKeyword = storedCommand.activation === 'keyword';
     const executionName = isKeyword ? `keyword:${storedCommand._id}` : command.toLowerCase();
@@ -184,6 +187,8 @@ export async function executeCustomCommand(
     // an identity inferred from the (possibly synthetic) event badges.
     const specialRes = await parseSpecialCommands(commandData.message, {
         channelID,
+        effectContext: authorization?.origin !== 'llm'
+            ? scopeAstEffectContext(effectContext, channelID, `command:${storedCommand._id || executionName}`) : undefined,
         commandReferenceState: state,
         scopeType: 'command',
         scopeName: isKeyword ? executionName : commandData.cmd || command,

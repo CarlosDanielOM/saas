@@ -11,6 +11,7 @@ import {
 import { journalDomainEvent } from '../utils/domain_events.js';
 import { DOMAIN_EVENT_PRODUCERS, ingestDomainEvent } from '../domain_events/domain_event_producers.js';
 import type { DomainEventOwnerResolver } from '../domain_events/domain_event.types.js';
+import { createTwitchEffectContext } from '../utils/ast_parser/effects.js';
 
 const EVENTSUB_MESSAGE_DEDUPE_TTL_SECONDS = Math.max(300, Number(process.env.TWITCH_EVENTSUB_MESSAGE_TTL_SECONDS || 600));
 const EVENTSUB_MESSAGE_MAX_AGE_MS = Math.max(60_000, Number(process.env.TWITCH_EVENTSUB_MESSAGE_MAX_AGE_MS || 10 * 60 * 1000));
@@ -229,12 +230,18 @@ export function createTwitchEventsubApp({
                 }
 
                 const tracker = startEventsubHandlerMetric(eventType);
+                const chatEffectContext = eventType === 'channel.chat.message' ? createTwitchEffectContext({
+                    channelId: notification.event.broadcaster_user_id,
+                    origin: { kind: 'chat-command', id: notification.event.message_id, occurredAt: messageTimestamp },
+                    actor: { userId: notification.event.chatter_user_id, displayName: notification.event.chatter_user_name || '' }
+                }) : undefined;
                 res.sendStatus(204);
                 void handleEvent(
                     notification.subscription as ITwitchSubscriptionData,
                     notification.event as ITwitchEventData,
                     {
                         durableChatHandled: Boolean(durableEvent),
+                        ...(chatEffectContext ? { chatEffectContext } : {}),
                         ...(durableEvent?.metadata?.durableDefenseHandled === true
                             ? { durableDefenseHandled: true } : {})
                     }

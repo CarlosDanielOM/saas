@@ -1,4 +1,5 @@
 import type { CommandExecutionAuthorization } from '../../handlers/commands.handler.js';
+import type { AstEffectContext } from './effects.js';
 export type NodeType = 'root' | 'setVar' | 'getVar' | 'deleteVar' | 'function' | 'literal' | 'custom' | 'exists' | 'binary' | 'unary' | 'ternary' | 'template' | 'arrayLiteral' | 'commandRef' | 'loopVar' | 'loopAssign' | 'forLoop';
 
 export type TemplateSegment = { type: 'text'; value: string } | { type: 'expr'; node: AstNode };
@@ -183,6 +184,7 @@ export interface CommandReferenceState {
 }
 
 export interface CommandReferenceRequest {
+    effectContext?: AstEffectContext;
     channelID: string;
     commandName: string;
     argument: string;
@@ -197,6 +199,7 @@ export interface AstMessage {
 }
 
 export interface ExecutionContext {
+    effectContext?: AstEffectContext;
     variables: Map<string, unknown>;
     arrays: Map<string, string[]>;
     broadcasterId: string;

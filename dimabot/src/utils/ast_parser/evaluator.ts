@@ -6,6 +6,7 @@ import {
     type UserIdentity
 } from '../permissions/roles.js';
 import { parse } from './parser.js';
+import { forkAstEffectContext } from './effects.js';
 import type {
     ArrayLiteralNode,
     AstNode,
@@ -1236,6 +1237,8 @@ export async function evaluate(node: AstNode, context: ExecutionContext): Promis
             // A reference is a deferred invocation, never a text substitution.
             // Delivery executes it only after the surrounding message is sent.
             currentContext.commandReferences.push({
+                effectContext: currentContext.enforceFunctionPermissions === false && currentContext.authorization?.origin === 'authored'
+                    ? forkAstEffectContext(currentContext.effectContext) : undefined,
                 channelID: currentContext.broadcasterId,
                 commandName: name,
                 argument: values.join(' '),

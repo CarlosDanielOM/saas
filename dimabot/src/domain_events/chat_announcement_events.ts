@@ -2,6 +2,8 @@ import type { DomainEventEnvelope } from './domain_event.types.js';
 import { isSupportedChatNotice, resolveChatNotificationMessage } from '../utils/chat_notification_defaults.js';
 import { isForeignSharedChatEvent } from '../utils/shared_chat_origin.js';
 import { getBitsMessageText } from '../utils/bits_message.js';
+import { createTwitchEffectContext, scopeAstEffectContext } from '../utils/ast_parser/effects.js';
+import type { SendMessageContext } from '../functions/chats/send_message.chat.js';
 
 interface ChatEventsubConfig {
     enabled: boolean;
@@ -31,17 +33,13 @@ interface SendResult {
     type?: string;
 }
 
-interface ChatMessageContext extends Record<string, unknown> {
-    channelID: string;
-}
-
 export interface ChatAnnouncementDependencies {
     getStreamer(channelID: string): Promise<StreamerState | null>;
     getEventsubConfig(channelID: string, originalEventType: string): Promise<ChatEventsubConfig | null>;
     shouldSkipLegacyBits(event: DomainEventEnvelope, originalEventType: string): Promise<boolean>;
     incrementFollowCount(channelID: string, eventKey: string): Promise<number>;
     shouldSuppressFollowAlerts(channelID: string, eventID?: string): Promise<boolean>;
-    sendMessage(channelID: string, message: string, context?: ChatMessageContext): Promise<SendResult>;
+    sendMessage(channelID: string, message: string, context?: SendMessageContext): Promise<SendResult>;
     hasCommands(channelID: string): Promise<boolean>;
     getLanguage(channelID: string): Promise<'en' | 'es'>;
     hasNewerLifecycleEvent(event: DomainEventEnvelope): Promise<boolean>;
@@ -242,8 +240,19 @@ export async function applyChatAnnouncementDomainEvent(
     }
 
     if (!message.trim()) return;
+    // Only the production durable consumer mints event authority, after all owner/config gates.
+    // Anonymous/system events are attributed to the channel, never synthetic badge authority.
+    const effectContext = event.source === 'twitch-eventsub' ? scopeAstEffectContext(createTwitchEffectContext({
+        channelId: event.channelID,
+        origin: { kind: 'twitch-event', id: event.eventKey, occurredAt: event.occurredAt.toISOString() },
+        actor: {
+            userId: String(rawEvent.chatter_user_id || rawEvent.user_id || rawEvent.from_broadcaster_user_id || event.channelID),
+            displayName: String(rawEvent.chatter_user_name || rawEvent.user_name || rawEvent.from_broadcaster_user_name || '')
+        }
+    }), event.channelID, `eventsub:${String(config._id || config.type)}:${originalType}`) : undefined;
     const result = await dependencies.sendMessage(event.channelID, message, {
         channelID: event.channelID,
+        effectContext,
         eventData: rawEvent,
         eventsubData: config,
         ...(argument !== undefined ? { argument, literalArguments: true } : {}),

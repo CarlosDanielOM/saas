@@ -6,13 +6,15 @@ import { getAppToken } from "../../utils/tokens.js";
 import { parseSpecialCommands } from "../../handlers/special_parser.handler.js";
 import type { ITwitchEventData } from "../../interfaces/twitch/eventsub.interface.js";
 import type { IEventsub } from "../../schemas/eventsub.schema.js";
+import type { AstEffectContext } from '../../utils/ast_parser/effects.js';
 
 const MODERATOR_ID = '698614112';
 
 export interface SendMessageContext {
+    effectContext?: AstEffectContext;
     channelID: string;
-    eventData?: ITwitchEventData | any;
-    eventsubData?: IEventsub | any;
+    eventData?: ITwitchEventData | Record<string, unknown>;
+    eventsubData?: IEventsub | Record<string, unknown>;
     argument?: string;
     literalArguments?: boolean;
     variables?: Record<string, string>;
@@ -28,27 +30,6 @@ export const sendTwitchChatMessage = async (
     context?: SendMessageContext
 ) => {
     try {
-        const twitchAppToken = await getAppToken('twitch');
-
-        if(!twitchAppToken) {
-            await logError({
-                function: 'sendTwitchChatMessage.getAppToken',
-                channelID,
-                sender_id: MODERATOR_ID,
-                messagePreview: message?.slice(0, 120),
-                error: 'Failed to get Twitch app token',
-                timestamp: new Date().toISOString(),
-            }, { channelId: channelID, destination: 'both' });
-
-            return {
-                error: true,
-                message: 'Failed to get Twitch app token',
-                status: 500,
-                type: 'error',
-                reason: 'Failed to get Twitch app token',
-            }
-        }
-
         let finalMessage = message;
         let commandReferences: CommandReferenceRequest[] | undefined;
 
@@ -69,6 +50,27 @@ export const sendTwitchChatMessage = async (
         if (!finalMessage.trim()) {
             const delivered = await deliverAstMessage(channelID, { parsedText: '', commandReferences });
             return { ...delivered, data: undefined, type: delivered.error ? 'error' : 'success' };
+        }
+
+        const twitchAppToken = await getAppToken('twitch');
+
+        if(!twitchAppToken) {
+            await logError({
+                function: 'sendTwitchChatMessage.getAppToken',
+                channelID,
+                sender_id: MODERATOR_ID,
+                messagePreview: message?.slice(0, 120),
+                error: 'Failed to get Twitch app token',
+                timestamp: new Date().toISOString(),
+            }, { channelId: channelID, destination: 'both' });
+
+            return {
+                error: true,
+                message: 'Failed to get Twitch app token',
+                status: 500,
+                type: 'error',
+                reason: 'Failed to get Twitch app token',
+            }
         }
 
         let body = {

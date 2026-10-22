@@ -27,10 +27,12 @@ import {
 import type { BitsEventsubMigrationResult } from "../utils/eventsub.js";
 import { raidDirection } from '../utils/raid_direction.js';
 import { isForeignSharedChatEvent } from '../utils/shared_chat_origin.js';
+import type { AstEffectContext } from '../utils/ast_parser/effects.js';
 //* TODO Redeem handler
 //* TODO Functions
 
 interface EventsubHandlerOptions {
+    chatEffectContext?: AstEffectContext;
     durableChatHandled?: boolean;
     durableDefenseHandled?: boolean;
 }
@@ -206,7 +208,7 @@ export const eventsubHandler = async (
             break;
         }
         case 'channel.chat.message':
-            messageHandler(STREAMER.id, eventData as IChatMessage);
+            messageHandler(STREAMER.id, eventData as IChatMessage, options.chatEffectContext);
             break;
         case 'channel.raid':
             await raidHandler(eventData as IRaidEventData, eventsubData, options);

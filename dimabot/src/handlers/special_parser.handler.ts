@@ -8,8 +8,10 @@ import { createExecutionContext, renderAstWithSourceReference } from '../utils/a
 import { registerAllFunctions } from '../utils/ast_parser/functions/index.js';
 import type { ExecutionContext, CommandReferenceState, CommandReferenceRequest } from '../utils/ast_parser/types.js';
 import { resolveAuthoredAstUserLevel } from './special_parser.userlevel.js';
+import type { AstEffectContext } from '../utils/ast_parser/effects.js';
 
 export interface ISpecialParserContext {
+    effectContext?: AstEffectContext;
     commandReferenceState?: CommandReferenceState;
     channelID: string;
     scopeType?: string;
@@ -394,6 +396,7 @@ export async function createSpecialExecutionContext(
     return createExecutionContext({
         broadcasterId: context.channelID,
         ...(context.commandReferenceState ?? {}),
+        effectContext: context.effectContext,
         userId: extracted.userID || '',
         userLogin: extracted.userLogin || '',
         userDisplayName: extracted.userName || '',
