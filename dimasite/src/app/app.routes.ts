@@ -10,6 +10,7 @@ import { overlayDraftGuard } from './features/overlays/overlay-draft.guard';
 import { petPlanGuard } from './features/pet/pet-plan.guard';
 
 export const routes: Routes = [
+  { path: 'pet/:capability', loadComponent: () => import('./features/pet/pet-runtime.component').then(m => m.PetRuntimeComponent), title: 'Pet | DomDimaBot' },
   { path: 'oauth/authorize', loadComponent: () => import('./features/auth/oauth-page.component').then(m => m.OAuthPageComponent), title: 'Connect an application | DomDimaBot' },
   { path: 'oauth/connections', loadComponent: () => import('./features/auth/oauth-page.component').then(m => m.OAuthPageComponent), title: 'Connected applications | DomDimaBot' },
   { path: 'observability', loadComponent: () => import('./features/observability/observability-page.component').then(m => m.ObservabilityPageComponent), title: 'Observability | DomDimaBot' },

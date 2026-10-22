@@ -2,7 +2,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { DestroyRef, Injectable, PLATFORM_ID, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Title } from '@angular/platform-browser';
-import { ActivatedRouteSnapshot, NavigationEnd, Router } from '@angular/router';
+import { ActivatedRouteSnapshot, NavigationCancel, NavigationEnd, NavigationError, NavigationStart, Router } from '@angular/router';
 import posthog from 'posthog-js';
 import { filter } from 'rxjs';
 
@@ -11,6 +11,30 @@ import { SessionAuthService, StoredSession } from './session-auth.service';
 
 type AnalyticsPrimitive = string | number | boolean | null | undefined;
 type AnalyticsProperties = Record<string, AnalyticsPrimitive>;
+
+function privateSourcePath(path: string): boolean {
+  try { path = decodeURIComponent(path.split(/[?#]/)[0]); } catch { /* Match a malformed path conservatively below. */ }
+  return /^\/(?:pet|overlays)(?:\/|$)/.test(path);
+}
+const privateSourceUrl = /(^|[\s"'(<=>\[])(?:https?:\/\/[^\s/"'<>]+)?\/(?:pet|overlays)(?=\/|[?#]|$)[^\s"'<>]*/g;
+// The SDK adds previous-page/referrer/session-entry properties itself. Scrub
+// those too when a later public event follows a private browser-source route.
+function redactPrivateSourceUrls(value: unknown, depth = 0): unknown {
+  if (typeof value === 'string') {
+    const redacted = value.replace(privateSourceUrl, '$1/private-source');
+    if (redacted !== value) return redacted;
+    try {
+      const decoded = decodeURIComponent(value), safe = decoded.replace(privateSourceUrl, '$1/private-source');
+      return safe !== decoded ? safe : value;
+    } catch { return value; }
+  }
+  if (depth > 16) return null;
+  if (Array.isArray(value)) return value.map(item => redactPrivateSourceUrls(item, depth + 1));
+  if (value && typeof value === 'object' && (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null)) {
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, redactPrivateSourceUrls(item, depth + 1)]));
+  }
+  return value;
+}
 
 @Injectable({
   providedIn: 'root'
@@ -26,10 +50,12 @@ export class AnalyticsService {
   private trackingStarted = false;
   private lastTrackedUrl: string | null = null;
   private hasIdentifiedUser = false;
+  private privateNavigation = false;
+  private recordingPaused = false;
 
   constructor() {
     effect(() => {
-      if (!this.initialized() || !this.isBrowser()) {
+      if (!this.initialized() || !this.isBrowser() || this.isPrivateOverlay()) {
         return;
       }
 
@@ -53,7 +79,7 @@ export class AnalyticsService {
   }
 
   initialize(): void {
-    if (!this.isBrowser() || this.initialized() || this.isPrivateRouletteOverlay()) {
+    if (!this.isBrowser() || this.initialized() || this.isPrivateOverlay()) {
       return;
     }
 
@@ -62,8 +88,11 @@ export class AnalyticsService {
       defaults: environment.POSTHOG_DEFAULTS,
       capture_pageview: false,
       capture_pageleave: true,
-      // OBS source URLs carry a private bearer in their fragment.
-      before_send: (event) => this.isPrivateRouletteOverlay() ? null : event,
+      // Source capabilities must never enter analytics, including pageleave and
+      // SDK-generated previous/referrer properties on a later public route.
+      autocapture: { url_ignorelist: [/\/(?:pet|overlays)(?:\/|$)/] },
+      before_send: event => !event || this.isPrivateOverlay() ? null :
+        { ...event, properties: redactPrivateSourceUrls(event.properties) as typeof event.properties },
     });
 
     if (this.shouldDisableCapture()) {
@@ -96,11 +125,20 @@ export class AnalyticsService {
     this.trackingStarted = true;
     this.router.events
       .pipe(
-        filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+        filter(event => event instanceof NavigationStart || event instanceof NavigationEnd || event instanceof NavigationCancel || event instanceof NavigationError),
         takeUntilDestroyed(this.destroyRef)
       )
-      .subscribe((event) => {
-        this.capturePageView(event.urlAfterRedirects);
+      .subscribe(event => {
+        if (event instanceof NavigationStart) {
+          this.privateNavigation = privateSourcePath(event.url);
+          if (this.privateNavigation && !this.recordingPaused && posthog.config.disable_session_recording !== true) {
+            this.recordingPaused = true; posthog.stopSessionRecording();
+          }
+          return;
+        }
+        this.privateNavigation = event instanceof NavigationEnd ? privateSourcePath(event.urlAfterRedirects) : privateSourcePath(window.location.pathname);
+        if (!this.privateNavigation && this.recordingPaused) { this.recordingPaused = false; posthog.startSessionRecording(); }
+        if (event instanceof NavigationEnd) this.capturePageView(event.urlAfterRedirects);
       });
   }
 
@@ -258,11 +296,11 @@ export class AnalyticsService {
       return true;
     }
 
-    return this.isPrivateRouletteOverlay() || ['localhost', '127.0.0.1', 'dima.local'].includes(window.location.hostname);
+    return this.isPrivateOverlay() || ['localhost', '127.0.0.1', 'dima.local'].includes(window.location.hostname);
   }
 
-  private isPrivateRouletteOverlay(): boolean {
-    return this.isBrowser() && window.location.pathname.startsWith('/overlays/');
+  private isPrivateOverlay(): boolean {
+    return this.isBrowser() && (this.privateNavigation || privateSourcePath(window.location.pathname));
   }
 
   private isBrowser(): boolean {

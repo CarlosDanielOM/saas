@@ -20,6 +20,68 @@
         </section>
 
         <div class="lf-bento">
+          <section class="lf-tile appearance-tile" aria-labelledby="appearance-title">
+            <div class="section-head"><span class="section-icon"><app-lf-icon name="image" /></span><div><h2 id="appearance-title">{{ t('appearanceTitle') }}</h2><p>{{ t('appearanceHint') }}</p></div></div>
+            <label class="field">{{ t('appearanceKind') }}<select formControlName="appearanceKind"><option value="png">{{ t('png') }}</option><option value="vts">{{ t('vts') }}</option></select></label>
+            @if (draft().appearance.kind === 'png') {
+              <div class="appearance-pair">
+                @for (state of appearanceStates; track state) {
+                  <div class="image-choice">
+                    <h3>{{ t(state) }}</h3>
+                    <div class="image-preview">
+                      @if (assetId(state); as asset) { <app-asset-preview [assetId]="asset" [owner]="channelID()!" kind="image" [name]="t(state)" /> }
+                      @else { <span>{{ t('noImage') }}</span> }
+                    </div>
+                    <button type="button" class="lf-btn" [disabled]="saving()" [attr.aria-label]="t(state === 'idle' ? 'chooseIdle' : 'chooseTalking')" (click)="pickingAsset.set(state)">{{ t(assetId(state) ? 'changeImage' : 'chooseImage') }}</button>
+                    @if (assetId(state)) { <button type="button" class="text-button" [disabled]="saving()" [attr.aria-label]="t(state === 'idle' ? 'removeIdle' : 'removeTalking')" (click)="removeAsset(state)">{{ t('removeImage') }}</button> }
+                  </div>
+                }
+              </div>
+              <p>{{ t('imageHint') }}</p>
+            } @else { <p>{{ t('vtsHint') }}</p> }
+          </section>
+
+          <section class="lf-tile output-tile" aria-labelledby="output-title">
+            <div class="section-head"><span class="section-icon"><app-lf-icon name="monitor" /></span><div><h2 id="output-title">{{ t('outputTitle') }}</h2><p>{{ t('outputHint') }}</p></div></div>
+            <label class="field">{{ t('audioOutput') }}<select formControlName="playbackTarget"><option value="browser">{{ t('browserOutput') }}</option><option value="desktop">{{ t('desktopOutput') }}</option></select></label>
+            @if (draft().playback.target === 'desktop') {
+              <label class="field">{{ t('audioComputer') }}<select formControlName="desktopSessionId"><option [ngValue]="null">{{ t('selectComputer') }}</option>
+                @if (audioSessionMissing()) { <option [value]="draft().playback.desktopSessionId">{{ t('savedComputerUnavailable') }}</option> }
+                @for (session of desktopSessions(); track session.sessionId) { <option [value]="session.sessionId">{{ session.label }}{{ session.audioReady ? '' : ' · ' + t('notReady') }}</option> }
+              </select></label><p>{{ t('deviceHint') }}</p>
+            }
+            @if (draft().appearance.kind === 'vts') {
+              <label class="field">{{ t('vtsComputer') }}<select formControlName="vtsSessionId"><option [ngValue]="null">{{ t('selectComputer') }}</option>
+                @if (vtsSessionMissing()) { <option [value]="draft().playback.vtsSessionId">{{ t('savedComputerUnavailable') }}</option> }
+                @for (session of desktopSessions(); track session.sessionId) { <option [value]="session.sessionId">{{ session.label }}{{ session.vtsReady ? '' : ' · ' + t('notReady') }}</option> }
+              </select></label><p>{{ t('vtsOutputHint') }}</p>
+            }
+            @if (draft().playback.target === 'desktop' || draft().appearance.kind === 'vts') {
+              @if (runtimeError()) { <p class="error" role="alert">{{ t('runtimeError') }}</p> }
+              @else if (!runtimeLoading() && !desktopSessions().length) { <p>{{ t('noComputers') }}</p> }
+              <button type="button" class="lf-btn" [disabled]="runtimeLoading()" (click)="refreshRuntime()"><app-lf-icon name="refresh" [size]="16" />{{ t(runtimeLoading() ? 'refreshing' : 'refreshComputers') }}</button>
+            }
+            <div class="overlay-controls ph-no-capture"><h3>{{ t('overlayTitle') }}</h3>
+              <p>{{ t('overlayHint') }}</p>
+              @if (tokenLoading()) { <p role="status">{{ t('loading') }}</p> }
+              @else if (overlayUrl()) {
+                <label class="field">{{ t('overlayUrl') }}<input class="overlay-url" type="text" [value]="overlayUrl()" readonly autocomplete="off"></label>
+                <div class="output-actions"><button type="button" class="lf-btn" (click)="copyOverlayUrl()"><app-lf-icon name="copy" [size]="16" />{{ t(copied() ? 'copied' : 'copyUrl') }}</button></div>
+              } @else if (token()?.exists) {
+                <p>{{ t('overlayRecoverHint') }}</p>
+                <label class="field">{{ t('overlayExistingUrl') }}<input type="text" [formControl]="recoveryUrl" maxlength="2048" autocomplete="off" spellcheck="false"></label>
+                <button type="button" class="lf-btn" (click)="recoverOverlayUrl()">{{ t('overlayRecover') }}</button>
+              } @else if (token()) { <button type="button" class="lf-btn" (click)="issueToken()">{{ t('createUrl') }}</button> }
+              @else { <button type="button" class="lf-btn" (click)="loadToken()">{{ t('retry') }}</button> }
+              @if (token()?.exists && !tokenLoading()) { <button type="button" class="text-button" (click)="confirmingRotation.set(true)">{{ t('regenerateUrl') }}</button> }
+              @if (confirmingRotation()) {
+                <div class="rotation-confirm"><p>{{ t('regenerateWarning') }}</p><div class="output-actions"><button type="button" class="lf-btn" [disabled]="tokenLoading()" (click)="confirmingRotation.set(false)">{{ t('cancel') }}</button><button type="button" class="lf-btn primary" [disabled]="tokenLoading()" (click)="issueToken(true)">{{ t('confirmRegenerate') }}</button></div></div>
+              }
+              @if (tokenError()) { <p class="error" role="alert">{{ t(tokenError()) }}</p><button type="button" class="lf-btn" [disabled]="tokenLoading()" (click)="loadToken()">{{ t('reloadUrl') }}</button> }
+              @if (copied()) { <p role="status">{{ t('copied') }}</p> }
+            </div>
+          </section>
+
           <section class="lf-tile voice-tile" aria-labelledby="voice-title">
             <div class="section-head"><span class="section-icon"><app-lf-icon name="audio" /></span><div><h2 id="voice-title">{{ t('voiceTitle') }}</h2><p>{{ t('voiceHint') }}</p></div></div>
             <label class="field">{{ t('name') }}<input formControlName="name" maxlength="40" autocomplete="off"></label>
@@ -52,7 +114,7 @@
             } @else {
               <label class="field">{{ t('prompt') }}<textarea formControlName="prompt" rows="7" maxlength="4000" [attr.aria-describedby]="'prompt-help'"></textarea></label><p id="prompt-help">{{ t('promptHint') }}</p>
             }
-            @if (config()!.runtime.issues.length) { <p class="error" role="alert">{{ t('profileMissing') }}</p> }
+            @if (config()!.runtime.issues.includes('personality_unavailable')) { <p class="error" role="alert">{{ t('profileMissing') }}</p> }
           </section>
 
           <section class="lf-tile rules-tile" aria-labelledby="rules-title">
@@ -79,3 +141,7 @@
     }
   </main>
 </div>
+
+@if (pickingAsset() && channelID()) {
+  <app-asset-library-dialog [owner]="channelID()!" kind="image" (selected)="chooseAsset($event)" (closed)="pickingAsset.set(null)" />
+}
