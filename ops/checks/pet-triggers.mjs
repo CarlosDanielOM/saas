@@ -16,8 +16,9 @@ const suites = [
 assert.match(process.env.MONGO_URI || '', /^mongodb:\/\/mongo:27017\/saas_ops_[a-z_]+_test$/, 'disposable candidate configuration required');
 const env = { ...process.env, NODE_OPTIONS: '', OTEL_SDK_DISABLED: 'true', OBSERVABILITY_DISABLED: 'true',
   MONGO_URI: 'mongodb://invalid.test:1/pet_never_connect', DRAGONFLY_HOST: 'invalid.test', DRAGONFLY_PORT: '1' };
-const child = spawn(process.execPath, ['--experimental-test-module-mocks', '--test', '--test-concurrency=1', ...suites], {
-  cwd: '/app', env, stdio: 'inherit'
+const child = spawn(process.execPath, ['--experimental-test-module-mocks', '--import=/tmp/saas-fixtures/unit-preload.mjs',
+  '--test', '--test-timeout=20000', '--test-concurrency=1', ...suites], {
+  cwd: '/app', env, stdio: 'inherit', timeout: 120_000
 });
 const code = await new Promise((resolve, reject) => { child.once('error', reject); child.once('exit', resolve); });
 assert.equal(code, 0, 'packaged producer and shared AST regression suites must pass');

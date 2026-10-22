@@ -128,7 +128,8 @@ async function drain() { await dispatchDomainEvents([consumer]); return drainDom
 try {
   // Same default configuration, private GIF and browser ready/election setup as pet-runtime.mjs.
   const inserted = await mongo.connection.db.collection('users').insertOne({ name: 'Pet owner', plan_tier: 'premium',
-    polar_sh_customer_id: 'pet-test-customer', accounts: [{ type: 'twitch', id: owner, name: login }] });
+    polar_sh_customer_id: 'pet-test-customer', accounts: [{ type: 'twitch', id: owner, name: login,
+      chat_enabled: true, actived: true, has_permissions: true, up_to_date_permissions: true }] });
   const ownerId = String(inserted.insertedId);
   await redis.hSet(`accounts:twitch:${owner}:data`, { id: owner, name: login, plan_tier: 'premium', chat_enabled: 'true',
     actived: 'true', has_permissions: 'true', refresh_token: 'fixture-not-a-real-token' });
@@ -172,6 +173,8 @@ try {
   client = await connectPlayer(capability);
   const persisted = await PetRuntime.findById(ownerId).lean();
   assert.equal(persisted.lease.leaseId, client.lease.leaseId, 'actual elected lease persisted for separate producer');
+  assert.equal(await redis.hGet(`accounts:twitch:${owner}:data`, 'chat_enabled'), 'true',
+    'persisted fixture account and API cache refresh agree that configured announcements are enabled');
 
   if (process.env.SAAS_TARGET === 'bot') {
     webhookURL = 'http://127.0.0.1:3333/eventsub';
@@ -288,3 +291,7 @@ try {
   await mongo.disconnect();
 }
 console.log(`PASS ${process.env.SAAS_TARGET}: real signed configured commands, durable bits/follows, one request/debit on retry, direct talk zero LLM, literal injection and permission/enabled gates`);
+// The unchanged full AST registry starts a legacy moderator-restore interval
+// without a shutdown export. This disposable check exits only after every
+// assertion and explicit API/socket/database cleanup above has succeeded.
+process.exit(0);

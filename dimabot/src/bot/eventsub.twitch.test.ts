@@ -9,6 +9,11 @@ const SECRET = 'eventsub-test-secret';
 mock.module('../utils/databases/dragonfly.database.js', { namedExports: {
     getDragonflyClient: async () => ({ set: async () => 'OK' })
 } });
+// Raid configuration eligibility is a separate database-backed boundary. These
+// transport/journal fixtures cover already-eligible incoming notifications.
+mock.module('../utils/raid_subscriptions.js', { namedExports: {
+    acceptsRaidNotification: async () => true
+} });
 
 function signedHeaders(body: string, options?: {
     messageId?: string;
