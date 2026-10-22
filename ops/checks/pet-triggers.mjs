@@ -4,6 +4,7 @@
  */
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 const suites = [
   '/app/dist/utils/ast_parser/pet_triggers.test.js',
   '/app/dist/utils/ast_parser/command_references.test.js',
@@ -14,6 +15,10 @@ const suites = [
   '/app/dist/handlers/eventsub.handler.test.js'
 ];
 assert.match(process.env.MONGO_URI || '', /^mongodb:\/\/mongo:27017\/saas_ops_[a-z_]+_test$/, 'disposable candidate configuration required');
+const packagedRaidFixture = readFileSync('/app/dist/bot/eventsub.twitch.test.js', 'utf8')
+  .includes("mock.module('../utils/raid_subscriptions.js'");
+if (process.env.SAAS_TARGET === 'cron') assert.ok(packagedRaidFixture, 'new cron image includes its own eligible-raid unit fixture');
+console.log(JSON.stringify({ packagedRaidFixture, supplementalRaidPreload: !packagedRaidFixture }));
 const env = { ...process.env, NODE_OPTIONS: '', OTEL_SDK_DISABLED: 'true', OBSERVABILITY_DISABLED: 'true',
   MONGO_URI: 'mongodb://invalid.test:1/pet_never_connect', DRAGONFLY_HOST: 'invalid.test', DRAGONFLY_PORT: '1' };
 const child = spawn(process.execPath, ['--experimental-test-module-mocks', '--import=/tmp/saas-fixtures/unit-preload.mjs',

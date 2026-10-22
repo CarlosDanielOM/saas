@@ -1,6 +1,7 @@
 // Test-only process boundary: preserve the packaged cron -> dispatcher -> chat
 // consumer path. Only unrelated workers/native index/consumers become inert OS
 // children. No production module, registry, admission or event gate is mocked.
+// The separate native-startup check opts into the unchanged real native index.
 import * as childProcess from 'node:child_process';
 import { appendFileSync } from 'node:fs';
 import { registerHooks } from 'node:module';
@@ -36,8 +37,9 @@ if (supervisor || dispatcher) {
   const boundary = { ...original };
   boundary.spawn = (command, args, options) => {
     if (!supervisor) return original.spawn(command, args, options);
-    const real = command === process.execPath && args?.[0]?.endsWith('/dist/workers/domain_events.worker.js')
-      && options?.env?.CRON_WORKER_NAME === 'domain-events';
+    const real = (command === process.execPath && args?.[0]?.endsWith('/dist/workers/domain_events.worker.js')
+      && options?.env?.CRON_WORKER_NAME === 'domain-events')
+      || (command === '/usr/local/bin/cron_index' && process.env.PET_PRODUCER_NATIVE_STARTUP === 'true');
     const child = real ? original.spawn(command, args, options)
       : original.spawn(process.execPath, ['-e', inert], { ...options, env: { ...options?.env, NODE_OPTIONS: '' } });
     record({ type: 'spawn', real, pid: child.pid, ppid: process.pid, command, args, worker: options?.env?.CRON_WORKER_NAME || 'native-index' });
