@@ -727,7 +727,7 @@ export async function generateStandaloneText(
     const cache = await getDragonflyClient('StandaloneAI');
     options.signal?.throwIfAborted();
     const isExhausted = await isAiCreditsExhausted(channelID, cache) ||
-      (options.verifyCredits === true && (await getAiCredits({ plan_tier: streamer.plan_tier, polar_sh_customer_id: streamer.polar_sh_customer_id ?? '' }, channelID, { requireVerified: true, signal: options.signal })).status !== 'available');
+      (options.verifyCredits === true && (await getAiCredits({ plan_tier: streamer.plan_tier ?? 'free', polar_sh_customer_id: streamer.polar_sh_customer_id ?? '' }, channelID, { requireVerified: true, signal: options.signal })).status !== 'available');
     const model = options.model ?? selectChatModel(streamer, isExhausted);
     const sessionID = generateUUIDv7();
     const traceID = options.usageRequestId ?? generateUUIDv7();
