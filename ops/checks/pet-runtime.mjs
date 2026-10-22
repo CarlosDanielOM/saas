@@ -77,7 +77,14 @@ async function connect(namespace, auth, reject = false, needsSnapshot = true) {
     if (message.startsWith('0')) return ws.send(`40${namespace},${JSON.stringify(auth)}`);
     if (message.startsWith(`40${namespace},`)) { joined = true; joinedInfo = JSON.parse(message.slice(`40${namespace},`.length)); }
     if (message.startsWith(`44${namespace},`)) failure = JSON.parse(message.slice(`44${namespace},`.length));
-    if (message.startsWith(`42${namespace},`)) { const packet = JSON.parse(message.slice(`42${namespace},`.length)), [event, data] = packet; events.push({ event, data, offset: packet.length > 2 ? packet.at(-1) : undefined }); if (events.length > 500) events.shift(); }
+    if (message.startsWith(`42${namespace},`)) {
+      const packet = JSON.parse(message.slice(`42${namespace},`.length)), [event, data] = packet;
+      if (namespace === '/desktop' || namespace === '/pet') {
+        assert.equal(packet.length, 2, `${namespace} wire event must be exactly [event, object], without a recovery offset`);
+        assert.equal(typeof event, 'string'); assert.ok(data && typeof data === 'object' && !Array.isArray(data));
+      }
+      events.push({ event, data, offset: packet.length > 2 ? packet.at(-1) : undefined }); if (events.length > 500) events.shift();
+    }
     if (message.startsWith(`43${namespace},`)) {
       const rest = message.slice(`43${namespace},`.length), bracket = rest.indexOf('[');
       acks.get(Number(rest.slice(0, bracket)))?.(JSON.parse(rest.slice(bracket))[0]); acks.delete(Number(rest.slice(0, bracket)));
@@ -364,6 +371,7 @@ const publicBody = (await call(`/pets/public/${tokenState.token}`)).body.data;
 assert.ok(!JSON.stringify(publicBody).includes('personality'));
 assert.ok(!('sessions' in publicBody.runtime));
 const browser = await connect('/pet', { v: 1, capability: tokenState.token });
+await connect('/pet', { v: 1, capability: tokenState.token, pid: browser.joinedInfo.pid, offset: 'stale' }, true);
 const duplicateBrowser = await connect('/pet', { v: 1, capability: tokenState.token });
 await save(settings => ({ ...settings, tts: { enabled: true, provider: 'piper', language: 'es', voice: 'es_MX-ald-medium' }, playback: { ...settings.playback, target: 'browser' } }));
 await PetRuntime.updateOne({ _id: ownerId }, { $set: { notBefore: new Date(0) } });

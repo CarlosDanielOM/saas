@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 const suites = [
-  'pets/admission', 'pets/state', 'pets/delivery', 'pets/wakeups', 'pets/readiness',
+  'pets/socket_adapter', 'pets/admission', 'pets/state', 'pets/delivery', 'pets/wakeups', 'pets/readiness',
   'utils/domain_event_wakeups', 'utils/tts_usage', 'utils/ai_credit_status',
   'utils/ai/openrouter/ai.tools_disabled', 'utils/ai/openrouter/command.ai',
   'utils/ai/openrouter/attribution', 'server/services/tts/fish_tts_backend',

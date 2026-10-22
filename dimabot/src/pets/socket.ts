@@ -36,10 +36,8 @@ export async function registerPetSockets(io: SocketServer) {
     const closeRuntime = await startPetRuntime();
     for (const kind of ['desktop', 'browser'] as const) {
         const namespace = io.of(kind === 'desktop' ? '/desktop' : '/pet');
-        // Other site namespaces retain their existing recovery policy. Pet peers
-        // must always authenticate afresh and never restore/replay a session.
-        namespace.adapter.persistSession = () => {};
-        namespace.adapter.restoreSession = async () => { throw new PetError('fresh_auth_required', 401); };
+        // Server construction installs the ordinary adapter for these two names;
+        // changing only persist/restore would still append offsets and retain packets.
         namespace.use((socket, next) => {
             void (async () => {
                 const auth = input(socket.handshake.auth, kind === 'desktop' ? ['v', 'accessToken'] : ['v', 'capability']);

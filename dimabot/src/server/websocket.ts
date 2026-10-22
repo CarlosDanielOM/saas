@@ -14,6 +14,7 @@ import { registerVoicePreview } from './services/tts/voice_preview.service.js';
 import { getCachedLiveStatus, getSiteAnalytics } from "../utils/siteanalytics.js";
 import { getLiveSessionMetrics } from "../utils/stream_analytics.js";
 import { registerPetSockets } from '../pets/socket.js';
+import { petSocketAdapter } from '../pets/socket_adapter.js';
 import { attachDesktopWebsocket } from './oauth/desktop-websocket.js';
 
 const DASHBOARD_LIVE_STATUS_INTERVAL_MS = Math.max(1000, Number(process.env.DASHBOARD_LIVE_STATUS_INTERVAL_MS || 1000));
@@ -44,6 +45,7 @@ export const websocket = async (app: any): Promise<HttpServer | null> => {
         let server = http.createServer(app);
         io = new SocketIOServer(server, {
             connectionStateRecovery: {},
+            adapter: petSocketAdapter,
             destroyUpgrade: false
         });
         attachDesktopWebsocket(server);
