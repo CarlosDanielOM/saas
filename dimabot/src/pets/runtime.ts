@@ -111,7 +111,7 @@ async function generate(request: PetRequestRecord, signal: AbortSignal) {
                 `Persona and rules: ${JSON.stringify(persona)}` }, { role: 'user', content: text }], 'pet_ask', {
                     signal, singleAttempt: true, verifyCredits: true, usageRequestId: `${request._id}:llm`, usageSource: 'pet', maxTokens: 1024
                 });
-            if (result.error || !result.message.trim()) throw new PetError('generation_failed');
+            if (result.error || typeof result.message !== 'string' || !result.message.trim()) throw new PetError('generation_failed');
             text = result.message.trim().slice(0, configuration.settings.behavior.maxReplyLength);
         }
         signal.throwIfAborted();

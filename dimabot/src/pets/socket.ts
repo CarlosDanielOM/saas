@@ -24,7 +24,7 @@ function input(value: unknown, keys: string[]): Record<string, unknown> {
 async function activeIdentity(peer: PetPeer, value: Record<string, unknown>, mouth = false) {
     const runtime = await PetRuntime.findById(peer.ownerId).lean();
     if (!runtime || runtime.activeRequestId !== value.requestId || runtime.generation !== value.generation ||
-        runtime.lease?.leaseId !== value.leaseId || runtime.lease.holderPeerId !== peer.id || runtime.lease.expiresAt.getTime() <= Date.now()) throw new PetError('stale_playback', 409);
+        !runtime.lease || runtime.lease.leaseId !== value.leaseId || runtime.lease.holderPeerId !== peer.id || runtime.lease.expiresAt.getTime() <= Date.now()) throw new PetError('stale_playback', 409);
     if (peer.sequenceRequestId !== value.requestId) { peer.sequenceRequestId = String(value.requestId); peer.seq = -1; peer.mouthSeq = -1; }
     if (!Number.isSafeInteger(value.seq) || Number(value.seq) <= (mouth ? peer.mouthSeq : peer.seq) ||
         !Number.isFinite(value.positionMs) || Number(value.positionMs) < 0 || Number(value.positionMs) > 60_000) throw new PetError('invalid_playback');
