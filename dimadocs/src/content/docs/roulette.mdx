@@ -1,44 +1,53 @@
 ---
 title: Roulette Alpha
-description: Create weighted wheel, card, and reel draws, connect the OBS overlay, and automate roulette with AST.
+description: Create weighted wheel, reel, card, and last-one-standing draws, connect the OBS overlay, and automate roulette with AST.
 ---
 
-Roulette Alpha gives a channel owner a saved prize library, a live draw preview, and a read-only OBS browser source. The dashboard and roulette actions require **Pro**. During Alpha, only the channel owner can manage the channel's roulettes.
+Roulette Alpha gives a channel owner a saved prize library, a live draw preview, and a read-only OBS browser source. The dashboard and roulette actions require **Pro**. During Alpha, the channel owner and full-access channel admins can manage the channel's roulettes.
 
 ## Open Roulette
 
 1. Sign in as the Twitch account that owns the channel.
 2. Open the channel dashboard and choose **Modules → Roulette**.
-3. Create a roulette with a name and a lowercase alias, such as `giveaways`.
+3. Choose **New roulette**, enter a name, and pick a style. The **Command ID** (alias) fills in from the name, such as `giveaways`; you can edit it.
 
 You can save up to 20 roulettes for a channel. Use the alias in AST; it must begin with a letter and may contain lowercase letters, numbers, underscores, and hyphens. Quote aliases containing a hyphen in AST expressions.
 
 ## Add prizes and set the odds
 
-Add an item with a label, multiplier, and weight. The multiplier creates that many separately ordered copies. Weight controls each copy's selection chance. For example, an item with multiplier 3 and weight 2 contributes six weighted tickets. Its chance is the item's total tickets divided by the total tickets across the roulette.
+Choose **Add prize** and enter the prize, its **Slots**, and its **Weight**. Slots (the multiplier) create that many separately ordered copies on the wheel, reel, or board. Weight controls each copy's selection chance without taking more space. For example, a prize with 3 slots and weight 2 contributes six weighted tickets. Its chance is the prize's total tickets divided by the total tickets across the roulette. The editor shows the resulting chance before you save, and each prize row shows its current chance.
 
-Choose how new copies enter the order:
+Under **After each draw → More options**, choose how new copies enter the order:
 
-- **Append** adds them at the end; **Random** inserts each new copy at a random position.
-- **Separate** keeps matching labels as separate items; **Increase** adds copies to the existing matching label. Increase requires matching weights and actions.
+- **New slots go:** **At the end** adds them at the end; **In random spots** inserts each new copy at a random position.
+- **Adding a name that already exists:** **Adds a new prize** keeps matching labels as separate items; **Adds slots to it** adds copies to the existing matching label. Adding slots requires matching weights and actions.
 
-Capacity depends on the display: a wheel supports 10,000 copies; a reel supports 60; cards support 50, 75, or 100 copies for large, medium, or small cards. The weight setting affects the draw odds, not the visual size of an item.
+Capacity depends on the style: a wheel supports 10,000 copies; a reel supports 60; last one standing supports 100; cards support 50, 75, or 100 copies for large, medium, or small cards. The **Prizes** section shows how many slots are used. The weight setting affects the draw odds, not the visual size of an item.
 
 ## Configure and run a draw
 
-Choose a **wheel**, **cards**, or **reel** design, set its colors, and choose a draw duration from 1 to 120 seconds. Card size applies to the cards design. Other settings let you shuffle before each draw, show the overlay when a draw starts, and hide it a set time after a draw ends. A roulette can also keep the winning item, remove only its winning copy, or remove the whole item after the draw.
+In **Look**, choose a style:
+
+- **Wheel:** spins and slows down under the pointer.
+- **Reel:** a strip of cards races past and stops on the winner.
+- **Cards:** a highlight jumps around a board of cards and lands on one. Card size applies only to this style.
+- **Last one standing:** entries are knocked out one by one until only the winner remains. It suits viewer giveaways.
+
+Then pick a color preset or edit up to 12 colors, and set the draw length with the slider (1–60 seconds) or type up to 120 seconds in the box. Unsaved look changes appear on the stage preview; use **Save** in the bar at the bottom to apply them, or **Discard**.
+
+In **After each draw**, choose what happens to **The winning prize**: **Stays in**, **Loses one slot** (removes only its winning copy), or **Leaves the draw** (removes the whole prize). You can also show the overlay when a draw starts, hide it a set number of seconds after the result, and, under **More options**, shuffle before every draw.
 
 The server chooses and saves the winner when the draw starts. The OBS source displays that same saved draw, so reconnecting during a spin does not create a different result. Only one draw can run at a time for the channel. If a draw is already running, finish it before starting or switching to another roulette. Hiding the overlay does not cancel a draw.
 
-You can enter a Twitch username as the target for a dashboard-started draw; leaving it blank targets the streamer. A winning item's optional AST script runs once after the draw ends, regardless of its multiplier. It can use the selected target as `$(user)` and read the draw context variables with `%(roulette_id)`, `%(roulette_draw_id)`, `%(roulette_item_id)`, and `%(roulette_item)`. Use only AST actions you intend to run with the channel owner's authority.
+When a prize runs a command, a **Draw for** field appears above **Start draw**. Enter a Twitch username as the target for a dashboard-started draw; leaving it blank targets the streamer. A winning item's optional AST script runs once after the draw ends, regardless of its multiplier. It can use the selected target as `$(user)` and read the draw context variables with `%(roulette_id)`, `%(roulette_draw_id)`, `%(roulette_item_id)`, and `%(roulette_item)`. Use only AST actions you intend to run with the channel owner's authority.
 
 ## Add the overlay to OBS
 
-1. In the Roulette dashboard, use the **Overlay** section to generate a browser-source link.
+1. In the Roulette dashboard, find the **OBS overlay** strip and choose **Create overlay link**. If a link already exists, choose **Replace overlay links** and confirm.
 2. Add that URL to OBS as a **Browser Source** and leave the source connected in the scene.
-3. Use **Copy** in the dashboard to copy or replace the link if needed.
+3. Use **Copy** or **Open** in the strip when needed.
 
-The URL contains a private, read-only token. Treat it like a password: anyone with the link can view the roulette overlay. Rotating the token revokes the old link. The token cannot edit roulette settings.
+The URL contains a private, read-only token. Treat it like a password: anyone with the link can view the roulette overlay. The link is saved for the channel, and the streamer and authorized admins use the same link. Replacing it revokes the old link and disconnects existing OBS sources, so update each source with the new URL. Changing roulette settings does not invalidate the link. The token cannot edit roulette settings.
 
 The dashboard preview can run a draw without OBS. OBS is needed to show the draw on stream. The overlay displays only the active roulette, not the whole saved library.
 
@@ -52,7 +61,7 @@ $(roulette.start giveaways)
 $(roulette.result giveaways)
 ```
 
-The functions are `roulette.add`, `roulette.remove`, `roulette.update`, `roulette.shuffle`, `roulette.switch`, `roulette.show`, `roulette.hide`, `roulette.start`, and `roulette.result`. `add` accepts an alias, a quoted item label, optional multiplier, and optional weight. `remove` and `update` take the roulette alias and item ID. `start` can omit the alias to use the active roulette. `result` returns the latest completed winner label, or empty text if no draw has completed.
+The functions are `roulette.add`, `roulette.remove`, `roulette.update`, `roulette.shuffle`, `roulette.switch`, `roulette.show`, `roulette.hide`, `roulette.start`, and `roulette.result`. `add` accepts an alias, a quoted item label, optional multiplier, and optional weight. `remove` and `update` take the roulette alias and item ID; copy a prize's ID from its editor. The **Run it from chat** section lists each function with this roulette's alias and a copy button. `start` can omit the alias to use the active roulette. `result` returns the latest completed winner label, or empty text if no draw has completed.
 
 For a winning-item script, for example, `$(timer 300 $(user), you can speak again.)` schedules a reminder to the selected target. A timer reminder does not apply a timeout by itself; add the moderation action separately if that is your intent.
 
