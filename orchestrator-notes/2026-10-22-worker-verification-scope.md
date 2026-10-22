@@ -1,0 +1,5 @@
+# 2026-10-22 — User feedback: cron worker verification scope
+
+The user clarified that approval of unchanged Rust workers carries forward across cron releases. A new dashboard worker, shared image rebuild, Cargo feature, or registry entry does not by itself justify rerunning every existing worker behavior suite; adding dashboard alone does not justify repeating AI receipts or other unchanged worker suites. Fully verify each new or changed worker; retest an existing worker when its own code, relevant dependencies, or shared runtime behavior changes with a concrete impact on it. Explain that impact before expanding regression coverage; this is workflow guidance, not a user-approval gate. After replacing the cron container, check startup and health for existing workers.
+
+Keep isolated exact-candidate checks for changed behavior, deployment readiness and rollback safeguards, and existing hard build limits. Historical suite counts and acceptance results remain valid evidence for their original candidates, but do not define a standing mandatory count. This is user workflow feedback, not model capability evidence; the model routing tier is unchanged.

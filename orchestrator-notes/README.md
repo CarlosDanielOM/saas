@@ -44,6 +44,8 @@ The user-provided ascending tier above remains the baseline and working tier; th
 
 ## Routing observations
 
+User workflow feedback on future cron verification scope is recorded in [2026-10-22-worker-verification-scope.md](2026-10-22-worker-verification-scope.md). It does not change the model-routing tier.
+
 Keep observations brief and tied to a task category, scope, and concrete evidence. Consider exploration, single-file or function work, multi-file integration and consistency, optimization, and UI/UX design separately. Confidence should reflect how much evidence exists and how well it transfers to similar tasks. One result can inform a hypothesis; repeated, comparable results support a stronger routing change.
 
 Separate implementation performance (correctness, consistency, rework, and time to a verified result) from generated-code runtime performance (for example, latency, throughput, or resource use). Claim runtime optimization only when measurements support it. A good build or review is not evidence of a runtime speedup.
