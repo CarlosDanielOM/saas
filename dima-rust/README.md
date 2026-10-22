@@ -4,6 +4,27 @@
 
 Cargo defaults preserve `mongo`, `redis`, `postgres`, and `http` for library/manual consumers. The six prior cron binaries use existing Mongo-only or Mongo/Redis profiles. Dashboard uses `--no-default-features --features mongo,redis,http-client,unicode-collation`; reqwest 0.12.28 and ICU collation are isolated to it. Cargo declares `icu_collator` 2.3.0, and the lockfile resolves 2.3.1. SQLx/PostgreSQL and Axum remain excluded from worker profiles. The seventh binary built and its exact-image suite passed; it is deployed and accepted after the production watch, final readbacks, container comparison, and cleanup passed. See [dashboard-activity.md](../migration-notes/dashboard-activity.md).
 
+## Opt-in consolidated utility foundations
+
+The library also exposes `utils::{command_cooldown,keywords,chat_events,ai_usage,eventsub,domain_events}` behind independent features `command-utils`, `keywords`, `chat-events`, `ai-usage`, `eventsub`, and `domain-events`. `bot-utils` enables those six together. `utils::twitch` and `utils::polar` are separately gated by `twitch-client` and `polar-client`. All are opt-in, outside Cargo defaults and deployed worker profiles; TypeScript remains unchanged and no production caller is wired. These are reusable cores, not complete migrations. Existing worker utilities stay in place.
+
+The stateful boundaries are injected: implement `CooldownStore` for command cooldown reads/leases, `KeywordStorage` for keyword persistence/cache coordination, and `TokenSource` for Twitch credentials and permission/expiry policy. Rust MongoDB/Redis adapters are not wired. Twitch and Polar provide real HTTP transport that can be tested against loopback servers; an OAuth adapter must persist rotated credentials before using them. EventSub canonicalization supports legal flat string conditions, and domain-event helpers project envelopes and build keys; with `mongo`, BSON projection preserves BSON values.
+
+```rust
+use dima_rust::utils::{eventsub, keywords};
+
+let entries = [keywords::KeywordEntry {
+    id: "greeting".into(), text: "hello".into(),
+    match_mode: keywords::KeywordMatchMode::Anywhere,
+}];
+let index = keywords::compile_keyword_index(entries);
+assert_eq!(keywords::match_keywords(&index, "hello world").len(), 1);
+let condition = eventsub::Condition::from([("broadcaster_user_id", "123")]);
+let key = eventsub::subscription_key("channel.follow", "2", &condition);
+```
+
+The source mappings, behavioral limits, and verification commands are in [ts-util-foundations.md](../migration-notes/ts-util-foundations.md).
+
 Use Serde to map BSON documents into explicit structs. Garde checks additional field and business constraints only when `validate()` is called. Future ports must explicitly preserve existing collection names, field types, defaults, and indexes.
 
 `dima_rust::utils::mongo::get_mongo_client().await` returns `mongodb::error::Result<&'static Client>`. On first call it reads `MONGO_URI` directly from the process environment (it does not load dotenv files), creates a native MongoDB client, and pings `admin` before caching it in a Tokio `OnceCell`. Failed initialization can be retried. Use the cached client within the application's long-lived Tokio runtime and share it across tasks and threads. Static storage does not keep the driver's originating runtime alive, so do not reuse the client after that runtime or the client has been shut down. Clone the native handle when an owned handle is needed; clones share the same pool. Callers select their database explicitly. A URI database name is available through the driver's default-database behavior, but the utility adds no implicit fallback.

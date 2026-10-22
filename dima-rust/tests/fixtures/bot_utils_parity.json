@@ -1,0 +1,2443 @@
+{
+  "sources": {
+    "ai_usage_classification.ts": "00fcd076d0f3460ecea46588904242252a32b9500e43217c67a1a07e1cbe4b36",
+    "ai_usage_event.ts": "87ff158c166652ea1eb64199ea4c9c6250b35db90399cb658ef6c3086628de60",
+    "chat_event_catalog.ts": "0e8d9223b8f965775b6dcf65e6954bebd261b9be0b21ac31ffafbf8aee926033",
+    "chat_notification_defaults.ts": "3cdb922eceba753fa133398443b15e6ceca283254dd649f70603e046b5e7d209",
+    "command_cooldown.ts": "a884a2dfb8072ba1b0419bb3fd90380257c834f8526dd7309ffa67f6489e3a2b",
+    "domain_event_consumer.ts": "af419965f18193a082f8dcfbe1e4a7a2e1798ccbad55bf1692bda1be142f045d",
+    "domain_events.ts": "590a0543f6dd6b714142d5e4b631b0cbb1c52f75f5c614e6de4c2a6df9683481",
+    "eventsub.ts": "e37f842c55700256afdc4d4c7995198151cb9e80613c9d90a6547849561bfc7e",
+    "eventsub_condition.ts": "9cc168f1d91143e8da3e74f06271845247f6ac460618d9134fb433b3925d8d03",
+    "eventsub_reconciliation.ts": "79e3a58bfa127527689e8b06db749821a29663b7fa952994c1387adb03fa9314",
+    "eventsub_reconciliation_policy.ts": "01f9711b9be29933b031fe794ed5613ce200ddc515b82f094db87ac7c1edf7fe",
+    "keywords.ts": "4a8038884f8d2f45dc8dc491bf05d98cd77f9371de1495cd96354868046c2f44",
+    "raid_direction.ts": "4dd1222da4f496fcd3f047537be318be4681bb5515849392ee2c628045d0e2c8"
+  },
+  "cases": [
+    {
+      "operation": "minimum_cooldown",
+      "input": {
+        "plan": null
+      },
+      "expected": 5
+    },
+    {
+      "operation": "minimum_cooldown",
+      "input": {
+        "plan": "free"
+      },
+      "expected": 5
+    },
+    {
+      "operation": "minimum_cooldown",
+      "input": {
+        "plan": "premium"
+      },
+      "expected": 3
+    },
+    {
+      "operation": "minimum_cooldown",
+      "input": {
+        "plan": "pro"
+      },
+      "expected": 1
+    },
+    {
+      "operation": "minimum_cooldown",
+      "input": {
+        "plan": "PRO"
+      },
+      "expected": 5
+    },
+    {
+      "operation": "minimum_cooldown",
+      "input": {
+        "plan": "unknown"
+      },
+      "expected": 5
+    },
+    {
+      "operation": "normalize_keyword",
+      "input": {
+        "text": "  Hello   WORLD  "
+      },
+      "expected": "hello world"
+    },
+    {
+      "operation": "normalize_keyword",
+      "input": {
+        "text": "café"
+      },
+      "expected": "café"
+    },
+    {
+      "operation": "normalize_keyword",
+      "input": {
+        "text": "ΟΣ"
+      },
+      "expected": "ος"
+    },
+    {
+      "operation": "normalize_keyword",
+      "input": {
+        "text": "İ"
+      },
+      "expected": "i̇"
+    },
+    {
+      "operation": "normalize_keyword",
+      "input": {
+        "text": "uno dos"
+      },
+      "expected": "uno dos"
+    },
+    {
+      "operation": "normalize_keyword",
+      "input": {
+        "text": "﻿hello﻿"
+      },
+      "expected": "hello"
+    },
+    {
+      "operation": "normalize_keyword",
+      "input": {
+        "text": "hello"
+      },
+      "expected": "hello"
+    },
+    {
+      "operation": "normalize_keyword",
+      "input": {
+        "text": "𐐀  A"
+      },
+      "expected": "𐐨 a"
+    },
+    {
+      "operation": "normalize_keyword",
+      "input": {
+        "text": "a b"
+      },
+      "expected": "a b"
+    },
+    {
+      "operation": "validate_keyword",
+      "input": {
+        "text": "hello",
+        "settings": {
+          "matchMode": "start"
+        }
+      },
+      "expected": {
+        "matchMode": "start"
+      }
+    },
+    {
+      "operation": "validate_keyword",
+      "input": {
+        "text": "  CAFÉ  ",
+        "settings": {
+          "matchMode": "anywhere"
+        }
+      },
+      "expected": {
+        "matchMode": "anywhere"
+      }
+    },
+    {
+      "operation": "validate_keyword",
+      "input": {
+        "text": "café",
+        "settings": {
+          "matchMode": "exact"
+        }
+      },
+      "expected": {
+        "matchMode": "exact"
+      }
+    },
+    {
+      "operation": "validate_keyword",
+      "input": {
+        "text": "hello!",
+        "settings": {
+          "matchMode": "start"
+        }
+      },
+      "error": "Keyword must contain words or a phrase, without !, and be at most 60 characters"
+    },
+    {
+      "operation": "validate_keyword",
+      "input": {
+        "text": "",
+        "settings": {
+          "matchMode": "start"
+        }
+      },
+      "error": "Keyword must contain words or a phrase, without !, and be at most 60 characters"
+    },
+    {
+      "operation": "validate_keyword",
+      "input": {
+        "text": "hi",
+        "settings": {
+          "matchMode": "bad"
+        }
+      },
+      "error": "Keyword match mode must be start, anywhere, or exact"
+    },
+    {
+      "operation": "validate_keyword",
+      "input": {
+        "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "settings": {
+          "matchMode": "start"
+        }
+      },
+      "error": "Keyword must contain words or a phrase, without !, and be at most 60 characters"
+    },
+    {
+      "operation": "validate_keyword",
+      "input": {
+        "text": "𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀",
+        "settings": {
+          "matchMode": "exact"
+        }
+      },
+      "expected": {
+        "matchMode": "exact"
+      }
+    },
+    {
+      "operation": "validate_keyword",
+      "input": {
+        "text": "𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀𐐀",
+        "settings": {
+          "matchMode": "exact"
+        }
+      },
+      "error": "Keyword must contain words or a phrase, without !, and be at most 60 characters"
+    },
+    {
+      "operation": "validate_keyword",
+      "input": {
+        "text": "ab",
+        "settings": {
+          "matchMode": "start"
+        }
+      },
+      "error": "Keyword must contain words or a phrase, without !, and be at most 60 characters"
+    },
+    {
+      "operation": "match_keywords",
+      "input": {
+        "entries": [
+          {
+            "id": "hello",
+            "text": "hello",
+            "matchMode": "anywhere"
+          },
+          {
+            "id": "phrase",
+            "text": "hello world",
+            "matchMode": "start"
+          },
+          {
+            "id": "accent",
+            "text": "café",
+            "matchMode": "exact"
+          },
+          {
+            "id": "number",
+            "text": "42",
+            "matchMode": "anywhere"
+          }
+        ],
+        "message": "HELLO world!"
+      },
+      "expected": [
+        {
+          "id": "hello",
+          "text": "hello",
+          "matchMode": "anywhere"
+        },
+        {
+          "id": "phrase",
+          "text": "hello world",
+          "matchMode": "start"
+        }
+      ]
+    },
+    {
+      "operation": "match_keywords",
+      "input": {
+        "entries": [
+          {
+            "id": "hello",
+            "text": "hello",
+            "matchMode": "anywhere"
+          },
+          {
+            "id": "phrase",
+            "text": "hello world",
+            "matchMode": "start"
+          },
+          {
+            "id": "accent",
+            "text": "café",
+            "matchMode": "exact"
+          },
+          {
+            "id": "number",
+            "text": "42",
+            "matchMode": "anywhere"
+          }
+        ],
+        "message": "say hello?"
+      },
+      "expected": [
+        {
+          "id": "hello",
+          "text": "hello",
+          "matchMode": "anywhere"
+        }
+      ]
+    },
+    {
+      "operation": "match_keywords",
+      "input": {
+        "entries": [
+          {
+            "id": "hello",
+            "text": "hello",
+            "matchMode": "anywhere"
+          },
+          {
+            "id": "phrase",
+            "text": "hello world",
+            "matchMode": "start"
+          },
+          {
+            "id": "accent",
+            "text": "café",
+            "matchMode": "exact"
+          },
+          {
+            "id": "number",
+            "text": "42",
+            "matchMode": "anywhere"
+          }
+        ],
+        "message": "xhello hello_"
+      },
+      "expected": []
+    },
+    {
+      "operation": "match_keywords",
+      "input": {
+        "entries": [
+          {
+            "id": "hello",
+            "text": "hello",
+            "matchMode": "anywhere"
+          },
+          {
+            "id": "phrase",
+            "text": "hello world",
+            "matchMode": "start"
+          },
+          {
+            "id": "accent",
+            "text": "café",
+            "matchMode": "exact"
+          },
+          {
+            "id": "number",
+            "text": "42",
+            "matchMode": "anywhere"
+          }
+        ],
+        "message": "café"
+      },
+      "expected": [
+        {
+          "id": "accent",
+          "text": "café",
+          "matchMode": "exact"
+        }
+      ]
+    },
+    {
+      "operation": "match_keywords",
+      "input": {
+        "entries": [
+          {
+            "id": "hello",
+            "text": "hello",
+            "matchMode": "anywhere"
+          },
+          {
+            "id": "phrase",
+            "text": "hello world",
+            "matchMode": "start"
+          },
+          {
+            "id": "accent",
+            "text": "café",
+            "matchMode": "exact"
+          },
+          {
+            "id": "number",
+            "text": "42",
+            "matchMode": "anywhere"
+          }
+        ],
+        "message": "42 hello"
+      },
+      "expected": [
+        {
+          "id": "number",
+          "text": "42",
+          "matchMode": "anywhere"
+        },
+        {
+          "id": "hello",
+          "text": "hello",
+          "matchMode": "anywhere"
+        }
+      ]
+    },
+    {
+      "operation": "match_keywords",
+      "input": {
+        "entries": [
+          {
+            "id": "hello",
+            "text": "hello",
+            "matchMode": "anywhere"
+          },
+          {
+            "id": "phrase",
+            "text": "hello world",
+            "matchMode": "start"
+          },
+          {
+            "id": "accent",
+            "text": "café",
+            "matchMode": "exact"
+          },
+          {
+            "id": "number",
+            "text": "42",
+            "matchMode": "anywhere"
+          }
+        ],
+        "message": "hello 42"
+      },
+      "expected": [
+        {
+          "id": "hello",
+          "text": "hello",
+          "matchMode": "anywhere"
+        },
+        {
+          "id": "number",
+          "text": "42",
+          "matchMode": "anywhere"
+        }
+      ]
+    },
+    {
+      "operation": "match_keywords",
+      "input": {
+        "entries": [
+          {
+            "id": "hello",
+            "text": "hello",
+            "matchMode": "anywhere"
+          },
+          {
+            "id": "phrase",
+            "text": "hello world",
+            "matchMode": "start"
+          },
+          {
+            "id": "accent",
+            "text": "café",
+            "matchMode": "exact"
+          },
+          {
+            "id": "number",
+            "text": "42",
+            "matchMode": "anywhere"
+          }
+        ],
+        "message": "hello-world"
+      },
+      "expected": [
+        {
+          "id": "hello",
+          "text": "hello",
+          "matchMode": "anywhere"
+        }
+      ]
+    },
+    {
+      "operation": "match_keywords",
+      "input": {
+        "entries": [
+          {
+            "id": "hello",
+            "text": "hello",
+            "matchMode": "anywhere"
+          },
+          {
+            "id": "phrase",
+            "text": "hello world",
+            "matchMode": "start"
+          },
+          {
+            "id": "accent",
+            "text": "café",
+            "matchMode": "exact"
+          },
+          {
+            "id": "number",
+            "text": "42",
+            "matchMode": "anywhere"
+          }
+        ],
+        "message": "helló hello"
+      },
+      "expected": [
+        {
+          "id": "hello",
+          "text": "hello",
+          "matchMode": "anywhere"
+        }
+      ]
+    },
+    {
+      "operation": "match_keywords",
+      "input": {
+        "entries": [
+          {
+            "id": "hello",
+            "text": "hello",
+            "matchMode": "anywhere"
+          },
+          {
+            "id": "phrase",
+            "text": "hello world",
+            "matchMode": "start"
+          },
+          {
+            "id": "accent",
+            "text": "café",
+            "matchMode": "exact"
+          },
+          {
+            "id": "number",
+            "text": "42",
+            "matchMode": "anywhere"
+          }
+        ],
+        "message": ""
+      },
+      "expected": []
+    },
+    {
+      "operation": "chat_message",
+      "input": {
+        "language": "en",
+        "notice": "watch_streak",
+        "config": {}
+      },
+      "expected": "$(user) has a streak of $(twitch.streak) days!"
+    },
+    {
+      "operation": "chat_message",
+      "input": {
+        "language": "en",
+        "notice": "watch_streak",
+        "config": {
+          "message": "",
+          "modiversaryMessage": ""
+        }
+      },
+      "expected": "$(user) has a streak of $(twitch.streak) days!"
+    },
+    {
+      "operation": "chat_message",
+      "input": {
+        "language": "en",
+        "notice": "watch_streak",
+        "config": {
+          "watchStreakEnabled": false,
+          "modiversaryEnabled": false
+        }
+      },
+      "expected": ""
+    },
+    {
+      "operation": "chat_message",
+      "input": {
+        "language": "en",
+        "notice": "watch_streak",
+        "config": {
+          "message": "custom",
+          "modiversaryMessage": "custom mod"
+        }
+      },
+      "expected": "custom"
+    },
+    {
+      "operation": "chat_message",
+      "input": {
+        "language": "en",
+        "notice": "watch_streak",
+        "config": {
+          "message": "¡$(user) tiene una racha de $(twitch.streak) días!",
+          "modiversaryMessage": "Happy mod anniversary, $(user)! Thank you for $(twitch.modiversary) months of moderating!"
+        }
+      },
+      "expected": "$(user) has a streak of $(twitch.streak) days!"
+    },
+    {
+      "operation": "chat_message",
+      "input": {
+        "language": "en",
+        "notice": "modiversary",
+        "config": {}
+      },
+      "expected": "Happy mod anniversary, $(user)! Thank you for $(twitch.modiversary) months of moderating!"
+    },
+    {
+      "operation": "chat_message",
+      "input": {
+        "language": "en",
+        "notice": "modiversary",
+        "config": {
+          "message": "",
+          "modiversaryMessage": ""
+        }
+      },
+      "expected": "Happy mod anniversary, $(user)! Thank you for $(twitch.modiversary) months of moderating!"
+    },
+    {
+      "operation": "chat_message",
+      "input": {
+        "language": "en",
+        "notice": "modiversary",
+        "config": {
+          "watchStreakEnabled": false,
+          "modiversaryEnabled": false
+        }
+      },
+      "expected": ""
+    },
+    {
+      "operation": "chat_message",
+      "input": {
+        "language": "en",
+        "notice": "modiversary",
+        "config": {
+          "message": "custom",
+          "modiversaryMessage": "custom mod"
+        }
+      },
+      "expected": "custom mod"
+    },
+    {
+      "operation": "chat_message",
+      "input": {
+        "language": "en",
+        "notice": "modiversary",
+        "config": {
+          "message": "¡$(user) tiene una racha de $(twitch.streak) días!",
+          "modiversaryMessage": "Happy mod anniversary, $(user)! Thank you for $(twitch.modiversary) months of moderating!"
+        }
+      },
+      "expected": "Happy mod anniversary, $(user)! Thank you for $(twitch.modiversary) months of moderating!"
+    },
+    {
+      "operation": "chat_message",
+      "input": {
+        "language": "en",
+        "notice": "unknown",
+        "config": {}
+      },
+      "expected": ""
+    },
+    {
+      "operation": "chat_message",
+      "input": {
+        "language": "en",
+        "notice": "unknown",
+        "config": {
+          "message": "",
+          "modiversaryMessage": ""
+        }
+      },
+      "expected": ""
+    },
+    {
+      "operation": "chat_message",
+      "input": {
+        "language": "en",
+        "notice": "unknown",
+        "config": {
+          "watchStreakEnabled": false,
+          "modiversaryEnabled": false
+        }
+      },
+      "expected": ""
+    },
+    {
+      "operation": "chat_message",
+      "input": {
+        "language": "en",
+        "notice": "unknown",
+        "config": {
+          "message": "custom",
+          "modiversaryMessage": "custom mod"
+        }
+      },
+      "expected": ""
+    },
+    {
+      "operation": "chat_message",
+      "input": {
+        "language": "en",
+        "notice": "unknown",
+        "config": {
+          "message": "¡$(user) tiene una racha de $(twitch.streak) días!",
+          "modiversaryMessage": "Happy mod anniversary, $(user)! Thank you for $(twitch.modiversary) months of moderating!"
+        }
+      },
+      "expected": ""
+    },
+    {
+      "operation": "chat_message",
+      "input": {
+        "language": "es",
+        "notice": "watch_streak",
+        "config": {}
+      },
+      "expected": "¡$(user) tiene una racha de $(twitch.streak) días!"
+    },
+    {
+      "operation": "chat_message",
+      "input": {
+        "language": "es",
+        "notice": "watch_streak",
+        "config": {
+          "message": "",
+          "modiversaryMessage": ""
+        }
+      },
+      "expected": "¡$(user) tiene una racha de $(twitch.streak) días!"
+    },
+    {
+      "operation": "chat_message",
+      "input": {
+        "language": "es",
+        "notice": "watch_streak",
+        "config": {
+          "watchStreakEnabled": false,
+          "modiversaryEnabled": false
+        }
+      },
+      "expected": ""
+    },
+    {
+      "operation": "chat_message",
+      "input": {
+        "language": "es",
+        "notice": "watch_streak",
+        "config": {
+          "message": "custom",
+          "modiversaryMessage": "custom mod"
+        }
+      },
+      "expected": "custom"
+    },
+    {
+      "operation": "chat_message",
+      "input": {
+        "language": "es",
+        "notice": "watch_streak",
+        "config": {
+          "message": "¡$(user) tiene una racha de $(twitch.streak) días!",
+          "modiversaryMessage": "Happy mod anniversary, $(user)! Thank you for $(twitch.modiversary) months of moderating!"
+        }
+      },
+      "expected": "¡$(user) tiene una racha de $(twitch.streak) días!"
+    },
+    {
+      "operation": "chat_message",
+      "input": {
+        "language": "es",
+        "notice": "modiversary",
+        "config": {}
+      },
+      "expected": "¡Feliz aniversario de moderación, $(user)! ¡Gracias por tus $(twitch.modiversary) meses como moderador!"
+    },
+    {
+      "operation": "chat_message",
+      "input": {
+        "language": "es",
+        "notice": "modiversary",
+        "config": {
+          "message": "",
+          "modiversaryMessage": ""
+        }
+      },
+      "expected": "¡Feliz aniversario de moderación, $(user)! ¡Gracias por tus $(twitch.modiversary) meses como moderador!"
+    },
+    {
+      "operation": "chat_message",
+      "input": {
+        "language": "es",
+        "notice": "modiversary",
+        "config": {
+          "watchStreakEnabled": false,
+          "modiversaryEnabled": false
+        }
+      },
+      "expected": ""
+    },
+    {
+      "operation": "chat_message",
+      "input": {
+        "language": "es",
+        "notice": "modiversary",
+        "config": {
+          "message": "custom",
+          "modiversaryMessage": "custom mod"
+        }
+      },
+      "expected": "custom mod"
+    },
+    {
+      "operation": "chat_message",
+      "input": {
+        "language": "es",
+        "notice": "modiversary",
+        "config": {
+          "message": "¡$(user) tiene una racha de $(twitch.streak) días!",
+          "modiversaryMessage": "Happy mod anniversary, $(user)! Thank you for $(twitch.modiversary) months of moderating!"
+        }
+      },
+      "expected": "¡Feliz aniversario de moderación, $(user)! ¡Gracias por tus $(twitch.modiversary) meses como moderador!"
+    },
+    {
+      "operation": "chat_message",
+      "input": {
+        "language": "es",
+        "notice": "unknown",
+        "config": {}
+      },
+      "expected": ""
+    },
+    {
+      "operation": "chat_message",
+      "input": {
+        "language": "es",
+        "notice": "unknown",
+        "config": {
+          "message": "",
+          "modiversaryMessage": ""
+        }
+      },
+      "expected": ""
+    },
+    {
+      "operation": "chat_message",
+      "input": {
+        "language": "es",
+        "notice": "unknown",
+        "config": {
+          "watchStreakEnabled": false,
+          "modiversaryEnabled": false
+        }
+      },
+      "expected": ""
+    },
+    {
+      "operation": "chat_message",
+      "input": {
+        "language": "es",
+        "notice": "unknown",
+        "config": {
+          "message": "custom",
+          "modiversaryMessage": "custom mod"
+        }
+      },
+      "expected": ""
+    },
+    {
+      "operation": "chat_message",
+      "input": {
+        "language": "es",
+        "notice": "unknown",
+        "config": {
+          "message": "¡$(user) tiene una racha de $(twitch.streak) días!",
+          "modiversaryMessage": "Happy mod anniversary, $(user)! Thank you for $(twitch.modiversary) months of moderating!"
+        }
+      },
+      "expected": ""
+    },
+    {
+      "operation": "chat_catalog",
+      "input": {},
+      "expected": [
+        {
+          "name": "Chat Notifications",
+          "type": "channel.chat.notification",
+          "version": "1",
+          "condition": {
+            "broadcaster_user_id": "user",
+            "user_id": "moderator"
+          },
+          "icon": "Trophy",
+          "color": "#7c3aed",
+          "textColor": "#ffffff",
+          "releaseStage": "stable",
+          "enabled": false,
+          "plan_tier": "free",
+          "description": {
+            "EN": "Celebrate watch streaks and moderator anniversaries shared in chat.",
+            "ES": "Celebra las rachas de visualización y los aniversarios de moderación compartidos en el chat."
+          },
+          "config": [
+            {
+              "id": "watchStreakEnabled",
+              "label": {
+                "EN": "Watch streak announcements",
+                "ES": "Anuncios de rachas de visualización"
+              },
+              "type": "checkbox",
+              "value": true,
+              "canDisable": true
+            },
+            {
+              "id": "message",
+              "label": {
+                "EN": "Streak message",
+                "ES": "Mensaje de la racha"
+              },
+              "type": "text",
+              "value": "$(user) has a streak of $(twitch.streak) days!",
+              "canDisable": true
+            },
+            {
+              "id": "modiversaryEnabled",
+              "label": {
+                "EN": "Moderator anniversary announcements",
+                "ES": "Anuncios de aniversarios de moderación"
+              },
+              "type": "checkbox",
+              "value": true,
+              "canDisable": true
+            },
+            {
+              "id": "modiversaryMessage",
+              "label": {
+                "EN": "Moderator anniversary message",
+                "ES": "Mensaje de aniversario de moderación"
+              },
+              "type": "text",
+              "value": "Happy mod anniversary, $(user)! Thank you for $(twitch.modiversary) months of moderating!",
+              "canDisable": true
+            }
+          ]
+        },
+        {
+          "name": "Shoutout Received",
+          "type": "channel.shoutout.receive",
+          "version": "1",
+          "condition": {
+            "broadcaster_user_id": "user",
+            "moderator_user_id": "moderator"
+          },
+          "icon": "MessageCircle",
+          "color": "#7c3aed",
+          "textColor": "#ffffff",
+          "releaseStage": "stable",
+          "enabled": false,
+          "plan_tier": "free",
+          "description": {
+            "EN": "Thank another streamer when they send your channel a shoutout.",
+            "ES": "Agradece a otro streamer cuando le hace un shoutout a tu canal."
+          },
+          "config": [
+            {
+              "id": "message",
+              "label": {
+                "EN": "Message",
+                "ES": "Mensaje"
+              },
+              "type": "text",
+              "value": "$(shoutout.channel) has sent a shoutout to $(twitch.channel)!",
+              "canDisable": true
+            }
+          ]
+        },
+        {
+          "name": "Incoming raid",
+          "type": "channel.raid",
+          "version": "1",
+          "condition": {
+            "to_broadcaster_user_id": "user"
+          },
+          "icon": "Users",
+          "color": "#7c3aed",
+          "textColor": "#ffffff",
+          "releaseStage": "stable",
+          "enabled": false,
+          "plan_tier": "free",
+          "description": {
+            "EN": "Incoming raid protection, announcements, clips and shoutouts. Independent of outgoing tracking.",
+            "ES": "Protección ante raids entrantes, anuncios, clips y shoutouts. Independiente del registro de salida."
+          },
+          "config": [
+            {
+              "id": "message",
+              "label": {
+                "EN": "Announcement",
+                "ES": "Anuncio"
+              },
+              "type": "text",
+              "value": "$(raid.channel) is raiding with $(raid.viewers) viewers!",
+              "canDisable": true
+            },
+            {
+              "id": "enableClip",
+              "dbId": "clipEnabled",
+              "label": {
+                "EN": "Show a clip",
+                "ES": "Mostrar un clip"
+              },
+              "type": "checkbox",
+              "value": true,
+              "canDisable": true
+            },
+            {
+              "id": "minViewers",
+              "label": {
+                "EN": "Minimum viewers for announcements",
+                "ES": "Espectadores mínimos para anuncios"
+              },
+              "type": "number",
+              "value": 2,
+              "canDisable": true
+            }
+          ]
+        },
+        {
+          "name": "Outgoing raid",
+          "type": "channel.raid.outgoing",
+          "version": "1",
+          "condition": {
+            "from_broadcaster_user_id": "user"
+          },
+          "icon": "Users",
+          "color": "#7c3aed",
+          "textColor": "#ffffff",
+          "releaseStage": "stable",
+          "enabled": false,
+          "plan_tier": "free",
+          "description": {
+            "EN": "Track channels you raid for your dashboard. An empty message tracks silently. Disabling or deleting stops outgoing tracking only; recorded history remains.",
+            "ES": "Registra los canales a los que haces raid para tu panel. Un mensaje vacío registra en silencio. Desactivar o eliminar solo detiene el registro de salida; el historial se conserva."
+          },
+          "config": [
+            {
+              "id": "message",
+              "label": {
+                "EN": "Optional message · $(raid.channel), $(raid.login), $(raid.viewers)",
+                "ES": "Mensaje opcional · $(raid.channel), $(raid.login), $(raid.viewers)"
+              },
+              "type": "text",
+              "value": "",
+              "canDisable": true
+            }
+          ]
+        },
+        {
+          "name": "New subscriptions",
+          "type": "channel.subscribe",
+          "icon": "Star",
+          "description": {
+            "EN": "Welcome new subscribers, including viewers who receive a gift subscription.",
+            "ES": "Da la bienvenida a nuevos suscriptores, incluidos quienes reciben una suscripción regalada."
+          },
+          "version": "1",
+          "condition": {
+            "broadcaster_user_id": "user"
+          },
+          "color": "#7c3aed",
+          "textColor": "#ffffff",
+          "releaseStage": "stable",
+          "enabled": false,
+          "plan_tier": "free",
+          "config": [
+            {
+              "id": "message",
+              "label": {
+                "EN": "Message",
+                "ES": "Mensaje"
+              },
+              "type": "text",
+              "value": "Thanks $(user) for subscribing at $(sub.tier)!",
+              "canDisable": true
+            }
+          ]
+        },
+        {
+          "name": "Gifted subscriptions",
+          "type": "channel.subscription.gift",
+          "icon": "Heart",
+          "description": {
+            "EN": "Thank subscription gifts with one message per gift batch, including anonymous gifts.",
+            "ES": "Agradece las suscripciones regaladas con un mensaje por lote, incluidos los regalos anónimos."
+          },
+          "version": "1",
+          "condition": {
+            "broadcaster_user_id": "user"
+          },
+          "color": "#7c3aed",
+          "textColor": "#ffffff",
+          "releaseStage": "stable",
+          "enabled": false,
+          "plan_tier": "free",
+          "config": [
+            {
+              "id": "message",
+              "label": {
+                "EN": "Message",
+                "ES": "Mensaje"
+              },
+              "type": "text",
+              "value": "Thank you for the gifted $(sub.tier) subscriptions!",
+              "canDisable": true
+            }
+          ]
+        },
+        {
+          "name": "Resubscription messages",
+          "type": "channel.subscription.message",
+          "icon": "MessageCircle",
+          "description": {
+            "EN": "Celebrate subscribers who share their resubscription in chat. Automatic renewals do not trigger this message.",
+            "ES": "Celebra a quienes comparten su resuscripción en el chat. Las renovaciones automáticas no activan este mensaje."
+          },
+          "version": "1",
+          "condition": {
+            "broadcaster_user_id": "user"
+          },
+          "color": "#7c3aed",
+          "textColor": "#ffffff",
+          "releaseStage": "stable",
+          "enabled": false,
+          "plan_tier": "free",
+          "config": [
+            {
+              "id": "message",
+              "label": {
+                "EN": "Message",
+                "ES": "Mensaje"
+              },
+              "type": "text",
+              "value": "Thanks $(user) for $(sub.months) months of support at $(sub.tier)!",
+              "canDisable": true
+            }
+          ]
+        },
+        {
+          "name": "Subscription endings",
+          "type": "channel.subscription.end",
+          "icon": "Clock",
+          "description": {
+            "EN": "Post a message when a subscription expires. Leave the message empty to stay silent.",
+            "ES": "Publica un mensaje cuando vence una suscripción. Deja el mensaje vacío para no anunciarlo."
+          },
+          "version": "1",
+          "condition": {
+            "broadcaster_user_id": "user"
+          },
+          "color": "#7c3aed",
+          "textColor": "#ffffff",
+          "releaseStage": "stable",
+          "enabled": false,
+          "plan_tier": "free",
+          "config": [
+            {
+              "id": "message",
+              "label": {
+                "EN": "Message",
+                "ES": "Mensaje"
+              },
+              "type": "text",
+              "value": "",
+              "canDisable": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "operation": "chat_catalog",
+      "input": {
+        "existing": [
+          {
+            "type": "channel.chat.notification",
+            "custom": true
+          },
+          {
+            "type": "custom.event"
+          }
+        ]
+      },
+      "expected": [
+        {
+          "type": "channel.chat.notification",
+          "custom": true
+        },
+        {
+          "type": "custom.event"
+        },
+        {
+          "name": "Shoutout Received",
+          "type": "channel.shoutout.receive",
+          "version": "1",
+          "condition": {
+            "broadcaster_user_id": "user",
+            "moderator_user_id": "moderator"
+          },
+          "icon": "MessageCircle",
+          "color": "#7c3aed",
+          "textColor": "#ffffff",
+          "releaseStage": "stable",
+          "enabled": false,
+          "plan_tier": "free",
+          "description": {
+            "EN": "Thank another streamer when they send your channel a shoutout.",
+            "ES": "Agradece a otro streamer cuando le hace un shoutout a tu canal."
+          },
+          "config": [
+            {
+              "id": "message",
+              "label": {
+                "EN": "Message",
+                "ES": "Mensaje"
+              },
+              "type": "text",
+              "value": "$(shoutout.channel) has sent a shoutout to $(twitch.channel)!",
+              "canDisable": true
+            }
+          ]
+        },
+        {
+          "name": "Incoming raid",
+          "type": "channel.raid",
+          "version": "1",
+          "condition": {
+            "to_broadcaster_user_id": "user"
+          },
+          "icon": "Users",
+          "color": "#7c3aed",
+          "textColor": "#ffffff",
+          "releaseStage": "stable",
+          "enabled": false,
+          "plan_tier": "free",
+          "description": {
+            "EN": "Incoming raid protection, announcements, clips and shoutouts. Independent of outgoing tracking.",
+            "ES": "Protección ante raids entrantes, anuncios, clips y shoutouts. Independiente del registro de salida."
+          },
+          "config": [
+            {
+              "id": "message",
+              "label": {
+                "EN": "Announcement",
+                "ES": "Anuncio"
+              },
+              "type": "text",
+              "value": "$(raid.channel) is raiding with $(raid.viewers) viewers!",
+              "canDisable": true
+            },
+            {
+              "id": "enableClip",
+              "dbId": "clipEnabled",
+              "label": {
+                "EN": "Show a clip",
+                "ES": "Mostrar un clip"
+              },
+              "type": "checkbox",
+              "value": true,
+              "canDisable": true
+            },
+            {
+              "id": "minViewers",
+              "label": {
+                "EN": "Minimum viewers for announcements",
+                "ES": "Espectadores mínimos para anuncios"
+              },
+              "type": "number",
+              "value": 2,
+              "canDisable": true
+            }
+          ]
+        },
+        {
+          "name": "Outgoing raid",
+          "type": "channel.raid.outgoing",
+          "version": "1",
+          "condition": {
+            "from_broadcaster_user_id": "user"
+          },
+          "icon": "Users",
+          "color": "#7c3aed",
+          "textColor": "#ffffff",
+          "releaseStage": "stable",
+          "enabled": false,
+          "plan_tier": "free",
+          "description": {
+            "EN": "Track channels you raid for your dashboard. An empty message tracks silently. Disabling or deleting stops outgoing tracking only; recorded history remains.",
+            "ES": "Registra los canales a los que haces raid para tu panel. Un mensaje vacío registra en silencio. Desactivar o eliminar solo detiene el registro de salida; el historial se conserva."
+          },
+          "config": [
+            {
+              "id": "message",
+              "label": {
+                "EN": "Optional message · $(raid.channel), $(raid.login), $(raid.viewers)",
+                "ES": "Mensaje opcional · $(raid.channel), $(raid.login), $(raid.viewers)"
+              },
+              "type": "text",
+              "value": "",
+              "canDisable": true
+            }
+          ]
+        },
+        {
+          "name": "New subscriptions",
+          "type": "channel.subscribe",
+          "icon": "Star",
+          "description": {
+            "EN": "Welcome new subscribers, including viewers who receive a gift subscription.",
+            "ES": "Da la bienvenida a nuevos suscriptores, incluidos quienes reciben una suscripción regalada."
+          },
+          "version": "1",
+          "condition": {
+            "broadcaster_user_id": "user"
+          },
+          "color": "#7c3aed",
+          "textColor": "#ffffff",
+          "releaseStage": "stable",
+          "enabled": false,
+          "plan_tier": "free",
+          "config": [
+            {
+              "id": "message",
+              "label": {
+                "EN": "Message",
+                "ES": "Mensaje"
+              },
+              "type": "text",
+              "value": "Thanks $(user) for subscribing at $(sub.tier)!",
+              "canDisable": true
+            }
+          ]
+        },
+        {
+          "name": "Gifted subscriptions",
+          "type": "channel.subscription.gift",
+          "icon": "Heart",
+          "description": {
+            "EN": "Thank subscription gifts with one message per gift batch, including anonymous gifts.",
+            "ES": "Agradece las suscripciones regaladas con un mensaje por lote, incluidos los regalos anónimos."
+          },
+          "version": "1",
+          "condition": {
+            "broadcaster_user_id": "user"
+          },
+          "color": "#7c3aed",
+          "textColor": "#ffffff",
+          "releaseStage": "stable",
+          "enabled": false,
+          "plan_tier": "free",
+          "config": [
+            {
+              "id": "message",
+              "label": {
+                "EN": "Message",
+                "ES": "Mensaje"
+              },
+              "type": "text",
+              "value": "Thank you for the gifted $(sub.tier) subscriptions!",
+              "canDisable": true
+            }
+          ]
+        },
+        {
+          "name": "Resubscription messages",
+          "type": "channel.subscription.message",
+          "icon": "MessageCircle",
+          "description": {
+            "EN": "Celebrate subscribers who share their resubscription in chat. Automatic renewals do not trigger this message.",
+            "ES": "Celebra a quienes comparten su resuscripción en el chat. Las renovaciones automáticas no activan este mensaje."
+          },
+          "version": "1",
+          "condition": {
+            "broadcaster_user_id": "user"
+          },
+          "color": "#7c3aed",
+          "textColor": "#ffffff",
+          "releaseStage": "stable",
+          "enabled": false,
+          "plan_tier": "free",
+          "config": [
+            {
+              "id": "message",
+              "label": {
+                "EN": "Message",
+                "ES": "Mensaje"
+              },
+              "type": "text",
+              "value": "Thanks $(user) for $(sub.months) months of support at $(sub.tier)!",
+              "canDisable": true
+            }
+          ]
+        },
+        {
+          "name": "Subscription endings",
+          "type": "channel.subscription.end",
+          "icon": "Clock",
+          "description": {
+            "EN": "Post a message when a subscription expires. Leave the message empty to stay silent.",
+            "ES": "Publica un mensaje cuando vence una suscripción. Deja el mensaje vacío para no anunciarlo."
+          },
+          "version": "1",
+          "condition": {
+            "broadcaster_user_id": "user"
+          },
+          "color": "#7c3aed",
+          "textColor": "#ffffff",
+          "releaseStage": "stable",
+          "enabled": false,
+          "plan_tier": "free",
+          "config": [
+            {
+              "id": "message",
+              "label": {
+                "EN": "Message",
+                "ES": "Mensaje"
+              },
+              "type": "text",
+              "value": "",
+              "canDisable": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "operation": "usage_context",
+      "input": {
+        "reason": "tts_fish",
+        "input": {
+          "entryId": "entry-fixed",
+          "channelID": "123"
+        }
+      },
+      "expected": {
+        "schemaVersion": 1,
+        "pricingVersion": "legacy-polar-math-v1",
+        "entryId": "entry-fixed",
+        "requestId": "entry-fixed",
+        "entryKind": "usage",
+        "category": "tts",
+        "operation": "synthesize",
+        "source": "tts_queue",
+        "provider": "fish",
+        "channelID": "123"
+      }
+    },
+    {
+      "operation": "usage_metadata",
+      "input": {
+        "reason": "tts_fish",
+        "input": {
+          "entryId": "entry-fixed",
+          "channelID": "123"
+        }
+      },
+      "expected": {
+        "schema_version": 1,
+        "pricing_version": "legacy-polar-math-v1",
+        "entry_id": "entry-fixed",
+        "request_id": "entry-fixed",
+        "entry_kind": "usage",
+        "category": "tts",
+        "operation": "synthesize",
+        "usage_source": "tts_queue",
+        "provider": "fish",
+        "channel_id": "123"
+      }
+    },
+    {
+      "operation": "usage_context",
+      "input": {
+        "reason": "tts_kokoro",
+        "input": {
+          "entryId": "entry-fixed",
+          "channelID": "123"
+        }
+      },
+      "expected": {
+        "schemaVersion": 1,
+        "pricingVersion": "legacy-polar-math-v1",
+        "entryId": "entry-fixed",
+        "requestId": "entry-fixed",
+        "entryKind": "usage",
+        "category": "tts",
+        "operation": "synthesize",
+        "source": "tts_queue",
+        "provider": "kokoro",
+        "channelID": "123"
+      }
+    },
+    {
+      "operation": "usage_metadata",
+      "input": {
+        "reason": "tts_kokoro",
+        "input": {
+          "entryId": "entry-fixed",
+          "channelID": "123"
+        }
+      },
+      "expected": {
+        "schema_version": 1,
+        "pricing_version": "legacy-polar-math-v1",
+        "entry_id": "entry-fixed",
+        "request_id": "entry-fixed",
+        "entry_kind": "usage",
+        "category": "tts",
+        "operation": "synthesize",
+        "usage_source": "tts_queue",
+        "provider": "kokoro",
+        "channel_id": "123"
+      }
+    },
+    {
+      "operation": "usage_context",
+      "input": {
+        "reason": "tts_piper",
+        "input": {
+          "entryId": "entry-fixed",
+          "channelID": "123"
+        }
+      },
+      "expected": {
+        "schemaVersion": 1,
+        "pricingVersion": "legacy-polar-math-v1",
+        "entryId": "entry-fixed",
+        "requestId": "entry-fixed",
+        "entryKind": "usage",
+        "category": "tts",
+        "operation": "synthesize",
+        "source": "tts_queue",
+        "provider": "piper",
+        "channelID": "123"
+      }
+    },
+    {
+      "operation": "usage_metadata",
+      "input": {
+        "reason": "tts_piper",
+        "input": {
+          "entryId": "entry-fixed",
+          "channelID": "123"
+        }
+      },
+      "expected": {
+        "schema_version": 1,
+        "pricing_version": "legacy-polar-math-v1",
+        "entry_id": "entry-fixed",
+        "request_id": "entry-fixed",
+        "entry_kind": "usage",
+        "category": "tts",
+        "operation": "synthesize",
+        "usage_source": "tts_queue",
+        "provider": "piper",
+        "channel_id": "123"
+      }
+    },
+    {
+      "operation": "usage_context",
+      "input": {
+        "reason": "messages",
+        "input": {
+          "entryId": "entry-fixed",
+          "channelID": "123"
+        }
+      },
+      "expected": {
+        "schemaVersion": 1,
+        "pricingVersion": "legacy-polar-math-v1",
+        "entryId": "entry-fixed",
+        "requestId": "entry-fixed",
+        "entryKind": "usage",
+        "category": "ai_chat",
+        "operation": "message",
+        "source": "chat",
+        "provider": "openrouter",
+        "channelID": "123"
+      }
+    },
+    {
+      "operation": "usage_metadata",
+      "input": {
+        "reason": "messages",
+        "input": {
+          "entryId": "entry-fixed",
+          "channelID": "123"
+        }
+      },
+      "expected": {
+        "schema_version": 1,
+        "pricing_version": "legacy-polar-math-v1",
+        "entry_id": "entry-fixed",
+        "request_id": "entry-fixed",
+        "entry_kind": "usage",
+        "category": "ai_chat",
+        "operation": "message",
+        "usage_source": "chat",
+        "provider": "openrouter",
+        "channel_id": "123"
+      }
+    },
+    {
+      "operation": "usage_context",
+      "input": {
+        "reason": "harness_tools",
+        "input": {
+          "entryId": "entry-fixed",
+          "channelID": "123"
+        }
+      },
+      "expected": {
+        "schemaVersion": 1,
+        "pricingVersion": "legacy-polar-math-v1",
+        "entryId": "entry-fixed",
+        "requestId": "entry-fixed",
+        "entryKind": "usage",
+        "category": "ai_chat",
+        "operation": "tool_reasoning",
+        "source": "chat",
+        "provider": "openrouter",
+        "channelID": "123"
+      }
+    },
+    {
+      "operation": "usage_metadata",
+      "input": {
+        "reason": "harness_tools",
+        "input": {
+          "entryId": "entry-fixed",
+          "channelID": "123"
+        }
+      },
+      "expected": {
+        "schema_version": 1,
+        "pricing_version": "legacy-polar-math-v1",
+        "entry_id": "entry-fixed",
+        "request_id": "entry-fixed",
+        "entry_kind": "usage",
+        "category": "ai_chat",
+        "operation": "tool_reasoning",
+        "usage_source": "chat",
+        "provider": "openrouter",
+        "channel_id": "123"
+      }
+    },
+    {
+      "operation": "usage_context",
+      "input": {
+        "reason": "harness_end",
+        "input": {
+          "entryId": "entry-fixed",
+          "channelID": "123"
+        }
+      },
+      "expected": {
+        "schemaVersion": 1,
+        "pricingVersion": "legacy-polar-math-v1",
+        "entryId": "entry-fixed",
+        "requestId": "entry-fixed",
+        "entryKind": "usage",
+        "category": "ai_chat",
+        "operation": "final_response",
+        "source": "chat",
+        "provider": "openrouter",
+        "channelID": "123"
+      }
+    },
+    {
+      "operation": "usage_metadata",
+      "input": {
+        "reason": "harness_end",
+        "input": {
+          "entryId": "entry-fixed",
+          "channelID": "123"
+        }
+      },
+      "expected": {
+        "schema_version": 1,
+        "pricing_version": "legacy-polar-math-v1",
+        "entry_id": "entry-fixed",
+        "request_id": "entry-fixed",
+        "entry_kind": "usage",
+        "category": "ai_chat",
+        "operation": "final_response",
+        "usage_source": "chat",
+        "provider": "openrouter",
+        "channel_id": "123"
+      }
+    },
+    {
+      "operation": "usage_context",
+      "input": {
+        "reason": "planner",
+        "input": {
+          "entryId": "entry-fixed",
+          "channelID": "123"
+        }
+      },
+      "expected": {
+        "schemaVersion": 1,
+        "pricingVersion": "legacy-polar-math-v1",
+        "entryId": "entry-fixed",
+        "requestId": "entry-fixed",
+        "entryKind": "usage",
+        "category": "ai_agent",
+        "operation": "plan",
+        "source": "code_execution",
+        "provider": "openrouter",
+        "channelID": "123"
+      }
+    },
+    {
+      "operation": "usage_metadata",
+      "input": {
+        "reason": "planner",
+        "input": {
+          "entryId": "entry-fixed",
+          "channelID": "123"
+        }
+      },
+      "expected": {
+        "schema_version": 1,
+        "pricing_version": "legacy-polar-math-v1",
+        "entry_id": "entry-fixed",
+        "request_id": "entry-fixed",
+        "entry_kind": "usage",
+        "category": "ai_agent",
+        "operation": "plan",
+        "usage_source": "code_execution",
+        "provider": "openrouter",
+        "channel_id": "123"
+      }
+    },
+    {
+      "operation": "usage_context",
+      "input": {
+        "reason": "coding_agent",
+        "input": {
+          "entryId": "entry-fixed",
+          "channelID": "123"
+        }
+      },
+      "expected": {
+        "schemaVersion": 1,
+        "pricingVersion": "legacy-polar-math-v1",
+        "entryId": "entry-fixed",
+        "requestId": "entry-fixed",
+        "entryKind": "usage",
+        "category": "ai_agent",
+        "operation": "generate_code",
+        "source": "code_execution",
+        "provider": "openrouter",
+        "channelID": "123"
+      }
+    },
+    {
+      "operation": "usage_metadata",
+      "input": {
+        "reason": "coding_agent",
+        "input": {
+          "entryId": "entry-fixed",
+          "channelID": "123"
+        }
+      },
+      "expected": {
+        "schema_version": 1,
+        "pricing_version": "legacy-polar-math-v1",
+        "entry_id": "entry-fixed",
+        "request_id": "entry-fixed",
+        "entry_kind": "usage",
+        "category": "ai_agent",
+        "operation": "generate_code",
+        "usage_source": "code_execution",
+        "provider": "openrouter",
+        "channel_id": "123"
+      }
+    },
+    {
+      "operation": "usage_context",
+      "input": {
+        "reason": "stream_summary",
+        "input": {
+          "entryId": "entry-fixed",
+          "channelID": "123"
+        }
+      },
+      "expected": {
+        "schemaVersion": 1,
+        "pricingVersion": "legacy-polar-math-v1",
+        "entryId": "entry-fixed",
+        "requestId": "entry-fixed",
+        "entryKind": "usage",
+        "category": "memory",
+        "operation": "stream_summary",
+        "source": "stream_offline",
+        "provider": "openrouter",
+        "channelID": "123"
+      }
+    },
+    {
+      "operation": "usage_metadata",
+      "input": {
+        "reason": "stream_summary",
+        "input": {
+          "entryId": "entry-fixed",
+          "channelID": "123"
+        }
+      },
+      "expected": {
+        "schema_version": 1,
+        "pricing_version": "legacy-polar-math-v1",
+        "entry_id": "entry-fixed",
+        "request_id": "entry-fixed",
+        "entry_kind": "usage",
+        "category": "memory",
+        "operation": "stream_summary",
+        "usage_source": "stream_offline",
+        "provider": "openrouter",
+        "channel_id": "123"
+      }
+    },
+    {
+      "operation": "usage_context",
+      "input": {
+        "reason": "weekly_summary",
+        "input": {
+          "entryId": "entry-fixed",
+          "channelID": "123"
+        }
+      },
+      "expected": {
+        "schemaVersion": 1,
+        "pricingVersion": "legacy-polar-math-v1",
+        "entryId": "entry-fixed",
+        "requestId": "entry-fixed",
+        "entryKind": "usage",
+        "category": "memory",
+        "operation": "weekly_summary",
+        "source": "weekly_maintenance",
+        "provider": "openrouter",
+        "channelID": "123"
+      }
+    },
+    {
+      "operation": "usage_metadata",
+      "input": {
+        "reason": "weekly_summary",
+        "input": {
+          "entryId": "entry-fixed",
+          "channelID": "123"
+        }
+      },
+      "expected": {
+        "schema_version": 1,
+        "pricing_version": "legacy-polar-math-v1",
+        "entry_id": "entry-fixed",
+        "request_id": "entry-fixed",
+        "entry_kind": "usage",
+        "category": "memory",
+        "operation": "weekly_summary",
+        "usage_source": "weekly_maintenance",
+        "provider": "openrouter",
+        "channel_id": "123"
+      }
+    },
+    {
+      "operation": "usage_context",
+      "input": {
+        "reason": "monthly_summary",
+        "input": {
+          "entryId": "entry-fixed",
+          "channelID": "123"
+        }
+      },
+      "expected": {
+        "schemaVersion": 1,
+        "pricingVersion": "legacy-polar-math-v1",
+        "entryId": "entry-fixed",
+        "requestId": "entry-fixed",
+        "entryKind": "usage",
+        "category": "memory",
+        "operation": "monthly_summary",
+        "source": "monthly_maintenance",
+        "provider": "openrouter",
+        "channelID": "123"
+      }
+    },
+    {
+      "operation": "usage_metadata",
+      "input": {
+        "reason": "monthly_summary",
+        "input": {
+          "entryId": "entry-fixed",
+          "channelID": "123"
+        }
+      },
+      "expected": {
+        "schema_version": 1,
+        "pricing_version": "legacy-polar-math-v1",
+        "entry_id": "entry-fixed",
+        "request_id": "entry-fixed",
+        "entry_kind": "usage",
+        "category": "memory",
+        "operation": "monthly_summary",
+        "usage_source": "monthly_maintenance",
+        "provider": "openrouter",
+        "channel_id": "123"
+      }
+    },
+    {
+      "operation": "usage_context",
+      "input": {
+        "reason": "vod_clip_recommendation",
+        "input": {
+          "entryId": "entry-fixed",
+          "channelID": "123"
+        }
+      },
+      "expected": {
+        "schemaVersion": 1,
+        "pricingVersion": "legacy-polar-math-v1",
+        "entryId": "entry-fixed",
+        "requestId": "entry-fixed",
+        "entryKind": "usage",
+        "category": "clip_recommendation",
+        "operation": "analyze_vod",
+        "source": "clip_recommendation",
+        "provider": "openrouter",
+        "channelID": "123"
+      }
+    },
+    {
+      "operation": "usage_metadata",
+      "input": {
+        "reason": "vod_clip_recommendation",
+        "input": {
+          "entryId": "entry-fixed",
+          "channelID": "123"
+        }
+      },
+      "expected": {
+        "schema_version": 1,
+        "pricing_version": "legacy-polar-math-v1",
+        "entry_id": "entry-fixed",
+        "request_id": "entry-fixed",
+        "entry_kind": "usage",
+        "category": "clip_recommendation",
+        "operation": "analyze_vod",
+        "usage_source": "clip_recommendation",
+        "provider": "openrouter",
+        "channel_id": "123"
+      }
+    },
+    {
+      "operation": "usage_context",
+      "input": {
+        "reason": "Free benefits",
+        "input": {
+          "entryId": "entry-fixed",
+          "channelID": "123"
+        }
+      },
+      "expected": {
+        "schemaVersion": 1,
+        "pricingVersion": "legacy-polar-math-v1",
+        "entryId": "entry-fixed",
+        "requestId": "entry-fixed",
+        "entryKind": "adjustment",
+        "category": "credit_adjustment",
+        "operation": "grant",
+        "source": "activation",
+        "provider": "polar",
+        "channelID": "123"
+      }
+    },
+    {
+      "operation": "usage_metadata",
+      "input": {
+        "reason": "Free benefits",
+        "input": {
+          "entryId": "entry-fixed",
+          "channelID": "123"
+        }
+      },
+      "expected": {
+        "schema_version": 1,
+        "pricing_version": "legacy-polar-math-v1",
+        "entry_id": "entry-fixed",
+        "request_id": "entry-fixed",
+        "entry_kind": "adjustment",
+        "category": "credit_adjustment",
+        "operation": "grant",
+        "usage_source": "activation",
+        "provider": "polar",
+        "channel_id": "123"
+      }
+    },
+    {
+      "operation": "usage_context",
+      "input": {
+        "reason": "",
+        "input": {
+          "entryId": "entry-fixed",
+          "channelID": "123"
+        }
+      },
+      "expected": {
+        "schemaVersion": 1,
+        "pricingVersion": "legacy-polar-math-v1",
+        "entryId": "entry-fixed",
+        "requestId": "entry-fixed",
+        "entryKind": "usage",
+        "category": "other",
+        "operation": "usage",
+        "source": "backend",
+        "provider": "unknown",
+        "channelID": "123"
+      }
+    },
+    {
+      "operation": "usage_metadata",
+      "input": {
+        "reason": "",
+        "input": {
+          "entryId": "entry-fixed",
+          "channelID": "123"
+        }
+      },
+      "expected": {
+        "schema_version": 1,
+        "pricing_version": "legacy-polar-math-v1",
+        "entry_id": "entry-fixed",
+        "request_id": "entry-fixed",
+        "entry_kind": "usage",
+        "category": "other",
+        "operation": "usage",
+        "usage_source": "backend",
+        "provider": "unknown",
+        "channel_id": "123"
+      }
+    },
+    {
+      "operation": "usage_context",
+      "input": {
+        "reason": "unknown",
+        "input": {
+          "entryId": "entry-fixed",
+          "channelID": "123"
+        }
+      },
+      "expected": {
+        "schemaVersion": 1,
+        "pricingVersion": "legacy-polar-math-v1",
+        "entryId": "entry-fixed",
+        "requestId": "entry-fixed",
+        "entryKind": "usage",
+        "category": "other",
+        "operation": "unknown",
+        "source": "backend",
+        "provider": "unknown",
+        "channelID": "123"
+      }
+    },
+    {
+      "operation": "usage_metadata",
+      "input": {
+        "reason": "unknown",
+        "input": {
+          "entryId": "entry-fixed",
+          "channelID": "123"
+        }
+      },
+      "expected": {
+        "schema_version": 1,
+        "pricing_version": "legacy-polar-math-v1",
+        "entry_id": "entry-fixed",
+        "request_id": "entry-fixed",
+        "entry_kind": "usage",
+        "category": "other",
+        "operation": "unknown",
+        "usage_source": "backend",
+        "provider": "unknown",
+        "channel_id": "123"
+      }
+    },
+    {
+      "operation": "classify_adjustment",
+      "input": {
+        "entryKind": "usage"
+      },
+      "expected": null
+    },
+    {
+      "operation": "classify_adjustment",
+      "input": {
+        "entryKind": "adjustment"
+      },
+      "expected": "other"
+    },
+    {
+      "operation": "classify_adjustment",
+      "input": {
+        "entryKind": "adjustment",
+        "adjustmentType": "gifted_credits"
+      },
+      "expected": "gifted_credits"
+    },
+    {
+      "operation": "classify_adjustment",
+      "input": {
+        "entryKind": "adjustment",
+        "source": "polar_meter_credit"
+      },
+      "expected": "native_grant"
+    },
+    {
+      "operation": "classify_adjustment",
+      "input": {
+        "entryKind": "adjustment",
+        "source": "free_credit_reset"
+      },
+      "expected": "monthly_reset"
+    },
+    {
+      "operation": "classify_adjustment",
+      "input": {
+        "entryKind": "adjustment",
+        "source": "admin_credit_grant"
+      },
+      "expected": "manual_grant"
+    },
+    {
+      "operation": "classify_adjustment",
+      "input": {
+        "entryKind": "adjustment",
+        "operation": "purchase_pack"
+      },
+      "expected": "purchased_pack"
+    },
+    {
+      "operation": "classify_adjustment",
+      "input": {
+        "entryKind": "adjustment",
+        "operation": "refund"
+      },
+      "expected": "refund"
+    },
+    {
+      "operation": "classify_adjustment",
+      "input": {
+        "entryKind": "adjustment",
+        "operation": "correction"
+      },
+      "expected": "correction"
+    },
+    {
+      "operation": "classify_adjustment",
+      "input": {
+        "entryKind": "adjustment",
+        "reason": "Free benefits"
+      },
+      "expected": "activation"
+    },
+    {
+      "operation": "expected_condition",
+      "input": {
+        "subscription": {
+          "type": "channel.follow",
+          "condition": {
+            "broadcaster_user_id": "user",
+            "moderator_user_id": "moderator"
+          }
+        },
+        "channelID": "123"
+      },
+      "expected": {
+        "broadcaster_user_id": "123",
+        "moderator_user_id": "moderator"
+      }
+    },
+    {
+      "operation": "expected_condition",
+      "input": {
+        "subscription": {
+          "type": "user.update",
+          "condition": {
+            "user_id": "user"
+          }
+        },
+        "channelID": "123"
+      },
+      "expected": {
+        "user_id": "123"
+      }
+    },
+    {
+      "operation": "expected_condition",
+      "input": {
+        "subscription": {
+          "type": "channel.raid",
+          "condition": {
+            "from_broadcaster_user_id": "user",
+            "to_broadcaster_user_id": ""
+          }
+        },
+        "channelID": "123"
+      },
+      "expected": {
+        "from_broadcaster_user_id": "123"
+      }
+    },
+    {
+      "operation": "expected_condition",
+      "input": {
+        "subscription": {
+          "type": "channel.raid",
+          "condition": {
+            "to_broadcaster_user_id": "user"
+          }
+        },
+        "channelID": "123"
+      },
+      "expected": {
+        "to_broadcaster_user_id": "123"
+      }
+    },
+    {
+      "operation": "circuit_breaker",
+      "input": {
+        "total": 0,
+        "unhealthy": 0,
+        "ratio": 0.25,
+        "minimum": 5
+      },
+      "expected": false
+    },
+    {
+      "operation": "circuit_breaker",
+      "input": {
+        "total": 20,
+        "unhealthy": 5,
+        "ratio": 0.25,
+        "minimum": 5
+      },
+      "expected": false
+    },
+    {
+      "operation": "circuit_breaker",
+      "input": {
+        "total": 19,
+        "unhealthy": 5,
+        "ratio": 0.25,
+        "minimum": 5
+      },
+      "expected": true
+    },
+    {
+      "operation": "circuit_breaker",
+      "input": {
+        "total": 10,
+        "unhealthy": 4,
+        "ratio": 0.25,
+        "minimum": 5
+      },
+      "expected": false
+    },
+    {
+      "operation": "circuit_breaker",
+      "input": {
+        "total": 10,
+        "unhealthy": 5,
+        "ratio": 2,
+        "minimum": 0
+      },
+      "expected": false
+    },
+    {
+      "operation": "circuit_breaker",
+      "input": {
+        "total": 10,
+        "unhealthy": 1,
+        "ratio": -1,
+        "minimum": 0
+      },
+      "expected": true
+    },
+    {
+      "operation": "raid_direction",
+      "input": {},
+      "expected": "incoming"
+    },
+    {
+      "operation": "raid_direction",
+      "input": {
+        "from_broadcaster_user_id": "123"
+      },
+      "expected": "outgoing"
+    },
+    {
+      "operation": "raid_direction",
+      "input": {
+        "to_broadcaster_user_id": "123"
+      },
+      "expected": "incoming"
+    },
+    {
+      "operation": "raid_direction",
+      "input": {
+        "from_broadcaster_user_id": "123",
+        "to_broadcaster_user_id": "456"
+      },
+      "expected": "incoming"
+    },
+    {
+      "operation": "raid_direction",
+      "input": {
+        "from_broadcaster_user_id": ""
+      },
+      "expected": "incoming"
+    },
+    {
+      "operation": "serialize_condition",
+      "input": {
+        "z": "",
+        "b": "2",
+        "a": "1",
+        "c": null
+      },
+      "expected": "{\"a\":\"1\",\"b\":\"2\"}"
+    },
+    {
+      "operation": "stable_condition",
+      "input": {
+        "z": "",
+        "b": "2",
+        "a": "1",
+        "c": null
+      },
+      "expected": "{\"a\":\"1\",\"b\":\"2\"}"
+    },
+    {
+      "operation": "serialize_condition",
+      "input": {
+        "user_id": "moderator",
+        "broadcaster_user_id": "123",
+        "unused": ""
+      },
+      "expected": "{\"broadcaster_user_id\":\"123\",\"user_id\":\"moderator\"}"
+    },
+    {
+      "operation": "stable_condition",
+      "input": {
+        "user_id": "moderator",
+        "broadcaster_user_id": "123",
+        "unused": ""
+      },
+      "expected": "{\"broadcaster_user_id\":\"123\",\"user_id\":\"moderator\"}"
+    },
+    {
+      "operation": "domain_envelope",
+      "input": {
+        "_id": "objectid",
+        "eventKey": "source:id:type",
+        "source": "test",
+        "type": "test.event",
+        "unknown": "omit",
+        "metadata": null
+      },
+      "expected": {
+        "_id": "objectid",
+        "eventKey": "source:id:type",
+        "source": "test",
+        "type": "test.event",
+        "metadata": null
+      }
+    },
+    {
+      "operation": "domain_envelope",
+      "input": {
+        "_id": "objectid",
+        "ownerUserId": null,
+        "occurredAt": "2026-10-22T00:00:00.000Z",
+        "payload": {
+          "nested": true
+        }
+      },
+      "expected": {
+        "_id": "objectid",
+        "ownerUserId": null,
+        "occurredAt": "2026-10-22T00:00:00.000Z",
+        "payload": {
+          "nested": true
+        }
+      }
+    },
+    {
+      "operation": "domain_event_key",
+      "input": {
+        "source": "twitch",
+        "sourceEventId": "id:with/slash",
+        "type": "event type"
+      },
+      "expected": "twitch:id%3Awith%2Fslash:event%20type"
+    },
+    {
+      "operation": "domain_event_key",
+      "input": {
+        "source": " a ",
+        "sourceEventId": "!*'()é",
+        "type": "x"
+      },
+      "expected": "a:!*'()%C3%A9:x"
+    },
+    {
+      "operation": "domain_event_key",
+      "input": {
+        "source": "",
+        "sourceEventId": "id",
+        "type": "type"
+      },
+      "error": "Domain event key component is required"
+    }
+  ]
+}

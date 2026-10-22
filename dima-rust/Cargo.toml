@@ -29,6 +29,17 @@ otel = ["dep:opentelemetry", "dep:opentelemetry_sdk", "dep:opentelemetry-otlp", 
 jwt = ["dep:jsonwebtoken", "dep:base64", "dep:serde", "dep:serde_json"]
 re2-compat = ["dep:regex"]
 audio = ["dep:symphonia"]
+# Consolidated helpers are independently selectable; the umbrella is convenient
+# for future bot/API ports. None is enabled by default or by a worker profile.
+bot-utils = ["command-utils", "keywords", "chat-events", "ai-usage", "eventsub", "domain-events"]
+command-utils = ["dep:serde_json", "dep:tokio", "dep:uuid"]
+keywords = ["dep:regex", "dep:serde", "dep:serde_json", "dep:tokio", "dep:unicode-normalization"]
+chat-events = ["dep:serde_json"]
+ai-usage = ["dep:serde", "dep:serde_json", "dep:uuid"]
+eventsub = ["dep:serde", "dep:serde_json"]
+domain-events = ["dep:serde", "dep:serde_json"]
+twitch-client = ["http-client", "dep:serde_json"]
+polar-client = ["http-client", "dep:serde", "dep:serde_json"]
 
 [[bin]]
 name = "stream_activity"
@@ -105,3 +116,5 @@ resend-rs = { version = "0.35.0", optional = true, default-features = false, fea
 socketioxide = { version = "0.18.7", optional = true }
 symphonia = { version = "0.6.1", optional = true, default-features = false, features = ["mp3", "id3v2"] }
 tower-http = { version = "0.7.1", optional = true, features = ["cors"] }
+unicode-normalization = { version = "=0.1.26", optional = true }
+uuid = { version = "=1.28.0", optional = true, features = ["v4"] }

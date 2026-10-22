@@ -1393,6 +1393,8 @@ dependencies = [
  "symphonia",
  "tokio",
  "tower-http 0.7.1",
+ "unicode-normalization",
+ "uuid",
 ]
 
 [[package]]

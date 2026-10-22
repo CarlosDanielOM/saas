@@ -3,6 +3,53 @@
 //! Keep this module limited to narrow, reusable pieces rather than a generic
 //! framework or a parallel data-access layer. Service foundations mirror the
 //! TypeScript helpers in `dimabot/src/utils`; each is behind its own feature.
+//!
+//! Enable individual consolidated helpers or `bot-utils` for all six. Provider
+//! transports use the separate `twitch-client` and `polar-client` features.
+//! These opt-in APIs do not register workers or install production adapters.
+//!
+//! ```
+//! # #[cfg(all(feature = "keywords", feature = "eventsub"))] {
+//! use dima_rust::utils::{eventsub, keywords};
+//! let entries = [keywords::KeywordEntry {
+//!     id: "greeting".into(), text: "hello".into(),
+//!     match_mode: keywords::KeywordMatchMode::Anywhere,
+//! }];
+//! let index = keywords::compile_keyword_index(entries);
+//! assert_eq!(keywords::match_keywords(&index, "Hello world").len(), 1);
+//! let condition = eventsub::Condition::from([("broadcaster_user_id", "123")]);
+//! assert_eq!(eventsub::subscription_key("channel.follow", "2", &condition),
+//!     "channel.follow:2:{\"broadcaster_user_id\":\"123\"}");
+//! # }
+//! ```
+
+#[cfg(any(
+    feature = "bot-utils",
+    feature = "keywords",
+    feature = "chat-events",
+    feature = "ai-usage",
+    feature = "eventsub",
+    feature = "domain-events",
+    feature = "twitch-client"
+))]
+pub mod js_compat;
+
+#[cfg(feature = "ai-usage")]
+pub mod ai_usage;
+#[cfg(feature = "chat-events")]
+pub mod chat_events;
+#[cfg(feature = "command-utils")]
+pub mod command_cooldown;
+#[cfg(feature = "domain-events")]
+pub mod domain_events;
+#[cfg(feature = "eventsub")]
+pub mod eventsub;
+#[cfg(feature = "keywords")]
+pub mod keywords;
+#[cfg(feature = "polar-client")]
+pub mod polar;
+#[cfg(feature = "twitch-client")]
+pub mod twitch;
 
 #[cfg(feature = "audio")]
 pub mod audio;
@@ -35,7 +82,9 @@ pub mod socketio;
         feature = "email",
         feature = "posthog",
         feature = "s3",
-        feature = "otel"
+        feature = "otel",
+        feature = "twitch-client",
+        feature = "polar-client"
     )
 ))]
 pub(crate) mod test_http;
