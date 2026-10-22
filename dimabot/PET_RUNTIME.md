@@ -1,6 +1,6 @@
 # Shared pet runtime (DIMA-030)
 
-Status: backend adapter correction compiled and verified on an isolated API candidate, including strict raw event arity. The prior image failed actual Rust/API interoperability at desktop hello; a new actual Rust/API run remains parent-coordinated and pending. Not deployed or milestone accepted. This is the backend contract for the approved PNG/VTS pet slice. Backend runtime alone does not complete the milestone: command/EventSub AST tags, website renderer and desktop Socket.IO integration need their own integration/acceptance. No microphone, universal plugin system, additional service or Rust server migration is introduced.
+Status: final generated-metadata API candidate verified in isolation, including the existing strict runtime fixture. The parent accepted actual API/Rust coordinator/private-WAV/fake-output interoperability on the preceding byte-identical runtime. Not deployed or milestone accepted; cron scheduling, release coordination and real hardware/platform acceptance remain separate work. This is the backend contract for the approved PNG/VTS pet slice. Backend runtime alone does not complete the milestone: command/EventSub AST tags, website renderer and desktop Socket.IO integration need their own integration/acceptance. No microphone, universal plugin system, additional service or Rust server migration is introduced.
 
 The existing TypeScript API owns processing and Socket.IO. Bot/cron may import `src/pets/admission.ts` and call `admitPetAction`; importing it starts no runtime, subscriber, provider or interval. Only API `registerPetSockets` starts the runtime. Current production has one API process; Mongo compare-and-set fences requests/leases if another executor appears, but distributing socket delivery across API replicas is outside this implementation.
 
@@ -71,7 +71,7 @@ interface AdmitPetActionInput {
 // => Promise<{requestId:string,status:string}>
 ```
 
-The later AST integration derives identity from the real command/event effect context, not user text: Twitch message_id/eventKey, stable engine actionKey, server account/channel and actor. Missing identity rejects. Configured chat/event actions are gated by respondToChat/respondToEvents; there is no unconditional chat listener. Intended tags are `$(pet.talk supplied text)` (direct TTS) and `$(pet.ask supplied prompt)` (no-tool LLM then TTS). Tags return empty text on admission and bounded errors on rejection; LLM output is never AST-evaluated. Producers admit durable state + Redis wake only; no provider work runs in bot/cron.
+The configured AST integration derives identity from the real command/event effect context, not user text: Twitch message_id/eventKey, stable engine actionKey, server account/channel and actor. Missing identity rejects. Configured chat/event actions are gated by respondToChat/respondToEvents; there is no unconditional chat listener. The configured tags are `$(pet.talk supplied text)` (direct TTS) and `$(pet.ask supplied prompt)` (no-tool LLM then TTS). Tags return empty text on admission and bounded errors on rejection; LLM output is never AST-evaluated. Producers admit durable state + Redis wake only; no provider work runs in bot/cron.
 
 One active request per pet, no backlog. Mongo has a unique `(ownerId,origin.kind,origin.id,actionKey)` index. Identical payloads reuse one request; changed payload conflicts. An explicit admitted flag closes the insert/runtime-CAS gap: creators/duplicates may resolve the same sole slot, but none returns accepted before durable linkage. If a duplicate read admitted=false and the winner already advanced, the loser rereads and returns the admitted generating/terminal outcome instead of falsely expiring it. A runtime claim carries a unique internal claim ID and captures the atomic runtime preimage. If a delayed duplicate successfully reclaims an already terminal request, it conditionally clears only its own slot and restores the preimage cooldown. The predicate uses the immutable lease identity, never its renewable expiry; lease renewals survive cleanup. Replacement requests and same-millisecond competing claims remain untouched. Normal acceptance and active-pointer invalidation clear claim ownership. Rejection CAS only touches an unadmitted accepted row. Request-specific cancellation compares expected request ID and generation atomically; completion/replacement of A cannot invalidate B or its lease/readiness. Recovery never synthesizes unadmitted rows. Active phases are persisted before provider calls. Unknown provider outcomes after crash become terminal `provider_outcome_unknown`; reconnect/recovery never regenerate them. Dedupe records expire after seven days, which bounds replay protection to that retention window.
 
@@ -80,6 +80,46 @@ The existing no-tool `generateStandaloneText`, model policy, verified `getAiCred
 Redis hints use the existing `DomainEventWakeups` lifecycle through a pet-topic adapter: producer notification only schedules work; it never awaits connection/publication. One client/command, one pending bit and at most 64 coalesced owner IDs are retained. Dedicated hint clients use 500 ms connect/command deadlines, disable offline queues/automatic reconnect and destroy failed clients to flush commands. API subscriber startup is also asynchronous; failed hints are dropped and bounded Mongo recovery remains authoritative. The shared `DOMAIN_EVENTS_WAKEUPS_ENABLED=false` switch also disables these reused hint clients. Redis hints are advisory after durable admission. API recovery uses one guarded 15-second timer, indexed/limited 64-row expiry/accepted/cleanup scans and one indexed runtime-header read for at most 64 rotating connected owners to repair missed selection/terminal hints; unchanged idle owners do not generate snapshots, no idle high-frequency polling. At most four provider tasks run at once across owners. Files/directories for completed requests are removed on bounded recovery. Real API-replica distribution, real browser autoplay/audio, desktop platforms and real VTS still need acceptance; no provider was invoked with real credentials during implementation.
 
 ## Verification recipe
+
+### Final generated-metadata API candidate (2026-10-22)
+
+Clean isolated source `/tmp/dima-pet-producer-11c4a73c` at `63e99b5c412e68001481c29ebb0a8958edc4de5d` produced final API run `api-cadd5748cb9c`, image `sha256:09beb3a509cb3ed8fb4bb60643f405bbb42fc2fe7d7ac0290a53594918031ee1`, source snapshot digest `aa2b6d8f7d85b22b90d1007e5c1fb6cd1986eb3988cbb4bcaefefbaba925bbdd`. No unrelated dirty Rust/cron/docs/image changes were copied. Compared bytewise to accepted runtime source `336b0190`, only this evidence document, `src/utils/ai/ast_catalog/ast-catalog.json`, and `src/utils/ai/sandbox/doc-ast.txt` differ. TypeScript/TSX, dependencies/lockfile and Dockerfile are unchanged. The generated catalog advances `e585b9e5fefe` → `d2bd1b95bef8`, 113 → 115 entries, adding exactly `pet.ask` and `pet.talk`, both `planTier: premium` and `surfaces: [authoring]`.
+
+The normal `saas-ops` build succeeded, reusing the existing compilation layer. The owner explicitly authorized this remaining serial API/cron image-build work on the existing production Docker daemon outside the aggregate task cap; this exception covers only those builds. This worker performed no infrastructure/isolated-builder changes and no Rust compilation. The required outer `/tmp/sam-host-slot.lock`, source isolation, fresh production baseline, ownership and cleanup safeguards remained in force. Disposable verification retained normal limits: API/check 2 CPUs/3 GiB/512 PIDs, Mongo and Redis each 1 CPU/1 GiB/256 PIDs on an internal network with dummy credentials/provider mocks.
+
+| Final exact-image check | Result |
+| --- | --- |
+| `pet-metadata.mjs` | PASS version/count/two Premium authoring-only entries, generated syntax/examples/text and existing compiled get/find/search interfaces; default/action lookups exclude pet entries; zero provider or billing calls; natural exit |
+| Latest `pet-runtime.mjs` | PASS once: exact Socket.IO event arity, preserved unrelated recovery, owner/scopes, sole playback, private audio/asset authorization, stable durable usage IDs/counts/replay suppression, playback/terminal transitions, readiness cancellation and unknown-outcome recovery |
+
+No broad 111-assertion/OAuth/configuration/hints-disabled suite was repeated for this metadata-only delta. Those runtime checks and the parent's actual API/Rust acceptance remain prior evidence, rather than being presented as freshly rerun tests. Parent-reviewed interop on `api-ae3fc72dfb9f` passed the real transport/parser/coordinator ignored regression: two same-generation admissions, naturally adjacent ready/play pairs, deliberate stale-event guards and private WAV decoding to a fake output sink, with two provider calls and matching mocked ingests. Its receipt check digest was `73bba72aa392bc63b61b094e05200585c3b271bae3424ec86a6299b85f5209c9`. This was not the full application session loop or real audio/VTS hardware.
+
+Exact generated artifact SHA-256 values:
+
+- Source catalog: `97e3b47776e97352733da9f589ffd9e8300f85f99bb6872a53deeacc503d5fb4`.
+- Compiled catalog: `5f7bfb21f1f682df9562b4e51b25fe3a92dc435c65e72432aa9af1fc9466b6f9` (parsed contents equal the source catalog).
+- Authoring reference: `8a199d72469f0b950e8273253527073ecb428eb0b3cf99d95c917f8bc7cd6418`.
+- Metadata check: `75f24fa2054840391ab07f9fd02049d213a201ffa2b5b857de26a11d131a9fe3`.
+- Runtime check: `22546d67b002c48754db28bd3c570cc0150d1192c81d76314848aadf2eba1c19`.
+
+The authoring interface is the existing compiled catalog module consumed by `AST_DOCS`; there is no public HTTP catalog route. The generated text is present at the actual read-only path used by `code_execution.tool`. No new endpoint or external embedding/model request was used. Staged runtime fixtures `/tmp/pet-final-api-fixtures-63e99b5c` have tree digest `ffd56c0dd51375c5583026c4350697ed1f250503176e26042cc189249b6687d0`; provider mock digest remains `f6f0a0a33e76dddb4818870fae9ff65f9a81b17875193575d3b2ffc15ba8c214`.
+
+The final receipt is `verified`, `resources: []`; generated candidate container/network filters are empty. No failed intermediate run was created. Production API container `562613a373a4241676463f6425014416398cf3d5e8bdf0a64ad2001a00e73be6` and baseline image `sha256:e35327bf7532b8b33d955ac5466062cbed28315dcb9f5077c86d8221e5b854c1` remained unchanged; its existing readiness endpoint returned HTTP 200. The managed desktop PID `1129545` still points to the unchanged `cd2a230...` snapshot; no app operation occurred. Exact candidate image/receipt are retained for parent-coordinated release; no serving candidate, own test/compiler/watcher, production messages, deployment or real provider/credit spend remains. Private receipt and latest server log: `/root/.local/state/saas-ops/649a957c15888e53/api-cadd5748cb9c/{receipt.json,test.log}`. The helper retains only the latest check/log, so metadata result identities are recorded above.
+
+Reproduce these two scoped checks against this retained run, after obtaining the shared execution turn:
+
+```sh
+PET_FIXTURES=$(mktemp -d /tmp/pet-final-api-fixtures.XXXXXX)
+cp ops/checks/pet-runtime-fixtures/*.mjs "$PET_FIXTURES/"
+cp ops/checks/oauth-beta-fixtures/providers.mjs "$PET_FIXTURES/oauth-providers.mjs"
+flock --close -w 60 /tmp/sam-host-slot.lock scripts/saas-ops verify api-cadd5748cb9c --dependency mongo --dependency redis \
+  --test-env ops/checks/pet-runtime-fixtures/test-env.json --fixtures "$PET_FIXTURES" --check ops/checks/pet-metadata.mjs
+flock --close -w 60 /tmp/sam-host-slot.lock scripts/saas-ops verify api-cadd5748cb9c --dependency mongo --dependency redis \
+  --test-env ops/checks/pet-runtime-fixtures/test-env.json --fixtures "$PET_FIXTURES" --check ops/checks/pet-runtime.mjs
+rm -rf -- "$PET_FIXTURES"
+```
+
+### Prior adapter-correction evidence
 
 Adapter-correction investigation: actual Rust/API execution against source `74e52320` / candidate `api-0031d7119456` rejected `desktop:hello` before admission. Installed Socket.IO **4.8.3** routes `Socket.emit` through adapter broadcast when global recovery is configured; installed socket.io-adapter **2.5.8** `SessionAwareAdapter.broadcast` appends an offset and records the packet independently of its `persistSession` / `restoreSession` methods. The earlier method overrides therefore left a third event argument on both pet namespaces. Its constructor also creates a private 60-second unref interval, and the inherited `close()` does not clear it. Replacing an already constructed adapter cannot clean up that closure through the exported API.
 
