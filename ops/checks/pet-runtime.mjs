@@ -57,17 +57,17 @@ async function mint(browser = 'oauth-beta-browser-owner', scope = 'profile:read 
   assert.equal(exchange.status, 200); return exchange.body;
 }
 const sockets = [];
-async function connect(namespace, auth, reject = false) {
+async function connect(namespace, auth, reject = false, needsSnapshot = true) {
   const ws = new WebSocket('ws://127.0.0.1:3000/socket.io/?EIO=4&transport=websocket');
   sockets.push(ws);
-  const events = [], acks = new Map(); let sequence = 0, joined = false, failure;
+  const events = [], acks = new Map(); let sequence = 0, joined = false, joinedInfo, failure;
   ws.on('message', raw => {
     const message = raw.toString();
     if (message === '2') return ws.send('3');
     if (message.startsWith('0')) return ws.send(`40${namespace},${JSON.stringify(auth)}`);
-    if (message.startsWith(`40${namespace},`)) joined = true;
+    if (message.startsWith(`40${namespace},`)) { joined = true; joinedInfo = JSON.parse(message.slice(`40${namespace},`.length)); }
     if (message.startsWith(`44${namespace},`)) failure = JSON.parse(message.slice(`44${namespace},`.length));
-    if (message.startsWith(`42${namespace},`)) { const [event, data] = JSON.parse(message.slice(`42${namespace},`.length)); events.push({ event, data }); if (events.length > 500) events.shift(); }
+    if (message.startsWith(`42${namespace},`)) { const packet = JSON.parse(message.slice(`42${namespace},`.length)), [event, data] = packet; events.push({ event, data, offset: packet.length > 2 ? packet.at(-1) : undefined }); if (events.length > 500) events.shift(); }
     if (message.startsWith(`43${namespace},`)) {
       const rest = message.slice(`43${namespace},`.length), bracket = rest.indexOf('[');
       acks.get(Number(rest.slice(0, bracket)))?.(JSON.parse(rest.slice(bracket))[0]); acks.delete(Number(rest.slice(0, bracket)));
@@ -77,7 +77,7 @@ async function connect(namespace, auth, reject = false) {
   await until(() => failure || joined, 'namespace authentication');
   if (reject) { assert.ok(failure, 'namespace must reject'); ws.close(); return failure; }
   assert.ok(!failure, JSON.stringify(failure));
-  const result = { ws, events,
+  const result = { ws, events, get joinedInfo() { return joinedInfo; },
     send(event, data) { const id = ++sequence; return new Promise((resolve, rejectAck) => {
       const timer = setTimeout(() => { acks.delete(id); rejectAck(new Error(`Missing ack ${event}`)); }, 5000);
       acks.set(id, value => { clearTimeout(timer); resolve(value); }); ws.send(`42${namespace},${id}${JSON.stringify([event, data])}`);
@@ -86,8 +86,16 @@ async function connect(namespace, auth, reject = false) {
     mark() { return events.length; },
     latestSnapshot() { return events.filter(item => item.event === 'pet:snapshot').at(-1)?.data; }
   };
-  await result.event('pet:snapshot'); return result;
+  if (needsSnapshot) await result.event('pet:snapshot'); return result;
 }
+const assetId = new ObjectId(), foreignAsset = new ObjectId();
+const gif = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
+const upload = new GridFSBucket(mongo.connection.db, { bucketName: 'private_assets' }).openUploadStreamWithId(assetId, 'pet.gif', { metadata: { owner, mime: 'image/gif' } });
+const stored = once(upload, 'finish'); upload.end(gif); await stored;
+await mongo.connection.db.collection('asset_libraries').insertMany([
+  { _id: owner, usedBytes: gif.length, assets: [{ id: String(assetId), name: 'pet.gif', kind: 'image', mime: 'image/gif', bytes: gif.length, width: 1, height: 1, state: 'ready', createdAt: new Date().toISOString() }] },
+  { _id: other, usedBytes: 1, assets: [{ id: String(foreignAsset), name: 'foreign.gif', kind: 'image', mime: 'image/gif', bytes: 1, width: 1, height: 1, state: 'ready', createdAt: new Date().toISOString() }] }
+]);
 const settingsPath = `/pets/${owner}/settings`;
 let configuration = (await call(settingsPath, { token: 'pet-owner-token' })).body.data;
 assert.equal(configuration.schemaVersion, 2);
@@ -96,12 +104,21 @@ const save = async change => {
   const result = await call(settingsPath, { method: 'PUT', token: 'pet-owner-token', body: { revision: configuration.revision, settings: change(configuration.settings) } });
   assert.equal(result.status, 200, JSON.stringify(result.body)); configuration = result.body.data; return configuration;
 };
-await save(settings => ({ ...settings, enabled: true, behavior: { ...settings.behavior, cooldownSeconds: 0 } }));
+await save(settings => ({ ...settings, appearance: { kind: 'png', idleAssetId: String(assetId), talkingAssetId: String(assetId) }, enabled: true, behavior: { ...settings.behavior, cooldownSeconds: 0 } }));
 const desktopToken = await mint(), secondToken = await mint(), foreignToken = await mint('oauth-beta-browser-other');
 const narrow = await mint('oauth-beta-browser-owner', 'desktop:connect pet:read');
 assert.ok((await connect('/desktop', { v: 1, accessToken: narrow.access_token }, true)).message.includes('insufficient_scope'));
+// Unrelated site namespaces retain actual Socket.IO recovery.
+const site = await connect('/site/analytics/registered-channels', {}, false, false);
+await site.event('registered-channels');
+const sitePacket = site.events.find(item => item.event === 'registered-channels');
+assert.ok(site.joinedInfo.pid && sitePacket.offset, 'global recovery remains configured');
+site.ws.terminate(); await pause(100);
+const restoredSite = await connect('/site/analytics/registered-channels', { pid: site.joinedInfo.pid, offset: sitePacket.offset }, false, false);
+assert.equal(restoredSite.joinedInfo.sid, site.joinedInfo.sid, 'existing namespace restores its session');
 const desktop = await connect('/desktop', { v: 1, accessToken: desktopToken.access_token });
 assert.equal((await desktop.event('desktop:hello')).sessionId, desktopToken.session_id);
+await connect('/desktop', { v: 1, accessToken: desktopToken.access_token, pid: desktop.joinedInfo.pid, offset: 'stale' }, true);
 const overlap = await connect('/desktop', { v: 1, accessToken: desktopToken.access_token });
 await connect('/desktop', { v: 1, accessToken: desktopToken.access_token }, true);
 const second = await connect('/desktop', { v: 1, accessToken: secondToken.access_token });
@@ -121,8 +138,10 @@ const select = (token, roles, revision = configuration.revision) => call('/v1/me
   body: { commandId: randomUUID(), revision, roles } });
 let result = await select(desktopToken.access_token, ['audio', 'vts']); assert.equal(result.status, 200); configuration = result.body;
 const acquire = async client => { const ack = await client.send('pet:lease', { v: 1, action: 'acquire' }); assert.equal(ack.ok, true, JSON.stringify(ack)); return ack.data; };
+await save(settings => ({ ...settings, appearance: { ...settings.appearance, kind: 'vts' } }));
 let lease = await acquire(desktop);
 assert.equal((await overlap.send('pet:lease', { v: 1, action: 'acquire' })).error.code, 'player_not_selected' /* unready overlap */);
+await overlap.send('pet:ready', { ...ready, audioReady: false });
 const before = desktop.mark();
 await desktop.send('pet:ready', ready); await pause(150);
 assert.ok(desktop.events.slice(before).filter(item => item.event === 'pet:snapshot').length <= 1, 'unchanged readiness does not republish snapshots');
@@ -131,6 +150,7 @@ const action = (text = 'Hello pet', operation = 'talk') => ({ channelId: owner, 
 const identityFor = (play, seq, phase = 'started') => ({ v: 1, requestId: play.requestId, leaseId: play.leaseId, generation: play.generation, seq, phase, positionMs: phase === 'ended' ? 500 : 0 });
 const assertNoReplay = async client => { await pause(150); assert.equal(client.events.filter(item => item.event === 'pet:play').length, 0); };
 const input = action();
+await assert.rejects(admitPetAction({ ...input, origin: { ...input.origin, id: '' } }), /invalid_origin/);
 assert.equal((await desktop.send('pet:lease', { v: 1, action: 'renew', leaseId: lease.leaseId, generation: lease.generation + 1 })).error.code, 'stale_lease');
 assert.equal((await desktop.send('pet:lease', { v: 1, action: 'renew', leaseId: { $ne: null }, generation: lease.generation })).error.code, 'invalid_message');
 const concurrent = await Promise.all([admitPetAction(input), admitPetAction(input)]);
@@ -152,7 +172,8 @@ const mouth = { ...identityFor(play, 0), value: 0.5 }; delete mouth.phase;
 const burst = await Promise.all([desktop.send('pet:mouth', mouth), desktop.send('pet:playback', identityFor(play, 1, 'progress'))]);
 assert.ok(burst.every(ack => ack.ok));
 const injected = desktop.events.filter(item => item.event === 'pet:mouth').length + overlap.events.filter(item => item.event === 'pet:mouth').length;
-assert.ok(injected <= 1, 'one selected VTS peer, even during same-session overlap');
+assert.equal(injected, 1, 'one selected VTS peer, even during same-session overlap');
+overlap.ws.close();
 assert.equal((await desktop.send('pet:playback', identityFor(play, 2, 'ended'))).ok, true);
 await until(() => desktop.latestSnapshot()?.active === null && second.latestSnapshot()?.active === null, 'terminal wake reaches every renderer');
 await desktop.event('pet:request', data => data.request.requestId === requestId && data.request.status === 'completed');
@@ -164,6 +185,16 @@ const next = await admitPetAction(action('Second speech'));
 const nextPlay = await desktop.event('pet:play', data => data.requestId === next.requestId);
 assert.equal((await desktop.send('pet:playback', identityFor(nextPlay, 0))).ok, true);
 assert.equal((await desktop.send('pet:playback', identityFor(nextPlay, 1, 'ended'))).ok, true);
+// Missing required appearance is rejected before providers even with a selected desktop.
+let providerCount = await redis.lLen('pet:test:provider-calls');
+await save(settings => ({ ...settings, appearance: { kind: 'png', idleAssetId: null, talkingAssetId: null } }));
+await assert.rejects(admitPetAction(action('Invisible PNG')), /appearance_unavailable/);
+assert.equal(await redis.lLen('pet:test:provider-calls'), providerCount);
+await save(settings => ({ ...settings, appearance: { kind: 'vts', idleAssetId: null, talkingAssetId: null }, playback: { target: 'browser', desktopSessionId: null, vtsSessionId: null } }));
+await assert.rejects(admitPetAction(action('Missing VTS')), /vts_unavailable/);
+assert.equal(await redis.lLen('pet:test:provider-calls'), providerCount);
+await save(settings => ({ ...settings, appearance: { kind: 'png', idleAssetId: String(assetId), talkingAssetId: String(assetId) }, playback: { target: 'desktop', desktopSessionId: desktopToken.session_id, vtsSessionId: desktopToken.session_id } }));
+await PetRuntime.updateOne({ _id: ownerId }, { $set: { notBefore: new Date(0) } }); lease = await acquire(desktop);
 // Cancellation aborts a provider and never falls back/retries an ambiguous result.
 await redis.set('pet:test:provider-mode', 'hold');
 const cancelled = await admitPetAction(action('Cancel during synthesis'));
@@ -177,6 +208,12 @@ assert.equal((await desktop.send('pet:lease', { v: 1, action: 'acquire' })).erro
 // Replace lease timing only in disposable Mongo so this check need not wait 15 seconds per handover.
 await PetRuntime.updateOne({ _id: ownerId }, { $set: { notBefore: new Date(0) } });
 lease = await acquire(desktop);
+await save(settings => ({ ...settings, behavior: { ...settings.behavior, respondToChat: false, respondToEvents: false } }));
+await assert.rejects(admitPetAction(action('Disabled command')), /trigger_disabled/);
+const disabledEvent = action('Disabled event'); disabledEvent.origin.kind = 'twitch-event';
+await assert.rejects(admitPetAction(disabledEvent), /trigger_disabled/);
+await save(settings => ({ ...settings, behavior: { ...settings.behavior, respondToChat: true, respondToEvents: true } }));
+await PetRuntime.updateOne({ _id: ownerId }, { $set: { notBefore: new Date(0) } }); lease = await acquire(desktop);
 const countBefore = await redis.lLen('pet:test:provider-calls');
 await redis.set('pet:test:provider-mode', 'ambiguous');
 const failed = await admitPetAction(action('Ambiguous provider'));
@@ -217,14 +254,6 @@ assert.equal((await PetRequest.findById(partialId).lean()).admitted, true);
 const partialPlay = await desktop.event('pet:play', data => data.requestId === partialId);
 await desktop.send('pet:playback', identityFor(partialPlay, 0, 'error'));
 // Public capability and original asset ownership/deletion guards.
-const assetId = new ObjectId(), foreignAsset = new ObjectId();
-const gif = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
-const upload = new GridFSBucket(mongo.connection.db, { bucketName: 'private_assets' }).openUploadStreamWithId(assetId, 'pet.gif', { metadata: { owner, mime: 'image/gif' } });
-const stored = once(upload, 'finish'); upload.end(gif); await stored;
-await mongo.connection.db.collection('asset_libraries').insertMany([
-  { _id: owner, usedBytes: gif.length, assets: [{ id: String(assetId), name: 'pet.gif', kind: 'image', mime: 'image/gif', bytes: gif.length, width: 1, height: 1, state: 'ready', createdAt: new Date().toISOString() }] },
-  { _id: other, usedBytes: 1, assets: [{ id: String(foreignAsset), name: 'foreign.gif', kind: 'image', mime: 'image/gif', bytes: 1, width: 1, height: 1, state: 'ready', createdAt: new Date().toISOString() }] }
-]);
 const badAssets = { ...configuration.settings, appearance: { kind: 'png', idleAssetId: String(foreignAsset), talkingAssetId: String(assetId) } };
 assert.equal((await call(settingsPath, { method: 'PUT', token: 'pet-owner-token', body: { revision: configuration.revision, settings: badAssets } })).status, 404);
 await save(settings => ({ ...settings, appearance: { kind: 'png', idleAssetId: String(assetId), talkingAssetId: String(assetId) } }));
@@ -253,6 +282,18 @@ await assertNoReplay(duplicateBrowser);
 assert.equal((await browser.send('pet:playback', identityFor(browserPlay, 0))).ok, true);
 await desktop.event('pet:request', data => data.request.requestId === browserRequest.requestId && data.request.status === 'playing');
 await browser.send('pet:playback', identityFor(browserPlay, 1, 'ended'));
+// Browser audio with a VTS appearance requires the selected controller throughout dispatch/playback.
+await save(settings => ({ ...settings, appearance: { ...settings.appearance, kind: 'vts' }, playback: { ...settings.playback, vtsSessionId: desktopToken.session_id } }));
+await PetRuntime.updateOne({ _id: ownerId }, { $set: { notBefore: new Date(0) } });
+await acquire(browser);
+await redis.set('pet:test:provider-mode', 'hold');
+const losingVts = await admitPetAction(action('Lose VTS during generation'));
+await until(() => PetRequest.findOne({ _id: losingVts.requestId, status: 'synthesizing' }).lean(), 'VTS-dependent provider phase');
+await desktop.send('pet:ready', { ...ready, vtsReady: false });
+await until(() => PetRequest.findOne({ _id: losingVts.requestId, status: 'cancelled', errorCode: 'vts_unavailable' }).lean(), 'VTS loss invalidates browser audio');
+await redis.del('pet:test:provider-mode');
+await assert.rejects(admitPetAction(action('Still no VTS')), /vts_unavailable/);
+await desktop.send('pet:ready', ready);
 const rotated = await call(`/pets/${owner}/overlay-token`, { method: 'POST', token: 'pet-owner-token', body: { rotate: true, version: tokenState.version } });
 assert.equal(rotated.status, 200);
 assert.equal((await call(`/pets/public/${tokenState.token}`)).status, 401);

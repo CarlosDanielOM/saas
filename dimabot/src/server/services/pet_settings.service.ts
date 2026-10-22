@@ -6,14 +6,14 @@ import { KOKORO_VOICES } from '../../utils/tts/kokoro_voices.util.js';
 import { FISH_VOICES } from './tts/fish_tts.service.js';
 import { findAsset, registerAssetConsumer, withAssetLibrary } from '../../assets/library.js';
 import { invalidatePet } from '../../pets/state.js';
-import { validatePetSessions } from '../../pets/peers.js';
+import { selectedVtsController, validatePetSessions } from '../../pets/peers.js';
 import UsersSchema from '../../schemas/users.schema.js';
 
 export class PetSettingsError extends Error {
     constructor(public code: string, public status = 400) { super(code); }
 }
 
-async function requirePetPlan(userId: string, channelID: string): Promise<void> {
+export async function requirePetPlan(userId: string, channelID: string): Promise<void> {
     const user = await UsersSchema.findOne({ _id: userId,
         accounts: { $elemMatch: { type: 'twitch', id: channelID } } }).select('plan_tier').lean();
     if (!user) throw new PetSettingsError('access_denied', 403);
@@ -105,6 +105,16 @@ export async function getPetConfiguration(userId: string, channelID: string) {
     const profile = settings.personality.source === 'profile' ?
         personality?.profiles.find(item => item.profileID === settings.personality.profileId) : null;
     const issues = settings.personality.source === 'profile' && !profile ? ['personality_unavailable'] : [];
+    if (settings.appearance.kind === 'png') {
+        try {
+            const ids = [settings.appearance.idleAssetId, settings.appearance.talkingAssetId];
+            if (ids.some(id => !id)) throw new Error('Missing PNG asset');
+            for (const id of ids) {
+                const asset = await findAsset(channelID, id!);
+                if (asset.kind !== 'image' || !['image/png', 'image/jpeg', 'image/gif', 'image/webp'].includes(asset.mime)) throw new Error('Invalid PNG asset');
+            }
+        } catch { issues.push('appearance_unavailable'); }
+    } else if (!await selectedVtsController(userId, settings.playback.vtsSessionId)) issues.push('vts_unavailable');
     // Only explicit persona fields are shared. Memories, known users and moderation tools are excluded.
     const resolvedPersonality = profile ? { prompt: profile.personality, personaMode: profile.personaMode,
         personaReference: profile.personaReference, tonePreset: profile.tonePreset,

@@ -24,7 +24,7 @@ export async function admitPetAction(input: AdmitPetActionInput): Promise<{ requ
     const ownerId = String(user._id);
     const identity = { ownerId, 'origin.kind': input.origin.kind, 'origin.id': input.origin.id, actionKey: input.actionKey };
     const payloadHash = createHash('sha256').update(JSON.stringify({ operation: input.operation, text: input.text,
-        actor: input.actor, occurredAt: input.origin.occurredAt })).digest('hex');
+        actor: { userId: input.actor.userId, displayName: input.actor.displayName }, occurredAt: input.origin.occurredAt })).digest('hex');
     await PetRequest.init();
     const resolveAdmission = async (record: PetRequestRecord) => {
         if (record.admitted || record.status !== 'accepted') {
@@ -34,7 +34,7 @@ export async function admitPetAction(input: AdmitPetActionInput): Promise<{ requ
         const configuration = await getPetConfiguration(ownerId, input.channelId);
         const runtime = await runtimeFor(ownerId, input.channelId);
         const now = new Date();
-        if (configuration.revision !== record.settingsRevision || runtime.generation !== record.generation || !runtime.lease || runtime.lease.expiresAt <= now) {
+        if (!configuration.runtime.enabled || !configuration.settings.tts.enabled || configuration.revision !== record.settingsRevision || runtime.generation !== record.generation || !runtime.lease || runtime.lease.expiresAt <= now) {
             await finishRequest(record._id, 'expired', 'admission_expired');
             throw new PetError('admission_expired', 409);
         }
@@ -62,7 +62,7 @@ export async function admitPetAction(input: AdmitPetActionInput): Promise<{ requ
     if (prior) return prior;
     const configuration = await getPetConfiguration(ownerId, input.channelId);
     const settings = configuration.settings;
-    if (!configuration.runtime.enabled || !settings.tts.enabled) throw new PetError('pet_unavailable', 409);
+    if (!configuration.runtime.enabled || !settings.tts.enabled) throw new PetError(configuration.runtime.issues[0] ?? 'pet_unavailable', 409);
     if (!(input.origin.kind === 'chat-command' ? settings.behavior.respondToChat : settings.behavior.respondToEvents)) throw new PetError('trigger_disabled', 403);
     if (input.operation === 'talk' && input.text.length > settings.behavior.maxReplyLength) throw new PetError('text_too_long');
     const runtime = await runtimeFor(ownerId, input.channelId);

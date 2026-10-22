@@ -43,6 +43,7 @@ export const websocket = async (app: any): Promise<HttpServer | null> => {
         cacheClient = await getDragonflyClient('Websocket');
         let server = http.createServer(app);
         io = new SocketIOServer(server, {
+            connectionStateRecovery: {},
             destroyUpgrade: false
         });
         attachDesktopWebsocket(server);

@@ -36,7 +36,12 @@ assert.match(result.headers.get('cache-control'), /no-store/);
 assert.equal(result.body.data.revision, 0);
 assert.equal(result.body.data.runtime.playbackAvailable, false);
 assert.equal(await PetSettingsSchema.countDocuments(), 0, 'GET never creates settings');
+const imageId = 'abcd00000000000000000001';
+await mongo.connection.db.collection('asset_libraries').insertOne({ _id: owner, usedBytes: 1, assets: [
+  { id: imageId, name: 'pet.gif', kind: 'image', mime: 'image/gif', bytes: 1, width: 1, height: 1, state: 'ready', createdAt: new Date().toISOString() }
+] });
 const settings = result.body.data.settings;
+settings.appearance = { kind: 'png', idleAssetId: imageId, talkingAssetId: imageId };
 settings.enabled = true; settings.name = 'Luna'; settings.rules = ['No spoilers', 'Be kind'];
 const initialSaves = await Promise.all([put(0, settings), put(0, settings)]);
 assert.deepEqual(initialSaves.map(item => item.status).sort(), [200, 409], 'concurrent first saves cannot create duplicate configurations');

@@ -5,9 +5,9 @@ import { OAuthError } from '../server/oauth/catalog.js';
 import { PetSettingsError } from '../server/services/pet_settings.service.js';
 import { OAuthSession } from '../schemas/oauth_session.schema.js';
 import { PetRuntime, PetRequest } from '../schemas/pet_runtime.schema.js';
-import { getPetConfiguration } from '../server/services/pet_settings.service.js';
+import { getPetConfiguration, requirePetPlan } from '../server/services/pet_settings.service.js';
 import { authenticatePetCapability } from './tokens.js';
-import { petPeers, type PetPeer } from './peers.js';
+import { petPeers, selectedVtsController, type PetPeer } from './peers.js';
 import { LEASE_TTL_MS, PetError, finishRequest, invalidatePet, notifyPet, runtimeFor } from './state.js';
 import { isSelectedPlayer, snapshotFor, startPetRuntime } from './runtime.js';
 
@@ -34,6 +34,10 @@ export async function registerPetSockets(io: SocketServer) {
     const closeRuntime = await startPetRuntime();
     for (const kind of ['desktop', 'browser'] as const) {
         const namespace = io.of(kind === 'desktop' ? '/desktop' : '/pet');
+        // Other site namespaces retain their existing recovery policy. Pet peers
+        // must always authenticate afresh and never restore/replay a session.
+        namespace.adapter.persistSession = () => {};
+        namespace.adapter.restoreSession = async () => { throw new PetError('fresh_auth_required', 401); };
         namespace.use((socket, next) => {
             void (async () => {
                 const auth = input(socket.handshake.auth, kind === 'desktop' ? ['v', 'accessToken'] : ['v', 'capability']);
@@ -59,14 +63,14 @@ export async function registerPetSockets(io: SocketServer) {
                     sessionId: identity?.session_id, label, tokenHash,
                     capability: kind === 'browser' ? String(auth.capability) : undefined,
                     scopes: identity?.scopes ?? [], audioReady: false, renderReady: false, vtsReady: false,
-                    seq: -1, mouthSeq: -1, lastMouthAt: 0, busy: false,
+                    seq: -1, mouthSeq: -1, lastMouthAt: 0, lastProgressAt: 0, busy: false,
                     revalidate: async () => {
                         if (kind === 'desktop') {
                             const current = await authenticateAccess(auth.accessToken);
                             if (current.session_id !== identity!.session_id || current.user_id !== ownerId ||
                                 !['desktop:connect', 'pet:read', 'pet:receive'].every(scope => current.scopes.includes(scope))) throw new PetError('invalid_token', 401);
                             peer.scopes = current.scopes;
-                            await getPetConfiguration(ownerId, channelId);
+                            await requirePetPlan(ownerId, channelId);
                         } else {
                             const current = await authenticatePetCapability(auth.capability);
                             if (current.runtime._id !== ownerId || current.runtime.tokenHash !== tokenHash) throw new PetError('invalid_capability', 401);
@@ -121,7 +125,9 @@ export async function registerPetSockets(io: SocketServer) {
                 if (peer.audioReady === value.audioReady && peer.renderReady === value.renderReady && peer.vtsReady === value.vtsReady) return {};
                 peer.audioReady = value.audioReady as boolean; peer.renderReady = value.renderReady as boolean; peer.vtsReady = value.vtsReady as boolean;
                 const runtime = await runtimeFor(peer.ownerId, peer.channelId);
-                if (runtime.lease?.holderPeerId === peer.id && !peer.audioReady) await invalidatePet(peer.ownerId, 'player_unready');
+                const configuration = await getPetConfiguration(peer.ownerId, peer.channelId);
+                if (runtime.lease?.holderPeerId === peer.id && (!peer.audioReady || configuration.settings.appearance.kind === 'png' && peer.kind === 'browser' && !peer.renderReady)) await invalidatePet(peer.ownerId, 'player_unready');
+                else if (configuration.runtime.issues.includes('vts_unavailable') && runtime.lease) await invalidatePet(peer.ownerId, 'vts_unavailable');
                 await notifyPet(peer.ownerId);
                 return {};
             }, ['v', 'audioReady', 'renderReady', 'vtsReady']);
@@ -153,12 +159,17 @@ export async function registerPetSockets(io: SocketServer) {
             on('pet:playback', async value => {
                 if (!['started', 'progress', 'ended', 'stopped', 'error'].includes(String(value.phase)) ||
                     value.errorCode !== undefined && (typeof value.errorCode !== 'string' || value.errorCode.length > 64)) throw new PetError('invalid_playback');
+                if (value.phase === 'progress' && Date.now() - peer.lastProgressAt < 200) return { dropped: true };
                 const request = await activeIdentity(peer, value);
                 peer.seq = Number(value.seq);
                 if (value.phase === 'started') {
                     if (request.status !== 'ready' || !request.startBefore || request.startBefore.getTime() < Date.now()) throw new PetError('stale_playback', 409);
                     await PetRequest.updateOne({ _id: request._id, status: 'ready' }, { $set: { status: 'playing' }, $inc: { version: 1 } });
-                } else if (value.phase === 'progress' && request.status !== 'playing') throw new PetError('invalid_playback');
+                } else if (value.phase === 'progress') {
+                    if (request.status !== 'playing') throw new PetError('invalid_playback');
+                    peer.lastProgressAt = Date.now();
+                    return {}; // Progress never changes renderer/request state.
+                }
                 else if (['ended', 'stopped', 'error'].includes(String(value.phase))) {
                     await finishRequest(request._id, value.phase === 'ended' ? 'completed' : value.phase === 'stopped' ? 'cancelled' : 'failed',
                         value.phase === 'error' ? 'playback_error' : undefined);
@@ -173,8 +184,7 @@ export async function registerPetSockets(io: SocketServer) {
                 if (request.status !== 'playing') throw new PetError('stale_playback', 409);
                 peer.lastMouthAt = Date.now(); peer.mouthSeq = Number(value.seq);
                 const { settings } = await getPetConfiguration(peer.ownerId, peer.channelId);
-                const controller = [...petPeers.values()].filter(candidate => candidate.kind === 'desktop' && candidate.ownerId === peer.ownerId &&
-                    candidate.sessionId === settings.playback.vtsSessionId && candidate.vtsReady && candidate.socket.connected).sort((a, b) => a.id.localeCompare(b.id))[0];
+                const controller = settings.appearance.kind === 'vts' ? await selectedVtsController(peer.ownerId, settings.playback.vtsSessionId) : null;
                 if (controller) { await controller.revalidate(); controller.socket.emit('pet:mouth', value); }
                 return {};
             }, ['v', 'requestId', 'leaseId', 'generation', 'seq', 'positionMs', 'value']);
@@ -183,7 +193,11 @@ export async function registerPetSockets(io: SocketServer) {
                 void (async () => {
                     const runtime = await PetRuntime.findById(peer.ownerId).lean();
                     if (runtime?.lease?.holderPeerId === peer.id) await invalidatePet(peer.ownerId, 'player_disconnected');
-                    else await notifyPet(peer.ownerId);
+                    else {
+                        const configuration = await getPetConfiguration(peer.ownerId, peer.channelId);
+                        if (runtime?.lease && configuration.runtime.issues.includes('vts_unavailable')) await invalidatePet(peer.ownerId, 'vts_unavailable');
+                        else await notifyPet(peer.ownerId);
+                    }
                 })().catch(() => {});
             });
         });

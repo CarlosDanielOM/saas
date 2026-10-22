@@ -5,7 +5,7 @@ export interface PetPeer {
     id: string; ownerId: string; channelId: string; kind: 'desktop' | 'browser'; sessionId?: string;
     label: string; socket: Socket; audioReady: boolean; renderReady: boolean; vtsReady: boolean;
     capability?: string; generationSeen?: number; activeSeen?: string; tokenHash?: string; scopes: string[]; revalidate: () => Promise<void>;
-    sequenceRequestId?: string; seq: number; mouthSeq: number; lastMouthAt: number; busy: boolean;
+    sequenceRequestId?: string; seq: number; mouthSeq: number; lastMouthAt: number; lastProgressAt: number; busy: boolean;
 }
 export const petPeers = new Map<string, PetPeer>();
 export async function desktopCandidates(ownerId: string) {
@@ -28,4 +28,16 @@ export async function validatePetSessions(ownerId: string, playback: { desktopSe
         if (previous && (id === previous.desktopSessionId || id === previous.vtsSessionId)) continue;
         if (!sessions.some(session => session.sessionId === id)) throw new PetError('session_unavailable', 409);
     }
+}
+
+/** One deterministic, freshly authorized VTS controller; duplicate sockets never fan out. */
+export async function selectedVtsController(ownerId: string, sessionId: string | null) {
+    if (!sessionId) return null;
+    const candidates = [...petPeers.values()].filter(peer => peer.kind === 'desktop' && peer.ownerId === ownerId &&
+        peer.sessionId === sessionId && peer.vtsReady && peer.socket.connected && peer.scopes.includes('pet:receive'))
+        .sort((a, b) => a.id.localeCompare(b.id));
+    for (const peer of candidates) {
+        try { await peer.revalidate(); return peer; } catch { peer.socket.disconnect(true); }
+    }
+    return null;
 }

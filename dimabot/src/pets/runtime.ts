@@ -45,9 +45,9 @@ export function assetUrls(capability: string, appearance: { idleAssetId: string 
         talkingUrl: appearance.talkingAssetId ? base + appearance.talkingAssetId : null };
 }
 export async function isSelectedPlayer(peer: PetPeer) {
-    const { settings } = await getPetConfiguration(peer.ownerId, peer.channelId);
-    return settings.enabled && settings.tts.enabled && peer.audioReady &&
-        (settings.playback.target === 'browser' ? peer.kind === 'browser' :
+    const { settings, runtime } = await getPetConfiguration(peer.ownerId, peer.channelId);
+    return runtime.enabled && settings.enabled && settings.tts.enabled && peer.audioReady &&
+        (settings.playback.target === 'browser' ? peer.kind === 'browser' && (settings.appearance.kind !== 'png' || peer.renderReady) :
             peer.kind === 'desktop' && settings.playback.desktopSessionId === peer.sessionId && peer.scopes.includes('pet:receive'));
 }
 async function broadcast(ownerId: string) {
@@ -79,7 +79,7 @@ async function current(request: PetRequestRecord) {
     if (!runtime || runtime.generation !== request.generation || runtime.activeRequestId !== request._id ||
         !runtime.lease || runtime.lease.expiresAt.getTime() <= Date.now()) throw new PetError('stale_request', 409);
     const configuration = await getPetConfiguration(request.ownerId, request.channelId);
-    if (!configuration.runtime.enabled || !configuration.settings.tts.enabled || configuration.revision !== request.settingsRevision) throw new PetError('settings_changed', 409);
+    if (!configuration.runtime.enabled || !configuration.settings.tts.enabled || configuration.revision !== request.settingsRevision) throw new PetError(configuration.runtime.issues[0] ?? 'settings_changed', 409);
     return { runtime, configuration };
 }
 async function phase(request: PetRequestRecord, status: 'generating' | 'synthesizing', outputText?: string) {
@@ -145,8 +145,9 @@ async function generate(request: PetRequestRecord, signal: AbortSignal) {
         }, { new: true }).lean();
         if (!ready) throw new PetError('stale_request');
         await current(ready);
-        await broadcast(request.ownerId);
+        await notifyPet(request.ownerId);
         const ticket = await issueAudioTicket(peer, ready, runtime.lease!);
+        await current(ready);
         // This is the only play emission. Snapshot/reconnect/recovery never replay it.
         peer.socket.emit('pet:play', { v: 1, requestId: request._id, generation: request.generation,
             leaseId: runtime.lease!.leaseId, startBefore: ready.startBefore!.getTime(),
@@ -218,6 +219,10 @@ export async function startPetRuntime() {
             }
             const accepted = await PetRequest.find({ status: 'accepted' }).sort({ createdAt: 1 }).limit(64).lean();
             for (const request of accepted) await wake(request.ownerId);
+            // Recover lost playing/terminal notifications for peers that observed work.
+            // Idle owners with no active view do not cause database polling.
+            const observed = [...new Set([...petPeers.values()].filter(peer => peer.activeSeen).map(peer => peer.ownerId))].slice(0, 64);
+            for (const ownerId of observed) await wake(ownerId);
             const cleanup = await PetRequest.find({ status: { $in: PET_TERMINAL }, $or: [{ privateDir: { $exists: true } }, { 'audio.path': { $exists: true } }] }).limit(64).lean();
             for (const request of cleanup) await cleanAudio(request);
         } finally { recovering = false; }

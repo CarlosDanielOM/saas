@@ -23,7 +23,7 @@ const request = new Schema<PetRequestRecord>({
 }, { versionKey: false, collection: 'pet_requests' });
 request.index({ ownerId: 1, 'origin.kind': 1, 'origin.id': 1, actionKey: 1 }, { unique: true });
 request.index({ status: 1, phaseDeadline: 1 });
-// Retain deduplication for seven days, including terminal outcomes. No TTL on active work.
+// Retain request identity/outcomes for seven days; active phase deadlines are at most 60 seconds.
 request.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 export const PetRequest = model<PetRequestRecord>('PetRequest', request);
 
