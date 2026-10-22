@@ -337,6 +337,12 @@ class Ops:
             yield
 
     @staticmethod
+    def rust_cpu_limit(cpus):
+        require(type(cpus) is int and 1 <= cpus <= RUST_BUILD_CPUS,
+                "Rust compiler CPUs must be an integer from 1 to 6")
+        return cpus
+
+    @staticmethod
     def rust_memory_limit(memory_gib):
         require(type(memory_gib) is int and memory_gib in (4, 6),
                 "Rust compiler memory must be 4 or 6 GiB")
@@ -453,6 +459,7 @@ class Ops:
         return cache
 
     def rust_container_args(self, path, receipt, image, cache):
+        cpus = self.rust_cpu_limit(receipt.get("rust_cpus", RUST_BUILD_CPUS))
         memory_gib = self.rust_memory_limit(receipt.get("rust_memory_gib", RUST_BUILD_MEMORY_GIB))
         require(RUST_FEATURES == "mongo", "Unsupported worker feature profile; review its dependency graph guard before enabling it")
         require(RUST_BASELINE_FEATURES == "mongo,redis", "Unsupported baseline feature profile; review its dependency graph guard before enabling it")
@@ -462,7 +469,7 @@ class Ops:
                 "Unsupported supervisor feature profile; review its dependency graph guard before enabling it")
         return ["create", "--name", "saas-ops-" + receipt["run"] + "-rust-build", *self.labels(receipt["run"]),
                 "--label", OWNER + ".rust-build=true",
-                f"--cpus={RUST_BUILD_CPUS}", f"--memory={memory_gib}g",
+                f"--cpus={cpus}", f"--memory={memory_gib}g",
                 f"--memory-swap={memory_gib}g", f"--pids-limit={RUST_BUILD_PIDS}",
                 "--security-opt=no-new-privileges",
                 "--env=CARGO_BUILD_JOBS=2", "--env=CARGO_HOME=/cargo-cache", "--env=CARGO_TARGET_DIR=/target-cache",
@@ -480,8 +487,19 @@ class Ops:
                 "--mount", f"type=bind,src={cache['target']},dst=/target-cache",
                 "--workdir=/source", image, "sh", "-ceu", RUST_CACHE_HYGIENE]
 
+    def verify_rust_limits(self, obj, receipt):
+        cpus = self.rust_cpu_limit(receipt.get("rust_cpus", RUST_BUILD_CPUS))
+        memory_gib = self.rust_memory_limit(receipt.get("rust_memory_gib", RUST_BUILD_MEMORY_GIB))
+        limits = obj["HostConfig"]
+        require(limits.get("NanoCpus") == cpus * 1_000_000_000 and
+                limits.get("Memory") == memory_gib * GIB and
+                limits.get("MemorySwap") == memory_gib * GIB and
+                limits.get("PidsLimit") == RUST_BUILD_PIDS,
+                "Rust compiler cgroup limits do not match the required policy")
+
     def build_rust(self, path, receipt, source_dir=None, *, feature_matrix=False):
         """Compile in a hard-capped musl container; never invoke host Cargo/BuildKit Cargo."""
+        receipt["rust_cpus"] = cpus = self.rust_cpu_limit(receipt.get("rust_cpus", RUST_BUILD_CPUS))
         receipt["rust_memory_gib"] = memory_gib = self.rust_memory_limit(receipt.get("rust_memory_gib", RUST_BUILD_MEMORY_GIB))
         with self.rust_build_lock():
             # SIGKILL releases flock but may leave Docker work running. Never
@@ -523,24 +541,20 @@ class Ops:
                 self.docker(*self.rust_container_args(path, receipt, image["Id"], cache), capture=True)
                 obj = self.inspect("container", name)
                 self.owned(obj, receipt["run"], "container")
-                limits = obj["HostConfig"]
-                require(limits.get("NanoCpus") == RUST_BUILD_CPUS * 1_000_000_000 and
-                        limits.get("Memory") == memory_gib * GIB and
-                        limits.get("MemorySwap") == memory_gib * GIB and
-                        limits.get("PidsLimit") == RUST_BUILD_PIDS,
-                        "Rust compiler cgroup limits do not match the required policy")
+                self.verify_rust_limits(obj, receipt)
                 self.docker("start", obj["Id"], capture=True)
                 started = time.monotonic()
                 next_report = started
                 while True:
                     current = self.inspect("container", name)
+                    self.verify_rust_limits(current, receipt)
                     if not current["State"]["Running"]:
                         break
                     headroom = self.rust_headroom(memory_gib=memory_gib)
                     require(time.monotonic() - started < 7200, "Rust build exceeded the two-hour time limit")
                     if time.monotonic() >= next_report:
                         self.rust_cache_usage(cache)
-                        print(f"Capped Rust build running ({RUST_BUILD_CPUS} CPUs/{memory_gib} GiB, "
+                        print(f"Capped Rust build running ({cpus} CPUs/{memory_gib} GiB, "
                               f"available {headroom['mem_available_bytes'] / GIB:.1f} GiB)", flush=True)
                         next_report = time.monotonic() + 45
                     time.sleep(3)
@@ -597,10 +611,12 @@ class Ops:
                         if entry == Path(cache["entry"]) and size > RUST_CACHE_LIMIT:
                             shutil.rmtree(entry)
 
-    def build(self, name, source_dir=None, *, rust_feature_matrix=False, rust_memory_gib=None):
+    def build(self, name, source_dir=None, *, rust_feature_matrix=False, rust_memory_gib=None, rust_cpus=None):
         require(not rust_feature_matrix or name == "cron", "--rust-feature-matrix is only supported for cron")
         require(rust_memory_gib is None or name == "cron", "--rust-memory-gib is only supported for cron")
+        require(rust_cpus is None or name == "cron", "--rust-cpus is only supported for cron")
         if name == "cron":
+            rust_cpus = self.rust_cpu_limit(RUST_BUILD_CPUS if rust_cpus is None else rust_cpus)
             rust_memory_gib = self.rust_memory_limit(RUST_BUILD_MEMORY_GIB if rust_memory_gib is None else rust_memory_gib)
         target = TARGETS[name]
         live, config, config_hash, full_hash = self.baseline(target)
@@ -612,6 +628,7 @@ class Ops:
                    "config_hash": config_hash, "config_digest": full_hash,
                    "saved_config_digest": digest(json.dumps(config).encode()), "resources": []}
         if name == "cron":
+            receipt["rust_cpus"] = rust_cpus
             receipt["rust_memory_gib"] = rust_memory_gib
         self.save(path, receipt)
         print(f"Run: {run_id}", flush=True)
@@ -1047,6 +1064,7 @@ def main(argv=None):
         if command == "build":
             sub.add_argument("--source-dir", type=Path, help="isolated worktree of this repository; production ownership remains here")
             sub.add_argument("--rust-memory-gib", type=int, choices=(4, 6), help="cron only: compiler memory cap in GiB (default 6); retains 8 GiB production headroom and disables compiler swap")
+            sub.add_argument("--rust-cpus", type=int, choices=range(1, RUST_BUILD_CPUS + 1), help="cron only: lower compiler CPU cap (integer 1-6, default 6); does not cap helper or Docker image-build work")
             sub.add_argument("--rust-feature-matrix", action="store_true", help="cron only: explicitly check optional Rust features inside the capped compiler; routine builds use mongo and mongo,redis worker profiles and a private cache capped at 8 GiB")
     sub = commands.add_parser("preview")
     sub.add_argument("target", choices=[n for n, t in TARGETS.items() if t.output])
@@ -1069,6 +1087,8 @@ def main(argv=None):
         parser.error("--rust-feature-matrix is only supported for cron")
     if args.command == "build" and args.rust_memory_gib is not None and args.target != "cron":
         parser.error("--rust-memory-gib is only supported for cron")
+    if args.command == "build" and args.rust_cpus is not None and args.target != "cron":
+        parser.error("--rust-cpus is only supported for cron")
     ops = Ops()
     if args.command == "list":
         for name, target in TARGETS.items():
@@ -1088,6 +1108,7 @@ def main(argv=None):
                                "profile_env": RUST_ARTIFACT_ENV,
                                "cache_limit_bytes": RUST_CACHE_LIMIT, "jobs": 2,
                                "cpus": RUST_BUILD_CPUS, "memory_bytes": RUST_BUILD_MEMORY_GIB * GIB,
+                               "optional_lower_cpus": "build cron --rust-cpus 3",
                                "optional_lower_memory": "build cron --rust-memory-gib 4",
                                "optional_feature_matrix": "build cron --rust-feature-matrix"}
         print(json.dumps(details, indent=2))
@@ -1101,7 +1122,7 @@ def main(argv=None):
             print(json.dumps(receipt, indent=2))
         elif args.command == "build":
             ops.build(args.target, args.source_dir, rust_feature_matrix=args.rust_feature_matrix,
-                      rust_memory_gib=args.rust_memory_gib)
+                      rust_memory_gib=args.rust_memory_gib, rust_cpus=args.rust_cpus)
         elif args.command == "verify":
             ops.verify(args.run, args.check, args.fixtures, args.seed_models, args.test_env, args.dependency)
         else:
