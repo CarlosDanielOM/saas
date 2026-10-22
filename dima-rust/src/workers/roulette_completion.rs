@@ -20,6 +20,8 @@ use mongodb::{
     error::{Error, Result},
 };
 
+use crate::utils::bson_compat::{js_number, normalize_document};
+
 /// Existing Mongoose collection. No collection, index, or schema is created.
 const COLLECTION: &str = "roulette_channels";
 /// The TypeScript due query has no sort and caps one pass at 100 channels.
@@ -30,9 +32,6 @@ const CAS_ATTEMPTS: usize = 20;
 const HISTORY_LIMIT: usize = 100;
 /// `domain.text(channelId, 'channel', 100)` bound.
 const CHANNEL_MAX_CHARS: usize = 100;
-/// Node promotes int64 to a JavaScript number through the inclusive ±2^53
-/// boundary; adjacent int64 values remain Long objects.
-const JS_MAX_PROMOTED_INTEGER: f64 = 9_007_199_254_740_992.0;
 
 fn malformed() -> Error {
     Error::custom("Invalid roulette channel state".to_owned())
@@ -45,57 +44,6 @@ fn numeric(value: &Bson) -> Option<f64> {
         Bson::Int64(value) => Some(*value as f64),
         Bson::Double(value) => Some(*value),
         _ => None,
-    }
-}
-
-/// Serializes a JavaScript number as the Node BSON writer does: integral values
-/// in the int32 range become `int`, everything else (including `-0` and
-/// non-finite values) stays `double`.
-fn js_number(value: f64) -> Bson {
-    let negative_zero = value == 0.0 && value.is_sign_negative();
-    if !negative_zero
-        && value.is_finite()
-        && value.fract() == 0.0
-        && (f64::from(i32::MIN)..=f64::from(i32::MAX)).contains(&value)
-    {
-        Bson::Int32(value as i32)
-    } else {
-        Bson::Double(value)
-    }
-}
-
-/// Normalizes every number the way a TypeScript rewrite of the whole Mixed
-/// `state` does. `Long` values outside Node's inclusive ±2^53 promotion
-/// boundary stay int64, as JavaScript receives `Long` objects rather than numbers.
-fn normalize_js_numbers(value: &mut Bson) {
-    match value {
-        Bson::Int32(current) => {
-            let number = f64::from(*current);
-            *value = js_number(number);
-        }
-        Bson::Int64(current) => {
-            let number = *current as f64;
-            if number.abs() <= JS_MAX_PROMOTED_INTEGER && number as i64 == *current {
-                *value = js_number(number);
-            }
-        }
-        Bson::Double(current) => {
-            let number = *current;
-            *value = js_number(number);
-        }
-        Bson::Array(values) => {
-            for value in values {
-                normalize_js_numbers(value);
-            }
-        }
-        Bson::Document(document) => normalize_document(document),
-        _ => {}
-    }
-}
-
-fn normalize_document(document: &mut Document) {
-    for (_, value) in document.iter_mut() {
-        normalize_js_numbers(value);
     }
 }
 

@@ -24,6 +24,7 @@
 //! ```
 
 #[cfg(any(
+    feature = "mongo",
     feature = "bot-utils",
     feature = "keywords",
     feature = "chat-events",
@@ -33,6 +34,13 @@
     feature = "twitch-client"
 ))]
 pub mod js_compat;
+
+#[cfg(feature = "mongo")]
+pub mod bson_compat;
+#[cfg(feature = "mongo")]
+pub mod utc_time;
+#[cfg(feature = "mongo")]
+pub mod worker_process;
 
 #[cfg(feature = "ai-usage")]
 pub mod ai_usage;

@@ -7,7 +7,10 @@ use std::{
 };
 
 use dima_rust::{
-    utils::mongo::get_mongo_client,
+    utils::{
+        mongo::get_mongo_client,
+        worker_process::{IdleBackoff, load_env_files, spawn_shutdown_signal},
+    },
     workers::raid_analytics::{BacklogHealth, PhaseTimings, RaidAnalyticsProjector},
 };
 use mongodb::bson::DateTime;
@@ -50,30 +53,6 @@ fn health_telemetry(health: Option<&BacklogHealth>, last_success_age_ms: Option<
         metadata["lastSuccessAgeMs"] = age.into();
     }
     format!("raid_analytics:{metadata}")
-}
-
-/// Consecutive empty batches back off; any work restores responsive polling.
-struct IdleBackoff {
-    next_seconds: u64,
-}
-
-impl Default for IdleBackoff {
-    fn default() -> Self {
-        Self { next_seconds: 1 }
-    }
-}
-
-impl IdleBackoff {
-    fn after_batch(&mut self, count: usize) -> Option<Duration> {
-        if count > 0 {
-            self.next_seconds = 1;
-            None
-        } else {
-            let wait = Duration::from_secs(self.next_seconds);
-            self.next_seconds = (self.next_seconds * 2).min(5);
-            Some(wait)
-        }
-    }
 }
 
 #[derive(Default)]
@@ -136,11 +115,9 @@ fn main() -> ExitCode {
     }
     // Synchronous environment loading precedes runtime threads. dotenvy's
     // non-override API preserves existing variables and earlier-file precedence.
-    for path in &args.env_files {
-        if dotenvy::from_path(path).is_err() {
-            eprintln!("Cannot load selected environment file");
-            return ExitCode::FAILURE;
-        }
+    if let Err(message) = load_env_files(&args.env_files) {
+        eprintln!("{message}");
+        return ExitCode::FAILURE;
     }
     let runtime = match tokio::runtime::Builder::new_multi_thread()
         .worker_threads(2)
@@ -174,25 +151,7 @@ async fn run(args: Args) -> Result<(), &'static str> {
     };
     let projector = RaidAnalyticsProjector::new(database);
     let (stopping, mut stopped) = watch::channel(false);
-    let signal_task = tokio::spawn(async move {
-        #[cfg(unix)]
-        {
-            let mut terminate =
-                match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
-                    Ok(signal) => signal,
-                    Err(_) => {
-                        let _ = stopping.send(true);
-                        return;
-                    }
-                };
-            tokio::select! { _ = terminate.recv() => {}, _ = tokio::signal::ctrl_c() => {} }
-        }
-        #[cfg(not(unix))]
-        {
-            let _ = tokio::signal::ctrl_c().await;
-        }
-        let _ = stopping.send(true);
-    });
+    let signal_task = spawn_shutdown_signal(stopping);
     let result = async {
         let mut idle = IdleBackoff::default();
         // Unknown after every restart until a non-idle batch fully succeeds.

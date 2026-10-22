@@ -1,6 +1,10 @@
 //! Native AI usage receipts worker; existing queues, accounting, and dashboards.
 use dima_rust::{
-    utils::{mongo::get_mongo_client, redis::get_redis_client},
+    utils::{
+        mongo::get_mongo_client,
+        redis::get_redis_client,
+        worker_process::{load_env_files, spawn_shutdown_signal},
+    },
     workers::ai_usage_receipts::{AiUsageReceipts, BatchOutcome, Config},
 };
 use std::{
@@ -77,11 +81,9 @@ fn main() -> ExitCode {
         );
         return ExitCode::SUCCESS;
     }
-    for path in &args.env_files {
-        if dotenvy::from_path(path).is_err() {
-            eprintln!("Cannot load selected environment file");
-            return ExitCode::FAILURE;
-        }
+    if let Err(message) = load_env_files(&args.env_files) {
+        eprintln!("{message}");
+        return ExitCode::FAILURE;
     }
     let config = match Config::from_env() {
         Ok(config) => config,
@@ -114,25 +116,7 @@ fn main() -> ExitCode {
 }
 async fn run(args: Args, config: Config) -> Result<(), &'static str> {
     let (stopping, mut stopped) = watch::channel(false);
-    let signal = tokio::spawn(async move {
-        #[cfg(unix)]
-        {
-            let mut terminate =
-                match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
-                    Ok(signal) => signal,
-                    Err(_) => {
-                        let _ = stopping.send(true);
-                        return;
-                    }
-                };
-            tokio::select! {_=terminate.recv()=>{},_=tokio::signal::ctrl_c()=>{}}
-        }
-        #[cfg(not(unix))]
-        {
-            let _ = tokio::signal::ctrl_c().await;
-        }
-        let _ = stopping.send(true);
-    });
+    let signal = spawn_shutdown_signal(stopping);
     let result = async {
         // Initialization is bounded too; it has no claimed jobs or ledger writes.
         let (client, cache) = tokio::time::timeout(Duration::from_secs(20), async {

@@ -1,0 +1,17 @@
+# 2026-10-22 — Rust worker shared utilities
+
+**Task:** Bounded Rust source integration and source-backed documentation for shared BSON compatibility, UTC calendar, JavaScript trim, and worker process utilities across the existing seven native cron binaries. No new TypeScript utility migration was in scope.
+
+**Routing:** Two GPT-6.1 Sol implementation tasks at high produced the source refactor and caller reuse. Grok 4.7 at high completed a read-only review and reported no issues. GPT-6 Luna at high reconciled the source and release documentation. This single task supports source-backed documentation routing; it does not justify a broader tier ranking change.
+
+**Build and candidate evidence:** Run `cron-2056ce9d790c`, image `sha256:adac7d8de9b5c5cfb138f8051a05123ac02a6c3467cc85784873ee85370d892f`, deployed at `2026-10-22T05:15:05.047669035Z`. The capped build took 1473.201 seconds under 6 CPUs, 4 GiB/no-swap, 256 PIDs, and two Cargo jobs. Formatting, check, Clippy, tests, release builds, and binary dry runs passed across all three profiles; 329 test passes include repeats across profiles, with five ignored external-fixture instances. All three worker dependency graphs were byte-identical to the prior accepted graphs. Grok's source review confirmed the BSON, UTC, explicit environment loading, cooperative signal, wait-policy, and supervisor boundaries.
+
+All nine exact-image suites passed 150 groups: raid sessions (20), roulette (19), stream activity (6), raid analytics (20), follow-defense baseline (11), AI receipts (23), Rust-only cron (7), raid pipeline (8), and dashboard activity (36). Source identity passed. The candidate-specific scope covered all seven workers because each uses a changed shared signal. Historical supplemental legacy/email checks were not part of this candidate scope.
+
+**Deployment and acceptance:** The image is deployed with seven native children in the existing cron service. Twenty-five enabled supervised children were present at startup; EventSub reconciliation was disabled. The 32-sample watch passed across 332.257 seconds with stable worker identities. All 90 index specifications across 19 collections were unchanged; seven live binary identities, analytics/log checks, helper cleanup, and lead acceptance passed. Rollback with `scripts/saas-ops rollback cron-2056ce9d790c` restores accepted run `cron-bf400acbc441` (image `sha256:72df59845ea803f1f619e8d9cfa748a881a0dd0de246da720815a9f8182fda30`), the previous seven-worker image with private helper implementations. No new service, schema, default, profile, dependency, or supervisor behavior was added, and no runtime-performance claim is made.
+
+**Integration correction:** A separate broad preflight container comparison failed because an unrelated `database-private-access` container from `/root/databases/private-access` had appeared. The shell continued to deployment after that comparison failure. The nine required suites, source identity, and cron-specific helper guards had passed; comparison of the original 18 containers found only `dima-cron` changed. This records a lead integration/process correction, not a model-quality issue or evidence of data regression.
+
+See [worker shared utilities](../migration-notes/worker-shared-utils.md) for source mappings and remaining watch checks.
+
+**Confidence:** Medium for this bounded source-backed documentation and release reconciliation; one task. No general capability ranking or performance conclusion.

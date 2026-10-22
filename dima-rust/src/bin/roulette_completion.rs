@@ -6,7 +6,13 @@ use std::{
     time::{Duration, Instant},
 };
 
-use dima_rust::{utils::mongo::get_mongo_client, workers::roulette_completion::RouletteCompletion};
+use dima_rust::{
+    utils::{
+        mongo::get_mongo_client,
+        worker_process::{load_env_files, spawn_shutdown_signal},
+    },
+    workers::roulette_completion::RouletteCompletion,
+};
 use tokio::sync::watch;
 
 const HELP: &str = "Usage: roulette_completion [--help | --dry-run] [--once] [--telemetry-json] [--database NAME] [--env-file PATH]...\n\nSettles due roulette draws in the existing roulette_channels collection.\nNo automatic .env loading; MONGO_URI must name a database, or supply --database.\nExisting environment wins; explicit environment files load after --dry-run and before runtime threads.\nEach pass polls at most 100 indexed dueAt deadlines and compare-and-swaps state with revision.\nReady due work continues immediately; idle or blocked passes poll every second. A signal finishes the current pass and exits cleanly.\nStorage failures and a 20-second hung-pass watchdog exit nonzero for supervisor recovery.";
@@ -103,11 +109,9 @@ fn main() -> ExitCode {
     }
     // Synchronous environment loading precedes runtime threads. dotenvy's
     // non-override API preserves existing variables and earlier-file precedence.
-    for path in &args.env_files {
-        if dotenvy::from_path(path).is_err() {
-            eprintln!("Cannot load selected environment file");
-            return ExitCode::FAILURE;
-        }
+    if let Err(message) = load_env_files(&args.env_files) {
+        eprintln!("{message}");
+        return ExitCode::FAILURE;
     }
     let runtime = match tokio::runtime::Builder::new_multi_thread()
         .worker_threads(2)
@@ -141,25 +145,7 @@ async fn run(args: Args) -> Result<(), &'static str> {
     };
     let completion = RouletteCompletion::new(database);
     let (stopping, mut stopped) = watch::channel(false);
-    let signal_task = tokio::spawn(async move {
-        #[cfg(unix)]
-        {
-            let mut terminate =
-                match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
-                    Ok(signal) => signal,
-                    Err(_) => {
-                        let _ = stopping.send(true);
-                        return;
-                    }
-                };
-            tokio::select! { _ = terminate.recv() => {}, _ = tokio::signal::ctrl_c() => {} }
-        }
-        #[cfg(not(unix))]
-        {
-            let _ = tokio::signal::ctrl_c().await;
-        }
-        let _ = stopping.send(true);
-    });
+    let signal_task = spawn_shutdown_signal(stopping);
     let result = async {
         while !*stopped.borrow() {
             let started = Instant::now();

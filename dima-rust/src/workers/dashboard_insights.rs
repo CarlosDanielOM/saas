@@ -12,6 +12,11 @@ use mongodb::{
 };
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
+pub(crate) use crate::utils::bson_compat::{
+    js_number as bson_number, normalize_document as normalize_payload_numbers,
+};
+use crate::utils::{js_compat::trim as js_trim, utc_time::inclusive_day_start};
+
 pub type Result<T> = std::result::Result<T, &'static str>;
 pub const SESSION_LIMIT: usize = 500;
 pub const SNAPSHOT_LIMIT: usize = 20_000;
@@ -22,9 +27,7 @@ const HOUR_MS: f64 = 3_600_000.0;
 
 /// Inclusive UTC calendar-day ranges, matching Date.UTC (also before epoch).
 pub fn dashboard_range_start(days: u32, now: DateTime) -> DateTime {
-    DateTime::from_millis(
-        now.timestamp_millis().div_euclid(DAY_MS) * DAY_MS - (i64::from(days) - 1) * DAY_MS,
-    )
+    inclusive_day_start(days, now)
 }
 
 /// JS strings can contain a lone surrogate after String.slice. Keep those code
@@ -133,42 +136,6 @@ impl<'de> Deserialize<'de> for JsText {
             units.push(unit);
         }
         Ok(Self(units))
-    }
-}
-
-/// Mongoose Number casts produce JS numbers. Node stores integral int32 values
-/// as Int32; fractions, larger values, negative zero and nonfinite stay Double.
-pub(crate) fn bson_number(number: f64) -> Bson {
-    if number.is_finite()
-        && number.fract() == 0.0
-        && !(number == 0.0 && number.is_sign_negative())
-        && (f64::from(i32::MIN)..=f64::from(i32::MAX)).contains(&number)
-    {
-        Bson::Int32(number as i32)
-    } else {
-        Bson::Double(number)
-    }
-}
-
-/// Mongo sums can return Int64. The Node driver promotes longs within its
-/// inclusive +/-2^53 boundary to JS numbers before Mixed payload serialization;
-/// larger longs retain their BSON wrapper and Int64 encoding.
-pub(crate) fn normalize_payload_numbers(payload: &mut Document) {
-    fn normalize(value: &mut Bson) {
-        match value {
-            Bson::Double(number) => *value = bson_number(*number),
-            Bson::Int64(number)
-                if (-9_007_199_254_740_992..=9_007_199_254_740_992).contains(number) =>
-            {
-                *value = bson_number(*number as f64);
-            }
-            Bson::Document(document) => normalize_payload_numbers(document),
-            Bson::Array(values) => values.iter_mut().for_each(normalize),
-            _ => {}
-        }
-    }
-    for (_, value) in payload.iter_mut() {
-        normalize(value);
     }
 }
 
@@ -282,17 +249,6 @@ pub fn insight_intervals(
         prior_end = prior_end.max(row.to);
     }
     result
-}
-
-// Rust trim includes a few characters ECMAScript does not (e.g. U+0085), and
-// omits the BOM; use ECMAScript WhiteSpace + LineTerminator explicitly.
-fn js_trim(value: &str) -> &str {
-    value.trim_matches(|c| {
-        matches!(c,
-        '\u{0009}'..='\u{000d}' | '\u{0020}' | '\u{00a0}' | '\u{1680}' |
-        '\u{2000}'..='\u{200a}' | '\u{2028}' | '\u{2029}' | '\u{202f}' |
-        '\u{205f}' | '\u{3000}' | '\u{feff}')
-    })
 }
 
 /// At most one unambiguous observed interval receives each timestamp.

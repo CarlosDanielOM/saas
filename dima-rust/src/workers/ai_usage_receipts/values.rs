@@ -2,6 +2,9 @@
 use mongodb::bson::{Bson, DateTime, Document};
 use serde_json::Value;
 
+pub(super) use crate::utils::bson_compat::js_number as bson_number;
+use crate::utils::js_compat::trim as js_trim;
+
 pub(super) const DAY: i64 = 86_400_000;
 pub(super) fn now() -> i64 {
     DateTime::now().timestamp_millis()
@@ -43,9 +46,6 @@ pub(super) fn truthy(value: &Value) -> bool {
         Value::String(v) => !v.is_empty(),
         _ => true,
     }
-}
-fn js_trim(value: &str) -> &str {
-    value.trim_matches(|character:char| matches!(character,'\u{0009}'..='\u{000d}'|'\u{0020}'|'\u{00a0}'|'\u{1680}'|'\u{2000}'..='\u{200a}'|'\u{2028}'|'\u{2029}'|'\u{202f}'|'\u{205f}'|'\u{3000}'|'\u{feff}'))
 }
 fn number_string(value: f64) -> String {
     if value == 0.0 {
@@ -163,18 +163,6 @@ pub(super) fn retention(tier: &str) -> i64 {
         "pro" => 90,
         "premium" => 60,
         _ => 30,
-    }
-}
-pub(super) fn bson_number(value: f64) -> Bson {
-    let negative_zero = value == 0.0 && value.is_sign_negative();
-    if !negative_zero
-        && value.is_finite()
-        && value.fract() == 0.0
-        && (f64::from(i32::MIN)..=f64::from(i32::MAX)).contains(&value)
-    {
-        Bson::Int32(value as i32)
-    } else {
-        Bson::Double(value)
     }
 }
 pub(super) fn bson_json(value: &Value) -> Bson {

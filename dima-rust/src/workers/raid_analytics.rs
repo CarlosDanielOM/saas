@@ -22,6 +22,8 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use tokio::{sync::oneshot, task::JoinHandle};
 
+use crate::utils::utc_time::inclusive_day_start;
+
 const DAY_MS: i64 = 86_400_000;
 const WINDOW_MS: i64 = 300_000;
 const LEASE_MS: i64 = 60_000;
@@ -170,8 +172,7 @@ struct NextRaid {
 
 /// UTC midnight, inclusive of today, matching Date.UTC in raidRangeStart.
 pub fn raid_range_start(days: u32, now: DateTime) -> DateTime {
-    let midnight = now.timestamp_millis().div_euclid(DAY_MS) * DAY_MS;
-    DateTime::from_millis(midnight - (i64::from(days) - 1) * DAY_MS)
+    inclusive_day_start(days, now)
 }
 
 fn follow_window(raid: DateTime, next: Option<DateTime>, now: DateTime) -> (DateTime, DateTime) {

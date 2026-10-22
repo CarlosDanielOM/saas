@@ -16,7 +16,7 @@ use mongodb::{
 use redis::aio::ConnectionManager;
 use serde::{Deserialize, Serialize};
 
-use crate::utils::redis::get_redis_client;
+use crate::utils::{redis::get_redis_client, utc_time::utc_midnight};
 
 const DAY_MS: i64 = 86_400_000;
 const QUERY_TIMEOUT: Duration = Duration::from_secs(10);
@@ -150,7 +150,8 @@ struct AttackRow {
 
 /// Complete UTC days only: today's midnight is the exclusive upper bound.
 fn baseline_range(now: DateTime) -> (DateTime, DateTime) {
-    let end = now.timestamp_millis().div_euclid(DAY_MS) * DAY_MS;
+    // Range policy stays here: thirty preceding days, excluding today.
+    let end = utc_midnight(now).timestamp_millis();
     (
         DateTime::from_millis(end - 30 * DAY_MS),
         DateTime::from_millis(end),
