@@ -6,7 +6,8 @@ import { KOKORO_VOICES } from '../../utils/tts/kokoro_voices.util.js';
 import { FISH_VOICES } from './tts/fish_tts.service.js';
 import { findAsset, registerAssetConsumer, withAssetLibrary } from '../../assets/library.js';
 import { invalidatePet } from '../../pets/state.js';
-import { selectedVtsController, validatePetSessions } from '../../pets/peers.js';
+import { validatePetSessions } from '../../pets/peers.js';
+import { hasSharedVtsReadiness } from '../../pets/readiness.js';
 import UsersSchema from '../../schemas/users.schema.js';
 
 export class PetSettingsError extends Error {
@@ -114,7 +115,7 @@ export async function getPetConfiguration(userId: string, channelID: string) {
                 if (asset.kind !== 'image' || !['image/png', 'image/jpeg', 'image/gif', 'image/webp'].includes(asset.mime)) throw new Error('Invalid PNG asset');
             }
         } catch { issues.push('appearance_unavailable'); }
-    } else if (!await selectedVtsController(userId, settings.playback.vtsSessionId)) issues.push('vts_unavailable');
+    } else if (!await hasSharedVtsReadiness(userId, runtimeRecord?.generation, record?.revision ?? 0, settings.playback.vtsSessionId)) issues.push('vts_unavailable');
     // Only explicit persona fields are shared. Memories, known users and moderation tools are excluded.
     const resolvedPersonality = profile ? { prompt: profile.personality, personaMode: profile.personaMode,
         personaReference: profile.personaReference, tonePreset: profile.tonePreset,

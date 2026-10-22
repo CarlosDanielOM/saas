@@ -2,6 +2,7 @@ import { OAuthSession } from '../schemas/oauth_session.schema.js';
 import type { Socket } from 'socket.io';
 import { PetError } from './state.js';
 export interface PetPeer {
+    validatedAt: number; authorizationExpiresAt: number; snapshotSerial?: number; retiredRequestIds?: Set<string>; activeVersionSeen?: number;
     id: string; ownerId: string; channelId: string; kind: 'desktop' | 'browser'; sessionId?: string;
     label: string; socket: Socket; audioReady: boolean; renderReady: boolean; vtsReady: boolean;
     capability?: string; generationSeen?: number; activeSeen?: string; tokenHash?: string; scopes: string[]; revalidate: () => Promise<void>;
@@ -37,7 +38,7 @@ export async function selectedVtsController(ownerId: string, sessionId: string |
         peer.sessionId === sessionId && peer.vtsReady && peer.socket.connected && peer.scopes.includes('pet:receive'))
         .sort((a, b) => a.id.localeCompare(b.id));
     for (const peer of candidates) {
-        try { await peer.revalidate(); return peer; } catch { peer.socket.disconnect(true); }
+        try { await peer.revalidate(); if (peer.socket.connected && peer.vtsReady) return peer; } catch { peer.socket.disconnect(true); }
     }
     return null;
 }

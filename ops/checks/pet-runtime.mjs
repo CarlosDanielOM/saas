@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { once } from 'node:events';
+import { spawn } from 'node:child_process';
 const { WebSocket } = createRequire('/app/package.json')('ws');
 const { GridFSBucket, ObjectId } = createRequire('/app/package.json')('mongodb');
 assert.match(process.env.MONGO_URI, /saas_ops_oauth_beta_test$/, 'disposable database required');
@@ -15,6 +16,7 @@ const { PetRequest, PetRuntime } = await import('/app/dist/schemas/pet_runtime.s
 const { PetSettingsSchema } = await import('/app/dist/schemas/pet_settings.schema.js');
 const { OAuthSession } = await import('/app/dist/schemas/oauth_session.schema.js');
 const { ChannelAIPersonalitySchema } = await import('/app/dist/schemas/channel_ai_personality.schema.js');
+const { PetReadiness } = await import('/app/dist/pets/readiness.schema.js');
 const { admitPetAction } = await import('/app/dist/pets/admission.js');
 const { invalidatePet, notifyPet, runtimeFor } = await import('/app/dist/pets/state.js');
 const { AI_CREDITS_CACHE_SCHEMA_VERSION } = await import('/app/dist/utils/billing.js');
@@ -56,7 +58,14 @@ async function mint(browser = 'oauth-beta-browser-owner', scope = 'profile:read 
     code: new URL(decision.body.redirect_uri).searchParams.get('code'), code_verifier: verifier, redirect_uri: 'http://127.0.0.1:42781/oauth/callback' } });
   assert.equal(exchange.status, 200); return exchange.body;
 }
-const sockets = [];
+const sockets = [], connectedClients = [];
+const renewal = setInterval(() => { for (const client of connectedClients) {
+  if (!client.lease || client.renewing || client.ws.readyState !== WebSocket.OPEN) continue;
+  const lease = client.lease; client.renewing = true;
+  void client.send('pet:lease', { v: 1, action: 'renew', leaseId: lease.leaseId, generation: lease.generation })
+    .then(ack => { if (client.lease?.leaseId === lease.leaseId) client.lease = ack.ok ? ack.data : null; })
+    .catch(() => { client.lease = null; }).finally(() => { client.renewing = false; });
+} }, 5000); renewal.unref();
 async function connect(namespace, auth, reject = false, needsSnapshot = true) {
   const ws = new WebSocket('ws://127.0.0.1:3000/socket.io/?EIO=4&transport=websocket');
   sockets.push(ws);
@@ -86,7 +95,7 @@ async function connect(namespace, auth, reject = false, needsSnapshot = true) {
     mark() { return events.length; },
     latestSnapshot() { return events.filter(item => item.event === 'pet:snapshot').at(-1)?.data; }
   };
-  if (needsSnapshot) await result.event('pet:snapshot'); return result;
+  if (needsSnapshot) await result.event('pet:snapshot'); connectedClients.push(result); return result;
 }
 const assetId = new ObjectId(), foreignAsset = new ObjectId();
 const gif = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
@@ -137,7 +146,7 @@ assert.equal((await call(settingsPath, { method: 'PUT', token: 'pet-owner-token'
 const select = (token, roles, revision = configuration.revision) => call('/v1/me/pet/playback', { method: 'PUT', token,
   body: { commandId: randomUUID(), revision, roles } });
 let result = await select(desktopToken.access_token, ['audio', 'vts']); assert.equal(result.status, 200); configuration = result.body;
-const acquire = async client => { const ack = await client.send('pet:lease', { v: 1, action: 'acquire' }); assert.equal(ack.ok, true, JSON.stringify(ack)); return ack.data; };
+const acquire = async client => { const ack = await client.send('pet:lease', { v: 1, action: 'acquire' }); assert.equal(ack.ok, true, JSON.stringify(ack)); client.lease = ack.data; return ack.data; };
 await save(settings => ({ ...settings, appearance: { ...settings.appearance, kind: 'vts' } }));
 let lease = await acquire(desktop);
 assert.equal((await overlap.send('pet:lease', { v: 1, action: 'acquire' })).error.code, 'player_not_selected' /* unready overlap */);
@@ -147,17 +156,53 @@ await desktop.send('pet:ready', ready); await pause(150);
 assert.ok(desktop.events.slice(before).filter(item => item.event === 'pet:snapshot').length <= 1, 'unchanged readiness does not republish snapshots');
 const action = (text = 'Hello pet', operation = 'talk') => ({ channelId: owner, operation, text,
   origin: { kind: 'chat-command', id: randomUUID(), occurredAt: new Date().toISOString() }, actionKey: 'command:pet:0', actor: { userId: owner, displayName: 'Fixture' } });
+async function separateProducer(input, env = {}) {
+  const child = spawn(process.execPath, ['/tmp/saas-fixtures/producer.mjs'], { stdio: ['pipe', 'pipe', 'pipe'], env: { ...process.env, ...env } });
+  let stdout = '', stderr = '';
+  child.stdout.on('data', chunk => { stdout = (stdout + chunk).slice(-65536); });
+  child.stderr.on('data', chunk => { stderr = (stderr + chunk).slice(-4096); });
+  const timer = setTimeout(() => child.kill('SIGKILL'), 8000);
+  child.stdin.end(JSON.stringify(input));
+  const [code] = await once(child, 'close'); clearTimeout(timer);
+  assert.equal(code, 0, stderr);
+  const line = stdout.split('\n').find(line => line.startsWith('PET_RESULT:'));
+  assert.ok(line, stdout); const result = JSON.parse(line.slice('PET_RESULT:'.length));
+  assert.notEqual(result.pid, process.pid); assert.equal(result.peers, 0); return result;
+}
 const identityFor = (play, seq, phase = 'started') => ({ v: 1, requestId: play.requestId, leaseId: play.leaseId, generation: play.generation, seq, phase, positionMs: phase === 'ended' ? 500 : 0 });
 const assertNoReplay = async client => { await pause(150); assert.equal(client.events.filter(item => item.event === 'pet:play').length, 0); };
+const projected = await PetReadiness.findById(ownerId).lean();
+assert.ok(projected && projected.expiresAt <= projected.authorizationExpiresAt);
+// Isolate malformed projections from the live API refresh loop so every fence case is deterministic.
+const shadowId = new ObjectId(), shadowChannel = '99003109';
+await mongo.connection.db.collection('users').insertOne({ _id: shadowId, plan_tier: 'premium', accounts: [{ type: 'twitch', id: shadowChannel }] });
+await PetSettingsSchema.create({ userId: shadowId, revision: configuration.revision, settings: configuration.settings, updatedAt: new Date() });
+await PetRuntime.create({ _id: String(shadowId), channelId: shadowChannel, generation: lease.generation,
+  lease: { leaseId: 'shadow-lease', holderPeerId: 'unconnected-shadow', expiresAt: new Date(Date.now() + 60_000) } });
+for (const change of [{ generation: lease.generation + 1 }, { settingsRevision: configuration.revision + 1 },
+  { sessionId: secondToken.session_id }, { expiresAt: new Date(0) }, { authorizationExpiresAt: new Date(0) }]) {
+  await PetReadiness.replaceOne({ _id: String(shadowId) }, { ...projected, _id: String(shadowId), ...change }, { upsert: true });
+  assert.equal((await separateProducer({ ...action('Stale readiness fence'), channelId: shadowChannel })).error, 'vts_unavailable');
+}
+await Promise.all([PetReadiness.deleteOne({ _id: String(shadowId) }), PetSettingsSchema.deleteOne({ userId: shadowId }),
+  PetRuntime.deleteOne({ _id: String(shadowId) }), mongo.connection.db.collection('users').deleteOne({ _id: shadowId })]);
 const input = action();
 await assert.rejects(admitPetAction({ ...input, origin: { ...input.origin, id: '' } }), /invalid_origin/);
 assert.equal((await desktop.send('pet:lease', { v: 1, action: 'renew', leaseId: lease.leaseId, generation: lease.generation + 1 })).error.code, 'stale_lease');
 assert.equal((await desktop.send('pet:lease', { v: 1, action: 'renew', leaseId: { $ne: null }, generation: lease.generation })).error.code, 'invalid_message');
+await until(() => PetReadiness.findOne({ _id: ownerId, generation: lease.generation, settingsRevision: configuration.revision, sessionId: desktopToken.session_id }).lean(), 'API publishes generation-bound VTS readiness');
+const produced = await separateProducer(input);
+assert.ok(produced.result, JSON.stringify(produced));
 const concurrent = await Promise.all([admitPetAction(input), admitPetAction(input)]);
+assert.equal(produced.result.requestId, concurrent[0].requestId);
 assert.equal(concurrent[0].requestId, concurrent[1].requestId);
 const requestId = concurrent[0].requestId;
 await assert.rejects(admitPetAction({ ...input, text: 'changed' }), /idempotency_conflict/);
 const play = await desktop.event('pet:play', data => data.requestId === requestId);
+const playIndex = desktop.events.findIndex(item => item.event === 'pet:play' && item.data.requestId === requestId);
+assert.equal(desktop.events[playIndex - 1]?.event, 'pet:request', 'selected socket receives ready immediately before the sole play');
+assert.equal(desktop.events[playIndex - 1]?.data.request.status, 'ready');
+assert.equal(desktop.events[playIndex - 1]?.data.request.requestId, requestId);
 assert.equal(play.audio.durationMs, 500);
 assert.ok(Number.isSafeInteger(play.startBefore));
 assert.ok(!play.audio.url.includes('/speech/audio/'));
@@ -180,6 +225,14 @@ await desktop.event('pet:request', data => data.request.requestId === requestId 
 assert.equal((await admitPetAction(input)).status, 'completed');
 assert.equal((await fetch(base + new URL(play.audio.url).pathname + new URL(play.audio.url).search)).status, 403);
 assert.equal((await redis.lRange('pet:test:provider-calls', 0, -1)).map(JSON.parse).filter(item => item.kind === 'tts').length, 1);
+// Redis is advisory even in a real producer process: a refused connection cannot delay Mongo admission.
+const outage = await separateProducer(action('Durable admission while Redis hints are unavailable'), { DRAGONFLY_PORT: '1' });
+assert.ok(outage.result, JSON.stringify(outage));
+assert.ok(outage.elapsedMs < 2000, 'Mongo acceptance must not wait for Redis connect/reconnect');
+// Explicitly prompt the healthy API after proving producer acceptance (recovery also remains enabled).
+await notifyPet(ownerId);
+const outagePlay = await desktop.event('pet:play', data => data.requestId === outage.result.requestId);
+await desktop.send('pet:playback', identityFor(outagePlay, 0, 'error'));
 // The next request resets request-scoped sequence, under the same lease.
 const next = await admitPetAction(action('Second speech'));
 const nextPlay = await desktop.event('pet:play', data => data.requestId === next.requestId);
@@ -273,7 +326,8 @@ const duplicateBrowser = await connect('/pet', { v: 1, capability: tokenState.to
 await save(settings => ({ ...settings, tts: { enabled: true, provider: 'piper', language: 'es', voice: 'es_MX-ald-medium' }, playback: { ...settings.playback, target: 'browser' } }));
 await PetRuntime.updateOne({ _id: ownerId }, { $set: { notBefore: new Date(0) } });
 const readiness = browser.send('pet:ready', ready), acquisition = browser.send('pet:lease', { v: 1, action: 'acquire' });
-assert.equal((await readiness).ok, true); assert.equal((await acquisition).ok, true, 'ready/acquire burst serializes');
+assert.equal((await readiness).ok, true); const browserLeaseAck = await acquisition;
+assert.equal(browserLeaseAck.ok, true, 'ready/acquire burst serializes'); browser.lease = browserLeaseAck.data;
 await duplicateBrowser.send('pet:ready', ready);
 assert.equal((await duplicateBrowser.send('pet:lease', { v: 1, action: 'acquire' })).error.code, 'lease_unavailable');
 const browserRequest = await admitPetAction(action('Browser only'));
@@ -293,6 +347,7 @@ await desktop.send('pet:ready', { ...ready, vtsReady: false });
 await until(() => PetRequest.findOne({ _id: losingVts.requestId, status: 'cancelled', errorCode: 'vts_unavailable' }).lean(), 'VTS loss invalidates browser audio');
 await redis.del('pet:test:provider-mode');
 await assert.rejects(admitPetAction(action('Still no VTS')), /vts_unavailable/);
+assert.equal((await separateProducer(action('Separate producer also sees lost VTS'))).error, 'vts_unavailable');
 await desktop.send('pet:ready', ready);
 const rotated = await call(`/pets/${owner}/overlay-token`, { method: 'POST', token: 'pet-owner-token', body: { rotate: true, version: tokenState.version } });
 assert.equal(rotated.status, 200);
@@ -314,6 +369,7 @@ assert.equal(await redis.lLen('pet:test:provider-calls'), recoveryCount);
 // Revoked sessions disappear from the owner-only candidate set.
 await OAuthSession.updateOne({ _id: secondToken.session_id }, { $set: { revoked_at: new Date() } });
 assert.ok(!(await call(`/pets/${owner}/runtime`, { token: 'pet-owner-token' })).body.data.sessions.some(session => session.sessionId === secondToken.session_id));
+clearInterval(renewal);
 for (const ws of sockets) ws.close();
 console.log('PASS pet runtime: exact Socket.IO contract, consent/owner isolation, readiness/telemetry bursts, sole lease, durable dedup/busy, private delivery, actual playback/terminal broadcast, no-tools AI/stable usage, verified-credit fallback, token rotation, unknown-outcome recovery and revocation.');
 process.exit(0);

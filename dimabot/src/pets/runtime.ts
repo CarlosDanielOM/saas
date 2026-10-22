@@ -15,8 +15,11 @@ import { trackTtsUsage } from '../utils/tts_usage.js';
 import { piperTtsService } from '../server/services/tts/piper_tts.service.js';
 import { kokoroTtsService } from '../server/services/tts/kokoro_tts.service.js';
 import { fishTtsService } from '../server/services/tts/fish_tts.service.js';
-import { petPeers, desktopCandidates, type PetPeer } from './peers.js';
-import { finishRequest, invalidatePet, notifyPet, PET_WAKE, PetError, requestView, runtimeFor } from './state.js';
+import { petPeers, desktopCandidates, selectedVtsController, type PetPeer } from './peers.js';
+import { finishRequest, invalidatePet, notifyPet, PetError, requestView, runtimeFor } from './state.js';
+import { beginPetSnapshot, emitPetSnapshot, emitPetReadyAndPlay } from './delivery.js';
+import { initializePetReadiness, refreshPetReadiness, stopPetReadiness } from './readiness.js';
+import { subscribePetWakeups } from './wakeups.js';
 import { issueAudioTicket } from './tokens.js';
 
 const tasks = new Map<string, { controller: AbortController; requestId: string; generation: number }>();
@@ -45,10 +48,20 @@ export function assetUrls(capability: string, appearance: { idleAssetId: string 
         talkingUrl: appearance.talkingAssetId ? base + appearance.talkingAssetId : null };
 }
 export async function isSelectedPlayer(peer: PetPeer) {
+    await refreshPetReadiness(peer.ownerId);
     const { settings, runtime } = await getPetConfiguration(peer.ownerId, peer.channelId);
+    if (settings.appearance.kind === 'vts' && !await selectedVtsController(peer.ownerId, settings.playback.vtsSessionId)) return false;
     return runtime.enabled && settings.enabled && settings.tts.enabled && peer.audioReady &&
         (settings.playback.target === 'browser' ? peer.kind === 'browser' && (settings.appearance.kind !== 'png' || peer.renderReady) :
             peer.kind === 'desktop' && settings.playback.desktopSessionId === peer.sessionId && peer.scopes.includes('pet:receive'));
+}
+export async function sendPetSnapshot(peer: PetPeer) {
+    const serial = beginPetSnapshot(peer);
+    const previousId = peer.activeSeen;
+    await peer.revalidate();
+    const snapshot = await snapshotFor(peer);
+    const terminal = previousId && previousId !== snapshot.active?.requestId ? await PetRequest.findOne({ _id: previousId, ownerId: peer.ownerId }).lean() : null;
+    emitPetSnapshot(peer, serial, snapshot, terminal ? { generation: terminal.generation, request: requestView(terminal)! } : undefined);
 }
 async function broadcast(ownerId: string) {
     const runtime = await PetRuntime.findById(ownerId).lean();
@@ -56,31 +69,20 @@ async function broadcast(ownerId: string) {
     if (task && (runtime?.generation !== task.generation || runtime.activeRequestId !== task.requestId)) task.controller.abort();
     for (const peer of petPeers.values()) {
         if (peer.ownerId !== ownerId || !peer.socket.connected) continue;
-        try {
-            await peer.revalidate();
-            const snapshot = await snapshotFor(peer);
-            if (peer.generationSeen !== undefined && snapshot.generation !== peer.generationSeen) {
-                const terminal = peer.activeSeen ? await PetRequest.findOne({ _id: peer.activeSeen, ownerId }).lean() : null;
-                if (terminal) peer.socket.emit('pet:request', { v: 1, generation: terminal.generation, request: requestView(terminal) });
-                peer.socket.emit('pet:stop', { v: 1, requestId: peer.activeSeen ?? '', generation: snapshot.generation, reason: 'state_changed' });
-            } else if (peer.activeSeen && peer.activeSeen !== snapshot.active?.requestId) {
-                const terminal = await PetRequest.findOne({ _id: peer.activeSeen, ownerId }).lean();
-                if (terminal) peer.socket.emit('pet:request', { v: 1, generation: terminal.generation, request: requestView(terminal) });
-                peer.socket.emit('pet:stop', { v: 1, requestId: peer.activeSeen, generation: snapshot.generation, reason: 'request_finished' });
-            }
-            peer.generationSeen = snapshot.generation; peer.activeSeen = snapshot.active?.requestId;
-            peer.socket.emit('pet:snapshot', snapshot);
-            if (snapshot.active) peer.socket.emit('pet:request', { v: 1, generation: snapshot.generation, request: snapshot.active });
-        } catch { peer.socket.disconnect(true); }
+        try { await sendPetSnapshot(peer); } catch { peer.socket.disconnect(true); }
     }
 }
 async function current(request: PetRequestRecord) {
     const runtime = await PetRuntime.findById(request.ownerId).lean();
     if (!runtime || runtime.generation !== request.generation || runtime.activeRequestId !== request._id ||
         !runtime.lease || runtime.lease.expiresAt.getTime() <= Date.now()) throw new PetError('stale_request', 409);
+    await refreshPetReadiness(request.ownerId);
     const configuration = await getPetConfiguration(request.ownerId, request.channelId);
     if (!configuration.runtime.enabled || !configuration.settings.tts.enabled || configuration.revision !== request.settingsRevision) throw new PetError(configuration.runtime.issues[0] ?? 'settings_changed', 409);
-    return { runtime, configuration };
+    if (configuration.settings.appearance.kind === 'vts' && !await selectedVtsController(request.ownerId, configuration.settings.playback.vtsSessionId)) throw new PetError('vts_unavailable', 409);
+    const live = await PetRuntime.findOne({ _id: request.ownerId, generation: request.generation, activeRequestId: request._id, 'lease.expiresAt': { $gt: new Date() } }).lean();
+    if (!live) throw new PetError('stale_request', 409);
+    return { runtime: live, configuration };
 }
 async function phase(request: PetRequestRecord, status: 'generating' | 'synthesizing', outputText?: string) {
     const updated = await PetRequest.findOneAndUpdate({ _id: request._id, status: request.status, version: request.version }, {
@@ -100,6 +102,8 @@ async function generate(request: PetRequestRecord, signal: AbortSignal) {
         let text = request.text;
         if (request.operation === 'ask') {
             request = await phase(request, 'generating');
+            await current(request);
+            signal.throwIfAborted();
             const persona = configuration.runtime.personality;
             const result = await generateStandaloneText(streamer, [{ role: 'system', content:
                 `You are ${configuration.settings.name}, a virtual stream companion. Reply in ${configuration.settings.tts.language}. ` +
@@ -149,9 +153,10 @@ async function generate(request: PetRequestRecord, signal: AbortSignal) {
         const ticket = await issueAudioTicket(peer, ready, runtime.lease!);
         await current(ready);
         // This is the only play emission. Snapshot/reconnect/recovery never replay it.
-        peer.socket.emit('pet:play', { v: 1, requestId: request._id, generation: request.generation,
+        const sent = emitPetReadyAndPlay(peer, request.generation, requestView(ready)!, { v: 1, requestId: request._id, generation: request.generation,
             leaseId: runtime.lease!.leaseId, startBefore: ready.startBefore!.getTime(),
             audio: { url: `${(process.env.PUBLIC_API_URL || 'https://api.domdimabot.com').replace(/\/+$/, '')}/pets/playback/${request._id}/audio?ticket=${ticket}`, mimeType: result.mimeType, durationMs } });
+        if (!sent) throw new PetError('stale_request');
         directory = undefined; // Terminal/recovery cleanup owns the private file now.
     } catch (error) {
         await finishRequest(request._id, signal.aborted ? 'cancelled' : 'failed', error instanceof PetError ? error.code : 'provider_unavailable');
@@ -169,6 +174,7 @@ async function cleanAudio(request: PetRequestRecord) {
 const waking = new Set<string>();
 const dirty = new Set<string>();
 async function wakeOnce(ownerId: string) {
+        await refreshPetReadiness(ownerId);
         await broadcast(ownerId);
         const runtime = await PetRuntime.findById(ownerId).lean();
         if (!runtime?.activeRequestId) return;
@@ -195,11 +201,10 @@ async function wake(ownerId: string) {
 /** API bootstrap only. Importing admission from bot/cron creates no timers, sockets, or providers. */
 export async function startPetRuntime() {
     await Promise.all([PetRequest.init(), PetRuntime.init()]);
-    const subscriber = (await getDragonflyClient('pet-runtime')).duplicate();
-    subscriber.on('error', () => {});
-    await subscriber.connect();
-    await subscriber.subscribe(PET_WAKE, ownerId => { if (/^[a-f0-9]{24}$/i.test(ownerId)) void wake(ownerId).catch(() => {}); });
+    await initializePetReadiness();
+    const stopWakeups = subscribePetWakeups(owners => { for (const ownerId of owners) void wake(ownerId).catch(() => {}); });
     let recovering = false;
+    let recoveryCursor = 0;
     const recover = async () => {
         if (recovering) return;
         recovering = true;
@@ -207,27 +212,33 @@ export async function startPetRuntime() {
             const expired = await PetRuntime.find({ 'lease.expiresAt': { $lte: new Date() } }).limit(64).lean();
             for (const runtime of expired) {
                 const request = runtime.activeRequestId ? await PetRequest.findById(runtime.activeRequestId).lean() : null;
-                if (request && ['generating', 'synthesizing'].includes(request.status) && !tasks.has(runtime._id)) await finishRequest(request._id, 'expired', 'provider_outcome_unknown');
-                await invalidatePet(runtime._id, 'lease_expired');
+                const terminal = request && ['generating', 'synthesizing'].includes(request.status) && !tasks.has(runtime._id) ? { status: 'expired' as const, errorCode: 'provider_outcome_unknown' } : undefined;
+                await invalidatePet(runtime._id, 'lease_expired', { requestId: runtime.activeRequestId, generation: runtime.generation, leaseId: runtime.lease!.leaseId, leaseExpiresAt: runtime.lease!.expiresAt }, terminal);
             }
             const overdue = await PetRequest.find({ status: { $nin: PET_TERMINAL }, phaseDeadline: { $lte: new Date() } }).sort({ phaseDeadline: 1 }).limit(64).lean();
             for (const request of overdue) {
                 // A persisted provider phase has an unknown outcome; never run it again.
                 const runtime = await PetRuntime.findById(request.ownerId).lean();
-                await finishRequest(request._id, 'expired', ['generating', 'synthesizing'].includes(request.status) ? 'provider_outcome_unknown' : 'request_expired');
-                if (runtime?.activeRequestId === request._id) await invalidatePet(request.ownerId, 'request_expired');
+                const errorCode = ['generating', 'synthesizing'].includes(request.status) ? 'provider_outcome_unknown' : 'request_expired';
+                if (runtime?.activeRequestId === request._id) await invalidatePet(request.ownerId, 'request_expired', { requestId: request._id, generation: request.generation }, { status: 'expired', errorCode });
+                await finishRequest(request._id, 'expired', errorCode);
             }
-            const accepted = await PetRequest.find({ status: 'accepted' }).sort({ createdAt: 1 }).limit(64).lean();
+            const accepted = await PetRequest.find({ status: 'accepted', admitted: true }).sort({ createdAt: 1 }).limit(64).lean();
             for (const request of accepted) await wake(request.ownerId);
-            // Recover lost playing/terminal notifications for peers that observed work.
-            // Idle owners with no active view do not cause database polling.
-            const observed = [...new Set([...petPeers.values()].filter(peer => peer.activeSeen).map(peer => peer.ownerId))].slice(0, 64);
-            for (const ownerId of observed) await wake(ownerId);
+            // A single indexed, rotating header read repairs lost hints even for
+            // idle selection changes; only changed/observed work triggers snapshots.
+            const connected = [...new Set([...petPeers.values()].map(peer => peer.ownerId))];
+            const batch = connected.length ? Array.from({ length: Math.min(64, connected.length) }, (_, index) => connected[(recoveryCursor + index) % connected.length]) : [];
+            recoveryCursor = connected.length ? (recoveryCursor + batch.length) % connected.length : 0;
+            const headers = batch.length ? await PetRuntime.find({ _id: { $in: batch } }).select('_id generation activeRequestId').lean() : [];
+            for (const runtime of headers) {
+                if ([...petPeers.values()].some(peer => peer.ownerId === runtime._id && (peer.activeSeen || peer.generationSeen !== runtime.generation || (peer.activeSeen ?? null) !== runtime.activeRequestId))) await wake(runtime._id);
+            }
             const cleanup = await PetRequest.find({ status: { $in: PET_TERMINAL }, $or: [{ privateDir: { $exists: true } }, { 'audio.path': { $exists: true } }] }).limit(64).lean();
             for (const request of cleanup) await cleanAudio(request);
         } finally { recovering = false; }
     };
     const timer = setInterval(() => { void recover().catch(() => {}); }, 15_000); timer.unref();
     await recover();
-    return async () => { clearInterval(timer); for (const task of tasks.values()) task.controller.abort(); await subscriber.quit(); };
+    return async () => { clearInterval(timer); for (const task of tasks.values()) task.controller.abort(); stopWakeups(); stopPetReadiness(); };
 }

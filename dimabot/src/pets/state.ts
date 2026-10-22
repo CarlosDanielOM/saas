@@ -1,7 +1,8 @@
 import { PetRequest, PetRuntime, PET_TERMINAL, type PetRequestRecord } from '../schemas/pet_runtime.schema.js';
-import { getDragonflyClient } from '../utils/databases/dragonfly.database.js';
+import { petWakeups } from './wakeups.js';
+import { PetReadiness } from './readiness.schema.js';
 
-export const PET_WAKE = 'pet:runtime:wake:v1';
+export { PET_WAKE } from './wakeups.js';
 export const LEASE_TTL_MS = 15_000;
 export class PetError extends Error {
     constructor(readonly code: string, readonly status = 400, readonly retryAfterMs?: number) { super(code); }
@@ -13,9 +14,8 @@ export async function runtimeFor(ownerId: string, channelId: string) {
     return (await PetRuntime.findById(ownerId).lean())!;
 }
 export async function notifyPet(ownerId: string): Promise<void> {
-    // Mongo is authoritative. A failed/lost publish is recovered by the bounded API scan.
-    try { await (await getDragonflyClient('pet-wake')).publish(PET_WAKE, ownerId); }
-    catch { /* Never report admission failure after durable admission. */ }
+    // Scheduling only: Redis connection/publication can never delay the Mongo ACK.
+    petWakeups.notify(ownerId);
 }
 export function requestView(request: PetRequestRecord | null) {
     if (!request) return null;
@@ -33,13 +33,17 @@ export async function finishRequest(id: string, status: 'completed' | 'cancelled
     return request;
 }
 /** Invalidate first, then notify. Old players keep their conservative expiry; new leases wait it out. */
-export async function invalidatePet(ownerId: string, reason: string) {
-    const previous = await PetRuntime.findOneAndUpdate({ _id: ownerId }, [{ $set: {
+export async function invalidatePet(ownerId: string, reason: string, expected?: { requestId: string | null; generation: number; leaseId?: string; leaseExpiresAt?: Date }, terminal?: { status: 'expired'; errorCode: string }) {
+    const previous = await PetRuntime.findOneAndUpdate({ _id: ownerId, ...(expected ? { activeRequestId: expected.requestId, generation: expected.generation,
+        ...(expected.leaseId ? { 'lease.leaseId': expected.leaseId } : {}), ...(expected.leaseExpiresAt ? { 'lease.expiresAt': expected.leaseExpiresAt } : {}) } : {}) }, [{ $set: {
         generation: { $add: ['$generation', 1] }, lease: null, activeRequestId: null,
         notBefore: { $max: ['$notBefore', { $ifNull: ['$lease.expiresAt', new Date(0)] }] }
     } }]).lean();
-    if (previous?.activeRequestId) await finishRequest(previous.activeRequestId, 'cancelled', reason);
+    if (!previous) return false;
+    await PetReadiness.deleteOne({ _id: ownerId, generation: { $lte: previous.generation } });
+    if (previous.activeRequestId) await finishRequest(previous.activeRequestId, terminal?.status ?? 'cancelled', terminal?.errorCode ?? reason);
     await notifyPet(ownerId);
+    return true;
 }
 export function commandId(input: unknown) {
     if (typeof input !== 'string' || !/^[A-Za-z0-9:_-]{1,100}$/.test(input)) throw new PetError('invalid_command');
@@ -51,8 +55,9 @@ export async function cancelPetRequest(ownerId: string, id: string, command: unk
     if (!request) throw new PetError('request_not_found', 404);
     if (!PET_TERMINAL.includes(request.status)) {
         const runtime = await PetRuntime.findById(ownerId).lean();
-        if (runtime?.activeRequestId === id) await invalidatePet(ownerId, 'cancelled');
-        else await finishRequest(id, 'cancelled', 'cancelled');
+        if (runtime?.activeRequestId === id) await invalidatePet(ownerId, 'cancelled', { requestId: id, generation: request.generation });
+        // If A completed/replaced while the CAS waited, this only touches A.
+        await finishRequest(id, 'cancelled', 'cancelled');
     }
     return { requestId: id, status: (await PetRequest.findById(id).lean())!.status };
 }

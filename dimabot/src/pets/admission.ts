@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import Users from '../schemas/users.schema.js';
 import { PetRequest, PetRuntime, type PetRequestRecord } from '../schemas/pet_runtime.schema.js';
 import { getPetConfiguration } from '../server/services/pet_settings.service.js';
-import { PetError, finishRequest, notifyPet, runtimeFor } from './state.js';
+import { PetError, notifyPet, runtimeFor } from './state.js';
 
 /** Internal trusted effect only. Source identity must be derived by the command/event engine. */
 export interface AdmitPetActionInput {
@@ -26,30 +26,52 @@ export async function admitPetAction(input: AdmitPetActionInput): Promise<{ requ
     const payloadHash = createHash('sha256').update(JSON.stringify({ operation: input.operation, text: input.text,
         actor: { userId: input.actor.userId, displayName: input.actor.displayName }, occurredAt: input.origin.occurredAt })).digest('hex');
     await PetRequest.init();
-    const resolveAdmission = async (record: PetRequestRecord) => {
-        if (record.admitted || record.status !== 'accepted') {
-            if (record.errorCode === 'busy') throw new PetError('busy', 409);
-            return { requestId: record._id, status: record.status };
+    const outcome = (record: PetRequestRecord) => {
+        if (record.errorCode === 'busy') throw new PetError('busy', 409);
+        if (record.errorCode === 'admission_expired') throw new PetError('admission_expired', 409);
+        return { requestId: record._id, status: record.status };
+    };
+    const admittedOutcome = async (id: string) => {
+        const current = await PetRequest.findById(id).lean();
+        return current && (current.admitted || current.status !== 'accepted') ? outcome(current) : null;
+    };
+    const rejectUnadmitted = async (record: PetRequestRecord, code: 'busy' | 'admission_expired') => {
+        // A stale false-admitted reader must never terminalize a request already
+        // admitted by another process (which may now be generating or completed).
+        const rejected = await PetRequest.findOneAndUpdate({ _id: record._id, admitted: false, status: 'accepted' }, {
+            $set: { status: code === 'busy' ? 'failed' : 'expired', errorCode: code }, $inc: { version: 1 }
+        }, { new: true }).lean();
+        if (rejected) {
+            await PetRuntime.updateOne({ _id: ownerId, activeRequestId: record._id, generation: record.generation }, { $set: { activeRequestId: null } });
+            await notifyPet(ownerId);
+            return outcome(rejected);
         }
+        const current = await admittedOutcome(record._id);
+        if (current) return current;
+        throw new PetError('admission_expired', 409);
+    };
+    const resolveAdmission = async (record: PetRequestRecord) => {
+        if (record.admitted || record.status !== 'accepted') return outcome(record);
         const configuration = await getPetConfiguration(ownerId, input.channelId);
         const runtime = await runtimeFor(ownerId, input.channelId);
         const now = new Date();
         if (!configuration.runtime.enabled || !configuration.settings.tts.enabled || configuration.revision !== record.settingsRevision || runtime.generation !== record.generation || !runtime.lease || runtime.lease.expiresAt <= now) {
-            await finishRequest(record._id, 'expired', 'admission_expired');
-            throw new PetError('admission_expired', 409);
+            return rejectUnadmitted(record, 'admission_expired');
         }
-        // Both creator and duplicate can resolve this claim. No duplicate reports accepted
-        // until the durable request is linked to the sole runtime slot.
         const claimed = await PetRuntime.updateOne({ _id: ownerId, activeRequestId: null, generation: record.generation,
             'lease.leaseId': runtime.lease.leaseId, 'lease.expiresAt': { $gt: now },
             $or: [{ lastAcceptedAt: null }, { lastAcceptedAt: { $lte: new Date(now.getTime() - configuration.settings.behavior.cooldownSeconds * 1000) } }]
         }, { $set: { activeRequestId: record._id, lastAcceptedAt: now } });
         const linked = claimed.modifiedCount || (await PetRuntime.findOne({ _id: ownerId, activeRequestId: record._id, generation: record.generation }).lean());
-        if (!linked) { await finishRequest(record._id, 'failed', 'busy'); throw new PetError('busy', 409); }
-        const admitted = await PetRequest.findOneAndUpdate({ _id: record._id, status: 'accepted' }, { $set: { admitted: true } }, { new: true }).lean();
-        if (!admitted) throw new PetError('admission_expired', 409);
+        if (!linked) return rejectUnadmitted(record, 'busy');
+        const admitted = await PetRequest.findOneAndUpdate({ _id: record._id, admitted: false, status: 'accepted' }, { $set: { admitted: true } }, { new: true }).lean();
+        if (!admitted) {
+            const current = await admittedOutcome(record._id);
+            if (current) return current;
+            throw new PetError('admission_expired', 409);
+        }
         await notifyPet(ownerId);
-        return { requestId: admitted._id, status: admitted.status };
+        return outcome(admitted);
     };
     const duplicate = async () => {
         const record = await PetRequest.findOne(identity).lean();

@@ -1,15 +1,17 @@
 import { randomUUID } from 'node:crypto';
 import type { Server as SocketServer, Socket } from 'socket.io';
-import { authenticateAccess, type AccessIdentity } from '../server/oauth/service.js';
+import { authenticateAccess, hash, type AccessIdentity } from '../server/oauth/service.js';
 import { OAuthError } from '../server/oauth/catalog.js';
 import { PetSettingsError } from '../server/services/pet_settings.service.js';
+import { getDragonflyClient } from '../utils/databases/dragonfly.database.js';
+import { refreshPetReadiness } from './readiness.js';
 import { OAuthSession } from '../schemas/oauth_session.schema.js';
 import { PetRuntime, PetRequest } from '../schemas/pet_runtime.schema.js';
 import { getPetConfiguration, requirePetPlan } from '../server/services/pet_settings.service.js';
 import { authenticatePetCapability } from './tokens.js';
 import { petPeers, selectedVtsController, type PetPeer } from './peers.js';
 import { LEASE_TTL_MS, PetError, finishRequest, invalidatePet, notifyPet, runtimeFor } from './state.js';
-import { isSelectedPlayer, snapshotFor, startPetRuntime } from './runtime.js';
+import { isSelectedPlayer, sendPetSnapshot, startPetRuntime } from './runtime.js';
 
 function known(error: unknown): error is PetError | OAuthError | PetSettingsError {
     return error instanceof PetError || error instanceof OAuthError || error instanceof PetSettingsError;
@@ -59,7 +61,7 @@ export async function registerPetSockets(io: SocketServer) {
                 }
                 if ([...petPeers.values()].filter(peer => peer.ownerId === ownerId).length >= 16 || petPeers.size >= 1024) throw new PetError('too_many_connections', 429);
                 await getPetConfiguration(ownerId, channelId);
-                const peer: PetPeer = { id: randomUUID(), socket, ownerId, channelId, kind,
+                const peer: PetPeer = { validatedAt: 0, authorizationExpiresAt: 0, id: randomUUID(), socket, ownerId, channelId, kind,
                     sessionId: identity?.session_id, label, tokenHash,
                     capability: kind === 'browser' ? String(auth.capability) : undefined,
                     scopes: identity?.scopes ?? [], audioReady: false, renderReady: false, vtsReady: false,
@@ -71,6 +73,12 @@ export async function registerPetSockets(io: SocketServer) {
                                 !['desktop:connect', 'pet:read', 'pet:receive'].every(scope => current.scopes.includes(scope))) throw new PetError('invalid_token', 401);
                             peer.scopes = current.scopes;
                             await requirePetPlan(ownerId, channelId);
+                            const validatedAt = Date.now();
+                            const ttl = await (await getDragonflyClient('pet-auth')).pTTL(`oauth:access:${hash(String(auth.accessToken))}`);
+                            const session = await OAuthSession.findById(current.session_id).select('expires_at idle_expires_at').lean();
+                            if (ttl <= 0 || !session) throw new PetError('invalid_token', 401);
+                            peer.validatedAt = validatedAt;
+                            peer.authorizationExpiresAt = Math.min(validatedAt + ttl, session.expires_at.getTime(), session.idle_expires_at.getTime());
                         } else {
                             const current = await authenticatePetCapability(auth.capability);
                             if (current.runtime._id !== ownerId || current.runtime.tokenHash !== tokenHash) throw new PetError('invalid_capability', 401);
@@ -89,7 +97,7 @@ export async function registerPetSockets(io: SocketServer) {
             if ([...petPeers.values()].filter(item => item.sessionId && item.sessionId === peer.sessionId).length >= 2) return void socket.disconnect(true);
             petPeers.set(peer.id, peer);
             if (kind === 'desktop') socket.emit('desktop:hello', { v: 1, sessionId: peer.sessionId, channelId: peer.channelId, scopes: peer.scopes });
-            void snapshotFor(peer).then(snapshot => { peer.generationSeen = snapshot.generation; peer.activeSeen = snapshot.active?.requestId; socket.emit('pet:snapshot', snapshot); }).catch(() => socket.disconnect(true));
+            void sendPetSnapshot(peer).catch(() => socket.disconnect(true));
             let windowStart = Date.now(), messageCount = 0;
             const pending: Array<() => Promise<void>> = [];
             const drain = async () => {
@@ -125,6 +133,7 @@ export async function registerPetSockets(io: SocketServer) {
                 if (peer.audioReady === value.audioReady && peer.renderReady === value.renderReady && peer.vtsReady === value.vtsReady) return {};
                 peer.audioReady = value.audioReady as boolean; peer.renderReady = value.renderReady as boolean; peer.vtsReady = value.vtsReady as boolean;
                 const runtime = await runtimeFor(peer.ownerId, peer.channelId);
+                await refreshPetReadiness(peer.ownerId);
                 const configuration = await getPetConfiguration(peer.ownerId, peer.channelId);
                 if (runtime.lease?.holderPeerId === peer.id && (!peer.audioReady || configuration.settings.appearance.kind === 'png' && peer.kind === 'browser' && !peer.renderReady)) await invalidatePet(peer.ownerId, 'player_unready');
                 else if (configuration.runtime.issues.includes('vts_unavailable') && runtime.lease) await invalidatePet(peer.ownerId, 'vts_unavailable');
@@ -191,6 +200,7 @@ export async function registerPetSockets(io: SocketServer) {
             socket.once('disconnect', () => {
                 petPeers.delete(peer.id);
                 void (async () => {
+                    await refreshPetReadiness(peer.ownerId);
                     const runtime = await PetRuntime.findById(peer.ownerId).lean();
                     if (runtime?.lease?.holderPeerId === peer.id) await invalidatePet(peer.ownerId, 'player_disconnected');
                     else {
@@ -208,7 +218,9 @@ export async function registerPetSockets(io: SocketServer) {
         checking = true;
         void (async () => { for (const peer of petPeers.values()) {
             try { await peer.revalidate(); } catch { peer.socket.disconnect(true); }
-        } })().finally(() => { checking = false; });
+        }
+        for (const ownerId of new Set([...petPeers.values()].map(peer => peer.ownerId))) await refreshPetReadiness(ownerId);
+        })().catch(() => {}).finally(() => { checking = false; });
     }, 15_000); timer.unref();
     return async () => { clearInterval(timer); for (const peer of petPeers.values()) peer.socket.disconnect(true); await closeRuntime(); };
 }
