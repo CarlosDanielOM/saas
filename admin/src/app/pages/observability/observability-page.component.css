@@ -846,6 +846,9 @@ summary:focus-visible,
 }
 
 /* ---------- Servers ---------- */
+.obs-section-title {
+  padding: 0.5rem 0.25rem 0;
+}
 .obs-deps {
   display: grid;
   gap: 0.75rem;

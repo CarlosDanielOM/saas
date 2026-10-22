@@ -1,0 +1,212 @@
+@if (snap(); as s) {
+  @if (status(); as st) {
+    <div class="lf-status srv-status" [class]="'lf-status--' + st.tone" role="status">
+      <app-icon [name]="st.icon" />
+      <div class="lf-status__body">
+        <p class="lf-status__title">{{ st.title }}</p>
+        @if (st.text) { <p class="lf-status__text">{{ st.text }}</p> }
+        @if (issues().length > 1) {
+          <ul class="srv-issues">
+            @for (issue of issues(); track issue.title) {
+              <li [class.srv-issues--live]="issue.tone === 'live'">
+                <span><strong>{{ issue.title }}</strong> {{ issue.text }}</span>
+                @if (issue.container && selected() !== issue.container) {
+                  <button type="button" class="lf-btn lf-btn--sm lf-btn--ghost" (click)="select.emit(issue.container)">Show</button>
+                }
+              </li>
+            }
+          </ul>
+        } @else if (issues()[0]?.container; as name) {
+          @if (selected() !== name) {
+            <div class="lf-status__actions"><button type="button" class="lf-btn lf-btn--sm" (click)="select.emit(name)">Show container</button></div>
+          }
+        }
+      </div>
+    </div>
+  }
+
+  <!-- ================= Host ================= -->
+  <section class="lf-tile srv-host" aria-labelledby="srv-host-title">
+    <div class="lf-tile__head">
+      <div>
+        <h2 class="lf-h2" id="srv-host-title"><app-icon name="monitor" />Server</h2>
+        <p class="lf-note">The machine everything runs on · read {{ s.at | date: 'HH:mm:ss' }}</p>
+      </div>
+    </div>
+    <div class="srv-gauges">
+      @for (g of gauges(); track g.id) {
+        <div class="srv-gauge" [class.srv-gauge--warn]="(g.pct ?? 0) >= 80" [class.srv-gauge--bad]="(g.pct ?? 0) >= 90">
+          <span class="srv-gauge__label">{{ g.label }}</span>
+          <strong class="srv-gauge__value">{{ g.value }}@if ((g.pct ?? 0) >= 90) { <span class="srv-flag">High</span> }</strong>
+          <span class="srv-gauge__of">{{ g.of }}</span>
+          @if (g.pct !== null) {
+            <div class="lf-bar srv-bar" role="progressbar" [attr.aria-label]="g.label + ' used'" [attr.aria-valuenow]="Math.round(g.pct)" aria-valuemin="0" aria-valuemax="100">
+              <span [style.width.%]="g.pct"></span>
+            </div>
+          }
+          @if (g.spark) {
+            <svg class="srv-spark" viewBox="0 0 120 30" preserveAspectRatio="none" aria-hidden="true">
+              <path [attr.d]="g.spark" />
+              @if (g.spark2) { <path class="srv-spark--2" [attr.d]="g.spark2" /> }
+            </svg>
+          }
+          <span class="srv-gauge__foot">{{ g.foot }}</span>
+        </div>
+      }
+    </div>
+    <details class="lf-more srv-more">
+      <summary>More about the server<app-icon name="down" /></summary>
+      <div class="lf-more__body">
+        <dl class="lf-dl">
+          @for (f of hostFacts(); track f.label) {
+            <div><dt>{{ f.label }}</dt><dd [class.srv-warn]="f.warn">{{ f.value }}</dd></div>
+          }
+        </dl>
+        <p class="srv-fine">CPU is the share of all {{ s.host.cpus }} cores. Load above {{ s.host.cpus }} means work is queuing for a core. "Time stalled" is how often something waited for CPU, memory or the disk in the last 10 seconds.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ================= Where memory and disk go ================= -->
+  <div class="srv-split">
+    @if (memory(); as m) {
+      <section class="lf-tile" aria-labelledby="srv-mem-title">
+        <h2 class="lf-h2 srv-h" id="srv-mem-title"><app-icon name="chart" />Where the memory goes</h2>
+        <div class="srv-stack" role="img" [attr.aria-label]="'Memory: ' + bytes(m.total - (m.free ?? 0)) + ' used of ' + bytes(m.total)">
+          @for (seg of m.segments; track seg.id) {
+            @if (seg.pct >= 0.4) { <span [attr.data-slot]="seg.slot" [style.width.%]="seg.pct"></span> }
+          }
+        </div>
+        <ul class="srv-legend">
+          @for (seg of m.segments; track seg.id) {
+            <li>
+              <span class="srv-swatch" [attr.data-slot]="seg.slot"></span>
+              <span class="srv-legend__name"><strong>{{ seg.label }}</strong><small>{{ seg.top }}</small></span>
+              <span class="srv-legend__val">{{ bytes(seg.bytes) }}<small>{{ pct(seg.pct) }}</small></span>
+            </li>
+          }
+          <li>
+            <span class="srv-swatch srv-swatch--free"></span>
+            <span class="srv-legend__name"><strong>Available</strong><small>Free plus cache the system can give back</small></span>
+            <span class="srv-legend__val">{{ bytes(m.free) }}<small>{{ pct(((m.free ?? 0) / m.total) * 100) }}</small></span>
+          </li>
+        </ul>
+      </section>
+    }
+    @if (disk(); as d) {
+      <section class="lf-tile" aria-labelledby="srv-disk-title">
+        <h2 class="lf-h2 srv-h" id="srv-disk-title"><app-icon name="files" />Where the disk goes</h2>
+        <div class="srv-stack" role="img" [attr.aria-label]="'Disk: ' + bytes(d.total - (d.free ?? 0)) + ' used of ' + bytes(d.total)">
+          @for (seg of d.segments; track seg.id) {
+            @if (seg.pct >= 0.4) { <span [attr.data-slot]="seg.slot" [style.width.%]="seg.pct"></span> }
+          }
+        </div>
+        <ul class="srv-legend">
+          @for (seg of d.segments; track seg.id) {
+            <li>
+              <span class="srv-swatch" [attr.data-slot]="seg.slot"></span>
+              <span class="srv-legend__name"><strong>{{ seg.label }}</strong><small>{{ seg.note }}</small></span>
+              <span class="srv-legend__val">{{ bytes(seg.bytes) }}<small>{{ pct(seg.pct) }}</small></span>
+            </li>
+          }
+          <li>
+            <span class="srv-swatch srv-swatch--free"></span>
+            <span class="srv-legend__name"><strong>Free</strong><small>Space left for databases and builds</small></span>
+            <span class="srv-legend__val">{{ bytes(d.free) }}<small>{{ pct(((d.free ?? 0) / d.total) * 100) }}</small></span>
+          </li>
+        </ul>
+        @if (d.reclaimable > 1073741824) {
+          <p class="srv-fine srv-tip"><app-icon name="info" />{{ bytes(d.reclaimable) }} is old build cache and images no container uses. An operator can free it with a Docker prune.</p>
+        }
+        @if (d.dfAt) {
+          <p class="srv-fine">Docker's own count, checked {{ dfAge(d.dfAt) }} ago (every 10 minutes).</p>
+        } @else {
+          <p class="srv-fine">Docker's breakdown appears a few minutes after the stats service starts.</p>
+        }
+      </section>
+    }
+  </div>
+
+  <!-- ================= Containers ================= -->
+  <section class="lf-tile lf-tile--flush srv-cts" aria-labelledby="srv-cts-title">
+    <div class="lf-tile__head">
+      <div>
+        <h2 class="lf-h2" id="srv-cts-title"><app-icon name="overview" />Containers</h2>
+        <p class="lf-note">{{ running() }} of {{ s.containers.length }} running · trends for the last {{ rangeLong() }}. Tap one for charts and details.</p>
+      </div>
+      <div class="srv-sort" role="group" aria-label="Sort containers">
+        <button type="button" class="lf-chip" [attr.aria-pressed]="sort() === 'group'" (click)="sort.set('group')">By role</button>
+        <button type="button" class="lf-chip" [attr.aria-pressed]="sort() === 'memory'" (click)="sort.set('memory')">Memory</button>
+        <button type="button" class="lf-chip" [attr.aria-pressed]="sort() === 'cpu'" (click)="sort.set('cpu')">CPU</button>
+      </div>
+    </div>
+    <div class="srv-colhead" aria-hidden="true"><span>Container</span><span>CPU trend</span><span>CPU</span><span>Memory</span><span>Network</span><span>Disk I/O</span></div>
+    @if (sort() === 'group') {
+      @for (g of grouped(); track g.id) {
+        <h3 class="srv-group"><span class="srv-swatch" [attr.data-slot]="g.slot"></span>{{ g.label }}<small>{{ g.items.length }} · {{ bytes(g.mem) }} · CPU {{ pct(g.cpu) }}</small></h3>
+        <ul class="lf-rows">
+          @for (v of g.items; track v.c.name) {
+            <ng-container *ngTemplateOutlet="row; context: { $implicit: v }" />
+          }
+        </ul>
+      }
+    } @else {
+      <ul class="lf-rows">
+        @for (v of sorted(); track v.c.name) {
+          <ng-container *ngTemplateOutlet="row; context: { $implicit: v }" />
+        }
+      </ul>
+    }
+    <p class="srv-fine srv-pad">Container CPU is the share of one core, so 200% means two full cores. Memory leaves out file cache the container can give back, the same as <span class="srv-mono">docker stats</span>.</p>
+  </section>
+
+  <ng-template #row let-v>
+    <li class="srv-item" [class.is-open]="selected() === v.c.name">
+      <button type="button" class="srv-row" [attr.aria-expanded]="selected() === v.c.name" [attr.aria-controls]="'srv-detail-' + v.c.name" (click)="toggle(v.c.name)">
+        <span class="srv-dot" [attr.data-tone]="v.tone" aria-hidden="true"></span>
+        <span class="srv-row__main">
+          <span class="srv-row__title"><strong>{{ v.label }}</strong>@if (v.label !== v.c.name) { <span class="srv-mono srv-muted">{{ v.c.name }}</span> }</span>
+          <span class="srv-row__meta" [class.srv-warn]="v.tone !== 'ok'">{{ v.status }}</span>
+          <span class="srv-row__role">{{ v.role }}</span>
+        </span>
+        <span class="srv-row__spark" aria-hidden="true">
+          @if (v.cpuSpark) { <svg viewBox="0 0 120 30" preserveAspectRatio="none"><path [attr.d]="v.cpuSpark" /></svg> }
+        </span>
+        <span class="srv-num"><span class="srv-num__label">CPU</span>{{ pct(v.c.cpuPct) }}</span>
+        <span class="srv-num srv-num--mem">
+          <span class="srv-num__label">RAM</span>{{ bytes(v.c.memBytes) }}
+          @if (v.c.memLimit) { <small>of {{ bytes(v.c.memLimit) }}</small> }
+          <span class="srv-minibar" [class.srv-minibar--warn]="(v.memPct ?? 0) >= 90"><span [style.width.%]="v.memPct ?? v.memScale"></span></span>
+        </span>
+        <span class="srv-num srv-num--wide"><span class="srv-num__label">Net</span>↓ {{ rate(v.c.netRxBps) }}<small>↑ {{ rate(v.c.netTxBps) }}</small></span>
+        <span class="srv-num srv-num--wide"><span class="srv-num__label">Disk</span>R {{ rate(v.c.blkReadBps) }}<small>W {{ rate(v.c.blkWriteBps) }}</small></span>
+        <app-icon class="srv-chev" name="down" />
+      </button>
+      @if (selected() === v.c.name) {
+        <div class="srv-detail" [id]="'srv-detail-' + v.c.name">
+          @if (detail(); as d) {
+            <div class="srv-charts" [class.is-loading]="!d.ready">
+              <app-obs-chart title="CPU (% of one core)" [series]="d.cpu" [format]="fmtPct" [from]="from()" [to]="to()" [step]="d.step" [limit]="d.cpuLimit" limitLabel="CPU limit" [floor]="5" />
+              <app-obs-chart title="Memory" [series]="d.mem" [format]="fmtBytes" [from]="from()" [to]="to()" [step]="d.step" [limit]="v.c.memLimit" limitLabel="Memory limit" [binary]="true" />
+              <app-obs-chart title="Network" [series]="d.net" [format]="fmtRate" [from]="from()" [to]="to()" [step]="d.step" [binary]="true" />
+              <app-obs-chart title="Disk I/O" [series]="d.io" [format]="fmtRate" [from]="from()" [to]="to()" [step]="d.step" [binary]="true" />
+            </div>
+            @if (!d.ready) { <p class="srv-fine">Loading this container's history…</p> }
+            <dl class="lf-dl srv-facts">
+              @for (f of d.facts; track f.label) {
+                <div><dt>{{ f.label }}</dt><dd [class.srv-mono]="f.mono" [class.srv-warn]="f.warn">{{ f.value }}</dd></div>
+              }
+            </dl>
+            <p class="srv-fine">Lines are averages; the shaded band reaches each period's peak. Container history is kept for 30 days, one reading a minute.</p>
+          }
+        </div>
+      }
+    </li>
+  </ng-template>
+} @else if (!loading()) {
+  <div class="lf-tile lf-empty">
+    <app-icon name="monitor" />
+    <strong>Server stats aren't available yet</strong>
+    <span>The host stats service reports CPU, memory, disk and every container every 15 seconds. If this stays empty, dima-hoststats isn't running.</span>
+  </div>
+}

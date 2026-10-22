@@ -1,0 +1,169 @@
+/* Validated categorical slots 1–2 (blue, orange) for light and dark tiles. */
+:host {
+  display: block;
+  min-width: 0;
+  --s1: #2a78d6;
+  --s2: #eb6834;
+}
+:host-context(html.dark) {
+  --s1: #3987e5;
+  --s2: #d95926;
+}
+.ch {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+}
+.ch__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 0.75rem;
+  font-size: 0.8rem;
+}
+.ch__title {
+  font-weight: 750;
+}
+.ch__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  color: var(--muted);
+}
+.ch__key {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.ch__swatch {
+  display: inline-block;
+  width: 0.65rem;
+  height: 0.2rem;
+  border-radius: 999px;
+  background: var(--s1);
+}
+.ch__swatch[data-slot='2'] {
+  background: var(--s2);
+}
+.ch__plot {
+  position: relative;
+  height: 6.5rem;
+  border-radius: 0.5rem;
+  touch-action: pan-y;
+  cursor: crosshair;
+}
+.ch__plot:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.ch__plot svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.ch__grid {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.ch__limit {
+  stroke: var(--danger);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+  vector-effect: non-scaling-stroke;
+}
+.ch__line {
+  fill: none;
+  stroke: var(--s1);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+.ch__band {
+  fill: var(--s1);
+  opacity: 0.16;
+}
+.ch__dot {
+  fill: var(--s1);
+}
+[data-slot='2'].ch__line {
+  stroke: var(--s2);
+}
+[data-slot='2'].ch__band,
+[data-slot='2'].ch__dot {
+  fill: var(--s2);
+}
+.ch__axis,
+.ch__limit-label {
+  position: absolute;
+  right: 0;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+.ch__axis--top {
+  z-index: 1;
+  top: -0.2rem;
+  padding-right: 0.3rem;
+  background: var(--chart-bg, var(--tile));
+  left: 0;
+  right: auto;
+}
+.ch__limit-label {
+  transform: translateY(-110%);
+  color: var(--danger);
+}
+.ch__cross {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--muted);
+  pointer-events: none;
+}
+.ch__tip {
+  position: absolute;
+  top: 0;
+  z-index: 2;
+  display: grid;
+  gap: 0.15rem;
+  min-width: 6.5rem;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 0.6rem;
+  background: var(--tile);
+  box-shadow: var(--shadow-pop);
+  color: var(--fg);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  transform: translateX(0.6rem);
+  pointer-events: none;
+}
+.ch__tip--flip {
+  transform: translateX(calc(-100% - 0.6rem));
+}
+.ch__tip span {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.ch__tip small {
+  color: var(--muted);
+}
+.ch__time {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+.ch__empty {
+  margin: 0;
+  padding: 1.5rem 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-align: center;
+}

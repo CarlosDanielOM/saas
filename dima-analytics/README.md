@@ -18,6 +18,7 @@ The first-install script writes `dima-analytics/.env` with mode `0600`. It gener
 | `MONGO_METRICS_URI` | Optional read-only MongoDB monitoring connection used by the resource collector. |
 | `QDRANT_URL` | Optional Qdrant metrics endpoint. |
 | `QDRANT_API_KEY` | Optional key for the Qdrant metrics endpoint. |
+| `HOSTSTATS_URL` | Optional host/container stats sidecar; defaults to `http://dima-hoststats:3211`, `off` disables it. |
 | `COLLECTORS_DISABLED` | Set to `true` to disable periodic infrastructure collectors. |
 | `PORT` | HTTP port; defaults to `3210`. |
 
@@ -28,6 +29,12 @@ The API, bot, and cron processes aggregate bounded metric labels in memory and f
 Metrics are aggregated without sampling. Traces are sampled at 1%; spans lasting at least one second and error spans are also retained when not sampled and marked partial. Only warning, error, and fatal log records are sent, and their fields come from a fixed metadata allowlist. Telemetry excludes chat text, command arguments, HTTP bodies and query strings, database statements, headers, and credentials.
 
 The resource collector runs every 30 seconds. It records selected PostgreSQL, Dragonfly, Qdrant, and MongoDB resource statistics when configured, plus analytics process memory and bounded queue depth/age observations. Queue discovery uses incremental, limited Redis scans rather than `KEYS` or an unbounded scan. Collector failures are reported as `collector_up=0` for the affected dependency and through `collectorError` in resource responses; they do not stop the API. `/health` reports PostgreSQL readiness, Redis buffer readiness, and the last ingestion time.
+
+## Host and container stats
+
+The collector also fetches the read-only [`dima-hoststats`](../dima-hoststats/README.md) snapshot (`HOSTSTATS_URL`, default `http://dima-hoststats:3211`; `off` disables it). `src/infrastructure.mjs` rebuilds it from known fields only, stores host trends as service `host` every 30 seconds and per-container trends as `container:<name>` every 60 seconds in `analytics_resources`, and keeps the latest snapshot in Redis (`observability:v1:infra:latest`, 5-minute TTL). Sidecar failures record `host/collector_up=0`. Once an hour the collector writes hourly average/max rollups (`<metric>.h_avg` / `.h_max`) stamped exactly on the hour, so ranges over 24 hours read about 720 timestamps through the primary key instead of aggregating every raw row; they expire with the same 30-day partitions. The PostgreSQL collector also records `server_bytes`, the size of every database the analytics role may connect to.
+
+`GET /api/resources` keeps returning only database/analytics samples. `include=snapshot` adds `infrastructure.snapshot`; `include=infra` also adds downsampled `[epochMs, average, max]` series (host: 120 slots, containers: 60 slots) and, with `container=<name>`, every series of that container. Only grants without channel or service restrictions receive the block.
 
 ## Access and query limits
 

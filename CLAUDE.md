@@ -53,6 +53,7 @@ The helper snapshots current project files, tests a candidate, promotes the exac
 | `dimabot` | Helper targets `api`, `bot`, `cron`, `piper`, `embeddings` use `dimabot/docker-compose.yaml` |
 | `dimafx` server | Helper target `dimafx-server` uses `dimafx/docker-compose.yml` |
 | `dimadb` | Helper target `dimadb` uses `dimadb/docker-compose.yaml`; `dimadb/data/` is persistent production data |
+| `dima-hoststats` | Helper target `hoststats` uses `dima-hoststats/docker-compose.yaml`; read-only host/container stats sidecar (holds the Docker socket, see its `AGENTS.md`) |
 
 The static sites have their own Compose files in their project directories. Nginx Proxy Manager fronts them; it does not own their Compose lifecycle. Content updates do not require nginx restarts. Nginx configuration changes require validation and a targeted reload.
 

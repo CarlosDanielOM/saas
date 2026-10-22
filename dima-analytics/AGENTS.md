@@ -7,6 +7,7 @@
 - `src/index.mjs` defines authentication, authorization, HTTP routes, batch consumption, and lifecycle timers.
 - `src/store.mjs` defines validation, schema, aggregation, query scopes, and retention.
 - `src/collectors.mjs` defines resource metrics and bounded queue discovery.
+- `src/infrastructure.mjs` validates the `dima-hoststats` snapshot, stores host/container trends and hourly rollups, and serves them through `/api/resources?include=`.
 - `docker-compose.yaml` and `dockerfile` define the runtime container and external network attachment.
 - `ops/bootstrap_analytics.py` owns first-install verification and provisioning. Existing service releases use `scripts/saas-ops` target `analytics`; see [`../ops/README.md`](../ops/README.md).
 

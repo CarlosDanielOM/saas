@@ -1,0 +1,32 @@
+# Read-only host and container stats for the SaaS analytics collector.
+# The Docker socket is root-equivalent: this service only issues the GET reads
+# allowlisted in src/index.mjs, has no published port and only joins the internal databases network.
+services:
+  hoststats:
+    build: .
+    image: dima-hoststats:latest
+    container_name: dima-hoststats
+    restart: unless-stopped
+    command: node src/index.mjs
+    environment:
+      HOSTSTATS_PROJECTS: dimabot,dimafx,admin,dimasite,dimadocs,dimadb,databases,dima-analytics,dima-hoststats,network
+    # Group owning /var/run/docker.sock on this host (stat -c %g /var/run/docker.sock).
+    group_add: ["983"]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /proc/1/net/dev:/host/net_dev:ro
+    mem_limit: 128m
+    cpus: 0.25
+    pids_limit: 32
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    networks: [databases]
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3211/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+networks:
+  databases:
+    external: true

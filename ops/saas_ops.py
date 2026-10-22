@@ -110,6 +110,7 @@ TARGETS = {
     "embeddings": Target("dimabot", "lfm2.5-embeddings", "lfm2.5-embeddings", dockerfile="dockerfile.lfm2-embeddings", port=8080, health="/health", runtime="python3"),
     "dimafx-server": Target("dimafx", "dimafx-server", "dimafx-server", compose="docker-compose.yml", context="server", dockerfile="Dockerfile", port=8080, health="/health"),
     "dimadb": Target("dimadb", "dimadb", "dimadb", port=80, health="/api/health"),
+    "hoststats": Target("dima-hoststats", "hoststats", "dima-hoststats", command=("node", "src/index.mjs"), port=3211, health="/health"),
     "site": Target("dimasite", "dimabot-site", "dimabot-site", output="dist/dimasite/browser"),
     "admin": Target("admin", "dima-admin", "dima-admin", output="dist/admin/browser"),
     "docs": Target("dimadocs", "dimadocs", "dimadocs", compose="docker-compose.yml", output="dist"),

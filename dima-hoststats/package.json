@@ -1,0 +1,7 @@
+{
+  "name": "dima-hoststats",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "start": "node src/index.mjs", "test": "node --test test/hoststats.test.mjs", "check": "node --check src/index.mjs && node --check src/parse.mjs" }
+}

@@ -5,10 +5,12 @@ import { pathToFileURL } from 'node:url';
 import { makePool, migrate, retain, ingest, overview, scopeSql, rangeQuery } from './store.mjs';
 import { createChannelNames } from './channel-names.mjs';
 import { createCollectors } from './collectors.mjs';
+import { INFRA_KEY, HOST_SERVICE, CONTAINER_PREFIX, infraSeries } from './infrastructure.mjs';
 
 export function configFromEnv(env=process.env) {
   return { databaseUrl:env.DATABASE_URL, redisUrl:env.REDIS_URL || 'redis://dragonfly:6379', ownerId:env.OWNER_TWITCH_ID,
-    mongoUrl:env.MONGO_METRICS_URI, qdrantUrl:env.QDRANT_URL, qdrantKey:env.QDRANT_API_KEY, port:Number(env.PORT||3210), collectors:env.COLLECTORS_DISABLED!=='true' };
+    mongoUrl:env.MONGO_METRICS_URI, qdrantUrl:env.QDRANT_URL, qdrantKey:env.QDRANT_API_KEY,
+    hoststatsUrl:env.HOSTSTATS_URL===undefined?'http://dima-hoststats:3211':(env.HOSTSTATS_URL==='off'?'':env.HOSTSTATS_URL), port:Number(env.PORT||3210), collectors:env.COLLECTORS_DISABLED!=='true' };
 }
 const asyncRoute = fn => (req,res,next) => Promise.resolve(fn(req,res,next)).catch(next);
 export function createApp({pool,redis,config,health,validateToken,channelNames=createChannelNames({redis})}) {
@@ -60,8 +62,18 @@ export function createApp({pool,redis,config,health,validateToken,channelNames=c
     const scope=scopeSql(req.grant,params,{service:req.query.service});
     // Keep the newest sample per series in each slot (~360 per range): long ranges stay whole and the latest value stays exact.
     const result=await pool.query(`SELECT at,service,name,value FROM (SELECT DISTINCT ON (service,name,floor(extract(epoch FROM at)/$2::int)) at,service,name,value
-      FROM analytics_resources WHERE at>=now()-($1::int*interval '1 minute')${scope} ORDER BY service,name,floor(extract(epoch FROM at)/$2::int),at DESC) slots ORDER BY at DESC LIMIT 20001`,params);
-    res.json({samples:result.rows.slice(0,20000),limited:result.rows.length>20000,status:health});
+      FROM analytics_resources WHERE at>=now()-($1::int*interval '1 minute') AND service<>'${HOST_SERVICE}' AND service NOT LIKE '${CONTAINER_PREFIX}%'${scope} ORDER BY service,name,floor(extract(epoch FROM at)/$2::int),at DESC) slots ORDER BY at DESC LIMIT 20001`,params);
+    const body={samples:result.rows.slice(0,20000),limited:result.rows.length>20000,status:health};
+    // Host and container stats: system-wide grants only (a service-scoped grant must not see every container).
+    const include=String(req.query.include||'');
+    if(['infra','snapshot'].includes(include)&&!req.grant.services.length){
+      const stored=await redis.get(INFRA_KEY).catch(()=>null);
+      let latest=null;try{latest=stored?JSON.parse(stored):null;}catch{latest=null;}
+      const container=typeof req.query.container==='string'&&/^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,127}$/.test(req.query.container)?req.query.container:null;
+      body.infrastructure={receivedAt:latest?.receivedAt??null,snapshot:latest?.snapshot??null,
+        ...(include==='infra'?await infraSeries(pool,{minutes,container}):{series:[]}),container};
+    }
+    res.json(body);
   }));
   const investigate=(req,res,next)=>req.grant.role==='viewer'?res.status(403).json({message:'Investigator access is required'}):next();
   app.get('/api/traces',investigate,asyncRoute(async(req,res)=>{

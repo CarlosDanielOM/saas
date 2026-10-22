@@ -11,7 +11,7 @@ scripts/saas-ops list
 scripts/saas-ops plan piper
 ```
 
-No arguments prints help. `list` and `plan` do not change containers or files. Only the targets printed by `list` are accepted: `analytics`, `api`, `bot`, `cron`, `piper`, `embeddings`, `dimafx-server`, `dimadb`, `site`, `admin`, `docs`. There is no `all`, wildcard, free-form container name, automatic Git pull, stack shutdown, or prune command.
+No arguments prints help. `list` and `plan` do not change containers or files. Only the targets printed by `list` are accepted: `analytics`, `api`, `bot`, `cron`, `piper`, `embeddings`, `dimafx-server`, `dimadb`, `hoststats`, `site`, `admin`, `docs`. There is no `all`, wildcard, free-form container name, automatic Git pull, stack shutdown, or prune command.
 
 The script checks the container's Compose project, service, checkout, and configuration against the selected target. It talks only to the local Unix Docker socket, ignoring Docker/Compose environment overrides. It refuses configuration/environment drift rather than guessing which live configuration to replace. This workflow delivers code/assets; Compose, nginx, networking, credentials, and database migrations need a separately reviewed procedure.
 
@@ -45,6 +45,10 @@ scripts/saas-ops cleanup analytics-<run-id>
 ```
 
 The helper deploys the exact verified image and manages only the `analytics` service. Database/schema and Compose configuration changes remain separately reviewed operations.
+
+## Host stats sidecar
+
+`dima-hoststats` was installed once with `docker compose up -d --no-build` from its directory after its exact image passed unit tests and a disposable runtime check (read-only socket, `--network none`). Later releases use target `hoststats`. The verify candidate has no Docker socket or host mounts, so use `--check ops/checks/hoststats.mjs` (runs `npm test` and confirms `/v1/snapshot` reports host fields with `docker.reachable=false`); after deploy, confirm from `dima-analytics` that `http://dima-hoststats:3211/v1/snapshot` lists the SaaS containers.
 
 ## Container workflow
 

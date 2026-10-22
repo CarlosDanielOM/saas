@@ -1,6 +1,7 @@
 import { MongoClient } from 'mongodb';
 import { randomUUID } from 'node:crypto';
 import { BOUNDS, ingest } from './store.mjs';
+import { INFRA_KEY, ensureRollups, fetchSnapshot, infraResources } from './infrastructure.mjs';
 
 export function parseInfo(raw) {
   return Object.fromEntries(raw.split('\n').filter(line => line.includes(':')).map(line => { const i = line.indexOf(':'); return [line.slice(0,i), line.slice(i+1).trim()]; }));
@@ -21,12 +22,14 @@ export function createCollectors({ pool, redis, config }) {
   if (config.mongoUrl) {
     mongo = new MongoClient(config.mongoUrl, { maxPoolSize: 2, serverSelectionTimeoutMS: 2500, connectTimeoutMS: 2500, socketTimeoutMS: 3000 });
   }
-  let cursor = '0', running = false;
+  let cursor = '0', running = false, samples = 0, rolledHour = 0;
   const latestQueues = new Map();
   async function sample() {
     if (running) return;
     running = true;
     const at = new Date(), resources = [];
+    // Per-container trends are stored every other sample (60 s); host trends every sample.
+    const containerTurn = samples++ % 2 === 0;
     const record = (service, name, value) => { if (Number.isFinite(Number(value))) resources.push({ service, name, value: Number(value) }); };
     try {
       const tasks = [
@@ -40,6 +43,7 @@ export function createCollectors({ pool, redis, config }) {
         (async () => {
           const stats = await pool.query(`SELECT pg_database_size(current_database()) AS database_bytes,
             (SELECT count(*) FROM pg_stat_activity WHERE datname=current_database()) AS connections,
+            (SELECT sum(pg_database_size(datname)) FROM pg_database WHERE datallowconn AND has_database_privilege(datname,'CONNECT')) AS server_bytes,
             (SELECT sum(pg_total_relation_size(c.oid)) FROM pg_class c JOIN pg_namespace n ON c.relnamespace=n.oid WHERE n.nspname='public' AND c.relkind='r') AS table_bytes`);
           for (const [key,value] of Object.entries(stats.rows[0])) record('postgres',key,value);
           record('postgres','collector_up',1);
@@ -50,6 +54,13 @@ export function createCollectors({ pool, redis, config }) {
           if (!response.ok) throw new Error('Qdrant collector unavailable');
           for (const [key,value] of Object.entries(parseOpenMetrics(await response.text()))) record('qdrant',key,value);
           record('qdrant','collector_up',1);
+        })(),
+        (async () => {
+          if (!config.hoststatsUrl) return;
+          const snapshot = await fetchSnapshot(config.hoststatsUrl);
+          for (const row of infraResources(snapshot, { containers: containerTurn })) record(row.service, row.name, row.value);
+          await redis.set(INFRA_KEY, JSON.stringify({ receivedAt: at.toISOString(), snapshot }), { EX: 300 });
+          record('host','collector_up',1);
         })(),
         (async () => {
           if (!mongo) return;
@@ -63,7 +74,7 @@ export function createCollectors({ pool, redis, config }) {
           record('mongodb','collector_up',1);
         })()
       ];
-      const services = ['dragonfly','postgres','qdrant','mongodb'];
+      const services = ['dragonfly','postgres','qdrant','host','mongodb'];
       const results = await Promise.allSettled(tasks);
       results.forEach((result,index)=>{if(result.status==='rejected') record(services[index],'collector_up',0);});
       record('analytics','rss_bytes',process.memoryUsage().rss);
@@ -92,6 +103,9 @@ export function createCollectors({ pool, redis, config }) {
       record('analytics','queue_keys_observed',scanned);
       if (queueMetrics.length) for(let i=0;i<queueMetrics.length;i+=100) await ingest(pool,{version:1,id:randomUUID(),service:'queues',instance:'collector',metrics:queueMetrics.slice(i,i+100),spans:[],logs:[]});
       await pool.query(`INSERT INTO analytics_resources SELECT $1,service,name,value FROM jsonb_to_recordset($2::jsonb) AS r(service text,name text,value double precision) ON CONFLICT DO NOTHING`,[at,JSON.stringify(resources)]);
+      // Once per hour, roll the finished hour of host/container samples into hourly avg/max rows.
+      const hour = Math.floor(Date.now() / 3600000);
+      if (config.hoststatsUrl && hour !== rolledHour) await ensureRollups(pool).then(() => { rolledHour = hour; }).catch(() => {});
     } finally { running=false; }
   }
   return { sample, close:()=>mongo?.close() };

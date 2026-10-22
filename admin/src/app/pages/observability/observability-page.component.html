@@ -585,9 +585,11 @@
 
           <!-- ================= Servers ================= -->
           @if (tab() === 'resources') {
+            <app-obs-servers [infra]="infra()" [minutes]="minutes()" [rangeLong]="rangeLong()" [loading]="loading()" [selected]="selectedContainer()" (select)="openContainer($event)" />
             @if (resourcesLimited()) {
               <p class="lf-notice" role="status">Showing only the most recent samples for this range.</p>
             }
+            <h2 class="lf-h2 obs-section-title"><app-icon name="files" />Inside the databases</h2>
             @if (dependencies().length) {
               <div class="obs-deps">
                 @for (dep of dependencies(); track dep.service) {

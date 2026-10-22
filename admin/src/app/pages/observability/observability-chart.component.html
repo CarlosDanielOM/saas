@@ -1,0 +1,49 @@
+<figure class="ch">
+  <figcaption class="ch__head">
+    <span class="ch__title">{{ title() }}</span>
+    @if (series().length > 1) {
+      <span class="ch__legend">
+        @for (s of series(); track s.label) {
+          <span class="ch__key"><span class="ch__swatch" [attr.data-slot]="s.slot"></span>{{ s.label }}</span>
+        }
+      </span>
+    }
+  </figcaption>
+  @if (hasData()) {
+    <div class="ch__plot" tabindex="0" role="img" [attr.aria-label]="summary()"
+      (pointermove)="pointer($event)" (pointerdown)="pointer($event)" (pointerleave)="leave($event)" (keydown)="key($event)" (blur)="hover.set(null)">
+      <span class="ch__axis ch__axis--top" aria-hidden="true">{{ axisTop() }}</span>
+      <svg [attr.viewBox]="'0 0 ' + w + ' ' + h" preserveAspectRatio="none" aria-hidden="true">
+        <line class="ch__grid" x1="0" [attr.x2]="w" [attr.y1]="h" [attr.y2]="h" />
+        <line class="ch__grid" x1="0" [attr.x2]="w" [attr.y1]="h / 2 + 3" [attr.y2]="h / 2 + 3" />
+        @if (limitY() !== null) {
+          <line class="ch__limit" x1="0" [attr.x2]="w" [attr.y1]="limitY()" [attr.y2]="limitY()" />
+        }
+        @for (l of lines(); track l.label) {
+          <path class="ch__band" [attr.data-slot]="l.slot" [attr.d]="l.band" />
+          <path class="ch__line" [attr.data-slot]="l.slot" [attr.d]="l.line" />
+          @for (d of l.dots; track $index) {
+            <circle class="ch__dot" [attr.data-slot]="l.slot" [attr.cx]="d.x" [attr.cy]="d.y" r="2.5" />
+          }
+        }
+      </svg>
+      @if (limitY() !== null) {
+        <span class="ch__limit-label" aria-hidden="true" [style.top.%]="(limitY()! / h) * 100">{{ limitLabel() }}</span>
+      }
+      @if (tip(); as t) {
+        <span class="ch__cross" aria-hidden="true" [style.left.%]="t.left"></span>
+        <div class="ch__tip" [class.ch__tip--flip]="t.flip" [style.left.%]="t.left" aria-hidden="true">
+          <strong>{{ t.at | date: (longRange() ? 'MMM d, HH:mm' : 'HH:mm') }}</strong>
+          @for (r of t.rows; track r.label) {
+            <span><span class="ch__swatch" [attr.data-slot]="r.slot"></span>{{ series().length > 1 ? r.label + ' ' : '' }}{{ r.avg }}@if (r.peak) { <small>peak {{ r.peak }}</small> }</span>
+          }
+        </div>
+      }
+    </div>
+    <div class="ch__time" aria-hidden="true">
+      <span>{{ startLabel() }}</span><span>now</span>
+    </div>
+  } @else {
+    <p class="ch__empty">No samples in this range yet.</p>
+  }
+</figure>

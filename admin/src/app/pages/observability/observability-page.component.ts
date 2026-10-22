@@ -20,6 +20,8 @@ import { KIND_LABEL, SERVICE_LABEL, formatMs, isFailedOutcome } from './observab
 import { ObservabilityTraceComponent, type Span } from './observability-trace.component';
 import { IconComponent } from '../../shared/icon/icon.component';
 import { SkeletonComponent } from '../../shared/skeleton/skeleton.component';
+import { ObservabilityServersComponent } from './observability-servers.component';
+import { formatBytes, infraIssues, type InfraBlock } from './observability-infra';
 
 interface NamedChannels {
   channelNames?: Record<string, string | null>;
@@ -85,7 +87,7 @@ interface Attention {
   tone: 'live' | 'warn';
   title: string;
   text: string;
-  action?: { label: string; tab: Tab; kind?: CallKind; sort?: CallSort };
+  action?: { label: string; tab: Tab; kind?: CallKind; sort?: CallSort; container?: string };
 }
 interface QueueView {
   key: string;
@@ -210,7 +212,7 @@ const CHART_TOP = 12;
 
 @Component({
   selector: 'app-observability-page',
-  imports: [DatePipe, IconComponent, AvatarComponent, SkeletonComponent, ObservabilityAccessComponent, ObservabilityTraceComponent],
+  imports: [DatePipe, IconComponent, AvatarComponent, SkeletonComponent, ObservabilityAccessComponent, ObservabilityTraceComponent, ObservabilityServersComponent],
   templateUrl: './observability-page.component.html',
   styleUrl: './observability-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -236,6 +238,11 @@ export class ObservabilityPageComponent implements OnInit {
   readonly data = signal<Overview | null>(null);
   readonly resources = signal<Resource[]>([]);
   readonly resourcesLimited = signal(false);
+  /** Host + container stats; series are refetched only when the range/container changes or they age out. */
+  readonly infra = signal<InfraBlock | null>(null);
+  readonly selectedContainer = signal<string | null>(null);
+  private infraKey = '';
+  private infraAt = 0;
   readonly spans = signal<Span[]>([]);
   readonly logs = signal<Log[]>([]);
   readonly grants = signal<AccessGrant[]>([]);
@@ -400,6 +407,12 @@ export class ObservabilityPageComponent implements OnInit {
       } else if (dep.meter && dep.meter.pct >= 90) {
         items.push({ tone: 'warn', title: `${dep.label} ${dep.meter.label.toLowerCase()} is ${Math.round(dep.meter.pct)}% full`, text: `${this.bytes(dep.meter.used)} of ${this.bytes(dep.meter.limit)}.`, action: { label: 'Open servers', tab: 'resources' } });
       }
+    }
+    const infra = this.infra();
+    // Restart counts come from series; only trust them when they cover the range being shown.
+    const sameRange = this.infraKey.startsWith(`${this.minutes()}|`);
+    for (const issue of infraIssues(infra && (sameRange ? infra : { ...infra, series: [] }), this.rangeLong())) {
+      items.push({ tone: issue.tone, title: issue.title, text: issue.text, action: { label: issue.container ? 'Open container' : 'Open servers', tab: 'resources', container: issue.container } });
     }
     const dropped = this.processes().reduce((sum, p) => sum + (p.dropped ?? 0), 0) + this.resourceIncrease('analytics', 'buffer_dropped_batches');
     if (dropped > 0) {
@@ -706,6 +719,8 @@ export class ObservabilityPageComponent implements OnInit {
     this.channel.set(params.get('channel') || '');
     const tab = params.get('tab') as Tab | null;
     if (tab && TABS.includes(tab)) this.tab.set(tab);
+    const container = params.get('container');
+    if (container && /^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,127}$/.test(container)) this.selectedContainer.set(container);
     const kind = params.get('kind') as CallKind | null;
     if (kind && CALL_KINDS.some((k) => k.id === kind)) this.callKind.set(kind);
     const sort = params.get('sort') as CallSort | null;
@@ -769,12 +784,18 @@ export class ObservabilityPageComponent implements OnInit {
     this.searchTimer = setTimeout(() => void this.refresh(), 450);
   }
   follow(action: NonNullable<Attention['action']>): void {
+    if (action.container) this.selectedContainer.set(action.container);
     if (action.kind) this.callKind.set(action.kind);
     if (action.sort) this.callSort.set(action.sort);
     this.callLimit.set(CALL_PAGE);
     this.tab.set(action.tab);
     void this.refresh();
     if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  openContainer(name: string | null): void {
+    this.selectedContainer.set(name);
+    if (name) void this.refresh();
+    else this.updateUrl();
   }
   setCallKind(kind: CallKind): void {
     this.callKind.set(kind);
@@ -798,6 +819,7 @@ export class ObservabilityPageComponent implements OnInit {
         channel: this.channel() || null,
         kind: calls && this.callKind() !== 'all' ? this.callKind() : null,
         sort: calls && this.callSort() !== 'busiest' ? this.callSort() : null,
+        container: this.tab() === 'resources' ? this.selectedContainer() : null,
       },
       replaceUrl: true,
     });
@@ -837,10 +859,15 @@ export class ObservabilityPageComponent implements OnInit {
         const wantsResources = tab === 'resources' || (tab === 'overview' && this.systemWide());
         let resourceParams = new HttpParams().set('minutes', tab === 'resources' ? this.minutes() : 15);
         if (this.service()) resourceParams = resourceParams.set('service', this.service());
+        const infraKey = `${this.minutes()}|${this.selectedContainer() ?? ''}`;
+        const seriesTtl = Math.max(30000, ((this.infra()?.slotSeconds?.list ?? 60) * 1000) / 2);
+        const wantsSeries = tab === 'resources' && (this.infraKey !== infraKey || !this.infra()?.slotSeconds || Date.now() - this.infraAt > seriesTtl);
+        resourceParams = resourceParams.set('include', wantsSeries ? 'infra' : 'snapshot');
+        if (wantsSeries && this.selectedContainer()) resourceParams = resourceParams.set('container', this.selectedContainer()!);
         const [value, resources] = await Promise.all([
           firstValueFrom(this.http.get<Overview>(this.base + '/overview', { params })),
           wantsResources
-            ? firstValueFrom(this.http.get<{ samples: Resource[]; limited?: boolean }>(this.base + '/resources', { params: resourceParams })).catch(() => null)
+            ? firstValueFrom(this.http.get<{ samples: Resource[]; limited?: boolean; infrastructure?: InfraBlock }>(this.base + '/resources', { params: resourceParams })).catch(() => null)
             : Promise.resolve(null),
         ]);
         if (id === this.request) {
@@ -849,6 +876,16 @@ export class ObservabilityPageComponent implements OnInit {
           if (resources) {
             this.resources.set(resources.samples);
             this.resourcesLimited.set(!!resources.limited);
+            const infra = resources.infrastructure;
+            if (!infra) this.infra.set(null);
+            else if (wantsSeries) {
+              this.infra.set(infra);
+              this.infraKey = infraKey;
+              this.infraAt = Date.now();
+            } else {
+              const previous = this.infra();
+              this.infra.set(previous ? { ...previous, snapshot: infra.snapshot, receivedAt: infra.receivedAt } : infra);
+            }
           }
         }
       }
@@ -868,6 +905,8 @@ export class ObservabilityPageComponent implements OnInit {
         this.data.set(null);
         this.selectedTrace.set(null);
         this.resources.set([]);
+        this.infra.set(null);
+        this.infraKey = '';
         this.spans.set([]);
         this.logs.set([]);
         this.grants.set([]);
@@ -1029,6 +1068,7 @@ export class ObservabilityPageComponent implements OnInit {
     } else if (service === 'postgres') {
       add('Analytics database', value('database_bytes'), bytes);
       add('Table data', value('table_bytes'), bytes);
+      add('All databases on this server', value('server_bytes'), bytes);
       add('Connections', value('connections'), count);
       sparkName = 'database_bytes';
       sparkLabel = 'Database size';
@@ -1164,11 +1204,7 @@ export class ObservabilityPageComponent implements OnInit {
     return value === null ? '> 5 min' : `≤ ${this.ms(value)}`;
   }
   bytes(value: number | null): string {
-    if (value === null) return '—';
-    if (value < 1024) return `${value.toFixed(0)} B`;
-    if (value < 1048576) return `${(value / 1024).toFixed(1)} KiB`;
-    if (value < 1073741824) return `${(value / 1048576).toFixed(value < 104857600 ? 1 : 0)} MiB`;
-    return `${(value / 1073741824).toFixed(2)} GiB`;
+    return formatBytes(value);
   }
   age(from: string, to: string | Date = new Date()): string {
     const seconds = Math.max(0, (new Date(to).getTime() - Date.parse(from)) / 1000);
