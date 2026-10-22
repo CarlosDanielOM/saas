@@ -21,6 +21,27 @@ For GPT-led UI/UX and design tasks, start with DeepSeek V4.1 Flash or GPT-6.1 So
 
 On 2026-10-20, the user set a runtime preference for delegated work: default to full access for non-Claude delegates when the live catalog advertises it and the parent/platform permits it; use MiniMax `bypassPermissions` for full-access work when advertised. Do not use full access or bypassed permissions for Claude as Unix root (UID 0). Honor live catalog and parent limits, and use an authorized supported alternative if a mode is unavailable or refused. This preference does not change the model-tier baseline above.
 
+## Current routing summary (2026-10-22)
+
+The user-provided ascending tier above remains the baseline and working tier; there is no evidence-backed broad reorder. These local task routes are hypotheses, not universal model rankings:
+
+| Task category | Strength / limitation and current route | Confidence and evidence |
+|---|---|---|
+| Bounded Rust utility implementation | DeepSeek V4.1 Flash at high has delivered two scoped connection utilities; lead review refined runtime-lifetime docs and corrected a fixture TTL. | Low to medium; two related tasks. [MongoDB utility](../dima-rust/src/utils/mongo.rs), [Redis utility](../dima-rust/src/utils/redis.rs) |
+| Stateful, multi-file Rust implementation and integration | GPT-6.1 Sol at high/xhigh has led several migrations and integrations. Reviews caught concrete defaults, numeric-boundary, and edge-case issues that were corrected before acceptance. | Medium for similar Rust integration; not a general ranking. [Stream activity](../migration-notes/stream-activity.md), [raid analytics](../migration-notes/raid-analytics.md), [dashboard activity](../migration-notes/dashboard-activity.md) |
+| Source-backed operational/release documentation | GPT-6 Luna at high has repeatedly reconciled docs against source and verification evidence. | Medium for this documentation scope. [Follow-defense baseline](../migration-notes/follow-defense-baseline.md), [dashboard activity](../migration-notes/dashboard-activity.md) |
+| Demanding exploration and scoped review | Grok 4.7 at high/xhigh is the user's preferred stronger-reasoning option over DeepSeek for demanding exploration. Scoped read-only reviews have found no blockers, but this is not a capability benchmark. | Low; user preference plus limited review evidence. [Raid change-driven review](../migration-notes/raid-change-driven.md), [raid-sessions review](../migration-notes/raid-sessions.md) |
+| GPT-led UI/UX design | Start with DeepSeek V4.1 Flash or GPT-6.1 Sol under the existing preference. | Preference; one accepted admin UX follow-up supports Sol for that scope only. [Admin worker health UX](../admin/src/app/pages/observability/observability-page.component.html) |
+
+### Notes maintenance policy
+
+- Keep this README to an approximately one-page routing summary: preserve the user's baseline, state the evidence-backed working tier and task-category routes, and include confidence plus links to evidence. Put detailed observations in dated files. Link migration/release records rather than copying build and deployment diaries here.
+- For each meaningful task, record its complexity, category, scope and constraints; provider, model/version and effort; successes; concrete mistakes and lead corrections or rework; verified evidence; useful user feedback; confidence; and the resulting routing implication. Use the blank template below. Do not record routine release detail unless it changes model-routing knowledge.
+- Record latency or cost only when measured. Keep model delivery performance (correctness, consistency, rework, and time to verified result) separate from generated-code runtime measurements (latency, throughput, resource use). Do not attribute runtime results to a model without evidence.
+- Separate provider, environment, tooling, or permissions failures from model-quality findings. A refused capability or unavailable mode is not evidence of poor model performance.
+- Prefer evidence-backed, task-specific routing changes before considering a broad tier reorder. Preserve the user baseline. Do not generalize from unmatched tasks or one result; no approval is needed for a justified, evidence-backed routing adjustment. When scope fits, assign cheaper models suitable real bounded tasks to gather evidence; do not pay for duplicate benchmark implementations unless requested.
+- Keep the summary concise and refresh it as new verified outcomes or useful user feedback change routing knowledge. Preserve historical evidence when organizing or moving older entries into dated files.
+
 ## Routing observations
 
 Keep observations brief and tied to a task category, scope, and concrete evidence. Consider exploration, single-file or function work, multi-file integration and consistency, optimization, and UI/UX design separately. Confidence should reflect how much evidence exists and how well it transfers to similar tasks. One result can inform a hypothesis; repeated, comparable results support a stronger routing change.
@@ -53,14 +74,17 @@ Copy this block for each meaningful outcome:
 
 ```text
 Date:
-Provider / model / version + effort:
-Task category / scope / constraints:
-Concrete result and verification evidence (commit, task, or check references):
-Rework / failures:
-Latency / cost (only when actually measured):
-User feedback:
-Confidence:
-Routing implication:
+Task complexity / category / scope / constraints:
+Provider instance / model / version / effort:
+Successes:
+Concrete mistakes and lead corrections / rework:
+Verified evidence (links to checks, task record, commit, migration, or release):
+User feedback (useful, if any):
+Environment / provider / tooling / permission issues (separate from model quality):
+Latency / cost (only if measured):
+Generated-code runtime metrics (only if measured; separate from delivery performance):
+Confidence and basis:
+Routing implication (task-specific; retain baseline unless evidence supports a broader change):
 ```
 
 2026-10-21 — Combined Rust cron scheduler and health release documentation: GPT-6 Luna reconciled the migration notes, Rust worker guides, ops rollback pointers, and this routing record against candidate receipts and production evidence. Combined cron `cron-240af282cb85` and admin artifact `admin-0fca439bcb95` were deployed after all three worker suites and scoped admin/browser checks passed. The 20-sample, 190.001-second production watch passed: both baseline refreshes completed naturally, all 29 caches were valid with zero due channels, stream checkpoint advanced with no active sampled batches, and no child errors/restarts or health errors appeared. The other 16 production containers were unchanged; served admin assets matched the verified bundle. Fixture burst timing is synthetic, and no TypeScript throughput or build-speedup claim is made. Evidence: `migration-notes/follow-defense-baseline.md`, `migration-notes/stream-activity.md`, `ops/README.md`. Confidence: single release. No model-routing or tier change inferred.
