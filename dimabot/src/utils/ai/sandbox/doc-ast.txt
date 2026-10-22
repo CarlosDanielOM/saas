@@ -1,6 +1,6 @@
 # ==========================================
 # COMMAND VARIABLES & LOGIC (generated from the AST function registry)
-# Catalog version: e585b9e5fefe
+# Catalog version: d2bd1b95bef8
 # ==========================================
 
 # AST SYNTAX CORE (for command & reward message fields)
@@ -217,6 +217,12 @@
 #   Example: $(overlay.skip.kick)
 # $(overlay.skip.twitch) - Stops current event playback and advances the queue. Applies to twitch events only across this owner’s Global Overlay scenes.
 #   Example: $(overlay.skip.twitch)
+#
+# --- pet ---
+# $(pet.ask prompt) - Asks the pet personality for a reply, then speaks it through the pet speech queue. Requires a configured command or Twitch event action.
+#   Example: $(pet.ask Welcome our new follower!)
+# $(pet.talk text) - Speaks supplied text through the pet speech queue without an LLM. Requires a configured command or Twitch event action.
+#   Example: $(pet.talk Hello chat!)
 #
 # --- pin ---
 # $(pin.create [duration] message) - Sends a message to chat and pins it. Optional duration in seconds (30-1800) as first argument. (aliases: pin)

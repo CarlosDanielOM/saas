@@ -1,9 +1,9 @@
 {
-  "version": "e585b9e5fefe",
-  "generatedAt": "2026-10-19T21:37:37.214Z",
+  "version": "d2bd1b95bef8",
+  "generatedAt": "2026-10-22T20:30:02.869Z",
   "model": "lfm2.5-embedding-350m",
   "dim": 1024,
-  "functionCount": 113,
+  "functionCount": 115,
   "entries": [
     {
       "name": "overlay.skip",
@@ -2155,6 +2155,50 @@
         "action",
         "authoring"
       ]
+    },
+    {
+      "name": "pet.talk",
+      "description": "Speaks supplied text through the pet speech queue without an LLM. Requires a configured command or Twitch event action.",
+      "syntax": "pet.talk text",
+      "category": "pet",
+      "examples": [
+        "pet.talk Hello chat!"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "pet",
+        "mascota",
+        "speech",
+        "talk"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "authoring"
+      ],
+      "planTier": "premium"
+    },
+    {
+      "name": "pet.ask",
+      "description": "Asks the pet personality for a reply, then speaks it through the pet speech queue. Requires a configured command or Twitch event action.",
+      "syntax": "pet.ask prompt",
+      "category": "pet",
+      "examples": [
+        "pet.ask Welcome our new follower!"
+      ],
+      "aliases": [],
+      "minUserLevel": 1,
+      "keywords": [
+        "pet",
+        "mascota",
+        "speech",
+        "ask"
+      ],
+      "destructive": false,
+      "surfaces": [
+        "authoring"
+      ],
+      "planTier": "premium"
     },
     {
       "name": "trigger.send",
