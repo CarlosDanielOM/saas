@@ -13,6 +13,11 @@ export interface TtsSynthesisRequest {
     voice: string;
     outputPath: string;
     cloneName?: string;
+    /** Private callers own outputPath; defaults preserve normal overlay delivery. */
+    privateOutput?: boolean;
+    signal?: AbortSignal;
+    maxAudioBytes?: number;
+    singleAttempt?: boolean;
 }
 
 export interface TtsSynthesisResult {

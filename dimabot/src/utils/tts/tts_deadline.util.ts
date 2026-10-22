@@ -24,6 +24,7 @@ export function promiseWithTimeout<T>(
 export async function readAudioStream(
   audio: ReadableStream<Uint8Array>,
   signal: AbortSignal,
+  maxBytes = Infinity,
 ): Promise<Buffer> {
   if (signal.aborted) {
     await audio.cancel(signal.reason).catch(() => {});
@@ -35,6 +36,7 @@ export async function readAudioStream(
 
   try {
     const chunks: Uint8Array[] = [];
+    let bytes = 0;
     while (true) {
       const { done, value } = await readNextChunk(reader, signal);
       if (done) {
@@ -42,6 +44,8 @@ export async function readAudioStream(
         break;
       }
       if (value) {
+        bytes += value.byteLength;
+        if (bytes > maxBytes) throw new Error("TTS audio exceeds byte limit");
         chunks.push(value);
       }
     }

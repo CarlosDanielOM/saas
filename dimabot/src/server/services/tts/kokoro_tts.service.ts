@@ -1,3 +1,4 @@
+import { readAudioStream } from '../../../utils/tts/tts_deadline.util.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { OPENROUTER_APP_HEADERS } from '../../../utils/ai/openrouter/app_attribution.util.js';
@@ -20,6 +21,7 @@ class KokoroTtsService implements TtsProvider {
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), ATTEMPT_TIMEOUT_MS);
         try {
+            request.signal?.throwIfAborted();
             const response = await fetch('https://openrouter.ai/api/v1/audio/speech', {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json', ...OPENROUTER_APP_HEADERS },
@@ -28,7 +30,7 @@ class KokoroTtsService implements TtsProvider {
                     // An outage must never route to Together's more expensive endpoint.
                     provider: { only: ['deepinfra'], order: ['deepinfra'], allow_fallbacks: false }
                 }),
-                signal: controller.signal
+                signal: request.signal ? AbortSignal.any([request.signal, controller.signal]) : controller.signal
             });
             if (!response.ok) {
                 await response.body?.cancel();
@@ -39,14 +41,14 @@ class KokoroTtsService implements TtsProvider {
                 return { error: true, message: 'Kokoro returned an unexpected audio format' };
             }
             // The same deadline covers headers and the complete audio body.
-            const audio = Buffer.from(await response.arrayBuffer());
+            const audio = response.body ? await readAudioStream(response.body, request.signal ? AbortSignal.any([request.signal, controller.signal]) : controller.signal, request.maxAudioBytes) : Buffer.alloc(0);
             if (!audio.length) return { error: true, message: 'Kokoro returned empty audio' };
-            const outputDir = path.join(PIPER_PUBLIC_SPEECH_DIR, request.channelID);
+            const outputDir = request.privateOutput ? path.dirname(request.outputPath) : path.join(PIPER_PUBLIC_SPEECH_DIR, request.channelID);
             await fs.mkdir(outputDir, { recursive: true });
-            const outputPath = path.join(outputDir, `${request.speechID}.mp3`);
+            const outputPath = request.privateOutput ? request.outputPath : path.join(outputDir, `${request.speechID}.mp3`);
             await fs.writeFile(outputPath, audio);
             return { error: false, message: 'Speech synthesized with Kokoro (DeepInfra)',
-                outputPath, publicPath: buildPublicPath(request.channelID, request.speechID), mimeType: 'audio/mpeg' };
+                outputPath, publicPath: request.privateOutput ? undefined : buildPublicPath(request.channelID, request.speechID), mimeType: 'audio/mpeg' };
         } catch (error) {
             return { error: true, message: error instanceof Error ? error.message : String(error) };
         } finally {

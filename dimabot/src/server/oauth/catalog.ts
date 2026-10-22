@@ -6,10 +6,10 @@ export const OAUTH_SCOPES = {
     'usage:read': { active: false, key: 'usage' },
     'pet:read': { active: true, key: 'petRead' },
     'pet:write': { active: false, key: 'petWrite' },
-    'pet:receive': { active: false, key: 'petReceive' },
+    'pet:receive': { active: true, key: 'petReceive' },
     'pet:interact': { active: false, key: 'petInteract' },
-    'pet:control': { active: false, key: 'petControl' },
-    'pet:playback:select': { active: false, key: 'petSelect' }
+    'pet:control': { active: true, key: 'petControl' },
+    'pet:playback:select': { active: true, key: 'petSelect' }
 } as const;
 
 export type OAuthScope = keyof typeof OAUTH_SCOPES;

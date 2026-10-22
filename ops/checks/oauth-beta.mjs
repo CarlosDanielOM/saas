@@ -77,7 +77,8 @@ assert.equal(result.status, 200);
 assert.deepEqual(result.body.code_challenge_methods_supported, ['S256']);
 assert.ok(result.body.scopes_supported.includes('credits:read'));
 assert.ok(!result.body.scopes_supported.includes('pet:interact'));
-assert.ok(result.body.beta.planned_scopes.includes('pet:playback:select'));
+assert.ok(result.body.scopes_supported.includes('pet:playback:select'));
+assert.deepEqual(result.body.beta.socket_io, { path: '/socket.io/', namespace: '/desktop', protocol_version: 1 });
 assert.match(result.headers.get('cache-control'), /no-store/);
 // Malformed origin-form targets must not throw out of the HTTP upgrade listener.
 const malformedUpgrade = await new Promise((resolve, reject) => {

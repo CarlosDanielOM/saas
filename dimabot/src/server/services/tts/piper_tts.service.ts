@@ -2,6 +2,7 @@ import { spawn } from 'child_process';
 import fs from 'fs/promises';
 import path from 'path';
 
+import { readAudioStream } from '../../../utils/tts/tts_deadline.util.js';
 import { getDirname } from '../../../utils/pollyfills.js';
 import type { TtsProvider, TtsSynthesisRequest, TtsSynthesisResult } from './tts_provider.interface.js';
 
@@ -51,8 +52,8 @@ async function ensureSpeechOutputDir(channelID: string): Promise<string> {
     return outputDir;
 }
 
-async function writeHttpResult(response: Response, outputPath: string): Promise<void> {
-    const buffer = Buffer.from(await response.arrayBuffer());
+async function writeHttpResult(response: Response, outputPath: string, request: TtsSynthesisRequest): Promise<void> {
+    const buffer = response.body ? await readAudioStream(response.body, request.signal ?? AbortSignal.timeout(30_000), request.maxAudioBytes) : Buffer.alloc(0);
     await fs.writeFile(outputPath, buffer);
 }
 
@@ -66,13 +67,14 @@ async function runPiperCli(request: TtsSynthesisRequest): Promise<TtsSynthesisRe
 
     return await new Promise<TtsSynthesisResult>((resolve) => {
         const child = spawn(getPiperPythonBin(), args, {
-            stdio: ['ignore', 'pipe', 'pipe']
+            stdio: ['ignore', 'ignore', 'pipe'],
+            signal: request.signal, timeout: 30_000
         });
 
         let stderr = '';
 
         child.stderr.on('data', (chunk: Buffer | string) => {
-            stderr += String(chunk);
+            stderr = (stderr + String(chunk)).slice(-4096);
         });
 
         child.on('error', (error) => {
@@ -95,7 +97,7 @@ async function runPiperCli(request: TtsSynthesisRequest): Promise<TtsSynthesisRe
                 error: false,
                 message: 'Speech synthesized with Piper CLI',
                 outputPath: request.outputPath,
-                publicPath: buildPublicPath(request.channelID, request.speechID),
+                publicPath: request.privateOutput ? undefined : buildPublicPath(request.channelID, request.speechID),
                 mimeType: 'audio/wav'
             });
         });
@@ -112,24 +114,24 @@ async function runPiperHttp(request: TtsSynthesisRequest, baseUrl: string): Prom
             text: request.text,
             voice: request.voice
         }),
-        signal: AbortSignal.timeout(30_000)
+        signal: request.signal ? AbortSignal.any([request.signal, AbortSignal.timeout(30_000)]) : AbortSignal.timeout(30_000)
     });
 
     if (!response.ok) {
-        const body = await response.text();
+        const body = request.privateOutput ? (await response.body?.cancel(), '') : await response.text();
         return {
             error: true,
             message: body || `Piper HTTP synthesis failed with ${response.status}`
         };
     }
 
-    await writeHttpResult(response, request.outputPath);
+    await writeHttpResult(response, request.outputPath, request);
 
     return {
         error: false,
         message: 'Speech synthesized with Piper HTTP',
         outputPath: request.outputPath,
-        publicPath: buildPublicPath(request.channelID, request.speechID),
+        publicPath: request.privateOutput ? undefined : buildPublicPath(request.channelID, request.speechID),
         mimeType: 'audio/wav'
     };
 }
@@ -139,8 +141,10 @@ class PiperTtsService implements TtsProvider {
 
     async synthesize(request: TtsSynthesisRequest): Promise<TtsSynthesisResult> {
         try {
-            const outputDir = await ensureSpeechOutputDir(request.channelID);
-            const outputPath = path.join(outputDir, `${request.speechID}.wav`);
+            request.signal?.throwIfAborted();
+            const outputDir = request.privateOutput ? path.dirname(request.outputPath) : await ensureSpeechOutputDir(request.channelID);
+            await fs.mkdir(outputDir, { recursive: true });
+            const outputPath = request.privateOutput ? request.outputPath : path.join(outputDir, `${request.speechID}.wav`);
             const normalizedRequest: TtsSynthesisRequest = {
                 ...request,
                 outputPath
@@ -151,7 +155,12 @@ class PiperTtsService implements TtsProvider {
                 return await runPiperHttp(normalizedRequest, httpUrl);
             }
 
-            return await runPiperCli(normalizedRequest);
+            const result = await runPiperCli(normalizedRequest);
+            if (!result.error && request.maxAudioBytes && (await fs.stat(outputPath)).size > request.maxAudioBytes) {
+                await fs.rm(outputPath, { force: true });
+                return { error: true, message: 'Piper audio exceeds byte limit' };
+            }
+            return result;
         } catch (error) {
             return {
                 error: true,

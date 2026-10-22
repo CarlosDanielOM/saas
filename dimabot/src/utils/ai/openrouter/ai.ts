@@ -15,7 +15,7 @@ import {
 } from "../../../schemas/channel_ai_personality.schema.js";
 import { formatBadges, type IBadge } from "../../badges.js";
 import { getDragonflyClient } from "../../databases/dragonfly.database.js";
-import { isAiCreditsExhausted } from "../../billing.js";
+import { getAiCredits, isAiCreditsExhausted } from "../../billing.js";
 import { ingestPolarSHEvent } from "../../polarsh.js";
 import { constructChatSystemMessages } from "../prompts.ai.js";
 import { mergeChatHistories, type ChatContextMessage } from "../chat_context.js";
@@ -480,6 +480,7 @@ async function callOpenRouter(
   sessionId: string,
   traceId: string,
   extraOptions: Record<string, any> = {},
+  transport: { signal?: AbortSignal; singleAttempt?: boolean } = {},
 ): Promise<IOpenRouterResponse> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -520,12 +521,13 @@ async function callOpenRouter(
     { channelId: channelID, destination: "console" },
   );
 
-  const response = await fetchWithRetry(
+  const response = await (transport.singleAttempt ? fetch : fetchWithRetry)(
     "https://openrouter.ai/api/v1/chat/completions",
     {
       method: "POST",
       headers,
       body: JSON.stringify(body),
+      ...(transport.singleAttempt ? { signal: transport.signal ? AbortSignal.any([transport.signal, AbortSignal.timeout(30_000)]) : AbortSignal.timeout(30_000) } : {}),
     },
   );
 
@@ -641,6 +643,7 @@ async function trackUsage(
   reason: string,
   requestId: string,
   parentRequestId: string,
+  policy: { source?: string; awaitIngest?: boolean } = {},
 ): Promise<void> {
   if (!usageData || !channelID) return;
 
@@ -683,7 +686,7 @@ async function trackUsage(
     (usageData?.cost_details?.upstream_inference_completions_cost || 0);
 
   if (streamer?.polar_sh_customer_id) {
-    ingestPolarSHEvent({
+    const ingestion = ingestPolarSHEvent({
       customerId: streamer.polar_sh_customer_id,
       channelID: channelID,
       cost: actualCost,
@@ -696,11 +699,13 @@ async function trackUsage(
       usage: {
         requestId,
         parentRequestId,
-        source: "chat",
+        source: policy.source ?? "chat",
         provider: "openrouter",
         resourceType: "llm_generation",
       },
+      ...(policy.awaitIngest ? { externalId: requestId } : {}),
     });
+    if (policy.awaitIngest && (await ingestion).error) throw new Error('AI usage recording unavailable');
   }
 }
 
@@ -713,28 +718,30 @@ export async function generateStandaloneText(
   streamer: IStreamerData,
   messages: Array<{ role: 'system' | 'user'; content: string }>,
   reason: string,
-  options: { model?: string; maxTokens?: number | null } = {},
+  options: { model?: string; maxTokens?: number | null; signal?: AbortSignal; singleAttempt?: boolean; usageRequestId?: string; verifyCredits?: boolean; usageSource?: string } = {},
 ): Promise<IRouterResponse> {
   const channelID = streamer.user_id;
   if (!channelID) return { error: true, message: 'Channel context unavailable' };
 
   try {
     const cache = await getDragonflyClient('StandaloneAI');
-    const isExhausted = await isAiCreditsExhausted(channelID, cache);
+    options.signal?.throwIfAborted();
+    const isExhausted = await isAiCreditsExhausted(channelID, cache) ||
+      (options.verifyCredits === true && (await getAiCredits(streamer, channelID, { requireVerified: true, signal: options.signal })).status !== 'available');
     const model = options.model ?? selectChatModel(streamer, isExhausted);
     const sessionID = generateUUIDv7();
-    const traceID = generateUUIDv7();
+    const traceID = options.usageRequestId ?? generateUUIDv7();
     // A null limit leaves the output budget to the provider, including reasoning.
     const maxTokens = options.maxTokens === null ? undefined
       : options.maxTokens ?? Math.min(getTokenLimit(model), 2048);
     const data = await callOpenRouter(model, messages, [], channelID, streamer,
-      maxTokens, sessionID, traceID);
+      maxTokens, sessionID, traceID, {}, options);
     if (data.error) {
       const extracted = extractOpenRouterError(data);
       return { error: true, message: extracted.message, status: extracted.status, type: extracted.type };
     }
 
-    await trackUsage(channelID, streamer, data.usage, model, reason, traceID, sessionID);
+    await trackUsage(channelID, streamer, data.usage, model, reason, traceID, sessionID, { source: options.usageSource, awaitIngest: !!options.usageRequestId });
     // Ignore unsolicited tool calls; only return text, stripping any DSML tool markup.
     const content = data.choices?.[0]?.message?.content;
     return { error: false, message: typeof content === 'string' ? stripDsmlMarkup(content) : '' };

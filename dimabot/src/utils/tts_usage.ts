@@ -35,6 +35,7 @@ export interface TtsUsageTrackOptions {
   provider: "piper" | "fish" | "kokoro";
   characters: number;
   text: string;
+  requireDurableUsage?: boolean;
   usage?: {
     entryId?: string;
     requestId?: string;
@@ -141,7 +142,7 @@ export async function trackTtsUsage(
 
   // Send to Polar.sh for billing
   if (streamer?.polar_sh_customer_id && usage.polarshCost > 0) {
-    await ingestPolarSHEvent({
+    const ingestion = await ingestPolarSHEvent({
       customerId: streamer.polar_sh_customer_id,
       channelID,
       cost: usage.costUsd,
@@ -162,6 +163,7 @@ export async function trackTtsUsage(
         resourceId: usageContext?.resourceId,
       },
     });
+    if (options.requireDurableUsage && ingestion.error) throw new Error('TTS usage recording unavailable');
   }
 
   return usage;

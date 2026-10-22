@@ -1,6 +1,8 @@
 import { Schema, model, Types } from 'mongoose';
 
 export interface PetSettings {
+    appearance: { kind: 'png' | 'vts'; idleAssetId: string | null; talkingAssetId: string | null };
+    playback: { target: 'browser' | 'desktop'; desktopSessionId: string | null; vtsSessionId: string | null };
     enabled: boolean;
     name: string;
     tts: { enabled: boolean; provider: 'piper' | 'kokoro' | 'fish'; language: 'en' | 'es'; voice: string };
@@ -17,6 +19,8 @@ export interface PetSettingsRecord {
 }
 
 const settingsSchema = new Schema<PetSettings>({
+    appearance: { kind: { type: String, enum: ['png', 'vts'] }, idleAssetId: { type: String, default: null }, talkingAssetId: { type: String, default: null } },
+    playback: { target: { type: String, enum: ['browser', 'desktop'] }, desktopSessionId: { type: String, default: null }, vtsSessionId: { type: String, default: null } },
     enabled: { type: Boolean, required: true },
     name: { type: String, required: true, maxlength: 40 },
     tts: {

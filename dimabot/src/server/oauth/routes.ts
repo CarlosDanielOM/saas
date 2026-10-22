@@ -6,6 +6,9 @@ import { OAuthSession } from '../../schemas/oauth_session.schema.js';
 import { getAiCredits } from '../../utils/billing.js';
 import { getFreeAiCreditDisplay } from '../../utils/ai_credit_display.js';
 import { getPetConfiguration, PetSettingsError } from '../services/pet_settings.service.js';
+import { PetError, cancelPetRequest } from '../../pets/state.js';
+import { getPetRuntime } from '../../pets/runtime.js';
+import { selectOwnPetPlayback } from '../../pets/selection.js';
 import { ACCESS_TTL_SECONDS, DESKTOP_CLIENT_ID, OAuthError, OAUTH_SCOPES } from './catalog.js';
 import { approveAuthorization, authenticateAccess, exchangeCode, getAuthorization, getClient,
     oauthIssuer, oauthWebsite, rateLimit, refreshAccess, revokeSession, revokeToken,
@@ -23,7 +26,7 @@ export function oauthBoundary(req: Request, res: Response, next: NextFunction) {
         res.set('Access-Control-Allow-Origin', origin);
         res.vary('Origin');
         res.set('Access-Control-Allow-Headers', 'Authorization, Content-Type');
-        res.set('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+        res.set('Access-Control-Allow-Methods', 'GET, PUT, POST, DELETE, OPTIONS');
     }
     if (req.method === 'OPTIONS') return res.sendStatus(204);
     next();
@@ -64,7 +67,7 @@ async function access(req: Request, scope?: string): Promise<AccessIdentity> {
 }
 
 function errorHandler(error: unknown, _req: Request, res: Response, _next: NextFunction) {
-    const known = error instanceof OAuthError;
+    const known = error instanceof OAuthError || error instanceof PetError || error instanceof PetSettingsError;
     const status = known ? error.status : 503;
     if (status === 401) res.set('WWW-Authenticate', 'Bearer error="invalid_token"');
     if (status === 429) res.set('Retry-After', '60');
@@ -88,6 +91,7 @@ export function oauthMetadata(_req: Request, res: Response) {
         authorization_response_iss_parameter_supported: true,
         beta: { client_id: DESKTOP_CLIENT_ID, protocol_version: 1, access_token_lifetime: ACCESS_TTL_SECONDS,
             websocket_endpoint: `${issuer.replace(/^http/, 'ws')}/v1/desktop/ws`,
+            socket_io: { path: '/socket.io/', namespace: '/desktop', protocol_version: 1 },
             planned_scopes: Object.entries(OAUTH_SCOPES).filter(([, scope]) => !scope.active).map(([name]) => name) } });
 }
 oauthRoute.get('/metadata', oauthMetadata);
@@ -196,11 +200,26 @@ oauthApiRoute.get('/me/pet', asyncRoute(async (req, res) => {
         throw error;
     }
 }));
+oauthApiRoute.get('/me/pet/runtime', asyncRoute(async (req, res) => {
+    const identity = await access(req, 'pet:read');
+    res.json(await getPetRuntime(identity.user_id, identity.channel_id));
+}));
+oauthApiRoute.put('/me/pet/playback', asyncRoute(async (req, res) => {
+    const identity = await access(req, 'pet:playback:select');
+    res.json(await selectOwnPetPlayback(identity, req.body));
+}));
+oauthApiRoute.post('/me/pet/requests/:requestId/cancel', asyncRoute(async (req, res) => {
+    const identity = await access(req, 'pet:control');
+    await getPetConfiguration(identity.user_id, identity.channel_id);
+    if (!req.body || Object.keys(req.body).some(key => key !== 'commandId')) throw new PetError('invalid_command');
+    res.json(await cancelPetRequest(identity.user_id, String(req.params.requestId), req.body.commandId));
+}));
 oauthApiRoute.get('/desktop/session', asyncRoute(async (req, res) => {
     const identity = await access(req, 'desktop:connect');
     const session = await OAuthSession.findById(identity.session_id).select('device_name expires_at').lean();
     res.json({ ...identity, device_name: session?.device_name, expires_at: session?.expires_at,
-        protocol_version: 1, pet_available: false });
+        protocol_version: 1, pet_available: identity.scopes.includes('pet:receive'),
+        socket_io: { path: '/socket.io/', namespace: '/desktop', protocol_version: 1 } });
 }));
 oauthApiRoute.delete('/desktop/session', asyncRoute(async (req, res) => {
     const identity = await access(req);

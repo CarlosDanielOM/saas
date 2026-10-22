@@ -1,3 +1,5 @@
+import { PetSettingsSchema } from '../../schemas/pet_settings.schema.js';
+import { invalidatePet } from '../../pets/state.js';
 import express, { type Request, type Response } from "express";
 import { Types } from "mongoose";
 import { getDragonflyClient } from "../../utils/databases/dragonfly.database.js";
@@ -443,6 +445,11 @@ router.put('/:channelID', authMiddleware as any, async (req: any, res: Response)
             const personality = await getOrCreatePersonality(channelID, user);
             const tierInfo = getTierLimits(user.plan_tier);
 
+            const linkedPet = await PetSettingsSchema.findOne({ userId: user._id, 'settings.personality.source': 'profile' }).lean();
+            const petPersona = () => JSON.stringify({ rules: personality.rules,
+                profile: personality.profiles?.find(profile => profile.profileID === linkedPet?.settings.personality.profileId) });
+            const previousPetPersona = linkedPet ? petPersona() : null;
+
             const sanitizedEnabled = typeof body.enabled === 'boolean' ? body.enabled : personality.enabled;
             const sanitizedStreamSummariesEnabled =
                 typeof body.streamSummariesEnabled === 'boolean'
@@ -530,6 +537,7 @@ router.put('/:channelID', authMiddleware as any, async (req: any, res: Response)
             (personality as any).updatedAt = new Date();
 
             await (personality as any).save();
+            if (linkedPet && previousPetPersona !== petPersona()) await invalidatePet(String(user._id), 'personality_changed');
 
             // Invalidate cache so next read gets fresh data
             const cacheClient = await getDragonflyClient('Messages');

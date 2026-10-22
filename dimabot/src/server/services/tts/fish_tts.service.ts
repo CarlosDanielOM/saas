@@ -58,11 +58,14 @@ async function readBackendAudio(
     text: string,
     referenceId: string,
     backend: string,
-    channelID: string
+    channelID: string,
+    request: TtsSynthesisRequest
 ): Promise<Buffer> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), FISH_ATTEMPT_TIMEOUT_MS);
     try {
+        const signal = request.signal ? AbortSignal.any([request.signal, controller.signal]) : controller.signal;
+        signal.throwIfAborted();
         let audio: ReadableStream<Uint8Array>;
         if (backend === FISH_OPENROUTER_MODEL) {
             const apiKey = process.env.OPENROUTER_API_KEY?.trim();
@@ -72,7 +75,7 @@ async function readBackendAudio(
                 headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json', ...OPENROUTER_APP_HEADERS },
                 // OpenRouter maps the Fish voice ID to the upstream reference_id.
                 body: JSON.stringify({ model: FISH_OPENROUTER_MODEL, input: text, voice: referenceId, response_format: 'mp3', user: channelID }),
-                signal: controller.signal
+                signal
             });
             if (!response.ok) {
                 await response.body?.cancel();
@@ -86,10 +89,10 @@ async function readBackendAudio(
         } else {
             const apiKey = process.env.FISH_AUDIO_API_KEY?.trim();
             if (!apiKey) throw new Error('Fish Audio API key is not configured');
-            audio = await convertWithBackend(new FishAudioClient({ apiKey }), text, referenceId, backend, controller.signal);
+            audio = await convertWithBackend(new FishAudioClient({ apiKey }), text, referenceId, backend, signal);
         }
         // One deadline covers headers and the full audio body for either route.
-        const buffer = await readAudioStream(audio, controller.signal);
+        const buffer = await readAudioStream(audio, signal, request.maxAudioBytes);
         if (buffer.length === 0) {
             throw new Error(`Fish Audio TTS returned empty audio from '${backend}'`);
         }
@@ -104,16 +107,18 @@ class FishTtsService implements TtsProvider {
 
     async synthesize(request: TtsSynthesisRequest): Promise<TtsSynthesisResult> {
         try {
-            const outputDir = await ensureSpeechOutputDir(request.channelID);
-            const outputPath = path.join(outputDir, `${request.speechID}.mp3`);
+            request.signal?.throwIfAborted();
+            const outputDir = request.privateOutput ? path.dirname(request.outputPath) : await ensureSpeechOutputDir(request.channelID);
+            await fs.mkdir(outputDir, { recursive: true });
+            const outputPath = request.privateOutput ? request.outputPath : path.join(outputDir, `${request.speechID}.mp3`);
             const referenceId = String(request.voice).trim();
 
             let audio: Buffer | undefined;
             let usedBackend: string | undefined;
             const failures: string[] = [];
-            for (const backend of FISH_TTS_BACKENDS) {
+            for (const backend of request.singleAttempt ? FISH_TTS_BACKENDS.slice(0, 1) : FISH_TTS_BACKENDS) {
                 try {
-                    audio = await readBackendAudio(request.text, referenceId, backend, request.channelID);
+                    audio = await readBackendAudio(request.text, referenceId, backend, request.channelID, request);
                     usedBackend = backend;
                     break;
                 } catch (backendError) {
@@ -135,7 +140,7 @@ class FishTtsService implements TtsProvider {
                 error: false,
                 message: `Speech synthesized with Fish Audio (${usedBackend})`,
                 outputPath,
-                publicPath: buildPublicPath(request.channelID, request.speechID),
+                publicPath: request.privateOutput ? undefined : buildPublicPath(request.channelID, request.speechID),
                 mimeType: 'audio/mpeg'
             };
         } catch (error) {

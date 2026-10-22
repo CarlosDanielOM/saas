@@ -116,7 +116,7 @@ assert.equal((await call('/v1/me/pet', { token: narrow.access_token })).body.err
 const desktop = await mint('pet:read desktop:connect');
 result = await call('/v1/me/pet', { token: desktop.access_token });
 assert.equal(result.status, 200);
-assert.equal(result.body.schemaVersion, 1);
+assert.equal(result.body.schemaVersion, 2);
 assert.equal(result.body.revision, revision);
 assert.equal(result.body.runtime.playbackAvailable, false);
 assert.ok(!('profiles' in result.body) && !('voices' in result.body));
@@ -146,5 +146,5 @@ assert.equal(await PetSettingsSchema.countDocuments(), 1, 'one config per owner;
 assert.equal((await call(`/pets/${other}/settings`, { token: 'pet-other-token' })).body.data.revision, 0);
 assert.equal((await call('/v1/desktop/session', { token: desktop.access_token, method: 'DELETE' })).status, 200);
 assert.equal((await call('/v1/me/pet', { token: desktop.access_token })).status, 401);
-console.log('PASS pet config: persistence, revision races, validation, account isolation, Premium/Pro gating, OAuth consent/scope/revocation, profile resolution, no playback');
+console.log('PASS pet config: persistence, revision races, validation, account isolation, Premium/Pro gating, OAuth consent/scope/revocation, profile resolution (playback not exercised)');
 process.exit(0);
