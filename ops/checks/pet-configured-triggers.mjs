@@ -1,5 +1,6 @@
 /** Real configured producer acceptance in an exact bot/cron candidate.
- * Real signed chat -> command handler -> admission, and journal/dispatch/drain -> configured EventSub -> admission.
+ * Real signed chat -> command handler -> admission, and journal -> configured EventSub -> admission.
+ * Cron mode waits for the packaged supervisor/dispatcher/IPC consumer; bot mode explicitly dispatches/drains.
  * Disposable Mongo/Redis only. The API is an explicitly started child; outbound Twitch/LLM/TTS/Polar remain mocked.
  * Lease/election, PCM fixture and usage assertions follow the verified pet-runtime check.
  */
@@ -8,13 +9,14 @@ import { createHmac, randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { once } from 'node:events';
 import { spawn } from 'node:child_process';
-import { openSync, closeSync } from 'node:fs';
+import { openSync, closeSync, existsSync, readFileSync } from 'node:fs';
 const require = createRequire('/app/package.json');
 const { WebSocket } = require('ws');
 const { GridFSBucket, ObjectId } = require('mongodb');
 assert.equal(process.env.MONGO_URI, 'mongodb://mongo:27017/saas_ops_pet_producer_test');
 assert.ok(['bot', 'cron'].includes(process.env.SAAS_TARGET));
 assert.equal(process.env.PIPER_HTTP_URL, 'http://pet-piper.test');
+const cron = process.env.SAAS_TARGET === 'cron';
 const { getMongoDBConnection } = await import('/app/dist/utils/databases/mongodb.database.js');
 const { getDragonflyClient } = await import('/app/dist/utils/databases/dragonfly.database.js');
 const { PetRequest, PetRuntime } = await import('/app/dist/schemas/pet_runtime.schema.js');
@@ -25,16 +27,18 @@ const { ChannelModerationSettingsSchema } = await import('/app/dist/schemas/chan
 const { default: EventsubSchema } = await import('/app/dist/schemas/eventsub.schema.js');
 const { DomainEventSchema } = await import('/app/dist/schemas/domain_event.schema.js');
 const { DomainEventDeliverySchema } = await import('/app/dist/schemas/domain_event_delivery.schema.js');
-const { DOMAIN_EVENT_CONSUMERS } = await import('/app/dist/domain_events/domain_event_consumers.js');
-const { dispatchDomainEvents, drainDomainEvents } = await import('/app/dist/utils/domain_event_consumer.js');
+// Cron must not import or call a manual drain/dispatch/handler from the check.
+const manual = cron ? null : await import('/app/dist/utils/domain_event_consumer.js');
+const consumer = cron ? null : (await import('/app/dist/domain_events/domain_event_consumers.js'))
+  .DOMAIN_EVENT_CONSUMERS.find(item => item.consumer === 'chat-announcements-v1');
+if (!cron) assert.ok(consumer);
+const consumerName = 'chat-announcements-v1';
 const { AI_CREDITS_CACHE_SCHEMA_VERSION } = await import('/app/dist/utils/billing.js');
 const mongo = await getMongoDBConnection('pet-configured-trigger-check');
 const redis = await getDragonflyClient('pet-configured-trigger-check');
 const owner = '99003101', login = 'pet_owner', viewer = '99003103';
 const base = 'http://127.0.0.1:3000';
-const consumer = DOMAIN_EVENT_CONSUMERS.find(item => item.consumer === 'chat-announcements-v1');
-assert.ok(consumer);
-let api, apiExit, webhook, ws, renewal, client, renewalError;
+let api, apiExit, webhook, ws, renewal, client, renewalError, cronProcesses;
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function until(fn, label, timeout = 25_000) {
   const deadline = Date.now() + timeout;
@@ -49,6 +53,53 @@ async function evidence() {
 }
 const identity = request => ({ requestId: request._id, channelId: request.channelId, origin: request.origin,
   actionKey: request.actionKey, actor: request.actor, operation: request.operation, text: request.text, payloadHash: request.payloadHash });
+function cronRecords() {
+  const path = '/tmp/pet-cron-processes.jsonl';
+  if (!existsSync(path)) return [];
+  const text = readFileSync(path, 'utf8');
+  const end = text.lastIndexOf('\n');
+  return end < 0 ? [] : text.slice(0, end).split('\n').filter(Boolean).map(JSON.parse);
+}
+function assertProcess(record, parent, script) {
+  assert.equal(record.ppid, parent);
+  assert.equal(Number(readFileSync(`/proc/${record.pid}/status`, 'utf8').match(/^PPid:\s+(\d+)/m)?.[1]), parent);
+  assert.ok(readFileSync(`/proc/${record.pid}/cmdline`, 'utf8').split('\0').some(arg => arg.endsWith(script)));
+  process.kill(record.pid, 0);
+}
+async function assertCronProcesses() {
+  const boots = await until(() => {
+    const rows = cronRecords().filter(row => row.type === 'boot');
+    return ['cron-supervisor', 'cron-dispatcher', 'cron-chat-consumer'].every(role => rows.some(row => row.role === role)) && rows;
+  }, 'packaged cron supervisor -> dispatcher -> real consumer child');
+  const byRole = role => { const rows = boots.filter(row => row.role === role); assert.equal(rows.length, 1, `one ${role}, no restart`); return rows[0]; };
+  const root = byRole('cron-supervisor'), dispatch = byRole('cron-dispatcher'), chat = byRole('cron-chat-consumer');
+  assert.equal(root.pid, 1, 'normal packaged cron command owns container PID 1');
+  assertProcess(root, 0, '/dist/workers/cron.index.js');
+  assertProcess(dispatch, root.pid, '/dist/workers/domain_events.worker.js');
+  assertProcess(chat, dispatch.pid, '/dist/workers/domain_events.worker.js');
+  assert.equal(chat.ipc, true, 'consumer runs under actual supervised IPC');
+  assert.ok(chat.argv.includes(`--consumer=${consumerName}`));
+  assert.ok(![root.pid, dispatch.pid, chat.pid].includes(process.pid), 'check does not own the consumer process');
+  const edges = cronRecords();
+  assert.ok(edges.some(row => row.type === 'spawn' && row.real && row.pid === dispatch.pid && row.ppid === root.pid));
+  assert.ok(edges.some(row => row.type === 'fork' && row.real && row.pid === chat.pid && row.ppid === dispatch.pid && row.consumer === consumerName));
+  return { root, dispatch, chat };
+}
+async function scheduledDelivery(eventKey, status, attempts) {
+  const delivery = await until(() => DomainEventDeliverySchema.findOne({ consumer: consumerName, eventKey, status, attempts }).lean(),
+    `scheduled ${consumerName} ${status} attempt ${attempts}`, 65_000);
+  const claims = await until(() => {
+    const rows = cronRecords().filter(row => row.type === 'claimed' && row.lease.eventKey === eventKey);
+    return rows.length >= attempts && rows;
+  }, `real IPC lease claims for ${eventKey}`);
+  assert.equal(claims.length, attempts);
+  assert.ok(claims.every(row => row.pid === cronProcesses.chat.pid && row.ppid === cronProcesses.dispatch.pid));
+  assert.equal(new Set(claims.map(row => row.lease.leaseToken)).size, attempts, 'each delivery attempt acquires its own real lease');
+  // Only dispatchDomainEvents clears this journal marker. The check never calls
+  // it in cron mode, so the real dispatcher must have scheduled this journal too.
+  await until(() => DomainEventSchema.exists({ eventKey, dispatchPending: false }), `real dispatcher acknowledgement ${eventKey}`);
+  return delivery;
+}
 async function call(path, { method = 'GET', body, token = 'pet-owner-token' } = {}) {
   const response = await fetch(base + path, { method, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
@@ -98,6 +149,14 @@ async function connectPlayer(capability) {
 }
 async function complete(request) {
   const play = await client.event('pet:play', data => data.requestId === request._id);
+  if (cron) {
+    assert.equal(play.leaseId, client.lease.leaseId); assert.equal(play.generation, client.lease.generation);
+    const url = new URL(play.audio.url);
+    assert.ok(url.pathname.startsWith('/pets/playback/'));
+    const media = await fetch(base + url.pathname + url.search);
+    assert.equal(media.status, 200); assert.equal((await media.arrayBuffer()).byteLength, 16044);
+    assert.equal(play.audio.durationMs, 500);
+  }
   const index = client.events.findIndex(item => item.event === 'pet:play' && item.data.requestId === request._id);
   assert.equal(client.events[index - 1]?.event, 'pet:request');
   assert.equal(client.events[index - 1]?.data.request.status, 'ready');
@@ -123,7 +182,10 @@ const chat = text => ({ ...broadcaster, chatter_user_id: viewer, chatter_user_lo
   message_id: randomUUID(), badges: [], message: { text, fragments: [{ type: 'text', text }] }, color: '#ffffff', message_type: 'text',
   cheer: null, reply: null, channel_points_custom_reward_id: null });
 const requestFor = (kind, id) => until(() => PetRequest.findOne({ 'origin.kind': kind, 'origin.id': id }).lean(), `admission ${id}`);
-async function drain() { await dispatchDomainEvents([consumer]); return drainDomainEvents(consumer); }
+async function drain() {
+  assert.equal(cron, false, 'cron acceptance never manually dispatches/drains');
+  await manual.dispatchDomainEvents([consumer]); return manual.drainDomainEvents(consumer);
+}
 
 try {
   // Same default configuration, private GIF and browser ready/election setup as pet-runtime.mjs.
@@ -164,7 +226,7 @@ try {
   // Only this explicitly started API may perform synthesis/LLM/billing work.
   const log = openSync('/tmp/pet-configured-api.log', 'w');
   api = spawn(process.execPath, ['/app/dist/server/index.js'], { cwd: '/app',
-    env: { ...process.env, PET_PRODUCER_ROLE: 'api-runtime' }, stdio: ['ignore', log, log] });
+    env: { ...process.env, PET_PRODUCER_ROLE: 'api-runtime' }, stdio: ['ignore', log, log], timeout: 240_000 });
   closeSync(log); apiExit = once(api, 'exit');
   await until(async () => { assert.equal(api.exitCode, null, 'API child stays alive');
     try { return (await fetch(base + '/pets/' + owner + '/settings', { headers: { Authorization: 'Bearer pet-owner-token' } })).ok; }
@@ -175,6 +237,12 @@ try {
   assert.equal(persisted.lease.leaseId, client.lease.leaseId, 'actual elected lease persisted for separate producer');
   assert.equal(await redis.hGet(`accounts:twitch:${owner}:data`, 'chat_enabled'), 'true',
     'persisted fixture account and API cache refresh agree that configured announcements are enabled');
+  if (cron) {
+    cronProcesses = await assertCronProcesses();
+    const apiBoot = cronRecords().find(row => row.type === 'boot' && row.role === 'api-runtime' && row.pid === api.pid);
+    assert.ok(apiBoot); assertProcess(apiBoot, process.pid, '/dist/server/index.js');
+    assert.equal(await redis.exists(`twitch:${owner}:tts:queue`), 0);
+  }
 
   if (process.env.SAAS_TARGET === 'bot') {
     webhookURL = 'http://127.0.0.1:3333/eventsub';
@@ -228,42 +296,63 @@ try {
   const bits = { ...broadcaster, user_id: viewer, user_login: 'pet_viewer', user_name: 'Pet viewer', bits: 100,
     is_anonymous: false, message: 'Bits literal $(pet.ask never-evaluate)' };
   const bitsReceipt = { messageId: randomUUID(), timestamp: new Date().toISOString() };
+  // Set the failure before ingress: the actual cron consumer can run as soon as journaling finishes.
+  await redis.set('pet:producer:fail-chat', '1');
   assert.equal((await notify('channel.bits.use', bits, bitsReceipt)).status, 204);
   const bitsEvent = await until(() => DomainEventSchema.findOne({ sourceEventId: bitsReceipt.messageId }).lean(), 'durable bits journal');
-  assert.equal(await PetRequest.countDocuments(), 3, 'immediate bot path does not duplicate durable event effects');
-  await redis.set('pet:producer:fail-chat', '1');
-  assert.equal((await drain()).retried, 1, 'chat failure retains durable delivery after real admission');
+  if (cron) await scheduledDelivery(bitsEvent.eventKey, 'retry', 1);
+  else {
+    assert.equal(await PetRequest.countDocuments(), 3, 'immediate bot path does not duplicate durable event effects');
+    assert.equal((await drain()).retried, 1, 'chat failure retains durable delivery after real admission');
+  }
   const bitsRequest = await requestFor('twitch-event', bitsEvent.eventKey); await complete(bitsRequest);
   assert.equal(bitsRequest.text, bits.message); assert.equal(bitsRequest.origin.occurredAt, bitsEvent.occurredAt.toISOString());
   const bitsIdentity = identity(await PetRequest.findById(bitsRequest._id).lean()), bitsEvidence = await evidence();
   assert.equal(bitsEvidence.providers.filter(item => item.kind === 'llm').length, 1, 'configured bits talk also skips the LLM');
   await redis.del('pet:producer:fail-chat');
-  await DomainEventDeliverySchema.updateOne({ consumer: consumer.consumer, eventKey: bitsEvent.eventKey, status: 'retry' }, { $set: { nextAttemptAt: new Date(0) } });
-  assert.equal((await drain()).succeeded, 1);
+  if (cron) await scheduledDelivery(bitsEvent.eventKey, 'succeeded', 2); // Actual five-second retry, no clock/data shortcut.
+  else {
+    await DomainEventDeliverySchema.updateOne({ consumer: consumerName, eventKey: bitsEvent.eventKey, status: 'retry' }, { $set: { nextAttemptAt: new Date(0) } });
+    assert.equal((await drain()).succeeded, 1);
+  }
   assert.deepEqual(identity(await PetRequest.findById(bitsRequest._id).lean()), bitsIdentity);
   assert.deepEqual(await evidence(), bitsEvidence, 'durable retry keeps the same request, full identity, providers and debit');
   assert.equal((await notify('channel.bits.use', bits, bitsReceipt)).status, 204);
   assert.equal(await DomainEventSchema.countDocuments({ sourceEventId: bitsReceipt.messageId }), 1);
-  await drain(); assert.deepEqual(await evidence(), bitsEvidence);
+  if (cron) await scheduledDelivery(bitsEvent.eventKey, 'succeeded', 2);
+  else await drain();
+  assert.deepEqual(await evidence(), bitsEvidence);
 
   const follow = { ...broadcaster, user_id: viewer, user_login: 'pet_viewer', user_name: 'Pet viewer', followed_at: new Date().toISOString() };
   const followReceipt = { messageId: randomUUID(), timestamp: new Date().toISOString() };
-  assert.equal((await notify('channel.follow', follow, followReceipt)).status, 204);
-  const followEvent = await until(() => DomainEventSchema.findOne({ sourceEventId: followReceipt.messageId }).lean(), 'durable follow journal');
   const beforeFollowChat = await redis.lLen('pet:producer:chat-attempts');
   await redis.del('app:twitch:token');
-  assert.equal((await drain()).succeeded, 1);
+  assert.equal((await notify('channel.follow', follow, followReceipt)).status, 204);
+  const followEvent = await until(() => DomainEventSchema.findOne({ sourceEventId: followReceipt.messageId }).lean(), 'durable follow journal');
+  if (cron) await scheduledDelivery(followEvent.eventKey, 'succeeded', 1);
+  else assert.equal((await drain()).succeeded, 1);
   const followRequest = await requestFor('twitch-event', followEvent.eventKey); await complete(followRequest);
   assert.equal(followRequest.operation, 'ask'); assert.equal(followRequest.origin.occurredAt, follow.followed_at);
   assert.equal(await redis.lLen('pet:producer:chat-attempts'), beforeFollowChat, 'pet-only event sends no empty Twitch chat message');
   const followIdentity = identity(await PetRequest.findById(followRequest._id).lean()), followEvidence = await evidence();
-  await consumer.handler(followEvent); // Simulate duplicate delivery after external acceptance/ack loss.
+  if (cron) {
+    // Disposable-data fault injection represents acceptance followed by a lost
+    // delivery acknowledgement. The real child must reclaim it via its scheduler.
+    const reset = await DomainEventDeliverySchema.updateOne({ consumer: consumerName, eventKey: followEvent.eventKey, status: 'succeeded', attempts: 1 },
+      { $set: { status: 'retry', nextAttemptAt: new Date(), completedAt: null, lockedUntil: null, leaseToken: null } });
+    assert.equal(reset.modifiedCount, 1);
+    await scheduledDelivery(followEvent.eventKey, 'succeeded', 2);
+  } else await consumer.handler(followEvent);
   assert.deepEqual(identity(await PetRequest.findById(followRequest._id).lean()), followIdentity);
   assert.deepEqual(await evidence(), followEvidence, 'real consumer duplicate cannot repeat request or debit');
 
   await EventsubSchema.updateOne({ channelID: owner, type: 'channel.follow' }, { $set: { enabled: false } });
   const disabled = await notify('channel.follow', { ...follow, followed_at: new Date().toISOString() });
-  assert.equal(disabled.status, 204); assert.equal((await drain()).succeeded, 1);
+  assert.equal(disabled.status, 204);
+  if (cron) {
+    const event = await until(() => DomainEventSchema.findOne({ sourceEventId: disabled.messageId }).lean(), 'disabled follow journal');
+    await scheduledDelivery(event.eventKey, 'succeeded', 1);
+  } else assert.equal((await drain()).succeeded, 1);
   assert.deepEqual(await evidence(), followEvidence, 'disabled event never reaches real admission/providers/debit');
   assert.equal(await PetRequest.countDocuments(), 5);
   assert.ifError(renewalError);
@@ -275,6 +364,14 @@ try {
   const outbound = await entries('pet:producer:outbound');
   assert.ok(outbound.length > 0);
   assert.ok(outbound.every(item => item.role === 'api-runtime'), 'bot/cron/check only admit; paid outbound runs in explicit API child');
+  if (cron) {
+    assert.ok(outbound.every(item => item.pid === api.pid), 'the explicitly started API process owns every paid outbound call');
+    assert.deepEqual(await assertCronProcesses(), cronProcesses, 'no relevant supervisor/consumer restarted during delivery');
+    assert.equal(await redis.exists(`twitch:${owner}:tts:queue`), 0, 'pet delivery never enters the normal TTS queue');
+    assert.deepEqual(await redis.keys(`twitch:${owner}:tts:queue:data:*`), [], 'normal TTS retains no pet speech');
+    console.log(JSON.stringify({ cronProcessProof: cronProcesses, checkPid: process.pid, apiPid: api.pid,
+      claims: cronRecords().filter(row => row.type === 'claimed'), requests: followEvidence.requestCount, usageIds: followEvidence.billing.map(item => item.external_id) }));
+  }
 } finally {
   clearInterval(renewal);
   if (ws) ws.terminate();

@@ -62,4 +62,38 @@ flock --close -w 60 /tmp/sam-host-slot.lock scripts/saas-ops verify bot-<run-id>
 rm -rf -- "$PET_PRODUCER_FIXTURES"
 ```
 
-The cron fixture stubs unrelated supervised children and invokes the actual registered durable dispatch/drain within the check. Even after a separately approved cron build, that fixture establishes packaged shared code behavior, not actual supervisor/consumer scheduling. Do not substitute it for missing cron runtime acceptance.
+The bot acceptance above used explicit registered dispatch/drain. It does not establish cron scheduling. The following cron preparation supersedes the old cron bootstrap that replaced every supervised child.
+
+## Cron supervisor fixture checkpoint (not runtime verified)
+
+The updated `cron-boot.mjs` preserves the exact packaged `cron.index.js` command at PID 1, its real `domain_events.worker.js` dispatcher, and the dispatcher's real IPC-forked `--consumer=chat-announcements-v1` child. The test preload forwards all other child-process exports and substitutes inert OS children only for unrelated TypeScript workers, the native index and unrelated durable consumers. It records actual spawn/fork edges, process startup and observed lease-claim IPC in a bounded per-run JSONL file. No admission, event handler, registry, event gate or production module is replaced.
+
+In explicit cron mode, `pet-configured-triggers.mjs` does not import/call manual dispatch, drain or consumer handlers. It verifies the recorded chain against kernel PID/PPid/command-line data, waits for scheduled deliveries and the real dispatch-pending journal marker to clear, and requires a distinct real lease token on each attempt. Signed configured bits cause a chat-transport failure after pet admission, followed by the normal five-second durable retry. The configured follow succeeds without an app token; resetting only its disposable delivery row simulates a lost acknowledgement, and the real scheduled consumer must reclaim it. Full request identity (including canonical occurredAt and payload hash), request count, provider calls, usage IDs and local debit must remain unchanged on retry.
+
+The browser is elected through the actual Socket.IO/API lease path, retrieves the private 500 ms fixture audio, and acknowledges playback. All paid outbound calls must belong to the separately started API PID. Normal TTS queue/data keys remain absent. Existing permission, enabled-event, signature, stale-timestamp, literal argument/LLM injection, direct-talk-zero-LLM and nested-reference assertions remain.
+
+This is an **UNVERIFIED CHECKPOINT**: static diff review only at checkpoint time; no claim of actual cron scheduling, native startup, compilation or runtime pass. The native index/unrelated children are inert in this behavior fixture, so it cannot prove their actual startup or health. Native identity/startup readback is a separate acceptance step; unchanged native behavior suites are not expanded solely because the shared image is rebuilt.
+
+The parent subsequently granted one serial cron build/check turn after API release. The explicit Docker-daemon exception covers this build only; the helper's compiler limits and all load/disk/cache/headroom guards remain mandatory. Start only with at least 12 GiB available, retain 8 GiB throughout, and do not wait automatically or bypass refusal. At actual compiler startup capture kernel `cpu.max=300000 100000`, `memory.max=4294967296`, `memory.swap.max=0`, `pids.max=256`, Docker HostConfig and `CARGO_BUILD_JOBS=2`. The existing Docker daemon is outside that compiler cgroup; do not describe its build work as contained by these limits.
+
+After the explicit handoff, from `/root/saas` with a separate clean same-repository committed worktree (never the API worker's snapshot):
+
+```sh
+flock --close -w 60 /tmp/sam-host-slot.lock scripts/saas-ops build cron \
+  --source-dir /tmp/dima-pet-cron-producer-source --rust-cpus 3 --rust-memory-gib 4
+```
+
+Stage fixtures with the copy recipe above. Against the one resulting exact run, execute serially with normal helper limits:
+
+```sh
+flock --close -w 60 /tmp/sam-host-slot.lock scripts/saas-ops verify cron-<run-id> \
+  --dependency mongo --dependency redis \
+  --test-env ops/checks/pet-producer-fixtures/cron-env.json --fixtures "$PET_PRODUCER_FIXTURES" \
+  --check ops/checks/pet-triggers.mjs
+flock --close -w 60 /tmp/sam-host-slot.lock scripts/saas-ops verify cron-<run-id> \
+  --dependency mongo --dependency redis \
+  --test-env ops/checks/pet-producer-fixtures/cron-env.json --fixtures "$PET_PRODUCER_FIXTURES" \
+  --check ops/checks/pet-configured-triggers.mjs
+```
+
+The compiled seven-file check uses the future five-line raid eligibility fixture correction already in source, so its preload must detect and skip that supplemental mock. The real cron check has no unit preload. Each helper invocation has a 300-second bound; API child lifetime is bounded to 240 seconds and explicit cleanup to five seconds. The legacy full-registry interval still requires the documented final test-process exit after assertions and cleanup. No deployment is part of this worker's authorization.
