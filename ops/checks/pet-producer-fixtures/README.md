@@ -1,6 +1,6 @@
 # DIMA-030 configured pet producer acceptance
 
-The bot producer checks passed on 2026-10-22 against **one unchanged image**, with no deployment or live credentials/provider usage. Cron acceptance remains held; these results do not establish actual cron-supervisor execution or complete the shared pet milestone.
+The bot producer checks passed on 2026-10-22 against **one unchanged image**, with no deployment or live credentials/provider usage. Separate exact-image cron acceptance is recorded below. Neither result declares the shared pet milestone or production rollout complete.
 
 ## Accepted artifact and results
 
@@ -24,7 +24,7 @@ The first real-path attempt completed command playback/billing but correctly ski
 
 The generated JSON and authoring text are also API-packaged artifacts. The separately accepted `api-ae3fc72dfb9f` predates this generated catalog, so publishing the new authoring reference requires an API rebuild. No pet runtime, socket adapter or other backend production source changed during this acceptance turn; prior API/Rust behavioral evidence remains applicable to that unchanged code. The bot's five-line test-source correction alone does not require a product-code rebuild.
 
-Cron remains **HELD**. Do not infer approval to run it, import cached binaries or change the helper. Its stricter option and complete aggregate builder accounting need separate verification/coordination, and the 4 GiB compiler mode still needs at least 12 GiB available at startup with 8 GiB retained headroom.
+At the bot handoff cron remained **HELD**, pending separate build-route authorization and compiler validation. The later explicit Docker-daemon exception and serial cron acceptance are recorded below; the 4 GiB compiler mode retained at least 12 GiB available at startup with an 8 GiB headroom floor. No cached-binary import or helper change was used.
 
 ## Exact check identities (SHA-256)
 
@@ -64,7 +64,7 @@ rm -rf -- "$PET_PRODUCER_FIXTURES"
 
 The bot acceptance above used explicit registered dispatch/drain. It does not establish cron scheduling. The following cron preparation supersedes the old cron bootstrap that replaced every supervised child.
 
-## Cron supervisor fixture checkpoint (not runtime verified)
+## Cron supervisor fixture checkpoint (historical, initially unverified)
 
 The updated `cron-boot.mjs` preserves the exact packaged `cron.index.js` command at PID 1, its real `domain_events.worker.js` dispatcher, and the dispatcher's real IPC-forked `--consumer=chat-announcements-v1` child. The test preload forwards all other child-process exports and substitutes inert OS children only for unrelated TypeScript workers, the native index and unrelated durable consumers. It records actual spawn/fork edges, process startup and observed lease-claim IPC in a bounded per-run JSONL file. No admission, event handler, registry, event gate or production module is replaced.
 
@@ -100,7 +100,7 @@ The compiled seven-file check uses the future five-line raid eligibility fixture
 
 The narrow companion `pet-cron-startup.mjs` uses `cron-startup-env.json` to preserve the actual native index rather than substitute it. All seven native children are enabled against empty disposable data. It compares all eight installed binary hashes with the exact build receipt, checks their actual parent/UID/GID/command identities and three seconds of stable child PIDs, and requires zero paid outbound calls. Unrelated TypeScript workers/consumers remain inert; this is native startup/identity evidence, not an assertion that their unrelated behavior was retested. Stage a `cron-artifacts.json` object containing `run`, `image`, `rustSourceDigest` and `binaries` from that run's `rust_binary_digests`, then run this companion serially with the same fixtures/dependencies and `--test-env ops/checks/pet-producer-fixtures/cron-startup-env.json`. Do not use the unrelated dirty supervisor/telemetry checks as pet acceptance evidence.
 
-## Cron build evidence (runtime checks pending)
+## Cron build evidence
 
 On 2026-10-22, helper build `cron-ea507552f33d` passed from clean committed source checkpoint `a44664463101bb8076617bdc1b50b2ea50ab40c4` in `/tmp/dima-pet-cron-producer-source`. That source includes final API evidence `a935f107` and excludes unrelated dirty Rust/telemetry/docs/image files. No API source worktree was changed. Application snapshot digest: `4b2b855a580a9265a423d035ed34b3beb5d94f67297f77b9c56c2fd82965ced1`. Exact image: `sha256:46706ffeb3c55bfcaf67964675d3fc6404dc965a52b55009c787f1a8b1c328c5`.
 
@@ -108,4 +108,37 @@ The actual compiler container completed in 426.938 seconds. Its running kernel c
 
 Formatting, profile checks, Clippy, tests, release builds and dry runs passed through the supported helper. The Rust log reports 367 passes, zero failures and five ignored external-fixture instances across repeated profiles/doc suites (53 result rows; not 367 unique test cases). TypeScript compilation passed. Private cache key `9522fdfde38006ae48e4fe017fddf138c688d78fef49f47ddd3a949f8231fd8c` was a hit; bytes moved from 4059934720 to 4059947008, with `project_release_clean=true` and the 8 GiB cap preserved. Frozen Rust source digest `fe2c3a5ea470d83bde192d62cfd6cc9382ff1cf780fc920ac7285beb932674d5` and all eight rebuilt binary hashes match accepted run `cron-7629f95f5dfd` exactly.
 
-The first producer verify attempt timed out at the mandatory outer lock before the helper or tests started; another coordinated SAM session held that lock. The parent requested a hold with no automatic retry. At that hold the image was retained, receipt status was `built`, `resources: []`, and no own compiler/test/lock waiter/container remained. Runtime acceptance remains pending until explicit serial handoff; a successful build alone does not establish cron acceptance.
+The first producer verify attempt timed out at the mandatory outer lock before the helper or tests started; another coordinated SAM session held that lock. The parent requested a hold with no automatic retry. At that hold the image was retained, receipt status was `built`, `resources: []`, and no own compiler/test/lock waiter/container remained. Runtime acceptance remained pending until the explicit serial handoff below; a successful build alone did not establish cron acceptance.
+
+## Exact cron acceptance
+
+After the parent's explicit second handoff, all three checks passed serially on the same unchanged `cron-ea507552f33d` image above. Every invocation acquired the required outer lock and used the normal helper app/check limits (2 CPUs/3 GiB/512 PIDs), disposable Mongo/Redis (each 1 CPU/1 GiB/256 PIDs), dummy credentials and an internal test network.
+
+| Exact-image check | Result |
+| --- | --- |
+| `pet-triggers.mjs` | 97/97 across seven compiled files, 3.851 seconds, natural runner exit; packaged raid correction true, supplemental raid preload false |
+| Cron-mode `pet-configured-triggers.mjs` | PASS real signed configured command ingress, real scheduled durable bits/follows and admission; five requests, five TTS calls, two LLM calls, seven unique pet usage IDs |
+| `pet-cron-startup.mjs` | PASS eight receipt binary identities, actual native index and seven real stable child processes at UID/GID 65534; zero paid outbound calls |
+
+The first runtime attempt stopped before any trigger at an overly strict fixture assertion: PID 1's kernel command is the supported relative `node dist/workers/cron.index.js`, while Node's argv records `/app/dist/workers/cron.index.js`. The correction resolves each kernel argument against that process's actual `/proc/PID/cwd` and requires exact `/app/dist/...` identity. PID, PPid, IPC and no-restart assertions remain intact. Only this failed check was rerun; the passing 97-test check and unchanged image were retained. Failed check SHA-256: `fb559857e63a37c575c8e28d2b73f17a6abd9f78f70c5461dbdecfd0b81b4cca`; receipt/log/source are preserved privately. No production source correction or image rebuild was needed.
+
+Successful scheduling proof: actual PID 1 -> dispatcher PID 51 -> real IPC consumer PID 165; check PID 249 and explicit API PID 266 are distinct. The real dispatcher cleared journal dispatch-pending markers. The consumer acquired two different lease tokens for the natural bits retry, two for follow acknowledgement-loss replay, and one for the disabled follow that produced no admission. Full request identity, canonical timestamps/payload hashes, provider counts, usage IDs and local credit debit stayed unchanged across retry. User/LLM tags remained literal, direct/bits talk performed no LLM, denied commands and disabled events created no paid request, and pet-only follow needed no chat token or empty chat send. The elected browser retrieved each private 500 ms WAV and acknowledged playback; normal TTS queue/data keys remained absent. All paid outbound calls belonged to API PID 266.
+
+The separate native check observed actual native index PID 15 owning seven real children (PIDs 19, 20, 22, 25, 26, 32, 37), all UID/GID 65534 with expected command paths and stable identities over three one-second samples. All eight installed hashes matched this build receipt and the prior accepted receipt. This is native startup/identity evidence with empty disposable data. The other TypeScript workers and other durable consumers are inert in these checks; their unrelated behavior was not retested. In the scheduled behavior check the native index itself is also inert. No claim of full unchanged-worker behavior or production startup is made.
+
+The expected mocked Twitch HTTP 503 and its `handler_failed` retry appear in the scheduled consumer log. Unrelated optional embedding lookups from signed chat were blocked by the outbound fixture and logged; no live service/credentials/provider/credits were used. Native startup logs contain no error/failure/restart diagnostic. The real check retains its documented explicit final test-process exit after all assertions and API/socket/PostHog/database cleanup because of the unchanged registry interval. The compiled unit runner and narrow startup checker exit naturally.
+
+| Accepted cron artifact | SHA-256 |
+| --- | --- |
+| Seven-file wrapper | `e2cdcde93691fa832c07362e0e444ee91c9853e6775759cddd57c95629c008bb` |
+| Scheduled real configured check | `d6b3263cd0d927b1a2a30672af7f36649e48249218556e4487a2e177f7d9b560` |
+| Native startup check | `6f052414d7b803cd41a0a6b681762ab064667cec7aeb2806c9ed6ae99b4f70d2` |
+| Scoped cron child preload | `5ecbc2ad40b9c2928c443c698fd97dabc79fe6023d8be4375de006f380ab60c0` |
+| Cron behavior/unit environment | `aa97f34622e6a1637d9b6abc2153fdf742ba21aecbbfc1ad876bec9282b5309a` |
+| Native startup environment | `74f5b3de5a2c2a6db375340482874fc0aeea4cc02326a024c599a5b5d9af327a` |
+| Staged receipt binary identities JSON | `fb50579e83a4e8b4e03b7cde4a05b5fb7ee46ae043e49fb3b52149e5664fb78a` |
+| Complete staged fixture tree (helper algorithm) | `279ce24b73296bdf8b91877bacacbbc63c71db4c1100e454593363e99d2b578d` |
+
+Provider and OAuth mock hashes remain those in the accepted bot table; no admission or event authorization mock is loaded by real acceptance. Private `producer-{unit,scheduled,native-startup}-receipt.json`, corresponding check sources/container logs, failed-attempt evidence, compiler kernel-limit readback, fixture hashes and staged binary identities are retained beside the run receipt. Check source hashes were verified against each saved receipt's `check_digest` before preserving them. No app/catalog/backend product file changed in this turn; the final API artifact accepted at `a935f107` is not invalidated and needs no rebuild for these fixture corrections.
+
+Final helper status is `verified`, `resources: []`. Scoped container/network filters are empty, the build scope is inactive and the outer lock is free. The exact image is retained for root-owned promotion; no deployment occurred. Overall milestone tracking, live promotion, production startup/health and desktop/hardware acceptance remain with the parent and are not declared complete here.

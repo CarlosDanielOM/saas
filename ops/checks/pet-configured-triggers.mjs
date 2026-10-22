@@ -9,7 +9,8 @@ import { createHmac, randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { once } from 'node:events';
 import { spawn } from 'node:child_process';
-import { openSync, closeSync, existsSync, readFileSync } from 'node:fs';
+import { openSync, closeSync, existsSync, readFileSync, readlinkSync } from 'node:fs';
+import { resolve } from 'node:path';
 const require = createRequire('/app/package.json');
 const { WebSocket } = require('ws');
 const { GridFSBucket, ObjectId } = require('mongodb');
@@ -63,7 +64,9 @@ function cronRecords() {
 function assertProcess(record, parent, script) {
   assert.equal(record.ppid, parent);
   assert.equal(Number(readFileSync(`/proc/${record.pid}/status`, 'utf8').match(/^PPid:\s+(\d+)/m)?.[1]), parent);
-  assert.ok(readFileSync(`/proc/${record.pid}/cmdline`, 'utf8').split('\0').some(arg => arg.endsWith(script)));
+  const args = readFileSync(`/proc/${record.pid}/cmdline`, 'utf8').split('\0').filter(Boolean);
+  const cwd = readlinkSync(`/proc/${record.pid}/cwd`);
+  assert.ok(args.some(arg => resolve(cwd, arg) === `/app${script}`), `exact packaged script in kernel command: ${JSON.stringify(args)}`);
   process.kill(record.pid, 0);
 }
 async function assertCronProcesses() {
