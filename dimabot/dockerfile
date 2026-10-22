@@ -47,7 +47,7 @@ RUN npm install --include=dev
 # services (bot/server) and the combined 'dev-bot' service.
 COPY . .
 
-# saas-ops stages the seven checked native musl binaries for the cron target only.
+# saas-ops stages eight checked native musl binaries for the cron target only.
 # Compilation happens separately under hard cgroup limits, never in BuildKit.
 RUN set -eu; if [ -d .saas-native ]; then \
       install -m 0755 .saas-native/stream_activity /usr/local/bin/stream_activity; \
@@ -57,6 +57,7 @@ RUN set -eu; if [ -d .saas-native ]; then \
       install -m 0755 .saas-native/ai_usage_receipts /usr/local/bin/ai_usage_receipts; \
       install -m 0755 .saas-native/raid_sessions /usr/local/bin/raid_sessions; \
       install -m 0755 .saas-native/dashboard_activity /usr/local/bin/dashboard_activity; \
+      install -m 0755 .saas-native/cron_index /usr/local/bin/cron_index; \
       rm -rf .saas-native; \
     fi
 

@@ -1,0 +1,3008 @@
+{
+  "source": "dimabot/src/utils/observability/native_worker_metrics.ts",
+  "cases": [
+    {
+      "worker": "stream-activity",
+      "label": "maximum events",
+      "line": "stream_activity:{\"event\":\"batch\",\"events\":1000,\"durationMs\":10,\"success\":true}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "stream_activity_rust.batch_events",
+          1000,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "stream_activity_rust.project_batch",
+          10,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "stream-activity",
+      "label": "idle",
+      "line": "stream_activity:{\"event\":\"batch\",\"events\":0,\"durationMs\":0,\"success\":true}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "stream_activity_rust.batch_events",
+          0,
+          "idle"
+        ],
+        [
+          "queue_run",
+          "stream_activity_rust.project_batch",
+          0,
+          "idle"
+        ]
+      ]
+    },
+    {
+      "worker": "stream-activity",
+      "label": "failed attempt",
+      "line": "stream_activity:{\"event\":\"batch\",\"events\":0,\"durationMs\":10,\"success\":false}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "stream_activity_rust.batch_events",
+          0,
+          "error"
+        ],
+        [
+          "queue_run",
+          "stream_activity_rust.project_batch",
+          10,
+          "error"
+        ]
+      ]
+    },
+    {
+      "worker": "stream-activity",
+      "label": "fractional duration",
+      "line": "stream_activity:{\"event\":\"batch\",\"events\":1,\"durationMs\":0.5,\"success\":true}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "stream_activity_rust.batch_events",
+          1,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "stream_activity_rust.project_batch",
+          0.5,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "stream-activity",
+      "label": "integer float event notation",
+      "line": "stream_activity:{\"event\":\"batch\",\"events\":1.0,\"durationMs\":2,\"success\":true}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "stream_activity_rust.batch_events",
+          1,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "stream_activity_rust.project_batch",
+          2,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "stream-activity",
+      "label": "bad event count -1",
+      "line": "stream_activity:{\"event\":\"batch\",\"events\":-1,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "stream-activity",
+      "label": "bad event count 0.5",
+      "line": "stream_activity:{\"event\":\"batch\",\"events\":0.5,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "stream-activity",
+      "label": "bad event count 1001",
+      "line": "stream_activity:{\"event\":\"batch\",\"events\":1001,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "stream-activity",
+      "label": "bad event count \"1\"",
+      "line": "stream_activity:{\"event\":\"batch\",\"events\":\"1\",\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "stream-activity",
+      "label": "bad event count null",
+      "line": "stream_activity:{\"event\":\"batch\",\"events\":null,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "stream-activity",
+      "label": "bad event count true",
+      "line": "stream_activity:{\"event\":\"batch\",\"events\":true,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "stream-activity",
+      "label": "bad duration -1",
+      "line": "stream_activity:{\"event\":\"batch\",\"events\":1000,\"durationMs\":-1,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "stream-activity",
+      "label": "bad duration null",
+      "line": "stream_activity:{\"event\":\"batch\",\"events\":1000,\"durationMs\":null,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "stream-activity",
+      "label": "bad duration \"1\"",
+      "line": "stream_activity:{\"event\":\"batch\",\"events\":1000,\"durationMs\":\"1\",\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "stream-activity",
+      "label": "bad duration false",
+      "line": "stream_activity:{\"event\":\"batch\",\"events\":1000,\"durationMs\":false,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "stream-activity",
+      "label": "duration cap",
+      "line": "stream_activity:{\"event\":\"batch\",\"events\":1000,\"durationMs\":300001,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "stream-activity",
+      "label": "numeric consumer ceiling",
+      "line": "stream_activity:{\"event\":\"batch\",\"events\":1000,\"durationMs\":1000000000000000,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "stream-activity",
+      "label": "duration above consumer ceiling",
+      "line": "stream_activity:{\"event\":\"batch\",\"events\":1000,\"durationMs\":1000000000000001,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "stream-activity",
+      "label": "failed positive count",
+      "line": "stream_activity:{\"event\":\"batch\",\"events\":1000,\"durationMs\":10,\"success\":false}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "stream-activity",
+      "label": "private child field",
+      "line": "stream_activity:{\"event\":\"batch\",\"events\":1000,\"durationMs\":10,\"success\":true,\"message\":\"private-child-secret\"}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "stream-activity",
+      "label": "private phase field",
+      "line": "stream_activity:{\"event\":\"batch\",\"events\":1000,\"durationMs\":10,\"success\":true,\"phases\":{\"message\":1}}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "stream-activity",
+      "label": "health without pending",
+      "line": "stream_activity:{\"event\":\"health\",\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "stream-activity",
+      "label": "health failure",
+      "line": "stream_activity:{\"event\":\"health\",\"success\":false}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "stream_activity_rust.health_query",
+          0,
+          "ok"
+        ],
+        [
+          "worker",
+          "stream_activity_rust.health_errors",
+          1,
+          "error"
+        ]
+      ]
+    },
+    {
+      "worker": "stream-activity",
+      "label": "unknown event",
+      "line": "stream_activity:{\"event\":\"custom\",\"events\":1000,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "stream-activity",
+      "label": "wrong prefix",
+      "line": "unregistered:{\"event\":\"batch\",\"events\":1000,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "stream-activity",
+      "label": "bad json/value null",
+      "line": "stream_activity:null",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "stream-activity",
+      "label": "bad json/value []",
+      "line": "stream_activity:[]",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "stream-activity",
+      "label": "bad json/value {invalid}",
+      "line": "stream_activity:{invalid}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "stream-activity",
+      "label": "bad json/value {\"event\":\"batch\",\"events\":1,\"durationMs\":1e309,\"success\":true}",
+      "line": "stream_activity:{\"event\":\"batch\",\"events\":1,\"durationMs\":1e309,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "stream-activity",
+      "label": "oversized",
+      "line": "stream_activity:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                {\"event\":\"batch\",\"events\":1000,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "stream-activity",
+      "label": "exact byte boundary",
+      "line": "stream_activity:{\"event\":\"batch\",\"events\":1,\"durationMs\":10,\"success\":true}                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     ",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "stream_activity_rust.batch_events",
+          1,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "stream_activity_rust.project_batch",
+          10,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "stream-activity",
+      "label": "one byte above boundary",
+      "line": "stream_activity:{\"event\":\"batch\",\"events\":1,\"durationMs\":10,\"success\":true}                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      ",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "stream-activity",
+      "label": "stream health {\"success\":true,\"hasPending\":true,\"oldestPendingAgeMs\":4,\"checkpointSeq\":50,\"activeBatchEvents\":1,\"lastSuccessAgeMs\":80}",
+      "line": "stream_activity:{\"event\":\"health\",\"success\":true,\"hasPending\":true,\"oldestPendingAgeMs\":4,\"checkpointSeq\":50,\"activeBatchEvents\":1,\"lastSuccessAgeMs\":80}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "stream_activity_rust.health_query",
+          1,
+          "ok"
+        ],
+        [
+          "worker",
+          "stream_activity_rust.pending_work",
+          1,
+          "ok"
+        ],
+        [
+          "worker",
+          "stream_activity_rust.oldest_pending_age_ms",
+          4,
+          "ok"
+        ],
+        [
+          "worker",
+          "stream_activity_rust.checkpoint_seq",
+          50,
+          "ok"
+        ],
+        [
+          "worker",
+          "stream_activity_rust.active_batch_events",
+          1,
+          "ok"
+        ],
+        [
+          "worker",
+          "stream_activity_rust.last_success_age_ms",
+          80,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "stream-activity",
+      "label": "stream health {\"success\":true,\"hasPending\":false}",
+      "line": "stream_activity:{\"event\":\"health\",\"success\":true,\"hasPending\":false}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "stream_activity_rust.health_query",
+          1,
+          "ok"
+        ],
+        [
+          "worker",
+          "stream_activity_rust.pending_work",
+          0,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "stream-activity",
+      "label": "stream health {\"success\":true,\"hasPending\":false,\"oldestPendingAgeMs\":0}",
+      "line": "stream_activity:{\"event\":\"health\",\"success\":true,\"hasPending\":false,\"oldestPendingAgeMs\":0}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "stream-activity",
+      "label": "stream health {\"success\":true,\"hasPending\":true,\"checkpointSeq\":0.5}",
+      "line": "stream_activity:{\"event\":\"health\",\"success\":true,\"hasPending\":true,\"checkpointSeq\":0.5}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "stream-activity",
+      "label": "stream health {\"success\":true,\"hasPending\":true,\"lastSuccessAgeMs\":null}",
+      "line": "stream_activity:{\"event\":\"health\",\"success\":true,\"hasPending\":true,\"lastSuccessAgeMs\":null}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "stream-activity",
+      "label": "stream health {\"success\":true,\"hasPending\":true,\"checkpointSeq\":1000000000000000}",
+      "line": "stream_activity:{\"event\":\"health\",\"success\":true,\"hasPending\":true,\"checkpointSeq\":1000000000000000}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "stream_activity_rust.health_query",
+          1,
+          "ok"
+        ],
+        [
+          "worker",
+          "stream_activity_rust.pending_work",
+          1,
+          "ok"
+        ],
+        [
+          "worker",
+          "stream_activity_rust.checkpoint_seq",
+          1000000000000000,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "stream-activity",
+      "label": "stream health {\"success\":true,\"hasPending\":true,\"checkpointSeq\":1000000000000001}",
+      "line": "stream_activity:{\"event\":\"health\",\"success\":true,\"hasPending\":true,\"checkpointSeq\":1000000000000001}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "stream-activity",
+      "label": "stream health {\"success\":false,\"lastSuccessAgeMs\":3}",
+      "line": "stream_activity:{\"event\":\"health\",\"success\":false,\"lastSuccessAgeMs\":3}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "stream_activity_rust.health_query",
+          0,
+          "ok"
+        ],
+        [
+          "worker",
+          "stream_activity_rust.health_errors",
+          1,
+          "error"
+        ],
+        [
+          "worker",
+          "stream_activity_rust.last_success_age_ms",
+          3,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "stream-activity",
+      "label": "stream health {\"success\":false,\"hasPending\":null}",
+      "line": "stream_activity:{\"event\":\"health\",\"success\":false,\"hasPending\":null}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "stream-activity",
+      "label": "stream health {\"success\":false,\"checkpointSeq\":0}",
+      "line": "stream_activity:{\"event\":\"health\",\"success\":false,\"checkpointSeq\":0}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "stream-activity",
+      "label": "stream health {\"success\":false,\"lastSuccessAgeMs\":null}",
+      "line": "stream_activity:{\"event\":\"health\",\"success\":false,\"lastSuccessAgeMs\":null}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "stream-activity",
+      "label": "stream health {\"success\":true,\"hasPending\":false,\"private\":\"private-child-secret\"}",
+      "line": "stream_activity:{\"event\":\"health\",\"success\":true,\"hasPending\":false,\"private\":\"private-child-secret\"}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "maximum events",
+      "line": "follow_defense_baseline:{\"event\":\"batch\",\"events\":1,\"durationMs\":10,\"success\":true}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "follow_defense_baseline_rust.batch_channels",
+          1,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "follow_defense_baseline_rust.project_batch",
+          10,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "idle",
+      "line": "follow_defense_baseline:{\"event\":\"batch\",\"events\":0,\"durationMs\":0,\"success\":true}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "follow_defense_baseline_rust.batch_channels",
+          0,
+          "idle"
+        ],
+        [
+          "queue_run",
+          "follow_defense_baseline_rust.project_batch",
+          0,
+          "idle"
+        ]
+      ]
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "failed attempt",
+      "line": "follow_defense_baseline:{\"event\":\"batch\",\"events\":0,\"durationMs\":10,\"success\":false}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "follow_defense_baseline_rust.batch_channels",
+          0,
+          "error"
+        ],
+        [
+          "queue_run",
+          "follow_defense_baseline_rust.project_batch",
+          10,
+          "error"
+        ]
+      ]
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "fractional duration",
+      "line": "follow_defense_baseline:{\"event\":\"batch\",\"events\":1,\"durationMs\":0.5,\"success\":true}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "follow_defense_baseline_rust.batch_channels",
+          1,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "follow_defense_baseline_rust.project_batch",
+          0.5,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "integer float event notation",
+      "line": "follow_defense_baseline:{\"event\":\"batch\",\"events\":1.0,\"durationMs\":2,\"success\":true}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "follow_defense_baseline_rust.batch_channels",
+          1,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "follow_defense_baseline_rust.project_batch",
+          2,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "bad event count -1",
+      "line": "follow_defense_baseline:{\"event\":\"batch\",\"events\":-1,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "bad event count 0.5",
+      "line": "follow_defense_baseline:{\"event\":\"batch\",\"events\":0.5,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "bad event count 2",
+      "line": "follow_defense_baseline:{\"event\":\"batch\",\"events\":2,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "bad event count \"1\"",
+      "line": "follow_defense_baseline:{\"event\":\"batch\",\"events\":\"1\",\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "bad event count null",
+      "line": "follow_defense_baseline:{\"event\":\"batch\",\"events\":null,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "bad event count true",
+      "line": "follow_defense_baseline:{\"event\":\"batch\",\"events\":true,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "bad duration -1",
+      "line": "follow_defense_baseline:{\"event\":\"batch\",\"events\":1,\"durationMs\":-1,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "bad duration null",
+      "line": "follow_defense_baseline:{\"event\":\"batch\",\"events\":1,\"durationMs\":null,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "bad duration \"1\"",
+      "line": "follow_defense_baseline:{\"event\":\"batch\",\"events\":1,\"durationMs\":\"1\",\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "bad duration false",
+      "line": "follow_defense_baseline:{\"event\":\"batch\",\"events\":1,\"durationMs\":false,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "duration cap",
+      "line": "follow_defense_baseline:{\"event\":\"batch\",\"events\":1,\"durationMs\":300001,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "numeric consumer ceiling",
+      "line": "follow_defense_baseline:{\"event\":\"batch\",\"events\":1,\"durationMs\":1000000000000000,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "duration above consumer ceiling",
+      "line": "follow_defense_baseline:{\"event\":\"batch\",\"events\":1,\"durationMs\":1000000000000001,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "failed positive count",
+      "line": "follow_defense_baseline:{\"event\":\"batch\",\"events\":1,\"durationMs\":10,\"success\":false}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "private child field",
+      "line": "follow_defense_baseline:{\"event\":\"batch\",\"events\":1,\"durationMs\":10,\"success\":true,\"message\":\"private-child-secret\"}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "private phase field",
+      "line": "follow_defense_baseline:{\"event\":\"batch\",\"events\":1,\"durationMs\":10,\"success\":true,\"phases\":{\"message\":1}}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "health without pending",
+      "line": "follow_defense_baseline:{\"event\":\"health\",\"success\":true}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "follow_defense_baseline_rust.health_query",
+          1,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "health failure",
+      "line": "follow_defense_baseline:{\"event\":\"health\",\"success\":false}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "follow_defense_baseline_rust.health_query",
+          0,
+          "ok"
+        ],
+        [
+          "worker",
+          "follow_defense_baseline_rust.health_errors",
+          1,
+          "error"
+        ]
+      ]
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "unknown event",
+      "line": "follow_defense_baseline:{\"event\":\"custom\",\"events\":1,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "wrong prefix",
+      "line": "unregistered:{\"event\":\"batch\",\"events\":1,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "bad json/value null",
+      "line": "follow_defense_baseline:null",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "bad json/value []",
+      "line": "follow_defense_baseline:[]",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "bad json/value {invalid}",
+      "line": "follow_defense_baseline:{invalid}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "bad json/value {\"event\":\"batch\",\"events\":1,\"durationMs\":1e309,\"success\":true}",
+      "line": "follow_defense_baseline:{\"event\":\"batch\",\"events\":1,\"durationMs\":1e309,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "oversized",
+      "line": "follow_defense_baseline:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                {\"event\":\"batch\",\"events\":1,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "exact byte boundary",
+      "line": "follow_defense_baseline:{\"event\":\"batch\",\"events\":1,\"durationMs\":10,\"success\":true}                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             ",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "follow_defense_baseline_rust.batch_channels",
+          1,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "follow_defense_baseline_rust.project_batch",
+          10,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "one byte above boundary",
+      "line": "follow_defense_baseline:{\"event\":\"batch\",\"events\":1,\"durationMs\":10,\"success\":true}                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              ",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "every phase",
+      "line": "follow_defense_baseline:{\"event\":\"batch\",\"events\":1,\"durationMs\":10,\"success\":true,\"phases\":{\"queueMs\":0,\"claimMs\":1,\"ledgerMs\":2,\"streamsMs\":3,\"attacksMs\":4,\"publishMs\":5,\"rescheduleMs\":6}}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "follow_defense_baseline_rust.batch_channels",
+          1,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "follow_defense_baseline_rust.project_batch",
+          10,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "follow_defense_baseline_rust.phase.queueMs",
+          0,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "follow_defense_baseline_rust.phase.claimMs",
+          1,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "follow_defense_baseline_rust.phase.ledgerMs",
+          2,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "follow_defense_baseline_rust.phase.streamsMs",
+          3,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "follow_defense_baseline_rust.phase.attacksMs",
+          4,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "follow_defense_baseline_rust.phase.publishMs",
+          5,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "follow_defense_baseline_rust.phase.rescheduleMs",
+          6,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "partial failure phases",
+      "line": "follow_defense_baseline:{\"event\":\"batch\",\"events\":0,\"durationMs\":10,\"success\":false,\"phases\":{\"queueMs\":2}}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "follow_defense_baseline_rust.batch_channels",
+          0,
+          "error"
+        ],
+        [
+          "queue_run",
+          "follow_defense_baseline_rust.project_batch",
+          10,
+          "error"
+        ],
+        [
+          "queue_run",
+          "follow_defense_baseline_rust.phase.queueMs",
+          2,
+          "error"
+        ]
+      ]
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "phase validation null",
+      "line": "follow_defense_baseline:{\"event\":\"batch\",\"events\":1,\"durationMs\":10,\"success\":true,\"phases\":null}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "phase validation []",
+      "line": "follow_defense_baseline:{\"event\":\"batch\",\"events\":1,\"durationMs\":10,\"success\":true,\"phases\":[]}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "phase validation {\"queueMs\":null}",
+      "line": "follow_defense_baseline:{\"event\":\"batch\",\"events\":1,\"durationMs\":10,\"success\":true,\"phases\":{\"queueMs\":null}}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "phase validation {\"queueMs\":1000000000000000}",
+      "line": "follow_defense_baseline:{\"event\":\"batch\",\"events\":1,\"durationMs\":10,\"success\":true,\"phases\":{\"queueMs\":1000000000000000}}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "follow_defense_baseline_rust.batch_channels",
+          1,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "follow_defense_baseline_rust.project_batch",
+          10,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "follow_defense_baseline_rust.phase.queueMs",
+          1000000000000000,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "phase validation {\"queueMs\":1000000000000001}",
+      "line": "follow_defense_baseline:{\"event\":\"batch\",\"events\":1,\"durationMs\":10,\"success\":true,\"phases\":{\"queueMs\":1000000000000001}}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "phase validation {\"queueMs\":2,\"private\":5}",
+      "line": "follow_defense_baseline:{\"event\":\"batch\",\"events\":1,\"durationMs\":10,\"success\":true,\"phases\":{\"queueMs\":2,\"private\":5}}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "native health {\"success\":true,\"dueChannels\":4,\"oldestDueAgeMs\":50,\"lastSuccessAgeMs\":80}",
+      "line": "follow_defense_baseline:{\"event\":\"health\",\"success\":true,\"dueChannels\":4,\"oldestDueAgeMs\":50,\"lastSuccessAgeMs\":80}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "follow_defense_baseline_rust.health_query",
+          1,
+          "ok"
+        ],
+        [
+          "worker",
+          "follow_defense_baseline_rust.backlog_channels",
+          4,
+          "ok"
+        ],
+        [
+          "worker",
+          "follow_defense_baseline_rust.oldest_due_age_ms",
+          50,
+          "ok"
+        ],
+        [
+          "worker",
+          "follow_defense_baseline_rust.last_success_age_ms",
+          80,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "native health {\"success\":true,\"dueChannels\":0}",
+      "line": "follow_defense_baseline:{\"event\":\"health\",\"success\":true,\"dueChannels\":0}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "follow_defense_baseline_rust.health_query",
+          1,
+          "ok"
+        ],
+        [
+          "worker",
+          "follow_defense_baseline_rust.backlog_channels",
+          0,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "native health {\"success\":true,\"dueChannels\":null,\"oldestDueAgeMs\":20,\"lastSuccessAgeMs\":null}",
+      "line": "follow_defense_baseline:{\"event\":\"health\",\"success\":true,\"dueChannels\":null,\"oldestDueAgeMs\":20,\"lastSuccessAgeMs\":null}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "follow_defense_baseline_rust.health_query",
+          1,
+          "ok"
+        ],
+        [
+          "worker",
+          "follow_defense_baseline_rust.oldest_due_age_ms",
+          20,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "native health {\"success\":false,\"dueChannels\":null,\"oldestDueAgeMs\":null,\"lastSuccessAgeMs\":50}",
+      "line": "follow_defense_baseline:{\"event\":\"health\",\"success\":false,\"dueChannels\":null,\"oldestDueAgeMs\":null,\"lastSuccessAgeMs\":50}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "follow_defense_baseline_rust.health_query",
+          0,
+          "ok"
+        ],
+        [
+          "worker",
+          "follow_defense_baseline_rust.health_errors",
+          1,
+          "error"
+        ],
+        [
+          "worker",
+          "follow_defense_baseline_rust.last_success_age_ms",
+          50,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "native health {\"success\":false,\"dueChannels\":0}",
+      "line": "follow_defense_baseline:{\"event\":\"health\",\"success\":false,\"dueChannels\":0}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "native health {\"success\":false,\"oldestDueAgeMs\":0}",
+      "line": "follow_defense_baseline:{\"event\":\"health\",\"success\":false,\"oldestDueAgeMs\":0}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "native health {\"success\":true,\"dueChannels\":0,\"oldestDueAgeMs\":0}",
+      "line": "follow_defense_baseline:{\"event\":\"health\",\"success\":true,\"dueChannels\":0,\"oldestDueAgeMs\":0}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "native health {\"success\":true,\"dueChannels\":0.5}",
+      "line": "follow_defense_baseline:{\"event\":\"health\",\"success\":true,\"dueChannels\":0.5}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "native health {\"success\":true,\"lastSuccessAgeMs\":1000000000000000}",
+      "line": "follow_defense_baseline:{\"event\":\"health\",\"success\":true,\"lastSuccessAgeMs\":1000000000000000}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "follow_defense_baseline_rust.health_query",
+          1,
+          "ok"
+        ],
+        [
+          "worker",
+          "follow_defense_baseline_rust.last_success_age_ms",
+          1000000000000000,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "native health {\"success\":true,\"lastSuccessAgeMs\":1000000000000001}",
+      "line": "follow_defense_baseline:{\"event\":\"health\",\"success\":true,\"lastSuccessAgeMs\":1000000000000001}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "follow-defense-baseline",
+      "label": "native health {\"success\":true,\"dueChannels\":1,\"private\":\"private-child-secret\"}",
+      "line": "follow_defense_baseline:{\"event\":\"health\",\"success\":true,\"dueChannels\":1,\"private\":\"private-child-secret\"}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "roulette-completion",
+      "label": "maximum events",
+      "line": "roulette_completion:{\"event\":\"batch\",\"events\":100,\"durationMs\":10,\"success\":true}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "roulette_completion_rust.batch_channels",
+          100,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "roulette_completion_rust.project_batch",
+          10,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "roulette-completion",
+      "label": "idle",
+      "line": "roulette_completion:{\"event\":\"batch\",\"events\":0,\"durationMs\":0,\"success\":true}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "roulette_completion_rust.batch_channels",
+          0,
+          "idle"
+        ],
+        [
+          "queue_run",
+          "roulette_completion_rust.project_batch",
+          0,
+          "idle"
+        ]
+      ]
+    },
+    {
+      "worker": "roulette-completion",
+      "label": "failed attempt",
+      "line": "roulette_completion:{\"event\":\"batch\",\"events\":0,\"durationMs\":10,\"success\":false}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "roulette_completion_rust.batch_channels",
+          0,
+          "error"
+        ],
+        [
+          "queue_run",
+          "roulette_completion_rust.project_batch",
+          10,
+          "error"
+        ]
+      ]
+    },
+    {
+      "worker": "roulette-completion",
+      "label": "fractional duration",
+      "line": "roulette_completion:{\"event\":\"batch\",\"events\":1,\"durationMs\":0.5,\"success\":true}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "roulette_completion_rust.batch_channels",
+          1,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "roulette_completion_rust.project_batch",
+          0.5,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "roulette-completion",
+      "label": "integer float event notation",
+      "line": "roulette_completion:{\"event\":\"batch\",\"events\":1.0,\"durationMs\":2,\"success\":true}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "roulette_completion_rust.batch_channels",
+          1,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "roulette_completion_rust.project_batch",
+          2,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "roulette-completion",
+      "label": "bad event count -1",
+      "line": "roulette_completion:{\"event\":\"batch\",\"events\":-1,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "roulette-completion",
+      "label": "bad event count 0.5",
+      "line": "roulette_completion:{\"event\":\"batch\",\"events\":0.5,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "roulette-completion",
+      "label": "bad event count 101",
+      "line": "roulette_completion:{\"event\":\"batch\",\"events\":101,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "roulette-completion",
+      "label": "bad event count \"1\"",
+      "line": "roulette_completion:{\"event\":\"batch\",\"events\":\"1\",\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "roulette-completion",
+      "label": "bad event count null",
+      "line": "roulette_completion:{\"event\":\"batch\",\"events\":null,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "roulette-completion",
+      "label": "bad event count true",
+      "line": "roulette_completion:{\"event\":\"batch\",\"events\":true,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "roulette-completion",
+      "label": "bad duration -1",
+      "line": "roulette_completion:{\"event\":\"batch\",\"events\":100,\"durationMs\":-1,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "roulette-completion",
+      "label": "bad duration null",
+      "line": "roulette_completion:{\"event\":\"batch\",\"events\":100,\"durationMs\":null,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "roulette-completion",
+      "label": "bad duration \"1\"",
+      "line": "roulette_completion:{\"event\":\"batch\",\"events\":100,\"durationMs\":\"1\",\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "roulette-completion",
+      "label": "bad duration false",
+      "line": "roulette_completion:{\"event\":\"batch\",\"events\":100,\"durationMs\":false,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "roulette-completion",
+      "label": "duration cap",
+      "line": "roulette_completion:{\"event\":\"batch\",\"events\":100,\"durationMs\":300001,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "roulette-completion",
+      "label": "numeric consumer ceiling",
+      "line": "roulette_completion:{\"event\":\"batch\",\"events\":100,\"durationMs\":1000000000000000,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "roulette-completion",
+      "label": "duration above consumer ceiling",
+      "line": "roulette_completion:{\"event\":\"batch\",\"events\":100,\"durationMs\":1000000000000001,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "roulette-completion",
+      "label": "failed positive count",
+      "line": "roulette_completion:{\"event\":\"batch\",\"events\":100,\"durationMs\":10,\"success\":false}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "roulette-completion",
+      "label": "private child field",
+      "line": "roulette_completion:{\"event\":\"batch\",\"events\":100,\"durationMs\":10,\"success\":true,\"message\":\"private-child-secret\"}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "roulette-completion",
+      "label": "private phase field",
+      "line": "roulette_completion:{\"event\":\"batch\",\"events\":100,\"durationMs\":10,\"success\":true,\"phases\":{\"message\":1}}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "roulette-completion",
+      "label": "health without pending",
+      "line": "roulette_completion:{\"event\":\"health\",\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "roulette-completion",
+      "label": "health failure",
+      "line": "roulette_completion:{\"event\":\"health\",\"success\":false}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "roulette-completion",
+      "label": "unknown event",
+      "line": "roulette_completion:{\"event\":\"custom\",\"events\":100,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "roulette-completion",
+      "label": "wrong prefix",
+      "line": "unregistered:{\"event\":\"batch\",\"events\":100,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "roulette-completion",
+      "label": "bad json/value null",
+      "line": "roulette_completion:null",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "roulette-completion",
+      "label": "bad json/value []",
+      "line": "roulette_completion:[]",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "roulette-completion",
+      "label": "bad json/value {invalid}",
+      "line": "roulette_completion:{invalid}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "roulette-completion",
+      "label": "bad json/value {\"event\":\"batch\",\"events\":1,\"durationMs\":1e309,\"success\":true}",
+      "line": "roulette_completion:{\"event\":\"batch\",\"events\":1,\"durationMs\":1e309,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "roulette-completion",
+      "label": "oversized",
+      "line": "roulette_completion:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                {\"event\":\"batch\",\"events\":100,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "roulette-completion",
+      "label": "exact byte boundary",
+      "line": "roulette_completion:{\"event\":\"batch\",\"events\":1,\"durationMs\":10,\"success\":true}                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 ",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "roulette_completion_rust.batch_channels",
+          1,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "roulette_completion_rust.project_batch",
+          10,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "roulette-completion",
+      "label": "one byte above boundary",
+      "line": "roulette_completion:{\"event\":\"batch\",\"events\":1,\"durationMs\":10,\"success\":true}                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  ",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "maximum events",
+      "line": "raid_analytics:{\"event\":\"batch\",\"events\":1,\"durationMs\":10,\"success\":true}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "raid_analytics_rust.batch_channels",
+          1,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "raid_analytics_rust.project_batch",
+          10,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "idle",
+      "line": "raid_analytics:{\"event\":\"batch\",\"events\":0,\"durationMs\":0,\"success\":true}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "raid_analytics_rust.batch_channels",
+          0,
+          "idle"
+        ],
+        [
+          "queue_run",
+          "raid_analytics_rust.project_batch",
+          0,
+          "idle"
+        ]
+      ]
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "failed attempt",
+      "line": "raid_analytics:{\"event\":\"batch\",\"events\":0,\"durationMs\":10,\"success\":false}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "raid_analytics_rust.batch_channels",
+          0,
+          "error"
+        ],
+        [
+          "queue_run",
+          "raid_analytics_rust.project_batch",
+          10,
+          "error"
+        ]
+      ]
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "fractional duration",
+      "line": "raid_analytics:{\"event\":\"batch\",\"events\":1,\"durationMs\":0.5,\"success\":true}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "raid_analytics_rust.batch_channels",
+          1,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "raid_analytics_rust.project_batch",
+          0.5,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "integer float event notation",
+      "line": "raid_analytics:{\"event\":\"batch\",\"events\":1.0,\"durationMs\":2,\"success\":true}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "raid_analytics_rust.batch_channels",
+          1,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "raid_analytics_rust.project_batch",
+          2,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "bad event count -1",
+      "line": "raid_analytics:{\"event\":\"batch\",\"events\":-1,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "bad event count 0.5",
+      "line": "raid_analytics:{\"event\":\"batch\",\"events\":0.5,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "bad event count 2",
+      "line": "raid_analytics:{\"event\":\"batch\",\"events\":2,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "bad event count \"1\"",
+      "line": "raid_analytics:{\"event\":\"batch\",\"events\":\"1\",\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "bad event count null",
+      "line": "raid_analytics:{\"event\":\"batch\",\"events\":null,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "bad event count true",
+      "line": "raid_analytics:{\"event\":\"batch\",\"events\":true,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "bad duration -1",
+      "line": "raid_analytics:{\"event\":\"batch\",\"events\":1,\"durationMs\":-1,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "bad duration null",
+      "line": "raid_analytics:{\"event\":\"batch\",\"events\":1,\"durationMs\":null,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "bad duration \"1\"",
+      "line": "raid_analytics:{\"event\":\"batch\",\"events\":1,\"durationMs\":\"1\",\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "bad duration false",
+      "line": "raid_analytics:{\"event\":\"batch\",\"events\":1,\"durationMs\":false,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "duration cap",
+      "line": "raid_analytics:{\"event\":\"batch\",\"events\":1,\"durationMs\":1.7976931348623157e+308,\"success\":true}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "raid_analytics_rust.batch_channels",
+          1,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "raid_analytics_rust.project_batch",
+          1.7976931348623157e+308,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "numeric consumer ceiling",
+      "line": "raid_analytics:{\"event\":\"batch\",\"events\":1,\"durationMs\":1000000000000000,\"success\":true}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "raid_analytics_rust.batch_channels",
+          1,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "raid_analytics_rust.project_batch",
+          1000000000000000,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "duration above consumer ceiling",
+      "line": "raid_analytics:{\"event\":\"batch\",\"events\":1,\"durationMs\":1000000000000001,\"success\":true}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "raid_analytics_rust.batch_channels",
+          1,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "raid_analytics_rust.project_batch",
+          1000000000000001,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "failed positive count",
+      "line": "raid_analytics:{\"event\":\"batch\",\"events\":1,\"durationMs\":10,\"success\":false}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "private child field",
+      "line": "raid_analytics:{\"event\":\"batch\",\"events\":1,\"durationMs\":10,\"success\":true,\"message\":\"private-child-secret\"}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "private phase field",
+      "line": "raid_analytics:{\"event\":\"batch\",\"events\":1,\"durationMs\":10,\"success\":true,\"phases\":{\"message\":1}}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "health without pending",
+      "line": "raid_analytics:{\"event\":\"health\",\"success\":true}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "raid_analytics_rust.health_query",
+          1,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "health failure",
+      "line": "raid_analytics:{\"event\":\"health\",\"success\":false}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "raid_analytics_rust.health_query",
+          0,
+          "ok"
+        ],
+        [
+          "worker",
+          "raid_analytics_rust.health_errors",
+          1,
+          "error"
+        ]
+      ]
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "unknown event",
+      "line": "raid_analytics:{\"event\":\"custom\",\"events\":1,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "wrong prefix",
+      "line": "unregistered:{\"event\":\"batch\",\"events\":1,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "bad json/value null",
+      "line": "raid_analytics:null",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "bad json/value []",
+      "line": "raid_analytics:[]",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "bad json/value {invalid}",
+      "line": "raid_analytics:{invalid}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "bad json/value {\"event\":\"batch\",\"events\":1,\"durationMs\":1e309,\"success\":true}",
+      "line": "raid_analytics:{\"event\":\"batch\",\"events\":1,\"durationMs\":1e309,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "oversized",
+      "line": "raid_analytics:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                {\"event\":\"batch\",\"events\":1,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "exact byte boundary",
+      "line": "raid_analytics:{\"event\":\"batch\",\"events\":1,\"durationMs\":10,\"success\":true}                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      ",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "raid_analytics_rust.batch_channels",
+          1,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "raid_analytics_rust.project_batch",
+          10,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "one byte above boundary",
+      "line": "raid_analytics:{\"event\":\"batch\",\"events\":1,\"durationMs\":10,\"success\":true}                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       ",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "every phase",
+      "line": "raid_analytics:{\"event\":\"batch\",\"events\":1,\"durationMs\":10,\"success\":true,\"phases\":{\"claimMs\":0,\"followQueriesMs\":1,\"followWriteMs\":2,\"period7Ms\":3,\"period30Ms\":4,\"reciprocityMs\":5,\"publishMs\":6,\"releaseMs\":7}}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "raid_analytics_rust.batch_channels",
+          1,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "raid_analytics_rust.project_batch",
+          10,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "raid_analytics_rust.phase.claimMs",
+          0,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "raid_analytics_rust.phase.followQueriesMs",
+          1,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "raid_analytics_rust.phase.followWriteMs",
+          2,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "raid_analytics_rust.phase.period7Ms",
+          3,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "raid_analytics_rust.phase.period30Ms",
+          4,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "raid_analytics_rust.phase.reciprocityMs",
+          5,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "raid_analytics_rust.phase.publishMs",
+          6,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "raid_analytics_rust.phase.releaseMs",
+          7,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "partial failure phases",
+      "line": "raid_analytics:{\"event\":\"batch\",\"events\":0,\"durationMs\":10,\"success\":false,\"phases\":{\"claimMs\":2}}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "raid_analytics_rust.batch_channels",
+          0,
+          "error"
+        ],
+        [
+          "queue_run",
+          "raid_analytics_rust.project_batch",
+          10,
+          "error"
+        ],
+        [
+          "queue_run",
+          "raid_analytics_rust.phase.claimMs",
+          2,
+          "error"
+        ]
+      ]
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "phase validation null",
+      "line": "raid_analytics:{\"event\":\"batch\",\"events\":1,\"durationMs\":10,\"success\":true,\"phases\":null}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "phase validation []",
+      "line": "raid_analytics:{\"event\":\"batch\",\"events\":1,\"durationMs\":10,\"success\":true,\"phases\":[]}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "phase validation {\"claimMs\":null}",
+      "line": "raid_analytics:{\"event\":\"batch\",\"events\":1,\"durationMs\":10,\"success\":true,\"phases\":{\"claimMs\":null}}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "phase validation {\"claimMs\":1000000000000000}",
+      "line": "raid_analytics:{\"event\":\"batch\",\"events\":1,\"durationMs\":10,\"success\":true,\"phases\":{\"claimMs\":1000000000000000}}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "raid_analytics_rust.batch_channels",
+          1,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "raid_analytics_rust.project_batch",
+          10,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "raid_analytics_rust.phase.claimMs",
+          1000000000000000,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "phase validation {\"claimMs\":1000000000000001}",
+      "line": "raid_analytics:{\"event\":\"batch\",\"events\":1,\"durationMs\":10,\"success\":true,\"phases\":{\"claimMs\":1000000000000001}}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "phase validation {\"claimMs\":2,\"private\":5}",
+      "line": "raid_analytics:{\"event\":\"batch\",\"events\":1,\"durationMs\":10,\"success\":true,\"phases\":{\"claimMs\":2,\"private\":5}}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "native health {\"success\":true,\"dueChannels\":4,\"oldestDueAgeMs\":50,\"lastSuccessAgeMs\":80}",
+      "line": "raid_analytics:{\"event\":\"health\",\"success\":true,\"dueChannels\":4,\"oldestDueAgeMs\":50,\"lastSuccessAgeMs\":80}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "raid_analytics_rust.health_query",
+          1,
+          "ok"
+        ],
+        [
+          "worker",
+          "raid_analytics_rust.backlog_channels",
+          4,
+          "ok"
+        ],
+        [
+          "worker",
+          "raid_analytics_rust.oldest_due_age_ms",
+          50,
+          "ok"
+        ],
+        [
+          "worker",
+          "raid_analytics_rust.last_success_age_ms",
+          80,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "native health {\"success\":true,\"dueChannels\":0}",
+      "line": "raid_analytics:{\"event\":\"health\",\"success\":true,\"dueChannels\":0}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "raid_analytics_rust.health_query",
+          1,
+          "ok"
+        ],
+        [
+          "worker",
+          "raid_analytics_rust.backlog_channels",
+          0,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "native health {\"success\":true,\"dueChannels\":null,\"oldestDueAgeMs\":20,\"lastSuccessAgeMs\":null}",
+      "line": "raid_analytics:{\"event\":\"health\",\"success\":true,\"dueChannels\":null,\"oldestDueAgeMs\":20,\"lastSuccessAgeMs\":null}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "raid_analytics_rust.health_query",
+          1,
+          "ok"
+        ],
+        [
+          "worker",
+          "raid_analytics_rust.oldest_due_age_ms",
+          20,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "native health {\"success\":false,\"dueChannels\":null,\"oldestDueAgeMs\":null,\"lastSuccessAgeMs\":50}",
+      "line": "raid_analytics:{\"event\":\"health\",\"success\":false,\"dueChannels\":null,\"oldestDueAgeMs\":null,\"lastSuccessAgeMs\":50}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "raid_analytics_rust.health_query",
+          0,
+          "ok"
+        ],
+        [
+          "worker",
+          "raid_analytics_rust.health_errors",
+          1,
+          "error"
+        ],
+        [
+          "worker",
+          "raid_analytics_rust.last_success_age_ms",
+          50,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "native health {\"success\":false,\"dueChannels\":0}",
+      "line": "raid_analytics:{\"event\":\"health\",\"success\":false,\"dueChannels\":0}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "native health {\"success\":false,\"oldestDueAgeMs\":0}",
+      "line": "raid_analytics:{\"event\":\"health\",\"success\":false,\"oldestDueAgeMs\":0}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "native health {\"success\":true,\"dueChannels\":0,\"oldestDueAgeMs\":0}",
+      "line": "raid_analytics:{\"event\":\"health\",\"success\":true,\"dueChannels\":0,\"oldestDueAgeMs\":0}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "native health {\"success\":true,\"dueChannels\":0.5}",
+      "line": "raid_analytics:{\"event\":\"health\",\"success\":true,\"dueChannels\":0.5}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "native health {\"success\":true,\"lastSuccessAgeMs\":1000000000000000}",
+      "line": "raid_analytics:{\"event\":\"health\",\"success\":true,\"lastSuccessAgeMs\":1000000000000000}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "raid_analytics_rust.health_query",
+          1,
+          "ok"
+        ],
+        [
+          "worker",
+          "raid_analytics_rust.last_success_age_ms",
+          1000000000000000,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "native health {\"success\":true,\"lastSuccessAgeMs\":1000000000000001}",
+      "line": "raid_analytics:{\"event\":\"health\",\"success\":true,\"lastSuccessAgeMs\":1000000000000001}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-analytics",
+      "label": "native health {\"success\":true,\"dueChannels\":1,\"private\":\"private-child-secret\"}",
+      "line": "raid_analytics:{\"event\":\"health\",\"success\":true,\"dueChannels\":1,\"private\":\"private-child-secret\"}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "ai-usage-receipts",
+      "label": "maximum events",
+      "line": "ai_usage_receipts:{\"event\":\"batch\",\"events\":1000,\"durationMs\":10,\"success\":true}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "ai_usage_receipts_rust.batch_receipts",
+          1000,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "ai_usage_receipts_rust.project_batch",
+          10,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "ai-usage-receipts",
+      "label": "idle",
+      "line": "ai_usage_receipts:{\"event\":\"batch\",\"events\":0,\"durationMs\":0,\"success\":true}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "ai_usage_receipts_rust.batch_receipts",
+          0,
+          "idle"
+        ],
+        [
+          "queue_run",
+          "ai_usage_receipts_rust.project_batch",
+          0,
+          "idle"
+        ]
+      ]
+    },
+    {
+      "worker": "ai-usage-receipts",
+      "label": "failed attempt",
+      "line": "ai_usage_receipts:{\"event\":\"batch\",\"events\":0,\"durationMs\":10,\"success\":false}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "ai_usage_receipts_rust.batch_receipts",
+          0,
+          "error"
+        ],
+        [
+          "queue_run",
+          "ai_usage_receipts_rust.project_batch",
+          10,
+          "error"
+        ]
+      ]
+    },
+    {
+      "worker": "ai-usage-receipts",
+      "label": "fractional duration",
+      "line": "ai_usage_receipts:{\"event\":\"batch\",\"events\":1,\"durationMs\":0.5,\"success\":true}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "ai_usage_receipts_rust.batch_receipts",
+          1,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "ai_usage_receipts_rust.project_batch",
+          0.5,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "ai-usage-receipts",
+      "label": "integer float event notation",
+      "line": "ai_usage_receipts:{\"event\":\"batch\",\"events\":1.0,\"durationMs\":2,\"success\":true}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "ai_usage_receipts_rust.batch_receipts",
+          1,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "ai_usage_receipts_rust.project_batch",
+          2,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "ai-usage-receipts",
+      "label": "bad event count -1",
+      "line": "ai_usage_receipts:{\"event\":\"batch\",\"events\":-1,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "ai-usage-receipts",
+      "label": "bad event count 0.5",
+      "line": "ai_usage_receipts:{\"event\":\"batch\",\"events\":0.5,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "ai-usage-receipts",
+      "label": "bad event count 1001",
+      "line": "ai_usage_receipts:{\"event\":\"batch\",\"events\":1001,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "ai-usage-receipts",
+      "label": "bad event count \"1\"",
+      "line": "ai_usage_receipts:{\"event\":\"batch\",\"events\":\"1\",\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "ai-usage-receipts",
+      "label": "bad event count null",
+      "line": "ai_usage_receipts:{\"event\":\"batch\",\"events\":null,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "ai-usage-receipts",
+      "label": "bad event count true",
+      "line": "ai_usage_receipts:{\"event\":\"batch\",\"events\":true,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "ai-usage-receipts",
+      "label": "bad duration -1",
+      "line": "ai_usage_receipts:{\"event\":\"batch\",\"events\":1000,\"durationMs\":-1,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "ai-usage-receipts",
+      "label": "bad duration null",
+      "line": "ai_usage_receipts:{\"event\":\"batch\",\"events\":1000,\"durationMs\":null,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "ai-usage-receipts",
+      "label": "bad duration \"1\"",
+      "line": "ai_usage_receipts:{\"event\":\"batch\",\"events\":1000,\"durationMs\":\"1\",\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "ai-usage-receipts",
+      "label": "bad duration false",
+      "line": "ai_usage_receipts:{\"event\":\"batch\",\"events\":1000,\"durationMs\":false,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "ai-usage-receipts",
+      "label": "duration cap",
+      "line": "ai_usage_receipts:{\"event\":\"batch\",\"events\":1000,\"durationMs\":300001,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "ai-usage-receipts",
+      "label": "numeric consumer ceiling",
+      "line": "ai_usage_receipts:{\"event\":\"batch\",\"events\":1000,\"durationMs\":1000000000000000,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "ai-usage-receipts",
+      "label": "duration above consumer ceiling",
+      "line": "ai_usage_receipts:{\"event\":\"batch\",\"events\":1000,\"durationMs\":1000000000000001,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "ai-usage-receipts",
+      "label": "failed positive count",
+      "line": "ai_usage_receipts:{\"event\":\"batch\",\"events\":1000,\"durationMs\":10,\"success\":false}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "ai-usage-receipts",
+      "label": "private child field",
+      "line": "ai_usage_receipts:{\"event\":\"batch\",\"events\":1000,\"durationMs\":10,\"success\":true,\"message\":\"private-child-secret\"}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "ai-usage-receipts",
+      "label": "private phase field",
+      "line": "ai_usage_receipts:{\"event\":\"batch\",\"events\":1000,\"durationMs\":10,\"success\":true,\"phases\":{\"message\":1}}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "ai-usage-receipts",
+      "label": "health without pending",
+      "line": "ai_usage_receipts:{\"event\":\"health\",\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "ai-usage-receipts",
+      "label": "health failure",
+      "line": "ai_usage_receipts:{\"event\":\"health\",\"success\":false}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "ai-usage-receipts",
+      "label": "unknown event",
+      "line": "ai_usage_receipts:{\"event\":\"custom\",\"events\":1000,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "ai-usage-receipts",
+      "label": "wrong prefix",
+      "line": "unregistered:{\"event\":\"batch\",\"events\":1000,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "ai-usage-receipts",
+      "label": "bad json/value null",
+      "line": "ai_usage_receipts:null",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "ai-usage-receipts",
+      "label": "bad json/value []",
+      "line": "ai_usage_receipts:[]",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "ai-usage-receipts",
+      "label": "bad json/value {invalid}",
+      "line": "ai_usage_receipts:{invalid}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "ai-usage-receipts",
+      "label": "bad json/value {\"event\":\"batch\",\"events\":1,\"durationMs\":1e309,\"success\":true}",
+      "line": "ai_usage_receipts:{\"event\":\"batch\",\"events\":1,\"durationMs\":1e309,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "ai-usage-receipts",
+      "label": "oversized",
+      "line": "ai_usage_receipts:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                {\"event\":\"batch\",\"events\":1000,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "ai-usage-receipts",
+      "label": "exact byte boundary",
+      "line": "ai_usage_receipts:{\"event\":\"batch\",\"events\":1,\"durationMs\":10,\"success\":true}                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   ",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "ai_usage_receipts_rust.batch_receipts",
+          1,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "ai_usage_receipts_rust.project_batch",
+          10,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "ai-usage-receipts",
+      "label": "one byte above boundary",
+      "line": "ai_usage_receipts:{\"event\":\"batch\",\"events\":1,\"durationMs\":10,\"success\":true}                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-sessions",
+      "label": "maximum events",
+      "line": "raid_sessions:{\"event\":\"batch\",\"events\":401,\"durationMs\":10,\"success\":true}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "raid_sessions_rust.batch_items",
+          401,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "raid_sessions_rust.project_batch",
+          10,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "raid-sessions",
+      "label": "idle",
+      "line": "raid_sessions:{\"event\":\"batch\",\"events\":0,\"durationMs\":0,\"success\":true}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "raid_sessions_rust.batch_items",
+          0,
+          "idle"
+        ],
+        [
+          "queue_run",
+          "raid_sessions_rust.project_batch",
+          0,
+          "idle"
+        ]
+      ]
+    },
+    {
+      "worker": "raid-sessions",
+      "label": "failed attempt",
+      "line": "raid_sessions:{\"event\":\"batch\",\"events\":0,\"durationMs\":10,\"success\":false}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "raid_sessions_rust.batch_items",
+          0,
+          "error"
+        ],
+        [
+          "queue_run",
+          "raid_sessions_rust.project_batch",
+          10,
+          "error"
+        ]
+      ]
+    },
+    {
+      "worker": "raid-sessions",
+      "label": "fractional duration",
+      "line": "raid_sessions:{\"event\":\"batch\",\"events\":1,\"durationMs\":0.5,\"success\":true}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "raid_sessions_rust.batch_items",
+          1,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "raid_sessions_rust.project_batch",
+          0.5,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "raid-sessions",
+      "label": "integer float event notation",
+      "line": "raid_sessions:{\"event\":\"batch\",\"events\":1.0,\"durationMs\":2,\"success\":true}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "raid_sessions_rust.batch_items",
+          1,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "raid_sessions_rust.project_batch",
+          2,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "raid-sessions",
+      "label": "bad event count -1",
+      "line": "raid_sessions:{\"event\":\"batch\",\"events\":-1,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-sessions",
+      "label": "bad event count 0.5",
+      "line": "raid_sessions:{\"event\":\"batch\",\"events\":0.5,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-sessions",
+      "label": "bad event count 402",
+      "line": "raid_sessions:{\"event\":\"batch\",\"events\":402,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-sessions",
+      "label": "bad event count \"1\"",
+      "line": "raid_sessions:{\"event\":\"batch\",\"events\":\"1\",\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-sessions",
+      "label": "bad event count null",
+      "line": "raid_sessions:{\"event\":\"batch\",\"events\":null,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-sessions",
+      "label": "bad event count true",
+      "line": "raid_sessions:{\"event\":\"batch\",\"events\":true,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-sessions",
+      "label": "bad duration -1",
+      "line": "raid_sessions:{\"event\":\"batch\",\"events\":401,\"durationMs\":-1,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-sessions",
+      "label": "bad duration null",
+      "line": "raid_sessions:{\"event\":\"batch\",\"events\":401,\"durationMs\":null,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-sessions",
+      "label": "bad duration \"1\"",
+      "line": "raid_sessions:{\"event\":\"batch\",\"events\":401,\"durationMs\":\"1\",\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-sessions",
+      "label": "bad duration false",
+      "line": "raid_sessions:{\"event\":\"batch\",\"events\":401,\"durationMs\":false,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-sessions",
+      "label": "duration cap",
+      "line": "raid_sessions:{\"event\":\"batch\",\"events\":401,\"durationMs\":300001,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-sessions",
+      "label": "numeric consumer ceiling",
+      "line": "raid_sessions:{\"event\":\"batch\",\"events\":401,\"durationMs\":1000000000000000,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-sessions",
+      "label": "duration above consumer ceiling",
+      "line": "raid_sessions:{\"event\":\"batch\",\"events\":401,\"durationMs\":1000000000000001,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-sessions",
+      "label": "failed positive count",
+      "line": "raid_sessions:{\"event\":\"batch\",\"events\":401,\"durationMs\":10,\"success\":false}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-sessions",
+      "label": "private child field",
+      "line": "raid_sessions:{\"event\":\"batch\",\"events\":401,\"durationMs\":10,\"success\":true,\"message\":\"private-child-secret\"}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-sessions",
+      "label": "private phase field",
+      "line": "raid_sessions:{\"event\":\"batch\",\"events\":401,\"durationMs\":10,\"success\":true,\"phases\":{\"message\":1}}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-sessions",
+      "label": "health without pending",
+      "line": "raid_sessions:{\"event\":\"health\",\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-sessions",
+      "label": "health failure",
+      "line": "raid_sessions:{\"event\":\"health\",\"success\":false}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-sessions",
+      "label": "unknown event",
+      "line": "raid_sessions:{\"event\":\"custom\",\"events\":401,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-sessions",
+      "label": "wrong prefix",
+      "line": "unregistered:{\"event\":\"batch\",\"events\":401,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-sessions",
+      "label": "bad json/value null",
+      "line": "raid_sessions:null",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-sessions",
+      "label": "bad json/value []",
+      "line": "raid_sessions:[]",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-sessions",
+      "label": "bad json/value {invalid}",
+      "line": "raid_sessions:{invalid}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-sessions",
+      "label": "bad json/value {\"event\":\"batch\",\"events\":1,\"durationMs\":1e309,\"success\":true}",
+      "line": "raid_sessions:{\"event\":\"batch\",\"events\":1,\"durationMs\":1e309,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-sessions",
+      "label": "oversized",
+      "line": "raid_sessions:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                {\"event\":\"batch\",\"events\":401,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "raid-sessions",
+      "label": "exact byte boundary",
+      "line": "raid_sessions:{\"event\":\"batch\",\"events\":1,\"durationMs\":10,\"success\":true}                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       ",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "raid_sessions_rust.batch_items",
+          1,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "raid_sessions_rust.project_batch",
+          10,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "raid-sessions",
+      "label": "one byte above boundary",
+      "line": "raid_sessions:{\"event\":\"batch\",\"events\":1,\"durationMs\":10,\"success\":true}                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "dashboard-activity",
+      "label": "maximum events",
+      "line": "dashboard_activity:{\"event\":\"batch\",\"events\":502,\"durationMs\":10,\"success\":true}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "dashboard_activity_rust.batch_events",
+          502,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "dashboard_activity_rust.project_batch",
+          10,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "dashboard-activity",
+      "label": "idle",
+      "line": "dashboard_activity:{\"event\":\"batch\",\"events\":0,\"durationMs\":0,\"success\":true}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "dashboard_activity_rust.batch_events",
+          0,
+          "idle"
+        ],
+        [
+          "queue_run",
+          "dashboard_activity_rust.project_batch",
+          0,
+          "idle"
+        ]
+      ]
+    },
+    {
+      "worker": "dashboard-activity",
+      "label": "failed attempt",
+      "line": "dashboard_activity:{\"event\":\"batch\",\"events\":0,\"durationMs\":10,\"success\":false}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "dashboard_activity_rust.batch_events",
+          0,
+          "error"
+        ],
+        [
+          "queue_run",
+          "dashboard_activity_rust.project_batch",
+          10,
+          "error"
+        ]
+      ]
+    },
+    {
+      "worker": "dashboard-activity",
+      "label": "fractional duration",
+      "line": "dashboard_activity:{\"event\":\"batch\",\"events\":1,\"durationMs\":0.5,\"success\":true}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "dashboard_activity_rust.batch_events",
+          1,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "dashboard_activity_rust.project_batch",
+          0.5,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "dashboard-activity",
+      "label": "integer float event notation",
+      "line": "dashboard_activity:{\"event\":\"batch\",\"events\":1.0,\"durationMs\":2,\"success\":true}",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "dashboard_activity_rust.batch_events",
+          1,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "dashboard_activity_rust.project_batch",
+          2,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "dashboard-activity",
+      "label": "bad event count -1",
+      "line": "dashboard_activity:{\"event\":\"batch\",\"events\":-1,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "dashboard-activity",
+      "label": "bad event count 0.5",
+      "line": "dashboard_activity:{\"event\":\"batch\",\"events\":0.5,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "dashboard-activity",
+      "label": "bad event count 503",
+      "line": "dashboard_activity:{\"event\":\"batch\",\"events\":503,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "dashboard-activity",
+      "label": "bad event count \"1\"",
+      "line": "dashboard_activity:{\"event\":\"batch\",\"events\":\"1\",\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "dashboard-activity",
+      "label": "bad event count null",
+      "line": "dashboard_activity:{\"event\":\"batch\",\"events\":null,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "dashboard-activity",
+      "label": "bad event count true",
+      "line": "dashboard_activity:{\"event\":\"batch\",\"events\":true,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "dashboard-activity",
+      "label": "bad duration -1",
+      "line": "dashboard_activity:{\"event\":\"batch\",\"events\":502,\"durationMs\":-1,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "dashboard-activity",
+      "label": "bad duration null",
+      "line": "dashboard_activity:{\"event\":\"batch\",\"events\":502,\"durationMs\":null,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "dashboard-activity",
+      "label": "bad duration \"1\"",
+      "line": "dashboard_activity:{\"event\":\"batch\",\"events\":502,\"durationMs\":\"1\",\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "dashboard-activity",
+      "label": "bad duration false",
+      "line": "dashboard_activity:{\"event\":\"batch\",\"events\":502,\"durationMs\":false,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "dashboard-activity",
+      "label": "duration cap",
+      "line": "dashboard_activity:{\"event\":\"batch\",\"events\":502,\"durationMs\":300001,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "dashboard-activity",
+      "label": "numeric consumer ceiling",
+      "line": "dashboard_activity:{\"event\":\"batch\",\"events\":502,\"durationMs\":1000000000000000,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "dashboard-activity",
+      "label": "duration above consumer ceiling",
+      "line": "dashboard_activity:{\"event\":\"batch\",\"events\":502,\"durationMs\":1000000000000001,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "dashboard-activity",
+      "label": "failed positive count",
+      "line": "dashboard_activity:{\"event\":\"batch\",\"events\":502,\"durationMs\":10,\"success\":false}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "dashboard-activity",
+      "label": "private child field",
+      "line": "dashboard_activity:{\"event\":\"batch\",\"events\":502,\"durationMs\":10,\"success\":true,\"message\":\"private-child-secret\"}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "dashboard-activity",
+      "label": "private phase field",
+      "line": "dashboard_activity:{\"event\":\"batch\",\"events\":502,\"durationMs\":10,\"success\":true,\"phases\":{\"message\":1}}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "dashboard-activity",
+      "label": "health without pending",
+      "line": "dashboard_activity:{\"event\":\"health\",\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "dashboard-activity",
+      "label": "health failure",
+      "line": "dashboard_activity:{\"event\":\"health\",\"success\":false}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "dashboard-activity",
+      "label": "unknown event",
+      "line": "dashboard_activity:{\"event\":\"custom\",\"events\":502,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "dashboard-activity",
+      "label": "wrong prefix",
+      "line": "unregistered:{\"event\":\"batch\",\"events\":502,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "dashboard-activity",
+      "label": "bad json/value null",
+      "line": "dashboard_activity:null",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "dashboard-activity",
+      "label": "bad json/value []",
+      "line": "dashboard_activity:[]",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "dashboard-activity",
+      "label": "bad json/value {invalid}",
+      "line": "dashboard_activity:{invalid}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "dashboard-activity",
+      "label": "bad json/value {\"event\":\"batch\",\"events\":1,\"durationMs\":1e309,\"success\":true}",
+      "line": "dashboard_activity:{\"event\":\"batch\",\"events\":1,\"durationMs\":1e309,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "dashboard-activity",
+      "label": "oversized",
+      "line": "dashboard_activity:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                {\"event\":\"batch\",\"events\":502,\"durationMs\":10,\"success\":true}",
+      "accepted": false,
+      "metrics": []
+    },
+    {
+      "worker": "dashboard-activity",
+      "label": "exact byte boundary",
+      "line": "dashboard_activity:{\"event\":\"batch\",\"events\":1,\"durationMs\":10,\"success\":true}                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  ",
+      "accepted": true,
+      "metrics": [
+        [
+          "worker",
+          "dashboard_activity_rust.batch_events",
+          1,
+          "ok"
+        ],
+        [
+          "queue_run",
+          "dashboard_activity_rust.project_batch",
+          10,
+          "ok"
+        ]
+      ]
+    },
+    {
+      "worker": "dashboard-activity",
+      "label": "one byte above boundary",
+      "line": "dashboard_activity:{\"event\":\"batch\",\"events\":1,\"durationMs\":10,\"success\":true}                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   ",
+      "accepted": false,
+      "metrics": []
+    }
+  ],
+  "sourceSha256": "51a26769cd22d80341674f0a84fb482cbab2b5c1574a76986f8645df65301274"
+}

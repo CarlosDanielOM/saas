@@ -1,3 +1,5 @@
+// Stage native-cron-fixture.mjs beside cron-boot.mjs for dual-supervisor verification.
+import { rustRegistry, assertSelectedNatives } from '/tmp/saas-fixtures/native-cron-fixture.mjs';
 // Real cron supervisor + native baseline binary. Stage cron-boot.mjs and the exact
 // dima-analytics/src/store.mjs as analytics-store.mjs in --fixtures. Disposable
 // mongo/redis aliases and fixture database are mandatory; no provider calls.
@@ -185,9 +187,11 @@ try {
     await client.connect(); await redis.connect();
     await mongoose.connect(uri.href, { serverSelectionTimeoutMS: 5000 });
     const initial = await waitFor(() => currentNative(), 'native baseline child');
+    assertSelectedNatives(await records(), ['follow-defense-baseline']);
+    assert.equal(rustRegistry().find(worker => worker.name === 'follow-defense-baseline').binary, '/usr/local/bin/follow_defense_baseline');
     const root = initial.supervisor; await assertNative(root);
     const unrelated = (await records()).filter(row => row.event === 'spawn' && !row.native).map(row => row.worker).sort();
-    assert(unrelated.includes('raid-analytics') && unrelated.includes('stream-activity'));
+    assert(unrelated.includes('follow-defense-actions'), 'existing TS executor is an inert sibling');
     console.log('PASS real supervisor selects only native baseline with restricted env and UID/GID 65534; other workers inert');
     const idle = await waitFor(async () => {
         const rows = (await records()).filter(row => row.event === 'batch' && row.pid === initial.pid && row.frame.success && row.frame.events === 0);

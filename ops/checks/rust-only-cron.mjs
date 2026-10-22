@@ -1,5 +1,5 @@
 // saas-ops candidate check: retired TypeScript worker entrypoints and the
-// native-only cron supervisor.
+// separate TypeScript and Rust cron supervisors.
 //
 // Run against the exact cron candidate with disposable Mongo/Redis and the
 // rust-only fixture hook:
@@ -7,6 +7,7 @@
 //   set -eu
 //   RUST_ONLY_FIXTURES=$(mktemp -d /tmp/rust-only-cron-fixtures.XXXXXX)
 //   trap 'rm -rf -- "$RUST_ONLY_FIXTURES"' EXIT
+//   cp ops/checks/native-cron-fixture.mjs "$RUST_ONLY_FIXTURES/"
 //   cp ops/checks/rust-only-cron-fixtures/cron-boot.mjs "$RUST_ONLY_FIXTURES/"
 //   scripts/saas-ops verify cron-<run-id> \
 //     --dependency mongo --dependency redis \
@@ -17,11 +18,13 @@
 // The real candidate supervisor runs with CRON_WORKER_RUNTIME=tsx and every
 // retired runtime selector set to "typescript". It must still launch native
 // Rust only. stream-activity is a real native child and projects a small fixture
-// batch; ai-usage-receipts fails with ENOENT and roulette-completion exits
+// batch; disposable binary substitution produces ai-usage-receipts ENOENT and
+// roulette-completion exits
 // nonzero so only same-Rust restarts can be observed. Neither
 // RAID_SESSIONS_RUNTIME nor DASHBOARD_ACTIVITY_RUNTIME was an implemented
 // selector: those workers were added directly as native Rust, so those keys are
 // only stale-key no-op probes.
+import { rustRegistry, assertSelectedNatives } from '/tmp/saas-fixtures/native-cron-fixture.mjs';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { readFile, readdir, stat } from 'node:fs/promises';
@@ -133,81 +136,36 @@ for (const file of await walk('/app')) {
 }
 console.log('PASS seven TypeScript src/dist/source-map entrypoints and the archive are absent from /app');
 
-// 2. Registry definitions are native-only. No retired name carries a
-// TypeScript source or dist entry, and the native metadata has no selector.
+// 2. TS owns exactly its surviving definitions; the executable is the native registry.
 const { WORKERS, resolveWorkerLaunch } = await import('/app/dist/workers/cron.index.js');
-const { NATIVE_WORKERS } = await import('/app/dist/utils/observability/native_worker_metrics.js');
-assert.equal(WORKERS.filter(worker => worker.kind === 'native').length, NATIVE.length);
-for (const item of NATIVE) {
-    const definitions = WORKERS.filter(worker => worker.name === item.name);
-    assert.equal(definitions.length, 1, `${item.name} must be registered exactly once`);
-    const [definition] = definitions;
-    assert.equal(definition.kind, 'native', `${item.name} must be a native registry entry`);
-    assert.equal(definition.sourceEntry, undefined, `${item.name} must not retain a TypeScript source entry`);
-    assert.equal(definition.distEntry, undefined, `${item.name} must not retain a compiled entry`);
-    const metadata = NATIVE_WORKERS[item.name];
-    assert(metadata, `${item.name} must have native metadata`);
-    assert.equal(metadata.command, item.command);
-    assert.equal(metadata.runtimeConfig, undefined, `${item.name} must not expose a TypeScript runtime config`);
-    assert.equal(metadata.runtimeEnv, undefined, `${item.name} must not expose a TypeScript runtime selector`);
+assert.equal(WORKERS.length, 19);
+assert(WORKERS.every(worker => worker.kind === 'typescript'));
+for (const item of NATIVE) assert(!WORKERS.some(worker => worker.name === item.name));
+for (const worker of WORKERS) {
+    assert(worker.sourceEntry && worker.distEntry);
+    for (const item of NATIVE) assert(!worker.sourceEntry.includes(item.file) && !worker.distEntry.includes(item.file));
 }
-for (const worker of WORKERS.filter(entry => entry.kind === 'typescript')) {
-    assert(worker.sourceEntry && worker.distEntry, `${worker.name} remains an active TypeScript worker`);
-    for (const item of NATIVE) {
-        assert(!worker.sourceEntry.includes(item.file) && !worker.distEntry.includes(item.file),
-            `${worker.name} must not reference retired ${item.file}`);
-    }
-}
-console.log('PASS seven registry definitions are native-only; remaining TypeScript workers keep their entries');
-
-// 3. node, tsx, and every retired selector value still resolve native Rust.
 const registryEnv = { MONGO_URI: 'mongodb://mongo:27017/rust_only_fixture_registry', DRAGONFLY_HOST: 'redis', DRAGONFLY_PORT: '6379', PATH: process.env.PATH };
-try {
-    for (const runtime of ['node', 'tsx']) {
-        for (const selector of [undefined, 'rust', 'typescript']) {
-            for (const item of RETIRED) {
-                const key = SELECTORS[item.name];
-                if (selector === undefined) delete process.env[key];
-                else process.env[key] = selector;
-                const definition = WORKERS.find(worker => worker.name === item.name);
-                const launch = resolveWorkerLaunch(definition,
-                    { runtime, once: true, dryRun: true, restartDelayMs: 1 }, registryEnv, 0);
-                assert.equal(launch.native, true, `${runtime}/${selector}/${item.name} must launch Rust`);
-                assert.equal(launch.command, item.command, `${runtime}/${selector}/${item.name} command`);
-                assert(launch.args.includes('--telemetry-json'), `${item.name} must use the native metadata protocol`);
-                assert(launch.args.includes('--once') && launch.args.includes('--dry-run'));
-                assert(!launch.args.some(arg => /\.worker\.(ts|js)$/.test(arg)),
-                    `${item.name} must not receive an archived entrypoint argument`);
-                assert.equal(launch.options.uid, 65534);
-                assert.equal(launch.options.gid, 65534);
-            }
-        }
-    }
-} finally {
-    for (const key of Object.values(SELECTORS)) delete process.env[key];
-}
-// 3b. RAID_SESSIONS_RUNTIME and DASHBOARD_ACTIVITY_RUNTIME were never
-// implemented. These stale keys must be inert in both runtimes and must not
-// imply a restorable TypeScript worker.
+// 3. Query the REAL Rust registry for retired/stale selector settings. No Node
+// registry mirror can accidentally certify the wrong native executable.
 for (const runtime of ['node', 'tsx']) {
-    for (const item of NATIVE_ONLY) {
-        const definition = WORKERS.find(worker => worker.name === item.name);
-        for (const value of ['typescript', 'rust', '1', '']) {
-            process.env[item.staleKey] = value;
-            const launch = resolveWorkerLaunch(definition,
-                { runtime, once: true, dryRun: true, restartDelayMs: 1 }, registryEnv, 0);
-            assert.equal(launch.native, true, `${runtime}/${value}/${item.name} must launch Rust`);
-            assert.equal(launch.command, item.command);
-            assert(launch.args.includes('--telemetry-json'), `${item.name} must use the native metadata protocol`);
-            assert(!launch.args.some(arg => /\.worker\.(ts|js)$/.test(arg)),
-                `${item.name} must not receive an archived entrypoint argument`);
-            assert.equal(launch.options.uid, 65534);
-            assert.equal(launch.options.gid, 65534);
+    for (const value of [undefined, 'rust', 'typescript', '1', '']) {
+        const env = { ...registryEnv, CRON_WORKER_RUNTIME: runtime, NODE_OPTIONS: 'PRIVATE_NODE_OPTIONS',
+            FORBIDDEN_FIXTURE_SECRET: 'PRIVATE_ENV' };
+        for (const key of [...Object.values(SELECTORS), ...NATIVE_ONLY.map(item => item.staleKey)]) {
+            if (value !== undefined) env[key] = value;
         }
-        delete process.env[item.staleKey];
+        const registry = rustRegistry({ env, once: true }); assert.equal(registry.length, NATIVE.length);
+        for (const item of NATIVE) {
+            const launch = registry.find(worker => worker.name === item.name); assert(launch);
+            assert.equal(launch.binary, item.command); assert(launch.args.includes('--once'));
+            assert(!launch.args.some(arg => /\.worker\.(ts|js)$/.test(arg)));
+            assert(!launch.envKeys.some(key => Object.values(SELECTORS).includes(key) || key.endsWith('_RUNTIME')
+                || ['NODE_OPTIONS', 'FORBIDDEN_FIXTURE_SECRET'].includes(key)));
+        }
     }
 }
-console.log('PASS node/tsx, every retired selector and stale runtime keys resolve only native Rust');
+console.log('PASS real Rust registry owns seven native definitions; TS owns nineteen; stale selectors never restore TypeScript');
 
 // 3c. A surviving TypeScript worker still launches its own Node/tsx entrypoint.
 // This control must not use any of the seven migrated workers: follow-ledger
@@ -220,8 +178,7 @@ for (const [runtime, command, suffix] of [
     const definition = WORKERS.find(worker => worker.name === TYPESCRIPT_CONTROL);
     assert(definition, `${TYPESCRIPT_CONTROL} must remain registered`);
     assert.equal(definition.kind, 'typescript', `${TYPESCRIPT_CONTROL} must remain a TypeScript worker`);
-    const launch = resolveWorkerLaunch(definition, { runtime, once: false, dryRun: false, restartDelayMs: 1 }, registryEnv, 0);
-    assert.equal(launch.native, false, `${runtime} must still launch active TypeScript workers`);
+    const launch = resolveWorkerLaunch(definition, { runtime, once: false, dryRun: false, restartDelayMs: 1 }, registryEnv);
     assert.equal(launch.command, command);
     assert(launch.args[0].endsWith(suffix), `${runtime} TypeScript entrypoint`);
     assert.equal(launch.options.env.CRON_WORKER_NAME, TYPESCRIPT_CONTROL);
@@ -280,23 +237,16 @@ assert(frame.frame.events >= 1);
 await client.close();
 console.log('PASS the real supervisor ran a real native child that projected fixture activity and emitted native batch metadata');
 
-// 5. Every native worker was supervised by its own command, never a
-// process.execPath/tsx launch of an archived entrypoint.
+// 5. Exactly the three selected native commands execute under Rust. Four
+// unselected natives must have no fixture record and no hidden process.
 const rows = await records();
-for (const item of NATIVE) {
-    // Only spawn attempts identify the requested launch. Frame/exit records do
-    // not carry requestedCommand or the launch command.
-    const attempts = rows.filter(row => row.worker === item.name
-        && (row.event === 'spawn' || row.event === 'spawn-failed'));
-    assert(attempts.length > 0, `${item.name} must be supervised`);
-    for (const row of attempts) {
-        assert.equal(row.requestedCommand, item.command, `${item.name} must request its native command`);
-        if (row.event !== 'spawn') continue;
-        if (row.native) {
-            assert.equal(row.command, item.command, `${item.name} must actually launch its native binary`);
-        } else {
-            assert.equal(row.command, 'inert-fixture-worker', `${item.name} must stay an inert fixture double`);
-        }
+assertSelectedNatives(rows, ['stream-activity', 'ai-usage-receipts', 'roulette-completion']);
+for (const item of NATIVE.filter(item => ['stream-activity', enoentWorker, nonzeroWorker].includes(item.name))) {
+    const launches = rows.filter(row => row.worker === item.name && ['spawn', 'spawn-failed'].includes(row.event));
+    assert(launches.length > 0);
+    for (const row of launches) {
+        assert.equal(row.requestedCommand, item.command);
+        if (row.event === 'spawn') { assert.equal(row.native, true); assert.equal(row.command, item.command); }
     }
 }
 for (const row of rows) {

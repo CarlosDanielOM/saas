@@ -1,0 +1,15 @@
+{
+  "NODE_OPTIONS": "--import=/tmp/saas-fixtures/cron-boot.mjs",
+  "MONGO_URI": "mongodb://mongo:27017/cron_supervisors_fixture_candidate",
+  "DRAGONFLY_HOST": "redis",
+  "DRAGONFLY_PORT": "6379",
+  "SECRET_KEY": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "CRON_WORKER_RESTART_DELAY_MS": "1000",
+  "CRON_WORKER_RUNTIME": "node",
+  "CRON_SUPERVISORS_FIXTURE_SCOPE": "main",
+  "CLIENT_ID": "fixture-client",
+  "CLIENT_SECRET": "PRIVATE_PROVIDER_SECRET",
+  "UNRELATED_FIXTURE_SECRET": "PRIVATE_UNRELATED_SECRET",
+  "AI_USAGE_RECEIPTS_ENABLED": "true",
+  "OTEL_SDK_DISABLED": "true"
+}

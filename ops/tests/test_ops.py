@@ -404,18 +404,19 @@ class OpsTests(unittest.TestCase):
 
     def test_cron_dockerfile_stages_every_checked_native_binary(self):
         dockerfile = (mod.ROOT / "dimabot" / "dockerfile").read_text()
-        self.assertEqual(len(mod.RUST_BINARIES), 7)
+        self.assertEqual(len(mod.RUST_BINARIES), 8)
         self.assertIn("raid_sessions", mod.RUST_BINARIES)
         self.assertIn("dashboard_activity", mod.RUST_BINARIES)
+        self.assertIn("cron_index", mod.RUST_BINARIES)
         for binary in mod.RUST_BINARIES:
             self.assertIn(f"install -m 0755 .saas-native/{binary} /usr/local/bin/{binary};", dockerfile)
-        # The seventh native child must be installed next to the other six.
+        # Seven worker children and their supervisor are staged together.
         self.assertIn("install -m 0755 .saas-native/raid_sessions /usr/local/bin/raid_sessions;", dockerfile)
         self.assertIn("install -m 0755 .saas-native/dashboard_activity /usr/local/bin/dashboard_activity;", dockerfile)
         self.assertIn("if [ -d .saas-native ]", dockerfile)
         self.assertIn("rm -rf .saas-native", dockerfile)
 
-    def test_sixth_and_seventh_native_workers_are_built_installed_and_receipted_in_their_profiles(self):
+    def test_native_binaries_are_built_installed_and_receipted_in_their_profiles(self):
         # Every declared binary must belong to exactly one dependency profile, and
         # the newer workers must use their dedicated profiles.
         profiles = mod.rust_worker_profiles()
@@ -430,6 +431,16 @@ class OpsTests(unittest.TestCase):
         self.assertEqual(profiles["dashboard"]["graph"], "dashboard-worker-dependencies.txt")
         self.assertNotIn("dashboard_activity", profiles["mongo"]["binaries"])
         self.assertNotIn("dashboard_activity", profiles["mongo-redis"]["binaries"])
+        self.assertEqual(list(profiles), ["mongo", "mongo-redis", "dashboard", "cron-supervisor"])
+        self.assertEqual(assigned["cron_index"], "cron-supervisor")
+        self.assertEqual(profiles["cron-supervisor"], {
+            "features": "cron-supervisor", "default_features": False,
+            "binaries": ["cron_index"], "graph": "supervisor-dependencies.txt"})
+        self.assertEqual(set(profiles), set(mod.RUST_GRAPH_FORBIDDEN))
+        self.assertEqual(sum(len(profile["binaries"]) for profile in profiles.values()), 8)
+        for profile in ("mongo", "mongo-redis", "dashboard"):
+            self.assertNotIn("cron-supervisor", profiles[profile]["features"])
+            self.assertNotIn("cron_index", profiles[profile]["binaries"])
         recipe = (mod.ROOT / "ops" / "rust_build.sh").read_text()
         redis_build = '--features "$SAAS_RUST_BASELINE_FEATURES" --bin follow_defense_baseline --bin ai_usage_receipts --bin raid_sessions'
         self.assertIn(redis_build, recipe)
@@ -467,6 +478,17 @@ class OpsTests(unittest.TestCase):
         self.assertLess(dockerfile.index("/usr/local/bin/dashboard_activity"),
                         dockerfile.index("RUN npm run build"))
         self.assertLess(dockerfile.index("/usr/local/bin/dashboard_activity"), dockerfile.index("rm -rf .saas-native"))
+        supervisor_build = '--features "$SAAS_RUST_SUPERVISOR_FEATURES" --bin cron_index'
+        self.assertIn(supervisor_build, recipe)
+        self.assertLess(recipe.index("install -m 0755 /target-cache/release/dashboard_activity"),
+                        recipe.index(supervisor_build))
+        self.assertLess(recipe.index(supervisor_build), recipe.index("install -m 0755 /target-cache/release/cron_index"))
+        self.assertLess(recipe.index("install -m 0755 /target-cache/release/cron_index"),
+                        recipe.index("/artifacts/cron_index --dry-run"))
+        self.assertIn("apk add --no-cache build-base python3", recipe)
+        self.assertLess(recipe.index("apk add --no-cache build-base python3"), recipe.index("cargo test"))
+        self.assertLess(dockerfile.index("/usr/local/bin/cron_index"), dockerfile.index("rm -rf .saas-native"))
+        self.assertLess(dockerfile.index("/usr/local/bin/cron_index"), dockerfile.index("RUN npm run build"))
 
     def test_rust_compiler_has_hard_caps_private_source_and_no_production_mounts(self):
         cache = {"cargo": str(self.root.parent / "cache/cargo"), "target": str(self.root.parent / "cache/target")}
@@ -484,6 +506,7 @@ class OpsTests(unittest.TestCase):
         self.assertIn("--env=SAAS_RUST_FEATURES=mongo", args)
         self.assertIn("--env=SAAS_RUST_BASELINE_FEATURES=mongo,redis", args)
         self.assertIn("--env=SAAS_RUST_DASHBOARD_FEATURES=mongo,redis,http-client,unicode-collation", args)
+        self.assertIn("--env=SAAS_RUST_SUPERVISOR_FEATURES=cron-supervisor", args)
         self.assertIn("--env=SAAS_RUST_FEATURE_MATRIX=0", args)
         # Bounded compiler/test artifacts; release optimization is untouched.
         for key, value in mod.RUST_ARTIFACT_ENV.items():
@@ -499,6 +522,8 @@ class OpsTests(unittest.TestCase):
         with patch.object(mod, "RUST_BASELINE_FEATURES", "mongo,redis,http"), self.assertRaises(mod.OpsError):
             self.ops.rust_container_args(self.path, self.receipt, NEW, cache)
         with patch.object(mod, "RUST_DASHBOARD_FEATURES", "mongo,redis,http"), self.assertRaises(mod.OpsError):
+            self.ops.rust_container_args(self.path, self.receipt, NEW, cache)
+        with patch.object(mod, "RUST_SUPERVISOR_FEATURES", "cron-supervisor,mongo"), self.assertRaises(mod.OpsError):
             self.ops.rust_container_args(self.path, self.receipt, NEW, cache)
         self.assertTrue(any("dst=/source,readonly" in mount for mount in mounts))
         self.assertNotIn("--privileged", args)
@@ -560,12 +585,17 @@ class OpsTests(unittest.TestCase):
         scripts = {
             "rustup": '#!/bin/sh\nprintf "%s\\n" "fixture-musl (default)"\n',
             "rustc": '#!/bin/sh\nprintf "%s\\n" "host: x86_64-unknown-linux-musl"\n',
-            "apk": '#!/bin/sh\nexit 0\n',
+            "apk": '#!/bin/sh\nprintf "apk %s\\n" "$*" >> "$RECIPE_LOG"\n',
             "cargo": '''#!/bin/sh
 printf 'cargo %s\\n' "$*" >> "$RECIPE_LOG"
 if [ "$1" = tree ]; then
-  printf '%s\\n' 'dima-rust v0.1.0' 'mongodb v3.9.1'
+  printf '%s\\n' 'dima-rust v0.1.0'
   case " $* " in
+    *' --features cron-supervisor '*) ;;
+    *) printf '%s\\n' 'mongodb v3.9.1' ;;
+  esac
+  case " $* " in
+    *' --features cron-supervisor '*) printf '%s\\n' 'redis v1.7.1' 'serde v1.0.229' 'serde_json v1.0.154' 'tokio v1.54.0' 'uuid v1.28.0' 'libc v0.2.191' 'dotenvy v0.15.7' 'icu_normalizer v2.3.0' 'icu_provider v2.3.1'; printf '%s' "$SUPERVISOR_GRAPH_EXTRA" ;;
     *' --features mongo,redis,http-client,unicode-collation '*) printf '%s\\n' 'redis v0.32.7' 'reqwest v0.12.28' 'icu_collator v2.3.0'; printf '%s' "$DASHBOARD_GRAPH_EXTRA" ;;
     *' --features mongo,redis '*) printf '%s\\n' 'redis v0.32.7'; printf '%s' "$BASELINE_GRAPH_EXTRA" ;;
     *) printf '%s' "$MONGO_GRAPH_EXTRA" ;;
@@ -584,7 +614,7 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
             (commands / name).chmod(0o755)
         recipe = Path(mod.__file__).with_name("rust_build.sh").read_text()
         cases = (
-            # name, mongo graph, baseline graph, baseline features, dashboard graph, dashboard features
+            # Existing three-profile cases retain their original injected graphs.
             ("valid", "", "", "mongo,redis", "", "mongo,redis,http-client,unicode-collation"),
             ("mongo-redis", "redis v0.32.7\n", "", "mongo,redis", "", "mongo,redis,http-client,unicode-collation"),
             ("mongo-sqlx", "sqlx-core v0.8.6\n", "", "mongo,redis", "", "mongo,redis,http-client,unicode-collation"),
@@ -599,7 +629,18 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
             ("unsupported", "", "", "mongo,redis,http", "", "mongo,redis,http-client,unicode-collation"),
             ("dashboard-unsupported", "", "", "mongo,redis", "", "mongo,redis"),
         )
-        for name, mongo_extra, baseline_extra, baseline_features, dashboard_extra, dashboard_features in cases:
+        cases = tuple(case + ("", "cron-supervisor") for case in cases) + tuple(
+            ("supervisor-" + name, "", "", "mongo,redis", "", "mongo,redis,http-client,unicode-collation",
+             dependency + "\n", "cron-supervisor")
+            for name, dependency in (("mongo", "mongodb v3.9.1"), ("mongo-macros", "mongodb-internal-macros v3.9.1"),
+                                     ("sqlx", "sqlx v0.9.0"),
+                                     ("sqlx-core", "sqlx-core v0.9.0"), ("axum", "axum v0.8.9"),
+                                     ("axum-core", "axum-core v0.5.0"), ("reqwest", "reqwest v0.12.28"),
+                                     ("icu", "icu_collator v2.3.0"))
+        ) + (("supervisor-unsupported", "", "", "mongo,redis", "", "mongo,redis,http-client,unicode-collation",
+              "", "cron-supervisor,redis"),)
+        for (name, mongo_extra, baseline_extra, baseline_features, dashboard_extra, dashboard_features,
+             supervisor_extra, supervisor_features) in cases:
             with self.subTest(case=name):
                 work = self.root.parent / ("recipe-" + name)
                 work.mkdir()
@@ -611,8 +652,10 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
                                         env={"PATH": str(commands) + ":" + os.defpath, "RECIPE_LOG": str(log),
                                              "MONGO_GRAPH_EXTRA": mongo_extra, "BASELINE_GRAPH_EXTRA": baseline_extra,
                                              "DASHBOARD_GRAPH_EXTRA": dashboard_extra,
+                                             "SUPERVISOR_GRAPH_EXTRA": supervisor_extra,
                                              "SAAS_RUST_BASELINE_FEATURES": baseline_features,
-                                             "SAAS_RUST_DASHBOARD_FEATURES": dashboard_features},
+                                             "SAAS_RUST_DASHBOARD_FEATURES": dashboard_features,
+                                             "SAAS_RUST_SUPERVISOR_FEATURES": supervisor_features},
                                         capture_output=True, text=True, check=False)
                 self.assertEqual(result.returncode, 0 if name == "valid" else 1, result.stderr)
                 lines = log.read_text().splitlines() if log.exists() else []
@@ -620,15 +663,17 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
                     self.assertFalse(any(line.startswith("dry-run ") for line in lines))
                     continue
                 builds = [line for line in lines if line.startswith("cargo build ")]
+                self.assertIn("apk add --no-cache build-base python3", lines)
                 self.assertEqual(builds, [
                     "cargo build --locked --release --no-default-features --features mongo --bin stream_activity --bin raid_analytics --bin roulette_completion",
                     "cargo build --locked --release --no-default-features --features mongo,redis --bin follow_defense_baseline --bin ai_usage_receipts --bin raid_sessions",
-                    "cargo build --locked --release --no-default-features --features mongo,redis,http-client,unicode-collation --bin dashboard_activity"])
-                for features in ("mongo", "mongo,redis", "mongo,redis,http-client,unicode-collation"):
+                    "cargo build --locked --release --no-default-features --features mongo,redis,http-client,unicode-collation --bin dashboard_activity",
+                    "cargo build --locked --release --no-default-features --features cron-supervisor --bin cron_index"])
+                for features in ("mongo", "mongo,redis", "mongo,redis,http-client,unicode-collation", "cron-supervisor"):
                     self.assertIn("cargo check --locked --all-targets --no-default-features --features " + features, lines)
                     self.assertIn("cargo clippy --locked --all-targets --no-default-features --features " + features + " -- -D warnings", lines)
                     self.assertIn("cargo test --locked --no-default-features --features " + features, lines)
-                self.assertEqual(len([line for line in lines if line.startswith("dry-run ") and line.endswith(" --dry-run")]), 7)
+                self.assertEqual(len([line for line in lines if line.startswith("dry-run ") and line.endswith(" --dry-run")]), 8)
                 for binary in ["stream_activity", "raid_analytics", "roulette_completion"]:
                     self.assertIn("dry-run " + str(artifacts / binary) + " --dry-run", lines)
                     self.assertLess(next(i for i, line in enumerate(lines) if line.startswith("install ") and line.endswith("/" + binary)),
@@ -643,6 +688,17 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
                 self.assertIn("dry-run " + str(artifacts / "dashboard_activity") + " --dry-run", lines)
                 self.assertIn("install -m 0755 " + str(work / "target/release/dashboard_activity")
                               + " " + str(artifacts / "dashboard_activity"), lines)
+                for binary in mod.RUST_BINARIES:
+                    self.assertIn("dry-run " + str(artifacts / binary) + " --dry-run", lines)
+                    if binary != "cron_index":
+                        self.assertLess(next(i for i, line in enumerate(lines) if line.startswith("install ") and line.endswith("/" + binary)),
+                                        lines.index(builds[3]))
+                self.assertIn("install -m 0755 " + str(work / "target/release/cron_index")
+                              + " " + str(artifacts / "cron_index"), lines)
+                self.assertEqual((artifacts / "supervisor-dependencies.txt").read_text().splitlines(),
+                                 ["dima-rust v0.1.0", "redis v1.7.1", "serde v1.0.229", "serde_json v1.0.154",
+                                  "tokio v1.54.0", "uuid v1.28.0", "libc v0.2.191", "dotenvy v0.15.7",
+                                  "icu_normalizer v2.3.0", "icu_provider v2.3.1"])
                 self.assertFalse(any("feature-matrix" in line or "--all-features" in line for line in lines))
 
     def prepared_rust_cache(self, receipt=None):
@@ -691,6 +747,12 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
         with patch.object(mod, "RUST_BASELINE_FEATURES", "mongo"):
             self.assertNotEqual(self.prepared_rust_cache()["key"], original["key"])
         with patch.object(mod, "RUST_DASHBOARD_FEATURES", "mongo,redis,http-client"):
+            self.assertNotEqual(self.prepared_rust_cache()["key"], original["key"])
+        with patch.object(mod, "RUST_SUPERVISOR_FEATURES", "cron-supervisor,redis"):
+            self.assertNotEqual(self.prepared_rust_cache()["key"], original["key"])
+        profiles = mod.rust_worker_profiles()
+        del profiles["cron-supervisor"]
+        with patch.object(mod, "rust_worker_profiles", return_value=profiles):
             self.assertNotEqual(self.prepared_rust_cache()["key"], original["key"])
         # Missing or tampered artifact-profile settings must never reuse the old
         # cache entry; the exact mapping is part of the persistent identity.
@@ -852,6 +914,9 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
         self.assertEqual(details["worker_profiles"]["dashboard"]["features"], "mongo,redis,http-client,unicode-collation")
         self.assertEqual(details["worker_profiles"]["dashboard"]["binaries"], ["dashboard_activity"])
         self.assertEqual(details["worker_profiles"]["dashboard"]["graph"], "dashboard-worker-dependencies.txt")
+        self.assertEqual(details["worker_profiles"]["cron-supervisor"], {
+            "features": "cron-supervisor", "default_features": False,
+            "binaries": ["cron_index"], "graph": "supervisor-dependencies.txt"})
         self.assertEqual(details["cache_limit_bytes"], 8 * mod.GIB)
         self.assertEqual(details["jobs"], 2)
         self.assertEqual(details["cpus"], 6)
@@ -910,8 +975,9 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
 
     def simulated_rust_build(self, *, exit_code=0, applied_limits=None, raid_artifact="valid", baseline_artifact="valid",
                              roulette_artifact="valid", receipts_artifact="valid", sessions_artifact="valid",
-                             dashboard_artifact="valid",
-                             mongo_extra="", baseline_extra="", dashboard_extra="", cache_bytes=0, memory_gib=6):
+                             dashboard_artifact="valid", supervisor_artifact="valid",
+                             mongo_extra="", baseline_extra="", dashboard_extra="", supervisor_extra="",
+                             supervisor_graph="valid", cache_bytes=0, memory_gib=6):
         self.rust_source()
         (self.path / "source").mkdir()
         self.ops.objects[("image", mod.RUST_BUILD_IMAGE)] = {"Id": NEW}
@@ -929,6 +995,14 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
                 (self.path / "rust-artifacts/baseline-worker-dependencies.txt").write_text("dima-rust v0.1.0\nmongodb v3.9.1\nredis v0.32.7\n" + baseline_extra)
                 (self.path / "rust-artifacts/dashboard-worker-dependencies.txt").write_text(
                     "dima-rust v0.1.0\nmongodb v3.9.1\nredis v0.32.7\nreqwest v0.12.28\nicu_collator v2.3.0\n" + dashboard_extra)
+                graph = self.path / "rust-artifacts/supervisor-dependencies.txt"
+                if supervisor_graph == "valid":
+                    graph.write_text("dima-rust v0.1.0\nredis v1.7.1\nserde v1.0.229\nserde_json v1.0.154\n"
+                                     "tokio v1.54.0\nuuid v1.28.0\nlibc v0.2.191\ndotenvy v0.15.7\nicu_normalizer v2.3.0\nicu_provider v2.3.1\n" + supervisor_extra)
+                elif supervisor_graph == "symlink":
+                    graph.symlink_to(self.path / "rust-artifacts/worker-dependencies.txt")
+                elif supervisor_graph == "oversized":
+                    graph.write_bytes(b"x" * 262145)
                 if cache_bytes:
                     (Path(self.receipt["rust_cache"]["target"]) / "dependency").write_bytes(b"x" * cache_bytes)
                 (self.path / "rust-artifacts/stream_activity").write_bytes(b"\x7fELFfixture")
@@ -974,6 +1048,13 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
                     dashboard.write_bytes(b"unverified host artifact")
                 elif dashboard_artifact == "symlink":
                     dashboard.symlink_to(self.path / "rust-artifacts/stream_activity")
+                supervisor = self.path / "rust-artifacts/cron_index"
+                if supervisor_artifact == "valid":
+                    supervisor.write_bytes(b"\x7fELFsupervisorfixture")
+                elif supervisor_artifact == "invalid":
+                    supervisor.write_bytes(b"unverified host artifact")
+                elif supervisor_artifact == "symlink":
+                    supervisor.symlink_to(self.path / "rust-artifacts/stream_activity")
                 (self.path / "rust-artifacts/toolchain.txt").write_text("host: x86_64-unknown-linux-musl")
             return original_docker(*args, **kwargs)
         return patch.object(self.ops, "docker", side_effect=docker)
@@ -1051,14 +1132,17 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
             "roulette_completion": mod.digest(b"\x7fELFroulettefixture"),
             "ai_usage_receipts": mod.digest(b"\x7fELFreceiptsfixture"),
             "raid_sessions": mod.digest(b"\x7fELFsessionsfixture"),
-            "dashboard_activity": mod.digest(b"\x7fELFdashboardfixture")})
+            "dashboard_activity": mod.digest(b"\x7fELFdashboardfixture"),
+            "cron_index": mod.digest(b"\x7fELFsupervisorfixture")})
         for binary in mod.RUST_BINARIES:
             metadata = self.receipt["rust_binary_metadata"][binary]
             profile = ("mongo-redis" if binary in ("follow_defense_baseline", "ai_usage_receipts", "raid_sessions")
-                       else "dashboard" if binary == "dashboard_activity" else "mongo")
+                       else "dashboard" if binary == "dashboard_activity"
+                       else "cron-supervisor" if binary == "cron_index" else "mongo")
             self.assertEqual(metadata["profile"], profile)
             self.assertEqual(metadata["features"], {"mongo": "mongo", "mongo-redis": "mongo,redis",
-                                                    "dashboard": "mongo,redis,http-client,unicode-collation"}[profile])
+                                                    "dashboard": "mongo,redis,http-client,unicode-collation",
+                                                    "cron-supervisor": "cron-supervisor"}[profile])
             self.assertFalse(metadata["default_features"])
             self.assertEqual(metadata["binary_digest"], self.receipt["rust_binary_digests"][binary])
             self.assertEqual(metadata["dependency_graph_digest"], self.receipt["rust_worker_profiles"][profile]["dependency_graph_digest"])
@@ -1087,6 +1171,13 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
         dashboard_staged = self.path / "source/.saas-native/dashboard_activity"
         self.assertEqual(dashboard_staged.read_bytes(), b"\x7fELFdashboardfixture")
         self.assertEqual(dashboard_staged.stat().st_mode & 0o777, 0o755)
+        supervisor_staged = self.path / "source/.saas-native/cron_index"
+        self.assertEqual(supervisor_staged.read_bytes(), b"\x7fELFsupervisorfixture")
+        self.assertEqual(supervisor_staged.stat().st_mode & 0o777, 0o755)
+        self.assertEqual(self.receipt["rust_binary_metadata"]["cron_index"]["profile"], "cron-supervisor")
+        self.assertNotEqual(self.receipt["rust_worker_profiles"]["dashboard"]["dependency_graph_digest"],
+                            self.receipt["rust_worker_profiles"]["cron-supervisor"]["dependency_graph_digest"])
+        self.assertEqual(sorted(file.name for file in supervisor_staged.parent.iterdir()), sorted(mod.RUST_BINARIES))
         # The seventh worker owns the dashboard Mongo+Redis+HTTP graph.
         self.assertEqual(self.receipt["rust_binary_metadata"]["dashboard_activity"]["features"], "mongo,redis,http-client,unicode-collation")
         self.assertEqual(self.receipt["rust_binary_metadata"]["dashboard_activity"]["profile"], "dashboard")
@@ -1137,9 +1228,14 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
                         "receipts_missing", "receipts_invalid", "receipts_symlink",
                         "sessions_missing", "sessions_invalid", "sessions_symlink",
                         "dashboard_missing", "dashboard_invalid", "dashboard_symlink",
+                        "supervisor_missing", "supervisor_invalid", "supervisor_symlink",
+                        "supervisor_graph_missing", "supervisor_graph_symlink", "supervisor_graph_oversized",
                         "mongo_redis", "mongo_axum", "mongo_reqwest", "mongo_icu",
                         "baseline_sqlx", "baseline_axum", "baseline_reqwest", "baseline_icu",
-                        "dashboard_sqlx", "dashboard_axum"):
+                        "dashboard_sqlx", "dashboard_axum",
+                        "supervisor_mongo", "supervisor_mongo_macros", "supervisor_sqlx", "supervisor_sqlx_core",
+                        "supervisor_axum", "supervisor_axum_core",
+                        "supervisor_reqwest", "supervisor_icu"):
             with self.subTest(failure=failure):
                 # Each simulation uses the same task-owned directories, cleared here.
                 for directory in ("dima-rust",):
@@ -1157,12 +1253,22 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
                                                        receipts_artifact=failure.removeprefix("receipts_") if failure in ("receipts_missing", "receipts_invalid", "receipts_symlink") else "valid",
                                                        sessions_artifact=failure.removeprefix("sessions_") if failure in ("sessions_missing", "sessions_invalid", "sessions_symlink") else "valid",
                                                        dashboard_artifact=failure.removeprefix("dashboard_") if failure in ("dashboard_missing", "dashboard_invalid", "dashboard_symlink") else "valid",
+                                                       supervisor_artifact=failure.removeprefix("supervisor_") if failure in ("supervisor_missing", "supervisor_invalid", "supervisor_symlink") else "valid",
+                                                       supervisor_graph=failure.removeprefix("supervisor_graph_") if failure.startswith("supervisor_graph_") else "valid",
                                                        mongo_extra={"mongo_redis": "redis v0.32.7\n", "mongo_axum": "axum-core v0.5.0\n",
                                                                     "mongo_reqwest": "reqwest v0.12.28\n", "mongo_icu": "icu_collator v2.3.0\n"}.get(failure, ""),
                                                        baseline_extra={"baseline_sqlx": "sqlx-core v0.8.6\n", "baseline_axum": "axum v0.8.0\n",
                                                                        "baseline_reqwest": "reqwest v0.12.28\n", "baseline_icu": "icu_collator v2.3.0\n"}.get(failure, ""),
                                                        dashboard_extra={"dashboard_sqlx": "sqlx-core v0.8.6\n",
-                                                                        "dashboard_axum": "axum v0.8.0\n"}.get(failure, ""))
+                                                                        "dashboard_axum": "axum v0.8.0\n"}.get(failure, ""),
+                                                       supervisor_extra={"supervisor_mongo": "mongodb v3.9.1\n",
+                                                                         "supervisor_mongo_macros": "mongodb-internal-macros v3.9.1\n",
+                                                                         "supervisor_sqlx": "sqlx v0.9.0\n",
+                                                                         "supervisor_sqlx_core": "sqlx-core v0.9.0\n",
+                                                                         "supervisor_axum": "axum v0.8.9\n",
+                                                                         "supervisor_axum_core": "axum-core v0.5.0\n",
+                                                                         "supervisor_reqwest": "reqwest v0.12.28\n",
+                                                                         "supervisor_icu": "icu_collator v2.3.0\n"}.get(failure, ""))
                 with simulation, patch.object(self.ops, "rust_headroom", return_value={}), \
                      patch.object(Path, "home", return_value=self.root.parent), self.assertRaises(mod.OpsError):
                     self.ops.build_rust(self.path, self.receipt)

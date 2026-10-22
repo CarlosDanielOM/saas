@@ -82,11 +82,12 @@ This workspace is a **single git repository** (`saas/`) containing seven existin
 | `dimafx/`   | Twitch Extension (client + server)   | HTML/JS + Node.js           | `server/src/server.ts`, `panel.html`, `config.html` |
 | `dimadb/`   | Internal DB console (Redis first)    | Angular v22 + Node          | `src/app/app.routes.ts`, `server/index.mjs`         |
 | `dima-analytics/` | Private observability and resource analytics service | Node.js / Express + PostgreSQL | `src/index.mjs`, `src/store.mjs`, `src/collectors.mjs` |
-| `dima-rust/` | Rust library and seven deployed native cron workers; current shared-utility release accepted | Rust | `Cargo.toml`, `src/lib.rs`, `src/workers/`, `src/bin/` |
+| `dima-rust/` | Rust library and seven deployed native cron workers; dual-supervisor run accepted; prior shared-utility run retained as rollback target | Rust | `Cargo.toml`, `src/lib.rs`, `src/workers/`, `src/bin/` |
 
-`dima-rust/` contains shared library utilities and seven native workers as separately supervised children of the existing dimabot cron host. The current image, `sha256:adac7d8de9b5c5cfb138f8051a05123ac02a6c3467cc85784873ee85370d892f`, deployed in run `cron-2056ce9d790c` at `2026-10-22T05:15:05.047669035Z`; the nine exact-image suites passed (150 groups) and source identity passed. The 32-sample production watch passed across 332.257 seconds; final readbacks, binary identities, analytics/log checks, and helper cleanup passed. The release is accepted. Roll back with `scripts/saas-ops rollback cron-2056ce9d790c` to the previously accepted run `cron-bf400acbc441`, image `sha256:72df59845ea803f1f619e8d9cfa748a881a0dd0de246da720815a9f8182fda30`, with seven native workers and private helper implementations. An auxiliary broad container comparison found an unrelated `database-private-access` container from `/root/databases/private-access`; only `dima-cron` changed among the original 18 checked containers. See [`migration-notes/worker-shared-utils.md`](migration-notes/worker-shared-utils.md) for release details and acceptance evidence. Historical acceptance and rollback evidence remains in the linked migration records. `scripts/saas-ops build cron` stages native binaries into the existing cron image; it adds no production service or Compose container. See [`migration-notes/README.md`](migration-notes/README.md) and [`dima-rust/STREAM_ACTIVITY.md`](dima-rust/STREAM_ACTIVITY.md).
+`dima-rust/` contains shared library utilities and seven native workers. Accepted run `cron-7629f95f5dfd` / image `sha256:f848743bc0f0817656d2399dd00a4e08e5828d2a0261096c551bb48302ae000f` keeps Node PID 1 as TypeScript owner and one Rust index as native-worker owner in the existing `dima-cron` container. Rollback with `scripts/saas-ops rollback cron-7629f95f5dfd` restores accepted run `cron-2056ce9d790c` / image `sha256:adac7d8de9b5c5cfb138f8051a05123ac02a6c3467cc85784873ee85370d892f`. See [`migration-notes/dual-cron-supervisors.md`](migration-notes/dual-cron-supervisors.md) for release evidence. Cron builds add binaries to the existing image and add no service or Compose container.
 
-The scheduled stream-activity, raid-analytics, follow-defense baseline, roulette-completion, AI-usage-receipts, raid-sessions, and dashboard-activity TypeScript entrypoints are retired from the application source tree and preserved in [`archives/typescript-workers/2026-10-21`](archives/typescript-workers/2026-10-21/README.md). All seven responsibilities have accepted native Rust replacements; the current shared-utility release `cron-2056ce9d790c` is deployed and accepted with seven native children after its production watch and final readbacks passed. The candidate passed nine exact-image suites (150 groups) and source identity; its previous private-helper image remains the accepted rollback target. The earlier dashboard release `cron-bf400acbc441` passed its twelve candidate suites, production watch, final readbacks, container comparison, and cleanup; see [`migration-notes/dashboard-activity.md`](migration-notes/dashboard-activity.md) for that historical acceptance. Former TypeScript runtime selectors are retired where they historically existed; no `RAID_SESSIONS_RUNTIME` selector existed. Native child failures restart that Rust child without a TypeScript fallback. Other TypeScript workers, producers, APIs, action execution, and shared helpers remain active. See [`migration-notes/worker-shared-utils.md`](migration-notes/worker-shared-utils.md), [`migration-notes/typescript-worker-retirement.md`](migration-notes/typescript-worker-retirement.md), and [`migration-notes/raid-sessions.md`](migration-notes/raid-sessions.md).
+Seven scheduled TypeScript worker entrypoints are retired from the application source tree and preserved in [`archives/typescript-workers/2026-10-21`](archives/typescript-workers/2026-10-21/README.md). Their accepted native replacements remain active; the prior shared-utility run `cron-2056ce9d790c` is the accepted rollback baseline for the dual-supervisor release. Other TypeScript workers, producers, APIs, action execution, and shared helpers remain active. Former TypeScript runtime selectors are retired where they existed; no `RAID_SESSIONS_RUNTIME` selector existed. Native child failures restart that Rust child without a TypeScript fallback. See [`migration-notes/worker-shared-utils.md`](migration-notes/worker-shared-utils.md) and [`migration-notes/typescript-worker-retirement.md`](migration-notes/typescript-worker-retirement.md).
+
 
 **Rule**: When asked to make a change, first identify which project owns the feature, then read that project's `AGENTS.md` (if present) before editing.
 
@@ -144,17 +145,18 @@ Before implementing data-dependent features or functions that may duplicate exis
 
 ## Cron Workers Architecture (Important)
 
-`dimabot` runs a **single cron host process** inside the `dima-cron` container. The entrypoint is:
+`dimabot` runs one cron host in the existing `dima-cron` container. The host entrypoint is:
 
 ```
 dimabot/src/workers/cron.index.ts  →  dist/workers/cron.index.js
 ```
 
-### How It Works
+In the current deployed dual-supervisor run, Node PID 1 owns the TypeScript registry (19 definitions, 18 enabled in the reported production configuration) and starts one detached Rust index. Rust's independent registry in `dima-rust/src/supervisor/registry.rs` owns seven native workers. Both registries and owners run in the same container; do not add another cron service for this split.
 
-- `cron.index.ts` is a lightweight supervisor.
-- It starts all registered workers, monitors them, and **self-heals** by restarting only the failed worker (not the entire process).
-- Workers run in the **background**, outside the main Twitch message loop.
+- The TypeScript index supervises only TypeScript workers and restarts only a failed TypeScript child.
+- The Rust index supervises only Rust workers and restarts only a failed Rust child.
+- If the Rust index exits unexpectedly, the Node bridge kills its owned process group and stops the host nonzero so container recovery cannot overlap orphaned native workers.
+- Workers run in the background, outside the main Twitch message loop.
 
 Redeploying the `cron` target replaces the `dima-cron` container and restarts its entire process tree once, including all worker children. Worker-level recovery still restarts only the failed child. A cron release does not replace unrelated Compose services or containers; do not promise that unrelated cron worker PIDs survive a release.
 
@@ -178,10 +180,12 @@ Create a new `*.worker.ts` when the task meets **any** of these criteria:
 
 ### How to Add a New Worker
 
-1. Create `dimabot/src/workers/your-feature.worker.ts`
-2. Export a worker object with `name`, `schedule` (cron expression), and `run()` function.
-3. Register it in the `WORKERS` array inside `dimabot/src/workers/cron.index.ts`.
-4. The supervisor will automatically start, monitor, and heal it.
+Choose the runtime owner first; keep the existing same-container boundary.
+
+- **TypeScript worker:** create `dimabot/src/workers/your-feature.worker.ts`, export its worker definition, and register it in the `WORKERS` array in `dimabot/src/workers/cron.index.ts`. The TypeScript supervisor starts, monitors, and restarts that TypeScript child.
+- **Rust worker:** add the implementation and executable under `dima-rust/src/`, declare its binary in `dima-rust/Cargo.toml` and register its launch/environment/telemetry metadata in `dima-rust/src/supervisor/registry.rs`, then add it to the appropriate worker profile in `ops/saas_ops.py` (`RUST_BINARIES` and profile metadata), `ops/rust_build.sh`, and `dimabot/dockerfile`. Keep the `cron-supervisor` profile isolated from worker executables. The Rust index starts, monitors, and restarts its registered native children. Follow `dima-rust/AGENTS.md` and exact-candidate behavior checks in `ops/README.md`.
+
+Do not register a native worker in the TypeScript worker list or add a second cron container. Worker pacing changes require the scheduling review described below.
 
 ### Scheduling and pacing review for worker migrations
 

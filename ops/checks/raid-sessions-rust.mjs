@@ -1,3 +1,5 @@
+// Stage native-cron-fixture.mjs beside cron-boot.mjs for dual-supervisor verification.
+import { rustRegistry, assertSelectedNatives } from '/tmp/saas-fixtures/native-cron-fixture.mjs';
 // Exact cron candidate only: saas-ops --dependency mongo --dependency redis.
 // Stage every raid-sessions-rust-fixtures file; no production settings or APIs.
 import assert from 'node:assert/strict';
@@ -375,21 +377,20 @@ try {
     verifyReadyTransitionAssertions(); verifyWatchdogResetClassification();
     await client.connect(); await redis.connect(); await indexes(actual); await indexes(referenceDb);
     const unrelatedKey = 'raid-sessions-fixture:unrelated'; keys.add(unrelatedKey); await redis.set(unrelatedKey, 'preserve', { EX: 300 });
-    const { WORKERS, resolveWorkerLaunch } = await import('/app/dist/workers/cron.index.js');
-    const { NATIVE_WORKERS } = await import('/app/dist/utils/observability/native_worker_metrics.js');
-    assert.equal(Object.keys(NATIVE_WORKERS).length, 7, 'natural seventh native worker');
-    const definition = WORKERS.find(worker => worker.name === 'raid-sessions'); assert.equal(definition.kind, 'native');
-    assert.equal(WORKERS.find(worker => worker.name === 'follow-defense-actions').kind, 'typescript', 'existing executor boundary retained');
-    for (const runtime of ['node', 'tsx']) {
-        const selected = resolveWorkerLaunch(definition, { runtime, once: false, dryRun: false, restartDelayMs: 1000 }, { ...process.env, RAID_SESSIONS_RUNTIME: 'typescript', FORBIDDEN_FIXTURE_SECRET: 'not-forwarded' }, 0);
-        assert.equal(selected.command, binary); assert.deepEqual(selected.args, ['--telemetry-json']); assert.equal(selected.options.uid, 65534);
-        assert.equal(selected.options.env.FORBIDDEN_FIXTURE_SECRET, undefined); assert.equal(selected.options.env.RAID_SESSIONS_RUNTIME, undefined);
-    }
+    const { WORKERS } = await import('/app/dist/workers/cron.index.js');
+    assert.equal(WORKERS.length, 19); assert(WORKERS.every(worker => worker.kind === 'typescript'));
+    assert.equal(WORKERS.find(worker => worker.name === 'follow-defense-actions').kind, 'typescript');
+    const registry = rustRegistry({ env: { ...process.env, RAID_SESSIONS_RUNTIME: 'typescript', FORBIDDEN_FIXTURE_SECRET: 'not-forwarded' } });
+    assert.equal(registry.length, 7);
+    const nativeLaunch = registry.find(worker => worker.name === 'raid-sessions');
+    assert.equal(nativeLaunch.binary, binary); assert.deepEqual(nativeLaunch.args, ['--telemetry-json']);
+    assert(!nativeLaunch.envKeys.includes('FORBIDDEN_FIXTURE_SECRET') && !nativeLaunch.envKeys.includes('RAID_SESSIONS_RUNTIME'));
     await assert.rejects(readFile('/app/dist/workers/raid_sessions.worker.js'), error => error.code === 'ENOENT');
     await waitFor(() => currentNative(), 'natural native supervisor startup'); await assertNative(); paused = await pause();
+    assertSelectedNatives(await records(), ['raid-sessions']);
     const root = paused.supervisor, siblings = (await records()).filter(row => row.event === 'spawn' && !row.native).map(row => [row.worker, row.pid]);
     assert(siblings.some(([name]) => name === 'follow-defense-actions'));
-    console.log('PASS sixth native registry and actual UID65534 child; node/tsx native selection, restricted environment, retired entrypoint absent, existing TS action executor retained');
+    console.log('PASS real Rust registry and UID65534 child; restricted environment, retired entrypoint absent, existing TS action executor retained');
 
     const help = await finished(launch(binary, ['--help'], { PATH: process.env.PATH }, { uid: 65534, gid: 65534 })); assert.equal(help.code, 0);
     for (const flag of ['--once', '--database', '--env-file', '--telemetry-json', '--dry-run']) assert(help.output.includes(flag));

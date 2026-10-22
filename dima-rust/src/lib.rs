@@ -9,6 +9,8 @@
 //!   future telemetry worker without compiling it into MongoDB-only workers.
 //! - `http`: Axum's HTTP/JSON/Tokio foundation for future server surfaces,
 //!   plus tower-http CORS matching the legacy npm `cors()` defaults.
+//! - `cron-supervisor`: an independently built native process supervisor and
+//!   bounded telemetry, without selecting any worker or database profile.
 //!
 //! Opt-in service foundations for porting `dimabot/src/utils` helpers. None is
 //! in `default` or in a deployed worker profile:
@@ -29,8 +31,9 @@
 //! fixture example requires `mongo`; disabled targets are skipped by Cargo.
 //!
 //! Utilities connect only when called. Projectors run only through their public
-//! APIs or executables; deployment and supervision belong to the existing cron
-//! host. Constructors do not create indexes or access application data. Ports
+//! APIs or executables. The opt-in `cron_index` explicitly starts supervision;
+//! worker/library imports do not. Constructors do not create indexes or access
+//! application data. Ports
 //! preserve the application's collection names, BSON types, defaults, and indexes.
 //!
 //! MongoDB reads `MONGO_URI`. Redis reads `DRAGONFLY_HOST`/`DRAGONFLY_PORT`, uses
@@ -59,6 +62,9 @@
 
 pub mod utils;
 pub mod workers;
+
+#[cfg(feature = "cron-supervisor")]
+pub mod supervisor;
 
 #[cfg(all(test, any(feature = "mongo", feature = "redis")))]
 mod tls_feature_tests {

@@ -1,3 +1,5 @@
+// Stage native-cron-fixture.mjs beside cron-boot.mjs for dual-supervisor verification.
+import { rustRegistry, assertSelectedNatives } from '/tmp/saas-fixtures/native-cron-fixture.mjs';
 // Change-driven regression check of the real cron command and native raid binary.
 // Includes the earlier parity, failure, lease, restart, shutdown and telemetry coverage.
 // --fixtures must contain this check's cron-boot.mjs and the exact source
@@ -283,12 +285,12 @@ async function telemetry() {
 try {
     await client.connect(); await redis.connect();
     const native = await waitFor(() => currentNative(), 'actual supervisor starts native raid worker');
+    assertSelectedNatives(await records(), ['raid-analytics']);
+    assert.equal(rustRegistry().find(worker => worker.name === 'raid-analytics').binary, '/usr/local/bin/raid_analytics');
     const root = native.supervisor;
     await assertNative(root);
     const unrelated = (await records()).filter(row => row.event === 'spawn' && !row.native).map(row => row.worker).sort();
-    assert(unrelated.includes('stream-activity'), 'other native worker must be inert');
-    assert((await records()).some(row => row.event === 'spawn' && row.worker === 'stream-activity'
-        && row.requestedCommand === '/usr/local/bin/stream_activity'), 'node defaults must select both native projectors');
+    assert(unrelated.includes('follow-ledger'), 'active TS workers remain inert siblings');
     assert(unrelated.includes('domain-events'), 'event-producing workers must be inert');
     const idle = await waitFor(async () => {
         const rows = (await records()).filter(row => row.event === 'batch' && row.frame.event === 'batch' && row.frame.success && row.frame.events === 0);

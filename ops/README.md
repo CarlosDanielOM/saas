@@ -67,7 +67,7 @@ Fully verify every new or changed worker against the exact candidate image. Rete
 
 The compiler defaults to 6 GiB RAM and requires at least 14 GiB of host `MemAvailable` at startup, with a minimum 8 GiB kept available during compilation. If the host has at least 12 GiB but less than 14 GiB available at startup, select the supported lower cap explicitly with `scripts/saas-ops build cron --rust-memory-gib 4`; the 4 GiB cap also keeps memory-swap equal to the memory limit (no swap) and preserves the 8 GiB runtime headroom floor. Both choices retain the 6 CPU cap, two Cargo jobs, 256 PID limit, pinned compiler image, global build lock, and private 8 GiB Cargo cache. This option is only valid for `build cron`; other targets reject it. The helper option and its operations tests now verify the strict 4/6 choices, default 6 GiB, and cron-only restriction. On 2026-10-21, observed `MemAvailable` was about 13.8 GiB, below the default cap's 14 GiB startup requirement, so the combined candidate selected the explicit 4 GiB cap. Combined candidate `cron-240af282cb85` compiled at 4 GiB in 176.782 seconds with a warm cache hit; it did not establish a speedup against the earlier 6 GiB build.
 
-`scripts/saas-ops build cron` snapshots `dima-rust` read-only and compiles the six prior worker binaries plus dashboard, which uses `--no-default-features --features mongo,redis,http-client,unicode-collation`. Earlier run `cron-a2475374437e` failed its dashboard check; `cron-3e611730d572` passed check/Clippy across all three profiles and its first two tests before the strict cache cap stopped dashboard test compilation. Both were cleaned without an accepted image. The latest candidate `cron-2056ce9d790c` rebuilt all seven binaries and deployed image `sha256:adac7d8de9b5c5cfb138f8051a05123ac02a6c3467cc85784873ee85370d892f` at `2026-10-22T05:15:05.047669035Z`. All three worker graphs were byte-identical to their prior accepted graphs. The capped build took 1473.201 seconds at 6 CPUs, 4 GiB, no swap, 256 PIDs, and two Cargo jobs; formatting, check, Clippy, tests (329 passes across profiles, repeats included; five ignored external-fixture test instances), release builds, and binary dry runs passed. Nine exact-image suites passed 150 groups: raid sessions 20, roulette 19, stream 6, raid analytics 20, baseline 11, AI receipts 23, Rust-only 7, raid pipeline 8, and dashboard 36. Source identity passed. Twenty-five enabled supervised children were present at startup, including seven native children; EventSub reconciliation was disabled. The production watch (32 samples across 332.257 seconds), final readbacks, seven binary identities, analytics/log checks, and helper cleanup passed. The release is accepted. Rollback `scripts/saas-ops rollback cron-2056ce9d790c` restores accepted run `cron-bf400acbc441` (image `sha256:72df59845ea803f1f619e8d9cfa748a881a0dd0de246da720815a9f8182fda30`) with seven native workers and the prior private helpers. See [worker shared utilities](../migration-notes/worker-shared-utils.md) for candidate evidence. A separate unrelated `database-private-access` container appeared outside the cron Compose project; among the original 18 checked containers only `dima-cron` changed. Dashboard alone adds reqwest 0.12.28 and ICU collation; the two pre-existing worker profile graphs for six binaries remain unchanged. The validated Rust 1.99.1 Alpine/musl pin and compiler caps/headroom policy are unchanged.
+`scripts/saas-ops build cron` snapshots `dima-rust` read-only and compiles seven workers plus `cron_index` across four isolated profiles. Dashboard uses `--no-default-features --features mongo,redis,http-client,unicode-collation`; the index uses `--no-default-features --features cron-supervisor`. Earlier run `cron-a2475374437e` failed its dashboard check; `cron-3e611730d572` passed check/Clippy across all three profiles and its first two tests before the strict cache cap stopped dashboard test compilation. Both were cleaned without an accepted image. Previously accepted run `cron-2056ce9d790c` rebuilt all seven binaries and deployed image `sha256:adac7d8de9b5c5cfb138f8051a05123ac02a6c3467cc85784873ee85370d892f` at `2026-10-22T05:15:05.047669035Z`. All three worker graphs were byte-identical to their prior accepted graphs. The capped build took 1473.201 seconds at 6 CPUs, 4 GiB, no swap, 256 PIDs, and two Cargo jobs; formatting, check, Clippy, tests (329 passes across profiles, repeats included; five ignored external-fixture test instances), release builds, and binary dry runs passed. Nine exact-image suites passed 150 groups: raid sessions 20, roulette 19, stream 6, raid analytics 20, baseline 11, AI receipts 23, Rust-only 7, raid pipeline 8, and dashboard 36. Source identity passed. Twenty-five enabled supervised children were present at startup, including seven native children; EventSub reconciliation was disabled. The production watch (32 samples across 332.257 seconds), final readbacks, seven binary identities, analytics/log checks, and helper cleanup passed. The release is accepted. Rollback `scripts/saas-ops rollback cron-2056ce9d790c` restores accepted run `cron-bf400acbc441` (image `sha256:72df59845ea803f1f619e8d9cfa748a881a0dd0de246da720815a9f8182fda30`) with seven native workers and the prior private helpers. See [worker shared utilities](../migration-notes/worker-shared-utils.md) for candidate evidence. A separate unrelated `database-private-access` container appeared outside the cron Compose project; among the original 18 checked containers only `dima-cron` changed. Dashboard alone adds reqwest 0.12.28 and ICU collation; the two pre-existing worker profile graphs for six binaries remain unchanged. The validated Rust 1.99.1 Alpine/musl pin and compiler caps/headroom policy are unchanged.
 
 The 2026-10-21 helper verification passed all 59 operations unit tests and the real Docker smoke check. An isolated no-op container created through the actual Rust compiler argument builder verified Docker limits of 6 CPUs, 6,442,450,944 bytes for both memory and memory-swap, and 256 PIDs; its kernel cgroups reported `cpu.max=600000 100000`, `memory.max=6442450944`, `memory.swap.max=0`, and `pids.max=256`. The probe used two Cargo jobs and a read-only source snapshot, with no network or production credentials. The container was removed, and all 17 production containers remained unchanged. That helper probe did not compile Rust; subsequent compiler evidence is recorded below.
 
@@ -81,7 +81,27 @@ The accepted historical two-binary Mongo-only build comparison used identical Ru
 
 The accepted warm candidate is `cron-b24a505b7fc8`: image digest `sha256:78912284ca1a4178e0062007a922f0be70bcf0ecb5ea09c5ab12c9e25d95ad56`, Rust source digest `97fc6387f9090bdceb7fba27c5eff163fc62709dce9ba98cdbc9a16e466a269e`, stream binary SHA-256 `3c7310e99b8d0bbf90328401f064807cc863afa5ef21a189c4e44172e19bc703`, and raid binary SHA-256 `08b562c3350fd104f8b49a80b27d59f9f50ea2cb4ac1178d2fcd6c6fcab7b8e9`. Its cache entry key is `81f8698b6c9283255500b6fd0d039852dbdbcc006767540cf08d924c027ff125`; the worker dependency graph digest is `b0ca9ebda109dbabf12f88ffad26195bf2342159ee22a588fef81b557edcc17f`. The accepted release-clean hygiene step has digest `b263c182497db8e0b4087833cf28ecf9d172e4b1eb2f79b29988b14070b606bf`. The dedicated cache was 7.328 GB total (about 6.8 GiB), including an older matrix-audit key, under its 8 GiB cap; the active entry was 3.639 GB (about 3.4 GiB).
 
-The optional dependencies remain available for shared/manual consumers through Cargo defaults: `mongo`, `redis`, `postgres`, and `http`. `postgres` enables SQLx/PostgreSQL, `http` enables Axum, and `redis` enables the Dragonfly-compatible client; the MongoDB feature includes explicit dotenv loading support. Telemetry remains in the TypeScript cron host: native children emit bounded stdout metadata, and Node samples and exports worker/process metrics through the existing Dragonfly and analytics path. The Mongo-only Rust workers do not need Redis or SQLx. PostgreSQL support is dependency readiness for a future telemetry port; telemetry itself has not moved to Rust. Run `scripts/saas-ops build cron --rust-feature-matrix` only for an explicit transition audit of no-feature, Redis-only, Postgres-only, HTTP-only, and all-feature graphs plus the Redis TLS-provider regression check. Matrix run `cron-a119f0761077` passed all five feature checks and the Redis-only TLS-provider check; Mongo-only tests passed 18 unit tests and one doc test, and the selected worker graph excluded SQLx, Axum, and Redis. The audit's 934.539-second total included the matrix and the then-included manual fixture example, so it is not a normal cold/warm build comparison. This matrix remains separate from ordinary cron builds and uses a separate disposable target directory.
+The optional dependencies remain available for shared/manual consumers through Cargo defaults: `mongo`, `redis`, `postgres`, and `http`. `postgres` enables SQLx/PostgreSQL, `http` enables Axum, and `redis` enables the Dragonfly-compatible client; the MongoDB feature includes explicit dotenv loading support. In accepted run `cron-2056ce9d790c`, the TypeScript host sampled and exported native worker metrics. In deployed run `cron-7629f95f5dfd`, the Rust index owns native process metrics and Redis export while the TypeScript host continues telemetry for TypeScript workers. The Mongo-only Rust workers do not need Redis or SQLx. PostgreSQL remains an optional foundation and is not needed by either current telemetry path. Run `scripts/saas-ops build cron --rust-feature-matrix` only for an explicit transition audit of no-feature, Redis-only, Postgres-only, HTTP-only, and all-feature graphs plus the Redis TLS-provider regression check. Matrix run `cron-a119f0761077` passed all five feature checks and the Redis-only TLS-provider check; Mongo-only tests passed 18 unit tests and one doc test, and the selected worker graph excluded SQLx, Axum, and Redis. The audit's 934.539-second total included the matrix and the then-included manual fixture example, so it is not a normal cold/warm build comparison. This matrix remains separate from ordinary cron builds and uses a separate disposable target directory.
+
+## Dual cron supervisors: accepted release
+
+Run `cron-7629f95f5dfd` deployed image `sha256:f848743bc0f0817656d2399dd00a4e08e5828d2a0261096c551bb48302ae000f` to the existing `dima-cron` container; it started at `2026-10-22T17:16:25.975940939Z` and was accepted after the watch, readbacks, and cleanup passed. Rollback with `scripts/saas-ops rollback cron-7629f95f5dfd` restores accepted run `cron-2056ce9d790c` / image `sha256:adac7d8de9b5c5cfb138f8051a05123ac02a6c3467cc85784873ee85370d892f`. The migration record contains architecture, detailed evidence, and fixture corrections: [`migration-notes/dual-cron-supervisors.md`](../migration-notes/dual-cron-supervisors.md).
+
+To rerun the supervisor check against an exact candidate, stage every fixture file and the analytics-store validator:
+
+```bash
+set -eu
+SUPERVISOR_FIXTURES=$(mktemp -d /tmp/cron-supervisors-fixtures.XXXXXX)
+trap 'rm -rf -- "$SUPERVISOR_FIXTURES"' EXIT
+cp ops/checks/cron-supervisors-fixtures/* "$SUPERVISOR_FIXTURES/"
+cp ops/checks/native-cron-fixture.mjs "$SUPERVISOR_FIXTURES/"
+cp dima-analytics/src/store.mjs "$SUPERVISOR_FIXTURES/analytics-store.mjs"
+scripts/saas-ops verify cron-<run-id> \
+  --dependency mongo --dependency redis \
+  --test-env ops/checks/cron-supervisors-fixtures/test-env.json \
+  --fixtures "$SUPERVISOR_FIXTURES" \
+  --check ops/checks/cron-supervisors.mjs
+```
 
 For stream-activity candidate verification, the behavior check runs the actual cron supervisor and native child against disposable MongoDB and Dragonfly containers. It checks worker selection, Rust/TypeScript parity and checkpoint recovery, telemetry, per-child restart behavior, and signal shutdown. Its source fixtures are copied into a private temporary directory so the test uses the existing source fixture module and analytics validator without duplicating those sources in `ops/`. The check's dummy environment selects native Rust explicitly. Use this invocation against the exact candidate run; its fixture-copy steps keep the test source-backed without checking in duplicate fixture sources:
 
@@ -90,6 +110,7 @@ set -eu
 STREAM_ACTIVITY_FIXTURES=$(mktemp -d /tmp/stream-activity-rust-fixtures.XXXXXX)
 trap 'rm -rf -- "$STREAM_ACTIVITY_FIXTURES"' EXIT
 cp ops/checks/stream-activity-rust-fixtures/cron-boot.mjs "$STREAM_ACTIVITY_FIXTURES/"
+cp ops/checks/native-cron-fixture.mjs "$STREAM_ACTIVITY_FIXTURES/"
 cp dima-rust/tests/fixtures/stream_activity.mjs "$STREAM_ACTIVITY_FIXTURES/activity.mjs"
 cp dima-analytics/src/store.mjs "$STREAM_ACTIVITY_FIXTURES/analytics-store.mjs"
 scripts/saas-ops verify cron-<run-id> \
@@ -113,6 +134,7 @@ set -eu
 RAID_FIXTURES=$(mktemp -d /tmp/raid-analytics-rust-fixtures.XXXXXX)
 trap 'rm -rf -- "$RAID_FIXTURES"' EXIT
 cp ops/checks/raid-analytics-rust-fixtures/cron-boot.mjs "$RAID_FIXTURES/"
+cp ops/checks/native-cron-fixture.mjs "$RAID_FIXTURES/"
 cp dima-analytics/src/store.mjs "$RAID_FIXTURES/analytics-store.mjs"
 scripts/saas-ops verify cron-<run-id> \
   --dependency mongo --dependency redis \
@@ -132,6 +154,7 @@ set -eu
 BASELINE_FIXTURES=$(mktemp -d /tmp/follow-defense-baseline-rust-fixtures.XXXXXX)
 trap 'rm -rf -- "$BASELINE_FIXTURES"' EXIT
 cp ops/checks/follow-defense-baseline-rust-fixtures/cron-boot.mjs "$BASELINE_FIXTURES/"
+cp ops/checks/native-cron-fixture.mjs "$BASELINE_FIXTURES/"
 cp dima-analytics/src/store.mjs "$BASELINE_FIXTURES/analytics-store.mjs"
 scripts/saas-ops verify cron-<run-id> \
   --dependency mongo --dependency redis \
@@ -151,6 +174,7 @@ set -eu
 DASHBOARD_RUST_FIXTURES=$(mktemp -d /tmp/dashboard-activity-rust-fixtures.XXXXXX)
 trap 'rm -rf -- "$DASHBOARD_RUST_FIXTURES"' EXIT
 cp ops/checks/dashboard-activity-rust-fixtures/*.mjs "$DASHBOARD_RUST_FIXTURES/"
+cp ops/checks/native-cron-fixture.mjs "$DASHBOARD_RUST_FIXTURES/"
 cp ops/checks/dashboard-activity-rust-fixtures/*.pem "$DASHBOARD_RUST_FIXTURES/"
 cp dima-analytics/src/store.mjs "$DASHBOARD_RUST_FIXTURES/analytics-store.mjs"
 scripts/saas-ops verify cron-<run-id> \
@@ -173,6 +197,7 @@ set -eu
 ROULETTE_FIXTURES=$(mktemp -d /tmp/roulette-completion-rust-fixtures.XXXXXX)
 trap 'rm -rf -- "$ROULETTE_FIXTURES"' EXIT
 cp ops/checks/roulette-completion-rust-fixtures/cron-boot.mjs "$ROULETTE_FIXTURES/"
+cp ops/checks/native-cron-fixture.mjs "$ROULETTE_FIXTURES/"
 cp dima-analytics/src/store.mjs "$ROULETTE_FIXTURES/analytics-store.mjs"
 scripts/saas-ops verify cron-<run-id> \
   --dependency mongo --dependency redis \
@@ -196,6 +221,7 @@ set -eu
 AI_USAGE_RECEIPTS_FIXTURES=$(mktemp -d /tmp/ai-usage-receipts-rust-fixtures.XXXXXX)
 trap 'rm -rf -- "$AI_USAGE_RECEIPTS_FIXTURES"' EXIT
 cp ops/checks/ai-usage-receipts-rust-fixtures/* "$AI_USAGE_RECEIPTS_FIXTURES/"
+cp ops/checks/native-cron-fixture.mjs "$AI_USAGE_RECEIPTS_FIXTURES/"
 cp dima-analytics/src/store.mjs "$AI_USAGE_RECEIPTS_FIXTURES/analytics-store.mjs"
 scripts/saas-ops verify cron-<run-id> \
   --dependency mongo --dependency redis \
@@ -230,9 +256,24 @@ Retirement release `cron-d02bf5a387d5` with image `sha256:b1e5f225d2488e76b45583
 
 The native `raid_sessions` child owns bounded retention extension, journal backfill and late-follower attribution, and moderation-request admission. It reuses the existing MongoDB collections and Redis follow-defense state. TypeScript session producers, APIs and shared raid utilities remain active; `follow-defense-actions` continues to execute Twitch bans. No HTTP provider, new index/schema/configuration key, or production service is added. No `RAID_SESSIONS_RUNTIME` selector existed in the TypeScript worker; do not document a hypothetical fixture key as a retired selector.
 
-Verify the native Rust path with [`ops/checks/raid-sessions-rust.mjs`](checks/raid-sessions-rust.mjs) and the existing end-to-end [`ops/checks/raid-sessions.mjs`](checks/raid-sessions.mjs) against the same exact cron candidate. The native suite defines 20 runtime groups against disposable MongoDB and Redis fixtures, including more than 200 skipped raw journal rows, 100+100 partial batches, future-only waits, and an error after an earlier full batch; all 20 passed on candidate `cron-7a8ca7924412` in 79.712 seconds. The end-to-end check passed eight groups on the same image. It runs its `SAAS_TARGET=cron` branch for TypeScript producers/shared raid utilities, action-executor handoff, and native admission. Its HTTP API and bot-specific branches do not run in this task, so this candidate does not claim HTTP route runtime coverage or API/bot deployment. The native executable bounds each backfill/admission batch at 200 and applies a hard 20-second initialization/tick watchdog ahead of the 60-second request lease. It continues immediately when a backfill or admission batch is full at 200 or other ready work remains; it waits one second only when idle, future-only, or after a failed tick. This changes the archived TypeScript loop's unconditional post-tick pause while preserving bounded work, fairness, request deadlines, and the existing TypeScript action-executor pacing. Ordinary tick failures emit unsuccessful bounded batch telemetry and retry after one second; the hard OS watchdog exits nonzero with no batch frame and the exact diagnostic `Raid session active work exceeded 20-second watchdog; durable work retained for recovery`, retaining the request lease. Initialization failures may also exit before a batch frame. The process accepts explicit `--env-file` paths but does not load dotenv automatically.
+Verify the native Rust path with [`ops/checks/raid-sessions-rust.mjs`](checks/raid-sessions-rust.mjs) and the existing end-to-end [`ops/checks/raid-sessions.mjs`](checks/raid-sessions.mjs) against the same exact cron candidate. The native check imports the shared `native-cron-fixture.mjs` from the staged fixture directory; its `cron-boot.mjs` also imports that helper as a sibling. Stage the existing fixture files together:
 
-At the time of raid-sessions release `cron-7a8ca7924412`, standard cron verification required its two checks, the other five native worker suites, and the Rust-only cron retirement check: eight checks against the same candidate image. That release passed all eight checks (102 groups) on image `sha256:c7c8203e245b263f462ee1c6ca4c1007418408ac190d9ad9b9013ec2e4801fa8`; deployment and bounded production acceptance passed. The 19-sample 190.742-second watch, analytics readbacks, container comparison, and helper cleanup are recorded in [`migration-notes/raid-sessions.md`](../migration-notes/raid-sessions.md). Its rollback command applied at the time of that release. The currently deployed shared-utility candidate and rollback target are recorded in [worker-shared-utils.md](../migration-notes/worker-shared-utils.md). The initial production baseline had no due retention, backfill, request, or action work, and these paths remained quiet during the watch, so no performance claim is supported.
+```bash
+set -eu
+RAID_SESSIONS_FIXTURES=$(mktemp -d /tmp/raid-sessions-rust-fixtures.XXXXXX)
+trap 'rm -rf -- "$RAID_SESSIONS_FIXTURES"' EXIT
+cp ops/checks/raid-sessions-rust-fixtures/* "$RAID_SESSIONS_FIXTURES/"
+cp ops/checks/native-cron-fixture.mjs "$RAID_SESSIONS_FIXTURES/"
+scripts/saas-ops verify cron-<run-id> \
+  --dependency mongo --dependency redis \
+  --test-env ops/checks/raid-sessions-rust-fixtures/test-env.json \
+  --fixtures "$RAID_SESSIONS_FIXTURES" \
+  --check ops/checks/raid-sessions-rust.mjs
+```
+
+The native suite defines 20 runtime groups against disposable MongoDB and Redis fixtures, including more than 200 skipped raw journal rows, 100+100 partial batches, future-only waits, and an error after an earlier full batch; all 20 passed on candidate `cron-7a8ca7924412` in 79.712 seconds. The end-to-end check passed eight groups on the same image. It runs its `SAAS_TARGET=cron` branch for TypeScript producers/shared raid utilities, action-executor handoff, and native admission. Its HTTP API and bot-specific branches do not run in this task, so this candidate does not claim HTTP route runtime coverage or API/bot deployment. The native executable bounds each backfill/admission batch at 200 and applies a hard 20-second initialization/tick watchdog ahead of the 60-second request lease. It continues immediately when a backfill or admission batch is full at 200 or other ready work remains; it waits one second only when idle, future-only, or after a failed tick. This changes the archived TypeScript loop's unconditional post-tick pause while preserving bounded work, fairness, request deadlines, and the existing TypeScript action-executor pacing. Ordinary tick failures emit unsuccessful bounded batch telemetry and retry after one second; the hard OS watchdog exits nonzero with no batch frame and the exact diagnostic `Raid session active work exceeded 20-second watchdog; durable work retained for recovery`, retaining the request lease. Initialization failures may also exit before a batch frame. The process accepts explicit `--env-file` paths but does not load dotenv automatically.
+
+At the time of raid-sessions release `cron-7a8ca7924412`, standard cron verification required its two checks, the other five native worker suites, and the Rust-only cron retirement check: eight checks against the same candidate image. That release passed all eight checks (102 groups) on image `sha256:c7c8203e245b263f462ee1c6ca4c1007418408ac190d9ad9b9013ec2e4801fa8`; deployment and bounded production acceptance passed. The 19-sample 190.742-second watch, analytics readbacks, container comparison, and helper cleanup are recorded in [`migration-notes/raid-sessions.md`](../migration-notes/raid-sessions.md). Its rollback command applied at the time of that release. The shared-utility release is the last accepted rollback baseline; the accepted dual-supervisor release and rollback target are recorded in [dual-cron-supervisors.md](../migration-notes/dual-cron-supervisors.md). The initial production baseline had no due retention, backfill, request, or action work, and these paths remained quiet during the watch, so no performance claim is supported.
 
 ### Rust-only cron retirement check
 
@@ -245,6 +286,7 @@ set -eu
 RUST_ONLY_FIXTURES=$(mktemp -d /tmp/rust-only-cron-fixtures.XXXXXX)
 trap 'rm -rf -- "$RUST_ONLY_FIXTURES"' EXIT
 cp ops/checks/rust-only-cron-fixtures/cron-boot.mjs "$RUST_ONLY_FIXTURES/"
+cp ops/checks/native-cron-fixture.mjs "$RUST_ONLY_FIXTURES/"
 scripts/saas-ops verify cron-<run-id> \
   --dependency mongo --dependency redis \
   --test-env ops/checks/rust-only-cron-fixtures/test-env.json \

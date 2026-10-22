@@ -31,7 +31,7 @@ EXCLUDED = {"node_modules", "dist", "target", ".saas-native", ".git", ".angular"
 # Rust 1.99.1 on Alpine/musl, using the already validated immutable image.
 RUST_BUILD_IMAGE = "rust@sha256:557a94c82b485a14b569120e00867267108c734efe33f10cc31ca0cd5dd1eca9"
 RUST_BINARIES = ("stream_activity", "raid_analytics", "follow_defense_baseline", "roulette_completion",
-                 "ai_usage_receipts", "raid_sessions", "dashboard_activity")
+                 "ai_usage_receipts", "raid_sessions", "dashboard_activity", "cron_index")
 GIB = 1024 ** 3
 RUST_BUILD_CPUS = 6
 RUST_BUILD_MEMORY_GIB = 6
@@ -45,18 +45,20 @@ RUST_BASELINE_FEATURES = "mongo,redis"
 # Dashboard activity needs the native HTTP client and its ICU collator for
 # JS-compatible locale ties; it must stay out of the six existing worker graphs.
 RUST_DASHBOARD_FEATURES = "mongo,redis,http-client,unicode-collation"
+RUST_SUPERVISOR_FEATURES = "cron-supervisor"
 RUST_PROFILES = "dev,test,release"
 # Keep dev/test debuginfo and incremental artifacts out of the shared cache. These
 # reduce compiler/test artifact size only: release profile and optimization
-# settings are untouched, and all three profiles still run every check.
+# settings are untouched, and all four profiles still run every check.
 RUST_ARTIFACT_ENV = {"CARGO_PROFILE_DEV_DEBUG": "0", "CARGO_PROFILE_TEST_DEBUG": "0",
                      "CARGO_INCREMENTAL": "0"}
-# Dependency names that must never enter a worker graph; each profile names its
+# Dependency name patterns that must never enter a graph; each profile names its
 # own allowed optional clients rather than relying on feature unification.
 RUST_GRAPH_FORBIDDEN = {
     "mongo": ("sqlx", "axum", "redis", "reqwest", "icu_collator"),
     "mongo-redis": ("sqlx", "axum", "reqwest", "icu_collator"),
     "dashboard": ("sqlx", "axum"),
+    "cron-supervisor": ("mongodb", "sqlx", "axum", "reqwest", "icu_collator"),
 }
 # Cache hygiene is separate from the dependency recipe: remove only this
 # package's release outputs inside the same capped compiler, retaining its deps.
@@ -71,7 +73,9 @@ def rust_worker_profiles():
     # Preserve the Mongo-only profile/receipt fields for these workers; the
     # baseline, AI usage receipt, and raid sessions workers need a Redis/Dragonfly
     # client, and dashboard activity additionally needs the native HTTP client
-    # plus the ICU collator that preserves Node localeCompare ties.
+    # plus the ICU collator that preserves Node localeCompare ties. Standalone
+    # supervision is a fourth independent graph without MongoDB, HTTP clients,
+    # or ICU collation; Redis retains its URL/IDNA normalization dependencies.
     return {
         "mongo": {"features": RUST_FEATURES, "default_features": False,
                   "binaries": ["stream_activity", "raid_analytics", "roulette_completion"], "graph": "worker-dependencies.txt"},
@@ -79,6 +83,8 @@ def rust_worker_profiles():
                         "binaries": ["follow_defense_baseline", "ai_usage_receipts", "raid_sessions"], "graph": "baseline-worker-dependencies.txt"},
         "dashboard": {"features": RUST_DASHBOARD_FEATURES, "default_features": False,
                       "binaries": ["dashboard_activity"], "graph": "dashboard-worker-dependencies.txt"},
+        "cron-supervisor": {"features": RUST_SUPERVISOR_FEATURES, "default_features": False,
+                            "binaries": ["cron_index"], "graph": "supervisor-dependencies.txt"},
     }
 
 
@@ -452,6 +458,8 @@ class Ops:
         require(RUST_BASELINE_FEATURES == "mongo,redis", "Unsupported baseline feature profile; review its dependency graph guard before enabling it")
         require(RUST_DASHBOARD_FEATURES == "mongo,redis,http-client,unicode-collation",
                 "Unsupported dashboard feature profile; review its dependency graph guard before enabling it")
+        require(RUST_SUPERVISOR_FEATURES == "cron-supervisor",
+                "Unsupported supervisor feature profile; review its dependency graph guard before enabling it")
         return ["create", "--name", "saas-ops-" + receipt["run"] + "-rust-build", *self.labels(receipt["run"]),
                 "--label", OWNER + ".rust-build=true",
                 f"--cpus={RUST_BUILD_CPUS}", f"--memory={memory_gib}g",
@@ -462,6 +470,7 @@ class Ops:
                 "--env=SAAS_RUST_FEATURES=" + RUST_FEATURES,
                 "--env=SAAS_RUST_BASELINE_FEATURES=" + RUST_BASELINE_FEATURES,
                 "--env=SAAS_RUST_DASHBOARD_FEATURES=" + RUST_DASHBOARD_FEATURES,
+                "--env=SAAS_RUST_SUPERVISOR_FEATURES=" + RUST_SUPERVISOR_FEATURES,
                 "--env=SAAS_RUST_FEATURE_MATRIX=" + ("1" if receipt.get("rust_feature_matrix") else "0"),
                 "--mount", f"type=bind,src={path / 'rust-source'},dst=/source,readonly",
                 "--mount", f"type=bind,src={path / 'rust-work'},dst=/work",
@@ -503,7 +512,7 @@ class Ops:
             receipt["rust_cache_hygiene_digest"] = digest(RUST_CACHE_HYGIENE.encode())
             cache["project_release_clean"] = False
             print(f"Rust worker profiles: mongo={RUST_FEATURES}, mongo-redis={RUST_BASELINE_FEATURES}, "
-                  f"dashboard={RUST_DASHBOARD_FEATURES}; artifact env: "
+                  f"dashboard={RUST_DASHBOARD_FEATURES}, cron-supervisor={RUST_SUPERVISOR_FEATURES}; artifact env: "
                   + ", ".join(f"{key}={value}" for key, value in sorted(RUST_ARTIFACT_ENV.items()))
                   + f"; private cache {cache['key'][:12]} "
                   f"({'existing' if cache['hit'] else 'new'}, limit 8 GiB); feature matrix: {bool(feature_matrix)}", flush=True)

@@ -1,3 +1,5 @@
+// Stage native-cron-fixture.mjs beside cron-boot.mjs for dual-supervisor verification.
+import { rustRegistry, assertSelectedNatives } from '/tmp/saas-fixtures/native-cron-fixture.mjs';
 // Exact-image dashboard migration check. See dashboard-activity-rust-fixtures/README.md.
 // All mutation is constrained to helper-owned disposable Mongo/Redis dependencies.
 import assert from 'node:assert/strict';
@@ -118,17 +120,18 @@ let paused,providers;
 try{
  await client.connect();await redis.connect();await indexes(test);await indexes(referenceDb);
  const sentinel=`dashboard-fixture:${process.pid}:unrelated`;keys.add(sentinel);await redis.set(sentinel,'preserve',{EX:600});
- const {WORKERS,resolveWorkerLaunch}=await import('/app/dist/workers/cron.index.js');
- const {NATIVE_WORKERS,nativeProgressParser}=await import('/app/dist/utils/observability/native_worker_metrics.js');
- const definition=WORKERS.find(row=>row.name==='dashboard-activity');assert.equal(definition.kind,'native');assert.equal(NATIVE_WORKERS['dashboard-activity'].command,binary);
- for(const runtime of ['node','tsx']){
-  const launchSpec=resolveWorkerLaunch(definition,{runtime,once:false,dryRun:false,restartDelayMs:1000},{...process.env,DASHBOARD_ACTIVITY_RUNTIME:'typescript',FORBIDDEN_FIXTURE_SECRET:'PRIVATE_ENV'},0);
-  assert.equal(launchSpec.command,binary);assert.deepEqual(launchSpec.args,['--telemetry-json']);assert.equal(launchSpec.options.uid,65534);assert.equal(launchSpec.options.env.FORBIDDEN_FIXTURE_SECRET,undefined);assert.equal(launchSpec.options.env.DASHBOARD_ACTIVITY_RUNTIME,undefined);
- }
+ const {WORKERS}=await import('/app/dist/workers/cron.index.js');
+ const {nativeProgressParser}=await import('/app/dist/utils/observability/native_worker_metrics.js');
+ assert.equal(WORKERS.length,19);assert(WORKERS.every(row=>row.kind==='typescript'));
+ const registry=rustRegistry({env:{...process.env,DASHBOARD_ACTIVITY_RUNTIME:'typescript',FORBIDDEN_FIXTURE_SECRET:'PRIVATE_ENV'}});
+ assert.equal(registry.length,7);const launchSpec=registry.find(row=>row.name==='dashboard-activity');
+ assert.equal(launchSpec.binary,binary);assert.deepEqual(launchSpec.args,['--telemetry-json']);assert.equal(launchSpec.uid,65534);
+ assert(!launchSpec.envKeys.includes('FORBIDDEN_FIXTURE_SECRET')&&!launchSpec.envKeys.includes('DASHBOARD_ACTIVITY_RUNTIME'));
+ assertSelectedNatives(await records(), ['dashboard-activity']);
  paused=await pause();const root=paused.supervisor,siblings=(await records()).filter(row=>row.event==='spawn'&&!row.native).map(row=>[row.worker,row.pid]);
- assert(siblings.some(([worker])=>worker==='raid-sessions'));assert(siblings.every(([worker])=>worker!=='dashboard-activity'));
+ assert(siblings.some(([worker])=>worker==='follow-ledger'));assert(siblings.every(([worker])=>!registry.some(row=>row.name===worker)));
  assert.equal((await readFile(`/proc/${paused.pid}/cmdline`,'utf8')).split('\0')[0],binary);assert.match(await readFile(`/proc/${paused.pid}/status`,'utf8'),/^Uid:\s+65534\s+65534\s+65534\s+65534$/m);
- pass('real cron boot selects UID65534 native dashboard; all foreign children inert; node/tsx restricted native launch');
+ pass('real cron boot selects UID65534 native dashboard; TS siblings inert and unselected natives absent');
 
  const help=await finished(launch(binary,['--help'],{PATH:process.env.PATH},{uid:65534,gid:65534}));assert.equal(help.code,0);for(const flag of ['--once','--telemetry-json','--database','--env-file'])assert(help.output.includes(flag));
  assert.notEqual((await finished(launch(binary,['--fixture-invalid'],{}))).code,0);
@@ -424,18 +427,18 @@ try{
  parse(protocol+'x'.repeat(20000)+'\n');assert.equal(emitted.length,validCount);privacy(emitted);
  pass('batch parser rejects oversize/private/health/failed-nonzero frames; accepted metadata has no private fields');
 
- // Fault only actual dashboard launch; never rename image binaries or execute
+ // Substitute/restore only this disposable candidate's dashboard binary; never execute
  // foreign workers. Both node and tsx supervisors must retry native only.
  for(const[fault,runtime]of [['missing','node'],['exit','tsx']]){
   const scope=`fault-${fault}`,db=database(`fault_${fault}`),selected=new URL(uri);selected.pathname=`/${db.databaseName}`;
   const child=launch(process.execPath,['/app/dist/workers/cron.index.js'],{...process.env,MONGO_URI:selected.href,CRON_WORKER_RUNTIME:runtime,DASHBOARD_ACTIVITY_FIXTURE_SCOPE:scope,DASHBOARD_ACTIVITY_FIXTURE_FAULT:fault});
-  await waitFor(async()=>{const rows=await records(scope);return rows.filter(row=>row.event==='spawn'&&row.native).length>=2;},`${fault} native child restart`);
+  await waitFor(async()=>{const rows=await records(scope);return rows.filter(row=>row.worker==='dashboard-activity'&&(row.event==='spawn'||row.event==='spawn-failed')).length>=2;},`${fault} native child restart`);
   const rows=await records(scope),foreign=rows.filter(row=>row.event==='spawn'&&!row.native);assert.equal(new Set(foreign.map(row=>row.worker)).size,foreign.length,'foreign siblings never restart');
   assert(rows.filter(row=>row.event==='spawn'&&row.native).every(row=>row.command===binary&&row.requestedCommand===binary));
-  if(fault==='missing')assert(rows.some(row=>row.event==='error'&&row.code==='ENOENT'));else assert(rows.some(row=>row.event==='exit'&&row.code===17));
+  if(fault==='missing')assert(rows.some(row=>row.event==='spawn-failed'&&row.code==='ENOENT'));else assert(rows.some(row=>row.event==='exit'&&row.code===17));
   child.kill('SIGTERM');assert.equal((await finished(child)).code,0);
  }
- pass('actual node ENOENT and tsx nonzero dashboard launch retry native only, all foreign siblings remain inert/stable');
+ pass('actual node ENOENT and tsx nonzero dashboard launch retry native only, TS siblings remain inert/stable, unselected natives absent');
 
  const killed=paused;stopped.delete(killed.pid);process.kill(killed.pid,'SIGKILL');paused=undefined;
  const replacement=await waitFor(async()=>{const row=await currentNative();return row&&row.pid!==killed.pid?row:null;},'main native child replacement');assert.equal(replacement.supervisor,root);

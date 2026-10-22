@@ -1,3 +1,5 @@
+// Stage native-cron-fixture.mjs beside cron-boot.mjs for dual-supervisor verification.
+import { rustRegistry, assertSelectedNatives } from '/tmp/saas-fixtures/native-cron-fixture.mjs';
 // Real cron/native candidate check. Stage cron-boot.mjs and the exact source
 // dima-analytics/src/store.mjs as analytics-store.mjs with --fixtures.
 // Use only saas-ops disposable mongo/redis dependencies and this check's test-env.
@@ -357,9 +359,11 @@ try {
     verifySchedulingAssertions();
     await client.connect(); await redis.connect();
     const native = await waitFor(() => currentNative(), 'actual default native startup'), root = native.supervisor;
+    assertSelectedNatives(await records(), ['roulette-completion']);
+    assert.equal(rustRegistry().find(worker => worker.name === 'roulette-completion').binary, '/usr/local/bin/roulette_completion');
     await assertNative(root);
     const unrelated = (await records()).filter(row => row.event === 'spawn' && !row.native).map(row => row.worker).sort();
-    for (const worker of ['roulette-actions', 'domain-events', 'stream-activity', 'raid-analytics', 'follow-defense-baseline']) assert(unrelated.includes(worker));
+    for (const worker of ['roulette-actions', 'domain-events', 'follow-ledger']) assert(unrelated.includes(worker));
     const idle = await waitFor(async () => { const rows = (await records()).filter(row => row.event === 'batch' && row.frame.success && row.frame.events === 0); return rows.length >= 3 ? rows.slice(-3) : null; }, 'fixed one-second idle polls');
     for (let i = 1; i < idle.length; i++) {
         assertPaced({ ...idle[i - 1].frame, at: idle[i - 1].at }, { ...idle[i].frame, at: idle[i].at }, 'initial idle roulette poll');

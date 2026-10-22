@@ -1,3 +1,5 @@
+// Stage native-cron-fixture.mjs beside cron-boot.mjs for dual-supervisor verification.
+import { rustRegistry, assertSelectedNatives } from '/tmp/saas-fixtures/native-cron-fixture.mjs';
 // saas-ops candidate check: actual cron command, native projector, disposable DBs.
 // Stage cron-boot.mjs, activity.mjs (dima-rust fixture), analytics-store.mjs
 // (exact dima-analytics/src/store.mjs) under /tmp/saas-fixtures before startup.
@@ -152,6 +154,8 @@ try {
     await client.connect(); await redis.connect();
     const actual = client.db(databaseName), baseline = fixtureDatabase('baseline');
     const native = await waitFor(() => currentNative(), 'actual supervised Rust startup');
+    assertSelectedNatives(await records(), ['stream-activity']);
+    assert.equal(rustRegistry().find(worker => worker.name === 'stream-activity').binary, '/usr/local/bin/stream_activity');
     const root = native.supervisor;
     assert.equal(native.command, '/usr/local/bin/stream_activity');
     assert.equal(native.uid, 65534); assert.equal(native.gid, 65534);

@@ -1,3 +1,5 @@
+// Stage native-cron-fixture.mjs beside cron-boot.mjs for dual-supervisor verification.
+import { rustRegistry, assertSelectedNatives } from '/tmp/saas-fixtures/native-cron-fixture.mjs';
 // Exact cron candidate + native AI usage consumer, isolated helper dependencies.
 // Stage all files from ai-usage-receipts-rust-fixtures plus exact
 // dima-analytics/src/store.mjs renamed analytics-store.mjs. No Polar calls.
@@ -494,9 +496,11 @@ try {
     verifySchedulingAssertions(); verifyWatchdogResetClassification();
     await client.connect(); await redis.connect();
     const native = await waitFor(() => currentNative(), 'actual native default startup'), root = native.supervisor;
+    assertSelectedNatives(await records(), ['ai-usage-receipts']);
+    assert.equal(rustRegistry().find(worker => worker.name === 'ai-usage-receipts').binary, '/usr/local/bin/ai_usage_receipts');
     await assertNative(root);
     const unrelated = (await records()).filter(row => row.event === 'spawn' && !row.native).map(row => row.worker).sort();
-    for (const worker of ['ai-usage-backfill', 'roulette-actions', 'roulette-completion', 'domain-events', 'stream-activity', 'raid-analytics', 'follow-defense-baseline']) assert(unrelated.includes(worker));
+    for (const worker of ['ai-usage-backfill', 'roulette-actions', 'domain-events']) assert(unrelated.includes(worker));
     let paused = await pause();
     await clearQueues(); await redis.set('ai-usage-fixture:unrelated', 'preserve');
     for (const db of [actual, referenceDb]) { await indexes(db); await seedUsers(db); }

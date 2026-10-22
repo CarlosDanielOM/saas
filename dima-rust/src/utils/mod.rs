@@ -25,6 +25,7 @@
 
 #[cfg(any(
     feature = "mongo",
+    feature = "cron-supervisor",
     feature = "bot-utils",
     feature = "keywords",
     feature = "chat-events",
@@ -39,7 +40,7 @@ pub mod js_compat;
 pub mod bson_compat;
 #[cfg(feature = "mongo")]
 pub mod utc_time;
-#[cfg(feature = "mongo")]
+#[cfg(any(feature = "mongo", feature = "cron-supervisor"))]
 pub mod worker_process;
 
 #[cfg(feature = "ai-usage")]

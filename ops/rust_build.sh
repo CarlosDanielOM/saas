@@ -16,6 +16,11 @@ case "$SAAS_RUST_DASHBOARD_FEATURES" in
   mongo,redis,http-client,unicode-collation) ;;
   *) echo 'Unsupported dashboard features; review the dependency graph guard before enabling another profile' >&2; exit 1 ;;
 esac
+SAAS_RUST_SUPERVISOR_FEATURES="${SAAS_RUST_SUPERVISOR_FEATURES:-cron-supervisor}"
+case "$SAAS_RUST_SUPERVISOR_FEATURES" in
+  cron-supervisor) ;;
+  *) echo 'Unsupported supervisor features; review the dependency graph guard before enabling another profile' >&2; exit 1 ;;
+esac
 
 # Pin the image's installed toolchain instead of allowing rust-toolchain.toml
 # to select/download a moving stable compiler during this release.
@@ -25,7 +30,8 @@ rustc -vV > /artifacts/toolchain.txt
 grep -q '^host: .*unknown-linux-musl$' /artifacts/toolchain.txt
 
 # Native dependencies and linker installation are inside the same hard caps.
-apk add --no-cache build-base
+# Supervisor process tests use disposable /bin/sh and /usr/bin/python3 children.
+apk add --no-cache build-base python3
 rustup component add --toolchain "$RUSTUP_TOOLCHAIN" rustfmt clippy
 cargo fmt --all -- --check
 
@@ -73,7 +79,7 @@ cargo build --locked --release --no-default-features --features "$SAAS_RUST_BASE
 install -m 0755 /target-cache/release/follow_defense_baseline /artifacts/follow_defense_baseline
 install -m 0755 /target-cache/release/ai_usage_receipts /artifacts/ai_usage_receipts
 install -m 0755 /target-cache/release/raid_sessions /artifacts/raid_sessions
-# Dashboard activity builds last with the native HTTP client and ICU collator.
+# Dashboard activity builds third with the native HTTP client and ICU collator.
 # The two earlier profiles must never inherit reqwest or the collator from this one.
 cargo tree --locked --no-default-features --features "$SAAS_RUST_DASHBOARD_FEATURES" --edges normal --prefix none --format '{p}' > /artifacts/dashboard-worker-dependencies.txt
 if grep -Eq '^(sqlx(-[^ ]+)?|axum(-[^ ]+)?) v' /artifacts/dashboard-worker-dependencies.txt; then
@@ -85,6 +91,19 @@ cargo clippy --locked --all-targets --no-default-features --features "$SAAS_RUST
 cargo test --locked --no-default-features --features "$SAAS_RUST_DASHBOARD_FEATURES"
 cargo build --locked --release --no-default-features --features "$SAAS_RUST_DASHBOARD_FEATURES" --bin dashboard_activity
 install -m 0755 /target-cache/release/dashboard_activity /artifacts/dashboard_activity
+# Supervision is independent of every worker profile and Cargo defaults. Keep
+# the already installed seven worker artifacts intact when building this last.
+# Redis URL/IDNA needs ICU normalization; only unrelated ICU collation is excluded.
+cargo tree --locked --no-default-features --features "$SAAS_RUST_SUPERVISOR_FEATURES" --edges normal --prefix none --format '{p}' > /artifacts/supervisor-dependencies.txt
+if grep -Eq '^(mongodb|sqlx|axum|reqwest|icu_collator)(-[^ ]+)? v' /artifacts/supervisor-dependencies.txt; then
+    echo 'Supervisor dependency graph unexpectedly includes MongoDB, SQLx, Axum, reqwest, or ICU collation' >&2
+    exit 1
+fi
+cargo check --locked --all-targets --no-default-features --features "$SAAS_RUST_SUPERVISOR_FEATURES"
+cargo clippy --locked --all-targets --no-default-features --features "$SAAS_RUST_SUPERVISOR_FEATURES" -- -D warnings
+cargo test --locked --no-default-features --features "$SAAS_RUST_SUPERVISOR_FEATURES"
+cargo build --locked --release --no-default-features --features "$SAAS_RUST_SUPERVISOR_FEATURES" --bin cron_index
+install -m 0755 /target-cache/release/cron_index /artifacts/cron_index
 # This exercises the actual release binary with no database/environment needed.
 /artifacts/stream_activity --dry-run
 /artifacts/raid_analytics --dry-run
@@ -93,3 +112,5 @@ install -m 0755 /target-cache/release/dashboard_activity /artifacts/dashboard_ac
 /artifacts/ai_usage_receipts --dry-run
 /artifacts/raid_sessions --dry-run
 /artifacts/dashboard_activity --dry-run
+# Metadata only: no worker children, Redis connection, or telemetry startup.
+/artifacts/cron_index --dry-run

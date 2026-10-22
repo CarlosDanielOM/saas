@@ -4,8 +4,10 @@ import dotenv from 'dotenv';
 import { spawn, type ChildProcess, type SpawnOptions } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { error as logError, info as logInfo, warn as logWarn } from '../utils/logger.js';
-import { observe, recordLog, startTelemetry } from '../utils/observability/telemetry.js';
-import { NATIVE_WORKERS, nativeWorker, nativeProgressParser, startNativeWorkerMetrics, type NativeWorkerName } from '../utils/observability/native_worker_metrics.js';
+import { startTelemetry } from '../utils/observability/telemetry.js';
+import { NativeIndexBridge, type NativeBridgeDependencies } from './cron_native_bridge.js';
+
+export const TYPESCRIPT_SHUTDOWN_MS = 25000;
 
 interface WorkerOptions {
     enabledEnv?: string;
@@ -18,14 +20,7 @@ export interface TypeScriptWorkerDefinition extends WorkerOptions {
     distEntry: string;
 }
 
-export interface NativeWorkerDefinition extends WorkerOptions {
-    kind: 'native';
-    name: NativeWorkerName;
-    sourceEntry?: never;
-    distEntry?: never;
-}
-
-export type WorkerDefinition = TypeScriptWorkerDefinition | NativeWorkerDefinition;
+export type WorkerDefinition = TypeScriptWorkerDefinition;
 
 export interface SupervisorConfig {
     runtime: 'tsx' | 'node';
@@ -42,18 +37,12 @@ export interface ManagedWorker {
 }
 
 export const WORKERS: WorkerDefinition[] = [
-    { kind: 'native', name: 'dashboard-activity' },
-    { kind: 'native', name: 'raid-analytics' },
-    { kind: 'native', name: 'stream-activity' },
     { kind: 'typescript', name: 'goals', sourceEntry: 'src/workers/goals.worker.ts', distEntry: 'dist/workers/goals.worker.js' },
     { kind: 'typescript', name: 'duel', sourceEntry: 'src/workers/duel.worker.ts', distEntry: 'dist/workers/duel.worker.js' },
     { kind: 'typescript', name: 'widgets', sourceEntry: 'src/workers/widgets.worker.ts', distEntry: 'dist/workers/widgets.worker.js' },
     { kind: 'typescript', name: 'credit-gifts', sourceEntry: 'src/workers/credit_gifts.worker.ts', distEntry: 'dist/workers/credit_gifts.worker.js' },
     { kind: 'typescript', name: 'semantic-moderation', sourceEntry: 'src/workers/semantic_moderation.worker.ts', distEntry: 'dist/workers/semantic_moderation.worker.js' },
     { kind: 'typescript', name: 'roulette-actions', sourceEntry: 'src/workers/roulette-actions.worker.ts', distEntry: 'dist/workers/roulette-actions.worker.js' },
-    { kind: 'native', name: 'roulette-completion' },
-    { kind: 'native', name: 'follow-defense-baseline' },
-    { kind: 'native', name: 'raid-sessions' },
     {
         kind: 'typescript',
         name: 'follow-defense-actions',
@@ -99,11 +88,6 @@ export const WORKERS: WorkerDefinition[] = [
         enabledEnv: 'FREE_CREDIT_RESET_ENABLED'
     },
     {
-        kind: 'native',
-        name: 'ai-usage-receipts',
-        enabledEnv: 'AI_USAGE_RECEIPTS_ENABLED'
-    },
-    {
         kind: 'typescript',
         name: 'ai-usage-backfill',
         sourceEntry: 'src/workers/ai_usage_backfill.worker.ts',
@@ -143,35 +127,24 @@ export const WORKERS: WorkerDefinition[] = [
 ];
 
 export function resolveWorkerLaunch(worker: WorkerDefinition, config: SupervisorConfig,
-    env: NodeJS.ProcessEnv = process.env, uid: number | undefined = process.getuid?.()): {
-    command: string; args: string[]; options: SpawnOptions; native: boolean;
+    env: NodeJS.ProcessEnv = process.env): {
+    command: string; args: string[]; options: SpawnOptions;
 } {
     const flags = [...(config.dryRun ? ['--dry-run'] : []), ...(config.once ? ['--once'] : [])];
-    if (worker.kind === 'native') {
-        const metadata = NATIVE_WORKERS[worker.name];
-        const childEnv: NodeJS.ProcessEnv = {};
-        const allowed = ['MONGO_URI', 'PATH', 'TZ', 'LANG', 'LC_ALL', 'SSL_CERT_FILE', 'SSL_CERT_DIR', ...metadata.extraEnv];
-        for (const key of allowed) {
-            if (env[key] !== undefined) childEnv[key] = env[key];
-        }
-        return { command: metadata.command, args: [...metadata.args, ...flags],
-            options: { stdio: ['ignore', 'pipe', 'inherit'], env: childEnv, ...(uid === 0 ? { uid: 65534, gid: 65534 } : {}) }, native: true };
-    }
     const entry = config.runtime === 'tsx' ? path.resolve(process.cwd(), worker.sourceEntry)
         : path.resolve(path.dirname(fileURLToPath(import.meta.url)), path.basename(worker.distEntry));
     return { command: config.runtime === 'tsx' ? 'tsx' : process.execPath, args: [entry, ...flags],
-        options: { stdio: 'inherit', env: { ...env, CRON_SUPERVISOR: 'true', CRON_WORKER_NAME: worker.name } }, native: false };
+        options: { stdio: 'inherit', env: { ...env, CRON_SUPERVISOR: 'true', CRON_WORKER_NAME: worker.name } } };
 }
 
-interface SupervisorDependencies {
+export interface SupervisorDependencies {
     spawn: typeof spawn;
-    metrics: typeof startNativeWorkerMetrics;
-    progress: typeof nativeProgressParser;
     info: typeof logInfo;
     warn: typeof logWarn;
     error: typeof logError;
-    observe: typeof observe;
-    recordLog: typeof recordLog;
+    env: NodeJS.ProcessEnv;
+    setTimeout: typeof setTimeout;
+    clearTimeout: typeof clearTimeout;
 }
 
 export class WorkerSupervisor {
@@ -180,21 +153,24 @@ export class WorkerSupervisor {
     private readonly dependencies: SupervisorDependencies;
     private readonly restarts = new Map<ManagedWorker, ReturnType<typeof setTimeout>>();
     private readonly children = new Map<ChildProcess, Promise<void>>();
-    private readonly stopSampling = new Map<ChildProcess, () => void>();
+    private started = false;
+    private shutdownPromise: Promise<void> | undefined;
 
     constructor(private readonly config: SupervisorConfig, definitions: WorkerDefinition[] = WORKERS,
         dependencies: Partial<SupervisorDependencies> = {}) {
-        this.dependencies = { spawn, metrics: startNativeWorkerMetrics, progress: nativeProgressParser,
-            info: logInfo, warn: logWarn, error: logError, observe, recordLog, ...dependencies };
+        this.dependencies = { spawn, info: logInfo, warn: logWarn, error: logError,
+            env: process.env, setTimeout, clearTimeout, ...dependencies };
         this.workers = definitions.map(definition => ({ definition, process: null, restartCount: 0,
             exitCode: this.enabled(definition) ? null : 0 }));
     }
 
     private enabled(worker: WorkerDefinition): boolean {
-        return !worker.enabledEnv || process.env[worker.enabledEnv] !== 'false';
+        return !worker.enabledEnv || this.dependencies.env[worker.enabledEnv] !== 'false';
     }
 
     start(): void {
+        if (this.started || this.stopping) return;
+        this.started = true;
         for (const managed of this.workers) {
             if (this.enabled(managed.definition)) this.startWorker(managed);
             else void this.dependencies.info({ worker: 'cron_supervisor', message: 'Cron worker disabled; not starting',
@@ -202,11 +178,10 @@ export class WorkerSupervisor {
         }
     }
 
-    private scheduleRestart(managed: ManagedWorker, native: boolean): void {
+    private scheduleRestart(managed: ManagedWorker): void {
         if (this.stopping || this.config.once || this.restarts.has(managed)) return;
         managed.restartCount += 1;
-        if (native) this.dependencies.observe('worker', `${nativeWorker(managed.definition.name)!.metricPrefix}.restarts`, 1, 'error');
-        const timer = setTimeout(() => {
+        const timer = this.dependencies.setTimeout(() => {
             this.restarts.delete(managed);
             if (!this.stopping) this.startWorker(managed);
         }, this.config.restartDelayMs);
@@ -215,123 +190,173 @@ export class WorkerSupervisor {
 
     private startWorker(managed: ManagedWorker): void {
         if (this.stopping || managed.process) return;
-        const launch = resolveWorkerLaunch(managed.definition, this.config);
+        const launch = resolveWorkerLaunch(managed.definition, this.config, this.dependencies.env);
         let child: ChildProcess;
         try { child = this.dependencies.spawn(launch.command, launch.args, launch.options); }
         catch (error) {
             managed.exitCode = 1;
-            this.workerError(managed, launch.native, 'spawn', error);
-            this.scheduleRestart(managed, launch.native);
+            this.workerError(managed, 'spawn', error);
+            this.scheduleRestart(managed);
             return;
         }
         managed.process = child;
-        let stopMetrics: (() => void) | undefined;
-        let failed = false, exited = false, finalized = false;
+        let failed = false, finalized = false;
         let resolveClosed!: () => void;
         this.children.set(child, new Promise<void>(resolve => { resolveClosed = resolve; }));
-        const stop = (): void => { stopMetrics?.(); stopMetrics = undefined; };
-        this.stopSampling.set(child, stop);
         child.once('spawn', () => {
-            if (launch.native && child.pid && !this.stopping && !exited && !failed) {
-                stopMetrics = this.dependencies.metrics(child.pid, {}, managed.definition.name as NativeWorkerName);
-            }
+            if (finalized || this.stopping) return;
             void this.dependencies.info({ worker: 'cron_supervisor', message: 'Started cron worker process',
-                name: managed.definition.name, pid: child.pid, runtime: launch.native ? 'rust' : this.config.runtime,
+                name: managed.definition.name, pid: child.pid, runtime: this.config.runtime,
                 restartCount: managed.restartCount }, { destination: 'console' });
         });
-        if (launch.native && child.stdout) {
-            const progress = this.dependencies.progress(this.dependencies.observe, managed.definition.name as NativeWorkerName);
-            child.stdout.on('data', chunk => {
-                // Pipes may drain after exit; close is the ownership fence.
-                if (!this.stopping && !failed && !finalized && managed.process === child) progress(chunk);
-            });
-        }
-        child.once('error', error => { failed = true; stop(); this.workerError(managed, launch.native, 'process', error); });
-        child.once('exit', () => { exited = true; stop(); });
+        child.on('error', error => {
+            if (failed || finalized) return;
+            failed = true; this.workerError(managed, 'process', error);
+        });
         // close follows exit or failed spawn and also waits for pipe teardown.
         // Only this callback retires ownership and schedules a single restart.
         child.once('close', (code, signal) => {
             if (finalized) return;
-            finalized = true; stop();
-            this.stopSampling.delete(child);
+            finalized = true;
             this.children.delete(child); resolveClosed();
             if (managed.process !== child) return;
             managed.process = null;
             managed.exitCode = failed ? 1 : (code ?? (signal ? 1 : 0));
-            if (launch.native && !failed && managed.exitCode !== 0 && !this.stopping) {
-                this.workerError(managed, true, 'exit');
-            }
             void this.dependencies.warn({ worker: 'cron_supervisor', message: 'Cron worker process exited',
                 name: managed.definition.name, code: managed.exitCode, signal,
                 restarting: !this.stopping && !this.config.once }, { destination: 'console' });
-            this.scheduleRestart(managed, launch.native);
+            this.scheduleRestart(managed);
         });
     }
 
-    private workerError(managed: ManagedWorker, native: boolean, step: string, error?: unknown): void {
+    private workerError(managed: ManagedWorker, step: string, error?: unknown): void {
         const candidate = (error as NodeJS.ErrnoException | undefined)?.code;
-        const code = typeof candidate === 'string' && /^[A-Z0-9_]{1,40}$/.test(candidate) ? candidate : 'NATIVE_WORKER_PROCESS';
+        const code = typeof candidate === 'string' && /^[A-Z0-9_]{1,40}$/.test(candidate) ? candidate : 'CRON_WORKER_PROCESS';
         void this.dependencies.error({ worker: 'cron_supervisor', message: 'Cron worker process failed',
             name: managed.definition.name, step, code }, { destination: 'console' });
-        if (native) {
-            const prefix = nativeWorker(managed.definition.name)!.metricPrefix;
-            this.dependencies.observe('worker', `${prefix}.errors`, 1, 'error');
-            this.dependencies.recordLog('error', { function: prefix, step, code });
-        }
     }
 
     async wait(): Promise<void> {
-        while (this.workers.some(worker => worker.process !== null)) await new Promise(resolve => setTimeout(resolve, 50));
+        while (this.children.size) await Promise.all([...this.children.values()]);
     }
 
-    async shutdown(signal: string, timeoutMs = 25000): Promise<void> {
-        if (this.stopping) return;
+    shutdown(signal: string, timeoutMs = TYPESCRIPT_SHUTDOWN_MS): Promise<void> {
+        if (this.shutdownPromise) return this.shutdownPromise;
         this.stopping = true;
-        for (const timer of this.restarts.values()) clearTimeout(timer);
+        for (const timer of this.restarts.values()) this.dependencies.clearTimeout(timer);
         this.restarts.clear();
         void this.dependencies.info({ worker: 'cron_supervisor', message: 'Shutting down cron supervisor', signal,
             workers: this.workers.map(worker => ({ name: worker.definition.name, pid: worker.process?.pid ?? null })) }, { destination: 'console' });
         const children = [...this.children.keys()];
-        for (const stop of this.stopSampling.values()) stop();
         const signalChildren = (signal: NodeJS.Signals): void => {
             for (const child of children) {
                 if (this.children.has(child) && child.exitCode === null && child.signalCode === null) child.kill(signal);
             }
         };
-        signalChildren('SIGTERM');
-        let deadline: ReturnType<typeof setTimeout> | undefined;
-        await Promise.race([
-            Promise.all(children.map(child => this.children.get(child))),
-            new Promise<void>(resolve => { deadline = setTimeout(resolve, timeoutMs); }),
-        ]);
-        if (deadline) clearTimeout(deadline);
-        signalChildren('SIGKILL');
+        this.shutdownPromise = (async () => {
+            signalChildren('SIGTERM');
+            let deadline: ReturnType<typeof setTimeout> | undefined;
+            try {
+                await Promise.race([
+                    Promise.all(children.map(child => this.children.get(child))),
+                    new Promise<void>(resolve => { deadline = this.dependencies.setTimeout(resolve, timeoutMs); }),
+                ]);
+            } finally {
+                if (deadline !== undefined) this.dependencies.clearTimeout(deadline);
+                signalChildren('SIGKILL');
+            }
+        })();
+        return this.shutdownPromise;
+    }
+}
+
+export function resolveSupervisorConfig(env: NodeJS.ProcessEnv = process.env,
+    args: string[] = process.argv.slice(2)): SupervisorConfig {
+    const configuredDelay = Number(env.CRON_WORKER_RESTART_DELAY_MS || 5000);
+    return {
+        runtime: env.CRON_WORKER_RUNTIME === 'tsx' ? 'tsx' : 'node',
+        once: args.includes('--once'), dryRun: args.includes('--dry-run'),
+        restartDelayMs: Number.isFinite(configuredDelay) ? Math.max(1000, configuredDelay) : 5000,
+    };
+}
+
+export interface CronHostDependencies extends SupervisorDependencies {
+    signal: NativeBridgeDependencies['signal'];
+    getuid: NativeBridgeDependencies['getuid'];
+}
+
+/** PID 1 coordinates the two owners; TypeScript can retire after its last migration. */
+export class CronHost {
+    readonly typescript: WorkerSupervisor;
+    readonly native: NativeIndexBridge;
+    stopping = false;
+    private started = false;
+    private failed = false;
+    private shutdownPromise: Promise<number> | undefined;
+    private resolveCompletion!: (code: number) => void;
+    private readonly completion = new Promise<number>(resolve => { this.resolveCompletion = resolve; });
+
+    constructor(private readonly config: SupervisorConfig, definitions: WorkerDefinition[] = WORKERS,
+        dependencies: Partial<CronHostDependencies> = {}) {
+        this.typescript = new WorkerSupervisor(config, definitions, dependencies);
+        // Pass the same spawn binding used by TS workers for exact-candidate
+        // fixture interception. Only this one fixed index launch crosses over.
+        this.native = new NativeIndexBridge(config, {
+            spawn, ...dependencies,
+            onFailure: failure => {
+                this.failed = true;
+                void (dependencies.error ?? logError)({ worker: 'cron_supervisor',
+                    message: 'Rust cron index failed; stopping cron host', step: failure.step,
+                    code: failure.code }, { destination: 'console' });
+                void this.shutdown('native-index-failure');
+            },
+        });
+    }
+
+    start(): void {
+        if (this.started || this.stopping) return;
+        this.started = true;
+        this.native.start();
+        if (!this.stopping) this.typescript.start();
+        if (this.config.once) {
+            void Promise.all([this.typescript.wait(), this.native.wait()]).then(() => {
+                if (!this.stopping) this.resolveCompletion(this.native.exitCode === 0 &&
+                    this.typescript.workers.every(worker => worker.exitCode === 0) ? 0 : 1);
+            });
+        }
+    }
+
+    wait(): Promise<number> { return this.completion; }
+
+    shutdown(signal: string): Promise<number> {
+        if (this.shutdownPromise) return this.shutdownPromise;
+        this.stopping = true;
+        // Run both grace periods concurrently: 25 seconds for TS children and
+        // 28 for Rust coordination, within Compose's existing 30-second budget.
+        this.shutdownPromise = Promise.all([this.typescript.shutdown(signal), this.native.shutdown()]).then(() => {
+            const code = this.failed || this.native.exitCode !== 0 ||
+                (this.config.once && this.typescript.workers.some(worker => worker.exitCode !== 0)) ? 1 : 0;
+            this.resolveCompletion(code);
+            return code;
+        });
+        return this.shutdownPromise;
     }
 }
 
 async function bootstrap(): Promise<void> {
     if (process.env.NODE_ENV !== 'production') dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
     dotenv.config({ path: path.resolve(process.cwd(), '.env') });
-    const configuredDelay = Number(process.env.CRON_WORKER_RESTART_DELAY_MS || 5000);
-    const config: SupervisorConfig = {
-        runtime: process.env.CRON_WORKER_RUNTIME === 'tsx' ? 'tsx' : 'node',
-        once: process.argv.includes('--once'), dryRun: process.argv.includes('--dry-run'),
-        restartDelayMs: Number.isFinite(configuredDelay) ? Math.max(1000, configuredDelay) : 5000,
-    };
+    const config = resolveSupervisorConfig();
     startTelemetry();
-    const supervisor = new WorkerSupervisor(config);
+    const host = new CronHost(config);
     for (const signal of ['SIGINT', 'SIGTERM'] as const) {
-        process.once(signal, () => { void supervisor.shutdown(signal).then(() => process.exit(0)); });
+        process.once(signal, () => { void host.shutdown(signal); });
     }
     await logInfo({ worker: 'cron_supervisor', message: 'Starting cron supervisor', runtime: config.runtime,
-        nativeWorkers: WORKERS.filter(worker => worker.kind === 'native').map(worker => worker.name),
         restartDelayMs: config.restartDelayMs, workers: WORKERS.filter(worker => !worker.enabledEnv || process.env[worker.enabledEnv] !== 'false').map(worker => worker.name),
         mode: config.once ? 'once' : 'normal', dryRun: config.dryRun }, { destination: 'console' });
-    supervisor.start();
-    if (config.once) {
-        await supervisor.wait();
-        if (!supervisor.stopping) process.exit(supervisor.workers.every(worker => worker.exitCode === 0) ? 0 : 1);
-    }
+    host.start();
+    process.exit(await host.wait());
 }
 
 // Importing the bounded supervisor helpers for tests must not load env or spawn.
