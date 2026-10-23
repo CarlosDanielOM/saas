@@ -3,10 +3,11 @@ import { mock, test, after } from 'node:test';
 import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { registerReadTtsBridge, prepareReadTts, releaseReadTts, reportReadTts, readTtsTerminal, invalidateReadTts, readTtsAvailable, reserveReadTts, resumeReadTts, scheduleReadTtsResume } from './tts_bridge.js';
+import { registerReadTtsBridge, prepareReadTts, releaseReadTts, reportReadTts, readTtsTerminal, invalidateReadTts, readTtsAvailable, reserveReadTts, resumeReadTts, scheduleReadTtsResume, protectReadTtsTurn, readTtsTurnCurrent } from './tts_bridge.js';
 const owner = '012345678901234567890123', channel = '123456';
 let runtime: any, config: any, rows: Map<string, any>, events: any[], endings: string[];
 let ticketFails = false, attemptedFails = false;
+let afterPrivateCreate: (() => Promise<void>) | undefined, afterPrivateLink: (() => Promise<void>) | undefined, afterAttempted: (() => Promise<void>) | undefined;
 let afterConfigurationRead: (() => Promise<void>) | undefined;
 let afterClaim: (() => Promise<void>) | undefined;
 const resumed: string[] = [];
@@ -29,7 +30,7 @@ function apply(row: any, update: any) { for (const [key, value] of Object.entrie
     const parts = key.split('.'); let target = row;
     for (const part of parts.slice(0, -1)) target = target[part] ??= {};
     target[parts.at(-1)!] = structuredClone(value);
-} }
+} for (const [key, value] of Object.entries(update.$max ?? {})) { if (!get(row, key) || get(row, key) < (value as Date)) apply(row, { $set: { [key]: value } }); } }
 const query = (read: () => any) => ({ lean: async () => structuredClone(await read()) });
 mock.module('../schemas/users.schema.js', { defaultExport: { findOne: () => ({ select: () => query(() => ({ _id: owner })) }) } });
 mock.module('../server/services/pet_settings.service.js', { namedExports: { getPetConfiguration: async () => { const snapshot = structuredClone(config); const barrier = afterConfigurationRead; afterConfigurationRead = undefined; if (barrier) await barrier(); return snapshot; } } });
@@ -41,12 +42,12 @@ mock.module('../schemas/pet_runtime.schema.js', { namedExports: {
         findById: () => query(() => runtime),
         find: () => ({ limit: () => query(() => runtime.ttsReservation?.token ? [runtime] : []) }),
         findOneAndUpdate: (filter: any, update: any) => query(async () => { if (!matches(runtime, filter)) return null; apply(runtime, update); const claimed = structuredClone(runtime); const barrier = afterClaim; afterClaim = undefined; if (barrier) await barrier(); return claimed; }),
-        updateOne: async (filter: any, update: any) => { const match = matches(runtime, filter); if (match) apply(runtime, update); return { modifiedCount: +match, matchedCount: +match }; }
+        updateOne: async (filter: any, update: any) => { const match = matches(runtime, filter); if (match) apply(runtime, update); const barrier = update.$set?.activeRequestId ? afterPrivateLink : undefined; if (barrier) { afterPrivateLink = undefined; await barrier(); } return { modifiedCount: +match, matchedCount: +match }; }
     },
     PetRequest: {
-        create: async (value: any) => { rows.set(value._id, structuredClone(value)); return { ...value, toObject: () => structuredClone(value) }; },
+        create: async (value: any) => { rows.set(value._id, structuredClone(value)); const barrier = afterPrivateCreate; afterPrivateCreate = undefined; if (barrier) await barrier(); return { ...value, toObject: () => structuredClone(value) }; },
         findById: (id: string) => query(() => rows.get(id) ?? null),
-        updateOne: async (filter: any, update: any) => { const row = rows.get(filter._id); const match = row && matches(row, filter) && !attemptedFails; if (match) apply(row, update); return { modifiedCount: +!!match, matchedCount: +!!match }; }
+        updateOne: async (filter: any, update: any) => { const row = rows.get(filter._id); const match = row && matches(row, filter) && !attemptedFails; if (match) apply(row, update); const barrier = update.$set?.deliveryAttempted ? afterAttempted : undefined; if (barrier) { afterAttempted = undefined; await barrier(); } return { modifiedCount: +!!match, matchedCount: +!!match }; }
     }
 } });
 async function finish(id: string, status: string) {
@@ -72,7 +73,7 @@ async function reset() {
         lease: { leaseId: 'lease', holderPeerId: peer.id, expiresAt: new Date(Date.now() + 15000) } };
     config = { revision: 1, settings: { enabled: true, sources: { independent: false, readTts: true }, ttsAudio: 'pet',
         tts: { enabled: false }, personality: { source: 'profile', profileId: 'missing' }, appearance: { kind: 'png' }, playback: { target: 'browser' } }, runtime: { enabled: false, readTtsEnabled: true } };
-    rows = new Map(); events = []; endings = []; afterClaim = afterConfigurationRead = undefined; resumed.length = 0; ticketFails = attemptedFails = false; peer.socket.connected = peer.audioReady = peer.renderReady = true;
+    rows = new Map(); events = []; endings = []; afterClaim = afterConfigurationRead = afterPrivateCreate = afterPrivateLink = afterAttempted = undefined; resumed.length = 0; ticketFails = attemptedFails = false; peer.socket.connected = peer.audioReady = peer.renderReady = true;
 }
 function input(speechId = 'speech') { return { channelId: channel, speechId, file, mime: 'audio/wav', text: 'Existing normal TTS', cancelled: () => false,
     ended: async (reason: string) => { endings.push(reason); await releaseReadTts(channel, speechId); } }; }
@@ -121,7 +122,7 @@ test('Path B has no lease/audio, monotonic follow anchors, mandatory end generat
     runtime.generation++; await invalidateReadTts(owner);
     assert.deepEqual(endings, []); assert.ok(runtime.ttsReservation, 'overlay speech retains turn after settings/generation change');
     assert.deepEqual(events.find(event => event.event === 'pet:follow-end')?.data, { v: 1, followId: 'speech', generation: 4 });
-    runtime.ttsReservation.expiresAt = new Date(0); await reportReadTts(channel, 'speech', 'progress', 1);
+    runtime.ttsReservation.expiresAt = new Date(Date.now() + 1000); await reportReadTts(channel, 'speech', 'progress', 1);
     assert.ok(runtime.ttsReservation.expiresAt.getTime() > Date.now() + 200000);
     assert.equal(events.filter(event => event.event === 'pet:follow').length, 2);
     await releaseReadTts(channel, 'speech'); assert.equal(runtime.ttsReservation, null);
@@ -160,7 +161,7 @@ test('selected pet readiness/lease resumes normal queue; unavailable PNG peer do
 
 test('settings generation change during synthesis keeps existing normal speech as overlay fallback and renews its turn', async () => {
     await reset(); assert.equal(await reserveReadTts(input()), true);
-    runtime.generation++; runtime.ttsReservation.expiresAt = new Date(Date.now() + 1);
+    runtime.generation++; runtime.ttsReservation.expiresAt = new Date(Date.now() + 1000);
     await invalidateReadTts(owner);
     assert.equal((await prepareReadTts(input()))?.audio, 'overlay');
     assert.ok(runtime.ttsReservation.expiresAt.getTime() > Date.now() + 200000);
@@ -182,4 +183,38 @@ test('resume is coalesced after lease ACK task and does not occupy the socket co
     order.push('lease-ack'); assert.deepEqual(resumed, []);
     await new Promise<void>(resolve => setImmediate(resolve)); await new Promise(resolve => setTimeout(resolve, 5));
     assert.deepEqual(order, ['lease-ack']); assert.deepEqual(resumed, [channel]);
+});
+
+for (const phase of ['create', 'link', 'attempted']) test(`invalidation during private ${phase} preserves unheard normal file as overlay fallback`, async () => {
+    await reset(); let unblock!: () => void, entered!: () => void;
+    const blocked = new Promise<void>(resolve => { unblock = resolve; }), reached = new Promise<void>(resolve => { entered = resolve; });
+    const barrier = async () => { entered(); await blocked; };
+    if (phase === 'create') afterPrivateCreate = barrier; else if (phase === 'link') afterPrivateLink = barrier; else afterAttempted = barrier;
+    const original = input(), pending = prepareReadTts(original); await reached;
+    const oldRequest = runtime.activeRequestId;
+    runtime.generation++; runtime.activeRequestId = null; runtime.lease = null;
+    await invalidateReadTts(owner); if (oldRequest) await finish(oldRequest, 'cancelled');
+    unblock(); assert.equal((await pending)?.audio, 'overlay'); assert.equal(original.file, file);
+    assert.deepEqual(endings, []); assert.equal(events.some(event => event.event === 'pet:play'), false);
+    await releaseReadTts(channel, 'speech');
+});
+test('300-second paused normal TTS reservation outlives its full 330-second preplay watchdog, and proof loss fences it', async () => {
+    await reset(); config.settings.ttsAudio = 'overlay'; const started = Date.now();
+    await prepareReadTts({ ...input(), holdMs: 510000 });
+    assert.ok(runtime.ttsReservation.expiresAt.getTime() >= started + 510000);
+    assert.ok(runtime.ttsReservation.expiresAt > new Date(started + 330000), 'paused original media remains protected past the full queue watchdog');
+    assert.equal(readTtsTurnCurrent(channel, 'speech'), true);
+    runtime.ttsReservation.token = 'new-owner'; assert.equal(await protectReadTtsTurn(channel, 'speech', 510000), false);
+    assert.equal(readTtsTurnCurrent(channel, 'speech'), false);
+    await reportReadTts(channel, 'speech', 'playing', 0); assert.deepEqual(endings, ['tts_turn_lost']);
+    assert.equal(events.some(event => event.event === 'pet:follow'), false);
+});
+
+test('explicit pet cancel during pre-emission work ends normal queue instead of automatic fallback', async () => {
+    await reset(); let unblock!: () => void, entered!: () => void;
+    const blocked = new Promise<void>(resolve => { unblock = resolve; }), reached = new Promise<void>(resolve => { entered = resolve; });
+    afterAttempted = async () => { entered(); await blocked; };
+    const pending = prepareReadTts(input()); await reached; await invalidateReadTts(owner, 'cancelled'); unblock();
+    assert.equal((await pending)?.audio, 'cancelled'); assert.deepEqual(endings, ['pet:state_changed']);
+    assert.equal(events.some(event => event.event === 'pet:play'), false); assert.equal(runtime.ttsReservation, null);
 });

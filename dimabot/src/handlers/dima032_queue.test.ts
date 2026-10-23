@@ -8,6 +8,10 @@ let refreshes = 0;
 let synthesize: (input: any) => Promise<any> = async () => ({ error: false, outputPath: '/tmp/tts-controls.wav', publicPath: '/audio/test' });
 const synthesized: string[] = [];
 let usage = 0;
+let studioConnected = true, graceConnected = true, petReady = true, playbackTimeoutMs = 60000;
+const turns = new Map<string, string>(), protections: number[] = [];
+let afterRequeueWrite: (() => Promise<void>) | undefined, onReserve: (() => void) | undefined;
+let publisher: ((input: any) => Promise<'emitted' | 'unavailable' | 'cancelled'>) | undefined;
 let readRoute: 'pet' | 'overlay' | null = 'pet';
 let lastInput: any;
 const readDeliveries: any[] = [], released: string[] = [];
@@ -18,6 +22,8 @@ const cache = {
   set: async (key: string, value: string) => { data.set(key, value); },
   del: async (key: string) => { data.delete(key); queues.delete(key); },
   zPopMin: async (key: string) => { const value = queues.get(key)?.shift(); return value ? { value } : null; },
+  zAdd: async (key: string, entry: any) => { const ids = queues.get(key) ?? []; if (!ids.includes(entry.value)) ids.push(entry.value); queues.set(key, ids); if (afterRequeueWrite) { const barrier = afterRequeueWrite; afterRequeueWrite = undefined; await barrier(); } },
+  zRem: async (key: string, id: string) => { queues.set(key, (queues.get(key) ?? []).filter(item => item !== id)); },
   zCard: async (key: string) => queues.get(key)?.length ?? 0,
   zRange: async (key: string) => [...queues.get(key) ?? []],
   keys: async () => [],
@@ -40,7 +46,7 @@ mock.module('../classes/twitch_streamers.class.js', { defaultExport: { getTwitch
 mock.module('../utils/billing.js', { namedExports: { isAiCreditsExhausted: async () => false, getAiCredits: async () => ({ status: 'available' }) } });
 mock.module('../utils/tts_usage.js', { namedExports: { trackTtsUsage: async () => { usage++; } } });
 mock.module('../utils/posthog_events.js', { namedExports: { trackAiOperation: () => {} } });
-mock.module('../utils/tts/tts_playback_timeout.util.js', { namedExports: { getTtsPlaybackTimeoutMs: async () => 60000 } });
+mock.module('../utils/tts/tts_playback_timeout.util.js', { namedExports: { getTtsPlaybackTimeoutMs: async () => playbackTimeoutMs } });
 for (const provider of ['piper', 'fish', 'kokoro']) mock.module(`../server/services/tts/${provider}_tts.service.js`, { namedExports: {
   [`${provider}TtsService`]: { synthesize: (input: any) => { synthesized.push(input.speechID); return synthesize(input); } },
   ...(provider === 'piper' ? { PIPER_PUBLIC_SPEECH_DIR: '/tmp/tts-controls' } : {})
@@ -48,9 +54,9 @@ for (const provider of ['piper', 'fish', 'kokoro']) mock.module(`../server/servi
 const { ttsQueueHandler: handler } = await import('./tts_queue.handler.js');
 const { registerStudioBridge } = await import('../overlays/bridge.js');
 const studio: string[] = [];
-registerStudioBridge({ hasSource: () => true, media: async () => {}, trigger: async () => {}, controlTts: async (_channel, action) => { studio.push(action); }, readTts: async (_channel, input) => { readDeliveries.push(input); } });
+registerStudioBridge({ hasSource: () => graceConnected, hasLiveSource: () => studioConnected, media: async () => {}, trigger: async () => {}, controlTts: async (_channel, action) => { studio.push(action); }, readTts: async (_channel, input) => { readDeliveries.push(input); if (publisher) return publisher(input); return input.beforeEmit?.() === false ? 'cancelled' : 'emitted'; } });
 const { registerReadTtsBridge } = await import('../pets/tts_bridge.js');
-registerReadTtsBridge({ available: async () => true, prepare: async input => { lastInput = input; return readRoute ? { audio: readRoute, durationMs: 500 } : null; }, release: async (_channel, speech) => { released.push(speech); }, report: async () => {}, terminal: async () => {}, invalidated: async () => {} });
+registerReadTtsBridge({ configured: async () => readRoute !== null, owns: (channel, speech) => turns.has(channel) && (!speech || turns.get(channel) === speech), current: (channel, speech) => turns.get(channel) === speech, protect: async (_channel, _speech, hold) => { protections.push(hold); return true; }, reserve: async input => { if (readRoute) turns.set(input.channelId, input.speechId); onReserve?.(); return true; }, available: async () => readRoute === 'pet' && petReady, prepare: async input => { lastInput = input; return readRoute ? { audio: readRoute, durationMs: 500 } : null; }, release: async (channel, speech) => { released.push(speech); if (turns.get(channel) === speech) turns.delete(channel); }, report: async () => {}, terminal: async () => {}, invalidated: async () => {} });
 
 function seed(channel: string, ...ids: string[]) {
   queues.set(`twitch:${channel}:tts:queue`, ids);
@@ -63,7 +69,7 @@ async function until(condition: () => boolean) {
 const dispatched = (id: string) => events.some(e => e.event === 'speech' && e.payload.speechID === id);
 
 
-const channels = ['read-pet', 'read-overlay', 'read-studio', 'read-default', 'read-skip', 'read-clear', 'read-refresh'];
+const channels = ['read-pet', 'read-overlay', 'read-studio', 'read-default', 'read-skip', 'read-clear', 'read-refresh', 'studio-backlog', 'synth-output-loss', 'retained-output-loss', 'long-paused', 'requeue-control'];
 after(async () => { for (const channel of channels) await handler.cleanupChannel(channel); registerReadTtsBridge(); });
 test('normal queue synthesizes/debits once, pet route preserves captions without audio, waits for pet terminal', async () => {
   const before = usage; readRoute = 'pet'; seed('read-pet', 'pet-a', 'pet-b');
@@ -104,4 +110,54 @@ for (const action of ['skip', 'clear', 'refresh'] as const) test(`readTTS ${acti
   readRoute = 'pet'; const channel = `read-${action}`, id = `pet-${action}`; seed(channel, id); await handler.processNext(channel);
   await handler.control(channel, action); assert.equal(released.filter(speech => speech === id).length, 1);
   await lastInput.ended('pet:cancelled'); assert.equal(released.filter(speech => speech === id).length, 1);
+});
+
+function legacyReady(ready: boolean) { for (const socket of legacySockets.values()) socket.data.ttsReady = ready; }
+test('Studio disconnected grace cannot synthesize waiting readTTS backlog; live reconnect resumes without new enqueue', async () => {
+  readRoute = 'overlay'; legacyReady(false); studioConnected = false; graceConnected = true; petReady = false;
+  const before = usage; seed('studio-backlog', 'backlog-a'); await handler.processNext('studio-backlog');
+  assert.equal(usage, before); assert.deepEqual(queues.get('twitch:studio-backlog:tts:queue'), ['backlog-a']);
+  studioConnected = true; await handler.resumeIfIdle('studio-backlog'); await until(() => readDeliveries.some(item => item.speechID === 'backlog-a'));
+  assert.equal(usage, before + 1); await handler.handleOverlayEnded('studio-backlog', 'backlog-a', 'ended', 'studio:live'); legacyReady(true);
+});
+test('output loss during synthesis retains same file, debit and queue until a live Studio can receive it once', async () => {
+  readRoute = 'overlay'; legacyReady(false); studioConnected = true;
+  let unblock!: (value: any) => void, entered!: () => void; const reached = new Promise<void>(resolve => { entered = resolve; });
+  const original = synthesize; synthesize = async () => { entered(); return new Promise(resolve => { unblock = resolve; }); };
+  const before = usage; seed('synth-output-loss', 'loss-a'); const processing = handler.processNext('synth-output-loss'); await reached;
+  studioConnected = false; await handler.handleOverlayDisconnected('synth-output-loss'); unblock(await original({}));
+  await new Promise(resolve => setTimeout(resolve, 120)); assert.equal(usage, before + 1);
+  assert.equal(readDeliveries.some(item => item.speechID === 'loss-a'), false);
+  studioConnected = true; await handler.resumeIfIdle('synth-output-loss'); await processing;
+  assert.equal(readDeliveries.filter(item => item.speechID === 'loss-a').length, 1); assert.equal(usage, before + 1);
+  await handler.handleOverlayEnded('synth-output-loss', 'loss-a', 'ended', 'studio:live'); synthesize = original; legacyReady(true);
+});
+test('proved-unsent retained delivery retries same file after disconnect; no second synthesis or usage', async () => {
+  readRoute = 'overlay'; legacyReady(false); studioConnected = true;
+  let unblock!: () => void, entered!: () => void, first = true; const reached = new Promise<void>(resolve => { entered = resolve; }), blocked = new Promise<void>(resolve => { unblock = resolve; });
+  publisher = async input => { if (first) { first = false; entered(); await blocked; return 'unavailable'; } return input.beforeEmit() ? 'emitted' : 'cancelled'; };
+  const before = usage; seed('retained-output-loss', 'retain-a'); const processing = handler.processNext('retained-output-loss'); await reached;
+  studioConnected = false; await handler.handleOverlayDisconnected('retained-output-loss'); unblock();
+  await new Promise(resolve => setTimeout(resolve, 120)); assert.equal(usage, before + 1);
+  studioConnected = true; await processing; const attempts = readDeliveries.filter(item => item.speechID === 'retain-a');
+  assert.equal(attempts.length, 2); assert.equal(attempts[0].file, attempts[1].file); assert.equal(usage, before + 1);
+  await handler.handleOverlayEnded('retained-output-loss', 'retain-a', 'ended', 'studio:live'); publisher = undefined; legacyReady(true);
+});
+test('paused 300-second normal media uses 330-second watchdog and at least 510-second reservation proof', async () => {
+  readRoute = 'overlay'; legacyReady(false); studioConnected = true; playbackTimeoutMs = 330000;
+  seed('long-paused', 'long-a'); await handler.processNext('long-paused');
+  assert.equal(lastInput.holdMs, 510000); assert.ok(protections.at(-1)! >= 510000);
+  assert.equal((handler as any).currentTimeouts.get('long-paused:long-a')._idleTimeout, 330000);
+  await handler.handleOverlayEnded('long-paused', 'long-a', 'ended', 'studio:live'); playbackTimeoutMs = 60000; legacyReady(true);
+});
+
+test('skip crossing requeue Redis write cannot resurrect the unheard current item or synthesize it', async () => {
+  readRoute = 'overlay'; legacyReady(false); studioConnected = true; const before = usage;
+  let unblock!: () => void, entered!: () => void; const reached = new Promise<void>(resolve => { entered = resolve; }), blocked = new Promise<void>(resolve => { unblock = resolve; });
+  onReserve = () => { studioConnected = false; onReserve = undefined; };
+  afterRequeueWrite = async () => { entered(); await blocked; };
+  seed('requeue-control', 'requeued-a'); const processing = handler.processNext('requeue-control'); await reached;
+  const skip = handler.control('requeue-control', 'skip'); await new Promise(resolve => setTimeout(resolve, 5)); unblock();
+  await Promise.all([processing, skip]); assert.equal(usage, before); assert.deepEqual(queues.get('twitch:requeue-control:tts:queue'), []);
+  studioConnected = true; legacyReady(true);
 });

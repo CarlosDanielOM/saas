@@ -6,7 +6,7 @@ import type { InteractionKind, InteractionSnapshot } from './interaction-model.j
 import { selectAlertLayout } from './model.js';
 import { ALERT_DOMAIN_TYPES, AlertEventFilter } from './alert-events.js';
 import { OVERLAY_ACTIONS, OVERLAY_PLATFORMS, initialQueueState, platformMatches, type OverlayPlatform, type OverlayScope, type OverlayAction, type QueueState, type QueueCommand } from './controls.js';
-import { registerStudioBridge, type ReadTtsDelivery } from './bridge.js';
+import { registerStudioBridge, type ReadTtsDelivery, type ReadTtsPublication } from './bridge.js';
 import { randomUUID } from 'node:crypto';
 import { deliveries, leases, retainFile, releaseFile, sweepFiles, DELIVERY_TTL_MS, LEASE_MS, MAX_PENDING, MAX_CHANNEL_BYTES, type SavedDelivery } from './delivery-store.js';
 import { Types } from 'mongoose';
@@ -89,14 +89,14 @@ async function discard(id: string) {
 function dropPeer(key: string) {
   const peer = peers.get(key); peers.delete(key); peer?.socket?.disconnect(true);
   for (const [id, item] of pending) {
-    if (item.event.tts && item.ttsOwnerKey === key && !item.ttsTerminal) { item.ttsTerminal = true; void import('../handlers/tts_queue.handler.js').then(({ ttsQueueHandler }) => ttsQueueHandler.handleSpeechEnded(item.channel, item.speechID, 'studio_removed')).catch(() => { pollingFailed = true; }); }
+    if (item.event.tts && item.ttsOwnerKey === key && !item.ttsTerminal) { item.ttsTerminal = true; void import('../handlers/tts_queue.handler.js').then(({ ttsQueueHandler }) => ttsQueueHandler.handleOverlayEnded(item.channel, item.speechID, 'studio_removed', `studio:${peer?.socket?.id ?? ''}`)).catch(() => { pollingFailed = true; }); }
     if (!item.recipients.delete(key)) continue; if (!item.recipients.size) void discard(id).catch(() => { pollingFailed = true; }); else void saveDelivery(item); }
   void write(async () => (await leases()).deleteOne({ _id: key }));
   if (peer && ![...peers.values()].some(p => p.channel === peer.channel)) channels.delete(peer.channel);
 }
 function recipients(channel: string, kind: EventKind, retainDisconnected = false): Peer[] { return [...peers.values()].filter(p => p.channel === channel && (p.socket?.connected || retainDisconnected && reconnecting(p)) && accepts(p, kind)); }
-async function deliver(item: Pending, selected: Peer[], current: () => boolean = () => true) {
-  if (!current()) { if (item.mediaId) await releaseFile(item.mediaId); return; }
+async function deliver(item: Pending, selected: Peer[], current: () => boolean = () => true, beforeEmit?: () => boolean) {
+  if (!current()) { if (item.mediaId) await releaseFile(item.mediaId); return false; }
   while ([...pending.values()].filter(p => p.channel === item.channel).reduce((n, p) => n + (p.bytes ?? 0), 0) + (item.bytes ?? 0) > MAX_CHANNEL_BYTES) {
     const oldest = [...pending.values()].find(p => p.channel === item.channel && p.bytes);
     if (!oldest) break;
@@ -113,41 +113,44 @@ async function deliver(item: Pending, selected: Peer[], current: () => boolean =
       if (!old.recipients.size) await discard(old.event.id); else await saveDelivery(old);
     }
   }
-  if (!current()) { if (item.mediaId) await releaseFile(item.mediaId); return; }
+  if (!current()) { if (item.mediaId) await releaseFile(item.mediaId); return false; }
   pending.set(item.event.id, item);
   try { await saveDelivery(item); }
   catch (error) { pending.delete(item.event.id); if (item.mediaId) await releaseFile(item.mediaId); throw error; }
   if (!current() || pending.get(item.event.id) !== item) {
     if (pending.get(item.event.id) === item) await discard(item.event.id);
     else if (item.mediaId) await releaseFile(item.mediaId);
-    return;
+    return false;
   }
+  if (beforeEmit && !beforeEmit()) { await discard(item.event.id); return false; }
   for (const peer of selected) {
     if (item.event.tts && item.ttsEpochs?.[peer.key] !== peer.socket?.id) continue;
     peer.socket?.emit('overlay-event', recipientEvent(item, peer.key));
   }
+  return true;
 }
 function recipientEvent(item: Pending, key: string) {
   if (!item.event.tts || item.ttsOwnerKey === key) return item.event;
   const { media: _media, ...event } = item.event;
   return { ...event, tts: { ...item.event.tts, ownerClientId: null } };
 }
-export async function publishStudioReadTts(channel: string, input: ReadTtsDelivery): Promise<void> {
+export async function publishStudioReadTts(channel: string, input: ReadTtsDelivery): Promise<ReadTtsPublication> {
   await restore();
   const selected = recipients(channel, 'tts').sort((a, b) => a.key.localeCompare(b.key));
-  if (!selected.length) return;
+  if (!selected.length) return input.cancelled?.() ? 'cancelled' : 'unavailable';
   const owner = !input.legacy && input.file ? selected[0] : undefined;
   const ownerClientId = owner ? String(owner.socket!.handshake.auth.clientId) : null;
   const epochs = Object.fromEntries(selected.map(peer => [peer.key, peer.socket!.id]));
   const current = () => !input.cancelled?.() && (!owner || !!owner.socket?.connected && owner.socket.id === epochs[owner.key]);
-  if (!current()) return;
+  if (!current()) return input.cancelled?.() ? 'cancelled' : 'unavailable';
   const retained = owner && input.file ? await retainFile(input.file) : {};
-  await deliver({ channel, speechID: input.speechID, ttsOwnerKey: owner?.key,
+  const emitted = await deliver({ channel, speechID: input.speechID, ttsOwnerKey: owner?.key,
     ttsEpochs: epochs,
     event: { id: randomUUID(), kind: 'tts', platform: 'twitch', text: input.text,
       tts: { speechID: input.speechID, ownerClientId, durationMs: Math.max(1, Math.min(60_000, input.durationMs || 60_000)) },
       ...(owner ? { media: { type: 'audio' as const, title: input.text, volume: 1 } } : {}) },
-    ...retained, mime: input.mime, expiresAt: new Date(Date.now() + DELIVERY_TTL_MS), recipients: new Set(selected.map(peer => peer.key)) }, selected, current);
+    ...retained, mime: input.mime, expiresAt: new Date(Date.now() + DELIVERY_TTL_MS), recipients: new Set(selected.map(peer => peer.key)) }, selected, current, input.beforeEmit);
+  return emitted ? 'emitted' : input.cancelled?.() ? 'cancelled' : 'unavailable';
 }
 export async function endStudioReadTts(channel: string, speechID: string) {
   for (const item of [...pending.values()]) if (item.channel === channel && item.event.tts && item.speechID === speechID) {
@@ -401,7 +404,7 @@ export function registerStudio(io: Server): void {
     });
     socket.on('disconnect', () => { if (peers.get(key)?.socket === socket) {
       for (const item of [...pending.values()]) if (item.event.tts && item.recipients.has(key)) {
-        if (item.ttsOwnerKey === key && !item.ttsTerminal) { item.ttsTerminal = true; void import('../handlers/tts_queue.handler.js').then(({ ttsQueueHandler }) => ttsQueueHandler.handleSpeechEnded(item.channel, item.speechID, 'studio_disconnected')); }
+        if (item.ttsOwnerKey === key && !item.ttsTerminal) { item.ttsTerminal = true; void import('../handlers/tts_queue.handler.js').then(({ ttsQueueHandler }) => ttsQueueHandler.handleOverlayEnded(item.channel, item.speechID, 'studio_disconnected', `studio:${socket.id}`)); }
         item.recipients.delete(key);
         if (item.recipients.size) void saveDelivery(item); else void discard(item.event.id);
       }
@@ -478,4 +481,4 @@ export function registerStudio(io: Server): void {
   io.on('close', () => { clearInterval(timer); pending.clear(); peers.clear(); channels.clear(); restoring = undefined; pollingFailed = false; });
 }
 
-registerStudioBridge({ readTts: publishStudioReadTts, endReadTts: endStudioReadTts, hasSource: studioHasSource, media: publishStudioMedia, trigger: publishStudioTrigger, controlTts: controlStudioTts, ttsStatus: studioTtsStatus });
+registerStudioBridge({ hasLiveSource: (channel, kind) => recipients(channel, kind).length > 0, readTts: publishStudioReadTts, endReadTts: endStudioReadTts, hasSource: studioHasSource, media: publishStudioMedia, trigger: publishStudioTrigger, controlTts: controlStudioTts, ttsStatus: studioTtsStatus });

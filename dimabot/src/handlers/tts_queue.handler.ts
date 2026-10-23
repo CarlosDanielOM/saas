@@ -1,8 +1,8 @@
-import { readTtsAvailable, reserveReadTts, prepareReadTts, releaseReadTts, reportReadTts } from '../pets/tts_bridge.js';
+import { readTtsAvailable, reserveReadTts, prepareReadTts, releaseReadTts, reportReadTts, isReadTtsConfigured, hasReadTtsTurn, readTtsTurnCurrent, protectReadTtsTurn, type ReadTtsRoute } from '../pets/tts_bridge.js';
 import { publishStudioReadTts, endStudioReadTts } from '../overlays/bridge.js';
 import type { TtsStatusData } from '../utils/tts/tts_status.js';
 import { telemetryContext, restoreContext, traced, observe, type TraceContext } from '../utils/observability/telemetry.js';
-import { studioHasSource, publishStudioMedia, controlStudioTts, studioTtsStatus } from '../overlays/bridge.js';
+import { studioHasSource, studioHasLiveSource, publishStudioMedia, controlStudioTts, studioTtsStatus } from '../overlays/bridge.js';
 import type { RedisClientType } from "redis";
 import { randomUUID } from "node:crypto";
 import fs from "fs/promises";
@@ -95,7 +95,7 @@ class TtsQueueHandler {
   private dispatchedSpeechIds = new Map<string, string>();
   private interruptedSpeechIds = new Map<string, string>();
   private currentTimeouts = new Map<string, NodeJS.Timeout>();
-  private readTtsOwners = new Map<string, { speechId: string; source: string }>();
+  private readTtsOwners = new Map<string, { speechId: string; source: string; emitted: boolean }>();
   private playbackPositions = new Map<string, number>();
   private currentFiles = new Map<string, string>();
   private fileCleanupTimeouts = new Map<string, NodeJS.Timeout>();
@@ -137,17 +137,20 @@ class TtsQueueHandler {
   private async hasOverlayConnection(channelID: string): Promise<boolean> {
     // The Redis flag can outlive a socket (especially across an API restart).
     const sockets = getIO()?.of(`/speech/${channelID}`).sockets;
-    return await readTtsAvailable(channelID) || studioHasSource(channelID, 'tts') || !!sockets && [...sockets.values()].some(socket => socket.connected && socket.data.ttsReady);
+    const legacy = !!sockets && [...sockets.values()].some(socket => socket.connected && socket.data.ttsReady);
+    if (hasReadTtsTurn(channelID) || await isReadTtsConfigured(channelID)) return legacy || await readTtsAvailable(channelID) || studioHasLiveSource(channelID, 'tts');
+    return studioHasSource(channelID, 'tts') || legacy;
   }
 
   async handleOverlayDisconnected(channelID: string): Promise<void> {
     const owner = this.readTtsOwners.get(channelID);
     if (owner) {
-      if (!owner.source.startsWith('legacy:')) return;
+      if (!owner.emitted || !owner.source.startsWith('legacy:')) return;
       const socketId = owner.source.slice(7);
       if (!getIO()?.of(`/speech/${channelID}`).sockets.get(socketId)?.connected) await this.handleSpeechEnded(channelID, owner.speechId, 'disconnected');
       return;
     }
+    if (hasReadTtsTurn(channelID)) return;
     if (await this.hasOverlayConnection(channelID) || !this.processingChannels.has(channelID)) return;
     const activeID = this.activeSpeechIds.get(channelID);
     if (activeID) this.interruptedSpeechIds.set(channelID, activeID);
@@ -306,9 +309,12 @@ class TtsQueueHandler {
           continue;
         }
 
-        if (this.controls.has(channelID) || this.interruptedSpeechIds.get(channelID) === speechID || !await this.hasOverlayConnection(channelID)) {
-          await this.cleanupSpeech(channelID, speechID, true);
-          continue;
+        if (this.controls.has(channelID) || this.interruptedSpeechIds.get(channelID) === speechID) {
+          await this.cleanupSpeech(channelID, speechID, true); continue;
+        }
+        if (!await this.hasOverlayConnection(channelID)) {
+          if (await isReadTtsConfigured(channelID)) { await this.requeueUnspoken(channelID, queueItem); return; }
+          await this.cleanupSpeech(channelID, speechID, true); continue;
         }
 
         const usageRequestID = queueItem.usageRequestID ||= randomUUID();
@@ -329,6 +335,8 @@ class TtsQueueHandler {
         if (!reserved || this.controls.has(channelID) || this.interruptedSpeechIds.get(channelID) === speechID) {
           await this.cleanupSpeech(channelID, speechID, true); continue;
         }
+
+        if (hasReadTtsTurn(channelID, speechID) && !await this.hasOverlayConnection(channelID)) { await this.requeueUnspoken(channelID, queueItem); return; }
 
         let streamer: Awaited<ReturnType<typeof TwitchStreamers.getTwitchAccountById>> = null;
         try {
@@ -530,7 +538,7 @@ class TtsQueueHandler {
           synthesisResult.outputPath,
         );
 
-        if (this.controls.has(channelID) || this.interruptedSpeechIds.get(channelID) === speechID || !await this.hasOverlayConnection(channelID)) {
+        if (this.controls.has(channelID) || this.interruptedSpeechIds.get(channelID) === speechID || !hasReadTtsTurn(channelID, speechID) && !await this.hasOverlayConnection(channelID)) {
           await this.cleanupSpeech(channelID, speechID, true);
           continue;
         }
@@ -544,34 +552,25 @@ class TtsQueueHandler {
 
         const playbackTimeoutMs = await getTtsPlaybackTimeoutMs(synthesisResult.outputPath);
         // Duration inspection yields; a disconnect may have happened meanwhile.
-        if (this.controls.has(channelID) || this.interruptedSpeechIds.get(channelID) === speechID || !await this.hasOverlayConnection(channelID)) {
+        if (this.controls.has(channelID) || this.interruptedSpeechIds.get(channelID) === speechID || !hasReadTtsTurn(channelID, speechID) && !await this.hasOverlayConnection(channelID)) {
           await this.cleanupSpeech(channelID, speechID, true);
           continue;
         }
         this.dispatchedSpeechIds.set(channelID, speechID);
-        this.armPlaybackTimeout(channelID, speechID, 240_000);
+        this.armPlaybackTimeout(channelID, speechID, Math.max(240_000, playbackTimeoutMs + 120_000));
         observe('queue_total', 'tts.ready', Math.max(0, Date.now() - queueItem.timestamp), 'ok', channelID);
         console.log('TTS dispatched', { channelID, speechID, readyMs: Date.now() - queueItem.timestamp });
 
         const readRoute = await prepareReadTts({ channelId: channelID, speechId: speechID, file: synthesisResult.outputPath,
-          mime: synthesisResult.mimeType || 'audio/wav', text: queueItem.text,
+          mime: synthesisResult.mimeType || 'audio/wav', text: queueItem.text, holdMs: playbackTimeoutMs + 180_000,
           cancelled: () => this.controls.has(channelID) || this.interruptedSpeechIds.get(channelID) === speechID || this.dispatchedSpeechIds.get(channelID) !== speechID,
           ended: reason => this.handleSpeechEnded(channelID, speechID, reason) });
         if (this.dispatchedSpeechIds.get(channelID) !== speechID) return;
         if (readRoute) {
           if (readRoute.audio === 'cancelled') { await this.handleSpeechEnded(channelID, speechID, 'read_tts_cancelled'); return; }
-          const legacy = readRoute.audio === 'overlay' ? [...io.of(`/speech/${channelID}`).sockets.values()]
-            .filter(socket => socket.connected && socket.data.ttsReady).sort((a, b) => a.id.localeCompare(b.id))[0] : undefined;
-          this.readTtsOwners.set(channelID, { speechId: speechID, source: readRoute.audio === 'pet' ? 'pet' : legacy ? `legacy:${legacy.id}` : 'studio' });
-          this.armPlaybackTimeout(channelID, speechID, playbackTimeoutMs);
-          const dispatch = publishStudioReadTts(channelID, { speechID, durationMs: readRoute.durationMs, text: queueItem.text,
-            legacy: !!legacy, cancelled: () => this.controls.has(channelID) || this.dispatchedSpeechIds.get(channelID) !== speechID, ...(readRoute.audio === 'overlay' ? { file: synthesisResult.outputPath, mime: synthesisResult.mimeType || 'audio/wav' } : {}) });
-          this.dispatches.set(channelID, dispatch);
-          try { await dispatch; }
-          finally { if (this.dispatches.get(channelID) === dispatch) this.dispatches.delete(channelID); }
-          if (this.controls.has(channelID) || this.dispatchedSpeechIds.get(channelID) !== speechID) return;
-          legacy?.emit('speech', { speechID, audioUrl: synthesisResult.publicPath, mimeType: synthesisResult.mimeType || 'audio/wav', mode: queueItem.mode, text: queueItem.text });
-          return; // Pet/Studio reports own completion; retain the authoritative normal queue lock.
+          await this.dispatchReadTts(channelID, speechID, { file: synthesisResult.outputPath, audioUrl: synthesisResult.publicPath,
+            mime: synthesisResult.mimeType || 'audio/wav', text: queueItem.text, mode: queueItem.mode, route: readRoute, timeoutMs: playbackTimeoutMs });
+          return;
         }
         this.armPlaybackTimeout(channelID, speechID, playbackTimeoutMs);
         const dispatch = publishStudioMedia(channelID, 'tts', { type: 'audio', title: queueItem.text, volume: 1 }, synthesisResult.outputPath, synthesisResult.mimeType || 'audio/wav', queueItem.text, 'twitch', speechID);
@@ -620,6 +619,78 @@ class TtsQueueHandler {
     }
   }
 
+  private async requeueUnspoken(channelID: string, item: TtsQueueItem) {
+    const cancelled = () => this.controls.has(channelID) || this.interruptedSpeechIds.get(channelID) === item.speechID;
+    const operation = (async () => {
+      await releaseReadTts(channelID, item.speechID);
+      if (!cancelled()) {
+        await this.cache!.set(`twitch:${channelID}:tts:queue:data:${item.speechID}`, JSON.stringify(item));
+        await this.cache!.zAdd(`twitch:${channelID}:tts:queue`, { score: item.timestamp || Date.now(), value: item.speechID });
+      }
+      // Controls await this dispatch fence. A control crossing the Redis write
+      // removes this exact item before its captured current identity is released.
+      if (cancelled()) {
+        await this.cache!.zRem(`twitch:${channelID}:tts:queue`, item.speechID);
+        await this.cache!.del(`twitch:${channelID}:tts:queue:data:${item.speechID}`);
+      }
+      await this.cache!.del(`twitch:${channelID}:tts:processing`);
+      if (this.activeSpeechIds.get(channelID) === item.speechID) this.activeSpeechIds.delete(channelID);
+      this.processingChannels.delete(channelID);
+    })();
+    this.dispatches.set(channelID, operation);
+    try { await operation; }
+    finally { if (this.dispatches.get(channelID) === operation) this.dispatches.delete(channelID); }
+    if (await this.hasOverlayConnection(channelID)) void this.resumeIfIdle(channelID);
+  }
+  private disarmPlaybackTimeout(channel: string, speech: string) {
+    const key = `${channel}:${speech}`; clearTimeout(this.currentTimeouts.get(key)); this.currentTimeouts.delete(key);
+  }
+  private async dispatchReadTts(channel: string, speech: string, input: { file: string; audioUrl: string; mime: string; text: string; mode: TtsMode; route: ReadTtsRoute; timeoutMs: number }) {
+    const current = () => !this.controls.has(channel) && this.dispatchedSpeechIds.get(channel) === speech;
+    const holdMs = Math.max(240_000, input.timeoutMs + 180_000);
+    this.disarmPlaybackTimeout(channel, speech); // No playback deadline runs before a proved owner emission.
+    let protectedAt = 0;
+    while (current()) {
+      if (Date.now() >= protectedAt || !readTtsTurnCurrent(channel, speech)) {
+        if (!await protectReadTtsTurn(channel, speech, holdMs)) { await this.handleSpeechEnded(channel, speech, 'tts_turn_lost'); return; }
+        protectedAt = Date.now() + 5000;
+      }
+      if (input.route.audio === 'overlay' && !await this.hasOverlayConnection(channel)) { await new Promise(resolve => setTimeout(resolve, 100)); continue; }
+      const io = getIO();
+      const legacy = input.route.audio === 'overlay' ? [...io?.of(`/speech/${channel}`).sockets.values() ?? []]
+        .filter(socket => socket.connected && socket.data.ttsReady).sort((a, b) => a.id.localeCompare(b.id))[0] : undefined;
+      const owner = { speechId: speech, source: input.route.audio === 'pet' ? 'pet' : legacy ? `legacy:${legacy.id}` : 'studio', emitted: input.route.audio === 'pet' };
+      this.readTtsOwners.set(channel, owner);
+      const markEmission = () => {
+        if (!current() || this.readTtsOwners.get(channel) !== owner || !readTtsTurnCurrent(channel, speech, input.timeoutMs + 60_000)) return false;
+        owner.emitted = true; this.armPlaybackTimeout(channel, speech, input.timeoutMs); return true;
+      };
+      if (input.route.audio === 'pet') this.armPlaybackTimeout(channel, speech, input.timeoutMs);
+      const dispatch = publishStudioReadTts(channel, { speechID: speech, durationMs: input.route.durationMs, text: input.text,
+        legacy: !!legacy, cancelled: () => !current(), ...(!legacy && input.route.audio === 'overlay' ? { beforeEmit: markEmission } : {}),
+        ...(input.route.audio === 'overlay' ? { file: input.file, mime: input.mime } : {}) });
+      this.dispatches.set(channel, dispatch.then(() => {}, () => {}));
+      const pending = this.dispatches.get(channel)!;
+      let outcome: Awaited<typeof dispatch>;
+      try { outcome = await dispatch; }
+      catch (error) { if (owner.emitted) throw error; outcome = 'unavailable'; }
+      finally { if (this.dispatches.get(channel) === pending) this.dispatches.delete(channel); }
+      if (!current()) return;
+      if (input.route.audio === 'pet') return; // Private play already emitted once; captions never replay it.
+      if (legacy?.connected && legacy.data.ttsReady) {
+        if (!markEmission()) { protectedAt = 0; await endStudioReadTts(channel, speech); continue; }
+        legacy.emit('speech', { speechID: speech, audioUrl: input.audioUrl, mimeType: input.mime, mode: input.mode, text: input.text }); return;
+      }
+      if (!legacy && outcome !== 'unavailable' && outcome !== 'cancelled') {
+        // Production publisher marks before synchronous emission; mock publishers may return void.
+        if (!owner.emitted && !markEmission()) { protectedAt = 0; continue; } return;
+      }
+      if (owner.emitted) return; // Unknown-after-emission is never retried.
+      await endStudioReadTts(channel, speech); // Expire harmless captions before the same-file retry.
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+  }
+
   private armPlaybackTimeout(channelID: string, speechID: string, delay: number): void {
     const key = `${channelID}:${speechID}`;
     clearTimeout(this.currentTimeouts.get(key));
@@ -649,7 +720,7 @@ class TtsQueueHandler {
 
   private acceptsOverlayReport(channelID: string, speechID?: string, source?: string): boolean {
     const owner = this.readTtsOwners.get(channelID);
-    return !owner || owner.speechId === speechID && (owner.source === 'studio' ? !!source?.startsWith('studio:') : owner.source === source);
+    return !owner || owner.emitted && owner.speechId === speechID && (owner.source === 'studio' ? !!source?.startsWith('studio:') : owner.source === source);
   }
   async handleOverlayEnded(channelID: string, speechID: string | undefined, reason: string | undefined, source: string) {
     if (this.acceptsOverlayReport(channelID, speechID, source)) await this.handleSpeechEnded(channelID, speechID, reason);

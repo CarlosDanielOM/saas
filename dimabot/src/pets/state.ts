@@ -42,7 +42,7 @@ export async function invalidatePet(ownerId: string, reason: string, expected?: 
         notBefore: { $max: ['$notBefore', { $ifNull: ['$lease.expiresAt', new Date(0)] }] }
     } }]).lean();
     if (!previous) return false;
-    await invalidateReadTts(ownerId);
+    await invalidateReadTts(ownerId, reason);
     await PetReadiness.deleteOne({ _id: ownerId, generation: { $lte: previous.generation } });
     if (previous.activeRequestId) await finishRequest(previous.activeRequestId, terminal?.status ?? 'cancelled', terminal?.errorCode ?? reason);
     await notifyPet(ownerId);

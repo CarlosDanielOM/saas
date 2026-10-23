@@ -16,7 +16,7 @@ mock.module('../schemas/domain_event.schema.js', { namedExports: { DomainEventSc
 mock.module('../utils/databases/dragonfly.database.js', { namedExports: { getDragonflyClient: async () => ({ set: async () => {} }) } });
 mock.module('../handlers/clip_queue.handler.js', { namedExports: { clipQueueHandler: {} } });
 mock.module('../handlers/tts_queue.handler.js', { namedExports: { ttsQueueHandler: { resumeIfIdle: async () => {},
-    handleSpeechEnded: async (...args: any[]) => { ended.push(args); }, handleSpeechPlayback: (...args: any[]) => { playback.push(args); } } } });
+    handleSpeechEnded: async (...args: any[]) => { ended.push(args); }, handleOverlayEnded: async (...args: any[]) => { ended.push(args.slice(0, 3)); }, handleSpeechPlayback: (...args: any[]) => { playback.push(args); } } } });
 const collection = (rows: Map<string, any>) => ({ find: () => ({ toArray: async () => [], sort: () => ({ toArray: async () => [] }) }),
     replaceOne: async (_filter: any, row: any) => { if (row.event && persistBarrier) { const barrier = persistBarrier; persistBarrier = undefined; await barrier(); } rows.set(row._id, row); }, updateOne: async (filter: any, update: any) => { Object.assign(rows.get(filter._id) ?? {}, update.$set); }, deleteOne: async (filter: any) => { rows.delete(filter._id); } });
 mock.module('./delivery-store.js', { namedExports: { deliveries: async () => collection(saved), leases: async () => collection(new Map()),
@@ -95,4 +95,17 @@ for (const phase of ['retain', 'persist']) test(`authoritative end during delaye
     await publishStudioReadTts(channel, { speechID: `new-${phase}`, durationMs: 500, text: 'new turn', legacy: false, file: '/normal/new.wav', mime: 'audio/wav' });
     assert.ok(owner.events.some(event => event.event === 'overlay-event' && event.data.tts?.speechID === `new-${phase}`));
     await endStudioReadTts(channel, `new-${phase}`); owner.disconnect(); await tick();
+});
+
+test('Studio owner loss during retention returns explicit unavailable; same generated file can be published once after reconnect', async () => {
+    const first = await connect(publicA, clientA, 'preemit-drop'); let unblock!: () => void, entered!: () => void;
+    const blocked = new Promise<void>(resolve => { unblock = resolve; }), reached = new Promise<void>(resolve => { entered = resolve; });
+    retainBarrier = async () => { entered(); await blocked; };
+    const input = { speechID: 'same-file-retry', durationMs: 500, text: 'same file', legacy: false, file: '/normal/same.wav', mime: 'audio/wav' };
+    const publishing = publishStudioReadTts(channel, input); await reached; first.disconnect(); unblock();
+    assert.equal(await publishing, 'unavailable'); assert.equal(first.events.some(event => event.event === 'overlay-event'), false);
+    const second = await connect(publicA, clientA, 'preemit-reconnect'); let emissions = 0;
+    assert.equal(await publishStudioReadTts(channel, { ...input, beforeEmit: () => { emissions++; return true; } }), 'emitted');
+    assert.equal(emissions, 1); assert.equal(second.events.filter(event => event.event === 'overlay-event' && event.data.tts.speechID === input.speechID).length, 1);
+    assert.equal(files.get('retained'), input.file); await endStudioReadTts(channel, input.speechID); second.disconnect(); await tick();
 });

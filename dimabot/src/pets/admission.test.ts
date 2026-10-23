@@ -145,3 +145,12 @@ test('independent admission CAS cannot win when TTS reserves after the configura
     await assert.rejects(admitPetAction(input), /busy/);
     assert.equal(successfulClaims, 0);
 });
+
+test('paused long normal TTS remains busy after 240 seconds until its full preplay deadline', async () => {
+    reset(); rows.clear(); runtime.activeRequestId = null; const started = Date.now(), originalNow = Date.now;
+    runtime.ttsReservation = { speechId: '300-second-normal', token: 'paused-turn', expiresAt: new Date(started + 510000) };
+    Date.now = () => started + 241000;
+    try { await assert.rejects(admitPetAction({ ...input, origin: { ...input.origin, id: 'while-paused-long-tts' } }), /busy/); }
+    finally { Date.now = originalNow; }
+    assert.equal(rows.size, 0);
+});
