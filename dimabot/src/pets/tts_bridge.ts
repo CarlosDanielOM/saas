@@ -12,6 +12,7 @@ export interface ReadTtsRoute {
     fallback?: () => Promise<ReadTtsRoute>;
 }
 interface Bridge {
+    queueChannels?(): Iterator<string | undefined>;
     configured?(channelId: string): Promise<boolean>;
     owns?(channelId: string, speechId?: string): boolean;
     current?(channelId: string, speechId: string, minimumHoldMs?: number): boolean;
@@ -30,6 +31,7 @@ interface Bridge {
 }
 let bridge: Bridge | undefined;
 export function registerReadTtsBridge(value?: Bridge) { bridge = value; }
+export const readTtsQueueChannels = () => bridge?.queueChannels?.();
 export const isReadTtsConfigured = (channel: string) => bridge?.configured?.(channel) ?? Promise.resolve(false);
 export const hasReadTtsTurn = (channel: string, speech?: string) => bridge?.owns?.(channel, speech) ?? false;
 export const readTtsTurnCurrent = (channel: string, speech: string, minimumHoldMs = 0) => bridge?.current?.(channel, speech, minimumHoldMs) ?? true;

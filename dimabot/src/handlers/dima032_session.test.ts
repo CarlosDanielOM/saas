@@ -16,7 +16,11 @@ let readRoute: 'pet' | 'overlay' | null = 'pet';
 let lastInput: any;
 const readDeliveries: any[] = [], released: string[] = [];
 const legacySockets = new Map<string, any>();
+const legacyNamespaces = new Map<string, any>();
+const studioChannels = new Map<string, boolean>();
 for (const id of ['legacy-a', 'legacy-b']) legacySockets.set(id, { id, connected: true, data: { ttsReady: true }, conn: { close: () => {} }, emit: (event: string, payload: any) => events.push({ channel: id, event, payload }) });
+let beforeProcessingRead: (() => Promise<void>) | undefined;
+let onStudioPlayback: ((channel: string, speech: string) => void) | undefined;
 let afterPayloadRead: (() => Promise<void>) | undefined, afterSessionWrite: (() => Promise<void>) | undefined;
 let afterDel: ((key: string) => Promise<void>) | undefined;
 const cache = {
@@ -45,7 +49,7 @@ const cache = {
     }
     throw new Error('Unexpected Redis script');
   },
-  get: async (key: string) => { const value=data.get(key)??null; if(key.includes(':queue:data:')&&afterPayloadRead){const barrier=afterPayloadRead;afterPayloadRead=undefined;await barrier();}return value; },
+  get: async (key: string) => {if(key.endsWith(':tts:processing')&&beforeProcessingRead)await beforeProcessingRead(); const value=data.get(key)??null; if(key.includes(':queue:data:')&&afterPayloadRead){const barrier=afterPayloadRead;afterPayloadRead=undefined;await barrier();}return value; },
   set: async (key: string, value: string) => { data.set(key, value); if(key.endsWith(':tts:processing') && afterProcessingSet){const hook=afterProcessingSet;afterProcessingSet=undefined;await hook();} if(key.endsWith(':tts:session')&&afterSessionWrite){const barrier=afterSessionWrite;afterSessionWrite=undefined;await barrier();} },
   del: async (key: string) => { data.delete(key); queues.delete(key); if (afterDel) await afterDel(key); },
   zPopMin: async (key: string) => { const value = queues.get(key)?.shift(); return value ? { value } : null; },
@@ -65,7 +69,7 @@ const cache = {
   }
 };
 mock.module('../utils/databases/dragonfly.database.js', { namedExports: { getDragonflyClient: async () => cache } });
-mock.module('../server/websocket.js', { namedExports: { getIO: () => ({ of: (channel: string) => ({
+mock.module('../server/websocket.js', { namedExports: { getIO: () => ({ _nsps: legacyNamespaces, of: (channel: string) => ({
   sockets: legacySockets,
   emit: (event: string, payload: any) => events.push({ channel, event, payload })
 }) }) } });
@@ -173,8 +177,11 @@ const { ttsQueueHandler: handler } = await import('./tts_queue.handler.js');
 const { registerStudioBridge } = await import('../overlays/bridge.js');
 const blockedStudioChannels = new Set<string>();
 let publishAttempts = 0;
-registerStudioBridge({ hasSource: channel => graceConnected && !blockedStudioChannels.has(channel), hasLiveSource: channel => studioConnected && !blockedStudioChannels.has(channel), media: async () => {}, trigger: async () => {}, controlTts: async (channel,action) => {if(beforeStudioControl)await beforeStudioControl(channel,action);}, endReadTts: async () => {const hook=beforeStudioEnd;beforeStudioEnd=undefined;if(hook)await hook();}, readTts: async (_channel, input) => {
-  publishAttempts++; if (!studioConnected) return 'unavailable'; return input.beforeEmit?.() === false ? 'cancelled' : 'emitted';
+registerStudioBridge({ queueChannels: function* () {
+  const entries=studioChannels.entries();
+  for(let remaining=studioChannels.size;remaining>0;remaining--){const entry=entries.next();if(entry.done)return;yield entry.value[1]?entry.value[0]:undefined;}
+}, hasSource: channel => graceConnected && !blockedStudioChannels.has(channel), hasLiveSource: channel => studioConnected && !blockedStudioChannels.has(channel), media: async () => {}, trigger: async () => {}, controlTts: async (channel,action) => {if(beforeStudioControl)await beforeStudioControl(channel,action);}, endReadTts: async () => {const hook=beforeStudioEnd;beforeStudioEnd=undefined;if(hook)await hook();}, readTts: async (_channel, input) => {
+  publishAttempts++; if (!studioConnected) return 'unavailable'; if(input.beforeEmit?.()===false)return 'cancelled';onStudioPlayback?.(_channel,input.speechID);return 'emitted';
 } });
 function barrier() { let resolve!: () => void; const promise = new Promise<void>(done => { resolve = done; }); return { promise, resolve }; }
 // Observe the real scheduled callback, including a scan that correctly skips
@@ -214,7 +221,8 @@ async function setup() {
   await new Promise<void>(done=>setImmediate(done));
   await handler.cleanupChannel(channel); await reset(); await writeFile(file, 'normal TTS bytes');
   data.clear(); queues.clear(); events.length=0; synthesized.length=0; usage=0; publishAttempts=0;
-  configurationReads=renewalWrites=0; advanceProbeTime=false; afterDel=afterPayloadRead=afterSessionWrite=afterProcessingSet=beforeReservationClear=beforeStudioEnd=undefined;beforePrivateRead=afterFinishStatus=undefined;beforeStudioControl=undefined;failedClaims=0;
+  configurationReads=renewalWrites=0; advanceProbeTime=false; afterDel=afterPayloadRead=afterSessionWrite=afterProcessingSet=beforeReservationClear=beforeStudioEnd=undefined;beforePrivateRead=afterFinishStatus=undefined;beforeStudioControl=undefined;beforeProcessingRead=undefined;onStudioPlayback=undefined;failedClaims=0;
+  studioChannels.clear();legacyNamespaces.clear();peers.clear();peers.set(peer.id,peer);(handler as any).outputCursors=[];
   blockedStudioChannels.clear();studioConnected=true; graceConnected=true; peer.audioReady=false;
   for (const socket of legacySockets.values()) socket.data.ttsReady=false;
 }
@@ -848,4 +856,139 @@ test('R10 output disappearing on first waiter advances B without polling and A r
     blockedStudioChannels.delete(channel);await handler.resumeIfIdle(channel);await until(()=>internals.readHeads.get(channel)?.phase==='emitted');
     assert.deepEqual(synthesized,['online-B','offline-A']);assert.equal(usage,2);assert.equal(internals.capacityWaiters.size,0);
   } finally {spy.mock.restore();blockedStudioChannels.clear();internals.headClaims.clear();internals.capacityWaiters.clear();await handler.control(other,'clear');await handler.cleanupChannel(other);await stop();}
+});
+
+
+test('R11 every accepted channel survives finite waiter overflow without another readiness event',async()=>{
+  await setup();const internals=handler as any,admitted=barrier(),followersAdmitted=barrier(),releaseAdmission=barrier();
+  const channels=Array.from({length:257},(_,i)=>String(700000+i));let reads=0;
+  for(const id of channels)studioChannels.set(id,true);
+  beforeProcessingRead=async()=>{reads++;if(reads===channels.length)admitted.resolve();if(reads===channels.length*2)followersAdmitted.resolve();await releaseAdmission.promise;};
+  const settings={queue:{maxItems:3},voices:{en:'test',kokoroDefault:'test'}} as any;
+  const requests=channels.map(channelID=>handler.queueRequest({channelID,provider:'piper',mode:'speak',language:'en',voice:'test',text:`accepted ${channelID}`} as any,settings));
+  await admitted.promise;
+  const followers=channels.map(channelID=>handler.queueRequest({channelID,provider:'piper',mode:'speak',language:'en',voice:'test',text:`follower ${channelID}`} as any,settings));
+  await followersAdmitted.promise;beforeProcessingRead=undefined;releaseAdmission.resolve();
+  const responses=await Promise.all([...requests,...followers]);const accepted=responses.map(response=>{assert.equal(response.status,200);assert.equal(response.error,false);return response.data!.speechID;});
+  const completionErrors:unknown[]=[];
+  const complete=(id:string,speech:string)=>setImmediate(()=>{void handler.handleSpeechEnded(id,speech).catch(error=>completionErrors.push(error));});
+  try {
+    await until(()=>internals.readHeads.size+internals.headClaims.size===128&&internals.capacityWaiters.size===128);
+    assert.ok(channels.some(id=>!internals.readHeads.has(id)&&!internals.headClaims.has(id)&&!internals.capacityWaiters.has(id)&&queues.get(`twitch:${id}:tts:queue`)?.length),'reproduction contains accepted work outside every local scheduling descriptor');
+    await until(()=>channels.some(id=>internals.readHeads.get(id)?.phase==='emitted'));
+    const first=channels.find(id=>internals.readHeads.get(id)?.phase==='emitted');assert.ok(first);
+    // The only subsequent events are normal completions, never new enqueue,
+    // readiness, manual processNext, deadline advance, or a synthetic recovery.
+    onStudioPlayback=complete;complete(first,internals.readHeads.get(first).item.speechID);
+    for(let i=0;i<4000&&synthesized.length<accepted.length;i++)await new Promise(resolve=>setTimeout(resolve,5));
+    assert.equal(completionErrors.length,0);assert.equal(synthesized.length,accepted.length,'every accepted queue must retain an automatic path to execution');
+    assert.equal(new Set(synthesized).size,accepted.length);assert.equal(usage,accepted.length);
+    assert.deepEqual(new Set(synthesized),new Set(accepted));
+    for(let i=0;i<channels.length;i++)assert.ok(synthesized.indexOf(accepted[i])<synthesized.indexOf(accepted[i+channels.length]),'each channel keeps its accepted FIFO order');
+    assert.ok(internals.readHeads.size+internals.headClaims.size<=128);assert.ok(internals.capacityWaiters.size<=128);
+  } finally {
+    beforeProcessingRead=undefined;onStudioPlayback=undefined;releaseAdmission.resolve();studioChannels.clear();
+    for(const id of channels)await handler.control(id,'clear').catch(()=>{});
+    for(const id of channels)await handler.cleanupChannel(id);
+    internals.capacityWaiters.clear();await stop();
+  }
+});
+
+for(const source of ['studio-disabled','legacy-disabled','pet-off-on'] as const)test(`R11 registry recovery discovers accepted FIFO backlog without local ownership: ${source}`,async()=>{
+  await setup();const internals=handler as any;
+  config.settings.sources.readTts=false;await invalidateReadTts(owner);
+  seedChannel(channel,`registry-${source}-A`,`registry-${source}-B`);
+  // Redis is already accepted work: no enqueue, head, claim, waiter or readiness
+  // notification is needed for the existing recovery tick to find it.
+  if(source==='studio-disabled')studioChannels.set(channel,true);
+  if(source==='legacy-disabled'){
+    studioConnected=graceConnected=false;
+    for(const socket of legacySockets.values())socket.data.ttsReady=true;
+    legacyNamespaces.set(`/speech/${channel}`,{name:`/speech/${channel}`,sockets:legacySockets});
+  }
+  if(source==='pet-off-on'){
+    studioConnected=graceConnected=false;peer.audioReady=true;
+    config.settings.sources.readTts=true;await invalidateReadTts(owner);
+  }
+  try {
+    assert.equal(internals.capacityWaiters.size,0);assert.equal(internals.readHeads.size,0);
+    await handler.recoverQueuedTts();
+    const emitted=()=>source==='pet-off-on'?internals.readHeads.get(channel)?.phase==='emitted':internals.dispatchedSpeechIds.has(channel);
+    if(source==='studio-disabled') {
+      // Ordinary Studio persists the handoff and retires the queue item itself.
+      await until(()=>usage===2&&!internals.processingChannels.has(channel));
+    } else {
+      await until(()=>usage===1&&emitted());
+      assert.deepEqual(synthesized,[`registry-${source}-A`]);
+      await handler.handleSpeechEnded(channel,`registry-${source}-A`);
+      await until(()=>usage===2&&emitted());
+    }
+    assert.deepEqual(synthesized,[`registry-${source}-A`,`registry-${source}-B`]);
+    await handler.handleSpeechEnded(channel,`registry-${source}-B`);
+    await handler.recoverQueuedTts();await new Promise<void>(done=>setImmediate(done));
+    assert.equal(usage,2,'popped/generated payloads cannot be rediscovered or replayed');
+  } finally {studioChannels.clear();legacyNamespaces.clear();await stop();}
+});
+
+test('R11 discovery bounds registry steps and queue probes, rotates duplicates/churn, and does not spin on empty/offline work',async()=>{
+  await setup();const internals=handler as any;
+  studioConnected=graceConnected=false;peer.audioReady=false;
+  peers.clear();
+  for(let i=0;i<100;i++){
+    peers.set(`duplicate-${i}`,{...peer,id:`duplicate-${i}`,channelId:'empty-pet',socket:{connected:true}});
+    studioChannels.set(`empty-studio-${i}`,i%2===0);
+    legacyNamespaces.set(`/speech/empty-legacy-${i}`,{name:`/speech/empty-legacy-${i}`,sockets:legacySockets});
+  }
+  const visited=new Set<string>();let steps=0,probes=0;
+  const makeCursor=internals.queueOutputCursor.bind(internals);
+  const cursorSpy=mock.method(internals,'queueOutputCursor',(registry:number)=>{
+    const cursor=makeCursor(registry);return cursor&&{next:()=>{steps++;return cursor.next();}};
+  });
+  const card=cache.zCard;
+  const cardSpy=mock.method(cache,'zCard',async(key:string)=>{probes++;visited.add(key);return card(key);});
+  try {
+    for(let pass=0;pass<60;pass++){
+      steps=probes=0;await handler.recoverQueuedTts();
+      assert.ok(steps<=64,`registry steps ${steps}`);assert.ok(probes<=8,`queue probes ${probes}`);
+      // New entries cannot extend an iterator's current sweep indefinitely.
+      peers.set(`churn-${pass}`,{...peer,id:`churn-${pass}`,channelId:`churn-${pass}`,socket:{connected:true}});
+      studioChannels.delete(`empty-studio-${pass}`);studioChannels.set(`new-studio-${pass}`,true);
+      const before=probes;for(let i=0;i<2;i++)await new Promise<void>(done=>setImmediate(done));assert.equal(probes,before,'empty probes never schedule another pass');
+    }
+    assert.ok(visited.has('twitch:empty-pet:tts:queue'));
+    assert.ok(visited.has('twitch:empty-studio-98:tts:queue'));
+    assert.ok(visited.has('twitch:empty-legacy-99:tts:queue'));
+    assert.ok(visited.has('twitch:new-studio-0:tts:queue'));
+    assert.equal(synthesized.length,0);assert.equal(usage,0);
+    assert.ok(internals.outputCursors.length<=3);assert.equal(internals.capacityWaiters.size,0);
+  } finally {cursorSpy.mock.restore();cardSpy.mock.restore();studioChannels.clear();legacyNamespaces.clear();peers.clear();peers.set(peer.id,peer);internals.outputCursors=[];await stop();}
+});
+
+for(const action of ['clear','stream-end'] as const)test(`R11 recovery probe crossing ${action} cannot resurrect accepted work`,async()=>{
+  await setup();const entered=barrier(),release=barrier();studioChannels.set(channel,true);seed(`recovery-${action}`);
+  const card=cache.zCard;let once=true;
+  const spy=mock.method(cache,'zCard',async(key:string)=>{const result=await card(key);if(once&&key===`twitch:${channel}:tts:queue`){once=false;entered.resolve();await release.promise;}return result;});
+  const recovery=handler.recoverQueuedTts();await entered.promise;
+  try {
+    if(action==='clear')await handler.control(channel,'clear');else await clearActualStream();
+    release.resolve();await recovery;await until(()=>!(handler as any).processingChannels.has(channel));
+    assert.equal(synthesized.length,0);assert.equal(usage,0);assert.deepEqual(queues.get(`twitch:${channel}:tts:queue`)??[],[]);
+  } finally {release.resolve();await recovery;spy.mock.restore();studioChannels.clear();await stop();}
+});
+
+test('R11 offline accepted backlog and orphan payloads do not cause recursive recovery or replay',async()=>{
+  await setup();studioChannels.set(channel,true);studioConnected=graceConnected=false;peer.audioReady=false;
+  seed('offline-recovery');data.set(`twitch:${channel}:tts:queue:data:already-popped`,JSON.stringify({speechID:'already-popped'}));
+  const card=cache.zCard;let probes=0;
+  const spy=mock.method(cache,'zCard',async(key:string)=>{probes++;return card(key);});
+  try {
+    await handler.recoverQueuedTts();const before=probes;
+    for(let i=0;i<5;i++)await new Promise<void>(done=>setImmediate(done));
+    assert.equal(probes,before);assert.equal(synthesized.length,0);assert.deepEqual(queues.get(`twitch:${channel}:tts:queue`),['offline-recovery']);
+    studioConnected=graceConnected=true;await handler.resumeIfIdle(channel);
+    await until(()=>(handler as any).readHeads.get(channel)?.phase==='emitted');
+    assert.deepEqual(synthesized,['offline-recovery']);assert.equal(usage,1);
+    await handler.handleSpeechEnded(channel,'offline-recovery');await handler.recoverQueuedTts();
+    assert.deepEqual(synthesized,['offline-recovery']);
+  } finally {spy.mock.restore();studioChannels.clear();await stop();}
 });

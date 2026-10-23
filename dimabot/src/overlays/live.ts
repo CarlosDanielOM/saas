@@ -481,4 +481,10 @@ export function registerStudio(io: Server): void {
   io.on('close', () => { clearInterval(timer); pending.clear(); peers.clear(); channels.clear(); restoring = undefined; pollingFailed = false; });
 }
 
-registerStudioBridge({ hasLiveSource: (channel, kind) => recipients(channel, kind).length > 0, readTts: publishStudioReadTts, endReadTts: endStudioReadTts, hasSource: studioHasSource, media: publishStudioMedia, trigger: publishStudioTrigger, controlTts: controlStudioTts, ttsStatus: studioTtsStatus });
+registerStudioBridge({ queueChannels: function* () {
+  const entries = peers.values();
+  for (let remaining = peers.size; remaining > 0; remaining--) {
+    const entry = entries.next(); if (entry.done) return;
+    yield entry.value.socket?.connected ? entry.value.channel : undefined;
+  }
+}, hasLiveSource: (channel, kind) => recipients(channel, kind).length > 0, readTts: publishStudioReadTts, endReadTts: endStudioReadTts, hasSource: studioHasSource, media: publishStudioMedia, trigger: publishStudioTrigger, controlTts: controlStudioTts, ttsStatus: studioTtsStatus });

@@ -1,5 +1,5 @@
-import { readTtsAvailable, parkReadTts, reserveReadTts, prepareReadTts, releaseReadTts, reportReadTts, isReadTtsConfigured, hasReadTtsTurn, readTtsTurnCurrent, protectReadTtsTurn, type ReadTtsRoute } from '../pets/tts_bridge.js';
-import { publishStudioReadTts, endStudioReadTts } from '../overlays/bridge.js';
+import { readTtsQueueChannels, readTtsAvailable, parkReadTts, reserveReadTts, prepareReadTts, releaseReadTts, reportReadTts, isReadTtsConfigured, hasReadTtsTurn, readTtsTurnCurrent, protectReadTtsTurn, type ReadTtsRoute } from '../pets/tts_bridge.js';
+import { studioQueueChannels, publishStudioReadTts, endStudioReadTts } from '../overlays/bridge.js';
 import type { TtsStatusData } from '../utils/tts/tts_status.js';
 import { telemetryContext, restoreContext, traced, observe, type TraceContext } from '../utils/observability/telemetry.js';
 import { studioHasSource, studioHasLiveSource, publishStudioMedia, controlStudioTts, studioTtsStatus } from '../overlays/bridge.js';
@@ -107,6 +107,10 @@ class TtsQueueHandler {
   private headClaims = new Set<string>();
   private capacityWaiters = new Set<string>();
   private capacityWakeScheduled = false;
+  private backlogWakeRequested = false;
+  private recoveringQueues = false;
+  private outputRegistry = 0;
+  private outputCursors: (Iterator<string | undefined> | undefined)[] = [];
   private sessionCursor = 0;
   private controls = new Map<string, Promise<void>>();
   private dispatches = new Map<string, Promise<void>>();
@@ -666,7 +670,7 @@ class TtsQueueHandler {
       } catch {
         // Drop the in-memory lock even when Redis is unavailable.
       }
-    } finally { this.headClaims.delete(channelID); this.wakeCapacityWaiters(); }
+    } finally { const freedClaim = this.headClaims.delete(channelID); this.wakeCapacityWaiters(freedClaim); }
   }
 
   private adoptReadHead(channel: string, item: TtsQueueItem, session: string | null): boolean {
@@ -727,11 +731,13 @@ class TtsQueueHandler {
     if (head.running || !head.generated) return;
     this.headWakes.add(channel); this.scheduleHeadPump();
   }
-  private wakeCapacityWaiters() {
-    if (this.capacityWakeScheduled || !this.capacityWaiters.size || this.readHeads.size + this.headClaims.size >= MAX_READ_TTS_HEADS) return;
+  private wakeCapacityWaiters(discoverBacklog = false) {
+    this.backlogWakeRequested ||= discoverBacklog;
+    if (this.capacityWakeScheduled || (!this.capacityWaiters.size && !this.backlogWakeRequested) || this.readHeads.size + this.headClaims.size >= MAX_READ_TTS_HEADS) return;
     this.capacityWakeScheduled = true;
     setImmediate(() => {
       this.capacityWakeScheduled = false;
+      const discoverBacklog = this.backlogWakeRequested; this.backlogWakeRequested = false;
       let available = Math.min(MAX_READ_TTS_PUMPS, MAX_READ_TTS_HEADS - this.readHeads.size - this.headClaims.size);
       // Select at execution time: a newly busy first waiter cannot spend the
       // only free slot or hide ready channels behind it. Busy waiters remain for
@@ -743,7 +749,53 @@ class TtsQueueHandler {
         available--;
         void this.processNext(channel);
       }
+      if (discoverBacklog) void this.recoverQueuedTts().catch(error => console.error('TTS backlog recovery failed', error));
     });
+  }
+  private queueOutputCursor(registry: number): Iterator<string | undefined> | undefined {
+    if (registry === 0) return readTtsQueueChannels();
+    if (registry === 1) return studioQueueChannels();
+    const namespaces = getIO()?._nsps;
+    if (!namespaces) return;
+    return (function* () {
+      const entries = namespaces.values();
+      for (let remaining = namespaces.size; remaining > 0; remaining--) {
+        const entry = entries.next(); if (entry.done) return;
+        const namespace = entry.value;
+        yield namespace.name.startsWith('/speech/') && namespace.sockets.size ? namespace.name.slice('/speech/'.length) : undefined;
+      }
+    })();
+  }
+  /** Redis membership owns accepted, ungenerated work. Local descriptors are
+   * bounded execution caches, so registry hints also discover overflow/restart
+   * backlog. No settings filter: disabled read-TTS can use normal overlays. */
+  async recoverQueuedTts(): Promise<void> {
+    if (this.recoveringQueues) return;
+    this.recoveringQueues = true;
+    try {
+      if (!this.cache) await this.init();
+      const seen = new Set<string>(), exhausted = new Set<number>();
+      let probes = 0;
+      for (let steps = 0; steps < 64 && probes < MAX_READ_TTS_PUMPS && exhausted.size < 3; steps++) {
+        const registry = this.outputRegistry; this.outputRegistry = (registry + 1) % 3;
+        if (exhausted.has(registry)) continue;
+        const cursor = this.outputCursors[registry] ??= this.queueOutputCursor(registry);
+        const entry = cursor?.next();
+        if (!entry || entry.done) { this.outputCursors[registry] = undefined; exhausted.add(registry); continue; }
+        const channel = entry.value;
+        if (!channel || seen.has(channel)) continue;
+        seen.add(channel);
+        const busy = () => this.readHeads.has(channel) || this.headClaims.has(channel) || this.controls.has(channel)
+          || this.processingChannels.has(channel) || this.dispatches.has(channel);
+        if (busy()) continue;
+        probes++;
+        if (!await this.cache!.zCard(`twitch:${channel}:tts:queue`)) continue;
+        if (busy() || !await this.hasOverlayConnection(channel) || busy()) continue;
+        // processNext revalidates output/session/control/capacity before a provider.
+        // Never resumeIfIdle here: an empty/offline probe must not schedule itself.
+        void this.processNext(channel);
+      }
+    } finally { this.recoveringQueues = false; }
   }
   async handleSessionEnded(channel: string, session: string) {
     const head = this.readHeads.get(channel);
@@ -1076,7 +1128,7 @@ class TtsQueueHandler {
       await this.cache!.del(`twitch:${channelID}:tts:queue:data:${speechID}`);
     } catch (error) { failure ??= error; } // The processing key also expires by TTL.
     if (head?.item.speechID === speechID && this.readHeads.get(channelID) === head) this.readHeads.delete(channelID);
-    this.wakeCapacityWaiters();
+    this.wakeCapacityWaiters(true);
     if (!keepProcessing) this.processingChannels.delete(channelID);
     if (this.activeSpeechIds.get(channelID) === speechID) {
       this.activeSpeechIds.delete(channelID);
@@ -1140,7 +1192,7 @@ class TtsQueueHandler {
     this.processingChannels.delete(channelID);
     this.activeSpeechIds.delete(channelID);
     this.capacityWaiters.delete(channelID);
-    this.wakeCapacityWaiters();
+    this.wakeCapacityWaiters(true);
   }
 
   private scheduleFileCleanup(fileKey: string, outputPath: string): void {

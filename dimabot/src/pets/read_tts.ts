@@ -396,6 +396,15 @@ async function report(channel: string, speech: string, phase: string, position: 
 }
 export function startReadTts() {
     registerReadTtsBridge({
+        // Yield once per registry entry, including offline entries: callers bound
+        // enumeration itself, not just the number of eligible results.
+        queueChannels: function* () {
+            const entries = petPeers.values();
+            for (let remaining = petPeers.size; remaining > 0; remaining--) {
+                const entry = entries.next(); if (entry.done) return;
+                yield entry.value.socket.connected ? entry.value.channelId : undefined;
+            }
+        },
         available: async channel => { const selected = await configuration(channel); return !!selected && selected.config.settings.ttsAudio === 'pet' && !!await player(selected.ownerId, channel); },
         configured: async channel => !!await configuration(channel),
         owns: (channel, speech) => { const turn = turns.get(channel); return !!turn && (!speech || turn.input.speechId === speech); },

@@ -242,6 +242,7 @@ export async function startPetRuntime() {
             }
             const { ttsQueueHandler } = await import('../handlers/tts_queue.handler.js');
             await ttsQueueHandler.reconcileReadTtsSessions();
+            await ttsQueueHandler.recoverQueuedTts();
             const cleanup = await PetRequest.find({ status: { $in: PET_TERMINAL }, $or: [{ privateDir: { $exists: true } }, { 'audio.path': { $exists: true } }] }).limit(64).lean();
             for (const request of cleanup) await cleanAudio(request);
         } finally { recovering = false; }

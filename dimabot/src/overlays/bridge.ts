@@ -5,6 +5,7 @@ import type { LiveMedia } from './live.js';
 export type ReadTtsPublication = 'emitted' | 'unavailable' | 'cancelled';
 export interface ReadTtsDelivery { beforeEmit?: () => boolean; cancelled?: () => boolean; speechID: string; durationMs: number; text: string; legacy: boolean; file?: string; mime?: string }
 interface Bridge {
+  queueChannels?(): Iterator<string | undefined>;
   readTts?(channel: string, input: ReadTtsDelivery): Promise<ReadTtsPublication | void>;
   endReadTts?(channel: string, speechID: string): Promise<void>;
   hasLiveSource?(channel: string, kind: EventKind): boolean;
@@ -16,6 +17,7 @@ interface Bridge {
 }
 let bridge: Bridge | undefined;
 export function registerStudioBridge(value: Bridge) { bridge = value; }
+export const studioQueueChannels = () => bridge?.queueChannels?.();
 export const publishStudioReadTts = (channel: string, input: ReadTtsDelivery) => bridge?.readTts?.(channel, input) ?? Promise.resolve('unavailable' as const);
 export const endStudioReadTts = (channel: string, speechID: string) => bridge?.endReadTts?.(channel, speechID) ?? Promise.resolve();
 export const studioHasLiveSource = (channel: string, kind: EventKind) => bridge?.hasLiveSource?.(channel, kind) ?? bridge?.hasSource(channel, kind) ?? false;
