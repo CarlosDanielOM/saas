@@ -55,12 +55,13 @@ export async function admitPetAction(input: AdmitPetActionInput): Promise<{ requ
         const configuration = await getPetConfiguration(ownerId, input.channelId);
         const runtime = await runtimeFor(ownerId, input.channelId);
         const now = new Date();
-        if (!configuration.runtime.enabled || !configuration.settings.tts.enabled || configuration.revision !== record.settingsRevision || runtime.generation !== record.generation || !runtime.lease || runtime.lease.expiresAt <= now) {
+        if (!configuration.runtime.enabled || !configuration.settings.tts.enabled || configuration.settings.sources?.independent === false || configuration.revision !== record.settingsRevision || runtime.generation !== record.generation || !runtime.lease || runtime.lease.expiresAt <= now) {
             return rejectUnadmitted(record, 'admission_expired');
         }
         const claimId = randomUUID();
         // Capture the actual atomic preimage; the earlier runtime read may be stale.
         const claimed = await PetRuntime.findOneAndUpdate({ _id: ownerId, activeRequestId: null, generation: record.generation,
+            'ttsReservation.expiresAt': { $not: { $gt: now } },
             'lease.leaseId': runtime.lease.leaseId, 'lease.expiresAt': { $gt: now },
             $or: [{ lastAcceptedAt: null }, { lastAcceptedAt: { $lte: new Date(now.getTime() - configuration.settings.behavior.cooldownSeconds * 1000) } }]
         }, { $set: { activeRequestId: record._id, lastAcceptedAt: now, admissionClaimId: claimId } }).lean();
@@ -100,10 +101,12 @@ export async function admitPetAction(input: AdmitPetActionInput): Promise<{ requ
     if (prior) return prior;
     const configuration = await getPetConfiguration(ownerId, input.channelId);
     const settings = configuration.settings;
+    if (settings.sources?.independent === false) throw new PetError('pet_source_disabled', 403);
     if (!configuration.runtime.enabled || !settings.tts.enabled) throw new PetError(configuration.runtime.issues[0] ?? 'pet_unavailable', 409);
     if (!(input.origin.kind === 'chat-command' ? settings.behavior.respondToChat : settings.behavior.respondToEvents)) throw new PetError('trigger_disabled', 403);
     if (input.operation === 'talk' && input.text.length > settings.behavior.maxReplyLength) throw new PetError('text_too_long');
     const runtime = await runtimeFor(ownerId, input.channelId);
+    if (runtime.ttsReservation && runtime.ttsReservation.expiresAt.getTime() > Date.now()) throw new PetError('busy', 409);
     if (runtime.activeRequestId) throw new PetError('busy', 409);
     if (!runtime.lease || runtime.lease.expiresAt.getTime() <= Date.now()) throw new PetError('player_unavailable', 409);
     if (runtime.lastAcceptedAt && runtime.lastAcceptedAt.getTime() + settings.behavior.cooldownSeconds * 1000 > Date.now()) throw new PetError('cooldown', 429);

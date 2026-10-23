@@ -306,10 +306,10 @@ export const websocket = async (app: any): Promise<HttpServer | null> => {
             socket.emit('speech-reset');
 
             socket.on('speech-playback', (data) => {
-                ttsQueueHandler.handleSpeechPlayback(channelID, data);
+                ttsQueueHandler.handleSpeechPlayback(channelID, data, `legacy:${socket.id}`);
             });
             socket.on('speech-ended', async (data: { speechID?: string, reason?: string }) => {
-                await ttsQueueHandler.handleSpeechEnded(channelID, data?.speechID, data?.reason);
+                await ttsQueueHandler.handleOverlayEnded(channelID, data?.speechID, data?.reason, `legacy:${socket.id}`);
             });
 
             // Handle disconnect with 5s delay

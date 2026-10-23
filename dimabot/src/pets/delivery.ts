@@ -1,5 +1,5 @@
 import type { PetPeer } from './peers.js';
-interface View { requestId: string; operation: 'talk' | 'ask'; status: string; version: number; text?: string; errorCode?: string }
+interface View { requestId: string; operation: 'talk' | 'ask' | 'tts'; status: string; version: number; text?: string; errorCode?: string }
 interface Snapshot { generation: number; active: View | null }
 function retire(peer: PetPeer, id: string) {
     peer.retiredRequestIds ??= new Set(); peer.retiredRequestIds.add(id);

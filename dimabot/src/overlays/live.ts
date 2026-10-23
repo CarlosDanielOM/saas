@@ -6,7 +6,7 @@ import type { InteractionKind, InteractionSnapshot } from './interaction-model.j
 import { selectAlertLayout } from './model.js';
 import { ALERT_DOMAIN_TYPES, AlertEventFilter } from './alert-events.js';
 import { OVERLAY_ACTIONS, OVERLAY_PLATFORMS, initialQueueState, platformMatches, type OverlayPlatform, type OverlayScope, type OverlayAction, type QueueState, type QueueCommand } from './controls.js';
-import { registerStudioBridge } from './bridge.js';
+import { registerStudioBridge, type ReadTtsDelivery } from './bridge.js';
 import { randomUUID } from 'node:crypto';
 import { deliveries, leases, retainFile, releaseFile, sweepFiles, DELIVERY_TTL_MS, LEASE_MS, MAX_PENDING, MAX_CHANNEL_BYTES, type SavedDelivery } from './delivery-store.js';
 import { Types } from 'mongoose';
@@ -19,12 +19,12 @@ import { EVENT_KINDS, matchesTrigger, type AlertEvent, type EventKind, type Over
 
 export interface ClipMetadata { streamer: string; game: string; description: string; profileImage?: string; streamerColor?: string }
 export interface LiveMedia { clip?: ClipMetadata; type: 'video' | 'audio' | 'image'; url?: string; title: string; volume: number; duration?: number }
-export interface LiveEvent { platform: OverlayPlatform; id: string; kind: EventKind; triggerId?: string; media?: LiveMedia; text?: string }
+export interface LiveEvent { tts?: { speechID: string; ownerClientId: string | null; durationMs: number }; platform: OverlayPlatform; id: string; kind: EventKind; triggerId?: string; media?: LiveMedia; text?: string }
 type Public = Awaited<ReturnType<typeof publicState>>;
 type RuntimeIssue = 'snapshot' | 'event' | 'media' | 'autoplay';
 interface Health { revision: number; issue: RuntimeIssue | null; reportedAt: number; issueAt: number | null }
 interface Peer { widgetStateVersion?: string; interactionVersion?: string; commands: QueueCommand[]; playback?: { active: string[]; queued: string[] }; connectedAt: number; health?: Health; activationFailed?: boolean; activationRetryAt?: number; dropped?: number; stateFailed?: boolean; key: string; publicId: string; channel: string; socket?: Socket; disconnectedAt?: number; state: Public; since: number }
-interface Pending { speechID?: string; event: LiveEvent; channel: string; recipients: Set<string>; mediaId?: string; bytes?: number; expiresAt: Date; mime?: string; raw?: Record<string, unknown> }
+interface Pending { ttsOwnerKey?: string; ttsEpochs?: Record<string, string>; ttsTerminal?: boolean; speechID?: string; event: LiveEvent; channel: string; recipients: Set<string>; mediaId?: string; bytes?: number; expiresAt: Date; mime?: string; raw?: Record<string, unknown> }
 const peers = new Map<string, Peer>();
 let pollingFailed = false;
 const pending = new Map<string, Pending>();
@@ -48,6 +48,7 @@ async function restore() {
       } catch (error) { if (![403, 404].includes((error as {status?: number}).status ?? 0)) throw error; }
     }
     for (const saved of await (await deliveries()).find({ expiresAt: { $gt: new Date(now) } }).sort({ expiresAt: 1 }).toArray()) {
+      if (saved.event.tts) { await (await deliveries()).deleteOne({ _id: saved._id }); if (saved.mediaId) await releaseFile(saved.mediaId); continue; }
       const recipients = new Set(saved.recipients.filter(key => peers.has(key)));
       if (recipients.size) pending.set(saved._id, { ...saved, recipients });
     }
@@ -87,7 +88,9 @@ async function discard(id: string) {
 }
 function dropPeer(key: string) {
   const peer = peers.get(key); peers.delete(key); peer?.socket?.disconnect(true);
-  for (const [id, item] of pending) { if (!item.recipients.delete(key)) continue; if (!item.recipients.size) void discard(id).catch(() => { pollingFailed = true; }); else void saveDelivery(item); }
+  for (const [id, item] of pending) {
+    if (item.event.tts && item.ttsOwnerKey === key && !item.ttsTerminal) { item.ttsTerminal = true; void import('../handlers/tts_queue.handler.js').then(({ ttsQueueHandler }) => ttsQueueHandler.handleSpeechEnded(item.channel, item.speechID, 'studio_removed')).catch(() => { pollingFailed = true; }); }
+    if (!item.recipients.delete(key)) continue; if (!item.recipients.size) void discard(id).catch(() => { pollingFailed = true; }); else void saveDelivery(item); }
   void write(async () => (await leases()).deleteOne({ _id: key }));
   if (peer && ![...peers.values()].some(p => p.channel === peer.channel)) channels.delete(peer.channel);
 }
@@ -112,7 +115,47 @@ async function deliver(item: Pending, selected: Peer[]) {
   pending.set(item.event.id, item);
   try { await saveDelivery(item); }
   catch (error) { pending.delete(item.event.id); if (item.mediaId) await releaseFile(item.mediaId); throw error; }
-  for (const peer of selected) peer.socket?.emit('overlay-event', item.event);
+  for (const peer of selected) peer.socket?.emit('overlay-event', recipientEvent(item, peer.key));
+}
+function recipientEvent(item: Pending, key: string) {
+  if (!item.event.tts || item.ttsOwnerKey === key) return item.event;
+  const { media: _media, ...event } = item.event;
+  return { ...event, tts: { ...item.event.tts, ownerClientId: null } };
+}
+export async function publishStudioReadTts(channel: string, input: ReadTtsDelivery): Promise<void> {
+  await restore();
+  const selected = recipients(channel, 'tts').sort((a, b) => a.key.localeCompare(b.key));
+  if (!selected.length) return;
+  const owner = !input.legacy && input.file ? selected[0] : undefined;
+  const retained = owner && input.file ? await retainFile(input.file) : {};
+  await deliver({ channel, speechID: input.speechID, ttsOwnerKey: owner?.key,
+    ttsEpochs: Object.fromEntries(selected.map(peer => [peer.key, peer.socket!.id])),
+    event: { id: randomUUID(), kind: 'tts', platform: 'twitch', text: input.text,
+      tts: { speechID: input.speechID, ownerClientId: owner ? String(owner.socket!.handshake.auth.clientId) : null, durationMs: Math.max(1, Math.min(60_000, input.durationMs || 60_000)) },
+      ...(owner ? { media: { type: 'audio' as const, title: input.text, volume: 1 } } : {}) },
+    ...retained, mime: input.mime, expiresAt: new Date(Date.now() + DELIVERY_TTL_MS), recipients: new Set(selected.map(peer => peer.key)) }, selected);
+}
+export async function endStudioReadTts(channel: string, speechID: string) {
+  for (const item of [...pending.values()]) if (item.channel === channel && item.event.tts && item.speechID === speechID) {
+    for (const key of item.recipients) peers.get(key)?.socket?.emit('overlay-expired', [item.event.id]);
+    await discard(item.event.id);
+  }
+}
+function correlated(item: Pending, publicId: string, clientId: unknown, socketId: unknown) {
+  if (typeof clientId !== 'string' || typeof socketId !== 'string') return null;
+  const key = `${publicId}:${clientId}`, peer = peers.get(key);
+  return item.recipients.has(key) && item.ttsEpochs?.[key] === socketId && peer?.socket?.connected && peer.socket.id === socketId ? key : null;
+}
+async function reportTts(item: Pending, peer: Peer, raw: unknown, ended: boolean) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return;
+  const report = raw as Record<string, unknown>;
+  if (!item.event.tts || item.ttsTerminal || item.ttsOwnerKey !== peer.key || !peer.socket?.connected ||
+      item.ttsEpochs?.[peer.key] !== peer.socket.id || !item.recipients.has(peer.key) || report.speechID !== item.speechID) return;
+  if (!ended && (!['loading', 'playing', 'progress', 'recovering'].includes(String(report.phase)) || typeof report.position !== 'number' || !Number.isFinite(report.position) || report.position < 0 || report.position > 3600)) return;
+  if (ended) item.ttsTerminal = true; // Claim before first await; generic ACK cannot remove the correlation.
+  const { ttsQueueHandler } = await import('../handlers/tts_queue.handler.js');
+  if (ended) await ttsQueueHandler.handleSpeechEnded(item.channel, item.speechID, typeof report.reason === 'string' ? report.reason.slice(0, 64) : 'ended');
+  else ttsQueueHandler.handleSpeechPlayback(item.channel, { speechID: item.speechID, phase: String(report.phase), position: Number(report.position) }, `studio:${peer.socket!.id}`);
 }
 /** Copy generated media BEFORE releasing its producer. Files live until every subscriber finishes. */
 export async function publishStudioMedia(channel: string, kind: 'clip' | 'tts', media: LiveMedia, file: string, mime: string, text?: string, platform: OverlayPlatform = 'twitch', speechID?: string): Promise<void> {
@@ -151,18 +194,24 @@ export async function publishTest(channel: string, publicId: string, kind: Event
     ...retained, mime: prepared.mime, raw, expiresAt: new Date(Date.now() + DELIVERY_TTL_MS), recipients: new Set(selected.map(peer => peer.key)) }, selected);
   return selected.length;
 }
-export async function eventFor(publicId: string, eventId: string) {
+export async function eventFor(publicId: string, eventId: string, clientId?: unknown, socketId?: unknown) {
   const state = await publicState(publicId); const item = pending.get(eventId);
   if (!item || item.channel !== state.channel || ![...item.recipients].some(k => k.startsWith(`${publicId}:`))) return null;
+  const key = item.event.tts ? correlated(item, publicId, clientId, socketId) : null;
+  if (item.event.tts && !key) return null;
   const layouts: Record<string, unknown> = {};
   if (item.raw) for (const design of state.snapshot.designs) {
     const layout = selectAlertLayout(design, item.event.kind as AlertEvent, item.raw);
     if (layout) layouts[design.id] = await renderLayout(layout, state.channel, item.raw);
   }
-  return { ...item.event, snapshot: state.snapshot, revision: state.revision, ...(item.mediaId ? { media: { ...item.event.media!, url: `/overlay-studio/public/${publicId}/media/${eventId}` } } : {}), layouts };
+  const event = key ? recipientEvent(item, key) : item.event;
+  const query = key ? `?clientId=${encodeURIComponent(String(clientId))}&socketId=${encodeURIComponent(String(socketId))}` : '';
+  return { ...event, snapshot: state.snapshot, revision: state.revision, ...(item.mediaId && (!item.event.tts || key === item.ttsOwnerKey) ? { media: { ...item.event.media!, url: `/overlay-studio/public/${publicId}/media/${eventId}${query}` } } : {}), layouts };
 }
-export async function fileFor(publicId: string, eventId: string) {
+export async function fileFor(publicId: string, eventId: string, clientId?: unknown, socketId?: unknown) {
   const state = await publicState(publicId); const item = pending.get(eventId);
+  if (item?.event.tts && correlated(item, publicId, clientId, socketId) !== item.ttsOwnerKey) return null;
+  if (item?.event.tts && !item.ttsOwnerKey) return null;
   return item?.channel === state.channel && [...item.recipients].some(k => k.startsWith(`${publicId}:`)) && item.mediaId ? { mediaId: item.mediaId, mime: item.mime!, bytes: item.bytes! } : null;
 }
 async function activateSources(peer: Peer): Promise<void> {
@@ -304,8 +353,8 @@ export function registerStudio(io: Server): void {
     peer.stateFailed = failedSources.length > 0;
     peer.widgetStateVersion = JSON.stringify([widgetStates, failedSources]);
     if (interactions) peer.interactionVersion = JSON.stringify([interactions.poll?.revision, interactions.prediction?.revision]);
-    socket.emit('overlay-state', { widgetStates, serverTime, failedSources, interactions, publicId: state.publicId, revision: state.revision, snapshot: state.snapshot, controls: state.controls, commands: peer.commands, pendingIds: [...pending.values()].filter(item => item.recipients.has(key)).map(item => item.event.id) });
-    for (const item of pending.values()) if (item.recipients.has(key)) socket.emit('overlay-event', item.event);
+    socket.emit('overlay-state', { widgetStates, serverTime, failedSources, interactions, publicId: state.publicId, revision: state.revision, snapshot: state.snapshot, controls: state.controls, commands: peer.commands, pendingIds: [...pending.values()].filter(item => !item.event.tts && item.recipients.has(key)).map(item => item.event.id) });
+    for (const item of pending.values()) if (!item.event.tts && item.recipients.has(key)) socket.emit('overlay-event', item.event);
     socket.on('overlay-control-ack', (id: unknown) => {
       if (peers.get(key) === peer && typeof id === 'string') { peer.commands = peer.commands.filter(command => command.id !== id); void savePeer(peer); }
     });
@@ -323,15 +372,26 @@ export function registerStudio(io: Server): void {
       const now = Date.now();
       peer.health = { revision, issue: issue as RuntimeIssue | null, reportedAt: now, issueAt: issue === null ? null : peer.health && peer.health.issue === issue ? peer.health.issueAt : now };
     });
+    for (const [event, ended] of [['overlay-speech-playback', false], ['overlay-speech-ended', true]] as const) socket.on(event, (raw: unknown) => {
+      if (peers.get(key) !== peer || !raw || typeof raw !== 'object') return;
+      const item = pending.get(String((raw as Record<string, unknown>).eventId));
+      if (item) void reportTts(item, peer, raw, ended).catch(() => { pollingFailed = true; });
+    });
     socket.on('overlay-ended', (id: unknown, ack?: () => void) => {
       if (peers.get(key) !== peer || typeof id !== 'string') return;
       const item = pending.get(id);
       void (async () => {
-        if (item?.recipients.has(key)) { item.recipients.delete(key); if (!item.recipients.size) await discard(id); else await saveDelivery(item); }
+        if (item?.recipients.has(key) && !(item.event.tts && item.ttsOwnerKey === key && !item.ttsTerminal)) { item.recipients.delete(key); if (!item.recipients.size) await discard(id); else await saveDelivery(item); }
         if (typeof ack === 'function') ack();
       })().catch(() => { pollingFailed = true; });
     });
-    socket.on('disconnect', () => { if (peers.get(key)?.socket === socket) { peer.socket = undefined; peer.disconnectedAt = Date.now(); void savePeer(peer); } });
+    socket.on('disconnect', () => { if (peers.get(key)?.socket === socket) {
+      for (const item of [...pending.values()]) if (item.event.tts && item.recipients.has(key)) {
+        if (item.ttsOwnerKey === key && !item.ttsTerminal) { item.ttsTerminal = true; void import('../handlers/tts_queue.handler.js').then(({ ttsQueueHandler }) => ttsQueueHandler.handleSpeechEnded(item.channel, item.speechID, 'studio_disconnected')); }
+        item.recipients.delete(key);
+        if (item.recipients.size) void saveDelivery(item); else void discard(item.event.id);
+      }
+      peer.socket = undefined; peer.disconnectedAt = Date.now(); void savePeer(peer); } });
     void ensureSources(peer);
     void resyncInteractions(peer.channel, interactionKinds(state.snapshot)).catch(() => { peer.stateFailed = true; });
   }
@@ -404,4 +464,4 @@ export function registerStudio(io: Server): void {
   io.on('close', () => { clearInterval(timer); pending.clear(); peers.clear(); channels.clear(); restoring = undefined; pollingFailed = false; });
 }
 
-registerStudioBridge({ hasSource: studioHasSource, media: publishStudioMedia, trigger: publishStudioTrigger, controlTts: controlStudioTts, ttsStatus: studioTtsStatus });
+registerStudioBridge({ readTts: publishStudioReadTts, endReadTts: endStudioReadTts, hasSource: studioHasSource, media: publishStudioMedia, trigger: publishStudioTrigger, controlTts: controlStudioTts, ttsStatus: studioTtsStatus });

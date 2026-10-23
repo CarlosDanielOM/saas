@@ -53,5 +53,9 @@ export async function authorizePetAudio(requestId: string, ticket: unknown) {
         record.tokenHash && record.tokenHash !== runtime.tokenHash) throw new PetError('stale_ticket', 403);
     const request = await PetRequest.findById(requestId).lean();
     if (!request?.audio || !['ready', 'playing'].includes(request.status)) throw new PetError('audio_unavailable', 404);
+    if (request.operation === 'tts') {
+        const fetched = await PetRequest.updateOne({ _id: requestId, status: { $in: ['ready', 'playing'] } }, { $set: { audioFetched: true } });
+        if (!fetched.matchedCount) throw new PetError('stale_ticket', 403);
+    }
     return request.audio;
 }

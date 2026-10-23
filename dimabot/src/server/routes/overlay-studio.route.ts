@@ -26,8 +26,8 @@ overlayStudioRoute.get('/public/:publicId/assets/:assetId', wrap(async (req, res
   if (!snapshotAssets(state.snapshot).some(w => w.assetId === id)) throw new OverlayError('Asset unavailable', 404);
   return serveAsset(req, res, state.channel, id, true);
 }));
-overlayStudioRoute.get('/public/:publicId/events/:eventId', wrap(async (req, res) => { const event = await eventFor(param(req, 'publicId'), param(req, 'eventId')); if (!event) throw new OverlayError('Event unavailable', 404); return ok(res, event); }));
-overlayStudioRoute.get('/public/:publicId/media/:eventId', wrap(async (req, res) => { const file = await fileFor(param(req, 'publicId'), param(req, 'eventId')); if (!file) throw new OverlayError('Media unavailable', 404); res.type(file.mime); res.setHeader('Accept-Ranges', 'bytes');
+overlayStudioRoute.get('/public/:publicId/events/:eventId', wrap(async (req, res) => { const event = await eventFor(param(req, 'publicId'), param(req, 'eventId'), req.query.clientId, req.query.socketId); if (!event) throw new OverlayError('Event unavailable', 404); return ok(res, event); }));
+overlayStudioRoute.get('/public/:publicId/media/:eventId', wrap(async (req, res) => { const file = await fileFor(param(req, 'publicId'), param(req, 'eventId'), req.query.clientId, req.query.socketId); if (!file) throw new OverlayError('Media unavailable', 404); res.type(file.mime); res.setHeader('Accept-Ranges', 'bytes');
   let start = 0, end = file.bytes - 1;
   if (req.headers.range) {
     const match = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range);

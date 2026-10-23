@@ -1,5 +1,6 @@
 import { PetRequest, PetRuntime, PET_TERMINAL, type PetRequestRecord } from '../schemas/pet_runtime.schema.js';
 import { petWakeups } from './wakeups.js';
+import { readTtsTerminal, invalidateReadTts } from './tts_bridge.js';
 import { PetReadiness } from './readiness.schema.js';
 
 export { PET_WAKE } from './wakeups.js';
@@ -28,6 +29,7 @@ export async function finishRequest(id: string, status: 'completed' | 'cancelled
     }, { new: true }).lean();
     if (request) {
         await PetRuntime.updateOne({ _id: request.ownerId, activeRequestId: id }, { $set: { activeRequestId: null }, $unset: { admissionClaimId: 1 } });
+        await readTtsTerminal(request);
         await notifyPet(request.ownerId);
     }
     return request;
@@ -40,6 +42,7 @@ export async function invalidatePet(ownerId: string, reason: string, expected?: 
         notBefore: { $max: ['$notBefore', { $ifNull: ['$lease.expiresAt', new Date(0)] }] }
     } }]).lean();
     if (!previous) return false;
+    await invalidateReadTts(ownerId);
     await PetReadiness.deleteOne({ _id: ownerId, generation: { $lte: previous.generation } });
     if (previous.activeRequestId) await finishRequest(previous.activeRequestId, terminal?.status ?? 'cancelled', terminal?.errorCode ?? reason);
     await notifyPet(ownerId);

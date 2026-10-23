@@ -111,7 +111,7 @@
                         audio.currentTime = lastPosition;
                         audio.play().catch(() => finish(item, 'play-error'));
                     }
-                }, 2000);
+                }, 500);
                 await audio.play();
             } catch {
                 finish(item, item.audio ? 'play-error' : 'download-error');

@@ -32,7 +32,7 @@ export const PET_VOICES = [
 ];
 
 export function defaultPetSettings(): PetSettings {
-    return { appearance: { kind: 'png', idleAssetId: null, talkingAssetId: null },
+    return { sources: { independent: true, readTts: false }, ttsAudio: 'pet', appearance: { kind: 'png', idleAssetId: null, talkingAssetId: null },
         playback: { target: 'browser', desktopSessionId: null, vtsSessionId: null }, enabled: false, name: 'Dima',
         tts: { enabled: true, provider: 'piper', language: 'es', voice: 'es_MX-ald-medium' },
         personality: { source: 'custom', profileId: '', prompt: 'You are a friendly, playful virtual companion. Keep replies short and respectful.' },
@@ -60,7 +60,10 @@ function integer(value: unknown, min: number, max: number): number {
 }
 
 export function validatePetSettings(input: unknown): PetSettings {
-    const value = object(input, ['enabled', 'name', 'tts', 'personality', 'rules', 'behavior', 'appearance', 'playback']);
+    const value = object(input, ['enabled', 'name', 'tts', 'personality', 'rules', 'behavior', 'appearance', 'playback', 'sources', 'ttsAudio']);
+    const sources = object(value.sources ?? defaultPetSettings().sources, ['independent', 'readTts']);
+    const ttsAudio = value.ttsAudio ?? 'pet';
+    if (!['pet', 'overlay'].includes(String(ttsAudio))) throw new PetSettingsError('invalid_settings');
     const appearance = object(value.appearance ?? defaultPetSettings().appearance, ['kind', 'idleAssetId', 'talkingAssetId']);
     const playback = object(value.playback ?? defaultPetSettings().playback, ['target', 'desktopSessionId', 'vtsSessionId']);
     if (!['png', 'vts'].includes(String(appearance.kind)) || !['browser', 'desktop'].includes(String(playback.target))) throw new PetSettingsError('invalid_settings');
@@ -78,9 +81,9 @@ export function validatePetSettings(input: unknown): PetSettings {
     // Fish also supports custom public reference IDs; never accept a URL or a filesystem path.
     const voiceValid = tts.provider === 'fish' ? /^[a-f0-9]{32}$/i.test(voice) :
         PET_VOICES.some(item => item.provider === tts.provider && item.id === voice && item.language === tts.language);
-    if (!voiceValid) throw new PetSettingsError('invalid_voice');
+    if (sources.independent !== false && !voiceValid) throw new PetSettingsError('invalid_voice');
     if (!Array.isArray(value.rules) || value.rules.length > 20) throw new PetSettingsError('invalid_rules');
-    return { appearance: { kind: appearance.kind as 'png' | 'vts', idleAssetId: nullableId(appearance.idleAssetId), talkingAssetId: nullableId(appearance.talkingAssetId) },
+    return { sources: { independent: bool(sources.independent), readTts: bool(sources.readTts) }, ttsAudio: ttsAudio as 'pet' | 'overlay', appearance: { kind: appearance.kind as 'png' | 'vts', idleAssetId: nullableId(appearance.idleAssetId), talkingAssetId: nullableId(appearance.talkingAssetId) },
         playback: { target: playback.target as 'browser' | 'desktop', desktopSessionId: nullableId(playback.desktopSessionId), vtsSessionId: nullableId(playback.vtsSessionId) }, enabled: bool(value.enabled), name: text(value.name, 40),
         tts: { enabled: bool(tts.enabled), provider: tts.provider as PetSettings['tts']['provider'],
             language: tts.language as 'en' | 'es', voice },
@@ -100,12 +103,14 @@ export async function getPetConfiguration(userId: string, channelID: string) {
         PetRuntime.findById(userId).lean()
     ]);
     const settings = { ...(record?.settings ?? defaultPetSettings()),
+        sources: { independent: record?.settings.sources?.independent ?? true, readTts: record?.settings.sources?.readTts ?? false },
+        ttsAudio: record?.settings.ttsAudio ?? 'pet',
         appearance: record?.settings.appearance ?? defaultPetSettings().appearance,
         playback: record?.settings.playback ?? defaultPetSettings().playback };
     const profiles = (personality?.profiles ?? []).map(profile => ({ id: profile.profileID, name: profile.name }));
     const profile = settings.personality.source === 'profile' ?
         personality?.profiles.find(item => item.profileID === settings.personality.profileId) : null;
-    const issues = settings.personality.source === 'profile' && !profile ? ['personality_unavailable'] : [];
+    const issues = settings.sources.independent && settings.personality.source === 'profile' && !profile ? ['personality_unavailable'] : [];
     if (settings.appearance.kind === 'png') {
         try {
             const ids = [settings.appearance.idleAssetId, settings.appearance.talkingAssetId];
@@ -121,9 +126,9 @@ export async function getPetConfiguration(userId: string, channelID: string) {
         personaReference: profile.personaReference, tonePreset: profile.tonePreset,
         voiceProfile: profile.voiceProfile, rules: [...(personality?.rules ?? []), ...settings.rules] } :
         { prompt: settings.personality.prompt, rules: settings.rules };
-    return { schemaVersion: 2, revision: record?.revision ?? 0, updatedAt: record?.updatedAt ?? null,
+    return { schemaVersion: 3, revision: record?.revision ?? 0, updatedAt: record?.updatedAt ?? null,
         settings, profiles, voices: PET_VOICES, runtime: { enabled: settings.enabled && !issues.length,
-            issues, personality: resolvedPersonality, playbackAvailable: !!runtimeRecord?.lease && runtimeRecord.lease.expiresAt.getTime() > Date.now() } };
+            issues, readTtsEnabled: settings.enabled && settings.sources.readTts && !issues.some(issue => issue !== 'personality_unavailable'), personality: resolvedPersonality, playbackAvailable: !!runtimeRecord?.lease && runtimeRecord.lease.expiresAt.getTime() > Date.now() } };
 }
 
 export async function savePetConfiguration(userId: string, channelID: string, input: unknown) {
@@ -131,7 +136,7 @@ export async function savePetConfiguration(userId: string, channelID: string, in
     const request = object(input, ['revision', 'settings']);
     const revision = integer(request.revision, 0, Number.MAX_SAFE_INTEGER - 1);
     const settings = validatePetSettings(request.settings);
-    if (settings.personality.source === 'profile' && !await ChannelAIPersonalitySchema.exists({
+    if (settings.sources.independent && settings.personality.source === 'profile' && !await ChannelAIPersonalitySchema.exists({
         channelID, 'profiles.profileID': settings.personality.profileId
     })) throw new PetSettingsError('personality_unavailable');
     const previous = await PetSettingsSchema.findOne({ userId }).lean();

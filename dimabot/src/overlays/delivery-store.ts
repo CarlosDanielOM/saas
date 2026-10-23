@@ -12,7 +12,7 @@ export const LEASE_MS = 120000;
 export const MAX_PENDING = 200;
 export const MAX_MEDIA_BYTES = 100 * 1024 * 1024;
 export const MAX_CHANNEL_BYTES = 512 * 1024 * 1024;
-export interface SavedDelivery { speechID?: string; _id: string; channel: string; event: LiveEvent; recipients: string[]; expiresAt: Date; raw?: Record<string, unknown>; mediaId?: string; mime?: string; bytes?: number }
+export interface SavedDelivery { ttsOwnerKey?: string; ttsEpochs?: Record<string, string>; speechID?: string; _id: string; channel: string; event: LiveEvent; recipients: string[]; expiresAt: Date; raw?: Record<string, unknown>; mediaId?: string; mime?: string; bytes?: number }
 export interface SavedPeer { _id: string; channel: string; publicId: string; since: number; expiresAt: Date; commands: QueueCommand[] }
 async function db() { return (await getMongoDBConnection('overlay-delivery')).connection.db!; }
 export async function deliveries() { return (await db()).collection<SavedDelivery>('overlay_deliveries'); }

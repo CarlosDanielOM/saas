@@ -31,7 +31,7 @@ function reset() {
 reset();
 const query = <T>(read: () => T) => ({ lean: async () => read() });
 function runtimeMatches(filter: Record<string, any>) {
-    return runtime._id === filter._id && runtime.activeRequestId === filter.activeRequestId && runtime.generation === filter.generation &&
+    return (!filter['ttsReservation.expiresAt'] || !runtime.ttsReservation || runtime.ttsReservation.expiresAt <= filter['ttsReservation.expiresAt'].$not.$gt) && runtime._id === filter._id && runtime.activeRequestId === filter.activeRequestId && runtime.generation === filter.generation &&
         (!filter.admissionClaimId || runtime.admissionClaimId === filter.admissionClaimId) &&
         (!filter['lease.leaseId'] || runtime.lease?.leaseId === filter['lease.leaseId']) &&
         (!filter.lastAcceptedAt || runtime.lastAcceptedAt?.getTime() === filter.lastAcceptedAt.getTime());
@@ -131,4 +131,17 @@ test('lease renewal during unwind keeps renewed expiry while freeing A and resto
     assert.equal(successfulClaims, 1); assert.equal(successfulUnwinds, 1); assert.equal(runtime.activeRequestId, null);
     assert.deepEqual(runtime.lastAcceptedAt, previousCooldown); assert.deepEqual(runtime.lease!.expiresAt, renewedExpiry);
     assert.equal(runtime.generation, 7); assert.equal(runtime.lease!.leaseId, 'lease-a'); assert.equal(runtime.tokenHash, 'unchanged-token');
+});
+
+test('fresh independent bot/cron admission is busy while TTS reservation is pending without a pet request', async () => {
+    reset(); rows.clear(); runtime.activeRequestId = null;
+    runtime.ttsReservation = { speechId: 'normal-tts', token: 'api-turn', expiresAt: new Date(Date.now() + 60_000) };
+    await assert.rejects(admitPetAction({ ...input, origin: { ...input.origin, id: 'during-tts' } }), /busy/);
+    assert.equal(rows.size, 0);
+});
+test('independent admission CAS cannot win when TTS reserves after the configuration read', async () => {
+    reset(); runtime.activeRequestId = null;
+    onConfiguration = () => { runtime.ttsReservation = { speechId: 'normal-tts', token: 'api-turn', expiresAt: new Date(Date.now() + 60_000) }; };
+    await assert.rejects(admitPetAction(input), /busy/);
+    assert.equal(successfulClaims, 0);
 });

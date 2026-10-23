@@ -1,3 +1,4 @@
+import { startReadTts } from './read_tts.js';
 import { randomUUID } from 'node:crypto';
 import { mkdtemp, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -38,7 +39,7 @@ export async function snapshotFor(peer: PetPeer) {
     const request = runtime.activeRequestId ? await PetRequest.findById(runtime.activeRequestId).lean() : null;
     return { v: 1, serverTime: Date.now(), peerId: peer.id, generation: runtime.generation,
         settingsRevision: configuration.revision, appearance: configuration.settings.appearance,
-        playback: configuration.settings.playback,
+        playback: configuration.settings.playback, sources: configuration.settings.sources, ttsAudio: configuration.settings.ttsAudio,
         assets: peer.kind === 'browser' ? assetUrls(peer.capability!, configuration.settings.appearance) : { idleUrl: null, talkingUrl: null },
         active: requestView(request), lease: runtime.lease ? { ...runtime.lease, expiresAt: runtime.lease.expiresAt.getTime() } : null };
 }
@@ -51,7 +52,7 @@ export async function isSelectedPlayer(peer: PetPeer) {
     await refreshPetReadiness(peer.ownerId);
     const { settings, runtime } = await getPetConfiguration(peer.ownerId, peer.channelId);
     if (settings.appearance.kind === 'vts' && !await selectedVtsController(peer.ownerId, settings.playback.vtsSessionId)) return false;
-    return runtime.enabled && settings.enabled && settings.tts.enabled && peer.audioReady &&
+    return (runtime.enabled && settings.sources.independent && settings.tts.enabled || runtime.readTtsEnabled) && peer.audioReady &&
         (settings.playback.target === 'browser' ? peer.kind === 'browser' && (settings.appearance.kind !== 'png' || peer.renderReady) :
             peer.kind === 'desktop' && settings.playback.desktopSessionId === peer.sessionId && peer.scopes.includes('pet:receive'));
 }
@@ -202,6 +203,7 @@ async function wake(ownerId: string) {
 export async function startPetRuntime() {
     await Promise.all([PetRequest.init(), PetRuntime.init()]);
     await initializePetReadiness();
+    const closeReadTts = startReadTts();
     const stopWakeups = subscribePetWakeups(owners => { for (const ownerId of owners) void wake(ownerId).catch(() => {}); });
     let recovering = false;
     let recoveryCursor = 0;
@@ -240,5 +242,5 @@ export async function startPetRuntime() {
     };
     const timer = setInterval(() => { void recover().catch(() => {}); }, 15_000); timer.unref();
     await recover();
-    return async () => { clearInterval(timer); for (const task of tasks.values()) task.controller.abort(); stopWakeups(); stopPetReadiness(); };
+    return async () => { clearInterval(timer); for (const task of tasks.values()) task.controller.abort(); stopWakeups(); stopPetReadiness(); await closeReadTts(); };
 }
