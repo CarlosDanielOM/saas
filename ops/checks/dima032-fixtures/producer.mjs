@@ -4,6 +4,7 @@ const input = JSON.parse(Buffer.concat(chunks).toString());
 const { getMongoDBConnection } = await import('/app/dist/utils/databases/mongodb.database.js');
 const mongo = await getMongoDBConnection('dima032-producer');
 const { petPeers } = await import('/app/dist/pets/peers.js');
+if (input.now !== undefined) { if (!Number.isSafeInteger(input.now)) throw new Error('Invalid fixture clock'); Date.now = () => input.now; }
 let result;
 try {
     if (input.ast) {

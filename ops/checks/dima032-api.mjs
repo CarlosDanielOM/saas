@@ -1,6 +1,8 @@
 /** Exact API candidate: disposable Mongo/Redis, actual API singleton and dummy providers only. */
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import { spawn } from 'node:child_process';
+import { once } from 'node:events';
 import { createRequire } from 'node:module';
 const { WebSocket } = createRequire('/app/package.json')('ws');
 const { ObjectId } = createRequire('/app/package.json')('mongodb');
@@ -44,6 +46,14 @@ async function connect(namespace, auth, first) {
         event(event, predicate = () => true) { return until(() => events.find(item => item.event === event && predicate(item.data))?.data, event); }
     };
     await until(() => socketId, 'namespace join'); if (first) await client.event(first); clients.push(client); return client;
+}
+async function separateProducer(input) {
+    const child = spawn(process.execPath, ['/tmp/saas-fixtures/producer.mjs'], { stdio: ['pipe', 'pipe', 'pipe'], env: process.env });
+    let stdout = '', stderr = ''; child.stdout.on('data', chunk => { stdout += chunk; }); child.stderr.on('data', chunk => { stderr += chunk; });
+    const timer = setTimeout(() => child.kill('SIGKILL'), 15000); child.stdin.end(JSON.stringify(input));
+    const [code] = await once(child, 'close'); clearTimeout(timer); assert.equal(code, 0, stderr);
+    const line = stdout.split('\n').find(line => line.startsWith('DIMA032_PRODUCER:')); assert.ok(line, stdout);
+    const result = JSON.parse(line.slice('DIMA032_PRODUCER:'.length)); assert.notEqual(result.pid, process.pid); assert.equal(result.peers, 0); return result.result;
 }
 const renew = setInterval(() => { for (const client of clients) if (client.lease && !client.renewing && client.ws.readyState === WebSocket.OPEN) {
     client.renewing = true; void client.send('pet:lease', { v: 1, action: 'renew', leaseId: client.lease.leaseId, generation: client.lease.generation }).then(ack => { client.lease = ack.ok ? ack.data : null; }).finally(() => { client.renewing = false; });
@@ -200,9 +210,52 @@ try {
         assert.equal(await redis.get(`twitch:${channel}:tts:processing`), offlineSpeech);
         offlineLegacy.emit('speech-ended', { speechID: offlineSpeech, reason: 'ended' }); await idle();
     }
+    // Automatic loss at the final private attempted-CAS response is still provably unheard.
+    pet = await readyPet(); await redis.set('dima032:test:hold:private', 'true');
+    const privateCount = await providerCount(), unheard = await enqueue('Private pre-emission invalidation');
+    await until(() => redis.get('dima032:test:entered:private'), 'private pre-emission barrier');
+    await command('invalidate', { ownerId });
+    assert.equal(await redis.get(`twitch:${channel}:tts:processing`), unheard, 'automatic pre-play invalidation keeps normal queue');
+    await redis.del('dima032:test:hold:private'); const unheardFallback = await offlineLegacy.event('speech', data => data.speechID === unheard);
+    assert.equal(pet.events.some(event => event.event === 'pet:play'), false);
+    assert.deepEqual(Buffer.from(await (await fetch(localAudio(unheardFallback.audioUrl))).arrayBuffer()), bytes);
+    assert.equal(await providerCount(), privateCount + 1); offlineLegacy.emit('speech-ended', { speechID: unheard, reason: 'ended' }); await idle(); offlineLegacy.ws.close();
+    await save(settings => ({ ...settings, ttsAudio: 'overlay' }));
+    // Disconnect every live Studio while an unheard backlog exists. Grace is not output readiness.
+    const activeBacklog = await enqueue('Studio active before disconnect'); await studioDelivery(activeBacklog);
+    const backlogCount = await providerCount(); await redis.del('dima032:test:entered:cas'); await redis.set('dima032:test:hold:cas', 'true');
+    const queuedBacklog = await enqueue('Studio unheard backlog'); const reconnectSource = liveStudio()[0];
+    for (const client of liveStudio()) client.ws.close(); await pause(100); await redis.del('dima032:test:hold:cas');
+    await idle(); await pause(150); assert.equal(await providerCount(), backlogCount, 'disconnected grace cannot bill the waiting item');
+    assert.equal(await redis.zCard(`twitch:${channel}:tts:queue`), 1);
+    await connect(reconnectSource.namespace, reconnectSource.auth, 'overlay-state');
+    const resumedBacklog = await studioDelivery(queuedBacklog); assert.equal(await providerCount(), backlogCount + 1);
+    resumedBacklog.client.emit('overlay-speech-ended', { eventId: resumedBacklog.event.id, speechID: queuedBacklog, reason: 'ended' }); await idle();
+    // Output disappears after a real provider result: hold generated file, never re-synthesize.
+    await redis.set('dima032:test:hold:synthesis', 'true'); const synthesisCount = await providerCount();
+    const retainedSpeech = await enqueue('Preserve generated file while source missing');
+    await until(() => redis.get('dima032:test:entered:synthesis'), 'synthesis result barrier');
+    const returning = liveStudio()[0]; for (const client of liveStudio()) client.ws.close();
+    await pause(100); await redis.del('dima032:test:hold:synthesis'); await pause(200);
+    assert.equal(await providerCount(), synthesisCount + 1); assert.equal(await redis.get(`twitch:${channel}:tts:processing`), retainedSpeech);
+    await connect(returning.namespace, returning.auth, 'overlay-state'); const retainedDelivery = await studioDelivery(retainedSpeech);
+    assert.equal(await providerCount(), synthesisCount + 1); retainedDelivery.client.emit('overlay-speech-ended', { eventId: retainedDelivery.event.id, speechID: retainedSpeech, reason: 'ended' }); await idle();
+    // Real 300s normal WAV (9.6MB) remains whole; a paused Studio turn outlives240s.
+    await call(`/overlay-studio/${channel}/queue`, 'POST', { action: 'pause', platform: 'all' });
+    await redis.set('dima032:test:long-audio', 'true'); const longStarted = Date.now(), longSpeech = await enqueue('Long normal audio must stay protected');
+    const longDelivery = await studioDelivery(longSpeech); await redis.del('dima032:test:long-audio');
+    const longRuntime = await PetRuntime.findById(ownerId).lean(); assert.ok(longRuntime.ttsReservation.expiresAt.getTime() >= longStarted + 510000);
+    assert.equal((await separateProducer({ action: action('paused-long-media'), now: longStarted + 241000 })).error, 'busy');
+    const longPublic = longDelivery.client.namespace.split('/').at(-1);
+    const longFull = await call(`/overlay-studio/public/${longPublic}/events/${longDelivery.event.id}?` + new URLSearchParams({ clientId: longDelivery.client.auth.clientId, socketId: longDelivery.client.socketId }));
+    assert.equal(longFull.tts.durationMs, 60000); const longMedia = await fetch(base + longFull.media.url); assert.equal(longMedia.status, 200);
+    const longBytes = Buffer.from(await longMedia.arrayBuffer()); assert.equal(longBytes.length, 9600044); assert.equal(longBytes.readUInt32LE(40) / longBytes.readUInt32LE(28), 300);
+    await call(`/overlay-studio/${channel}/queue`, 'POST', { action: 'resume', platform: 'all' });
+    longDelivery.client.emit('overlay-speech-playback', { eventId: longDelivery.event.id, speechID: longSpeech, phase: 'playing', position: 0 });
+    longDelivery.client.emit('overlay-speech-ended', { eventId: longDelivery.event.id, speechID: longSpeech, reason: 'ended' }); await idle();
     console.log('PASS DIMA032 exact API: actual normal queue+mock synthesis/usage, PNG-only private playback once, lost ACK/fetch disconnect no replay, same-file fallback, concurrent Mongo admission reservation, skip, elected Studio media/captions/report ownership, follow and stale HTTP epochs.');
 } finally {
-    await redis.del('dima032:test:hold:cas', 'dima032:test:hold:retain', 'dima032:test:hold:persist', 'pet:test:provider-mode');
+    await redis.del('dima032:test:hold:cas', 'dima032:test:hold:retain', 'dima032:test:hold:persist', 'dima032:test:hold:private', 'dima032:test:hold:synthesis', 'dima032:test:long-audio', 'pet:test:provider-mode');
     clearInterval(renew); for (const socket of sockets) socket.close();
     await mongo.connection.close(); redis.destroy();
 }
