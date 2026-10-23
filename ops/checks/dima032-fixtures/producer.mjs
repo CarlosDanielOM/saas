@@ -11,10 +11,19 @@ try {
         if (!/^\d{1,30}$/.test(input.channelId)) throw new Error('Invalid fixture channel');
         const { applyStreamOperationsDomainEvent } = await import('/app/dist/domain_events/stream_operations_events.js');
         const { clearSpeechFiles, TTS_SESSION_ENDED } = await import('/app/dist/utils/speech.js');
-        if (input.dropHint) {
+        if (input.dropHint || input.holdHint) {
             const { pubSubManager } = await import('/app/dist/classes/pubsub_manager.class.js');
             const publish = pubSubManager.publish.bind(pubSubManager);
-            pubSubManager.publish = (topic, body) => topic === TTS_SESSION_ENDED ? Promise.resolve() : publish(topic, body);
+            pubSubManager.publish = async (topic, body) => {
+                if (topic === TTS_SESSION_ENDED) {
+                    if (input.dropHint) return;
+                    const { getDragonflyClient } = await import('/app/dist/utils/databases/dragonfly.database.js');
+                    const cache = await getDragonflyClient('dima032-producer-hint');
+                    await cache.set('dima032:test:entered:session-publish', 'true', { EX: 60 });
+                    while (await cache.get('dima032:test:hold:session-publish')) await new Promise(resolve => setTimeout(resolve, 10));
+                }
+                return publish(topic, body);
+            };
         }
         const noop = async () => {};
         // Only unrelated Twitch/role/timer effects are inert. The changed consumer,

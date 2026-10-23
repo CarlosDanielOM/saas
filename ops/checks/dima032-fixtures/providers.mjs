@@ -72,6 +72,11 @@ if ((process.argv[1] || '').endsWith('/dist/server/index.js')) {
                 const actual = ttsQueueHandler.cache;
                 if (actual) {
                     ttsQueueHandler.cache = new Proxy(actual, { get(target, property) {
+                        if (property === 'eval') return async (...args) => {
+                            const result = await actual.eval(...args);
+                            if (String(args[0]).includes('DIMA032_POP') && result?.length) await barrier('redis-pop');
+                            return result;
+                        };
                         if (property !== 'del') return Reflect.get(target, property);
                         return async (...args) => {
                             const result = await actual.del(...args);
@@ -87,16 +92,21 @@ if ((process.argv[1] || '').endsWith('/dist/server/index.js')) {
             else if (command.kind === 'end') { await ttsQueueHandler.handleSpeechEnded(command.channelId, command.speechID, 'fixture-watchdog'); result = { ok: true }; }
             else if (command.kind === 'control') { await ttsQueueHandler.control(command.channelId, command.action); result = { ok: true }; }
             else if (command.kind === 'status') result = await ttsQueueHandler.getStatus(command.channelId);
+            else if (command.kind === 'observe') { const { observeReadTtsRuntime } = await import('/app/dist/pets/tts_bridge.js'); const runtime = await PetRuntime.findById(command.ownerId).lean(); observeReadTtsRuntime(runtime); result = { ok: true }; }
             else if (command.kind === 'recover') { await ttsQueueHandler.reconcileReadTtsSessions(); result = { ok: true }; }
             else if (command.kind === 'head') {
                 const head = ttsQueueHandler.readHeads.get(command.channelId), speech = command.speechID || head?.item.speechID;
                 const file = speech && ttsQueueHandler.currentFiles.get(`${command.channelId}:${speech}`);
                 const { readFile } = await import('node:fs/promises'), { createHash } = await import('node:crypto');
                 const bytes = file ? await readFile(file).catch(() => null) : null;
+                const { getEventListeners } = await import('node:events');
                 result = { speechID: head?.item.speechID, phase: head?.phase, epoch: head?.epoch, running: head?.running,
                     fileHash: bytes ? createHash('sha256').update(bytes).digest('hex') : null, fileBytes: bytes?.length ?? 0,
                     processing: ttsQueueHandler.processingChannels.has(command.channelId), activePumps: ttsQueueHandler.activePumps,
                     watchdog: !!speech && ttsQueueHandler.currentTimeouts.has(`${command.channelId}:${speech}`),
+                    pendingWait: !!head?.cancellation && getEventListeners(head.cancellation.signal, 'abort').length > 0,
+                    electedOwner: ttsQueueHandler.readTtsOwners.get(command.channelId) ?? null,
+                    position: speech ? ttsQueueHandler.playbackPositions.get(`${command.channelId}:${speech}`) : undefined,
                     cleanupPending: !!speech && ttsQueueHandler.fileCleanupTimeouts.has(`${command.channelId}:${speech}`), configurationReads };
             }
             else throw new Error('Unknown fixture command');
