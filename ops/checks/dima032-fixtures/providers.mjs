@@ -2,6 +2,8 @@
 import './startup.mjs';
 import './runtime-providers.mjs';
 import { createRequire } from 'node:module';
+import { AsyncLocalStorage } from 'node:async_hooks';
+import { randomUUID } from 'node:crypto';
 const { createClient } = createRequire('/app/package.json')('redis');
 if (!/^mongodb:\/\/mongo:27017\/saas_ops_[a-z_]+_test$/.test(process.env.MONGO_URI || '') || process.env.PIPER_HTTP_URL !== 'http://pet-piper.test') throw new Error('DIMA032 fixtures require disposable Mongo/Redis and mock providers');
 // Fixture-only command mailbox invokes the actual API singleton; no application test endpoint.
@@ -10,6 +12,22 @@ if ((process.argv[1] || '').endsWith('/dist/server/index.js')) {
     // Delay responses of real disposable Mongo operations, never replace results.
     // These barriers exercise cancellation across CAS, retained upload and delivery persistence.
     const { PetRuntime, PetRequest } = await import('/app/dist/schemas/pet_runtime.schema.js');
+    const controlReadFault = new AsyncLocalStorage();
+    const findPrivateRequest = PetRequest.findById;
+    PetRequest.findById = function (id, ...args) {
+        const query = findPrivateRequest.call(this, id, ...args), fault = controlReadFault.getStore();
+        if (fault?.requestId === String(id)) {
+            const lean = query.lean;
+            query.lean = async function (...options) {
+                const result = await lean.apply(this, options);
+                if (!fault.remaining) return result;
+                fault.remaining--; fault.injected++;
+                await barrier('release-read');
+                throw new Error('DIMA032 fixture lost private request read reply');
+            };
+        }
+        return query;
+    };
     const originalClaim = PetRuntime.findOneAndUpdate;
     async function barrier(kind) {
         if (!await cache.get(`dima032:test:hold:${kind}`)) return;
@@ -35,8 +53,15 @@ if ((process.argv[1] || '').endsWith('/dist/server/index.js')) {
     };
     const inheritedFetch = globalThis.fetch;
     globalThis.fetch = async (input, options) => {
-        const response = await inheritedFetch(input, options);
         const url = new URL(typeof input === 'string' || input instanceof URL ? input : input.url);
+        if (url.hostname === 'pet-piper.test') {
+            const priorId = await cache.get('dima032:test:terminal-before-provider');
+            if (priorId) {
+                const prior = await PetRequest.findById(priorId).lean();
+                await cache.rPush('dima032:test:provider-prior-private-state', JSON.stringify({ requestId: priorId, status: prior?.status ?? null }));
+            }
+        }
+        const response = await inheritedFetch(input, options);
         if (url.hostname !== 'pet-piper.test') return response;
         await barrier('synthesis');
         if (!await cache.get('dima032:test:long-audio')) return response;
@@ -63,6 +88,7 @@ if ((process.argv[1] || '').endsWith('/dist/server/index.js')) {
         };
     }
     let busy = false, wrappedQueueCache = false;
+    const ownedCapacityClaims = new Set();
     setInterval(() => { if (busy) return; busy = true; void (async () => {
         const raw = await cache.lPop('dima032:test:commands'); if (!raw) return;
         const command = JSON.parse(raw); let result;
@@ -75,6 +101,11 @@ if ((process.argv[1] || '').endsWith('/dist/server/index.js')) {
                         if (property === 'eval') return async (...args) => {
                             const result = await actual.eval(...args);
                             if (String(args[0]).includes('DIMA032_POP') && result?.length === 3) await barrier('redis-pop');
+                            return result;
+                        };
+                        if (property === 'set') return async (...args) => {
+                            const result = await actual.set(...args);
+                            if (String(args[0]).endsWith(':tts:processing') && args[1] !== 'pending') await barrier('processing-set');
                             return result;
                         };
                         if (property !== 'del') return Reflect.get(target, property);
@@ -90,7 +121,25 @@ if ((process.argv[1] || '').endsWith('/dist/server/index.js')) {
             if (command.kind === 'enqueue') result = await ttsQueueHandler.queueRequest({ channelID: command.channelId, source: 'chat-command', mode: 'speak', provider: 'piper', text: command.text, language: 'en', voice: 'en_US-ryan-medium' }, { queue: { maxItems: 20 }, voices: { en: 'en_US-ryan-medium', es: 'es_MX-ald-medium', kokoroDefault: 'af_heart' } });
             else if (command.kind === 'invalidate') { const { invalidatePet } = await import('/app/dist/pets/state.js'); result = { ok: await invalidatePet(command.ownerId, 'settings_changed') }; }
             else if (command.kind === 'end') { await ttsQueueHandler.handleSpeechEnded(command.channelId, command.speechID, 'fixture-watchdog'); result = { ok: true }; }
-            else if (command.kind === 'control') { await ttsQueueHandler.control(command.channelId, command.action); result = { ok: true }; }
+            else if (command.kind === 'control') {
+                if (command.failPrivateRead) {
+                    const fault = { requestId: command.failPrivateRead, remaining: 1, injected: 0 };
+                    let failure;
+                    await controlReadFault.run(fault, async () => { try { await ttsQueueHandler.control(command.channelId, command.action); } catch (error) { failure = String(error); } });
+                    result = { ok: !failure, injectedReadFailures: fault.injected, ...(failure ? { error: failure } : {}) };
+                } else { await ttsQueueHandler.control(command.channelId, command.action); result = { ok: true }; }
+            }
+            else if (command.kind === 'capacity') {
+                if (command.action === 'hold') {
+                    if (ownedCapacityClaims.size || ttsQueueHandler.readHeads.size || ttsQueueHandler.headClaims.size) throw new Error('Fixture capacity must start empty');
+                    const identity = randomUUID();
+                    for (let index=0;index<128;index++) { const id=`dima032:capacity:${identity}:${index}`; ownedCapacityClaims.add(id); ttsQueueHandler.headClaims.add(id); }
+                } else if (command.action === 'release') {
+                    for (const id of ownedCapacityClaims) ttsQueueHandler.headClaims.delete(id);
+                    ownedCapacityClaims.clear(); ttsQueueHandler.wakeCapacityWaiters();
+                } else throw new Error('Unknown fixture capacity action');
+                result = { ownedClaims: ownedCapacityClaims.size, totalClaims: ttsQueueHandler.headClaims.size, heads: ttsQueueHandler.readHeads.size };
+            }
             else if (command.kind === 'status') result = await ttsQueueHandler.getStatus(command.channelId);
             else if (command.kind === 'observe') { const { observeReadTtsRuntime } = await import('/app/dist/pets/tts_bridge.js'); const runtime = await PetRuntime.findById(command.ownerId).lean(); observeReadTtsRuntime(runtime); result = { ok: true }; }
             else if (command.kind === 'recover') { await ttsQueueHandler.reconcileReadTtsSessions(); result = { ok: true }; }

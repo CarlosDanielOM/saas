@@ -72,6 +72,10 @@ async function readyPet() {
     assert.equal((await pet.send('pet:ready', { v: 1, audioReady: true, renderReady: true, vtsReady: false })).ok, true);
     pet.lease = await until(async () => { const ack = await pet.send('pet:lease', { v: 1, action: 'acquire' }); return ack.ok ? ack.data : null; }, 'PNG lease', 20000); return pet;
 }
+async function playForSpeech(pet,speech) {
+    const request=await until(()=>PetRequest.findOne({'origin.kind':'tts-queue','origin.id':speech,status:{$in:['ready','playing']}}).sort({createdAt:-1}).lean(),'private queue request');
+    return pet.event('pet:play',data=>data.requestId===request._id);
+}
 const playback = (pet, play, seq, phase) => pet.send('pet:playback', { v: 1, requestId: play.requestId, leaseId: play.leaseId, generation: play.generation, seq, phase, positionMs: phase === 'ended' ? 500 : 0 });
 
 const providerCount = () => redis.lLen('pet:test:provider-calls');
@@ -181,10 +185,66 @@ try {
         await command('observe',{ownerId});
     }
     assert.equal((await playback(pet,play,1,'ended')).ok,true);
+    pet.lease=null;pet.ws.close();
+    // R7: enable during the real initial processing SET, exactly at head capacity.
+    // Claims are fixture-owned capacity pressure, never fabricated generated files.
+    await save(settings=>({...settings,sources:{independent:false,readTts:false},ttsAudio:'pet'}));
+    await until(async()=>(await PetRuntime.findById(ownerId).lean()).notBefore.getTime()<=Date.now(),'old independent lease handover',20000);
+    await redis.del('dima032:test:entered:processing-set');await redis.set('dima032:test:hold:processing-set','true');
+    let selected;
+    try {
+        const count=await providerCount(),usage=await usageCharacters(),text='Read TTS enable waits for head capacity',speech=await enqueue(text);
+        await until(()=>redis.get('dima032:test:entered:processing-set'),'initial processing SET while disabled');
+        assert.equal((await head()).speechID,undefined);
+        const held=await command('capacity',{action:'hold'});assert.equal(held.ownedClaims,128);assert.equal(held.totalClaims,128);assert.equal(held.heads,0);
+        await save(settings=>({...settings,sources:{...settings.sources,readTts:true}}));
+        selected=await readyPet();await closeStudio();await redis.del('dima032:test:hold:processing-set');
+        await until(async()=>await redis.zCard(queueKey)===1&&!(await head()).processing,'capacity requeues before provider');
+        assert.equal(await providerCount(),count);assert.equal(await usageCharacters(),usage);
+        assert.ok(await redis.get(`twitch:${channel}:tts:queue:data:${speech}`));
+        const released=await command('capacity',{action:'release'});assert.equal(released.ownedClaims,0);
+        // No new enqueue, ready signal or control: normal capacity retirement wakes it.
+        const resumed=await playForSpeech(selected,speech);assert.equal(await providerCount(),count+1);assert.equal(await usageCharacters(),usage+text.length);
+        assert.equal((await playback(selected,resumed,0,'started')).ok,true);assert.equal((await playback(selected,resumed,1,'ended')).ok,true);await completed();
+    } finally {
+        await redis.del('dima032:test:hold:processing-set');await command('capacity',{action:'release'});
+    }
+    // R7: one exact request read fails only within this control's ALS context.
+    // Possible playback must receive its exact stop before that cleanup await ends.
+    const oldText='Private audio stops despite lost cleanup read',nextText='Successor must keep its own identity';
+    const beforeFault=await providerCount(),faultUsage=await usageCharacters(),oldSpeech=await enqueue(oldText),oldPlay=await playForSpeech(selected,oldSpeech);
+    const audioResponse=await fetch(base+new URL(oldPlay.audio.url).pathname+new URL(oldPlay.audio.url).search);assert.equal(audioResponse.status,200);await audioResponse.arrayBuffer();
+    assert.equal((await playback(selected,oldPlay,0,'started')).ok,true);
+    await redis.del('dima032:test:provider-prior-private-state');await redis.set('dima032:test:terminal-before-provider',oldPlay.requestId);
+    const successor=await enqueue(nextText);
+    await redis.del('dima032:test:entered:release-read');await redis.set('dima032:test:hold:release-read','true');
+    const controlling=command('control',{action:'skip',failPrivateRead:oldPlay.requestId});
+    try {
+        await until(()=>redis.get('dima032:test:entered:release-read'),'exact control private read response');
+        const stop=await until(()=>selected.events.find(event=>event.event==='pet:stop'&&event.data.requestId===oldPlay.requestId)?.data,'stop before cleanup read settles',1500);
+        assert.equal(stop.generation,oldPlay.generation);assert.equal(await providerCount(),beforeFault+1);
+        assert.equal(await PetRequest.countDocuments({'origin.kind':'tts-queue','origin.id':successor}),0,'successor cannot overlap pending old cleanup');
+        await redis.del('dima032:test:hold:release-read');const result=await controlling;assert.equal(result.injectedReadFailures,1);
+        await until(async()=>['cancelled','completed','failed','expired'].includes((await PetRequest.findById(oldPlay.requestId).lean()).status),'old private request terminal');
+        const nextPlay=await playForSpeech(selected,successor);assert.notEqual(nextPlay.requestId,oldPlay.requestId);
+        assert.equal((await playback(selected,nextPlay,0,'started')).ok,true);
+        assert.equal((await playback(selected,oldPlay,1,'ended')).ok,false,'late old terminal cannot claim the new request');
+        const current=await PetRuntime.findById(ownerId).lean();assert.equal(current.activeRequestId,nextPlay.requestId);assert.equal(current.generation,nextPlay.generation);
+        assert.equal((await PetRequest.findById(nextPlay.requestId).lean()).status,'playing');
+        assert.equal(selected.events.some(event=>event.event==='pet:stop'&&event.data.requestId===nextPlay.requestId),false);
+        assert.equal(await providerCount(),beforeFault+2);assert.equal(await usageCharacters(),faultUsage+oldText.length+nextText.length);
+        const priorStates=(await redis.lRange('dima032:test:provider-prior-private-state',0,-1)).map(raw=>JSON.parse(raw));
+        assert.equal(priorStates.length,1,'only the successor provider runs after the fault');
+        assert.equal(priorStates[0].requestId,oldPlay.requestId);assert.ok(['cancelled','completed','failed','expired'].includes(priorStates[0].status),'old private identity must be terminal before any successor provider call');
+        assert.equal((await playback(selected,nextPlay,1,'ended')).ok,true);await completed();
+        selected.lease=null;selected.ws.close();const fresh=await readyPet();await pause(100);
+        assert.equal(fresh.events.some(event=>event.event==='pet:play'),false,'reconnect must not replay the uncertain old item');
+        assert.equal(await providerCount(),beforeFault+2);assert.equal(await redis.zCard(queueKey),0);
+    } finally {await redis.del('dima032:test:hold:release-read','dima032:test:terminal-before-provider');await controlling;}
     assert.equal(await redis.lLen('pet:test:billing-events'),0);
-    console.log('PASS DIMA032 R4 actual Dragonfly atomic ENQUEUE/POP/RESET and post-boundary enqueue, old dequeued payload fence, exact terminal legacy-owner retirement after disable, immediate reserve/independent-wait skip/clear/stream-end with independent audio untouched.');
+    console.log('PASS DIMA032 actual Lua/session/owner/wait fences plus enable-at-capacity backpressure and exact private stop/cancel across a lost control-read reply; same paid identities, no overlap/replay.');
 } finally {
-    await redis.del('dima032:test:hold:redis-pop','dima032:test:hold:session-publish','dima032:test:hold:cas');
+    await redis.del('dima032:test:hold:redis-pop','dima032:test:hold:session-publish','dima032:test:hold:cas','dima032:test:hold:processing-set','dima032:test:hold:release-read','dima032:test:terminal-before-provider');
     clearInterval(renew);for(const socket of sockets)socket.close();await mongo.connection.close();redis.destroy();
 }
 process.exit(0);
