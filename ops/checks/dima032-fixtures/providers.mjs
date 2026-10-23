@@ -47,6 +47,12 @@ if ((process.argv[1] || '').endsWith('/dist/server/index.js')) {
         return new Response(wav, { headers: { 'Content-Type': 'audio/wav' } });
     };
     const mongoose = createRequire('/app/package.json')('mongoose');
+    let configurationReads = 0;
+    const settingsRead = mongoose.mongo.Collection.prototype.findOne;
+    mongoose.mongo.Collection.prototype.findOne = function (...args) {
+        if (this.collectionName === 'pet_settings') configurationReads++;
+        return settingsRead.apply(this, args);
+    };
     for (const method of ['insertOne', 'replaceOne']) {
         const original = mongoose.mongo.Collection.prototype[method];
         mongoose.mongo.Collection.prototype[method] = async function (...args) {
@@ -56,17 +62,43 @@ if ((process.argv[1] || '').endsWith('/dist/server/index.js')) {
             return result;
         };
     }
-    let busy = false;
+    let busy = false, wrappedQueueCache = false;
     setInterval(() => { if (busy) return; busy = true; void (async () => {
         const raw = await cache.lPop('dima032:test:commands'); if (!raw) return;
         const command = JSON.parse(raw); let result;
         try {
             const { ttsQueueHandler } = await import('/app/dist/handlers/tts_queue.handler.js');
+            if (!wrappedQueueCache) {
+                const actual = ttsQueueHandler.cache;
+                if (actual) {
+                    ttsQueueHandler.cache = new Proxy(actual, { get(target, property) {
+                        if (property !== 'del') return Reflect.get(target, property);
+                        return async (...args) => {
+                            const result = await actual.del(...args);
+                            if (String(args[0]).endsWith(':tts:processing')) await barrier('processing-del');
+                            return result;
+                        };
+                    } });
+                    wrappedQueueCache = true;
+                }
+            }
             if (command.kind === 'enqueue') result = await ttsQueueHandler.queueRequest({ channelID: command.channelId, source: 'chat-command', mode: 'speak', provider: 'piper', text: command.text, language: 'en', voice: 'en_US-ryan-medium' }, { queue: { maxItems: 20 }, voices: { en: 'en_US-ryan-medium', es: 'es_MX-ald-medium', kokoroDefault: 'af_heart' } });
             else if (command.kind === 'invalidate') { const { invalidatePet } = await import('/app/dist/pets/state.js'); result = { ok: await invalidatePet(command.ownerId, 'settings_changed') }; }
             else if (command.kind === 'end') { await ttsQueueHandler.handleSpeechEnded(command.channelId, command.speechID, 'fixture-watchdog'); result = { ok: true }; }
             else if (command.kind === 'control') { await ttsQueueHandler.control(command.channelId, command.action); result = { ok: true }; }
             else if (command.kind === 'status') result = await ttsQueueHandler.getStatus(command.channelId);
+            else if (command.kind === 'recover') { await ttsQueueHandler.reconcileReadTtsSessions(); result = { ok: true }; }
+            else if (command.kind === 'head') {
+                const head = ttsQueueHandler.readHeads.get(command.channelId), speech = command.speechID || head?.item.speechID;
+                const file = speech && ttsQueueHandler.currentFiles.get(`${command.channelId}:${speech}`);
+                const { readFile } = await import('node:fs/promises'), { createHash } = await import('node:crypto');
+                const bytes = file ? await readFile(file).catch(() => null) : null;
+                result = { speechID: head?.item.speechID, phase: head?.phase, epoch: head?.epoch, running: head?.running,
+                    fileHash: bytes ? createHash('sha256').update(bytes).digest('hex') : null, fileBytes: bytes?.length ?? 0,
+                    processing: ttsQueueHandler.processingChannels.has(command.channelId), activePumps: ttsQueueHandler.activePumps,
+                    watchdog: !!speech && ttsQueueHandler.currentTimeouts.has(`${command.channelId}:${speech}`),
+                    cleanupPending: !!speech && ttsQueueHandler.fileCleanupTimeouts.has(`${command.channelId}:${speech}`), configurationReads };
+            }
             else throw new Error('Unknown fixture command');
         } catch (error) { result = { fixtureError: String(error) }; }
         await cache.set(`dima032:test:reply:${command.id}`, JSON.stringify({ pid: process.pid, result }), { EX: 60 });

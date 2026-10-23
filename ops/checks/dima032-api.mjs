@@ -73,7 +73,7 @@ async function readyPet() {
     assert.equal((await pet.send('pet:ready', { v: 1, audioReady: true, renderReady: true, vtsReady: false })).ok, true);
     pet.lease = await until(async () => { const ack = await pet.send('pet:lease', { v: 1, action: 'acquire' }); return ack.ok ? ack.data : null; }, 'PNG lease', 20000); return pet;
 }
-async function playForSpeech(pet, speech) { const request = await until(() => PetRequest.findOne({ 'origin.kind': 'tts-queue', 'origin.id': speech }).lean(), 'TTS request'); return pet.event('pet:play', data => data.requestId === request._id); }
+async function playForSpeech(pet, speech) { const request = await until(() => PetRequest.findOne({ 'origin.kind': 'tts-queue', 'origin.id': speech, status: { $in: ['ready','playing'] } }).sort({ createdAt: -1 }).lean(), 'TTS request'); return pet.event('pet:play', data => data.requestId === request._id); }
 const playback = (pet, play, seq, phase) => pet.send('pet:playback', { v: 1, requestId: play.requestId, leaseId: play.leaseId, generation: play.generation, seq, phase, positionMs: phase === 'ended' ? 500 : 0 });
 const idle = () => until(async () => !await redis.get(`twitch:${channel}:tts:processing`), 'normal queue release');
 const providerCount = () => redis.lLen('pet:test:provider-calls');
@@ -237,7 +237,10 @@ try {
     await until(() => redis.get('dima032:test:entered:synthesis'), 'synthesis result barrier');
     const returning = liveStudio()[0]; for (const client of liveStudio()) client.ws.close();
     await pause(100); await redis.del('dima032:test:hold:synthesis'); await pause(200);
-    assert.equal(await providerCount(), synthesisCount + 1); assert.equal(await redis.get(`twitch:${channel}:tts:processing`), retainedSpeech);
+    assert.equal(await providerCount(), synthesisCount + 1);
+    assert.equal((await command('head')).speechID, retainedSpeech); assert.equal((await command('head')).phase, 'parked');
+    assert.equal(await redis.get(`twitch:${channel}:tts:processing`), null, 'parked paid head releases execution lock');
+    assert.equal((await PetRuntime.findById(ownerId).lean()).ttsReservation, null);
     await connect(returning.namespace, returning.auth, 'overlay-state'); const retainedDelivery = await studioDelivery(retainedSpeech);
     assert.equal(await providerCount(), synthesisCount + 1); retainedDelivery.client.emit('overlay-speech-ended', { eventId: retainedDelivery.event.id, speechID: retainedSpeech, reason: 'ended' }); await idle();
     // Real 300s normal WAV (9.6MB) remains whole; a paused Studio turn outlives240s.

@@ -7,7 +7,25 @@ const { petPeers } = await import('/app/dist/pets/peers.js');
 if (input.now !== undefined) { if (!Number.isSafeInteger(input.now)) throw new Error('Invalid fixture clock'); Date.now = () => input.now; }
 let result;
 try {
-    if (input.ast) {
+    if (input.streamEnd) {
+        if (!/^\d{1,30}$/.test(input.channelId)) throw new Error('Invalid fixture channel');
+        const { applyStreamOperationsDomainEvent } = await import('/app/dist/domain_events/stream_operations_events.js');
+        const { clearSpeechFiles, TTS_SESSION_ENDED } = await import('/app/dist/utils/speech.js');
+        if (input.dropHint) {
+            const { pubSubManager } = await import('/app/dist/classes/pubsub_manager.class.js');
+            const publish = pubSubManager.publish.bind(pubSubManager);
+            pubSubManager.publish = (topic, body) => topic === TTS_SESSION_ENDED ? Promise.resolve() : publish(topic, body);
+        }
+        const noop = async () => {};
+        // Only unrelated Twitch/role/timer effects are inert. The changed consumer,
+        // Redis deletion/marker and cross-process PubSub publication are actual code.
+        await applyStreamOperationsDomainEvent({ type: 'stream.ended', source: 'twitch-eventsub', channelID: input.channelId,
+            payload: { event: {} } }, { hasNewerLifecycleEvent: async () => false, unloadChannelTimersFromCache: noop,
+            resetRedemptionCost: async () => ({}), resetSumimetro: noop, clearChannelCache: noop, clearSpeechFiles,
+            clearHistory: noop, loadChannelTimersIntoCache: noop, getChannelEditors: async () => ({}),
+            loadChannelAdminsIntoCache: noop, unVIPExpiredUser: async () => ({}) });
+        result = { ok: true };
+    } else if (input.ast) {
         const { registerPetFunctions } = await import('/app/dist/utils/ast_parser/functions/pet.functions.js');
         const { createExecutionContext, evaluate } = await import('/app/dist/utils/ast_parser/evaluator.js');
         const { parse } = await import('/app/dist/utils/ast_parser/parser.js');

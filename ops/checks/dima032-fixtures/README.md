@@ -1,5 +1,7 @@
 # DIMA-032 candidate verification fixtures
 
+Current session-lifecycle source: `7737c54f3f16ebaef47daf905270ee422c8f9fe9`, compiled and122 scoped source/mock tests passed. Independent round4 accepted the parking architecture but reported three further source blockers (stream-boundary admission, terminal owner retirement, cancellation wake); corrections and a fresh review/candidate are still required. This source is not runtime-accepted.
+
 Source implementation: initial `535508bc`, corrected/frozen `667a7d62` after independent review. Source `tsc --noEmit` passed; the baseline/feature command passed39 tests and the final focused command passed25 tests (overlapping coverage). The review-fix run passed52 tests and the final focused run passed39 tests after revision/post-ACK safeguards; final `tsc --noEmit` passed. These are source/mock results, not Docker runtime acceptance. Candidate scripts are authored and syntax-checked; the manager must run them against each exact candidate before release. No script here calls production accounts/providers or modifies application configuration/Compose.
 
 Materialize a private fixture directory. No symlinks; do not pass this repository directory directly because the referenced shared mocks must be present:
@@ -27,6 +29,9 @@ scripts/saas-ops verify api-<run-id> --dependency mongo --dependency redis \
 scripts/saas-ops verify api-<run-id> --dependency mongo --dependency redis \
   --test-env ops/checks/dima032-fixtures/api-env.json --fixtures "$DIMA032_FIXTURES" \
   --check ops/checks/dima032-compiled.mjs
+scripts/saas-ops verify api-<run-id> --dependency mongo --dependency redis \
+  --test-env ops/checks/dima032-fixtures/session-env.json --fixtures "$DIMA032_FIXTURES" \
+  --check ops/checks/dima032-session-api.mjs
 ```
 
 `dima032-api.mjs` creates disposable owner/image records, then exercises HTTP settings v3, actual Socket.IO pet-only readiness/lease, the API normal queue, dummy synthesis and one usage increment, authorized private WAV retrieval, playback completion, lost start ACK with and without ticket fetch followed by disconnect, no fallback/reconnect replay, true pre-delivery same-file legacy fallback, a pending TTS turn while independent work is active, real Mongo concurrent admissions, skip, and Studio-only elected timing/media delivery. Two Studio scenes deliberately reuse a client ID. Exact scene/client/socket epochs fence media and event reads; generic ACK ordering, wrong-recipient reports, monotonic follow, mandatory-generation end and stale URLs after reconnect are checked. Provider mocks return the same500ms WAV, making same-file assertions deterministic. Source Studio mocks separately cover unknown-duration60000 hints and media progress beyond60seconds; actual long-media/browser checks belong to the site suite and can be extended by the manager if candidate integration identifies a gap.
@@ -75,3 +80,18 @@ The fixture now holds the real private request's attempted-delivery update respo
 A generated300-second mono WAV is9,600,044bytes, larger than pet limits but within normal overlay limits. The actual normal pipeline must preserve all bytes, use the bounded60000ms caption hint, retain a Mongo turn proof at least510seconds ahead of its330-second playback watchdog, and remain busy to a separate real Mongo admission producer whose fixture clock is241seconds ahead. This avoids waiting240seconds while checking the relevant expiry boundary. The API itself keeps its real clock; pause/resume and media retrieval use the real Socket.IO/HTTP path. This is protocol/file acceptance, not a claim of300seconds of hardware playback.
 
 Materialization and commands above are unchanged. Allow at least240seconds for the API check because startup and lease handovers deliberately preserve conservative barriers. Candidate execution, independent review, resource enforcement, cleanup and any release remain the manager's responsibility.
+
+
+## Session-only generated-head acceptance (separate check)
+
+The owner selected **retention only within the current API session; loss at stream end or API restart is allowed**. There is no durable generated artifact guarantee or database migration. `dima032-session-api.mjs` is a separate exact-image verification to keep each helper check within its existing300-second limit. Its `session-env.json` uses the same disposable dependency/provider configuration but disables only the fixture's45-second startup seed; the original API check still verifies that startup barrier. Do not increase helper limits or combine all runtime cases into one process.
+
+Materialization is unchanged: the extended `producer.mjs`, `providers.mjs` and `startup.mjs` are copied by the recipe above. The compiled exact-image check now explicitly includes `handlers/dima032_session.test.js`, plus the changed stream consumer, owner wakeups and existing credit/AST checks. No new application endpoint is added.
+
+The session check exercises the actual API queue singleton and Mongo/Redis through fixture-only mailbox commands. A wrapper delays completion of its real final processing-key deletion, allowing skip to cross exactly the R3 final-DEL boundary. Mailbox state observations inspect the real session head, file hash/bytes, execution/pump/timer state and full pet-settings read count; they are not mocks of queue decisions. Dummy synthesis and normal usage counters must increase once. Parking releases the execution/reservation and holds the same complete bytes, later items stay unsynthesized, and an absent-output idle interval must make no new full-settings reads. Actual Studio reconnect and PNG ready/acquire resume the original file; acquire ACK must precede play.
+
+Disabling read-TTS/master while parked must still elect one normal overlay fallback with no pet request or extra usage. A private attempted-update response is suspended before the sole emission, its player disconnects, and a subsequent selected-player acquisition must use a fresh request/action attempt identity under the same speech origin and original bytes. Possibly emitted audio is never rerouted.
+
+The separate packaged `producer.mjs` can invoke the **actual compiled `applyStreamOperationsDomainEvent` with actual `clearSpeechFiles`**. Only unrelated Twitch/roles/timer/history effects are inert. The changed consumer updates/deletes real disposable Redis state and publishes through actual `PubSubManager` from the separate process to the API listener. Both parked cleanup and possibly-heard private stop are asserted. One fixture-only variant drops that publication, then deterministically invokes the API's existing bounded session reconciliation once; it must invalidate the old head and never replay. File cleanup must use the existing terminal grace. This does not promise session or generated-file recovery after restart.
+
+These fixtures are authored/syntax-checked, **not yet executed against a final candidate**. Original-source three-case red evidence remains `/tmp/dima032-r3-reproduction.log`; latest source122-pass evidence is `/tmp/dima032-session-alltests.log`. Source fixes for the independent round4 findings remain required. The manager owns the exact candidate, independent review, resource/cleanup and release receipts.
