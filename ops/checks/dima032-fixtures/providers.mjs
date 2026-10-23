@@ -28,6 +28,32 @@ if ((process.argv[1] || '').endsWith('/dist/server/index.js')) {
         }
         return query;
     };
+    const terminalRequest = PetRequest.findOneAndUpdate;
+    PetRequest.findOneAndUpdate = function (filter, update, ...args) {
+        const query = terminalRequest.call(this, filter, update, ...args), fault = controlReadFault.getStore();
+        if (fault && fault.requestId === filter?._id && fault.injected === 1 && update?.$set?.status === 'cancelled') {
+            const exec = query.exec;
+            query.exec = async function (...options) { await barrier('release-retry'); return exec.apply(this, options); };
+        }
+        return query;
+    };
+    async function observePrivateBoundary(boundary, request) {
+        const raw = await cache.get('dima032:test:private-boundary');
+        if (!raw || request?.operation !== 'tts' || request.origin?.kind !== 'tts-queue') return;
+        const target = JSON.parse(raw);
+        if (request.origin.id !== target.successorSpeechId) return;
+        // Bypass the injected control-read wrapper, but execute the original real
+        // Mongo read. Observing a bad boundary must not hold or stub creation.
+        const prior = await findPrivateRequest.call(PetRequest, target.priorRequestId).lean();
+        await cache.rPush('dima032:test:private-boundary-states', JSON.stringify({ boundary, requestId: String(request._id),
+            speechId: request.origin.id, generation: request.generation, priorRequestId: target.priorRequestId,
+            priorGeneration: prior?.generation ?? null, priorStatus: prior?.status ?? null }));
+    }
+    const createPrivateRequest = PetRequest.create;
+    PetRequest.create = async function (request, ...args) {
+        await observePrivateBoundary('create', request);
+        return createPrivateRequest.call(this, request, ...args);
+    };
     const originalClaim = PetRuntime.findOneAndUpdate;
     async function barrier(kind) {
         if (!await cache.get(`dima032:test:hold:${kind}`)) return;
@@ -47,7 +73,13 @@ if ((process.argv[1] || '').endsWith('/dist/server/index.js')) {
         const query = originalRequestUpdate.call(this, filter, update, ...args);
         if (update?.$set?.deliveryAttempted) {
             const exec = query.exec;
-            query.exec = async function (...options) { const result = await exec.apply(this, options); await barrier('private'); return result; };
+            query.exec = async function (...options) {
+                if (await cache.exists('dima032:test:private-boundary')) {
+                    const request = await findPrivateRequest.call(PetRequest, filter._id).lean();
+                    await observePrivateBoundary('delivery-attempt', request);
+                }
+                const result = await exec.apply(this, options); await barrier('private'); return result;
+            };
         }
         return query;
     };
@@ -57,7 +89,7 @@ if ((process.argv[1] || '').endsWith('/dist/server/index.js')) {
         if (url.hostname === 'pet-piper.test') {
             const priorId = await cache.get('dima032:test:terminal-before-provider');
             if (priorId) {
-                const prior = await PetRequest.findById(priorId).lean();
+                const prior = await findPrivateRequest.call(PetRequest, priorId).lean();
                 await cache.rPush('dima032:test:provider-prior-private-state', JSON.stringify({ requestId: priorId, status: prior?.status ?? null }));
             }
         }

@@ -227,36 +227,56 @@ try {
     const beforeFault=await providerCount(),faultUsage=await usageCharacters(),oldSpeech=await enqueue(oldText),oldPlay=await playForSpeech(selected,oldSpeech);
     const audioResponse=await fetch(base+new URL(oldPlay.audio.url).pathname+new URL(oldPlay.audio.url).search);assert.equal(audioResponse.status,200);await audioResponse.arrayBuffer();
     assert.equal((await playback(selected,oldPlay,0,'started')).ok,true);
+    const {access}=await import('node:fs/promises'),oldPrivate=await PetRequest.findById(oldPlay.requestId).lean();
+    assert.match(oldPrivate.privateDir,/^\/tmp\/dima-pet-[^/]+$/);await access(oldPrivate.privateDir);
     await redis.del('dima032:test:provider-prior-private-state');await redis.set('dima032:test:terminal-before-provider',oldPlay.requestId);
     const successor=await enqueue(nextText);
+    await redis.del('dima032:test:private-boundary-states');await redis.set('dima032:test:private-boundary',JSON.stringify({priorRequestId:oldPlay.requestId,successorSpeechId:successor}));
+    await redis.del('dima032:test:entered:release-retry');await redis.set('dima032:test:hold:release-retry','true');
     await redis.del('dima032:test:entered:release-read');await redis.set('dima032:test:hold:release-read','true');
     const controlling=command('control',{action:'skip',failPrivateRead:oldPlay.requestId});
     try {
         await until(()=>redis.get('dima032:test:entered:release-read'),'exact control private read response');
         const stop=await until(()=>selected.events.find(event=>event.event==='pet:stop'&&event.data.requestId===oldPlay.requestId)?.data,'stop before cleanup read settles',1500);
         assert.equal(stop.generation,oldPlay.generation);assert.equal(await providerCount(),beforeFault+1);
+        const heldRuntime=await PetRuntime.findById(ownerId).lean();assert.equal(heldRuntime.activeRequestId,oldPlay.requestId);assert.equal(heldRuntime.ttsReservation?.speechId,oldSpeech);
         assert.equal(await PetRequest.countDocuments({'origin.kind':'tts-queue','origin.id':successor}),0,'successor cannot overlap pending old cleanup');
         await redis.del('dima032:test:hold:release-read');const result=await controlling;assert.equal(result.injectedReadFailures,1);
+        await until(()=>redis.get('dima032:test:entered:release-retry'),'automatic retry held before terminal write');
+        await until(async()=>{const state=await head();return state.speechID===successor&&state.fileBytes>0&&state.pendingWait;},'successor generated complete file while waiting for private ownership');
+        assert.equal(await providerCount(),beforeFault+2);assert.equal(await usageCharacters(),faultUsage+oldText.length+nextText.length);
+        assert.equal(['cancelled','completed','failed','expired'].includes((await PetRequest.findById(oldPlay.requestId).lean()).status),false);
+        assert.equal(await PetRequest.countDocuments({'origin.kind':'tts-queue','origin.id':successor}),0,'no successor private creation while old identity remains active');
+        assert.equal(await redis.lLen('dima032:test:private-boundary-states'),0,'no private-create or delivery-attempt boundary before repair');
+        assert.equal(selected.events.filter(event=>event.event==='pet:play').at(-1)?.data.requestId,oldPlay.requestId,'synthesis alone cannot emit successor audio');
+        await redis.del('dima032:test:hold:release-retry');
         await until(async()=>['cancelled','completed','failed','expired'].includes((await PetRequest.findById(oldPlay.requestId).lean()).status),'old private request terminal');
         const nextPlay=await playForSpeech(selected,successor);assert.notEqual(nextPlay.requestId,oldPlay.requestId);
+        const nextAudio=await fetch(base+new URL(nextPlay.audio.url).pathname+new URL(nextPlay.audio.url).search);assert.equal(nextAudio.status,200);await nextAudio.arrayBuffer();
         assert.equal((await playback(selected,nextPlay,0,'started')).ok,true);
         assert.equal((await playback(selected,oldPlay,1,'ended')).ok,false,'late old terminal cannot claim the new request');
         const current=await PetRuntime.findById(ownerId).lean();assert.equal(current.activeRequestId,nextPlay.requestId);assert.equal(current.generation,nextPlay.generation);
-        assert.equal((await PetRequest.findById(nextPlay.requestId).lean()).status,'playing');
+        assert.equal(current.lease.leaseId,nextPlay.leaseId);
+        const nextPrivate=await PetRequest.findById(nextPlay.requestId).lean();assert.equal(nextPrivate.status,'playing');assert.notEqual(nextPrivate.privateDir,oldPrivate.privateDir);await access(nextPrivate.audio.path);
+        await until(async()=>{try{await access(oldPrivate.privateDir);return false;}catch(error){if(error.code==='ENOENT')return true;throw error;}},'old private directory removed without affecting successor');
         assert.equal(selected.events.some(event=>event.event==='pet:stop'&&event.data.requestId===nextPlay.requestId),false);
+        assert.ok(selected.events.findIndex(event=>event.event==='pet:stop'&&event.data.requestId===oldPlay.requestId)<selected.events.findIndex(event=>event.event==='pet:play'&&event.data.requestId===nextPlay.requestId));
         assert.equal(await providerCount(),beforeFault+2);assert.equal(await usageCharacters(),faultUsage+oldText.length+nextText.length);
         const priorStates=(await redis.lRange('dima032:test:provider-prior-private-state',0,-1)).map(raw=>JSON.parse(raw));
         assert.equal(priorStates.length,1,'only the successor provider runs after the fault');
-        assert.equal(priorStates[0].requestId,oldPlay.requestId);assert.ok(['cancelled','completed','failed','expired'].includes(priorStates[0].status),'old private identity must be terminal before any successor provider call');
+        assert.equal(priorStates[0].requestId,oldPlay.requestId);console.log('DIMA032_PRIOR_PROVIDER_STATE '+JSON.stringify(priorStates));
+        const boundaries=(await redis.lRange('dima032:test:private-boundary-states',0,-1)).map(raw=>JSON.parse(raw));
+        assert.deepEqual(boundaries.map(entry=>entry.boundary),['create','delivery-attempt']);
+        for(const entry of boundaries){assert.equal(entry.priorRequestId,oldPlay.requestId);assert.equal(entry.priorGeneration,oldPlay.generation);assert.equal(entry.speechId,successor);assert.equal(entry.requestId,nextPlay.requestId);assert.ok(['cancelled','completed','failed','expired'].includes(entry.priorStatus),'old identity must be terminal before successor private creation/delivery');}
         assert.equal((await playback(selected,nextPlay,1,'ended')).ok,true);await completed();
         selected.lease=null;selected.ws.close();const fresh=await readyPet();await pause(100);
         assert.equal(fresh.events.some(event=>event.event==='pet:play'),false,'reconnect must not replay the uncertain old item');
         assert.equal(await providerCount(),beforeFault+2);assert.equal(await redis.zCard(queueKey),0);
-    } finally {await redis.del('dima032:test:hold:release-read','dima032:test:terminal-before-provider');await controlling;}
+    } finally {await redis.del('dima032:test:hold:release-read','dima032:test:hold:release-retry','dima032:test:terminal-before-provider','dima032:test:private-boundary');await controlling;}
     assert.equal(await redis.lLen('pet:test:billing-events'),0);
     console.log('PASS DIMA032 actual Lua/session/owner/wait fences plus enable-at-capacity backpressure and exact private stop/cancel across a lost control-read reply; same paid identities, no overlap/replay.');
 } finally {
-    await redis.del('dima032:test:hold:redis-pop','dima032:test:hold:session-publish','dima032:test:hold:cas','dima032:test:hold:processing-set','dima032:test:hold:processing-del','dima032:test:hold:release-read','dima032:test:terminal-before-provider');
+    await redis.del('dima032:test:hold:redis-pop','dima032:test:hold:session-publish','dima032:test:hold:cas','dima032:test:hold:processing-set','dima032:test:hold:processing-del','dima032:test:hold:release-read','dima032:test:hold:release-retry','dima032:test:terminal-before-provider','dima032:test:private-boundary');
     clearInterval(renew);for(const socket of sockets)socket.close();await mongo.connection.close();redis.destroy();
 }
 process.exit(0);
