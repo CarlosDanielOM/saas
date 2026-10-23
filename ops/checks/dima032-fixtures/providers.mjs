@@ -119,8 +119,9 @@ if ((process.argv[1] || '').endsWith('/dist/server/index.js')) {
             return result;
         };
     }
-    let busy = false, wrappedQueueCache = false;
+    let busy = false, wrappedQueueCache = false, recoveryCalls = 0;
     const ownedCapacityClaims = new Set();
+    const ownedDiscoveryPeers = new Set(), ownedDiscoveryWaiters = new Set();
     setInterval(() => { if (busy) return; busy = true; void (async () => {
         const raw = await cache.lPop('dima032:test:commands'); if (!raw) return;
         const command = JSON.parse(raw); let result;
@@ -129,6 +130,8 @@ if ((process.argv[1] || '').endsWith('/dist/server/index.js')) {
             if (!wrappedQueueCache) {
                 const actual = ttsQueueHandler.cache;
                 if (actual) {
+                    const recover = ttsQueueHandler.recoverQueuedTts.bind(ttsQueueHandler);
+                    ttsQueueHandler.recoverQueuedTts = async (...args) => { recoveryCalls++; return recover(...args); };
                     ttsQueueHandler.cache = new Proxy(actual, { get(target, property) {
                         if (property === 'eval') return async (...args) => {
                             const result = await actual.eval(...args);
@@ -168,12 +171,34 @@ if ((process.argv[1] || '').endsWith('/dist/server/index.js')) {
                     for (let index=0;index<128;index++) { const id=`dima032:capacity:${identity}:${index}`; ownedCapacityClaims.add(id); ttsQueueHandler.headClaims.add(id); }
                 } else if (command.action === 'release') {
                     for (const id of ownedCapacityClaims) ttsQueueHandler.headClaims.delete(id);
-                    ownedCapacityClaims.clear(); ttsQueueHandler.wakeCapacityWaiters();
+                    ownedCapacityClaims.clear(); ttsQueueHandler.wakeCapacityWaiters(command.discoverBacklog === true);
                     // Let a capacity callback already queued by the real helper
                     // run before replying, even while the old DEL is still held.
                     await new Promise(resolve => setImmediate(resolve));
                 } else throw new Error('Unknown fixture capacity action');
                 result = { ownedClaims: ownedCapacityClaims.size, totalClaims: ttsQueueHandler.headClaims.size, heads: ttsQueueHandler.readHeads.size };
+            }
+            else if (command.kind === 'discovery') {
+                const { petPeers } = await import('/app/dist/pets/peers.js');
+                if (command.action === 'hold') {
+                    if (ownedDiscoveryPeers.size || ownedDiscoveryWaiters.size || ttsQueueHandler.capacityWaiters.size) throw new Error('Fixture discovery must start with no capacity waiters');
+                    const identity = randomUUID();
+                    for (let index=0;index<128;index++) {
+                        const id=`dima032:discovery-waiter:${identity}:${index}`;
+                        ownedDiscoveryWaiters.add(id);ttsQueueHandler.capacityWaiters.add(id);ttsQueueHandler.processingChannels.add(id);
+                    }
+                    for (let index=0;index<80;index++) {
+                        const id=`dima032:empty-peer:${identity}:${index}`;ownedDiscoveryPeers.add(id);
+                        petPeers.set(id,{id,ownerId:command.ownerId,channelId:`dima032-empty-${identity}-${index}`,kind:'browser',audioReady:false,renderReady:false,vtsReady:false,
+                            socket:{connected:false,emit:()=>{}},revalidate:async()=>{}});
+                    }
+                } else if (command.action === 'release') {
+                    for (const id of ownedDiscoveryPeers) petPeers.delete(id);ownedDiscoveryPeers.clear();
+                    for (const id of ownedDiscoveryWaiters) {ttsQueueHandler.capacityWaiters.delete(id);ttsQueueHandler.processingChannels.delete(id);}ownedDiscoveryWaiters.clear();
+                } else if (command.action === 'recover') await ttsQueueHandler.recoverQueuedTts();
+                else if (command.action !== 'status') throw new Error('Unknown fixture discovery action');
+                result={ownedPeers:ownedDiscoveryPeers.size,ownedWaiters:ownedDiscoveryWaiters.size,totalWaiters:ttsQueueHandler.capacityWaiters.size,
+                    targetWaiter:ttsQueueHandler.capacityWaiters.has(command.channelId),recoveryCalls};
             }
             else if (command.kind === 'status') result = await ttsQueueHandler.getStatus(command.channelId);
             else if (command.kind === 'observe') { const { observeReadTtsRuntime } = await import('/app/dist/pets/tts_bridge.js'); const runtime = await PetRuntime.findById(command.ownerId).lean(); observeReadTtsRuntime(runtime); result = { ok: true }; }

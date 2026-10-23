@@ -273,8 +273,65 @@ try {
         assert.equal(fresh.events.some(event=>event.event==='pet:play'),false,'reconnect must not replay the uncertain old item');
         assert.equal(await providerCount(),beforeFault+2);assert.equal(await redis.zCard(queueKey),0);
     } finally {await redis.del('dima032:test:hold:release-read','dima032:test:hold:release-retry','dima032:test:terminal-before-provider','dima032:test:private-boundary');await controlling;}
+    // One real source/account per pass; only empty fixture registry/cache records
+    // provide pressure. Accepted Redis membership remains outside the full cache.
+    for(const client of clients)if(client.namespace==='/pet'&&client.ws.readyState===WebSocket.OPEN){client.lease=null;client.ws.close();}
+    await pause(100);
+    for(const source of ['studio','legacy']) {
+        await save(settings=>({...settings,enabled:true,sources:{independent:false,readTts:false},ttsAudio:'overlay'}));
+        await until(async()=>(await PetRuntime.findById(ownerId).lean()).notBefore.getTime()<=Date.now(),'discovery lease handover',20000);
+        const legacy=source==='legacy'?await connect(`/speech/${channel}`,{},'speech-reset'):null;
+        if(source==='studio')await openStudio();
+        const count=await providerCount(),usage=await usageCharacters(),text=`Discover accepted ${source} head`,laterText=`Discover ${source} FIFO follower`;
+        const orphan=`orphan-${randomUUID()}`,orphanKey=`twitch:${channel}:tts:queue:data:${orphan}`;
+        await redis.del('dima032:test:entered:processing-set');await redis.set('dima032:test:hold:processing-set','true');
+        try {
+            const speech=await enqueue(text);await until(()=>redis.get('dima032:test:entered:processing-set'),'discovery initial processing response');
+            const later=await enqueue(laterText);
+            const orphanPayload=JSON.parse(await redis.get(`twitch:${channel}:tts:queue:data:${speech}`));orphanPayload.speechID=orphan;orphanPayload.text='Unqueued orphan stays silent';await redis.set(orphanKey,JSON.stringify(orphanPayload));
+            assert.equal((await command('capacity',{action:'hold'})).ownedClaims,128);
+            const pressure=await command('discovery',{action:'hold',ownerId});assert.equal(pressure.ownedPeers,80);assert.equal(pressure.totalWaiters,128);assert.equal(pressure.targetWaiter,false);
+            await save(settings=>({...settings,sources:{...settings.sources,readTts:true}}));
+            await redis.del('dima032:test:entered:processing-del');await redis.set('dima032:test:hold:processing-del','true');await redis.del('dima032:test:hold:processing-set');
+            await until(()=>redis.get('dima032:test:entered:processing-del'),'overflow item requeued before releasing capacity');
+            if(source==='legacy')await save(settings=>({...settings,sources:{...settings.sources,readTts:false}}));
+            assert.deepEqual(await redis.zRange(queueKey,0,-1),[speech,later]);assert.equal((await command('discovery',{action:'status'})).targetWaiter,false);
+            await redis.del('dima032:test:hold:processing-del');await until(async()=>!(await head()).processing,'overflow dispatch retired');
+            assert.equal(await providerCount(),count);assert.equal(await usageCharacters(),usage);
+            await command('capacity',{action:'release',discoverBacklog:true});
+            // Deterministic existing recovery call covers a missed hint; this is
+            // not a claim that the wall-clock15s recovery timer was exercised.
+            await command('discovery',{action:'recover'});
+            if(legacy) {
+                await legacy.event('speech',data=>data.speechID===speech);assert.equal(await providerCount(),count+1);
+                legacy.emit('speech-ended',{speechID:speech,reason:'ended'});
+                await legacy.event('speech',data=>data.speechID===later);assert.equal(await providerCount(),count+2);
+                legacy.emit('speech-ended',{speechID:later,reason:'ended'});await until(async()=>await redis.get(processingKey)===null&&await redis.get(`twitch:${channel}:tts:queue:data:${later}`)===null,'discovered ordinary queue completed');
+                assert.equal(legacy.events.some(event=>event.event==='speech'&&event.data.speechID===orphan),false);
+            } else {
+                const first=await delivery(speech);assert.equal(await providerCount(),count+1);
+                first.client.emit('overlay-speech-ended',{eventId:first.event.id,speechID:speech,reason:'ended'});
+                const following=await delivery(later);assert.equal(await providerCount(),count+2);await endDelivery(following);
+                assert.equal(liveStudio().some(client=>client.events.some(event=>event.event==='overlay-event'&&event.data.tts?.speechID===orphan)),false);
+            }
+            assert.equal(await usageCharacters(),usage+text.length+laterText.length);assert.equal(await redis.zCard(queueKey),0);assert.ok(await redis.get(orphanKey));
+            for(const id of [speech,later]) {
+                const deliveries=legacy?legacy.events.filter(event=>event.event==='speech'&&event.data.speechID===id):liveStudio().flatMap(client=>client.events).filter(event=>event.event==='overlay-event'&&event.data.tts?.speechID===id&&event.data.tts.ownerClientId);
+                assert.equal(deliveries.length,1,'each discovered FIFO item must have one audio delivery');
+                assert.equal(await redis.get(`twitch:${channel}:tts:queue:data:${id}`),null);
+            }
+            await pause(100);const idle=await command('discovery',{action:'status'});await pause(300);const after=await command('discovery',{action:'status'});
+            assert.ok(after.recoveryCalls-idle.recoveryCalls<=1,'empty discovery must not recursively reschedule; one ordinary15s tick is allowed');
+            assert.equal(await providerCount(),count+2);assert.equal(await usageCharacters(),usage+text.length+laterText.length);
+            assert.ok(await redis.get(orphanKey),'unmembered payload remains silent after idle recovery');
+        } finally {
+            await redis.del('dima032:test:hold:processing-set','dima032:test:hold:processing-del',orphanKey);
+            await command('discovery',{action:'release'});await command('capacity',{action:'release'});
+            if(legacy){legacy.ws.close();await pause(100);}else await closeStudio();
+        }
+    }
     assert.equal(await redis.lLen('pet:test:billing-events'),0);
-    console.log('PASS DIMA032 actual Lua/session/owner/wait fences plus enable-at-capacity backpressure and exact private stop/cancel across a lost control-read reply; same paid identities, no overlap/replay.');
+    console.log('PASS DIMA032 actual Lua/session/owner/wait fences, capacity/discovery FIFO and exact private stop/cancel across a lost control-read reply; same paid identities, no overlap/replay.');
 } finally {
     await redis.del('dima032:test:hold:redis-pop','dima032:test:hold:session-publish','dima032:test:hold:cas','dima032:test:hold:processing-set','dima032:test:hold:processing-del','dima032:test:hold:release-read','dima032:test:hold:release-retry','dima032:test:terminal-before-provider','dima032:test:private-boundary');
     clearInterval(renew);for(const socket of sockets)socket.close();await mongo.connection.close();redis.destroy();
