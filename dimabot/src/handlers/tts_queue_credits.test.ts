@@ -13,6 +13,11 @@ const synthesizeImpls: Record<string, (request: { text: string; voice: string })
 const emitted: Array<{ event: string; payload: { mode: string; audioUrl: string } }> = [];
 let playbackAvailable = true;
 const cache = {
+  eval: async (_script: string, options: { keys: string[]; arguments: string[] }): Promise<unknown> => {
+    const next = await cache.zPopMin();
+    if (!next) return [];
+    return [next.value, await cache.get(options.arguments[0] + next.value) ?? '', await cache.get(options.keys[1]) ?? ''];
+  },
   zPopMin: async () => {
     if (scriptedQueue) {
       return scriptedQueue.shift() ?? null;

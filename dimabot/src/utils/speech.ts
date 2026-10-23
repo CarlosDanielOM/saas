@@ -5,6 +5,7 @@ import path from 'path';
 import { getDirname } from './pollyfills.js';
 import { randomUUID } from 'node:crypto';
 import { pubSubManager } from '../classes/pubsub_manager.class.js';
+import { resetTtsSession } from './tts/tts_session.util.js';
 
 export const TTS_SESSION_ENDED = 'tts:session-ended:v1';
 
@@ -15,23 +16,14 @@ export async function clearSpeechFiles(channelID: string): Promise<void> {
     try {
         const cache = await getDragonflyClient('clearSpeechFiles');
         const session = randomUUID();
-        // Durable boundary marker; the API also reconciles it if this hint is lost.
-        await cache.set(`twitch:${channelID}:tts:session`, session);
-
-        const queueKeys = await cache.keys(`twitch:${channelID}:tts:queue:data:*`);
-        for (const key of queueKeys) {
-            await cache.del(key);
-        }
-
-        await cache.del(`twitch:${channelID}:tts:queue`);
-        await cache.del(`twitch:${channelID}:tts:processing`);
-        await cache.del(`twitch:${channelID}:tts:connected`);
-        await cache.del(`twitch:${channelID}:tts:last_cleanup`);
-
         const channelDir = path.join(speechPublicDir, channelID);
-        if (await fileExists(channelDir)) {
-            await fs.rm(channelDir, { recursive: true, force: true });
-        }
+        const oldFiles = await fs.readdir(channelDir, { withFileTypes: true }).catch(() => []);
+        const queueKeys = await cache.keys(`twitch:${channelID}:tts:queue:data:*`);
+        await resetTtsSession(cache, channelID, session, queueKeys);
+        // Remove only files observed before the boundary. A new-session enqueue
+        // must survive even if this filesystem cleanup finishes later.
+        for (const file of oldFiles) if (file.isFile()) await fs.rm(path.join(channelDir, file.name), { force: true });
+        await fs.rmdir(channelDir).catch(() => {}); // Keep a directory containing new files.
         // Publish after removal so the API cannot advance an old queued item
         // while this consumer is still clearing the stream's backlog.
         await pubSubManager.publish(TTS_SESSION_ENDED, { channelID, session });
@@ -42,14 +34,5 @@ export async function clearSpeechFiles(channelID: string): Promise<void> {
             error: err instanceof Error ? err.message : String(err) 
         });
         throw err;
-    }
-}
-
-async function fileExists(filePath: string): Promise<boolean> {
-    try {
-        await fs.access(filePath);
-        return true;
-    } catch {
-        return false;
     }
 }

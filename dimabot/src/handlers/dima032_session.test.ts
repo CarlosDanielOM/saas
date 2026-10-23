@@ -17,10 +17,31 @@ let lastInput: any;
 const readDeliveries: any[] = [], released: string[] = [];
 const legacySockets = new Map<string, any>();
 for (const id of ['legacy-a', 'legacy-b']) legacySockets.set(id, { id, connected: true, data: { ttsReady: true }, conn: { close: () => {} }, emit: (event: string, payload: any) => events.push({ channel: id, event, payload }) });
+let afterPayloadRead: (() => Promise<void>) | undefined, afterSessionWrite: (() => Promise<void>) | undefined;
 let afterDel: ((key: string) => Promise<void>) | undefined;
 const cache = {
-  get: async (key: string) => data.get(key) ?? null,
-  set: async (key: string, value: string) => { data.set(key, value); },
+  eval: async (script: string, {keys, arguments: args}: { keys:string[];arguments:string[] }):Promise<unknown> => {
+    if(script.includes('DIMA032_POP')) {
+      const value=queues.get(keys[0])?.shift();if(!value)return [];
+      const payload=data.get(args[0]+value)??'',session=data.get(keys[1])??'';
+      if(afterPayloadRead){const barrier=afterPayloadRead;afterPayloadRead=undefined;await barrier();}
+      return [value,payload,session];
+    }
+    if(script.includes('DIMA032_ENQUEUE')) {
+      const item=JSON.parse(args[0]);item.queueSession=data.get(keys[2])??null;data.set(keys[1],JSON.stringify(item));
+      const ids=queues.get(keys[0])??[];ids.push(args[2]);queues.set(keys[0],ids);return item.queueSession??'';
+    }
+    if(script.includes('DIMA032_RESET')) {
+      const waiting=queues.get(keys[1])??[],processing=data.get(keys[2]);
+      data.set(keys[0],args[0]);for(const id of waiting)data.delete(args[1]+id);if(processing)data.delete(args[1]+processing);
+      for(const key of args.slice(2))data.delete(key);for(const key of keys.slice(1)){data.delete(key);queues.delete(key);}
+      if(afterSessionWrite){const barrier=afterSessionWrite;afterSessionWrite=undefined;await barrier();}
+      return args[0];
+    }
+    throw new Error('Unexpected Redis script');
+  },
+  get: async (key: string) => { const value=data.get(key)??null; if(key.includes(':queue:data:')&&afterPayloadRead){const barrier=afterPayloadRead;afterPayloadRead=undefined;await barrier();}return value; },
+  set: async (key: string, value: string) => { data.set(key, value); if(key.endsWith(':tts:session')&&afterSessionWrite){const barrier=afterSessionWrite;afterSessionWrite=undefined;await barrier();} },
   del: async (key: string) => { data.delete(key); queues.delete(key); if (afterDel) await afterDel(key); },
   zPopMin: async (key: string) => { const value = queues.get(key)?.shift(); return value ? { value } : null; },
   zAdd: async (key: string, entry: any) => { const ids = queues.get(key) ?? []; if (!ids.includes(entry.value)) ids.push(entry.value); queues.set(key, ids); if (afterRequeueWrite) { const barrier = afterRequeueWrite; afterRequeueWrite = undefined; await barrier(); } },
@@ -150,14 +171,21 @@ function seed(id: string, ...later: string[]) {
   data.set(`twitch:${channel}:tts:queue:data:${id}`, JSON.stringify({ channelID:channel, speechID:id, provider:'piper', mode:'speak', language:'en', voice:'test', text:id }));
 }
 async function setup() {
+  studioConnected=graceConnected=false;peer.audioReady=false;for(const socket of legacySockets.values())socket.data.ttsReady=false;
+  await handler.control(channel,'clear');await handler.cleanupChannel(channel);
+  await new Promise<void>(done=>setImmediate(done));
+  await until(()=>!(handler as any).processingChannels.has(channel)&&!(handler as any).dispatches.has(channel)&&!(handler as any).controls.has(channel)
+    &&(handler as any).activePumps===0&&(handler as any).headWakes.size===0&&!(handler as any).pumpScheduled);
+  await new Promise<void>(done=>setImmediate(done));
   await handler.cleanupChannel(channel); await reset(); await writeFile(file, 'normal TTS bytes');
   data.clear(); queues.clear(); events.length=0; synthesized.length=0; usage=0; publishAttempts=0;
-  configurationReads=renewalWrites=0; advanceProbeTime=false; afterDel=undefined;
+  configurationReads=renewalWrites=0; advanceProbeTime=false; afterDel=afterPayloadRead=afterSessionWrite=undefined;
   studioConnected=true; graceConnected=true; peer.audioReady=false;
   for (const socket of legacySockets.values()) socket.data.ttsReady=false;
 }
 async function stop(processing?: Promise<void>) {
-  advanceProbeTime=false; afterDel=undefined; studioConnected=false; peer.audioReady=false;
+  advanceProbeTime=false; afterDel=undefined; studioConnected=graceConnected=false; peer.audioReady=false;
+  for(const socket of legacySockets.values())socket.data.ttsReady=false;
   await handler.control(channel,'clear'); await processing; await handler.cleanupChannel(channel);
 }
 after(async () => { await close(); registerReadTtsBridge(); await rm(fileDir,{recursive:true,force:true}); });
@@ -262,7 +290,7 @@ test('actual stream-operations consumer clears the API parked head via cross-pro
   await setup(); const entered=barrier(), resume=barrier(), original=synthesize;
   synthesize=async input=>{ entered.resolve(); await resume.promise; return original(input); };
   seed('stream-head'); const processing=handler.processNext(channel); await entered.promise; studioConnected=false; resume.resolve(); await processing;
-  const access=mock.method(fs,'access',async()=>{}), remove=mock.method(fs,'rm',async()=>{});
+  const access=mock.method(fs,'access',async()=>{}), remove=mock.method(fs,'rm',async()=>{}), list=mock.method(fs,'readdir',async()=>[] as any),dir=mock.method(fs,'rmdir',async()=>{});
   try {
     const { clearSpeechFiles }=await import('../utils/speech.js');
     const { applyStreamOperationsDomainEvent }=await import('../domain_events/stream_operations_events.js');
@@ -274,7 +302,7 @@ test('actual stream-operations consumer clears the API parked head via cross-pro
     assert.equal((handler as any).fileCleanupTimeouts.has(`${channel}:stream-head`),true);
     studioConnected=true; peer.audioReady=true; await resumeReadTts(channel); await new Promise<void>(done=>setImmediate(done));
     assert.equal(synthesized.length,1); assert.equal(usage,1); assert.equal(petEvents.some(e=>e.event==='pet:play'),false);
-  } finally { access.mock.restore(); remove.mock.restore(); synthesize=original; await stop(); }
+  } finally { access.mock.restore(); remove.mock.restore(); list.mock.restore();dir.mock.restore(); synthesize=original; await stop(); }
 });
 test('lost stream-end hint is repaired by bounded existing recovery and cannot resume stale generated work', async () => {
   await setup(); const entered=barrier(), resume=barrier(), original=synthesize;
@@ -321,4 +349,80 @@ test('stream end stops possibly active private audio and schedules original-file
     assert.equal((handler as any).fileCleanupTimeouts.has(`${channel}:ending-audio`),true);
     await resumeReadTts(channel); await new Promise<void>(done=>setImmediate(done)); assert.equal(petEvents.filter(e=>e.event==='pet:play').length,1);
   } finally {await stop();}
+});
+
+async function bounded<T>(operation: Promise<T>, label: string) { let timer:NodeJS.Timeout|undefined; try{return await Promise.race([operation,new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(new Error(label)),250);})]);} finally{clearTimeout(timer);} }
+async function clearActualStream() {
+  const remove=mock.method(fs,'rm',async()=>{}), access=mock.method(fs,'access',async()=>{}), list=mock.method(fs,'readdir',async()=>[] as any), dir=mock.method(fs,'rmdir',async()=>{});
+  try {const {clearSpeechFiles}=await import('../utils/speech.js');await clearSpeechFiles(channel);} finally {remove.mock.restore();access.mock.restore();list.mock.restore();dir.mock.restore();}
+}
+test('R4 payload snapshot cannot adopt a completed newer stream boundary before head creation', async () => {
+  await setup(); const entered=barrier(),resume=barrier(); seed('before-boundary');
+  afterPayloadRead=async()=>{entered.resolve();await resume.promise;}; const processing=handler.processNext(channel);await entered.promise;
+  await clearActualStream(); resume.resolve();
+  try {await processing;assert.equal(synthesized.length,0,'old dequeued payload must not adopt the new marker');assert.equal((handler as any).readHeads.has(channel),false);}
+  finally {resume.resolve();await stop(processing);}
+});
+test('R4 stream marker publication is atomic with old queue removal; post-boundary enqueue survives cleanup', async () => {
+  await setup();const entered=barrier(),resume=barrier();seed('old-at-marker');
+  afterSessionWrite=async()=>{entered.resolve();await resume.promise;};const clearing=clearActualStream();await entered.promise;
+  try {
+    assert.equal((queues.get(`twitch:${channel}:tts:queue`)??[]).length,0,'new marker cannot coexist with the old queued payload');
+    const result=await handler.queueRequest({channelID:channel,source:'chat-command',mode:'speak',provider:'piper',language:'en',voice:'test',text:'new session'} as any,{queue:{maxItems:20},voices:{en:'test',es:'test',kokoroDefault:'af_heart'}} as any);
+    assert.equal(result.error,false);resume.resolve();await clearing;
+    await until(()=>(handler as any).readHeads.get(channel)?.phase==='emitted');assert.equal(synthesized.length,1);
+    assert.equal((handler as any).readHeads.get(channel).item.speechID,result.data!.speechID);
+  } finally {resume.resolve();await clearing;await stop();}
+});
+for(const action of ['skip','clear'] as const) for(const setting of ['readTts','master'] as const) test(`R4 ${action} retires elected owner before following ordinary speech after ${setting} disable`, async()=>{
+  await setup();for(const socket of legacySockets.values())socket.data.ttsReady=true;seed('old-owned');await handler.processNext(channel);
+  await handler.control(channel,action);
+  if(setting==='readTts')config.settings.sources.readTts=false;else config.settings.enabled=false;
+  config.runtime.readTtsEnabled=false;config.revision++;runtime.generation++;await invalidateReadTts(owner,'settings_changed');
+  seed('ordinary-after');await handler.processNext(channel);
+  try {
+    assert.equal((handler as any).readTtsOwners.has(channel),false);
+    handler.handleSpeechPlayback(channel,{speechID:'ordinary-after',phase:'playing',position:0.5},'legacy:legacy-a');
+    assert.equal((handler as any).playbackPositions.get(`${channel}:ordinary-after`),0.5);
+    await handler.handleOverlayEnded(channel,'ordinary-after','ended','legacy:legacy-a');
+    assert.equal(data.get(`twitch:${channel}:tts:processing`),undefined);
+  } finally {await stop();}
+});
+for(const stage of ['reserve','independent'] as const) for(const action of ['skip','clear','stream-end'] as const) test(`R4 ${action} immediately cancels ${stage} wait without touching independent audio`,async()=>{
+  await setup();const lease=structuredClone(runtime.lease);
+  runtime.activeRequestId='independent-audio';rows.set('independent-audio',{_id:'independent-audio',status:'playing',phaseDeadline:new Date(Date.now()+120000)});
+  if(stage==='reserve')runtime.notBefore=new Date(Date.now()+120000);
+  // Distinct requests use distinct IDs; a retired cancellation identity must not
+  // accidentally become the next fixture's new request.
+  const speechID=`cancel-${stage}-${action}`;seed(speechID);const processing=handler.processNext(channel);let cancelling:Promise<void>|undefined;
+  try {
+    await until(()=>(handler as any).readHeads.has(channel)&&(stage==='reserve'?configurationReads>0:(handler as any).activePumps===1&&!!runtime.ttsReservation));
+    await new Promise<void>(done=>setImmediate(done));
+    cancelling=action==='stream-end'?handler.handleSessionEnded(channel,'ended-cancel'):handler.control(channel,action);
+    await bounded(Promise.all([processing,cancelling]),'cancel waited for independent deadline');
+    assert.equal((handler as any).activePumps,0);assert.equal((handler as any).readHeads.has(channel),false);
+    assert.equal(runtime.activeRequestId,'independent-audio');assert.deepEqual(runtime.lease,lease);assert.equal(rows.get('independent-audio').status,'playing');
+    if(stage==='reserve'&&action==='skip') {
+      // Intentionally retry the cancelled ID within this case. Keep its tombstone:
+      // it must fence duplicate work without another provider or play.
+      assert.equal((handler as any).interruptedSpeechIds.get(channel),speechID);
+      const providers=synthesized.length,plays=petEvents.filter(e=>e.event==='pet:play').length;
+      seed(speechID);await handler.processNext(channel);
+      assert.equal((handler as any).readHeads.has(channel),false);assert.equal(synthesized.length,providers);
+      assert.equal(petEvents.filter(e=>e.event==='pet:play').length,plays);
+      assert.equal(runtime.activeRequestId,'independent-audio');assert.deepEqual(runtime.lease,lease);
+    }
+  } finally {runtime.activeRequestId=null;runtime.notBefore=new Date(0);observeReadTtsRuntime(runtime);await Promise.allSettled([processing,cancelling]);await stop();}
+});
+test('R4 cancelling one owner wait does not strand another channel waiting on the same independent turn',async()=>{
+  await setup();const other='123457';runtime.activeRequestId='shared-independent';rows.set('shared-independent',{_id:'shared-independent',status:'playing',phaseDeadline:new Date(Date.now()+120000)});
+  seed('first-shared');const first=handler.processNext(channel);await until(()=>(handler as any).activePumps===1&&!!runtime.ttsReservation);await new Promise<void>(done=>setImmediate(done));
+  queues.set(`twitch:${other}:tts:queue`,['second-shared']);data.set(`twitch:${other}:tts:queue:data:second-shared`,JSON.stringify({channelID:other,speechID:'second-shared',provider:'piper',mode:'speak',language:'en',voice:'test',text:'second'}));
+  const second=handler.processNext(other);await new Promise<void>(done=>setImmediate(done));
+  try {
+    await bounded(Promise.all([first,handler.control(channel,'skip')]),'first owner wait did not abort');
+    await until(()=>runtime.ttsReservation?.speechId==='second-shared');assert.equal(runtime.activeRequestId,'shared-independent');
+    runtime.activeRequestId=null;observeReadTtsRuntime(runtime);await bounded(second,'remaining owner wait was stranded');
+    assert.equal((handler as any).readHeads.get(other)?.phase,'emitted');assert.equal((handler as any).activePumps,0);
+  } finally {runtime.activeRequestId=null;runtime.notBefore=new Date(0);observeReadTtsRuntime(runtime);await handler.control(other,'clear');await Promise.allSettled([first,second]);await handler.cleanupChannel(other);await stop();}
 });

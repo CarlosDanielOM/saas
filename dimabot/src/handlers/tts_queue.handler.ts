@@ -37,6 +37,7 @@ import { resolveTtsForCreditStatus } from "../utils/tts/tts_credit_fallback.util
 import { promiseWithTimeout } from "../utils/tts/tts_deadline.util.js";
 import { getTtsPlaybackTimeoutMs } from "../utils/tts/tts_playback_timeout.util.js";
 import { trackAiOperation } from "../utils/posthog_events.js";
+import { enqueueTtsSession, popTtsSession } from '../utils/tts/tts_session.util.js';
 
 const TTS_PROCESSING_TTL_SECONDS = 150;
 const DEFAULT_TTS_SYNTHESIS_TIMEOUT_MS = 45_000;
@@ -72,6 +73,7 @@ export interface TtsQueueItem extends TtsRequestPayload {
   kokoroFallbackVoice?: string;
   usageRequestID?: string;
   usageEntryID?: string;
+  queueSession?: string | null;
 }
 
 export interface QueueTtsResponse {
@@ -90,6 +92,7 @@ interface ReadTtsHead {
   phase: 'preparing' | 'generated' | 'parked' | 'emitted' | 'terminal'; running: boolean;
   generated?: { file: string; audioUrl: string; mime: string; text: string; mode: TtsMode; timeoutMs: number };
   analysis: NonNullable<import('../pets/tts_bridge.js').ReadTtsInput['analysis']>;
+  cancellation: AbortController;
 }
 const MAX_READ_TTS_HEADS = 128;
 const MAX_READ_TTS_PUMPS = 8;
@@ -230,14 +233,7 @@ class TtsQueueHandler {
       usageEntryID: randomUUID(),
     };
 
-    await this.cache!.set(
-      `twitch:${payload.channelID}:tts:queue:data:${speechID}`,
-      JSON.stringify(queueItem),
-    );
-    await this.cache!.zAdd(`twitch:${payload.channelID}:tts:queue`, {
-      score: queueItem.timestamp,
-      value: speechID,
-    });
+    await enqueueTtsSession(this.cache!, payload.channelID, speechID, queueItem.timestamp, JSON.stringify(queueItem));
 
     try {
       trackAiOperation({
@@ -303,7 +299,7 @@ class TtsQueueHandler {
           }
           this.headClaims.add(channelID);
         }
-        const next = await this.cache!.zPopMin(`twitch:${channelID}:tts:queue`);
+        const next = await popTtsSession(this.cache!, channelID);
         if (!next?.value) {
           this.headClaims.delete(channelID);
           await this.cache!.del(`twitch:${channelID}:tts:processing`);
@@ -319,9 +315,7 @@ class TtsQueueHandler {
         activeSpeechID = speechID;
         this.activeSpeechIds.set(channelID, speechID);
 
-        const rawData = await this.cache!.get(
-          `twitch:${channelID}:tts:queue:data:${speechID}`,
-        );
+        const rawData = next.payload;
         if (!rawData) {
           this.headClaims.delete(channelID);
           continue;
@@ -336,6 +330,14 @@ class TtsQueueHandler {
           continue;
         }
 
+        if ((queueItem.queueSession !== undefined && queueItem.queueSession !== next.session) ||
+            await this.cache!.get(`twitch:${channelID}:tts:session`) !== next.session) {
+          await this.cleanupSpeech(channelID, speechID, true); continue;
+        }
+        // Legacy payloads acquire the popped snapshot, never a later marker.
+        // If an async pre-provider requeue crosses stream end, its old tag fences it.
+        queueItem.queueSession = next.session;
+
         if (this.controls.has(channelID) || this.interruptedSpeechIds.get(channelID) === speechID) {
           await this.cleanupSpeech(channelID, speechID, true); continue;
         }
@@ -345,9 +347,8 @@ class TtsQueueHandler {
         }
 
         if (await isReadTtsConfigured(channelID)) {
-          const session = await this.cache!.get(`twitch:${channelID}:tts:session`);
-          if (!this.controls.has(channelID)) this.readHeads.set(channelID, { item: queueItem, session, epoch: 0, wakeVersion: 0,
-            cancelled: false, phase: 'preparing', running: false, analysis: {} });
+          if (!this.controls.has(channelID)) this.readHeads.set(channelID, { item: queueItem, session: next.session, epoch: 0, wakeVersion: 0,
+            cancelled: false, phase: 'preparing', running: false, analysis: {}, cancellation: new AbortController() });
           this.headClaims.delete(channelID);
         }
         const usageRequestID = queueItem.usageRequestID ||= randomUUID();
@@ -363,12 +364,15 @@ class TtsQueueHandler {
         });
 
         const reserved = await reserveReadTts({ channelId: channelID, speechId: speechID,
+          signal: this.readHeads.get(channelID)?.cancellation.signal,
           cancelled: () => this.controls.has(channelID) || this.interruptedSpeechIds.get(channelID) === speechID || this.activeSpeechIds.get(channelID) !== speechID,
           ended: reason => this.handleSpeechEnded(channelID, speechID, reason) });
         if (!reserved && !this.controls.has(channelID) && this.interruptedSpeechIds.get(channelID) !== speechID) { await this.requeueUnspoken(channelID, queueItem); return; }
         if (!reserved || this.controls.has(channelID) || this.interruptedSpeechIds.get(channelID) === speechID) {
           await this.cleanupSpeech(channelID, speechID, true); continue;
         }
+
+        if (await this.cache!.get(`twitch:${channelID}:tts:session`) !== next.session) { await this.cleanupSpeech(channelID, speechID, true); continue; }
 
         if (hasReadTtsTurn(channelID, speechID) && !await this.hasOverlayConnection(channelID)) { await this.requeueUnspoken(channelID, queueItem); return; }
 
@@ -632,7 +636,7 @@ class TtsQueueHandler {
       if (activeSpeechID) {
         await releaseReadTts(channelID, activeSpeechID);
         await endStudioReadTts(channelID, activeSpeechID);
-        this.readTtsOwners.delete(channelID);
+        this.retireReadOwner(channelID, activeSpeechID);
       }
       const failedHead = this.readHeads.get(channelID);
       if (failedHead?.item.speechID === activeSpeechID) this.readHeads.delete(channelID);
@@ -724,7 +728,7 @@ class TtsQueueHandler {
     head.phase = 'parked'; head.epoch++;
     this.dispatchedSpeechIds.delete(channel);
     this.disarmPlaybackTimeout(channel, head.item.speechID);
-    this.readTtsOwners.delete(channel);
+    if (this.readTtsOwners.get(channel)?.speechId === head.item.speechID) this.readTtsOwners.delete(channel);
     await endStudioReadTts(channel, head.item.speechID);
     await parkReadTts(channel, head.item.speechID);
     if (await this.cache!.get(`twitch:${channel}:tts:processing`) === head.item.speechID) await this.cache!.del(`twitch:${channel}:tts:processing`);
@@ -754,7 +758,7 @@ class TtsQueueHandler {
       this.dispatchedSpeechIds.set(channel, speech);
       const holdMs = Math.max(240_000, input.timeoutMs + 180_000);
       let route = await prepareReadTts({ channelId: channel, speechId: speech, file: input.file, mime: input.mime, text: input.text,
-        holdMs, attemptId: `${epoch}`, analysis: head.analysis, cancelled: () => !current(), ended: reason => this.handleSpeechEnded(channel, speech, reason) });
+        holdMs, attemptId: `${epoch}`, analysis: head.analysis, signal: head.cancellation.signal, cancelled: () => !current(), ended: reason => this.handleSpeechEnded(channel, speech, reason) });
       if (!current()) return;
       if (!route || route.audio === 'waiting' || route.audio === 'cancelled') { await this.parkHead(channel, head); return; }
       if (!await protectReadTtsTurn(channel, speech, holdMs) || !current()) { await this.parkHead(channel, head); return; }
@@ -805,6 +809,7 @@ class TtsQueueHandler {
   private async finishHead(channel: string, head: ReadTtsHead, reason: string) {
     if (this.readHeads.get(channel) !== head) return;
     head.cancelled = true; head.epoch++; head.phase = 'terminal'; this.headWakes.delete(channel);
+    head.cancellation.abort(); this.retireReadOwner(channel, head.item.speechID);
     await endStudioReadTts(channel, head.item.speechID);
     await this.cleanupSpeech(channel, head.item.speechID);
     if (!head.running && !this.controls.has(channel)) void this.processNext(channel);
@@ -841,6 +846,12 @@ class TtsQueueHandler {
     const owner = this.readTtsOwners.get(channelID);
     return !owner || owner.emitted && owner.speechId === speechID && (owner.source === 'studio' ? !!source?.startsWith('studio:') : owner.source === source);
   }
+  private retireReadOwner(channel: string, speech: string) {
+    const owner = this.readTtsOwners.get(channel);
+    if (!owner || owner.speechId !== speech) return;
+    this.readTtsOwners.delete(channel);
+    if (owner.source.startsWith('legacy:')) getIO()?.of(`/speech/${channel}`).sockets.get(owner.source.slice(7))?.emit('speech-reset');
+  }
   async handleOverlayEnded(channelID: string, speechID: string | undefined, reason: string | undefined, source: string) {
     if (this.acceptsOverlayReport(channelID, speechID, source)) await this.handleSpeechEnded(channelID, speechID, reason);
   }
@@ -866,7 +877,7 @@ class TtsQueueHandler {
   async control(channelID: string, action: 'skip' | 'clear' | 'refresh'): Promise<void> {
     const controlledHead = this.readHeads.get(channelID);
     const controlledSpeech = controlledHead?.item.speechID ?? this.activeSpeechIds.get(channelID);
-    if (controlledHead) { controlledHead.cancelled = true; controlledHead.epoch++; }
+    if (controlledHead) { controlledHead.cancelled = true; controlledHead.epoch++; controlledHead.cancellation.abort(); }
     if (controlledSpeech) this.interruptedSpeechIds.set(channelID, controlledSpeech);
     const previous = this.controls.get(channelID) ?? Promise.resolve();
     const pending = previous.catch(() => {}).then(async () => {
@@ -958,7 +969,8 @@ class TtsQueueHandler {
     }
 
     const head = this.readHeads.get(channelID);
-    if (head?.item.speechID === speechID) { head.cancelled = true; head.epoch++; head.phase = 'terminal'; this.headWakes.delete(channelID); }
+    if (head?.item.speechID === speechID) { head.cancelled = true; head.epoch++; head.phase = 'terminal'; head.cancellation.abort(); this.headWakes.delete(channelID); }
+    this.retireReadOwner(channelID, speechID);
     await releaseReadTts(channelID, speechID);
     const timeoutKey = `${channelID}:${speechID}`;
     this.interruptedSpeechIds.delete(channelID);

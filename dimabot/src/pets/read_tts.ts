@@ -34,17 +34,22 @@ function forgetOwner(owner: string) {
     if ([...heads.values()].some(head => head.owner === owner) || [...turns.values()].some(turn => turn.ownerId === owner)) return;
     signal(owner); observations.delete(owner); changes.delete(owner);
 }
-function waitForChange(owner: string, deadline: number, serial: number) {
-    if ((changes.get(owner) ?? 0) !== serial) return Promise.resolve();
+function waitForChange(owner: string, deadline: number, serial: number, cancellation?: AbortSignal) {
+    if (cancellation?.aborted || (changes.get(owner) ?? 0) !== serial) return Promise.resolve();
+    const cancellable = (pending: Promise<void>) => !cancellation ? pending : new Promise<void>(resolve => {
+        const done = () => { cancellation.removeEventListener('abort', done); resolve(); };
+        cancellation.addEventListener('abort', done, { once: true }); pending.then(done, done);
+        if (cancellation.aborted) done();
+    });
     const prior = waits.get(owner);
     if (prior) {
         if (deadline < prior.deadline) { clearTimeout(prior.timer); prior.deadline = deadline; prior.timer = setTimeout(() => { waits.delete(owner); prior.done(); }, Math.max(1, deadline - Date.now())); }
-        return prior.promise;
+        return cancellable(prior.promise);
     }
     let done!: () => void;
     const promise = new Promise<void>(resolve => { done = resolve; });
     const timer = setTimeout(() => { waits.delete(owner); done(); }, Math.max(1, deadline - Date.now()));
-    waits.set(owner, { done, timer, deadline, promise }); return promise;
+    waits.set(owner, { done, timer, deadline, promise }); return cancellable(promise);
 }
 function wakeOwner(owner: string) {
     signal(owner);
@@ -172,7 +177,7 @@ async function reserve(input: ReadTtsTurnInput): Promise<boolean> {
         if (Date.now() >= waitUntil) return false;
         // A single deadline, or an observed owner transition, wakes the pending claim.
         const expires = runtime.ttsReservation?.expiresAt?.getTime() ?? 0;
-        await waitForChange(ownerId, Math.min(waitUntil, runtime.notBefore.getTime() > Date.now() ? runtime.notBefore.getTime() : expires > Date.now() ? expires : waitUntil), serial);
+        await waitForChange(ownerId, Math.min(waitUntil, runtime.notBefore.getTime() > Date.now() ? runtime.notBefore.getTime() : expires > Date.now() ? expires : waitUntil), serial, input.signal);
     }
     return false;
 }
@@ -210,7 +215,7 @@ async function prepare(input: ReadTtsInput): Promise<ReadTtsRoute | null> {
             const active = current.activeRequestId ? await PetRequest.findById(current.activeRequestId).lean() : null;
             const deadline = Math.min(waitUntil, current.notBefore.getTime() > Date.now() ? current.notBefore.getTime() : active?.phaseDeadline?.getTime() ?? waitUntil);
             if (deadline <= Date.now()) return { audio: 'waiting', durationMs: 0 };
-            await waitForChange(ownerId, deadline, serial);
+            await waitForChange(ownerId, deadline, serial, input.signal);
         }
         if (cancelled()) return cancelledRoute;
         const analysis = input.analysis ??= {};

@@ -18,6 +18,11 @@ const readDeliveries: any[] = [], released: string[] = [];
 const legacySockets = new Map<string, any>();
 for (const id of ['legacy-a', 'legacy-b']) legacySockets.set(id, { id, connected: true, data: { ttsReady: true }, conn: { close: () => {} }, emit: (event: string, payload: any) => events.push({ channel: id, event, payload }) });
 const cache = {
+  eval: async (_script: string, options: { keys: string[]; arguments: string[] }): Promise<unknown> => {
+    const next = await cache.zPopMin(options.keys[0]);
+    if (!next) return [];
+    return [next.value, await cache.get(options.arguments[0] + next.value) ?? '', await cache.get(options.keys[1]) ?? ''];
+  },
   get: async (key: string) => data.get(key) ?? null,
   set: async (key: string, value: string) => { data.set(key, value); },
   del: async (key: string) => { data.delete(key); queues.delete(key); },

@@ -1,5 +1,5 @@
 import type { PetRequestRecord } from '../schemas/pet_runtime.schema.js';
-export interface ReadTtsTurnInput { channelId: string; speechId: string; cancelled: () => boolean; ended: (reason: string) => Promise<void> }
+export interface ReadTtsTurnInput { channelId: string; speechId: string; cancelled: () => boolean; ended: (reason: string) => Promise<void>; signal?: AbortSignal }
 export interface ReadTtsInput extends ReadTtsTurnInput {
     channelId: string; speechId: string; file: string; mime: string; text: string; holdMs?: number;
     cancelled: () => boolean; ended: (reason: string) => Promise<void>; attemptId?: string;
