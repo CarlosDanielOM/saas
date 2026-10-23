@@ -1,0 +1,1906 @@
+{
+  "sources": {
+    "qdrant/qdrant_point_id.ts": "244dfb5e34ff50ec98b67d274b2ce1c274ec59153bfbcdbd6acf54abb1eb462f",
+    "ai/memory/memory_relevance.ts": "5351a3cba095bc2221ff10a14c87bfd2a66b45b4ebc380f589da5d3c1327698b",
+    "qdrant/functions/chat_logs/retrieve_chat_context.qdrant.ts": "714a5e94b8fc410022289e753f0aa4420f10f239dd08f4eade87be381e8db9d7",
+    "qdrant/functions/memory/retrieve_memory_context.qdrant.ts": "05a3fdddd80d0a0155eb29b238e9604fd72f4c73b5c92b99fa2de3d57e9eb41f",
+    "qdrant/functions/chat_logs/retrieve_chat_window.qdrant.ts": "2dcf2f3de0516f206b72500883297ce5446ae3b39c107234cbd652b1979059b4",
+    "qdrant/functions/memory/sync_memory.qdrant.ts": "b5972206df9a6a38445d73e971cdd8046316d61f55bd6fb371fc25c0d45c9228",
+    "qdrant/collections/twitch/message.qdrant.collection.ts": "8c2fe1e1bb6be18de0a217e2d3e0b384e2a0ab850195f6928ac121d96c51c547",
+    "qdrant/collections/twitch/memory.qdrant.collection.ts": "c685a9cbd1bf379930287ff89cd95e2be2dcacfd6b194b1607609a5651913f37",
+    "qdrant/functions/chat_logs/store_chat_log.qdrant.ts": "b92d65a529f53157e3c63a2cf90a49a016466e9f3c869e085a1a571582ebaaa5",
+    "qdrant/functions/collections/create.collecion.ts": "d35f0ef686511770ef6cb2e2b3cdaa306ee0aadc238d95a0fa94d5bc7c1ea6b2",
+    "qdrant/functions/index.ts": "973c44db2041e4c75a22623f8e0d8640eddde2654bd67d115214852e41be2bef",
+    "qdrant/start_up.qdrant.ts": "db6d15ad3d347e26ac7c93b21e4e4a64d0f7e2ab77e89836f616bd84baf3b857"
+  },
+  "cases": [
+    {
+      "operation": "point_id",
+      "input": [
+        "channel",
+        "user",
+        0
+      ],
+      "expected": 4163438557
+    },
+    {
+      "operation": "point_id",
+      "input": [
+        "123",
+        "456",
+        1720000000000
+      ],
+      "expected": 3758788397
+    },
+    {
+      "operation": "point_id",
+      "input": [
+        "",
+        "",
+        0
+      ],
+      "expected": 3357406738
+    },
+    {
+      "operation": "point_id",
+      "input": [
+        "canal:uno",
+        "usér😀",
+        42
+      ],
+      "expected": 655288077
+    },
+    {
+      "operation": "point_id",
+      "input": [
+        "a",
+        "b",
+        -1
+      ],
+      "expected": 2997867851
+    },
+    {
+      "operation": "point_id",
+      "input": [
+        "a",
+        "b",
+        1.5
+      ],
+      "expected": 2055151997
+    },
+    {
+      "operation": "point_id",
+      "input": [
+        "a",
+        "b",
+        9007199254740991
+      ],
+      "expected": 4218258827
+    },
+    {
+      "operation": "point_id",
+      "input": [
+        "a",
+        "b",
+        1e+21
+      ],
+      "expected": 1303111609
+    },
+    {
+      "operation": "memory_owner",
+      "input": {
+        "payload": null,
+        "memoryID": "m",
+        "channelID": "c"
+      },
+      "expected": false
+    },
+    {
+      "operation": "memory_owner",
+      "input": {
+        "payload": null,
+        "memoryID": "42",
+        "channelID": "7"
+      },
+      "expected": false
+    },
+    {
+      "operation": "memory_owner",
+      "input": {
+        "payload": null,
+        "memoryID": "",
+        "channelID": ""
+      },
+      "expected": true
+    },
+    {
+      "operation": "memory_owner",
+      "input": {
+        "payload": {},
+        "memoryID": "m",
+        "channelID": "c"
+      },
+      "expected": false
+    },
+    {
+      "operation": "memory_owner",
+      "input": {
+        "payload": {},
+        "memoryID": "42",
+        "channelID": "7"
+      },
+      "expected": false
+    },
+    {
+      "operation": "memory_owner",
+      "input": {
+        "payload": {},
+        "memoryID": "",
+        "channelID": ""
+      },
+      "expected": true
+    },
+    {
+      "operation": "memory_owner",
+      "input": {
+        "payload": {
+          "memory_id": "m",
+          "channel_id": "c"
+        },
+        "memoryID": "m",
+        "channelID": "c"
+      },
+      "expected": true
+    },
+    {
+      "operation": "memory_owner",
+      "input": {
+        "payload": {
+          "memory_id": "m",
+          "channel_id": "c"
+        },
+        "memoryID": "42",
+        "channelID": "7"
+      },
+      "expected": false
+    },
+    {
+      "operation": "memory_owner",
+      "input": {
+        "payload": {
+          "memory_id": "m",
+          "channel_id": "c"
+        },
+        "memoryID": "",
+        "channelID": ""
+      },
+      "expected": false
+    },
+    {
+      "operation": "memory_owner",
+      "input": {
+        "payload": {
+          "memory_id": "m",
+          "channel_id": "other"
+        },
+        "memoryID": "m",
+        "channelID": "c"
+      },
+      "expected": false
+    },
+    {
+      "operation": "memory_owner",
+      "input": {
+        "payload": {
+          "memory_id": "m",
+          "channel_id": "other"
+        },
+        "memoryID": "42",
+        "channelID": "7"
+      },
+      "expected": false
+    },
+    {
+      "operation": "memory_owner",
+      "input": {
+        "payload": {
+          "memory_id": "m",
+          "channel_id": "other"
+        },
+        "memoryID": "",
+        "channelID": ""
+      },
+      "expected": false
+    },
+    {
+      "operation": "memory_owner",
+      "input": {
+        "payload": {
+          "memory_id": 42,
+          "channel_id": 7
+        },
+        "memoryID": "m",
+        "channelID": "c"
+      },
+      "expected": false
+    },
+    {
+      "operation": "memory_owner",
+      "input": {
+        "payload": {
+          "memory_id": 42,
+          "channel_id": 7
+        },
+        "memoryID": "42",
+        "channelID": "7"
+      },
+      "expected": true
+    },
+    {
+      "operation": "memory_owner",
+      "input": {
+        "payload": {
+          "memory_id": 42,
+          "channel_id": 7
+        },
+        "memoryID": "",
+        "channelID": ""
+      },
+      "expected": false
+    },
+    {
+      "operation": "memory_owner",
+      "input": {
+        "payload": {
+          "memory_id": 0,
+          "channel_id": false
+        },
+        "memoryID": "m",
+        "channelID": "c"
+      },
+      "expected": false
+    },
+    {
+      "operation": "memory_owner",
+      "input": {
+        "payload": {
+          "memory_id": 0,
+          "channel_id": false
+        },
+        "memoryID": "42",
+        "channelID": "7"
+      },
+      "expected": false
+    },
+    {
+      "operation": "memory_owner",
+      "input": {
+        "payload": {
+          "memory_id": 0,
+          "channel_id": false
+        },
+        "memoryID": "",
+        "channelID": ""
+      },
+      "expected": true
+    },
+    {
+      "operation": "passive_relevant",
+      "input": {
+        "query": "remember this channel",
+        "summary": "remember channel",
+        "score": 0.44
+      },
+      "expected": false
+    },
+    {
+      "operation": "passive_relevant",
+      "input": {
+        "query": "remember this channel",
+        "summary": "remember channel",
+        "score": 0.45
+      },
+      "expected": false
+    },
+    {
+      "operation": "passive_relevant",
+      "input": {
+        "query": "remember this channel",
+        "summary": "remember channel",
+        "score": 0.55
+      },
+      "expected": false
+    },
+    {
+      "operation": "passive_relevant",
+      "input": {
+        "query": "remember this channel",
+        "summary": "remember channel",
+        "score": 0.72
+      },
+      "expected": true
+    },
+    {
+      "operation": "passive_relevant",
+      "input": {
+        "query": "dragon lore",
+        "summary": "our dragon mascot",
+        "score": 0.44
+      },
+      "expected": false
+    },
+    {
+      "operation": "passive_relevant",
+      "input": {
+        "query": "dragon lore",
+        "summary": "our dragon mascot",
+        "score": 0.45
+      },
+      "expected": true
+    },
+    {
+      "operation": "passive_relevant",
+      "input": {
+        "query": "dragon lore",
+        "summary": "our dragon mascot",
+        "score": 0.55
+      },
+      "expected": true
+    },
+    {
+      "operation": "passive_relevant",
+      "input": {
+        "query": "dragon lore",
+        "summary": "our dragon mascot",
+        "score": 0.72
+      },
+      "expected": true
+    },
+    {
+      "operation": "passive_relevant",
+      "input": {
+        "query": "CAFÉ recital",
+        "summary": "café nocturno",
+        "score": 0.44
+      },
+      "expected": false
+    },
+    {
+      "operation": "passive_relevant",
+      "input": {
+        "query": "CAFÉ recital",
+        "summary": "café nocturno",
+        "score": 0.45
+      },
+      "expected": true
+    },
+    {
+      "operation": "passive_relevant",
+      "input": {
+        "query": "CAFÉ recital",
+        "summary": "café nocturno",
+        "score": 0.55
+      },
+      "expected": true
+    },
+    {
+      "operation": "passive_relevant",
+      "input": {
+        "query": "CAFÉ recital",
+        "summary": "café nocturno",
+        "score": 0.72
+      },
+      "expected": true
+    },
+    {
+      "operation": "passive_relevant",
+      "input": {
+        "query": "猫猫猫猫",
+        "summary": "猫猫猫猫",
+        "score": 0.44
+      },
+      "expected": false
+    },
+    {
+      "operation": "passive_relevant",
+      "input": {
+        "query": "猫猫猫猫",
+        "summary": "猫猫猫猫",
+        "score": 0.45
+      },
+      "expected": true
+    },
+    {
+      "operation": "passive_relevant",
+      "input": {
+        "query": "猫猫猫猫",
+        "summary": "猫猫猫猫",
+        "score": 0.55
+      },
+      "expected": true
+    },
+    {
+      "operation": "passive_relevant",
+      "input": {
+        "query": "猫猫猫猫",
+        "summary": "猫猫猫猫",
+        "score": 0.72
+      },
+      "expected": true
+    },
+    {
+      "operation": "passive_relevant",
+      "input": {
+        "query": "abcd_123",
+        "summary": "ABCD_123",
+        "score": 0.44
+      },
+      "expected": false
+    },
+    {
+      "operation": "passive_relevant",
+      "input": {
+        "query": "abcd_123",
+        "summary": "ABCD_123",
+        "score": 0.45
+      },
+      "expected": true
+    },
+    {
+      "operation": "passive_relevant",
+      "input": {
+        "query": "abcd_123",
+        "summary": "ABCD_123",
+        "score": 0.55
+      },
+      "expected": true
+    },
+    {
+      "operation": "passive_relevant",
+      "input": {
+        "query": "abcd_123",
+        "summary": "ABCD_123",
+        "score": 0.72
+      },
+      "expected": true
+    },
+    {
+      "operation": "passive_relevant",
+      "input": {
+        "query": "play chess",
+        "summary": "play music",
+        "score": 0.44
+      },
+      "expected": false
+    },
+    {
+      "operation": "passive_relevant",
+      "input": {
+        "query": "play chess",
+        "summary": "play music",
+        "score": 0.45
+      },
+      "expected": true
+    },
+    {
+      "operation": "passive_relevant",
+      "input": {
+        "query": "play chess",
+        "summary": "play music",
+        "score": 0.55
+      },
+      "expected": true
+    },
+    {
+      "operation": "passive_relevant",
+      "input": {
+        "query": "play chess",
+        "summary": "play music",
+        "score": 0.72
+      },
+      "expected": true
+    },
+    {
+      "operation": "passive_relevant",
+      "input": {
+        "query": "İSTANBUL",
+        "summary": "istanbul",
+        "score": 0.44
+      },
+      "expected": false
+    },
+    {
+      "operation": "passive_relevant",
+      "input": {
+        "query": "İSTANBUL",
+        "summary": "istanbul",
+        "score": 0.45
+      },
+      "expected": false
+    },
+    {
+      "operation": "passive_relevant",
+      "input": {
+        "query": "İSTANBUL",
+        "summary": "istanbul",
+        "score": 0.55
+      },
+      "expected": false
+    },
+    {
+      "operation": "passive_relevant",
+      "input": {
+        "query": "İSTANBUL",
+        "summary": "istanbul",
+        "score": 0.72
+      },
+      "expected": true
+    },
+    {
+      "operation": "passive_relevant",
+      "input": {
+        "query": "𐐀𐐀",
+        "summary": "𐐨𐐨",
+        "score": 0.44
+      },
+      "expected": false
+    },
+    {
+      "operation": "passive_relevant",
+      "input": {
+        "query": "𐐀𐐀",
+        "summary": "𐐨𐐨",
+        "score": 0.45
+      },
+      "expected": false
+    },
+    {
+      "operation": "passive_relevant",
+      "input": {
+        "query": "𐐀𐐀",
+        "summary": "𐐨𐐨",
+        "score": 0.55
+      },
+      "expected": false
+    },
+    {
+      "operation": "passive_relevant",
+      "input": {
+        "query": "𐐀𐐀",
+        "summary": "𐐨𐐨",
+        "score": 0.72
+      },
+      "expected": true
+    },
+    {
+      "operation": "semantic_limit",
+      "input": {
+        "tier": "free"
+      },
+      "expected": 3
+    },
+    {
+      "operation": "semantic_limit",
+      "input": {
+        "tier": "premium"
+      },
+      "expected": 6
+    },
+    {
+      "operation": "semantic_limit",
+      "input": {
+        "tier": "pro"
+      },
+      "expected": 15
+    },
+    {
+      "operation": "semantic_limit",
+      "input": {
+        "tier": "PRO"
+      },
+      "expected": 3
+    },
+    {
+      "operation": "semantic_limit",
+      "input": {
+        "tier": ""
+      },
+      "expected": 3
+    },
+    {
+      "operation": "semantic_limit",
+      "input": {
+        "tier": "unknown"
+      },
+      "expected": 3
+    },
+    {
+      "operation": "semantic_select",
+      "input": {
+        "channelID": "c",
+        "points": [
+          {
+            "id": 1,
+            "score": 0.9,
+            "payload": {
+              "channel_id": "c",
+              "message": "same message",
+              "timestamp": 10,
+              "username": "first"
+            }
+          },
+          {
+            "id": 2,
+            "score": 0.99,
+            "payload": {
+              "channel_id": "c",
+              "message": "same message",
+              "timestamp": 20,
+              "username": "later"
+            }
+          },
+          {
+            "id": 3,
+            "score": 0.9,
+            "payload": {
+              "channel_id": "c",
+              "message": "different message",
+              "timestamp": 30
+            }
+          },
+          {
+            "id": 4,
+            "score": 0.99,
+            "payload": {
+              "channel_id": "other",
+              "message": "wrong channel",
+              "timestamp": 30
+            }
+          },
+          {
+            "id": 5,
+            "score": 0.8,
+            "payload": {
+              "channel_id": "c",
+              "message": "hi",
+              "timestamp": 30
+            }
+          },
+          {
+            "id": 6,
+            "score": 0.8,
+            "payload": {
+              "channel_id": "c",
+              "message": "😀a",
+              "timestamp": 30
+            }
+          },
+          {
+            "id": 7,
+            "score": 0.7,
+            "payload": {
+              "channel_id": "c",
+              "message": "﻿hello﻿",
+              "timestamp": 40
+            }
+          },
+          {
+            "id": 8,
+            "distance": 0.69,
+            "payload": {
+              "channel_id": "c",
+              "message": "fallback result",
+              "timestamp": "50"
+            }
+          },
+          {
+            "id": 9,
+            "payload": {}
+          }
+        ],
+        "threshold": 0.75,
+        "limit": 1
+      },
+      "expected": [
+        {
+          "score": 0.9,
+          "channel_id": "c",
+          "username": "unknown",
+          "user_id": "unknown",
+          "message": "different message",
+          "timestamp": 30
+        }
+      ]
+    },
+    {
+      "operation": "semantic_select",
+      "input": {
+        "channelID": "c",
+        "points": [
+          {
+            "id": 1,
+            "score": 0.9,
+            "payload": {
+              "channel_id": "c",
+              "message": "same message",
+              "timestamp": 10,
+              "username": "first"
+            }
+          },
+          {
+            "id": 2,
+            "score": 0.99,
+            "payload": {
+              "channel_id": "c",
+              "message": "same message",
+              "timestamp": 20,
+              "username": "later"
+            }
+          },
+          {
+            "id": 3,
+            "score": 0.9,
+            "payload": {
+              "channel_id": "c",
+              "message": "different message",
+              "timestamp": 30
+            }
+          },
+          {
+            "id": 4,
+            "score": 0.99,
+            "payload": {
+              "channel_id": "other",
+              "message": "wrong channel",
+              "timestamp": 30
+            }
+          },
+          {
+            "id": 5,
+            "score": 0.8,
+            "payload": {
+              "channel_id": "c",
+              "message": "hi",
+              "timestamp": 30
+            }
+          },
+          {
+            "id": 6,
+            "score": 0.8,
+            "payload": {
+              "channel_id": "c",
+              "message": "😀a",
+              "timestamp": 30
+            }
+          },
+          {
+            "id": 7,
+            "score": 0.7,
+            "payload": {
+              "channel_id": "c",
+              "message": "﻿hello﻿",
+              "timestamp": 40
+            }
+          },
+          {
+            "id": 8,
+            "distance": 0.69,
+            "payload": {
+              "channel_id": "c",
+              "message": "fallback result",
+              "timestamp": "50"
+            }
+          },
+          {
+            "id": 9,
+            "payload": {}
+          }
+        ],
+        "threshold": 0.75,
+        "limit": 3
+      },
+      "expected": [
+        {
+          "score": 0.9,
+          "channel_id": "c",
+          "username": "unknown",
+          "user_id": "unknown",
+          "message": "different message",
+          "timestamp": 30
+        },
+        {
+          "score": 0.9,
+          "channel_id": "c",
+          "username": "first",
+          "user_id": "unknown",
+          "message": "same message",
+          "timestamp": 10
+        },
+        {
+          "score": 0.8,
+          "channel_id": "c",
+          "username": "unknown",
+          "user_id": "unknown",
+          "message": "😀a",
+          "timestamp": 30
+        }
+      ]
+    },
+    {
+      "operation": "semantic_select",
+      "input": {
+        "channelID": "c",
+        "points": [
+          {
+            "id": 1,
+            "score": 0.9,
+            "payload": {
+              "channel_id": "c",
+              "message": "same message",
+              "timestamp": 10,
+              "username": "first"
+            }
+          },
+          {
+            "id": 2,
+            "score": 0.99,
+            "payload": {
+              "channel_id": "c",
+              "message": "same message",
+              "timestamp": 20,
+              "username": "later"
+            }
+          },
+          {
+            "id": 3,
+            "score": 0.9,
+            "payload": {
+              "channel_id": "c",
+              "message": "different message",
+              "timestamp": 30
+            }
+          },
+          {
+            "id": 4,
+            "score": 0.99,
+            "payload": {
+              "channel_id": "other",
+              "message": "wrong channel",
+              "timestamp": 30
+            }
+          },
+          {
+            "id": 5,
+            "score": 0.8,
+            "payload": {
+              "channel_id": "c",
+              "message": "hi",
+              "timestamp": 30
+            }
+          },
+          {
+            "id": 6,
+            "score": 0.8,
+            "payload": {
+              "channel_id": "c",
+              "message": "😀a",
+              "timestamp": 30
+            }
+          },
+          {
+            "id": 7,
+            "score": 0.7,
+            "payload": {
+              "channel_id": "c",
+              "message": "﻿hello﻿",
+              "timestamp": 40
+            }
+          },
+          {
+            "id": 8,
+            "distance": 0.69,
+            "payload": {
+              "channel_id": "c",
+              "message": "fallback result",
+              "timestamp": "50"
+            }
+          },
+          {
+            "id": 9,
+            "payload": {}
+          }
+        ],
+        "threshold": 0.75,
+        "limit": 15
+      },
+      "expected": [
+        {
+          "score": 0.9,
+          "channel_id": "c",
+          "username": "unknown",
+          "user_id": "unknown",
+          "message": "different message",
+          "timestamp": 30
+        },
+        {
+          "score": 0.9,
+          "channel_id": "c",
+          "username": "first",
+          "user_id": "unknown",
+          "message": "same message",
+          "timestamp": 10
+        },
+        {
+          "score": 0.8,
+          "channel_id": "c",
+          "username": "unknown",
+          "user_id": "unknown",
+          "message": "😀a",
+          "timestamp": 30
+        }
+      ]
+    },
+    {
+      "operation": "semantic_select",
+      "input": {
+        "channelID": "c",
+        "points": [
+          {
+            "id": 1,
+            "score": 0.9,
+            "payload": {
+              "channel_id": "c",
+              "message": "same message",
+              "timestamp": 10,
+              "username": "first"
+            }
+          },
+          {
+            "id": 2,
+            "score": 0.99,
+            "payload": {
+              "channel_id": "c",
+              "message": "same message",
+              "timestamp": 20,
+              "username": "later"
+            }
+          },
+          {
+            "id": 3,
+            "score": 0.9,
+            "payload": {
+              "channel_id": "c",
+              "message": "different message",
+              "timestamp": 30
+            }
+          },
+          {
+            "id": 4,
+            "score": 0.99,
+            "payload": {
+              "channel_id": "other",
+              "message": "wrong channel",
+              "timestamp": 30
+            }
+          },
+          {
+            "id": 5,
+            "score": 0.8,
+            "payload": {
+              "channel_id": "c",
+              "message": "hi",
+              "timestamp": 30
+            }
+          },
+          {
+            "id": 6,
+            "score": 0.8,
+            "payload": {
+              "channel_id": "c",
+              "message": "😀a",
+              "timestamp": 30
+            }
+          },
+          {
+            "id": 7,
+            "score": 0.7,
+            "payload": {
+              "channel_id": "c",
+              "message": "﻿hello﻿",
+              "timestamp": 40
+            }
+          },
+          {
+            "id": 8,
+            "distance": 0.69,
+            "payload": {
+              "channel_id": "c",
+              "message": "fallback result",
+              "timestamp": "50"
+            }
+          },
+          {
+            "id": 9,
+            "payload": {}
+          }
+        ],
+        "threshold": 0.69,
+        "limit": 1
+      },
+      "expected": [
+        {
+          "score": 0.9,
+          "channel_id": "c",
+          "username": "unknown",
+          "user_id": "unknown",
+          "message": "different message",
+          "timestamp": 30
+        }
+      ]
+    },
+    {
+      "operation": "semantic_select",
+      "input": {
+        "channelID": "c",
+        "points": [
+          {
+            "id": 1,
+            "score": 0.9,
+            "payload": {
+              "channel_id": "c",
+              "message": "same message",
+              "timestamp": 10,
+              "username": "first"
+            }
+          },
+          {
+            "id": 2,
+            "score": 0.99,
+            "payload": {
+              "channel_id": "c",
+              "message": "same message",
+              "timestamp": 20,
+              "username": "later"
+            }
+          },
+          {
+            "id": 3,
+            "score": 0.9,
+            "payload": {
+              "channel_id": "c",
+              "message": "different message",
+              "timestamp": 30
+            }
+          },
+          {
+            "id": 4,
+            "score": 0.99,
+            "payload": {
+              "channel_id": "other",
+              "message": "wrong channel",
+              "timestamp": 30
+            }
+          },
+          {
+            "id": 5,
+            "score": 0.8,
+            "payload": {
+              "channel_id": "c",
+              "message": "hi",
+              "timestamp": 30
+            }
+          },
+          {
+            "id": 6,
+            "score": 0.8,
+            "payload": {
+              "channel_id": "c",
+              "message": "😀a",
+              "timestamp": 30
+            }
+          },
+          {
+            "id": 7,
+            "score": 0.7,
+            "payload": {
+              "channel_id": "c",
+              "message": "﻿hello﻿",
+              "timestamp": 40
+            }
+          },
+          {
+            "id": 8,
+            "distance": 0.69,
+            "payload": {
+              "channel_id": "c",
+              "message": "fallback result",
+              "timestamp": "50"
+            }
+          },
+          {
+            "id": 9,
+            "payload": {}
+          }
+        ],
+        "threshold": 0.69,
+        "limit": 3
+      },
+      "expected": [
+        {
+          "score": 0.9,
+          "channel_id": "c",
+          "username": "unknown",
+          "user_id": "unknown",
+          "message": "different message",
+          "timestamp": 30
+        },
+        {
+          "score": 0.9,
+          "channel_id": "c",
+          "username": "first",
+          "user_id": "unknown",
+          "message": "same message",
+          "timestamp": 10
+        },
+        {
+          "score": 0.8,
+          "channel_id": "c",
+          "username": "unknown",
+          "user_id": "unknown",
+          "message": "😀a",
+          "timestamp": 30
+        }
+      ]
+    },
+    {
+      "operation": "semantic_select",
+      "input": {
+        "channelID": "c",
+        "points": [
+          {
+            "id": 1,
+            "score": 0.9,
+            "payload": {
+              "channel_id": "c",
+              "message": "same message",
+              "timestamp": 10,
+              "username": "first"
+            }
+          },
+          {
+            "id": 2,
+            "score": 0.99,
+            "payload": {
+              "channel_id": "c",
+              "message": "same message",
+              "timestamp": 20,
+              "username": "later"
+            }
+          },
+          {
+            "id": 3,
+            "score": 0.9,
+            "payload": {
+              "channel_id": "c",
+              "message": "different message",
+              "timestamp": 30
+            }
+          },
+          {
+            "id": 4,
+            "score": 0.99,
+            "payload": {
+              "channel_id": "other",
+              "message": "wrong channel",
+              "timestamp": 30
+            }
+          },
+          {
+            "id": 5,
+            "score": 0.8,
+            "payload": {
+              "channel_id": "c",
+              "message": "hi",
+              "timestamp": 30
+            }
+          },
+          {
+            "id": 6,
+            "score": 0.8,
+            "payload": {
+              "channel_id": "c",
+              "message": "😀a",
+              "timestamp": 30
+            }
+          },
+          {
+            "id": 7,
+            "score": 0.7,
+            "payload": {
+              "channel_id": "c",
+              "message": "﻿hello﻿",
+              "timestamp": 40
+            }
+          },
+          {
+            "id": 8,
+            "distance": 0.69,
+            "payload": {
+              "channel_id": "c",
+              "message": "fallback result",
+              "timestamp": "50"
+            }
+          },
+          {
+            "id": 9,
+            "payload": {}
+          }
+        ],
+        "threshold": 0.69,
+        "limit": 15
+      },
+      "expected": [
+        {
+          "score": 0.9,
+          "channel_id": "c",
+          "username": "unknown",
+          "user_id": "unknown",
+          "message": "different message",
+          "timestamp": 30
+        },
+        {
+          "score": 0.9,
+          "channel_id": "c",
+          "username": "first",
+          "user_id": "unknown",
+          "message": "same message",
+          "timestamp": 10
+        },
+        {
+          "score": 0.8,
+          "channel_id": "c",
+          "username": "unknown",
+          "user_id": "unknown",
+          "message": "😀a",
+          "timestamp": 30
+        },
+        {
+          "score": 0.7,
+          "channel_id": "c",
+          "username": "unknown",
+          "user_id": "unknown",
+          "message": "hello",
+          "timestamp": 40
+        },
+        {
+          "score": 0.69,
+          "channel_id": "c",
+          "username": "unknown",
+          "user_id": "unknown",
+          "message": "fallback result",
+          "timestamp": 50
+        }
+      ]
+    },
+    {
+      "operation": "semantic_select",
+      "input": {
+        "channelID": "c",
+        "points": [
+          {
+            "id": 1,
+            "score": 0.9,
+            "payload": {
+              "channel_id": "c",
+              "message": "same message",
+              "timestamp": 10,
+              "username": "first"
+            }
+          },
+          {
+            "id": 2,
+            "score": 0.99,
+            "payload": {
+              "channel_id": "c",
+              "message": "same message",
+              "timestamp": 20,
+              "username": "later"
+            }
+          },
+          {
+            "id": 3,
+            "score": 0.9,
+            "payload": {
+              "channel_id": "c",
+              "message": "different message",
+              "timestamp": 30
+            }
+          },
+          {
+            "id": 4,
+            "score": 0.99,
+            "payload": {
+              "channel_id": "other",
+              "message": "wrong channel",
+              "timestamp": 30
+            }
+          },
+          {
+            "id": 5,
+            "score": 0.8,
+            "payload": {
+              "channel_id": "c",
+              "message": "hi",
+              "timestamp": 30
+            }
+          },
+          {
+            "id": 6,
+            "score": 0.8,
+            "payload": {
+              "channel_id": "c",
+              "message": "😀a",
+              "timestamp": 30
+            }
+          },
+          {
+            "id": 7,
+            "score": 0.7,
+            "payload": {
+              "channel_id": "c",
+              "message": "﻿hello﻿",
+              "timestamp": 40
+            }
+          },
+          {
+            "id": 8,
+            "distance": 0.69,
+            "payload": {
+              "channel_id": "c",
+              "message": "fallback result",
+              "timestamp": "50"
+            }
+          },
+          {
+            "id": 9,
+            "payload": {}
+          }
+        ],
+        "threshold": 1,
+        "limit": 1
+      },
+      "expected": []
+    },
+    {
+      "operation": "semantic_select",
+      "input": {
+        "channelID": "c",
+        "points": [
+          {
+            "id": 1,
+            "score": 0.9,
+            "payload": {
+              "channel_id": "c",
+              "message": "same message",
+              "timestamp": 10,
+              "username": "first"
+            }
+          },
+          {
+            "id": 2,
+            "score": 0.99,
+            "payload": {
+              "channel_id": "c",
+              "message": "same message",
+              "timestamp": 20,
+              "username": "later"
+            }
+          },
+          {
+            "id": 3,
+            "score": 0.9,
+            "payload": {
+              "channel_id": "c",
+              "message": "different message",
+              "timestamp": 30
+            }
+          },
+          {
+            "id": 4,
+            "score": 0.99,
+            "payload": {
+              "channel_id": "other",
+              "message": "wrong channel",
+              "timestamp": 30
+            }
+          },
+          {
+            "id": 5,
+            "score": 0.8,
+            "payload": {
+              "channel_id": "c",
+              "message": "hi",
+              "timestamp": 30
+            }
+          },
+          {
+            "id": 6,
+            "score": 0.8,
+            "payload": {
+              "channel_id": "c",
+              "message": "😀a",
+              "timestamp": 30
+            }
+          },
+          {
+            "id": 7,
+            "score": 0.7,
+            "payload": {
+              "channel_id": "c",
+              "message": "﻿hello﻿",
+              "timestamp": 40
+            }
+          },
+          {
+            "id": 8,
+            "distance": 0.69,
+            "payload": {
+              "channel_id": "c",
+              "message": "fallback result",
+              "timestamp": "50"
+            }
+          },
+          {
+            "id": 9,
+            "payload": {}
+          }
+        ],
+        "threshold": 1,
+        "limit": 3
+      },
+      "expected": []
+    },
+    {
+      "operation": "semantic_select",
+      "input": {
+        "channelID": "c",
+        "points": [
+          {
+            "id": 1,
+            "score": 0.9,
+            "payload": {
+              "channel_id": "c",
+              "message": "same message",
+              "timestamp": 10,
+              "username": "first"
+            }
+          },
+          {
+            "id": 2,
+            "score": 0.99,
+            "payload": {
+              "channel_id": "c",
+              "message": "same message",
+              "timestamp": 20,
+              "username": "later"
+            }
+          },
+          {
+            "id": 3,
+            "score": 0.9,
+            "payload": {
+              "channel_id": "c",
+              "message": "different message",
+              "timestamp": 30
+            }
+          },
+          {
+            "id": 4,
+            "score": 0.99,
+            "payload": {
+              "channel_id": "other",
+              "message": "wrong channel",
+              "timestamp": 30
+            }
+          },
+          {
+            "id": 5,
+            "score": 0.8,
+            "payload": {
+              "channel_id": "c",
+              "message": "hi",
+              "timestamp": 30
+            }
+          },
+          {
+            "id": 6,
+            "score": 0.8,
+            "payload": {
+              "channel_id": "c",
+              "message": "😀a",
+              "timestamp": 30
+            }
+          },
+          {
+            "id": 7,
+            "score": 0.7,
+            "payload": {
+              "channel_id": "c",
+              "message": "﻿hello﻿",
+              "timestamp": 40
+            }
+          },
+          {
+            "id": 8,
+            "distance": 0.69,
+            "payload": {
+              "channel_id": "c",
+              "message": "fallback result",
+              "timestamp": "50"
+            }
+          },
+          {
+            "id": 9,
+            "payload": {}
+          }
+        ],
+        "threshold": 1,
+        "limit": 15
+      },
+      "expected": []
+    },
+    {
+      "operation": "memory_parse",
+      "input": {
+        "point": {}
+      },
+      "expected": null
+    },
+    {
+      "operation": "memory_parse",
+      "input": {
+        "point": {
+          "id": 0,
+          "payload": {}
+        }
+      },
+      "expected": null
+    },
+    {
+      "operation": "memory_parse",
+      "input": {
+        "point": {
+          "id": 1,
+          "score": 0.7,
+          "payload": {
+            "channel_id": "c",
+            "content": " hello ",
+            "updated_at": 123
+          }
+        }
+      },
+      "expected": {
+        "score": 0.7,
+        "qdrant_point_id": "1",
+        "memory_id": "1",
+        "channel_id": "c",
+        "memory_type": "channel_lore",
+        "status": "confirmed",
+        "risk": "low",
+        "confidence": 0,
+        "subject_scope": "channel",
+        "content": "hello",
+        "summary": "hello",
+        "updated_at": 123
+      }
+    },
+    {
+      "operation": "memory_parse",
+      "input": {
+        "point": {
+          "id": 2,
+          "distance": 0.6,
+          "payload": {
+            "channel_id": "c",
+            "memory_id": "m",
+            "content": "﻿hello﻿",
+            "confidence": "0.8",
+            "subject_username": "name"
+          }
+        }
+      },
+      "expected": {
+        "score": 0.6,
+        "qdrant_point_id": "2",
+        "memory_id": "m",
+        "channel_id": "c",
+        "memory_type": "channel_lore",
+        "status": "confirmed",
+        "risk": "low",
+        "confidence": 0.8,
+        "subject_scope": "channel",
+        "subject_username": "name",
+        "content": "hello",
+        "summary": "hello",
+        "updated_at": 0
+      }
+    },
+    {
+      "operation": "memory_parse",
+      "input": {
+        "point": {
+          "id": 3,
+          "score": ".8",
+          "payload": {
+            "channel_id": "c",
+            "memory_id": "m",
+            "content": "hi",
+            "status": "",
+            "risk": "",
+            "summary": ""
+          }
+        }
+      },
+      "expected": {
+        "score": 0,
+        "qdrant_point_id": "3",
+        "memory_id": "m",
+        "channel_id": "c",
+        "memory_type": "channel_lore",
+        "status": "confirmed",
+        "risk": "low",
+        "confidence": 0,
+        "subject_scope": "channel",
+        "content": "hi",
+        "summary": "hi",
+        "updated_at": 0
+      }
+    },
+    {
+      "operation": "window_parse",
+      "input": {
+        "point": {}
+      },
+      "expected": null
+    },
+    {
+      "operation": "window_parse",
+      "input": {
+        "point": {
+          "payload": {
+            "channel_id": "c",
+            "message": "hi",
+            "timestamp": 0
+          }
+        }
+      },
+      "expected": null
+    },
+    {
+      "operation": "window_parse",
+      "input": {
+        "point": {
+          "payload": {
+            "channel_id": " c ",
+            "message": " hello ",
+            "timestamp": "12.9"
+          }
+        }
+      },
+      "expected": {
+        "channel_id": "c",
+        "username": "unknown",
+        "user_id": "unknown",
+        "message": "hello",
+        "timestamp": 12
+      }
+    },
+    {
+      "operation": "window_parse",
+      "input": {
+        "point": {
+          "payload": {
+            "channel_id": "c",
+            "message": "",
+            "timestamp": true,
+            "username": 0,
+            "user_id": false
+          }
+        }
+      },
+      "expected": {
+        "channel_id": "c",
+        "username": "unknown",
+        "user_id": "unknown",
+        "message": "",
+        "timestamp": 1
+      }
+    },
+    {
+      "operation": "window_parse",
+      "input": {
+        "point": {
+          "payload": {
+            "channel_id": "c",
+            "message": "﻿",
+            "timestamp": 10
+          }
+        }
+      },
+      "expected": null
+    },
+    {
+      "operation": "embedding_input",
+      "input": {
+        "summary": "sum",
+        "content": "body"
+      },
+      "expected": "sum\nbody"
+    },
+    {
+      "operation": "embedding_input",
+      "input": {
+        "summary": "",
+        "content": "body"
+      },
+      "expected": "body"
+    },
+    {
+      "operation": "embedding_input",
+      "input": {
+        "summary": " summary ",
+        "content": " body "
+      },
+      "expected": "summary\nbody"
+    },
+    {
+      "operation": "embedding_input",
+      "input": {
+        "summary": "﻿",
+        "content": ""
+      },
+      "expected": ""
+    },
+    {
+      "operation": "embedding_input",
+      "input": {
+        "summary": "",
+        "content": ""
+      },
+      "expected": ""
+    },
+    {
+      "operation": "collection",
+      "input": {
+        "kind": "chat"
+      },
+      "expected": {
+        "collection_name": "twitch_chat_logs",
+        "vectors": {
+          "size": 1024,
+          "distance": "Cosine",
+          "on_disk": true
+        },
+        "quantization_config": {
+          "scalar": {
+            "type": "int8",
+            "quantile": 0.99,
+            "always_ram": true
+          }
+        },
+        "payload_indexes": [
+          {
+            "field_name": "username",
+            "field_schema": "keyword"
+          },
+          {
+            "field_name": "message",
+            "field_schema": "text",
+            "tokenizer": "multilingual"
+          },
+          {
+            "field_name": "channel",
+            "field_schema": "keyword"
+          },
+          {
+            "field_name": "channel_name",
+            "field_schema": "keyword"
+          },
+          {
+            "field_name": "user_id",
+            "field_schema": "keyword"
+          },
+          {
+            "field_name": "timestamp",
+            "field_schema": "integer"
+          },
+          {
+            "field_name": "language",
+            "field_schema": "keyword"
+          },
+          {
+            "field_name": "channel_id",
+            "field_schema": "keyword"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "collection",
+      "input": {
+        "kind": "memory"
+      },
+      "expected": {
+        "collection_name": "twitch_channel_memories",
+        "vectors": {
+          "size": 1024,
+          "distance": "Cosine",
+          "on_disk": true
+        },
+        "quantization_config": {
+          "scalar": {
+            "type": "int8",
+            "quantile": 0.99,
+            "always_ram": true
+          }
+        },
+        "payload_indexes": [
+          {
+            "field_name": "memory_id",
+            "field_schema": "keyword"
+          },
+          {
+            "field_name": "channel_id",
+            "field_schema": "keyword"
+          },
+          {
+            "field_name": "memory_type",
+            "field_schema": "keyword"
+          },
+          {
+            "field_name": "status",
+            "field_schema": "keyword"
+          },
+          {
+            "field_name": "risk",
+            "field_schema": "keyword"
+          },
+          {
+            "field_name": "confidence",
+            "field_schema": "float"
+          },
+          {
+            "field_name": "subject_scope",
+            "field_schema": "keyword"
+          },
+          {
+            "field_name": "subject_username",
+            "field_schema": "keyword"
+          },
+          {
+            "field_name": "subject_user_id",
+            "field_schema": "keyword"
+          },
+          {
+            "field_name": "content",
+            "field_schema": "text",
+            "tokenizer": "multilingual"
+          },
+          {
+            "field_name": "summary",
+            "field_schema": "text",
+            "tokenizer": "multilingual"
+          },
+          {
+            "field_name": "created_at",
+            "field_schema": "integer"
+          },
+          {
+            "field_name": "updated_at",
+            "field_schema": "integer"
+          }
+        ]
+      }
+    }
+  ]
+}

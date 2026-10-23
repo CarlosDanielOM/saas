@@ -1,0 +1,655 @@
+{
+  "sources": {
+    "dimabot/src/utils/crypto.ts": "6d2cd4ed54d87a3d0daf0ad7548d02dda07990eb5b3279e613aa260b4d3b2f71",
+    "dimabot/src/classes/twitch_streamers.class.ts": "0d9547e218969291853711db5ce245688acc08eb5e4f5cdec96369cc17541884",
+    "dimabot/src/utils/tokens.ts": "b5265073a62aee18e5e3244628be6aa2ed8ae2aba58f05a3ab70d83987796ce4"
+  },
+  "cases": [
+    {
+      "operation": "key",
+      "input": {
+        "key": "fixture"
+      },
+      "expected": true
+    },
+    {
+      "operation": "key",
+      "input": {
+        "key": "01234567890123456789012345678901"
+      },
+      "expected": true
+    },
+    {
+      "operation": "key",
+      "input": {
+        "key": "                                "
+      },
+      "expected": true
+    },
+    {
+      "operation": "key",
+      "input": {
+        "key": ""
+      },
+      "error": true
+    },
+    {
+      "operation": "key",
+      "input": {
+        "key": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      "error": true
+    },
+    {
+      "operation": "key",
+      "input": {
+        "key": "é"
+      },
+      "error": true
+    },
+    {
+      "operation": "key",
+      "input": {
+        "key": "😀"
+      },
+      "error": true
+    },
+    {
+      "operation": "key",
+      "input": {
+        "key": "éééééééééééééééé"
+      },
+      "error": true
+    },
+    {
+      "operation": "key",
+      "input": {
+        "key": "éééééééééééééééééééééééééééééééé"
+      },
+      "error": true
+    },
+    {
+      "operation": "encrypt",
+      "input": {
+        "text": "",
+        "iv": "000102030405060708090a0b0c0d0e0f"
+      },
+      "expected": {
+        "iv": "",
+        "content": ""
+      }
+    },
+    {
+      "operation": "encrypt",
+      "input": {
+        "text": "access&+ /",
+        "iv": "000102030405060708090a0b0c0d0e0f"
+      },
+      "expected": {
+        "iv": "000102030405060708090a0b0c0d0e0f",
+        "content": "63283d17ed870aff2415"
+      }
+    },
+    {
+      "operation": "encrypt",
+      "input": {
+        "text": "résumé 🎮\u0000 token",
+        "iv": "000102030405060708090a0b0c0d0e0f"
+      },
+      "expected": {
+        "iv": "000102030405060708090a0b0c0d0e0f",
+        "content": "7088f701eb99ef7d24ca14aa242b17858a01d574"
+      }
+    },
+    {
+      "operation": "encrypt",
+      "input": {
+        "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "iv": "000102030405060708090a0b0c0d0e0f"
+      },
+      "expected": {
+        "iv": "000102030405060708090a0b0c0d0e0f",
+        "content": "7a33260ae68c54ac7c42f35cf2534f899d12c862fac7b0f48e10e1f413f0db046a3841b5e958b9867027d46b57815d32ba118a4b925b46694631f4b843eaa6112d886072462e83b38ecc558ff173d202"
+      }
+    },
+    {
+      "operation": "encrypt",
+      "input": {
+        "text": "counter-carry-counter-carry-counter-carry-counter-carry-counter-carry-counter-carry-counter-carry-counter-carry-",
+        "iv": "0000000000000000fffffffffffffffe"
+      },
+      "expected": {
+        "iv": "0000000000000000fffffffffffffffe",
+        "content": "9749c92d28d33d3731d5b52d6ac901d8267cddf055d2deca13626dabfeb28e0314c03df1c2d7a028005b7f794e2f4f9fa5eb7c7a6f0528c875bec30dad297a171b69907fa4a42760129d052821f74cb709e84048da01a6538448bbe90dd464bf978a6fa3ac6113584b89202bb76b4339"
+      }
+    },
+    {
+      "operation": "decrypt",
+      "input": {
+        "envelope": null
+      },
+      "expected": null
+    },
+    {
+      "operation": "decrypt",
+      "input": {
+        "envelope": {}
+      },
+      "expected": null
+    },
+    {
+      "operation": "decrypt",
+      "input": {
+        "envelope": {
+          "iv": null,
+          "content": null
+        }
+      },
+      "expected": null
+    },
+    {
+      "operation": "decrypt",
+      "input": {
+        "envelope": {
+          "iv": "",
+          "content": ""
+        }
+      },
+      "expected": null
+    },
+    {
+      "operation": "decrypt",
+      "input": {
+        "envelope": {
+          "iv": "000102030405060708090a0b0c0d0e0f",
+          "content": "7088f701eb99ef7d24ca14aa242b17858a01d574"
+        }
+      },
+      "expected": "résumé 🎮\u0000 token"
+    },
+    {
+      "operation": "decrypt",
+      "input": {
+        "envelope": {
+          "iv": "000102030405060708090A0B0C0D0E0F",
+          "content": "7088F701EB99EF7D24CA14AA242B17858A01D574"
+        }
+      },
+      "expected": "résumé 🎮\u0000 token"
+    },
+    {
+      "operation": "decrypt",
+      "input": {
+        "envelope": {
+          "iv": "000102030405060708090a0b0c0d0e0fg0",
+          "content": "7088f701eb99ef7d24ca14aa242b17858a01d574f"
+        }
+      },
+      "expected": "résumé 🎮\u0000 token"
+    },
+    {
+      "operation": "decrypt",
+      "input": {
+        "envelope": {
+          "iv": "000102030405060708090a0b0c0d0e0f",
+          "content": "z"
+        }
+      },
+      "expected": ""
+    },
+    {
+      "operation": "decrypt",
+      "input": {
+        "envelope": {
+          "iv": "0",
+          "content": "00"
+        }
+      },
+      "error": true
+    },
+    {
+      "operation": "decrypt",
+      "input": {
+        "envelope": {
+          "iv": "000102030405060708090a0b0c0d0e0f",
+          "content": "63b4bcf0fc3483"
+        }
+      },
+      "expected": "a��b��"
+    },
+    {
+      "operation": "usable",
+      "input": {
+        "token": "access",
+        "expiry": null,
+        "skew": 300,
+        "now": 1000
+      },
+      "expected": false
+    },
+    {
+      "operation": "usable",
+      "input": {
+        "token": "access",
+        "expiry": null,
+        "skew": 60,
+        "now": 1000
+      },
+      "expected": false
+    },
+    {
+      "operation": "usable",
+      "input": {
+        "token": "access",
+        "expiry": "",
+        "skew": 300,
+        "now": 1000
+      },
+      "expected": false
+    },
+    {
+      "operation": "usable",
+      "input": {
+        "token": "access",
+        "expiry": "",
+        "skew": 60,
+        "now": 1000
+      },
+      "expected": false
+    },
+    {
+      "operation": "usable",
+      "input": {
+        "token": "access",
+        "expiry": "1301",
+        "skew": 300,
+        "now": 1000
+      },
+      "expected": true
+    },
+    {
+      "operation": "usable",
+      "input": {
+        "token": "access",
+        "expiry": "1301",
+        "skew": 60,
+        "now": 1000
+      },
+      "expected": true
+    },
+    {
+      "operation": "usable",
+      "input": {
+        "token": "access",
+        "expiry": "1300",
+        "skew": 300,
+        "now": 1000
+      },
+      "expected": false
+    },
+    {
+      "operation": "usable",
+      "input": {
+        "token": "access",
+        "expiry": "1300",
+        "skew": 60,
+        "now": 1000
+      },
+      "expected": true
+    },
+    {
+      "operation": "usable",
+      "input": {
+        "token": "access",
+        "expiry": "1061",
+        "skew": 300,
+        "now": 1000
+      },
+      "expected": false
+    },
+    {
+      "operation": "usable",
+      "input": {
+        "token": "access",
+        "expiry": "1061",
+        "skew": 60,
+        "now": 1000
+      },
+      "expected": true
+    },
+    {
+      "operation": "usable",
+      "input": {
+        "token": "access",
+        "expiry": "1060",
+        "skew": 300,
+        "now": 1000
+      },
+      "expected": false
+    },
+    {
+      "operation": "usable",
+      "input": {
+        "token": "access",
+        "expiry": "1060",
+        "skew": 60,
+        "now": 1000
+      },
+      "expected": false
+    },
+    {
+      "operation": "usable",
+      "input": {
+        "token": "access",
+        "expiry": "2000garbage",
+        "skew": 300,
+        "now": 1000
+      },
+      "expected": true
+    },
+    {
+      "operation": "usable",
+      "input": {
+        "token": "access",
+        "expiry": "2000garbage",
+        "skew": 60,
+        "now": 1000
+      },
+      "expected": true
+    },
+    {
+      "operation": "usable",
+      "input": {
+        "token": "access",
+        "expiry": "+2000.9",
+        "skew": 300,
+        "now": 1000
+      },
+      "expected": true
+    },
+    {
+      "operation": "usable",
+      "input": {
+        "token": "access",
+        "expiry": "+2000.9",
+        "skew": 60,
+        "now": 1000
+      },
+      "expected": true
+    },
+    {
+      "operation": "usable",
+      "input": {
+        "token": "access",
+        "expiry": "-0x10",
+        "skew": 300,
+        "now": 1000
+      },
+      "expected": false
+    },
+    {
+      "operation": "usable",
+      "input": {
+        "token": "access",
+        "expiry": "-0x10",
+        "skew": 60,
+        "now": 1000
+      },
+      "expected": false
+    },
+    {
+      "operation": "usable",
+      "input": {
+        "token": "access",
+        "expiry": "﻿2000",
+        "skew": 300,
+        "now": 1000
+      },
+      "expected": true
+    },
+    {
+      "operation": "usable",
+      "input": {
+        "token": "access",
+        "expiry": "﻿2000",
+        "skew": 60,
+        "now": 1000
+      },
+      "expected": true
+    },
+    {
+      "operation": "usable",
+      "input": {
+        "token": "access",
+        "expiry": "2000",
+        "skew": 300,
+        "now": 1000
+      },
+      "expected": false
+    },
+    {
+      "operation": "usable",
+      "input": {
+        "token": "access",
+        "expiry": "2000",
+        "skew": 60,
+        "now": 1000
+      },
+      "expected": false
+    },
+    {
+      "operation": "usable",
+      "input": {
+        "token": "access",
+        "expiry": "Infinity",
+        "skew": 300,
+        "now": 1000
+      },
+      "expected": false
+    },
+    {
+      "operation": "usable",
+      "input": {
+        "token": "access",
+        "expiry": "Infinity",
+        "skew": 60,
+        "now": 1000
+      },
+      "expected": false
+    },
+    {
+      "operation": "usable",
+      "input": {
+        "token": "access",
+        "expiry": "1e9",
+        "skew": 300,
+        "now": 1000
+      },
+      "expected": false
+    },
+    {
+      "operation": "usable",
+      "input": {
+        "token": "access",
+        "expiry": "1e9",
+        "skew": 60,
+        "now": 1000
+      },
+      "expected": false
+    },
+    {
+      "operation": "usable",
+      "input": {
+        "token": "",
+        "expiry": "9999",
+        "skew": 300,
+        "now": 1000
+      },
+      "expected": false
+    }
+  ],
+  "refreshCases": [
+    {
+      "scenario": "success",
+      "result": {
+        "token": "new-access",
+        "refreshToken": "new-refresh",
+        "expiresIn": 3600,
+        "kind": "success"
+      },
+      "events": [
+        "store",
+        "cache"
+      ],
+      "fields": {
+        "access_token": "new-access",
+        "refresh_token": "new-refresh",
+        "expires_at": "4600",
+        "has_permissions": "true",
+        "up_to_date_permissions": "true"
+      }
+    },
+    {
+      "scenario": "default_expiry",
+      "result": {
+        "token": "new-access",
+        "refreshToken": "new-refresh",
+        "expiresIn": 7200,
+        "kind": "success"
+      },
+      "events": [
+        "store",
+        "cache"
+      ],
+      "fields": {
+        "access_token": "new-access",
+        "refresh_token": "new-refresh",
+        "expires_at": "8200",
+        "has_permissions": "true",
+        "up_to_date_permissions": "true"
+      }
+    },
+    {
+      "scenario": "permanent",
+      "result": {
+        "token": null,
+        "refreshToken": null,
+        "expiresIn": null,
+        "kind": "permanent_failure",
+        "status": 400,
+        "message": "Invalid refresh token"
+      },
+      "events": [
+        "store",
+        "cache"
+      ],
+      "fields": {
+        "access_token": "",
+        "refresh_token": "",
+        "expires_at": "",
+        "has_permissions": "false",
+        "up_to_date_permissions": "false"
+      }
+    },
+    {
+      "scenario": "rotated_usable",
+      "result": {
+        "token": "winner-access",
+        "refreshToken": "winner-refresh",
+        "expiresIn": 3600,
+        "kind": "success"
+      },
+      "events": [],
+      "fields": {
+        "access_token": "winner-access",
+        "refresh_token": "winner-refresh",
+        "expires_at": "4600"
+      }
+    },
+    {
+      "scenario": "rotated_expired",
+      "result": {
+        "token": null,
+        "refreshToken": null,
+        "expiresIn": null,
+        "kind": "transient_failure",
+        "status": 400,
+        "message": "Invalid refresh token (stored token already rotated by a concurrent refresh)"
+      },
+      "events": [],
+      "fields": {
+        "access_token": "winner-access",
+        "refresh_token": "winner-refresh",
+        "expires_at": "1050"
+      }
+    },
+    {
+      "scenario": "transient",
+      "result": {
+        "token": null,
+        "refreshToken": null,
+        "expiresIn": null,
+        "kind": "transient_failure",
+        "status": 503,
+        "message": "busy"
+      },
+      "events": [],
+      "fields": {
+        "access_token": "old-access",
+        "refresh_token": "old-refresh",
+        "expires_at": "1000"
+      }
+    },
+    {
+      "scenario": "incomplete",
+      "result": {
+        "token": null,
+        "refreshToken": null,
+        "expiresIn": null,
+        "kind": "transient_failure",
+        "status": 200,
+        "message": "Twitch token refresh returned incomplete payload"
+      },
+      "events": [],
+      "fields": {
+        "access_token": "old-access",
+        "refresh_token": "old-refresh",
+        "expires_at": "1000"
+      }
+    },
+    {
+      "scenario": "store_failure",
+      "result": {
+        "token": null,
+        "refreshToken": null,
+        "expiresIn": null,
+        "kind": "transient_failure",
+        "message": "Error: fixture store failure"
+      },
+      "events": [
+        "store"
+      ],
+      "fields": {
+        "access_token": "old-access",
+        "refresh_token": "old-refresh",
+        "expires_at": "1000"
+      }
+    },
+    {
+      "scenario": "missing_user",
+      "result": {
+        "token": null,
+        "refreshToken": null,
+        "expiresIn": null,
+        "kind": "transient_failure",
+        "message": "User not found while storing refreshed token"
+      },
+      "events": [],
+      "fields": {
+        "access_token": "old-access",
+        "refresh_token": "old-refresh",
+        "expires_at": "1000"
+      }
+    }
+  ]
+}

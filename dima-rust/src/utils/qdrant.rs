@@ -11,6 +11,14 @@
 //! TypeScript, before caching the client. A failed attempt is not cached and
 //! a later call retries. The crate's own client/server version check is
 //! skipped; the dependency is pinned to the production server's minor version.
+//!
+//! [`QdrantUtilities`] ports all eleven sources under the TypeScript Qdrant
+//! folder, with child modules for collection startup, chat, memory, and pure
+//! parity helpers. Construction is I/O-free: callers explicitly connect using
+//! this existing connector and inject embedding, language, queue, and telemetry
+//! adapters. Unported AI prompt assembly and authoritative memory policy remain
+//! caller responsibilities. This API stays behind the opt-in `qdrant` feature;
+//! it does not register workers or change deployed/default feature profiles.
 
 // Returns the client crate's own `QdrantError`, like every Qdrant API call,
 // so callers can use `?` across setup and queries.
@@ -20,6 +28,20 @@ use std::env;
 
 use qdrant_client::{Qdrant, QdrantError};
 use tokio::sync::OnceCell;
+
+mod backend;
+mod chat;
+mod collections;
+mod memory;
+mod parity;
+mod types;
+
+pub use backend::*;
+pub use chat::*;
+pub use collections::*;
+pub use memory::*;
+pub use parity::*;
+pub use types::*;
 
 /// Default gRPC port of the production Qdrant service.
 pub const DEFAULT_GRPC_PORT: u16 = 6334;

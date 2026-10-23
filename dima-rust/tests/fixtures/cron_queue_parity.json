@@ -1,0 +1,5144 @@
+{
+  "sources": {
+    "utils/cron_jobs_queue.ts": "c8ff512bdaf207ecea9e739a09d52570c8148d3ccedbbf072dd6be8541fe3bda",
+    "workers/stream_memory.worker.ts": "7664c65c1f95eb0f5095bba3fd8b819b0b1b47a2a632a4f78694836d926647b7",
+    "utils/ai/clip_recommendations/vod_clip_recommender_policy.ts": "f9c075302b0ffecaad73f5893817db3dee5c9400c1829516e0f051c8150ad462",
+    "workers/follow_ledger.worker.ts": "d83ae7c5727aa1a781f56c021109904a88a597e00d4f7aff76846f565daedcf7"
+  },
+  "fixedTime": "2026-10-22T12:34:56.789Z",
+  "fixedUuid": "00000000-0000-4000-8000-000000000001",
+  "enqueueScript": "\nif KEYS[3] and redis.call('EXISTS', KEYS[3]) == 1 then return 0 end\nif not redis.call('SET', KEYS[1], '1', 'NX', 'EX', ARGV[1]) then return 0 end\nif KEYS[3] then\n    local accepted = redis.pcall('SET', KEYS[3], '1')\n    if type(accepted) == 'table' and accepted.err then\n        redis.call('DEL', KEYS[1])\n        return redis.error_reply(accepted.err)\n    end\nend\nlocal pushed = redis.pcall('LPUSH', KEYS[2], ARGV[2])\nif type(pushed) == 'table' and pushed.err then\n    redis.call('DEL', KEYS[1])\n    if KEYS[3] then redis.call('DEL', KEYS[3]) end\n    return redis.error_reply(pushed.err)\nend\nreturn 1\n",
+  "cases": [
+    {
+      "operation": "parse",
+      "input": {
+        "payload": ""
+      },
+      "expected": {
+        "job": null,
+        "uuidCalls": 0,
+        "clockCalls": 0
+      }
+    },
+    {
+      "operation": "parse",
+      "input": {
+        "payload": "{"
+      },
+      "expected": {
+        "job": null,
+        "uuidCalls": 0,
+        "clockCalls": 0
+      }
+    },
+    {
+      "operation": "parse",
+      "input": {
+        "payload": "null"
+      },
+      "expected": {
+        "job": null,
+        "uuidCalls": 0,
+        "clockCalls": 0
+      }
+    },
+    {
+      "operation": "parse",
+      "input": {
+        "payload": "[]"
+      },
+      "expected": {
+        "job": null,
+        "uuidCalls": 0,
+        "clockCalls": 0
+      }
+    },
+    {
+      "operation": "parse",
+      "input": {
+        "payload": "42"
+      },
+      "expected": {
+        "job": null,
+        "uuidCalls": 0,
+        "clockCalls": 0
+      }
+    },
+    {
+      "operation": "parse",
+      "input": {
+        "payload": "\"summary\""
+      },
+      "expected": {
+        "job": null,
+        "uuidCalls": 0,
+        "clockCalls": 0
+      }
+    },
+    {
+      "operation": "parse",
+      "input": {
+        "payload": "false"
+      },
+      "expected": {
+        "job": null,
+        "uuidCalls": 0,
+        "clockCalls": 0
+      }
+    },
+    {
+      "operation": "parse",
+      "input": {
+        "payload": "{}"
+      },
+      "expected": {
+        "job": null,
+        "uuidCalls": 0,
+        "clockCalls": 0
+      }
+    },
+    {
+      "operation": "parse",
+      "input": {
+        "payload": "{\"job\":7}"
+      },
+      "expected": {
+        "job": null,
+        "uuidCalls": 0,
+        "clockCalls": 0
+      }
+    },
+    {
+      "operation": "parse",
+      "input": {
+        "payload": "{\"job\":\"  \"}"
+      },
+      "expected": {
+        "job": null,
+        "uuidCalls": 0,
+        "clockCalls": 0
+      }
+    },
+    {
+      "operation": "parse",
+      "input": {
+        "payload": "{\"job\":\"summary\"}"
+      },
+      "expected": {
+        "job": {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "job": "summary",
+          "requestedAt": "2026-10-22T12:34:56.789Z"
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1
+      }
+    },
+    {
+      "operation": "parse",
+      "input": {
+        "payload": "{\"id\":\"existing-id\",\"job\":\" ﻿ summary  \",\"requestedAt\":\"not-a-date\",\"requestedBy\":\" user \",\"userID\":\" 1 \",\"accountID\":\"2\",\"channelID\":\"3\",\"dedupeKey\":\" key \",\"data\":{\"nested\":{\"x\":true}},\"extra\":42}"
+      },
+      "expected": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "requestedBy": "user",
+          "userID": "1",
+          "accountID": "2",
+          "channelID": "3",
+          "data": {
+            "nested": {
+              "x": true
+            }
+          },
+          "dedupeKey": "key"
+        },
+        "uuidCalls": 0,
+        "clockCalls": 0
+      }
+    },
+    {
+      "operation": "parse",
+      "input": {
+        "payload": "{\"id\":\"\",\"job\":\"summary\",\"requestedAt\":\"\",\"requestedBy\":false,\"userID\":7,\"accountID\":{},\"channelID\":[],\"dedupeKey\":null}"
+      },
+      "expected": {
+        "job": {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "job": "summary",
+          "requestedAt": "2026-10-22T12:34:56.789Z"
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1
+      }
+    },
+    {
+      "operation": "parse",
+      "input": {
+        "payload": "{\"id\":\"existing-id\",\"job\":\"summary\",\"requestedAt\":\"not-a-date\"}"
+      },
+      "expected": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date"
+        },
+        "uuidCalls": 0,
+        "clockCalls": 0
+      }
+    },
+    {
+      "operation": "parse",
+      "input": {
+        "payload": "{\"id\":\"existing-id\",\"job\":\"summary\",\"requestedAt\":\"not-a-date\",\"data\":{\"text\":\"[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[\\\\\\\"}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}\"}}"
+      },
+      "expected": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "text": "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[\\\"}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}"
+          }
+        },
+        "uuidCalls": 0,
+        "clockCalls": 0
+      }
+    },
+    {
+      "operation": "parse",
+      "input": {
+        "payload": "{\"job\":\"first\",\"job\":\"last\",\"data\":{\"attempt\":2}}"
+      },
+      "expected": {
+        "job": {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "job": "last",
+          "requestedAt": "2026-10-22T12:34:56.789Z",
+          "data": {
+            "attempt": 2
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1
+      }
+    },
+    {
+      "operation": "parse",
+      "input": {
+        "payload": "{\"id\":\"existing-id\",\"job\":\"summary\",\"requestedAt\":\"not-a-date\",\"data\":null}"
+      },
+      "expected": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date"
+        },
+        "uuidCalls": 0,
+        "clockCalls": 0
+      }
+    },
+    {
+      "operation": "parse",
+      "input": {
+        "payload": "{\"id\":\"existing-id\",\"job\":\"summary\",\"requestedAt\":\"not-a-date\",\"data\":false}"
+      },
+      "expected": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date"
+        },
+        "uuidCalls": 0,
+        "clockCalls": 0
+      }
+    },
+    {
+      "operation": "parse",
+      "input": {
+        "payload": "{\"id\":\"existing-id\",\"job\":\"summary\",\"requestedAt\":\"not-a-date\",\"data\":0}"
+      },
+      "expected": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date"
+        },
+        "uuidCalls": 0,
+        "clockCalls": 0
+      }
+    },
+    {
+      "operation": "parse",
+      "input": {
+        "payload": "{\"id\":\"existing-id\",\"job\":\"summary\",\"requestedAt\":\"not-a-date\",\"data\":\"text\"}"
+      },
+      "expected": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date"
+        },
+        "uuidCalls": 0,
+        "clockCalls": 0
+      }
+    },
+    {
+      "operation": "parse",
+      "input": {
+        "payload": "{\"id\":\"existing-id\",\"job\":\"summary\",\"requestedAt\":\"not-a-date\",\"data\":[]}"
+      },
+      "expected": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": []
+        },
+        "uuidCalls": 0,
+        "clockCalls": 0
+      }
+    },
+    {
+      "operation": "parse",
+      "input": {
+        "payload": "{\"id\":\"existing-id\",\"job\":\"summary\",\"requestedAt\":\"not-a-date\",\"data\":[1,{\"nested\":true}]}"
+      },
+      "expected": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": [
+            1,
+            {
+              "nested": true
+            }
+          ]
+        },
+        "uuidCalls": 0,
+        "clockCalls": 0
+      }
+    },
+    {
+      "operation": "parse",
+      "input": {
+        "payload": "{\"id\":\"existing-id\",\"job\":\"summary\",\"requestedAt\":\"not-a-date\",\"data\":{}}"
+      },
+      "expected": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {}
+        },
+        "uuidCalls": 0,
+        "clockCalls": 0
+      }
+    },
+    {
+      "operation": "parse",
+      "input": {
+        "payload": "{\"id\":\"existing-id\",\"job\":\"summary\",\"requestedAt\":\"not-a-date\",\"data\":{\"source\":\"stream_offline\",\"sessionID\":\"s\"}}"
+      },
+      "expected": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "source": "stream_offline",
+            "sessionID": "s"
+          }
+        },
+        "uuidCalls": 0,
+        "clockCalls": 0
+      }
+    },
+    {
+      "operation": "parse_depth_boundary",
+      "input": {
+        "payload": "{\"id\":\"existing-id\",\"job\":\"summary\",\"requestedAt\":\"not-a-date\",\"data\":{\"nested\":[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[\"leaf\"]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]}}",
+        "nestedArrays": 125
+      },
+      "expected": {
+        "sourceAccepted": true,
+        "serialized": "{\"id\":\"existing-id\",\"job\":\"summary\",\"requestedAt\":\"not-a-date\",\"data\":{\"nested\":[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[\"leaf\"]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]}}",
+        "uuidCalls": 0,
+        "clockCalls": 0
+      }
+    },
+    {
+      "operation": "parse_depth_boundary",
+      "input": {
+        "payload": "{\"id\":\"existing-id\",\"job\":\"summary\",\"requestedAt\":\"not-a-date\",\"data\":{\"nested\":[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[\"leaf\"]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]}}",
+        "nestedArrays": 126
+      },
+      "expected": {
+        "sourceAccepted": true,
+        "serialized": "{\"id\":\"existing-id\",\"job\":\"summary\",\"requestedAt\":\"not-a-date\",\"data\":{\"nested\":[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[\"leaf\"]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]}}",
+        "uuidCalls": 0,
+        "clockCalls": 0
+      }
+    },
+    {
+      "operation": "parse_depth_boundary",
+      "input": {
+        "payload": "{\"id\":\"existing-id\",\"job\":\"summary\",\"requestedAt\":\"not-a-date\",\"data\":{\"nested\":[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[\"leaf\"]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]}}",
+        "nestedArrays": 256
+      },
+      "expected": {
+        "sourceAccepted": true,
+        "serialized": "{\"id\":\"existing-id\",\"job\":\"summary\",\"requestedAt\":\"not-a-date\",\"data\":{\"nested\":[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[\"leaf\"]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]}}",
+        "uuidCalls": 0,
+        "clockCalls": 0
+      }
+    },
+    {
+      "operation": "dedupe_key",
+      "input": {
+        "token": ""
+      },
+      "expected": "cron:jobs:dedupe:"
+    },
+    {
+      "operation": "dedupe_key",
+      "input": {
+        "token": "  "
+      },
+      "expected": "cron:jobs:dedupe:"
+    },
+    {
+      "operation": "dedupe_key",
+      "input": {
+        "token": " summary:1 "
+      },
+      "expected": "cron:jobs:dedupe:summary:1"
+    },
+    {
+      "operation": "dedupe_key",
+      "input": {
+        "token": "﻿token "
+      },
+      "expected": "cron:jobs:dedupe:token"
+    },
+    {
+      "operation": "dedupe_key",
+      "input": {
+        "token": "token"
+      },
+      "expected": "cron:jobs:dedupe:token"
+    },
+    {
+      "operation": "dedupe_key",
+      "input": {
+        "token": "a::b"
+      },
+      "expected": "cron:jobs:dedupe:a::b"
+    },
+    {
+      "operation": "dedupe_key",
+      "input": {
+        "token": "é:\u0000"
+      },
+      "expected": "cron:jobs:dedupe:é:\u0000"
+    },
+    {
+      "operation": "serialize",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date"
+        }
+      },
+      "expected": "{\"id\":\"existing-id\",\"job\":\"summary\",\"requestedAt\":\"not-a-date\"}"
+    },
+    {
+      "operation": "serialize",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "  no-trim  ",
+          "requestedAt": "not-a-date",
+          "requestedBy": "",
+          "userID": " u ",
+          "data": null,
+          "dedupeKey": ""
+        }
+      },
+      "expected": "{\"id\":\"existing-id\",\"job\":\"  no-trim  \",\"requestedAt\":\"not-a-date\",\"requestedBy\":\"\",\"userID\":\" u \",\"data\":null,\"dedupeKey\":\"\"}"
+    },
+    {
+      "operation": "serialize",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "1": "one",
+            "2": "two",
+            "z": 1e-7,
+            "a": 1e+21,
+            "nested": [
+              null,
+              {
+                "flag": true
+              }
+            ]
+          }
+        }
+      },
+      "expected": "{\"id\":\"existing-id\",\"job\":\"summary\",\"requestedAt\":\"not-a-date\",\"data\":{\"1\":\"one\",\"2\":\"two\",\"z\":1e-7,\"a\":1e+21,\"nested\":[null,{\"flag\":true}]}}"
+    },
+    {
+      "operation": "serialize",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": [
+            1,
+            2,
+            {
+              "nested": true
+            }
+          ]
+        }
+      },
+      "expected": "{\"id\":\"existing-id\",\"job\":\"summary\",\"requestedAt\":\"not-a-date\",\"data\":[1,2,{\"nested\":true}]}"
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {},
+        "env": null
+      },
+      "expected": {
+        "result": {
+          "enqueued": false,
+          "message": "Invalid cron job name",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "",
+            "requestedAt": "2026-10-22T12:34:56.789Z"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 0,
+        "commands": []
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": null
+        },
+        "env": null
+      },
+      "expected": {
+        "result": {
+          "enqueued": false,
+          "message": "Invalid cron job name",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "",
+            "requestedAt": "2026-10-22T12:34:56.789Z"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 0,
+        "commands": []
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": " "
+        },
+        "env": null
+      },
+      "expected": {
+        "result": {
+          "enqueued": false,
+          "message": "Invalid cron job name",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "",
+            "requestedAt": "2026-10-22T12:34:56.789Z"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 0,
+        "commands": []
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": 4
+        },
+        "env": null
+      },
+      "expected": {
+        "result": {
+          "enqueued": false,
+          "message": "Invalid cron job name",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "",
+            "requestedAt": "2026-10-22T12:34:56.789Z"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 0,
+        "commands": []
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary"
+        },
+        "env": null
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "900",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": " summary ",
+          "channelID": " chan ",
+          "userID": " user ",
+          "accountID": " acct ",
+          "requestedBy": " me ",
+          "data": {
+            "source": "manual",
+            "value": 1
+          }
+        },
+        "env": null
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "requestedBy": "me",
+            "userID": "user",
+            "accountID": "acct",
+            "channelID": "chan",
+            "data": {
+              "source": "manual",
+              "value": 1
+            },
+            "dedupeKey": "cron:jobs:dedupe:summary:chan:user:acct"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary:chan:user:acct",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "900",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"requestedBy\":\"me\",\"userID\":\"user\",\"accountID\":\"acct\",\"channelID\":\"chan\",\"data\":{\"source\":\"manual\",\"value\":1},\"dedupeKey\":\"cron:jobs:dedupe:summary:chan:user:acct\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "channelID": false,
+          "userID": 9,
+          "accountID": {},
+          "requestedBy": [],
+          "queueKey": " ",
+          "dedupeToken": 7
+        },
+        "env": null
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "900",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "channelID": "c",
+          "data": {
+            "source": "stream_offline",
+            "sessionID": " s "
+          }
+        },
+        "env": null
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "channelID": "c",
+            "data": {
+              "source": "stream_offline",
+              "sessionID": " s "
+            },
+            "dedupeKey": "cron:jobs:dedupe:summary:c"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary:c",
+              "cron:jobs:queue",
+              "cron:jobs:accepted:summary:c:s"
+            ],
+            "arguments": [
+              "900",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"channelID\":\"c\",\"data\":{\"source\":\"stream_offline\",\"sessionID\":\" s \"},\"dedupeKey\":\"cron:jobs:dedupe:summary:c\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "data": {
+            "source": "stream_offline",
+            "sessionID": "s"
+          },
+          "queueKey": " custom:queue ",
+          "dedupeToken": " custom:token "
+        },
+        "env": null
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "data": {
+              "source": "stream_offline",
+              "sessionID": "s"
+            },
+            "dedupeKey": "cron:jobs:dedupe:custom:token"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:custom:token",
+              "custom:queue",
+              "cron:jobs:accepted:summary::s"
+            ],
+            "arguments": [
+              "900",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"data\":{\"source\":\"stream_offline\",\"sessionID\":\"s\"},\"dedupeKey\":\"cron:jobs:dedupe:custom:token\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "data": {
+            "source": "stream_offline",
+            "sessionID": null
+          }
+        },
+        "env": null
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "data": {
+              "source": "stream_offline",
+              "sessionID": null
+            },
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "900",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"data\":{\"source\":\"stream_offline\",\"sessionID\":null},\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "data": {
+            "source": "stream_offline",
+            "sessionID": ""
+          }
+        },
+        "env": null
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "data": {
+              "source": "stream_offline",
+              "sessionID": ""
+            },
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "900",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"data\":{\"source\":\"stream_offline\",\"sessionID\":\"\"},\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "data": {
+            "source": "stream_offline",
+            "sessionID": " "
+          }
+        },
+        "env": null
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "data": {
+              "source": "stream_offline",
+              "sessionID": " "
+            },
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "900",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"data\":{\"source\":\"stream_offline\",\"sessionID\":\" \"},\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "data": {
+            "source": "stream_offline",
+            "sessionID": 7
+          }
+        },
+        "env": null
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "data": {
+              "source": "stream_offline",
+              "sessionID": 7
+            },
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "900",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"data\":{\"source\":\"stream_offline\",\"sessionID\":7},\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "data": {
+            "source": "stream_offline",
+            "sessionID": {}
+          }
+        },
+        "env": null
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "data": {
+              "source": "stream_offline",
+              "sessionID": {}
+            },
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "900",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"data\":{\"source\":\"stream_offline\",\"sessionID\":{}},\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "data": {
+            "source": "stream_offline",
+            "sessionID": false
+          }
+        },
+        "env": null
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "data": {
+              "source": "stream_offline",
+              "sessionID": false
+            },
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "900",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"data\":{\"source\":\"stream_offline\",\"sessionID\":false},\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "data": null
+        },
+        "env": null
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "data": null,
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "900",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"data\":null,\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "data": []
+        },
+        "env": null
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "data": [],
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "900",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"data\":[],\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "data": [
+            1,
+            2
+          ]
+        },
+        "env": null
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "data": [
+              1,
+              2
+            ],
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "900",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"data\":[1,2],\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "data": false
+        },
+        "env": null
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "data": false,
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "900",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"data\":false,\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "data": "text"
+        },
+        "env": null
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "data": "text",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "900",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"data\":\"text\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "data": {}
+        },
+        "env": null
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "data": {},
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "900",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"data\":{},\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "dedupeSeconds": null
+        },
+        "env": null
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "900",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "dedupeSeconds": 0
+        },
+        "env": null
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "900",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "dedupeSeconds": false
+        },
+        "env": null
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "900",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "dedupeSeconds": ""
+        },
+        "env": null
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "900",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "dedupeSeconds": -5
+        },
+        "env": null
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "60",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "dedupeSeconds": 1
+        },
+        "env": null
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "60",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "dedupeSeconds": 60
+        },
+        "env": null
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "60",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "dedupeSeconds": 61.5
+        },
+        "env": null
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "61.5",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "dedupeSeconds": 120
+        },
+        "env": null
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "120",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "dedupeSeconds": "120"
+        },
+        "env": null
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "120",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "dedupeSeconds": "0"
+        },
+        "env": null
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "60",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "dedupeSeconds": "  "
+        },
+        "env": null
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "60",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "dedupeSeconds": "junk"
+        },
+        "env": null
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "NaN",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "dedupeSeconds": "Infinity"
+        },
+        "env": null
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "Infinity",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "dedupeSeconds": "0x80"
+        },
+        "env": null
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "128",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "dedupeSeconds": []
+        },
+        "env": null
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "60",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "dedupeSeconds": [
+            120
+          ]
+        },
+        "env": null
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "120",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "dedupeSeconds": [
+            1,
+            2
+          ]
+        },
+        "env": null
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "NaN",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "dedupeSeconds": {}
+        },
+        "env": null
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "NaN",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary"
+        },
+        "env": ""
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "900",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "dedupeSeconds": 0
+        },
+        "env": ""
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "900",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "dedupeSeconds": 120
+        },
+        "env": ""
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "120",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary"
+        },
+        "env": "0"
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "60",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "dedupeSeconds": 0
+        },
+        "env": "0"
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "60",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "dedupeSeconds": 120
+        },
+        "env": "0"
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "120",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary"
+        },
+        "env": "12"
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "60",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "dedupeSeconds": 0
+        },
+        "env": "12"
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "60",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "dedupeSeconds": 120
+        },
+        "env": "12"
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "120",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary"
+        },
+        "env": "1200"
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "1200",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "dedupeSeconds": 0
+        },
+        "env": "1200"
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "1200",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "dedupeSeconds": 120
+        },
+        "env": "1200"
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "120",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary"
+        },
+        "env": "  "
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "60",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "dedupeSeconds": 0
+        },
+        "env": "  "
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "60",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "dedupeSeconds": 120
+        },
+        "env": "  "
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "120",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary"
+        },
+        "env": "bad"
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "NaN",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "dedupeSeconds": 0
+        },
+        "env": "bad"
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "NaN",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "dedupeSeconds": 120
+        },
+        "env": "bad"
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "120",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary"
+        },
+        "env": "Infinity"
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "Infinity",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "dedupeSeconds": 0
+        },
+        "env": "Infinity"
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "Infinity",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "dedupeSeconds": 120
+        },
+        "env": "Infinity"
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "120",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary"
+        },
+        "env": "-1"
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "60",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "dedupeSeconds": 0
+        },
+        "env": "-1"
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "60",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "dedupeSeconds": 120
+        },
+        "env": "-1"
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "120",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary"
+        },
+        "env": "0x80"
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "128",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "dedupeSeconds": 0
+        },
+        "env": "0x80"
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "128",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "enqueue",
+      "input": {
+        "input": {
+          "job": "summary",
+          "dedupeSeconds": 120
+        },
+        "env": "0x80"
+      },
+      "expected": {
+        "result": {
+          "enqueued": true,
+          "message": "Cron job queued",
+          "job": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "job": "summary",
+            "requestedAt": "2026-10-22T12:34:56.789Z",
+            "dedupeKey": "cron:jobs:dedupe:summary"
+          }
+        },
+        "uuidCalls": 1,
+        "clockCalls": 1,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "eval",
+            "keys": [
+              "cron:jobs:dedupe:summary",
+              "cron:jobs:queue"
+            ],
+            "arguments": [
+              "120",
+              "{\"id\":\"00000000-0000-4000-8000-000000000001\",\"job\":\"summary\",\"requestedAt\":\"2026-10-22T12:34:56.789Z\",\"dedupeKey\":\"cron:jobs:dedupe:summary\"}"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "operation": "clear",
+      "input": {},
+      "expected": {
+        "uuidCalls": 0,
+        "clockCalls": 0,
+        "clientCalls": 0,
+        "commands": []
+      }
+    },
+    {
+      "operation": "clear",
+      "input": {
+        "key": ""
+      },
+      "expected": {
+        "uuidCalls": 0,
+        "clockCalls": 0,
+        "clientCalls": 0,
+        "commands": []
+      }
+    },
+    {
+      "operation": "clear",
+      "input": {
+        "key": " "
+      },
+      "expected": {
+        "uuidCalls": 0,
+        "clockCalls": 0,
+        "clientCalls": 0,
+        "commands": []
+      }
+    },
+    {
+      "operation": "clear",
+      "input": {
+        "key": " key "
+      },
+      "expected": {
+        "uuidCalls": 0,
+        "clockCalls": 0,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "del",
+            "key": "key"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "clear",
+      "input": {
+        "key": "﻿key "
+      },
+      "expected": {
+        "uuidCalls": 0,
+        "clockCalls": 0,
+        "clientCalls": 1,
+        "commands": [
+          {
+            "operation": "del",
+            "key": "key"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "dedupe_default",
+      "input": {
+        "env": "0x200000000000011"
+      },
+      "expected": {
+        "value": 144115188075855900,
+        "category": "finite"
+      }
+    },
+    {
+      "operation": "dedupe_default",
+      "input": {
+        "env": "0x20000000000000"
+      },
+      "expected": {
+        "value": 9007199254740992,
+        "category": "finite"
+      }
+    },
+    {
+      "operation": "dedupe_default",
+      "input": {
+        "env": "0b1000000000000000000000000000000000000000000000000000000000"
+      },
+      "expected": {
+        "value": 144115188075855870,
+        "category": "finite"
+      }
+    },
+    {
+      "operation": "dedupe_default",
+      "input": {
+        "env": "0o10000000000000000000"
+      },
+      "expected": {
+        "value": 144115188075855870,
+        "category": "finite"
+      }
+    },
+    {
+      "operation": "dedupe_default",
+      "input": {
+        "env": "0x20000000000001"
+      },
+      "expected": {
+        "value": 9007199254740992,
+        "category": "finite"
+      }
+    },
+    {
+      "operation": "dedupe_default",
+      "input": {
+        "env": "0b1000000000000000000000000000000000000000000000000000000001"
+      },
+      "expected": {
+        "value": 144115188075855870,
+        "category": "finite"
+      }
+    },
+    {
+      "operation": "dedupe_default",
+      "input": {
+        "env": "0o10000000000000000001"
+      },
+      "expected": {
+        "value": 144115188075855870,
+        "category": "finite"
+      }
+    },
+    {
+      "operation": "dedupe_default",
+      "input": {
+        "env": "0x20000000000002"
+      },
+      "expected": {
+        "value": 9007199254740994,
+        "category": "finite"
+      }
+    },
+    {
+      "operation": "dedupe_default",
+      "input": {
+        "env": "0b1000000000000000000000000000000000000000000000000000000010"
+      },
+      "expected": {
+        "value": 144115188075855870,
+        "category": "finite"
+      }
+    },
+    {
+      "operation": "dedupe_default",
+      "input": {
+        "env": "0o10000000000000000002"
+      },
+      "expected": {
+        "value": 144115188075855870,
+        "category": "finite"
+      }
+    },
+    {
+      "operation": "dedupe_default",
+      "input": {
+        "env": "0x20000000000003"
+      },
+      "expected": {
+        "value": 9007199254740996,
+        "category": "finite"
+      }
+    },
+    {
+      "operation": "dedupe_default",
+      "input": {
+        "env": "0b1000000000000000000000000000000000000000000000000000000011"
+      },
+      "expected": {
+        "value": 144115188075855870,
+        "category": "finite"
+      }
+    },
+    {
+      "operation": "dedupe_default",
+      "input": {
+        "env": "0o10000000000000000003"
+      },
+      "expected": {
+        "value": 144115188075855870,
+        "category": "finite"
+      }
+    },
+    {
+      "operation": "dedupe_default",
+      "input": {
+        "env": "0x20000000000005"
+      },
+      "expected": {
+        "value": 9007199254740996,
+        "category": "finite"
+      }
+    },
+    {
+      "operation": "dedupe_default",
+      "input": {
+        "env": "0b1000000000000000000000000000000000000000000000000000000101"
+      },
+      "expected": {
+        "value": 144115188075855870,
+        "category": "finite"
+      }
+    },
+    {
+      "operation": "dedupe_default",
+      "input": {
+        "env": "0o10000000000000000005"
+      },
+      "expected": {
+        "value": 144115188075855870,
+        "category": "finite"
+      }
+    },
+    {
+      "operation": "dedupe_default",
+      "input": {
+        "env": "0x20000000000007"
+      },
+      "expected": {
+        "value": 9007199254741000,
+        "category": "finite"
+      }
+    },
+    {
+      "operation": "dedupe_default",
+      "input": {
+        "env": "0b1000000000000000000000000000000000000000000000000000000111"
+      },
+      "expected": {
+        "value": 144115188075855870,
+        "category": "finite"
+      }
+    },
+    {
+      "operation": "dedupe_default",
+      "input": {
+        "env": "0o10000000000000000007"
+      },
+      "expected": {
+        "value": 144115188075855870,
+        "category": "finite"
+      }
+    },
+    {
+      "operation": "dedupe_default",
+      "input": {
+        "env": "0x20000000000011"
+      },
+      "expected": {
+        "value": 9007199254741008,
+        "category": "finite"
+      }
+    },
+    {
+      "operation": "dedupe_default",
+      "input": {
+        "env": "0b1000000000000000000000000000000000000000000000000000010001"
+      },
+      "expected": {
+        "value": 144115188075855900,
+        "category": "finite"
+      }
+    },
+    {
+      "operation": "dedupe_default",
+      "input": {
+        "env": "0o10000000000000000021"
+      },
+      "expected": {
+        "value": 144115188075855900,
+        "category": "finite"
+      }
+    },
+    {
+      "operation": "dedupe_default",
+      "input": {
+        "env": "0xfffffffffffff800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "expected": {
+        "value": 1.7976931348623157e+308,
+        "category": "finite"
+      }
+    },
+    {
+      "operation": "dedupe_default",
+      "input": {
+        "env": "0xfffffffffffffbffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      },
+      "expected": {
+        "value": 1.7976931348623157e+308,
+        "category": "finite"
+      }
+    },
+    {
+      "operation": "dedupe_default",
+      "input": {
+        "env": "0xfffffffffffffc00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "expected": {
+        "value": null,
+        "category": "infinity"
+      }
+    },
+    {
+      "operation": "dedupe_default",
+      "input": {
+        "env": "0xfffffffffffffc00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001"
+      },
+      "expected": {
+        "value": null,
+        "category": "infinity"
+      }
+    },
+    {
+      "operation": "dedupe_default",
+      "input": {
+        "env": "0x10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "expected": {
+        "value": null,
+        "category": "infinity"
+      }
+    },
+    {
+      "operation": "dedupe_default",
+      "input": {
+        "env": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      },
+      "expected": {
+        "value": null,
+        "category": "infinity"
+      }
+    },
+    {
+      "operation": "dedupe_default",
+      "input": {
+        "env": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001"
+      },
+      "expected": {
+        "value": 60,
+        "category": "finite"
+      }
+    },
+    {
+      "operation": "dedupe_default",
+      "input": {
+        "env": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffg"
+      },
+      "expected": {
+        "value": null,
+        "category": "nan"
+      }
+    },
+    {
+      "operation": "dedupe_default",
+      "input": {
+        "env": "0b11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111112"
+      },
+      "expected": {
+        "value": null,
+        "category": "nan"
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date"
+        }
+      },
+      "expected": {
+        "attempt": 1,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "attempt": 2
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": null
+        }
+      },
+      "expected": {
+        "attempt": 1,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "attempt": 2
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {}
+        }
+      },
+      "expected": {
+        "attempt": 1,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "attempt": 2
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": []
+        }
+      },
+      "expected": {
+        "attempt": 1,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "attempt": 2
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": [
+            "preserve",
+            {
+              "nested": true
+            }
+          ]
+        }
+      },
+      "expected": {
+        "attempt": 1,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "0": "preserve",
+            "1": {
+              "nested": true
+            },
+            "attempt": 2
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": null
+          }
+        }
+      },
+      "expected": {
+        "attempt": 1,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 2
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": false
+          }
+        }
+      },
+      "expected": {
+        "attempt": 1,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 2
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": true
+          }
+        }
+      },
+      "expected": {
+        "attempt": 1,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 2
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 0
+          }
+        }
+      },
+      "expected": {
+        "attempt": 1,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 2
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": -1
+          }
+        }
+      },
+      "expected": {
+        "attempt": 1,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 2
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 0.5
+          }
+        }
+      },
+      "expected": {
+        "attempt": 0,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 1
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 1.9
+          }
+        }
+      },
+      "expected": {
+        "attempt": 1,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 2
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 2
+          }
+        }
+      },
+      "expected": {
+        "attempt": 2,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 3
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 1e+100
+          }
+        }
+      },
+      "expected": {
+        "attempt": 1e+100,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 1e+100
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": ""
+          }
+        }
+      },
+      "expected": {
+        "attempt": 1,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 2
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": "  "
+          }
+        }
+      },
+      "expected": {
+        "attempt": 1,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 2
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": "2.9"
+          }
+        }
+      },
+      "expected": {
+        "attempt": 2,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 3
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": "0x10"
+          }
+        }
+      },
+      "expected": {
+        "attempt": 16,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 17
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": "0b11"
+          }
+        }
+      },
+      "expected": {
+        "attempt": 3,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 4
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": "0o10"
+          }
+        }
+      },
+      "expected": {
+        "attempt": 8,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 9
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": "+0x10"
+          }
+        }
+      },
+      "expected": {
+        "attempt": 1,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 2
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": "Infinity"
+          }
+        }
+      },
+      "expected": {
+        "attempt": 1,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 2
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": "inf"
+          }
+        }
+      },
+      "expected": {
+        "attempt": 1,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 2
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": "1e2"
+          }
+        }
+      },
+      "expected": {
+        "attempt": 100,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 101
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": ".5"
+          }
+        }
+      },
+      "expected": {
+        "attempt": 0,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 1
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": "2e"
+          }
+        }
+      },
+      "expected": {
+        "attempt": 1,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 2
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": "bad"
+          }
+        }
+      },
+      "expected": {
+        "attempt": 1,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 2
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": []
+          }
+        }
+      },
+      "expected": {
+        "attempt": 1,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 2
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": [
+              3
+            ]
+          }
+        }
+      },
+      "expected": {
+        "attempt": 3,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 4
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": [
+              [
+                4
+              ]
+            ]
+          }
+        }
+      },
+      "expected": {
+        "attempt": 4,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 5
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": [
+              null
+            ]
+          }
+        }
+      },
+      "expected": {
+        "attempt": 1,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 2
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": [
+              1,
+              2
+            ]
+          }
+        }
+      },
+      "expected": {
+        "attempt": 1,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 2
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": {}
+          }
+        }
+      },
+      "expected": {
+        "attempt": 1,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 2
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": "0x200000000000011"
+          }
+        }
+      },
+      "expected": {
+        "attempt": 144115188075855900,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 144115188075855900
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": "0x20000000000000"
+          }
+        }
+      },
+      "expected": {
+        "attempt": 9007199254740992,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 9007199254740992
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": "0b1000000000000000000000000000000000000000000000000000000000"
+          }
+        }
+      },
+      "expected": {
+        "attempt": 144115188075855870,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 144115188075855870
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": "0o10000000000000000000"
+          }
+        }
+      },
+      "expected": {
+        "attempt": 144115188075855870,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 144115188075855870
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": "0x20000000000001"
+          }
+        }
+      },
+      "expected": {
+        "attempt": 9007199254740992,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 9007199254740992
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": "0b1000000000000000000000000000000000000000000000000000000001"
+          }
+        }
+      },
+      "expected": {
+        "attempt": 144115188075855870,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 144115188075855870
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": "0o10000000000000000001"
+          }
+        }
+      },
+      "expected": {
+        "attempt": 144115188075855870,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 144115188075855870
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": "0x20000000000002"
+          }
+        }
+      },
+      "expected": {
+        "attempt": 9007199254740994,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 9007199254740996
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": "0b1000000000000000000000000000000000000000000000000000000010"
+          }
+        }
+      },
+      "expected": {
+        "attempt": 144115188075855870,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 144115188075855870
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": "0o10000000000000000002"
+          }
+        }
+      },
+      "expected": {
+        "attempt": 144115188075855870,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 144115188075855870
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": "0x20000000000003"
+          }
+        }
+      },
+      "expected": {
+        "attempt": 9007199254740996,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 9007199254740996
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": "0b1000000000000000000000000000000000000000000000000000000011"
+          }
+        }
+      },
+      "expected": {
+        "attempt": 144115188075855870,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 144115188075855870
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": "0o10000000000000000003"
+          }
+        }
+      },
+      "expected": {
+        "attempt": 144115188075855870,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 144115188075855870
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": "0x20000000000005"
+          }
+        }
+      },
+      "expected": {
+        "attempt": 9007199254740996,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 9007199254740996
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": "0b1000000000000000000000000000000000000000000000000000000101"
+          }
+        }
+      },
+      "expected": {
+        "attempt": 144115188075855870,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 144115188075855870
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": "0o10000000000000000005"
+          }
+        }
+      },
+      "expected": {
+        "attempt": 144115188075855870,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 144115188075855870
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": "0x20000000000007"
+          }
+        }
+      },
+      "expected": {
+        "attempt": 9007199254741000,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 9007199254741000
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": "0b1000000000000000000000000000000000000000000000000000000111"
+          }
+        }
+      },
+      "expected": {
+        "attempt": 144115188075855870,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 144115188075855870
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": "0o10000000000000000007"
+          }
+        }
+      },
+      "expected": {
+        "attempt": 144115188075855870,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 144115188075855870
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": "0x20000000000011"
+          }
+        }
+      },
+      "expected": {
+        "attempt": 9007199254741008,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 9007199254741008
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": "0b1000000000000000000000000000000000000000000000000000010001"
+          }
+        }
+      },
+      "expected": {
+        "attempt": 144115188075855900,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 144115188075855900
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": "0o10000000000000000021"
+          }
+        }
+      },
+      "expected": {
+        "attempt": 144115188075855900,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 144115188075855900
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": "0xfffffffffffff800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+          }
+        }
+      },
+      "expected": {
+        "attempt": 1.7976931348623157e+308,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 1.7976931348623157e+308
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": "0xfffffffffffffbffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+          }
+        }
+      },
+      "expected": {
+        "attempt": 1.7976931348623157e+308,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 1.7976931348623157e+308
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": "0xfffffffffffffc00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+          }
+        }
+      },
+      "expected": {
+        "attempt": 1,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 2
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": "0xfffffffffffffc00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001"
+          }
+        }
+      },
+      "expected": {
+        "attempt": 1,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 2
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": "0x10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+          }
+        }
+      },
+      "expected": {
+        "attempt": 1,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 2
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+          }
+        }
+      },
+      "expected": {
+        "attempt": 1,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 2
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001"
+          }
+        }
+      },
+      "expected": {
+        "attempt": 1,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 2
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffg"
+          }
+        }
+      },
+      "expected": {
+        "attempt": 1,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 2
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": "0b11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111112"
+          }
+        }
+      },
+      "expected": {
+        "attempt": 1,
+        "next": {
+          "id": "existing-id",
+          "job": "summary",
+          "requestedAt": "not-a-date",
+          "data": {
+            "retained": true,
+            "attempt": 2
+          }
+        }
+      }
+    },
+    {
+      "operation": "attempt",
+      "input": {
+        "job": null
+      },
+      "expected": {
+        "attempt": 1,
+        "next": null
+      }
+    }
+  ]
+}

@@ -32,7 +32,12 @@
     feature = "ai-usage",
     feature = "eventsub",
     feature = "domain-events",
-    feature = "twitch-client"
+    feature = "chat-message",
+    feature = "timer-policy",
+    feature = "credit-policy",
+    feature = "cron-queue",
+    feature = "twitch-client",
+    feature = "qdrant"
 ))]
 pub mod js_compat;
 
@@ -59,6 +64,19 @@ pub mod keywords;
 pub mod polar;
 #[cfg(feature = "twitch-client")]
 pub mod twitch;
+
+#[cfg(feature = "chat-message")]
+pub mod chat_message;
+#[cfg(feature = "credential-crypto")]
+pub mod credential_crypto;
+#[cfg(feature = "credit-policy")]
+pub mod credit_policy;
+#[cfg(feature = "cron-queue")]
+pub mod cron_queue;
+#[cfg(feature = "timer-policy")]
+pub mod timer_policy;
+#[cfg(feature = "twitch-tokens")]
+pub mod twitch_tokens;
 
 #[cfg(feature = "audio")]
 pub mod audio;
