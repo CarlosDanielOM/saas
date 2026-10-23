@@ -74,7 +74,7 @@ if ((process.argv[1] || '').endsWith('/dist/server/index.js')) {
                     ttsQueueHandler.cache = new Proxy(actual, { get(target, property) {
                         if (property === 'eval') return async (...args) => {
                             const result = await actual.eval(...args);
-                            if (String(args[0]).includes('DIMA032_POP') && result?.length) await barrier('redis-pop');
+                            if (String(args[0]).includes('DIMA032_POP') && result?.length === 3) await barrier('redis-pop');
                             return result;
                         };
                         if (property !== 'del') return Reflect.get(target, property);
