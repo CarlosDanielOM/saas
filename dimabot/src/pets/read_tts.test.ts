@@ -3,11 +3,12 @@ import { mock, test, after } from 'node:test';
 import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { registerReadTtsBridge, prepareReadTts, releaseReadTts, reportReadTts, readTtsTerminal, invalidateReadTts, readTtsAvailable, reserveReadTts, resumeReadTts, scheduleReadTtsResume, protectReadTtsTurn, readTtsTurnCurrent } from './tts_bridge.js';
+import { registerReadTtsBridge, prepareReadTts as prepareOnly, observeReadTtsRuntime, releaseReadTts, reportReadTts, readTtsTerminal, invalidateReadTts, readTtsAvailable, reserveReadTts, resumeReadTts, scheduleReadTtsResume, protectReadTtsTurn, readTtsTurnCurrent, readTtsOwners } from './tts_bridge.js';
 const owner = '012345678901234567890123', channel = '123456';
 let runtime: any, config: any, rows: Map<string, any>, events: any[], endings: string[];
 let ticketFails = false, attemptedFails = false;
 let afterPrivateCreate: (() => Promise<void>) | undefined, afterPrivateLink: (() => Promise<void>) | undefined, afterAttempted: (() => Promise<void>) | undefined;
+let afterRuntimeRead: (() => Promise<void>) | undefined;
 let afterConfigurationRead: (() => Promise<void>) | undefined;
 let afterClaim: (() => Promise<void>) | undefined;
 const resumed: string[] = [];
@@ -39,7 +40,7 @@ mock.module('./tokens.js', { namedExports: { issueAudioTicket: async () => { if 
 mock.module('./tts_envelope.js', { namedExports: { inspectTtsAudio: async () => 500, ttsEnvelope: async () => ({ stepMs: 40, values: [0, 0.7, 0.2] }) } });
 mock.module('../schemas/pet_runtime.schema.js', { namedExports: {
     PetRuntime: {
-        findById: () => query(() => runtime),
+        findById: () => query(async () => { const snapshot=structuredClone(runtime); const barrier=afterRuntimeRead; afterRuntimeRead=undefined; if(barrier) await barrier(); return snapshot; }),
         find: () => ({ limit: () => query(() => runtime.ttsReservation?.token ? [runtime] : []) }),
         findOneAndUpdate: (filter: any, update: any) => query(async () => { if (!matches(runtime, filter)) return null; apply(runtime, update); const claimed = structuredClone(runtime); const barrier = afterClaim; afterClaim = undefined; if (barrier) await barrier(); return claimed; }),
         updateOne: async (filter: any, update: any) => { const match = matches(runtime, filter); if (match) apply(runtime, update); const barrier = update.$set?.activeRequestId ? afterPrivateLink : undefined; if (barrier) { afterPrivateLink = undefined; await barrier(); } return { modifiedCount: +match, matchedCount: +match }; }
@@ -73,10 +74,16 @@ async function reset() {
         lease: { leaseId: 'lease', holderPeerId: peer.id, expiresAt: new Date(Date.now() + 15000) } };
     config = { revision: 1, settings: { enabled: true, sources: { independent: false, readTts: true }, ttsAudio: 'pet',
         tts: { enabled: false }, personality: { source: 'profile', profileId: 'missing' }, appearance: { kind: 'png' }, playback: { target: 'browser' } }, runtime: { enabled: false, readTtsEnabled: true } };
-    rows = new Map(); events = []; endings = []; afterClaim = afterConfigurationRead = afterPrivateCreate = afterPrivateLink = afterAttempted = undefined; resumed.length = 0; ticketFails = attemptedFails = false; peer.socket.connected = peer.audioReady = peer.renderReady = true;
+    rows = new Map(); events = []; endings = []; afterRuntimeRead = afterClaim = afterConfigurationRead = afterPrivateCreate = afterPrivateLink = afterAttempted = undefined; resumed.length = 0; ticketFails = attemptedFails = false; peer.socket.connected = peer.audioReady = peer.renderReady = true;
 }
 function input(speechId = 'speech') { return { channelId: channel, speechId, file, mime: 'audio/wav', text: 'Existing normal TTS', cancelled: () => false,
     ended: async (reason: string) => { endings.push(reason); await releaseReadTts(channel, speechId); } }; }
+// Most legacy adapter cases exercise a complete handoff. New cases below inspect preparation separately.
+async function prepareReadTts(value: ReturnType<typeof input> & { holdMs?: number }) {
+    const route = await prepareOnly(value);
+    if (route?.audio === 'pet' && route.emit && !await route.emit(() => true)) return route.fallback?.();
+    return route;
+}
 after(async () => { await close(); registerReadTtsBridge(); await rm(fileDir, { recursive: true, force: true }); });
 test('readTTS-only PNG works without desktop, independent voice/personality, and emits one private play', async () => {
     await reset(); assert.equal(await readTtsAvailable(channel), true);
@@ -107,7 +114,7 @@ test('pending reservation fences ready independent work before bounded wait, the
     await reset(); runtime.activeRequestId = 'independent'; const pending = prepareReadTts(input());
     while (!runtime.ttsReservation) await new Promise(resolve => setTimeout(resolve, 1));
     assert.equal(runtime.activeRequestId, 'independent'); assert.equal(events.length, 0);
-    runtime.activeRequestId = null; assert.equal((await pending)?.audio, 'pet'); await releaseReadTts(channel, 'speech');
+    runtime.activeRequestId = null; observeReadTtsRuntime(runtime); assert.equal((await pending)?.audio, 'pet'); await releaseReadTts(channel, 'speech');
 });
 test('Path B has no lease/audio, monotonic follow anchors, mandatory end generation, and detached progress renews turn', async () => {
     await reset(); config.settings.ttsAudio = 'overlay'; runtime.lease = null;
@@ -154,8 +161,8 @@ test('startup reconciles exact orphan reservation and retains possibly-heard lea
     assert.equal(runtime.ttsReservation, null, 'new provider turn waits behind old conservative playback lease');
     assert.equal(await pending, true); assert.equal(runtime.ttsReservation.speechId, 'backlog'); await releaseReadTts(channel, 'backlog');
 });
-test('selected pet readiness/lease resumes normal queue; unavailable PNG peer does not wake it', async () => {
-    await reset(); peer.audioReady = false; await resumeReadTts(channel); assert.deepEqual(resumed, []);
+test('readiness wakes the queue without an early player gate; queue eligibility owns provider admission', async () => {
+    await reset(); peer.audioReady = false; await resumeReadTts(channel); assert.deepEqual(resumed, [channel]); resumed.length = 0;
     peer.audioReady = true; await resumeReadTts(channel); assert.deepEqual(resumed, [channel]);
 });
 
@@ -217,4 +224,42 @@ test('explicit pet cancel during pre-emission work ends normal queue instead of 
     const pending = prepareReadTts(input()); await reached; await invalidateReadTts(owner, 'cancelled'); unblock();
     assert.equal((await pending)?.audio, 'cancelled'); assert.deepEqual(endings, ['pet:state_changed']);
     assert.equal(events.some(event => event.event === 'pet:play'), false); assert.equal(runtime.ttsReservation, null);
+});
+
+test('preparation alone exposes no private play; final claim refusal stays unheard', async () => {
+    await reset(); const route=await prepareOnly(input()); assert.equal(route?.audio,'pet');
+    assert.equal(events.some(event=>event.event==='pet:play'),false); assert.equal([...rows.values()][0].deliveryAttempted,undefined);
+    assert.equal(await route!.emit!(()=>false),false); assert.equal(events.some(event=>event.event==='pet:play'),false);
+    await releaseReadTts(channel,'speech');
+});
+test('independent phase deadline returns waiting instead of ending a generated normal item', async () => {
+    await reset(); runtime.activeRequestId='independent'; rows.set('independent',{_id:'independent',status:'playing',phaseDeadline:new Date(Date.now()+20)});
+    assert.equal((await prepareOnly(input()))?.audio,'waiting'); assert.deepEqual(endings,[]);
+    await releaseReadTts(channel,'speech'); assert.equal(runtime.ttsReservation,null);
+});
+test('owner wait/history maps retire with the last logical head, including unrelated invalidation', async () => {
+    await reset(); const observed=new Set<Map<unknown,unknown>>(), set=Map.prototype.set;
+    const instrumentation=mock.method(Map.prototype,'set',function(this:Map<unknown,unknown>,key:unknown,value:unknown){if(key===owner)observed.add(this); return set.call(this,key,value);});
+    try {
+        await reserveReadTts(input()); observeReadTtsRuntime(runtime); runtime.activeRequestId='independent'; observeReadTtsRuntime(runtime);
+        await releaseReadTts(channel,'speech'); await invalidateReadTts(owner,'settings_changed');
+        assert.deepEqual(readTtsOwners(),[]); assert.ok(observed.size>=2); assert.ok([...observed].every(map=>!map.has(owner)));
+    } finally {instrumentation.mock.restore();}
+});
+
+test('terminal notification crossing a delayed runtime snapshot is latched before pending wait registration', async () => {
+    await reset(); runtime.activeRequestId='independent'; let unblock!:()=>void,entered!:()=>void;
+    const blocked=new Promise<void>(resolve=>{unblock=resolve;}),reached=new Promise<void>(resolve=>{entered=resolve;});
+    afterRuntimeRead=async()=>{entered(); await blocked;};
+    const pending=prepareReadTts(input()); await reached; runtime.activeRequestId=null; observeReadTtsRuntime(runtime); unblock();
+    let timeout:NodeJS.Timeout|undefined;
+    try {
+        const route=await Promise.race([pending,new Promise<never>((_,reject)=>{timeout=setTimeout(()=>reject(new Error('lost terminal wake')),200);})]);
+        assert.equal(route?.audio,'pet'); assert.equal(events.filter(e=>e.event==='pet:play').length,1);
+    } finally {clearTimeout(timeout); await releaseReadTts(channel,'speech');}
+});
+test('private preparation which outlives startBefore is proved unsent and falls back', async () => {
+    await reset(); const route=await prepareOnly(input()), realNow=Date.now; Date.now=()=>realNow()+6000;
+    try {assert.equal(await route!.emit!(()=>true),false); assert.equal(events.some(e=>e.event==='pet:play'),false);}
+    finally {Date.now=realNow; await releaseReadTts(channel,'speech');}
 });

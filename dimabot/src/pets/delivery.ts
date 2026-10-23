@@ -24,9 +24,10 @@ export function emitPetSnapshot(peer: PetPeer, serial: number, snapshot: Snapsho
     if (snapshot.active) peer.socket.emit('pet:request', { v: 1, generation: snapshot.generation, request: snapshot.active });
     return true;
 }
-export function emitPetReadyAndPlay(peer: PetPeer, generation: number, request: View, play: unknown) {
+export function emitPetReadyAndPlay(peer: PetPeer, generation: number, request: View, play: unknown, beforeEmit?: () => boolean) {
     if (!peer.socket.connected || generation < (peer.generationSeen ?? 0) || peer.retiredRequestIds?.has(request.requestId) ||
         generation === peer.generationSeen && request.requestId === peer.activeSeen && (peer.activeVersionSeen ?? 0) > request.version) return false;
+    if (beforeEmit?.() === false) return false;
     beginPetSnapshot(peer); // Invalidate every snapshot assembled before this delivery.
     peer.generationSeen = generation; peer.activeSeen = request.requestId; peer.activeVersionSeen = request.version;
     // Socket.IO preserves packet order on this connection. Rust requires this ready view before play.

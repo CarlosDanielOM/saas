@@ -56,7 +56,7 @@ const { registerStudioBridge } = await import('../overlays/bridge.js');
 const studio: string[] = [];
 registerStudioBridge({ hasSource: () => graceConnected, hasLiveSource: () => studioConnected, media: async () => {}, trigger: async () => {}, controlTts: async (_channel, action) => { studio.push(action); }, readTts: async (_channel, input) => { readDeliveries.push(input); if (publisher) return publisher(input); return input.beforeEmit?.() === false ? 'cancelled' : 'emitted'; } });
 const { registerReadTtsBridge } = await import('../pets/tts_bridge.js');
-registerReadTtsBridge({ configured: async () => readRoute !== null, owns: (channel, speech) => turns.has(channel) && (!speech || turns.get(channel) === speech), current: (channel, speech) => turns.get(channel) === speech, protect: async (_channel, _speech, hold) => { protections.push(hold); return true; }, reserve: async input => { if (readRoute) turns.set(input.channelId, input.speechId); onReserve?.(); return true; }, available: async () => readRoute === 'pet' && petReady, prepare: async input => { lastInput = input; return readRoute ? { audio: readRoute, durationMs: 500 } : null; }, release: async (channel, speech) => { released.push(speech); if (turns.get(channel) === speech) turns.delete(channel); }, report: async () => {}, terminal: async () => {}, invalidated: async () => {} });
+registerReadTtsBridge({ configured: async () => readRoute !== null, owns: (channel, speech) => turns.has(channel) && (!speech || turns.get(channel) === speech), current: (channel, speech) => turns.get(channel) === speech, protect: async (_channel, _speech, hold) => { protections.push(hold); return true; }, reserve: async input => { if (readRoute) turns.set(input.channelId, input.speechId); onReserve?.(); return true; }, available: async () => readRoute === 'pet' && petReady, prepare: async input => { if (readRoute) turns.set(input.channelId,input.speechId); lastInput = input; return readRoute ? { audio: readRoute, durationMs: 500 } : null; }, release: async (channel, speech) => { released.push(speech); if (turns.get(channel) === speech) turns.delete(channel); }, report: async () => {}, terminal: async () => {}, invalidated: async () => {} });
 
 function seed(channel: string, ...ids: string[]) {
   queues.set(`twitch:${channel}:tts:queue`, ids);
@@ -128,7 +128,7 @@ test('output loss during synthesis retains same file, debit and queue until a li
   studioConnected = false; await handler.handleOverlayDisconnected('synth-output-loss'); unblock(await original({}));
   await new Promise(resolve => setTimeout(resolve, 120)); assert.equal(usage, before + 1);
   assert.equal(readDeliveries.some(item => item.speechID === 'loss-a'), false);
-  studioConnected = true; await handler.resumeIfIdle('synth-output-loss'); await processing;
+  studioConnected = true; await handler.resumeIfIdle('synth-output-loss'); await processing; await until(() => readDeliveries.some(item => item.speechID === 'loss-a'));
   assert.equal(readDeliveries.filter(item => item.speechID === 'loss-a').length, 1); assert.equal(usage, before + 1);
   await handler.handleOverlayEnded('synth-output-loss', 'loss-a', 'ended', 'studio:live'); synthesize = original; legacyReady(true);
 });
@@ -139,7 +139,7 @@ test('proved-unsent retained delivery retries same file after disconnect; no sec
   const before = usage; seed('retained-output-loss', 'retain-a'); const processing = handler.processNext('retained-output-loss'); await reached;
   studioConnected = false; await handler.handleOverlayDisconnected('retained-output-loss'); unblock();
   await new Promise(resolve => setTimeout(resolve, 120)); assert.equal(usage, before + 1);
-  studioConnected = true; await processing; const attempts = readDeliveries.filter(item => item.speechID === 'retain-a');
+  studioConnected = true; await handler.resumeIfIdle('retained-output-loss'); await processing; await until(() => readDeliveries.filter(item => item.speechID === 'retain-a').length === 2); const attempts = readDeliveries.filter(item => item.speechID === 'retain-a');
   assert.equal(attempts.length, 2); assert.equal(attempts[0].file, attempts[1].file); assert.equal(usage, before + 1);
   await handler.handleOverlayEnded('retained-output-loss', 'retain-a', 'ended', 'studio:live'); publisher = undefined; legacyReady(true);
 });
@@ -160,4 +160,39 @@ test('skip crossing requeue Redis write cannot resurrect the unheard current ite
   const skip = handler.control('requeue-control', 'skip'); await new Promise(resolve => setTimeout(resolve, 5)); unblock();
   await Promise.all([processing, skip]); assert.equal(usage, before); assert.deepEqual(queues.get('twitch:requeue-control:tts:queue'), []);
   studioConnected = true; legacyReady(true);
+});
+
+test('initial generated dispatch and resumed dispatch share the eight-pump limit', async () => {
+  readRoute='overlay'; studioConnected=true; legacyReady(false);
+  let unblock!:()=>void; const blocked=new Promise<void>(resolve=>{unblock=resolve;}); let entered=0,peak=0;
+  publisher=async input=>{entered++; peak=Math.max(peak,(handler as any).activePumps); await blocked; return input.beforeEmit()?'emitted':'cancelled';};
+  const ids=Array.from({length:12},(_,i)=>`pump-${i}`); ids.forEach(id=>{channels.push(id); seed(id,id);});
+  const processing=ids.map(id=>handler.processNext(id));
+  try {
+    await until(()=>entered===8); assert.equal((handler as any).activePumps,8); assert.ok((handler as any).headWakes.size<=4);
+    unblock(); await Promise.all(processing); await until(()=>ids.every(id=>(handler as any).readHeads.get(id)?.phase==='emitted'));
+    assert.ok(peak<=8); assert.equal(entered,12);
+  } finally {unblock(); publisher=undefined; for(const id of ids) await handler.control(id,'clear'); legacyReady(true);}
+});
+test('descriptor capacity applies before provider work; invalid payload loops release their claim', async () => {
+  readRoute='overlay'; studioConnected=true; legacyReady(false);
+  const internals=handler as any, originalHeads=internals.readHeads;
+  internals.readHeads=new Map(Array.from({length:128},(_,i)=>[`occupied-${i}`,{}]));
+  const before=usage; seed('at-capacity','capacity-a'); channels.push('at-capacity');
+  try {await handler.processNext('at-capacity'); assert.equal(usage,before); assert.deepEqual(queues.get('twitch:at-capacity:tts:queue'),['capacity-a']); assert.equal(internals.headClaims.size,0);}
+  finally {internals.readHeads=originalHeads; internals.capacityWaiters.clear(); queues.set('twitch:at-capacity:tts:queue',[]);}
+  seed('invalid-payloads','valid'); channels.push('invalid-payloads'); queues.set('twitch:invalid-payloads:tts:queue',['missing','malformed','valid']); data.set('twitch:invalid-payloads:tts:queue:data:malformed','{');
+  await handler.processNext('invalid-payloads'); assert.equal(internals.headClaims.size,0); assert.equal(usage,before+1);
+  await handler.control('invalid-payloads','clear'); legacyReady(true);
+});
+test('uncertain emitted dispatch finishes its own cleanup before next head can own the producer lock', async () => {
+  readRoute='overlay'; studioConnected=true; legacyReady(false); channels.push('terminal-handoff'); seed('terminal-handoff','uncertain-a','uncertain-b'); let first=true;
+  publisher=async input=>{if(first){first=false; input.beforeEmit(); throw new Error('uncertain after owner emission');} return input.beforeEmit()?'emitted':'cancelled';};
+  try {
+    await handler.processNext('terminal-handoff'); await until(()=>(handler as any).readHeads.get('terminal-handoff')?.phase==='emitted');
+    assert.equal((handler as any).readHeads.get('terminal-handoff').item.speechID,'uncertain-b');
+    assert.equal((handler as any).processingChannels.has('terminal-handoff'),true);
+    assert.equal(data.get('twitch:terminal-handoff:tts:processing'),'uncertain-b');
+    assert.equal(synthesized.filter(id=>id==='uncertain-a').length,1); assert.equal(synthesized.filter(id=>id==='uncertain-b').length,1);
+  } finally {publisher=undefined; await handler.control('terminal-handoff','clear'); legacyReady(true);}
 });

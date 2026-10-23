@@ -21,6 +21,7 @@ import { server } from './server.js';
 import { websocket } from './websocket.js';
 import { clipQueueHandler } from '../handlers/clip_queue.handler.js';
 import { ttsQueueHandler } from '../handlers/tts_queue.handler.js';
+import { TTS_SESSION_ENDED } from '../utils/speech.js';
 import { getPolarShClient } from '../utils/polarsh.js';
 import { info, error } from '../utils/logger.js';
 import { reconcileLiveSessionsOnStartup, startStreamAnalyticsWorker } from '../utils/stream_analytics.js';
@@ -93,6 +94,10 @@ try {
 // Initialize clip queue handler
 await clipQueueHandler.init();
 await ttsQueueHandler.init();
+await pubSubManager.subscribe(TTS_SESSION_ENDED, value => {
+    if (typeof value?.channelID === 'string' && /^\d{1,30}$/.test(value.channelID) && typeof value.session === 'string' && value.session.length <= 64)
+        void ttsQueueHandler.handleSessionEnded(value.channelID, value.session).catch(() => {});
+});
 try {
     await ttsQueueHandler.releaseStaleProcessingLocks();
 } catch (lockError) {

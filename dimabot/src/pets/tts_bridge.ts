@@ -2,9 +2,15 @@ import type { PetRequestRecord } from '../schemas/pet_runtime.schema.js';
 export interface ReadTtsTurnInput { channelId: string; speechId: string; cancelled: () => boolean; ended: (reason: string) => Promise<void> }
 export interface ReadTtsInput extends ReadTtsTurnInput {
     channelId: string; speechId: string; file: string; mime: string; text: string; holdMs?: number;
-    cancelled: () => boolean; ended: (reason: string) => Promise<void>;
+    cancelled: () => boolean; ended: (reason: string) => Promise<void>; attemptId?: string;
+    analysis?: { inspected?: boolean; durationMs?: number; enveloped?: boolean; envelope?: { stepMs: number; values: number[] } };
 }
-export interface ReadTtsRoute { audio: 'pet' | 'overlay' | 'cancelled'; durationMs: number }
+export interface ReadTtsRoute {
+    audio: 'pet' | 'overlay' | 'cancelled' | 'waiting'; durationMs: number;
+    /** Preparation cannot expose audio. The queue claims its current attempt at this boundary. */
+    emit?: (beforeEmit: () => boolean) => Promise<boolean>;
+    fallback?: () => Promise<ReadTtsRoute>;
+}
 interface Bridge {
     configured?(channelId: string): Promise<boolean>;
     owns?(channelId: string, speechId?: string): boolean;
@@ -15,6 +21,9 @@ interface Bridge {
     available(channelId: string): Promise<boolean>;
     prepare(input: ReadTtsInput): Promise<ReadTtsRoute | null>;
     release(channelId: string, speechId: string): Promise<void>;
+    park?(channelId: string, speechId: string): Promise<void>;
+    owners?(): string[];
+    observe?(runtime: { _id: string; generation: number; activeRequestId: string | null; notBefore: Date; lease?: { leaseId: string } | null }): void;
     report(channelId: string, speechId: string, phase: string, position: number): Promise<void>;
     terminal(request: PetRequestRecord): Promise<void>;
     invalidated(ownerId: string, reason?: string): Promise<void>;
@@ -30,6 +39,9 @@ export const resumeReadTts = (channel: string) => bridge?.resume?.(channel) ?? P
 export const readTtsAvailable = (channel: string) => bridge?.available(channel) ?? Promise.resolve(false);
 export const prepareReadTts = (input: ReadTtsInput) => bridge?.prepare(input) ?? Promise.resolve(null);
 export const releaseReadTts = (channel: string, speech: string) => bridge?.release(channel, speech) ?? Promise.resolve();
+export const parkReadTts = (channel: string, speech: string) => bridge?.park?.(channel, speech) ?? releaseReadTts(channel, speech);
+export const readTtsOwners = () => bridge?.owners?.() ?? [];
+export const observeReadTtsRuntime = (runtime: Parameters<NonNullable<Bridge['observe']>>[0]) => bridge?.observe?.(runtime);
 export const reportReadTts = (channel: string, speech: string, phase: string, position: number) => bridge?.report(channel, speech, phase, position) ?? Promise.resolve();
 export const readTtsTerminal = (request: PetRequestRecord) => bridge?.terminal(request) ?? Promise.resolve();
 export const invalidateReadTts = (owner: string, reason?: string) => bridge?.invalidated(owner, reason) ?? Promise.resolve();

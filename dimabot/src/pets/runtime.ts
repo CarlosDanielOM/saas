@@ -1,4 +1,5 @@
 import { startReadTts, reconcileReadTtsStartup } from './read_tts.js';
+import { observeReadTtsRuntime, readTtsOwners } from './tts_bridge.js';
 import { randomUUID } from 'node:crypto';
 import { mkdtemp, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -178,6 +179,7 @@ async function wakeOnce(ownerId: string) {
         await refreshPetReadiness(ownerId);
         await broadcast(ownerId);
         const runtime = await PetRuntime.findById(ownerId).lean();
+        if (runtime) observeReadTtsRuntime(runtime);
         if (!runtime?.activeRequestId) return;
         const request = await PetRequest.findById(runtime.activeRequestId).lean();
         if (!request) { await invalidatePet(ownerId, 'request_missing'); return; }
@@ -230,13 +232,16 @@ export async function startPetRuntime() {
             for (const request of accepted) await wake(request.ownerId);
             // A single indexed, rotating header read repairs lost hints even for
             // idle selection changes; only changed/observed work triggers snapshots.
-            const connected = [...new Set([...petPeers.values()].map(peer => peer.ownerId))];
+            const connected = [...new Set([...petPeers.values()].map(peer => peer.ownerId).concat(readTtsOwners()))];
             const batch = connected.length ? Array.from({ length: Math.min(64, connected.length) }, (_, index) => connected[(recoveryCursor + index) % connected.length]) : [];
             recoveryCursor = connected.length ? (recoveryCursor + batch.length) % connected.length : 0;
-            const headers = batch.length ? await PetRuntime.find({ _id: { $in: batch } }).select('_id generation activeRequestId').lean() : [];
+            const headers = batch.length ? await PetRuntime.find({ _id: { $in: batch } }).select('_id generation activeRequestId lease notBefore').lean() : [];
             for (const runtime of headers) {
+                observeReadTtsRuntime(runtime);
                 if ([...petPeers.values()].some(peer => peer.ownerId === runtime._id && (peer.activeSeen || peer.generationSeen !== runtime.generation || (peer.activeSeen ?? null) !== runtime.activeRequestId))) await wake(runtime._id);
             }
+            const { ttsQueueHandler } = await import('../handlers/tts_queue.handler.js');
+            await ttsQueueHandler.reconcileReadTtsSessions();
             const cleanup = await PetRequest.find({ status: { $in: PET_TERMINAL }, $or: [{ privateDir: { $exists: true } }, { 'audio.path': { $exists: true } }] }).limit(64).lean();
             for (const request of cleanup) await cleanAudio(request);
         } finally { recovering = false; }
