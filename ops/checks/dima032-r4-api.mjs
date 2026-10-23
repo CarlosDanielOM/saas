@@ -196,16 +196,16 @@ try {
         const count=await providerCount(),usage=await usageCharacters(),text='Read TTS enable waits for head capacity',speech=await enqueue(text);
         await until(()=>redis.get('dima032:test:entered:processing-set'),'initial processing SET while disabled');
         assert.equal((await head()).speechID,undefined);
+        const laterText='Capacity wake preserves FIFO follower',later=await enqueue(laterText);
         const held=await command('capacity',{action:'hold'});assert.equal(held.ownedClaims,128);assert.equal(held.totalClaims,128);assert.equal(held.heads,0);
         await save(settings=>({...settings,sources:{...settings.sources,readTts:true}}));
         selected=await readyPet();await closeStudio();
         await redis.del('dima032:test:entered:processing-del');await redis.set('dima032:test:hold:processing-del','true');
         await redis.del('dima032:test:hold:processing-set');
         await until(()=>redis.get('dima032:test:entered:processing-del'),'final capacity-requeue DEL response held');
-        assert.equal(await redis.zCard(queueKey),1);assert.equal((await head()).processing,true);
+        assert.equal(await redis.zCard(queueKey),2);assert.equal((await head()).processing,true);
         assert.equal(await providerCount(),count);assert.equal(await usageCharacters(),usage);
         assert.ok(await redis.get(`twitch:${channel}:tts:queue:data:${speech}`));
-        const laterText='Capacity wake preserves FIFO follower',later=await enqueue(laterText);
         assert.deepEqual(await redis.zRange(queueKey,0,-1),[speech,later]);
         const released=await command('capacity',{action:'release'});assert.equal(released.ownedClaims,0);
         // The callback had an event-loop turn while the old dispatch still owned
