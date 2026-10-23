@@ -49,7 +49,7 @@ const cache = {
   set: async (key: string, value: string) => { data.set(key, value); if(key.endsWith(':tts:processing') && afterProcessingSet){const hook=afterProcessingSet;afterProcessingSet=undefined;await hook();} if(key.endsWith(':tts:session')&&afterSessionWrite){const barrier=afterSessionWrite;afterSessionWrite=undefined;await barrier();} },
   del: async (key: string) => { data.delete(key); queues.delete(key); if (afterDel) await afterDel(key); },
   zPopMin: async (key: string) => { const value = queues.get(key)?.shift(); return value ? { value } : null; },
-  zAdd: async (key: string, entry: any) => { const ids = queues.get(key) ?? []; if (!ids.includes(entry.value)) ids.push(entry.value); queues.set(key, ids); if (afterRequeueWrite) { const barrier = afterRequeueWrite; afterRequeueWrite = undefined; await barrier(); } },
+  zAdd: async (key: string, entry: any) => { const ids = queues.get(key) ?? []; if (!ids.includes(entry.value)) ids.push(entry.value); const score=(id:string)=>id===entry.value?entry.score:JSON.parse(data.get(`${key}:data:${id}`)??'{}').timestamp??entry.score+1;ids.sort((a,b)=>score(a)-score(b)||a.localeCompare(b)); queues.set(key, ids); if (afterRequeueWrite) { const barrier = afterRequeueWrite; afterRequeueWrite = undefined; await barrier(); } },
   zRem: async (key: string, id: string) => { queues.set(key, (queues.get(key) ?? []).filter(item => item !== id)); },
   zCard: async (key: string) => queues.get(key)?.length ?? 0,
   zRange: async (key: string) => [...queues.get(key) ?? []],
@@ -94,6 +94,8 @@ let afterClaim: (() => Promise<void>) | undefined;
 let afterProcessingSet: (() => Promise<void>) | undefined;
 let beforeReservationClear: (() => Promise<void>) | undefined;
 let beforeStudioEnd: (() => Promise<void>) | undefined;
+let beforePrivateRead: ((id: string) => Promise<void>) | undefined;
+let afterFinishStatus: (() => Promise<void>) | undefined;
 let failedClaims = 0;
 const resumed: string[] = [];
 const fileDir = await mkdtemp(path.join(tmpdir(), 'dima032-unit-'));
@@ -123,6 +125,7 @@ mock.module('../pets/peers.js', { namedExports: { petPeers: peers, selectedVtsCo
 mock.module('../pets/tokens.js', { namedExports: { issueAudioTicket: async () => { if (ticketFails) throw new Error('ticket rejected before delivery'); return 'private-ticket'; } } });
 mock.module('../pets/tts_envelope.js', { namedExports: { inspectTtsAudio: async () => 500, ttsEnvelope: async () => ({ stepMs: 40, values: [0, 0.7, 0.2] }) } });
 mock.module('../schemas/pet_runtime.schema.js', { namedExports: {
+    PET_TERMINAL: ['completed','cancelled','failed','expired'],
     PetRuntime: {
         findById: () => query(() => runtime),
         find: () => ({ limit: () => query(() => runtime.ttsReservation?.token ? [runtime] : []) }),
@@ -131,13 +134,15 @@ mock.module('../schemas/pet_runtime.schema.js', { namedExports: {
     },
     PetRequest: {
         create: async (value: any) => { if ([...rows.values()].some(row => row.ownerId === value.ownerId && row.origin.id === value.origin.id && row.actionKey === value.actionKey)) throw Object.assign(new Error('unique origin/action'), { code:11000 }); rows.set(value._id, structuredClone(value)); const barrier = afterPrivateCreate; afterPrivateCreate = undefined; if (barrier) await barrier(); return { ...value, toObject: () => structuredClone(value) }; },
-        findById: (id: string) => query(() => rows.get(id) ?? null),
+        findById: (id: string) => query(async () => {if(beforePrivateRead)await beforePrivateRead(id);return rows.get(id) ?? null;}),
         updateOne: async (filter: any, update: any) => { const row = rows.get(filter._id); const match = row && matches(row, filter) && !attemptedFails; if (match) apply(row, update); const barrier = update.$set?.deliveryAttempted ? afterAttempted : undefined; if (barrier) { afterAttempted = undefined; await barrier(); } return { modifiedCount: +!!match, matchedCount: +!!match }; }
     }
 } });
-async function finish(id: string, status: string) {
+async function finish(id: string, status: string, _code?: string, expected?: {ownerId:string;generation:number}) {
     const row = rows.get(id); if (!row || ['completed', 'cancelled', 'failed', 'expired'].includes(row.status)) return;
-    row.status = status; if (runtime.activeRequestId === id) runtime.activeRequestId = null;
+    if(expected&&(row.ownerId!==expected.ownerId||row.generation!==expected.generation))return;
+    row.status = status;if(afterFinishStatus){const hook=afterFinishStatus;afterFinishStatus=undefined;await hook();}
+    if (runtime.activeRequestId === id && (!expected || runtime._id===expected.ownerId&&runtime.generation===expected.generation)) runtime.activeRequestId = null;
     await readTtsTerminal(row); return row;
 }
 mock.module('../pets/state.js', { namedExports: { runtimeFor: async () => structuredClone(runtime), notifyPet: async () => {}, finishRequest: finish,
@@ -174,6 +179,10 @@ async function until(condition: () => boolean) {
   for (let i=0; i<200; i++) { if (condition()) return; await new Promise(resolve => setTimeout(resolve, 5)); }
   assert.fail('reproduction barrier timed out');
 }
+async function directoryRemoved(directory: string) {
+  for(let i=0;i<200;i++) {if(await fs.access(directory).then(()=>false,()=>true))return;await new Promise(resolve=>setTimeout(resolve,5));}
+  assert.fail(`private directory still exists: ${directory}`);
+}
 function seed(id: string, ...later: string[]) {
   queues.set(`twitch:${channel}:tts:queue`, [id, ...later]);
   for (const speechID of later) data.set(`twitch:${channel}:tts:queue:data:${speechID}`, JSON.stringify({ channelID:channel, speechID, provider:'piper', mode:'speak', language:'en', voice:'test', text:speechID }));
@@ -188,7 +197,7 @@ async function setup() {
   await new Promise<void>(done=>setImmediate(done));
   await handler.cleanupChannel(channel); await reset(); await writeFile(file, 'normal TTS bytes');
   data.clear(); queues.clear(); events.length=0; synthesized.length=0; usage=0; publishAttempts=0;
-  configurationReads=renewalWrites=0; advanceProbeTime=false; afterDel=afterPayloadRead=afterSessionWrite=afterProcessingSet=beforeReservationClear=beforeStudioEnd=undefined;failedClaims=0;
+  configurationReads=renewalWrites=0; advanceProbeTime=false; afterDel=afterPayloadRead=afterSessionWrite=afterProcessingSet=beforeReservationClear=beforeStudioEnd=undefined;beforePrivateRead=afterFinishStatus=undefined;failedClaims=0;
   studioConnected=true; graceConnected=true; peer.audioReady=false;
   for (const socket of legacySockets.values()) socket.data.ttsReady=false;
 }
@@ -562,4 +571,134 @@ test('R7 rejected reservation clear retries the same token so the next item can 
     await until(()=>(handler as any).readHeads.get(channel)?.phase==='emitted');
     assert.equal(synthesized.filter(id=>id==='retry-A').length,1); assert.equal(synthesized.filter(id=>id==='retry-B').length,1);
   } finally {await stop();}
+});
+
+for(const stage of ['pop','processing'] as const)test(`R8 full head capacity at ${stage} backpressures an off-to-on item before provider or billing`,async()=>{
+  await setup();config.settings.sources.readTts=false;config.runtime.readTtsEnabled=false;await invalidateReadTts(owner,'settings_changed');
+  const internals=handler as any,entered=barrier(),resume=barrier();
+  for(let i=0;i<128;i++)internals.headClaims.add(`capacity-${i}`);
+  const pause=async()=>{entered.resolve();await resume.promise;};if(stage==='pop')afterPayloadRead=pause;else afterProcessingSet=pause;
+  const speech=`capacity-enable-${stage}`;seed(speech,`capacity-later-${stage}`);
+  for(const [i,id] of [speech,`capacity-later-${stage}`].entries()){const key=`twitch:${channel}:tts:queue:data:${id}`,item=JSON.parse(data.get(key)!);data.set(key,JSON.stringify({...item,timestamp:Date.now()-10000+i,usageRequestID:`request-${id}`,usageEntryID:`entry-${id}`}));}
+  const processing=handler.processNext(channel);await entered.promise;
+  const original=JSON.parse(data.get(`twitch:${channel}:tts:queue:data:${speech}`)!);
+  try {
+    config.settings.sources.readTts=true;config.runtime.readTtsEnabled=true;config.revision++;peer.audioReady=true;studioConnected=graceConnected=false;
+    await invalidateReadTts(owner,'settings_changed');resume.resolve();await processing;await new Promise<void>(done=>setImmediate(done));
+    assert.equal(synthesized.length,0,'capacity cannot fall through to synthesis');assert.equal(usage,0);
+    assert.equal(internals.readHeads.has(channel),false);assert.equal(internals.headClaims.size,128);assert.equal(runtime.ttsReservation,null);
+    assert.equal(queues.get(`twitch:${channel}:tts:queue`)?.includes(speech),true);
+    const retained=JSON.parse(data.get(`twitch:${channel}:tts:queue:data:${speech}`)!);
+    assert.deepEqual(retained,{...original,queueSession:null});assert.deepEqual(queues.get(`twitch:${channel}:tts:queue`),[speech,`capacity-later-${stage}`]);
+    assert.ok(internals.capacityWaiters.has(channel));
+    internals.headClaims.clear();internals.wakeCapacityWaiters();
+    await until(()=>petEvents.some(e=>e.event==='pet:play'));
+    assert.deepEqual(synthesized,[speech]);assert.equal(usage,1);
+    assert.equal(internals.readHeads.get(channel)?.item.speechID,speech);
+  } finally {resume.resolve();internals.headClaims.clear();internals.capacityWaiters.clear();await processing;await stop();}
+});
+for(const action of ['skip','clear'] as const)test(`R8 active private ${action} stops before a failed request lookup and retries only its cleanup`,async()=>{
+  await setup();peer.audioReady=true;studioConnected=graceConnected=false;seed(`lookup-failure-${action}`);await handler.processNext(channel);
+  const id=runtime.activeRequestId,lease=structuredClone(runtime.lease),generation=runtime.generation;
+  let lookups=0;
+  beforePrivateRead=async request=>{if(request===id&&++lookups===1)throw new Error('fixture request lookup rejected');};
+  const failure=await handler.control(channel,action).then(()=>null,error=>error);
+  try {
+    assert.ok(failure,'request cleanup error remains observable');
+    assert.ok(petEvents.some(e=>e.event==='pet:stop'&&e.data.requestId===id&&e.data.generation===generation),'known private identity must stop despite lookup failure');
+    assert.equal((handler as any).readHeads.has(channel),false);assert.equal(runtime.ttsReservation,null);
+    await until(()=>rows.get(id)?.status==='cancelled');
+    assert.equal(runtime.activeRequestId,null);assert.deepEqual(runtime.lease,lease);assert.equal(runtime.generation,generation);
+    await until(()=>lookups>1);await directoryRemoved(rows.get(id).privateDir);
+    assert.equal(synthesized.length,1);assert.equal(usage,1);assert.equal(petEvents.filter(e=>e.event==='pet:play').length,1);
+  } finally {beforePrivateRead=undefined;await stop();}
+});
+
+test('R8 an existing capacity claim converts to one head at the exact 128 bound',async()=>{
+  await setup();const internals=handler as any;for(let i=0;i<127;i++)internals.headClaims.add(`claimed-${i}`);
+  peer.audioReady=true;studioConnected=graceConnected=false;seed('claimed-at-bound');
+  try {await handler.processNext(channel);assert.equal(internals.headClaims.size+internals.readHeads.size,128);assert.equal(internals.headClaims.has(channel),false);assert.equal(petEvents.filter(e=>e.event==='pet:play').length,1);assert.equal(usage,1);}
+  finally {internals.headClaims.clear();await stop();}
+});
+for(const action of ['skip','clear','stream-end'] as const)test(`R8 ${action} crossing capacity requeue retires only the old ungenerated item`,async()=>{
+  await setup();config.settings.sources.readTts=false;config.runtime.readTtsEnabled=false;await invalidateReadTts(owner,'settings_changed');
+  const internals=handler as any,entered=barrier(),resume=barrier(),requeued=barrier(),finishRequeue=barrier();
+  for(let i=0;i<128;i++)internals.headClaims.add(`blocked-${i}`);
+  afterProcessingSet=async()=>{entered.resolve();await resume.promise;};
+  const speech=`blocked-${action}`;seed(speech,'still-waiting');const processing=handler.processNext(channel);await entered.promise;
+  let controlling:Promise<void>|undefined;
+  try {
+    config.settings.sources.readTts=true;config.runtime.readTtsEnabled=true;config.revision++;peer.audioReady=true;studioConnected=graceConnected=false;
+    await invalidateReadTts(owner,'settings_changed');
+    afterDel=async key=>{if(key.endsWith(':tts:processing')){afterDel=undefined;requeued.resolve();await finishRequeue.promise;}};
+    resume.resolve();await requeued.promise;
+    if(action==='stream-end') {
+      await clearActualStream();
+      const {enqueueTtsSession}=await import('../utils/tts/tts_session.util.js');
+      await enqueueTtsSession(cache as any,channel,'after-capacity-boundary',Date.now(),JSON.stringify({channelID:channel,speechID:'after-capacity-boundary',provider:'piper',mode:'speak',language:'en',voice:'test',text:'new session'}));
+    } else controlling=handler.control(channel,action);
+    finishRequeue.resolve();await Promise.all([processing,controlling]);
+    assert.equal(synthesized.length,0);assert.equal(usage,0);assert.equal(data.has(`twitch:${channel}:tts:queue:data:${speech}`),false);
+    assert.deepEqual(queues.get(`twitch:${channel}:tts:queue`)??[],action==='skip'?['still-waiting']:action==='clear'?[]:['after-capacity-boundary']);
+    internals.headClaims.clear();internals.wakeCapacityWaiters();
+    if(action==='stream-end'){await until(()=>petEvents.some(e=>e.event==='pet:play'));assert.deepEqual(synthesized,['after-capacity-boundary']);}
+  } finally {resume.resolve();finishRequeue.resolve();internals.headClaims.clear();internals.capacityWaiters.clear();await Promise.allSettled([processing,controlling]);await stop();}
+});
+for(const successor of ['private','independent'] as const)test(`R8 delayed old private cleanup preserves ${successor} successor identity, lease and files`,async()=>{
+  await setup();peer.audioReady=true;studioConnected=graceConnected=false;seed(`cleanup-old-${successor}`);await handler.processNext(channel);
+  const oldId=runtime.activeRequestId,oldDir=rows.get(oldId).privateDir,entered=barrier(),resume=barrier();let reads=0;
+  beforePrivateRead=async id=>{if(id!==oldId)return;if(++reads===1)throw new Error('fixture transient lookup failure');entered.resolve();await resume.promise;};
+  await assert.rejects(handler.control(channel,'skip'));await entered.promise;
+  let nextId:string;
+  try {
+    runtime.activeRequestId=null;
+    if(successor==='private') {seed('cleanup-new-private');await handler.processNext(channel);nextId=runtime.activeRequestId;assert.notEqual(nextId,oldId);}
+    else {nextId='independent-successor';runtime.activeRequestId=nextId;runtime.generation++;rows.set(nextId,{_id:nextId,ownerId:owner,generation:runtime.generation,status:'playing',operation:'speech'});}
+    const current=structuredClone(runtime),stops=petEvents.filter(e=>e.event==='pet:stop').length;
+    resume.resolve();await until(()=>rows.get(oldId).status==='cancelled');await until(()=>runtime.activeRequestId===nextId);
+    await new Promise<void>(done=>setImmediate(done));
+    assert.deepEqual(runtime,current);assert.equal(petEvents.filter(e=>e.event==='pet:stop').length,stops);assert.notEqual(rows.get(nextId).status,'cancelled');
+    await directoryRemoved(oldDir);if(successor==='private')await fs.access(rows.get(nextId).privateDir);
+    assert.equal(petEvents.filter(e=>e.event==='pet:play'&&e.data.requestId===oldId).length,1);
+  } finally {resume.resolve();beforePrivateRead=undefined;if(successor==='independent')runtime.activeRequestId=null;await stop();}
+});
+test('R8 cleanup retry repairs exact runtime link after request terminal status persisted before failure',async()=>{
+  await setup();peer.audioReady=true;studioConnected=graceConnected=false;seed('partial-terminal');await handler.processNext(channel);
+  const id=runtime.activeRequestId,lease=structuredClone(runtime.lease);afterFinishStatus=async()=>{throw new Error('fixture failure after terminal CAS');};
+  try {
+    await assert.rejects(handler.control(channel,'clear'));assert.equal(rows.get(id).status,'cancelled');assert.equal(runtime.activeRequestId,id);
+    assert.ok(petEvents.some(e=>e.event==='pet:stop'&&e.data.requestId===id));
+    await until(()=>runtime.activeRequestId===null);assert.deepEqual(runtime.lease,lease);await directoryRemoved(rows.get(id).privateDir);
+    assert.equal(usage,1);assert.equal(synthesized.length,1);
+  } finally {afterFinishStatus=undefined;await stop();}
+});
+
+test('R8 exact private stop precedes a held lookup; successor waits for cleanup and survives stale end',async()=>{
+  await setup();peer.audioReady=true;studioConnected=graceConnected=false;seed('held-cleanup-old','held-cleanup-next');await handler.processNext(channel);
+  const id=runtime.activeRequestId,generation=runtime.generation,entered=barrier(),resume=barrier();let reads=0;
+  beforePrivateRead=async request=>{if(request===id&&++reads===1){entered.resolve();await resume.promise;throw new Error('fixture held lookup rejected');}};
+  const control=handler.control(channel,'skip').then(()=>null,error=>error);await entered.promise;
+  try {
+    assert.ok(petEvents.some(e=>e.event==='pet:stop'&&e.data.requestId===id&&e.data.generation===generation));
+    assert.equal(runtime.activeRequestId,id);assert.deepEqual(synthesized,['held-cleanup-old']);assert.equal(rows.size,1);
+    resume.resolve();assert.ok(await control);await until(()=>petEvents.filter(e=>e.event==='pet:play').length===2);
+    const current=structuredClone(runtime),nextId=runtime.activeRequestId,stops=petEvents.filter(e=>e.event==='pet:stop').length;
+    assert.notEqual(nextId,id);assert.equal(rows.get(id).status,'cancelled');
+    await handler.handleSpeechEnded(channel,'held-cleanup-old');await readTtsTerminal(rows.get(id));
+    assert.deepEqual(runtime,current);assert.equal(petEvents.filter(e=>e.event==='pet:stop').length,stops);
+    assert.deepEqual(synthesized,['held-cleanup-old','held-cleanup-next']);assert.equal(usage,2);
+  } finally {resume.resolve();await control;beforePrivateRead=undefined;await stop();}
+});
+for(const mode of ['exhaustion','close'] as const)test(`R8 private cleanup retries are coalesced and bounded through ${mode}`,async()=>{
+  await setup();peer.audioReady=true;studioConnected=graceConnected=false;const speech=`retry-bound-${mode}`;mock.timers.enable({apis:['setTimeout']});seed(speech);await handler.processNext(channel);
+  const id=runtime.activeRequestId,dir=rows.get(id).privateDir;let reads=0;
+  beforePrivateRead=async request=>{if(request===id){reads++;throw new Error('fixture persistent lookup failure');}};
+  const drain=async()=>{for(let i=0;i<8;i++)await new Promise<void>(done=>setImmediate(done));};
+  try {
+    await assert.rejects(handler.control(channel,'clear'));await releaseReadTts(channel,speech);assert.equal(reads,1);
+    if(mode==='close')await close();
+    for(const delay of [250,1000,4000,15000,60000]){mock.timers.tick(delay);await drain();}
+    assert.equal(reads,mode==='close'?1:6);mock.timers.tick(120000);await drain();assert.equal(reads,mode==='close'?1:6);
+    assert.equal(petEvents.filter(e=>e.event==='pet:stop'&&e.data.requestId===id).length,1);assert.equal(synthesized.length,1);assert.equal(usage,1);
+  } finally {mock.timers.reset();beforePrivateRead=undefined;await stop();await rm(dir,{recursive:true,force:true});}
 });

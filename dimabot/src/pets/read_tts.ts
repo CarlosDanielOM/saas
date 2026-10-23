@@ -4,7 +4,7 @@ import { copyFile, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import Users from '../schemas/users.schema.js';
-import { PetRequest, PetRuntime, type PetRequestRecord } from '../schemas/pet_runtime.schema.js';
+import { PetRequest, PetRuntime, PET_TERMINAL, type PetRequestRecord } from '../schemas/pet_runtime.schema.js';
 import { getPetConfiguration } from '../server/services/pet_settings.service.js';
 import { petPeers, selectedVtsController } from './peers.js';
 import { emitPetReadyAndPlay } from './delivery.js';
@@ -15,7 +15,7 @@ import { inspectTtsAudio, ttsEnvelope } from './tts_envelope.js';
 
 interface Turn {
     config: Awaited<ReturnType<typeof getPetConfiguration>>; input: ReadTtsInput; ownerId: string; token: string; generation: number; revision: number;
-    protectedUntil: number; holdMs: number; ownershipLost?: boolean; detached?: boolean; reporting?: boolean; requestId?: string; delivered: boolean; envelope?: Awaited<ReturnType<typeof ttsEnvelope>>;
+    protectedUntil: number; holdMs: number; ownershipLost?: boolean; detached?: boolean; reporting?: boolean; requestId?: string; requestGeneration?: number; privateDir?: string; delivered: boolean; envelope?: Awaited<ReturnType<typeof ttsEnvelope>>;
     followPeers: Set<string>; positionMs: number; serverTime: number; following: boolean;
 }
 const turns = new Map<string, Turn>();
@@ -108,17 +108,18 @@ async function release(channel: string, speech: string, parked = false) {
     if (!turn || turn.input.speechId !== speech) { if (identity) forgetOwner(identity.owner); return; }
     turns.delete(channel); // Claim before awaits/terminal callbacks; never release a newer turn.
     let failure: unknown;
-    try {
-        await endFollow(turn);
-        if (turn.requestId) {
-            const request = await PetRequest.findById(turn.requestId).lean();
-            if (request && !['completed', 'cancelled', 'failed', 'expired'].includes(request.status)) {
-                for (const peer of petPeers.values()) if (peer.ownerId === turn.ownerId) peer.socket.emit('pet:stop', { v: 1, requestId: turn.requestId, generation: turn.generation, reason: 'tts_ended' });
-                await finishRequest(turn.requestId, 'cancelled', 'tts_ended');
-                if (request.privateDir && path.dirname(request.privateDir) === tmpdir() && path.basename(request.privateDir).startsWith('dima-pet-')) await rm(request.privateDir, { recursive: true, force: true });
-            }
-        }
-    } catch (error) { failure = error; } // Request cleanup failure must not keep the reservation.
+    // The in-memory turn already proves the exact private playback identity.
+    // Stop it before any DB/follow await; a failed lookup cannot leave it playing.
+    const privateRequest = turn.requestId ? { requestId: turn.requestId, ownerId: turn.ownerId, generation: turn.requestGeneration ?? turn.generation, privateDir: turn.privateDir } : undefined;
+    if (privateRequest) for (const peer of petPeers.values()) if (peer.ownerId === turn.ownerId) {
+        try { peer.socket.emit('pet:stop', { v: 1, requestId: privateRequest.requestId, generation: privateRequest.generation, reason: 'tts_ended' }); }
+        catch (error) { failure ??= error; }
+    }
+    try { await endFollow(turn); } catch (error) { failure ??= error; }
+    if (privateRequest) {
+        try { await cleanPrivateRequest(privateRequest); }
+        catch (error) { failure ??= error; scheduleRequestCleanup(privateRequest); }
+    }
     // The turn is already removed, so this call is the token's only holder.
     // A failed clear keeps retrying with the same token instead of losing it.
     if (!await clearReservation(turn.ownerId, turn.token)) {
@@ -151,6 +152,49 @@ function scheduleClearRetry(ownerId: string, token: string, attempt = 0) {
         });
     }, CLEAR_RETRY_DELAYS_MS[attempt]);
     timer.unref?.(); clearRetries.add(timer);
+}
+interface PrivateCleanup { requestId: string; ownerId: string; generation: number; privateDir?: string }
+async function cleanPrivateRequest(identity: PrivateCleanup) {
+    const request = await PetRequest.findById(identity.requestId).lean();
+    if (!request || request.ownerId !== identity.ownerId || request.generation !== identity.generation || request.operation !== 'tts') return;
+    if (!PET_TERMINAL.includes(request.status)) {
+        const finished = await finishRequest(identity.requestId, 'cancelled', 'tts_ended', { ownerId: identity.ownerId, generation: identity.generation });
+        if (!finished) {
+            const latest = await PetRequest.findById(identity.requestId).lean();
+            if (!latest || latest.ownerId !== identity.ownerId || latest.generation !== identity.generation || latest.operation !== 'tts' || !PET_TERMINAL.includes(latest.status)) return;
+        }
+    }
+    // finishRequest may previously have persisted terminal status before its
+    // runtime update failed. Repair that exact link even on an already-terminal
+    // row; never invalidate a lease or clear a newer/independent request.
+    await PetRuntime.updateOne({ _id: identity.ownerId, generation: identity.generation, activeRequestId: identity.requestId },
+        { $set: { activeRequestId: null }, $unset: { admissionClaimId: 1 } });
+    signal(identity.ownerId);
+    await notifyPet(identity.ownerId);
+    if (identity.privateDir && path.dirname(identity.privateDir) === tmpdir() && path.basename(identity.privateDir).startsWith('dima-pet-'))
+        await rm(identity.privateDir, { recursive: true, force: true });
+}
+// Retain only immutable identities, not heads/files. One retry chain per request,
+// at most 128 pending/in-flight cleanups and five attempts; normal phase-deadline
+// recovery remains the fallback after exhaustion or capacity pressure.
+interface RequestCleanupRetry { identity: PrivateCleanup; attempt: number; timer?: NodeJS.Timeout }
+const requestCleanupRetries = new Map<string, RequestCleanupRetry>();
+function scheduleRequestCleanup(identity: PrivateCleanup) {
+    if (requestCleanupRetries.has(identity.requestId) || requestCleanupRetries.size >= 128) return;
+    const entry: RequestCleanupRetry = { identity, attempt: 0 };
+    requestCleanupRetries.set(identity.requestId, entry);
+    const arm = () => {
+        if (requestCleanupRetries.get(identity.requestId) !== entry) return;
+        if (entry.attempt >= CLEAR_RETRY_DELAYS_MS.length) { requestCleanupRetries.delete(identity.requestId); return; }
+        entry.timer = setTimeout(() => {
+            entry.timer = undefined;
+            void cleanPrivateRequest(identity).then(() => {
+                if (requestCleanupRetries.get(identity.requestId) === entry) requestCleanupRetries.delete(identity.requestId);
+            }, arm);
+        }, CLEAR_RETRY_DELAYS_MS[entry.attempt++]);
+        entry.timer.unref?.();
+    };
+    arm();
 }
 /** Startup completes before any API socket/queue producer is made available. */
 export async function reconcileReadTtsStartup() {
@@ -279,7 +323,7 @@ async function prepare(input: ReadTtsInput): Promise<ReadTtsRoute | null> {
                     admitted: true, generation: turn.generation, settingsRevision: turn.revision, status: 'ready', version: 1,
                     startBefore: new Date(Date.now() + 5000), phaseDeadline: new Date(Date.now() + durationMs + 10_000),
                     privateDir: directory, audio: { path: audioPath, mimeType: input.mime, durationMs }, createdAt: now, expiresAt: new Date(Date.now() + 7 * 86400_000) });
-                turn.requestId = id;
+                turn.requestId = id; turn.requestGeneration = turn.generation; turn.privateDir = directory;
                 const linked = await PetRuntime.updateOne({ _id: ownerId, generation: turn.generation, activeRequestId: null,
                     'ttsReservation.token': token, 'lease.leaseId': elected.runtime.lease!.leaseId, 'lease.expiresAt': { $gt: new Date() } }, { $set: { activeRequestId: id } });
                 if (!linked.modifiedCount || cancelled()) throw new Error('pre_delivery_rejected');
@@ -375,5 +419,5 @@ export function startReadTts() {
             else { turn.detached = true; await endFollow(turn); }
         } }
     });
-    return async () => { for (const turn of [...turns.values()]) await release(turn.input.channelId, turn.input.speechId).catch(() => {}); for (const timer of clearRetries) clearTimeout(timer); clearRetries.clear(); registerReadTtsBridge(); configurations.clear(); heads.clear(); observations.clear(); for (const owner of [...waits.keys()]) signal(owner); changes.clear(); };
+    return async () => { for (const turn of [...turns.values()]) await release(turn.input.channelId, turn.input.speechId).catch(() => {}); for (const timer of clearRetries) clearTimeout(timer); clearRetries.clear(); for (const entry of requestCleanupRetries.values()) clearTimeout(entry.timer); requestCleanupRetries.clear(); registerReadTtsBridge(); configurations.clear(); heads.clear(); observations.clear(); for (const owner of [...waits.keys()]) signal(owner); changes.clear(); };
 }

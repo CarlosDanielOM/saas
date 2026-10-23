@@ -348,8 +348,9 @@ class TtsQueueHandler {
         }
 
         if (await isReadTtsConfigured(channelID)) {
-          if (!this.controls.has(channelID)) this.readHeads.set(channelID, { item: queueItem, session: next.session, epoch: 0, wakeVersion: 0,
-            cancelled: false, phase: 'preparing', running: false, analysis: {}, cancellation: new AbortController() });
+          if (!this.controls.has(channelID) && !this.adoptReadHead(channelID, queueItem, next.session)) {
+            await this.deferForHeadCapacity(channelID, queueItem); return;
+          }
           this.headClaims.delete(channelID);
         }
         const usageRequestID = queueItem.usageRequestID ||= randomUUID();
@@ -376,9 +377,9 @@ class TtsQueueHandler {
         // then holds a pet turn this item has no head for; adopt it before synthesis
         // so the generated file goes through the pet hand-off, not the ordinary path.
         if (!this.readHeads.has(channelID) && hasReadTtsTurn(channelID, speechID)) {
-          if (this.readHeads.size + this.headClaims.size >= MAX_READ_TTS_HEADS) await releaseReadTts(channelID, speechID).catch(() => {}); // A failed clear retries itself.
-          else this.readHeads.set(channelID, { item: queueItem, session: next.session, epoch: 0, wakeVersion: 0,
-            cancelled: false, phase: 'preparing', running: false, analysis: {}, cancellation: new AbortController() });
+          if (!this.adoptReadHead(channelID, queueItem, next.session)) {
+            await this.deferForHeadCapacity(channelID, queueItem); return;
+          }
         }
 
         if (await this.cache!.get(`twitch:${channelID}:tts:session`) !== next.session) { await this.cleanupSpeech(channelID, speechID, true); continue; }
@@ -665,7 +666,23 @@ class TtsQueueHandler {
     } finally { this.headClaims.delete(channelID); this.wakeCapacityWaiters(); }
   }
 
-  private async requeueUnspoken(channelID: string, item: TtsQueueItem) {
+  private adoptReadHead(channel: string, item: TtsQueueItem, session: string | null): boolean {
+    const existing = this.readHeads.get(channel);
+    if (existing) return existing.item.speechID === item.speechID;
+    // Converting our existing claim costs no new capacity. Both configuration
+    // observation boundaries use this synchronous check-and-insert operation.
+    const occupied = this.readHeads.size + this.headClaims.size - Number(this.headClaims.has(channel));
+    if (occupied >= MAX_READ_TTS_HEADS) return false;
+    this.readHeads.set(channel, { item, session, epoch: 0, wakeVersion: 0,
+      cancelled: false, phase: 'preparing', running: false, analysis: {}, cancellation: new AbortController() });
+    this.headClaims.delete(channel);
+    return true;
+  }
+  private async deferForHeadCapacity(channel: string, item: TtsQueueItem) {
+    if (this.capacityWaiters.size < MAX_READ_TTS_HEADS) this.capacityWaiters.add(channel);
+    await this.requeueUnspoken(channel, item, true);
+  }
+  private async requeueUnspoken(channelID: string, item: TtsQueueItem, capacityBlocked = false) {
     const cancelled = () => this.controls.has(channelID) || this.interruptedSpeechIds.get(channelID) === item.speechID;
     const operation = (async () => {
       await releaseReadTts(channelID, item.speechID);
@@ -680,6 +697,12 @@ class TtsQueueHandler {
         await this.cache!.del(`twitch:${channelID}:tts:queue:data:${item.speechID}`);
       }
       await this.cache!.del(`twitch:${channelID}:tts:processing`);
+      // A control can cross the final Redis response even without a head. Its
+      // dispatch fence still owns this captured ungenerated item until now.
+      if (cancelled()) {
+        await this.cache!.zRem(`twitch:${channelID}:tts:queue`, item.speechID);
+        await this.cache!.del(`twitch:${channelID}:tts:queue:data:${item.speechID}`);
+      }
       if (this.activeSpeechIds.get(channelID) === item.speechID) this.activeSpeechIds.delete(channelID);
       const head = this.readHeads.get(channelID);
       if (head?.item.speechID === item.speechID) this.readHeads.delete(channelID);
@@ -688,7 +711,8 @@ class TtsQueueHandler {
     this.dispatches.set(channelID, operation);
     try { await operation; }
     finally { if (this.dispatches.get(channelID) === operation) this.dispatches.delete(channelID); }
-    if (await this.hasOverlayConnection(channelID)) void this.resumeIfIdle(channelID);
+    if (capacityBlocked) this.wakeCapacityWaiters();
+    else if (await this.hasOverlayConnection(channelID)) void this.resumeIfIdle(channelID);
   }
   private disarmPlaybackTimeout(channel: string, speech: string) {
     const key = `${channel}:${speech}`; clearTimeout(this.currentTimeouts.get(key)); this.currentTimeouts.delete(key);

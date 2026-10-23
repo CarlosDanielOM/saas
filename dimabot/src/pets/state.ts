@@ -23,12 +23,12 @@ export function requestView(request: PetRequestRecord | null) {
     return { requestId: request._id, operation: request.operation, status: request.status, version: request.version,
         ...(request.outputText ? { text: request.outputText } : {}), ...(request.errorCode ? { errorCode: request.errorCode } : {}) };
 }
-export async function finishRequest(id: string, status: 'completed' | 'cancelled' | 'failed' | 'expired', errorCode?: string) {
-    const request = await PetRequest.findOneAndUpdate({ _id: id, status: { $nin: PET_TERMINAL } }, {
+export async function finishRequest(id: string, status: 'completed' | 'cancelled' | 'failed' | 'expired', errorCode?: string, expected?: { ownerId: string; generation: number }) {
+    const request = await PetRequest.findOneAndUpdate({ _id: id, ...expected, status: { $nin: PET_TERMINAL } }, {
         $set: { status, ...(errorCode ? { errorCode } : {}) }, $inc: { version: 1 }
     }, { new: true }).lean();
     if (request) {
-        await PetRuntime.updateOne({ _id: request.ownerId, activeRequestId: id }, { $set: { activeRequestId: null }, $unset: { admissionClaimId: 1 } });
+        await PetRuntime.updateOne({ _id: request.ownerId, activeRequestId: id, ...(expected ? { generation: expected.generation } : {}) }, { $set: { activeRequestId: null }, $unset: { admissionClaimId: 1 } });
         await readTtsTerminal(request);
         await notifyPet(request.ownerId);
     }

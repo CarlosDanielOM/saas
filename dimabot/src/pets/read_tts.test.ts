@@ -39,6 +39,7 @@ mock.module('./peers.js', { namedExports: { petPeers: peers, selectedVtsControll
 mock.module('./tokens.js', { namedExports: { issueAudioTicket: async () => { if (ticketFails) throw new Error('ticket rejected before delivery'); return 'private-ticket'; } } });
 mock.module('./tts_envelope.js', { namedExports: { inspectTtsAudio: async () => 500, ttsEnvelope: async () => ({ stepMs: 40, values: [0, 0.7, 0.2] }) } });
 mock.module('../schemas/pet_runtime.schema.js', { namedExports: {
+    PET_TERMINAL: ['completed','cancelled','failed','expired'],
     PetRuntime: {
         findById: () => query(async () => { const snapshot=structuredClone(runtime); const barrier=afterRuntimeRead; afterRuntimeRead=undefined; if(barrier) await barrier(); return snapshot; }),
         find: () => ({ limit: () => query(() => runtime.ttsReservation?.token ? [runtime] : []) }),
