@@ -16,8 +16,9 @@ const cache = {
   eval: async (_script: string, options: { keys: string[]; arguments: string[] }): Promise<unknown> => {
     const next = await cache.zPopMin();
     if (!next) return [];
-    return [next.value, await cache.get(options.arguments[0] + next.value) ?? '', await cache.get(options.keys[1]) ?? ''];
+    return [next.value, await cache.get(options.keys[2]) ?? '', await cache.get(options.keys[1]) ?? ''];
   },
+  zRange: async () => scriptedQueue ? scriptedQueue.slice(0, 1).map(item => item.value) : pending ? ['speech-test'] : [],
   zPopMin: async () => {
     if (scriptedQueue) {
       return scriptedQueue.shift() ?? null;

@@ -56,19 +56,19 @@ function wakeOwner(owner: string) {
     for (const [channel, head] of heads) if (head.owner === owner)
         void import('../handlers/tts_queue.handler.js').then(({ ttsQueueHandler }) => ttsQueueHandler.resumeIfIdle(channel)).catch(() => {});
 }
-function observe(runtime: { _id: string; generation: number; activeRequestId: string | null; notBefore: Date; lease?: { leaseId: string } | null }) {
+function observe(runtime: { _id: string; generation: number; activeRequestId: string | null; notBefore: Date; lease?: { leaseId: string } | null; ttsReservation?: { token: string } | null }) {
     if (![...heads.values()].some(head => head.owner === runtime._id)) return;
     // Renewing the same lease is not a readiness transition.
-    const value = JSON.stringify([runtime.generation, runtime.activeRequestId, runtime.notBefore, runtime.lease?.leaseId]);
+    const value = JSON.stringify([runtime.generation, runtime.activeRequestId, runtime.notBefore, runtime.lease?.leaseId, runtime.ttsReservation?.token]);
     const prior = observations.get(runtime._id); observations.set(runtime._id, value);
     if (prior !== undefined && prior !== value) wakeOwner(runtime._id);
 }
-async function readConfiguration(channelId: string) {
+async function readConfiguration(channelId: string, retainHead = false) {
     const owner = await Users.findOne({ accounts: { $elemMatch: { type: 'twitch', id: channelId } } }).select('_id').lean();
     if (!owner) return null;
     try {
         const config = await getPetConfiguration(String(owner._id), channelId);
-        return config.settings.enabled && config.settings.sources.readTts ? { ownerId: String(owner._id), config } : null;
+        return retainHead || config.settings.enabled && config.settings.sources.readTts ? { ownerId: String(owner._id), config } : null;
     } catch { return null; } // No plan/account: retain the existing overlay path.
 }
 // Coalesce the repeated queue guards/reservation check. Default-off channels add
@@ -104,7 +104,6 @@ async function endFollow(turn: Turn) {
 async function release(channel: string, speech: string, parked = false) {
     const identity = heads.get(channel);
     if (!parked && identity?.speech === speech) { heads.delete(channel); if (![...heads.values()].some(head => head.owner === identity.owner)) observations.delete(identity.owner); }
-    if (identity) signal(identity.owner);
     const turn = turns.get(channel);
     if (!turn || turn.input.speechId !== speech) { if (identity) forgetOwner(identity.owner); return; }
     turns.delete(channel); // Claim before awaits/terminal callbacks; never release a newer turn.
@@ -117,7 +116,10 @@ async function release(channel: string, speech: string, parked = false) {
             if (request.privateDir && path.dirname(request.privateDir) === tmpdir() && path.basename(request.privateDir).startsWith('dima-pet-')) await rm(request.privateDir, { recursive: true, force: true });
         }
     }
-    await PetRuntime.updateOne({ _id: turn.ownerId, 'ttsReservation.token': turn.token }, { $set: { ttsReservation: null } });
+    const cleared = await PetRuntime.updateOne({ _id: turn.ownerId, 'ttsReservation.token': turn.token }, { $set: { ttsReservation: null } });
+    // Wake contenders only once the authoritative token clear has completed.
+    // A failed write must not advertise release; a stale token cannot clear a successor.
+    if (cleared.matchedCount) signal(turn.ownerId);
     await notifyPet(turn.ownerId);
     forgetOwner(turn.ownerId);
 }
@@ -145,10 +147,16 @@ async function reserve(input: ReadTtsTurnInput): Promise<boolean> {
     const selected = await configuration(input.channelId);
     if (input.cancelled()) return false;
     const retained = heads.get(input.channelId);
-    if (!selected && retained?.speech !== input.speechId) return true; // Default-off adds no turn.
+    // The queue may have created a read-TTS head before settings invalidation,
+    // while the first Redis processing write was pending. Retain that head's
+    // one overlay delivery even when no adapter Turn has existed yet.
+    const detached = !selected && retained?.speech !== input.speechId && input.retainHead
+        ? await readConfiguration(input.channelId, true) : null;
+    if (input.cancelled()) return false;
+    if (!selected && !detached && retained?.speech !== input.speechId) return true; // Default-off adds no turn.
     // A paid normal head outlives read-TTS settings. Keep arbitration until its
     // one overlay fallback ends, with pet animation/delivery detached.
-    const { ownerId, config } = selected ?? { ownerId: retained!.owner, config: retained!.config };
+    const { ownerId, config } = selected ?? detached ?? { ownerId: retained!.owner, config: retained!.config };
     const token = randomUUID();
     heads.set(input.channelId, { owner: ownerId, speech: input.speechId, config });
     const waitUntil = Date.now() + 120_000;

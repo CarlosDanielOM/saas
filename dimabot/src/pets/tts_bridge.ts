@@ -1,5 +1,5 @@
 import type { PetRequestRecord } from '../schemas/pet_runtime.schema.js';
-export interface ReadTtsTurnInput { channelId: string; speechId: string; cancelled: () => boolean; ended: (reason: string) => Promise<void>; signal?: AbortSignal }
+export interface ReadTtsTurnInput { channelId: string; speechId: string; cancelled: () => boolean; ended: (reason: string) => Promise<void>; signal?: AbortSignal; retainHead?: boolean }
 export interface ReadTtsInput extends ReadTtsTurnInput {
     channelId: string; speechId: string; file: string; mime: string; text: string; holdMs?: number;
     cancelled: () => boolean; ended: (reason: string) => Promise<void>; attemptId?: string;
@@ -23,7 +23,7 @@ interface Bridge {
     release(channelId: string, speechId: string): Promise<void>;
     park?(channelId: string, speechId: string): Promise<void>;
     owners?(): string[];
-    observe?(runtime: { _id: string; generation: number; activeRequestId: string | null; notBefore: Date; lease?: { leaseId: string } | null }): void;
+    observe?(runtime: { _id: string; generation: number; activeRequestId: string | null; notBefore: Date; lease?: { leaseId: string } | null; ttsReservation?: { token: string } | null }): void;
     report(channelId: string, speechId: string, phase: string, position: number): Promise<void>;
     terminal(request: PetRequestRecord): Promise<void>;
     invalidated(ownerId: string, reason?: string): Promise<void>;

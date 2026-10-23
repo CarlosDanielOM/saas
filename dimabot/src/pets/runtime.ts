@@ -235,7 +235,7 @@ export async function startPetRuntime() {
             const connected = [...new Set([...petPeers.values()].map(peer => peer.ownerId).concat(readTtsOwners()))];
             const batch = connected.length ? Array.from({ length: Math.min(64, connected.length) }, (_, index) => connected[(recoveryCursor + index) % connected.length]) : [];
             recoveryCursor = connected.length ? (recoveryCursor + batch.length) % connected.length : 0;
-            const headers = batch.length ? await PetRuntime.find({ _id: { $in: batch } }).select('_id generation activeRequestId lease notBefore').lean() : [];
+            const headers = batch.length ? await PetRuntime.find({ _id: { $in: batch } }).select('_id generation activeRequestId lease notBefore ttsReservation.token').lean() : [];
             for (const runtime of headers) {
                 observeReadTtsRuntime(runtime);
                 if ([...petPeers.values()].some(peer => peer.ownerId === runtime._id && (peer.activeSeen || peer.generationSeen !== runtime.generation || (peer.activeSeen ?? null) !== runtime.activeRequestId))) await wake(runtime._id);

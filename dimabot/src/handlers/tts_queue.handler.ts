@@ -93,6 +93,7 @@ interface ReadTtsHead {
   generated?: { file: string; audioUrl: string; mime: string; text: string; mode: TtsMode; timeoutMs: number };
   analysis: NonNullable<import('../pets/tts_bridge.js').ReadTtsInput['analysis']>;
   cancellation: AbortController;
+  completion?: Promise<void>;
 }
 const MAX_READ_TTS_HEADS = 128;
 const MAX_READ_TTS_PUMPS = 8;
@@ -364,7 +365,7 @@ class TtsQueueHandler {
         });
 
         const reserved = await reserveReadTts({ channelId: channelID, speechId: speechID,
-          signal: this.readHeads.get(channelID)?.cancellation.signal,
+          signal: this.readHeads.get(channelID)?.cancellation.signal, retainHead: this.readHeads.has(channelID),
           cancelled: () => this.controls.has(channelID) || this.interruptedSpeechIds.get(channelID) === speechID || this.activeSpeechIds.get(channelID) !== speechID,
           ended: reason => this.handleSpeechEnded(channelID, speechID, reason) });
         if (!reserved && !this.controls.has(channelID) && this.interruptedSpeechIds.get(channelID) !== speechID) { await this.requeueUnspoken(channelID, queueItem); return; }
@@ -758,7 +759,7 @@ class TtsQueueHandler {
       this.dispatchedSpeechIds.set(channel, speech);
       const holdMs = Math.max(240_000, input.timeoutMs + 180_000);
       let route = await prepareReadTts({ channelId: channel, speechId: speech, file: input.file, mime: input.mime, text: input.text,
-        holdMs, attemptId: `${epoch}`, analysis: head.analysis, signal: head.cancellation.signal, cancelled: () => !current(), ended: reason => this.handleSpeechEnded(channel, speech, reason) });
+        holdMs, retainHead: true, attemptId: `${epoch}`, analysis: head.analysis, signal: head.cancellation.signal, cancelled: () => !current(), ended: reason => this.handleSpeechEnded(channel, speech, reason) });
       if (!current()) return;
       if (!route || route.audio === 'waiting' || route.audio === 'cancelled') { await this.parkHead(channel, head); return; }
       if (!await protectReadTtsTurn(channel, speech, holdMs) || !current()) { await this.parkHead(channel, head); return; }
@@ -800,19 +801,34 @@ class TtsQueueHandler {
     } finally {
       if (this.dispatches.get(channel) === operation) this.dispatches.delete(channel);
       head.running = false;
-      if (phase() !== 'emitted') this.processingChannels.delete(channel);
+      if (phase() !== 'emitted' && (!this.activeSpeechIds.has(channel) || this.activeSpeechIds.get(channel) === speech) && (!this.readHeads.has(channel) || this.readHeads.get(channel) === head)) this.processingChannels.delete(channel);
       if (this.readHeads.get(channel) === head && !head.cancelled && phase() === 'parked' && version !== head.wakeVersion) this.wakeHead(channel);
       this.activePumps--; this.scheduleHeadPump();
       if (!this.readHeads.has(channel) && !this.controls.has(channel)) setImmediate(() => { void this.processNext(channel); });
     }
   }
-  private async finishHead(channel: string, head: ReadTtsHead, reason: string) {
-    if (this.readHeads.get(channel) !== head) return;
+  private finishHead(channel: string, head: ReadTtsHead, reason: string): Promise<void> {
+    if (head.completion) return head.completion;
+    if (this.readHeads.get(channel) !== head) return Promise.resolve();
+    // Claim the entire terminal operation before any await, including Studio
+    // teardown. Controls and natural/private completion join this same promise.
+    // It cannot wait on dispatch: dispatch may itself be reporting its terminal.
+    const speech = head.item.speechID;
     head.cancelled = true; head.epoch++; head.phase = 'terminal'; this.headWakes.delete(channel);
-    head.cancellation.abort(); this.retireReadOwner(channel, head.item.speechID);
-    await endStudioReadTts(channel, head.item.speechID);
-    await this.cleanupSpeech(channel, head.item.speechID);
-    if (!head.running && !this.controls.has(channel)) void this.processNext(channel);
+    head.cancellation.abort(); this.retireReadOwner(channel, speech);
+    if (this.dispatchedSpeechIds.get(channel) === speech) this.dispatchedSpeechIds.delete(channel);
+    const completion = Promise.resolve().then(async () => {
+      await endStudioReadTts(channel, speech);
+      await this.cleanupSpeech(channel, speech);
+      if (!head.running && !this.controls.has(channel)) void this.processNext(channel);
+    }).catch(error => {
+      // An unsuccessful terminal operation may be retried on this same head;
+      // successful completion stays attached, fencing even late old callbacks.
+      if (head.completion === completion) head.completion = undefined;
+      throw error;
+    });
+    head.completion = completion;
+    return completion;
   }
 
   private armPlaybackTimeout(channelID: string, speechID: string, delay: number): void {
@@ -860,6 +876,10 @@ class TtsQueueHandler {
     // Claim completion before the first await. Concurrent duplicate events must
     // not both clean up and release a newer item after Redis yields.
     const head = this.readHeads.get(channelID);
+    if (head?.item.speechID === speechID) {
+      await this.finishHead(channelID, head, reason);
+      return;
+    }
     this.dispatchedSpeechIds.delete(channelID);
     this.activeSpeechIds.delete(channelID);
     const owner = this.readTtsOwners.get(channelID);
@@ -973,7 +993,7 @@ class TtsQueueHandler {
     this.retireReadOwner(channelID, speechID);
     await releaseReadTts(channelID, speechID);
     const timeoutKey = `${channelID}:${speechID}`;
-    this.interruptedSpeechIds.delete(channelID);
+    if (!this.controls.has(channelID) && this.interruptedSpeechIds.get(channelID) === speechID) this.interruptedSpeechIds.delete(channelID);
     if (this.dispatchedSpeechIds.get(channelID) === speechID) this.dispatchedSpeechIds.delete(channelID);
     this.playbackPositions.delete(timeoutKey);
     const timeout = this.currentTimeouts.get(timeoutKey);

@@ -22,8 +22,9 @@ let afterDel: ((key: string) => Promise<void>) | undefined;
 const cache = {
   eval: async (script: string, {keys, arguments: args}: { keys:string[];arguments:string[] }):Promise<unknown> => {
     if(script.includes('DIMA032_POP')) {
-      const value=queues.get(keys[0])?.shift();if(!value)return [];
-      const payload=data.get(args[0]+value)??'',session=data.get(keys[1])??'';
+      const value=queues.get(keys[0])?.[0];if(!value)return [];
+      if(value!==args[0])return ['retry'];queues.get(keys[0])!.shift();
+      const payload=data.get(keys[2])??'',session=data.get(keys[1])??'';
       if(afterPayloadRead){const barrier=afterPayloadRead;afterPayloadRead=undefined;await barrier();}
       return [value,payload,session];
     }
@@ -32,16 +33,20 @@ const cache = {
       const ids=queues.get(keys[0])??[];ids.push(args[2]);queues.set(keys[0],ids);return item.queueSession??'';
     }
     if(script.includes('DIMA032_RESET')) {
-      const waiting=queues.get(keys[1])??[],processing=data.get(keys[2]);
-      data.set(keys[0],args[0]);for(const id of waiting)data.delete(args[1]+id);if(processing)data.delete(args[1]+processing);
-      for(const key of args.slice(2))data.delete(key);for(const key of keys.slice(1)){data.delete(key);queues.delete(key);}
+      const waiting=[...(queues.get(keys[1])??[])],processing=data.get(keys[2]),previous=data.get(keys[0])??'';
+      data.set(keys[0],args[0]);for(const key of keys.slice(1)){data.delete(key);queues.delete(key);}
+      if(processing)waiting.push(processing);
       if(afterSessionWrite){const barrier=afterSessionWrite;afterSessionWrite=undefined;await barrier();}
-      return args[0];
+      return [previous,...waiting];
+    }
+    if(script.includes('DIMA032_CLEAN_OLD')) {
+      for(const key of keys){const raw=data.get(key);if(!raw)continue;let item;try{item=JSON.parse(raw);}catch{} if(!item?.queueSession||item.queueSession===args[0])data.delete(key);}
+      return 1;
     }
     throw new Error('Unexpected Redis script');
   },
   get: async (key: string) => { const value=data.get(key)??null; if(key.includes(':queue:data:')&&afterPayloadRead){const barrier=afterPayloadRead;afterPayloadRead=undefined;await barrier();}return value; },
-  set: async (key: string, value: string) => { data.set(key, value); if(key.endsWith(':tts:session')&&afterSessionWrite){const barrier=afterSessionWrite;afterSessionWrite=undefined;await barrier();} },
+  set: async (key: string, value: string) => { data.set(key, value); if(key.endsWith(':tts:processing') && afterProcessingSet){const hook=afterProcessingSet;afterProcessingSet=undefined;await hook();} if(key.endsWith(':tts:session')&&afterSessionWrite){const barrier=afterSessionWrite;afterSessionWrite=undefined;await barrier();} },
   del: async (key: string) => { data.delete(key); queues.delete(key); if (afterDel) await afterDel(key); },
   zPopMin: async (key: string) => { const value = queues.get(key)?.shift(); return value ? { value } : null; },
   zAdd: async (key: string, entry: any) => { const ids = queues.get(key) ?? []; if (!ids.includes(entry.value)) ids.push(entry.value); queues.set(key, ids); if (afterRequeueWrite) { const barrier = afterRequeueWrite; afterRequeueWrite = undefined; await barrier(); } },
@@ -86,6 +91,10 @@ let ticketFails = false, attemptedFails = false;
 let afterPrivateCreate: (() => Promise<void>) | undefined, afterPrivateLink: (() => Promise<void>) | undefined, afterAttempted: (() => Promise<void>) | undefined;
 let afterConfigurationRead: (() => Promise<void>) | undefined;
 let afterClaim: (() => Promise<void>) | undefined;
+let afterProcessingSet: (() => Promise<void>) | undefined;
+let beforeReservationClear: (() => Promise<void>) | undefined;
+let beforeStudioEnd: (() => Promise<void>) | undefined;
+let failedClaims = 0;
 const resumed: string[] = [];
 const fileDir = await mkdtemp(path.join(tmpdir(), 'dima032-unit-'));
 const file = path.join(fileDir, 'normal.wav'); await writeFile(file, 'normal TTS bytes');
@@ -117,8 +126,8 @@ mock.module('../schemas/pet_runtime.schema.js', { namedExports: {
     PetRuntime: {
         findById: () => query(() => runtime),
         find: () => ({ limit: () => query(() => runtime.ttsReservation?.token ? [runtime] : []) }),
-        findOneAndUpdate: (filter: any, update: any) => query(async () => { if (!matches(runtime, filter)) return null; apply(runtime, update); const claimed = structuredClone(runtime); const barrier = afterClaim; afterClaim = undefined; if (barrier) await barrier(); return claimed; }),
-        updateOne: async (filter: any, update: any) => { const match = matches(runtime, filter); if (match) apply(runtime, update); if (update.$max?.['ttsReservation.expiresAt']) renewalWrites++; const barrier = update.$set?.activeRequestId ? afterPrivateLink : undefined; if (barrier) { afterPrivateLink = undefined; await barrier(); } return { modifiedCount: +match, matchedCount: +match }; }
+        findOneAndUpdate: (filter: any, update: any) => query(async () => { if (!matches(runtime, filter)) { failedClaims++; return null; } apply(runtime, update); const claimed = structuredClone(runtime); const barrier = afterClaim; afterClaim = undefined; if (barrier) await barrier(); return claimed; }),
+        updateOne: async (filter: any, update: any) => { if(update.$set?.ttsReservation === null && beforeReservationClear){const hook=beforeReservationClear;beforeReservationClear=undefined;await hook();} const match = matches(runtime, filter); if (match) apply(runtime, update); if (update.$max?.['ttsReservation.expiresAt']) renewalWrites++; const barrier = update.$set?.activeRequestId ? afterPrivateLink : undefined; if (barrier) { afterPrivateLink = undefined; await barrier(); } return { modifiedCount: +match, matchedCount: +match }; }
     },
     PetRequest: {
         create: async (value: any) => { if ([...rows.values()].some(row => row.ownerId === value.ownerId && row.origin.id === value.origin.id && row.actionKey === value.actionKey)) throw Object.assign(new Error('unique origin/action'), { code:11000 }); rows.set(value._id, structuredClone(value)); const barrier = afterPrivateCreate; afterPrivateCreate = undefined; if (barrier) await barrier(); return { ...value, toObject: () => structuredClone(value) }; },
@@ -157,7 +166,7 @@ mock.module('../classes/pubsub_manager.class.js', { namedExports: { pubSubManage
 const { ttsQueueHandler: handler } = await import('./tts_queue.handler.js');
 const { registerStudioBridge } = await import('../overlays/bridge.js');
 let publishAttempts = 0;
-registerStudioBridge({ hasSource: () => graceConnected, hasLiveSource: () => studioConnected, media: async () => {}, trigger: async () => {}, controlTts: async () => {}, readTts: async (_channel, input) => {
+registerStudioBridge({ hasSource: () => graceConnected, hasLiveSource: () => studioConnected, media: async () => {}, trigger: async () => {}, controlTts: async () => {}, endReadTts: async () => {const hook=beforeStudioEnd;beforeStudioEnd=undefined;if(hook)await hook();}, readTts: async (_channel, input) => {
   publishAttempts++; if (!studioConnected) return 'unavailable'; return input.beforeEmit?.() === false ? 'cancelled' : 'emitted';
 } });
 function barrier() { let resolve!: () => void; const promise = new Promise<void>(done => { resolve = done; }); return { promise, resolve }; }
@@ -179,7 +188,7 @@ async function setup() {
   await new Promise<void>(done=>setImmediate(done));
   await handler.cleanupChannel(channel); await reset(); await writeFile(file, 'normal TTS bytes');
   data.clear(); queues.clear(); events.length=0; synthesized.length=0; usage=0; publishAttempts=0;
-  configurationReads=renewalWrites=0; advanceProbeTime=false; afterDel=afterPayloadRead=afterSessionWrite=undefined;
+  configurationReads=renewalWrites=0; advanceProbeTime=false; afterDel=afterPayloadRead=afterSessionWrite=afterProcessingSet=beforeReservationClear=beforeStudioEnd=undefined;failedClaims=0;
   studioConnected=true; graceConnected=true; peer.audioReady=false;
   for (const socket of legacySockets.values()) socket.data.ttsReady=false;
 }
@@ -425,4 +434,90 @@ test('R4 cancelling one owner wait does not strand another channel waiting on th
     runtime.activeRequestId=null;observeReadTtsRuntime(runtime);await bounded(second,'remaining owner wait was stranded');
     assert.equal((handler as any).readHeads.get(other)?.phase,'emitted');assert.equal((handler as any).activePumps,0);
   } finally {runtime.activeRequestId=null;runtime.notBefore=new Date(0);observeReadTtsRuntime(runtime);await handler.control(other,'clear');await Promise.allSettled([first,second]);await handler.cleanupChannel(other);await stop();}
+});
+
+for (const setting of ['readTts', 'master'] as const) test(`R6 ${setting} disable before first reservation preserves the created head and one same-file overlay`, async () => {
+  await setup(); const entered=barrier(), resume=barrier();
+  for(const socket of legacySockets.values()) socket.data.ttsReady=true;
+  afterProcessingSet=async()=>{entered.resolve();await resume.promise;};
+  const speech=`before-reserve-${setting}`; seed(speech); const processing=handler.processNext(channel); await entered.promise;
+  try {
+    assert.equal((handler as any).readHeads.get(channel)?.item.speechID,speech);assert.equal(runtime.ttsReservation,null);
+    if(setting==='readTts') config.settings.sources.readTts=false; else config.settings.enabled=false;
+    config.runtime.readTtsEnabled=false;config.revision++;runtime.generation++;
+    await invalidateReadTts(owner,'settings_changed');resume.resolve();await processing;
+    assert.equal((handler as any).readHeads.get(channel)?.phase,'emitted');
+    assert.equal(events.filter(e=>e.event==='speech'&&e.payload.speechID===speech).length,1);
+    assert.equal((handler as any).currentFiles.get(`${channel}:${speech}`),file);
+    assert.equal(synthesized.length,1);assert.equal(usage,1);assert.ok(runtime.ttsReservation);
+    await handler.resumeIfIdle(channel);await new Promise<void>(done=>setImmediate(done));
+    assert.equal(events.filter(e=>e.event==='speech'&&e.payload.speechID===speech).length,1);
+    assert.equal(petEvents.some(e=>e.event==='pet:play'||e.event==='pet:follow'),false);
+  } finally {resume.resolve();await processing;await stop();}
+});
+test('R6 reservation release wakes a ready other-channel contender only after authoritative clear',async()=>{
+  await setup();seed('release-first');await handler.processNext(channel);
+  const other='123458',entered=barrier(),resume=barrier();
+  queues.set(`twitch:${other}:tts:queue`,['release-second']);data.set(`twitch:${other}:tts:queue:data:release-second`,JSON.stringify({channelID:other,speechID:'release-second',provider:'piper',mode:'speak',language:'en',voice:'test',text:'second'}));
+  const second=handler.processNext(other);await until(()=>failedClaims>0);await new Promise<void>(done=>setImmediate(done));
+  beforeReservationClear=async()=>{entered.resolve();await resume.promise;};
+  const ending=handler.handleSpeechEnded(channel,'release-first');await entered.promise;
+  try {
+    const claims=failedClaims;await new Promise<void>(done=>setImmediate(done));
+    assert.equal(failedClaims,claims,'no release notification before Mongo clear');
+    resume.resolve();await ending;
+    await bounded(second,'ready contender slept after reservation clear');
+    assert.equal((handler as any).readHeads.get(other)?.phase,'emitted');assert.equal(runtime.ttsReservation?.speechId,'release-second');
+  } finally {resume.resolve();await ending;await handler.control(other,'clear');await second;await handler.cleanupChannel(other);await stop();}
+});
+for(const stage of ['reservation','studio'] as const) test(`R6 natural end and skip share ${stage} terminal cleanup; old A cannot unlock ordinary B and C`,async()=>{
+  await setup();for(const socket of legacySockets.values())socket.data.ttsReady=true;
+  seed(`terminal-A-${stage}`);await handler.processNext(channel);
+  const entered=barrier(),resume=barrier();const pause=async()=>{entered.resolve();await resume.promise;};
+  if(stage==='reservation')beforeReservationClear=pause;else beforeStudioEnd=pause;
+  const ending=handler.handleSpeechEnded(channel,`terminal-A-${stage}`);await entered.promise;
+  let skipped=false;const skipping=handler.control(channel,'skip').then(()=>{skipped=true;});
+  try {
+    config.settings.sources.readTts=false;config.runtime.readTtsEnabled=false;config.revision++;runtime.generation++;
+    await invalidateReadTts(owner,'settings_changed');seed(`ordinary-B-${stage}`,`queued-C-${stage}`);
+    await new Promise<void>(done=>setImmediate(done));await new Promise<void>(done=>setImmediate(done));
+    assert.equal(skipped,false,'skip must join already-running terminal cleanup');
+    assert.equal(synthesized.includes(`ordinary-B-${stage}`),false);
+    resume.resolve();await Promise.all([ending,skipping]);await until(()=>synthesized.includes(`ordinary-B-${stage}`));
+    await new Promise<void>(done=>setImmediate(done));
+    assert.equal(data.get(`twitch:${channel}:tts:processing`),`ordinary-B-${stage}`);
+    assert.equal((handler as any).processingChannels.has(channel),true);
+    await handler.processNext(channel);await handler.handleSpeechEnded(channel,`terminal-A-${stage}`);
+    assert.equal(synthesized.includes(`queued-C-${stage}`),false);
+    await handler.handleSpeechEnded(channel,`ordinary-B-${stage}`);await until(()=>synthesized.includes(`queued-C-${stage}`));
+  } finally {resume.resolve();await Promise.allSettled([ending,skipping]);await stop();}
+});
+
+test('R6 reservation-only recovery transition resumes a ready queue without lease or generation changes',async()=>{
+  await setup();runtime.ttsReservation={speechId:'external-old',token:'external-token',expiresAt:new Date(Date.now()+120000)};
+  seed('recovery-only-token');const processing=handler.processNext(channel);await until(()=>failedClaims>0);await new Promise<void>(done=>setImmediate(done));
+  try {
+    runtime.ttsReservation=null;observeReadTtsRuntime(runtime);
+    await bounded(processing,'reservation-only recovery did not wake the ready head');
+    assert.equal((handler as any).readHeads.get(channel)?.phase,'emitted');assert.equal(synthesized.length,1);assert.equal(usage,1);
+  } finally {await handler.control(channel,'clear');await processing;await stop();}
+});
+for(const failure of ['rejected','replaced-token'] as const) test(`R6 ${failure} reservation clear cannot advertise availability or clear its successor`,async()=>{
+  await setup();seed(`clear-${failure}`);await handler.processNext(channel);
+  const other='123459',entered=barrier(),resume=barrier();
+  queues.set(`twitch:${other}:tts:queue`,[`wait-${failure}`]);data.set(`twitch:${other}:tts:queue:data:wait-${failure}`,JSON.stringify({channelID:other,speechID:`wait-${failure}`,provider:'piper',mode:'speak',language:'en',voice:'test',text:'second'}));
+  const second=handler.processNext(other);await until(()=>failedClaims>0);await new Promise<void>(done=>setImmediate(done));
+  beforeReservationClear=async()=>{entered.resolve();await resume.promise;if(failure==='rejected')throw new Error('fixture Mongo clear rejected');};
+  const ending=handler.handleSpeechEnded(channel,`clear-${failure}`);const outcome=ending.then(()=>null,error=>error);await entered.promise;
+  try {
+    if(failure==='replaced-token')runtime.ttsReservation={speechId:'newer-owner',token:'newer-token',expiresAt:new Date(Date.now()+120000)};
+    const held=structuredClone(runtime.ttsReservation),claims=failedClaims;resume.resolve();
+    const error=await outcome;assert.equal(!!error,failure==='rejected');
+    await new Promise<void>(done=>setImmediate(done));assert.equal(failedClaims,claims);
+    assert.deepEqual(runtime.ttsReservation,held,'failed old-token cleanup must preserve authoritative ownership');
+    assert.equal(synthesized.length,1,'contender cannot synthesize before actual release');
+    runtime.ttsReservation=null;observeReadTtsRuntime(runtime);
+    await bounded(second,'authoritative recovery could not release the contender');
+    assert.equal((handler as any).readHeads.get(other)?.phase,'emitted');
+  } finally {resume.resolve();await outcome;await handler.control(other,'clear');await second;await handler.cleanupChannel(other);await stop();}
 });
