@@ -1,6 +1,6 @@
 # DIMA-032 candidate verification fixtures
 
-Source implementation commit: `535508bc`. Source `tsc --noEmit` passed; the baseline/feature command passed39 tests and the final focused command passed25 tests (overlapping coverage). These are source/mock results, not Docker runtime acceptance. Candidate scripts are authored and syntax-checked; the manager must run them against each exact candidate before release. No script here calls production accounts/providers or modifies application configuration/Compose.
+Source implementation: initial `535508bc`, corrected/frozen `667a7d62` after independent review. Source `tsc --noEmit` passed; the baseline/feature command passed39 tests and the final focused command passed25 tests (overlapping coverage). The review-fix run passed52 tests and the final focused run passed39 tests after revision/post-ACK safeguards; final `tsc --noEmit` passed. These are source/mock results, not Docker runtime acceptance. Candidate scripts are authored and syntax-checked; the manager must run them against each exact candidate before release. No script here calls production accounts/providers or modifies application configuration/Compose.
 
 Materialize a private fixture directory. No symlinks; do not pass this repository directory directly because the referenced shared mocks must be present:
 
@@ -8,6 +8,7 @@ Materialize a private fixture directory. No symlinks; do not pass this repositor
 DIMA032_FIXTURES=$(mktemp -d /tmp/dima032-fixtures.XXXXXX)
 cp ops/checks/dima032-fixtures/providers.mjs "$DIMA032_FIXTURES/"
 cp ops/checks/dima032-fixtures/producer.mjs "$DIMA032_FIXTURES/"
+cp ops/checks/dima032-fixtures/startup.mjs "$DIMA032_FIXTURES/"
 cp ops/checks/pet-runtime-fixtures/providers.mjs "$DIMA032_FIXTURES/runtime-providers.mjs"
 cp ops/checks/oauth-beta-fixtures/providers.mjs "$DIMA032_FIXTURES/oauth-providers.mjs"
 ```
@@ -57,3 +58,10 @@ scripts/saas-ops verify cron-<run-id> --dependency mongo --dependency redis \
 Do not reuse this directory for the API after replacing its preload; create a fresh staged copy if returning to API verification. `dima032-consumers.mjs` runs real packaged AST→admission in separate Node producer processes using an empty local peer map and actual disposable Mongo. Both chat-command and Twitch-event authorities are blocked by the pending normal-TTS reservation. Concurrent independent producers race the real Mongo CAS after release; exactly one wins. Disabling the independent source returns `pet_source_disabled`. No runtime/provider is started by these producers. Compiled AST mocks supplement this actual path.
 
 The parent owns candidate execution, release and production startup/readiness for API/bot/cron. Cron replacement restarts its complete process tree: check all existing worker health after deployment, without expanding isolated behavior retesting to unchanged Rust workers. Preserve each run's rollback artifacts and use helper cleanup on every candidate. Remove only this task's staged directory when no longer needed. No push or deployment was performed by the API worker.
+
+
+## Independent review regression extensions
+
+The API fixture seeds one separate disposable owner with a possibly heard old private request, an orphan reservation, an existing45-second lease and an unheard Redis backlog before application imports. Startup must cancel only the old identity, preserve `notBefore`, and leave providers idle until the conservative barrier passes. Connecting its legacy source then drains the existing backlog without replay of the old request. The main PNG-only test also queues unheard backlog, disconnects, and reconnects without another enqueue/control; wire capture requires acquire ACK before the resumed play, and unchanged-ready remains responsive during held dummy synthesis.
+
+Fixture-only wrappers delay **responses of completed real Mongo operations**, retaining actual result/data semantics: the pet reservation `findOneAndUpdate` lean response, GridFS overlay upload metadata insertion, and retained delivery replacement. Redis barrier keys are confined to disposable fixtures. Skip across a delayed claim must charge/synthesize only the next item. A watchdog end across retain/persist must suppress the old overlay emission, release retained files and deliver the next item. Unavailable VTS and missing PNG images both retain one legacy audio owner with Studio captions; restoring valid settings while overlay speech is active must still reject independent admission as busy. These additions supplement the source deferred-interleaving mocks; syntax validation alone does not establish candidate acceptance.

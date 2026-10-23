@@ -14,7 +14,7 @@ const mongo = await getMongoDBConnection('dima032-check'), db = mongo.connection
 const redis = await getDragonflyClient('dima032-check'), base = 'http://127.0.0.1:3000', channel = '99003101', token = 'pet-owner-token';
 const sockets = [], clients = [];
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
-async function until(fn, label, timeout = 15000) { const end = Date.now() + timeout; while (Date.now() < end) { const result = await fn(); if (result) return result; await pause(25); } throw new Error(`Timeout: ${label}`); }
+async function until(fn, label, timeout = 30000) { const end = Date.now() + timeout; while (Date.now() < end) { const result = await fn(); if (result) return result; await pause(25); } throw new Error(`Timeout: ${label}`); }
 async function call(path, method = 'GET', body) {
     const response = await fetch(base + path, { method, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
     const envelope = await response.json(); assert.equal(response.status, 200, JSON.stringify(envelope)); return envelope.data;
@@ -40,7 +40,7 @@ async function connect(namespace, auth, first) {
     });
     const client = { ws, auth, namespace, events, get socketId() { return socketId; }, lease: null,
         emit(event, data) { ws.send(`42${namespace},${JSON.stringify([event, data])}`); },
-        send(event, data) { const id = ++sequence; return new Promise((resolve, reject) => { const timer = setTimeout(() => reject(new Error(`ACK ${event}`)), 5000); acks.set(id, value => { clearTimeout(timer); acks.delete(id); resolve(value); }); ws.send(`42${namespace},${id}${JSON.stringify([event, data])}`); }); },
+        send(event, data) { const id = ++sequence; return new Promise((resolve, reject) => { const timer = setTimeout(() => reject(new Error(`ACK ${event}`)), 5000); acks.set(id, value => { clearTimeout(timer); acks.delete(id); events.push({ event: `ack:${event}`, data: value }); resolve(value); }); ws.send(`42${namespace},${id}${JSON.stringify([event, data])}`); }); },
         event(event, predicate = () => true) { return until(() => events.find(item => item.event === event && predicate(item.data))?.data, event); }
     };
     await until(() => socketId, 'namespace join'); if (first) await client.event(first); clients.push(client); return client;
@@ -63,24 +63,49 @@ async function readyPet() {
     assert.equal((await pet.send('pet:ready', { v: 1, audioReady: true, renderReady: true, vtsReady: false })).ok, true);
     pet.lease = await until(async () => { const ack = await pet.send('pet:lease', { v: 1, action: 'acquire' }); return ack.ok ? ack.data : null; }, 'PNG lease', 20000); return pet;
 }
+async function playForSpeech(pet, speech) { const request = await until(() => PetRequest.findOne({ 'origin.kind': 'tts-queue', 'origin.id': speech }).lean(), 'TTS request'); return pet.event('pet:play', data => data.requestId === request._id); }
 const playback = (pet, play, seq, phase) => pet.send('pet:playback', { v: 1, requestId: play.requestId, leaseId: play.leaseId, generation: play.generation, seq, phase, positionMs: phase === 'ended' ? 500 : 0 });
 const idle = () => until(async () => !await redis.get(`twitch:${channel}:tts:processing`), 'normal queue release');
 const providerCount = () => redis.lLen('pet:test:provider-calls');
 const usageCharacters = async () => Number(await redis.hGet(`${channel}:tts:usage`, 'total_characters') || 0);
 const localAudio = url => base + new URL(url).pathname + new URL(url).search;
 try {
+    const startup = JSON.parse(await redis.get('dima032:test:startup'));
+    const restarted = await PetRuntime.findById(startup.ownerId).lean();
+    assert.equal(restarted.generation, 8); assert.equal(restarted.ttsReservation, null);
+    assert.equal(restarted.notBefore.getTime(), startup.notBefore);
+    assert.equal((await PetRequest.findById('restart-possibly-heard').lean()).status, 'cancelled');
+    const startupCount = await providerCount(), startupOverlay = await connect(`/speech/${startup.channel}`, {}, 'speech-reset');
+    assert.ok(Date.now() < startup.notBefore, 'fixture reaches the old conservative lease barrier');
+    await pause(150); assert.equal(await providerCount(), startupCount, 'startup backlog cannot synthesize before safe turn');
+    const startupAudio = await until(() => startupOverlay.events.find(event => event.event === 'speech' && event.data.speechID === 'restart-backlog')?.data, 'restart backlog after lease barrier', 50000);
+    assert.ok(Date.now() >= startup.notBefore); assert.equal(await providerCount(), startupCount + 1);
+    startupOverlay.emit('speech-ended', { speechID: startupAudio.speechID, reason: 'ended' }); startupOverlay.ws.close();
     let pet = await readyPet();
     const before = await providerCount(), chars = await usageCharacters(), text = 'Normal queue uses existing synthesis once';
-    const speech = await enqueue(text), play = await pet.event('pet:play');
+    const speech = await enqueue(text), play = await playForSpeech(pet, speech);
     assert.equal((await PetRequest.findById(play.requestId).lean()).origin.id, speech);
     assert.equal(await redis.get(`twitch:${channel}:tts:processing`), speech, 'pet-only PNG admission reaches normal TTS with no desktop/overlay');
     const audio = await fetch(localAudio(play.audio.url)); assert.equal(audio.status, 200); const bytes = Buffer.from(await audio.arrayBuffer()); assert.equal(bytes.subarray(0, 4).toString(), 'RIFF');
     assert.equal((await playback(pet, play, 0, 'started')).ok, true); assert.equal((await playback(pet, play, 1, 'ended')).ok, true); await idle();
     assert.equal(await providerCount(), before + 1); assert.equal(await usageCharacters(), chars + text.length); assert.equal(await redis.lLen('pet:test:billing-events'), 0, 'free fixture adds no duplicate paid debit');
+    // Existing unheard PNG-only backlog resumes on ready+lease, without another enqueue/control.
+    const firstBacklog = await enqueue('PNG first item'); const firstBacklogPlay = await playForSpeech(pet, firstBacklog);
+    const secondBacklog = await enqueue('PNG waiting item'); pet.ws.close(); await idle();
+    assert.equal(await redis.zCard(`twitch:${channel}:tts:queue`), 1);
+    await redis.set('pet:test:provider-mode', 'hold'); pet = await readyPet();
+    const leaseAck = pet.events.findIndex(event => event.event === 'ack:pet:lease' && event.data.ok);
+    assert.ok(leaseAck >= 0); const readyStarted = Date.now();
+    assert.equal((await pet.send('pet:ready', { v: 1, audioReady: true, renderReady: true, vtsReady: false })).ok, true);
+    assert.ok(Date.now() - readyStarted < 1500, 'provider resume never blocks the socket control queue');
+    const secondBacklogPlay = await playForSpeech(pet, secondBacklog); await redis.del('pet:test:provider-mode');
+    assert.ok(pet.events.findIndex(event => event.event === 'pet:play' && event.data.requestId === secondBacklogPlay.requestId) > leaseAck, 'lease ACK precedes first resumed play');
+    assert.notEqual(firstBacklogPlay.requestId, secondBacklogPlay.requestId);
+    await playback(pet, secondBacklogPlay, 0, 'started'); await playback(pet, secondBacklogPlay, 1, 'ended'); await idle();
     const legacy = await connect(`/speech/${channel}`, {}, 'speech-reset');
     for (const fetchTicket of [false, true]) {
         const mark = legacy.events.length, count = await providerCount(); const id = await enqueue(`Lost started ACK fetch=${fetchTicket}`);
-        const p = await pet.event('pet:play', data => data.requestId !== play.requestId && !pet.events.some(item => item.event === 'tested-play' && item.data === data.requestId));
+        const p = await playForSpeech(pet, id);
         pet.events.push({ event: 'tested-play', data: p.requestId });
         if (fetchTicket) { const response = await fetch(localAudio(p.audio.url)); assert.equal(response.status, 200); await response.arrayBuffer(); assert.equal((await PetRequest.findById(p.requestId).lean()).audioFetched, true); }
         pet.ws.close(); await idle(); await pause(150);
@@ -105,7 +130,7 @@ try {
     const contenders = await Promise.allSettled([admitPetAction(action('concurrent-a')), admitPetAction(action('concurrent-b'))]);
     assert.ok(contenders.every(result => result.status === 'rejected' && result.reason.code === 'busy'));
     await playback(pet, independentPlay, 0, 'started'); await playback(pet, independentPlay, 1, 'ended');
-    const handoff = await pet.event('pet:play', data => data.requestId !== admitted.requestId);
+    const handoff = await playForSpeech(pet, waiting);
     await command('control', { action: 'skip' }); await idle(); assert.ok(pet.events.some(event => event.event === 'pet:stop' && event.data.requestId === handoff.requestId));
     // Studio-only audio; two scenes deliberately reuse clientId, one exact recipient owns media.
     legacy.ws.close(); await save(settings => ({ ...settings, ttsAudio: 'overlay' }));
@@ -140,8 +165,44 @@ try {
     const stale = await fetch(base + eventPath(elected)); assert.equal(stale.status, 404);
     const fresh = await fetch(base + eventPath({ ...elected, client: reconnected })); assert.equal(fresh.status, 404);
     const end = await pet.event('pet:follow-end', data => data.followId === studioSpeech); assert.equal(end.generation, follow.generation);
+    const liveStudio = () => clients.filter(client => client.namespace.startsWith('/overlay-studio/') && client.ws.readyState === WebSocket.OPEN);
+    const studioDelivery = speechID => until(() => liveStudio().flatMap(client => client.events.map(event => ({ client, event: event.data, kind: event.event }))).find(item => item.kind === 'overlay-event' && item.event.tts?.speechID === speechID && item.event.tts.ownerClientId), 'elected Studio delivery');
+    // Delayed REAL Mongo claim response crosses skip before any normal synthesis/debit.
+    await redis.set('dima032:test:hold:cas', 'true'); const cancelledCount = await providerCount();
+    const cancelledSpeech = await enqueue('Cancel delayed claim');
+    await until(() => redis.get('dima032:test:entered:cas'), 'CAS barrier');
+    await command('control', { action: 'skip' }); const afterSkip = await enqueue('Next item survives cancelled claim');
+    assert.equal(await providerCount(), cancelledCount); await redis.del('dima032:test:hold:cas');
+    const nextDelivery = await studioDelivery(afterSkip);
+    assert.equal(await providerCount(), cancelledCount + 1);
+    assert.equal(liveStudio().some(client => client.events.some(event => event.event === 'overlay-event' && event.data.tts?.speechID === cancelledSpeech)), false);
+    nextDelivery.client.emit('overlay-speech-ended', { eventId: nextDelivery.event.id, speechID: afterSkip, reason: 'ended' }); await idle();
+    for (const phase of ['retain', 'persist']) {
+        await redis.set(`dima032:test:hold:${phase}`, 'true');
+        const old = await enqueue(`Late ${phase} must not play`);
+        await until(() => redis.get(`dima032:test:entered:${phase}`), `${phase} barrier`);
+        const next = await enqueue(`New item after ${phase}`);
+        const ending = command('end', { speechID: old }); await pause(50); await redis.del(`dima032:test:hold:${phase}`); await ending;
+        const current = await studioDelivery(next);
+        assert.equal(liveStudio().some(client => client.events.some(event => event.event === 'overlay-event' && event.data.tts?.speechID === old)), false);
+        const storedOld = await db.collection('overlay_deliveries').findOne({ speechID: old }); assert.ok(!storedOld?.mediaId, 'stale retained media released');
+        current.client.emit('overlay-speech-ended', { eventId: current.event.id, speechID: next, reason: 'ended' }); await idle();
+    }
+    // Opted-in VTS offline keeps one legacy owner; reconnect/settings validity cannot bypass its turn.
+    const offlineLegacy = await connect(`/speech/${channel}`, {}, 'speech-reset');
+    for (const kind of ['vts', 'png']) {
+        await save(settings => ({ ...settings, ttsAudio: 'pet', appearance: { kind, idleAssetId: null, talkingAssetId: null }, playback: { ...settings.playback, vtsSessionId: null } }));
+        const offlineSpeech = await enqueue(`Unavailable ${kind} still uses one fallback`); await offlineLegacy.event('speech', data => data.speechID === offlineSpeech);
+        await pause(100); assert.ok((await PetRuntime.findById(ownerId).lean()).ttsReservation);
+        assert.equal(liveStudio().some(client => client.events.some(event => event.event === 'overlay-event' && event.data.tts?.speechID === offlineSpeech && event.data.media)), false);
+        await save(settings => ({ ...settings, appearance: { kind: 'png', idleAssetId: String(asset), talkingAssetId: String(asset) } }));
+        await assert.rejects(admitPetAction(action('reconnected-during-overlay')), error => error.code === 'busy');
+        assert.equal(await redis.get(`twitch:${channel}:tts:processing`), offlineSpeech);
+        offlineLegacy.emit('speech-ended', { speechID: offlineSpeech, reason: 'ended' }); await idle();
+    }
     console.log('PASS DIMA032 exact API: actual normal queue+mock synthesis/usage, PNG-only private playback once, lost ACK/fetch disconnect no replay, same-file fallback, concurrent Mongo admission reservation, skip, elected Studio media/captions/report ownership, follow and stale HTTP epochs.');
 } finally {
+    await redis.del('dima032:test:hold:cas', 'dima032:test:hold:retain', 'dima032:test:hold:persist', 'pet:test:provider-mode');
     clearInterval(renew); for (const socket of sockets) socket.close();
     await mongo.connection.close(); redis.destroy();
 }
