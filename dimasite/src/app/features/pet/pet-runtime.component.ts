@@ -5,6 +5,7 @@ import { io, Socket } from 'socket.io-client';
 import { LanguageService } from '../../services/language.service';
 import { LinksService } from '../../services/links.service';
 import { PetBrowserPlayer, BrowserPetPlaybackReport } from './pet-browser-player';
+import { PetFollowClock } from './pet-follow-clock';
 import type { PetAck, PetLease, PetPlay, PetRequestView, PetSnapshot } from './pet-runtime.model';
 
 const record = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
@@ -12,7 +13,7 @@ const integer = (value: unknown): value is number => Number.isSafeInteger(value)
 const identifier = (value: unknown): value is string => typeof value === 'string' && /^[a-zA-Z0-9_-]{1,128}$/.test(value);
 const statuses: readonly string[] = ['accepted', 'generating', 'synthesizing', 'ready', 'playing', 'completed', 'cancelled', 'failed', 'expired'];
 function requestView(value: unknown): value is PetRequestView {
-  return record(value) && identifier(value['requestId']) && (value['operation'] === 'talk' || value['operation'] === 'ask') &&
+  return record(value) && identifier(value['requestId']) && (value['operation'] === 'talk' || value['operation'] === 'ask' || value['operation'] === 'tts') &&
     typeof value['status'] === 'string' && statuses.includes(value['status']) && integer(value['version']);
 }
 function snapshot(value: unknown): value is PetSnapshot {
@@ -55,7 +56,9 @@ export class PetRuntimeComponent {
   readonly idleUrl = computed(() => this.assetUrl(this.state()?.assets.idleUrl));
   readonly talkingUrl = computed(() => this.assetUrl(this.state()?.assets.talkingUrl));
   private readonly loadedImages = new Map<'idle' | 'talking', string>();
-  private readonly player = new PetBrowserPlayer(report => this.onPlayback(report), (id, positionMs, value) => this.onMouth(id, positionMs, value), speaking => this.talking.set(speaking));
+  private readonly follow = new PetFollowClock();
+  private followTimer?: ReturnType<typeof setTimeout>;
+  private readonly player = new PetBrowserPlayer(report => this.onPlayback(report), (id, positionMs, value) => this.onMouth(id, positionMs, value), speaking => { if (!this.follow.live) this.talking.set(speaking); });
   private readonly socket: Socket = io(`${this.base}/pet`, { path: '/socket.io/', transports: ['websocket'],
     auth: { v: 1, capability: this.capability }, autoConnect: false, reconnectionAttempts: 8, reconnectionDelay: 1000, reconnectionDelayMax: 30_000, randomizationFactor: .5 });
   private lease: PetLease | null = null;
@@ -87,28 +90,46 @@ export class PetRuntimeComponent {
     this.socket.on('pet:snapshot', (value: unknown) => this.acceptSnapshot(value));
     this.socket.on('pet:request', (value: unknown) => this.acceptRequest(value));
     this.socket.on('pet:play', (value: unknown) => this.acceptPlay(value));
+    this.socket.on('pet:follow', (value: unknown) => {
+      const state = this.state();
+      if (!state || !this.socket.connected || state.appearance.kind !== 'png' || this.active ||
+        state.active && !['completed', 'cancelled', 'failed', 'expired'].includes(state.active.status)) return;
+      if (this.follow.accept(value, state.generation)) this.tickFollow();
+    });
+    this.socket.on('pet:follow-end', (value: unknown) => { if (this.follow.end(value)) { this.stopFollow(); this.talking.set(false); } });
     this.socket.on('pet:stop', (value: unknown) => {
       if (record(value) && value['v'] === 1 && value['generation'] === this.state()?.generation && identifier(value['requestId'])) {
+        this.stopFollow();
         if (value['requestId'] === this.active?.requestId) this.stopPlayback(true);
         if (value['requestId'] === this.state()?.active?.requestId) this.talking.set(false);
       }
     });
-    this.socket.on('connect', () => { this.connection++; this.resetReady(); this.versions.clear(); this.state.set(null); this.status.set(this.audioReady ? 'rendererConnecting' : 'rendererAutoplay'); });
+    this.socket.on('connect', () => { this.stopFollow(); this.connection++; this.resetReady(); this.versions.clear(); this.state.set(null); this.status.set(this.audioReady ? 'rendererConnecting' : 'rendererAutoplay'); });
     this.socket.on('disconnect', reason => {
-      this.connection++; this.resetReady(); this.releaseLease(); this.state.set(null); this.status.set('rendererOffline');
+      this.stopFollow(); this.connection++; this.resetReady(); this.releaseLease(); this.state.set(null); this.status.set('rendererOffline');
       if (reason === 'io server disconnect') this.socket.disconnect();
     });
-    this.socket.on('connect_error', () => { this.connection++; this.resetReady(); this.releaseLease(); this.status.set('rendererOffline'); });
+    this.socket.on('connect_error', () => { this.stopFollow(); this.connection++; this.resetReady(); this.releaseLease(); this.status.set('rendererOffline'); });
     if (/^[a-zA-Z0-9_-]{43}$/.test(this.capability)) this.socket.connect();
     else this.status.set('rendererUnavailable');
     inject(DestroyRef).onDestroy(() => {
-      this.disposed = true; this.connection++; this.releaseLease(); this.player.destroy(); this.socket.disconnect();
+      this.disposed = true; this.stopFollow(); this.connection++; this.releaseLease(); this.player.destroy(); this.socket.disconnect();
       doc.body.style.background = oldBody; doc.documentElement.style.background = oldRoot; referrer.remove();
     });
   }
 
   t(key: string): string { return this.language.translate(`pet.${key}`); }
   reconnect(): void { if (!this.disposed) this.socket.connect(); }
+  private tickFollow(): void {
+    clearTimeout(this.followTimer); this.followTimer = undefined;
+    const sample = this.follow.sample(); this.talking.set(sample.talking);
+    if (sample.ticking) this.followTimer = setTimeout(() => this.tickFollow(), 20);
+  }
+  private stopFollow(): void {
+    const following = this.follow.live;
+    clearTimeout(this.followTimer); this.followTimer = undefined;
+    this.follow.retire(); if (following) this.talking.set(false);
+  }
 
   private assetUrl(raw: string | null | undefined): string {
     if (!raw || raw.length > 2048) return '';
@@ -153,6 +174,7 @@ export class PetRuntimeComponent {
     let value: PetSnapshot = input;
     const previous = this.state();
     if (previous && (value.generation === previous.generation && value.serverTime < previous.serverTime || value.generation < previous.generation || value.generation === previous.generation && value.settingsRevision < previous.settingsRevision)) return;
+    if (!previous || previous.generation !== value.generation || previous.settingsRevision !== value.settingsRevision || previous.peerId !== value.peerId) { this.stopFollow(); this.follow.reset(value.generation); }
     if (previous && (previous.generation !== value.generation || previous.peerId !== value.peerId)) { this.resetReady(); this.releaseLease(); this.versions.clear(); }
     const incoming = value.active;
     if (previous?.generation === value.generation && incoming && incoming.version < (this.versions.get(incoming.requestId) ?? -1)) value = { ...value, active: previous.active };
@@ -162,7 +184,8 @@ export class PetRuntimeComponent {
     while (this.versions.size > 128) this.versions.delete(this.versions.keys().next().value!);
     if (value.playback.target !== 'browser' || value.lease && value.lease.holderPeerId !== value.peerId ||
       this.lease && (!value.lease || value.lease.leaseId !== this.lease.leaseId)) this.releaseLease();
-    if (!this.active) this.talking.set(value.active?.status === 'playing');
+    if (value.active && !['completed', 'cancelled', 'failed', 'expired'].includes(value.active.status)) this.stopFollow();
+    if (!this.active && !this.follow.live) this.talking.set(value.active?.status === 'playing');
     this.ready();
   }
   private acceptRequest(value: unknown): void {
@@ -174,6 +197,7 @@ export class PetRuntimeComponent {
     this.versions.set(request.requestId, request.version);
     while (this.versions.size > 128) this.versions.delete(this.versions.keys().next().value!);
     this.state.set({ ...state, active: request });
+    this.stopFollow();
     if (!this.active) this.talking.set(request.status === 'playing');
     if (['completed', 'cancelled', 'failed', 'expired'].includes(request.status) && this.active?.requestId === request.requestId) this.stopPlayback(false);
   }
@@ -235,6 +259,7 @@ export class PetRuntimeComponent {
     if (!play(value) || !this.owns(value) || this.active || value.startBefore <= this.serverNow()) return;
     const url = this.audioUrl(value);
     if (!url) return;
+    this.stopFollow();
     // Translate the server's start deadline from its latest snapshot without trusting the PC's clock.
     const startBefore = Date.now() + Math.min(15_000, value.startBefore - this.serverNow());
     this.active = value; this.sequence = 0; this.lastProgress = 0; this.lastMouth = 0;
@@ -276,7 +301,7 @@ export class PetRuntimeComponent {
   }
   private stopPlayback(report: boolean): void {
     const active = this.active;
-    this.active = null; this.progressInFlight = false; this.player.reset(); this.talking.set(false);
+    this.active = null; this.progressInFlight = false; this.player.reset(); if (!this.follow.live) this.talking.set(false);
     if (report && active && this.owns(active)) this.emitPlayback(active, { v: 1, requestId: active.requestId, leaseId: active.leaseId,
       generation: active.generation, seq: ++this.sequence, phase: 'stopped', positionMs: 0 });
   }

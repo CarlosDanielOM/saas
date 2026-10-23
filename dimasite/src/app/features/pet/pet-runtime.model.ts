@@ -2,7 +2,7 @@ import type { PetSettings } from '../../models/pet-settings.model';
 
 export interface PetRequestView {
   requestId: string;
-  operation: 'talk' | 'ask';
+  operation: 'talk' | 'ask' | 'tts';
   status: 'accepted' | 'generating' | 'synthesizing' | 'ready' | 'playing' | 'completed' | 'cancelled' | 'failed' | 'expired';
   version: number;
   text?: string;

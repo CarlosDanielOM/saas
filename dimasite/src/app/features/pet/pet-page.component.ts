@@ -58,6 +58,9 @@ export class PetPageComponent {
   readonly providers: PetProvider[] = ['piper', 'kokoro', 'fish'];
   readonly form = this.fb.group({
     enabled: false,
+    independent: true,
+    readTts: false,
+    ttsAudio: this.fb.control<'pet' | 'overlay'>('pet'),
     name: ['Dima', [Validators.required, Validators.maxLength(40), Validators.pattern(/\S/)]],
     appearanceKind: this.fb.control<'png' | 'vts'>('png'),
     idleAssetId: this.fb.control<string | null>(null),
@@ -89,7 +92,7 @@ export class PetPageComponent {
   readonly draft = computed<PetSettings>(() => {
     this.values();
     const value = this.form.getRawValue();
-    return { enabled: value.enabled, name: value.name.trim(),
+    return { enabled: value.enabled, sources: { independent: value.independent, readTts: value.readTts }, ttsAudio: value.ttsAudio, name: value.name.trim(),
       appearance: { kind: value.appearanceKind, idleAssetId: value.idleAssetId, talkingAssetId: value.talkingAssetId },
       playback: { target: value.playbackTarget, desktopSessionId: value.desktopSessionId, vtsSessionId: value.vtsSessionId },
       tts: { enabled: value.speechEnabled, provider: value.provider, language: value.language, voice: value.voice.trim() },
@@ -104,13 +107,13 @@ export class PetPageComponent {
   readonly customFishVoice = computed(() => this.draft().tts.provider === 'fish' && !this.voices().some(voice => voice.id === this.draft().tts.voice));
   readonly valid = computed(() => {
     const value = this.draft();
-    return this.form.valid && (value.personality.source === 'custom' ? !!value.personality.prompt :
-      !!this.config()?.profiles.some(profile => profile.id === value.personality.profileId)) &&
+    return this.form.valid && (!value.sources.independent || (value.personality.source === 'custom' ? !!value.personality.prompt :
+      !!this.config()?.profiles.some(profile => profile.id === value.personality.profileId))) &&
       (!value.enabled || (value.appearance.kind !== 'png' || !!value.appearance.idleAssetId && !!value.appearance.talkingAssetId) &&
         (value.playback.target !== 'desktop' || !!value.playback.desktopSessionId) &&
         (value.appearance.kind !== 'vts' || !!value.playback.vtsSessionId)) &&
       value.rules.length <= 20 && value.rules.every(rule => rule.length <= 300) &&
-      (value.tts.provider === 'fish' ? /^[a-f0-9]{32}$/i.test(value.tts.voice) : this.voices().some(voice => voice.id === value.tts.voice));
+      (!value.sources.independent || (value.tts.provider === 'fish' ? /^[a-f0-9]{32}$/i.test(value.tts.voice) : this.voices().some(voice => voice.id === value.tts.voice)));
   });
   private loadSequence = 0;
   private runtimeSequence = 0;
@@ -142,6 +145,7 @@ export class PetPageComponent {
     const settings = this.config()?.settings;
     if (!settings) return;
     this.form.reset({ enabled: settings.enabled, name: settings.name,
+      independent: settings.sources?.independent ?? true, readTts: settings.sources?.readTts ?? false, ttsAudio: settings.ttsAudio ?? 'pet',
       appearanceKind: settings.appearance?.kind ?? 'png', idleAssetId: settings.appearance?.idleAssetId ?? null, talkingAssetId: settings.appearance?.talkingAssetId ?? null,
       playbackTarget: settings.playback?.target ?? 'browser', desktopSessionId: settings.playback?.desktopSessionId ?? null, vtsSessionId: settings.playback?.vtsSessionId ?? null,
       speechEnabled: settings.tts.enabled,

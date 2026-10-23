@@ -20,6 +20,15 @@
         </section>
 
         <div class="lf-bento">
+          <section class="lf-tile sources-tile" aria-labelledby="sources-title">
+            <div class="section-head"><span class="section-icon"><app-lf-icon name="audio" /></span><div><h2 id="sources-title">{{ t('sourcesTitle') }}</h2><p>{{ t('sourcesHint') }}</p></div></div>
+            <div><label class="toggle row-toggle source-switch"><span>{{ t('readTts') }}</span><span class="switch-control"><input type="checkbox" role="switch" formControlName="readTts" aria-describedby="read-tts-help"><span class="switch-track" aria-hidden="true"></span></span></label><p id="read-tts-help">{{ t('readTtsHint') }}</p></div>
+            @if (draft().sources.readTts) {
+              <label class="field">{{ t('ttsAudio') }}<select formControlName="ttsAudio"><option value="pet">{{ t('ttsAudioPet') }}</option><option value="overlay">{{ t('ttsAudioOverlay') }}</option></select></label>
+              <p>{{ t(draft().ttsAudio === 'pet' ? 'ttsAudioPetHint' : 'ttsAudioOverlayHint') }}</p>
+            }
+            <div><label class="toggle row-toggle source-switch"><span>{{ t('independent') }}</span><span class="switch-control"><input type="checkbox" role="switch" formControlName="independent" aria-describedby="independent-help"><span class="switch-track" aria-hidden="true"></span></span></label><p id="independent-help">{{ t('independentHint') }}</p></div>
+          </section>
           <section class="lf-tile appearance-tile" aria-labelledby="appearance-title">
             <div class="section-head"><span class="section-icon"><app-lf-icon name="image" /></span><div><h2 id="appearance-title">{{ t('appearanceTitle') }}</h2><p>{{ t('appearanceHint') }}</p></div></div>
             <label class="field">{{ t('appearanceKind') }}<select formControlName="appearanceKind"><option value="png">{{ t('png') }}</option><option value="vts">{{ t('vts') }}</option></select></label>

@@ -14,13 +14,13 @@ import { ActivatedRoute } from '@angular/router';
 import { io } from 'socket.io-client';
 import { OverlayApi, Snapshot } from './overlay-api.service';
 import { OverlayClipComponent } from './overlay-clip.component';
-import { OverlayMediaComponent, TestMedia } from './overlay-media.component';
+import { OverlayMediaComponent, TestMedia, type OverlaySpeechPlayback } from './overlay-media.component';
 import { OverlayLayerComponent } from './overlay-layer.component';
 import { LanguageService } from '../../services/language.service';
 import { ALERT_EVENTS, matchesTrigger, type AlertEvent, type AlertLayout, type EventKind, type OverlayWidget } from './overlay.model';
 import { clipPlaybackLimit } from './overlay-clip-motion';
 import { placeTrigger } from './overlay-trigger-placement';
-interface Event { platform?: OverlayPlatform; serialized?: boolean; id: string; kind: EventKind; triggerId?: string; media?: TestMedia; text?: string; layouts?: Record<string, AlertLayout>; snapshot?: Snapshot; revision?: number }
+interface Event { platform?: OverlayPlatform; serialized?: boolean; id: string; kind: EventKind; triggerId?: string; media?: TestMedia; text?: string; tts?: { speechID: string; ownerClientId: string | null; durationMs: number }; layouts?: Record<string, AlertLayout>; snapshot?: Snapshot; revision?: number }
 interface Retry { attempts: number; timer?: ReturnType<typeof setTimeout> }
 const layoutAssets = (layouts: AlertLayout[]) => layouts.flatMap(layout => layout.widgets).filter(part => part.visible && (part.kind === 'image' || part.kind === 'video') && part.assetId).map(part => part.assetId!);
 const retryDelay = (attempt: number) => Math.min(1000 * 2 ** Math.min(attempt, 5), 30000);
@@ -40,21 +40,21 @@ interface Playing { assets: Map<string, PreparedAsset>; event: Event; widgets: O
         @for (sound of soundsFor(job); track sound.id) { <app-overlay-sound [sound]="sound.config" [duration]="sound.duration" [playbackKey]="job.event.id" [publicId]="publicId" [preparedSource]="job.assets.get(sound.config.assetId)?.url || ''" (failed)="reportIssue('media')" (playbackBlocked)="reportIssue('autoplay')" (started)="soundStarted()" /> }
         @for (w of job.widgets; track w.id) {
           <div class="placement" [attr.data-event]="job.event.kind" [attr.data-platform]="job.event.platform ?? 'twitch'" [style.left.px]="w.x" [style.top.px]="w.y" [style.width.px]="w.width" [style.height.px]="w.height" [style.z-index]="job.snapshot.widgets.findIndex(indexOfId(w.id))">
-            @if (job.event.media; as media) {
+            @if (mediaFor(job, w.id); as media) {
               @if (job.event.kind === 'clip') {
                 <app-overlay-clip [design]="w.clipDesign ?? 'classic'" [media]="media" [muted]="job.widgets[0].id !== w.id"
                   (started)="started(job.event.id, w.id, $event)" (playbackBlocked)="reportIssue('autoplay')" (ended)="finishPlacement(job.event.id,w.id)" (failed)="failedPlacement(job.event.id,w.id)" />
               } @else {
-              <app-overlay-media [media]="media" [muted]="job.widgets[0].id !== w.id" [showTitle]="job.event.kind !== 'tts'" [showAudioLabel]="job.event.kind !== 'tts'" [playLabel]="playLabel()" (started)="started(job.event.id, w.id, $event)" (playbackBlocked)="reportIssue('autoplay')" (ended)="finishPlacement(job.event.id,w.id)" (failed)="failedPlacement(job.event.id,w.id)" />
+              <app-overlay-media [media]="media" [muted]="job.widgets[0].id !== w.id" [reportSpeech]="!!job.event.tts && job.widgets[0].id === w.id" (speechPlayback)="speechPlayback(job, w.id, $event)" [showTitle]="job.event.kind !== 'tts'" [showAudioLabel]="job.event.kind !== 'tts'" [playLabel]="playLabel()" (started)="started(job.event.id, w.id, $event)" (playbackBlocked)="reportIssue('autoplay')" (ended)="finishPlacement(job.event.id,w.id,'ended')" (failed)="failedPlacement(job.event.id,w.id)" />
               }
-              @if (job.event.kind === 'tts' && w.showTtsText === true) { <div class="speech-text">{{ job.event.text }}</div> }
-            } @else {
+            } @else if (!job.event.tts) {
               @if (job.event.layouts?.[w.designId || '']; as layout) {
                 @for (part of layout.widgets; track part.id) { @if(part.visible) {
                   <div class="placement art" [style.left.%]="part.x / designWidth(job,w) * 100" [style.top.%]="part.y / designHeight(job,w) * 100" [style.width.%]="part.width / designWidth(job,w) * 100" [style.height.%]="part.height / designHeight(job,w) * 100"><app-overlay-layer [publicId]="publicId" [layer]="part" [preparedSource]="job.assets.get(part.assetId || '')?.url || ''" [playbackKey]="job.event.id" [duration]="layout.duration" (failed)="reportIssue('media')" /></div>
                 } }
               }
             }
+            @if (job.event.kind === 'tts' && w.showTtsText === true) { <div class="speech-text">{{ job.event.text }}</div> }
           </div>
         }
       }
@@ -111,6 +111,8 @@ export class OverlayRuntimeComponent {
   private refreshing = false;
   private snapshotRetry: Retry = { attempts: 0 };
   private generation = 0;
+  private connectionEpoch = 0;
+  private readonly replayIds = new Set<string>();
   private issue: 'snapshot' | 'event' | 'media' | 'autoplay' | null = null;
   constructor() {
     const doc = inject(DOCUMENT); const oldBody = doc.body.style.background, oldRoot = doc.documentElement.style.background;
@@ -127,6 +129,9 @@ export class OverlayRuntimeComponent {
       this.acceptState(state);
       if (Array.isArray(state.pendingIds)) {
         const retained = new Set<string>(state.pendingIds);
+        // Replayed pending deliveries may show captions, but never restart TTS audio.
+        for (const id of retained) this.replayIds.add(id);
+        while (this.replayIds.size > 5000) this.replayIds.delete(this.replayIds.values().next().value!);
         for (const event of [...this.queue, ...this.inFlight.values()]) if (!retained.has(event.id)) this.finish(event.id);
       }
       this.applyQueueState(state.controls);
@@ -144,7 +149,13 @@ export class OverlayRuntimeComponent {
     this.socket.on('overlay-event', (event: Event) => this.enqueue(event));
     this.socket.on('overlay-expired', (ids: string[]) => { for (const id of ids) this.finish(id); });
     this.socket.on('overlay-revoked', () => this.clear());
-    this.socket.on('disconnect', reason => { if (reason === 'io server disconnect') this.clear(); });
+    this.socket.on('disconnect', reason => {
+      this.connectionEpoch++;
+      this.batching = true;
+      for (const event of [...this.queue, ...this.inFlight.values(), ...this.playing().map(job => job.event)]) if (event.tts) this.finish(event.id, 'disconnected');
+      this.batching = false;
+      if (reason === 'io server disconnect') this.clear();
+    });
     this.saveReceipts();
     const healthTimer = setInterval(() => { this.saveReceipts(); this.reportHealth(); this.reportPlayback(); }, 15000);
     if (/^[a-f0-9]{48}$/.test(this.publicId)) this.connectSource();
@@ -178,7 +189,15 @@ export class OverlayRuntimeComponent {
     if (this.socket.connected && this.revision >= 0) this.socket.emit('overlay-health', { revision: this.revision, issue: this.issue });
   }
   reportIssue(issue: 'snapshot' | 'event' | 'media' | 'autoplay'): void { this.issue = issue; this.reportHealth(); }
-  failedPlacement(id: string, widget: string): void { this.reportIssue('media'); this.finishPlacement(id, widget); }
+  failedPlacement(id: string, widget: string): void { this.reportIssue('media'); this.finishPlacement(id, widget, 'error'); }
+  mediaFor(job: Playing, widget: string): TestMedia | undefined {
+    return !job.event.tts || job.event.tts.ownerClientId === this.clientId && job.widgets[0]?.id === widget ? job.event.media : undefined;
+  }
+  speechPlayback(job: Playing, widget: string, report: OverlaySpeechPlayback): void {
+    if (this.socket.connected && job.event.tts?.ownerClientId === this.clientId && job.widgets[0]?.id === widget) {
+      this.socket.emit('overlay-speech-playback', { eventId: job.event.id, speechID: job.event.tts.speechID, ...report });
+    }
+  }
   playLabel() { return this.language.translate('overlayStudio.tapToPlay'); }
   indexOfId(id: string) { return (w: OverlayWidget) => w.id === id; }
   designWidth(job: Playing, w: OverlayWidget) { return job.snapshot.designs.find(d => d.id === w.designId)?.width || 800; }
@@ -254,7 +273,7 @@ export class OverlayRuntimeComponent {
     this.next(); this.reportPlayback();
   }
   private next() {
-    if (this.batching || this.disposed) return;
+    if (this.batching || this.disposed || !this.socket.connected) return;
     // A paused platform does not block eligible events from another platform.
     let index: number;
     const busy = new Set([...this.boxes.values()].flat());
@@ -274,10 +293,20 @@ export class OverlayRuntimeComponent {
     return (this.snapshot()?.widgets ?? []).filter(w => w.visible && this.delivery(w) === 'event' && w.kind === 'alert' && w.events?.includes(event.kind as AlertEvent)).map(w => w.id);
   }
   private async start(event: Event) {
-    const generation = this.generation;
+    const generation = this.generation, connectionEpoch = this.connectionEpoch;
     try {
-      const full = await this.api.request<Event>('GET', `public/${this.publicId}/events/${event.id}`);
+      const identity = new URLSearchParams({ clientId: this.clientId, socketId: this.socket.id ?? '' });
+      const full = await this.api.request<Event>('GET', `public/${this.publicId}/events/${event.id}?${identity}`);
       if (this.disposed || generation !== this.generation || this.completed.has(event.id)) return;
+      full.tts ??= event.tts;
+      if (full.tts) {
+        const tts = full.tts;
+        if (full.kind !== 'tts' || typeof tts.speechID !== 'string' || !tts.speechID || tts.speechID.length > 128 ||
+          tts.ownerClientId !== null && typeof tts.ownerClientId !== 'string' || !Number.isFinite(tts.durationMs) || tts.durationMs <= 0 || tts.durationMs > 60_000 ||
+          connectionEpoch !== this.connectionEpoch || !this.socket.connected) { this.finish(event.id, 'stale_delivery'); return; }
+        if (this.replayIds.has(full.id)) full.tts = { ...tts, ownerClientId: null };
+        if (full.tts.ownerClientId !== this.clientId) full.media = undefined;
+      }
       this.cancelEventRetry(event.id);
       if (this.issue === 'event' && !this.eventRetries.size) { this.issue = null; this.reportHealth(); }
       const snapshot = full.snapshot ?? this.snapshot(); if (!snapshot) { this.finish(event.id); return; }
@@ -286,7 +315,7 @@ export class OverlayRuntimeComponent {
       if (!widgets.length) { this.finish(event.id); return; }
       if (full.media?.url.startsWith('/')) full.media.url = this.api.base + full.media.url;
       const assets = new Map<string, PreparedAsset>();
-      if (!full.media) {
+      if (!full.media && !full.tts) {
         const layouts = widgets.flatMap(w => full.layouts?.[w.designId || ''] ?? []);
         const ids = new Set([...layoutAssets(layouts), ...layouts.flatMap(layout => layout.sound?.assetId ?? [])]);
         await Promise.all([...[...ids].map(async id => {
@@ -294,19 +323,20 @@ export class OverlayRuntimeComponent {
           if (asset) assets.set(id, asset);
         }), layouts.some(layout => layout.widgets.some(part => part.visible && part.kind === 'text')) ? Promise.race([this.fonts, new Promise(resolve => setTimeout(resolve, 1500))]) : null]);
       }
-      if (this.disposed || generation !== this.generation || this.completed.has(event.id)) {
+      if (this.disposed || generation !== this.generation || this.completed.has(event.id) || full.tts && (connectionEpoch !== this.connectionEpoch || !this.socket.connected)) {
         assets.forEach(asset => asset.release()); return;
       }
       this.inFlight.delete(event.id);
       const job: Playing = { assets, event: full, snapshot, widgets, pending: new Set(widgets.map(w => w.id)), timers: new Map() };
       this.playing.update(all => [...all, job]); this.reportPlayback();
       for (const w of widgets) {
-        const seconds = full.media ? 30 : full.layouts?.[w.designId || '']?.duration || 5;
+        const seconds = full.tts && !full.media ? full.tts.durationMs / 1000 : full.media ? 30 : full.layouts?.[w.designId || '']?.duration || 5;
         job.timers.set(w.id, setTimeout(() => this.finishPlacement(event.id, w.id), seconds * 1000));
       }
     } catch (error) {
       if (this.disposed || generation !== this.generation || this.completed.has(event.id)) return;
       this.reportIssue('event');
+      if (event.tts) { this.finish(event.id, 'delivery_error'); return; }
       if (!retryable(error)) { this.finish(event.id); return; }
       // Keep the serial slot and server receipt until playback succeeds or the user skips it.
       const retry = this.eventRetries.get(event.id) ?? { attempts: 0 };
@@ -336,23 +366,28 @@ export class OverlayRuntimeComponent {
     const job = this.playing().find(p => p.event.id === id); if (!job) return;
     if (this.issue === 'media' || this.issue === 'autoplay') { this.issue = null; this.reportHealth(); }
     clearTimeout(job.timers.get(widget));
+    // Read-TTS durationMs bounds captions only. Normal TTS fallback may exceed 60s.
     const seconds = job.event.kind === 'clip' ? clipPlaybackLimit(job.event.media, duration) + 4
       : job.event.media?.type === 'image' ? 5 : job.event.media?.duration ?? (Number.isFinite(duration) && duration! > 0 ? duration! + 15 : 300);
     job.timers.set(widget, setTimeout(() => this.finishPlacement(id, widget), seconds * 1000));
   }
   soundsFor(job: Playing) {
+    if (job.event.tts) return [];
     return [...new Set(job.widgets.filter(w => w.kind === 'alert').map(w => w.designId!))].flatMap(id => {
       const layout = job.event.layouts?.[id]; return layout?.sound ? [{ id, config: layout.sound, duration: layout.duration }] : [];
     });
   }
   soundStarted(): void { if (this.issue === 'media' || this.issue === 'autoplay') { this.issue = null; this.reportHealth(); } }
-  finishPlacement(id: string, widget: string) {
+  finishPlacement(id: string, widget: string, reason = 'timeout') {
     const job = this.playing().find(p => p.event.id === id); if (!job) return;
+    if (job.event.tts && job.widgets[0]?.id === widget && job.event.tts.ownerClientId === this.clientId) { this.finish(id, reason); return; }
     job.pending.delete(widget); clearTimeout(job.timers.get(widget));
-    if (!job.pending.size) this.finish(id);
+    if (!job.pending.size) this.finish(id, reason);
   }
-  private finish(id: string) {
+  private finish(id: string, reason = 'cancelled') {
     if (this.completed.has(id)) return;
+    const event = this.playing().find(p => p.event.id === id)?.event ?? this.inFlight.get(id) ?? this.queue.find(event => event.id === id);
+    if (event?.tts?.ownerClientId === this.clientId && !this.replayIds.has(id) && this.socket.connected) this.socket.emit('overlay-speech-ended', { eventId: id, speechID: event.tts.speechID, reason });
     this.cancelEventRetry(id);
     this.seen.add(id); this.inFlight.delete(id); this.queue = this.queue.filter(event => event.id !== id);
     this.boxes.delete(id);

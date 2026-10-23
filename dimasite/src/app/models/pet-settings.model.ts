@@ -2,6 +2,8 @@ export type PetProvider = 'piper' | 'kokoro' | 'fish';
 
 export interface PetSettings {
   enabled: boolean;
+  sources: { independent: boolean; readTts: boolean };
+  ttsAudio: 'pet' | 'overlay';
   name: string;
   appearance: { kind: 'png' | 'vts'; idleAssetId: string | null; talkingAssetId: string | null };
   playback: { target: 'browser' | 'desktop'; desktopSessionId: string | null; vtsSessionId: string | null };
@@ -12,7 +14,7 @@ export interface PetSettings {
 }
 
 export interface PetConfiguration {
-  schemaVersion: 2;
+  schemaVersion: 3;
   revision: number;
   updatedAt: string | null;
   settings: PetSettings;

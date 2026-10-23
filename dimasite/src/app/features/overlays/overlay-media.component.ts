@@ -1,6 +1,7 @@
 import type { ClipMetadata } from '../clips/clips.model';
 import { ChangeDetectionStrategy, Component, ElementRef, afterNextRender, effect, input, output, signal, viewChild } from '@angular/core';
 export interface TestMedia { triggerId?: string; clip?: ClipMetadata; url: string; type: 'video' | 'audio' | 'image'; title: string; volume: number; duration?: number }
+export interface OverlaySpeechPlayback { phase: 'loading' | 'playing' | 'progress' | 'recovering'; position: number }
 
 @Component({
   selector: 'app-overlay-media',
@@ -9,7 +10,7 @@ export interface TestMedia { triggerId?: string; clip?: ClipMetadata; url: strin
       <img [src]="media().url" [style.object-fit]="fit()" [alt]="media().title" (load)="started.emit(undefined)" (error)="failed.emit()" />
     } @else {
       <video #player [src]="media().url" [style.object-fit]="fit()" playsinline preload="auto" [muted]="muted()" [volume]="muted() ? 0 : media().volume"
-        (canplay)="play()" (playing)="onPlaying()" (ended)="ended.emit()" (error)="failed.emit()"></video>
+        (canplay)="play()" (playing)="onPlaying()" (waiting)="recovering()" (stalled)="recovering()" (ended)="ended.emit()" (error)="failed.emit()"></video>
       @if (blocked()) { <button type="button" (pointerdown)="$event.stopPropagation()" (click)="$event.stopPropagation(); play()">{{ playLabel() }}</button> }
       @if (media().type === 'audio' && showAudioLabel()) { <span class="audio-label">{{ media().title }}</span> }
     }
@@ -36,16 +37,20 @@ export class OverlayMediaComponent {
   readonly failed = output<void>();
   readonly started = output<number | undefined>();
   readonly playbackBlocked = output<void>();
+  readonly reportSpeech = input(false);
+  readonly speechPlayback = output<OverlaySpeechPlayback>();
   readonly blocked = signal(false);
   private readonly player = viewChild<ElementRef<HTMLVideoElement>>('player');
   private startedOnce = false;
   private attempting = false;
+  private telemetryTimer?: ReturnType<typeof setInterval>;
+  private telemetryPhase: 'progress' | 'recovering' = 'progress';
 
   constructor() {
-    afterNextRender(() => this.play());
+    afterNextRender(() => { this.report('loading'); this.play(); });
     effect(onCleanup => {
       const element = this.player()?.nativeElement;
-      onCleanup(() => { element?.pause(); element?.removeAttribute('src'); element?.load(); });
+      onCleanup(() => { clearInterval(this.telemetryTimer); element?.pause(); element?.removeAttribute('src'); element?.load(); });
     });
   }
   play(): void {
@@ -60,5 +65,12 @@ export class OverlayMediaComponent {
   onPlaying(): void {
     if (!this.startedOnce) { this.startedOnce = true; this.started.emit(this.player()?.nativeElement.duration); }
     this.blocked.set(false);
+    this.telemetryPhase = 'progress'; this.report('playing');
+    if (this.reportSpeech() && !this.telemetryTimer) this.telemetryTimer = setInterval(() => this.report(this.telemetryPhase), 250);
+  }
+  recovering(): void { this.telemetryPhase = 'recovering'; this.report('recovering'); }
+  private report(phase: OverlaySpeechPlayback['phase']): void {
+    const element = this.player()?.nativeElement;
+    if (this.reportSpeech() && element && !element.ended && Number.isFinite(element.currentTime)) this.speechPlayback.emit({ phase, position: Math.max(0, element.currentTime) });
   }
 }
