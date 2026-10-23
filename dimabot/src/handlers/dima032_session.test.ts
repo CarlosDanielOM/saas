@@ -702,3 +702,64 @@ for(const mode of ['exhaustion','close'] as const)test(`R8 private cleanup retri
     assert.equal(petEvents.filter(e=>e.event==='pet:stop'&&e.data.requestId===id).length,1);assert.equal(synthesized.length,1);assert.equal(usage,1);
   } finally {mock.timers.reset();beforePrivateRead=undefined;await stop();await rm(dir,{recursive:true,force:true});}
 });
+
+for(const stage of ['pop','processing'] as const)test(`R9 capacity wake during held final requeue at ${stage} resumes exact FIFO work once`,async()=>{
+  await setup();config.settings.sources.readTts=false;config.runtime.readTtsEnabled=false;await invalidateReadTts(owner,'settings_changed');
+  const internals=handler as any,entered=barrier(),resume=barrier(),requeued=barrier(),finishRequeue=barrier();
+  const speech=`early-capacity-${stage}`,later=`early-capacity-later-${stage}`;
+  for(let i=0;i<128;i++)internals.headClaims.add(`early-claim-${i}`);
+  const pause=async()=>{entered.resolve();await resume.promise;};if(stage==='pop')afterPayloadRead=pause;else afterProcessingSet=pause;
+  seed(speech,later);
+  for(const [i,id] of [speech,later].entries()){const key=`twitch:${channel}:tts:queue:data:${id}`,item=JSON.parse(data.get(key)!);data.set(key,JSON.stringify({...item,timestamp:Date.now()-10000+i,usageRequestID:`request-${id}`,usageEntryID:`entry-${id}`}));}
+  const original=JSON.parse(data.get(`twitch:${channel}:tts:queue:data:${speech}`)!);
+  const processing=handler.processNext(channel);await entered.promise;
+  let earlyCalls=0;const processNext=handler.processNext.bind(handler);
+  const spy=mock.method(handler,'processNext',async(id:string)=>{if(id===channel&&internals.dispatches.has(id))earlyCalls++;return processNext(id);});
+  try {
+    config.settings.sources.readTts=true;config.runtime.readTtsEnabled=true;config.revision++;peer.audioReady=true;studioConnected=graceConnected=false;
+    await invalidateReadTts(owner,'settings_changed');
+    afterDel=async key=>{if(key.endsWith(':tts:processing')){afterDel=undefined;requeued.resolve();await finishRequeue.promise;}};
+    resume.resolve();await requeued.promise;assert.ok(internals.capacityWaiters.has(channel));
+    internals.headClaims.clear();internals.wakeCapacityWaiters();
+    await new Promise<void>(done=>setImmediate(done));assert.equal(earlyCalls,1,'the scheduled early callback must actually run against the held dispatch');
+    for(let i=0;i<5;i++)await new Promise<void>(done=>setImmediate(done));
+    assert.equal(earlyCalls,1,'blocked wake must not reschedule itself');assert.equal(synthesized.length,0);assert.equal(usage,0);
+    assert.deepEqual(JSON.parse(data.get(`twitch:${channel}:tts:queue:data:${speech}`)!),{...original,queueSession:null});
+    assert.deepEqual(queues.get(`twitch:${channel}:tts:queue`),[speech,later]);assert.ok(internals.capacityWaiters.size<=128);
+    finishRequeue.resolve();await processing;
+    await until(()=>petEvents.some(e=>e.event==='pet:play'));
+    assert.deepEqual(synthesized,[speech]);assert.equal(usage,1);assert.equal(internals.capacityWaiters.has(channel),false);
+    await handler.handleSpeechEnded(channel,speech);await until(()=>petEvents.filter(e=>e.event==='pet:play').length===2);
+    assert.deepEqual(synthesized,[speech,later]);assert.equal(usage,2);assert.equal(internals.capacityWaiters.size,0);
+  } finally {spy.mock.restore();resume.resolve();finishRequeue.resolve();internals.headClaims.clear();internals.capacityWaiters.clear();await processing;await stop();}
+});
+for(const action of ['skip','clear','stream-end'] as const)test(`R9 ${action} still fences an early capacity wake through the final requeue response`,async()=>{
+  await setup();config.settings.sources.readTts=false;config.runtime.readTtsEnabled=false;await invalidateReadTts(owner,'settings_changed');
+  const internals=handler as any,entered=barrier(),resume=barrier(),requeued=barrier(),finishRequeue=barrier();
+  const speech=`early-control-${action}`,later=`early-control-later-${action}`,next=`early-new-session-${action}`;
+  for(let i=0;i<128;i++)internals.headClaims.add(`control-claim-${i}`);
+  afterProcessingSet=async()=>{entered.resolve();await resume.promise;};
+  seed(speech,later);const processing=handler.processNext(channel);await entered.promise;
+  let controlling:Promise<void>|undefined,earlyCalls=0;const processNext=handler.processNext.bind(handler);
+  const spy=mock.method(handler,'processNext',async(id:string)=>{if(id===channel&&internals.dispatches.has(id))earlyCalls++;return processNext(id);});
+  try {
+    config.settings.sources.readTts=true;config.runtime.readTtsEnabled=true;config.revision++;peer.audioReady=true;studioConnected=graceConnected=false;
+    await invalidateReadTts(owner,'settings_changed');
+    afterDel=async key=>{if(key.endsWith(':tts:processing')){afterDel=undefined;requeued.resolve();await finishRequeue.promise;}};
+    resume.resolve();await requeued.promise;internals.headClaims.clear();internals.wakeCapacityWaiters();
+    await new Promise<void>(done=>setImmediate(done));assert.equal(earlyCalls,1);assert.ok(internals.capacityWaiters.has(channel));
+    if(action==='stream-end') {
+      await clearActualStream();
+      const {enqueueTtsSession}=await import('../utils/tts/tts_session.util.js');
+      await enqueueTtsSession(cache as any,channel,next,Date.now(),JSON.stringify({channelID:channel,speechID:next,provider:'piper',mode:'speak',language:'en',voice:'test',text:'new session'}));
+    } else controlling=handler.control(channel,action);
+    assert.equal(synthesized.length,0);assert.equal(usage,0);
+    finishRequeue.resolve();await Promise.all([processing,controlling]);
+    if(action!=='clear')await until(()=>petEvents.some(e=>e.event==='pet:play'));
+    await until(()=>internals.capacityWaiters.size===0);
+    assert.deepEqual(synthesized,action==='clear'?[]:[action==='skip'?later:next]);assert.equal(usage,action==='clear'?0:1);
+    assert.equal(data.has(`twitch:${channel}:tts:queue:data:${speech}`),false);
+    for(let i=0;i<5;i++)await new Promise<void>(done=>setImmediate(done));
+    assert.equal(earlyCalls,1,'settled controls cannot create a blocked wake loop');
+  } finally {spy.mock.restore();resume.resolve();finishRequeue.resolve();internals.headClaims.clear();internals.capacityWaiters.clear();await Promise.allSettled([processing,controlling]);await stop();}
+});

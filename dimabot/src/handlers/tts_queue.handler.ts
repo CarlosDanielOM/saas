@@ -277,8 +277,10 @@ class TtsQueueHandler {
     }
 
     const head = this.readHeads.get(channelID);
-    if (head) { this.wakeHead(channelID); return; }
+    if (head) { this.capacityWaiters.delete(channelID); this.wakeHead(channelID); return; }
     if (this.controls.has(channelID) || this.processingChannels.has(channelID) || this.dispatches.has(channelID)) return;
+    // Consume a capacity wake only once this channel can actually take work.
+    this.capacityWaiters.delete(channelID);
     this.processingChannels.add(channelID);
 
     let activeSpeechID: string | undefined;
@@ -727,7 +729,9 @@ class TtsQueueHandler {
   private wakeCapacityWaiters() {
     const available = MAX_READ_TTS_HEADS - this.readHeads.size - this.headClaims.size;
     for (const channel of [...this.capacityWaiters].slice(0, Math.min(MAX_READ_TTS_PUMPS, available))) {
-      this.capacityWaiters.delete(channel); setImmediate(() => { void this.processNext(channel); });
+      // A callback may run before requeue/controls settle. Keep its waiter for
+      // their completion wake; a blocked processNext never reschedules itself.
+      setImmediate(() => { if (this.capacityWaiters.has(channel)) void this.processNext(channel); });
     }
   }
   async handleSessionEnded(channel: string, session: string) {
