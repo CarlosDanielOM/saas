@@ -115,7 +115,7 @@ await mongo.connection.db.collection('asset_libraries').insertMany([
 ]);
 const settingsPath = `/pets/${owner}/settings`;
 let configuration = (await call(settingsPath, { token: 'pet-owner-token' })).body.data;
-assert.equal(configuration.schemaVersion, 2);
+assert.equal(configuration.schemaVersion, 3);
 assert.equal(await PetSettingsSchema.countDocuments(), 0);
 const save = async change => {
   const result = await call(settingsPath, { method: 'PUT', token: 'pet-owner-token', body: { revision: configuration.revision, settings: change(configuration.settings) } });

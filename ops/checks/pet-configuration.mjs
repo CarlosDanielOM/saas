@@ -121,7 +121,7 @@ assert.equal((await call('/v1/me/pet', { token: narrow.access_token })).body.err
 const desktop = await mint('pet:read desktop:connect');
 result = await call('/v1/me/pet', { token: desktop.access_token });
 assert.equal(result.status, 200);
-assert.equal(result.body.schemaVersion, 2);
+assert.equal(result.body.schemaVersion, 3);
 assert.equal(result.body.revision, revision);
 assert.equal(result.body.runtime.playbackAvailable, false);
 assert.ok(!('profiles' in result.body) && !('voices' in result.body));
