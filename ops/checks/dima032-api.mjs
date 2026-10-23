@@ -79,6 +79,57 @@ const idle = () => until(async () => !await redis.get(`twitch:${channel}:tts:pro
 const providerCount = () => redis.lLen('pet:test:provider-calls');
 const usageCharacters = async () => Number(await redis.hGet(`${channel}:tts:usage`, 'total_characters') || 0);
 const localAudio = url => base + new URL(url).pathname + new URL(url).search;
+// Failure-only observation before socket cleanup. Each probe has a750ms ceiling;
+// probes run concurrently and never replace the original assertion/timeout.
+async function diagnoseFirstPrivate(pet,speech,baseline) {
+    const pick=(value,keys)=>Object.fromEntries(keys.filter(key=>value?.[key]!==undefined).map(key=>[key,value[key]]));
+    const probe=async read=>{
+        let timer;
+        try {return await Promise.race([Promise.resolve().then(read),new Promise(resolve=>{timer=setTimeout(()=>resolve({unavailable:'timeout'}),750);})]);}
+        catch(error){return {unavailable:error?.name||'Error'};}
+        finally {clearTimeout(timer);}
+    };
+    const mailbox=async kind=>{
+        const id=randomUUID(),deadline=Date.now()+650;
+        await redis.rPush('dima032:test:commands',JSON.stringify({id,kind,channelId:channel,speechID:speech}));
+        while(Date.now()<deadline) {
+            const raw=await redis.get(`dima032:test:reply:${id}`);
+            if(raw) {
+                const result=JSON.parse(raw).result;
+                if(result?.fixtureError)return {unavailable:'fixture-error'};
+                return kind==='head'?pick(result,['speechID','phase','epoch','running','fileHash','fileBytes','processing','activePumps','watchdog','pendingWait','cleanupPending','configurationReads']):pick(result,['connected','playing','preparing','queueLength']);
+            }
+            await pause(20);
+        }
+        return {unavailable:'timeout'};
+    };
+    const requestFields='_id ownerId channelId operation status errorCode generation settingsRevision version deliveryAttempted audioFetched createdAt startBefore phaseDeadline origin.kind origin.id actionKey';
+    const tasks={
+        requests:()=>PetRequest.find({'origin.kind':'tts-queue','origin.id':speech}).select(requestFields).sort({createdAt:1}).maxTimeMS(600).lean(),
+        runtime:()=>PetRuntime.findById(ownerId).select('_id channelId generation activeRequestId notBefore lease ttsReservation').maxTimeMS(600).lean(),
+        settings:async()=>{
+            const response=await fetch(base+`/pets/${channel}/settings`,{headers:{Authorization:`Bearer ${token}`},signal:AbortSignal.timeout(600)});
+            if(!response.ok)return {unavailable:`http-${response.status}`};
+            const current=(await response.json()).data;
+            return {revision:current?.revision,enabled:current?.settings?.enabled,sources:pick(current?.settings?.sources,['independent','readTts']),ttsAudio:current?.settings?.ttsAudio,
+                ttsEnabled:current?.settings?.tts?.enabled,appearanceKind:current?.settings?.appearance?.kind,
+                runtime:pick(current?.runtime,['enabled','readTtsEnabled','issues'])};
+        },
+        head:()=>mailbox('head'),status:()=>mailbox('status'),
+        queue:async()=>{
+            const [ids,processing,raw]=await Promise.all([redis.zRange(`twitch:${channel}:tts:queue`,0,-1),redis.get(`twitch:${channel}:tts:processing`),redis.get(`twitch:${channel}:tts:queue:data:${speech}`)]);
+            return {ids,processing,payload:raw?pick(JSON.parse(raw),['speechID','channelID','provider','model','mode','language','voice','timestamp','queueSession','usageRequestID','usageEntryID']):null};
+        },
+        counts:async()=>({providers:await providerCount(),usageCharacters:await usageCharacters()})
+    };
+    const state=Object.fromEntries(await Promise.all(Object.entries(tasks).map(async([key,read])=>[key,await probe(read)])));
+    // Explicit allowlists exclude text, audio URLs/tickets, auth and capabilities.
+    const events=pet.events.map(({event,data})=>({event,...pick(data,['v','ok','generation','requestId','reason','status','version','errorCode']),
+        request:pick(data?.request??data?.active,['requestId','operation','status','version','errorCode']),
+        ack:pick(data?.data,['requestId','generation','leaseId','expiresAt','ttlMs','serverTime','dropped']),error:pick(data?.error,['code','retryAfterMs'])}));
+    console.error('DIMA032_FIRST_PRIVATE_DIAGNOSTIC '+JSON.stringify({speechID:speech,channelId:channel,ownerId,at:new Date().toISOString(),baseline,state,
+        client:{socketId:pet.socketId,readyState:pet.ws.readyState,lease:pick(pet.lease,['leaseId','generation','expiresAt','ttlMs']),events}}));
+}
 try {
     const startup = JSON.parse(await redis.get('dima032:test:startup'));
     const restarted = await PetRuntime.findById(startup.ownerId).lean();
@@ -93,7 +144,9 @@ try {
     startupOverlay.emit('speech-ended', { speechID: startupAudio.speechID, reason: 'ended' }); startupOverlay.ws.close();
     let pet = await readyPet();
     const before = await providerCount(), chars = await usageCharacters(), text = 'Normal queue uses existing synthesis once';
-    const speech = await enqueue(text), play = await playForSpeech(pet, speech);
+    const speech = await enqueue(text);let play;
+    try {play=await playForSpeech(pet,speech);}
+    catch(error) {try {await diagnoseFirstPrivate(pet,speech,{providers:before,usageCharacters:chars});} catch {} throw error;}
     assert.equal((await PetRequest.findById(play.requestId).lean()).origin.id, speech);
     assert.equal(await redis.get(`twitch:${channel}:tts:processing`), speech, 'pet-only PNG admission reaches normal TTS with no desktop/overlay');
     const audio = await fetch(localAudio(play.audio.url)); assert.equal(audio.status, 200); const bytes = Buffer.from(await audio.arrayBuffer()); assert.equal(bytes.subarray(0, 4).toString(), 'RIFF');
