@@ -1,3 +1,4 @@
+import { scheduleReadTtsResume } from './tts_bridge.js';
 import { randomUUID } from 'node:crypto';
 import type { Server as SocketServer, Socket } from 'socket.io';
 import { authenticateAccess, hash, type AccessIdentity } from '../server/oauth/service.js';
@@ -136,6 +137,7 @@ export async function registerPetSockets(io: SocketServer) {
                 if (runtime.lease?.holderPeerId === peer.id && (!peer.audioReady || configuration.settings.appearance.kind === 'png' && peer.kind === 'browser' && !peer.renderReady)) await invalidatePet(peer.ownerId, 'player_unready');
                 else if (configuration.runtime.issues.includes('vts_unavailable') && runtime.lease) await invalidatePet(peer.ownerId, 'vts_unavailable');
                 await notifyPet(peer.ownerId);
+                scheduleReadTtsResume(peer.channelId);
                 return {};
             }, ['v', 'audioReady', 'renderReady', 'vtsReady']);
             on('pet:lease', async value => {
@@ -161,6 +163,7 @@ export async function registerPetSockets(io: SocketServer) {
                     runtime = next;
                 } else throw new PetError('invalid_message');
                 await notifyPet(peer.ownerId);
+                if (value.action === 'acquire') scheduleReadTtsResume(peer.channelId);
                 return { leaseId: runtime.lease!.leaseId, generation: runtime.generation, serverTime: Date.now(), expiresAt: runtime.lease!.expiresAt.getTime(), ttlMs: LEASE_TTL_MS };
             }, ['v', 'action', 'leaseId', 'generation']);
             on('pet:playback', async value => {

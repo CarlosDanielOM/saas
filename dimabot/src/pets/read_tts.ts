@@ -8,27 +8,39 @@ import { PetRequest, PetRuntime, type PetRequestRecord } from '../schemas/pet_ru
 import { getPetConfiguration } from '../server/services/pet_settings.service.js';
 import { petPeers, selectedVtsController } from './peers.js';
 import { emitPetReadyAndPlay } from './delivery.js';
-import { finishRequest, notifyPet, requestView, runtimeFor } from './state.js';
+import { finishRequest, invalidatePet, notifyPet, requestView, runtimeFor } from './state.js';
 import { issueAudioTicket } from './tokens.js';
-import { registerReadTtsBridge, type ReadTtsInput, type ReadTtsRoute } from './tts_bridge.js';
+import { registerReadTtsBridge, type ReadTtsInput, type ReadTtsRoute, type ReadTtsTurnInput } from './tts_bridge.js';
 import { inspectTtsAudio, ttsEnvelope } from './tts_envelope.js';
 
 interface Turn {
-    input: ReadTtsInput; ownerId: string; token: string; generation: number; revision: number;
+    config: Awaited<ReturnType<typeof getPetConfiguration>>; input: ReadTtsInput; ownerId: string; token: string; generation: number; revision: number;
     detached?: boolean; reporting?: boolean; requestId?: string; delivered: boolean; envelope?: Awaited<ReturnType<typeof ttsEnvelope>>;
     followPeers: Set<string>; positionMs: number; serverTime: number; following: boolean;
 }
 const turns = new Map<string, Turn>();
-async function configuration(channelId: string) {
+async function readConfiguration(channelId: string) {
     const owner = await Users.findOne({ accounts: { $elemMatch: { type: 'twitch', id: channelId } } }).select('_id').lean();
     if (!owner) return null;
     try {
         const config = await getPetConfiguration(String(owner._id), channelId);
-        return config.runtime.readTtsEnabled ? { ownerId: String(owner._id), config } : null;
+        return config.settings.enabled && config.settings.sources.readTts ? { ownerId: String(owner._id), config } : null;
     } catch { return null; } // No plan/account: retain the existing overlay path.
 }
+// Coalesce the repeated queue guards/reservation check. Default-off channels add
+// one bounded configuration observation, never another provider/credit operation.
+const configurations = new Map<string, { expiresAt: number; promise: ReturnType<typeof readConfiguration> }>();
+function configuration(channel: string) {
+    for (const [key, entry] of configurations) if (entry.expiresAt <= Date.now()) configurations.delete(key);
+    const prior = configurations.get(channel);
+    if (prior && prior.expiresAt > Date.now()) return prior.promise;
+    if (configurations.size >= 1024) configurations.delete(configurations.keys().next().value!);
+    const promise = readConfiguration(channel);
+    configurations.set(channel, { expiresAt: Date.now() + 5000, promise });
+    return promise;
+}
 async function player(ownerId: string, channelId: string) {
-    const { settings, runtime: readiness } = await getPetConfiguration(ownerId, channelId);
+    const { settings, runtime: readiness, revision } = await getPetConfiguration(ownerId, channelId);
     if (!readiness.readTtsEnabled) return null;
     const runtime = await runtimeFor(ownerId, channelId);
     const peer = runtime.lease && runtime.lease.expiresAt.getTime() > Date.now() ? petPeers.get(runtime.lease.holderPeerId) : null;
@@ -37,7 +49,7 @@ async function player(ownerId: string, channelId: string) {
     if (settings.appearance.kind === 'vts' && !await selectedVtsController(ownerId, settings.playback.vtsSessionId)) return null;
     if (settings.playback.target === 'browser' ? peer.kind !== 'browser' || settings.appearance.kind === 'png' && !peer.renderReady :
         peer.kind !== 'desktop' || peer.sessionId !== settings.playback.desktopSessionId) return null;
-    return { runtime, peer };
+    return { runtime, peer, revision };
 }
 async function endFollow(turn: Turn) {
     if (!turn.following) return;
@@ -60,30 +72,75 @@ async function release(channel: string, speech: string) {
     await PetRuntime.updateOne({ _id: turn.ownerId, 'ttsReservation.token': turn.token }, { $set: { ttsReservation: null } });
     await notifyPet(turn.ownerId);
 }
-async function prepare(input: ReadTtsInput): Promise<ReadTtsRoute | null> {
+/** Startup completes before any API socket/queue producer is made available. */
+export async function reconcileReadTtsStartup() {
+    while (true) {
+        const stale = await PetRuntime.find({ 'ttsReservation.token': { $type: 'string' } }).limit(64).lean();
+        if (!stale.length) return;
+        for (const runtime of stale) {
+            // Single API ownership: fence the exact old generation/request/lease.
+            // invalidatePet carries the old lease expiry into notBefore; never shorten it.
+            const invalidated = await invalidatePet(runtime._id, 'api_restarted', {
+                requestId: runtime.activeRequestId, generation: runtime.generation,
+                ...(runtime.lease ? { leaseId: runtime.lease.leaseId, leaseExpiresAt: runtime.lease.expiresAt } : {})
+            });
+            if (invalidated) await PetRuntime.updateOne({ _id: runtime._id, generation: runtime.generation + 1,
+                'ttsReservation.token': runtime.ttsReservation!.token }, { $set: { ttsReservation: null } });
+        }
+    }
+}
+async function reserve(input: ReadTtsTurnInput): Promise<boolean> {
+    if (input.cancelled()) return false;
+    const existing = turns.get(input.channelId);
+    if (existing?.input.speechId === input.speechId) return true;
     const selected = await configuration(input.channelId);
-    if (!selected) return null;
+    if (input.cancelled()) return false;
+    if (!selected) return true; // Default-off retains its existing provider/queue behavior.
     const { ownerId, config } = selected;
-    const runtime = await runtimeFor(ownerId, input.channelId), token = randomUUID();
-    // Shared Mongo CAS fences API, bot and cron admissions, including a concurrent producer CAS.
-    const claimed = await PetRuntime.findOneAndUpdate({ _id: ownerId, generation: runtime.generation,
-        'ttsReservation.expiresAt': { $not: { $gt: new Date() } } }, { $set: {
-        ttsReservation: { speechId: input.speechId, token, expiresAt: new Date(Date.now() + 240_000) }
-    } }, { new: true }).lean();
-    if (!claimed) throw new Error('tts_reservation_busy');
-    const turn: Turn = { input, ownerId, token, generation: claimed.generation, revision: config.revision, delivered: false,
-        followPeers: new Set(), following: false, positionMs: -1, serverTime: 0 };
-    turns.set(input.channelId, turn);
-    const cancelled = () => input.cancelled() || turns.get(input.channelId) !== turn;
+    const token = randomUUID();
+    // Contention waits BEFORE synthesis/usage. Never discard a generated item on busy.
+    while (!input.cancelled()) {
+        const runtime = await runtimeFor(ownerId, input.channelId);
+        if (input.cancelled()) return false;
+        const claimed = await PetRuntime.findOneAndUpdate({ _id: ownerId, generation: runtime.generation,
+            notBefore: { $lte: new Date() }, 'ttsReservation.expiresAt': { $not: { $gt: new Date() } }
+        }, { $set: { ttsReservation: { speechId: input.speechId, token, expiresAt: new Date(Date.now() + 240_000) } } }, { new: true }).lean();
+        if (claimed) {
+            // A skip/new turn can overtake the Mongo response. Clean only our token,
+            // including acquisition which completed after release found no local turn.
+            if (input.cancelled() || turns.has(input.channelId)) {
+                await PetRuntime.updateOne({ _id: ownerId, 'ttsReservation.token': token }, { $set: { ttsReservation: null } });
+                return false;
+            }
+            turns.set(input.channelId, { input: { ...input, file: '', mime: '', text: '' }, config, ownerId, token,
+                generation: claimed.generation, revision: config.revision, delivered: false,
+                followPeers: new Set(), following: false, positionMs: -1, serverTime: 0 });
+            return true;
+        }
+        await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    return false;
+}
+async function prepare(input: ReadTtsInput): Promise<ReadTtsRoute | null> {
     const cancelledRoute = { audio: 'cancelled' as const, durationMs: 0 };
+    if (!await reserve(input)) return cancelledRoute;
+    const turn = turns.get(input.channelId);
+    if (!turn || turn.input.speechId !== input.speechId) return null;
+    turn.input = input;
+    const { ownerId, token, config } = turn;
+    const cancelled = () => input.cancelled() || turns.get(input.channelId) !== turn;
     let directory: string | undefined;
     try {
+        const renewed = await PetRuntime.updateOne({ _id: ownerId, 'ttsReservation.token': token },
+            { $set: { 'ttsReservation.expiresAt': new Date(Date.now() + 240_000) } });
+        if (!renewed.matchedCount || cancelled()) return cancelledRoute;
         // A ready independent request owns its complete turn. A pending TTS reservation prevents starvation.
         const waitUntil = Date.now() + 120_000;
         while (!cancelled()) {
             const current = await PetRuntime.findById(ownerId).lean();
-            if (!current || current.generation !== turn.generation || current.ttsReservation?.token !== token) return cancelledRoute;
-            if (!current.activeRequestId) break;
+            if (!current || current.ttsReservation?.token !== token) return cancelledRoute;
+            if (current.generation !== turn.generation) { turn.detached = true; turn.generation = current.generation; }
+            if (!current.activeRequestId && current.notBefore.getTime() <= Date.now()) break;
             if (Date.now() >= waitUntil) return cancelledRoute;
             await new Promise(resolve => setTimeout(resolve, 50));
         }
@@ -91,9 +148,9 @@ async function prepare(input: ReadTtsInput): Promise<ReadTtsRoute | null> {
         let durationMs = 0;
         try { durationMs = await inspectTtsAudio(input.file); } catch { /* Oversized/invalid pet input uses the original overlay file. */ }
         if (cancelled()) return cancelledRoute;
-        if (config.settings.ttsAudio === 'pet' && durationMs && ['audio/wav', 'audio/mpeg'].includes(input.mime)) {
+        if (!turn.detached && config.settings.ttsAudio === 'pet' && durationMs && ['audio/wav', 'audio/mpeg'].includes(input.mime)) {
             const elected = await player(ownerId, input.channelId);
-            if (elected && elected.runtime.generation === turn.generation && !cancelled()) {
+            if (elected && elected.revision === turn.revision && elected.runtime.generation === turn.generation && !cancelled()) {
                 directory = await mkdtemp(path.join(tmpdir(), 'dima-pet-'));
                 const audioPath = path.join(directory, input.mime === 'audio/wav' ? 'speech.wav' : 'speech.mp3');
                 await copyFile(input.file, audioPath);
@@ -109,7 +166,7 @@ async function prepare(input: ReadTtsInput): Promise<ReadTtsRoute | null> {
                 if (!linked.modifiedCount || cancelled()) throw new Error('pre_delivery_rejected');
                 const ticket = await issueAudioTicket(elected.peer, request.toObject(), elected.runtime.lease!);
                 const latest = await player(ownerId, input.channelId);
-                if (cancelled() || latest?.runtime.activeRequestId !== id || latest.runtime.lease?.leaseId !== elected.runtime.lease!.leaseId || latest.peer !== elected.peer) throw new Error('pre_delivery_rejected');
+                if (cancelled() || latest?.revision !== turn.revision || latest.runtime.activeRequestId !== id || latest.runtime.lease?.leaseId !== elected.runtime.lease!.leaseId || latest.peer !== elected.peer) throw new Error('pre_delivery_rejected');
                 // Durable uncertainty fence BEFORE the sole socket emission. Lost ACK/fetch/disconnect cannot replay.
                 const attempted = await PetRequest.updateOne({ _id: id, status: 'ready', generation: turn.generation }, { $set: { deliveryAttempted: true } });
                 if (!attempted.modifiedCount || cancelled()) throw new Error('pre_delivery_rejected');
@@ -169,6 +226,12 @@ async function report(channel: string, speech: string, phase: string, position: 
 export function startReadTts() {
     registerReadTtsBridge({
         available: async channel => { const selected = await configuration(channel); return !!selected && selected.config.settings.ttsAudio === 'pet' && !!await player(selected.ownerId, channel); },
+        reserve, resume: async channel => {
+            const selected = await configuration(channel);
+            if (!selected || !await player(selected.ownerId, channel)) return;
+            const { ttsQueueHandler } = await import('../handlers/tts_queue.handler.js');
+            await ttsQueueHandler.resumeIfIdle(channel);
+        },
         prepare, release, report: async (channel, speech, phase, position) => {
             const turn = turns.get(channel);
             if (!turn || turn.reporting) return;
@@ -179,10 +242,10 @@ export function startReadTts() {
             const turn = turns.get(request.channelId);
             if (turn?.requestId === request._id && turn.delivered) await turn.input.ended(`pet:${request.status}`);
         },
-        invalidated: async owner => { for (const turn of [...turns.values()]) if (turn.ownerId === owner) {
+        invalidated: async owner => { configurations.clear(); for (const turn of [...turns.values()]) if (turn.ownerId === owner) {
             if (turn.delivered || turn.requestId) await turn.input.ended('pet:state_changed');
             else { turn.detached = true; await endFollow(turn); }
         } }
     });
-    return async () => { for (const turn of [...turns.values()]) await release(turn.input.channelId, turn.input.speechId); registerReadTtsBridge(); };
+    return async () => { for (const turn of [...turns.values()]) await release(turn.input.channelId, turn.input.speechId); registerReadTtsBridge(); configurations.clear(); };
 }

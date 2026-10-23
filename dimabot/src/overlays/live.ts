@@ -95,7 +95,8 @@ function dropPeer(key: string) {
   if (peer && ![...peers.values()].some(p => p.channel === peer.channel)) channels.delete(peer.channel);
 }
 function recipients(channel: string, kind: EventKind, retainDisconnected = false): Peer[] { return [...peers.values()].filter(p => p.channel === channel && (p.socket?.connected || retainDisconnected && reconnecting(p)) && accepts(p, kind)); }
-async function deliver(item: Pending, selected: Peer[]) {
+async function deliver(item: Pending, selected: Peer[], current: () => boolean = () => true) {
+  if (!current()) { if (item.mediaId) await releaseFile(item.mediaId); return; }
   while ([...pending.values()].filter(p => p.channel === item.channel).reduce((n, p) => n + (p.bytes ?? 0), 0) + (item.bytes ?? 0) > MAX_CHANNEL_BYTES) {
     const oldest = [...pending.values()].find(p => p.channel === item.channel && p.bytes);
     if (!oldest) break;
@@ -112,10 +113,19 @@ async function deliver(item: Pending, selected: Peer[]) {
       if (!old.recipients.size) await discard(old.event.id); else await saveDelivery(old);
     }
   }
+  if (!current()) { if (item.mediaId) await releaseFile(item.mediaId); return; }
   pending.set(item.event.id, item);
   try { await saveDelivery(item); }
   catch (error) { pending.delete(item.event.id); if (item.mediaId) await releaseFile(item.mediaId); throw error; }
-  for (const peer of selected) peer.socket?.emit('overlay-event', recipientEvent(item, peer.key));
+  if (!current() || pending.get(item.event.id) !== item) {
+    if (pending.get(item.event.id) === item) await discard(item.event.id);
+    else if (item.mediaId) await releaseFile(item.mediaId);
+    return;
+  }
+  for (const peer of selected) {
+    if (item.event.tts && item.ttsEpochs?.[peer.key] !== peer.socket?.id) continue;
+    peer.socket?.emit('overlay-event', recipientEvent(item, peer.key));
+  }
 }
 function recipientEvent(item: Pending, key: string) {
   if (!item.event.tts || item.ttsOwnerKey === key) return item.event;
@@ -127,13 +137,17 @@ export async function publishStudioReadTts(channel: string, input: ReadTtsDelive
   const selected = recipients(channel, 'tts').sort((a, b) => a.key.localeCompare(b.key));
   if (!selected.length) return;
   const owner = !input.legacy && input.file ? selected[0] : undefined;
+  const ownerClientId = owner ? String(owner.socket!.handshake.auth.clientId) : null;
+  const epochs = Object.fromEntries(selected.map(peer => [peer.key, peer.socket!.id]));
+  const current = () => !input.cancelled?.() && (!owner || !!owner.socket?.connected && owner.socket.id === epochs[owner.key]);
+  if (!current()) return;
   const retained = owner && input.file ? await retainFile(input.file) : {};
   await deliver({ channel, speechID: input.speechID, ttsOwnerKey: owner?.key,
-    ttsEpochs: Object.fromEntries(selected.map(peer => [peer.key, peer.socket!.id])),
+    ttsEpochs: epochs,
     event: { id: randomUUID(), kind: 'tts', platform: 'twitch', text: input.text,
-      tts: { speechID: input.speechID, ownerClientId: owner ? String(owner.socket!.handshake.auth.clientId) : null, durationMs: Math.max(1, Math.min(60_000, input.durationMs || 60_000)) },
+      tts: { speechID: input.speechID, ownerClientId, durationMs: Math.max(1, Math.min(60_000, input.durationMs || 60_000)) },
       ...(owner ? { media: { type: 'audio' as const, title: input.text, volume: 1 } } : {}) },
-    ...retained, mime: input.mime, expiresAt: new Date(Date.now() + DELIVERY_TTL_MS), recipients: new Set(selected.map(peer => peer.key)) }, selected);
+    ...retained, mime: input.mime, expiresAt: new Date(Date.now() + DELIVERY_TTL_MS), recipients: new Set(selected.map(peer => peer.key)) }, selected, current);
 }
 export async function endStudioReadTts(channel: string, speechID: string) {
   for (const item of [...pending.values()]) if (item.channel === channel && item.event.tts && item.speechID === speechID) {

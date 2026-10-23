@@ -3,6 +3,8 @@ import { EventEmitter } from 'node:events';
 import { after, mock, test } from 'node:test';
 const channel = '123456', publicA = 'a'.repeat(48), publicB = 'b'.repeat(48);
 const clientA = 'client-identity-0001', clientB = 'client-identity-0002';
+let retainBarrier: (() => Promise<void>) | undefined, persistBarrier: (() => Promise<void>) | undefined;
+let released = 0;
 const ended: any[] = [], playback: any[] = [], files = new Map(), saved = new Map();
 const state = (publicId: string) => ({ publicId, channel, revision: 1, snapshot: { widgets: [{ visible: true, kind: 'tts' }], designs: [] }, controls: { revision: 1 } });
 mock.module('./store.js', { namedExports: { publicState: async (id: string) => state(id), load: async () => {}, Studio: {}, OverlayError: Error } });
@@ -16,9 +18,9 @@ mock.module('../handlers/clip_queue.handler.js', { namedExports: { clipQueueHand
 mock.module('../handlers/tts_queue.handler.js', { namedExports: { ttsQueueHandler: { resumeIfIdle: async () => {},
     handleSpeechEnded: async (...args: any[]) => { ended.push(args); }, handleSpeechPlayback: (...args: any[]) => { playback.push(args); } } } });
 const collection = (rows: Map<string, any>) => ({ find: () => ({ toArray: async () => [], sort: () => ({ toArray: async () => [] }) }),
-    replaceOne: async (_filter: any, row: any) => { rows.set(row._id, row); }, updateOne: async (filter: any, update: any) => { Object.assign(rows.get(filter._id) ?? {}, update.$set); }, deleteOne: async (filter: any) => { rows.delete(filter._id); } });
+    replaceOne: async (_filter: any, row: any) => { if (row.event && persistBarrier) { const barrier = persistBarrier; persistBarrier = undefined; await barrier(); } rows.set(row._id, row); }, updateOne: async (filter: any, update: any) => { Object.assign(rows.get(filter._id) ?? {}, update.$set); }, deleteOne: async (filter: any) => { rows.delete(filter._id); } });
 mock.module('./delivery-store.js', { namedExports: { deliveries: async () => collection(saved), leases: async () => collection(new Map()),
-    retainFile: async (file: string) => { files.set('retained', file); return { mediaId: 'retained', bytes: 8 }; }, releaseFile: async () => {}, sweepFiles: async () => {},
+    retainFile: async (file: string) => { if (retainBarrier) { const barrier = retainBarrier; retainBarrier = undefined; await barrier(); } files.set('retained', file); return { mediaId: 'retained', bytes: 8 }; }, releaseFile: async () => { released++; }, sweepFiles: async () => {},
     DELIVERY_TTL_MS: 1800000, LEASE_MS: 120000, MAX_PENDING: 200, MAX_CHANNEL_BYTES: 10000000 } });
 const { registerStudio, publishStudioReadTts, eventFor, fileFor, endStudioReadTts } = await import('./live.js');
 class FakeSocket {
@@ -76,4 +78,21 @@ test('disconnect/reconnect with same client never replays unseen pending audio n
     assert.equal(await fileFor(publicA, item.id, clientA, 'epoch-one'), null);
     assert.equal(await fileFor(publicA, item.id, clientA, 'epoch-two'), null);
     assert.equal(ended.length, 1); second.disconnect(); await tick();
+});
+
+for (const phase of ['retain', 'persist']) test(`authoritative end during delayed Studio ${phase} cannot publish stale audio and cleans media`, async () => {
+    const owner = await connect(publicA, clientA, `socket-${phase}`); let cancelled = false, unblock!: () => void, entered!: () => void;
+    const blocked = new Promise<void>(resolve => { unblock = resolve; }), reached = new Promise<void>(resolve => { entered = resolve; });
+    const barrier = async () => { entered(); await blocked; };
+    if (phase === 'retain') retainBarrier = barrier; else persistBarrier = barrier;
+    const priorReleased = released;
+    const publishing = publishStudioReadTts(channel, { speechID: `late-${phase}`, durationMs: 500, text: 'must not be heard', legacy: false,
+        file: '/normal/stale.wav', mime: 'audio/wav', cancelled: () => cancelled });
+    await reached; cancelled = true;
+    const stopping = endStudioReadTts(channel, `late-${phase}`); unblock(); await Promise.all([publishing, stopping]);
+    assert.equal(owner.events.some(event => event.event === 'overlay-event' && event.data.tts?.speechID === `late-${phase}`), false);
+    assert.ok(released > priorReleased, 'retained private media is released');
+    await publishStudioReadTts(channel, { speechID: `new-${phase}`, durationMs: 500, text: 'new turn', legacy: false, file: '/normal/new.wav', mime: 'audio/wav' });
+    assert.ok(owner.events.some(event => event.event === 'overlay-event' && event.data.tts?.speechID === `new-${phase}`));
+    await endStudioReadTts(channel, `new-${phase}`); owner.disconnect(); await tick();
 });

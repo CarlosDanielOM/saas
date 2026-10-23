@@ -1,4 +1,4 @@
-import { startReadTts } from './read_tts.js';
+import { startReadTts, reconcileReadTtsStartup } from './read_tts.js';
 import { randomUUID } from 'node:crypto';
 import { mkdtemp, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -203,6 +203,7 @@ async function wake(ownerId: string) {
 export async function startPetRuntime() {
     await Promise.all([PetRequest.init(), PetRuntime.init()]);
     await initializePetReadiness();
+    await reconcileReadTtsStartup();
     const closeReadTts = startReadTts();
     const stopWakeups = subscribePetWakeups(owners => { for (const ownerId of owners) void wake(ownerId).catch(() => {}); });
     let recovering = false;

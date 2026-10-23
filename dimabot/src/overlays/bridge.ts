@@ -2,7 +2,7 @@ import type { OverlayPlatform } from './controls.js';
 import type { EventKind } from './model.js';
 import type { LiveMedia } from './live.js';
 // Queue producers stay independent of the HTTP/AST/store initialization graph.
-export interface ReadTtsDelivery { speechID: string; durationMs: number; text: string; legacy: boolean; file?: string; mime?: string }
+export interface ReadTtsDelivery { cancelled?: () => boolean; speechID: string; durationMs: number; text: string; legacy: boolean; file?: string; mime?: string }
 interface Bridge {
   readTts?(channel: string, input: ReadTtsDelivery): Promise<void>;
   endReadTts?(channel: string, speechID: string): Promise<void>;
