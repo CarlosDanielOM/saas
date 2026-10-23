@@ -521,3 +521,45 @@ for(const failure of ['rejected','replaced-token'] as const) test(`R6 ${failure}
     assert.equal((handler as any).readHeads.get(other)?.phase,'emitted');
   } finally {resume.resolve();await outcome;await handler.control(other,'clear');await second;await handler.cleanupChannel(other);await stop();}
 });
+
+test('R7 enabling read-TTS during the first processing write routes the same file through the pet', async () => {
+  await setup(); config.settings.sources.readTts=false; config.runtime.readTtsEnabled=false; await invalidateReadTts(owner,'settings_changed');
+  const entered=barrier(), resume=barrier();
+  afterProcessingSet=async()=>{entered.resolve();await resume.promise;};
+  seed('enable-mid-write'); const processing=handler.processNext(channel); await entered.promise;
+  try {
+    assert.equal((handler as any).readHeads.has(channel),false,'queue planned the ordinary path before the switch');
+    config.settings.sources.readTts=true; config.runtime.readTtsEnabled=true; config.revision++; peer.audioReady=true;
+    await invalidateReadTts(owner,'settings_changed'); resume.resolve(); await processing;
+    await until(()=>petEvents.some(e=>e.event==='pet:play'));
+    assert.equal(petEvents.filter(e=>e.event==='pet:play').length,1);
+    assert.equal((handler as any).readHeads.get(channel)?.phase,'emitted');
+    assert.equal(events.some(e=>e.event==='speech'&&e.payload.speechID==='enable-mid-write'),false,'no ordinary overlay dispatch');
+    assert.equal(synthesized.length,1); assert.equal(usage,1);
+  } finally {resume.resolve();await processing;await stop();}
+});
+test('R7 failed Studio teardown during terminal cleanup still frees the head for the next item', async () => {
+  await setup(); seed('strand-A','strand-B'); await handler.processNext(channel);
+  assert.equal((handler as any).readHeads.get(channel)?.phase,'emitted');
+  beforeStudioEnd=async()=>{throw new Error('fixture Studio teardown rejected');};
+  const error=await handler.handleSpeechEnded(channel,'strand-A').then(()=>null,e=>e);
+  try {
+    assert.ok(error,'the failure is still reported');
+    await until(()=>synthesized.includes('strand-B'));
+    assert.equal((handler as any).readHeads.get(channel)?.item.speechID,'strand-B');
+    assert.equal(synthesized.filter(id=>id==='strand-A').length,1);
+  } finally {await stop();}
+});
+test('R7 rejected reservation clear retries the same token so the next item can reserve', async () => {
+  await setup(); seed('retry-A','retry-B'); await handler.processNext(channel);
+  assert.equal(runtime.ttsReservation?.speechId,'retry-A');
+  beforeReservationClear=async()=>{throw new Error('fixture Mongo clear rejected');};
+  const error=await handler.handleSpeechEnded(channel,'retry-A').then(()=>null,e=>e);
+  try {
+    assert.ok(error,'the failure is still reported');
+    assert.equal((handler as any).readHeads.get(channel)?.item.speechID==='retry-A',false,'failed head does not hold the channel');
+    await until(()=>runtime.ttsReservation?.speechId==='retry-B');
+    await until(()=>(handler as any).readHeads.get(channel)?.phase==='emitted');
+    assert.equal(synthesized.filter(id=>id==='retry-A').length,1); assert.equal(synthesized.filter(id=>id==='retry-B').length,1);
+  } finally {await stop();}
+});

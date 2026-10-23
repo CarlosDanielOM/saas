@@ -107,21 +107,50 @@ async function release(channel: string, speech: string, parked = false) {
     const turn = turns.get(channel);
     if (!turn || turn.input.speechId !== speech) { if (identity) forgetOwner(identity.owner); return; }
     turns.delete(channel); // Claim before awaits/terminal callbacks; never release a newer turn.
-    await endFollow(turn);
-    if (turn.requestId) {
-        const request = await PetRequest.findById(turn.requestId).lean();
-        if (request && !['completed', 'cancelled', 'failed', 'expired'].includes(request.status)) {
-            for (const peer of petPeers.values()) if (peer.ownerId === turn.ownerId) peer.socket.emit('pet:stop', { v: 1, requestId: turn.requestId, generation: turn.generation, reason: 'tts_ended' });
-            await finishRequest(turn.requestId, 'cancelled', 'tts_ended');
-            if (request.privateDir && path.dirname(request.privateDir) === tmpdir() && path.basename(request.privateDir).startsWith('dima-pet-')) await rm(request.privateDir, { recursive: true, force: true });
+    let failure: unknown;
+    try {
+        await endFollow(turn);
+        if (turn.requestId) {
+            const request = await PetRequest.findById(turn.requestId).lean();
+            if (request && !['completed', 'cancelled', 'failed', 'expired'].includes(request.status)) {
+                for (const peer of petPeers.values()) if (peer.ownerId === turn.ownerId) peer.socket.emit('pet:stop', { v: 1, requestId: turn.requestId, generation: turn.generation, reason: 'tts_ended' });
+                await finishRequest(turn.requestId, 'cancelled', 'tts_ended');
+                if (request.privateDir && path.dirname(request.privateDir) === tmpdir() && path.basename(request.privateDir).startsWith('dima-pet-')) await rm(request.privateDir, { recursive: true, force: true });
+            }
         }
+    } catch (error) { failure = error; } // Request cleanup failure must not keep the reservation.
+    // The turn is already removed, so this call is the token's only holder.
+    // A failed clear keeps retrying with the same token instead of losing it.
+    if (!await clearReservation(turn.ownerId, turn.token)) {
+        scheduleClearRetry(turn.ownerId, turn.token);
+        failure ??= new Error('tts_reservation_clear_failed');
     }
-    const cleared = await PetRuntime.updateOne({ _id: turn.ownerId, 'ttsReservation.token': turn.token }, { $set: { ttsReservation: null } });
-    // Wake contenders only once the authoritative token clear has completed.
-    // A failed write must not advertise release; a stale token cannot clear a successor.
-    if (cleared.matchedCount) signal(turn.ownerId);
-    await notifyPet(turn.ownerId);
+    try { await notifyPet(turn.ownerId); } catch (error) { failure ??= error; }
     forgetOwner(turn.ownerId);
+    if (failure) throw failure;
+}
+/** Clears only this exact token. Wakes contenders only after the authoritative clear. */
+async function clearReservation(ownerId: string, token: string) {
+    let cleared;
+    try { cleared = await PetRuntime.updateOne({ _id: ownerId, 'ttsReservation.token': token }, { $set: { ttsReservation: null } }); }
+    catch { return false; }
+    // A stale token cannot clear a successor, so a zero match is also final.
+    if (cleared.matchedCount) signal(ownerId);
+    return true;
+}
+const CLEAR_RETRY_DELAYS_MS = [250, 1000, 4000, 15_000, 60_000];
+const clearRetries = new Set<NodeJS.Timeout>();
+function scheduleClearRetry(ownerId: string, token: string, attempt = 0) {
+    // After the last retry the reservation's own expiry releases the owner.
+    if (attempt >= CLEAR_RETRY_DELAYS_MS.length) return;
+    const timer = setTimeout(() => {
+        clearRetries.delete(timer);
+        void clearReservation(ownerId, token).then(done => {
+            if (done) { void notifyPet(ownerId).catch(() => {}); return; }
+            scheduleClearRetry(ownerId, token, attempt + 1);
+        });
+    }, CLEAR_RETRY_DELAYS_MS[attempt]);
+    timer.unref?.(); clearRetries.add(timer);
 }
 /** Startup completes before any API socket/queue producer is made available. */
 export async function reconcileReadTtsStartup() {
@@ -346,5 +375,5 @@ export function startReadTts() {
             else { turn.detached = true; await endFollow(turn); }
         } }
     });
-    return async () => { for (const turn of [...turns.values()]) await release(turn.input.channelId, turn.input.speechId); registerReadTtsBridge(); configurations.clear(); heads.clear(); observations.clear(); for (const owner of [...waits.keys()]) signal(owner); changes.clear(); };
+    return async () => { for (const turn of [...turns.values()]) await release(turn.input.channelId, turn.input.speechId).catch(() => {}); for (const timer of clearRetries) clearTimeout(timer); clearRetries.clear(); registerReadTtsBridge(); configurations.clear(); heads.clear(); observations.clear(); for (const owner of [...waits.keys()]) signal(owner); changes.clear(); };
 }

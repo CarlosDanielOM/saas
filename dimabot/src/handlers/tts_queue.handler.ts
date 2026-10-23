@@ -372,6 +372,14 @@ class TtsQueueHandler {
         if (!reserved || this.controls.has(channelID) || this.interruptedSpeechIds.get(channelID) === speechID) {
           await this.cleanupSpeech(channelID, speechID, true); continue;
         }
+        // Read-TTS can turn on while the processing write is pending. The reservation
+        // then holds a pet turn this item has no head for; adopt it before synthesis
+        // so the generated file goes through the pet hand-off, not the ordinary path.
+        if (!this.readHeads.has(channelID) && hasReadTtsTurn(channelID, speechID)) {
+          if (this.readHeads.size + this.headClaims.size >= MAX_READ_TTS_HEADS) await releaseReadTts(channelID, speechID).catch(() => {}); // A failed clear retries itself.
+          else this.readHeads.set(channelID, { item: queueItem, session: next.session, epoch: 0, wakeVersion: 0,
+            cancelled: false, phase: 'preparing', running: false, analysis: {}, cancellation: new AbortController() });
+        }
 
         if (await this.cache!.get(`twitch:${channelID}:tts:session`) !== next.session) { await this.cleanupSpeech(channelID, speechID, true); continue; }
 
@@ -635,8 +643,9 @@ class TtsQueueHandler {
         timestamp: new Date().toISOString(),
       });
       if (activeSpeechID) {
-        await releaseReadTts(channelID, activeSpeechID);
-        await endStudioReadTts(channelID, activeSpeechID);
+        // Best effort: the local lock below must always be dropped.
+        await releaseReadTts(channelID, activeSpeechID).catch(() => {});
+        await endStudioReadTts(channelID, activeSpeechID).catch(() => {});
         this.retireReadOwner(channelID, activeSpeechID);
       }
       const failedHead = this.readHeads.get(channelID);
@@ -818,9 +827,13 @@ class TtsQueueHandler {
     head.cancellation.abort(); this.retireReadOwner(channel, speech);
     if (this.dispatchedSpeechIds.get(channel) === speech) this.dispatchedSpeechIds.delete(channel);
     const completion = Promise.resolve().then(async () => {
-      await endStudioReadTts(channel, speech);
-      await this.cleanupSpeech(channel, speech);
+      // Each step runs even if an earlier one fails, so a failed external call
+      // can never leave this cancelled head holding the channel.
+      let failure: unknown;
+      try { await endStudioReadTts(channel, speech); } catch (error) { failure = error; }
+      try { await this.cleanupSpeech(channel, speech); } catch (error) { failure ??= error; }
       if (!head.running && !this.controls.has(channel)) void this.processNext(channel);
+      if (failure) throw failure;
     }).catch(error => {
       // An unsuccessful terminal operation may be retried on this same head;
       // successful completion stays attached, fencing even late old callbacks.
@@ -836,7 +849,7 @@ class TtsQueueHandler {
     clearTimeout(this.currentTimeouts.get(key));
     this.currentTimeouts.set(key, setTimeout(() => {
       console.warn('TTS overlay playback timed out', { channelID, speechID, delay });
-      void this.handleSpeechEnded(channelID, speechID, 'timeout');
+      this.handleSpeechEnded(channelID, speechID, 'timeout').catch(error => { console.error('TTS timeout cleanup failed', { channelID, speechID, error }); });
     }, delay));
   }
 
@@ -991,7 +1004,9 @@ class TtsQueueHandler {
     const head = this.readHeads.get(channelID);
     if (head?.item.speechID === speechID) { head.cancelled = true; head.epoch++; head.phase = 'terminal'; head.cancellation.abort(); this.headWakes.delete(channelID); }
     this.retireReadOwner(channelID, speechID);
-    await releaseReadTts(channelID, speechID);
+    // External failures are reported after local cleanup, never instead of it.
+    let failure: unknown;
+    try { await releaseReadTts(channelID, speechID); } catch (error) { failure = error; }
     const timeoutKey = `${channelID}:${speechID}`;
     if (!this.controls.has(channelID) && this.interruptedSpeechIds.get(channelID) === speechID) this.interruptedSpeechIds.delete(channelID);
     if (this.dispatchedSpeechIds.get(channelID) === speechID) this.dispatchedSpeechIds.delete(channelID);
@@ -1007,14 +1022,17 @@ class TtsQueueHandler {
       this.scheduleFileCleanup(timeoutKey, outputPath);
     }
 
-    await this.cache!.del(`twitch:${channelID}:tts:processing`);
-    await this.cache!.del(`twitch:${channelID}:tts:queue:data:${speechID}`);
+    try {
+      await this.cache!.del(`twitch:${channelID}:tts:processing`);
+      await this.cache!.del(`twitch:${channelID}:tts:queue:data:${speechID}`);
+    } catch (error) { failure ??= error; } // The processing key also expires by TTL.
     if (head?.item.speechID === speechID && this.readHeads.get(channelID) === head) this.readHeads.delete(channelID);
     this.wakeCapacityWaiters();
     if (!keepProcessing) this.processingChannels.delete(channelID);
     if (this.activeSpeechIds.get(channelID) === speechID) {
       this.activeSpeechIds.delete(channelID);
     }
+    if (failure) throw failure;
   }
 
   async cleanupChannel(channelID: string): Promise<void> {
