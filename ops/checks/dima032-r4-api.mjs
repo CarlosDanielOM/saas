@@ -198,16 +198,28 @@ try {
         assert.equal((await head()).speechID,undefined);
         const held=await command('capacity',{action:'hold'});assert.equal(held.ownedClaims,128);assert.equal(held.totalClaims,128);assert.equal(held.heads,0);
         await save(settings=>({...settings,sources:{...settings.sources,readTts:true}}));
-        selected=await readyPet();await closeStudio();await redis.del('dima032:test:hold:processing-set');
-        await until(async()=>await redis.zCard(queueKey)===1&&!(await head()).processing,'capacity requeues before provider');
+        selected=await readyPet();await closeStudio();
+        await redis.del('dima032:test:entered:processing-del');await redis.set('dima032:test:hold:processing-del','true');
+        await redis.del('dima032:test:hold:processing-set');
+        await until(()=>redis.get('dima032:test:entered:processing-del'),'final capacity-requeue DEL response held');
+        assert.equal(await redis.zCard(queueKey),1);assert.equal((await head()).processing,true);
         assert.equal(await providerCount(),count);assert.equal(await usageCharacters(),usage);
         assert.ok(await redis.get(`twitch:${channel}:tts:queue:data:${speech}`));
+        const laterText='Capacity wake preserves FIFO follower',later=await enqueue(laterText);
+        assert.deepEqual(await redis.zRange(queueKey,0,-1),[speech,later]);
         const released=await command('capacity',{action:'release'});assert.equal(released.ownedClaims,0);
-        // No new enqueue, ready signal or control: normal capacity retirement wakes it.
+        // The callback had an event-loop turn while the old dispatch still owned
+        // execution. Finishing DEL must preserve that wake without a new signal.
+        assert.equal((await head()).processing,true);assert.equal(await providerCount(),count);assert.equal(await usageCharacters(),usage);
+        await redis.del('dima032:test:hold:processing-del');
+        // No new enqueue, ready signal or control: normal capacity retirement resumes it.
         const resumed=await playForSpeech(selected,speech);assert.equal(await providerCount(),count+1);assert.equal(await usageCharacters(),usage+text.length);
-        assert.equal((await playback(selected,resumed,0,'started')).ok,true);assert.equal((await playback(selected,resumed,1,'ended')).ok,true);await completed();
+        assert.deepEqual(await redis.zRange(queueKey,0,-1),[later]);
+        assert.equal((await playback(selected,resumed,0,'started')).ok,true);assert.equal((await playback(selected,resumed,1,'ended')).ok,true);
+        const following=await playForSpeech(selected,later);assert.equal(await providerCount(),count+2);assert.equal(await usageCharacters(),usage+text.length+laterText.length);
+        assert.equal((await playback(selected,following,0,'started')).ok,true);assert.equal((await playback(selected,following,1,'ended')).ok,true);await completed();
     } finally {
-        await redis.del('dima032:test:hold:processing-set');await command('capacity',{action:'release'});
+        await redis.del('dima032:test:hold:processing-set','dima032:test:hold:processing-del');await command('capacity',{action:'release'});
     }
     // R7: one exact request read fails only within this control's ALS context.
     // Possible playback must receive its exact stop before that cleanup await ends.
@@ -244,7 +256,7 @@ try {
     assert.equal(await redis.lLen('pet:test:billing-events'),0);
     console.log('PASS DIMA032 actual Lua/session/owner/wait fences plus enable-at-capacity backpressure and exact private stop/cancel across a lost control-read reply; same paid identities, no overlap/replay.');
 } finally {
-    await redis.del('dima032:test:hold:redis-pop','dima032:test:hold:session-publish','dima032:test:hold:cas','dima032:test:hold:processing-set','dima032:test:hold:release-read','dima032:test:terminal-before-provider');
+    await redis.del('dima032:test:hold:redis-pop','dima032:test:hold:session-publish','dima032:test:hold:cas','dima032:test:hold:processing-set','dima032:test:hold:processing-del','dima032:test:hold:release-read','dima032:test:terminal-before-provider');
     clearInterval(renew);for(const socket of sockets)socket.close();await mongo.connection.close();redis.destroy();
 }
 process.exit(0);

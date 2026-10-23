@@ -137,6 +137,9 @@ if ((process.argv[1] || '').endsWith('/dist/server/index.js')) {
                 } else if (command.action === 'release') {
                     for (const id of ownedCapacityClaims) ttsQueueHandler.headClaims.delete(id);
                     ownedCapacityClaims.clear(); ttsQueueHandler.wakeCapacityWaiters();
+                    // Let a capacity callback already queued by the real helper
+                    // run before replying, even while the old DEL is still held.
+                    await new Promise(resolve => setImmediate(resolve));
                 } else throw new Error('Unknown fixture capacity action');
                 result = { ownedClaims: ownedCapacityClaims.size, totalClaims: ttsQueueHandler.headClaims.size, heads: ttsQueueHandler.readHeads.size };
             }
