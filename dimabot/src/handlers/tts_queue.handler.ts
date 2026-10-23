@@ -106,6 +106,7 @@ class TtsQueueHandler {
   private activePumps = 0;
   private headClaims = new Set<string>();
   private capacityWaiters = new Set<string>();
+  private capacityWakeScheduled = false;
   private sessionCursor = 0;
   private controls = new Map<string, Promise<void>>();
   private dispatches = new Map<string, Promise<void>>();
@@ -727,16 +728,32 @@ class TtsQueueHandler {
     this.headWakes.add(channel); this.scheduleHeadPump();
   }
   private wakeCapacityWaiters() {
-    const available = MAX_READ_TTS_HEADS - this.readHeads.size - this.headClaims.size;
-    for (const channel of [...this.capacityWaiters].slice(0, Math.min(MAX_READ_TTS_PUMPS, available))) {
-      // A callback may run before requeue/controls settle. Keep its waiter for
-      // their completion wake; a blocked processNext never reschedules itself.
-      setImmediate(() => { if (this.capacityWaiters.has(channel)) void this.processNext(channel); });
-    }
+    if (this.capacityWakeScheduled || !this.capacityWaiters.size || this.readHeads.size + this.headClaims.size >= MAX_READ_TTS_HEADS) return;
+    this.capacityWakeScheduled = true;
+    setImmediate(() => {
+      this.capacityWakeScheduled = false;
+      let available = Math.min(MAX_READ_TTS_PUMPS, MAX_READ_TTS_HEADS - this.readHeads.size - this.headClaims.size);
+      // Select at execution time: a newly busy first waiter cannot spend the
+      // only free slot or hide ready channels behind it. Busy waiters remain for
+      // their existing control/dispatch completion wake, never a polling loop.
+      for (const channel of [...this.capacityWaiters]) {
+        if (this.readHeads.has(channel)) { this.capacityWaiters.delete(channel); continue; }
+        if (this.controls.has(channel) || this.processingChannels.has(channel) || this.dispatches.has(channel)) continue;
+        if (available <= 0) break;
+        available--;
+        void this.processNext(channel);
+      }
+    });
   }
   async handleSessionEnded(channel: string, session: string) {
     const head = this.readHeads.get(channel);
-    if (!head || head.session === session) return;
+    if (!head) {
+      // A pre-dequeue capacity waiter has no head for session recovery to visit.
+      // Retire an emptied backlog on this existing boundary notification.
+      if (this.capacityWaiters.has(channel)) await this.resumeIfIdle(channel);
+      return;
+    }
+    if (head.session === session) return;
     // control captures and cancels the exact old identity synchronously.
     await this.control(channel, 'skip');
   }
@@ -979,7 +996,8 @@ class TtsQueueHandler {
     finally {
       if (this.controls.get(channelID) === pending) {
         this.controls.delete(channelID);
-        await this.resumeIfIdle(channelID);
+        try { await this.resumeIfIdle(channelID); }
+        finally { this.wakeCapacityWaiters(); }
       }
     }
   }
@@ -1003,8 +1021,8 @@ class TtsQueueHandler {
     if (!this.cache) {
       await this.init();
     }
-    if (this.readHeads.has(channelID)) { this.wakeHead(channelID); return; }
-    if (this.processingChannels.has(channelID)) return;
+    if (this.readHeads.has(channelID)) { this.capacityWaiters.delete(channelID); this.wakeHead(channelID); return; }
+    if (this.controls.has(channelID) || this.processingChannels.has(channelID) || this.dispatches.has(channelID)) return;
 
     const processingKey = `twitch:${channelID}:tts:processing`;
     const staleLock = await this.cache!.get(processingKey);
@@ -1021,6 +1039,9 @@ class TtsQueueHandler {
     const queueLength = await this.cache!.zCard(`twitch:${channelID}:tts:queue`);
     if (queueLength > 0) {
       void this.processNext(channelID);
+    } else if (!this.controls.has(channelID) && !this.processingChannels.has(channelID) && !this.dispatches.has(channelID)) {
+      this.capacityWaiters.delete(channelID);
+      this.wakeCapacityWaiters();
     }
   }
 
@@ -1118,6 +1139,8 @@ class TtsQueueHandler {
 
     this.processingChannels.delete(channelID);
     this.activeSpeechIds.delete(channelID);
+    this.capacityWaiters.delete(channelID);
+    this.wakeCapacityWaiters();
   }
 
   private scheduleFileCleanup(fileKey: string, outputPath: string): void {

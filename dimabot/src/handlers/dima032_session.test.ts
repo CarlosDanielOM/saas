@@ -94,6 +94,7 @@ let afterClaim: (() => Promise<void>) | undefined;
 let afterProcessingSet: (() => Promise<void>) | undefined;
 let beforeReservationClear: (() => Promise<void>) | undefined;
 let beforeStudioEnd: (() => Promise<void>) | undefined;
+let beforeStudioControl: ((channel: string, action: string) => Promise<void>) | undefined;
 let beforePrivateRead: ((id: string) => Promise<void>) | undefined;
 let afterFinishStatus: (() => Promise<void>) | undefined;
 let failedClaims = 0;
@@ -170,11 +171,27 @@ mock.module('../utils/logger.js', { namedExports: { error: async () => {}, info:
 mock.module('../classes/pubsub_manager.class.js', { namedExports: { pubSubManager: { publish: async (_topic: string, value: any) => { await handler.handleSessionEnded(value.channelID, value.session); } } } });
 const { ttsQueueHandler: handler } = await import('./tts_queue.handler.js');
 const { registerStudioBridge } = await import('../overlays/bridge.js');
+const blockedStudioChannels = new Set<string>();
 let publishAttempts = 0;
-registerStudioBridge({ hasSource: () => graceConnected, hasLiveSource: () => studioConnected, media: async () => {}, trigger: async () => {}, controlTts: async () => {}, endReadTts: async () => {const hook=beforeStudioEnd;beforeStudioEnd=undefined;if(hook)await hook();}, readTts: async (_channel, input) => {
+registerStudioBridge({ hasSource: channel => graceConnected && !blockedStudioChannels.has(channel), hasLiveSource: channel => studioConnected && !blockedStudioChannels.has(channel), media: async () => {}, trigger: async () => {}, controlTts: async (channel,action) => {if(beforeStudioControl)await beforeStudioControl(channel,action);}, endReadTts: async () => {const hook=beforeStudioEnd;beforeStudioEnd=undefined;if(hook)await hook();}, readTts: async (_channel, input) => {
   publishAttempts++; if (!studioConnected) return 'unavailable'; return input.beforeEmit?.() === false ? 'cancelled' : 'emitted';
 } });
 function barrier() { let resolve!: () => void; const promise = new Promise<void>(done => { resolve = done; }); return { promise, resolve }; }
+// Observe the real scheduled callback, including a scan that correctly skips
+// every busy channel rather than calling processNext against its dispatch gate.
+async function executeCapacityWake(internals:any,hints=1) {
+  const immediate=setImmediate;let scheduled=0,executed=0;
+  const spy=mock.method(globalThis,'setImmediate',((callback:(...args:any[])=>void,...args:any[])=>{
+    scheduled++;return immediate(()=>{executed++;callback(...args);});
+  }) as typeof setImmediate);
+  try {for(let i=0;i<hints;i++)internals.wakeCapacityWaiters();} finally {spy.mock.restore();}
+  await new Promise<void>(done=>setImmediate(done));
+  assert.equal(scheduled,1,'capacity hints coalesce into one scheduled scan');assert.equal(executed,1,'the scheduled capacity scan must actually run');
+}
+function seedChannel(target:string,...ids:string[]) {
+  queues.set(`twitch:${target}:tts:queue`,ids);
+  for(const [i,speechID] of ids.entries())data.set(`twitch:${target}:tts:queue:data:${speechID}`,JSON.stringify({channelID:target,speechID,provider:'piper',mode:'speak',language:'en',voice:'test',text:speechID,timestamp:Date.now()-10000+i}));
+}
 async function until(condition: () => boolean) {
   for (let i=0; i<200; i++) { if (condition()) return; await new Promise(resolve => setTimeout(resolve, 5)); }
   assert.fail('reproduction barrier timed out');
@@ -193,12 +210,12 @@ async function setup() {
   await handler.control(channel,'clear');await handler.cleanupChannel(channel);
   await new Promise<void>(done=>setImmediate(done));
   await until(()=>!(handler as any).processingChannels.has(channel)&&!(handler as any).dispatches.has(channel)&&!(handler as any).controls.has(channel)
-    &&(handler as any).activePumps===0&&(handler as any).headWakes.size===0&&!(handler as any).pumpScheduled);
+    &&(handler as any).activePumps===0&&(handler as any).headWakes.size===0&&!(handler as any).pumpScheduled&&!(handler as any).capacityWakeScheduled);
   await new Promise<void>(done=>setImmediate(done));
   await handler.cleanupChannel(channel); await reset(); await writeFile(file, 'normal TTS bytes');
   data.clear(); queues.clear(); events.length=0; synthesized.length=0; usage=0; publishAttempts=0;
-  configurationReads=renewalWrites=0; advanceProbeTime=false; afterDel=afterPayloadRead=afterSessionWrite=afterProcessingSet=beforeReservationClear=beforeStudioEnd=undefined;beforePrivateRead=afterFinishStatus=undefined;failedClaims=0;
-  studioConnected=true; graceConnected=true; peer.audioReady=false;
+  configurationReads=renewalWrites=0; advanceProbeTime=false; afterDel=afterPayloadRead=afterSessionWrite=afterProcessingSet=beforeReservationClear=beforeStudioEnd=undefined;beforePrivateRead=afterFinishStatus=undefined;beforeStudioControl=undefined;failedClaims=0;
+  blockedStudioChannels.clear();studioConnected=true; graceConnected=true; peer.audioReady=false;
   for (const socket of legacySockets.values()) socket.data.ttsReady=false;
 }
 async function stop(processing?: Promise<void>) {
@@ -720,10 +737,10 @@ for(const stage of ['pop','processing'] as const)test(`R9 capacity wake during h
     await invalidateReadTts(owner,'settings_changed');
     afterDel=async key=>{if(key.endsWith(':tts:processing')){afterDel=undefined;requeued.resolve();await finishRequeue.promise;}};
     resume.resolve();await requeued.promise;assert.ok(internals.capacityWaiters.has(channel));
-    internals.headClaims.clear();internals.wakeCapacityWaiters();
-    await new Promise<void>(done=>setImmediate(done));assert.equal(earlyCalls,1,'the scheduled early callback must actually run against the held dispatch');
+    internals.headClaims.clear();await executeCapacityWake(internals);
+    assert.equal(earlyCalls,0,'the executed scan skips the held dispatch');
     for(let i=0;i<5;i++)await new Promise<void>(done=>setImmediate(done));
-    assert.equal(earlyCalls,1,'blocked wake must not reschedule itself');assert.equal(synthesized.length,0);assert.equal(usage,0);
+    assert.equal(earlyCalls,0,'blocked wake must not reschedule itself');assert.equal(synthesized.length,0);assert.equal(usage,0);
     assert.deepEqual(JSON.parse(data.get(`twitch:${channel}:tts:queue:data:${speech}`)!),{...original,queueSession:null});
     assert.deepEqual(queues.get(`twitch:${channel}:tts:queue`),[speech,later]);assert.ok(internals.capacityWaiters.size<=128);
     finishRequeue.resolve();await processing;
@@ -746,8 +763,8 @@ for(const action of ['skip','clear','stream-end'] as const)test(`R9 ${action} st
     config.settings.sources.readTts=true;config.runtime.readTtsEnabled=true;config.revision++;peer.audioReady=true;studioConnected=graceConnected=false;
     await invalidateReadTts(owner,'settings_changed');
     afterDel=async key=>{if(key.endsWith(':tts:processing')){afterDel=undefined;requeued.resolve();await finishRequeue.promise;}};
-    resume.resolve();await requeued.promise;internals.headClaims.clear();internals.wakeCapacityWaiters();
-    await new Promise<void>(done=>setImmediate(done));assert.equal(earlyCalls,1);assert.ok(internals.capacityWaiters.has(channel));
+    resume.resolve();await requeued.promise;internals.headClaims.clear();await executeCapacityWake(internals);
+    assert.equal(earlyCalls,0);assert.ok(internals.capacityWaiters.has(channel));
     if(action==='stream-end') {
       await clearActualStream();
       const {enqueueTtsSession}=await import('../utils/tts/tts_session.util.js');
@@ -760,6 +777,75 @@ for(const action of ['skip','clear','stream-end'] as const)test(`R9 ${action} st
     assert.deepEqual(synthesized,action==='clear'?[]:[action==='skip'?later:next]);assert.equal(usage,action==='clear'?0:1);
     assert.equal(data.has(`twitch:${channel}:tts:queue:data:${speech}`),false);
     for(let i=0;i<5;i++)await new Promise<void>(done=>setImmediate(done));
-    assert.equal(earlyCalls,1,'settled controls cannot create a blocked wake loop');
+    assert.equal(earlyCalls,0,'settled controls cannot create a blocked wake loop');
   } finally {spy.mock.restore();resume.resolve();finishRequeue.resolve();internals.headClaims.clear();internals.capacityWaiters.clear();await Promise.allSettled([processing,controlling]);await stop();}
+});
+
+
+test('R10 held clear of first capacity waiter cannot starve a second ready channel',async()=>{
+  await setup();const internals=handler as any,other='123460',entered=barrier(),resume=barrier();
+  for(let i=0;i<128;i++)internals.headClaims.add(`fair-claim-${i}`);
+  seed('fair-clear-A');queues.set(`twitch:${other}:tts:queue`,['fair-ready-B']);
+  data.set(`twitch:${other}:tts:queue:data:fair-ready-B`,JSON.stringify({channelID:other,speechID:'fair-ready-B',provider:'piper',mode:'speak',language:'en',voice:'test',text:'ready B'}));
+  await handler.processNext(channel);await handler.processNext(other);assert.deepEqual([...internals.capacityWaiters],[channel,other]);
+  beforeStudioControl=async(id,action)=>{if(id===channel&&action==='clear'){beforeStudioControl=undefined;entered.resolve();await resume.promise;}};
+  const clearing=handler.control(channel,'clear');await entered.promise;
+  const processNext=handler.processNext.bind(handler),calls:string[]=[];
+  const spy=mock.method(handler,'processNext',async(id:string)=>{calls.push(id);return processNext(id);});
+  try {
+    internals.headClaims.delete('fair-claim-0');await executeCapacityWake(internals,20);
+    assert.deepEqual(calls,[other],'busy A cannot spend the one free slot');
+    await until(()=>synthesized.includes('fair-ready-B'));
+    assert.equal(synthesized.includes('fair-clear-A'),false);
+    resume.resolve();await clearing;
+    await until(()=>synthesized.includes('fair-ready-B'));
+    assert.deepEqual(synthesized,['fair-ready-B']);assert.equal(usage,1);assert.equal(internals.capacityWaiters.has(channel),false);
+    assert.equal(internals.readHeads.size+internals.headClaims.size,128);
+  } finally {resume.resolve();spy.mock.restore();beforeStudioControl=undefined;await clearing;internals.headClaims.clear();internals.capacityWaiters.clear();await handler.control(other,'clear');await handler.cleanupChannel(other);await stop();}
+});
+
+for(const action of ['clear','skip'] as const)test(`R10 ${action} beginning after wake scheduling cannot hide B and A backlog resumes in order`,async()=>{
+  await setup();const internals=handler as any,other='123461',entered=barrier(),resume=barrier();
+  const a=`scheduled-${action}-A`,later=`scheduled-${action}-later`,b=`scheduled-${action}-B`;
+  for(let i=0;i<128;i++)internals.headClaims.add(`scheduled-claim-${i}`);
+  seedChannel(channel,a,later);seedChannel(other,b);await handler.processNext(channel);await handler.processNext(other);
+  beforeStudioControl=async(id,kind)=>{if(id===channel&&kind===action){beforeStudioControl=undefined;entered.resolve();await resume.promise;}};
+  internals.headClaims.delete('scheduled-claim-0');const wake=executeCapacityWake(internals,20);
+  const controlling=handler.control(channel,action);await entered.promise;
+  try {
+    await wake;await until(()=>internals.readHeads.get(other)?.phase==='emitted');assert.deepEqual(synthesized,[b]);assert.equal(usage,1);
+    resume.resolve();await controlling;
+    if(action==='skip')await until(()=>internals.capacityWaiters.has(channel));
+    else assert.equal(internals.capacityWaiters.has(channel),false);
+    await handler.handleSpeechEnded(other,b);
+    if(action==='skip') {
+      await until(()=>internals.readHeads.get(channel)?.phase==='emitted');assert.deepEqual(synthesized,[b,a]);
+      await handler.handleSpeechEnded(channel,a);await until(()=>internals.readHeads.get(channel)?.phase==='emitted'&&internals.readHeads.get(channel)?.item.speechID===later);assert.deepEqual(synthesized,[b,a,later]);assert.equal(usage,3);
+    } else {for(let i=0;i<5;i++)await new Promise<void>(done=>setImmediate(done));assert.deepEqual(synthesized,[b]);assert.equal(usage,1);}
+    assert.equal(internals.capacityWaiters.size,0);assert.ok(internals.readHeads.size+internals.headClaims.size<=128);
+  } finally {resume.resolve();beforeStudioControl=undefined;await controlling;internals.headClaims.clear();internals.capacityWaiters.clear();await handler.control(other,'clear');await handler.cleanupChannel(other);await stop();}
+});
+for(const retire of ['empty-resume','channel-cleanup','stream-end'] as const)test(`R10 ${retire} retires an empty capacity waiter even when no slot is free`,async()=>{
+  await setup();const internals=handler as any;for(let i=0;i<128;i++)internals.headClaims.add(`retire-claim-${i}`);
+  seed(`retire-${retire}`);await handler.processNext(channel);assert.ok(internals.capacityWaiters.has(channel));
+  try {
+    if(retire==='empty-resume'){queues.set(`twitch:${channel}:tts:queue`,[]);await handler.resumeIfIdle(channel);}else if(retire==='stream-end')await clearActualStream();else await handler.cleanupChannel(channel);
+    assert.equal(internals.capacityWaiters.size,0);assert.equal(synthesized.length,0);assert.equal(usage,0);
+  } finally {internals.headClaims.clear();internals.capacityWaiters.clear();await stop();}
+});
+test('R10 output disappearing on first waiter advances B without polling and A resumes through reconnect',async()=>{
+  await setup();const internals=handler as any,other='123462';
+  for(let i=0;i<128;i++)internals.headClaims.add(`offline-claim-${i}`);
+  seedChannel(channel,'offline-A');seedChannel(other,'online-B');await handler.processNext(channel);await handler.processNext(other);
+  blockedStudioChannels.add(channel);internals.headClaims.delete('offline-claim-0');
+  let attempts=0;const processNext=handler.processNext.bind(handler),spy=mock.method(handler,'processNext',async(id:string)=>{if(id===channel)attempts++;return processNext(id);});
+  try {
+    await executeCapacityWake(internals,20);await until(()=>internals.readHeads.get(other)?.phase==='emitted');
+    assert.deepEqual(synthesized,['online-B']);assert.equal(attempts,1);assert.equal(internals.capacityWaiters.has(channel),false);
+    await handler.handleSpeechEnded(other,'online-B');for(let i=0;i<5;i++)await new Promise<void>(done=>setImmediate(done));
+    assert.equal(attempts,1,'an offline channel waits for existing output readiness, never a capacity poll');
+    assert.deepEqual(queues.get(`twitch:${channel}:tts:queue`),['offline-A']);
+    blockedStudioChannels.delete(channel);await handler.resumeIfIdle(channel);await until(()=>internals.readHeads.get(channel)?.phase==='emitted');
+    assert.deepEqual(synthesized,['online-B','offline-A']);assert.equal(usage,2);assert.equal(internals.capacityWaiters.size,0);
+  } finally {spy.mock.restore();blockedStudioChannels.clear();internals.headClaims.clear();internals.capacityWaiters.clear();await handler.control(other,'clear');await handler.cleanupChannel(other);await stop();}
 });
