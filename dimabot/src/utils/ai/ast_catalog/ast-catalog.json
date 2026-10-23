@@ -1,6 +1,6 @@
 {
-  "version": "d2bd1b95bef8",
-  "generatedAt": "2026-10-22T20:30:02.869Z",
+  "version": "db8696626c74",
+  "generatedAt": "2026-10-23T20:12:22.093Z",
   "model": "lfm2.5-embedding-350m",
   "dim": 1024,
   "functionCount": 115,
@@ -610,11 +610,14 @@
     },
     {
       "name": "user",
-      "description": "Returns the username of the caller / current chatter.",
-      "syntax": "user",
+      "description": "Returns the username of the caller / current chatter. Optional \"ignore\" filters strip characters from that name: \"symbols\" removes every character that is not a letter, combining mark or number, \"numbers\" removes numeric characters. Both filters can be combined in any order, and the name keeps its casing. Returns \"viewer\" when the filters leave no letters or numbers.",
+      "syntax": "user [ignore [symbols] [numbers]]",
       "category": "user",
       "examples": [
-        "user"
+        "user",
+        "user ignore symbols",
+        "user ignore numbers",
+        "user ignore symbols numbers"
       ],
       "aliases": [],
       "minUserLevel": 1,
@@ -624,7 +627,14 @@
         "who",
         "usuario",
         "nombre",
-        "quien"
+        "quien",
+        "ignore",
+        "filter",
+        "symbols",
+        "numbers",
+        "filtrar",
+        "simbolos",
+        "numeros"
       ],
       "destructive": false,
       "surfaces": [

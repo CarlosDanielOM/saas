@@ -1,6 +1,6 @@
 # ==========================================
 # COMMAND VARIABLES & LOGIC (generated from the AST function registry)
-# Catalog version: d2bd1b95bef8
+# Catalog version: db8696626c74
 # ==========================================
 
 # AST SYNTAX CORE (for command & reward message fields)
@@ -337,6 +337,9 @@
 # $(touser [target]) - Returns the target username from the first argument; falls back to the caller when no argument is given.
 #   Example: $(touser)
 #   Example: $(touser $(randomuser))
-# $(user) - Returns the username of the caller / current chatter.
+# $(user [ignore [symbols] [numbers]]) - Returns the username of the caller / current chatter. Optional "ignore" filters strip characters from that name: "symbols" removes every character that is not a letter, combining mark or number, "numbers" removes numeric characters. Both filters can be combined in any order, and the name keeps its casing. Returns "viewer" when the filters leave no letters or numbers.
 #   Example: $(user)
+#   Example: $(user ignore symbols)
+#   Example: $(user ignore numbers)
+#   Example: $(user ignore symbols numbers)
 #
