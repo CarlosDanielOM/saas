@@ -28,6 +28,15 @@ export interface Redemption {
   imageUrl?: string;
   /** Paused on Twitch: visible to viewers but can't be redeemed. */
   isPaused?: boolean;
+  /** Live from Twitch (never stored by us): 0 = no limit. */
+  maxPerStream?: number;
+  maxPerUserPerStream?: number;
+  /** Redeems so far this stream; Twitch only reports it while live with a per-stream limit. */
+  redeemedThisStream?: number | null;
+  /** False once the per-stream limit is used up. */
+  isInStock?: boolean;
+  /** ISO time the shared cooldown ends, when it's cooling down. */
+  cooldownEndsAt?: string | null;
 }
 
 export interface TwitchRewardImage {
@@ -54,6 +63,17 @@ export interface TwitchRedemption {
     is_enabled?: boolean;
     global_cooldown_seconds: number;
   };
+  max_per_stream_setting?: {
+    is_enabled: boolean;
+    max_per_stream: number;
+  };
+  max_per_user_per_stream_setting?: {
+    is_enabled: boolean;
+    max_per_user_per_stream: number;
+  };
+  is_in_stock?: boolean;
+  redemptions_redeemed_current_stream?: number | null;
+  cooldown_expires_at?: string | null;
 }
 
 export interface RedemptionCreateRequest {
@@ -66,6 +86,9 @@ export interface RedemptionCreateRequest {
   skipQueue?: boolean;
   background_color?: string;
   message?: string;
+  /** 0 = no limit. Stored on Twitch only. */
+  maxPerStream?: number;
+  maxPerUserPerStream?: number;
   type: 'custom';
   isEnabled: boolean;
   // Premium fields
@@ -85,6 +108,10 @@ export interface RedemptionUpdateRequest {
   background_color?: string;
   message?: string;
   isEnabled?: boolean;
+  isPaused?: boolean;
+  /** 0 = no limit. Stored on Twitch only. */
+  maxPerStream?: number;
+  maxPerUserPerStream?: number;
   // Premium fields
   originalCost?: number;
   costChange?: number;
@@ -114,6 +141,19 @@ export interface ApiResponse<T> {
   message: string;
   data?: T;
 }
+
+/** PATCH /rewards also returns Twitch's updated copy, the source of truth for limits and pause. */
+export interface RewardUpdateResponse extends ApiResponse<Redemption> {
+  twitch?: TwitchRedemption;
+}
+
+export interface RewardUpdateResult {
+  reward: Redemption;
+  twitch: TwitchRedemption | null;
+}
+
+/** Twitch's longest shared cooldown (7 days). */
+export const MAX_COOLDOWN_SECONDS = 604_800;
 
 export const PRESET_COLORS = [
   '#ef4444', // Red

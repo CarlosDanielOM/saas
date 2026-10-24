@@ -4,6 +4,7 @@ import { getTwitchStreamerHeaderById } from '../../utils/header.js';
 import { getTwitchHelixUrl } from '../../utils/links.js';
 import { subscribeTwitchEvent, unsubscribeTwitchEvent } from '../../utils/eventsub.js';
 import { error as logError, info as logInfo } from '../../utils/logger.js';
+import { toTwitchRewardBody } from '../../utils/twitch_reward_body.util.js';
 
 interface CreateRewardServiceInput {
     channelID: string;
@@ -16,37 +17,6 @@ interface CreateRewardServiceResponse {
     message: string;
     status: number;
     data?: IRedemptionReward;
-}
-
-function twitchBodyParser(body: Record<string, any>): Record<string, any> {
-    const parsed = { ...body };
-
-    if ('isEnabled' in parsed) {
-        parsed.is_enabled = parsed.isEnabled;
-        delete parsed.isEnabled;
-    }
-
-    if (parsed.skipQueue) {
-        parsed.should_redemptions_skip_request_queue = true;
-        delete parsed.skipQueue;
-    }
-
-    if (parsed.cooldown && parsed.cooldown > 0) {
-        parsed.is_global_cooldown_enabled = true;
-        parsed.global_cooldown_seconds = parsed.cooldown;
-        delete parsed.cooldown;
-    } else if (parsed.cooldown === 0) {
-        parsed.is_global_cooldown_enabled = false;
-        parsed.global_cooldown_seconds = 0;
-        delete parsed.cooldown;
-    }
-
-    if (parsed.userInput !== undefined) {
-        parsed.is_user_input_required = parsed.userInput;
-        delete parsed.userInput;
-    }
-
-    return parsed;
 }
 
 async function deleteTwitchReward(channelID: string, rewardID: string): Promise<void> {
@@ -80,7 +50,7 @@ export async function patchTwitchReward(channelID: string, body: Record<string, 
         return { error: streamerHeaderResult.message };
     }
 
-    const parsedBody = twitchBodyParser(body);
+    const parsedBody = toTwitchRewardBody(body, 'update');
     const params = new URLSearchParams();
     params.append('broadcaster_id', channelID);
     params.append('id', rewardID);
@@ -110,7 +80,7 @@ async function createTwitchReward(channelID: string, body: Record<string, any>):
         return { error: streamerHeaderResult.message };
     }
 
-    const parsedBody = twitchBodyParser(body);
+    const parsedBody = toTwitchRewardBody(body, 'create');
     const params = new URLSearchParams();
     params.append('broadcaster_id', channelID);
 

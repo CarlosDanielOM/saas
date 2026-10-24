@@ -5,9 +5,9 @@ sidebar:
   order: 7
 ---
 
-The **Redemptions** page is where you manage your channel point rewards. You can create, edit, hide, and delete the rewards DomDimaBot made for you. You can also see the rewards that were made directly on Twitch.
+The **Redemptions** page is where you manage your channel point rewards. You can create, edit, limit, pause, hide, and delete the rewards DomDimaBot made for you. You can also see the rewards that were made directly on Twitch.
 
-**Who can see and change it:** viewing requires `rewards:view`. Creating, editing, hiding, and deleting requires `rewards:manage`. The channel owner has both.
+**Who can see and change it:** viewing requires `rewards:view`. Creating, editing, pausing, hiding, and deleting requires `rewards:manage`. The channel owner has both.
 
 This page does not show a queue or history of redemptions. DomDimaBot runs each redemption as it arrives. To see who redeemed what, or to fulfill redemptions, use Twitch's own pages.
 
@@ -25,16 +25,27 @@ The page has two lists.
 **Your rewards** shows the rewards DomDimaBot created. Each card shows:
 
 - The name and price.
-- **Hidden**, when the reward is switched off here.
-- **Paused**, when the reward is paused on Twitch. Resume it on Twitch.
+- A status, when there is one: **Hidden** (switched off here), **Paused**, **Sold out this stream** (the per-stream limit is used up), or **Ready in** and the time left (the cooldown is running).
 - What the reward does: **Posts a chat message**, or **Plays** a linked trigger.
-- The price increase, cooldown, and whether the viewer must type text, when they are set.
+- The price increase and whether the viewer must type text, when they are set.
+- Its limits, when they are set: the cooldown (**5 min cooldown**), the per-viewer limit (**2× per viewer**), and the per-stream limit (**10 per stream**). While you are live, the per-stream limit shows how many are used, for example **3/10 this stream**.
 
-Use the switch on a card to hide or show the reward without deleting it. Use **Edit** and the trash icon to change or delete it. Use the search box when you have many rewards.
+Use the switch on a card to hide or show the reward without deleting it. Use **Edit** and the trash icon to change or delete it. Use the search box when you have many rewards. To set limits, see [Limits](/rewards/#limits).
+
+The status and limits come straight from Twitch each time you open the page, so they match what viewers see.
 
 **Made on Twitch** shows rewards that were not created by DomDimaBot. You cannot edit them here. Click **Open Twitch rewards** to manage them on Twitch. If a Twitch reward has the same name as one of your DomDimaBot rewards, it is not repeated in this list.
 
 The **What happens when someone redeems** panel on the right shows the redemption steps and the fill-ins you can use in a chat message.
+
+## Pause rewards
+
+A paused reward stays on the Channel Points menu, but viewers cannot redeem it until you resume it. Use it for short breaks. To remove a reward from the menu, hide it with the switch instead.
+
+- Click the pause button on a card to pause that reward. It turns amber and shows a play icon. Click it again to resume.
+- Click **Pause all** in the header to pause every reward DomDimaBot manages at once. The header then shows how many are paused and a **Resume all** button.
+- Hidden rewards cannot be paused. Turn them on first.
+- **Pause all** does not pause rewards made on Twitch. Pause those on Twitch.
 
 ## Refresh the lists
 
@@ -46,6 +57,10 @@ There is a 30-second cooldown between refreshes. The button shows **Refresh in**
 
 **Why can't I edit a Twitch reward here?** Twitch lets only the app that created a reward change it. Rewards made on Twitch must be edited on Twitch.
 
-**Why does a reward say "Paused"?** It is paused on Twitch, so viewers cannot redeem it right now.
+**Why does a reward say "Paused"?** It is paused, so viewers cannot redeem it right now. Click its play button, or **Resume all**, to let viewers redeem it again.
+
+**Why does a reward say "Sold out this stream"?** It has a per-stream limit, and viewers have used all of it. It comes back on your next stream. To allow more now, raise the limit with **Edit**.
+
+**Do limits reset when my stream ends?** The per-viewer and per-stream counts start over each stream. Twitch counts them, not DomDimaBot.
 
 **Where do I set what a reward does?** Open the reward with **Edit**, or read [Channel Rewards](/rewards/) for each field and for the chat message fill-ins.

@@ -3,6 +3,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { Observable, of, throwError } from 'rxjs';
 import { map, tap, shareReplay, catchError } from 'rxjs/operators';
 
+import { LanguageService } from '../../services/language.service';
 import { LinksService } from '../../services/links.service';
 import { ToastService } from '../../services/toast.service';
 import {
@@ -10,6 +11,8 @@ import {
   TwitchRedemption,
   RedemptionCreateRequest,
   RedemptionUpdateRequest,
+  RewardUpdateResponse,
+  RewardUpdateResult,
   ApiResponse,
   REDEMPTIONS_CACHE_TTL_MS,
 } from './redemptions.model';
@@ -21,6 +24,7 @@ export class RedemptionsService {
   private readonly http = inject(HttpClient);
   private readonly linksService = inject(LinksService);
   private readonly toastService = inject(ToastService);
+  private readonly languageService = inject(LanguageService);
   private readonly cacheVersion = 'v2';
 
   private readonly redemptionsCache = new Map<string, Observable<Redemption[]>>();
@@ -126,25 +130,29 @@ export class RedemptionsService {
         }),
         catchError((error) => {
           this.isLoading.set(false);
-          const msg = error.error?.message || error.message || 'Failed to create redemption';
-          this.toastService.error('Error', msg);
+          this.toastService.error(
+            this.languageService.translate('redemptions.errors.saveTitle'),
+            this.friendlyError(error, 'Failed to create redemption'),
+          );
           return throwError(() => error);
         })
       );
   }
 
+  /** Saves to Twitch (and our DB for bot-side fields); returns Twitch's live copy too. */
   updateRedemption(
     channelId: string,
     rewardId: string,
-    data: RedemptionUpdateRequest
-  ): Observable<Redemption> {
+    data: RedemptionUpdateRequest,
+    options: { silent?: boolean } = {}
+  ): Observable<RewardUpdateResult> {
     const normalizedId = channelId.trim();
     if (!normalizedId || !rewardId) {
       return throwError(() => new Error('Channel ID and Reward ID are required'));
     }
 
     return this.http
-      .patch<ApiResponse<Redemption>>(
+      .patch<RewardUpdateResponse>(
         `${this.linksService.getApiUrl()}/rewards/${normalizedId}/${rewardId}`,
         data
       )
@@ -153,17 +161,33 @@ export class RedemptionsService {
           if (res.error || !res.data) {
             throw new Error(res.message || 'Failed to update redemption');
           }
-          return res.data;
+          return {
+            reward: res.data,
+            twitch: res.twitch ? this.normalizeTwitchRedemption(res.twitch) : null,
+          };
         }),
         tap(() => {
           this.clearCache(normalizedId);
         }),
         catchError((error) => {
-          const msg = error.error?.message || error.message || 'Failed to update redemption';
-          this.toastService.error('Error', msg);
+          if (!options.silent) {
+            this.toastService.error(
+              this.languageService.translate('redemptions.errors.saveTitle'),
+              this.friendlyError(error, 'Failed to update redemption'),
+            );
+          }
           return throwError(() => error);
         })
       );
+  }
+
+  /** Twitch's error codes into words a streamer understands. */
+  friendlyError(error: unknown, fallback: string): string {
+    const err = error as { error?: { message?: string }; message?: string };
+    const raw = err?.error?.message || err?.message || fallback;
+    if (/DUPLICATE_REWARD/i.test(raw)) return this.languageService.translate('redemptions.errors.duplicateTitle');
+    if (/TOO_MANY_REWARDS|maximum number of (custom )?rewards/i.test(raw)) return this.languageService.translate('redemptions.errors.tooManyRewards');
+    return raw;
   }
 
   updateRedemptionField(
@@ -171,7 +195,7 @@ export class RedemptionsService {
     rewardId: string,
     field: string,
     value: unknown
-  ): Observable<Redemption> {
+  ): Observable<RewardUpdateResult> {
     return this.updateRedemption(channelId, rewardId, { [field]: value } as RedemptionUpdateRequest);
   }
 
@@ -195,8 +219,10 @@ export class RedemptionsService {
           this.clearCache(normalizedId);
         }),
         catchError((error) => {
-          const msg = error.error?.message || error.message || 'Failed to delete redemption';
-          this.toastService.error('Error', msg);
+          this.toastService.error(
+            this.languageService.translate('redemptions.errors.deleteTitle'),
+            this.friendlyError(error, 'Failed to delete redemption'),
+          );
           return throwError(() => error);
         })
       );
@@ -267,7 +293,7 @@ export class RedemptionsService {
     };
   }
 
-  private normalizeTwitchRedemption(redemption: TwitchRedemption): TwitchRedemption {
+  normalizeTwitchRedemption(redemption: TwitchRedemption): TwitchRedemption {
     return {
       ...redemption,
       id: redemption.id || `${redemption.broadcaster_id}:${redemption.title}`,

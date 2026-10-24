@@ -5,72 +5,10 @@ import { getTwitchStreamerHeaderById } from '../../utils/header.js';
 import { getTwitchHelixUrl } from '../../utils/links.js';
 import { authMiddleware } from '../../middleware/auth.middleware.js';
 import { getChannelAccessContext } from '../../middleware/admin.middleware.js';
-import { createRewardWithEventsub } from '../services/reward_creation.service.js';
+import { createRewardWithEventsub, patchTwitchReward } from '../services/reward_creation.service.js';
+import { isTwitchOnlyRewardUpdate, validateRewardSettings } from '../../utils/twitch_reward_body.util.js';
 
 const router = express.Router();
-
-function twitchBodyParser(body: any): any {
-    const parsed = { ...body };
-
-    if ('isEnabled' in parsed) {
-        parsed.is_enabled = parsed.isEnabled;
-        delete parsed.isEnabled;
-    }
-
-    if (parsed.skipQueue) {
-        parsed.should_redemptions_skip_request_queue = true;
-        delete parsed.skipQueue;
-    }
-
-    if (parsed.cooldown && parsed.cooldown > 0) {
-        parsed.is_global_cooldown_enabled = true;
-        parsed.global_cooldown_seconds = parsed.cooldown;
-        delete parsed.cooldown;
-    } else if (parsed.cooldown === 0) {
-        parsed.is_global_cooldown_enabled = false;
-        parsed.global_cooldown_seconds = 0;
-        delete parsed.cooldown;
-    }
-
-    if (parsed.userInput !== undefined) {
-        parsed.is_user_input_required = parsed.userInput;
-        delete parsed.userInput;
-    }
-
-    return parsed;
-}
-
-async function patchTwitchReward(channelID: string, body: any, rewardID: string): Promise<any> {
-    const streamerHeaderResult = await getTwitchStreamerHeaderById(channelID);
-
-    if (streamerHeaderResult.error || !streamerHeaderResult.header) {
-        return { error: streamerHeaderResult.message };
-    }
-
-    const parsedBody = twitchBodyParser(body);
-
-    const params = new URLSearchParams();
-    params.append('broadcaster_id', channelID);
-    params.append('id', rewardID);
-
-    const response = await fetch(
-        getTwitchHelixUrl('channel_points/custom_rewards', params.toString()),
-        {
-            method: 'PATCH',
-            headers: streamerHeaderResult.header as unknown as Record<string, string>,
-            body: JSON.stringify(parsedBody)
-        }
-    );
-
-    const result = await response.json();
-
-    if (result.error) {
-        console.error(`Error updating reward for ${channelID}: ${result.error} | ${result.message}`);
-        return result;
-    }
-
-    return result.data[0];
-}
 
 router.get('/twitch/:channelID', authMiddleware as any, async (req: Request, res: Response) => {
     try {
@@ -235,6 +173,15 @@ router.post('/:channelID', authMiddleware as any, async (req: Request, res: Resp
             });
         }
 
+        const settingsError = validateRewardSettings(body);
+        if (settingsError) {
+            return res.status(400).json({
+                error: 'Bad Request',
+                message: settingsError,
+                status: 400
+            });
+        }
+
         const correlationId = `reward-route-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
         const result = await createRewardWithEventsub({
             channelID: channelIdStr,
@@ -374,7 +321,16 @@ router.patch('/:channelID/:id', authMiddleware as any, async (req: Request, res:
             });
         }
         const rewardIdStr = Array.isArray(id) ? id[0] : id;
-        const body = req.body;
+        const body = req.body && typeof req.body === 'object' ? req.body : {};
+
+        const settingsError = validateRewardSettings(body);
+        if (settingsError) {
+            return res.status(400).json({
+                error: 'Bad Request',
+                message: settingsError,
+                status: 400
+            });
+        }
 
         let reward = await RedemptionRewardSchema.findOne({ channelID: channelIdStr, rewardID: rewardIdStr });
         if (!reward) {
@@ -385,19 +341,21 @@ router.patch('/:channelID/:id', authMiddleware as any, async (req: Request, res:
             });
         }
 
-        let updatedReward = await patchTwitchReward(channelIdStr, body, rewardIdStr);
-        if (updatedReward.error) {
+        const updatedReward = await patchTwitchReward(channelIdStr, body, rewardIdStr);
+        if (!updatedReward || updatedReward.error) {
             return res.status(400).json({
                 error: 'Bad Request',
-                message: updatedReward.error,
+                message: updatedReward?.message || updatedReward?.error || 'Twitch rejected the reward update',
                 status: 400
             });
         }
 
-        if (body.background_color && Object.keys(body).length === 1) {
+        // Limits, pause, colour and queue settings live only on Twitch: nothing to store.
+        if (isTwitchOnlyRewardUpdate(body)) {
             return res.status(200).json({
                 error: false,
-                data: updatedReward
+                data: reward,
+                twitch: updatedReward
             });
         }
 
@@ -410,7 +368,8 @@ router.patch('/:channelID/:id', authMiddleware as any, async (req: Request, res:
 
             return res.status(200).json({
                 error: false,
-                data: updatedRewardDB
+                data: updatedRewardDB,
+                twitch: updatedReward
             });
         } catch (error) {
             console.error('Error updating reward: ', error);

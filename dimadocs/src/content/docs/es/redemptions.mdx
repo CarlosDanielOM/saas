@@ -5,9 +5,9 @@ sidebar:
   order: 7
 ---
 
-La página **Canjes** es donde administras las recompensas de puntos de tu canal. Puedes crear, editar, ocultar y eliminar las recompensas que creó DomDimaBot para ti. También puedes ver las recompensas que se hicieron directamente en Twitch.
+La página **Canjes** es donde administras las recompensas de puntos de tu canal. Puedes crear, editar, limitar, pausar, ocultar y eliminar las recompensas que creó DomDimaBot para ti. También puedes ver las recompensas que se hicieron directamente en Twitch.
 
-**Quién puede verla y cambiarla:** para verla se necesita `rewards:view`. Para crear, editar, ocultar y eliminar se necesita `rewards:manage`. El propietario del canal tiene ambos permisos.
+**Quién puede verla y cambiarla:** para verla se necesita `rewards:view`. Para crear, editar, pausar, ocultar y eliminar se necesita `rewards:manage`. El propietario del canal tiene ambos permisos.
 
 Esta página no muestra una cola ni un historial de canjes. DomDimaBot ejecuta cada canje en cuanto llega. Para ver quién canjeó qué, o para cumplir los canjes, usa las páginas de Twitch.
 
@@ -25,16 +25,27 @@ La página tiene dos listas.
 **Tus recompensas** muestra las recompensas que creó DomDimaBot. Cada tarjeta muestra:
 
 - El nombre y el precio.
-- **Oculta**, cuando la recompensa está desactivada aquí.
-- **En pausa**, cuando la recompensa está pausada en Twitch. Reanúdala en Twitch.
+- Un estado, cuando lo hay: **Oculta** (desactivada aquí), **En pausa**, **Agotada en este stream** (se acabó el límite por stream) o **Lista en** y el tiempo que falta (el enfriamiento está corriendo).
 - Lo que hace la recompensa: **Envía un mensaje al chat**, o **Reproduce** un disparador vinculado.
-- La subida de precio, el tiempo de espera y si el espectador debe escribir un texto, cuando están configurados.
+- La subida de precio y si el espectador debe escribir un texto, cuando están configurados.
+- Sus límites, cuando están configurados: el enfriamiento (**Enfriamiento de 5 min**), el límite por espectador (**2× por espectador**) y el límite por stream (**10 por stream**). Mientras estás en directo, el límite por stream muestra cuántos se han usado, por ejemplo **3/10 en este stream**.
 
-Usa el interruptor de una tarjeta para ocultar o mostrar la recompensa sin borrarla. Usa **Editar** y el ícono de la papelera para cambiarla o eliminarla. Usa el buscador cuando tengas muchas recompensas.
+Usa el interruptor de una tarjeta para ocultar o mostrar la recompensa sin borrarla. Usa **Editar** y el ícono de la papelera para cambiarla o eliminarla. Usa el buscador cuando tengas muchas recompensas. Para configurar límites, consulta [Límites](/es/rewards/#límites).
+
+El estado y los límites se leen directamente de Twitch cada vez que abres la página, así que coinciden con lo que ven los espectadores.
 
 **Creadas en Twitch** muestra las recompensas que no creó DomDimaBot. Aquí no puedes editarlas. Haz clic en **Abrir recompensas en Twitch** para administrarlas en Twitch. Si una recompensa de Twitch tiene el mismo nombre que una de tus recompensas de DomDimaBot, no se repite en esta lista.
 
 El panel **Qué pasa cuando alguien canjea** a la derecha muestra los pasos del canje y los datos que puedes usar en un mensaje del chat.
+
+## Pausar recompensas
+
+Una recompensa en pausa sigue en el menú de puntos del canal, pero nadie puede canjearla hasta que la reanudes. Úsalo para descansos cortos. Para quitar una recompensa del menú, ocúltala con el interruptor.
+
+- Haz clic en el botón de pausa de una tarjeta para pausar esa recompensa. Se vuelve ámbar y muestra un ícono de reproducir. Vuelve a hacer clic para reanudarla.
+- Haz clic en **Pausar todas** en el encabezado para pausar a la vez todas las recompensas que administra DomDimaBot. El encabezado muestra entonces cuántas hay en pausa y un botón **Reanudar todas**.
+- Las recompensas ocultas no se pueden pausar. Actívalas primero.
+- **Pausar todas** no pausa las recompensas creadas en Twitch. Páusalas desde Twitch.
 
 ## Actualizar las listas
 
@@ -46,6 +57,10 @@ Entre actualizaciones hay un tiempo de espera de 30 segundos. El botón muestra 
 
 **¿Por qué no puedo editar aquí una recompensa de Twitch?** Twitch solo permite que la app que creó una recompensa la cambie. Las recompensas creadas en Twitch deben editarse en Twitch.
 
-**¿Por qué una recompensa dice "En pausa"?** Está pausada en Twitch, así que los espectadores no pueden canjearla por ahora.
+**¿Por qué una recompensa dice "En pausa"?** Está en pausa, así que los espectadores no pueden canjearla por ahora. Haz clic en su botón de reproducir, o en **Reanudar todas**, para que puedan canjearla otra vez.
+
+**¿Por qué una recompensa dice "Agotada en este stream"?** Tiene un límite por stream y los espectadores ya lo usaron entero. Vuelve en tu próximo stream. Para permitir más ahora, sube el límite con **Editar**.
+
+**¿Los límites se reinician cuando termina mi stream?** Los conteos por espectador y por stream empiezan de cero en cada stream. Los cuenta Twitch, no DomDimaBot.
 
 **¿Dónde configuro lo que hace una recompensa?** Abre la recompensa con **Editar**, o lee [Recompensas del canal](/es/rewards/) para ver cada campo y los datos que puedes usar en el mensaje del chat.

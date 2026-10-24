@@ -9,7 +9,7 @@ Una recompensa del canal es una recompensa de puntos del canal de Twitch que tus
 
 **Quién puede hacerlo:** el propietario del canal, o un administrador con `rewards:manage`. Los administradores con `rewards:view` pueden ver la lista, pero no cambiarla.
 
-**Planes:** crear y administrar recompensas funciona en todos los planes. Subir el precio después de cada canje requiere un plan Premium o Pro.
+**Planes:** crear y administrar recompensas, sus límites y pausarlas funciona en todos los planes. Subir el precio después de cada canje requiere un plan Premium o Pro.
 
 **Elegibilidad en Twitch:** los puntos del canal son una función de Twitch, y Twitch decide quién puede usarlas. DomDimaBot no verifica la elegibilidad por su cuenta. Si Twitch rechaza crear la recompensa, la creación falla.
 
@@ -18,8 +18,9 @@ Una recompensa del canal es una recompensa de puntos del canal de Twitch que tus
 1. Ve a **Módulos → Canjes** y haz clic en **Nueva recompensa**.
 2. En **La recompensa que ven tus espectadores**, define el nombre, el precio, el color y la descripción.
 3. En **Cuando alguien la canjea**, escribe el **Mensaje en el chat** y define las demás opciones.
-4. Opcional: en **Precio que sube**, define un aumento de precio (Premium y Pro).
-5. Haz clic en **Crear recompensa**. DomDimaBot crea la recompensa en Twitch y empieza a escuchar los canjes.
+4. Opcional: en **Límites**, elige cada cuánto se puede canjear. Consulta [Límites](#límites).
+5. Opcional: en **Precio que sube**, define un aumento de precio (Premium y Pro).
+6. Haz clic en **Crear recompensa**. DomDimaBot crea la recompensa en Twitch y empieza a escuchar los canjes.
 
 ### Campos de la recompensa
 
@@ -31,8 +32,9 @@ Una recompensa del canal es una recompensa de puntos del canal de Twitch que tus
 | **Descripción en Twitch** | 200 caracteres | El texto debajo de la recompensa en Twitch. |
 | **Mensaje en el chat** | 500 caracteres | Lo que ocurre cuando alguien la canjea. Consulta [Qué pasa al canjear](#qué-pasa-al-canjear). Déjalo vacío para no hacer nada. |
 | **El espectador debe escribir algo** | Activado o desactivado | Twitch le pide al espectador un texto. Pon `&t` en el mensaje para usarlo. |
-| **Tiempo de espera (segundos)** | 0 o más | Tiempo antes de que alguien pueda volver a canjear la recompensa. `0` significa sin espera. |
-| **Saltar la cola de solicitudes** | Activado o desactivado | Marca los canjes como completados de inmediato. Déjalo desactivado si revisas los canjes en la cola de Twitch. |
+| **Saltar la cola de solicitudes** | Activado o desactivado | En **Más opciones**. Marca los canjes como completados de inmediato. Déjalo desactivado si revisas los canjes en la cola de Twitch. |
+
+Los límites tienen su propio paso. Consulta [Límites](#límites).
 
 ## Qué pasa al canjear
 
@@ -60,15 +62,28 @@ Datos que se completan automáticamente:
 
 Un disparador también puede crear su propia recompensa de puntos del canal. El mensaje de esa recompensa es `$(trigger.send <nombre del disparador>)`. En esta página, esa recompensa muestra **Reproduce** seguido del nombre del disparador. Puedes crearlas desde la página de [Disparadores](/es/triggers/).
 
-## Enfriamientos y ajustes de la recompensa
+## Límites
 
-El campo **Tiempo de espera (segundos)** configura el **enfriamiento global** de Twitch para esa recompensa. Es compartido por todos los espectadores. Cuando alguien canjea la recompensa, nadie más puede canjearla hasta que termine el tiempo de espera. No es un enfriamiento por espectador y no afecta a tus otras recompensas.
+El paso **Límites** controla cada cuánto se puede canjear una recompensa. Cada límite tiene un interruptor. Actívalo y toca una opción rápida o escribe un número. El recuadro de arriba resume tus límites en una frase, por ejemplo "Cada espectador puede canjearla hasta 2× por stream. Tras cada canje, todos esperan 5 min."
 
-Estos ajustes se envían a Twitch: precio, nombre, descripción, color, la opción de texto del espectador, la opción de saltar la cola y si la recompensa está visible. El mensaje en el chat lo guarda DomDimaBot y se usa cuando llega un canje.
+| Límite | Qué hace |
+|---|---|
+| **Por espectador, en cada stream** | Cuántas veces puede canjearla un mismo espectador durante un stream. Opciones rápidas: 1×, 2×, 3×, 5×. |
+| **Por stream, entre todos** | Cuántos canjes tiene todo el chat por stream. Cuando se acaban, la recompensa muestra **Agotada en este stream** hasta tu próximo stream. Opciones rápidas: 5×, 10×, 25×, 50×. |
+| **Enfriamiento tras cada canje** | El **enfriamiento global** de Twitch. Cuando alguien la canjea, nadie puede volver a canjearla hasta que termine la espera. Elige segundos, minutos, horas o días, de 1 segundo a 7 días. |
+
+El número por espectador no puede ser mayor que el número por stream, porque nunca se aplicaría. El formulario te pide corregirlo antes de guardar.
+
+Twitch solo muestra a los espectadores enfriamientos de 1 minuto o más. Uno más corto funciona igual, pero los espectadores no ven la cuenta atrás.
+
+Estos límites los aplica y los guarda Twitch, no DomDimaBot. DomDimaBot los lee de Twitch cada vez que abres la página. Si no se puede cargar la copia de Twitch, el paso **Límites** queda bloqueado y al guardar tus límites no cambian.
+
+Estos ajustes se envían a Twitch: precio, nombre, descripción, color, la opción de texto del espectador, la opción de saltar la cola, los límites, la pausa y si la recompensa está visible. El mensaje en el chat lo guarda DomDimaBot y se usa cuando llega un canje.
 
 ## Desactivar, editar o eliminar
 
 - Para ocultar una recompensa a los espectadores sin borrarla, desactiva **Visible para los espectadores** en la página de [Canjes](/es/redemptions/).
+- Para dejarla en el menú pero detener los canjes un rato, usa el botón de pausa. Consulta [Pausar recompensas](/es/redemptions/#pausar-recompensas).
 - Para cambiar una recompensa, haz clic en **Editar**, cambia los ajustes y haz clic en **Guardar cambios**.
 - Para eliminar una recompensa, haz clic en el ícono de la papelera. La recompensa desaparece de Twitch de inmediato. Si había un disparador vinculado, el disparador se conserva, pero los espectadores ya no pueden reproducirlo con puntos.
 

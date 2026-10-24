@@ -533,3 +533,283 @@ code,
   width: 2.75rem;
   padding: 0.2rem;
 }
+
+/* Limits step: each limit is a row with a switch; its number appears when on. */
+.lf-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.lf-summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.65rem 0.8rem;
+  border-radius: 0.85rem;
+  color: var(--fg);
+  background: var(--accent-soft);
+  font-size: 0.86rem;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.lf-summary app-lf-icon {
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+  color: var(--accent);
+}
+
+.lf-note--warn {
+  padding: 0.55rem 0.75rem;
+  border: 1px dashed color-mix(in srgb, var(--warn) 45%, transparent);
+  border-radius: 0.8rem;
+  color: var(--warn);
+}
+
+.lf-limits {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.lf-limits:disabled .lf-limit {
+  border-style: dashed;
+}
+
+.lf-limits:disabled .lf-limit__head {
+  cursor: not-allowed;
+}
+
+.lf-limit {
+  border: 1px solid var(--line);
+  border-radius: 0.95rem;
+  background: var(--input-bg);
+}
+
+.lf-limit--on {
+  border-color: color-mix(in srgb, #7c3aed 40%, transparent);
+}
+
+.lf-limit__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 52px;
+  padding: 0.4rem 0.5rem 0.4rem 0.85rem;
+  cursor: pointer;
+}
+
+.lf-limit__text {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.lf-limit__text strong {
+  font-size: 0.9rem;
+  font-weight: 750;
+}
+
+.lf-limit__text small {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.lf-limit__body {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0 0.85rem 0.85rem;
+}
+
+.lf-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.lf-preset {
+  min-width: 3.25rem;
+  min-height: 44px;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid var(--btn-border);
+  border-radius: 999px;
+  color: var(--fg);
+  background: var(--btn);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.lf-preset:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.lf-preset[aria-pressed='true'] {
+  color: #fff;
+  background: #7c3aed;
+  border-color: #7c3aed;
+}
+
+.lf-preset:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.lf-limit__input {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.lf-limit__input span {
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.lf-limit__input input,
+.lf-limit__input select {
+  min-width: 0;
+  min-height: 44px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 0.8rem;
+  color: var(--fg);
+  background: var(--tile);
+  font: inherit;
+  font-size: 1rem;
+  outline: none;
+}
+
+.lf-limit__input input {
+  width: 6.5rem;
+}
+
+.lf-limit__input select {
+  flex: 0 1 9rem;
+  cursor: pointer;
+}
+
+.lf-limit__input input:focus,
+.lf-limit__input select:focus-visible {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.lf-limit__input input[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+/* Switch (same as the list rows) */
+.lf-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  width: 3rem;
+  height: 2.75rem;
+}
+
+.lf-switch input {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.lf-switch input:disabled {
+  cursor: not-allowed;
+}
+
+.lf-switch input:focus-visible + .lf-switch__track {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.lf-switch__track {
+  position: relative;
+  width: 2.6rem;
+  height: 1.45rem;
+  border: 1px solid var(--btn-border);
+  border-radius: 999px;
+  background: var(--btn);
+  transition: background 160ms ease, border-color 160ms ease;
+}
+
+.lf-switch__track::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0.15rem;
+  width: 1.05rem;
+  height: 1.05rem;
+  border-radius: 999px;
+  background: var(--muted);
+  transform: translateY(-50%);
+  transition: transform 160ms ease, background 160ms ease;
+}
+
+.lf-switch input:checked + .lf-switch__track {
+  background: #7c3aed;
+  border-color: #7c3aed;
+}
+
+.lf-switch input:checked + .lf-switch__track::after {
+  background: #fff;
+  transform: translate(1.15rem, -50%);
+}
+
+/* Phones: 16px inputs so iOS doesn't zoom in. */
+.lf-field input,
+.lf-field textarea,
+.lf-field textarea.lf-mono,
+.lf-color input {
+  font-size: 1rem;
+}
+
+@media (min-width: 640px) {
+  .lf-field input,
+  .lf-field textarea,
+  .lf-color input,
+  .lf-limit__input input,
+  .lf-limit__input select {
+    font-size: 0.88rem;
+  }
+
+  .lf-field textarea.lf-mono {
+    font-size: 0.82rem;
+  }
+
+  .lf-limit__body {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+
+  .lf-limit__body > .lf-error,
+  .lf-limit__body > .lf-note {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lf-switch__track,
+  .lf-switch__track::after {
+    transition: none;
+  }
+}

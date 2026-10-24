@@ -9,7 +9,7 @@ import {
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { firstValueFrom, map } from 'rxjs';
+import { catchError, firstValueFrom, forkJoin, map, of } from 'rxjs';
 
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
@@ -23,6 +23,7 @@ import {
   Redemption,
   RedemptionCreateRequest,
   RedemptionUpdateRequest,
+  RewardUpdateResult,
   TwitchRedemption,
 } from './redemptions.model';
 import { RedemptionsService } from './redemptions.service';
@@ -67,6 +68,9 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
   readonly permissionLoaded = signal(false);
 
   readonly refreshCooldown = signal(0);
+  /** Ticks every second so "Ready in …" counts down. */
+  readonly now = signal(Date.now());
+  readonly bulkPausing = signal(false);
   readonly searchQuery = signal('');
   readonly togglingId = signal<string | null>(null);
 
@@ -88,13 +92,23 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
     return this.customRedemptions().map((reward) => {
       const live = twitchById.get(reward.rewardID || reward.id);
       if (!live) return reward;
+      const cooldown = live.global_cooldown_setting;
+      const perStream = live.max_per_stream_setting;
+      const perViewer = live.max_per_user_per_stream_setting;
       return {
         ...reward,
+        cost: Number.isFinite(live.cost) ? live.cost : reward.cost,
         background_color: live.background_color || reward.background_color,
         userInput: live.is_user_input_required ?? reward.userInput,
         skipQueue: live.should_redemptions_skip_request_queue ?? reward.skipQueue,
         imageUrl: live.image?.url_2x || live.default_image?.url_2x || undefined,
         isPaused: Boolean(live.is_paused),
+        cooldown: cooldown ? (cooldown.is_enabled ? cooldown.global_cooldown_seconds : 0) : reward.cooldown,
+        maxPerStream: perStream?.is_enabled ? perStream.max_per_stream : 0,
+        maxPerUserPerStream: perViewer?.is_enabled ? perViewer.max_per_user_per_stream : 0,
+        redeemedThisStream: live.redemptions_redeemed_current_stream ?? null,
+        isInStock: live.is_in_stock ?? true,
+        cooldownEndsAt: live.cooldown_expires_at ?? null,
       };
     });
   });
@@ -120,6 +134,10 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
 
   readonly enabledCustomCount = computed(() => this.customRedemptions().filter((r) => r.isEnabled).length);
 
+  /** On rewards viewers can redeem right now (for "Pause all"). */
+  readonly pausableRewards = computed(() => this.rewards().filter((r) => r.isEnabled && !r.isPaused));
+  readonly pausedRewards = computed(() => this.rewards().filter((r) => r.isPaused));
+
   readonly twitchDashboardUrl = computed(
     () => `https://dashboard.twitch.tv/u/${encodeURIComponent(this.streamer() || '')}/viewer-rewards/channel-points/rewards`,
   );
@@ -144,7 +162,8 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
     this.channelID.set(resolvedChannelId);
     void this.loadPermission(resolvedChannelId);
     this.loadRedemptions(resolvedChannelId);
-    this.loadTwitchRedemptions(resolvedChannelId);
+    // Live state (sold out, cooling down, paused) changes during a stream: always ask Twitch.
+    this.loadTwitchRedemptions(resolvedChannelId, true);
     this.loadLinkedTriggers(resolvedChannelId);
     this.startCooldownTimer();
   }
@@ -243,6 +262,7 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
 
     this.cooldownTimer = window.setInterval(() => {
       if (this.refreshCooldown() > 0) this.refreshCooldown.update((v) => Math.max(0, v - 1));
+      this.now.set(Date.now());
     }, 1000);
   }
 
@@ -299,25 +319,18 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
     if (!channelId) return;
 
     this.redemptionsService.updateRedemption(channelId, event.id, event.data).subscribe({
-      next: () => {
+      next: (result) => {
         this.customRedemptions.update((reds) =>
           reds.map((redemption) =>
             (redemption.rewardID || redemption.id) === event.id ? { ...redemption, ...event.data } : redemption,
           ),
         );
-        // Keep the merged Twitch copy in step so the row shows the saved colour and flags.
-        this.twitchRedemptions.update((reds) =>
-          reds.map((reward) =>
-            reward.id === event.id
-              ? {
-                  ...reward,
-                  background_color: event.data.background_color ?? reward.background_color,
-                  is_user_input_required: event.data.userInput ?? reward.is_user_input_required,
-                  should_redemptions_skip_request_queue: event.data.skipQueue ?? reward.should_redemptions_skip_request_queue,
-                }
-              : reward,
-          ),
-        );
+        this.applyTwitchCopy(event.id, result, (reward) => ({
+          ...reward,
+          background_color: event.data.background_color ?? reward.background_color,
+          is_user_input_required: event.data.userInput ?? reward.is_user_input_required,
+          should_redemptions_skip_request_queue: event.data.skipQueue ?? reward.should_redemptions_skip_request_queue,
+        }));
         this.toastService.success(this.t('redemptions.updateSuccessTitle'), this.t('redemptions.updateSuccessMessage'));
       },
       error: () => {},
@@ -339,7 +352,10 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
     setEnabled(newValue);
     this.togglingId.set(rewardId);
     this.redemptionsService.updateRedemptionField(channelId, rewardId, 'isEnabled', newValue).subscribe({
-      next: () => this.togglingId.set(null),
+      next: (result) => {
+        this.applyTwitchCopy(rewardId, result, (reward) => ({ ...reward, is_enabled: newValue }));
+        this.togglingId.set(null);
+      },
       error: () => {
         setEnabled(!newValue);
         // The binding may never have seen the optimistic value, so reset the box itself.
@@ -347,6 +363,98 @@ export class RedemptionsPageComponent implements OnInit, OnDestroy {
         this.togglingId.set(null);
       },
     });
+  }
+
+  /** Twitch's reply is the truth for limits/pause; fall back to a local patch if it didn't send one. */
+  private applyTwitchCopy(
+    rewardId: string,
+    result: RewardUpdateResult,
+    fallback: (reward: TwitchRedemption) => TwitchRedemption,
+  ): void {
+    this.twitchRedemptions.update((reds) =>
+      reds.map((reward) => (reward.id === rewardId ? (result.twitch ?? fallback(reward)) : reward)),
+    );
+  }
+
+  private setPausedLocally(ids: Set<string>, paused: boolean): void {
+    this.twitchRedemptions.update((reds) => reds.map((r) => (ids.has(r.id) ? { ...r, is_paused: paused } : r)));
+  }
+
+  /** Paused rewards stay on the menu but can't be redeemed. Optimistic with rollback. */
+  togglePaused(reward: Redemption): void {
+    if (!this.canManage() || this.togglingId() || this.bulkPausing()) return;
+    const channelId = this.channelID();
+    if (!channelId) return;
+    const rewardId = reward.rewardID || reward.id;
+    const paused = !reward.isPaused;
+    const ids = new Set([rewardId]);
+
+    this.setPausedLocally(ids, paused);
+    this.togglingId.set(rewardId);
+    this.redemptionsService.updateRedemption(channelId, rewardId, { isPaused: paused }).subscribe({
+      next: (result) => {
+        this.applyTwitchCopy(rewardId, result, (r) => ({ ...r, is_paused: paused }));
+        this.togglingId.set(null);
+        this.toastService.success(
+          this.t(paused ? 'redemptions.pause.pausedTitle' : 'redemptions.pause.resumedTitle'),
+          this.t(paused ? 'redemptions.pause.pausedOne' : 'redemptions.pause.resumedOne', { title: reward.title }),
+        );
+      },
+      error: () => {
+        this.setPausedLocally(ids, !paused);
+        this.togglingId.set(null);
+      },
+    });
+  }
+
+  /** "Going on a break": pause (or resume) every reward DomDimaBot manages in one go. */
+  setAllPaused(paused: boolean): void {
+    if (!this.canManage() || this.bulkPausing() || this.togglingId()) return;
+    const channelId = this.channelID();
+    const targets = paused ? this.pausableRewards() : this.pausedRewards();
+    if (!channelId || !targets.length) return;
+    const ids = new Set(targets.map((r) => r.rewardID || r.id));
+
+    this.bulkPausing.set(true);
+    this.setPausedLocally(ids, paused);
+    forkJoin(
+      targets.map((reward) => {
+        const rewardId = reward.rewardID || reward.id;
+        return this.redemptionsService.updateRedemption(channelId, rewardId, { isPaused: paused }, { silent: true }).pipe(
+          map((result) => ({ rewardId, result })),
+          catchError(() => of({ rewardId, result: null })),
+        );
+      }),
+    ).subscribe((outcomes) => {
+      const failed = new Set(outcomes.filter((o) => !o.result).map((o) => o.rewardId));
+      for (const outcome of outcomes) {
+        if (outcome.result) this.applyTwitchCopy(outcome.rewardId, outcome.result, (r) => ({ ...r, is_paused: paused }));
+      }
+      if (failed.size) this.setPausedLocally(failed, !paused);
+      this.bulkPausing.set(false);
+
+      const done = outcomes.length - failed.size;
+      if (failed.size) {
+        this.toastService.error(
+          this.t('redemptions.errors.saveTitle'),
+          this.t(paused ? 'redemptions.pause.someFailedPause' : 'redemptions.pause.someFailedResume', { count: failed.size }),
+        );
+      }
+      if (done) {
+        const note = paused && this.twitchOnlyRewards().length ? ` ${this.t('redemptions.pause.twitchOnlyNote')}` : '';
+        this.toastService.success(
+          this.t(paused ? 'redemptions.pause.pausedTitle' : 'redemptions.pause.resumedTitle'),
+          this.t(paused ? 'redemptions.pause.pausedMany' : 'redemptions.pause.resumedMany', { count: done }) + note,
+        );
+      }
+    });
+  }
+
+  /** Seconds until the shared cooldown ends (0 = ready). */
+  cooldownLeft(reward: Redemption): number {
+    if (!reward.cooldownEndsAt) return 0;
+    const ends = Date.parse(reward.cooldownEndsAt);
+    return Number.isFinite(ends) ? Math.max(0, Math.ceil((ends - this.now()) / 1000)) : 0;
   }
 
   deleteRedemption(redemption: Redemption): void {

@@ -9,7 +9,7 @@ A channel reward is a Twitch Channel Points reward that viewers spend points on.
 
 **Who can do it:** the channel owner, or an admin with `rewards:manage`. Admins with `rewards:view` can see the list but cannot change it.
 
-**Plans:** creating and managing rewards works on every plan. Raising the price after each redemption needs a Premium or Pro plan.
+**Plans:** creating and managing rewards, limits, and pausing work on every plan. Raising the price after each redemption needs a Premium or Pro plan.
 
 **Twitch eligibility:** Channel Points are a Twitch feature, and Twitch sets who can use them. DomDimaBot does not check eligibility itself. If Twitch refuses to create the reward, creation fails.
 
@@ -18,8 +18,9 @@ A channel reward is a Twitch Channel Points reward that viewers spend points on.
 1. Go to **Modules → Redemptions** and click **New reward**.
 2. Under **The reward viewers see**, set the name, price, colour, and description.
 3. Under **When someone redeems it**, write the **Chat message** and set the other options.
-4. Optional: under **Price that goes up**, set a price increase (Premium and Pro).
-5. Click **Create reward**. DomDimaBot creates the reward on Twitch and starts listening for redemptions.
+4. Optional: under **Limits**, choose how often it can be redeemed. See [Limits](#limits).
+5. Optional: under **Price that goes up**, set a price increase (Premium and Pro).
+6. Click **Create reward**. DomDimaBot creates the reward on Twitch and starts listening for redemptions.
 
 ### Reward fields
 
@@ -31,8 +32,9 @@ A channel reward is a Twitch Channel Points reward that viewers spend points on.
 | **Description on Twitch** | 200 characters | Text under the reward on Twitch. |
 | **Chat message** | 500 characters | What happens when someone redeems it. See [What happens on redeem](#what-happens-on-redeem). Leave empty to do nothing. |
 | **Viewer must type something** | On or off | Twitch asks the viewer for text. Put `&t` in the message to use it. |
-| **Cooldown (seconds)** | 0 or more | Time before anyone can redeem the reward again. `0` means no cooldown. |
-| **Skip the requests queue** | On or off | Marks redemptions as done right away. Leave it off if you review redemptions in Twitch's queue. |
+| **Skip the requests queue** | On or off | Under **More options**. Marks redemptions as done right away. Leave it off if you review redemptions in Twitch's queue. |
+
+The limits have their own step. See [Limits](#limits).
 
 ## What happens on redeem
 
@@ -60,15 +62,28 @@ Fill-ins:
 
 A trigger can also create its own channel point reward. That reward's message is `$(trigger.send <trigger name>)`. On this page, such a reward shows **Plays** followed by the trigger's name. You can create them from the [Triggers](/triggers/) page.
 
-## Cooldowns and reward settings
+## Limits
 
-The **Cooldown** field sets Twitch's **global cooldown** for that reward. It is shared by all viewers. Once someone redeems the reward, nobody can redeem it again until the cooldown ends. It is not a per-viewer cooldown, and it does not affect your other rewards.
+The **Limits** step controls how often a reward can be redeemed. Each limit has a switch. Turn it on, then tap a quick pick or type a number. The box at the top of the step sums up your limits in one sentence, for example "Each viewer can redeem it up to 2× per stream. After each redeem, everyone waits 5 min."
 
-These settings are sent to Twitch: price, name, description, colour, the typed-text requirement, the queue setting, and whether the reward is visible. The chat message is stored by DomDimaBot and used when a redemption arrives.
+| Limit | What it does |
+|---|---|
+| **Per viewer, each stream** | How many times one viewer can redeem it during a stream. Quick picks: 1×, 2×, 3×, 5×. |
+| **Per stream, everyone together** | How many redemptions the whole chat gets per stream. When they are used up, the reward shows **Sold out this stream** until your next stream. Quick picks: 5×, 10×, 25×, 50×. |
+| **Cooldown after each redeem** | Twitch's **global cooldown**. After anyone redeems it, nobody can redeem it again until the wait ends. Pick seconds, minutes, hours, or days, from 1 second up to 7 days. |
+
+The per-viewer number cannot be higher than the per-stream number, because it would never apply. The form asks you to fix it before saving.
+
+Twitch only shows cooldowns of 1 minute or more to viewers. A shorter cooldown still works, but viewers do not see a countdown.
+
+Twitch enforces these limits, not DomDimaBot, and Twitch keeps them. DomDimaBot reads them from Twitch each time you open the page. If Twitch's copy cannot be loaded, the **Limits** step is locked and saving leaves your limits as they are.
+
+These settings are sent to Twitch: price, name, description, colour, the typed-text requirement, the queue setting, the limits, pause, and whether the reward is visible. The chat message is stored by DomDimaBot and used when a redemption arrives.
 
 ## Turn off, edit, or delete
 
 - To hide a reward from viewers without deleting it, switch off **Visible to viewers** on the [Redemptions](/redemptions/) page.
+- To keep a reward on the menu but stop redemptions for a while, use the pause button. See [Pause rewards](/redemptions/#pause-rewards).
 - To change a reward, click **Edit**, change the settings, and click **Save changes**.
 - To delete a reward, click the trash icon. The reward disappears from Twitch right away. If a trigger was linked to it, the trigger stays, but viewers can no longer play it with points.
 

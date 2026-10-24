@@ -76,7 +76,7 @@ export const MODULE_TIER_REQUIREMENTS: Readonly<Record<ModuleId, ModuleTierRequi
     id: 'redemptions',
     minTier: 'free',
     displayName: 'Redemptions',
-    defaultStatus: 'beta',
+    defaultStatus: 'stable',
     category: 'engagement',
     priority: 50
   },

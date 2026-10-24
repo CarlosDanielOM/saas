@@ -24,8 +24,24 @@
             <span class="lf-chip">{{ t('redemptions.twitchOnlyCount', { count: twitchOnlyRewards().length }) }}</span>
           }
         }
+        @if (pausedRewards().length) {
+          <span class="lf-chip lf-chip--warn"><app-lf-icon name="pause" [size]="12"></app-lf-icon>{{ t('redemptions.pause.pausedCount', { count: pausedRewards().length }) }}</span>
+        }
         @if (permissionLoaded() && !canManage()) {
           <span class="lf-chip lf-chip--warn"><app-lf-icon name="lock" [size]="12"></app-lf-icon>{{ t('redemptions.viewOnly') }}</span>
+        }
+        @if (canManage() && !isLoading()) {
+          @if (pausedRewards().length) {
+            <button type="button" class="lf-chip lf-chip--button" [disabled]="bulkPausing()" (click)="setAllPaused(false)">
+              <app-lf-icon name="play" [size]="12"></app-lf-icon>{{ t('redemptions.pause.resumeAll') }}
+            </button>
+          }
+          @if (pausableRewards().length > 1) {
+            <button type="button" class="lf-chip lf-chip--button" [disabled]="bulkPausing()" (click)="setAllPaused(true)"
+              [title]="t('redemptions.pause.pauseAllHint')">
+              <app-lf-icon name="pause" [size]="12"></app-lf-icon>{{ t('redemptions.pause.pauseAll') }}
+            </button>
+          }
         }
         <button type="button" class="lf-chip lf-chip--button" [disabled]="isLoading() || refreshCooldown() > 0" (click)="refreshAll()">
           <span [class.lf-spin]="isLoading() || isLoadingTwitch()"><app-lf-icon name="refresh" [size]="13"></app-lf-icon></span>
@@ -87,6 +103,10 @@
                         <span class="lf-chip lf-chip--xs">{{ t('redemptions.hidden') }}</span>
                       } @else if (reward.isPaused) {
                         <span class="lf-chip lf-chip--xs lf-chip--warn">{{ t('redemptions.paused') }}</span>
+                      } @else if (reward.isInStock === false) {
+                        <span class="lf-chip lf-chip--xs lf-chip--warn">{{ t('redemptions.live.soldOut') }}</span>
+                      } @else if (cooldownLeft(reward) > 0) {
+                        <span class="lf-chip lf-chip--xs">{{ t('redemptions.live.readyIn', { time: formatCooldown(cooldownLeft(reward)) }) }}</span>
                       }
                     </div>
                     <p class="lf-item__meta">
@@ -102,7 +122,20 @@
                         <span class="lf-tag lf-tag--gold"><app-lf-icon name="trend" [size]="12"></app-lf-icon>{{ t('redemptions.risesBy', { count: reward.costChange }) }}</span>
                       }
                       @if (reward.cooldown > 0) {
-                        <span class="lf-tag"><app-lf-icon name="timer" [size]="12"></app-lf-icon>{{ formatCooldown(reward.cooldown) }}</span>
+                        <span class="lf-tag"><app-lf-icon name="timer" [size]="12"></app-lf-icon>{{ t('redemptions.limits.cooldownTag', { time: formatCooldown(reward.cooldown) }) }}</span>
+                      }
+                      @if (reward.maxPerUserPerStream) {
+                        <span class="lf-tag"><app-lf-icon name="users" [size]="12"></app-lf-icon>{{ t('redemptions.limits.perViewerTag', { n: reward.maxPerUserPerStream }) }}</span>
+                      }
+                      @if (reward.maxPerStream) {
+                        <span class="lf-tag" [class.lf-tag--warn]="reward.isInStock === false">
+                          <app-lf-icon name="monitor" [size]="12"></app-lf-icon>
+                          @if (reward.redeemedThisStream !== null && reward.redeemedThisStream !== undefined) {
+                            {{ t('redemptions.limits.perStreamUsed', { used: reward.redeemedThisStream, n: reward.maxPerStream }) }}
+                          } @else {
+                            {{ t('redemptions.limits.perStreamTag', { n: reward.maxPerStream }) }}
+                          }
+                        </span>
                       }
                       @if (reward.userInput) {
                         <span class="lf-tag"><app-lf-icon name="users" [size]="12"></app-lf-icon>{{ t('redemptions.asksText') }}</span>
@@ -116,6 +149,12 @@
                     <div class="lf-item__actions">
                       <button type="button" class="lf-btn lf-btn--compact" (click)="openEditModal(reward)"
                         [attr.aria-label]="t('redemptions.editNamed', { name: reward.title })">{{ t('common.edit') }}</button>
+                      <button type="button" class="lf-icon-btn" [class.lf-icon-btn--on]="reward.isPaused"
+                        [attr.aria-pressed]="!!reward.isPaused" [disabled]="!reward.isEnabled || bulkPausing() || togglingId() === (reward.rewardID || reward.id)"
+                        (click)="togglePaused(reward)" [attr.aria-label]="t('redemptions.pause.pauseNamed', { name: reward.title })"
+                        [title]="!reward.isEnabled ? t('redemptions.pause.hiddenHint') : reward.isPaused ? t('redemptions.pause.resumeHint') : t('redemptions.pause.pauseHint')">
+                        <app-lf-icon [name]="reward.isPaused ? 'play' : 'pause'" [size]="15"></app-lf-icon>
+                      </button>
                       <label class="lf-switch" [title]="t('redemptions.visibleToggle')">
                         <input type="checkbox" [checked]="reward.isEnabled" [disabled]="togglingId() === (reward.rewardID || reward.id)"
                           (change)="toggleEnabled(reward, $any($event.target))" [attr.aria-label]="t('redemptions.onNamed', { name: reward.title })" />

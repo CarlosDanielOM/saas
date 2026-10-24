@@ -82,7 +82,7 @@ const MATRIX: MatrixRow[] = [
 const MODULES: ModulePill[] = [
   { key: 'mod_events' },
   { key: 'mod_clips' },
-  { key: 'mod_redemptions', status: 'beta' },
+  { key: 'mod_redemptions' },
   { key: 'mod_triggers', status: 'beta' },
   { key: 'mod_memories', status: 'beta' },
   { key: 'mod_summaries' },
