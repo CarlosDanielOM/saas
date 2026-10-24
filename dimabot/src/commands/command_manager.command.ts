@@ -3,6 +3,7 @@ import { getDragonflyClient } from "../utils/databases/dragonfly.database.js";
 import TwitchStreamers from "../classes/twitch_streamers.class.js";
 import { getMinimumCommandCooldown } from "../utils/command_cooldown.js";
 import { inspectExpression } from "../utils/permissions/index.js";
+import { CommandsSchema } from "../schemas/commands.schema.js";
 
 interface CommandManagerResponse {
   error: boolean;
@@ -71,6 +72,13 @@ const firstCmdOptionsRegex = new RegExp(/([a-z]+\=[a-zA-Z0-9]+)(?:\W)?(.*)?$/);
 const cmdOptionValueRegex = new RegExp(/([a-z]+)\=([a-zA-Z0-9]+)?$/);
 
 const maxFuncLength = 450;
+
+/** Checks the database, not the cached copy, so a fresh block command is never overwritten from chat. */
+async function isBlockCommand(channelID: string, command: { _id?: unknown; authoring?: string }): Promise<boolean> {
+  if (command.authoring === "blocks") return true;
+  if (!command._id) return false;
+  return Boolean(await CommandsSchema.exists({ channelID, _id: command._id, authoring: "blocks" }));
+}
 
 /**
  * Management gate for tag-restricted commands (TAG_PERMISSION_SYSTEM.md
@@ -454,6 +462,17 @@ export async function editCommand(
     }
 
     const func = opts.join(" ");
+
+    // Block commands are edited in the dashboard; chat can still change -cd/-ul.
+    if (func.length > 0 && !command.reserved && await isBlockCommand(channelID, command)) {
+      return {
+        error: true,
+        message: `!${commandName} is built with blocks. Edit its reply on the dashboard; !ec can still change -cd and -ul.`,
+        where: "blocks",
+        channelID,
+        status: 400,
+      };
+    }
 
     if (func.length > maxFuncLength) {
       return {

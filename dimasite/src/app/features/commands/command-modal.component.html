@@ -2,6 +2,7 @@
   <div class="lf-modal-overlay" (click)="onOverlayClick($event)">
     <div
       class="lf-modal lf-modal--wide"
+      [class.lf-modal--blocks]="modalTab() === 'blocks' && mobileAccessView() === 'main'"
       [class.lf-modal--expanded]="accountsOpen()"
       [class.lf-modal--subview]="mobileAccessView() !== 'main'"
       [attr.data-mobile-view]="mobileAccessView()"
@@ -26,7 +27,7 @@
         </div>
 
       @if (!isEditMode()) {
-        <div class="lf-type-tabs" role="tablist" [attr.aria-label]="t('commands.legend.title')">
+        <div class="lf-type-tabs" [class.lf-hidden]="modalTab() === 'blocks'" role="tablist" [attr.aria-label]="t('commands.legend.title')">
           <button type="button" role="tab" id="command-type-tab" aria-controls="command-type-panel"
             [attr.aria-selected]="!isKeyword()" [attr.tabindex]="isKeyword() ? -1 : 0"
             (click)="selectActivation('command')" (keydown)="onTypeTabKeydown($event, 'command')">
@@ -39,10 +40,67 @@
           </button>
         </div>
       }
+      @if (!isReserved()) {
+        <div class="lf-modal-tabs" role="tablist" [attr.aria-label]="t('commandBlocks.modal.tabsLabel')">
+          <button type="button" role="tab" id="modal-tab-details" aria-controls="command-type-panel"
+            [attr.aria-selected]="modalTab() === 'details'" [attr.tabindex]="modalTab() === 'details' ? 0 : -1"
+            (click)="setModalTab('details')" (keydown)="onModalTabKeydown($event)">{{ t('commandBlocks.modal.details') }}</button>
+          <button type="button" role="tab" id="modal-tab-blocks" aria-controls="command-type-panel"
+            [attr.aria-selected]="modalTab() === 'blocks'" [attr.tabindex]="modalTab() === 'blocks' ? 0 : -1"
+            (click)="setModalTab('blocks')" (keydown)="onModalTabKeydown($event)">
+            {{ t('commandBlocks.modal.blocks') }}
+            @if (!blocksAllowed()) { <span class="lf-plan-tag">{{ t('commandBlocks.modal.paidTag') }}</span> }
+          </button>
+        </div>
+      }
         <form class="lf-form" id="command-type-panel" [attr.role]="isEditMode() ? null : 'tabpanel'"
           [attr.aria-labelledby]="isEditMode() ? null : isKeyword() ? 'keyword-type-tab' : 'command-type-tab'"
           [formGroup]="commandForm" (ngSubmit)="onSubmit()">
-          <div class="lf-form__body">
+          @if (draftOffer(); as draft) {
+            <div class="lf-draft" role="status">
+              <span>{{ t('commandBlocks.draft.offer', { when: draftAge(draft) }) }}</span>
+              <div class="lf-draft__actions">
+                <button type="button" class="lf-btn lf-btn--small" (click)="discardDraft()">{{ t('commandBlocks.draft.discard') }}</button>
+                <button type="button" class="lf-btn lf-btn--small lf-btn--primary" (click)="restoreDraft()">{{ t('commandBlocks.draft.restore') }}</button>
+              </div>
+            </div>
+          }
+          @if (modalTab() === 'blocks' && !isReserved()) {
+            <div class="lf-blocks-pane">
+              @if (authoring() === 'blocks') {
+                @if (blocksLocked()) {
+                  <div class="lf-blocks-note lf-blocks-note--gold">
+                    <span>{{ t('commandBlocks.modal.locked') }}</span>
+                    @if (isOwner()) { <button type="button" class="lf-btn lf-btn--small" (click)="seePlans()">{{ t('commandBlocks.modal.seePlans') }}</button> }
+                  </div>
+                } @else if (!blocksAllowed()) {
+                  <div class="lf-blocks-note lf-blocks-note--gold">
+                    <span>{{ t('commandBlocks.modal.tryOut') }}</span>
+                  </div>
+                }
+                <app-blocks-editor class="lf-blocks-editor" [channelID]="channelID()" [errorMessage]="blockErrorMessage()" />
+              } @else {
+                <div class="lf-blocks-start">
+                  <h3 class="lf-blocks-start__title">{{ t('commandBlocks.modal.startTitle') }}</h3>
+                  <p class="lf-note">{{ t('commandBlocks.modal.startCopy') }}</p>
+                  @if (!blocksAllowed()) {
+                    <p class="lf-blocks-note lf-blocks-note--gold">{{ t('commandBlocks.modal.tryOut') }}</p>
+                  }
+                  <div class="lf-blocks-start__actions">
+                    @if (commandForm.controls.message.value?.trim()) {
+                      <button type="button" class="lf-btn lf-btn--primary" [disabled]="converting()" (click)="useBlocks('reply')">
+                        {{ converting() ? t('commandBlocks.import.working') : t('commandBlocks.modal.convert') }}
+                      </button>
+                    }
+                    <button type="button" class="lf-btn" (click)="useBlocks('empty')">{{ t('commandBlocks.modal.startEmpty') }}</button>
+                  </div>
+                  @if (convertError(); as err) { <p class="lf-form-error" role="alert">{{ err }}</p> }
+                  <p class="lf-note">{{ t('commandBlocks.modal.oneWay') }}</p>
+                </div>
+              }
+            </div>
+          }
+          <div class="lf-form__body" [class.lf-hidden]="modalTab() === 'blocks' && !isReserved()">
             <div class="lf-main-fields">
               <div class="lf-form-grid">
                 <label class="lf-field">
@@ -71,11 +129,35 @@
           </label>
         }
 
-              <label class="lf-field">
-                <span>{{ t('commands.placeholder.function') }}</span>
-                <textarea rows="3" formControlName="message" maxlength="500"></textarea>
-                @if (isSpeech()) { <span class="lf-note">{{ t('modules.tts.command.templateHint') }}</span> }
-              </label>
+              @if (authoring() === 'blocks' && !isReserved()) {
+                <div class="lf-field lf-blocks-reply">
+                  <span>{{ t('commands.placeholder.function') }}</span>
+                  <div class="lf-blocks-reply__row">
+                    <span class="lf-blocks-chip">{{ t('commandBlocks.label') }}</span>
+                    <span class="lf-note">{{ t('commandBlocks.editor.blockCount', { count: blocks.blockCount() }) }}</span>
+                    <button type="button" class="lf-btn lf-btn--small" (click)="setModalTab('blocks')">{{ t('commandBlocks.modal.editBlocks') }}</button>
+                  </div>
+                  <button type="button" class="lf-link-btn" (click)="switchToText()">{{ t('commandBlocks.modal.toText') }}</button>
+                  @if (confirmToText()) {
+                    <div class="lf-blocks-note" role="alert">
+                      <span>{{ t('commandBlocks.modal.toTextConfirm') }}</span>
+                      <div class="lf-draft__actions">
+                        <button type="button" class="lf-btn lf-btn--small" (click)="confirmToText.set(false)">{{ t('common.cancel') }}</button>
+                        <button type="button" class="lf-btn lf-btn--small lf-btn--primary" (click)="switchToText()">{{ t('commandBlocks.modal.toTextGo') }}</button>
+                      </div>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <label class="lf-field">
+                  <span>{{ t('commands.placeholder.function') }}</span>
+                  <textarea rows="3" formControlName="message" [attr.maxlength]="maxReplyLength"></textarea>
+                  @if (isSpeech()) { <span class="lf-note">{{ t('modules.tts.command.templateHint') }}</span> }
+                  @if (!isReserved()) {
+                    <button type="button" class="lf-link-btn" (click)="setModalTab('blocks')">{{ t('commandBlocks.modal.tryBlocks') }}</button>
+                  }
+                </label>
+              }
 
               <label class="lf-field">
                 <span>{{ t('commands.placeholder.description') }}</span>
@@ -276,6 +358,24 @@
             </div>
           </div>
 
+          @if (showUpgrade()) {
+            <div class="lf-upgrade" role="alertdialog" aria-labelledby="blocks-upgrade-title" aria-describedby="blocks-upgrade-copy">
+              <p class="lf-upgrade__title" id="blocks-upgrade-title">{{ t('commandBlocks.upgrade.title') }}</p>
+              <p class="lf-note" id="blocks-upgrade-copy">
+                {{ t(isOwner() ? 'commandBlocks.upgrade.copy' : 'commandBlocks.upgrade.copyHelper') }}
+                @if (draftSaved()) { {{ t('commandBlocks.upgrade.kept') }} }
+              </p>
+              <div class="lf-draft__actions">
+                <button type="button" class="lf-btn lf-btn--small" (click)="showUpgrade.set(false)">{{ t('commandBlocks.upgrade.keepEditing') }}</button>
+                @if (isOwner()) {
+                  <button type="button" class="lf-btn lf-btn--small lf-btn--gold" (click)="seePlans()">{{ t('commandBlocks.modal.seePlans') }}</button>
+                }
+              </div>
+            </div>
+          }
+          @if (formError() && modalTab() === 'blocks') {
+            <p class="lf-form-error lf-form-error--bar" role="alert">{{ formError() }}</p>
+          }
           <div class="lf-form__actions lf-form__actions--main">
             <button type="button" class="lf-btn" (click)="onCancel()">{{ t('common.cancel') }}</button>
             <button type="submit" class="lf-btn lf-btn--primary" [disabled]="commandForm.invalid || isSaving()">

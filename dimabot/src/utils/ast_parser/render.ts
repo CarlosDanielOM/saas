@@ -86,44 +86,99 @@ function findMatchingStartToken(
     return null;
 }
 
-export async function renderAstWithSourceReference(
+/**
+ * The bot's final pass over a rendered reply: `\$`, `\%`, `\*`, `\#` and `\^`
+ * lose their backslash (that is how chat text shows a literal `$(` and friends).
+ */
+export function unescapeRenderedText(input: unknown): string {
+    if (typeof input !== 'string') return String(input || '');
+    return input
+        .replace(/\\\$/g, '$')
+        .replace(/\\%/g, '%')
+        .replace(/\\\*/g, '*')
+        .replace(/\\#/g, '#')
+        .replace(/\\\^/g, '^');
+}
+
+/**
+ * One piece of command text, split the way the renderer evaluates it: plain
+ * text is copied as is; each top-level expression ($(…), %(…), *(…), ^(…),
+ * %del(…), #(…)) is parsed and evaluated on its own. `unclosed` is a start
+ * token with no matching `)`; rendering stops there.
+ */
+export type SourceSegment =
+    | { kind: 'text'; text: string }
+    | { kind: 'expr'; source: string }
+    | { kind: 'unclosed'; source: string };
+
+/** Splits command text exactly like renderAstWithSourceReference. Adjacent text is merged. */
+export function scanSourceSegments(
     input: string,
-    context: ExecutionContext,
     registry: Map<string, SyntaxDefinition> = SyntaxRegistry
-): Promise<RenderAstResult> {
+): SourceSegment[] {
     const startTokens = getStartTokens(registry);
-    let output = '';
+    const segments: SourceSegment[] = [];
+    let text = '';
     let i = 0;
-    let currentContext = context;
+
+    const flushText = () => {
+        if (text) segments.push({ kind: 'text', text });
+        text = '';
+    };
 
     while (i < input.length) {
         const token = findMatchingStartToken(input, i, startTokens);
 
         if (!token || isEscaped(input, i)) {
-            output += input[i];
+            text += input[i];
             i++;
             continue;
         }
 
         const expressionEnd = findExpressionEnd(input, i + token.length);
+        flushText();
         if (expressionEnd === -1) {
+            segments.push({ kind: 'unclosed', source: input.slice(i) });
+            return segments;
+        }
+
+        segments.push({ kind: 'expr', source: input.slice(i, expressionEnd + 1) });
+        i = expressionEnd + 1;
+    }
+
+    flushText();
+    return segments;
+}
+
+export async function renderAstWithSourceReference(
+    input: string,
+    context: ExecutionContext,
+    registry: Map<string, SyntaxDefinition> = SyntaxRegistry
+): Promise<RenderAstResult> {
+    let output = '';
+    let currentContext = context;
+
+    for (const segment of scanSourceSegments(input, registry)) {
+        if (segment.kind === 'text') {
+            output += segment.text;
+            continue;
+        }
+
+        if (segment.kind === 'unclosed') {
             output += '[Parse error: Unclosed expression]';
             break;
         }
 
-        const expression = input.slice(i, expressionEnd + 1);
-        const { ast, error } = parse(expression, registry);
+        const { ast, error } = parse(segment.source, registry);
 
         if (error) {
             output += `[Parse error: ${error}]`;
-            i = expressionEnd + 1;
             continue;
         }
 
         const result = await evaluate(ast, currentContext);
         currentContext = result.context;
         output += String(result.value ?? '');
-        i = expressionEnd + 1;
     }
 
     return {

@@ -14,7 +14,7 @@ import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { catchError, combineLatest, map, of, switchMap } from 'rxjs';
 
 import { Command, CreateCommandRequest, UpdateCommandRequest, USER_LEVELS, USER_LEVEL_NAMES, whoCanUsePhrase } from '../../models/command.model';
-import { CommandsApiService } from '../../services/commands-api.service';
+import { CommandsApiService, type CommandSaveError, type CommandSaveResult } from '../../services/commands-api.service';
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
 import { TimersApiService } from '../../services/timers-api.service';
@@ -32,6 +32,9 @@ import {
   replyParts
 } from './builtin-commands';
 import { CommandModalComponent, CommandModalSavePayload, PlanTier } from './command-modal.component';
+import { BlocksViewerDialogComponent } from './blocks/blocks-viewer-dialog.component';
+import { clearDraft, draftKey, takeResume } from './blocks/blocks.draft';
+import { commandBlocksRoot, commandReplyText, isBlockCommand, timerMessageFor } from './blocks/command-blocks.util';
 
 export type CommandFilter = 'all' | 'custom' | 'keyword' | 'timer' | 'builtin' | 'off';
 type CommandKind = 'reserved' | 'timer' | 'normal' | 'keyword';
@@ -45,7 +48,7 @@ interface CommandListItem extends Command {
 
 @Component({
   selector: 'app-commands-page',
-  imports: [ReactiveFormsModule, NgTemplateOutlet, ConfirmationModalComponent, CommandModalComponent, LfIconComponent],
+  imports: [ReactiveFormsModule, NgTemplateOutlet, ConfirmationModalComponent, CommandModalComponent, LfIconComponent, BlocksViewerDialogComponent],
   templateUrl: './commands-page.component.html',
   styleUrl: './commands-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -126,6 +129,17 @@ export class CommandsPageComponent {
   // Modal state
   readonly showCommandModal = signal(false);
   readonly editingCommand = signal<Command | null>(null);
+  /** Why the last block save failed; the modal shows it in place. */
+  readonly modalSaveError = signal<CommandSaveError | null>(null);
+  /** Reopened after the upgrade checkout: the modal restores its draft directly. */
+  readonly resumeDraft = signal(false);
+  private resumeChecked: string | null = null;
+  /** Read-only block view. */
+  readonly viewingBlocks = signal<Command | null>(null);
+  readonly isOwner = computed(() => !!this.channelID() && this.channelID() === this.sessionAuth.getPrimaryChannelID());
+
+  isBlockCommand = isBlockCommand;
+  commandBlocksRoot = commandBlocksRoot;
 
   // Delete confirmation
   readonly showDeleteModal = signal(false);
@@ -213,7 +227,7 @@ export class CommandsPageComponent {
     const query = this.searchInput().trim().toLowerCase().replace(/^!/, '');
     if (!query) return [];
     return this.byName(this.commands().filter((command) =>
-      [command.name, command.cmd, command.message, command.reserved ? this.builtinDescription(command) : '']
+      [command.name, command.cmd, commandReplyText(command), command.reserved ? this.builtinDescription(command) : '']
         .join(' ')
         .toLowerCase()
         .includes(query)));
@@ -357,10 +371,39 @@ export class CommandsPageComponent {
 
   // ========== Modal Handlers ==========
 
+  /** Once commands and edit access are both known, reopen a draft left for the upgrade checkout. */
+  private readonly resumeEffect = effect(() => {
+    const channelID = this.channelID();
+    if (!channelID || !this.canManage() || this.commands().length === 0) return;
+    untracked(() => this.resumeAfterCheckout(channelID));
+  });
+
+  /** Back from the upgrade checkout: reopen the command that was being built. */
+  private resumeAfterCheckout(channelID: string): void {
+    if (this.resumeChecked === channelID) return;
+    this.resumeChecked = channelID;
+    const key = takeResume(channelID);
+    if (!key) return;
+    const id = key.split('.').pop() ?? '';
+    const command = id.startsWith('new-') ? null : this.commands().find((item) => this.getCommandId(item) === id) ?? null;
+    if (!id.startsWith('new-') && !command) return;
+    if (id === 'new-keyword') this.newItemKind.set('keyword');
+    this.resumeDraft.set(true);
+    this.modalSaveError.set(null);
+    this.editingCommand.set(command);
+    this.showCommandModal.set(true);
+  }
+
+  viewBlocks(command: Command): void {
+    this.viewingBlocks.set(command);
+  }
+
   openCreateModal(): void {
     if (!this.canManage()) return;
     if (!this.checkRateLimit()) return;
     this.editingCommand.set(null);
+    this.resumeDraft.set(false);
+    this.modalSaveError.set(null);
     this.showCommandModal.set(true);
   }
 
@@ -368,12 +411,62 @@ export class CommandsPageComponent {
     if (!this.canManage()) return;
     if (!this.checkRateLimit()) return;
     this.editingCommand.set(command);
+    this.resumeDraft.set(false);
+    this.modalSaveError.set(null);
     this.showCommandModal.set(true);
   }
 
   closeModal(): void {
     this.showCommandModal.set(false);
     this.editingCommand.set(null);
+    this.resumeDraft.set(false);
+  }
+
+  private modalDraftKey(channelID: string, editing: Command | null, activation: 'command' | 'keyword' | undefined): string {
+    return draftKey({ channelID, commandId: editing ? this.getCommandId(editing) : null, activation: activation === 'keyword' ? 'keyword' : 'command' });
+  }
+
+  /** Block saves wait for the server so problems can be shown on the block itself. */
+  private saveBlocksCommand(channelID: string, payload: CommandModalSavePayload, editing: Command | null, session: { twitchUser: { login?: string } }): void {
+    const request = payload.command;
+    const key = this.modalDraftKey(channelID, editing, editing?.activation ?? request.activation);
+    const previousTimerName = editing ? this.resolveTimerName(editing) : null;
+    this.recordRequest();
+    const request$ = editing
+      ? this.commandsApi.updateCommandDetailed(channelID, this.getCommandId(editing), {
+          ...(request.keywordSettings ? { keywordSettings: request.keywordSettings } : {}),
+          name: request.name,
+          cmd: request.cmd,
+          authoring: 'blocks',
+          ...(request.blocks ? { blocks: request.blocks } : {}),
+          description: request.description || null,
+          cooldown: request.cooldown,
+          userLevel: request.userLevel,
+          userLevelName: USER_LEVELS[request.userLevel],
+          enabled: request.enabled,
+          ...(request.permissionExpression !== undefined ? { permissionExpression: request.permissionExpression } : {})
+        })
+      : this.commandsApi.createCommandDetailed(channelID, { ...request, channel: session.twitchUser.login || channelID });
+
+    request$.subscribe((result: CommandSaveResult) => {
+      if (!result.command) {
+        this.modalSaveError.set({ ...result.error });
+        return;
+      }
+      const saved = result.command;
+      clearDraft(key);
+      if (editing) this.replaceCommandItem(this.getCommandId(editing), saved);
+      else this.commands.update((cmds) => [...cmds, ...this.normalizeCommands([saved])]);
+      this.setCommandFeedbackState(this.getCommandId(saved), 'success');
+      this.closeModal();
+      this.toastService.success(
+        this.t(editing ? 'commands.toast.savedTitle' : 'commands.toast.createdTitle'),
+        this.t(editing ? 'commands.toast.savedMessage' : 'commands.toast.createdMessage')
+      );
+      if (saved.activation !== 'keyword') {
+        this.syncCommandTimer(channelID, saved.cmd || request.cmd, previousTimerName, timerMessageFor(saved, ''), payload.timer);
+      }
+    });
   }
 
   onModalSave(payload: CommandModalSavePayload): void {
@@ -387,6 +480,12 @@ export class CommandsPageComponent {
     const request = payload.command;
     const editingCmd = this.editingCommand();
     const previousTimerName = editingCmd ? this.resolveTimerName(editingCmd) : null;
+    this.modalSaveError.set(null);
+    if (request.authoring === 'blocks') {
+      this.saveBlocksCommand(channelID, payload, editingCmd, session);
+      return;
+    }
+    const savedDraftKey = this.modalDraftKey(channelID, editingCmd, editingCmd?.activation ?? request.activation);
 
     if (editingCmd) {
       const commandId = this.getCommandId(editingCmd);
@@ -395,6 +494,7 @@ export class CommandsPageComponent {
         name: request.name,
         cmd: request.cmd,
         message: request.message,
+        ...(request.authoring ? { authoring: request.authoring } : {}),
         description: request.description || null,
         cooldown: request.cooldown,
         userLevel: request.userLevel,
@@ -410,6 +510,7 @@ export class CommandsPageComponent {
       this.updateCommandItem(commandId, (cmd) => ({
         ...cmd,
         ...updates,
+        blocks: updates.authoring === 'text' ? null : cmd.blocks,
         permissionMode: updates.permissionExpression === undefined
           ? cmd.permissionMode
           : updates.permissionExpression === null ? 'level' : 'tags',
@@ -419,6 +520,7 @@ export class CommandsPageComponent {
 
       this.commandsApi.updateCommand(channelID, commandId, updates).subscribe((updated) => {
         if (updated) {
+          clearDraft(savedDraftKey);
           this.replaceCommandItem(commandId, updated);
           this.clearCommandSnapshot(commandId);
           this.setCommandFeedbackState(this.getCommandId(updated), 'success');
@@ -445,6 +547,7 @@ export class CommandsPageComponent {
 
       this.commandsApi.createCommand(channelID, newCommand).subscribe((created) => {
         if (created) {
+          clearDraft(savedDraftKey);
           this.replaceCommandItem(tempId, created);
           this.setCommandFeedbackState(this.getCommandId(created), 'success');
           this.toastService.success(this.t('commands.toast.createdTitle'), this.t('commands.toast.createdMessage'));
@@ -797,7 +900,7 @@ export class CommandsPageComponent {
   /** "!so <username>" — null when the command takes nothing. */
   usageLine(command: Command): string | null {
     if (command.activation === 'keyword') return null;
-    const args = command.reserved ? builtinInfo(command).usage : customUsage(command.message);
+    const args = command.reserved ? builtinInfo(command).usage : customUsage(commandReplyText(command));
     return args ? `!${command.cmd} ${formatUsage(args, (key, params) => this.t(key, params))}` : null;
   }
 

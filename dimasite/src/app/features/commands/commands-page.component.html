@@ -241,7 +241,12 @@
         } @else if (command.activation === 'keyword') {
           <p class="lf-item__what">{{ keywordRule(command) }}</p>
         }
-        @if (!command.reserved && command.message) {
+        @if (!command.reserved && isBlockCommand(command)) {
+          <p class="lf-reply">
+            <span class="visually-hidden">{{ t('commands.replies') }}</span>
+            <button type="button" class="lf-blocks-label" (click)="viewBlocks(command)" [attr.aria-label]="t('commandBlocks.viewer.open', { name: activationLabel(command) })">{{ t('commandBlocks.label') }}</button>
+          </p>
+        } @else if (!command.reserved && command.message) {
           <p class="lf-reply" [title]="command.message">
             <span class="visually-hidden">{{ t('commands.replies') }}</span>
             @for (part of replyParts(command); track $index) {
@@ -299,7 +304,15 @@
     [commands]="commands()"
     [existingTimerMinutes]="editingTimerMinutes()"
     [startAs]="newItemKind()"
+    [channelID]="channelID()"
+    [isOwner]="isOwner()"
+    [resumeDraft]="resumeDraft()"
+    [saveError]="modalSaveError()"
     (save)="onModalSave($event)"
     (cancel)="closeModal()"
   />
+
+  @if (viewingBlocks(); as viewing) {
+    <app-blocks-viewer-dialog [commandName]="viewing.cmd" [root]="commandBlocksRoot(viewing)" (closed)="viewingBlocks.set(null)" />
+  }
 </div>

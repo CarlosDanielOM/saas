@@ -23,6 +23,8 @@ import {
   realDescription,
   replyParts
 } from './builtin-commands';
+import { BlocksViewerDialogComponent } from './blocks/blocks-viewer-dialog.component';
+import { commandBlocksRoot, commandReplyText, isBlockCommand } from './blocks/command-blocks.util';
 
 /** Who a command is for, from the viewer's side. */
 export type Audience = 'anyone' | 'supporters' | 'mods';
@@ -35,7 +37,7 @@ interface ChannelProfile {
 
 @Component({
   selector: 'app-public-commands-page',
-  imports: [RouterLink, LucideAngularModule, BrandLogoComponent, LfIconComponent],
+  imports: [RouterLink, LucideAngularModule, BrandLogoComponent, LfIconComponent, BlocksViewerDialogComponent],
   templateUrl: './public-commands-page.component.html',
   styleUrl: './public-commands-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -57,6 +59,10 @@ export class PublicCommandsPageComponent {
   readonly searchInput = signal('');
   readonly audienceFilter = signal<Audience | 'all'>('all');
   readonly copiedId = signal<string | null>(null);
+  /** Read-only block view of a block command. */
+  readonly viewingBlocks = signal<Command | null>(null);
+  isBlockCommand = isBlockCommand;
+  commandBlocksRoot = commandBlocksRoot;
 
   private readonly streamerParam$ = this.route.paramMap.pipe(
     map((params) => (params.get('streamer') ?? '').trim().toLowerCase()),
@@ -115,7 +121,7 @@ export class PublicCommandsPageComponent {
     const query = this.searchInput().trim().toLowerCase().replace(/^!/, '');
     const filter = this.audienceFilter();
     const matches = (command: Command) => !query ||
-      [command.cmd, this.title(command), this.description(command) ?? '', command.message]
+      [command.cmd, this.title(command), this.description(command) ?? '', commandReplyText(command)]
         .join(' ').toLowerCase().includes(query);
     return AUDIENCES
       .filter((audience) => filter === 'all' || filter === audience)
@@ -179,7 +185,7 @@ export class PublicCommandsPageComponent {
   }
 
   usageLine(command: Command): string | null {
-    const args = command.reserved ? builtinInfo(command).usage : customUsage(command.message);
+    const args = command.reserved ? builtinInfo(command).usage : customUsage(commandReplyText(command));
     return args ? `!${command.cmd} ${formatUsage(args, (key, params) => this.t(key, params))}` : null;
   }
 

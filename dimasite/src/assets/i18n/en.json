@@ -8930,5 +8930,521 @@
     "updated": "Updated {{date}} UTC",
     "daysRefresh": "Refresh best days",
     "gamesRefresh": "Refresh games"
+  },
+  "commandBlocks": {
+    "label": "AST Blocks",
+    "announce": {
+      "imported": "Turned the text into blocks",
+      "loadedExample": "Loaded the example",
+      "cleared": "Cleared the command",
+      "added": "Added {{name}}",
+      "addedItem": "Added a list item",
+      "moved": "Moved the block",
+      "removed": "Removed the block",
+      "duplicated": "Duplicated the block",
+      "movedEarlier": "Moved earlier",
+      "movedLater": "Moved later",
+      "undone": "Undone",
+      "redone": "Redone",
+      "cursorAfter": "Cursor moved after the block. Pick one from the library.",
+      "pickForSlot": "Pick a block from the library to put it there"
+    },
+    "block": {
+      "addArgument": "Add to the command's input",
+      "addItem": "+ item",
+      "addTo": "Add {{slot}}",
+      "addToBranch": "Add to this branch",
+      "addToGroup": "Add to the group",
+      "addToList": "add to list",
+      "addToLoop": "Add to the loop",
+      "addToOtherwise": "Add to otherwise",
+      "aList": "list",
+      "allItemsOf": "all items of",
+      "arguments": "arguments",
+      "check": "check",
+      "elseIf": "Else if",
+      "empty": "empty",
+      "forEach": "For each",
+      "forget": "forget",
+      "from": "from",
+      "if": "If",
+      "in": "in",
+      "insertHere": "Insert here",
+      "isSet": "is set?",
+      "item": "item",
+      "itemFromList": "item from list",
+      "keysHint": "Enter selects, Delete removes, Alt+arrows move.",
+      "more": "more",
+      "nothing": "nothing",
+      "of": "of",
+      "otherwise": "Otherwise",
+      "randomFromList": "random item from list",
+      "randomItemOf": "random item of",
+      "repeat": "Repeat",
+      "restText": "everything typed after the command",
+      "run": "run",
+      "selected": "selected",
+      "set": "set",
+      "sizeOf": "size of",
+      "sizeOfList": "size of list",
+      "start": "start",
+      "step": "step",
+      "textPlaceholder": "text",
+      "then": "then",
+      "timesCounting": "times, counting with",
+      "to": "to",
+      "value": "value",
+      "while": "while",
+      "wholeList": "whole list",
+      "wordN": "word {{n}} typed after the command"
+    },
+    "cursor": {
+      "after": "after block {{n}}",
+      "end": "at the end",
+      "into": "into {{slot}} of {{name}}",
+      "intoArg": "into “{{slot}}” of {{name}}",
+      "start": "at the start"
+    },
+    "slots": {
+      "value": "the value",
+      "left": "the left side",
+      "right": "the right side",
+      "test": "the check",
+      "then": "the “then” branch",
+      "otherwise": "the “otherwise” branch",
+      "loop": "the loop",
+      "group": "the group",
+      "list": "the list",
+      "start": "the start",
+      "step": "the step",
+      "arguments": "the input",
+      "quote": "the quoted text",
+      "viewer": "the viewer"
+    },
+    "draft": {
+      "offer": "You have unsaved changes from {{when}}.",
+      "restore": "Restore",
+      "discard": "Discard",
+      "justNow": "just now",
+      "minutes": "{{count}} min ago",
+      "hours": "{{count}} h ago",
+      "days": "{{count}} days ago"
+    },
+    "editor": {
+      "addAtEnd": "Add at the end",
+      "addBlock": "Add block",
+      "addFirst": "Add your first block",
+      "adding": "adding {{where}}",
+      "blockCount": "{{count}} blocks",
+      "build": "Build",
+      "clear": "Clear all blocks (undo brings them back)",
+      "emptyCopy": "Pick an example below or add blocks like user. You can also paste a command above to turn it into blocks.",
+      "emptyTitle": "No blocks yet",
+      "history": "Edit history",
+      "insertBefore": "Insert before block {{n}}",
+      "redo": "Redo",
+      "sections": "Editor sections",
+      "startFrom": "Start from an example",
+      "tip": "Tap a block to change it · tap between blocks to choose where the next one goes · drag to move",
+      "tryIt": "Try it",
+      "undo": "Undo",
+      "yourCommand": "Your command"
+    },
+    "errors": {
+      "block": "This block can't be saved yet.",
+      "empty": "Add at least one block before saving.",
+      "fixBlock": "One block needs a change. It's highlighted in the Blocks tab.",
+      "save": "The command couldn't be saved. Try again.",
+      "tooLong": "The reply is too long (up to {{max}} characters)."
+    },
+    "help": {
+      "literal": "Chat sees this exactly as typed, spaces included.",
+      "raw": "A piece the blocks can't show yet. It runs exactly as written; you can edit its text here.",
+      "argument": "Replaced by what the viewer types after the command.",
+      "template": "Text with values inside it, kept together as one piece (for example inside an if).",
+      "getVar": "Puts a remembered value into the message.",
+      "setVar": "Remembers a value under a name. It says nothing in chat.",
+      "exists": "Yes when the variable has a value, no when it was never set or was forgotten.",
+      "deleteVar": "Forgets the value, so the next use starts fresh.",
+      "arrayLiteral": "A list of items.",
+      "binary": "Works out a value: a yes/no check or a number.",
+      "unary": "Makes a number negative (or keeps it positive).",
+      "ternary": "Checks something, then says or does one branch.",
+      "commandRef": "Runs another command of yours, as if someone typed it.",
+      "forLoop": "Repeats the blocks inside. Loops only do things (send messages, change variables); their text isn't added to the reply.",
+      "loopVar": "The current round of the loop around it.",
+      "loopAssign": "Changes the loop counter.",
+      "group": "Keeps blocks together so they count as one, for example in a branch.",
+      "unknownFunction": "This function isn't in the DomDimaBot list. Check the name.",
+      "function": "",
+      "root": ""
+    },
+    "import": {
+      "title": "Turn command text into blocks",
+      "hint": "Paste a command, for example from another bot or your notes. Once you change the blocks, this box goes away.",
+      "placeholder": "Hello $(user)!",
+      "button": "Turn into blocks",
+      "working": "Converting…",
+      "done": "Done. Change any block to keep going.",
+      "advanced": "{{count}} piece(s) stay as advanced pieces: they run exactly as written.",
+      "failed": "That text couldn't be converted. Check it and try again.",
+      "tooLong": "That text is too long (up to 10,000 characters)."
+    },
+    "inspector": {
+      "actions": "Block actions",
+      "addAfter": "Add after this",
+      "addElseIf": "+ Add “else if”",
+      "argHasBlocks": "Filled with blocks. Change them on the canvas.",
+      "argTip": "Type a value, or tap the cursor button and pick a block such as user.",
+      "argumentWhich": "Which part of the message",
+      "branches": "{{count}} check(s) · the first one that's true wins; otherwise the last branch runs.",
+      "check": "Check",
+      "close": "Close block details",
+      "commandName": "Command name",
+      "counterChange": "How the counter changes",
+      "counterName": "Counter name",
+      "customLoop": "This loop has a custom start, check or step. Change them on the block.",
+      "delete": "Delete block",
+      "destructiveNote": "Test it with a friend's account before using it on stream.",
+      "destructiveTitle": "Changes things for real.",
+      "duplicate": "Duplicate",
+      "emptyCopy": "Tap any block to see what it does, fill its inputs and move it.",
+      "emptyCopyRo": "Tap any block to see what it does.",
+      "emptyTitle": "Block details",
+      "everything": "Everything after the command",
+      "fillSides": "Fill each side by typing in the block or putting a block in it.",
+      "forgetAll": "All list items",
+      "forgetOne": "One item",
+      "forgetWhat": "What to forget",
+      "forgetWhole": "The whole variable",
+      "keptFor": "How long it's remembered",
+      "kicker": "Selected block",
+      "levelNote": "For other chatters it's skipped and the rest of the command still runs.",
+      "listSize": "List size",
+      "loopTip": "Use the counter (#i) inside to show the round number. Loops stop after 25 rounds on free plans and more on paid plans.",
+      "moveEarlier": "Move earlier (Alt + ←)",
+      "moveLater": "Move later (Alt + →)",
+      "negative": "negative",
+      "oneItem": "One item",
+      "oneWord": "One word",
+      "operation": "Operation",
+      "optional": "optional",
+      "perViewerTip": "Saved for the viewer who runs the command. Add a block after “of” to use someone else's.",
+      "position": "Position (0 = first, -1 = last)",
+      "putBlockIn": "Put a block in {{slot}}",
+      "randomItem": "Random item",
+      "rawLabel": "Advanced piece",
+      "sign": "Sign",
+      "skipPlaceholder": "Leave empty to skip",
+      "theValue": "The value",
+      "times": "Times (up to 25)",
+      "use": "Use",
+      "valuePlaceholder": "Type a value",
+      "varName": "Variable name",
+      "wordNumber": "Word number (1 = first word)"
+    },
+    "items": {
+      "text": {
+        "title": "Text",
+        "hint": "Words the bot says, exactly as typed"
+      },
+      "quote": {
+        "title": "Quoted text",
+        "hint": "Text with values inside it, used as one piece"
+      },
+      "word": {
+        "title": "Word after the command",
+        "hint": "One word the viewer typed, like a name"
+      },
+      "rest": {
+        "title": "Everything after the command",
+        "hint": "All the text the viewer typed after the command"
+      },
+      "cmd": {
+        "title": "Run another command",
+        "hint": "Runs one of your commands, like !so"
+      },
+      "setVar": {
+        "title": "Set variable",
+        "hint": "Remember a value under a name"
+      },
+      "getVar": {
+        "title": "Use variable",
+        "hint": "Insert a remembered value"
+      },
+      "counter": {
+        "title": "Add 1 to a saved number",
+        "hint": "A counter that keeps counting across streams"
+      },
+      "setList": {
+        "title": "Add to a list",
+        "hint": "Several items under one name"
+      },
+      "getItem": {
+        "title": "Item from a list",
+        "hint": "Pick one item by position (0 = first)"
+      },
+      "randomItem": {
+        "title": "Random item from a list",
+        "hint": "Pick any item at random"
+      },
+      "listSize": {
+        "title": "List size",
+        "hint": "How many items a list has"
+      },
+      "exists": {
+        "title": "Variable is set?",
+        "hint": "Yes when the variable has a value"
+      },
+      "deleteVar": {
+        "title": "Forget variable",
+        "hint": "Remove a remembered value"
+      },
+      "if": {
+        "title": "If / else",
+        "hint": "Say or do something different depending on a check"
+      },
+      "compare": {
+        "title": "Compare",
+        "hint": "Yes/no check: equal, bigger, smaller…"
+      },
+      "math": {
+        "title": "Math",
+        "hint": "Add, subtract, multiply or divide"
+      },
+      "repeat": {
+        "title": "Repeat",
+        "hint": "Do the blocks inside several times"
+      },
+      "forEach": {
+        "title": "For each item",
+        "hint": "Do the blocks inside once per list item"
+      }
+    },
+    "level": {
+      "mods": "Mods+",
+      "streamer": "Streamer only"
+    },
+    "library": {
+      "adds": "Adds",
+      "all": "All",
+      "close": "Close block library",
+      "functions": "{{count}} functions",
+      "groups": "Block groups",
+      "noMatch": "No block matches “{{query}}”. Try another word, like “timeout” or “sound”.",
+      "results": "{{count}} blocks",
+      "search": "Search blocks",
+      "searchPlaceholder": "Search: ban, random, tts, poll…",
+      "title": "Blocks"
+    },
+    "loopOps": {
+      "=": "Set to",
+      "+=": "Add",
+      "-=": "Subtract",
+      "*=": "Multiply by",
+      "/=": "Divide by",
+      "%=": "Remainder of ÷",
+      "++": "Add 1",
+      "--": "Subtract 1"
+    },
+    "modal": {
+      "blocks": "Blocks",
+      "details": "Details",
+      "tabsLabel": "Command editor",
+      "paidTag": "Premium",
+      "convert": "Turn my reply into blocks",
+      "startEmpty": "Start with empty blocks",
+      "editBlocks": "Edit blocks",
+      "startTitle": "Build this reply with blocks",
+      "startCopy": "Snap blocks together instead of writing command text. You see what the bot will say while you build.",
+      "oneWay": "Once saved, the reply is shown as blocks only (viewers see “AST Blocks” and can open them).",
+      "tryOut": "Saving block commands needs Premium or Pro. You can build and try them now; your work is kept on this device.",
+      "locked": "This command keeps working in chat. Editing its blocks needs Premium or Pro; you can still change its settings.",
+      "seePlans": "See plans",
+      "toText": "Write a text reply instead",
+      "toTextConfirm": "The blocks will be replaced by a new text reply when you save. Type the new reply in Details.",
+      "toTextGo": "Switch to text",
+      "tryBlocks": "Build it with blocks instead"
+    },
+    "ops": {
+      "eq": "is",
+      "ne": "is not",
+      "gt": "is more than",
+      "lt": "is less than",
+      "ge": "is at least",
+      "le": "is at most",
+      "like": "matches (any case)",
+      "add": "+",
+      "sub": "−",
+      "mul": "×",
+      "div": "÷",
+      "mod": "remainder of ÷"
+    },
+    "preview": {
+      "advancedSkipped": "Advanced pieces aren't previewed here; they run in chat.",
+      "alsoDoes": "Also does",
+      "chatLabel": "Chat preview",
+      "chatter": "Chatter",
+      "disclaimer": "Preview only: Twitch info uses sample values and nothing is sent.",
+      "emptyValue": "(empty)",
+      "remembers": "Remembers",
+      "rerun": "Run again (new random values)",
+      "role": "Their role",
+      "roles": {
+        "viewer": "Viewer",
+        "mod": "Mod",
+        "streamer": "Streamer"
+      },
+      "silent": "The bot doesn't reply in chat.",
+      "skipped": "Skipped · {{who}}",
+      "sub": "Updates with every change.",
+      "title": "Try it",
+      "tooLong": "This command runs too long. Check your loops.",
+      "typedAfter": "Typed after the command"
+    },
+    "sections": {
+      "basics": {
+        "label": "Basics",
+        "hint": "Text the bot says and other commands"
+      },
+      "people": {
+        "label": "People",
+        "hint": "Who is chatting, who they mention"
+      },
+      "stream": {
+        "label": "Stream info",
+        "hint": "Live status, title, game, viewers"
+      },
+      "events": {
+        "label": "Event info",
+        "hint": "Raids, cheers, subs, rewards (event commands only)"
+      },
+      "text": {
+        "label": "Text tools",
+        "hint": "Change or cut text"
+      },
+      "numbers": {
+        "label": "Numbers",
+        "hint": "Random numbers and counters"
+      },
+      "variables": {
+        "label": "Variables",
+        "hint": "Remember things between messages"
+      },
+      "logic": {
+        "label": "Logic & loops",
+        "hint": "If/else, compare, repeat, wait"
+      },
+      "chat": {
+        "label": "Chat & voice",
+        "hint": "Send messages, TTS, AI replies"
+      },
+      "moderation": {
+        "label": "Moderation",
+        "hint": "Ban, VIP, mod, chat modes"
+      },
+      "channel": {
+        "label": "Channel",
+        "hint": "Title, polls, predictions, pins, clips"
+      },
+      "overlay": {
+        "label": "Overlay & games",
+        "hint": "Alerts queue, triggers, roulette"
+      }
+    },
+    "starters": {
+      "hello": {
+        "label": "Greeting",
+        "blurb": "Says hi to whoever typed it"
+      },
+      "hug": {
+        "label": "Hug someone",
+        "blurb": "Uses the name after the command"
+      },
+      "deaths": {
+        "label": "Death counter",
+        "blurb": "Saved number that grows every use"
+      },
+      "boss": {
+        "label": "If / else",
+        "blurb": "Different reply for the streamer"
+      },
+      "roulette": {
+        "label": "Timeout roulette",
+        "blurb": "1 in 6 times out the chatter for a minute"
+      },
+      "raid": {
+        "label": "Raid thanks",
+        "blurb": "For raid events: thank and shout out"
+      }
+    },
+    "storage": {
+      "memory": {
+        "label": "Just this run",
+        "short": "this run",
+        "hint": "Forgotten as soon as the command finishes."
+      },
+      "cache": {
+        "label": "Until the stream ends",
+        "short": "this stream",
+        "hint": "Shared by everyone in chat, cleared after the stream."
+      },
+      "cacheUser": {
+        "label": "Per viewer, this stream",
+        "short": "per viewer",
+        "hint": "Each viewer gets their own value until the stream ends."
+      },
+      "db": {
+        "label": "Saved for the channel",
+        "short": "saved",
+        "hint": "Kept across streams, e.g. a death counter."
+      },
+      "dbUser": {
+        "label": "Saved per viewer",
+        "short": "saved per viewer",
+        "hint": "Kept across streams for each viewer, e.g. points."
+      }
+    },
+    "types": {
+      "literal": "Text",
+      "raw": "Advanced piece",
+      "template": "Quoted text",
+      "getVar": "Use variable",
+      "getItem": "Item from a list",
+      "randomItem": "Random item from a list",
+      "listSize": "List size",
+      "wholeList": "Whole list",
+      "setVar": "Set variable",
+      "setList": "Add to a list",
+      "exists": "Variable is set?",
+      "deleteVar": "Forget variable",
+      "arrayLiteral": "List",
+      "compare": "Compare",
+      "math": "Math",
+      "unary": "Sign",
+      "ternary": "If / else",
+      "commandRef": "Run another command",
+      "loopVar": "Loop counter",
+      "loopAssign": "Change counter",
+      "forLoop": "Repeat",
+      "group": "Group",
+      "word": "Word after the command",
+      "rest": "Everything after the command",
+      "root": "Command"
+    },
+    "upgrade": {
+      "title": "Block commands need Premium or Pro",
+      "copy": "Upgrade to save this command. You'll come back to it right after checkout.",
+      "copyHelper": "Ask the channel owner to upgrade to Premium or Pro to save block commands.",
+      "kept": "Your blocks are kept on this device.",
+      "keepEditing": "Keep editing"
+    },
+    "viewer": {
+      "kicker": "AST Blocks",
+      "sub": "How this command works, as blocks. Try it below; nothing is sent.",
+      "close": "Close",
+      "open": "See how {{name}} works",
+      "unavailable": "These blocks can't be shown right now."
+    }
   }
 }

@@ -918,3 +918,226 @@
 }
 
 .lf-modal--subview .lf-type-tabs { display: none; }
+
+/* ---------- Details | Blocks ---------- */
+
+.lf-modal-tabs {
+  display: flex;
+  flex-shrink: 0;
+  gap: 0.25rem;
+  margin: 0.6rem 1rem 0;
+  padding: 0.25rem;
+  border-radius: 999px;
+  background: var(--btn);
+}
+
+.lf-modal-tabs button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  flex: 1;
+  min-height: 40px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.lf-modal-tabs button[aria-selected='true'] {
+  background: #7c3aed;
+  color: #fff;
+}
+
+.lf-modal-tabs button:focus-visible {
+  outline: 2px solid var(--kicker);
+  outline-offset: 2px;
+}
+
+.lf-plan-tag {
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  background: var(--gold-soft);
+  color: var(--gold);
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.lf-modal-tabs button[aria-selected='true'] .lf-plan-tag {
+  background: #fff;
+  color: #6d28d9;
+}
+
+:host-context(html:not(.dark)) .lf-plan-tag,
+:host-context(html:not(.dark)) .lf-blocks-note--gold {
+  color: #92400e;
+}
+
+.lf-hidden {
+  display: none !important;
+}
+
+/* The block editor needs room: full sheet on phones, wide dialog on desktop. */
+.lf-modal.lf-modal--blocks {
+  width: 100%;
+  height: 100dvh;
+  max-height: 100dvh;
+  border-radius: 0;
+}
+
+.lf-blocks-pane {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.lf-blocks-editor {
+  flex: 1;
+  min-height: 0;
+}
+
+.lf-blocks-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0.6rem 1rem 0;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 0.85rem;
+  background: var(--input-bg);
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
+.lf-blocks-note--gold {
+  border-color: color-mix(in srgb, var(--gold) 40%, transparent);
+  background: var(--gold-soft);
+  color: var(--gold);
+  font-weight: 650;
+}
+
+.lf-blocks-start {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.lf-blocks-start .lf-blocks-note {
+  margin: 0;
+}
+
+.lf-blocks-start__title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.lf-blocks-start__actions,
+.lf-draft__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.lf-blocks-reply__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.lf-blocks-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--kicker);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.lf-link-btn {
+  justify-self: start;
+  min-height: 36px;
+  padding: 0.25rem 0;
+  border: 0;
+  background: none;
+  color: var(--kicker);
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.lf-btn--small {
+  min-height: 40px;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.84rem;
+}
+
+.lf-btn--gold {
+  border-color: #b45309;
+  background: #b45309;
+  color: #fff;
+}
+
+.lf-draft {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  margin: 0.6rem 1rem 0;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid color-mix(in srgb, var(--kicker) 35%, transparent);
+  border-radius: 0.85rem;
+  background: var(--accent-soft);
+  font-size: 0.86rem;
+  font-weight: 650;
+}
+
+.lf-upgrade {
+  display: grid;
+  gap: 0.45rem;
+  flex-shrink: 0;
+  padding: 0.85rem 1rem;
+  border-top: 1px solid color-mix(in srgb, var(--gold) 40%, transparent);
+  background: var(--gold-soft);
+}
+
+.lf-upgrade__title {
+  margin: 0;
+  color: var(--fg);
+  font-weight: 800;
+}
+
+.lf-form-error--bar {
+  flex-shrink: 0;
+  padding: 0.5rem 1rem 0;
+}
+
+@media (min-width: 640px) {
+  .lf-modal.lf-modal--blocks {
+    width: min(100%, 78rem);
+    height: min(94dvh, 60rem);
+    max-height: min(94dvh, 60rem);
+    border-radius: var(--radius);
+  }
+}
+
+.lf-modal--blocks .lf-modal__primary {
+  flex: 1;
+}

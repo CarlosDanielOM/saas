@@ -105,7 +105,13 @@
                     </div>
                     @if (description(command); as text) {
                       <p class="lf-item__what">{{ text }}</p>
-                    } @else if (command.message) {
+                    }
+                    @if (isBlockCommand(command)) {
+                      <p class="lf-reply">
+                        <button type="button" class="lf-blocks-label" (click)="viewingBlocks.set(command)"
+                          [attr.aria-label]="t('commandBlocks.viewer.open', { name: '!' + command.cmd })">{{ t('commandBlocks.label') }}</button>
+                      </p>
+                    } @else if (!description(command) && command.message) {
                       <p class="lf-reply" [title]="command.message">
                         @for (part of replyParts(command); track $index) {
                           @if (part.code) { <code>{{ part.text }}</code> } @else { {{ part.text }} }
@@ -140,3 +146,7 @@
     </section>
   </main>
 </div>
+
+@if (viewingBlocks(); as viewing) {
+  <app-blocks-viewer-dialog [commandName]="viewing.cmd" [root]="commandBlocksRoot(viewing)" (closed)="viewingBlocks.set(null)" />
+}

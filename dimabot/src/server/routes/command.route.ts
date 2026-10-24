@@ -10,12 +10,24 @@ import { inspectExpression, LEGACY_USER_LEVEL_NAMES } from "../../utils/permissi
 import { writeCommandWithCooldown, validateKeywordCooldown, CommandCooldownError } from '../../utils/command_cooldown_write.js';
 import { normalizeKeyword, validateKeyword } from '../../utils/keywords.js';
 import { refreshKeywordIndex } from '../../utils/keyword_cache.js';
+import { MAX_COMMAND_TEXT, BlocksError, importCommandText } from '../../utils/ast_blocks/index.js';
+import { CommandBlocksRequestError, presentCommand, resolveCommandBody } from '../services/command_blocks.service.js';
 
 const router = express.Router();
 
 /** Computes the non-localized permission mode for API responses. */
 function permissionModeFor(command: { permissionExpression?: unknown }): 'level' | 'tags' | 'invalid' {
     return inspectExpression(command.permissionExpression).mode;
+}
+
+function sendBlocksError(res: Response, error: CommandBlocksRequestError) {
+    return res.status(error.status).send({
+        error: true,
+        code: error.code,
+        message: error.message,
+        ...(error.blockId ? { blockId: error.blockId } : {}),
+        status: error.status
+    });
 }
 
 function isValidUserLevel(value: unknown): value is number {
@@ -38,7 +50,7 @@ router.get('/', async (req: Request, res: Response) => {
             const commands = await CommandsSchema.find(activationFilter(query.activation)).skip(skip).limit(limit).lean();
 
             const commandsWithMode = commands.map((command) => ({
-                ...command,
+                ...presentCommand(command),
                 permissionMode: permissionModeFor(command)
             }));
 
@@ -75,6 +87,7 @@ router.get('/:channelID', async (req: Request, res: Response) => {
             const language = typeof query.language === 'string' ? query.language : undefined;
 
             let commands = await CommandsSchema.find({ channelID: channelIdStr, ...activationFilter(query.activation) })
+                .select('+blocks')
                 .sort({ reserved: -1, name: 1 })
                 .skip(skip)
                 .limit(limit)
@@ -98,6 +111,7 @@ router.get('/:channelID', async (req: Request, res: Response) => {
 
                     if (createdCount > 0) {
                         commands = await CommandsSchema.find({ channelID: channelIdStr, ...activationFilter(query.activation) })
+                            .select('+blocks')
                             .sort({ reserved: -1, name: 1 })
                             .skip(skip)
                             .limit(limit)
@@ -106,9 +120,9 @@ router.get('/:channelID', async (req: Request, res: Response) => {
                 }
             }
 
-            commands = commands.map((command) => {
+            const presented = commands.map((command) => {
                 const mapped = {
-                    ...command,
+                    ...presentCommand(command, { blocks: true }),
                     permissionMode: permissionModeFor(command)
                 };
 
@@ -125,9 +139,9 @@ router.get('/:channelID', async (req: Request, res: Response) => {
             res.send({
                 error: false,
                 message: 'Commands fetched from database',
-                commands: commands,
+                commands: presented,
                 status: 200,
-                total: commands.length
+                total: presented.length
             });
         } catch (error) {
             console.error('Error in GET /:channelID:', {
@@ -161,7 +175,8 @@ router.post('/:channelID', authMiddleware as any, async (req: Request, res: Resp
                 });
             }
 
-            if (!body.name || !body.cmd || !body.func || !body.message || !body.channel) {
+            const usesBlocks = body.authoring === 'blocks';
+            if (!body.name || !body.cmd || !body.func || (!usesBlocks && !body.message) || !body.channel) {
                 return res.status(400).send({
                     error: true,
                     message: 'Missing required fields',
@@ -221,10 +236,12 @@ router.post('/:channelID', authMiddleware as any, async (req: Request, res: Resp
                 return res.status(409).send({
                     error: true,
                     message: 'Command already exists',
-                    command: existingCommand,
+                    command: presentCommand(existingCommand),
                     status: 409
                 });
             }
+
+            const reply = await resolveCommandBody(channelIdStr, body, null);
 
             const newCommand = new CommandsSchema({
                 name: body.name,
@@ -232,7 +249,9 @@ router.post('/:channelID', authMiddleware as any, async (req: Request, res: Resp
                 activation: isKeyword ? 'keyword' : 'command',
                 keywordSettings,
                 func: isKeyword ? 'custom' : body.func,
-                message: body.message,
+                message: reply.message,
+                authoring: reply.authoring ?? 'text',
+                blocks: reply.blocks ?? null,
                 responses: body.responses ?? [],
                 type: body.type ?? 'command',
                 reserved: false,
@@ -259,10 +278,11 @@ router.post('/:channelID', authMiddleware as any, async (req: Request, res: Resp
             res.send({
                 error: false,
                 message: 'Command created',
-                command: newCommand,
+                command: { ...presentCommand(newCommand, { blocks: true }), permissionMode: permissionModeFor(newCommand) },
                 status: 200
             });
         } catch (error) {
+            if (error instanceof CommandBlocksRequestError) return sendBlocksError(res, error);
             if (error instanceof CommandCooldownError) return res.status(400).send({ error: true, message: error.message, status: 400 });
             console.error('Error in POST /:channelID:', {
                 channelID: req.params.channelID,
@@ -313,7 +333,7 @@ router.put('/:channelID/:commandID', authMiddleware as any, async (req: Request,
             }
 
             const updatePayload: Record<string, unknown> = {};
-            const updatableFields = ['name', 'cmd', 'func', 'message', 'responses', 'type', 'description', 'cooldown', 'enabled', 'userLevelName', 'userLevel'] as const;
+            const updatableFields = ['name', 'cmd', 'func', 'responses', 'type', 'description', 'cooldown', 'enabled', 'userLevelName', 'userLevel'] as const;
             for (const field of updatableFields) {
                 if (field in body) {
                     updatePayload[field] = body[field];
@@ -341,8 +361,11 @@ router.put('/:channelID/:commandID', authMiddleware as any, async (req: Request,
                 if (conflict) return res.status(409).send({ error: true, message: 'Activation already exists', status: 409 });
             }
 
-            if (command.reserved && 'message' in updatePayload) {
-                delete updatePayload.message;
+            // Reply text or blocks (plan, size and block checks live in the service).
+            if (!command.reserved) {
+                Object.assign(updatePayload, await resolveCommandBody(channelIdStr, body, command));
+            } else if (body.authoring === 'blocks') {
+                return res.status(400).send({ error: true, code: 'reserved', message: 'Built-in commands can\'t use blocks', status: 400 });
             }
 
             if (command.reserved && 'description' in updatePayload) {
@@ -400,7 +423,7 @@ router.put('/:channelID/:commandID', authMiddleware as any, async (req: Request,
                 { channelID: channelIdStr, _id: commandIdStr },
                 updatePayload,
                 { new: true }
-            ).exec();
+            ).select('+blocks').exec();
             const updatedCommand = isKeyword ? await writeUpdate()
                 : await writeCommandWithCooldown(channelIdStr, updatePayload.cooldown, command, writeUpdate);
 
@@ -421,7 +444,7 @@ router.put('/:channelID/:commandID', authMiddleware as any, async (req: Request,
                 await cacheClient.del(`${channelIdStr}:commands:${updatedCommand.cmd}`);
             }
 
-            const commandResponse: Record<string, unknown> = { ...updatedCommand.toObject() };
+            const commandResponse: Record<string, unknown> = presentCommand(updatedCommand, { blocks: true });
             commandResponse.permissionMode = permissionModeFor(updatedCommand);
             if (commandResponse.reserved) {
                 commandResponse.description = getLocalizedReservedCommandDescription(
@@ -438,6 +461,7 @@ router.put('/:channelID/:commandID', authMiddleware as any, async (req: Request,
                 status: 200
             });
         } catch (error) {
+            if (error instanceof CommandBlocksRequestError) return sendBlocksError(res, error);
             if (error instanceof CommandCooldownError) return res.status(400).send({ error: true, message: error.message, status: 400 });
             console.error('Error in PUT /:channelID/:commandID:', {
                 channelID: req.params.channelID,
@@ -513,7 +537,7 @@ router.delete('/:channelID/:commandID', authMiddleware as any, async (req: Reque
             res.send({
                 error: false,
                 message: 'Command deleted',
-                command: deletedCommand,
+                command: presentCommand(deletedCommand),
                 status: 200
             });
         } catch (error) {
@@ -532,5 +556,38 @@ router.delete('/:channelID/:commandID', authMiddleware as any, async (req: Reque
             });
         }
     });
+
+/**
+ * Command text → blocks for the editor's import box. Any channel editor may
+ * use it (free channels too: the editor is a try-out until they upgrade).
+ */
+router.post('/:channelID/blocks/import', authMiddleware as any, async (req: Request, res: Response) => {
+    try {
+        const channelIdStr = String(req.params.channelID);
+        const access = await getChannelAccessContext((req as any).user?.id, channelIdStr, 'commands:manage');
+        if (!access.allowed) {
+            return res.status(403).send({ error: true, message: 'You do not have access to this channel', status: 403 });
+        }
+        const text = req.body?.text;
+        if (typeof text !== 'string' || !text.trim()) {
+            return res.status(400).send({ error: true, code: 'missing_text', message: 'Paste the command text to import', status: 400 });
+        }
+        if (text.length > MAX_COMMAND_TEXT) {
+            return res.status(400).send({ error: true, code: 'too_long', message: `The text is too long (${text.length} of ${MAX_COMMAND_TEXT} characters)`, status: 400 });
+        }
+        const imported = importCommandText(text);
+        res.set('Cache-Control', 'no-store');
+        res.send({ error: false, message: 'Imported', root: imported.root, advancedCount: imported.advancedCount, status: 200 });
+    } catch (error) {
+        if (error instanceof BlocksError) {
+            return res.status(400).send({ error: true, code: 'blocks_invalid', message: error.message, status: 400 });
+        }
+        console.error('Error in POST /:channelID/blocks/import:', {
+            channelID: req.params.channelID,
+            error: error instanceof Error ? error.message : String(error)
+        });
+        res.status(500).send({ error: true, message: 'Error importing command text', status: 500 });
+    }
+});
 
 export const commandRoute = router;

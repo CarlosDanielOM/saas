@@ -1,0 +1,239 @@
+@if (node(); as n) {
+  <section class="insp" [attr.data-tone]="tone()" aria-labelledby="insp-title">
+    <header class="insp__head">
+      <span class="insp__dot" aria-hidden="true"></span>
+      <div class="insp__titles">
+        <p class="insp__kicker">{{ t('commandBlocks.inspector.kicker') }}</p>
+        <h3 id="insp-title" class="insp__title" [class.is-code]="n.type === 'function'">{{ title() }}</h3>
+      </div>
+      <button type="button" class="insp__close" (click)="close()" [attr.aria-label]="t('commandBlocks.inspector.close')">
+        <lucide-icon [name]="icons.close" [size]="18" aria-hidden="true" />
+      </button>
+    </header>
+
+    @if (showError(); as message) {
+      <p class="insp__error" role="alert">
+        <lucide-icon [name]="icons.warn" [size]="15" aria-hidden="true" />
+        <span>{{ message }}</span>
+      </p>
+    }
+
+    <p class="insp__help">{{ help() }}</p>
+
+    @if (n.type === 'function') {
+      @if (level() || entry()?.destructive) {
+        <ul class="insp__notes">
+          @if (level()) {
+            <li class="insp__note">
+              <lucide-icon [name]="icons.shield" [size]="15" aria-hidden="true" />
+              <span><strong>{{ level() }}.</strong> {{ t('commandBlocks.inspector.levelNote') }}</span>
+            </li>
+          }
+          @if (entry()?.destructive) {
+            <li class="insp__note insp__note--danger">
+              <lucide-icon [name]="icons.warn" [size]="15" aria-hidden="true" />
+              <span><strong>{{ t('commandBlocks.inspector.destructiveTitle') }}</strong> {{ t('commandBlocks.inspector.destructiveNote') }}</span>
+            </li>
+          }
+        </ul>
+      }
+      @if (entry(); as e) {
+        <p class="insp__syntax"><code>{{ e.syntax }}</code></p>
+      }
+
+      @if (holes().length) {
+        <div class="insp__fields">
+          @for (hole of holes(); track $index; let i = $index) {
+            <div class="field">
+              <label class="field__label" [for]="'arg-' + i">{{ hole.label }}{{ hole.optional ? ' · ' + t('commandBlocks.inspector.optional') : '' }}</label>
+              <div class="field__row">
+                @if (argIsBlocks(hole.nodes)) {
+                  <p class="field__blocks">{{ t('commandBlocks.inspector.argHasBlocks') }}</p>
+                } @else {
+                  <input
+                    class="field__input"
+                    [id]="'arg-' + i"
+                    [value]="argSummary(hole.nodes)"
+                    [disabled]="ro()"
+                    [placeholder]="t(hole.optional ? 'commandBlocks.inspector.skipPlaceholder' : 'commandBlocks.inspector.valuePlaceholder')"
+                    (change)="setArgText(i, $event)"
+                  />
+                }
+                @if (!ro()) {
+                  <button type="button" class="field__pick" [attr.aria-label]="t('commandBlocks.inspector.putBlockIn', { slot: hole.label })" (click)="setArgCursor(hole.target)">
+                    <lucide-icon [name]="icons.cursor" [size]="16" aria-hidden="true" />
+                  </button>
+                }
+              </div>
+            </div>
+          }
+          @if (!ro()) {
+            <p class="insp__tip">{{ t('commandBlocks.inspector.argTip') }}</p>
+          }
+        </div>
+      }
+    }
+
+    @if (n.type === 'literal') {
+      @if (isArgument(n.value)) {
+        <fieldset class="seg">
+          <legend class="field__label">{{ t('commandBlocks.inspector.argumentWhich') }}</legend>
+          <div class="seg__row">
+            <button type="button" class="seg__btn" [disabled]="ro()" [attr.aria-pressed]="n.value !== '&t'" (click)="setArgument('word')">{{ t('commandBlocks.inspector.oneWord') }}</button>
+            <button type="button" class="seg__btn" [disabled]="ro()" [attr.aria-pressed]="n.value === '&t'" (click)="setArgument('rest')">{{ t('commandBlocks.inspector.everything') }}</button>
+          </div>
+        </fieldset>
+        @if (n.value !== '&t') {
+          <div class="field">
+            <label class="field__label" for="insp-arg">{{ t('commandBlocks.inspector.wordNumber') }}</label>
+            <input id="insp-arg" class="field__input field__input--num" inputmode="numeric" [disabled]="ro()" [value]="argumentIndex()" (change)="setArgument('word', $event)" />
+          </div>
+        }
+      } @else {
+        <div class="field">
+          <label class="field__label" for="insp-text">{{ t('commandBlocks.types.literal') }}</label>
+          <textarea id="insp-text" class="field__input field__input--area" rows="3" [readOnly]="ro()" [value]="n.value" (input)="patchField('value', $event)"></textarea>
+        </div>
+      }
+    }
+
+    @if (n.type === 'raw') {
+      <div class="field">
+        <label class="field__label" for="insp-raw">{{ t('commandBlocks.inspector.rawLabel') }}</label>
+        <textarea id="insp-raw" class="field__input field__input--area field__input--mono" rows="4" spellcheck="false" autocapitalize="off" [readOnly]="ro()" [value]="n.source" (change)="patchField('source', $event)"></textarea>
+      </div>
+    }
+
+    @if (n.type === 'getVar' || n.type === 'setVar' || n.type === 'exists' || n.type === 'deleteVar') {
+      <div class="field">
+        <label class="field__label" for="insp-name">{{ t('commandBlocks.inspector.varName') }}</label>
+        <input id="insp-name" class="field__input field__input--mono" [disabled]="ro()" [value]="n.name" (input)="patchField('name', $event)" autocapitalize="off" spellcheck="false" />
+      </div>
+      <fieldset class="choice">
+        <legend class="field__label">{{ t('commandBlocks.inspector.keptFor') }}</legend>
+        @for (id of storages; track id) {
+          <label class="choice__opt" [class.is-on]="n.storage === id">
+            <input type="radio" name="insp-storage" [disabled]="ro()" [checked]="n.storage === id" (change)="setStorage(id)" />
+            <span class="choice__text">
+              <span class="choice__title">{{ t('commandBlocks.storage.' + id + '.label') }}</span>
+              <span class="choice__hint">{{ t('commandBlocks.storage.' + id + '.hint') }}</span>
+            </span>
+          </label>
+        }
+      </fieldset>
+      @if (isPerViewer(n.storage) && !n.userSelector && !ro()) {
+        <p class="insp__tip">{{ t('commandBlocks.inspector.perViewerTip') }}</p>
+      }
+      @if (n.type === 'getVar') {
+        <fieldset class="seg">
+          <legend class="field__label">{{ t('commandBlocks.inspector.use') }}</legend>
+          <div class="seg__row">
+            <button type="button" class="seg__btn" [disabled]="ro()" [attr.aria-pressed]="!n.accessor" (click)="setAccessor('value')">{{ t('commandBlocks.inspector.theValue') }}</button>
+            <button type="button" class="seg__btn" [disabled]="ro()" [attr.aria-pressed]="n.accessor?.type === 'index'" (click)="setAccessor('index')">{{ t('commandBlocks.inspector.oneItem') }}</button>
+            <button type="button" class="seg__btn" [disabled]="ro()" [attr.aria-pressed]="n.accessor?.type === 'random'" (click)="setAccessor('random')">{{ t('commandBlocks.inspector.randomItem') }}</button>
+            <button type="button" class="seg__btn" [disabled]="ro()" [attr.aria-pressed]="n.accessor?.type === 'length'" (click)="setAccessor('length')">{{ t('commandBlocks.inspector.listSize') }}</button>
+          </div>
+        </fieldset>
+      }
+      @if (n.type === 'deleteVar') {
+        <fieldset class="seg">
+          <legend class="field__label">{{ t('commandBlocks.inspector.forgetWhat') }}</legend>
+          <div class="seg__row">
+            <button type="button" class="seg__btn" [disabled]="ro()" [attr.aria-pressed]="!n.accessor" (click)="setDeleteMode('whole')">{{ t('commandBlocks.inspector.forgetWhole') }}</button>
+            <button type="button" class="seg__btn" [disabled]="ro()" [attr.aria-pressed]="n.accessor?.type === 'clear'" (click)="setDeleteMode('clear')">{{ t('commandBlocks.inspector.forgetAll') }}</button>
+            <button type="button" class="seg__btn" [disabled]="ro()" [attr.aria-pressed]="n.accessor?.type === 'remove'" (click)="setDeleteMode('remove')">{{ t('commandBlocks.inspector.forgetOne') }}</button>
+          </div>
+        </fieldset>
+      }
+      @if (n.accessor && (n.accessor.type === 'index' || n.accessor.type === 'remove' || n.accessor.type === 'setIndex')) {
+        <div class="field">
+          <label class="field__label" for="insp-index">{{ t('commandBlocks.inspector.position') }}</label>
+          <input id="insp-index" class="field__input field__input--num" inputmode="numeric" [disabled]="ro()" [value]="indexValue()" (change)="patchIndex($event)" />
+        </div>
+      }
+    }
+
+    @if (n.type === 'binary') {
+      <div class="field">
+        <label class="field__label" for="insp-op">{{ t(title() === t('commandBlocks.types.math') ? 'commandBlocks.inspector.operation' : 'commandBlocks.inspector.check') }}</label>
+        <select id="insp-op" class="field__input" [disabled]="ro()" [attr.aria-label]="t('commandBlocks.inspector.check')" (change)="patchField('operator', $event)">
+          @for (op of operators(n.operator); track op) {
+            <option [value]="op" [selected]="op === n.operator">{{ opLabel(op) }} ({{ op }})</option>
+          }
+        </select>
+      </div>
+      @if (!ro()) {
+        <p class="insp__tip">{{ t('commandBlocks.inspector.fillSides') }}</p>
+      }
+    }
+
+    @if (n.type === 'unary') {
+      <div class="field">
+        <label class="field__label" for="insp-unary">{{ t('commandBlocks.inspector.sign') }}</label>
+        <select id="insp-unary" class="field__input" [disabled]="ro()" [attr.aria-label]="t('commandBlocks.inspector.sign')" (change)="patchField('operator', $event)">
+          <option value="-" [selected]="n.operator === '-'">− ({{ t('commandBlocks.inspector.negative') }})</option>
+          <option value="+" [selected]="n.operator === '+'">+</option>
+        </select>
+      </div>
+    }
+
+    @if (n.type === 'ternary') {
+      <p class="insp__tip">{{ t('commandBlocks.inspector.branches', { count: branchCount() }) }}</p>
+      @if (!ro()) {
+        <button type="button" class="lf-btn lf-btn--sm insp__wide-btn" (click)="addElseIf()">{{ t('commandBlocks.inspector.addElseIf') }}</button>
+      }
+    }
+
+    @if (n.type === 'forLoop') {
+      @if (n.mode === 'range' && simpleTimes(n) !== null) {
+        <div class="field">
+          <label class="field__label" for="insp-repeat">{{ t('commandBlocks.inspector.times') }}</label>
+          <input id="insp-repeat" class="field__input field__input--num" inputmode="numeric" [disabled]="ro()" [value]="simpleTimes(n)" (change)="patchRepeat($event)" />
+        </div>
+      } @else if (n.mode === 'range') {
+        <p class="insp__tip">{{ t('commandBlocks.inspector.customLoop') }}</p>
+      }
+      <div class="field">
+        <label class="field__label" for="insp-loopvar">{{ t('commandBlocks.inspector.counterName') }}</label>
+        <input id="insp-loopvar" class="field__input field__input--mono" [disabled]="ro()" [value]="n.loopVar" (change)="renameLoopVar($event)" />
+      </div>
+      <p class="insp__tip">{{ t('commandBlocks.inspector.loopTip') }}</p>
+    }
+
+    @if (n.type === 'loopAssign') {
+      <div class="field">
+        <label class="field__label" for="insp-loopop">{{ t('commandBlocks.inspector.counterChange') }}</label>
+        <select id="insp-loopop" class="field__input" [disabled]="ro()" [attr.aria-label]="t('commandBlocks.inspector.counterChange')" (change)="setLoopOp($event)">
+          @for (op of loopOps; track op) {
+            <option [value]="op" [selected]="op === n.operator">{{ t('commandBlocks.loopOps.' + op) }} ({{ op }})</option>
+          }
+        </select>
+      </div>
+    }
+
+    @if (n.type === 'commandRef') {
+      <div class="field">
+        <label class="field__label" for="insp-cmd">{{ t('commandBlocks.inspector.commandName') }}</label>
+        <input id="insp-cmd" class="field__input field__input--mono" [disabled]="ro()" [value]="n.commandName" (input)="patchField('commandName', $event)" autocapitalize="off" />
+      </div>
+    }
+
+    @if (!ro()) {
+      <div class="insp__actions" role="group" [attr.aria-label]="t('commandBlocks.inspector.actions')">
+        <button type="button" class="icon-btn" [disabled]="!canMoveEarlier()" (click)="store.moveBy(n.id, -1)" [attr.aria-label]="t('commandBlocks.inspector.moveEarlier')" [attr.title]="t('commandBlocks.inspector.moveEarlier')">
+          <lucide-icon [name]="icons.left" [size]="17" aria-hidden="true" />
+        </button>
+        <button type="button" class="icon-btn" [disabled]="!canMoveLater()" (click)="store.moveBy(n.id, 1)" [attr.aria-label]="t('commandBlocks.inspector.moveLater')" [attr.title]="t('commandBlocks.inspector.moveLater')">
+          <lucide-icon [name]="icons.right" [size]="17" aria-hidden="true" />
+        </button>
+        <button type="button" class="icon-btn" [disabled]="!inList()" (click)="store.duplicate(n.id)" [attr.aria-label]="t('commandBlocks.inspector.duplicate')" [attr.title]="t('commandBlocks.inspector.duplicate')">
+          <lucide-icon [name]="icons.copy" [size]="17" aria-hidden="true" />
+        </button>
+        <button type="button" class="lf-btn lf-btn--sm insp__after" [disabled]="!inList()" (click)="addAfter()">{{ t('commandBlocks.inspector.addAfter') }}</button>
+        <button type="button" class="icon-btn icon-btn--danger" (click)="remove()" [attr.aria-label]="t('commandBlocks.inspector.delete')" [attr.title]="t('commandBlocks.inspector.delete')">
+          <lucide-icon [name]="icons.trash" [size]="17" aria-hidden="true" />
+        </button>
+      </div>
+    }
+  </section>
+}

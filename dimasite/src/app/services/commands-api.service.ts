@@ -1,8 +1,9 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
-import { catchError, map, of, tap } from 'rxjs';
+import { Observable, catchError, map, of, tap } from 'rxjs';
 
 import { Command, CreateCommandRequest, UpdateCommandRequest } from '../models/command.model';
+import type { RootNode } from '../features/commands/blocks/blocks.model';
 import { LanguageService } from './language.service';
 import { LinksService } from './links.service';
 
@@ -20,6 +21,21 @@ interface CommandsListResponse {
 interface LegacyCommandsResponse {
   commands?: Command[];
   command?: Command;
+}
+
+/** Why a save failed, so the block editor can point at the block or offer an upgrade. */
+export interface CommandSaveError {
+  status: number;
+  code: string | null;
+  message: string;
+  blockId: string | null;
+}
+
+export type CommandSaveResult = { command: Command; error: null } | { command: null; error: CommandSaveError };
+
+export interface BlocksImportResult {
+  root: RootNode;
+  advancedCount: number;
 }
 
 interface CacheEntry<T> {
@@ -201,6 +217,61 @@ export class CommandsApiService {
         }),
         catchError(() => of(false))
       );
+  }
+
+  /** Create with error details (block saves keep the dialog open on failure). */
+  createCommandDetailed(channelID: string, command: CreateCommandRequest): Observable<CommandSaveResult> {
+    return this.http
+      .post<ApiEnvelope<{ command: Command }> & LegacyCommandsResponse>(`${this.linksService.getApiUrl()}/commands/${channelID}`, command)
+      .pipe(
+        map((response): CommandSaveResult => ({ command: this.extractCommand(response, 'Failed to create command'), error: null })),
+        tap(() => this.clearAllCache()),
+        catchError((err: unknown) => of<CommandSaveResult>({ command: null, error: this.saveError(err) }))
+      );
+  }
+
+  /** Update with error details (block saves keep the dialog open on failure). */
+  updateCommandDetailed(channelID: string, commandID: string, updates: UpdateCommandRequest): Observable<CommandSaveResult> {
+    const language = this.languageService.getCurrentLanguage();
+    return this.http
+      .put<ApiEnvelope<{ command: Command }> & LegacyCommandsResponse>(
+        `${this.linksService.getApiUrl()}/commands/${channelID}/${commandID}?language=${encodeURIComponent(language)}`,
+        updates
+      )
+      .pipe(
+        map((response): CommandSaveResult => ({ command: this.extractCommand(response, 'Failed to update command'), error: null })),
+        tap((result) => {
+          if (!result.command) return;
+          this.updateCachedCommands(channelID, (commands) =>
+            commands.map((command) => (command.id === commandID || command._id === commandID ? result.command! : command)));
+        }),
+        catchError((err: unknown) => of<CommandSaveResult>({ command: null, error: this.saveError(err) }))
+      );
+  }
+
+  /** Command text → blocks for the editor's import box (never saves anything). */
+  importBlocks(channelID: string, text: string): Observable<{ result: BlocksImportResult | null; error: CommandSaveError | null }> {
+    return this.http
+      .post<{ error: boolean; root?: RootNode; advancedCount?: number; message?: string }>(
+        `${this.linksService.getApiUrl()}/commands/${channelID}/blocks/import`,
+        { text }
+      )
+      .pipe(
+        map((response) => response.root
+          ? { result: { root: response.root, advancedCount: response.advancedCount ?? 0 }, error: null }
+          : { result: null, error: { status: 400, code: null, message: response.message ?? '', blockId: null } }),
+        catchError((err: unknown) => of({ result: null, error: this.saveError(err) }))
+      );
+  }
+
+  private saveError(err: unknown): CommandSaveError {
+    const body = err instanceof HttpErrorResponse ? (err.error as Record<string, unknown> | null) : null;
+    return {
+      status: err instanceof HttpErrorResponse ? err.status : 0,
+      code: typeof body?.['code'] === 'string' ? body['code'] : null,
+      message: typeof body?.['message'] === 'string' ? body['message'] : '',
+      blockId: typeof body?.['blockId'] === 'string' ? body['blockId'] : null
+    };
   }
 
   enableCommand(channelID: string, commandID: string) {

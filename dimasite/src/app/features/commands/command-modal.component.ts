@@ -8,6 +8,7 @@ import {
   input,
   output,
   signal,
+  untracked,
   viewChild
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
@@ -34,9 +35,15 @@ import {
   type TagDecision,
   type TwitchAccountRef
 } from '../../models/permission-expression.model';
+import { CommandsApiService, type CommandSaveError } from '../../services/commands-api.service';
 import { LanguageService } from '../../services/language.service';
 import { TwitchAccountLookupService } from '../../services/twitch-account-lookup.service';
+import { UpgradeService } from '../../services/upgrade.service';
 import { LfIconComponent } from '../../shared/lf-icon/lf-icon.component';
+import { BlocksEditorComponent } from './blocks/blocks-editor.component';
+import { type CommandDraft, clearDraft, draftKey, markResume, readDraft, writeDraft } from './blocks/blocks.draft';
+import { type RootNode, emptyRoot, rootFromStored } from './blocks/blocks.model';
+import { BlocksStore } from './blocks/blocks.store';
 
 export type PlanTier = 'free' | 'premium' | 'pro';
 
@@ -49,12 +56,16 @@ export interface CommandModalSavePayload {
 }
 
 const FREE_INTERVALS: readonly number[] = [10, 20, 30, 40, 50, 60];
+/** Website saves allow long replies; chat !ec keeps its own short limit. */
+export const MAX_REPLY_LENGTH = 10_000;
+const DRAFT_DELAY_MS = 600;
 const PREMIUM_QUICK = [5, 10, 15, 30, 45, 60, 90, 120, 180] as const;
 const PRO_QUICK = [1, 5, 7, 12, 15, 30, 45, 60, 90, 120, 180] as const;
 
 @Component({
   selector: 'app-command-modal',
-  imports: [ReactiveFormsModule, NgTemplateOutlet, LfIconComponent],
+  imports: [ReactiveFormsModule, NgTemplateOutlet, LfIconComponent, BlocksEditorComponent],
+  providers: [BlocksStore],
   templateUrl: './command-modal.component.html',
   styleUrl: './command-modal.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -63,7 +74,13 @@ export class CommandModalComponent {
   private readonly fb = inject(FormBuilder);
   private readonly languageService = inject(LanguageService);
   private readonly accountLookup = inject(TwitchAccountLookupService);
+  private readonly commandsApi = inject(CommandsApiService);
+  private readonly upgradeService = inject(UpgradeService);
+  readonly blocks = inject(BlocksStore);
   private accessSession = 0;
+  private draftTimer: number | null = null;
+  /** Set once the dialog is filled in, so loading doesn't count as a change. */
+  private tracking = false;
   private readonly mobileAccessTrigger = viewChild<ElementRef<HTMLButtonElement>>('mobileAccessTrigger');
   private readonly mobileTagsBackButton = viewChild<ElementRef<HTMLButtonElement>>('mobileTagsBackButton');
   private readonly mobileAccountsBackButton = viewChild<ElementRef<HTMLButtonElement>>('mobileAccountsBackButton');
@@ -85,6 +102,27 @@ export class CommandModalComponent {
   readonly existingTimerMinutes = input<number | null>(null);
   /** Tab a new item opens on. */
   readonly startAs = input<'command' | 'keyword'>('command');
+  readonly channelID = input<string | null>(null);
+  /** The channel owner (not a helper) is the one who can upgrade. */
+  readonly isOwner = input(true);
+  /** Reopening after the upgrade checkout: restore the draft without asking. */
+  readonly resumeDraft = input(false);
+  /** Why the last block save failed (set by the commands page). */
+  readonly saveError = input<CommandSaveError | null>(null);
+
+  readonly modalTab = signal<'details' | 'blocks'>('details');
+  readonly authoring = signal<'text' | 'blocks'>('text');
+  readonly blocksAllowed = computed(() => this.planTier() === 'premium' || this.planTier() === 'pro');
+  /** A block command on a channel that no longer has Premium/Pro: keeps running, read-only. */
+  readonly blocksLocked = computed(() => this.authoring() === 'blocks' && this.command()?.authoring === 'blocks' && !this.blocksAllowed());
+  readonly showUpgrade = signal(false);
+  readonly converting = signal(false);
+  readonly convertError = signal<string | null>(null);
+  readonly confirmToText = signal(false);
+  readonly draftOffer = signal<CommandDraft | null>(null);
+  readonly draftSaved = signal(false);
+  readonly blockErrorMessage = signal<string | null>(null);
+  readonly maxReplyLength = MAX_REPLY_LENGTH;
 
   readonly isEditMode = signal(false);
   readonly isSaving = signal(false);
@@ -147,6 +185,24 @@ export class CommandModalComponent {
   });
 
   constructor() {
+    // Block replies have no text to validate.
+    effect(() => {
+      const message = this.commandForm.controls.message;
+      message.setValidators(this.authoring() === 'blocks' ? [] : [Validators.required, Validators.maxLength(MAX_REPLY_LENGTH)]);
+      message.updateValueAndValidity({ emitEvent: false });
+    });
+    // Keep a draft in this browser while something is unsaved.
+    this.commandForm.valueChanges.subscribe(() => this.queueDraft());
+    effect(() => {
+      this.blocks.editCount();
+      this.authoring();
+      untracked(() => this.queueDraft());
+    });
+    // Show the server's complaint where it belongs.
+    effect(() => {
+      const error = this.saveError();
+      untracked(() => this.applySaveError(error));
+    });
     effect(() => {
       const trigger = this.commandForm.controls.cmd;
       trigger.setValidators(this.isKeyword()
@@ -168,10 +224,153 @@ export class CommandModalComponent {
         this.accessSession += 1;
         this.isSaving.set(false);
         this.formError.set(null);
+        this.tracking = false;
+        this.flushDraft();
         return;
       }
-      this.setupForm();
+      untracked(() => this.setupForm());
     });
+  }
+
+  // ---------- blocks ----------
+
+  setModalTab(tab: 'details' | 'blocks'): void {
+    this.modalTab.set(tab);
+    this.formError.set(null);
+  }
+
+  onModalTabKeydown(event: KeyboardEvent): void {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    const next = event.key === 'Home' ? 'details' : event.key === 'End' ? 'blocks' : this.modalTab() === 'details' ? 'blocks' : 'details';
+    this.setModalTab(next);
+    const list = (event.currentTarget as HTMLElement).parentElement;
+    list?.querySelector<HTMLButtonElement>(`#modal-tab-${next}`)?.focus();
+  }
+
+  /** Start building: empty, or from the reply typed in Details. */
+  async useBlocks(from: 'empty' | 'reply'): Promise<void> {
+    this.convertError.set(null);
+    if (from === 'empty') {
+      this.blocks.load(emptyRoot());
+      this.authoring.set('blocks');
+      return;
+    }
+    const text = String(this.commandForm.controls.message.value || '').trim();
+    const channelID = this.channelID();
+    if (!text || !channelID) return;
+    this.converting.set(true);
+    const { result, error } = await firstValueFrom(this.commandsApi.importBlocks(channelID, text));
+    this.converting.set(false);
+    if (!result) {
+      this.convertError.set(error?.code === 'too_long' ? this.t('commandBlocks.import.tooLong') : this.t('commandBlocks.import.failed'));
+      return;
+    }
+    this.blocks.load(result.root);
+    this.blocks.editCount.update((n) => n + 1);
+    this.authoring.set('blocks');
+  }
+
+  /** Back to a text reply: the blocks stay here until saving, but the reply starts empty. */
+  switchToText(): void {
+    if (this.command()?.authoring === 'blocks' && !this.confirmToText()) {
+      this.confirmToText.set(true);
+      return;
+    }
+    this.confirmToText.set(false);
+    this.authoring.set('text');
+    this.commandForm.controls.message.setValue('');
+    this.modalTab.set('details');
+  }
+
+  async seePlans(): Promise<void> {
+    const channelID = this.channelID();
+    if (channelID) {
+      this.flushDraft(true);
+      markResume(channelID, this.currentDraftKey());
+    }
+    await this.upgradeService.promptUpgradeForAnyPlan('command_blocks');
+  }
+
+  restoreDraft(): void {
+    const draft = this.draftOffer();
+    if (draft) this.applyDraft(draft);
+    this.draftOffer.set(null);
+  }
+
+  discardDraft(): void {
+    clearDraft(this.currentDraftKey());
+    this.draftOffer.set(null);
+  }
+
+  draftAge(draft: CommandDraft): string {
+    const minutes = Math.max(0, Math.round((Date.now() - draft.savedAt) / 60000));
+    if (minutes < 1) return this.t('commandBlocks.draft.justNow');
+    if (minutes < 60) return this.t('commandBlocks.draft.minutes', { count: minutes });
+    const hours = Math.round(minutes / 60);
+    return hours < 48 ? this.t('commandBlocks.draft.hours', { count: hours }) : this.t('commandBlocks.draft.days', { count: Math.round(hours / 24) });
+  }
+
+  currentDraftKey(): string {
+    const cmd = this.command();
+    return draftKey({ channelID: this.channelID() ?? 'unknown', commandId: cmd ? cmd._id || cmd.id : null, activation: this.isKeyword() ? 'keyword' : 'command' });
+  }
+
+  private applySaveError(error: CommandSaveError | null): void {
+    if (!error) return;
+    this.isSaving.set(false);
+    if (error.code === 'plan_required') {
+      this.showUpgrade.set(true);
+      return;
+    }
+    if (error.blockId) {
+      this.blockErrorMessage.set(error.message || this.t('commandBlocks.errors.block'));
+      this.blocks.errorBlockId.set(error.blockId);
+      this.modalTab.set('blocks');
+      this.formError.set(this.t('commandBlocks.errors.fixBlock'));
+      return;
+    }
+    this.formError.set(error.code === 'too_long' ? this.t('commandBlocks.errors.tooLong', { max: MAX_REPLY_LENGTH })
+      : error.message || this.t('commandBlocks.errors.save'));
+  }
+
+  private queueDraft(): void {
+    if (!this.tracking || !this.isOpen()) return;
+    this.draftSaved.set(false);
+    if (this.draftTimer !== null) window.clearTimeout(this.draftTimer);
+    this.draftTimer = window.setTimeout(() => this.flushDraft(), DRAFT_DELAY_MS);
+  }
+
+  /** Writes the pending draft now (also on close, so an accidental close keeps the work). */
+  private flushDraft(force = false): void {
+    if (this.draftTimer !== null) {
+      window.clearTimeout(this.draftTimer);
+      this.draftTimer = null;
+    } else if (!force) {
+      return;
+    }
+    if (!this.channelID()) return;
+    const saved = writeDraft(this.currentDraftKey(), {
+      authoring: this.authoring(),
+      root: this.authoring() === 'blocks' || !this.blocks.isEmpty() ? this.blocks.root() : null,
+      form: this.commandForm.getRawValue(),
+      access: { mode: this.accessMode(), draft: this.accessDraft() }
+    });
+    this.draftSaved.set(saved);
+  }
+
+  private applyDraft(draft: CommandDraft): void {
+    this.tracking = false;
+    const { message, ...rest } = draft.form as Record<string, unknown>;
+    this.commandForm.patchValue({ ...rest, ...(this.isReserved() ? {} : { message: typeof message === 'string' ? message : '' }) } as never);
+    const access = draft.access as { mode?: 'level' | 'tags'; draft?: AccessDraft } | undefined;
+    if (access?.mode) this.accessMode.set(access.mode);
+    if (access?.draft) this.accessDraft.set(access.draft);
+    if (draft.root) this.blocks.load(draft.root);
+    this.authoring.set(draft.authoring === 'blocks' && !this.isReserved() ? 'blocks' : 'text');
+    if (draft.authoring === 'blocks') this.modalTab.set('blocks');
+    this.tracking = true;
+    this.queueDraft();
   }
 
   t(key: string, params?: Record<string, string | number>): string {
@@ -364,6 +563,21 @@ export class CommandModalComponent {
     if (this.commandForm.invalid) {
       this.commandForm.markAllAsTouched();
       this.formError.set(this.t('commands.modal.validationRequired'));
+      this.modalTab.set('details');
+      return;
+    }
+
+    const usesBlocks = this.authoring() === 'blocks' && !this.isReserved();
+    const wasBlocks = this.command()?.authoring === 'blocks';
+    const blocksChanged = usesBlocks && (!wasBlocks || this.blocks.editCount() > 0);
+    if (usesBlocks && this.blocks.isEmpty()) {
+      this.formError.set(this.t('commandBlocks.errors.empty'));
+      this.modalTab.set('blocks');
+      return;
+    }
+    if (blocksChanged && !this.blocksAllowed()) {
+      this.flushDraft(true);
+      this.showUpgrade.set(true);
       return;
     }
 
@@ -390,7 +604,9 @@ export class CommandModalComponent {
       func: this.command()?.func || String(formValue.cmd || '')
         .trim()
         .replace(/^!/, ''),
-      message: String(formValue.message || '').trim(),
+      message: usesBlocks ? '' : String(formValue.message || '').trim(),
+      ...(usesBlocks ? { authoring: 'blocks' as const, ...(blocksChanged ? { blocks: this.blocks.root() } : {}) }
+        : wasBlocks ? { authoring: 'text' as const } : {}),
       description: formValue.description ? String(formValue.description).trim() : null,
       cooldown: Number(formValue.cooldown ?? 10),
       userLevel: Number(formValue.userLevel) || 1,
@@ -413,14 +629,30 @@ export class CommandModalComponent {
       }
     });
 
-    setTimeout(() => this.isSaving.set(false), 500);
+    this.showUpgrade.set(false);
+    this.blockErrorMessage.set(null);
+    // Block saves wait for the server; the page closes the dialog or reports the error.
+    if (!usesBlocks) setTimeout(() => this.isSaving.set(false), 500);
   }
 
   private setupForm(): void {
     this.accessSession += 1;
+    this.tracking = false;
     const cmd = this.command();
     this.isEditMode.set(!!cmd);
     this.formError.set(null);
+    this.modalTab.set('details');
+    this.showUpgrade.set(false);
+    this.convertError.set(null);
+    this.confirmToText.set(false);
+    this.blockErrorMessage.set(null);
+    this.draftOffer.set(null);
+    this.draftSaved.set(false);
+    this.authoring.set(cmd?.authoring === 'blocks' ? 'blocks' : 'text');
+    const storedRoot: RootNode | null = cmd?.authoring === 'blocks' ? rootFromStored(cmd.blocks) : null;
+    this.blocks.load(storedRoot ?? emptyRoot());
+    this.blocks.readOnly.set(cmd?.authoring === 'blocks' && !this.blocksAllowed());
+    if (cmd?.authoring === 'blocks') this.modalTab.set('blocks');
     this.mobileAccessView.set('main');
     this.accountsOpen.set(false);
     this.lookupInput.set({ allow: '', exclude: '' });
@@ -476,6 +708,15 @@ export class CommandModalComponent {
       });
       this.commandForm.enable({ emitEvent: false });
     }
+    this.finishSetup();
+  }
+
+  /** After the form is filled in: offer (or, after checkout, apply) a saved draft, then start tracking. */
+  private finishSetup(): void {
+    const draft = this.channelID() ? readDraft(this.currentDraftKey()) : null;
+    if (draft && this.resumeDraft()) this.applyDraft(draft);
+    else if (draft) this.draftOffer.set(draft);
+    this.tracking = true;
   }
 
   private defaultTimerMinutes(): number {

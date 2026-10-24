@@ -2,6 +2,7 @@ import { addAvailabilityFields } from '../utils/availability/schema.js';
 import { Schema, model, Types } from 'mongoose';
 import type { PermissionExpression } from '../utils/permissions/expression.js';
 import type { KeywordSettings } from '../utils/keywords.js';
+import type { StoredBlocks } from '../utils/ast_blocks/types.js';
 
 export interface ICommands {
     _id?: Types.ObjectId;
@@ -11,6 +12,10 @@ export interface ICommands {
     keywordSettings?: KeywordSettings;
     func: string;
     message: string;
+    /** 'blocks': edited in the paid block editor; `message` is compiled from `blocks` and never sent to clients. */
+    authoring?: 'text' | 'blocks';
+    /** Block tree (select: false — load with `.select('+blocks')`). */
+    blocks?: StoredBlocks | null;
     responses: string[];
     variables: Map<string, string>;
     type: string;
@@ -52,6 +57,8 @@ const commandsSchema = new Schema({
     }, { _id: false }), default: undefined },
     func: String,
     message: { type: String, default: '' },
+    authoring: { type: String, enum: ['text', 'blocks'], default: 'text' },
+    blocks: { type: Schema.Types.Mixed, default: null, select: false },
     responses: { type: Array, default: [] },
     variables: {
         type: Map,

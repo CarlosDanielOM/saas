@@ -1,0 +1,17 @@
+<div class="bv-overlay" (click)="onOverlay($event)">
+  <div class="bv" role="dialog" aria-modal="true" aria-labelledby="bv-title">
+    <header class="bv__head">
+      <div>
+        <p class="bv__kicker">{{ t('commandBlocks.viewer.kicker') }}</p>
+        <h2 class="bv__title" id="bv-title">!{{ commandName() }}</h2>
+        <p class="bv__sub">{{ t('commandBlocks.viewer.sub') }}</p>
+      </div>
+      <button type="button" class="bv__close" #closeButton (click)="close()" [attr.aria-label]="t('commandBlocks.viewer.close')">×</button>
+    </header>
+    @if (root()) {
+      <app-blocks-editor class="bv__editor" [allowImport]="false" />
+    } @else {
+      <p class="bv__empty">{{ t('commandBlocks.viewer.unavailable') }}</p>
+    }
+  </div>
+</div>

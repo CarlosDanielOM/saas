@@ -5,6 +5,7 @@ import type { ITwitchEventData } from '../interfaces/twitch/eventsub.interface.j
 import { AstVariablesSchema, type IAstVariables } from '../schemas/ast_variables.schema.js';
 import type { IEventsub } from '../schemas/eventsub.schema.js';
 import { createExecutionContext, renderAstWithSourceReference } from '../utils/ast_parser/index.js';
+import { unescapeRenderedText } from '../utils/ast_parser/render.js';
 import { registerAllFunctions } from '../utils/ast_parser/functions/index.js';
 import type { ExecutionContext, CommandReferenceState, CommandReferenceRequest } from '../utils/ast_parser/types.js';
 import { resolveAuthoredAstUserLevel } from './special_parser.userlevel.js';
@@ -102,16 +103,6 @@ function extractNumericFields(eventData: Record<string, unknown>): IExtractedNum
         bits: bits !== undefined ? Number(bits) : undefined,
         viewers: viewers !== undefined ? Number(viewers) : undefined
     };
-}
-
-function unescapeInput(input: unknown): string {
-    if (typeof input !== 'string') return String(input || '');
-    return input
-        .replace(/\\\$/g, '$')
-        .replace(/\\%/g, '%')
-        .replace(/\\\*/g, '*')
-        .replace(/\\#/g, '#')
-        .replace(/\\\^/g, '^');
 }
 
 function resolveArgumentPlaceholders(template: string, argument: string, literal = false): IPlaceholderResolution {
@@ -524,7 +515,7 @@ export async function parseSpecialCommands(
         astContext
     );
 
-    const parsedText = unescapeInput(String(renderedText || ''));
+    const parsedText = unescapeRenderedText(String(renderedText || ''));
 
     return {
         parsedText,

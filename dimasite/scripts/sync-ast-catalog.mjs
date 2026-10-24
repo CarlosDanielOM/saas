@@ -1,9 +1,9 @@
-// Copies the bot's generated AST catalog into the block builder mock, trimmed to the
+// Copies the bot's generated AST catalog into the command block editor, trimmed to the
 // fields the UI uses. Run from dimasite/: `node scripts/sync-ast-catalog.mjs`.
 import { readFileSync, writeFileSync } from 'node:fs';
 
 const source = new URL('../../dimabot/src/utils/ai/ast_catalog/ast-catalog.json', import.meta.url);
-const target = new URL('../src/app/features/landing-mocks/dev/command-ast/command-ast-catalog.json', import.meta.url);
+const target = new URL('../src/app/features/commands/blocks/blocks-catalog.json', import.meta.url);
 
 const catalog = JSON.parse(readFileSync(source, 'utf8'));
 const entries = catalog.entries

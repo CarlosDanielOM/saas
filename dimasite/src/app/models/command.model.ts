@@ -1,6 +1,11 @@
 export type KeywordMatchMode = 'start' | 'anywhere' | 'exact';
 export interface KeywordSettings { matchMode: KeywordMatchMode }
 import type { PermissionExpression } from './permission-expression.model';
+import type { RootNode } from '../features/commands/blocks/blocks.model';
+
+/** 'blocks': built in the block editor; the API sends `blocks` and leaves `message` empty. */
+export type CommandAuthoring = 'text' | 'blocks';
+export interface StoredCommandBlocks { v: number; root: RootNode }
 
 export interface Command {
   id: string;
@@ -22,6 +27,8 @@ export interface Command {
   description: string | null;
   enabled: boolean;
   message: string;
+  authoring?: CommandAuthoring;
+  blocks?: StoredCommandBlocks | null;
   name: string;
   paused?: boolean;
   premiumLevelRequired?: number;
@@ -43,6 +50,9 @@ export interface CreateCommandRequest {
   cmd: string;
   func: string;
   message: string;
+  /** With 'blocks', send `blocks` (the server compiles them) instead of `message`. */
+  authoring?: CommandAuthoring;
+  blocks?: RootNode;
   description?: string | null;
   cooldown: number;
   userLevel: number;
@@ -58,6 +68,8 @@ export interface UpdateCommandRequest {
   cmd?: string;
   func?: string;
   message?: string;
+  authoring?: CommandAuthoring;
+  blocks?: RootNode;
   description?: string | null;
   cooldown?: number;
   userLevel?: number;

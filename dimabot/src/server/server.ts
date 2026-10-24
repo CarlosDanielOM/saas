@@ -55,6 +55,8 @@ export const server = async (): Promise<Express.Application> => {
         app.use('/polar/webhook', polarshWebhook);
 
         app.use('/overlay-studio', express.json({ limit: '5mb' }));
+        // Block commands send their block tree (up to ~10k characters of command text).
+        app.use('/commands', express.json({ limit: '1mb' }));
         app.use(express.json());
         app.use(express.urlencoded({ extended: true }));
         // OAuth has its own origin policy; keep it ahead of legacy permissive CORS.

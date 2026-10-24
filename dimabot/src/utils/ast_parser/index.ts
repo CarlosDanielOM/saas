@@ -3,7 +3,7 @@ import { parse, parseToAst, printAst } from './parser.js';
 import { tokenize } from './tokenizer.js';
 import { evaluate, createExecutionContext, registerFunction, getFunctionHandler, getFunctionMetadata, getAllRegisteredFunctions, FunctionHandler, RegisteredFunctionEntry } from './evaluator.js';
 import { SyntaxRegistry, createSyntaxRegistry, registerSyntax, parseExpression } from './registry.js';
-import { renderAstWithSourceReference } from './render.js';
+import { renderAstWithSourceReference, scanSourceSegments, type SourceSegment } from './render.js';
 import { registerAllFunctions } from './functions/index.js';
 
 export type {
@@ -15,7 +15,8 @@ export type {
     FunctionHandler,
     FunctionMetadata,
     AstFunctionSurface,
-    RegisteredFunctionEntry
+    RegisteredFunctionEntry,
+    SourceSegment
 };
 
 export {
@@ -33,7 +34,8 @@ export {
     createSyntaxRegistry,
     registerSyntax,
     parseExpression,
-    renderAstWithSourceReference
+    renderAstWithSourceReference,
+    scanSourceSegments
 };
 
 export async function parseAndEvaluate(

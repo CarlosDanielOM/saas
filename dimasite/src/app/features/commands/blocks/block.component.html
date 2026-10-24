@@ -1,0 +1,331 @@
+@let n = node();
+
+<ng-template #cursorSlot let-target="target" let-label="label">
+  @if (!ro()) {
+    <button
+      type="button"
+      class="slot"
+      tabindex="-1"
+      [class.is-cursor]="isCursor(target)"
+      [class.is-hot]="isHot(target)"
+      [attr.aria-label]="label"
+      (click)="setCursor($event, target)"
+      (dragover)="onDragOver($event, target)"
+      (drop)="onDrop($event, target)"
+    ></button>
+  }
+</ng-template>
+
+<ng-template #hole let-target="target" let-child="child" let-label="label">
+  <span
+    class="hole"
+    [class.is-empty]="!child"
+    [class.is-cursor]="isCursor(target)"
+    [class.is-hot]="isHot(target)"
+    (dragover)="onDragOver($event, target)"
+    (drop)="onDrop($event, target)"
+  >
+    @if (child) {
+      <app-command-block [node]="child" />
+    } @else {
+      <button type="button" class="hole__empty" tabindex="-1" [disabled]="ro()" [attr.aria-label]="t('commandBlocks.block.addTo', { slot: label })" (click)="setCursor($event, target)">{{ label }}</button>
+    }
+  </span>
+</ng-template>
+
+<ng-template #varName let-v="v">
+  <span class="blk__var">{{ v.name || 'name' }}</span>
+  @if (v.storage !== 'memory') {
+    <span class="blk__store">{{ storageLabel(v.storage) }}</span>
+  }
+  @if (v.userSelector) {
+    <span class="blk__word">{{ t('commandBlocks.block.of') }}</span>
+    <app-command-block [node]="v.userSelector" />
+  }
+</ng-template>
+
+<div
+  class="blk"
+  [attr.data-tone]="tone()"
+  [attr.data-type]="n.type"
+  [attr.data-block-id]="n.id"
+  [class.is-on]="selected()"
+  [class.is-error]="hasError()"
+  [class.is-ro]="ro()"
+  [class.is-destructive]="destructive()"
+  [class.is-unknown]="unknownFunction()"
+  [style.--var]="varColor()"
+  [attr.draggable]="ro() ? null : 'true'"
+  tabindex="0"
+  role="group"
+  [attr.aria-label]="ariaLabel()"
+  (click)="onSelect($event)"
+  (keydown)="onKey($event)"
+  (dragstart)="onDragStart($event)"
+  (dragend)="onDragEnd()"
+>
+  @switch (n.type) {
+    @case ('literal') {
+      @if (isArgumentText(n.value)) {
+        <span class="blk__arg">{{ argumentLabel(n.value) }}</span>
+      } @else if (ro()) {
+        <span class="blk__ro-text">{{ visibleText(n.value) }}</span>
+      } @else {
+        <input
+          class="blk__text"
+          [value]="n.value"
+          [style.width.ch]="textWidth(n.value)"
+          [placeholder]="t('commandBlocks.block.textPlaceholder')"
+          [attr.aria-label]="t('commandBlocks.types.literal')"
+          (input)="patchText($event)"
+          (click)="onSelect($event)"
+          (mousedown)="stop($event)"
+          (dragstart)="$event.preventDefault()"
+        />
+      }
+    }
+
+    @case ('raw') {
+      <lucide-icon class="blk__ico" [name]="rawIcon" [size]="13" aria-hidden="true" />
+      <span class="blk__word">{{ t('commandBlocks.types.raw') }}</span>
+      <code class="blk__raw">{{ n.source }}</code>
+    }
+
+    @case ('template') {
+      <span class="blk__quote" aria-hidden="true">“</span>
+      @for (part of n.parts; track part.id) {
+        <app-command-block [node]="part" />
+      }
+      <span class="blk__quote" aria-hidden="true">”</span>
+    }
+
+    @case ('function') {
+      <span class="blk__head">
+        @if (tone() === 'action') {
+          <lucide-icon [name]="actionIcon" [size]="13" aria-hidden="true" />
+        }
+        <span class="blk__name">{{ n.name }}</span>
+        @if (level()) {
+          <span class="blk__badge">{{ level() }}</span>
+        }
+      </span>
+      @for (h of visibleHoles(); track $index) {
+        <span
+          class="hole"
+          [class.is-empty]="!h.nodes.length"
+          [class.is-cursor]="isCursor(h.target)"
+          [class.is-hot]="isHot(h.target)"
+          (dragover)="onDragOver($event, h.target)"
+          (drop)="onDrop($event, h.target)"
+        >
+          @if (h.nodes.length) {
+            @for (arg of h.nodes; track arg.id) {
+              <app-command-block [node]="arg" />
+            }
+          } @else {
+            <button type="button" class="hole__empty" tabindex="-1" [disabled]="ro()" [attr.aria-label]="t('commandBlocks.block.addTo', { slot: h.label })" (click)="setCursor($event, h.target)">{{ h.label }}</button>
+          }
+        </span>
+      }
+    }
+
+    @case ('getVar') {
+      <lucide-icon class="blk__ico" [name]="varIcon" [size]="13" aria-hidden="true" />
+      @switch (n.accessor?.type) {
+        @case ('index') {
+          <span class="blk__word">{{ t('commandBlocks.block.item') }}</span>
+          @if (indexNode(); as idx) { <app-command-block [node]="idx" /> }
+          <span class="blk__word">{{ t('commandBlocks.block.of') }}</span>
+        }
+        @case ('random') { <span class="blk__word">{{ t('commandBlocks.block.randomItemOf') }}</span> }
+        @case ('length') { <span class="blk__word">{{ t('commandBlocks.block.sizeOf') }}</span> }
+        @case ('array') { <span class="blk__word">{{ t('commandBlocks.block.wholeList') }}</span> }
+      }
+      <ng-container *ngTemplateOutlet="varName; context: { v: n }" />
+    }
+
+    @case ('setVar') {
+      @if (isListSet(n)) {
+        <div class="blk__bar">
+          <lucide-icon class="blk__ico" [name]="varIcon" [size]="13" aria-hidden="true" />
+          <span class="blk__word">{{ t('commandBlocks.block.addToList') }}</span>
+          <ng-container *ngTemplateOutlet="varName; context: { v: n }" />
+        </div>
+        @if (n.value?.type === 'arrayLiteral') {
+          <ol class="blk__items">
+            @for (item of listItems(n); track item.id; let i = $index) {
+              <li class="blk__item">
+                <span class="blk__num" aria-hidden="true">{{ i + 1 }}</span>
+                <app-command-block [node]="item" />
+              </li>
+            }
+            @if (!ro()) {
+              <li><button type="button" class="blk__add" (click)="addListItem($event)">{{ t('commandBlocks.block.addItem') }}</button></li>
+            }
+          </ol>
+        } @else {
+          <ng-container *ngTemplateOutlet="hole; context: { target: single(n.id, 'value'), child: n.value, label: t('commandBlocks.block.value') }" />
+        }
+      } @else {
+        <lucide-icon class="blk__ico" [name]="varIcon" [size]="13" aria-hidden="true" />
+        <span class="blk__word">{{ t('commandBlocks.block.set') }}</span>
+        @if (n.accessor?.type === 'setIndex') {
+          <span class="blk__word">{{ t('commandBlocks.block.item') }}</span>
+          @if (indexNode(); as idx) { <app-command-block [node]="idx" /> }
+          <span class="blk__word">{{ t('commandBlocks.block.of') }}</span>
+        }
+        <ng-container *ngTemplateOutlet="varName; context: { v: n }" />
+        <span class="blk__word">{{ t('commandBlocks.block.to') }}</span>
+        <ng-container *ngTemplateOutlet="hole; context: { target: single(n.id, 'value'), child: n.value, label: t('commandBlocks.block.value') }" />
+      }
+    }
+
+    @case ('arrayLiteral') {
+      <div class="blk__bar">
+        <span class="blk__word">
+          @switch (n.accessor?.type) {
+            @case ('random') { {{ t('commandBlocks.block.randomFromList') }} }
+            @case ('length') { {{ t('commandBlocks.block.sizeOfList') }} }
+            @case ('index') { {{ t('commandBlocks.block.itemFromList') }} }
+            @default { {{ t('commandBlocks.types.arrayLiteral') }} }
+          }
+        </span>
+        @if (indexNode(); as idx) { <app-command-block [node]="idx" /> }
+      </div>
+      <ol class="blk__items">
+        @for (item of n.items; track item.id; let i = $index) {
+          <li class="blk__item">
+            <span class="blk__num" aria-hidden="true">{{ i + 1 }}</span>
+            <app-command-block [node]="item" />
+          </li>
+        }
+        @if (!ro()) {
+          <li><button type="button" class="blk__add" (click)="addListItem($event)">{{ t('commandBlocks.block.addItem') }}</button></li>
+        }
+      </ol>
+    }
+
+    @case ('exists') {
+      <ng-container *ngTemplateOutlet="varName; context: { v: n }" />
+      <span class="blk__word">{{ t('commandBlocks.block.isSet') }}</span>
+    }
+
+    @case ('deleteVar') {
+      <span class="blk__word">{{ t('commandBlocks.block.forget') }}</span>
+      @if (n.accessor?.type === 'clear') { <span class="blk__word">{{ t('commandBlocks.block.allItemsOf') }}</span> }
+      @if (n.accessor?.type === 'remove') {
+        <span class="blk__word">{{ t('commandBlocks.block.item') }}</span>
+        @if (indexNode(); as idx) { <app-command-block [node]="idx" /> }
+        <span class="blk__word">{{ t('commandBlocks.block.of') }}</span>
+      }
+      <ng-container *ngTemplateOutlet="varName; context: { v: n }" />
+    }
+
+    @case ('binary') {
+      <ng-container *ngTemplateOutlet="hole; context: { target: single(n.id, 'left'), child: n.left, label: t('commandBlocks.block.value') }" />
+      <span class="blk__op">{{ opLabel(n.operator) }}</span>
+      <ng-container *ngTemplateOutlet="hole; context: { target: single(n.id, 'right'), child: n.right, label: t('commandBlocks.block.value') }" />
+    }
+
+    @case ('unary') {
+      <span class="blk__op">{{ n.operator === '-' ? '−' : '+' }}</span>
+      <ng-container *ngTemplateOutlet="hole; context: { target: single(n.id, 'argument'), child: n.argument, label: t('commandBlocks.block.value') }" />
+    }
+
+    @case ('ternary') {
+      @for (branch of ifChain(n); track branch.id; let i = $index) {
+        <div class="blk__bar">
+          <lucide-icon class="blk__ico" [name]="ifIcon" [size]="14" aria-hidden="true" />
+          <span class="blk__word blk__word--strong">{{ t(i === 0 ? 'commandBlocks.block.if' : 'commandBlocks.block.elseIf') }}</span>
+          <ng-container *ngTemplateOutlet="hole; context: { target: single(branch.id, 'test'), child: branch.test, label: t('commandBlocks.block.check') }" />
+        </div>
+        <div class="blk__mouth" (dragover)="onDragOver($event, single(branch.id, 'consequent'))" (drop)="onDrop($event, single(branch.id, 'consequent'))">
+          @for (child of branchNodes(branch.consequent); track child.id) {
+            <app-command-block [node]="child" />
+          } @empty {
+            <span class="blk__nothing">{{ t('commandBlocks.block.nothing') }}</span>
+          }
+          <ng-container *ngTemplateOutlet="cursorSlot; context: { target: single(branch.id, 'consequent'), label: t('commandBlocks.block.addToBranch') }" />
+        </div>
+      }
+      @let owner = ifElseOwner(n);
+      <div class="blk__bar">
+        <span class="blk__word blk__word--strong">{{ t('commandBlocks.block.otherwise') }}</span>
+      </div>
+      <div class="blk__mouth" (dragover)="onDragOver($event, single(owner.id, 'alternate'))" (drop)="onDrop($event, single(owner.id, 'alternate'))">
+        @for (child of branchNodes(owner.alternate); track child.id) {
+          <app-command-block [node]="child" />
+        } @empty {
+          <span class="blk__nothing">{{ t('commandBlocks.block.nothing') }}</span>
+        }
+        <ng-container *ngTemplateOutlet="cursorSlot; context: { target: single(owner.id, 'alternate'), label: t('commandBlocks.block.addToOtherwise') }" />
+      </div>
+    }
+
+    @case ('commandRef') {
+      <lucide-icon class="blk__ico" [name]="cmdIcon" [size]="13" aria-hidden="true" />
+      <span class="blk__word">{{ t('commandBlocks.block.run') }}</span>
+      <span class="blk__name">!{{ n.commandName || 'command' }}</span>
+      @for (arg of n.args; track arg.id) {
+        <app-command-block [node]="arg" />
+      }
+      <ng-container *ngTemplateOutlet="cursorSlot; context: { target: list(n.id, 'args', n.args.length), label: t('commandBlocks.block.addArgument') }" />
+    }
+
+    @case ('loopVar') {
+      <span class="blk__var">#{{ n.name }}</span>
+    }
+
+    @case ('loopAssign') {
+      <span class="blk__var">#{{ n.name }}</span>
+      <span class="blk__op">{{ n.operator }}</span>
+      @if (n.operator !== '++' && n.operator !== '--') {
+        <ng-container *ngTemplateOutlet="hole; context: { target: single(n.id, 'value'), child: n.value, label: t('commandBlocks.block.value') }" />
+      }
+    }
+
+    @case ('forLoop') {
+      <div class="blk__bar">
+        <lucide-icon class="blk__ico" [name]="loopIcon" [size]="14" aria-hidden="true" />
+        @if (n.mode === 'foreach') {
+          <span class="blk__word blk__word--strong">{{ t('commandBlocks.block.forEach') }}</span>
+          <span class="blk__var">#{{ n.loopVar }}</span>
+          <span class="blk__word">{{ t('commandBlocks.block.in') }}</span>
+          <ng-container *ngTemplateOutlet="hole; context: { target: single(n.id, 'iterable'), child: n.iterable, label: t('commandBlocks.block.aList') }" />
+        } @else if (loopTimes(n); as times) {
+          <span class="blk__word blk__word--strong">{{ t('commandBlocks.block.repeat') }}</span>
+          <span class="blk__count">{{ times }}</span>
+          <span class="blk__word">{{ t('commandBlocks.block.timesCounting') }}</span>
+          <span class="blk__var">#{{ n.loopVar }}</span>
+        } @else {
+          <span class="blk__word blk__word--strong">{{ t('commandBlocks.block.repeat') }}</span>
+          <span class="blk__word">{{ t('commandBlocks.block.from') }}</span>
+          <ng-container *ngTemplateOutlet="hole; context: { target: single(n.id, 'init'), child: n.init, label: t('commandBlocks.block.start') }" />
+          <span class="blk__word">{{ t('commandBlocks.block.while') }}</span>
+          <ng-container *ngTemplateOutlet="hole; context: { target: single(n.id, 'condition'), child: n.condition, label: t('commandBlocks.block.check') }" />
+          <span class="blk__word">{{ t('commandBlocks.block.then') }}</span>
+          <ng-container *ngTemplateOutlet="hole; context: { target: single(n.id, 'update'), child: n.update, label: t('commandBlocks.block.step') }" />
+        }
+      </div>
+      <div class="blk__mouth" (dragover)="onDragOver($event, list(n.id, 'body', n.body.length))" (drop)="onDrop($event, list(n.id, 'body', n.body.length))">
+        @for (child of n.body; track child.id; let i = $index) {
+          <ng-container *ngTemplateOutlet="cursorSlot; context: { target: list(n.id, 'body', i), label: t('commandBlocks.block.insertHere') }" />
+          <app-command-block [node]="child" />
+        } @empty {
+          <span class="blk__nothing">{{ t('commandBlocks.block.nothing') }}</span>
+        }
+        <ng-container *ngTemplateOutlet="cursorSlot; context: { target: list(n.id, 'body', n.body.length), label: t('commandBlocks.block.addToLoop') }" />
+      </div>
+    }
+
+    @case ('group') {
+      <span class="blk__bracket" aria-hidden="true">(</span>
+      @for (child of n.children; track child.id; let i = $index) {
+        <ng-container *ngTemplateOutlet="cursorSlot; context: { target: list(n.id, 'children', i), label: t('commandBlocks.block.insertHere') }" />
+        <app-command-block [node]="child" />
+      }
+      <ng-container *ngTemplateOutlet="cursorSlot; context: { target: list(n.id, 'children', n.children.length), label: t('commandBlocks.block.addToGroup') }" />
+      <span class="blk__bracket" aria-hidden="true">)</span>
+    }
+  }
+</div>

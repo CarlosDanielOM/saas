@@ -1,0 +1,349 @@
+<div class="bx">
+  <!-- Phone: Build / Try it -->
+  <div class="bx-tabs" role="group" [attr.aria-label]="t('commandBlocks.editor.sections')">
+    <button type="button" class="bx-tabs__btn" [attr.aria-pressed]="tab() === 'build'" (click)="setTab('build')">
+      <lucide-icon [name]="icons.build" [size]="16" aria-hidden="true" />
+      {{ t('commandBlocks.editor.build') }}
+    </button>
+    <button type="button" class="bx-tabs__btn" [attr.aria-pressed]="tab() === 'test'" (click)="setTab('test')">
+      <lucide-icon [name]="icons.test" [size]="16" aria-hidden="true" />
+      {{ t('commandBlocks.editor.tryIt') }}
+      @if (run().result.actions.length) {
+        <span class="bx-tabs__badge">{{ run().result.actions.length }}</span>
+      }
+    </button>
+  </div>
+
+  <div class="bx-grid">
+    <!-- ================= Library ================= -->
+    @if (!store.readOnly()) {
+      <aside class="bx-lib" id="bx-library" [attr.aria-label]="t('commandBlocks.library.title')">
+        <div class="bx-lib__head">
+          <h4 class="bx-title">{{ t('commandBlocks.library.title') }}</h4>
+          <span class="bx-lib__count">{{ t('commandBlocks.library.functions', { count: functionCount }) }}</span>
+          <button type="button" class="bx-icon bx-lib__close" (click)="closeLibrary()" [attr.aria-label]="t('commandBlocks.library.close')">
+            <lucide-icon [name]="icons.close" [size]="18" aria-hidden="true" />
+          </button>
+        </div>
+        <p class="bx-lib__where">{{ t('commandBlocks.library.adds') }} <strong>{{ cursorLabel() }}</strong></p>
+        <label class="bx-search">
+          <lucide-icon [name]="icons.search" [size]="16" aria-hidden="true" />
+          <span class="sr-only">{{ t('commandBlocks.library.search') }}</span>
+          <input type="search" [placeholder]="t('commandBlocks.library.searchPlaceholder')" [value]="query()" (input)="onQuery($event)" />
+        </label>
+        @if (!query()) {
+          <div class="bx-lib__sections" role="group" [attr.aria-label]="t('commandBlocks.library.groups')">
+            <button type="button" class="bx-chip" [attr.aria-pressed]="section() === 'all'" (click)="section.set('all')">{{ t('commandBlocks.library.all') }}</button>
+            @for (s of sections; track s.id) {
+              <button type="button" class="bx-chip" [attr.data-tone]="s.tone" [attr.aria-pressed]="section() === s.id" (click)="section.set(s.id)">{{ t('commandBlocks.sections.' + s.id + '.label') }}</button>
+            }
+          </div>
+        }
+
+        <ng-template #itemTpl let-item>
+          <li>
+            <button
+              type="button"
+              class="bx-item"
+              [attr.data-tone]="item.tone"
+              [attr.data-item]="item.id"
+              draggable="true"
+              (dragstart)="onLibraryDrag($event, item)"
+              (dragend)="store.endDrag()"
+              (click)="addItem(item)"
+            >
+              <span class="bx-item__main">
+                <span class="bx-item__title" [class.is-code]="!item.builtIn">{{ titleOf(item) }}</span>
+                <span class="bx-item__hint">{{ hintOf(item) }}</span>
+              </span>
+              <span class="bx-item__tags">
+                @if (item.level) {
+                  <span class="bx-tag bx-tag--warn">{{ t('commandBlocks.level.' + item.level) }}</span>
+                }
+                @if (item.destructive) {
+                  <span class="bx-tag bx-tag--danger" [attr.title]="t('commandBlocks.inspector.destructiveTitle')">
+                    <lucide-icon [name]="icons.warn" [size]="12" aria-hidden="true" />
+                    <span class="sr-only">{{ t('commandBlocks.inspector.destructiveTitle') }}</span>
+                  </span>
+                }
+                <lucide-icon class="bx-item__plus" [name]="icons.plus" [size]="16" aria-hidden="true" />
+              </span>
+            </button>
+          </li>
+        </ng-template>
+
+        <div class="bx-lib__list">
+          @if (grouped(); as groups) {
+            @for (g of groups; track g.section.id) {
+              <section class="bx-lib__group" [attr.aria-label]="t('commandBlocks.sections.' + g.section.id + '.label')">
+                <h5 class="bx-lib__group-title" [attr.data-tone]="g.section.tone">
+                  {{ t('commandBlocks.sections.' + g.section.id + '.label') }}
+                  <span>{{ t('commandBlocks.sections.' + g.section.id + '.hint') }}</span>
+                </h5>
+                <ul class="bx-lib__items">
+                  @for (item of g.items; track item.id) {
+                    <ng-container *ngTemplateOutlet="itemTpl; context: { $implicit: item }" />
+                  }
+                </ul>
+              </section>
+            }
+          } @else {
+            <p class="bx-lib__results" aria-live="polite">{{ t('commandBlocks.library.results', { count: results().length }) }}</p>
+            <ul class="bx-lib__items">
+              @for (item of results(); track item.id) {
+                <ng-container *ngTemplateOutlet="itemTpl; context: { $implicit: item }" />
+              } @empty {
+                <li class="bx-lib__empty">{{ t('commandBlocks.library.noMatch', { query: query() }) }}</li>
+              }
+            </ul>
+          }
+        </div>
+      </aside>
+      @if (libraryOpen()) {
+        <div class="bx-scrim" (click)="closeLibrary()" aria-hidden="true"></div>
+      }
+    }
+
+    <!-- ================= Canvas ================= -->
+    <section class="bx-work" [attr.aria-label]="t('commandBlocks.editor.yourCommand')">
+      @if (showImport()) {
+        <div class="bx-import">
+          <div class="bx-import__head">
+            <lucide-icon [name]="icons.import" [size]="17" aria-hidden="true" />
+            <div>
+              <label class="bx-title" for="bx-import-text">{{ t('commandBlocks.import.title') }}</label>
+              <p class="bx-sub">{{ t('commandBlocks.import.hint') }}</p>
+            </div>
+          </div>
+          <textarea
+            id="bx-import-text"
+            class="bx-import__text"
+            rows="3"
+            spellcheck="false"
+            autocapitalize="off"
+            [placeholder]="t('commandBlocks.import.placeholder')"
+            [value]="importText()"
+            (input)="onImportInput($event)"
+          ></textarea>
+          <div class="bx-import__row">
+            @if (importError(); as err) {
+              <p class="bx-import__msg is-error" role="alert">{{ err }}</p>
+            } @else if (importAdvanced() > 0) {
+              <p class="bx-import__msg" role="status">{{ t('commandBlocks.import.advanced', { count: importAdvanced() }) }}</p>
+            } @else if (store.fromImport()) {
+              <p class="bx-import__msg" role="status">{{ t('commandBlocks.import.done') }}</p>
+            } @else {
+              <span></span>
+            }
+            <button type="button" class="bx-btn bx-btn--primary" [disabled]="!importText().trim() || importing()" (click)="runImport()">
+              {{ importing() ? t('commandBlocks.import.working') : t('commandBlocks.import.button') }}
+            </button>
+          </div>
+        </div>
+      }
+
+      <div class="bx-canvas-tile">
+        <div class="bx-canvas-head">
+          <div>
+            <h4 class="bx-title">{{ t('commandBlocks.editor.yourCommand') }}</h4>
+            <p class="bx-sub">
+              {{ t('commandBlocks.editor.blockCount', { count: store.blockCount() }) }}
+              @if (!store.readOnly()) {
+                · <span class="bx-cursor-hint"><span class="bx-cursor-hint__bar" aria-hidden="true"></span>{{ t('commandBlocks.editor.adding', { where: cursorLabel() }) }}</span>
+              }
+            </p>
+          </div>
+          @if (!store.readOnly()) {
+            <div class="bx-tools" role="group" [attr.aria-label]="t('commandBlocks.editor.history')">
+              <button type="button" class="bx-icon" (click)="store.undo()" [disabled]="!store.canUndo()" [attr.aria-label]="t('commandBlocks.editor.undo')" [attr.title]="t('commandBlocks.editor.undo')">
+                <lucide-icon [name]="icons.undo" [size]="17" aria-hidden="true" />
+              </button>
+              <button type="button" class="bx-icon" (click)="store.redo()" [disabled]="!store.canRedo()" [attr.aria-label]="t('commandBlocks.editor.redo')" [attr.title]="t('commandBlocks.editor.redo')">
+                <lucide-icon [name]="icons.redo" [size]="17" aria-hidden="true" />
+              </button>
+              <button type="button" class="bx-icon" (click)="clearAll()" [disabled]="store.isEmpty()" [attr.aria-label]="t('commandBlocks.editor.clear')" [attr.title]="t('commandBlocks.editor.clear')">
+                <lucide-icon [name]="icons.trash" [size]="17" aria-hidden="true" />
+              </button>
+              <button type="button" class="bx-btn bx-btn--primary bx-add" (click)="openLibrary()" aria-controls="bx-library" [attr.aria-expanded]="libraryOpen()">
+                <lucide-icon [name]="icons.plus" [size]="17" aria-hidden="true" />
+                {{ t('commandBlocks.editor.addBlock') }}
+              </button>
+            </div>
+          }
+        </div>
+
+        <div class="bx-canvas-scroll">
+          <div
+            class="bx-canvas"
+            [class.is-drag]="store.draggingNow()"
+            (click)="onCanvasClick()"
+            (dragover)="onCanvasDragOver($event)"
+            (drop)="onCanvasDrop($event)"
+          >
+            @for (child of store.root().children; track child.id; let i = $index) {
+              @if (!store.readOnly()) {
+                <button
+                  type="button"
+                  class="slot"
+                  tabindex="-1"
+                  [class.is-cursor]="isCursor(i)"
+                  [class.is-hot]="isHot(i)"
+                  [attr.aria-label]="t('commandBlocks.editor.insertBefore', { n: i + 1 })"
+                  (click)="setRootCursor($event, i)"
+                  (dragover)="onSlotDragOver($event, i)"
+                  (drop)="onCanvasDrop($event, i)"
+                ></button>
+              }
+              <app-command-block [node]="child" />
+            }
+            @if (!store.isEmpty() && !store.readOnly()) {
+              <button
+                type="button"
+                class="slot slot--end"
+                tabindex="-1"
+                [class.is-cursor]="isCursor(store.root().children.length)"
+                [class.is-hot]="isHot(store.root().children.length)"
+                [attr.aria-label]="t('commandBlocks.editor.addAtEnd')"
+                (click)="setRootCursor($event, store.root().children.length)"
+                (dragover)="onSlotDragOver($event, store.root().children.length)"
+                (drop)="onCanvasDrop($event, store.root().children.length)"
+              ></button>
+            } @else if (store.isEmpty()) {
+              <div class="bx-empty">
+                <span class="bx-empty__icon" aria-hidden="true"><lucide-icon [name]="icons.build" [size]="24" /></span>
+                <p class="bx-empty__title">{{ t('commandBlocks.editor.emptyTitle') }}</p>
+                @if (!store.readOnly()) {
+                  <p class="bx-empty__copy">{{ t('commandBlocks.editor.emptyCopy') }}</p>
+                  <div class="bx-starters" role="group" [attr.aria-label]="t('commandBlocks.editor.startFrom')">
+                    @for (starter of starters; track starter.id) {
+                      <button type="button" class="bx-chip bx-chip--starter" [attr.title]="t('commandBlocks.starters.' + starter.id + '.blurb')" (click)="loadStarter(starter.id)">
+                        {{ t('commandBlocks.starters.' + starter.id + '.label') }}
+                      </button>
+                    }
+                  </div>
+                  <button type="button" class="bx-btn bx-btn--primary" (click)="openLibrary()">
+                    <lucide-icon [name]="icons.plus" [size]="17" aria-hidden="true" />
+                    {{ t('commandBlocks.editor.addFirst') }}
+                  </button>
+                }
+              </div>
+            }
+          </div>
+        </div>
+        @if (!store.readOnly()) {
+          <p class="bx-tip">{{ t('commandBlocks.editor.tip') }}</p>
+        }
+      </div>
+    </section>
+
+    <!-- ================= Details + Try it ================= -->
+    <aside class="bx-side">
+      <div class="bx-insp-tile" [class.is-empty]="!store.selectedNode()">
+        @if (store.selectedNode()) {
+          <app-block-inspector [errorMessage]="errorMessage()" />
+        } @else {
+          <p class="bx-title">{{ t('commandBlocks.inspector.emptyTitle') }}</p>
+          <p class="bx-sub">{{ t(store.readOnly() ? 'commandBlocks.inspector.emptyCopyRo' : 'commandBlocks.inspector.emptyCopy') }}</p>
+        }
+      </div>
+
+      <section class="bx-test" [attr.aria-label]="t('commandBlocks.editor.tryIt')">
+        <div class="bx-test__head">
+          <div>
+            <h4 class="bx-title">{{ t('commandBlocks.preview.title') }}</h4>
+            <p class="bx-sub">{{ t('commandBlocks.preview.sub') }}</p>
+          </div>
+          <button type="button" class="bx-icon" (click)="store.rerun()" [attr.aria-label]="t('commandBlocks.preview.rerun')" [attr.title]="t('commandBlocks.preview.rerun')">
+            <lucide-icon [name]="icons.dice" [size]="17" aria-hidden="true" />
+          </button>
+        </div>
+
+        <div class="bx-ctx">
+          <label class="bx-mini">
+            <span>{{ t('commandBlocks.preview.chatter') }}</span>
+            <input [value]="store.context().user" (input)="patchContext('user', $event)" autocapitalize="off" />
+          </label>
+          <label class="bx-mini">
+            <span>{{ t('commandBlocks.preview.typedAfter') }}</span>
+            <input [value]="store.context().argument" (input)="patchContext('argument', $event)" autocapitalize="off" />
+          </label>
+          <div class="bx-mini">
+            <span id="bx-role-label">{{ t('commandBlocks.preview.role') }}</span>
+            <div class="bx-seg" role="group" aria-labelledby="bx-role-label">
+              @for (role of roles; track role) {
+                <button type="button" class="bx-seg__btn" [attr.aria-pressed]="store.context().role === role" (click)="setRole(role)">{{ t('commandBlocks.preview.roles.' + role) }}</button>
+              }
+            </div>
+          </div>
+        </div>
+
+        <div class="bx-chat" aria-live="polite" [attr.aria-label]="t('commandBlocks.preview.chatLabel')">
+          <div class="bx-msg bx-msg--user">
+            <span class="bx-msg__who">{{ store.context().user || t('commandBlocks.preview.roles.viewer') }}</span>
+            <span class="bx-msg__text">!command {{ store.context().argument }}</span>
+          </div>
+          @if (run().tooLong) {
+            <div class="bx-msg bx-msg--error">
+              <lucide-icon [name]="icons.warn" [size]="15" aria-hidden="true" />
+              <span>{{ t('commandBlocks.preview.tooLong') }}</span>
+            </div>
+          } @else {
+            @if (run().result.chat) {
+              <div class="bx-msg bx-msg--bot">
+                <span class="bx-msg__who">DomDimaBot</span>
+                <span class="bx-msg__text">{{ run().result.chat }}</span>
+              </div>
+            } @else {
+              <p class="bx-msg bx-msg--silent">{{ t('commandBlocks.preview.silent') }}</p>
+            }
+            @for (line of run().result.extraLines; track $index) {
+              <div class="bx-msg bx-msg--bot bx-msg--extra">
+                <span class="bx-msg__who">DomDimaBot</span>
+                <span class="bx-msg__text">{{ line }}</span>
+              </div>
+            }
+          }
+        </div>
+
+        @if (run().result.skippedAdvanced) {
+          <p class="bx-note">{{ t('commandBlocks.preview.advancedSkipped') }}</p>
+        }
+
+        @if (run().result.actions.length) {
+          <div class="bx-effects">
+            <p class="bx-effects__title">{{ t('commandBlocks.preview.alsoDoes') }}</p>
+            <ul class="bx-effects__list">
+              @for (action of run().result.actions; track $index) {
+                <li class="bx-effect" [class.is-blocked]="!!action.blocked" [class.is-destructive]="action.destructive && !action.blocked">
+                  <lucide-icon [name]="action.blocked ? icons.shield : icons.zap" [size]="15" aria-hidden="true" />
+                  <code class="bx-effect__name">{{ action.name }}</code>
+                  @if (action.args) { <span class="bx-effect__args">{{ action.args }}</span> }
+                  @if (action.blocked) {
+                    <span class="bx-tag bx-tag--warn">{{ t('commandBlocks.preview.skipped', { who: t('commandBlocks.level.' + action.blocked) }) }}</span>
+                  }
+                </li>
+              }
+            </ul>
+          </div>
+        }
+
+        @if (run().result.variables.length) {
+          <div class="bx-effects">
+            <p class="bx-effects__title">{{ t('commandBlocks.preview.remembers') }}</p>
+            <ul class="bx-effects__list">
+              @for (v of run().result.variables; track v.name) {
+                <li class="bx-effect bx-effect--var">
+                  <code class="bx-effect__name">{{ v.name }}</code>
+                  <span class="bx-effect__args">= {{ v.value || t('commandBlocks.preview.emptyValue') }}</span>
+                </li>
+              }
+            </ul>
+          </div>
+        }
+        <p class="bx-note">{{ t('commandBlocks.preview.disclaimer') }}</p>
+      </section>
+    </aside>
+  </div>
+
+  <p class="sr-only" aria-live="polite">{{ store.announcement() }}</p>
+</div>

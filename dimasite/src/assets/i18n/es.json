@@ -8930,5 +8930,521 @@
     "updated": "Actualizado {{date}} UTC",
     "daysRefresh": "Actualizar mejores días",
     "gamesRefresh": "Actualizar juegos"
+  },
+  "commandBlocks": {
+    "label": "Bloques AST",
+    "announce": {
+      "imported": "El texto se convirtió en bloques",
+      "loadedExample": "Ejemplo cargado",
+      "cleared": "Comando vaciado",
+      "added": "Se añadió {{name}}",
+      "addedItem": "Se añadió un elemento",
+      "moved": "Bloque movido",
+      "removed": "Bloque eliminado",
+      "duplicated": "Bloque duplicado",
+      "movedEarlier": "Movido antes",
+      "movedLater": "Movido después",
+      "undone": "Deshecho",
+      "redone": "Rehecho",
+      "cursorAfter": "El cursor está después del bloque. Elige uno de la biblioteca.",
+      "pickForSlot": "Elige un bloque de la biblioteca para ponerlo ahí"
+    },
+    "block": {
+      "addArgument": "Añadir a la entrada del comando",
+      "addItem": "+ elemento",
+      "addTo": "Añadir {{slot}}",
+      "addToBranch": "Añadir a esta rama",
+      "addToGroup": "Añadir al grupo",
+      "addToList": "añadir a la lista",
+      "addToLoop": "Añadir al bucle",
+      "addToOtherwise": "Añadir a si no",
+      "aList": "lista",
+      "allItemsOf": "todos los elementos de",
+      "arguments": "argumentos",
+      "check": "comprobación",
+      "elseIf": "Si no, si",
+      "empty": "vacío",
+      "forEach": "Por cada",
+      "forget": "olvidar",
+      "from": "desde",
+      "if": "Si",
+      "in": "en",
+      "insertHere": "Insertar aquí",
+      "isSet": "¿tiene valor?",
+      "item": "elemento",
+      "itemFromList": "elemento de la lista",
+      "keysHint": "Intro selecciona, Supr elimina, Alt+flechas mueve.",
+      "more": "más",
+      "nothing": "nada",
+      "of": "de",
+      "otherwise": "Si no",
+      "randomFromList": "elemento al azar de la lista",
+      "randomItemOf": "elemento al azar de",
+      "repeat": "Repetir",
+      "restText": "todo lo escrito después del comando",
+      "run": "ejecutar",
+      "selected": "seleccionado",
+      "set": "guardar",
+      "sizeOf": "tamaño de",
+      "sizeOfList": "tamaño de la lista",
+      "start": "inicio",
+      "step": "paso",
+      "textPlaceholder": "texto",
+      "then": "luego",
+      "timesCounting": "veces, contando con",
+      "to": "como",
+      "value": "valor",
+      "while": "mientras",
+      "wholeList": "lista completa",
+      "wordN": "palabra {{n}} escrita después del comando"
+    },
+    "cursor": {
+      "after": "después del bloque {{n}}",
+      "end": "al final",
+      "into": "en {{slot}} de {{name}}",
+      "intoArg": "en «{{slot}}» de {{name}}",
+      "start": "al principio"
+    },
+    "slots": {
+      "value": "el valor",
+      "left": "el lado izquierdo",
+      "right": "el lado derecho",
+      "test": "la comprobación",
+      "then": "la rama «entonces»",
+      "otherwise": "la rama «si no»",
+      "loop": "el bucle",
+      "group": "el grupo",
+      "list": "la lista",
+      "start": "el inicio",
+      "step": "el paso",
+      "arguments": "la entrada",
+      "quote": "el texto entre comillas",
+      "viewer": "el espectador"
+    },
+    "draft": {
+      "offer": "Tienes cambios sin guardar de {{when}}.",
+      "restore": "Recuperar",
+      "discard": "Descartar",
+      "justNow": "hace un momento",
+      "minutes": "hace {{count}} min",
+      "hours": "hace {{count}} h",
+      "days": "hace {{count}} días"
+    },
+    "editor": {
+      "addAtEnd": "Añadir al final",
+      "addBlock": "Añadir bloque",
+      "addFirst": "Añade tu primer bloque",
+      "adding": "añadiendo {{where}}",
+      "blockCount": "{{count}} bloques",
+      "build": "Construir",
+      "clear": "Quitar todos los bloques (deshacer los recupera)",
+      "emptyCopy": "Elige un ejemplo o añade bloques como user. También puedes pegar un comando arriba para convertirlo en bloques.",
+      "emptyTitle": "Aún no hay bloques",
+      "history": "Historial de cambios",
+      "insertBefore": "Insertar antes del bloque {{n}}",
+      "redo": "Rehacer",
+      "sections": "Secciones del editor",
+      "startFrom": "Empezar con un ejemplo",
+      "tip": "Toca un bloque para cambiarlo · toca entre bloques para elegir dónde va el siguiente · arrastra para mover",
+      "tryIt": "Probar",
+      "undo": "Deshacer",
+      "yourCommand": "Tu comando"
+    },
+    "errors": {
+      "block": "Este bloque aún no se puede guardar.",
+      "empty": "Añade al menos un bloque antes de guardar.",
+      "fixBlock": "Hay que cambiar un bloque. Está marcado en la pestaña Bloques.",
+      "save": "No se pudo guardar el comando. Inténtalo de nuevo.",
+      "tooLong": "La respuesta es demasiado larga (hasta {{max}} caracteres)."
+    },
+    "help": {
+      "literal": "El chat lo ve tal cual, con espacios incluidos.",
+      "raw": "Una parte que los bloques aún no pueden mostrar. Funciona tal como está escrita; puedes editar su texto aquí.",
+      "argument": "Se cambia por lo que el espectador escribe después del comando.",
+      "template": "Texto con valores dentro, como una sola pieza (por ejemplo dentro de un si).",
+      "getVar": "Pone un valor guardado en el mensaje.",
+      "setVar": "Guarda un valor con un nombre. No dice nada en el chat.",
+      "exists": "Sí cuando la variable tiene valor; no si nunca se guardó o se olvidó.",
+      "deleteVar": "Olvida el valor, así el siguiente uso empieza de cero.",
+      "arrayLiteral": "Una lista de elementos.",
+      "binary": "Calcula un valor: una comprobación sí/no o un número.",
+      "unary": "Hace negativo un número (o lo deja positivo).",
+      "ternary": "Comprueba algo y luego dice o hace una de las ramas.",
+      "commandRef": "Ejecuta otro de tus comandos, como si alguien lo escribiera.",
+      "forLoop": "Repite los bloques de dentro. Los bucles solo hacen cosas (enviar mensajes, cambiar variables); su texto no se añade a la respuesta.",
+      "loopVar": "La vuelta actual del bucle que lo contiene.",
+      "loopAssign": "Cambia el contador del bucle.",
+      "group": "Mantiene bloques juntos para que cuenten como uno, por ejemplo en una rama.",
+      "unknownFunction": "Esta función no está en la lista de DomDimaBot. Revisa el nombre.",
+      "function": "",
+      "root": ""
+    },
+    "import": {
+      "title": "Convertir texto de comando en bloques",
+      "hint": "Pega un comando, por ejemplo de otro bot o de tus notas. Al cambiar los bloques, este cuadro desaparece.",
+      "placeholder": "¡Hola $(user)!",
+      "button": "Convertir en bloques",
+      "working": "Convirtiendo…",
+      "done": "Listo. Cambia cualquier bloque para seguir.",
+      "advanced": "{{count}} parte(s) quedan como piezas avanzadas: funcionan tal como están escritas.",
+      "failed": "No se pudo convertir ese texto. Revísalo e inténtalo de nuevo.",
+      "tooLong": "Ese texto es demasiado largo (hasta 10.000 caracteres)."
+    },
+    "inspector": {
+      "actions": "Acciones del bloque",
+      "addAfter": "Añadir después",
+      "addElseIf": "+ Añadir «si no, si»",
+      "argHasBlocks": "Tiene bloques dentro. Cámbialos en el lienzo.",
+      "argTip": "Escribe un valor o toca el botón del cursor y elige un bloque como user.",
+      "argumentWhich": "Qué parte del mensaje",
+      "branches": "{{count}} comprobación(es) · gana la primera que sea verdad; si no, se usa la última rama.",
+      "check": "Comprobación",
+      "close": "Cerrar detalles del bloque",
+      "commandName": "Nombre del comando",
+      "counterChange": "Cómo cambia el contador",
+      "counterName": "Nombre del contador",
+      "customLoop": "Este bucle tiene un inicio, comprobación o paso personalizados. Cámbialos en el bloque.",
+      "delete": "Eliminar bloque",
+      "destructiveNote": "Pruébalo con la cuenta de un amigo antes de usarlo en directo.",
+      "destructiveTitle": "Hace cambios reales.",
+      "duplicate": "Duplicar",
+      "emptyCopy": "Toca un bloque para ver qué hace, rellenar sus datos y moverlo.",
+      "emptyCopyRo": "Toca un bloque para ver qué hace.",
+      "emptyTitle": "Detalles del bloque",
+      "everything": "Todo lo de después del comando",
+      "fillSides": "Rellena cada lado escribiendo en el bloque o poniendo un bloque.",
+      "forgetAll": "Todos los elementos",
+      "forgetOne": "Un elemento",
+      "forgetWhat": "Qué olvidar",
+      "forgetWhole": "La variable completa",
+      "keptFor": "Cuánto tiempo se recuerda",
+      "kicker": "Bloque seleccionado",
+      "levelNote": "Para otros usuarios se salta y el resto del comando sigue funcionando.",
+      "listSize": "Tamaño de la lista",
+      "loopTip": "Usa el contador (#i) dentro para mostrar el número de vuelta. Los bucles paran tras 25 vueltas en el plan gratis y más en los de pago.",
+      "moveEarlier": "Mover antes (Alt + ←)",
+      "moveLater": "Mover después (Alt + →)",
+      "negative": "negativo",
+      "oneItem": "Un elemento",
+      "oneWord": "Una palabra",
+      "operation": "Operación",
+      "optional": "opcional",
+      "perViewerTip": "Se guarda para quien usa el comando. Añade un bloque después de «de» para usar el de otra persona.",
+      "position": "Posición (0 = primero, -1 = último)",
+      "putBlockIn": "Poner un bloque en {{slot}}",
+      "randomItem": "Elemento al azar",
+      "rawLabel": "Pieza avanzada",
+      "sign": "Signo",
+      "skipPlaceholder": "Déjalo vacío para omitirlo",
+      "theValue": "El valor",
+      "times": "Veces (hasta 25)",
+      "use": "Usar",
+      "valuePlaceholder": "Escribe un valor",
+      "varName": "Nombre de la variable",
+      "wordNumber": "Número de palabra (1 = primera)"
+    },
+    "items": {
+      "text": {
+        "title": "Texto",
+        "hint": "Lo que dice el bot, tal cual"
+      },
+      "quote": {
+        "title": "Texto entre comillas",
+        "hint": "Texto con valores dentro, como una sola pieza"
+      },
+      "word": {
+        "title": "Palabra tras el comando",
+        "hint": "Una palabra que escribió el espectador, como un nombre"
+      },
+      "rest": {
+        "title": "Todo lo de después del comando",
+        "hint": "Todo el texto que el espectador escribió tras el comando"
+      },
+      "cmd": {
+        "title": "Ejecutar otro comando",
+        "hint": "Ejecuta uno de tus comandos, como !so"
+      },
+      "setVar": {
+        "title": "Guardar variable",
+        "hint": "Recuerda un valor con un nombre"
+      },
+      "getVar": {
+        "title": "Usar variable",
+        "hint": "Inserta un valor guardado"
+      },
+      "counter": {
+        "title": "Sumar 1 a un número guardado",
+        "hint": "Un contador que sigue entre directos"
+      },
+      "setList": {
+        "title": "Añadir a una lista",
+        "hint": "Varios elementos con un solo nombre"
+      },
+      "getItem": {
+        "title": "Elemento de una lista",
+        "hint": "Elige uno por posición (0 = primero)"
+      },
+      "randomItem": {
+        "title": "Elemento al azar de una lista",
+        "hint": "Elige cualquiera al azar"
+      },
+      "listSize": {
+        "title": "Tamaño de la lista",
+        "hint": "Cuántos elementos tiene una lista"
+      },
+      "exists": {
+        "title": "¿Variable con valor?",
+        "hint": "Sí cuando la variable tiene un valor"
+      },
+      "deleteVar": {
+        "title": "Olvidar variable",
+        "hint": "Borra un valor guardado"
+      },
+      "if": {
+        "title": "Si / si no",
+        "hint": "Di o haz algo distinto según una comprobación"
+      },
+      "compare": {
+        "title": "Comparar",
+        "hint": "Comprobación sí/no: igual, mayor, menor…"
+      },
+      "math": {
+        "title": "Cálculo",
+        "hint": "Sumar, restar, multiplicar o dividir"
+      },
+      "repeat": {
+        "title": "Repetir",
+        "hint": "Haz los bloques de dentro varias veces"
+      },
+      "forEach": {
+        "title": "Por cada elemento",
+        "hint": "Haz los bloques de dentro una vez por elemento"
+      }
+    },
+    "level": {
+      "mods": "Mods+",
+      "streamer": "Solo streamer"
+    },
+    "library": {
+      "adds": "Añade",
+      "all": "Todo",
+      "close": "Cerrar biblioteca",
+      "functions": "{{count}} funciones",
+      "groups": "Grupos de bloques",
+      "noMatch": "Ningún bloque coincide con «{{query}}». Prueba otra palabra, como «timeout» o «sonido».",
+      "results": "{{count}} bloques",
+      "search": "Buscar bloques",
+      "searchPlaceholder": "Busca: ban, random, tts, encuesta…",
+      "title": "Bloques"
+    },
+    "loopOps": {
+      "=": "Poner en",
+      "+=": "Sumar",
+      "-=": "Restar",
+      "*=": "Multiplicar por",
+      "/=": "Dividir entre",
+      "%=": "Resto de ÷",
+      "++": "Sumar 1",
+      "--": "Restar 1"
+    },
+    "modal": {
+      "blocks": "Bloques",
+      "details": "Detalles",
+      "tabsLabel": "Editor del comando",
+      "paidTag": "Premium",
+      "convert": "Convertir mi respuesta en bloques",
+      "startEmpty": "Empezar sin bloques",
+      "editBlocks": "Editar bloques",
+      "startTitle": "Crea esta respuesta con bloques",
+      "startCopy": "Encaja bloques en lugar de escribir texto de comando. Ves lo que dirá el bot mientras construyes.",
+      "oneWay": "Al guardar, la respuesta solo se muestra como bloques (los espectadores ven «Bloques AST» y pueden abrirlos).",
+      "tryOut": "Guardar comandos con bloques requiere Premium o Pro. Puedes construirlos y probarlos ya; tu trabajo se guarda en este dispositivo.",
+      "locked": "Este comando sigue funcionando en el chat. Editar sus bloques requiere Premium o Pro; aún puedes cambiar sus ajustes.",
+      "seePlans": "Ver planes",
+      "toText": "Escribir una respuesta de texto",
+      "toTextConfirm": "Al guardar, los bloques se cambiarán por una nueva respuesta de texto. Escríbela en Detalles.",
+      "toTextGo": "Cambiar a texto",
+      "tryBlocks": "Hacerlo con bloques"
+    },
+    "ops": {
+      "eq": "es",
+      "ne": "no es",
+      "gt": "es mayor que",
+      "lt": "es menor que",
+      "ge": "es al menos",
+      "le": "es como mucho",
+      "like": "coincide (sin mayúsculas)",
+      "add": "+",
+      "sub": "−",
+      "mul": "×",
+      "div": "÷",
+      "mod": "resto de ÷"
+    },
+    "preview": {
+      "advancedSkipped": "Las piezas avanzadas no se previsualizan aquí; funcionan en el chat.",
+      "alsoDoes": "También hace",
+      "chatLabel": "Vista previa del chat",
+      "chatter": "Usuario",
+      "disclaimer": "Solo vista previa: los datos de Twitch son de ejemplo y no se envía nada.",
+      "emptyValue": "(vacío)",
+      "remembers": "Recuerda",
+      "rerun": "Ejecutar otra vez (nuevos valores al azar)",
+      "role": "Su rol",
+      "roles": {
+        "viewer": "Espectador",
+        "mod": "Mod",
+        "streamer": "Streamer"
+      },
+      "silent": "El bot no responde en el chat.",
+      "skipped": "Omitido · {{who}}",
+      "sub": "Se actualiza con cada cambio.",
+      "title": "Probar",
+      "tooLong": "Este comando tarda demasiado. Revisa tus bucles.",
+      "typedAfter": "Escrito después del comando"
+    },
+    "sections": {
+      "basics": {
+        "label": "Básicos",
+        "hint": "Lo que dice el bot y otros comandos"
+      },
+      "people": {
+        "label": "Personas",
+        "hint": "Quién escribe, a quién menciona"
+      },
+      "stream": {
+        "label": "Directo",
+        "hint": "En vivo, título, juego, espectadores"
+      },
+      "events": {
+        "label": "Eventos",
+        "hint": "Raids, bits, subs, recompensas (solo comandos de eventos)"
+      },
+      "text": {
+        "label": "Texto",
+        "hint": "Cambiar o recortar texto"
+      },
+      "numbers": {
+        "label": "Números",
+        "hint": "Números al azar y contadores"
+      },
+      "variables": {
+        "label": "Variables",
+        "hint": "Recordar cosas entre mensajes"
+      },
+      "logic": {
+        "label": "Lógica y bucles",
+        "hint": "Si/si no, comparar, repetir, esperar"
+      },
+      "chat": {
+        "label": "Chat y voz",
+        "hint": "Enviar mensajes, TTS, respuestas de IA"
+      },
+      "moderation": {
+        "label": "Moderación",
+        "hint": "Ban, VIP, mod, modos de chat"
+      },
+      "channel": {
+        "label": "Canal",
+        "hint": "Título, encuestas, predicciones, fijados, clips"
+      },
+      "overlay": {
+        "label": "Overlay y juegos",
+        "hint": "Cola de alertas, triggers, ruleta"
+      }
+    },
+    "starters": {
+      "hello": {
+        "label": "Saludo",
+        "blurb": "Saluda a quien lo escribió"
+      },
+      "hug": {
+        "label": "Abrazar a alguien",
+        "blurb": "Usa el nombre escrito tras el comando"
+      },
+      "deaths": {
+        "label": "Contador de muertes",
+        "blurb": "Número guardado que sube con cada uso"
+      },
+      "boss": {
+        "label": "Si / si no",
+        "blurb": "Otra respuesta para el streamer"
+      },
+      "roulette": {
+        "label": "Ruleta de timeout",
+        "blurb": "1 de cada 6 veces aísla al usuario un minuto"
+      },
+      "raid": {
+        "label": "Gracias por la raid",
+        "blurb": "Para eventos de raid: agradece y da shoutout"
+      }
+    },
+    "storage": {
+      "memory": {
+        "label": "Solo esta vez",
+        "short": "esta vez",
+        "hint": "Se olvida al terminar el comando."
+      },
+      "cache": {
+        "label": "Hasta que acabe el directo",
+        "short": "este directo",
+        "hint": "Compartido por todo el chat, se borra al terminar el directo."
+      },
+      "cacheUser": {
+        "label": "Por espectador, este directo",
+        "short": "por espectador",
+        "hint": "Cada espectador tiene su valor hasta que acaba el directo."
+      },
+      "db": {
+        "label": "Guardado para el canal",
+        "short": "guardado",
+        "hint": "Se mantiene entre directos, p. ej. un contador de muertes."
+      },
+      "dbUser": {
+        "label": "Guardado por espectador",
+        "short": "guardado por espectador",
+        "hint": "Se mantiene entre directos para cada espectador, p. ej. puntos."
+      }
+    },
+    "types": {
+      "literal": "Texto",
+      "raw": "Pieza avanzada",
+      "template": "Texto entre comillas",
+      "getVar": "Usar variable",
+      "getItem": "Elemento de una lista",
+      "randomItem": "Elemento al azar de una lista",
+      "listSize": "Tamaño de la lista",
+      "wholeList": "Lista completa",
+      "setVar": "Guardar variable",
+      "setList": "Añadir a una lista",
+      "exists": "¿Variable con valor?",
+      "deleteVar": "Olvidar variable",
+      "arrayLiteral": "Lista",
+      "compare": "Comparar",
+      "math": "Cálculo",
+      "unary": "Signo",
+      "ternary": "Si / si no",
+      "commandRef": "Ejecutar otro comando",
+      "loopVar": "Contador del bucle",
+      "loopAssign": "Cambiar contador",
+      "forLoop": "Repetir",
+      "group": "Grupo",
+      "word": "Palabra tras el comando",
+      "rest": "Todo lo de después del comando",
+      "root": "Comando"
+    },
+    "upgrade": {
+      "title": "Los comandos con bloques requieren Premium o Pro",
+      "copy": "Mejora tu plan para guardar este comando. Volverás a él justo después del pago.",
+      "copyHelper": "Pide al dueño del canal que mejore a Premium o Pro para guardar comandos con bloques.",
+      "kept": "Tus bloques se guardan en este dispositivo.",
+      "keepEditing": "Seguir editando"
+    },
+    "viewer": {
+      "kicker": "Bloques AST",
+      "sub": "Cómo funciona este comando, en bloques. Pruébalo abajo; no se envía nada.",
+      "close": "Cerrar",
+      "open": "Ver cómo funciona {{name}}",
+      "unavailable": "Ahora no se pueden mostrar estos bloques."
+    }
   }
 }

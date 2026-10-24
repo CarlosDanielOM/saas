@@ -1,0 +1,114 @@
+:host {
+  --tile: #171a21;
+  --fg: #f5f7fb;
+  --muted: #a7b0c2;
+  --line: rgba(255, 255, 255, 0.07);
+  --kicker: #c4b5fd;
+  --btn: #1d2230;
+  font-family: 'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif;
+}
+
+:host-context(html:not(.dark)) {
+  --tile: #ffffff;
+  --fg: #14151a;
+  --muted: #596273;
+  --line: rgba(15, 17, 21, 0.08);
+  --kicker: #6d28d9;
+  --btn: #eef0f5;
+}
+
+.bv-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 130;
+  display: grid;
+  place-items: end center;
+  background: rgba(10, 10, 14, 0.55);
+  backdrop-filter: blur(6px);
+}
+
+.bv {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 92dvh;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 1.25rem 1.25rem 0 0;
+  background: var(--tile);
+  color: var(--fg);
+  box-shadow: 0 22px 56px rgba(0, 0, 0, 0.45);
+}
+
+.bv__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex: none;
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.bv__kicker {
+  margin: 0 0 0.25rem;
+  color: var(--kicker);
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.bv__title {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.bv__sub {
+  margin: 0.2rem 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.bv__close {
+  width: 2.75rem;
+  height: 2.75rem;
+  flex: none;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  background: var(--btn);
+  color: var(--fg);
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.bv__close:focus-visible {
+  outline: 2px solid #a78bfa;
+  outline-offset: 2px;
+}
+
+.bv__editor {
+  flex: 1;
+  min-height: 0;
+}
+
+.bv__empty {
+  margin: 1rem;
+  color: var(--muted);
+}
+
+@media (min-width: 640px) {
+  .bv-overlay {
+    place-items: center;
+    padding: 1rem;
+  }
+
+  .bv {
+    width: min(100%, 62rem);
+    height: min(88dvh, 46rem);
+    border-radius: 1.25rem;
+  }
+}

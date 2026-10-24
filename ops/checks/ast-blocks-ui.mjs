@@ -4,7 +4,7 @@
  *
  *  - starts from the Greeting starter; live preview shows the bot reply with no Run button
  *  - typing in a text block updates the reply and the command text immediately
- *  - library: 107 catalog functions, search, add at the cursor; labelled argument holes
+ *  - library: 115 catalog functions, search, add at the cursor; labelled argument holes
  *  - inspector: Mods+ / destructive notes, typed arguments, cursor into an empty hole,
  *    move earlier/later, duplicate, delete; undo/redo buttons and Ctrl+Z
  *  - Try it: viewer vs mod role (mod-only actions skipped for viewers), "Remembers" list
@@ -81,7 +81,7 @@ try {
     assert.equal(await code(page), 'Hello $(user)! Welcome to the stream.');
     assert.match(await botSays(page), /Hello PixelFan! Welcome to the stream\./);
     assert.equal(await page.getByRole('button', { name: /run preview/i }).count(), 0, 'no Run button: preview is live');
-    assert.match(await page.locator('.lib__count').innerText(), /107 functions/);
+    assert.match(await page.locator('.lib__count').innerText(), /115 functions/);
 
     // Typing in a text block updates reply + command text live.
     const first = page.locator('.canvas .blk__text').first();
