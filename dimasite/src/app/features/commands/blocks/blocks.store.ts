@@ -23,7 +23,7 @@ import { DEFAULT_PREVIEW_CONTEXT, type PreviewContext, type PreviewResult, Previ
 
 export type DragPayload = { mode: 'new'; itemId: string } | { mode: 'move'; nodeId: string };
 
-const EMPTY_RUN: PreviewResult = { chat: '', extraLines: [], actions: [], variables: [], skippedAdvanced: 0 };
+const EMPTY_RUN: PreviewResult = { chat: '', extraLines: [], actions: [], variables: [], skippedAdvanced: 0, notAllowed: false };
 
 /** One editor's state. Provided per editor/viewer component. */
 @Injectable()
@@ -39,6 +39,8 @@ export class BlocksStore {
   readonly dragging = signal<DragPayload | null>(null);
   readonly hoverTarget = signal<DropTarget | null>(null);
   readonly context = signal<PreviewContext>({ ...DEFAULT_PREVIEW_CONTEXT });
+  /** The command's "who can use it" level (null = tag rules or unknown): the preview and warnings use it. */
+  readonly commandLevel = signal<number | null>(null);
   /** A block the server pointed at after a failed save. */
   readonly errorBlockId = signal<string | null>(null);
   /** Last change, announced to screen readers. */
@@ -70,7 +72,7 @@ export class BlocksStore {
   readonly run = computed<{ result: PreviewResult; tooLong: boolean }>(() => {
     this.runSeed();
     try {
-      return { result: runPreview(this.root(), this.context()), tooLong: false };
+      return { result: runPreview(this.root(), this.context(), this.commandLevel()), tooLong: false };
     } catch (err) {
       if (err instanceof PreviewTooLong) return { result: EMPTY_RUN, tooLong: true };
       throw err;

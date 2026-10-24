@@ -9119,7 +9119,8 @@
       "forgetWhole": "La variable completa",
       "keptFor": "Cuánto tiempo se recuerda",
       "kicker": "Bloque seleccionado",
-      "levelNote": "Para otros usuarios se salta y el resto del comando sigue funcionando.",
+      "levelNote": "En un comando funciona para cualquiera que pueda usar el comando. Elige quién puede usarlo en Detalles.",
+      "levelWarn": "Cualquiera que pueda usar este comando puede activarlo, y ahora eso incluye a gente por debajo de mods. Para limitarlo, cambia quién puede usarlo en Detalles.",
       "listSize": "Tamaño de la lista",
       "loopTip": "Usa el contador (#i) dentro para mostrar el número de vuelta. Los bucles paran tras 25 vueltas en el plan gratis y más en los de pago.",
       "moveEarlier": "Mover antes (Alt + ←)",
@@ -9222,8 +9223,8 @@
       }
     },
     "level": {
-      "mods": "Mods+",
-      "streamer": "Solo streamer"
+      "mods": "Acción de mod",
+      "streamer": "Acción del streamer"
     },
     "library": {
       "adds": "Añade",
@@ -9296,7 +9297,7 @@
         "streamer": "Streamer"
       },
       "silent": "El bot no responde en el chat.",
-      "skipped": "Omitido · {{who}}",
+      "notAllowed": "Un {{role}} no puede usar este comando (mira quién puede usarlo en Detalles), así que no pasa nada.",
       "sub": "Se actualiza con cada cambio.",
       "title": "Probar",
       "tooLong": "Este comando tarda demasiado. Revisa tus bucles.",

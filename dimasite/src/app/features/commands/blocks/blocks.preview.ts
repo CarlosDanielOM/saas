@@ -1,4 +1,4 @@
-import { SAMPLE_VALUES, catalogEntry, isActionFunction, levelKey } from './blocks.catalog';
+import { SAMPLE_VALUES, catalogEntry, isActionFunction } from './blocks.catalog';
 import { type AnyNode, type BlockNode, type ForLoopNode, type LoopAssignNode, STORAGE_MARK, type VarStorage } from './blocks.model';
 
 /**
@@ -33,14 +33,13 @@ export const DEFAULT_PREVIEW_CONTEXT: PreviewContext = {
   chatters: ['PixelFan', 'ModSnack', 'ClipGoblin']
 };
 
-const ROLE_LEVEL: Record<PreviewRole, number> = { viewer: 1, mod: 7, streamer: 10 };
+/** The bot runs every function of a saved command as the streamer; only the command's own "who can use it" gates it. */
+export const ROLE_LEVEL: Record<PreviewRole, number> = { viewer: 1, mod: 7, streamer: 10 };
 
 export interface PreviewAction {
   name: string;
   args: string;
   destructive: boolean;
-  /** 'mods' | 'streamer' when this chatter can't run it. */
-  blocked: 'mods' | 'streamer' | null;
 }
 
 export interface PreviewResult {
@@ -50,6 +49,8 @@ export interface PreviewResult {
   variables: { name: string; value: string }[];
   /** Advanced pieces are kept as text and not previewed. */
   skippedAdvanced: number;
+  /** The chosen role is below the command's "who can use it": nothing runs. */
+  notAllowed: boolean;
 }
 
 const MAX_STEPS = 5000;
@@ -67,7 +68,10 @@ interface RunState {
 
 export class PreviewTooLong extends Error {}
 
-export function runPreview(root: AnyNode, ctx: PreviewContext): PreviewResult {
+export function runPreview(root: AnyNode, ctx: PreviewContext, commandLevel: number | null = null): PreviewResult {
+  if (commandLevel !== null && ROLE_LEVEL[ctx.role] < commandLevel) {
+    return { chat: '', extraLines: [], actions: [], variables: [], skippedAdvanced: 0, notAllowed: true };
+  }
   const state: RunState = { ctx, vars: new Map(), loopVars: new Map(), actions: [], extraLines: [], steps: 0, skipped: 0 };
   const children = root.type === 'root' ? root.children : [root];
   const chat = children.map((node) => evalNode(node, state)).join('').trim();
@@ -75,7 +79,7 @@ export function runPreview(root: AnyNode, ctx: PreviewContext): PreviewResult {
     const [storage, name] = key.split(':');
     return { name: `${STORAGE_MARK[storage as VarStorage] ?? ''}${name}`, value };
   });
-  return { chat, extraLines: state.extraLines, actions: state.actions, variables, skippedAdvanced: state.skipped };
+  return { chat, extraLines: state.extraLines, actions: state.actions, variables, skippedAdvanced: state.skipped, notAllowed: false };
 }
 
 const text = (value: unknown) => (value == null ? '' : String(value));
@@ -269,10 +273,8 @@ function evalFunction(name: string, args: BlockNode[], s: RunState): string {
   const joined = values.join(' ').trim();
 
   if (isActionFunction(canonical)) {
-    const needed = entry ? levelKey(entry.level) : null;
-    const blocked = entry && entry.level > ROLE_LEVEL[ctx.role] ? needed : null;
-    if (!blocked && (canonical === 'chat.send' || canonical === 'announce' || canonical === 'say')) s.extraLines.push(joined);
-    record(s, canonical, joined, blocked);
+    if (canonical === 'chat.send' || canonical === 'announce') s.extraLines.push(joined);
+    record(s, canonical, joined);
     return '';
   }
 
@@ -301,6 +303,6 @@ function evalFunction(name: string, args: BlockNode[], s: RunState): string {
   }
 }
 
-function record(s: RunState, name: string, args: string, blocked: 'mods' | 'streamer' | null = null): void {
-  s.actions.push({ name, args, destructive: Boolean(catalogEntry(name)?.destructive), blocked });
+function record(s: RunState, name: string, args: string): void {
+  s.actions.push({ name, args, destructive: Boolean(catalogEntry(name)?.destructive) });
 }

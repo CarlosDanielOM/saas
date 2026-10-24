@@ -79,6 +79,12 @@ export class BlockInspectorComponent {
     const n = this.node();
     return n?.type === 'function' ? argHoles(n, this.t) : [];
   });
+  /** The command can be used by people below this function's level (anyone allowed can trigger it). */
+  readonly levelWarning = computed(() => {
+    const entry = this.entry();
+    const commandLevel = this.store.commandLevel();
+    return !!entry && entry.level >= 7 && commandLevel !== null && commandLevel < entry.level;
+  });
   readonly showError = computed(() => {
     const n = this.node();
     return !!n && this.store.errorBlockId() === n.id ? this.errorMessage() : null;

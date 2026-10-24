@@ -24,9 +24,9 @@
       @if (level() || entry()?.destructive) {
         <ul class="insp__notes">
           @if (level()) {
-            <li class="insp__note">
+            <li class="insp__note" [class.insp__note--danger]="levelWarning()">
               <lucide-icon [name]="icons.shield" [size]="15" aria-hidden="true" />
-              <span><strong>{{ level() }}.</strong> {{ t('commandBlocks.inspector.levelNote') }}</span>
+              <span><strong>{{ level() }}.</strong> {{ t(levelWarning() ? 'commandBlocks.inspector.levelWarn' : 'commandBlocks.inspector.levelNote') }}</span>
             </li>
           }
           @if (entry()?.destructive) {

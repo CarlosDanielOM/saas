@@ -282,7 +282,9 @@
             <span class="bx-msg__who">{{ store.context().user || t('commandBlocks.preview.roles.viewer') }}</span>
             <span class="bx-msg__text">!command {{ store.context().argument }}</span>
           </div>
-          @if (run().tooLong) {
+          @if (run().result.notAllowed) {
+            <p class="bx-msg bx-msg--silent">{{ t('commandBlocks.preview.notAllowed', { role: t('commandBlocks.preview.roles.' + store.context().role) }) }}</p>
+          } @else if (run().tooLong) {
             <div class="bx-msg bx-msg--error">
               <lucide-icon [name]="icons.warn" [size]="15" aria-hidden="true" />
               <span>{{ t('commandBlocks.preview.tooLong') }}</span>
@@ -314,13 +316,10 @@
             <p class="bx-effects__title">{{ t('commandBlocks.preview.alsoDoes') }}</p>
             <ul class="bx-effects__list">
               @for (action of run().result.actions; track $index) {
-                <li class="bx-effect" [class.is-blocked]="!!action.blocked" [class.is-destructive]="action.destructive && !action.blocked">
-                  <lucide-icon [name]="action.blocked ? icons.shield : icons.zap" [size]="15" aria-hidden="true" />
+                <li class="bx-effect" [class.is-destructive]="action.destructive">
+                  <lucide-icon [name]="icons.zap" [size]="15" aria-hidden="true" />
                   <code class="bx-effect__name">{{ action.name }}</code>
                   @if (action.args) { <span class="bx-effect__args">{{ action.args }}</span> }
-                  @if (action.blocked) {
-                    <span class="bx-tag bx-tag--warn">{{ t('commandBlocks.preview.skipped', { who: t('commandBlocks.level.' + action.blocked) }) }}</span>
-                  }
                 </li>
               }
             </ul>

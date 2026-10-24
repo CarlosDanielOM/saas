@@ -191,6 +191,14 @@ export class CommandModalComponent {
       message.setValidators(this.authoring() === 'blocks' ? [] : [Validators.required, Validators.maxLength(MAX_REPLY_LENGTH)]);
       message.updateValueAndValidity({ emitEvent: false });
     });
+    // The preview and warnings follow the command's "who can use it" (unknown for tag rules).
+    const syncLevel = () => this.blocks.commandLevel.set(
+      this.accessMode() === 'level' ? Number(this.commandForm.controls.userLevel.value) || 1 : null);
+    this.commandForm.controls.userLevel.valueChanges.subscribe(syncLevel);
+    effect(() => {
+      this.accessMode();
+      untracked(syncLevel);
+    });
     // Keep a draft in this browser while something is unsaved.
     this.commandForm.valueChanges.subscribe(() => this.queueDraft());
     effect(() => {

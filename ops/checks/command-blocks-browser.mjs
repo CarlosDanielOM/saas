@@ -189,6 +189,23 @@ try {
     if (shots) await page.screenshot({ path: `${shots}/blocks-desktop-light.png` });
     await setTheme(page, 'dark');
 
+    // Function levels only matter for the AI: in a command, anyone allowed to use it triggers it.
+    await editor(page).locator('.bx-search input').fill('tts.refresh');
+    await editor(page).locator('.bx-item[data-item="fn:tts.refresh"]').click();
+    await editor(page).locator('app-block-inspector .insp__note--danger').getByText('right now that includes people below mods', { exact: false }).waitFor();
+    assert.equal(await editor(page).locator('.blk[data-type="function"]').filter({ hasText: 'tts.refresh' }).locator('.blk__badge').textContent().then((t) => t.trim()), 'Mod action');
+    assert.ok(await editor(page).locator('.bx-test').isVisible(), 'desktop keeps Try it visible while a block is selected');
+    await until(async () => (await editor(page).locator('.bx-effect__name').allTextContents()).includes('tts.refresh'), 'viewer can trigger it');
+    await modal(page).getByRole('tab', { name: 'Details' }).click();
+    await modal(page).locator('select[formcontrolname="userLevel"]').selectOption('7');
+    await modal(page).getByRole('tab', { name: 'Blocks' }).click();
+    await editor(page).getByText("A Viewer can't use this command", { exact: false }).waitFor();
+    await editor(page).getByRole('button', { name: 'Mod', exact: true }).click();
+    await until(async () => (await editor(page).locator('.bx-effect__name').allTextContents()).includes('tts.refresh'), 'mod runs it');
+    await editor(page).locator('.blk[data-type="function"]').filter({ hasText: 'tts.refresh' }).click();
+    await editor(page).locator('app-block-inspector').getByText('In a command it runs for anyone allowed', { exact: false }).waitFor();
+    await editor(page).locator('app-block-inspector').getByRole('button', { name: 'Delete block' }).click();
+
     await fillDetails(page, 'greet');
     assert.ok(await modal(page).locator('.lf-blocks-chip').isVisible(), 'details show the AST Blocks reply summary');
     await modal(page).getByRole('button', { name: 'Create', exact: true }).click();
@@ -205,6 +222,8 @@ try {
     await viewer.getByRole('heading', { name: '!greet' }).waitFor();
     assert.equal(await viewer.locator('.bx-lib').count(), 0, 'viewer has no library');
     assert.equal(await viewer.locator('input.blk__text').count(), 0, 'viewer text is not editable');
+    await viewer.getByText("A Viewer can't use this command", { exact: false }).waitFor();
+    await viewer.getByRole('button', { name: 'Mod', exact: true }).click();
     await until(async () => (await viewer.locator('.bx-msg--bot .bx-msg__text').first().textContent())?.includes('Hello PixelFan!'), 'viewer preview');
     await axe(page, 'viewer dialog dark', 'app-blocks-viewer-dialog');
     await page.keyboard.press('Escape');

@@ -9119,7 +9119,8 @@
       "forgetWhole": "The whole variable",
       "keptFor": "How long it's remembered",
       "kicker": "Selected block",
-      "levelNote": "For other chatters it's skipped and the rest of the command still runs.",
+      "levelNote": "In a command it runs for anyone allowed to use the command. Choose who can use it in Details.",
+      "levelWarn": "Anyone allowed to use this command can trigger it, and right now that includes people below mods. To limit it, change who can use it in Details.",
       "listSize": "List size",
       "loopTip": "Use the counter (#i) inside to show the round number. Loops stop after 25 rounds on free plans and more on paid plans.",
       "moveEarlier": "Move earlier (Alt + ←)",
@@ -9222,8 +9223,8 @@
       }
     },
     "level": {
-      "mods": "Mods+",
-      "streamer": "Streamer only"
+      "mods": "Mod action",
+      "streamer": "Streamer action"
     },
     "library": {
       "adds": "Adds",
@@ -9296,7 +9297,7 @@
         "streamer": "Streamer"
       },
       "silent": "The bot doesn't reply in chat.",
-      "skipped": "Skipped · {{who}}",
+      "notAllowed": "A {{role}} can't use this command (see who can use it in Details), so nothing happens.",
       "sub": "Updates with every change.",
       "title": "Try it",
       "tooLong": "This command runs too long. Check your loops.",

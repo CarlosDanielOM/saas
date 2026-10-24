@@ -956,7 +956,9 @@
     display: grid;
   }
 
-  :host([data-tab]) .bx-test {
+  :host([data-tab]) .bx-test,
+  :host([data-tab='build'].has-selection) .bx-test {
+    display: flex;
     flex-direction: column;
   }
 

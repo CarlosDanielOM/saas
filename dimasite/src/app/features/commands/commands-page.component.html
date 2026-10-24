@@ -313,6 +313,6 @@
   />
 
   @if (viewingBlocks(); as viewing) {
-    <app-blocks-viewer-dialog [commandName]="viewing.cmd" [root]="commandBlocksRoot(viewing)" (closed)="viewingBlocks.set(null)" />
+    <app-blocks-viewer-dialog [commandName]="viewing.cmd" [root]="commandBlocksRoot(viewing)" [commandLevel]="viewing.permissionExpression == null ? viewing.userLevel : null" (closed)="viewingBlocks.set(null)" />
   }
 </div>
