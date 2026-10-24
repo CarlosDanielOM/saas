@@ -6,16 +6,14 @@ import { ToastService } from '../../../services/toast.service';
 import {
   ChatEvent,
   ChatEventPendingAction,
-  CheerTier,
   ConfigControl,
   PlanTier
 } from '../chat-events.model';
-import { TierEditorComponent } from './tier-editor.component';
-import { LfIconComponent } from '../../../shared/lf-icon/lf-icon.component';
+import { BitsRulesPanelComponent } from '../../bits-rules/bits-rules-panel.component';
 
 @Component({
   selector: 'app-config-panel',
-  imports: [FormsModule, TierEditorComponent, LfIconComponent],
+  imports: [FormsModule, BitsRulesPanelComponent],
   styleUrl: './config-panel.component.css',
   templateUrl: './config-panel.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -28,6 +26,9 @@ export class ConfigPanelComponent {
   readonly userPlan = input.required<PlanTier>();
   readonly pendingAction = input<ChatEventPendingAction>('none');
   readonly canManage = input(false);
+  readonly channelId = input<string | null>(null);
+  /** Overlay Studio link for the Bits rules panel (channel owner only). */
+  readonly overlayLink = input<string[] | null>(null);
   readonly save = output<void>();
   readonly delete = output<void>();
 
@@ -42,6 +43,8 @@ export class ConfigPanelComponent {
   readonly isSaving = computed(() => this.pendingAction() === 'saving');
   readonly isDeleting = computed(() => this.pendingAction() === 'deleting');
   readonly isBusy = computed(() => this.isSaving() || this.isDeleting());
+
+  readonly hasBitsRules = computed(() => this.event()?.config?.some(control => control.type === 'message-tiers') ?? false);
 
   readonly isChatNotification = computed(() => this.event()?.type === 'channel.chat.notification');
 
@@ -103,15 +106,6 @@ export class ConfigPanelComponent {
     }
 
     return sourceControl.value === requiredValue;
-  }
-
-  isCheerTierArray(value: unknown): value is CheerTier[] {
-    return Array.isArray(value);
-  }
-
-  onTiersChange(control: ConfigControl, tiers: CheerTier[]): void {
-    if (!this.canManage()) return;
-    control.value = tiers;
   }
 
   onSave(): void {

@@ -67,7 +67,11 @@ function validDesign(value: unknown): value is AlertDesign {
   const events = value['events'];
   if (value['variants'] !== undefined) {
     const variants = value['variants'];
-    if (!record(variants) || Object.entries(variants).some(([kind, items]) => !['sub','bits','raid'].includes(kind) || !Array.isArray(items) || items.length > 10 || items.some(v => !record(v) || typeof v['id'] !== 'string' || typeof v['name'] !== 'string' || typeof v['enabled'] !== 'boolean' || !validLayout(v['layout']) || (kind === 'sub' ? !['1000','2000','3000'].includes(v['tier'] as string) : !finite(v['min']) || v['min'] < 0 || (v['max'] !== undefined && (!finite(v['max']) || v['max'] < v['min'])))))) return false;
+    if (!record(variants) || Object.entries(variants).some(([kind, items]) => !['sub','bits','raid'].includes(kind) || !Array.isArray(items) || items.length > (kind === 'bits' ? 50 : 10) || items.some(v => !record(v) || typeof v['id'] !== 'string' || typeof v['name'] !== 'string' || typeof v['enabled'] !== 'boolean' || !validLayout(v['layout'])
+      // Bits looks belong to a shared Bits rule; older amount-based Bits looks are still accepted and dropped on restore.
+      || (kind === 'sub' ? !['1000','2000','3000'].includes(v['tier'] as string)
+        : kind === 'bits' && typeof v['ruleId'] === 'string' ? false
+        : !finite(v['min']) || v['min'] < 0 || (v['max'] !== undefined && (!finite(v['max']) || v['max'] < v['min'])))))) return false;
   }
   return record(events) && ALERT_EVENTS.every(kind => {
     const layout = events[kind];

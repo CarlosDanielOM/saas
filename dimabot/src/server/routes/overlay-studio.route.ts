@@ -8,7 +8,7 @@ import express, { type Request, type Response, type NextFunction } from 'express
 import { authMiddleware } from '../../middleware/auth.middleware.js';
 import type { AuthRequest } from '../../middleware/types.js';
 import { change, load, publicState, validateState, object, string, token, OverlayError, requireOverlayAccount } from '../../overlays/store.js';
-import { eventFor, fileFor, publishStudioAlert, publishTest, studioConnections, queueStatus, controlStudio } from '../../overlays/live.js';
+import { bitsRuleFor, eventFor, fileFor, publishStudioAlert, publishTest, studioConnections, queueStatus, controlStudio } from '../../overlays/live.js';
 import { renderTemplate, sampleEvent } from '../../overlays/ast.js';
 import { ALERT_EVENTS, EVENT_KINDS, type EventKind, type AlertEvent } from '../../overlays/model.js';
 import { AssetError, withAssetLibrary } from '../../assets/library.js';
@@ -43,6 +43,16 @@ overlayStudioRoute.get('/test-media/:ticket', wrap(async (req, res) => {
   const file = testFile(param(req, 'ticket')); if (!file) throw new OverlayError('Test expired. Run the preview again.', 404);
   res.type(file.mime); return res.sendFile(file.path);
 }));
+/** Tests use the editor's sample viewer, amount and tier so each Bits rule can be tried in OBS. */
+function testEvent(kind: AlertEvent, body: Record<string, unknown>) {
+  const user = typeof body.user === 'string' && body.user.trim() ? body.user.trim().slice(0, 80) : 'Luna';
+  const amount = Number(body.amount), tier = ['1000', '2000', '3000'].includes(body.tier as string) ? body.tier as string : '1000';
+  return sampleEvent(kind, user, Number.isSafeInteger(amount) && amount > 0 ? Math.min(1000000000, amount) : 100, tier);
+}
+async function requireAlertPlays(channel: string, kind: EventKind, raw?: Record<string, unknown>) {
+  const rule = await bitsRuleFor(channel, kind, raw);
+  if (rule?.alert === false) throw new OverlayError(`No alert plays for ${raw?.bits} Bits: the "${rule.name || 'matching'}" Bits rule has alerts turned off`, 409);
+}
 overlayStudioRoute.use(authMiddleware);
 overlayStudioRoute.use('/:channelID', (req: AuthRequest, res, next) => {
   if (req.user?.id !== req.params.channelID) { res.status(403).json({ error: true, message: 'Channel owner required', status: 403 }); return; }
@@ -99,7 +109,9 @@ overlayStudioRoute.post('/:channelID/test', wrap(async (req, res) => {
     const prepared = await prepareTest(channel, kind, body);
     try {
       if (body.destination === 'obs') {
-        const clients = await publishTest(channel, scene!.publicId, kind, prepared, ALERT_EVENTS.includes(kind as AlertEvent) ? sampleEvent(kind as AlertEvent) : undefined);
+        const raw = ALERT_EVENTS.includes(kind as AlertEvent) ? testEvent(kind as AlertEvent, body) : undefined;
+        await requireAlertPlays(channel, kind, raw);
+        const clients = await publishTest(channel, scene!.publicId, kind, prepared, raw);
         await prepared.cleanup(); return ok(res, { sent: true, clients, sceneId: scene!.id });
       }
       return ok(res, { media: await previewMedia(channel, prepared), triggerId: prepared.triggerId, text: prepared.text });
@@ -108,7 +120,9 @@ overlayStudioRoute.post('/:channelID/test', wrap(async (req, res) => {
 }));
 overlayStudioRoute.post('/:channelID/test-alert', wrap(async (req, res) => {
   const kind = req.body.kind as AlertEvent; if (!ALERT_EVENTS.includes(kind)) throw new OverlayError('Invalid alert event');
-  const count = await publishStudioAlert(param(req, 'channelID'), kind, sampleEvent(kind), undefined, undefined, 'other');
+  const raw = testEvent(kind, object(req.body));
+  await requireAlertPlays(param(req, 'channelID'), kind, raw);
+  const count = await publishStudioAlert(param(req, 'channelID'), kind, raw, undefined, undefined, 'other');
   if (!count) throw new OverlayError('Open a published browser source with this alert enabled first', 409);
   return ok(res, { sent: true, clients: count });
 }));

@@ -117,6 +117,12 @@ export class ChatEventsPageComponent implements OnInit {
       .filter((group) => group.events.length > 0);
   });
 
+  /** Overlay Studio is owner-only, so only the owner gets the link from the Bits rules. */
+  readonly overlayLink = computed(() => {
+    const channel = this.channelID(), streamer = this.streamer();
+    return channel && streamer && channel === this.sessionAuth.getPrimaryChannelID() ? ['/', streamer, 'modules', 'overlays'] : null;
+  });
+
   readonly enabledCount = computed(() => this.cards().filter((e) => e.enabled).length);
 
   async ngOnInit(): Promise<void> {
@@ -459,7 +465,8 @@ export class ChatEventsPageComponent implements OnInit {
     const payload: Record<string, unknown> = {};
     for (const control of configControls) {
       const key = getConfigPersistenceKey(control);
-      if (key && control.value !== undefined) {
+      // Bits rules save right away through their own API (shared with Overlay Studio).
+      if (key && control.value !== undefined && control.type !== 'message-tiers') {
         payload[key] = serializeConfigControlValue(control);
       }
     }

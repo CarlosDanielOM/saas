@@ -40,18 +40,36 @@ Escribe estas variables en el mensaje de un evento. Cuando ocurre el evento, el 
 | Suscripción | `$(user)`, `$(sub.tier)` | |
 | Suscripción regalada | `$(user)`, `$(sub.tier)`, `$(gifted.user)` | |
 | Resuscripción | `$(user)`, `$(sub.tier)`, `$(sub.months)` | |
-| Bits (cheer) | `$(user)`, `$(cheer.amount)`, `$(cheer.message)` | Niveles de mensaje: **Bits mínimos**, **Bits máximos**, **Mensaje** |
+| Bits (cheer) | `$(user)`, `$(cheer.amount)`, `$(cheer.message)` | [Reglas de Bits](#reglas-de-bits) para distintas cantidades |
 | Hype Train | `$(hypetrain.level)`, `$(hypetrain.progress)`, `$(hypetrain.end)` | |
 | Shoutout recibido | `$(shoutout.channel)`, `$(twitch.channel)` | |
 | Notificaciones del chat | `$(user)`, `$(twitch.streak)`, `$(twitch.modiversary)` | Rachas de visualización y aniversarios de moderación, cada uno con su casilla y su mensaje |
 
 Usa el marcador que muestra cada control. Si un control no indica una variable, no asumas que el evento la admite.
 
-## Niveles de Bits y límites por plan
+## Reglas de Bits
+
+Las reglas de Bits te permiten tratar algunas cantidades de otra forma. Abre la tarjeta **Cheers** y selecciona **Configurar**. Las reglas están debajo del mensaje predeterminado.
+
+Cada regla tiene tres partes:
+
+- **Qué cheers:** una cantidad exacta (69 Bits), un rango (100–499 Bits) o una cantidad o más (1.000+ Bits).
+- **Qué dice el bot:** el mensaje predeterminado, su propio mensaje o nada.
+- **Alerta del overlay:** activada o desactivada. Si está activada, la alerta usa tu diseño predeterminado de Bits hasta que le des a la regla su propio diseño en [Overlay Studio](/es/overlay-studio/#diseños-por-bits).
+
+Cada cheer usa una sola regla. Si coinciden varias, gana la más específica: una cantidad exacta gana a un rango, y un rango más estrecho gana a uno más amplio. El orden de la lista no importa. Las reglas apagadas se omiten. Un cheer que no coincide con ninguna regla recibe el mensaje y la alerta predeterminados.
+
+Escribe una cantidad en **Prueba una cantidad** para ver qué regla usa y qué pasa en el chat y en el overlay.
+
+- Las reglas se guardan en cuanto las añades, editas, activas o borras. **Guardar cambios** solo guarda el mensaje predeterminado.
+- Las reglas se comparten con Overlay Studio. Un cambio en cualquiera de las dos páginas aparece en la otra.
+- Todos los planes pueden usar reglas de Bits, hasta 50 por canal.
+- Los administradores del canal con acceso de solo lectura ven las reglas, pero no pueden cambiarlas.
+- Si el evento Cheers está apagado, las reglas siguen eligiendo las alertas del overlay, pero no se envía nada al chat.
+
+## Requisitos de plan
 
 Cada tarjeta muestra el plan que requiere. El servidor revisa el plan cada vez que creas o cambias una suscripción.
-
-Los niveles de mensaje de Bits tienen un límite por plan. Si el evento no define su propio límite, el servidor usa **0** niveles en Free, **2** en Premium y **5** en Pro. El editor no te impide agregar niveles cuando el evento no tiene límite, así que puedes llenar más de los que permite tu plan. Entonces el guardado se rechaza con un mensaje como "Tu plan premium permite hasta 2 niveles de Bits".
 
 ## Eventos que escucha el bot
 
@@ -66,3 +84,4 @@ No todas las suscripciones tienen tarjeta. Las tarjetas vienen del catálogo del
 - **Falta un evento:** el catálogo del bot no lo incluye. Una suscripción de Twitch por sí sola no crea una tarjeta.
 - **Falla la activación:** comprueba que tu cuenta tenga el permiso de Gestión de eventos, que tu plan incluya el evento (el mensaje indica el plan necesario) y que la autorización de Twitch esté vigente.
 - **El evento está activado, pero no aparece nada en el chat:** comprueba que el mensaje no esté vacío y que su configuración sea correcta. Un raid por debajo del mínimo de espectadores se omite a propósito.
+- **Una regla de Bits no se activa:** comprueba que la regla esté activa y escribe la cantidad en **Prueba una cantidad**. Una regla más estrecha para la misma cantidad gana, y una regla con **No decir nada** no envía mensaje.

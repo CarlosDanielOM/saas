@@ -4,7 +4,6 @@ import mongoose from "mongoose";
 import EventsubSchema from "../../schemas/eventsub.schema.js";
 import UsersSchema from "../../schemas/users.schema.js";
 import { EventSchema } from "../../schemas/event.schema.js";
-import { AdminSchema } from "../../schemas/admin.schema.js";
 import {
     CANONICAL_BITS_EVENT_TYPE,
     canonicalizeEventsubType,
@@ -14,7 +13,7 @@ import {
     SUBSCRIPTION_TYPES
 } from "../../utils/eventsub.js";
 import { authMiddleware } from "../../middleware/auth.middleware.js";
-import { hasGlobalChannelOwnerAccess } from "../../middleware/admin.middleware.js";
+import { getEventsubAccess } from "../../utils/eventsub_access.js";
 import type { ICheerTiers } from "../../schemas/eventsub.schema.js";
 import { eventsubHandler } from "../../handlers/eventsub.handler.js";
 import { normalizeTwitchEventsubDomainEvent } from "../../domain_events/twitch_eventsub_events.js";
@@ -89,24 +88,7 @@ function extractCheerTiers(config: unknown, body: unknown): unknown[] | null {
     return null;
 }
 
-async function getAccess(requesterID: string, channelID: string, permission: 'eventsubs:view' | 'eventsubs:manage' = 'eventsubs:view'): Promise<'owner' | 'admin' | 'none'> {
-    if (requesterID === channelID) {
-        return 'owner';
-    }
-
-    if (await hasGlobalChannelOwnerAccess(requesterID, channelID)) {
-        return 'owner';
-    }
-
-    const admin = await AdminSchema.findOne({
-        channelID,
-        adminID: requesterID,
-        actived: true,
-        permissions: { $in: ['*', permission] }
-    }).lean();
-
-    return admin ? 'admin' : 'none';
-}
+const getAccess = getEventsubAccess;
 
 function normalizeCheerTiers(value: unknown): ICheerTiers[] | undefined {
     if (!Array.isArray(value)) {

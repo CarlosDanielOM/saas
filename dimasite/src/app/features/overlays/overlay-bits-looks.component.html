@@ -1,0 +1,113 @@
+<section class="bl" aria-labelledby="bits-looks-title">
+  <div class="bl__head">
+    <div class="bl__copy">
+      <h3 class="bl__title" id="bits-looks-title"><app-lf-icon name="bits" [size]="16"></app-lf-icon>{{ t('overlay.title') }}
+        @if (view(); as state) { <span class="br-chip">{{ t('overlay.summary', { rules: state.rules.length, looks: tabs().length }) }}</span> }
+      </h3>
+      <p class="br-note">{{ t('overlay.hint') }}</p>
+    </div>
+    @if (view()?.canManage) {
+      <button type="button" class="br-btn br-btn--primary" [disabled]="atLimit()" (click)="editor.open(null)">
+        <app-lf-icon name="plus" [size]="16"></app-lf-icon>{{ t('overlay.newRule') }}
+      </button>
+    }
+  </div>
+
+  @if (!view() && service.loading()) {
+    <p class="br-note" role="status">{{ t('loading') }}</p>
+  } @else if (!view() && service.loadFailed()) {
+    <div class="bl__problem" role="alert">
+      <p class="br-note">{{ t('loadFailed') }}</p>
+      @if (service.channel(); as channel) {
+        <button type="button" class="br-btn" (click)="service.load(channel)"><app-lf-icon name="refresh" [size]="15"></app-lf-icon>{{ t('retry') }}</button>
+      }
+    </div>
+  } @else if (view()) {
+    <div class="bl__tabs" role="group" [attr.aria-label]="t('overlay.tabsLabel')">
+      <button type="button" class="bl__tab" [attr.aria-pressed]="!current()" (click)="selectedChange.emit(null)">{{ t('overlay.defaultTab') }}</button>
+      @for (tab of tabs(); track tab.look.id) {
+        <button type="button" class="bl__tab" [attr.aria-pressed]="current()?.look?.id === tab.look.id" (click)="selectedChange.emit(tab.look.id)">
+          <span class="br-amount">{{ amount(tab.rule) }} Bits</span>
+          @if (tab.rule.name) { <span class="bl__tab-name">{{ tab.rule.name }}</span> }
+          @if (!tab.rule.enabled) { <span class="br-chip">{{ t('overlay.ruleOff') }}</span> }
+          @else if (!tab.rule.alert) { <span class="br-chip">{{ t('overlay.alertsOff') }}</span> }
+        </button>
+      }
+    </div>
+
+    @if (current(); as tab) {
+      <div class="bl__current">
+        <div class="bl__current-copy">
+          <p class="bl__current-title"><span class="br-amount"><app-lf-icon name="bits" [size]="13"></app-lf-icon>{{ amount(tab.rule) }} Bits</span>@if (tab.rule.name) { <strong>{{ tab.rule.name }}</strong> }</p>
+          <p class="br-note">{{ t('overlay.ownLook') }} · {{ t('overlay.chatLine', { chat: chatText(tab.rule) }) }}</p>
+          @if (!tab.rule.alert) { <p class="br-note br-note--warn"><app-lf-icon name="eye-off" [size]="14"></app-lf-icon> {{ t('alertOff') }}</p> }
+        </div>
+        @if (view()?.canManage) {
+          <div class="bl__actions">
+            <button type="button" class="br-switch" role="switch" [attr.aria-checked]="tab.rule.enabled" [disabled]="editor.toggling() === tab.rule.id"
+              [attr.aria-label]="t('switchLabel', { name: editor.label(tab.rule) })" (click)="editor.patch(tab.rule, { enabled: !tab.rule.enabled })">
+              <span class="br-switch__thumb"></span>
+            </button>
+            <span class="bl__switch-state" aria-hidden="true">{{ tab.rule.enabled ? t('on') : t('off') }}</span>
+            @if (!tab.rule.alert) {
+              <button type="button" class="br-btn" (click)="editor.patch(tab.rule, { alert: true })">{{ t('overlay.turnAlertOn') }}</button>
+            }
+            <button type="button" class="br-btn" (click)="editor.open(tab.rule)"><app-lf-icon name="settings" [size]="15"></app-lf-icon>{{ t('overlay.editRule') }}</button>
+            <button type="button" class="br-btn" (click)="lookRemoved.emit(tab.rule.id)">{{ t('overlay.useDefault') }}</button>
+          </div>
+        }
+      </div>
+    } @else {
+      <p class="br-note">{{ t('overlay.defaultInfo') }}</p>
+    }
+
+    @if (!rules().length) {
+      <p class="bl__empty br-note">{{ t('overlay.noRules') }}</p>
+    } @else if (withoutLook().length) {
+      <details class="bl__more" [open]="!tabs().length">
+        <summary>{{ t('overlay.rulesTitle', { count: withoutLook().length }) }}</summary>
+        <ul class="bl__rows">
+          @for (rule of withoutLook(); track rule.id) {
+            <li class="bl__row" [class.bl__row--off]="!rule.enabled">
+              <span class="br-amount">{{ amount(rule) }} Bits</span>
+              <span class="bl__row-name">{{ rule.name }}
+                @if (!rule.enabled) { <span class="br-chip">{{ t('overlay.ruleOff') }}</span> }
+                @if (!rule.alert) { <span class="br-chip">{{ t('overlay.alertsOff') }}</span> }
+              </span>
+              @if (view()?.canManage) {
+                <span class="bl__row-actions">
+                  @if (rule.alert) {
+                    <button type="button" class="br-btn" [attr.aria-label]="t('overlay.giveLookLabel', { name: editor.label(rule) })" (click)="lookAdded.emit(rule.id)">
+                      <app-lf-icon name="plus" [size]="15"></app-lf-icon>{{ t('overlay.giveLook') }}
+                    </button>
+                  } @else {
+                    <button type="button" class="br-btn" [attr.aria-label]="t('overlay.turnAlertOnLabel', { name: editor.label(rule) })" (click)="editor.patch(rule, { alert: true })">{{ t('overlay.turnAlertOn') }}</button>
+                  }
+                  <button type="button" class="br-btn br-btn--icon" [attr.aria-label]="t('editLabel', { name: editor.label(rule) })" (click)="editor.open(rule)">
+                    <app-lf-icon name="settings" [size]="16"></app-lf-icon>
+                  </button>
+                </span>
+              }
+            </li>
+          }
+        </ul>
+      </details>
+    }
+  }
+</section>
+
+@if (editor.dialog(); as open) {
+  <app-bits-rule-dialog
+    [rule]="open.rule"
+    [preset]="open.preset"
+    [rules]="view()?.rules ?? []"
+    [defaultMessage]="view()?.chat?.defaultMessage ?? ''"
+    [chatOn]="view()?.chat?.enabled ?? false"
+    context="overlay"
+    [busy]="editor.busy()"
+    [error]="editor.error()"
+    (saved)="save($event)"
+    (deleted)="remove()"
+    (closed)="editor.close()"
+  />
+}

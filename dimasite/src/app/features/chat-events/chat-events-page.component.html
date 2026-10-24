@@ -41,6 +41,8 @@
                 [userPlan]="userPlan()"
                 [userAccess]="getUserAccess(event)"
                 [canManage]="canManage()"
+                [channelId]="channelID()"
+                [overlayLink]="overlayLink()"
                 [pendingAction]="getPendingAction(event.type)"
                 (configure)="toggleConfigure(event)"
                 (toggle)="toggleFeature(event)"

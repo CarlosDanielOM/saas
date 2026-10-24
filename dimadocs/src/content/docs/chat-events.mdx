@@ -40,18 +40,36 @@ Put these variables in an event's message. The bot replaces each one with the re
 | Subscription | `$(user)`, `$(sub.tier)` | |
 | Gifted subscription | `$(user)`, `$(sub.tier)`, `$(gifted.user)` | |
 | Resubscription | `$(user)`, `$(sub.tier)`, `$(sub.months)` | |
-| Bits (cheer) | `$(user)`, `$(cheer.amount)`, `$(cheer.message)` | Message tiers: **Min Bits**, **Max Bits**, **Message** |
+| Bits (cheer) | `$(user)`, `$(cheer.amount)`, `$(cheer.message)` | [Bits rules](#bits-rules) for different amounts |
 | Hype Train | `$(hypetrain.level)`, `$(hypetrain.progress)`, `$(hypetrain.end)` | |
 | Shoutout received | `$(shoutout.channel)`, `$(twitch.channel)` | |
 | Chat Notifications | `$(user)`, `$(twitch.streak)`, `$(twitch.modiversary)` | Watch streaks and moderator anniversaries, each with its own switch and message |
 
 Use the placeholder shown by each control. If a control doesn't list a variable, don't assume the event supports it.
 
-## Bits tiers and plan limits
+## Bits rules
+
+Bits rules let you treat some amounts differently. Open the **Cheers** card and select **Configure**. The rules are below the default message.
+
+Each rule has three parts:
+
+- **Which cheers:** an exact amount (69 Bits), a range (100–499 Bits), or an amount and up (1,000+ Bits).
+- **What the bot says:** the default message, its own message, or nothing.
+- **Overlay alert:** on or off. With it on, the alert plays your default Bits look until you give the rule its own look in [Overlay Studio](/overlay-studio/#bits-looks).
+
+One cheer uses one rule. When several rules match, the most specific one wins: an exact amount beats a range, and a narrower range beats a wider one. The order of the list doesn't matter. Rules that are off are skipped. A cheer that matches no rule gets the default message and the default alert.
+
+Type an amount in **Try an amount** to see which rule it uses and what happens in chat and on the overlay.
+
+- Rules save as soon as you add, edit, switch, or delete them. **Save changes** only saves the default message.
+- The rules are shared with Overlay Studio. A change on either page shows on the other.
+- Every plan can use Bits rules, up to 50 per channel.
+- Channel admins with view-only access see the rules but can't change them.
+- If the Cheers event is off, rules still pick overlay alerts, but nothing is sent to chat.
+
+## Plan requirements
 
 Each card shows its plan requirement. The server checks the plan every time you create or change a subscription.
-
-Bits message tiers have a limit per plan. If the event doesn't set its own limit, the server uses **0** tiers on Free, **2** on Premium, and **5** on Pro. The editor doesn't stop you from adding tiers when the event has no limit, so you can fill in more than your plan allows. The save is then rejected with a message such as "Your premium plan allows up to 2 cheer tiers."
 
 ## Events the bot listens for
 
@@ -66,3 +84,4 @@ Not every subscription has a card. The cards come from the bot's catalog, so a s
 - **An event is missing:** the bot's catalog doesn't include it. A Twitch subscription alone doesn't create a card.
 - **Enabling fails:** check that your account has the events Manage permission, that your plan includes the event (the message names the plan it needs), and that Twitch authorization is current.
 - **The event is on but nothing appears in chat:** check that the message isn't empty and that its settings are right. A raid below the minimum viewers is skipped on purpose.
+- **A Bits rule doesn't fire:** check that the rule is on, then type the amount in **Try an amount**. A narrower rule for the same amount wins, and a rule set to **Say nothing** sends no message.

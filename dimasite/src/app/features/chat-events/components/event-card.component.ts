@@ -59,6 +59,8 @@ export class EventCardComponent {
   readonly userPlan = input.required<PlanTier>();
   readonly userAccess = input.required<UserAccess>();
   readonly canManage = input(false);
+  readonly channelId = input<string | null>(null);
+  readonly overlayLink = input<string[] | null>(null);
   readonly pendingAction = input<ChatEventPendingAction>('none');
   readonly configure = output<void>();
   readonly toggle = output<void>();

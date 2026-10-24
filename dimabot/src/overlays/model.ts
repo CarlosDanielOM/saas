@@ -34,7 +34,8 @@ export interface OverlayWidget {
 export const matchesTrigger = (widget: OverlayWidget, triggerId?: string): boolean => widget.triggerIds === undefined || !!triggerId && widget.triggerIds.includes(triggerId);
 export interface AlertSound { assetId: string; name?: string; volume: number; delay: number; fadeIn: number; fadeOut: number }
 export interface AlertLayout { duration: number; widgets: OverlayWidget[]; sound?: AlertSound }
-export interface AlertVariant { id: string; name: string; enabled: boolean; tier?: '1000' | '2000' | '3000'; min?: number; max?: number; layout: AlertLayout }
+/** Sub variants match a tier and raid variants an amount; Bits variants are looks for a shared Bits rule (`ruleId`). */
+export interface AlertVariant { id: string; name: string; enabled: boolean; tier?: '1000' | '2000' | '3000'; min?: number; max?: number; ruleId?: string; layout: AlertLayout }
 export interface AlertDesign {
   id: string; name: string; revision: number; width: number; height: number;
   events: Record<AlertEvent, AlertLayout>;
@@ -68,19 +69,23 @@ export function makeScene(id: string, name: string, designId: string): OverlaySc
     ] };
 }
 
-/** Ordered rules: the first enabled match wins; malformed/missing event data uses the default. */
-export function matchingVariant(design: AlertDesign, kind: AlertEvent, raw: Record<string, unknown>): AlertVariant | undefined {
+/**
+ * Sub/raid: ordered rules, the first enabled match wins. Bits: the shared Bits rule that matched the cheer
+ * picks its look; no rule, or a rule without its own look, uses the default. Malformed data uses the default.
+ */
+export function matchingVariant(design: AlertDesign, kind: AlertEvent, raw: Record<string, unknown>, bitsRule?: { id: string } | null): AlertVariant | undefined {
   if (kind === 'follow') return undefined;
+  if (kind === 'bits') return bitsRule ? design.variants?.bits?.find(v => v.ruleId === bitsRule.id) : undefined;
   return design.variants?.[kind]?.find(v => {
     if (!v.enabled) return false;
     if (kind === 'sub') return !!v.tier && raw['tier'] === v.tier;
-    const amount = raw[kind === 'bits' ? 'bits' : 'viewers'];
+    const amount = raw['viewers'];
     return typeof amount === 'number' && Number.isSafeInteger(amount) && amount >= 0
       && amount >= (v.min ?? 0) && (v.max === undefined || amount <= v.max);
   });
 }
-export function selectAlertLayout(design: AlertDesign, kind: AlertEvent, raw: Record<string, unknown>): AlertLayout {
-  return matchingVariant(design, kind, raw)?.layout ?? design.events[kind];
+export function selectAlertLayout(design: AlertDesign, kind: AlertEvent, raw: Record<string, unknown>, bitsRule?: { id: string } | null): AlertLayout {
+  return matchingVariant(design, kind, raw, bitsRule)?.layout ?? design.events[kind];
 }
 export const designLayouts = (design: AlertDesign): AlertLayout[] => [
   ...Object.values(design.events), ...Object.values(design.variants ?? {}).flatMap(variants => variants.map(v => v.layout))

@@ -309,7 +309,8 @@ export class ChatEventsService {
                   const configPayload: Record<string, unknown> = {};
                   eventDef.config.forEach((control: ConfigControl) => {
                     const key = getConfigPersistenceKey(control);
-                    if (key && typeof control.value !== 'undefined') {
+                    // Bits rules are saved through their own API (shared with Overlay Studio).
+                    if (key && typeof control.value !== 'undefined' && control.type !== 'message-tiers') {
                       configPayload[key] = serializeConfigControlValue(control);
                     }
                   });
@@ -533,29 +534,6 @@ export class ChatEventsService {
         return throwError(() => error);
       })
     );
-  }
-
-  // Helper methods for tier management
-  getTierLimit(tierLimits: TierLimits | undefined, userPlan: PlanTier): number {
-    if (!tierLimits) {
-      return Infinity;
-    }
-    switch (userPlan) {
-      case 'premium_plus':
-        return tierLimits.pro;
-      case 'premium':
-        return tierLimits.premium;
-      default:
-        return 0;
-    }
-  }
-
-  canAddTier(tierLimits: TierLimits | undefined, currentTiers: unknown[], userPlan: PlanTier): boolean {
-    if (!tierLimits || !Array.isArray(currentTiers)) {
-      return true;
-    }
-    const limit = this.getTierLimit(tierLimits, userPlan);
-    return currentTiers.length < limit;
   }
 
   private asPrimitiveValue(value: unknown): string | number | boolean | undefined {

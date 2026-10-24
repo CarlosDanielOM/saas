@@ -51,6 +51,20 @@ Alert text uses these values:
 
 For Bits, use `$(cheer.amount)`. `$(amount)` does not work. Alert text can format values (for example `upper` or `title`). It cannot run commands or change state.
 
+### Bits looks
+
+On the **Bits** tab, your [Bits rules](/chat-events/#bits-rules) decide which look plays. They're the same rules as in Chat events.
+
+- **Default look** plays for cheers that match no rule, and for rules without their own look.
+- Select **Give it its own look** on a rule to start a look from the default one, then edit it on the canvas. **Use the default look** removes it.
+- **New rule** creates a rule (it shows in Chat events too) and gives it its own look right away.
+- A rule with its overlay alert off plays no alert. Select **Turn alert on** to change that.
+- Type a **Sample amount** to see which look a cheer would play.
+
+Rule changes (amounts, on/off, alert) save and apply right away, even to published overlays. Looks are part of the design: save and publish the overlay to update them in OBS.
+
+Subscriptions and raids use variants instead: add one for a subscription tier or a minimum raid size. The first matching variant that's on plays.
+
 ### Alert sounds
 
 Choose **Choose sound** on an alert event to add a sound from the Asset Library. Sounds can be MP3, WAV, or Ogg, up to 10 minutes and 50 MB. You can set volume, delay, and fade in and out. The sound plays once and stops when the alert or the file ends. A delay longer than the alert means no sound plays. Set the volume to 0% to mute it.

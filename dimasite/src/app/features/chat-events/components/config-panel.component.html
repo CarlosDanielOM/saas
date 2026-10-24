@@ -3,13 +3,10 @@
 
   <div class="lf-config__controls">
     @for (control of event()?.config; track control.id) {
-      @if (shouldShowControl(control)) {
+      @if (shouldShowControl(control) && control.type !== 'message-tiers') {
         <div class="lf-config__control">
           <label [for]="'control-' + control.id" class="lf-config__label">
             <span>{{ getControlLabel(control.label) }}</span>
-            @if (control.id === 'cheerTiers') {
-              <span class="lf-config__premium"><app-lf-icon name="star"></app-lf-icon></span>
-            }
           </label>
 
           @switch (control.type) {
@@ -55,17 +52,6 @@
                 <span>{{ t('chatEvents.enabled') }}</span>
               </label>
             }
-            @case ('message-tiers') {
-              @if (isCheerTierArray(control.value)) {
-                <app-tier-editor
-                  [tiers]="control.value"
-                  [tierLimits]="event()?.tierLimits"
-                  [userPlan]="userPlan()"
-                  [disabled]="isBusy() || !canManage()"
-                  (tiersChange)="onTiersChange(control, $event)"
-                />
-              }
-            }
           }
         </div>
       }
@@ -92,5 +78,12 @@
       {{ isSaving() ? t('chatEvents.pending.saving') : t('chatEvents.saveChanges') }}
     </button>
   </div>
+  }
+
+  <!-- Bits rules save right away and are shared with Overlay Studio, so they sit apart from Save above. -->
+  @if (hasBitsRules() && channelId(); as channel) {
+    <div class="lf-config__rules">
+      <app-bits-rules-panel [channelId]="channel" [canManage]="canManage()" [overlayLink]="overlayLink()" />
+    </div>
   }
 </div>

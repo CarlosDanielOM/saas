@@ -1,25 +1,21 @@
 import { sendTwitchChatMessage, type SendMessageContext } from "../functions/chats/send_message.chat.js";
 import type { IEventsub } from "../schemas/eventsub.schema.js";
 import type { IBitUseEvent } from "../interfaces/twitch/eventsub.interface.js";
-import type { ICheerTiers } from "../schemas/eventsub.schema.js";
 import { error as logError, info as logInfo } from "../utils/logger.js";
 import { getBitsMessageText } from '../utils/bits_message.js';
+import { bitsChatMessage, matchBitsRule, type BitsRule } from '../bits_rules/model.js';
 
 interface CheerHandlerResponse {
     error: boolean;
     message: string;
 }
 
-function findMatchingTier(tiers: ICheerTiers[], bits: number): ICheerTiers | null {
-    return tiers.find(tier =>
-        bits >= tier.min_amount && bits <= tier.max_amount
-    ) || null;
-}
-
 export async function cheerHandler(
     eventData: IBitUseEvent,
     eventsubData: IEventsub,
-    chatEnabled: boolean
+    chatEnabled: boolean,
+    loadRules: (channelID: string, legacyTiers: unknown) => Promise<BitsRule[]> = async (channelID, legacyTiers) =>
+        (await (await import('../bits_rules/store.js')).loadBitsRules(channelID, legacyTiers)).rules
 ): Promise<CheerHandlerResponse> {
     try {
         if (!eventData.broadcaster_user_id) {
@@ -56,26 +52,15 @@ export async function cheerHandler(
             messageToSend = eventsubData.message || `Gracias por los ${eventData.bits} bits Anonimo!`;
         } else {
             const bits = eventData.bits;
-            const matchedTier = findMatchingTier(eventsubData.cheerTiers || [], bits);
-
-            if (matchedTier) {
-                await logInfo({
-                    message: 'Cheer matched tier',
-                    tier: matchedTier.name,
-                    bits: bits,
-                    channelID
-                }, { channelId: channelID, destination: 'both' });
-
-                messageToSend = matchedTier.message;
-            } else {
-                await logInfo({
-                    message: 'No cheer tier matched, using default message',
-                    bits: bits,
-                    channelID
-                }, { channelId: channelID, destination: 'both' });
-
-                messageToSend = eventsubData.message || '';
-            }
+            const rules = await loadRules(channelID, eventsubData.cheerTiers);
+            const rule = matchBitsRule(rules, bits);
+            await logInfo({
+                message: rule ? 'Cheer matched Bits rule' : 'No Bits rule matched, using default message',
+                rule: rule?.name || rule?.id,
+                bits,
+                channelID
+            }, { channelId: channelID, destination: 'both' });
+            messageToSend = bitsChatMessage(rules, eventsubData.message || '', bits);
         }
 
         if (!messageToSend || messageToSend.trim() === '') {

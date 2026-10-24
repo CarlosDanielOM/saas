@@ -6,7 +6,10 @@ import { waitForOverlayImages } from './overlay-image-readiness';
 import { OverlayKeyframeEditorComponent } from './overlay-keyframe-editor.component';
 import { OverlayAppearanceComponent } from './overlay-appearance.component';
 import { OverlayVariantsComponent } from './overlay-variants.component';
-import { matchingVariant, selectAlertLayout, type AlertLayout, type AlertVariant } from './overlay.model';
+import { OverlayBitsLooksComponent } from './overlay-bits-looks.component';
+import { matchingVariant, selectAlertLayout, withoutLegacyBitsLooks, type AlertLayout, type AlertVariant } from './overlay.model';
+import { BitsRulesService } from '../bits-rules/bits-rules.service';
+import { amountText, matchBitsRule } from '../bits-rules/bits-rules.model';
 import { OverlayTimelineComponent, type TimelineEdit } from './overlay-timeline.component';
 import type { AlertTransport } from './overlay-sound.component';
 import { OverlaySoundComponent } from './overlay-sound.component';
@@ -44,7 +47,7 @@ interface MockEvent { texts?: Record<string, string>; preparing?: boolean; id: n
 interface MediaJob { cancel?: () => void; timer?: ReturnType<typeof setTimeout>; pending: Set<string>; started: Set<string> }
 
 @Component({
-  selector: 'app-overlay-editor', imports: [OverlayWidgetHostComponent, OverlayWidgetSettingsComponent, OverlayInteractionSetupComponent, OverlayKeyframeEditorComponent, OverlayAppearanceComponent, OverlayVariantsComponent, OverlayTimelineComponent, OverlaySoundComponent, OverlayQueueComponent, RouterLink, LucideAngularModule, OverlayMediaComponent, OverlayLayerComponent, AssetLibraryDialogComponent, OverlayConnectionsComponent, OverlayClipComponent, OverlayTriggerFilterComponent], providers: [OverlayTestMediaService, OverlayDraftStorage],
+  selector: 'app-overlay-editor', imports: [OverlayWidgetHostComponent, OverlayWidgetSettingsComponent, OverlayInteractionSetupComponent, OverlayKeyframeEditorComponent, OverlayAppearanceComponent, OverlayVariantsComponent, OverlayBitsLooksComponent, OverlayTimelineComponent, OverlaySoundComponent, OverlayQueueComponent, RouterLink, LucideAngularModule, OverlayMediaComponent, OverlayLayerComponent, AssetLibraryDialogComponent, OverlayConnectionsComponent, OverlayClipComponent, OverlayTriggerFilterComponent], providers: [OverlayTestMediaService, OverlayDraftStorage],
   templateUrl: './overlay-editor.component.html', styleUrl: './overlay-editor.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '(document:visibilitychange)': 'pauseHiddenTimeline()', '(window:pointermove)': 'onPointerMove($event)', '(window:pointerup)': 'stopPointer()', '(window:pointercancel)': 'stopPointer()', '(window:beforeunload)': 'protectDraft($event)', '(window:pagehide)': 'saveLocalRecovery()', '(window:keydown)': 'onHistoryKeydown($event)', '(window:keyup)': 'onHistoryKeyup($event)', '(focusout)': 'endHistoryGroup()' }
@@ -94,7 +97,7 @@ export class OverlayEditorComponent {
     return [this.active(), ...this.parallel()].flatMap(event => {
       if (!event || event.preparing || !ALERT_EVENTS.includes(event.kind as AlertEvent)) return [];
       const ids = new Set(this.widgets().filter(w => w.visible && w.kind === 'alert' && w.events?.includes(event.kind as AlertEvent)).map(w => w.designId));
-      return this.designs().filter(d => ids.has(d.id)).flatMap(d => { const layout = selectAlertLayout(d, event.kind as AlertEvent, this.sampleRaw()); return layout.sound ? [{ key: event.id + ':' + d.id, config: layout.sound, duration: layout.duration }] : []; });
+      return this.designs().filter(d => ids.has(d.id)).flatMap(d => { const layout = selectAlertLayout(d, event.kind as AlertEvent, this.sampleRaw(), this.ruleFor(event.kind as AlertEvent)); return layout.sound ? [{ key: event.id + ':' + d.id, config: layout.sound, duration: layout.duration }] : []; });
     });
   });
   readonly assetKind = computed(() => this.selected()?.kind === 'video' ? 'video' as const : 'image' as const);
@@ -133,10 +136,24 @@ export class OverlayEditorComponent {
   readonly editingLayout = computed(() => this.variants().find(v => v.id === this.variantId())?.layout ?? this.designDraft()?.events[this.designEvent()]);
   readonly sampleTier = signal('1000');
   readonly sampleRaw = computed(() => ({ tier: this.sampleTier(), bits: Number(this.sampleAmount()), viewers: Number(this.sampleAmount()) }));
-  readonly matchedVariantId = computed(() => { const draft = this.designDraft(); return draft ? matchingVariant(draft, this.designEvent(), this.sampleRaw())?.id ?? null : null; });
+  readonly bitsRules = inject(BitsRulesService);
+  /** The shared Bits rule the sample amount matches (Bits looks follow it). */
+  readonly sampleBitsRule = computed(() => matchBitsRule(this.bitsRules.view()?.rules ?? [], Number(this.sampleAmount())));
+  ruleFor(kind: AlertEvent) { return kind === 'bits' ? this.sampleBitsRule() : null; }
+  readonly matchedVariantId = computed(() => { const draft = this.designDraft(); return draft ? matchingVariant(draft, this.designEvent(), this.sampleRaw(), this.ruleFor(this.designEvent()))?.id ?? null : null; });
   readonly matchedVariantName = computed(() => {
-    const draft = this.designDraft(); return draft ? matchingVariant(draft, this.designEvent(), this.sampleRaw())?.name ?? this.t('defaultVariant') : '';
+    const draft = this.designDraft(); if (!draft) return '';
+    if (this.designEvent() === 'bits') {
+      const rule = this.sampleBitsRule(), b = (key: string, params?: Record<string, string | number>) => this.language.translate('bitsRules.' + key, params);
+      if (!rule) return b('overlay.matchDefault');
+      const name = rule.name || b('autoName', { amount: amountText(rule, this.language.currentLanguage() === 'es' ? 'es' : 'en') });
+      if (!rule.alert) return b('overlay.matchNoAlert', { name });
+      return this.matchedVariantId() ? name : b('overlay.matchRuleDefault', { name });
+    }
+    return matchingVariant(draft, this.designEvent(), this.sampleRaw())?.name ?? this.t('defaultVariant');
   });
+  /** Bits: show the sample's match once the channel has rules (looks are optional per rule). */
+  readonly showVariantMatch = computed(() => this.designEvent() === 'bits' ? !!this.bitsRules.view()?.rules.length : this.designEvent() !== 'follow' && this.variants().length > 0);
   readonly canvasWidth = computed(() => this.designDraft()?.width ?? this.scene()?.width ?? 1920);
   readonly canvasHeight = computed(() => this.designDraft()?.height ?? this.scene()?.height ?? 1080);
   readonly widgets = computed(() => this.editingLayout()?.widgets ?? this.scene()?.widgets ?? []);
@@ -289,16 +306,29 @@ export class OverlayEditorComponent {
       if (index >= 0 && target >= 0 && target < next.length) [next[index], next[target]] = [next[target], next[index]]; return next; }), null);
   }
   removeVariant(): void { this.edit(() => { this.updateVariants(all => all.filter(v => v.id !== this.variantId())); this.selectVariant(null); }, null); }
+  /** Bits: a look for a shared Bits rule starts as a copy of the default Bits look. */
+  addBitsLook(ruleId: string): void {
+    const draft = this.designDraft(); if (!draft || this.designEvent() !== 'bits') return;
+    const existing = draft.variants?.bits?.find(v => v.ruleId === ruleId);
+    if (existing) { this.selectVariant(existing.id); return; }
+    const rule = this.bitsRules.view()?.rules.find(r => r.id === ruleId), id = this.id('look');
+    const name = (rule?.name || (rule ? amountText(rule, 'en') + ' Bits' : 'Bits')).slice(0, 80);
+    this.edit(() => { this.updateVariants(all => [...all, { id, name, enabled: true, ruleId, layout: clone(draft.events.bits) }]); this.selectVariant(id); }, null);
+  }
+  removeBitsLook(ruleId: string): void {
+    const look = this.designDraft()?.variants?.bits?.find(v => v.ruleId === ruleId); if (!look) return;
+    this.edit(() => { this.updateVariants(all => all.filter(v => v.id !== look.id)); if (this.variantId() === look.id) this.selectVariant(null); }, null);
+  }
   previewMatchingVariant(): void {
     const draft = this.designDraft(); if (!draft) return;
-    this.selectVariant(matchingVariant(draft, this.designEvent(), this.sampleRaw())?.id ?? null); this.testDesign();
+    this.selectVariant(matchingVariant(draft, this.designEvent(), this.sampleRaw(), this.ruleFor(this.designEvent()))?.id ?? null); this.testDesign();
   }
   alignEdge(edge: 'left' | 'right' | 'top' | 'bottom'): void {
     const w = this.selected(); if (!w || w.locked) return;
     this.patchSelected(edge === 'left' || edge === 'right' ? {x: edge === 'left' ? 0 : this.canvasWidth() - w.width} : {y: edge === 'top' ? 0 : this.canvasHeight() - w.height});
   }
   private playingLayout(widget: OverlayWidget, kind = this.eventFor(widget)): AlertLayout | undefined {
-    const design = this.designFor(widget); return design ? selectAlertLayout(design, kind, this.sampleRaw()) : undefined;
+    const design = this.designFor(widget); return design ? selectAlertLayout(design, kind, this.sampleRaw(), this.ruleFor(kind)) : undefined;
   }
   private updateWidgets(update: (widgets: OverlayWidget[]) => OverlayWidget[]): void {
     this.edit(() => {
@@ -739,7 +769,7 @@ export class OverlayEditorComponent {
   private accept(state: StudioState, preserveRecovery = false): void {
     if (this.disposed) return;
     this.rememberServerState(state);
-    this.revision = state.revision; this.scenes.set(state.scenes); this.designs.set(state.designs);
+    this.revision = state.revision; this.scenes.set(state.scenes); this.designs.set(state.designs.map(withoutLegacyBitsLooks));
     if (!state.scenes.some(s => s.id === this.sceneId())) this.sceneId.set(state.scenes[0].id);
     this.loaded.set(true);
     this.savedDocument.set(this.documentFingerprint());
@@ -789,6 +819,7 @@ export class OverlayEditorComponent {
         this.channel = (await firstValueFrom(this.auth.resolveChannelID(this.streamer))) || '';
         if (!this.channel) throw new Error('Channel unavailable');
         if (initial) this.findRecovery();
+        void this.bitsRules.load(this.channel);
         const state = await this.api.load(this.channel);
         if (this.disposed) return;
         // Replace local work only after the server has returned a complete saved draft.
@@ -923,7 +954,7 @@ export class OverlayEditorComponent {
       const saved = this.loaded() ? remote.find(s => s.id === scene.id) : undefined;
       return { ...scene, publicId: saved?.publicId ?? '', revision: saved?.revision ?? 0, ...(saved?.published ? { published: saved.published } : {}) };
     }));
-    this.designs.set(draft.designs); this.designDraft.set(draft.designDraft); this.sceneId.set(draft.sceneId);
+    this.designs.set(draft.designs.map(withoutLegacyBitsLooks)); this.designDraft.set(draft.designDraft && withoutLegacyBitsLooks(draft.designDraft)); this.sceneId.set(draft.sceneId);
     this.designEvent.set(draft.designEvent); this.variantId.set(draft.variantId ?? null); this.selectedId.set(draft.selectedId); this.revision = draft.revision;
     this.history.clear();
     this.loaded.set(true); this.recovered.set(true); this.saved.set(false);
@@ -956,7 +987,7 @@ export class OverlayEditorComponent {
     if (!window.confirm(this.t('confirmObsTest', { overlay: this.scene().name, event: this.t(kind + 'Name') }))) return;
     this.liveTesting.set(true); this.error.set('');
     try {
-      await this.api.request('POST', `${this.channel}/test`, { kind, sceneId: this.sceneId(), destination: 'obs', confirmed: true, language: this.language.currentLanguage() }, 90000);
+      await this.api.request('POST', `${this.channel}/test`, { kind, sceneId: this.sceneId(), destination: 'obs', confirmed: true, language: this.language.currentLanguage(), user: this.sampleUser(), amount: Number(this.sampleAmount()), tier: this.sampleTier() }, 90000);
       this.notice.set('testSent');
     } catch(e) { this.error.set((e as {error?: {message?: string}})?.error?.message || this.t('testPlaybackError')); }
     finally { this.liveTesting.set(false); }

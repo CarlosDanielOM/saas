@@ -1,0 +1,138 @@
+<div class="br-overlay" (click)="close()">
+  <section class="br-dialog" role="dialog" aria-modal="true" [attr.aria-labelledby]="uid + '-title'" (click)="$event.stopPropagation()">
+    <header class="br-dialog__head">
+      <div>
+        <h2 class="br-dialog__title" [id]="uid + '-title'">{{ rule() ? t('editTitle') : t('newTitle') }}</h2>
+        <p class="br-note">{{ t('sharedNote') }}</p>
+      </div>
+      <button type="button" class="br-btn br-btn--icon" [attr.aria-label]="t('close')" [disabled]="busy()" (click)="close()">
+        <app-lf-icon name="close"></app-lf-icon>
+      </button>
+    </header>
+
+    <form class="br-dialog__form" novalidate (submit)="$event.preventDefault(); submit()">
+      <div class="br-dialog__body">
+      <!-- 1. Which cheers -->
+      <section class="br-step" [attr.aria-labelledby]="uid + '-step-amount'">
+        <h3 class="br-step__title" [id]="uid + '-step-amount'"><span class="br-step__num" aria-hidden="true">1</span>{{ t('stepAmount') }}</h3>
+        <div class="br-seg" role="radiogroup" [attr.aria-label]="t('amountKind')">
+          @for (option of kinds; track option) {
+            <button type="button" class="br-seg__btn" role="radio" [attr.aria-checked]="kind() === option" (click)="setKind(option)">{{ t('kind.' + option) }}</button>
+          }
+        </div>
+
+        <div class="br-amounts" [class.br-amounts--range]="kind() === 'range'">
+          <div class="br-field">
+            <label [for]="uid + '-from'">{{ kind() === 'range' ? t('from') : kind() === 'exact' ? t('exactly') : t('atLeast') }}</label>
+            <span class="br-bits-input">
+              <input class="br-input" [id]="uid + '-from'" data-autofocus type="number" inputmode="numeric" min="1" [attr.max]="1000000" step="1"
+                [value]="from()" (input)="from.set(value($event))"
+                [attr.aria-invalid]="submitted() && !!fromError()" [attr.aria-describedby]="submitted() && fromError() ? uid + '-from-error' : null" />
+              <span class="br-bits-input__unit" aria-hidden="true">Bits</span>
+            </span>
+            @if (submitted() && fromError(); as message) { <span class="br-error" [id]="uid + '-from-error'">{{ message }}</span> }
+          </div>
+          @if (kind() === 'range') {
+            <div class="br-field">
+              <label [for]="uid + '-to'">{{ t('to') }}</label>
+              <span class="br-bits-input">
+                <input class="br-input" [id]="uid + '-to'" type="number" inputmode="numeric" min="1" [attr.max]="1000000" step="1"
+                  [value]="to()" (input)="to.set(value($event))"
+                  [attr.aria-invalid]="submitted() && !!toError()" [attr.aria-describedby]="submitted() && toError() ? uid + '-to-error' : null" />
+                <span class="br-bits-input__unit" aria-hidden="true">Bits</span>
+              </span>
+              @if (submitted() && toError(); as message) { <span class="br-error" [id]="uid + '-to-error'">{{ message }}</span> }
+            </div>
+          }
+        </div>
+        <div class="br-quick" role="group" [attr.aria-label]="t('quickAmounts')">
+          @for (amount of quickAmounts; track amount) {
+            <button type="button" class="br-chip-btn" [attr.aria-pressed]="min() === amount" (click)="from.set('' + amount)">{{ amount.toLocaleString(language.currentLanguage()) }}</button>
+          }
+        </div>
+        @if (summary()) { <p class="br-summary" aria-live="polite"><app-lf-icon name="bits" [size]="15"></app-lf-icon>{{ summary() }}</p> }
+        @if (overlaps().length) {
+          <p class="br-note br-note--warn" role="status"><app-lf-icon name="alert" [size]="14"></app-lf-icon> {{ t('overlapNote', { names: overlaps().join(', ') }) }}</p>
+        }
+        <div class="br-field">
+          <label [for]="uid + '-name'">{{ t('name') }} <small>{{ t('optional') }}</small></label>
+          <input class="br-input" [id]="uid + '-name'" [maxLength]="maxName" [value]="name()" [placeholder]="autoName()" (input)="name.set(value($event))" />
+        </div>
+      </section>
+
+      <!-- 2. Chat -->
+      <section class="br-step" [attr.aria-labelledby]="uid + '-step-chat'">
+        <h3 class="br-step__title" [id]="uid + '-step-chat'"><span class="br-step__num" aria-hidden="true">2</span>{{ t('stepChat') }}</h3>
+        @if (!chatOn()) { <p class="br-note br-note--warn"><app-lf-icon name="alert" [size]="14"></app-lf-icon> {{ t('chatOffNote') }}</p> }
+        <fieldset class="br-choice">
+          <legend class="visually-hidden">{{ t('stepChat') }}</legend>
+          <label class="br-choice__opt" [class.is-on]="chatMode() === 'default'">
+            <input type="radio" [name]="uid + '-chat'" value="default" [checked]="chatMode() === 'default'" (change)="chatMode.set('default')" />
+            <span><strong>{{ t('chat.default') }}</strong>
+              @if (defaultMessage().trim()) { <span class="br-quote">“{{ defaultMessage() }}”</span> } @else { <span>{{ t('chat.noDefault') }}</span> }
+            </span>
+          </label>
+          <label class="br-choice__opt" [class.is-on]="chatMode() === 'custom'">
+            <input type="radio" [name]="uid + '-chat'" value="custom" [checked]="chatMode() === 'custom'" (change)="chatMode.set('custom')" />
+            <span><strong>{{ t('chat.custom') }}</strong><span>{{ t('chat.customHint') }}</span></span>
+          </label>
+          <label class="br-choice__opt" [class.is-on]="chatMode() === 'silent'">
+            <input type="radio" [name]="uid + '-chat'" value="silent" [checked]="chatMode() === 'silent'" (change)="chatMode.set('silent')" />
+            <span><strong>{{ t('chat.silent') }}</strong><span>{{ t('chat.silentHint') }}</span></span>
+          </label>
+        </fieldset>
+        @if (chatMode() === 'custom') {
+          <div class="br-field">
+            <label [for]="uid + '-message'">{{ t('message') }}</label>
+            <textarea class="br-input" [id]="uid + '-message'" rows="3" [maxLength]="maxMessage" [value]="message()" (input)="message.set(value($event))"
+              [placeholder]="t('messagePlaceholder')" [attr.aria-invalid]="submitted() && !!messageError()"
+              [attr.aria-describedby]="uid + '-vars' + (submitted() && messageError() ? ' ' + uid + '-message-error' : '')"></textarea>
+            @if (submitted() && messageError(); as error) { <span class="br-error" [id]="uid + '-message-error'">{{ error }}</span> }
+          </div>
+          <div class="br-vars" [id]="uid + '-vars'">
+            <span class="br-note">{{ t('insert') }}</span>
+            <button type="button" class="br-chip-btn" (click)="insert('$(user)')">{{ t('var.user') }}</button>
+            <button type="button" class="br-chip-btn" (click)="insert('$(cheer.amount)')">{{ t('var.amount') }}</button>
+            <button type="button" class="br-chip-btn" (click)="insert('$(cheer.message)')">{{ t('var.message') }}</button>
+          </div>
+        }
+      </section>
+
+      <!-- 3. Overlay alert -->
+      <section class="br-step" [attr.aria-labelledby]="uid + '-step-alert'">
+        <div class="br-step__row">
+          <h3 class="br-step__title" [id]="uid + '-step-alert'"><span class="br-step__num" aria-hidden="true">3</span>{{ t('stepAlert') }}</h3>
+          <button type="button" class="br-switch" role="switch" [attr.aria-checked]="alert()" [attr.aria-label]="t('alertSwitch')" (click)="alert.set(!alert())">
+            <span class="br-switch__thumb"></span>
+          </button>
+        </div>
+        <p class="br-note">{{ alert() ? t(context() === 'overlay' ? 'alertOnOverlay' : 'alertOn') : t('alertOff') }}</p>
+      </section>
+
+      @if (error(); as message) { <p class="br-error" role="alert">{{ message }}</p> }
+
+      @if (confirmingDelete()) {
+        <div class="br-confirm" role="alertdialog" [attr.aria-labelledby]="uid + '-delete-title'" [attr.aria-describedby]="uid + '-delete-copy'">
+          <strong [id]="uid + '-delete-title'">{{ t('deleteTitle', { name: rule()?.name || autoName() }) }}</strong>
+          <p class="br-note" [id]="uid + '-delete-copy'">{{ t('deleteCopy') }}</p>
+          <div class="br-confirm__actions">
+            <button type="button" class="br-btn" [disabled]="busy()" (click)="confirmingDelete.set(false)">{{ t('keep') }}</button>
+            <button type="button" class="br-btn br-btn--danger" [disabled]="busy()" (click)="deleted.emit()">{{ t('deleteConfirm') }}</button>
+          </div>
+        </div>
+      }
+
+      </div>
+      <footer class="br-dialog__foot">
+        @if (rule() && !confirmingDelete()) {
+          <button type="button" class="br-btn br-btn--ghost br-delete" [disabled]="busy()" (click)="confirmingDelete.set(true)">
+            <app-lf-icon name="trash" [size]="16"></app-lf-icon>{{ t('delete') }}
+          </button>
+        }
+        <span class="br-dialog__spacer"></span>
+        <button type="button" class="br-btn" [disabled]="busy()" (click)="close()">{{ t('cancel') }}</button>
+        <button type="submit" class="br-btn br-btn--primary" [disabled]="busy()">{{ busy() ? t('saving') : rule() ? t('save') : t('create') }}</button>
+      </footer>
+    </form>
+  </section>
+</div>

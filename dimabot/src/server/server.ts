@@ -21,6 +21,7 @@ import { emailAuthRoute } from "./routes/email-auth.route.js";
 import { referralRoute } from "./routes/referral.route.js";
 import { commandRoute } from "./routes/command.route.js";
 import { eventsubRoute } from "./routes/eventsub.route.js";
+import { bitsRulesRoute } from "./routes/bits-rules.route.js";
 import { authRoute } from "./routes/auth.route.js";
 import { aiPersonalityRoute } from "./routes/aiPersonality.route.js";
 import { memoriesRoute } from "./routes/memories.route.js";
@@ -105,6 +106,7 @@ export const server = async (): Promise<Express.Application> => {
 
         // Setup eventsub routes
         app.use('/eventsubs', eventsubRoute);
+        app.use('/bits-rules', bitsRulesRoute);
 
         // Setup aiPersonality routes
         app.use('/ai-personality', aiPersonalityRoute);

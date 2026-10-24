@@ -7,6 +7,7 @@ import { CLIP_DESIGN_VARIANTS, ALERT_TRANSITIONS, ALERT_LOOPS, ALERT_EVENTS, EVE
 import { initialQueueState, type QueueState } from './controls.js';
 import { parseTemplate } from './ast.js';
 import { parseWidgetModuleConfig } from './widget-contract.js';
+import { MAX_BITS_RULES, validRuleId } from '../bits_rules/model.js';
 
 export class OverlayError extends Error { constructor(message: string, readonly status = 400) { super(message); } }
 export interface StudioState { schemaVersion: 1; revision: number; scenes: OverlayScene[]; designs: AlertDesign[] }
@@ -110,14 +111,18 @@ export function validateState(raw: unknown, previous: StudioState): Pick<StudioS
       const variants = object(d.variants); design.variants = {};
       if (Object.keys(variants).some(key => !['sub', 'bits', 'raid'].includes(key))) throw new OverlayError('Invalid variant event');
       for (const kind of ['sub', 'bits', 'raid'] as const) if (variants[kind] !== undefined) {
-        design.variants[kind] = unique(list(variants[kind], 10).map(raw => {
+        design.variants[kind] = unique(list(variants[kind], kind === 'bits' ? MAX_BITS_RULES : 10).map(raw => {
           const v = object(raw);
           const result: AlertVariant = { id: id(v.id), name: string(v.name, 80), enabled: boolean(v.enabled), layout: alertLayout(v.layout) };
-          if (kind === 'sub') {
-            if (!['1000', '2000', '3000'].includes(v.tier as string) || v.min !== undefined || v.max !== undefined) throw new OverlayError('Choose a subscription tier');
+          if (kind === 'bits') {
+            // Amounts, order and on/off live in the shared Bits rule; the design only keeps the look.
+            if (v.tier !== undefined || v.min !== undefined || v.max !== undefined || !validRuleId(v.ruleId)) throw new OverlayError('Bits looks follow your Bits rules now. Reload the editor.');
+            result.ruleId = v.ruleId;
+          } else if (kind === 'sub') {
+            if (!['1000', '2000', '3000'].includes(v.tier as string) || v.min !== undefined || v.max !== undefined || v.ruleId !== undefined) throw new OverlayError('Choose a subscription tier');
             result.tier = v.tier as AlertVariant['tier'];
           } else {
-            if (v.tier !== undefined) throw new OverlayError('Invalid amount rule');
+            if (v.tier !== undefined || v.ruleId !== undefined) throw new OverlayError('Invalid amount rule');
             for (const key of ['min', 'max'] as const) if (v[key] !== undefined) {
               result[key] = number(v[key], 0, 1000000000);
               if (!Number.isInteger(result[key])) throw new OverlayError('Use a whole amount');
@@ -126,6 +131,7 @@ export function validateState(raw: unknown, previous: StudioState): Pick<StudioS
           }
           return result;
         }));
+        if (kind === 'bits' && new Set(design.variants.bits!.map(v => v.ruleId)).size !== design.variants.bits!.length) throw new OverlayError('A Bits rule can only have one look per design');
       }
     }
     return design;

@@ -4,6 +4,7 @@ import { isForeignSharedChatEvent } from '../utils/shared_chat_origin.js';
 import { getBitsMessageText } from '../utils/bits_message.js';
 import { createTwitchEffectContext, scopeAstEffectContext } from '../utils/ast_parser/effects.js';
 import type { SendMessageContext } from '../functions/chats/send_message.chat.js';
+import { bitsChatMessage, rulesFromLegacyTiers, type BitsRule } from '../bits_rules/model.js';
 
 interface ChatEventsubConfig {
     enabled: boolean;
@@ -36,6 +37,8 @@ interface SendResult {
 export interface ChatAnnouncementDependencies {
     getStreamer(channelID: string): Promise<StreamerState | null>;
     getEventsubConfig(channelID: string, originalEventType: string): Promise<ChatEventsubConfig | null>;
+    /** Shared Bits rules; without it the config's legacy cheer tiers are used. */
+    getBitsRules?(channelID: string, config: ChatEventsubConfig): Promise<BitsRule[]>;
     shouldSkipLegacyBits(event: DomainEventEnvelope, originalEventType: string): Promise<boolean>;
     incrementFollowCount(channelID: string, eventKey: string): Promise<number>;
     shouldSuppressFollowAlerts(channelID: string, eventID?: string): Promise<boolean>;
@@ -76,7 +79,8 @@ async function getDependencies(): Promise<ChatAnnouncementDependencies> {
         import('../schemas/users.schema.js'),
         import('../utils/databases/dragonfly.database.js'),
         import('../utils/eventsub.js'),
-        import('../utils/follow_defense_queue.js')
+        import('../utils/follow_defense_queue.js'),
+        import('../bits_rules/store.js')
     ]).then(([
         { default: TwitchStreamers },
         { sendTwitchChatMessage },
@@ -86,8 +90,10 @@ async function getDependencies(): Promise<ChatAnnouncementDependencies> {
         { default: UsersSchema },
         { getDragonflyClient },
         { CANONICAL_BITS_EVENT_TYPE, getEquivalentEventsubTypes, isLegacyBitsEventType },
-        { shouldSuppressFollowAlerts }
+        { shouldSuppressFollowAlerts },
+        { loadBitsRules }
     ]) => ({
+        getBitsRules: async (channelID, config) => (await loadBitsRules(channelID, config.cheerTiers)).rules,
         getStreamer: (channelID) => TwitchStreamers.getTwitchAccountById(channelID),
         async getEventsubConfig(channelID, originalEventType) {
             const equivalentTypes = getEquivalentEventsubTypes(originalEventType);
@@ -176,15 +182,12 @@ function defaultConfig(type: string): ChatEventsubConfig {
     };
 }
 
-function cheerMessage(config: ChatEventsubConfig, rawEvent: Record<string, unknown>): string {
+function cheerMessage(config: ChatEventsubConfig, rawEvent: Record<string, unknown>, rules: BitsRule[]): string {
     const bits = Number(rawEvent.bits);
     if (rawEvent.is_anonymous) {
         return config.message || `Gracias por los ${bits} bits Anonimo!`;
     }
-    const tier = (config.cheerTiers || []).find((candidate) =>
-        bits >= Number(candidate.min_amount) && bits <= Number(candidate.max_amount)
-    );
-    return tier ? tier.message : config.message || '';
+    return bitsChatMessage(rules, config.message || '', bits);
 }
 
 export async function applyChatAnnouncementDomainEvent(
@@ -221,7 +224,10 @@ export async function applyChatAnnouncementDomainEvent(
     if (event.type === 'channel.chat.notification') {
         message = resolveChatNotificationMessage(rawEvent.notice_type, config, await dependencies.getLanguage(event.channelID));
     } else if (event.type === 'channel.bits.received') {
-        message = cheerMessage(config, rawEvent);
+        const rules = dependencies.getBitsRules
+            ? await dependencies.getBitsRules(event.channelID, config)
+            : rulesFromLegacyTiers(config.cheerTiers);
+        message = cheerMessage(config, rawEvent, rules);
         argument = getBitsMessageText(rawEvent.message);
         variables = {
             bits: String(rawEvent.bits ?? ''),

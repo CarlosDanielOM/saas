@@ -51,6 +51,20 @@ El texto de las alertas usa estos valores:
 
 Para Bits, usa `$(cheer.amount)`. `$(amount)` no funciona. El texto de la alerta puede dar formato a los valores (por ejemplo `upper` o `title`). No puede ejecutar comandos ni cambiar el estado.
 
+### Diseños por Bits
+
+En la pestaña **Bits**, tus [reglas de Bits](/es/chat-events/#reglas-de-bits) deciden qué diseño se reproduce. Son las mismas reglas que en Eventos de Chat.
+
+- **Diseño predeterminado** se reproduce en cheers que no coinciden con ninguna regla y en reglas sin diseño propio.
+- Selecciona **Darle su propio diseño** en una regla para empezar un diseño a partir del predeterminado y edítalo en el lienzo. **Usar el diseño predeterminado** lo quita.
+- **Nueva regla** crea una regla (también aparece en Eventos de Chat) y le da su propio diseño de inmediato.
+- Una regla con la alerta del overlay apagada no reproduce alerta. Selecciona **Activar alerta** para cambiarlo.
+- Escribe una **Cantidad de ejemplo** para ver qué diseño reproduciría un cheer.
+
+Los cambios en las reglas (cantidades, activada o apagada, alerta) se guardan y se aplican al instante, incluso en overlays publicados. Los diseños forman parte del diseño de alertas: guarda y publica el overlay para actualizarlos en OBS.
+
+Las suscripciones y los raids usan variantes: añade una para un nivel de suscripción o un tamaño mínimo de raid. Se reproduce la primera variante activa que coincida.
+
 ### Sonidos de alerta
 
 Selecciona **Elegir sonido** en un evento de alerta para añadir un sonido de la Biblioteca de recursos. Los sonidos pueden ser MP3, WAV u Ogg, de hasta 10 minutos y 50 MB. Puedes ajustar el volumen, el retardo y los fundidos de entrada y salida. El sonido se reproduce una vez y termina cuando termina la alerta o el archivo. Si el retardo es más largo que la alerta, no se reproduce ningún sonido. Pon el volumen en 0 % para silenciarlo.

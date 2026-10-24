@@ -118,7 +118,9 @@
       <div class="design-event-tabs" role="group" [attr.aria-label]="t('eventDesigns')">
         @for (event of alertEvents; track event) { <button type="button" [class.active]="designEvent() === event" [attr.aria-pressed]="designEvent() === event" (click)="setDesignEvent(event)">{{ t(event + 'Name') }}</button> }
       </div>
-    @if (designDraft() && designEvent() !== 'follow') {
+    @if (designDraft() && designEvent() === 'bits') {
+      <app-overlay-bits-looks [looks]="variants()" [selected]="variantId()" (selectedChange)="selectVariant($event)" (lookAdded)="addBitsLook($event)" (lookRemoved)="removeBitsLook($event)" />
+    } @else if (designDraft() && designEvent() !== 'follow') {
       <app-overlay-variants [kind]="designEvent()" [variants]="variants()" [selected]="variantId()" (selectedChange)="selectVariant($event)" (added)="addVariant()" (changed)="patchVariant($event)" (moved)="moveVariant($event)" (removed)="removeVariant()" />
     }
 
@@ -422,7 +424,7 @@
             @if (designEvent() === 'sub') { <label class="lf-field"><span>{{ t('sampleTier') }}</span><select [value]="sampleTier()" (change)="sampleTier.set(value($event))">@for (tier of ['1000','2000','3000']; track tier) { <option [value]="tier" [selected]="tier === sampleTier()">{{ t('tier_' + tier) }}</option> }</select></label> }
           </div>
           <div><button type="button" class="lf-btn lf-btn--primary" (click)="testDesign()"><lucide-icon [name]="icons.Play" [size]="15" aria-hidden="true" />{{ t('previewEvent', { event: t(designEvent() + 'Name') }) }}</button></div>
-          @if (designEvent() !== 'follow' && variants().length) {
+          @if (showVariantMatch()) {
             <div class="variant-match" role="status">
               <span class="lf-note">{{ t('variantMatches', {name: matchedVariantName()}) }}</span>
               @if (matchedVariantId() !== variantId()) { <button type="button" class="lf-btn lf-btn--compact" (click)="previewMatchingVariant()">{{ t('previewMatchingVariant', {name: matchedVariantName()}) }}</button> }

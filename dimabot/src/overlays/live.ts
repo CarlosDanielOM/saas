@@ -4,6 +4,8 @@ import { getWidgetDefinition, validWidgetModuleConfig } from './widget-contract.
 import type { WidgetStateReadScope } from './widget-state.js';
 import type { InteractionKind, InteractionSnapshot } from './interaction-model.js';
 import { selectAlertLayout } from './model.js';
+import { matchBitsRule, type BitsRule } from '../bits_rules/model.js';
+import { loadBitsRules } from '../bits_rules/store.js';
 import { ALERT_DOMAIN_TYPES, AlertEventFilter } from './alert-events.js';
 import { OVERLAY_ACTIONS, OVERLAY_PLATFORMS, initialQueueState, platformMatches, type OverlayPlatform, type OverlayScope, type OverlayAction, type QueueState, type QueueCommand } from './controls.js';
 import { registerStudioBridge, type ReadTtsDelivery, type ReadTtsPublication } from './bridge.js';
@@ -191,8 +193,14 @@ export async function publishStudioTrigger(channel: string, body: Record<string,
   const id = randomUUID(); const volume = Number(body.volume ?? 100);
   await deliver({ channel, expiresAt: new Date(Date.now() + DELIVERY_TTL_MS), event: { id, platform, kind: 'trigger', triggerId, media: { type, url, title: String(body.name || ''), volume: Number.isFinite(volume) ? Math.max(0, Math.min(1, volume / 100)) : 1 } }, recipients: new Set(selected.map(p => p.key)) }, selected);
 }
+/** The shared Bits rule a cheer matches (null for other events or when no rule matches). */
+export async function bitsRuleFor(channel: string, kind: EventKind, raw?: Record<string, unknown>): Promise<BitsRule | null> {
+  return kind === 'bits' && raw ? matchBitsRule((await loadBitsRules(channel)).rules, raw.bits) : null;
+}
 export async function publishStudioAlert(channel: string, kind: AlertEvent, raw: Record<string, unknown>, sourceId: string = randomUUID(), since = Date.now(), platform: OverlayPlatform = 'twitch', retainDisconnected = false): Promise<number> {
   await restore();
+  // A Bits rule can keep certain amounts chat-only.
+  if (kind === 'bits' && (await bitsRuleFor(channel, kind, raw))?.alert === false) return 0;
   const selected = recipients(channel, kind, retainDisconnected).filter(p => p.since <= since); if (!selected.length) return 0;
   // Journal alerts retain recipients during their reconnect lease; manual tests still require a live source.
   // Provider receipt IDs protect clients against duplicate poll delivery.
@@ -217,8 +225,9 @@ export async function eventFor(publicId: string, eventId: string, clientId?: unk
   const key = item.event.tts ? correlated(item, publicId, clientId, socketId) : null;
   if (item.event.tts && !key) return null;
   const layouts: Record<string, unknown> = {};
+  const bitsRule = await bitsRuleFor(state.channel, item.event.kind, item.raw);
   if (item.raw) for (const design of state.snapshot.designs) {
-    const layout = selectAlertLayout(design, item.event.kind as AlertEvent, item.raw);
+    const layout = selectAlertLayout(design, item.event.kind as AlertEvent, item.raw, bitsRule);
     if (layout) layouts[design.id] = await renderLayout(layout, state.channel, item.raw);
   }
   const event = key ? recipientEvent(item, key) : item.event;

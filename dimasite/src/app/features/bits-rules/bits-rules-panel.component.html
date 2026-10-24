@@ -1,0 +1,120 @@
+<section class="br-panel" aria-labelledby="bits-rules-title">
+  <div class="br-panel__head">
+    <div class="br-panel__copy">
+      <h4 class="br-panel__title" id="bits-rules-title"><app-lf-icon name="bits" [size]="16"></app-lf-icon>{{ t('title') }}</h4>
+      <p class="br-note">{{ t('subtitle') }}</p>
+    </div>
+    @if (canEdit() && rules().length) {
+      <button type="button" class="br-btn br-btn--primary br-panel__add" [disabled]="atLimit()" (click)="editor.open(null)">
+        <app-lf-icon name="plus" [size]="16"></app-lf-icon>{{ t('add') }}
+      </button>
+    }
+  </div>
+
+  @if (!view() && service.loading()) {
+    <p class="br-note" role="status">{{ t('loading') }}</p>
+  } @else if (!view() && service.loadFailed()) {
+    <div class="br-problem" role="alert">
+      <p class="br-note">{{ t('loadFailed') }}</p>
+      <button type="button" class="br-btn" (click)="service.load(channelId())"><app-lf-icon name="refresh" [size]="15"></app-lf-icon>{{ t('retry') }}</button>
+    </div>
+  } @else if (view(); as state) {
+    @if (!rules().length) {
+      <div class="br-empty">
+        <p class="br-note"><strong>{{ t('emptyTitle') }}</strong> {{ t('emptyCopy') }}</p>
+        @if (canEdit()) {
+          <div class="br-empty__actions" role="group" [attr.aria-label]="t('suggestLabel')">
+            @for (suggestion of suggestions; track suggestion.key) {
+              <button type="button" class="br-chip-btn" (click)="editor.open(null, suggestion.preset)">{{ t(suggestion.key) }}</button>
+            }
+            <button type="button" class="br-btn br-btn--primary" (click)="editor.open(null)"><app-lf-icon name="plus" [size]="16"></app-lf-icon>{{ t('addFirst') }}</button>
+          </div>
+        }
+      </div>
+    } @else {
+      <div class="br-try">
+        <div class="br-try__field">
+          <label for="bits-rules-try">{{ t('tryLabel') }}</label>
+          <span class="br-try__input">
+            <input class="br-input" id="bits-rules-try" type="number" inputmode="numeric" min="1" step="1" [value]="testAmount()" (input)="testAmount.set(value($event))" />
+            <span aria-hidden="true">Bits</span>
+          </span>
+        </div>
+        <p class="br-try__result" role="status" aria-live="polite">
+          @if (tested(); as test) {
+            @if (test.rule; as rule) {
+              <span>{{ t('result.rule', { amount: number(test.amount), name: editor.label(rule) }) }}</span>
+            } @else {
+              <span>{{ t('result.noRule', { amount: number(test.amount) }) }}</span>
+            }
+            <span class="br-try__effects">
+              <span class="br-chip"><app-lf-icon name="chat" [size]="13"></app-lf-icon>{{ t(chatKey(test.rule)) }}</span>
+              <span class="br-chip"><app-lf-icon name="monitor" [size]="13"></app-lf-icon>{{ t(alertKey(test.rule)) }}</span>
+            </span>
+          } @else {
+            <span>{{ t('result.invalid') }}</span>
+          }
+        </p>
+      </div>
+
+      <ul class="br-rows" [attr.aria-label]="t('listLabel')">
+        @for (rule of rules(); track rule.id) {
+          <li class="br-row" [class.br-row--off]="!rule.enabled" [class.br-row--hit]="tested()?.rule?.id === rule.id">
+            <span class="br-amount br-row__amount"><app-lf-icon name="bits" [size]="13"></app-lf-icon>{{ amount(rule) }}<span class="visually-hidden"> Bits</span></span>
+            <div class="br-row__main">
+              @if (rule.name) { <strong class="br-row__name">{{ rule.name }}</strong> }
+              <span class="br-row__chips">
+                @if (!rule.enabled) { <span class="br-chip">{{ t('off') }}</span> }
+                <span class="br-chip">
+                  <app-lf-icon name="chat" [size]="12"></app-lf-icon>{{ t('chip.' + rule.chat.mode) }}
+                </span>
+                @if (!rule.alert) {
+                  <span class="br-chip"><app-lf-icon name="eye-off" [size]="12"></app-lf-icon>{{ t('chip.noAlert') }}</span>
+                } @else if (hasOwnLook(rule)) {
+                  <span class="br-chip br-chip--accent"><app-lf-icon name="monitor" [size]="12"></app-lf-icon>{{ t('chip.ownLook') }}</span>
+                } @else {
+                  <span class="br-chip"><app-lf-icon name="monitor" [size]="12"></app-lf-icon>{{ t('chip.defaultLook') }}</span>
+                }
+              </span>
+              @if (rule.chat.mode === 'custom') { <span class="br-row__msg">“{{ rule.chat.message }}”</span> }
+            </div>
+            <div class="br-row__actions">
+              @if (canEdit()) {
+                <button type="button" class="br-switch" role="switch" [attr.aria-checked]="rule.enabled" [disabled]="editor.toggling() === rule.id"
+                  [attr.aria-label]="t('switchLabel', { name: editor.label(rule) })" (click)="editor.patch(rule, { enabled: !rule.enabled })">
+                  <span class="br-switch__thumb"></span>
+                </button>
+                <button type="button" class="br-btn br-btn--icon" [attr.aria-label]="t('editLabel', { name: editor.label(rule) })" (click)="editor.open(rule)">
+                  <app-lf-icon name="settings" [size]="17"></app-lf-icon>
+                </button>
+              } @else {
+                <span class="br-chip" [class.br-chip--ok]="rule.enabled">{{ rule.enabled ? t('on') : t('off') }}</span>
+              }
+            </div>
+          </li>
+        }
+      </ul>
+      @if (canEdit() && atLimit()) { <p class="br-note">{{ t('limitReached', { max: state.maxRules }) }}</p> }
+    }
+
+    @if (!state.chat.enabled && state.chat.subscribed) { <p class="br-note br-note--warn"><app-lf-icon name="alert" [size]="14"></app-lf-icon> {{ t('chatEventOff') }}</p> }
+    @if (overlayLink(); as link) {
+      <a class="br-link" [routerLink]="link"><app-lf-icon name="monitor" [size]="15"></app-lf-icon>{{ t('overlayLink') }}<app-lf-icon name="forward" [size]="14"></app-lf-icon></a>
+    }
+  }
+</section>
+
+@if (editor.dialog(); as open) {
+  <app-bits-rule-dialog
+    [rule]="open.rule"
+    [preset]="open.preset"
+    [rules]="view()?.rules ?? []"
+    [defaultMessage]="view()?.chat?.defaultMessage ?? ''"
+    [chatOn]="view()?.chat?.enabled ?? false"
+    [busy]="editor.busy()"
+    [error]="editor.error()"
+    (saved)="save($event)"
+    (deleted)="remove()"
+    (closed)="editor.close()"
+  />
+}

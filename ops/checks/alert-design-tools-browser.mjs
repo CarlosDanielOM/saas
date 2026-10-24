@@ -1,4 +1,5 @@
 // Design tools and variants: editing, sound/timing, rules, recovery and publication.
+// Variant CRUD runs on raids; Bits looks follow shared Bits rules (see bits-rules-browser.mjs).
 // Every API and socket is mocked; nothing reaches production.
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
@@ -101,11 +102,11 @@ try {
   await appearance.locator('summary').last().click();await appearance.getByRole('button',{name:es?'Derecha':'Right',exact:true}).click();
   await page.locator('.save-button').click();await until(()=>ctx.writes>0,'save styles');
   assert.equal(ctx.state.designs[0].events.follow.widgets.at(-1).x,500);
-  await page.locator('.design-event-tabs button').nth(1).click();
+  await page.locator('.design-event-tabs button').nth(3).click();
   const variants=page.locator('app-overlay-variants');await variants.waitFor();
   await variants.getByRole('button',{name:es?'Añadir variante':'Add variant',exact:true}).click();
   await variants.getByLabel(es?'Nombre de variante':'Variant name').fill('Big cheers');await variants.getByLabel(es?'Nombre de variante':'Variant name').press('Tab');
-  await variants.getByLabel(es?'Bits mínimos':'Minimum bits').fill('500');await variants.getByLabel(es?'Bits mínimos':'Minimum bits').press('Tab');
+  await variants.getByLabel(es?'Espectadores mínimos de raid':'Minimum raid viewers').fill('500');await variants.getByLabel(es?'Espectadores mínimos de raid':'Minimum raid viewers').press('Tab');
   await variants.getByLabel(es?'Máximo (incluido)':'Maximum (inclusive)',{exact:true}).fill('1000');await variants.getByLabel(es?'Máximo (incluido)':'Maximum (inclusive)',{exact:true}).press('Tab');
   await page.locator('.properties textarea').fill('BIG $(user)');
   const sound=page.locator('.alert-sound');await sound.getByRole('button',{name:es?'Elegir sonido':'Choose sound',exact:true}).click();
@@ -116,9 +117,9 @@ try {
   const timing=page.locator('details.motion-timing');await timing.evaluate(d=>{d.open=true;});await timing.locator('input').first().fill('0.7');await timing.locator('input').first().press('Tab');
 
   await page.locator('.palette-item[data-kind=shape]').click();
-  await page.locator('.save-button').click();await until(()=>ctx.state.designs[0].variants?.bits?.[0]?.layout.widgets.length===3,'save variant');
-  assert.equal(ctx.state.designs[0].events.bits.widgets.length,2,'base unaffected');
-  const variant=ctx.state.designs[0].variants.bits[0];assert.equal(variant.min,500);assert.equal(variant.max,1000);assert.equal(variant.layout.sound.volume,.35);assert.equal(variant.layout.duration,7);assert.equal(variant.layout.widgets[1].motion.delay,.7);assert.equal(ctx.state.designs[0].events.bits.sound,undefined);assert.equal(variant.layout.widgets[1].text,'BIG $(user)');
+  await page.locator('.save-button').click();await until(()=>ctx.state.designs[0].variants?.raid?.[0]?.layout.widgets.length===3,'save variant');
+  assert.equal(ctx.state.designs[0].events.raid.widgets.length,2,'base unaffected');
+  const variant=ctx.state.designs[0].variants.raid[0];assert.equal(variant.min,500);assert.equal(variant.max,1000);assert.equal(variant.layout.sound.volume,.35);assert.equal(variant.layout.duration,7);assert.equal(variant.layout.widgets[1].motion.delay,.7);assert.equal(ctx.state.designs[0].events.raid.sound,undefined);assert.equal(variant.layout.widgets[1].text,'BIG $(user)');
   await variants.getByRole('button',{name:es?'Predeterminada':'Default',exact:true}).click();
   await until(()=>page.locator('.properties textarea').inputValue().then(v=>v==='$(user)'),'default content');
   await page.getByLabel(es?'Cantidad de ejemplo':'Sample amount',{exact:true}).fill('750');
@@ -130,22 +131,22 @@ try {
   await until(()=>variants.locator('.tabs button').count().then(n=>n===4),'duplicate');
   await variants.getByLabel(es?'Nombre de variante':'Variant name').fill('Priority');await variants.getByLabel(es?'Nombre de variante':'Variant name').press('Tab');
   await variants.getByRole('button',{name:es?'Mover antes':'Move earlier',exact:true}).click();
-  await page.locator('.save-button').click();await until(()=>ctx.state.designs[0].variants.bits[0].name==='Priority','order persisted');
+  await page.locator('.save-button').click();await until(()=>ctx.state.designs[0].variants.raid[0].name==='Priority','order persisted');
   await variants.getByRole('button',{name:es?'Quitar variante':'Remove variant',exact:true}).click();
   await page.getByRole('button',{name:es?'Deshacer':'Undo',exact:true}).click();
   await until(()=>variants.getByRole('button',{name:'Priority',exact:true}).count().then(n=>n===1),'undo deletion');
   await variants.getByLabel(es?'Activada':'Enabled',{exact:true}).uncheck();
   await page.getByRole('button',{name:es?'Cambiar a Big cheers y probar':'Switch to Big cheers & preview',exact:true}).click();
   await until(()=>variants.getByRole('button',{name:'Big cheers',exact:true}).getAttribute('aria-pressed').then(v=>v==='true'),'disabled priority skipped');
-  await page.locator('.save-button').click();await until(()=>ctx.state.designs[0].variants.bits[0].enabled===false,'disabled saved');
+  await page.locator('.save-button').click();await until(()=>ctx.state.designs[0].variants.raid[0].enabled===false,'disabled saved');
   await axe(page,'designs '+options.width);assert.equal(await overflow(page),false);
   if(shots){await mkdir(shots,{recursive:true});await page.screenshot({path:shots+'/designs-'+options.width+'.png',fullPage:true});}
-  await page.reload();await page.locator('.design-row__actions button').first().click();await page.locator('.design-event-tabs button').nth(1).click();
+  await page.reload();await page.locator('.design-row__actions button').first().click();await page.locator('.design-event-tabs button').nth(3).click();
   await variants.getByRole('button',{name:'Big cheers',exact:true}).click();await until(()=>page.locator('.properties textarea').inputValue().then(v=>v==='BIG $(user)'),'reload variant');
 
   if(options.width===1280){
     await page.locator('.properties textarea').fill('Recovered variant');
-    await until(()=>page.evaluate(()=>Object.keys(localStorage).filter(k=>k.startsWith('domdimabot-overlay-draft:')).some(k=>JSON.parse(localStorage.getItem(k)).designDraft?.variants?.bits?.some(v=>v.layout.widgets.some(w=>w.text==='Recovered variant')))),'variant recovery copy');
+    await until(()=>page.evaluate(()=>Object.keys(localStorage).filter(k=>k.startsWith('domdimabot-overlay-draft:')).some(k=>JSON.parse(localStorage.getItem(k)).designDraft?.variants?.raid?.some(v=>v.layout.widgets.some(w=>w.text==='Recovered variant')))),'variant recovery copy');
     page.once('dialog',d=>d.accept());await page.reload();await page.getByRole('button',{name:'Restore local draft',exact:true}).click();
     await until(()=>page.locator('.properties textarea').inputValue().then(v=>v==='Recovered variant'),'restored selected variant');
     await page.locator('.design-event-tabs button').nth(0).click();await variants.getByRole('button',{name:'Add variant',exact:true}).click();
@@ -153,11 +154,11 @@ try {
     await page.getByRole('combobox',{name:'Sample subscription tier',exact:true}).selectOption('3000');
     await until(()=>page.locator('.variant-match').innerText().then(t=>t.includes('This sample plays: New variant')),'tier sample');
     assert.equal(await page.locator('.variant-match button').count(),0,'matching variant already open');
-    await page.locator('.design-event-tabs button').nth(3).click();await variants.getByRole('button',{name:'Add variant',exact:true}).click();
+    await page.locator('.design-event-tabs button').nth(3).click();await variants.getByRole('button',{name:'Default',exact:true}).click();await variants.getByRole('button',{name:'Add variant',exact:true}).click();
     await variants.getByLabel('Minimum raid viewers',{exact:true}).fill('50');await variants.getByLabel('Minimum raid viewers',{exact:true}).press('Tab');
     await page.getByLabel('Sample amount',{exact:true}).fill('49');await page.getByRole('button',{name:'Switch to Default & preview',exact:true}).click();
     await until(()=>variants.getByRole('button',{name:'Default',exact:true}).getAttribute('aria-pressed').then(v=>v==='true'),'raid fallback');
-    await page.locator('.publish-button').click();await until(()=>ctx.state.scenes[0].published.designs[0].variants?.raid?.[0]?.min===50,'published all variants');
+    await page.locator('.publish-button').click();await until(()=>ctx.state.scenes[0].published.designs[0].variants?.raid?.some(v=>v.min===50),'published all variants');
     assert.equal(ctx.state.scenes[0].published.designs[0].variants.sub[0].tier,'3000');
   }
   await context.close();

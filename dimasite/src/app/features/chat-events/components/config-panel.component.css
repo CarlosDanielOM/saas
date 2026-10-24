@@ -171,3 +171,8 @@
 .lf-btn--locked {
   opacity: 0.72;
 }
+
+.lf-config__rules {
+  padding-top: 0.95rem;
+  border-top: 1px solid var(--line);
+}
