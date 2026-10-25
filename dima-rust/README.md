@@ -37,6 +37,23 @@ Six additional modules are exposed behind independent features: `chat-message`, 
 
 Final source-backed validation for these utility features passed on 2026-10-23: formatting, nine no-default/independent/combined feature checks, combined Clippy, 194 test executions across combined, independent Qdrant, and disposable service runs, and the recorded source-oracle suites. The count includes repeated Qdrant coverage, not 194 distinct tests. These remain opt-in library contracts with no production caller adoption, worker registration, or deployment. Source mappings, pacing rationale, boundaries, evidence, and remaining adoption limits are in [policy-queue-token-utils.md](../migration-notes/policy-queue-token-utils.md). The separately validated [Qdrant folder port](../migration-notes/qdrant-folder.md) records its verified library behavior and also has no runtime rollout.
 
+## Opt-in permission core
+
+The pure permission core is available with `--no-default-features --features permissions`. It uses the existing Serde dependencies and remains outside Cargo defaults, `bot-utils`, and worker profiles. Callers can compile stored policy once into an immutable, owned plan, avoiding repeated validation on each decision. Flat access plans stay separate from general Boolean expressions so named-account and specific-role precedence, plus order-sensitive source recognition, remain intact. Decisions include reasons, and validation errors include a code and path for diagnostics. There is no global cache or IO.
+
+```rust
+fn main() {
+    use dima_rust::utils::permissions::{CompiledPermission, RoleTag, UserIdentity};
+    use serde_json::json;
+
+    let identity = UserIdentity::new(7.0, [RoleTag::Mod], Some("00123".into()), None);
+    let policy = CompiledPermission::compile(Some(&json!({"role": "mod"})), None);
+    assert!(policy.allowed(&identity));
+}
+```
+
+See [permission-core.md](../migration-notes/permission-core.md) for parity scope, compatibility edges, and verification status. The compiled value is an immutable snapshot: replace it when configuration changes. This port has no live caller adoption, role-cache IO, resolver, admin middleware, or authentication responsibility.
+
 Use Serde to map BSON documents into explicit structs. Garde checks additional field and business constraints only when `validate()` is called. Future ports must explicitly preserve existing collection names, field types, defaults, and indexes.
 
 ## Shared worker utilities

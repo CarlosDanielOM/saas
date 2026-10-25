@@ -15,6 +15,7 @@ This directory indexes Rust worker migrations, their source reuse, remaining Typ
 | Dashboard activity and insights | Accepted historical release `cron-bf400acbc441`; current rollback baseline is `cron-2056ce9d790c`. | [dashboard-activity.md](dashboard-activity.md) | [Fixture scope and invocation](../ops/checks/dashboard-activity-rust-fixtures/README.md) |
 | Shared Rust worker utilities | Accepted in prior run `cron-2056ce9d790c`; this remains the rollback target for the current release. | [worker-shared-utils.md](worker-shared-utils.md) | [Prior accepted build and release](../ops/README.md#rust-worker-binaries-in-the-cron-target) |
 | Dual cron supervisors | Accepted run `cron-7629f95f5dfd`; the 32-sample production watch, final readbacks, and cleanup passed. Rollback target: `cron-2056ce9d790c`. | [dual-cron-supervisors.md](dual-cron-supervisors.md) | [Accepted release and fixture commands](../ops/README.md#dual-cron-supervisors-accepted-release) |
+| Permission core | Opt-in Rust library compile and parity verification passed; no live callers or production release. | [permission-core.md](permission-core.md) | 3,681 source-backed parity cases |
 
 TypeScript util foundations (library only, not deployed) are tracked separately in [ts-util-foundations.md](ts-util-foundations.md): approved crates, parity evidence, known differences, and the wrappers still to build.
 

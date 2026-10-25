@@ -35,6 +35,7 @@
     feature = "chat-message",
     feature = "timer-policy",
     feature = "credit-policy",
+    feature = "permissions",
     feature = "cron-queue",
     feature = "twitch-client",
     feature = "qdrant"
@@ -73,6 +74,8 @@ pub mod credential_crypto;
 pub mod credit_policy;
 #[cfg(feature = "cron-queue")]
 pub mod cron_queue;
+#[cfg(feature = "permissions")]
+pub mod permissions;
 #[cfg(feature = "timer-policy")]
 pub mod timer_policy;
 #[cfg(feature = "twitch-tokens")]

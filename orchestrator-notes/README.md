@@ -125,3 +125,5 @@ Routing implication (task-specific; retain baseline unless evidence supports a b
 2026-10-23 — Telemetry counter release documentation and verification corrections: [dated evidence](2026-10-23-telemetry-counter-release.md). Supports the existing scoped Luna documentation route; the model tier is unchanged.
 
 2026-10-23 — Final opt-in policy, queue, token, and Qdrant validation passed; scoped review corrections and limits are recorded in the [utility follow-up](2026-10-22-policy-queue-token-utils.md). The model tier is unchanged.
+
+2026-10-25 — Opt-in Rust permission core: capped source-parity validation passed; scoped review corrections and task-specific routing evidence are recorded in the [dated note](2026-10-25-permission-core.md). The user-provided model tier is unchanged.

@@ -45,6 +45,8 @@ chat-message = ["dep:serde", "dep:serde_json"]
 timer-policy = ["dep:serde", "dep:serde_json"]
 # JS JSON numbers require correctly rounded binary64 input, including extremes.
 credit-policy = ["dep:serde", "dep:serde_json", "serde_json/float_roundtrip"]
+# Pure permission policies; intentionally outside bot-utils and worker profiles.
+permissions = ["dep:serde", "dep:serde_json", "serde_json/float_roundtrip"]
 cron-queue = ["redis", "dep:serde", "dep:serde_json", "dep:uuid"]
 credential-crypto = ["dep:aes", "dep:ctr", "dep:getrandom", "dep:serde"]
 twitch-tokens = ["twitch-client", "credential-crypto", "mongo", "redis"]
