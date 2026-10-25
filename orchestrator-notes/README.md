@@ -53,6 +53,8 @@ DIMA-032 pet Read-TTS lifecycle routing observation: [2026-10-23 DIMA-032](2026-
 
 Scoped TypeScript TTS user filters: [2026-10-23 observation](2026-10-23-tts-user-filters.md).
 
+Opt-in Rust AST blocks implementation routing and review rework: [2026-10-25 observation](2026-10-25-ast-blocks.md). Capped verification passed; synthetic release benchmark was lower in 19/21 operations. The model tier is unchanged.
+
 Keep observations brief and tied to a task category, scope, and concrete evidence. Consider exploration, single-file or function work, multi-file integration and consistency, optimization, and UI/UX design separately. Confidence should reflect how much evidence exists and how well it transfers to similar tasks. One result can inform a hypothesis; repeated, comparable results support a stronger routing change.
 
 Separate implementation performance (correctness, consistency, rework, and time to a verified result) from generated-code runtime performance (for example, latency, throughput, or resource use). Claim runtime optimization only when measurements support it. A good build or review is not evidence of a runtime speedup.

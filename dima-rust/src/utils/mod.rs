@@ -50,6 +50,8 @@ pub mod utc_time;
 #[cfg(any(feature = "mongo", feature = "cron-supervisor"))]
 pub mod worker_process;
 
+#[cfg(feature = "ast-blocks")]
+pub mod ast_blocks;
 #[cfg(feature = "ast-syntax")]
 pub mod ast_syntax;
 
