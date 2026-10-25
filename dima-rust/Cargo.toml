@@ -29,6 +29,8 @@ otel = ["dep:opentelemetry", "dep:opentelemetry_sdk", "dep:opentelemetry-otlp", 
 jwt = ["dep:jsonwebtoken", "dep:base64", "dep:serde", "dep:serde_json"]
 re2-compat = ["dep:regex"]
 audio = ["dep:symphonia"]
+# Pure syntax only; no runtime, transport, worker or default-feature coupling.
+ast-syntax = ["dep:serde", "dep:serde_json"]
 # Consolidated helpers are independently selectable; the umbrella is convenient
 # for future bot/API ports. None is enabled by default or by a worker profile.
 bot-utils = ["command-utils", "keywords", "chat-events", "ai-usage", "eventsub", "domain-events"]

@@ -54,6 +54,14 @@ fn main() {
 
 See [permission-core.md](../migration-notes/permission-core.md) for parity scope, compatibility edges, and verification status. The compiled value is an immutable snapshot: replace it when configuration changes. This port has no live caller adoption, role-cache IO, resolver, admin middleware, or authentication responsibility.
 
+## Opt-in AST syntax core
+
+The independent opt-in `ast-syntax` feature exposes `dima_rust::utils::ast_syntax` as a pure parser, scanner, template-plan compiler, diagnostic, and AST-serialization core. TypeScript remains unchanged and no production caller is wired to it. Evaluation, `ast_blocks` conversion, runtime functions and action handlers, context, IO, live cache, worker integration, and deployment remain separate migrations.
+
+`SyntaxEngine::default()` selects Improved semantics; `SyntaxEngine::typescript_compatible()` keeps TypeScript's permissive nested parse, legacy error-literal, and quote/array-scanning policies, subject to Rust resource limits. Improved mode corrects apostrophe, nested-quote, and escaped-array scanning and reports nested parser errors and unconsumed tokens instead of accepting truncated syntax. Grammar preparation rejects aliases colliding with reserved `%[` syntax. The whole-program `parse` grammar differs from chat `scan_template`/`compile_template`, which preserve ordinary text and compile only expression segments. Syntax errors are retained in segment order; aggregate resource-limit errors abort the plan. Defaults are 10,000 UTF-16 source units, 20,000 tokens, 4,000 nodes, and nesting 128 (clamped at 128). A separate persisted-AST JSON boundary limits a standalone AST to 127 nested JSON containers for the standard `serde_json::from_str` reader; any future caller envelope needs its own aggregate nesting budget.
+
+Compiled templates are immutable and reusable only for exact source plus identical prepared grammar identity, profile, and limits. Runtime substitutions such as `&pN` and `&t` happen before matching/compiling. Grammar aliases select built-in syntax-handler kinds; they cannot register arbitrary callbacks or functions. AST JSON keeps the version 1 `AstTimerJob` body shape, omits absent optional fields, and excludes parser spans. Final source validation passed 1,200 corpus cases and 109 test executions across profiles (repeats included). The compilation-only microbenchmark was mixed: 10 of 11 medians were lower for Rust, while `dense100` was slower; this does not establish evaluation or production latency. See [the source and benchmark record](../migration-notes/ast-syntax-core.md) and the [raw benchmark artifact](benchmarks/ast-syntax-2026-10-25.json).
+
 Use Serde to map BSON documents into explicit structs. Garde checks additional field and business constraints only when `validate()` is called. Future ports must explicitly preserve existing collection names, field types, defaults, and indexes.
 
 ## Shared worker utilities

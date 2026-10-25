@@ -1,0 +1,2550 @@
+{
+  "version": 1,
+  "date": "2026-10-25",
+  "scope": "AST syntax compilation only; no evaluation, runtime caller adoption, or production deployment",
+  "baseline_commit": "79010ffc80a39fcb92df027b135953123549cf7f",
+  "source_manifest": {
+    "Cargo.toml": "ef8aaf257ad8d8b2b5ef93bd5391fec13661b7ef4d3b03daabc6b30d7e50783d",
+    "src/utils/mod.rs": "731c02961a92401be81f11329561cdf42eef01ccc95c6c961feb7c3b0f9f60c6",
+    "tests/ast_syntax_parity.rs": "9d84e54baeab76b74eb0a9ed7833915c2bf17544225fd753c6ba38f549c43528",
+    "tests/fixtures/ast_syntax_reference.mjs": "90f4ec5fbc4ba4dd89d9dcea3b94adc25797b1653430eb63d7162c9d2e3ee010",
+    "tests/fixtures/ast_syntax_cases.json": "600229655c1b553b7f4063a3787078e9a84892feb001554ad811b5e55fadffc8",
+    "tests/fixtures/ast_syntax_benchmark.mjs": "5039f8c3edd5954458353277b4cbffb4572550bbeb07b658aecc7773bb4ce2ad",
+    "examples/ast_syntax_bench.rs": "123fe89933ea5110c5ac9ac8ee18ac1b6bca18bafb52fc8f269f8c58feb3b62b",
+    "src/utils/ast_syntax/grammar.rs": "66bde245177a43b06ace9f893e8c1416f64b0b2caa0cbdf3cefdb3a16e9d2b26",
+    "src/utils/ast_syntax/lexer.rs": "0925f8f571d7dcb65ba055087632523f1264f06c65d9a091a0aba01382081eab",
+    "src/utils/ast_syntax/mod.rs": "bcda1e8da514c73e794be07cb3d55f5c28e25b1ff7dfd94457bd3190368dee73",
+    "src/utils/ast_syntax/parser.rs": "a3f73f2619ba6f7da5eaa0cb6597013cf46f1f4372acf86cb9827da911c43e3b",
+    "src/utils/ast_syntax/persistence.rs": "e3b39531a29d6361e321ca165d398201b6a4e41d9c5873e7b6a51046f34759fc",
+    "src/utils/ast_syntax/scanner.rs": "12ebf0f2faf2a5da3f88da2b3b0f890ebbc7bce38e3f1f5a73b785f0d95cb2cb",
+    "src/utils/ast_syntax/source.rs": "5a8070c874bc2b4098a4faf8b926a1b51a06ff54a6b416281d046f4191fcf4a0",
+    "src/utils/ast_syntax/tests.rs": "3a09e040f3992f7b97e6cf3242595e737d2d0c2a909cef208ecdf4ee9c134ea7",
+    "src/utils/ast_syntax/types.rs": "d8e38c01240e12f69e9ce6fc7f0006b101c62d464e5e5a1f9126ce22c89717d0"
+  },
+  "typescript_sources": [
+    {
+      "path": "dimabot/src/utils/ast_parser/types.ts",
+      "sha256": "5049d49cbab203daa16d3430f7d0fca25841a21b8d6d8e0ae58633134394f35f"
+    },
+    {
+      "path": "dimabot/src/utils/ast_parser/tokenizer.ts",
+      "sha256": "31573e058312acda39169f9679624f83cc238ae5c5d0a5d4572369f8b526bdc9"
+    },
+    {
+      "path": "dimabot/src/utils/ast_parser/registry.ts",
+      "sha256": "ccab7267cd2f00afb19bd5057ffc9674aea48577c56884e59da85bc36d8abe93"
+    },
+    {
+      "path": "dimabot/src/utils/ast_parser/parser.ts",
+      "sha256": "be2d5d8f44695fff0186cc672fdd4a3b9454860fafd2aaf2016efbcf0a0e2294"
+    },
+    {
+      "path": "dimabot/src/utils/ast_parser/render.ts",
+      "sha256": "b2fa411ec05dbb790a89185b9f81e834d4b0546338081801bd486c2eea3987aa"
+    }
+  ],
+  "corpus": {
+    "schema_version": 2,
+    "case_count": 1200,
+    "corpus_hash": "3fdfdbf906c2da81420757aa075811c0b41b50b789773b0434a5edd3364914c2",
+    "file_sha256": "600229655c1b553b7f4063a3787078e9a84892feb001554ad811b5e55fadffc8",
+    "parity": {
+      "source-parity": 1137,
+      "approved-correction": 59,
+      "source-throw-hardened": 4
+    },
+    "operations": {
+      "parse": 945,
+      "scan": 144,
+      "compiled-template": 39,
+      "unescape": 72
+    }
+  },
+  "verification": {
+    "quality": {
+      "phase": "quality",
+      "success": true,
+      "limits": {
+        "cpus": 3,
+        "memory_bytes": 4294967296,
+        "memory_swap_bytes": 4294967296,
+        "pids": 256,
+        "cargo_jobs": 2
+      },
+      "cache_limit_bytes": 8589934592,
+      "startup_headroom": {
+        "mem_available_bytes": 9887297536,
+        "load_1m": 2.390625
+      },
+      "minimum_available_bytes": 9702555648,
+      "peak_cache_bytes": 479178752,
+      "applied_limits_verified": true,
+      "cleanup_errors": [],
+      "elapsed_seconds": 39.743,
+      "monitor_samples": 22
+    },
+    "unoptimized_test_batches": [
+      {
+        "passed": 28,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "passed": 10,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "passed": 59,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "passed": 10,
+        "failed": 0,
+        "ignored": 0
+      },
+      {
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0
+      }
+    ],
+    "test_executions_including_repeated_profiles": 109,
+    "worker_dependency_graphs": {
+      "mongo": {
+        "equal_after_path_normalization": true,
+        "sha256": "b0ca9ebda109dbabf12f88ffad26195bf2342159ee22a588fef81b557edcc17f"
+      },
+      "mongo-redis": {
+        "equal_after_path_normalization": true,
+        "sha256": "11ac36d87488c84c85bdca936a8ba9c77db8567c42dd9d4041186bdec8c25276"
+      },
+      "dashboard": {
+        "equal_after_path_normalization": true,
+        "sha256": "09ed62d88c42e53c5221575e4e3caeccded14cc35ef4516aa92194bc6fb8b8aa"
+      },
+      "supervisor": {
+        "equal_after_path_normalization": true,
+        "sha256": "e1f90c2865efe133b46f7b50a3cfff1969c67449cda2e6112f4caded359a4055"
+      }
+    },
+    "cargo_lock_changed": false
+  },
+  "benchmark": {
+    "receipt": {
+      "phase": "benchmark",
+      "success": true,
+      "limits": {
+        "cpus": 3,
+        "memory_bytes": 4294967296,
+        "memory_swap_bytes": 4294967296,
+        "pids": 256,
+        "cargo_jobs": 2
+      },
+      "cache_limit_bytes": 8589934592,
+      "startup_headroom": {
+        "mem_available_bytes": 10604945408,
+        "load_1m": 3.04052734375
+      },
+      "minimum_available_bytes": 9495838720,
+      "peak_cache_bytes": 477061120,
+      "applied_limits_verified": true,
+      "cleanup_errors": [],
+      "elapsed_seconds": 49.387,
+      "monitor_samples": 19
+    },
+    "environment": {
+      "cpu": "AMD EPYC-Rome Processor",
+      "architecture": "x86_64",
+      "runtimes": {
+        "rust": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+        "typescript": "v24.22.1"
+      },
+      "sources": [
+        {
+          "path": "dimabot/src/utils/ast_parser/types.ts",
+          "sha256": "5049d49cbab203daa16d3430f7d0fca25841a21b8d6d8e0ae58633134394f35f"
+        },
+        {
+          "path": "dimabot/src/utils/ast_parser/tokenizer.ts",
+          "sha256": "31573e058312acda39169f9679624f83cc238ae5c5d0a5d4572369f8b526bdc9"
+        },
+        {
+          "path": "dimabot/src/utils/ast_parser/registry.ts",
+          "sha256": "ccab7267cd2f00afb19bd5057ffc9674aea48577c56884e59da85bc36d8abe93"
+        },
+        {
+          "path": "dimabot/src/utils/ast_parser/parser.ts",
+          "sha256": "be2d5d8f44695fff0186cc672fdd4a3b9454860fafd2aaf2016efbcf0a0e2294"
+        },
+        {
+          "path": "dimabot/src/utils/ast_parser/render.ts",
+          "sha256": "b2fa411ec05dbb790a89185b9f81e834d4b0546338081801bd486c2eea3987aa"
+        }
+      ],
+      "emitter_runtime": "v26.8.2",
+      "typescript": "5.9.3"
+    },
+    "methodology": "Three serial pairs, Rust then TypeScript each round, same capped container and identical inputs. Rust optimized release example; Node JIT. Compilation and AST construction/destruction/GC only, no evaluator or timed JSON serialization/checksum. Semantic checksums checked before timing. Report median of 21 batch per-operation means per runtime/input (7 batches x 3 rounds). These local microbenchmarks do not predict production end-to-end latency or isolate individual optimization contributions. Fixed order, shared production host and different allocators/GC can affect results. Plan reuse traversal was disabled.",
+    "requests": {
+      "version": 1,
+      "iterations": 500,
+      "batches": 7,
+      "warmup": 100,
+      "sources": [
+        {
+          "path": "dimabot/src/utils/ast_parser/types.ts",
+          "sha256": "5049d49cbab203daa16d3430f7d0fca25841a21b8d6d8e0ae58633134394f35f"
+        },
+        {
+          "path": "dimabot/src/utils/ast_parser/tokenizer.ts",
+          "sha256": "31573e058312acda39169f9679624f83cc238ae5c5d0a5d4572369f8b526bdc9"
+        },
+        {
+          "path": "dimabot/src/utils/ast_parser/registry.ts",
+          "sha256": "ccab7267cd2f00afb19bd5057ffc9674aea48577c56884e59da85bc36d8abe93"
+        },
+        {
+          "path": "dimabot/src/utils/ast_parser/parser.ts",
+          "sha256": "be2d5d8f44695fff0186cc672fdd4a3b9454860fafd2aaf2016efbcf0a0e2294"
+        },
+        {
+          "path": "dimabot/src/utils/ast_parser/render.ts",
+          "sha256": "b2fa411ec05dbb790a89185b9f81e834d4b0546338081801bd486c2eea3987aa"
+        }
+      ],
+      "fixtures": [
+        {
+          "name": "short-hi",
+          "mode": "template",
+          "source": "Hi $(user)!",
+          "profile": "improved",
+          "expected_checksum": "b8bcc332"
+        },
+        {
+          "name": "mixed",
+          "mode": "template",
+          "source": "Hi $(user)! Deaths: %(*deaths). Winner: *($(random 6) == 0 ? \"yes\" : \"no\")",
+          "profile": "improved",
+          "expected_checksum": "bb40b822"
+        },
+        {
+          "name": "loop",
+          "mode": "program",
+          "source": "*(for #i = 0; #i < 3; #i++ { $(say ping #i) })",
+          "profile": "improved",
+          "expected_checksum": "0f8eed8b"
+        },
+        {
+          "name": "plain8000",
+          "mode": "template",
+          "source": "plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text pla",
+          "profile": "improved",
+          "expected_checksum": "69ca45dd"
+        },
+        {
+          "name": "dense100",
+          "mode": "template",
+          "source": "$(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) ",
+          "profile": "improved",
+          "expected_checksum": "7ec8fb9d"
+        },
+        {
+          "name": "dense500",
+          "mode": "template",
+          "source": "$(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) ",
+          "profile": "improved",
+          "expected_checksum": "ad5738fd"
+        },
+        {
+          "name": "nested-arrays-8",
+          "mode": "program",
+          "source": "%[%[%[%[%[%[%[%[x]]]]]]]]",
+          "profile": "improved",
+          "expected_checksum": "5f8fc0f7"
+        },
+        {
+          "name": "nested-arrays-16",
+          "mode": "program",
+          "source": "%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[x]]]]]]]]]]]]]]]]",
+          "profile": "improved",
+          "expected_checksum": "da6ac187"
+        },
+        {
+          "name": "nested-arrays-32",
+          "mode": "program",
+          "source": "%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[x]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]",
+          "profile": "improved",
+          "expected_checksum": "70eb8d67"
+        },
+        {
+          "name": "nested-arrays-64",
+          "mode": "program",
+          "source": "%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[x]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]",
+          "profile": "improved",
+          "excluded_reason": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners."
+        },
+        {
+          "name": "nested-arrays-128",
+          "mode": "program",
+          "source": "%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[x]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]",
+          "profile": "improved",
+          "excluded_reason": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners."
+        },
+        {
+          "name": "nested-compute-32",
+          "mode": "program",
+          "source": "*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(1))))))))))))))))))))))))))))))))",
+          "profile": "improved",
+          "expected_checksum": "f8d92f4e"
+        },
+        {
+          "name": "nested-compute-64",
+          "mode": "program",
+          "source": "*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(1))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))",
+          "profile": "improved",
+          "expected_checksum": "f8d92f4e"
+        },
+        {
+          "name": "nested-compute-128",
+          "mode": "program",
+          "source": "*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(1))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))",
+          "profile": "improved",
+          "excluded_reason": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners."
+        }
+      ]
+    },
+    "included_fixture_count": 11,
+    "excluded": {
+      "nested-arrays-64": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners.",
+      "nested-arrays-128": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners.",
+      "nested-compute-128": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners."
+    },
+    "summary": [
+      {
+        "fixture": "short-hi",
+        "rust_median_ns": 1630.91,
+        "typescript_median_ns": 6743.716,
+        "typescript_over_rust": 4.134940615975131,
+        "round_medians_ns": {
+          "rust": [
+            1695.172,
+            1630.91,
+            1555.148
+          ],
+          "typescript": [
+            6950.826,
+            7114.192,
+            6427.004
+          ]
+        }
+      },
+      {
+        "fixture": "mixed",
+        "rust_median_ns": 12565.932,
+        "typescript_median_ns": 24833.482,
+        "typescript_over_rust": 1.9762546860829742,
+        "round_medians_ns": {
+          "rust": [
+            13673.524,
+            12106.772,
+            12021.814
+          ],
+          "typescript": [
+            24678.052,
+            30173.234,
+            21514.954
+          ]
+        }
+      },
+      {
+        "fixture": "loop",
+        "rust_median_ns": 10346.96,
+        "typescript_median_ns": 24317.658,
+        "typescript_over_rust": 2.350222480805957,
+        "round_medians_ns": {
+          "rust": [
+            10851.364,
+            10339.948,
+            10172.714
+          ],
+          "typescript": [
+            25294.766,
+            24317.658,
+            21803.714
+          ]
+        }
+      },
+      {
+        "fixture": "plain8000",
+        "rust_median_ns": 66366.936,
+        "typescript_median_ns": 275166.9,
+        "typescript_over_rust": 4.146144399373809,
+        "round_medians_ns": {
+          "rust": [
+            68768.568,
+            64341.082,
+            65884.89
+          ],
+          "typescript": [
+            271784.908,
+            279905.342,
+            280612.366
+          ]
+        }
+      },
+      {
+        "fixture": "dense100",
+        "rust_median_ns": 215507.274,
+        "typescript_median_ns": 186623.052,
+        "typescript_over_rust": 0.8659710112615502,
+        "round_medians_ns": {
+          "rust": [
+            216995.098,
+            213803.086,
+            215507.274
+          ],
+          "typescript": [
+            179269.174,
+            186623.052,
+            195732.134
+          ]
+        }
+      },
+      {
+        "fixture": "dense500",
+        "rust_median_ns": 865326.326,
+        "typescript_median_ns": 948261.276,
+        "typescript_over_rust": 1.0958423978424066,
+        "round_medians_ns": {
+          "rust": [
+            891708.69,
+            854768.774,
+            850324.236
+          ],
+          "typescript": [
+            975224.264,
+            952632.174,
+            940181.36
+          ]
+        }
+      },
+      {
+        "fixture": "nested-arrays-8",
+        "rust_median_ns": 4867.266,
+        "typescript_median_ns": 26567.888,
+        "typescript_over_rust": 5.4584828525911675,
+        "round_medians_ns": {
+          "rust": [
+            5023.098,
+            4849.432,
+            4698.97
+          ],
+          "typescript": [
+            23985.998,
+            27615.528,
+            26468.68
+          ]
+        }
+      },
+      {
+        "fixture": "nested-arrays-16",
+        "rust_median_ns": 8808.602,
+        "typescript_median_ns": 57117.608,
+        "typescript_over_rust": 6.484298870581279,
+        "round_medians_ns": {
+          "rust": [
+            8772.514,
+            8857.794,
+            8808.602
+          ],
+          "typescript": [
+            52395.832,
+            69324.408,
+            52159.13
+          ]
+        }
+      },
+      {
+        "fixture": "nested-arrays-32",
+        "rust_median_ns": 21141.294,
+        "typescript_median_ns": 170311.992,
+        "typescript_over_rust": 8.055892510647645,
+        "round_medians_ns": {
+          "rust": [
+            21147.048,
+            20925.07,
+            21487.664
+          ],
+          "typescript": [
+            170721.764,
+            167280.1,
+            170016.96
+          ]
+        }
+      },
+      {
+        "fixture": "nested-compute-32",
+        "rust_median_ns": 8531.182,
+        "typescript_median_ns": 16784.204,
+        "typescript_over_rust": 1.9673949049498651,
+        "round_medians_ns": {
+          "rust": [
+            8531.182,
+            8522.062,
+            8649.544
+          ],
+          "typescript": [
+            15066.01,
+            17335.274,
+            17423.74
+          ]
+        }
+      },
+      {
+        "fixture": "nested-compute-64",
+        "rust_median_ns": 15598.724,
+        "typescript_median_ns": 28180.524,
+        "typescript_over_rust": 1.8065916160834694,
+        "round_medians_ns": {
+          "rust": [
+            15114.902,
+            15848.734,
+            15756.818
+          ],
+          "typescript": [
+            27707.04,
+            27934.284,
+            31274.836
+          ]
+        }
+      }
+    ],
+    "raw_runs": [
+      {
+        "round": 1,
+        "rust": {
+          "measurements": [
+            {
+              "batches": 7,
+              "checksum": "b8bcc332",
+              "durations_ns": [
+                871831,
+                924178,
+                845121,
+                888512,
+                847586,
+                739994,
+                718144
+              ],
+              "fixture": "short-hi",
+              "iterations": 500,
+              "method": "Rust compile_template",
+              "ns_per_op": [
+                1743.662,
+                1848.356,
+                1690.242,
+                1777.024,
+                1695.172,
+                1479.988,
+                1436.288
+              ],
+              "profile": "improved"
+            },
+            {
+              "batches": 7,
+              "checksum": "bb40b822",
+              "durations_ns": [
+                6842753,
+                6390687,
+                7807387,
+                7909268,
+                6441202,
+                6660441,
+                6836762
+              ],
+              "fixture": "mixed",
+              "iterations": 500,
+              "method": "Rust compile_template",
+              "ns_per_op": [
+                13685.506,
+                12781.374,
+                15614.774,
+                15818.536,
+                12882.404,
+                13320.882,
+                13673.524
+              ],
+              "profile": "improved"
+            },
+            {
+              "batches": 7,
+              "checksum": "0f8eed8b",
+              "durations_ns": [
+                5335102,
+                5425682,
+                5607051,
+                5265652,
+                5510640,
+                5206421,
+                5879801
+              ],
+              "fixture": "loop",
+              "iterations": 500,
+              "method": "Rust parse",
+              "ns_per_op": [
+                10670.204,
+                10851.364,
+                11214.102,
+                10531.304,
+                11021.28,
+                10412.842,
+                11759.602
+              ],
+              "profile": "improved"
+            },
+            {
+              "batches": 7,
+              "checksum": "69ca45dd",
+              "durations_ns": [
+                34384284,
+                33383501,
+                37423810,
+                32175120,
+                34563628,
+                34646703,
+                32929071
+              ],
+              "fixture": "plain8000",
+              "iterations": 500,
+              "method": "Rust compile_template",
+              "ns_per_op": [
+                68768.568,
+                66767.002,
+                74847.62,
+                64350.24,
+                69127.256,
+                69293.406,
+                65858.142
+              ],
+              "profile": "improved"
+            },
+            {
+              "batches": 7,
+              "checksum": "7ec8fb9d",
+              "durations_ns": [
+                130386484,
+                108497549,
+                105104290,
+                104278245,
+                104558849,
+                113453351,
+                134853942
+              ],
+              "fixture": "dense100",
+              "iterations": 500,
+              "method": "Rust compile_template",
+              "ns_per_op": [
+                260772.968,
+                216995.098,
+                210208.58,
+                208556.49,
+                209117.698,
+                226906.702,
+                269707.884
+              ],
+              "profile": "improved"
+            },
+            {
+              "batches": 7,
+              "checksum": "ad5738fd",
+              "durations_ns": [
+                454990287,
+                437518939,
+                454471677,
+                474722415,
+                445854345,
+                445549503,
+                430663993
+              ],
+              "fixture": "dense500",
+              "iterations": 500,
+              "method": "Rust compile_template",
+              "ns_per_op": [
+                909980.574,
+                875037.878,
+                908943.354,
+                949444.83,
+                891708.69,
+                891099.006,
+                861327.986
+              ],
+              "profile": "improved"
+            },
+            {
+              "batches": 7,
+              "checksum": "5f8fc0f7",
+              "durations_ns": [
+                2479448,
+                3253707,
+                2635000,
+                2511549,
+                2721161,
+                2301696,
+                2445986
+              ],
+              "fixture": "nested-arrays-8",
+              "iterations": 500,
+              "method": "Rust parse",
+              "ns_per_op": [
+                4958.896,
+                6507.414,
+                5270.0,
+                5023.098,
+                5442.322,
+                4603.392,
+                4891.972
+              ],
+              "profile": "improved"
+            },
+            {
+              "batches": 7,
+              "checksum": "da6ac187",
+              "durations_ns": [
+                4444005,
+                4356942,
+                4386257,
+                4349026,
+                4487766,
+                4388771,
+                4299524
+              ],
+              "fixture": "nested-arrays-16",
+              "iterations": 500,
+              "method": "Rust parse",
+              "ns_per_op": [
+                8888.01,
+                8713.884,
+                8772.514,
+                8698.052,
+                8975.532,
+                8777.542,
+                8599.048
+              ],
+              "profile": "improved"
+            },
+            {
+              "batches": 7,
+              "checksum": "70eb8d67",
+              "durations_ns": [
+                11201959,
+                10525263,
+                12771905,
+                10573524,
+                10277761,
+                10320689,
+                10598090
+              ],
+              "fixture": "nested-arrays-32",
+              "iterations": 500,
+              "method": "Rust parse",
+              "ns_per_op": [
+                22403.918,
+                21050.526,
+                25543.81,
+                21147.048,
+                20555.522,
+                20641.378,
+                21196.18
+              ],
+              "profile": "improved"
+            },
+            {
+              "excluded_reason": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners.",
+              "name": "nested-arrays-64"
+            },
+            {
+              "excluded_reason": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners.",
+              "name": "nested-arrays-128"
+            },
+            {
+              "batches": 7,
+              "checksum": "f8d92f4e",
+              "durations_ns": [
+                4387780,
+                4398539,
+                4193416,
+                4265591,
+                4280739,
+                4164723,
+                4154663
+              ],
+              "fixture": "nested-compute-32",
+              "iterations": 500,
+              "method": "Rust parse",
+              "ns_per_op": [
+                8775.56,
+                8797.078,
+                8386.832,
+                8531.182,
+                8561.478,
+                8329.446,
+                8309.326
+              ],
+              "profile": "improved"
+            },
+            {
+              "batches": 7,
+              "checksum": "f8d92f4e",
+              "durations_ns": [
+                7482048,
+                7533846,
+                7517856,
+                7604108,
+                7734230,
+                7557451,
+                7669620
+              ],
+              "fixture": "nested-compute-64",
+              "iterations": 500,
+              "method": "Rust parse",
+              "ns_per_op": [
+                14964.096,
+                15067.692,
+                15035.712,
+                15208.216,
+                15468.46,
+                15114.902,
+                15339.24
+              ],
+              "profile": "improved"
+            },
+            {
+              "excluded_reason": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners.",
+              "name": "nested-compute-128"
+            }
+          ],
+          "method": "syntax compilation; no evaluation or timed JSON serialization",
+          "runtime_version": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+          "sink": 0,
+          "sources": [
+            {
+              "path": "dimabot/src/utils/ast_parser/types.ts",
+              "sha256": "5049d49cbab203daa16d3430f7d0fca25841a21b8d6d8e0ae58633134394f35f"
+            },
+            {
+              "path": "dimabot/src/utils/ast_parser/tokenizer.ts",
+              "sha256": "31573e058312acda39169f9679624f83cc238ae5c5d0a5d4572369f8b526bdc9"
+            },
+            {
+              "path": "dimabot/src/utils/ast_parser/registry.ts",
+              "sha256": "ccab7267cd2f00afb19bd5057ffc9674aea48577c56884e59da85bc36d8abe93"
+            },
+            {
+              "path": "dimabot/src/utils/ast_parser/parser.ts",
+              "sha256": "be2d5d8f44695fff0186cc672fdd4a3b9454860fafd2aaf2016efbcf0a0e2294"
+            },
+            {
+              "path": "dimabot/src/utils/ast_parser/render.ts",
+              "sha256": "b2fa411ec05dbb790a89185b9f81e834d4b0546338081801bd486c2eea3987aa"
+            }
+          ],
+          "version": 1
+        },
+        "typescript": {
+          "version": 1,
+          "runtime": "v24.22.1",
+          "method": "syntax compilation; no evaluation or timed JSON serialization",
+          "sources": [
+            {
+              "path": "dimabot/src/utils/ast_parser/types.ts",
+              "sha256": "5049d49cbab203daa16d3430f7d0fca25841a21b8d6d8e0ae58633134394f35f"
+            },
+            {
+              "path": "dimabot/src/utils/ast_parser/tokenizer.ts",
+              "sha256": "31573e058312acda39169f9679624f83cc238ae5c5d0a5d4572369f8b526bdc9"
+            },
+            {
+              "path": "dimabot/src/utils/ast_parser/registry.ts",
+              "sha256": "ccab7267cd2f00afb19bd5057ffc9674aea48577c56884e59da85bc36d8abe93"
+            },
+            {
+              "path": "dimabot/src/utils/ast_parser/parser.ts",
+              "sha256": "be2d5d8f44695fff0186cc672fdd4a3b9454860fafd2aaf2016efbcf0a0e2294"
+            },
+            {
+              "path": "dimabot/src/utils/ast_parser/render.ts",
+              "sha256": "b2fa411ec05dbb790a89185b9f81e834d4b0546338081801bd486c2eea3987aa"
+            }
+          ],
+          "sink": 0,
+          "measurements": [
+            {
+              "fixture": "short-hi",
+              "profile": "improved",
+              "method": "TS scanSourceSegments + parse each expression",
+              "iterations": 500,
+              "batches": 7,
+              "durations_ns": [
+                7114400,
+                3823895,
+                4175482,
+                3174249,
+                2659998,
+                3475413,
+                2315323
+              ],
+              "ns_per_op": [
+                14228.8,
+                7647.79,
+                8350.964,
+                6348.498,
+                5319.996,
+                6950.826,
+                4630.646
+              ],
+              "checksum": "b8bcc332"
+            },
+            {
+              "fixture": "mixed",
+              "profile": "improved",
+              "method": "TS scanSourceSegments + parse each expression",
+              "iterations": 500,
+              "batches": 7,
+              "durations_ns": [
+                23737193,
+                14942798,
+                12416741,
+                12339026,
+                10401602,
+                7688947,
+                6989658
+              ],
+              "ns_per_op": [
+                47474.386,
+                29885.596,
+                24833.482,
+                24678.052,
+                20803.204,
+                15377.894,
+                13979.316
+              ],
+              "checksum": "bb40b822"
+            },
+            {
+              "fixture": "loop",
+              "profile": "improved",
+              "method": "TS parse",
+              "iterations": 500,
+              "batches": 7,
+              "durations_ns": [
+                15793720,
+                12647383,
+                12746329,
+                9304870,
+                7233092,
+                8118439,
+                21490507
+              ],
+              "ns_per_op": [
+                31587.44,
+                25294.766,
+                25492.658,
+                18609.74,
+                14466.184,
+                16236.878,
+                42981.014
+              ],
+              "checksum": "0f8eed8b"
+            },
+            {
+              "fixture": "plain8000",
+              "profile": "improved",
+              "method": "TS scanSourceSegments + parse each expression",
+              "iterations": 500,
+              "batches": 7,
+              "durations_ns": [
+                141232587,
+                136683794,
+                137583450,
+                131006062,
+                131858699,
+                135892454,
+                132254739
+              ],
+              "ns_per_op": [
+                282465.174,
+                273367.588,
+                275166.9,
+                262012.124,
+                263717.398,
+                271784.908,
+                264509.478
+              ],
+              "checksum": "69ca45dd"
+            },
+            {
+              "fixture": "dense100",
+              "profile": "improved",
+              "method": "TS scanSourceSegments + parse each expression",
+              "iterations": 500,
+              "batches": 7,
+              "durations_ns": [
+                102055607,
+                87081901,
+                87478201,
+                88897969,
+                89634587,
+                89743591,
+                98496607
+              ],
+              "ns_per_op": [
+                204111.214,
+                174163.802,
+                174956.402,
+                177795.938,
+                179269.174,
+                179487.182,
+                196993.214
+              ],
+              "checksum": "7ec8fb9d"
+            },
+            {
+              "fixture": "dense500",
+              "profile": "improved",
+              "method": "TS scanSourceSegments + parse each expression",
+              "iterations": 500,
+              "batches": 7,
+              "durations_ns": [
+                492685846,
+                512584896,
+                487612132,
+                471508113,
+                501978942,
+                451400119,
+                446100035
+              ],
+              "ns_per_op": [
+                985371.692,
+                1025169.792,
+                975224.264,
+                943016.226,
+                1003957.884,
+                902800.238,
+                892200.07
+              ],
+              "checksum": "ad5738fd"
+            },
+            {
+              "fixture": "nested-arrays-8",
+              "profile": "improved",
+              "method": "TS parse",
+              "iterations": 500,
+              "batches": 7,
+              "durations_ns": [
+                13963786,
+                11992999,
+                13415871,
+                13690725,
+                10244356,
+                9373928,
+                10286606
+              ],
+              "ns_per_op": [
+                27927.572,
+                23985.998,
+                26831.742,
+                27381.45,
+                20488.712,
+                18747.856,
+                20573.212
+              ],
+              "checksum": "5f8fc0f7"
+            },
+            {
+              "fixture": "nested-arrays-16",
+              "profile": "improved",
+              "method": "TS parse",
+              "iterations": 500,
+              "batches": 7,
+              "durations_ns": [
+                25462370,
+                24887405,
+                31253976,
+                31746578,
+                26197916,
+                25535287,
+                29576597
+              ],
+              "ns_per_op": [
+                50924.74,
+                49774.81,
+                62507.952,
+                63493.156,
+                52395.832,
+                51070.574,
+                59153.194
+              ],
+              "checksum": "da6ac187"
+            },
+            {
+              "fixture": "nested-arrays-32",
+              "profile": "improved",
+              "method": "TS parse",
+              "iterations": 500,
+              "batches": 7,
+              "durations_ns": [
+                85467029,
+                85770195,
+                85360882,
+                85155996,
+                83772669,
+                84615255,
+                86555475
+              ],
+              "ns_per_op": [
+                170934.058,
+                171540.39,
+                170721.764,
+                170311.992,
+                167545.338,
+                169230.51,
+                173110.95
+              ],
+              "checksum": "70eb8d67"
+            },
+            {
+              "name": "nested-arrays-64",
+              "excluded_reason": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners."
+            },
+            {
+              "name": "nested-arrays-128",
+              "excluded_reason": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners."
+            },
+            {
+              "fixture": "nested-compute-32",
+              "profile": "improved",
+              "method": "TS parse",
+              "iterations": 500,
+              "batches": 7,
+              "durations_ns": [
+                9345125,
+                8392102,
+                8021268,
+                7284820,
+                6880684,
+                7120151,
+                7533005
+              ],
+              "ns_per_op": [
+                18690.25,
+                16784.204,
+                16042.536,
+                14569.64,
+                13761.368,
+                14240.302,
+                15066.01
+              ],
+              "checksum": "f8d92f4e"
+            },
+            {
+              "fixture": "nested-compute-64",
+              "profile": "improved",
+              "method": "TS parse",
+              "iterations": 500,
+              "batches": 7,
+              "durations_ns": [
+                13648676,
+                14180832,
+                13632847,
+                13666961,
+                13853520,
+                13914885,
+                16052014
+              ],
+              "ns_per_op": [
+                27297.352,
+                28361.664,
+                27265.694,
+                27333.922,
+                27707.04,
+                27829.77,
+                32104.028
+              ],
+              "checksum": "f8d92f4e"
+            },
+            {
+              "name": "nested-compute-128",
+              "excluded_reason": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners."
+            }
+          ]
+        }
+      },
+      {
+        "round": 2,
+        "rust": {
+          "measurements": [
+            {
+              "batches": 7,
+              "checksum": "b8bcc332",
+              "durations_ns": [
+                858817,
+                1012844,
+                815455,
+                988079,
+                726599,
+                766405,
+                750684
+              ],
+              "fixture": "short-hi",
+              "iterations": 500,
+              "method": "Rust compile_template",
+              "ns_per_op": [
+                1717.634,
+                2025.688,
+                1630.91,
+                1976.158,
+                1453.198,
+                1532.81,
+                1501.368
+              ],
+              "profile": "improved"
+            },
+            {
+              "batches": 7,
+              "checksum": "bb40b822",
+              "durations_ns": [
+                6108919,
+                6282966,
+                6053386,
+                5985478,
+                6258480,
+                5959560,
+                6040001
+              ],
+              "fixture": "mixed",
+              "iterations": 500,
+              "method": "Rust compile_template",
+              "ns_per_op": [
+                12217.838,
+                12565.932,
+                12106.772,
+                11970.956,
+                12516.96,
+                11919.12,
+                12080.002
+              ],
+              "profile": "improved"
+            },
+            {
+              "batches": 7,
+              "checksum": "0f8eed8b",
+              "durations_ns": [
+                5183780,
+                4963736,
+                5020545,
+                4968285,
+                5173480,
+                5169974,
+                6429810
+              ],
+              "fixture": "loop",
+              "iterations": 500,
+              "method": "Rust parse",
+              "ns_per_op": [
+                10367.56,
+                9927.472,
+                10041.09,
+                9936.57,
+                10346.96,
+                10339.948,
+                12859.62
+              ],
+              "profile": "improved"
+            },
+            {
+              "batches": 7,
+              "checksum": "69ca45dd",
+              "durations_ns": [
+                52883806,
+                33538991,
+                36179353,
+                31483465,
+                31657872,
+                30939488,
+                32170541
+              ],
+              "fixture": "plain8000",
+              "iterations": 500,
+              "method": "Rust compile_template",
+              "ns_per_op": [
+                105767.612,
+                67077.982,
+                72358.706,
+                62966.93,
+                63315.744,
+                61878.976,
+                64341.082
+              ],
+              "profile": "improved"
+            },
+            {
+              "batches": 7,
+              "checksum": "7ec8fb9d",
+              "durations_ns": [
+                103304964,
+                115172949,
+                103529924,
+                112216087,
+                129906235,
+                106167941,
+                106901543
+              ],
+              "fixture": "dense100",
+              "iterations": 500,
+              "method": "Rust compile_template",
+              "ns_per_op": [
+                206609.928,
+                230345.898,
+                207059.848,
+                224432.174,
+                259812.47,
+                212335.882,
+                213803.086
+              ],
+              "profile": "improved"
+            },
+            {
+              "batches": 7,
+              "checksum": "ad5738fd",
+              "durations_ns": [
+                417792981,
+                427384387,
+                432663163,
+                423057401,
+                426071080,
+                475733107,
+                479840232
+              ],
+              "fixture": "dense500",
+              "iterations": 500,
+              "method": "Rust compile_template",
+              "ns_per_op": [
+                835585.962,
+                854768.774,
+                865326.326,
+                846114.802,
+                852142.16,
+                951466.214,
+                959680.464
+              ],
+              "profile": "improved"
+            },
+            {
+              "batches": 7,
+              "checksum": "5f8fc0f7",
+              "durations_ns": [
+                2576570,
+                2476153,
+                2411081,
+                2443682,
+                2370666,
+                2333304,
+                2424716
+              ],
+              "fixture": "nested-arrays-8",
+              "iterations": 500,
+              "method": "Rust parse",
+              "ns_per_op": [
+                5153.14,
+                4952.306,
+                4822.162,
+                4887.364,
+                4741.332,
+                4666.608,
+                4849.432
+              ],
+              "profile": "improved"
+            },
+            {
+              "batches": 7,
+              "checksum": "da6ac187",
+              "durations_ns": [
+                4496243,
+                4706065,
+                4417756,
+                4428897,
+                4453923,
+                4286359,
+                4228964
+              ],
+              "fixture": "nested-arrays-16",
+              "iterations": 500,
+              "method": "Rust parse",
+              "ns_per_op": [
+                8992.486,
+                9412.13,
+                8835.512,
+                8857.794,
+                8907.846,
+                8572.718,
+                8457.928
+              ],
+              "profile": "improved"
+            },
+            {
+              "batches": 7,
+              "checksum": "70eb8d67",
+              "durations_ns": [
+                11656800,
+                10407392,
+                10473165,
+                10462535,
+                10458327,
+                10703066,
+                10376073
+              ],
+              "fixture": "nested-arrays-32",
+              "iterations": 500,
+              "method": "Rust parse",
+              "ns_per_op": [
+                23313.6,
+                20814.784,
+                20946.33,
+                20925.07,
+                20916.654,
+                21406.132,
+                20752.146
+              ],
+              "profile": "improved"
+            },
+            {
+              "excluded_reason": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners.",
+              "name": "nested-arrays-64"
+            },
+            {
+              "excluded_reason": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners.",
+              "name": "nested-arrays-128"
+            },
+            {
+              "batches": 7,
+              "checksum": "f8d92f4e",
+              "durations_ns": [
+                4253718,
+                4186083,
+                4418967,
+                4261031,
+                4692199,
+                4443083,
+                4204958
+              ],
+              "fixture": "nested-compute-32",
+              "iterations": 500,
+              "method": "Rust parse",
+              "ns_per_op": [
+                8507.436,
+                8372.166,
+                8837.934,
+                8522.062,
+                9384.398,
+                8886.166,
+                8409.916
+              ],
+              "profile": "improved"
+            },
+            {
+              "batches": 7,
+              "checksum": "f8d92f4e",
+              "durations_ns": [
+                8253612,
+                7799362,
+                7924367,
+                8071422,
+                7954824,
+                7752064,
+                7801135
+              ],
+              "fixture": "nested-compute-64",
+              "iterations": 500,
+              "method": "Rust parse",
+              "ns_per_op": [
+                16507.224,
+                15598.724,
+                15848.734,
+                16142.844,
+                15909.648,
+                15504.128,
+                15602.27
+              ],
+              "profile": "improved"
+            },
+            {
+              "excluded_reason": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners.",
+              "name": "nested-compute-128"
+            }
+          ],
+          "method": "syntax compilation; no evaluation or timed JSON serialization",
+          "runtime_version": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+          "sink": 0,
+          "sources": [
+            {
+              "path": "dimabot/src/utils/ast_parser/types.ts",
+              "sha256": "5049d49cbab203daa16d3430f7d0fca25841a21b8d6d8e0ae58633134394f35f"
+            },
+            {
+              "path": "dimabot/src/utils/ast_parser/tokenizer.ts",
+              "sha256": "31573e058312acda39169f9679624f83cc238ae5c5d0a5d4572369f8b526bdc9"
+            },
+            {
+              "path": "dimabot/src/utils/ast_parser/registry.ts",
+              "sha256": "ccab7267cd2f00afb19bd5057ffc9674aea48577c56884e59da85bc36d8abe93"
+            },
+            {
+              "path": "dimabot/src/utils/ast_parser/parser.ts",
+              "sha256": "be2d5d8f44695fff0186cc672fdd4a3b9454860fafd2aaf2016efbcf0a0e2294"
+            },
+            {
+              "path": "dimabot/src/utils/ast_parser/render.ts",
+              "sha256": "b2fa411ec05dbb790a89185b9f81e834d4b0546338081801bd486c2eea3987aa"
+            }
+          ],
+          "version": 1
+        },
+        "typescript": {
+          "version": 1,
+          "runtime": "v24.22.1",
+          "method": "syntax compilation; no evaluation or timed JSON serialization",
+          "sources": [
+            {
+              "path": "dimabot/src/utils/ast_parser/types.ts",
+              "sha256": "5049d49cbab203daa16d3430f7d0fca25841a21b8d6d8e0ae58633134394f35f"
+            },
+            {
+              "path": "dimabot/src/utils/ast_parser/tokenizer.ts",
+              "sha256": "31573e058312acda39169f9679624f83cc238ae5c5d0a5d4572369f8b526bdc9"
+            },
+            {
+              "path": "dimabot/src/utils/ast_parser/registry.ts",
+              "sha256": "ccab7267cd2f00afb19bd5057ffc9674aea48577c56884e59da85bc36d8abe93"
+            },
+            {
+              "path": "dimabot/src/utils/ast_parser/parser.ts",
+              "sha256": "be2d5d8f44695fff0186cc672fdd4a3b9454860fafd2aaf2016efbcf0a0e2294"
+            },
+            {
+              "path": "dimabot/src/utils/ast_parser/render.ts",
+              "sha256": "b2fa411ec05dbb790a89185b9f81e834d4b0546338081801bd486c2eea3987aa"
+            }
+          ],
+          "sink": 0,
+          "measurements": [
+            {
+              "fixture": "short-hi",
+              "profile": "improved",
+              "method": "TS scanSourceSegments + parse each expression",
+              "iterations": 500,
+              "batches": 7,
+              "durations_ns": [
+                6842032,
+                4045649,
+                4224024,
+                3371858,
+                2564228,
+                3557096,
+                2710211
+              ],
+              "ns_per_op": [
+                13684.064,
+                8091.298,
+                8448.048,
+                6743.716,
+                5128.456,
+                7114.192,
+                5420.422
+              ],
+              "checksum": "b8bcc332"
+            },
+            {
+              "fixture": "mixed",
+              "profile": "improved",
+              "method": "TS scanSourceSegments + parse each expression",
+              "iterations": 500,
+              "batches": 7,
+              "durations_ns": [
+                31745606,
+                24599406,
+                23937807,
+                15086617,
+                13273545,
+                9359351,
+                11262733
+              ],
+              "ns_per_op": [
+                63491.212,
+                49198.812,
+                47875.614,
+                30173.234,
+                26547.09,
+                18718.702,
+                22525.466
+              ],
+              "checksum": "bb40b822"
+            },
+            {
+              "fixture": "loop",
+              "profile": "improved",
+              "method": "TS parse",
+              "iterations": 500,
+              "batches": 7,
+              "durations_ns": [
+                17505543,
+                13638237,
+                13454985,
+                12158829,
+                8090618,
+                6314193,
+                7024083
+              ],
+              "ns_per_op": [
+                35011.086,
+                27276.474,
+                26909.97,
+                24317.658,
+                16181.236,
+                12628.386,
+                14048.166
+              ],
+              "checksum": "0f8eed8b"
+            },
+            {
+              "fixture": "plain8000",
+              "profile": "improved",
+              "method": "TS scanSourceSegments + parse each expression",
+              "iterations": 500,
+              "batches": 7,
+              "durations_ns": [
+                156163162,
+                160455002,
+                139952671,
+                134143803,
+                134862838,
+                139221264,
+                168219648
+              ],
+              "ns_per_op": [
+                312326.324,
+                320910.004,
+                279905.342,
+                268287.606,
+                269725.676,
+                278442.528,
+                336439.296
+              ],
+              "checksum": "69ca45dd"
+            },
+            {
+              "fixture": "dense100",
+              "profile": "improved",
+              "method": "TS scanSourceSegments + parse each expression",
+              "iterations": 500,
+              "batches": 7,
+              "durations_ns": [
+                92890099,
+                97074327,
+                95251446,
+                104365538,
+                90230852,
+                90027471,
+                93311526
+              ],
+              "ns_per_op": [
+                185780.198,
+                194148.654,
+                190502.892,
+                208731.076,
+                180461.704,
+                180054.942,
+                186623.052
+              ],
+              "checksum": "7ec8fb9d"
+            },
+            {
+              "fixture": "dense500",
+              "profile": "improved",
+              "method": "TS scanSourceSegments + parse each expression",
+              "iterations": 500,
+              "batches": 7,
+              "durations_ns": [
+                476316087,
+                535924074,
+                470339947,
+                495843162,
+                491155142,
+                435717517,
+                471931615
+              ],
+              "ns_per_op": [
+                952632.174,
+                1071848.148,
+                940679.894,
+                991686.324,
+                982310.284,
+                871435.034,
+                943863.23
+              ],
+              "checksum": "ad5738fd"
+            },
+            {
+              "fixture": "nested-arrays-8",
+              "profile": "improved",
+              "method": "TS parse",
+              "iterations": 500,
+              "batches": 7,
+              "durations_ns": [
+                14357333,
+                15930995,
+                13807764,
+                11948396,
+                10979733,
+                13283944,
+                14398969
+              ],
+              "ns_per_op": [
+                28714.666,
+                31861.99,
+                27615.528,
+                23896.792,
+                21959.466,
+                26567.888,
+                28797.938
+              ],
+              "checksum": "5f8fc0f7"
+            },
+            {
+              "fixture": "nested-arrays-16",
+              "profile": "improved",
+              "method": "TS parse",
+              "iterations": 500,
+              "batches": 7,
+              "durations_ns": [
+                35365758,
+                34662204,
+                38680291,
+                38441053,
+                30113782,
+                28558804,
+                32562144
+              ],
+              "ns_per_op": [
+                70731.516,
+                69324.408,
+                77360.582,
+                76882.106,
+                60227.564,
+                57117.608,
+                65124.288
+              ],
+              "checksum": "da6ac187"
+            },
+            {
+              "fixture": "nested-arrays-32",
+              "profile": "improved",
+              "method": "TS parse",
+              "iterations": 500,
+              "batches": 7,
+              "durations_ns": [
+                90786361,
+                93944299,
+                83631326,
+                83640050,
+                82944388,
+                82616626,
+                86106474
+              ],
+              "ns_per_op": [
+                181572.722,
+                187888.598,
+                167262.652,
+                167280.1,
+                165888.776,
+                165233.252,
+                172212.948
+              ],
+              "checksum": "70eb8d67"
+            },
+            {
+              "name": "nested-arrays-64",
+              "excluded_reason": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners."
+            },
+            {
+              "name": "nested-arrays-128",
+              "excluded_reason": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners."
+            },
+            {
+              "fixture": "nested-compute-32",
+              "profile": "improved",
+              "method": "TS parse",
+              "iterations": 500,
+              "batches": 7,
+              "durations_ns": [
+                9358560,
+                8667637,
+                8851842,
+                7426224,
+                8913597,
+                7253853,
+                7469705
+              ],
+              "ns_per_op": [
+                18717.12,
+                17335.274,
+                17703.684,
+                14852.448,
+                17827.194,
+                14507.706,
+                14939.41
+              ],
+              "checksum": "f8d92f4e"
+            },
+            {
+              "fixture": "nested-compute-64",
+              "profile": "improved",
+              "method": "TS parse",
+              "iterations": 500,
+              "batches": 7,
+              "durations_ns": [
+                14415061,
+                13670388,
+                13614032,
+                13698430,
+                13967142,
+                14864621,
+                14090262
+              ],
+              "ns_per_op": [
+                28830.122,
+                27340.776,
+                27228.064,
+                27396.86,
+                27934.284,
+                29729.242,
+                28180.524
+              ],
+              "checksum": "f8d92f4e"
+            },
+            {
+              "name": "nested-compute-128",
+              "excluded_reason": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners."
+            }
+          ]
+        }
+      },
+      {
+        "round": 3,
+        "rust": {
+          "measurements": [
+            {
+              "batches": 7,
+              "checksum": "b8bcc332",
+              "durations_ns": [
+                970666,
+                753471,
+                803955,
+                768438,
+                759030,
+                777574,
+                825604
+              ],
+              "fixture": "short-hi",
+              "iterations": 500,
+              "method": "Rust compile_template",
+              "ns_per_op": [
+                1941.332,
+                1506.942,
+                1607.91,
+                1536.876,
+                1518.06,
+                1555.148,
+                1651.208
+              ],
+              "profile": "improved"
+            },
+            {
+              "batches": 7,
+              "checksum": "bb40b822",
+              "durations_ns": [
+                6351925,
+                6306740,
+                6733167,
+                5970941,
+                5895390,
+                6010907,
+                5974638
+              ],
+              "fixture": "mixed",
+              "iterations": 500,
+              "method": "Rust compile_template",
+              "ns_per_op": [
+                12703.85,
+                12613.48,
+                13466.334,
+                11941.882,
+                11790.78,
+                12021.814,
+                11949.276
+              ],
+              "profile": "improved"
+            },
+            {
+              "batches": 7,
+              "checksum": "0f8eed8b",
+              "durations_ns": [
+                5041043,
+                4980137,
+                5096566,
+                4858381,
+                5172919,
+                5086357,
+                5200571
+              ],
+              "fixture": "loop",
+              "iterations": 500,
+              "method": "Rust parse",
+              "ns_per_op": [
+                10082.086,
+                9960.274,
+                10193.132,
+                9716.762,
+                10345.838,
+                10172.714,
+                10401.142
+              ],
+              "profile": "improved"
+            },
+            {
+              "batches": 7,
+              "checksum": "69ca45dd",
+              "durations_ns": [
+                33439194,
+                32318599,
+                32057288,
+                37039712,
+                32795540,
+                33183468,
+                32942445
+              ],
+              "fixture": "plain8000",
+              "iterations": 500,
+              "method": "Rust compile_template",
+              "ns_per_op": [
+                66878.388,
+                64637.198,
+                64114.576,
+                74079.424,
+                65591.08,
+                66366.936,
+                65884.89
+              ],
+              "profile": "improved"
+            },
+            {
+              "batches": 7,
+              "checksum": "7ec8fb9d",
+              "durations_ns": [
+                114019291,
+                107753637,
+                102084500,
+                108030986,
+                101603330,
+                102298261,
+                107798361
+              ],
+              "fixture": "dense100",
+              "iterations": 500,
+              "method": "Rust compile_template",
+              "ns_per_op": [
+                228038.582,
+                215507.274,
+                204169.0,
+                216061.972,
+                203206.66,
+                204596.522,
+                215596.722
+              ],
+              "profile": "improved"
+            },
+            {
+              "batches": 7,
+              "checksum": "ad5738fd",
+              "durations_ns": [
+                414532250,
+                443016243,
+                425680188,
+                418584322,
+                439466823,
+                413249972,
+                425162118
+              ],
+              "fixture": "dense500",
+              "iterations": 500,
+              "method": "Rust compile_template",
+              "ns_per_op": [
+                829064.5,
+                886032.486,
+                851360.376,
+                837168.644,
+                878933.646,
+                826499.944,
+                850324.236
+              ],
+              "profile": "improved"
+            },
+            {
+              "batches": 7,
+              "checksum": "5f8fc0f7",
+              "durations_ns": [
+                2267693,
+                2349485,
+                2376647,
+                2284224,
+                2446747,
+                2433633,
+                2289552
+              ],
+              "fixture": "nested-arrays-8",
+              "iterations": 500,
+              "method": "Rust parse",
+              "ns_per_op": [
+                4535.386,
+                4698.97,
+                4753.294,
+                4568.448,
+                4893.494,
+                4867.266,
+                4579.104
+              ],
+              "profile": "improved"
+            },
+            {
+              "batches": 7,
+              "checksum": "da6ac187",
+              "durations_ns": [
+                4584247,
+                4405653,
+                4404301,
+                4380957,
+                4361029,
+                4411304,
+                4364225
+              ],
+              "fixture": "nested-arrays-16",
+              "iterations": 500,
+              "method": "Rust parse",
+              "ns_per_op": [
+                9168.494,
+                8811.306,
+                8808.602,
+                8761.914,
+                8722.058,
+                8822.608,
+                8728.45
+              ],
+              "profile": "improved"
+            },
+            {
+              "batches": 7,
+              "checksum": "70eb8d67",
+              "durations_ns": [
+                11372378,
+                10570647,
+                10526225,
+                10743832,
+                11929720,
+                10890376,
+                10520564
+              ],
+              "fixture": "nested-arrays-32",
+              "iterations": 500,
+              "method": "Rust parse",
+              "ns_per_op": [
+                22744.756,
+                21141.294,
+                21052.45,
+                21487.664,
+                23859.44,
+                21780.752,
+                21041.128
+              ],
+              "profile": "improved"
+            },
+            {
+              "excluded_reason": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners.",
+              "name": "nested-arrays-64"
+            },
+            {
+              "excluded_reason": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners.",
+              "name": "nested-arrays-128"
+            },
+            {
+              "batches": 7,
+              "checksum": "f8d92f4e",
+              "durations_ns": [
+                4233571,
+                4172157,
+                4324772,
+                4229704,
+                4624302,
+                5049988,
+                4442792
+              ],
+              "fixture": "nested-compute-32",
+              "iterations": 500,
+              "method": "Rust parse",
+              "ns_per_op": [
+                8467.142,
+                8344.314,
+                8649.544,
+                8459.408,
+                9248.604,
+                10099.976,
+                8885.584
+              ],
+              "profile": "improved"
+            },
+            {
+              "batches": 7,
+              "checksum": "f8d92f4e",
+              "durations_ns": [
+                7757194,
+                7815243,
+                7878409,
+                8049991,
+                8088093,
+                7622381,
+                7902405
+              ],
+              "fixture": "nested-compute-64",
+              "iterations": 500,
+              "method": "Rust parse",
+              "ns_per_op": [
+                15514.388,
+                15630.486,
+                15756.818,
+                16099.982,
+                16176.186,
+                15244.762,
+                15804.81
+              ],
+              "profile": "improved"
+            },
+            {
+              "excluded_reason": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners.",
+              "name": "nested-compute-128"
+            }
+          ],
+          "method": "syntax compilation; no evaluation or timed JSON serialization",
+          "runtime_version": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+          "sink": 0,
+          "sources": [
+            {
+              "path": "dimabot/src/utils/ast_parser/types.ts",
+              "sha256": "5049d49cbab203daa16d3430f7d0fca25841a21b8d6d8e0ae58633134394f35f"
+            },
+            {
+              "path": "dimabot/src/utils/ast_parser/tokenizer.ts",
+              "sha256": "31573e058312acda39169f9679624f83cc238ae5c5d0a5d4572369f8b526bdc9"
+            },
+            {
+              "path": "dimabot/src/utils/ast_parser/registry.ts",
+              "sha256": "ccab7267cd2f00afb19bd5057ffc9674aea48577c56884e59da85bc36d8abe93"
+            },
+            {
+              "path": "dimabot/src/utils/ast_parser/parser.ts",
+              "sha256": "be2d5d8f44695fff0186cc672fdd4a3b9454860fafd2aaf2016efbcf0a0e2294"
+            },
+            {
+              "path": "dimabot/src/utils/ast_parser/render.ts",
+              "sha256": "b2fa411ec05dbb790a89185b9f81e834d4b0546338081801bd486c2eea3987aa"
+            }
+          ],
+          "version": 1
+        },
+        "typescript": {
+          "version": 1,
+          "runtime": "v24.22.1",
+          "method": "syntax compilation; no evaluation or timed JSON serialization",
+          "sources": [
+            {
+              "path": "dimabot/src/utils/ast_parser/types.ts",
+              "sha256": "5049d49cbab203daa16d3430f7d0fca25841a21b8d6d8e0ae58633134394f35f"
+            },
+            {
+              "path": "dimabot/src/utils/ast_parser/tokenizer.ts",
+              "sha256": "31573e058312acda39169f9679624f83cc238ae5c5d0a5d4572369f8b526bdc9"
+            },
+            {
+              "path": "dimabot/src/utils/ast_parser/registry.ts",
+              "sha256": "ccab7267cd2f00afb19bd5057ffc9674aea48577c56884e59da85bc36d8abe93"
+            },
+            {
+              "path": "dimabot/src/utils/ast_parser/parser.ts",
+              "sha256": "be2d5d8f44695fff0186cc672fdd4a3b9454860fafd2aaf2016efbcf0a0e2294"
+            },
+            {
+              "path": "dimabot/src/utils/ast_parser/render.ts",
+              "sha256": "b2fa411ec05dbb790a89185b9f81e834d4b0546338081801bd486c2eea3987aa"
+            }
+          ],
+          "sink": 0,
+          "measurements": [
+            {
+              "fixture": "short-hi",
+              "profile": "improved",
+              "method": "TS scanSourceSegments + parse each expression",
+              "iterations": 500,
+              "batches": 7,
+              "durations_ns": [
+                6696880,
+                4320264,
+                3281358,
+                2780273,
+                2737391,
+                3044666,
+                3213502
+              ],
+              "ns_per_op": [
+                13393.76,
+                8640.528,
+                6562.716,
+                5560.546,
+                5474.782,
+                6089.332,
+                6427.004
+              ],
+              "checksum": "b8bcc332"
+            },
+            {
+              "fixture": "mixed",
+              "profile": "improved",
+              "method": "TS scanSourceSegments + parse each expression",
+              "iterations": 500,
+              "batches": 7,
+              "durations_ns": [
+                19267139,
+                15089342,
+                13203485,
+                10757477,
+                9798694,
+                8569343,
+                7193528
+              ],
+              "ns_per_op": [
+                38534.278,
+                30178.684,
+                26406.97,
+                21514.954,
+                19597.388,
+                17138.686,
+                14387.056
+              ],
+              "checksum": "bb40b822"
+            },
+            {
+              "fixture": "loop",
+              "profile": "improved",
+              "method": "TS parse",
+              "iterations": 500,
+              "batches": 7,
+              "durations_ns": [
+                17609788,
+                15132975,
+                12578163,
+                10901857,
+                8221843,
+                7923034,
+                6809781
+              ],
+              "ns_per_op": [
+                35219.576,
+                30265.95,
+                25156.326,
+                21803.714,
+                16443.686,
+                15846.068,
+                13619.562
+              ],
+              "checksum": "0f8eed8b"
+            },
+            {
+              "fixture": "plain8000",
+              "profile": "improved",
+              "method": "TS scanSourceSegments + parse each expression",
+              "iterations": 500,
+              "batches": 7,
+              "durations_ns": [
+                147960895,
+                140306183,
+                141203902,
+                173519465,
+                136907045,
+                133072489,
+                134799280
+              ],
+              "ns_per_op": [
+                295921.79,
+                280612.366,
+                282407.804,
+                347038.93,
+                273814.09,
+                266144.978,
+                269598.56
+              ],
+              "checksum": "69ca45dd"
+            },
+            {
+              "fixture": "dense100",
+              "profile": "improved",
+              "method": "TS scanSourceSegments + parse each expression",
+              "iterations": 500,
+              "batches": 7,
+              "durations_ns": [
+                96666493,
+                90579765,
+                91729145,
+                101778027,
+                97866067,
+                97991192,
+                101997116
+              ],
+              "ns_per_op": [
+                193332.986,
+                181159.53,
+                183458.29,
+                203556.054,
+                195732.134,
+                195982.384,
+                203994.232
+              ],
+              "checksum": "7ec8fb9d"
+            },
+            {
+              "fixture": "dense500",
+              "profile": "improved",
+              "method": "TS scanSourceSegments + parse each expression",
+              "iterations": 500,
+              "batches": 7,
+              "durations_ns": [
+                463488398,
+                458041947,
+                474130638,
+                466017509,
+                512425890,
+                470090680,
+                478095858
+              ],
+              "ns_per_op": [
+                926976.796,
+                916083.894,
+                948261.276,
+                932035.018,
+                1024851.78,
+                940181.36,
+                956191.716
+              ],
+              "checksum": "ad5738fd"
+            },
+            {
+              "fixture": "nested-arrays-8",
+              "profile": "improved",
+              "method": "TS parse",
+              "iterations": 500,
+              "batches": 7,
+              "durations_ns": [
+                15496324,
+                13794250,
+                14855876,
+                13234340,
+                10148708,
+                9181028,
+                9847594
+              ],
+              "ns_per_op": [
+                30992.648,
+                27588.5,
+                29711.752,
+                26468.68,
+                20297.416,
+                18362.056,
+                19695.188
+              ],
+              "checksum": "5f8fc0f7"
+            },
+            {
+              "fixture": "nested-arrays-16",
+              "profile": "improved",
+              "method": "TS parse",
+              "iterations": 500,
+              "batches": 7,
+              "durations_ns": [
+                25834175,
+                25551407,
+                25949733,
+                26079565,
+                26824018,
+                27064538,
+                30831858
+              ],
+              "ns_per_op": [
+                51668.35,
+                51102.814,
+                51899.466,
+                52159.13,
+                53648.036,
+                54129.076,
+                61663.716
+              ],
+              "checksum": "da6ac187"
+            },
+            {
+              "fixture": "nested-arrays-32",
+              "profile": "improved",
+              "method": "TS parse",
+              "iterations": 500,
+              "batches": 7,
+              "durations_ns": [
+                82807634,
+                84607021,
+                85008480,
+                83688652,
+                85865595,
+                89110014,
+                89878543
+              ],
+              "ns_per_op": [
+                165615.268,
+                169214.042,
+                170016.96,
+                167377.304,
+                171731.19,
+                178220.028,
+                179757.086
+              ],
+              "checksum": "70eb8d67"
+            },
+            {
+              "name": "nested-arrays-64",
+              "excluded_reason": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners."
+            },
+            {
+              "name": "nested-arrays-128",
+              "excluded_reason": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners."
+            },
+            {
+              "fixture": "nested-compute-32",
+              "profile": "improved",
+              "method": "TS parse",
+              "iterations": 500,
+              "batches": 7,
+              "durations_ns": [
+                8785818,
+                8693736,
+                8711870,
+                7012340,
+                9075921,
+                11526527,
+                8128077
+              ],
+              "ns_per_op": [
+                17571.636,
+                17387.472,
+                17423.74,
+                14024.68,
+                18151.842,
+                23053.054,
+                16256.154
+              ],
+              "checksum": "f8d92f4e"
+            },
+            {
+              "fixture": "nested-compute-64",
+              "profile": "improved",
+              "method": "TS parse",
+              "iterations": 500,
+              "batches": 7,
+              "durations_ns": [
+                14000775,
+                14935815,
+                15452801,
+                16908215,
+                22221757,
+                20113322,
+                15637418
+              ],
+              "ns_per_op": [
+                28001.55,
+                29871.63,
+                30905.602,
+                33816.43,
+                44443.514,
+                40226.644,
+                31274.836
+              ],
+              "checksum": "f8d92f4e"
+            },
+            {
+              "name": "nested-compute-128",
+              "excluded_reason": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners."
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "evidence_directory": "/root/.local/state/rust-ast-syntax-20261025-w_dpigi0/artifacts",
+  "cleanup": {
+    "success": true,
+    "task_states_checked": [
+      "/root/.local/state/rust-ast-syntax-20261025-5t_1ih1u",
+      "/root/.local/state/rust-ast-syntax-20261025-_3f9dnfg",
+      "/root/.local/state/rust-ast-syntax-20261025-cjcrgnan",
+      "/root/.local/state/rust-ast-syntax-20261025-hfzrm9sb",
+      "/root/.local/state/rust-ast-syntax-20261025-i25hf7dx",
+      "/root/.local/state/rust-ast-syntax-20261025-k3uemgwu",
+      "/root/.local/state/rust-ast-syntax-20261025-ausmfq2p",
+      "/root/.local/state/rust-ast-syntax-20261025-w_dpigi0"
+    ],
+    "remaining_task_cache_target_format_directories": [],
+    "remaining_task_compiler_containers": [],
+    "temporary_benchmark_emitter_directories_removed": true,
+    "retained": "Frozen source snapshots, logs and receipts.",
+    "production_containers_compared": 19,
+    "production_containers_unchanged": 18,
+    "production_comparison_changes_from_separate_release": [
+      {
+        "name": "/dima-server",
+        "saas_ops_run": "api-042333322404",
+        "differences": {
+          "id": {
+            "before": "c54d12898cd47c8234bfc70c09ebb27d9e91fa557924ebf5004c704d0a266f74",
+            "after": "4ac5cd1ed4068394f9aa837f7616009f05224010b13e613754546e1d9884ce02"
+          },
+          "image": {
+            "before": "sha256:0cb4fd01a26788347589dea1fcaeaff245375afcdc8923da1e903f5eb233a4a6",
+            "after": "sha256:e5a0130c020d977b23ec23c9a66b57992c112286a5e39a66c8eaf6c131c5ded6"
+          },
+          "startedAt": {
+            "before": "2026-10-24T20:07:20.443511196Z",
+            "after": "2026-10-25T21:20:40.943485895Z"
+          }
+        }
+      }
+    ],
+    "task_performed_application_deployment": false
+  }
+}

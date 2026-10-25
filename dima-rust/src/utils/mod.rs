@@ -38,7 +38,8 @@
     feature = "permissions",
     feature = "cron-queue",
     feature = "twitch-client",
-    feature = "qdrant"
+    feature = "qdrant",
+    feature = "ast-syntax"
 ))]
 pub mod js_compat;
 
@@ -48,6 +49,9 @@ pub mod bson_compat;
 pub mod utc_time;
 #[cfg(any(feature = "mongo", feature = "cron-supervisor"))]
 pub mod worker_process;
+
+#[cfg(feature = "ast-syntax")]
+pub mod ast_syntax;
 
 #[cfg(feature = "ai-usage")]
 pub mod ai_usage;

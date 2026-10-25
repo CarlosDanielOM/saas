@@ -1,0 +1,21 @@
+# 2026-10-25 — Opt-in Rust AST syntax core
+
+## Task and routing
+
+- **Category / scope:** Stateful Rust syntax-core implementation, source-oracle integration, and final source-backed docs. The delivered surface is a pure opt-in parser/planner with no callers, evaluation, blocks, functions, IO, live cache, worker-profile addition, or deployment.
+- **Routing:** GPT-6.1 Sol at xhigh led core implementation; GPT-6.1 Sol at high handled integration and reviews; DeepSeek V4.1 Flash at high via OpenCode served as the TypeScript source oracle; GPT-6 Luna at high reconciled the API, final receipts, and docs.
+- **Verified outcome:** Frozen quality, benchmark, and cleanup receipts succeeded. Final source validation passed 28 library tests (27 AST and one JS-compatibility), 10 AST integration tests, and two doc tests; combined profile added 59 library and 10 integration executions, and no-feature ran zero. Total is 109 executions including repeats. The 1,200-case corpus passed with 1,137 source-parity, 59 approved-correction, and four source-throw-hardened cases. Both scripts passed `node --check`, the generator passed `--check`, four worker dependency graphs matched after path normalization, and `Cargo.lock` was unchanged. Final production comparison recorded 18 unchanged containers and the separate API release described below. There are no live callers and this task performed no deployment.
+
+## Review corrections and delivery notes
+
+The source oracle initially required metadata corrections and a clearer separation between exact raw TypeScript facts, approved improvements, source-parity cases, and source-throw hardening. Five AC categories were reconciled as subcases of the two approved semantic items, not new approvals. Reviews found and corrected the compatibility caught-error channel, longest-prefix dispatch, URL-shaped scanner progress, and persisted-AST JSON boundary. Final source also rejects aliases colliding with reserved `%[` syntax and shares nested-quote handling between Improved scanning and array indexing; these corrections were validated, including four oracle cases and six module tests.
+
+The final standalone-AST persistence guard admits 62 nested array expressions at JSON depth 127 and rejects 63. That guarantee does not include an enclosing timer/caller payload; a future timer reader port needs an aggregate nesting budget.
+
+The tracked [benchmark artifact](../dima-rust/benchmarks/ast-syntax-2026-10-25.json) contains exact source hashes and three paired raw runs. Its optimized Rust example versus Node JIT comparison measures compilation plus AST construction/destruction and GC, not evaluation, timed JSON serialization, or production latency. Ten of 11 measured Rust medians were lower; `dense100` was slower (215.51 vs 186.62 µs/op). These are generated-code microbenchmarks, separate from model delivery quality and not evidence about production behavior. Tests ran unoptimized under the verified 3 CPU / 4 GiB / no-swap / 256 PID / two-job cap with an 8 GiB private cache; only the benchmark example used optimized release mode. Task-owned compiler containers and Cargo/target/format-copy directories were removed, with snapshots/logs/receipts retained. Quality, benchmark, and cleanup receipts are at `/root/.local/state/rust-ast-syntax-20261025-w_dpigi0/artifacts/`.
+
+The initial read-only production comparison predated a separate API release. `/dima-server` was subsequently replaced at `2026-10-25T21:20:40.943485895Z` by `saas-ops` run `api-042333322404`, confirmed by its Docker labels; this was unrelated to AST and was not performed by this task. The other 18 original production containers, including bot and cron, retained their IDs, images, start/restart counts, mounts, and Compose ownership.
+
+## Routing implication
+
+This outcome supports the task-specific split used here: Sol for substantial Rust implementation and integration review, DeepSeek for source-oracle work, and Luna for source/evidence reconciliation. Concrete review corrections are useful evidence of iterative integration, not a broad model ranking. Do not change the user-provided tier from this single task. See the [AST migration record](../migration-notes/ast-syntax-core.md) for API, corpus, test, benchmark, and scope details.
