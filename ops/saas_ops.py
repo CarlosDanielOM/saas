@@ -36,7 +36,7 @@ GIB = 1024 ** 3
 RUST_BUILD_CPUS = 6
 RUST_BUILD_MEMORY_GIB = 6
 RUST_BUILD_PIDS = 256
-RUST_MEMORY_HEADROOM = 8 * GIB
+RUST_MEMORY_HEADROOM = 4 * GIB
 RUST_CACHE_LIMIT = 8 * GIB
 RUST_CACHE_MARKER = ".saas-ops-cache.json"
 # Adding a future worker profile also requires reviewing the recipe's graph guard.
@@ -1063,7 +1063,7 @@ def main(argv=None):
         sub.add_argument("target", choices=TARGETS)
         if command == "build":
             sub.add_argument("--source-dir", type=Path, help="isolated worktree of this repository; production ownership remains here")
-            sub.add_argument("--rust-memory-gib", type=int, choices=(4, 6), help="cron only: compiler memory cap in GiB (default 6); retains 8 GiB production headroom and disables compiler swap")
+            sub.add_argument("--rust-memory-gib", type=int, choices=(4, 6), help="cron only: compiler memory cap in GiB (default 6); retains 4 GiB production headroom and disables compiler swap")
             sub.add_argument("--rust-cpus", type=int, choices=range(1, RUST_BUILD_CPUS + 1), help="cron only: lower compiler CPU cap (integer 1-6, default 6); does not cap helper or Docker image-build work")
             sub.add_argument("--rust-feature-matrix", action="store_true", help="cron only: explicitly check optional Rust features inside the capped compiler; routine builds use mongo and mongo,redis worker profiles and a private cache capped at 8 GiB")
     sub = commands.add_parser("preview")

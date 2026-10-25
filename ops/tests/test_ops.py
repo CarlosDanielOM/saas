@@ -1031,8 +1031,8 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
             self.ops.build_rust(self.path, self.receipt)
         self.assertFalse((self.path / "rust-source").exists())
 
-    def test_rust_headroom_requires_14_gib_at_start_and_8_gib_while_running(self):
-        for starting, minimum_gib in ((True, 14), (False, 8)):
+    def test_rust_headroom_requires_10_gib_at_start_and_4_gib_while_running(self):
+        for starting, minimum_gib in ((True, 10), (False, 4)):
             for offset_kib in (-1, 0, 1):
                 with self.subTest(starting=starting, offset_kib=offset_kib):
                     available_kib = minimum_gib * 1024 ** 2 + offset_kib
@@ -1046,8 +1046,8 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
                             details = self.ops.rust_headroom(starting=starting)
                             self.assertEqual(details["mem_available_bytes"], available_kib * 1024)
 
-    def test_lower_memory_rust_headroom_requires_12_gib_at_start_and_8_gib_while_running(self):
-        for starting, minimum_gib in ((True, 12), (False, 8)):
+    def test_lower_memory_rust_headroom_requires_8_gib_at_start_and_4_gib_while_running(self):
+        for starting, minimum_gib in ((True, 8), (False, 4)):
             for offset_kib in (-1, 0, 1):
                 with self.subTest(starting=starting, offset_kib=offset_kib):
                     available_kib = minimum_gib * 1024 ** 2 + offset_kib
