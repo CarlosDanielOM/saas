@@ -86,7 +86,7 @@ fs.mkdirSync(uploadTempDir, { recursive: true });
 const acceptableMimeTypes = [
     'video/mp4', 'video/mov', 'video/avi', 'video/flv', 'video/wmv', 'video/webm', 'video/mkv',
     'image/gif', 'image/jpg', 'image/jpeg', 'image/png', 'image/bmp', 'image/tiff', 'image/svg', 'image/webp',
-    'audio/mp3', 'audio/flac', 'audio/wav', 'audio/ogg', 'audio/aac', 'audio/wma', 'audio/m4a'
+    'audio/mp3', 'audio/mpeg', 'audio/flac', 'audio/wav', 'audio/ogg', 'audio/aac', 'audio/wma', 'audio/m4a'
 ];
 
 function mapLibraryItemResponse(libraryItem: IUserMediaLibraryItem, asset: IMediaAsset | null): Record<string, unknown> {

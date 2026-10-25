@@ -20,9 +20,9 @@ El servidor comprueba el tipo MIME de cada archivo con esta lista:
 
 - **Video:** `video/mp4`, `video/mov`, `video/avi`, `video/flv`, `video/wmv`, `video/webm`, `video/mkv`
 - **Imagen:** `image/gif`, `image/jpg`, `image/jpeg`, `image/png`, `image/bmp`, `image/tiff`, `image/svg`, `image/webp`
-- **Audio:** `audio/mp3`, `audio/flac`, `audio/wav`, `audio/ogg`, `audio/aac`, `audio/wma`, `audio/m4a`
+- **Audio:** `audio/mp3`, `audio/mpeg`, `audio/flac`, `audio/wav`, `audio/ogg`, `audio/aac`, `audio/wma`, `audio/m4a`
 
-Los navegadores suelen etiquetar los archivos MP3 y MOV con otros tipos MIME (`audio/mpeg` y `video/quicktime`), que no están en la lista. Si una subida dice que el tipo de archivo no está permitido, conviértelo a un formato de la lista, como WAV o M4A para audio, o MP4 para video.
+Los navegadores suelen etiquetar los archivos MP3 como `audio/mpeg`, que sí está permitido. Los archivos MOV pueden aparecer como `video/quicktime`, que no está en la lista; convierte el MOV a MP4 si se rechaza la subida.
 
 ## Límites por plan
 

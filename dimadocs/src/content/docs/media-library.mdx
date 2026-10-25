@@ -20,9 +20,9 @@ The server checks each file's MIME type against this list:
 
 - **Video:** `video/mp4`, `video/mov`, `video/avi`, `video/flv`, `video/wmv`, `video/webm`, `video/mkv`
 - **Image:** `image/gif`, `image/jpg`, `image/jpeg`, `image/png`, `image/bmp`, `image/tiff`, `image/svg`, `image/webp`
-- **Audio:** `audio/mp3`, `audio/flac`, `audio/wav`, `audio/ogg`, `audio/aac`, `audio/wma`, `audio/m4a`
+- **Audio:** `audio/mp3`, `audio/mpeg`, `audio/flac`, `audio/wav`, `audio/ogg`, `audio/aac`, `audio/wma`, `audio/m4a`
 
-Browsers often label MP3 and MOV files with other MIME types (`audio/mpeg` and `video/quicktime`), and those are not on the list. If an upload says the file type is not allowed, convert it to a listed format, such as WAV or M4A for audio, or MP4 for video.
+Browsers often label MP3 files as `audio/mpeg`, which is accepted. MOV files may be labeled `video/quicktime`, which is not on the list; convert a MOV to MP4 if its upload is rejected.
 
 ## Limits by plan
 
