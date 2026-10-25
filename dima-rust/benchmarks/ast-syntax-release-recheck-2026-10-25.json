@@ -1,0 +1,2241 @@
+{
+  "version": 1,
+  "date": "2026-10-25",
+  "purpose": "User-requested fresh confirmation that AST compilation benchmarks use Rust --release. Original measurements also used --release.",
+  "previous_artifact": "ast-syntax-2026-10-25.json",
+  "source_commit": "3428dd0aed3872675958cd15516cdefb16fd5b89",
+  "source_manifest": {
+    "Cargo.toml": "ef8aaf257ad8d8b2b5ef93bd5391fec13661b7ef4d3b03daabc6b30d7e50783d",
+    "src/utils/mod.rs": "731c02961a92401be81f11329561cdf42eef01ccc95c6c961feb7c3b0f9f60c6",
+    "tests/ast_syntax_parity.rs": "9d84e54baeab76b74eb0a9ed7833915c2bf17544225fd753c6ba38f549c43528",
+    "tests/fixtures/ast_syntax_reference.mjs": "90f4ec5fbc4ba4dd89d9dcea3b94adc25797b1653430eb63d7162c9d2e3ee010",
+    "tests/fixtures/ast_syntax_cases.json": "600229655c1b553b7f4063a3787078e9a84892feb001554ad811b5e55fadffc8",
+    "tests/fixtures/ast_syntax_benchmark.mjs": "5039f8c3edd5954458353277b4cbffb4572550bbeb07b658aecc7773bb4ce2ad",
+    "examples/ast_syntax_bench.rs": "123fe89933ea5110c5ac9ac8ee18ac1b6bca18bafb52fc8f269f8c58feb3b62b",
+    "src/utils/ast_syntax/grammar.rs": "66bde245177a43b06ace9f893e8c1416f64b0b2caa0cbdf3cefdb3a16e9d2b26",
+    "src/utils/ast_syntax/lexer.rs": "0925f8f571d7dcb65ba055087632523f1264f06c65d9a091a0aba01382081eab",
+    "src/utils/ast_syntax/mod.rs": "bcda1e8da514c73e794be07cb3d55f5c28e25b1ff7dfd94457bd3190368dee73",
+    "src/utils/ast_syntax/parser.rs": "a3f73f2619ba6f7da5eaa0cb6597013cf46f1f4372acf86cb9827da911c43e3b",
+    "src/utils/ast_syntax/persistence.rs": "e3b39531a29d6361e321ca165d398201b6a4e41d9c5873e7b6a51046f34759fc",
+    "src/utils/ast_syntax/scanner.rs": "12ebf0f2faf2a5da3f88da2b3b0f890ebbc7bce38e3f1f5a73b785f0d95cb2cb",
+    "src/utils/ast_syntax/source.rs": "5a8070c874bc2b4098a4faf8b926a1b51a06ff54a6b416281d046f4191fcf4a0",
+    "src/utils/ast_syntax/tests.rs": "3a09e040f3992f7b97e6cf3242595e737d2d0c2a909cef208ecdf4ee9c134ea7",
+    "src/utils/ast_syntax/types.rs": "d8e38c01240e12f69e9ce6fc7f0006b101c62d464e5e5a1f9126ce22c89717d0"
+  },
+  "build_command": "cargo build --locked --release --no-default-features --features ast-syntax --example ast_syntax_bench",
+  "build_profile_log": "    Finished `release` profile [optimized] target(s) in 24.36s",
+  "methodology": "Three serial pairs, Rust then TypeScript each round, same capped container and identical inputs. Rust optimized release example; Node JIT. Compilation and AST construction/destruction/GC only, no evaluator or timed JSON serialization/checksum. Semantic checksums checked before timing. Report median of 21 batch per-operation means per runtime/input (7 batches x 3 rounds). These local microbenchmarks do not predict production end-to-end latency or isolate individual optimization contributions. Fixed order, shared production host and different allocators/GC can affect results. Plan reuse traversal was disabled.",
+  "requests": {
+    "version": 1,
+    "iterations": 500,
+    "batches": 7,
+    "warmup": 100,
+    "sources": [
+      {
+        "path": "dimabot/src/utils/ast_parser/types.ts",
+        "sha256": "5049d49cbab203daa16d3430f7d0fca25841a21b8d6d8e0ae58633134394f35f"
+      },
+      {
+        "path": "dimabot/src/utils/ast_parser/tokenizer.ts",
+        "sha256": "31573e058312acda39169f9679624f83cc238ae5c5d0a5d4572369f8b526bdc9"
+      },
+      {
+        "path": "dimabot/src/utils/ast_parser/registry.ts",
+        "sha256": "ccab7267cd2f00afb19bd5057ffc9674aea48577c56884e59da85bc36d8abe93"
+      },
+      {
+        "path": "dimabot/src/utils/ast_parser/parser.ts",
+        "sha256": "be2d5d8f44695fff0186cc672fdd4a3b9454860fafd2aaf2016efbcf0a0e2294"
+      },
+      {
+        "path": "dimabot/src/utils/ast_parser/render.ts",
+        "sha256": "b2fa411ec05dbb790a89185b9f81e834d4b0546338081801bd486c2eea3987aa"
+      }
+    ],
+    "fixtures": [
+      {
+        "name": "short-hi",
+        "mode": "template",
+        "source": "Hi $(user)!",
+        "profile": "improved",
+        "expected_checksum": "b8bcc332"
+      },
+      {
+        "name": "mixed",
+        "mode": "template",
+        "source": "Hi $(user)! Deaths: %(*deaths). Winner: *($(random 6) == 0 ? \"yes\" : \"no\")",
+        "profile": "improved",
+        "expected_checksum": "bb40b822"
+      },
+      {
+        "name": "loop",
+        "mode": "program",
+        "source": "*(for #i = 0; #i < 3; #i++ { $(say ping #i) })",
+        "profile": "improved",
+        "expected_checksum": "0f8eed8b"
+      },
+      {
+        "name": "plain8000",
+        "mode": "template",
+        "source": "plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text plain text pla",
+        "profile": "improved",
+        "expected_checksum": "69ca45dd"
+      },
+      {
+        "name": "dense100",
+        "mode": "template",
+        "source": "$(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) ",
+        "profile": "improved",
+        "expected_checksum": "7ec8fb9d"
+      },
+      {
+        "name": "dense500",
+        "mode": "template",
+        "source": "$(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) $(user) %(*x) ",
+        "profile": "improved",
+        "expected_checksum": "ad5738fd"
+      },
+      {
+        "name": "nested-arrays-8",
+        "mode": "program",
+        "source": "%[%[%[%[%[%[%[%[x]]]]]]]]",
+        "profile": "improved",
+        "expected_checksum": "5f8fc0f7"
+      },
+      {
+        "name": "nested-arrays-16",
+        "mode": "program",
+        "source": "%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[x]]]]]]]]]]]]]]]]",
+        "profile": "improved",
+        "expected_checksum": "da6ac187"
+      },
+      {
+        "name": "nested-arrays-32",
+        "mode": "program",
+        "source": "%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[x]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]",
+        "profile": "improved",
+        "expected_checksum": "70eb8d67"
+      },
+      {
+        "name": "nested-arrays-64",
+        "mode": "program",
+        "source": "%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[x]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]",
+        "profile": "improved",
+        "excluded_reason": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners."
+      },
+      {
+        "name": "nested-arrays-128",
+        "mode": "program",
+        "source": "%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[%[x]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]",
+        "profile": "improved",
+        "excluded_reason": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners."
+      },
+      {
+        "name": "nested-compute-32",
+        "mode": "program",
+        "source": "*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(1))))))))))))))))))))))))))))))))",
+        "profile": "improved",
+        "expected_checksum": "f8d92f4e"
+      },
+      {
+        "name": "nested-compute-64",
+        "mode": "program",
+        "source": "*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(1))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))",
+        "profile": "improved",
+        "expected_checksum": "f8d92f4e"
+      },
+      {
+        "name": "nested-compute-128",
+        "mode": "program",
+        "source": "*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(*(1))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))",
+        "profile": "improved",
+        "excluded_reason": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners."
+      }
+    ]
+  },
+  "raw_runs": [
+    {
+      "round": 1,
+      "rust": {
+        "measurements": [
+          {
+            "batches": 7,
+            "checksum": "b8bcc332",
+            "durations_ns": [
+              759590,
+              793886,
+              803143,
+              728303,
+              805387,
+              1782665,
+              775781
+            ],
+            "fixture": "short-hi",
+            "iterations": 500,
+            "method": "Rust compile_template",
+            "ns_per_op": [
+              1519.18,
+              1587.772,
+              1606.286,
+              1456.606,
+              1610.774,
+              3565.33,
+              1551.562
+            ],
+            "profile": "improved"
+          },
+          {
+            "batches": 7,
+            "checksum": "bb40b822",
+            "durations_ns": [
+              6268338,
+              6051522,
+              6377643,
+              5989476,
+              6150318,
+              6370329,
+              5924124
+            ],
+            "fixture": "mixed",
+            "iterations": 500,
+            "method": "Rust compile_template",
+            "ns_per_op": [
+              12536.676,
+              12103.044,
+              12755.286,
+              11978.952,
+              12300.636,
+              12740.658,
+              11848.248
+            ],
+            "profile": "improved"
+          },
+          {
+            "batches": 7,
+            "checksum": "0f8eed8b",
+            "durations_ns": [
+              7702861,
+              6940927,
+              6559873,
+              5640132,
+              5138304,
+              5196843,
+              5221560
+            ],
+            "fixture": "loop",
+            "iterations": 500,
+            "method": "Rust parse",
+            "ns_per_op": [
+              15405.722,
+              13881.854,
+              13119.746,
+              11280.264,
+              10276.608,
+              10393.686,
+              10443.12
+            ],
+            "profile": "improved"
+          },
+          {
+            "batches": 7,
+            "checksum": "69ca45dd",
+            "durations_ns": [
+              31607378,
+              31180829,
+              31529061,
+              31596798,
+              32670607,
+              33074753,
+              34863970
+            ],
+            "fixture": "plain8000",
+            "iterations": 500,
+            "method": "Rust compile_template",
+            "ns_per_op": [
+              63214.756,
+              62361.658,
+              63058.122,
+              63193.596,
+              65341.214,
+              66149.506,
+              69727.94
+            ],
+            "profile": "improved"
+          },
+          {
+            "batches": 7,
+            "checksum": "7ec8fb9d",
+            "durations_ns": [
+              114631495,
+              100319457,
+              103264477,
+              109314848,
+              105932148,
+              107675801,
+              100816717
+            ],
+            "fixture": "dense100",
+            "iterations": 500,
+            "method": "Rust compile_template",
+            "ns_per_op": [
+              229262.99,
+              200638.914,
+              206528.954,
+              218629.696,
+              211864.296,
+              215351.602,
+              201633.434
+            ],
+            "profile": "improved"
+          },
+          {
+            "batches": 7,
+            "checksum": "ad5738fd",
+            "durations_ns": [
+              457564352,
+              430769668,
+              442314660,
+              454328697,
+              439202727,
+              417443195,
+              427134437
+            ],
+            "fixture": "dense500",
+            "iterations": 500,
+            "method": "Rust compile_template",
+            "ns_per_op": [
+              915128.704,
+              861539.336,
+              884629.32,
+              908657.394,
+              878405.454,
+              834886.39,
+              854268.874
+            ],
+            "profile": "improved"
+          },
+          {
+            "batches": 7,
+            "checksum": "5f8fc0f7",
+            "durations_ns": [
+              3319411,
+              2539281,
+              2321264,
+              2404529,
+              2301095,
+              2309842,
+              2290355
+            ],
+            "fixture": "nested-arrays-8",
+            "iterations": 500,
+            "method": "Rust parse",
+            "ns_per_op": [
+              6638.822,
+              5078.562,
+              4642.528,
+              4809.058,
+              4602.19,
+              4619.684,
+              4580.71
+            ],
+            "profile": "improved"
+          },
+          {
+            "batches": 7,
+            "checksum": "da6ac187",
+            "durations_ns": [
+              4287682,
+              4305765,
+              4380205,
+              4258157,
+              4298393,
+              4352474,
+              4302630
+            ],
+            "fixture": "nested-arrays-16",
+            "iterations": 500,
+            "method": "Rust parse",
+            "ns_per_op": [
+              8575.364,
+              8611.53,
+              8760.41,
+              8516.314,
+              8596.786,
+              8704.948,
+              8605.26
+            ],
+            "profile": "improved"
+          },
+          {
+            "batches": 7,
+            "checksum": "70eb8d67",
+            "durations_ns": [
+              10452006,
+              10585294,
+              10314920,
+              11247134,
+              14322237,
+              11102663,
+              10787204
+            ],
+            "fixture": "nested-arrays-32",
+            "iterations": 500,
+            "method": "Rust parse",
+            "ns_per_op": [
+              20904.012,
+              21170.588,
+              20629.84,
+              22494.268,
+              28644.474,
+              22205.326,
+              21574.408
+            ],
+            "profile": "improved"
+          },
+          {
+            "excluded_reason": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners.",
+            "name": "nested-arrays-64"
+          },
+          {
+            "excluded_reason": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners.",
+            "name": "nested-arrays-128"
+          },
+          {
+            "batches": 7,
+            "checksum": "f8d92f4e",
+            "durations_ns": [
+              4637267,
+              4580982,
+              4673001,
+              4374335,
+              4291571,
+              4550394,
+              4391606
+            ],
+            "fixture": "nested-compute-32",
+            "iterations": 500,
+            "method": "Rust parse",
+            "ns_per_op": [
+              9274.534,
+              9161.964,
+              9346.002,
+              8748.67,
+              8583.142,
+              9100.788,
+              8783.212
+            ],
+            "profile": "improved"
+          },
+          {
+            "batches": 7,
+            "checksum": "f8d92f4e",
+            "durations_ns": [
+              8229288,
+              8605882,
+              8115914,
+              8863083,
+              7799994,
+              7692492,
+              8645065
+            ],
+            "fixture": "nested-compute-64",
+            "iterations": 500,
+            "method": "Rust parse",
+            "ns_per_op": [
+              16458.576,
+              17211.764,
+              16231.828,
+              17726.166,
+              15599.988,
+              15384.984,
+              17290.13
+            ],
+            "profile": "improved"
+          },
+          {
+            "excluded_reason": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners.",
+            "name": "nested-compute-128"
+          }
+        ],
+        "method": "syntax compilation; no evaluation or timed JSON serialization",
+        "runtime_version": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+        "sink": 0,
+        "sources": [
+          {
+            "path": "dimabot/src/utils/ast_parser/types.ts",
+            "sha256": "5049d49cbab203daa16d3430f7d0fca25841a21b8d6d8e0ae58633134394f35f"
+          },
+          {
+            "path": "dimabot/src/utils/ast_parser/tokenizer.ts",
+            "sha256": "31573e058312acda39169f9679624f83cc238ae5c5d0a5d4572369f8b526bdc9"
+          },
+          {
+            "path": "dimabot/src/utils/ast_parser/registry.ts",
+            "sha256": "ccab7267cd2f00afb19bd5057ffc9674aea48577c56884e59da85bc36d8abe93"
+          },
+          {
+            "path": "dimabot/src/utils/ast_parser/parser.ts",
+            "sha256": "be2d5d8f44695fff0186cc672fdd4a3b9454860fafd2aaf2016efbcf0a0e2294"
+          },
+          {
+            "path": "dimabot/src/utils/ast_parser/render.ts",
+            "sha256": "b2fa411ec05dbb790a89185b9f81e834d4b0546338081801bd486c2eea3987aa"
+          }
+        ],
+        "version": 1
+      },
+      "typescript": {
+        "version": 1,
+        "runtime": "v24.22.1",
+        "method": "syntax compilation; no evaluation or timed JSON serialization",
+        "sources": [
+          {
+            "path": "dimabot/src/utils/ast_parser/types.ts",
+            "sha256": "5049d49cbab203daa16d3430f7d0fca25841a21b8d6d8e0ae58633134394f35f"
+          },
+          {
+            "path": "dimabot/src/utils/ast_parser/tokenizer.ts",
+            "sha256": "31573e058312acda39169f9679624f83cc238ae5c5d0a5d4572369f8b526bdc9"
+          },
+          {
+            "path": "dimabot/src/utils/ast_parser/registry.ts",
+            "sha256": "ccab7267cd2f00afb19bd5057ffc9674aea48577c56884e59da85bc36d8abe93"
+          },
+          {
+            "path": "dimabot/src/utils/ast_parser/parser.ts",
+            "sha256": "be2d5d8f44695fff0186cc672fdd4a3b9454860fafd2aaf2016efbcf0a0e2294"
+          },
+          {
+            "path": "dimabot/src/utils/ast_parser/render.ts",
+            "sha256": "b2fa411ec05dbb790a89185b9f81e834d4b0546338081801bd486c2eea3987aa"
+          }
+        ],
+        "sink": 0,
+        "measurements": [
+          {
+            "fixture": "short-hi",
+            "profile": "improved",
+            "method": "TS scanSourceSegments + parse each expression",
+            "iterations": 500,
+            "batches": 7,
+            "durations_ns": [
+              7045202,
+              3801874,
+              4161196,
+              3338436,
+              2903272,
+              4080434,
+              4167218
+            ],
+            "ns_per_op": [
+              14090.404,
+              7603.748,
+              8322.392,
+              6676.872,
+              5806.544,
+              8160.868,
+              8334.436
+            ],
+            "checksum": "b8bcc332"
+          },
+          {
+            "fixture": "mixed",
+            "profile": "improved",
+            "method": "TS scanSourceSegments + parse each expression",
+            "iterations": 500,
+            "batches": 7,
+            "durations_ns": [
+              31023876,
+              16766080,
+              15576553,
+              15762413,
+              9039673,
+              7033780,
+              7309456
+            ],
+            "ns_per_op": [
+              62047.752,
+              33532.16,
+              31153.106,
+              31524.826,
+              18079.346,
+              14067.56,
+              14618.912
+            ],
+            "checksum": "bb40b822"
+          },
+          {
+            "fixture": "loop",
+            "profile": "improved",
+            "method": "TS parse",
+            "iterations": 500,
+            "batches": 7,
+            "durations_ns": [
+              15813527,
+              12415379,
+              21025929,
+              12163347,
+              6886324,
+              6952908,
+              6945456
+            ],
+            "ns_per_op": [
+              31627.054,
+              24830.758,
+              42051.858,
+              24326.694,
+              13772.648,
+              13905.816,
+              13890.912
+            ],
+            "checksum": "0f8eed8b"
+          },
+          {
+            "fixture": "plain8000",
+            "profile": "improved",
+            "method": "TS scanSourceSegments + parse each expression",
+            "iterations": 500,
+            "batches": 7,
+            "durations_ns": [
+              157673668,
+              135805782,
+              132425036,
+              133353133,
+              134857718,
+              139716028,
+              131217027
+            ],
+            "ns_per_op": [
+              315347.336,
+              271611.564,
+              264850.072,
+              266706.266,
+              269715.436,
+              279432.056,
+              262434.054
+            ],
+            "checksum": "69ca45dd"
+          },
+          {
+            "fixture": "dense100",
+            "profile": "improved",
+            "method": "TS scanSourceSegments + parse each expression",
+            "iterations": 500,
+            "batches": 7,
+            "durations_ns": [
+              98350683,
+              90874166,
+              90685061,
+              89807049,
+              89327592,
+              89656207,
+              89962420
+            ],
+            "ns_per_op": [
+              196701.366,
+              181748.332,
+              181370.122,
+              179614.098,
+              178655.184,
+              179312.414,
+              179924.84
+            ],
+            "checksum": "7ec8fb9d"
+          },
+          {
+            "fixture": "dense500",
+            "profile": "improved",
+            "method": "TS scanSourceSegments + parse each expression",
+            "iterations": 500,
+            "batches": 7,
+            "durations_ns": [
+              467201271,
+              466664498,
+              495220385,
+              476010884,
+              502916776,
+              442611055,
+              467622921
+            ],
+            "ns_per_op": [
+              934402.542,
+              933328.996,
+              990440.77,
+              952021.768,
+              1005833.552,
+              885222.11,
+              935245.842
+            ],
+            "checksum": "ad5738fd"
+          },
+          {
+            "fixture": "nested-arrays-8",
+            "profile": "improved",
+            "method": "TS parse",
+            "iterations": 500,
+            "batches": 7,
+            "durations_ns": [
+              23261251,
+              19264153,
+              19726218,
+              14109920,
+              9778126,
+              9569974,
+              9587048
+            ],
+            "ns_per_op": [
+              46522.502,
+              38528.306,
+              39452.436,
+              28219.84,
+              19556.252,
+              19139.948,
+              19174.096
+            ],
+            "checksum": "5f8fc0f7"
+          },
+          {
+            "fixture": "nested-arrays-16",
+            "profile": "improved",
+            "method": "TS parse",
+            "iterations": 500,
+            "batches": 7,
+            "durations_ns": [
+              27411608,
+              25381849,
+              24344939,
+              24560362,
+              25515660,
+              24553780,
+              28265304
+            ],
+            "ns_per_op": [
+              54823.216,
+              50763.698,
+              48689.878,
+              49120.724,
+              51031.32,
+              49107.56,
+              56530.608
+            ],
+            "checksum": "da6ac187"
+          },
+          {
+            "fixture": "nested-arrays-32",
+            "profile": "improved",
+            "method": "TS parse",
+            "iterations": 500,
+            "batches": 7,
+            "durations_ns": [
+              81812069,
+              89911005,
+              86639582,
+              83879689,
+              88603177,
+              87772502,
+              83522550
+            ],
+            "ns_per_op": [
+              163624.138,
+              179822.01,
+              173279.164,
+              167759.378,
+              177206.354,
+              175545.004,
+              167045.1
+            ],
+            "checksum": "70eb8d67"
+          },
+          {
+            "name": "nested-arrays-64",
+            "excluded_reason": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners."
+          },
+          {
+            "name": "nested-arrays-128",
+            "excluded_reason": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners."
+          },
+          {
+            "fixture": "nested-compute-32",
+            "profile": "improved",
+            "method": "TS parse",
+            "iterations": 500,
+            "batches": 7,
+            "durations_ns": [
+              12725730,
+              10436858,
+              7452394,
+              6719843,
+              6606170,
+              6597172,
+              6613795
+            ],
+            "ns_per_op": [
+              25451.46,
+              20873.716,
+              14904.788,
+              13439.686,
+              13212.34,
+              13194.344,
+              13227.59
+            ],
+            "checksum": "f8d92f4e"
+          },
+          {
+            "fixture": "nested-compute-64",
+            "profile": "improved",
+            "method": "TS parse",
+            "iterations": 500,
+            "batches": 7,
+            "durations_ns": [
+              12578956,
+              13001396,
+              13105400,
+              14403750,
+              13074291,
+              15417286,
+              13513032
+            ],
+            "ns_per_op": [
+              25157.912,
+              26002.792,
+              26210.8,
+              28807.5,
+              26148.582,
+              30834.572,
+              27026.064
+            ],
+            "checksum": "f8d92f4e"
+          },
+          {
+            "name": "nested-compute-128",
+            "excluded_reason": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners."
+          }
+        ]
+      }
+    },
+    {
+      "round": 2,
+      "rust": {
+        "measurements": [
+          {
+            "batches": 7,
+            "checksum": "b8bcc332",
+            "durations_ns": [
+              950699,
+              933217,
+              971618,
+              938546,
+              923578,
+              885516,
+              1015279
+            ],
+            "fixture": "short-hi",
+            "iterations": 500,
+            "method": "Rust compile_template",
+            "ns_per_op": [
+              1901.398,
+              1866.434,
+              1943.236,
+              1877.092,
+              1847.156,
+              1771.032,
+              2030.558
+            ],
+            "profile": "improved"
+          },
+          {
+            "batches": 7,
+            "checksum": "bb40b822",
+            "durations_ns": [
+              8497628,
+              7485006,
+              7257549,
+              5767220,
+              6517604,
+              6220359,
+              5728577
+            ],
+            "fixture": "mixed",
+            "iterations": 500,
+            "method": "Rust compile_template",
+            "ns_per_op": [
+              16995.256,
+              14970.012,
+              14515.098,
+              11534.44,
+              13035.208,
+              12440.718,
+              11457.154
+            ],
+            "profile": "improved"
+          },
+          {
+            "batches": 7,
+            "checksum": "0f8eed8b",
+            "durations_ns": [
+              5046972,
+              4875433,
+              4839795,
+              4899718,
+              4860655,
+              4905950,
+              4866184
+            ],
+            "fixture": "loop",
+            "iterations": 500,
+            "method": "Rust parse",
+            "ns_per_op": [
+              10093.944,
+              9750.866,
+              9679.59,
+              9799.436,
+              9721.31,
+              9811.9,
+              9732.368
+            ],
+            "profile": "improved"
+          },
+          {
+            "batches": 7,
+            "checksum": "69ca45dd",
+            "durations_ns": [
+              30591847,
+              30695752,
+              30661097,
+              30576809,
+              30877912,
+              30355575,
+              30704378
+            ],
+            "fixture": "plain8000",
+            "iterations": 500,
+            "method": "Rust compile_template",
+            "ns_per_op": [
+              61183.694,
+              61391.504,
+              61322.194,
+              61153.618,
+              61755.824,
+              60711.15,
+              61408.756
+            ],
+            "profile": "improved"
+          },
+          {
+            "batches": 7,
+            "checksum": "7ec8fb9d",
+            "durations_ns": [
+              99111819,
+              104520207,
+              100281195,
+              96285319,
+              96183300,
+              100090198,
+              104361009
+            ],
+            "fixture": "dense100",
+            "iterations": 500,
+            "method": "Rust compile_template",
+            "ns_per_op": [
+              198223.638,
+              209040.414,
+              200562.39,
+              192570.638,
+              192366.6,
+              200180.396,
+              208722.018
+            ],
+            "profile": "improved"
+          },
+          {
+            "batches": 7,
+            "checksum": "ad5738fd",
+            "durations_ns": [
+              413199515,
+              416668295,
+              405838712,
+              444098778,
+              435172496,
+              459229286,
+              408484774
+            ],
+            "fixture": "dense500",
+            "iterations": 500,
+            "method": "Rust compile_template",
+            "ns_per_op": [
+              826399.03,
+              833336.59,
+              811677.424,
+              888197.556,
+              870344.992,
+              918458.572,
+              816969.548
+            ],
+            "profile": "improved"
+          },
+          {
+            "batches": 7,
+            "checksum": "5f8fc0f7",
+            "durations_ns": [
+              2314862,
+              2270678,
+              2348124,
+              2249377,
+              2446136,
+              2269086,
+              2268675
+            ],
+            "fixture": "nested-arrays-8",
+            "iterations": 500,
+            "method": "Rust parse",
+            "ns_per_op": [
+              4629.724,
+              4541.356,
+              4696.248,
+              4498.754,
+              4892.272,
+              4538.172,
+              4537.35
+            ],
+            "profile": "improved"
+          },
+          {
+            "batches": 7,
+            "checksum": "da6ac187",
+            "durations_ns": [
+              4421503,
+              4454293,
+              4398098,
+              4279358,
+              4466846,
+              4549813,
+              4598604
+            ],
+            "fixture": "nested-arrays-16",
+            "iterations": 500,
+            "method": "Rust parse",
+            "ns_per_op": [
+              8843.006,
+              8908.586,
+              8796.196,
+              8558.716,
+              8933.692,
+              9099.626,
+              9197.208
+            ],
+            "profile": "improved"
+          },
+          {
+            "batches": 7,
+            "checksum": "70eb8d67",
+            "durations_ns": [
+              10555038,
+              10586097,
+              10498904,
+              12615143,
+              12445796,
+              11984033,
+              14590679
+            ],
+            "fixture": "nested-arrays-32",
+            "iterations": 500,
+            "method": "Rust parse",
+            "ns_per_op": [
+              21110.076,
+              21172.194,
+              20997.808,
+              25230.286,
+              24891.592,
+              23968.066,
+              29181.358
+            ],
+            "profile": "improved"
+          },
+          {
+            "excluded_reason": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners.",
+            "name": "nested-arrays-64"
+          },
+          {
+            "excluded_reason": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners.",
+            "name": "nested-arrays-128"
+          },
+          {
+            "batches": 7,
+            "checksum": "f8d92f4e",
+            "durations_ns": [
+              4303982,
+              4240285,
+              4264098,
+              4286642,
+              4222119,
+              4333678,
+              4206451
+            ],
+            "fixture": "nested-compute-32",
+            "iterations": 500,
+            "method": "Rust parse",
+            "ns_per_op": [
+              8607.964,
+              8480.57,
+              8528.196,
+              8573.284,
+              8444.238,
+              8667.356,
+              8412.902
+            ],
+            "profile": "improved"
+          },
+          {
+            "batches": 7,
+            "checksum": "f8d92f4e",
+            "durations_ns": [
+              7580544,
+              7615639,
+              7745741,
+              7540247,
+              7669058,
+              7534017,
+              7553581
+            ],
+            "fixture": "nested-compute-64",
+            "iterations": 500,
+            "method": "Rust parse",
+            "ns_per_op": [
+              15161.088,
+              15231.278,
+              15491.482,
+              15080.494,
+              15338.116,
+              15068.034,
+              15107.162
+            ],
+            "profile": "improved"
+          },
+          {
+            "excluded_reason": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners.",
+            "name": "nested-compute-128"
+          }
+        ],
+        "method": "syntax compilation; no evaluation or timed JSON serialization",
+        "runtime_version": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+        "sink": 0,
+        "sources": [
+          {
+            "path": "dimabot/src/utils/ast_parser/types.ts",
+            "sha256": "5049d49cbab203daa16d3430f7d0fca25841a21b8d6d8e0ae58633134394f35f"
+          },
+          {
+            "path": "dimabot/src/utils/ast_parser/tokenizer.ts",
+            "sha256": "31573e058312acda39169f9679624f83cc238ae5c5d0a5d4572369f8b526bdc9"
+          },
+          {
+            "path": "dimabot/src/utils/ast_parser/registry.ts",
+            "sha256": "ccab7267cd2f00afb19bd5057ffc9674aea48577c56884e59da85bc36d8abe93"
+          },
+          {
+            "path": "dimabot/src/utils/ast_parser/parser.ts",
+            "sha256": "be2d5d8f44695fff0186cc672fdd4a3b9454860fafd2aaf2016efbcf0a0e2294"
+          },
+          {
+            "path": "dimabot/src/utils/ast_parser/render.ts",
+            "sha256": "b2fa411ec05dbb790a89185b9f81e834d4b0546338081801bd486c2eea3987aa"
+          }
+        ],
+        "version": 1
+      },
+      "typescript": {
+        "version": 1,
+        "runtime": "v24.22.1",
+        "method": "syntax compilation; no evaluation or timed JSON serialization",
+        "sources": [
+          {
+            "path": "dimabot/src/utils/ast_parser/types.ts",
+            "sha256": "5049d49cbab203daa16d3430f7d0fca25841a21b8d6d8e0ae58633134394f35f"
+          },
+          {
+            "path": "dimabot/src/utils/ast_parser/tokenizer.ts",
+            "sha256": "31573e058312acda39169f9679624f83cc238ae5c5d0a5d4572369f8b526bdc9"
+          },
+          {
+            "path": "dimabot/src/utils/ast_parser/registry.ts",
+            "sha256": "ccab7267cd2f00afb19bd5057ffc9674aea48577c56884e59da85bc36d8abe93"
+          },
+          {
+            "path": "dimabot/src/utils/ast_parser/parser.ts",
+            "sha256": "be2d5d8f44695fff0186cc672fdd4a3b9454860fafd2aaf2016efbcf0a0e2294"
+          },
+          {
+            "path": "dimabot/src/utils/ast_parser/render.ts",
+            "sha256": "b2fa411ec05dbb790a89185b9f81e834d4b0546338081801bd486c2eea3987aa"
+          }
+        ],
+        "sink": 0,
+        "measurements": [
+          {
+            "fixture": "short-hi",
+            "profile": "improved",
+            "method": "TS scanSourceSegments + parse each expression",
+            "iterations": 500,
+            "batches": 7,
+            "durations_ns": [
+              7045842,
+              4024911,
+              4021004,
+              3762559,
+              3071347,
+              3715841,
+              3852237
+            ],
+            "ns_per_op": [
+              14091.684,
+              8049.822,
+              8042.008,
+              7525.118,
+              6142.694,
+              7431.682,
+              7704.474
+            ],
+            "checksum": "b8bcc332"
+          },
+          {
+            "fixture": "mixed",
+            "profile": "improved",
+            "method": "TS scanSourceSegments + parse each expression",
+            "iterations": 500,
+            "batches": 7,
+            "durations_ns": [
+              22730028,
+              13079802,
+              15973806,
+              8576777,
+              9868423,
+              7933905,
+              7431895
+            ],
+            "ns_per_op": [
+              45460.056,
+              26159.604,
+              31947.612,
+              17153.554,
+              19736.846,
+              15867.81,
+              14863.79
+            ],
+            "checksum": "bb40b822"
+          },
+          {
+            "fixture": "loop",
+            "profile": "improved",
+            "method": "TS parse",
+            "iterations": 500,
+            "batches": 7,
+            "durations_ns": [
+              21763270,
+              14580310,
+              13315572,
+              8972277,
+              7609649,
+              9791440,
+              7807778
+            ],
+            "ns_per_op": [
+              43526.54,
+              29160.62,
+              26631.144,
+              17944.554,
+              15219.298,
+              19582.88,
+              15615.556
+            ],
+            "checksum": "0f8eed8b"
+          },
+          {
+            "fixture": "plain8000",
+            "profile": "improved",
+            "method": "TS scanSourceSegments + parse each expression",
+            "iterations": 500,
+            "batches": 7,
+            "durations_ns": [
+              148252109,
+              147264100,
+              132120758,
+              132664395,
+              132410679,
+              134807806,
+              136545997
+            ],
+            "ns_per_op": [
+              296504.218,
+              294528.2,
+              264241.516,
+              265328.79,
+              264821.358,
+              269615.612,
+              273091.994
+            ],
+            "checksum": "69ca45dd"
+          },
+          {
+            "fixture": "dense100",
+            "profile": "improved",
+            "method": "TS scanSourceSegments + parse each expression",
+            "iterations": 500,
+            "batches": 7,
+            "durations_ns": [
+              100728172,
+              88303937,
+              88927502,
+              96868531,
+              102659916,
+              98499132,
+              99030594
+            ],
+            "ns_per_op": [
+              201456.344,
+              176607.874,
+              177855.004,
+              193737.062,
+              205319.832,
+              196998.264,
+              198061.188
+            ],
+            "checksum": "7ec8fb9d"
+          },
+          {
+            "fixture": "dense500",
+            "profile": "improved",
+            "method": "TS scanSourceSegments + parse each expression",
+            "iterations": 500,
+            "batches": 7,
+            "durations_ns": [
+              497917733,
+              494291868,
+              507865576,
+              454424155,
+              516271442,
+              468733188,
+              514915515
+            ],
+            "ns_per_op": [
+              995835.466,
+              988583.736,
+              1015731.152,
+              908848.31,
+              1032542.884,
+              937466.376,
+              1029831.03
+            ],
+            "checksum": "ad5738fd"
+          },
+          {
+            "fixture": "nested-arrays-8",
+            "profile": "improved",
+            "method": "TS parse",
+            "iterations": 500,
+            "batches": 7,
+            "durations_ns": [
+              15520740,
+              12307399,
+              12700993,
+              13775475,
+              10682767,
+              9726028,
+              9796629
+            ],
+            "ns_per_op": [
+              31041.48,
+              24614.798,
+              25401.986,
+              27550.95,
+              21365.534,
+              19452.056,
+              19593.258
+            ],
+            "checksum": "5f8fc0f7"
+          },
+          {
+            "fixture": "nested-arrays-16",
+            "profile": "improved",
+            "method": "TS parse",
+            "iterations": 500,
+            "batches": 7,
+            "durations_ns": [
+              25770355,
+              25245854,
+              25480564,
+              25265853,
+              25339590,
+              24823164,
+              29503731
+            ],
+            "ns_per_op": [
+              51540.71,
+              50491.708,
+              50961.128,
+              50531.706,
+              50679.18,
+              49646.328,
+              59007.462
+            ],
+            "checksum": "da6ac187"
+          },
+          {
+            "fixture": "nested-arrays-32",
+            "profile": "improved",
+            "method": "TS parse",
+            "iterations": 500,
+            "batches": 7,
+            "durations_ns": [
+              115779782,
+              89948082,
+              94253569,
+              97838505,
+              96557058,
+              85485814,
+              100444402
+            ],
+            "ns_per_op": [
+              231559.564,
+              179896.164,
+              188507.138,
+              195677.01,
+              193114.116,
+              170971.628,
+              200888.804
+            ],
+            "checksum": "70eb8d67"
+          },
+          {
+            "name": "nested-arrays-64",
+            "excluded_reason": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners."
+          },
+          {
+            "name": "nested-arrays-128",
+            "excluded_reason": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners."
+          },
+          {
+            "fixture": "nested-compute-32",
+            "profile": "improved",
+            "method": "TS parse",
+            "iterations": 500,
+            "batches": 7,
+            "durations_ns": [
+              9227695,
+              8730344,
+              8869394,
+              7193680,
+              8470308,
+              7139377,
+              7449449
+            ],
+            "ns_per_op": [
+              18455.39,
+              17460.688,
+              17738.788,
+              14387.36,
+              16940.616,
+              14278.754,
+              14898.898
+            ],
+            "checksum": "f8d92f4e"
+          },
+          {
+            "fixture": "nested-compute-64",
+            "profile": "improved",
+            "method": "TS parse",
+            "iterations": 500,
+            "batches": 7,
+            "durations_ns": [
+              13887874,
+              15957316,
+              17268960,
+              14248558,
+              13424587,
+              14987701,
+              14080694
+            ],
+            "ns_per_op": [
+              27775.748,
+              31914.632,
+              34537.92,
+              28497.116,
+              26849.174,
+              29975.402,
+              28161.388
+            ],
+            "checksum": "f8d92f4e"
+          },
+          {
+            "name": "nested-compute-128",
+            "excluded_reason": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners."
+          }
+        ]
+      }
+    },
+    {
+      "round": 3,
+      "rust": {
+        "measurements": [
+          {
+            "batches": 7,
+            "checksum": "b8bcc332",
+            "durations_ns": [
+              1272280,
+              1421118,
+              1057368,
+              1327394,
+              938867,
+              930250,
+              975215
+            ],
+            "fixture": "short-hi",
+            "iterations": 500,
+            "method": "Rust compile_template",
+            "ns_per_op": [
+              2544.56,
+              2842.236,
+              2114.736,
+              2654.788,
+              1877.734,
+              1860.5,
+              1950.43
+            ],
+            "profile": "improved"
+          },
+          {
+            "batches": 7,
+            "checksum": "bb40b822",
+            "durations_ns": [
+              7708513,
+              6464175,
+              6927741,
+              6210821,
+              6182868,
+              6154997,
+              7364199
+            ],
+            "fixture": "mixed",
+            "iterations": 500,
+            "method": "Rust compile_template",
+            "ns_per_op": [
+              15417.026,
+              12928.35,
+              13855.482,
+              12421.642,
+              12365.736,
+              12309.994,
+              14728.398
+            ],
+            "profile": "improved"
+          },
+          {
+            "batches": 7,
+            "checksum": "0f8eed8b",
+            "durations_ns": [
+              5814168,
+              5390325,
+              5189670,
+              5571084,
+              5217170,
+              5721977,
+              5006707
+            ],
+            "fixture": "loop",
+            "iterations": 500,
+            "method": "Rust parse",
+            "ns_per_op": [
+              11628.336,
+              10780.65,
+              10379.34,
+              11142.168,
+              10434.34,
+              11443.954,
+              10013.414
+            ],
+            "profile": "improved"
+          },
+          {
+            "batches": 7,
+            "checksum": "69ca45dd",
+            "durations_ns": [
+              32571592,
+              32723355,
+              32146546,
+              32457879,
+              33897742,
+              33007126,
+              34090373
+            ],
+            "fixture": "plain8000",
+            "iterations": 500,
+            "method": "Rust compile_template",
+            "ns_per_op": [
+              65143.184,
+              65446.71,
+              64293.092,
+              64915.758,
+              67795.484,
+              66014.252,
+              68180.746
+            ],
+            "profile": "improved"
+          },
+          {
+            "batches": 7,
+            "checksum": "7ec8fb9d",
+            "durations_ns": [
+              148144088,
+              184841989,
+              105805552,
+              99276916,
+              97856961,
+              97165476,
+              97806366
+            ],
+            "fixture": "dense100",
+            "iterations": 500,
+            "method": "Rust compile_template",
+            "ns_per_op": [
+              296288.176,
+              369683.978,
+              211611.104,
+              198553.832,
+              195713.922,
+              194330.952,
+              195612.732
+            ],
+            "profile": "improved"
+          },
+          {
+            "batches": 7,
+            "checksum": "ad5738fd",
+            "durations_ns": [
+              445793778,
+              438077491,
+              424666841,
+              449282135,
+              442736709,
+              476134695,
+              439504371
+            ],
+            "fixture": "dense500",
+            "iterations": 500,
+            "method": "Rust compile_template",
+            "ns_per_op": [
+              891587.556,
+              876154.982,
+              849333.682,
+              898564.27,
+              885473.418,
+              952269.39,
+              879008.742
+            ],
+            "profile": "improved"
+          },
+          {
+            "batches": 7,
+            "checksum": "5f8fc0f7",
+            "durations_ns": [
+              2376066,
+              2397726,
+              2407324,
+              2289313,
+              2316134,
+              2454812,
+              2472576
+            ],
+            "fixture": "nested-arrays-8",
+            "iterations": 500,
+            "method": "Rust parse",
+            "ns_per_op": [
+              4752.132,
+              4795.452,
+              4814.648,
+              4578.626,
+              4632.268,
+              4909.624,
+              4945.152
+            ],
+            "profile": "improved"
+          },
+          {
+            "batches": 7,
+            "checksum": "da6ac187",
+            "durations_ns": [
+              4731713,
+              4527451,
+              4396416,
+              4317678,
+              4317167,
+              4359657,
+              4370678
+            ],
+            "fixture": "nested-arrays-16",
+            "iterations": 500,
+            "method": "Rust parse",
+            "ns_per_op": [
+              9463.426,
+              9054.902,
+              8792.832,
+              8635.356,
+              8634.334,
+              8719.314,
+              8741.356
+            ],
+            "profile": "improved"
+          },
+          {
+            "batches": 7,
+            "checksum": "70eb8d67",
+            "durations_ns": [
+              10688568,
+              11029997,
+              10401040,
+              10633244,
+              10727270,
+              10572222,
+              10613787
+            ],
+            "fixture": "nested-arrays-32",
+            "iterations": 500,
+            "method": "Rust parse",
+            "ns_per_op": [
+              21377.136,
+              22059.994,
+              20802.08,
+              21266.488,
+              21454.54,
+              21144.444,
+              21227.574
+            ],
+            "profile": "improved"
+          },
+          {
+            "excluded_reason": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners.",
+            "name": "nested-arrays-64"
+          },
+          {
+            "excluded_reason": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners.",
+            "name": "nested-arrays-128"
+          },
+          {
+            "batches": 7,
+            "checksum": "f8d92f4e",
+            "durations_ns": [
+              4263387,
+              4245753,
+              4273176,
+              4264368,
+              4185061,
+              4244241,
+              4231177
+            ],
+            "fixture": "nested-compute-32",
+            "iterations": 500,
+            "method": "Rust parse",
+            "ns_per_op": [
+              8526.774,
+              8491.506,
+              8546.352,
+              8528.736,
+              8370.122,
+              8488.482,
+              8462.354
+            ],
+            "profile": "improved"
+          },
+          {
+            "batches": 7,
+            "checksum": "f8d92f4e",
+            "durations_ns": [
+              7780157,
+              7981493,
+              7707550,
+              7917102,
+              7735294,
+              7711869,
+              8279280
+            ],
+            "fixture": "nested-compute-64",
+            "iterations": 500,
+            "method": "Rust parse",
+            "ns_per_op": [
+              15560.314,
+              15962.986,
+              15415.1,
+              15834.204,
+              15470.588,
+              15423.738,
+              16558.56
+            ],
+            "profile": "improved"
+          },
+          {
+            "excluded_reason": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners.",
+            "name": "nested-compute-128"
+          }
+        ],
+        "method": "syntax compilation; no evaluation or timed JSON serialization",
+        "runtime_version": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+        "sink": 0,
+        "sources": [
+          {
+            "path": "dimabot/src/utils/ast_parser/types.ts",
+            "sha256": "5049d49cbab203daa16d3430f7d0fca25841a21b8d6d8e0ae58633134394f35f"
+          },
+          {
+            "path": "dimabot/src/utils/ast_parser/tokenizer.ts",
+            "sha256": "31573e058312acda39169f9679624f83cc238ae5c5d0a5d4572369f8b526bdc9"
+          },
+          {
+            "path": "dimabot/src/utils/ast_parser/registry.ts",
+            "sha256": "ccab7267cd2f00afb19bd5057ffc9674aea48577c56884e59da85bc36d8abe93"
+          },
+          {
+            "path": "dimabot/src/utils/ast_parser/parser.ts",
+            "sha256": "be2d5d8f44695fff0186cc672fdd4a3b9454860fafd2aaf2016efbcf0a0e2294"
+          },
+          {
+            "path": "dimabot/src/utils/ast_parser/render.ts",
+            "sha256": "b2fa411ec05dbb790a89185b9f81e834d4b0546338081801bd486c2eea3987aa"
+          }
+        ],
+        "version": 1
+      },
+      "typescript": {
+        "version": 1,
+        "runtime": "v24.22.1",
+        "method": "syntax compilation; no evaluation or timed JSON serialization",
+        "sources": [
+          {
+            "path": "dimabot/src/utils/ast_parser/types.ts",
+            "sha256": "5049d49cbab203daa16d3430f7d0fca25841a21b8d6d8e0ae58633134394f35f"
+          },
+          {
+            "path": "dimabot/src/utils/ast_parser/tokenizer.ts",
+            "sha256": "31573e058312acda39169f9679624f83cc238ae5c5d0a5d4572369f8b526bdc9"
+          },
+          {
+            "path": "dimabot/src/utils/ast_parser/registry.ts",
+            "sha256": "ccab7267cd2f00afb19bd5057ffc9674aea48577c56884e59da85bc36d8abe93"
+          },
+          {
+            "path": "dimabot/src/utils/ast_parser/parser.ts",
+            "sha256": "be2d5d8f44695fff0186cc672fdd4a3b9454860fafd2aaf2016efbcf0a0e2294"
+          },
+          {
+            "path": "dimabot/src/utils/ast_parser/render.ts",
+            "sha256": "b2fa411ec05dbb790a89185b9f81e834d4b0546338081801bd486c2eea3987aa"
+          }
+        ],
+        "sink": 0,
+        "measurements": [
+          {
+            "fixture": "short-hi",
+            "profile": "improved",
+            "method": "TS scanSourceSegments + parse each expression",
+            "iterations": 500,
+            "batches": 7,
+            "durations_ns": [
+              8029572,
+              3973084,
+              4009201,
+              3551054,
+              2997628,
+              7055481,
+              2831748
+            ],
+            "ns_per_op": [
+              16059.144,
+              7946.168,
+              8018.402,
+              7102.108,
+              5995.256,
+              14110.962,
+              5663.496
+            ],
+            "checksum": "b8bcc332"
+          },
+          {
+            "fixture": "mixed",
+            "profile": "improved",
+            "method": "TS scanSourceSegments + parse each expression",
+            "iterations": 500,
+            "batches": 7,
+            "durations_ns": [
+              40843799,
+              19279112,
+              16156309,
+              12909274,
+              12620152,
+              7922033,
+              8086459
+            ],
+            "ns_per_op": [
+              81687.598,
+              38558.224,
+              32312.618,
+              25818.548,
+              25240.304,
+              15844.066,
+              16172.918
+            ],
+            "checksum": "bb40b822"
+          },
+          {
+            "fixture": "loop",
+            "profile": "improved",
+            "method": "TS parse",
+            "iterations": 500,
+            "batches": 7,
+            "durations_ns": [
+              18068446,
+              15269539,
+              14656563,
+              11651931,
+              8357617,
+              7447435,
+              7217494
+            ],
+            "ns_per_op": [
+              36136.892,
+              30539.078,
+              29313.126,
+              23303.862,
+              16715.234,
+              14894.87,
+              14434.988
+            ],
+            "checksum": "0f8eed8b"
+          },
+          {
+            "fixture": "plain8000",
+            "profile": "improved",
+            "method": "TS scanSourceSegments + parse each expression",
+            "iterations": 500,
+            "batches": 7,
+            "durations_ns": [
+              142561351,
+              140991775,
+              131877243,
+              132268283,
+              134007587,
+              136723409,
+              140592518
+            ],
+            "ns_per_op": [
+              285122.702,
+              281983.55,
+              263754.486,
+              264536.566,
+              268015.174,
+              273446.818,
+              281185.036
+            ],
+            "checksum": "69ca45dd"
+          },
+          {
+            "fixture": "dense100",
+            "profile": "improved",
+            "method": "TS scanSourceSegments + parse each expression",
+            "iterations": 500,
+            "batches": 7,
+            "durations_ns": [
+              98649964,
+              87726205,
+              88447675,
+              90143678,
+              93566603,
+              97034410,
+              94154523
+            ],
+            "ns_per_op": [
+              197299.928,
+              175452.41,
+              176895.35,
+              180287.356,
+              187133.206,
+              194068.82,
+              188309.046
+            ],
+            "checksum": "7ec8fb9d"
+          },
+          {
+            "fixture": "dense500",
+            "profile": "improved",
+            "method": "TS scanSourceSegments + parse each expression",
+            "iterations": 500,
+            "batches": 7,
+            "durations_ns": [
+              458920940,
+              465105320,
+              473996966,
+              455118685,
+              486263687,
+              463947324,
+              490537443
+            ],
+            "ns_per_op": [
+              917841.88,
+              930210.64,
+              947993.932,
+              910237.37,
+              972527.374,
+              927894.648,
+              981074.886
+            ],
+            "checksum": "ad5738fd"
+          },
+          {
+            "fixture": "nested-arrays-8",
+            "profile": "improved",
+            "method": "TS parse",
+            "iterations": 500,
+            "batches": 7,
+            "durations_ns": [
+              16988977,
+              18114052,
+              22526136,
+              17758105,
+              8837696,
+              8915591,
+              9242262
+            ],
+            "ns_per_op": [
+              33977.954,
+              36228.104,
+              45052.272,
+              35516.21,
+              17675.392,
+              17831.182,
+              18484.524
+            ],
+            "checksum": "5f8fc0f7"
+          },
+          {
+            "fixture": "nested-arrays-16",
+            "profile": "improved",
+            "method": "TS parse",
+            "iterations": 500,
+            "batches": 7,
+            "durations_ns": [
+              26020415,
+              27506935,
+              41774480,
+              39723753,
+              27221000,
+              25089803,
+              28521343
+            ],
+            "ns_per_op": [
+              52040.83,
+              55013.87,
+              83548.96,
+              79447.506,
+              54442,
+              50179.606,
+              57042.686
+            ],
+            "checksum": "da6ac187"
+          },
+          {
+            "fixture": "nested-arrays-32",
+            "profile": "improved",
+            "method": "TS parse",
+            "iterations": 500,
+            "batches": 7,
+            "durations_ns": [
+              89087874,
+              85760387,
+              84327586,
+              84114969,
+              80531886,
+              82551203,
+              104976470
+            ],
+            "ns_per_op": [
+              178175.748,
+              171520.774,
+              168655.172,
+              168229.938,
+              161063.772,
+              165102.406,
+              209952.94
+            ],
+            "checksum": "70eb8d67"
+          },
+          {
+            "name": "nested-arrays-64",
+            "excluded_reason": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners."
+          },
+          {
+            "name": "nested-arrays-128",
+            "excluded_reason": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners."
+          },
+          {
+            "fixture": "nested-compute-32",
+            "profile": "improved",
+            "method": "TS parse",
+            "iterations": 500,
+            "batches": 7,
+            "durations_ns": [
+              8991734,
+              8443247,
+              8326037,
+              6992382,
+              6877488,
+              6884580,
+              7192738
+            ],
+            "ns_per_op": [
+              17983.468,
+              16886.494,
+              16652.074,
+              13984.764,
+              13754.976,
+              13769.16,
+              14385.476
+            ],
+            "checksum": "f8d92f4e"
+          },
+          {
+            "fixture": "nested-compute-64",
+            "profile": "improved",
+            "method": "TS parse",
+            "iterations": 500,
+            "batches": 7,
+            "durations_ns": [
+              14692379,
+              19216895,
+              17970442,
+              15877907,
+              13052401,
+              14895710,
+              14569269
+            ],
+            "ns_per_op": [
+              29384.758,
+              38433.79,
+              35940.884,
+              31755.814,
+              26104.802,
+              29791.42,
+              29138.538
+            ],
+            "checksum": "f8d92f4e"
+          },
+          {
+            "name": "nested-compute-128",
+            "excluded_reason": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners."
+          }
+        ]
+      }
+    }
+  ],
+  "summary": [
+    {
+      "fixture": "short-hi",
+      "rust_median_ns": 1877.092,
+      "typescript_median_ns": 7946.168,
+      "typescript_over_rust": 4.2332331073809915
+    },
+    {
+      "fixture": "mixed",
+      "rust_median_ns": 12536.676,
+      "typescript_median_ns": 25818.548,
+      "typescript_over_rust": 2.0594412745451827
+    },
+    {
+      "fixture": "loop",
+      "rust_median_ns": 10393.686,
+      "typescript_median_ns": 23303.862,
+      "typescript_over_rust": 2.2421171853758137
+    },
+    {
+      "fixture": "plain8000",
+      "rust_median_ns": 63214.756,
+      "typescript_median_ns": 269715.436,
+      "typescript_over_rust": 4.266653121306044
+    },
+    {
+      "fixture": "dense100",
+      "rust_median_ns": 201633.434,
+      "typescript_median_ns": 181748.332,
+      "typescript_over_rust": 0.9013799368213904
+    },
+    {
+      "fixture": "dense500",
+      "rust_median_ns": 878405.454,
+      "typescript_median_ns": 947993.932,
+      "typescript_over_rust": 1.079221363759884
+    },
+    {
+      "fixture": "nested-arrays-8",
+      "rust_median_ns": 4642.528,
+      "typescript_median_ns": 25401.986,
+      "typescript_over_rust": 5.471584877894113
+    },
+    {
+      "fixture": "nested-arrays-16",
+      "rust_median_ns": 8741.356,
+      "typescript_median_ns": 51031.32,
+      "typescript_over_rust": 5.8379180529885755
+    },
+    {
+      "fixture": "nested-arrays-32",
+      "rust_median_ns": 21377.136,
+      "typescript_median_ns": 175545.004,
+      "typescript_over_rust": 8.211811161233198
+    },
+    {
+      "fixture": "nested-compute-32",
+      "rust_median_ns": 8546.352,
+      "typescript_median_ns": 14898.898,
+      "typescript_over_rust": 1.7433049797153215
+    },
+    {
+      "fixture": "nested-compute-64",
+      "rust_median_ns": 15491.482,
+      "typescript_median_ns": 28807.5,
+      "typescript_over_rust": 1.8595703109618564
+    }
+  ],
+  "excluded": {
+    "nested-arrays-64": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners.",
+    "nested-arrays-128": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners.",
+    "nested-compute-128": "Safe persistence boundary: source/AST nesting or serialized JSON containers exceed the hard 128 ceiling; excluded identically from both runners."
+  },
+  "receipt": {
+    "phase": "benchmark",
+    "success": true,
+    "limits": {
+      "cpus": 3,
+      "memory_bytes": 4294967296,
+      "memory_swap_bytes": 4294967296,
+      "pids": 256,
+      "cargo_jobs": 2
+    },
+    "cache_limit_bytes": 8589934592,
+    "startup_headroom": {
+      "mem_available_bytes": 11009003520,
+      "load_1m": 0.9375
+    },
+    "minimum_available_bytes": 9633751040,
+    "peak_cache_bytes": 93544448,
+    "applied_limits_verified": true,
+    "cleanup_errors": [],
+    "elapsed_seconds": 61.768,
+    "monitor_samples": 25
+  },
+  "evidence_directory": "/root/.local/state/rust-ast-release-20261025-cc77r9ec/artifacts",
+  "cleanup": {
+    "success": true,
+    "removed_task_directories": [
+      "/root/.local/state/rust-ast-release-20261025-cc77r9ec/cargo",
+      "/root/.local/state/rust-ast-release-20261025-cc77r9ec/target"
+    ],
+    "remaining_task_compiler_containers": [],
+    "retained": "Frozen source, logs and receipts.",
+    "application_deployment": false
+  }
+}
