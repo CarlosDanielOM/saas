@@ -53,6 +53,8 @@ DIMA-032 pet Read-TTS lifecycle routing observation: [2026-10-23 DIMA-032](2026-
 
 Scoped TypeScript TTS user filters: [2026-10-23 observation](2026-10-23-tts-user-filters.md).
 
+Opt-in Rust AST evaluator: final quality, benchmark, bounded R2 review, and cleanup receipts passed; 14/15 prepared medians were lower for Rust, and the array-write workload was slower. Two source-backed parity issues were corrected and independently rechecked; R2 found no actionable findings within its stated scope. [2026-10-25 observation](2026-10-25-ast-evaluator.md). No tier change or performance attribution.
+
 Opt-in Rust AST blocks implementation routing and review rework: [2026-10-25 observation](2026-10-25-ast-blocks.md). Capped verification passed; synthetic release benchmark was lower in 19/21 operations. The model tier is unchanged.
 
 Keep observations brief and tied to a task category, scope, and concrete evidence. Consider exploration, single-file or function work, multi-file integration and consistency, optimization, and UI/UX design separately. Confidence should reflect how much evidence exists and how well it transfers to similar tasks. One result can inform a hypothesis; repeated, comparable results support a stronger routing change.

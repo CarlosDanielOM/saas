@@ -52,6 +52,8 @@ pub mod worker_process;
 
 #[cfg(feature = "ast-blocks")]
 pub mod ast_blocks;
+#[cfg(feature = "ast-evaluator")]
+pub mod ast_evaluator;
 #[cfg(feature = "ast-syntax")]
 pub mod ast_syntax;
 
