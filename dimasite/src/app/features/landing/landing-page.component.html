@@ -9,6 +9,7 @@
       <button type="button" (click)="scrollTo('pricing')">{{ t('landing.nav.pricing') }}</button>
       <button type="button" (click)="scrollTo('live')">{{ t('landing.nav.live') }}</button>
       <a href="https://docs.domdimabot.com/">{{ t('landing.nav.docs') }}</a>
+      <a routerLink="/download">{{ t('landing.nav.desktopApp') }}</a>
     </nav>
 
     <div class="lf-nav__actions">
@@ -60,6 +61,7 @@
             {{ t('landing.hero.join') }}
           </button>
         </div>
+        <a class="lf-app-link" routerLink="/download">{{ t('landing.nav.desktopApp') }} <span aria-hidden="true">↗</span></a>
         <p
           class="lf-feed"
           [class.lf-feed--on]="analyticsConnectionStatus() === 'connected'"

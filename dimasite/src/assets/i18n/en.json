@@ -9,7 +9,6 @@
     "showAllEmotes": "Show all emotes",
     "ownershipStale": "Showing your emotes using the last available channel catalog. It may be out of date.",
     "emoteScopeMethod": "Your emotes matches recorded IDs against your current Twitch channel catalog, refreshed about hourly. All emotes includes your own, other channels’ and global Twitch emotes used in recorded chat. Removed channel emotes remain in All emotes; this is not an archive of historical ownership.",
-
     "commandsTitle": "Top commands",
     "emotesTitle": "Top emotes",
     "commandsPeriod": "Command period",
@@ -4359,7 +4358,8 @@
       "pricing": "Pricing",
       "contact": "Contact",
       "live": "Live",
-      "docs": "Docs"
+      "docs": "Docs",
+      "desktopApp": "Dima App"
     },
     "hero": {
       "title": "DomDimaBot",
@@ -9663,6 +9663,65 @@
       "close": "Close",
       "open": "See how {{name}} works",
       "unavailable": "These blocks can't be shown right now."
+    }
+  },
+  "desktopDownloads": {
+    "skip": "Skip to downloads",
+    "home": "Back to DomDimaBot",
+    "navigation": "Page controls",
+    "language": "Cambiar a español",
+    "lightTheme": "Light mode",
+    "darkTheme": "Dark mode",
+    "kicker": "Your stream, connected",
+    "title": "Dima App",
+    "description": "Connect your Live2D pet to VTube Studio and bring pet audio to your computer. The desktop companion for DomDimaBot, available for Windows and Linux.",
+    "channel": "Release channel",
+    "stable": "Stable",
+    "beta": "Beta",
+    "stableHint": "Recommended for everyday streaming.",
+    "betaHint": "Preview channel. Beta versions may have unfinished features.",
+    "downloads": "Desktop downloads",
+    "version": "Version",
+    "published": "Published",
+    "recommended": "Recommended",
+    "windowsHint": "64-bit Windows. Install for your Windows user, or choose the portable ZIP.",
+    "linuxHint": "64-bit Linux. Use the AppImage, or unpack the portable archive.",
+    "artifacts": {
+      "installer": "Download Windows installer",
+      "zip": "Portable Windows ZIP",
+      "appimage": "Download Linux AppImage",
+      "tar": {
+        "gz": "Portable Linux tar.gz"
+      }
+    },
+    "checksum": "SHA-256 checksum",
+    "retry": "Try again",
+    "setupKicker": "Ready for your next stream",
+    "setupTitle": "Install once. Stay connected.",
+    "windowsSetup": "Windows: run the installer, open Dima App and sign in. Live2D pets also need VTube Studio running on your computer.",
+    "linuxSetup": "Linux: make the AppImage executable in its file properties, then open it. For the tar.gz archive, extract it and run Dima.",
+    "alreadyInstalled": "Already using Dima App?",
+    "preserved": "When you install as the same Windows user, your settings and sign-in saved in the operating system are preserved. If your sign-in was session-only, sign in again.",
+    "portableMigration": "Coming from an older portable Windows version? Close the old app, run the installer once, then open the installed Dima App.",
+    "updates": "With automatic updates enabled, Windows and Linux AppImage builds download and install future updates in the background. They never restart automatically: you choose when to restart. The Linux tar.gz build only notifies you.",
+    "footer": "Built for your streaming setup.",
+    "states": {
+      "loading": {
+        "title": "Checking available downloads…",
+        "description": "Looking for the latest approved release in this channel."
+      },
+      "unavailable": {
+        "title": "Downloads are not available yet",
+        "description": "There may not be an approved release for this channel yet, or downloads may be temporarily unavailable. Try again later."
+      },
+      "invalid": {
+        "title": "Download information could not be verified",
+        "description": "We could not validate the release details. Download links are hidden for now. Try again later."
+      },
+      "error": {
+        "title": "We could not load downloads",
+        "description": "The download service could not be reached. Check your connection and try again."
+      }
     }
   }
 }

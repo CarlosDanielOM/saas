@@ -9,7 +9,6 @@
     "showAllEmotes": "Mostrar todos los emotes",
     "ownershipStale": "Se usa el último catálogo disponible de tu canal. Puede estar desactualizado.",
     "emoteScopeMethod": "Tus emotes compara los ID registrados con el catálogo actual de tu canal de Twitch, actualizado aproximadamente cada hora. Todos los emotes incluye los tuyos, los de otros canales y los globales usados en el chat registrado. Los emotes eliminados siguen en Todos los emotes; no es un archivo de propiedad histórica.",
-
     "commandsTitle": "Comandos más usados",
     "emotesTitle": "Emotes más usados",
     "commandsPeriod": "Periodo de comandos",
@@ -4359,7 +4358,8 @@
       "pricing": "Precios",
       "contact": "Contacto",
       "live": "En vivo",
-      "docs": "Docs"
+      "docs": "Docs",
+      "desktopApp": "Dima App"
     },
     "hero": {
       "title": "DomDimaBot",
@@ -9663,6 +9663,65 @@
       "close": "Cerrar",
       "open": "Ver cómo funciona {{name}}",
       "unavailable": "Ahora no se pueden mostrar estos bloques."
+    }
+  },
+  "desktopDownloads": {
+    "skip": "Ir a las descargas",
+    "home": "Volver a DomDimaBot",
+    "navigation": "Controles de la página",
+    "language": "Switch to English",
+    "lightTheme": "Modo claro",
+    "darkTheme": "Modo oscuro",
+    "kicker": "Tu stream, conectado",
+    "title": "Dima App",
+    "description": "Conecta tu mascota Live2D a VTube Studio y reproduce su audio en tu ordenador. El compañero de escritorio de DomDimaBot, disponible para Windows y Linux.",
+    "channel": "Canal de versiones",
+    "stable": "Estable",
+    "beta": "Beta",
+    "stableHint": "Recomendado para tus streams del día a día.",
+    "betaHint": "Canal de pruebas. Las versiones beta pueden tener funciones sin terminar.",
+    "downloads": "Descargas de escritorio",
+    "version": "Versión",
+    "published": "Publicada el",
+    "recommended": "Recomendado",
+    "windowsHint": "Windows de 64 bits. Instala para tu usuario de Windows o elige el ZIP portátil.",
+    "linuxHint": "Linux de 64 bits. Usa la AppImage o extrae el archivo portátil.",
+    "artifacts": {
+      "installer": "Descargar instalador de Windows",
+      "zip": "ZIP portátil para Windows",
+      "appimage": "Descargar AppImage para Linux",
+      "tar": {
+        "gz": "tar.gz portátil para Linux"
+      }
+    },
+    "checksum": "Suma de verificación SHA-256",
+    "retry": "Reintentar",
+    "setupKicker": "Todo listo para tu próximo stream",
+    "setupTitle": "Instala una vez. Sigue conectado.",
+    "windowsSetup": "Windows: ejecuta el instalador, abre Dima App e inicia sesión. Las mascotas Live2D también necesitan VTube Studio abierto en tu ordenador.",
+    "linuxSetup": "Linux: permite ejecutar la AppImage en las propiedades del archivo y ábrela. Para el tar.gz, extrae el archivo y ejecuta Dima.",
+    "alreadyInstalled": "¿Ya usas Dima App?",
+    "preserved": "Al instalar con el mismo usuario de Windows, se conservan tus ajustes y el inicio de sesión guardado en el sistema operativo. Si tu sesión era temporal, vuelve a iniciar sesión.",
+    "portableMigration": "¿Vienes de una versión portátil anterior para Windows? Cierra la aplicación antigua, ejecuta el instalador una vez y abre Dima App desde la instalación.",
+    "updates": "Con las actualizaciones automáticas activadas, Windows y la AppImage de Linux descargan e instalan nuevas versiones en segundo plano. Nunca se reinician automáticamente: tú eliges cuándo reiniciar. El tar.gz de Linux solo te avisa.",
+    "footer": "Hecho para tu equipo de streaming.",
+    "states": {
+      "loading": {
+        "title": "Buscando descargas disponibles…",
+        "description": "Buscando la última versión aprobada de este canal."
+      },
+      "unavailable": {
+        "title": "Las descargas aún no están disponibles",
+        "description": "Puede que aún no haya una versión aprobada para este canal o que las descargas no estén disponibles temporalmente. Vuelve a intentarlo más tarde."
+      },
+      "invalid": {
+        "title": "No se pudo verificar la información de descarga",
+        "description": "No pudimos validar los detalles de la versión. Los enlaces de descarga están ocultos por ahora. Vuelve a intentarlo más tarde."
+      },
+      "error": {
+        "title": "No pudimos cargar las descargas",
+        "description": "No se pudo conectar con el servicio de descargas. Revisa tu conexión y vuelve a intentarlo."
+      }
     }
   }
 }

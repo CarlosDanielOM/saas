@@ -932,3 +932,7 @@ a.lf-feature:focus-visible .lf-text-link {
     transform: none;
   }
 }
+
+.lf-app-link { display: inline-flex; align-items: center; gap: .5rem; min-height: 44px; margin-top: .5rem; color: var(--kicker); font-size: .9rem; font-weight: 650; text-decoration: none; }
+.lf-app-link:hover { text-decoration: underline; }
+.lf-app-link:focus-visible { outline: 3px solid var(--kicker); outline-offset: 3px; border-radius: .25rem; }

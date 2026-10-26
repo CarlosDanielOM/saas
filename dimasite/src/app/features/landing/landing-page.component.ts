@@ -8,7 +8,7 @@ import {
   inject,
   signal
 } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import {
   LucideAngularModule,
   Activity,
@@ -90,7 +90,7 @@ const FEATURE_GUIDES: readonly FeatureGuide[] = [
 
 @Component({
   selector: 'app-landing-page',
-  imports: [LucideAngularModule, CountUpDirective, BrandLogoComponent],
+  imports: [LucideAngularModule, CountUpDirective, BrandLogoComponent, RouterLink],
   templateUrl: './landing-page.component.html',
   styleUrl: './landing-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

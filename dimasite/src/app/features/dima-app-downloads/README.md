@@ -1,0 +1,17 @@
+# Dima App downloads
+
+Public, lazy-loaded standalone feature at `/download`. The landing page links here on mobile and desktop. No account or API session is needed. The page answers: **which Dima App file should I install on this computer?**
+
+`desktop-release.model.ts` owns the public schema-1 consumer and configured release base. `desktop-release.service.ts` fetches only `latest.json` (stable, default) or `latest-beta.json` (optional preview channel), bypassing API authorization interceptors. Requests time out after 12 seconds, cancel when changing channel or leaving the page, and never poll. SSR/prerender performs no metadata request.
+
+Both platform recommendations must validate before any links appear: Windows x64 installer and Linux x86_64 AppImage. ZIP and tar.gz are optional alternatives. The parser checks version/channel coherence, date, unique permitted artifact kinds, exact expected filename and HTTPS URL beneath the configured versioned release prefix, bounded positive sizes, and SHA-256 shape. The updater-only Windows executable is never a page download. These structural checks do not perform cryptographic signature or file-content verification in the browser.
+
+Pointers must reference approved releases only. The website cannot approve or publish a release, and must not fall back to staged candidates, private draft assets or guessed URLs. Beta metadata may also point at a stable version. HTTP 403/404 displays cautious availability copy; network/CORS failures and invalid metadata have separate retryable states. Before the first approval, public metadata may be unavailable. Neither an HTTP 403 nor a browser CORS failure establishes why an object is unavailable.
+
+All product copy is under `desktopDownloads` in both translation dictionaries. The UI follows Live First tokens, includes stable/beta buttons, download sizes/checksums and install/update guidance, and supports both themes.
+
+Verification: `ops/checks/dima-app-downloads-browser.mjs` uses Playwright with all external requests mocked. It covers both channels/platforms, format recommendations, public-token isolation, malformed/unsafe metadata, unavailable/network/retry/loading/cancellation states, navigation, Spanish and theme controls, plus axe and horizontal-overflow checks at 320/390/1280 pixels. Use this check with `scripts/saas-ops verify <site-run> --check ops/checks/dima-app-downloads-browser.mjs`. A production acceptance check still needs a real approved public pointer and browser-readable metadata; mocked tests cannot establish bucket publication or CORS configuration.
+
+Delivery tracking (2026-10-26): GPT-6.1 Sol, Codex native worker `/root/saas_download_module`, high reasoning effort. Requested as an independent SaaS module while desktop release approval remains separate. Candidate/deployment evidence is recorded in the normal saas-ops receipt and the task handoff.
+
+Acceptance: the bounded isolated dev preview and exact production candidate `site-f3b71f116930` both passed all 25 browser groups. The production build completed and prerendered only the existing landing route. Six exact-candidate screenshots are under `/tmp/dima-app-downloads-verification/`. Candidate verification resources and the owned dev preview were removed; the managed desktop debug instance stayed active. Site deployment awaits manager review. Desktop release publication/approval and storage CORS are separate owner-managed work.

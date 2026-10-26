@@ -1,0 +1,69 @@
+<div class="lf">
+  <a class="skip-link" href="#downloads-main">{{ t('skip') }}</a>
+  <header class="lf-nav">
+    <a routerLink="/" class="brand" [attr.aria-label]="t('home')"><app-brand-logo /></a>
+    <nav class="nav-tools" [attr.aria-label]="t('navigation')">
+      <button class="lf-btn" type="button" (click)="language.toggleLanguage()" [attr.aria-label]="t('language')">{{ language.currentLanguage() === 'en' ? 'ES' : 'EN' }}</button>
+      <button class="lf-btn" type="button" (click)="theme.toggleTheme()">{{ theme.isDarkMode() ? t('lightTheme') : t('darkTheme') }}</button>
+      <a class="lf-btn home-link" routerLink="/">{{ t('home') }}</a>
+    </nav>
+  </header>
+  <main class="lf-main" id="downloads-main" tabindex="-1">
+    <section class="intro" aria-labelledby="download-title">
+      <p class="lf-kicker">{{ t('kicker') }}</p>
+      <h1 id="download-title">{{ t('title') }}</h1>
+      <p class="intro-copy">{{ t('description') }}</p>
+    </section>
+    <div class="release-toolbar">
+      <div class="channel-control" role="group" [attr.aria-label]="t('channel')">
+        <button type="button" [attr.aria-pressed]="channel() === 'stable'" (click)="selectChannel('stable')">{{ t('stable') }}</button>
+        <button type="button" [attr.aria-pressed]="channel() === 'beta'" (click)="selectChannel('beta')">{{ t('beta') }}</button>
+      </div>
+      <p class="channel-note">{{ channel() === 'stable' ? t('stableHint') : t('betaHint') }}</p>
+    </div>
+    <section class="release-content" [attr.aria-busy]="state().status === 'loading'" [attr.aria-label]="t('downloads')">
+      <div class="release-status" role="status" aria-live="polite" aria-atomic="true">
+        @if (release(); as release) {
+          <p><strong>{{ t('version') }} {{ release.version }}</strong><span class="date">{{ t('published') }} {{ date(release.publishedAt) }}</span></p>
+        } @else {
+          <article class="lf-tile state-tile">
+            <p class="state-title">{{ t('states.' + state().status + '.title') }}</p>
+            <p>{{ t('states.' + state().status + '.description') }}</p>
+            @if (state().status !== 'loading') {
+              <button class="lf-btn lf-btn--primary" type="button" (click)="reload()">{{ t('retry') }}</button>
+            }
+          </article>
+        }
+      </div>
+      @if (release()) {
+        <div class="lf-bento">
+          @for (platform of platforms(); track platform.id) {
+            <article class="lf-tile platform" [attr.data-platform]="platform.id">
+              <div class="platform-heading"><h2>{{ platform.name }}</h2><span class="lf-chip">{{ platform.arch }}</span></div>
+              <p class="platform-copy">{{ t(platform.id + 'Hint') }}</p>
+              @for (artifact of platform.artifacts; track artifact.kind; let first = $first) {
+                <div class="artifact" [class.artifact--portable]="!first">
+                  @if (first) { <span class="recommended">{{ t('recommended') }}</span> }
+                  <a class="lf-btn" [class.lf-btn--primary]="first" [href]="artifact.url" rel="noopener noreferrer" [attr.download]="artifact.file" [attr.data-kind]="artifact.kind">
+                    {{ t('artifacts.' + artifact.kind) }} <span aria-hidden="true">↓</span>
+                  </a>
+                  <span class="artifact-size">{{ size(artifact) }}</span>
+                  <details class="integrity"><summary>{{ t('checksum') }}</summary><code>{{ artifact.sha256 }}</code></details>
+                </div>
+              }
+            </article>
+          }
+        </div>
+      }
+    </section>
+    <section class="lf-tile setup" aria-labelledby="setup-title">
+      <div><p class="lf-kicker">{{ t('setupKicker') }}</p><h2 id="setup-title">{{ t('setupTitle') }}</h2></div>
+      <div class="setup-copy">
+        <p>{{ t('windowsSetup') }}</p>
+        <p>{{ t('linuxSetup') }}</p>
+        <details><summary>{{ t('alreadyInstalled') }}</summary><p>{{ t('preserved') }}</p><p>{{ t('portableMigration') }}</p><p>{{ t('updates') }}</p></details>
+      </div>
+    </section>
+    <footer><a routerLink="/">{{ t('home') }}</a><span>{{ t('footer') }}</span></footer>
+  </main>
+</div>
