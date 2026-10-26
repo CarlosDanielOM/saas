@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, afterNextRender, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, afterNextRender, computed, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { BrandLogoComponent } from '../../shared/brand-logo/brand-logo.component';
@@ -15,6 +15,8 @@ import { DesktopReleaseService, DownloadState } from './desktop-release.service'
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class DimaAppDownloadsComponent {
+  /** The authenticated shell supplies navigation, controls and the page background. */
+  readonly embedded = input(false);
   readonly language = inject(LanguageService);
   readonly theme = inject(ThemeService);
   private readonly releases = inject(DesktopReleaseService);

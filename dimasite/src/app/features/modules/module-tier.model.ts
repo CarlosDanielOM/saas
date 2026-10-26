@@ -1,6 +1,7 @@
 export type PlanTier = 'free' | 'premium' | 'pro';
 
 export type ModuleId =
+  | 'app'
   | 'pet'
   | 'widgets'
   | 'roulette'
@@ -36,6 +37,7 @@ export interface ModuleTierRequirement {
 }
 
 export const MODULE_TIER_REQUIREMENTS: Readonly<Record<ModuleId, ModuleTierRequirement>> = {
+  app: { id: 'app', minTier: 'free', displayName: 'App', defaultStatus: 'stable', category: 'content', priority: 96 },
   pet: { id: 'pet', minTier: 'premium', alsoAllows: 'pro', displayName: 'Pet', defaultStatus: 'alpha', category: 'engagement', priority: 95 },
   widgets: { id: 'widgets', minTier: 'premium', displayName: 'Widgets', defaultStatus: 'alpha', category: 'engagement', priority: 86 },
   overlays: { id: 'overlays', minTier: 'free', displayName: 'Overlay Studio', defaultStatus: 'alpha', category: 'engagement', priority: 84 },

@@ -9729,5 +9729,11 @@
         "description": "The download service could not be reached. Check your connection and try again."
       }
     }
+  },
+  "desktopAppModule": {
+    "title": "App",
+    "description": "Download Dima App for Windows or Linux to connect your streaming setup.",
+    "tagline": "Dima App downloads",
+    "back": "Back to modules"
   }
 }

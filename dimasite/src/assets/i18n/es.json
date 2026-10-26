@@ -9729,5 +9729,11 @@
         "description": "No se pudo conectar con el servicio de descargas. Revisa tu conexión y vuelve a intentarlo."
       }
     }
+  },
+  "desktopAppModule": {
+    "title": "App",
+    "description": "Descarga Dima App para Windows o Linux y conecta tu equipo de streaming.",
+    "tagline": "Descargas de Dima App",
+    "back": "Volver a módulos"
   }
 }

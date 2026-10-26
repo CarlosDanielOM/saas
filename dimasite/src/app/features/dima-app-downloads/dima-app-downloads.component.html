@@ -1,4 +1,5 @@
-<div class="lf">
+<div class="lf" [class.lf--embedded]="embedded()">
+  @if (!embedded()) {
   <a class="skip-link" href="#downloads-main">{{ t('skip') }}</a>
   <header class="lf-nav">
     <a routerLink="/" class="brand" [attr.aria-label]="t('home')"><app-brand-logo /></a>
@@ -8,11 +9,18 @@
       <a class="lf-btn home-link" routerLink="/">{{ t('home') }}</a>
     </nav>
   </header>
-  <main class="lf-main" id="downloads-main" tabindex="-1">
+  }
+  <div class="lf-main" id="downloads-main" tabindex="-1" [attr.role]="embedded() ? null : 'main'">
     <section class="intro" aria-labelledby="download-title">
-      <p class="lf-kicker">{{ t('kicker') }}</p>
-      <h1 id="download-title">{{ t('title') }}</h1>
-      <p class="intro-copy">{{ t('description') }}</p>
+      @if (embedded()) {
+        <a class="module-back" routerLink="..">{{ language.translate('desktopAppModule.back') }}</a>
+        <h1 id="download-title">{{ language.translate('desktopAppModule.title') }}</h1>
+        <p class="intro-copy">{{ language.translate('desktopAppModule.description') }}</p>
+      } @else {
+        <p class="lf-kicker">{{ t('kicker') }}</p>
+        <h1 id="download-title">{{ t('title') }}</h1>
+        <p class="intro-copy">{{ t('description') }}</p>
+      }
     </section>
     <div class="release-toolbar">
       <div class="channel-control" role="group" [attr.aria-label]="t('channel')">
@@ -64,6 +72,8 @@
         <details><summary>{{ t('alreadyInstalled') }}</summary><p>{{ t('preserved') }}</p><p>{{ t('portableMigration') }}</p><p>{{ t('updates') }}</p></details>
       </div>
     </section>
-    <footer><a routerLink="/">{{ t('home') }}</a><span>{{ t('footer') }}</span></footer>
-  </main>
+    @if (!embedded()) {
+      <footer><a routerLink="/">{{ t('home') }}</a><span>{{ t('footer') }}</span></footer>
+    }
+  </div>
 </div>

@@ -900,6 +900,11 @@ export const routes: Routes = [
             title: 'Modules | DomDimaBot'
           },
           {
+            path: 'app',
+            loadComponent: () => import('./features/dima-app-downloads/app-module.component').then(m => m.AppModuleComponent),
+            title: 'App | DomDimaBot'
+          },
+          {
             path: 'overlays', loadComponent: () => import('./features/overlays/overlay-editor.component').then(m => m.OverlayEditorComponent), canActivate: [permissionGuard, channelOwnerGuard], canDeactivate: [overlayDraftGuard], data: { permission: 'dashboard:view' }, title: 'Overlay Studio Alpha | DomDimaBot'
           },
           { path: 'widgets', loadComponent: () => import('./features/widgets/widgets-hub.component').then(m => m.WidgetsHubComponent), canActivate: [permissionGuard], data: { permission: '*' }, title: 'Widgets Alpha | DomDimaBot' },

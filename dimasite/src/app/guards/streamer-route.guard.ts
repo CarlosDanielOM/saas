@@ -25,6 +25,7 @@ const KNOWN_STREAMER_CHILDREN = new Set([
   '403'
 ]);
 const MODULE_CHILDREN = new Map<string, ReadonlySet<string> | null>([
+  ['app', null],
   ['roulette', null],
   ['widgets', new Set(['dbd', 'duel'])],
   ['overlays', null],

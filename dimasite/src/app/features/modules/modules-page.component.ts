@@ -20,6 +20,7 @@ import {
   LucideAngularModule,
   MessagesSquare,
   MonitorPlay,
+  Download,
   PawPrint,
   Scissors,
   Shield,
@@ -90,6 +91,7 @@ const CORE_MODULE_IDS: readonly ModuleId[] = [
 ];
 
 const MODULE_GOALS: Readonly<Record<ModuleId, Goal>> = {
+  app: 'stream',
   pet: 'stream',
   overlays: 'stream',
   roulette: 'stream',
@@ -124,6 +126,8 @@ const RECENT_STORAGE_PREFIX = 'dimasite.modules.recent.';
 
 /** Matches the page guards. Overlay Studio remains broadcaster-only. */
 const MODULE_VIEW_PERMISSIONS: Readonly<Record<ModuleId, string | null>> = {
+  // App is a public-download account utility; pet/overlays remain owner-only.
+  app: null,
   pet: null,
   overlays: null,
   roulette: '*',
@@ -147,6 +151,7 @@ const MODULE_VIEW_PERMISSIONS: Readonly<Record<ModuleId, string | null>> = {
 };
 
 const MODULE_ICONS: Record<ModuleId, LucideIconData> = {
+  app: Download,
   pet: PawPrint,
   roulette: Dices,
   widgets: MonitorPlay,
@@ -220,6 +225,7 @@ export class ModulesPageComponent {
     const streamerName = this.streamer();
 
     return [
+      this.buildModule('app', this.t('desktopAppModule.title'), 'desktopAppModule.description', streamerName, userPlanTier),
       this.buildModule('overlays', this.t('overlayStudio.studio'), 'overlayStudio.description', streamerName, userPlanTier),
       this.buildModule('widgets', this.t('widgets.title'), 'widgets.subtitle', streamerName, userPlanTier),
       this.buildModule('roulette', this.t('roulette.title'), 'roulette.subtitle', streamerName, userPlanTier),
@@ -350,7 +356,7 @@ export class ModulesPageComponent {
         const allowedPermissions = new Set(permissions.filter((_, index) => granted[index]));
         this.allowedModules.set(new Set(
           (Object.entries(MODULE_VIEW_PERMISSIONS) as [ModuleId, string | null][])
-            .filter(([, permission]) => permission && allowedPermissions.has(permission))
+            .filter(([moduleID, permission]) => moduleID === 'app' || (permission !== null && allowedPermissions.has(permission)))
             .map(([moduleID]) => moduleID)
         ));
         this.accessReady.set(true);
@@ -548,7 +554,7 @@ export class ModulesPageComponent {
       id,
       name,
       description: this.t(descriptionKey),
-      tagline: this.t(`modules.taglines.${id}`),
+      tagline: this.t(id === 'app' ? 'desktopAppModule.tagline' : `modules.taglines.${id}`),
       path: streamerName ? `/${streamerName}/modules/${id}` : null,
       goal: MODULE_GOALS[id],
       status: req.defaultStatus,
