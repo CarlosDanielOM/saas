@@ -216,7 +216,13 @@ try {
     await saveState(page, true);
     await page.getByRole('combobox', { name: 'AI personality profile', exact: true }).selectOption('p2');
     await page.getByRole('textbox', { name: 'Extra pet rules' }).fill('No spoilers\nBe kind');
-    await page.getByRole('spinbutton', { name: 'Seconds between responses' }).fill('35');
+    await page.getByRole('spinbutton', { name: 'Seconds between pet-queue replies' }).fill('35');
+    // Pet queue settings: older saved settings show the defaults, then both controls save.
+    const askLane = page.getByRole('combobox', { name: 'Where $(pet.ask) replies wait' }), queueSize = page.getByRole('spinbutton', { name: 'Pet queue size' });
+    assert.equal(await askLane.inputValue(), 'independent'); assert.equal(await queueSize.inputValue(), '5');
+    await page.getByText("AI replies wait in the pet's own queue", { exact: false }).waitFor();
+    await askLane.selectOption('tts'); await page.getByText('AI replies keep their place among TTS messages', { exact: false }).waitFor();
+    await queueSize.fill('3');
     await save(page).click();
     await page.getByText('Pet configuration saved', { exact: true }).waitFor();
     assert.equal(state.writes.length, 1);
@@ -224,6 +230,7 @@ try {
     assert.equal(state.writes[0].settings.personality.profileId, 'p2');
     assert.equal(state.writes[0].settings.tts.provider, 'kokoro');
     assert.equal(state.writes[0].settings.behavior.cooldownSeconds, 35);
+    assert.equal(state.writes[0].settings.behavior.queueSize, 3); assert.equal(state.writes[0].settings.behavior.askLane, 'tts');
     assert.deepEqual(state.writes[0].settings.rules, ['No spoilers','Be kind']);
     // Reload persists the saved settings; discard restores the last save.
     await page.reload(); await page.getByRole('textbox', { name: 'Pet name' }).waitFor();
