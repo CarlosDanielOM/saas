@@ -11,6 +11,7 @@ import {
   type BlockNode,
   type DropTarget,
   type ForLoopNode,
+  type KnownVariable,
   type LoopAssignOp,
   type TernaryNode,
   type VarStorage,
@@ -19,6 +20,7 @@ import {
   STORAGE_IDS,
   binary,
   isPerViewer,
+  knownVariables,
   lit,
   loopAssign,
   loopVar,
@@ -89,6 +91,22 @@ export class BlockInspectorComponent {
     const n = this.node();
     return !!n && this.store.errorBlockId() === n.id ? this.errorMessage() : null;
   });
+  /** Use / check / forget blocks read a variable: they pick one instead of choosing how long to keep it. */
+  readonly reads = computed(() => {
+    const type = this.node()?.type;
+    return type === 'getVar' || type === 'exists' || type === 'deleteVar';
+  });
+  readonly variables = computed(() => knownVariables(this.store.root()));
+  /** Variables this command sets, to pick from. */
+  readonly pickable = computed(() => this.variables().filter((v) => v.setHere));
+  /** Whether something gives the selected variable a value before it's read. */
+  readonly readStatus = computed((): 'setHere' | 'empty' | 'elsewhere' | null => {
+    const n = this.node();
+    if (!n || !this.reads() || !('storage' in n) || !n.name) return null;
+    if (this.variables().some((v) => v.setHere && v.name === n.name && v.storage === n.storage)) return 'setHere';
+    return n.storage === 'memory' ? 'empty' : 'elsewhere';
+  });
+
   readonly canMoveEarlier = computed(() => (this.parent()?.index ?? -1) > 0);
   readonly canMoveLater = computed(() => {
     const p = this.parent();
@@ -142,13 +160,33 @@ export class BlockInspectorComponent {
     if (field === 'name') value = value.replace(/[^\p{L}\p{N}_]/gu, '');
     if (field === 'loopVar') value = value.replace(/[^A-Za-z0-9_]/g, '').replace(/^[0-9]+/, '');
     if (field === 'commandName') value = value.replace(/^!/, '').replace(/\s/g, '');
-    this.store.patch(n.id, { [field]: value } as Partial<BlockNode>);
+    const patch: Record<string, unknown> = { [field]: value };
+    // Typing the name of a variable this command sets also picks where it's kept.
+    if (field === 'name' && this.reads()) {
+      const places = [...new Set(this.pickable().filter((v) => v.name === value).map((v) => v.storage))];
+      if (places.length === 1) Object.assign(patch, { storage: places[0], ...(isPerViewer(places[0]) ? {} : { userSelector: null }) });
+    }
+    this.store.patch(n.id, patch as Partial<BlockNode>);
   }
 
   setStorage(storage: VarStorage): void {
     const n = this.node();
-    if (!n) return;
-    this.store.patch(n.id, { storage, ...(isPerViewer(storage) ? {} : { userSelector: null }) } as Partial<BlockNode>);
+    if (n) this.store.setVarStorage(n.id, storage);
+  }
+
+  onStorageSelect(event: Event): void {
+    this.setStorage((event.target as HTMLSelectElement).value as VarStorage);
+  }
+
+  pickVariable(variable: KnownVariable): void {
+    const n = this.node();
+    if (!n || !this.reads()) return;
+    this.store.patch(n.id, { name: variable.name, storage: variable.storage, ...(isPerViewer(variable.storage) ? {} : { userSelector: null }) } as Partial<BlockNode>);
+  }
+
+  isPicked(variable: KnownVariable): boolean {
+    const n = this.node();
+    return !!n && 'name' in n && 'storage' in n && n.name === variable.name && n.storage === variable.storage;
   }
 
   setAccessor(kind: 'value' | 'array' | 'index' | 'random' | 'length'): void {

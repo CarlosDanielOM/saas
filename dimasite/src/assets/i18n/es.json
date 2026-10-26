@@ -9151,6 +9151,7 @@
   "commandBlocks": {
     "label": "Bloques AST",
     "announce": {
+      "movedVariable": "Se movió “{{name}}” y los bloques que la usan",
       "imported": "El texto se convirtió en bloques",
       "loadedExample": "Ejemplo cargado",
       "cleared": "Comando vaciado",
@@ -9308,6 +9309,11 @@
       "tooLong": "Ese texto es demasiado largo (hasta 10.000 caracteres)."
     },
     "inspector": {
+      "pickVar": "Elige una variable de este comando",
+      "savedIn": "Dónde se guardó",
+      "readSetHere": "Lee el valor que le da un bloque Guardar variable de este comando.",
+      "readEmpty": "Nada en este comando guarda “{{name}}” en esta ejecución, así que estará vacía. Agrega un bloque Guardar variable antes, o elige dónde la guardó otro comando.",
+      "readElsewhere": "Lee lo que guardó ({{where}}) otro comando o una ejecución anterior. Elige el mismo lugar donde se guardó; el mismo nombre en otro lugar es otra variable.",
       "actions": "Acciones del bloque",
       "addAfter": "Añadir después",
       "addElseIf": "+ Añadir «si no, si»",

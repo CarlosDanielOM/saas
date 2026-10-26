@@ -232,6 +232,46 @@ try {
     await context.close();
   }
 
+  // 1b. Variables: Use variable picks a variable (no "how long" choice); Set variable moves its uses. Big modal on wide screens.
+  {
+    const { context, page, errors } = await open(browser, '/test/commands', { width: 1920, height: 1080 });
+    await openNew(page);
+    await modal(page).getByRole('tab', { name: 'Blocks' }).click();
+    await modal(page).getByRole('button', { name: 'Start with empty blocks' }).click();
+    await editor(page).getByRole('button', { name: 'Death counter' }).click();
+    const box = await modal(page).boundingBox();
+    assert.ok(box.width >= 1600 && box.height >= 1000, `modal fills a wide screen (${Math.round(box.width)}x${Math.round(box.height)})`);
+    const insp = editor(page).locator('app-block-inspector');
+    const useBlock = editor(page).locator('.blk[data-type="getVar"]').last();
+    await useBlock.click();
+    await insp.getByRole('heading', { name: 'Use variable' }).waitFor();
+    assert.equal(await insp.getByText("How long it's remembered").count(), 0, 'use variable has no lifetime choice');
+    assert.equal(await insp.locator('#insp-where').inputValue(), 'db');
+    await insp.getByText('Reads the value a Set variable block in this command gives it.').waitFor();
+    await insp.locator('#insp-where').selectOption('memory');
+    await insp.getByText('Nothing in this command sets “deaths” for this run', { exact: false }).waitFor();
+    await insp.getByRole('button', { name: /deaths\s*saved/ }).click();
+    await until(async () => (await insp.locator('#insp-where').inputValue()) === 'db', 'picking the variable restores its place');
+    await insp.locator('#insp-name').fill('other');
+    await insp.getByText('Reads what was saved (saved) by another command', { exact: false }).waitFor();
+    await insp.locator('#insp-name').fill('deaths');
+    await insp.getByText('Reads the value a Set variable block in this command gives it.').waitFor();
+    if (shots) await page.screenshot({ path: `${shots}/blocks-use-variable-1920.png` });
+    await axe(page, 'use variable inspector', 'app-command-modal');
+
+    // Changing where the Set variable block keeps it moves its uses too.
+    await editor(page).locator('.blk[data-type="setVar"]').first().click({ position: { x: 8, y: 8 } });
+    await insp.getByRole('heading', { name: 'Set variable' }).waitFor();
+    await insp.getByText("How long it's remembered").waitFor();
+    await insp.getByText('Until the stream ends', { exact: true }).click();
+    await useBlock.click();
+    await until(async () => (await insp.locator('#insp-where').inputValue()) === 'cache', 'use block follows the set block');
+    await editor(page).locator('.blk[data-type="getVar"]').first().click();
+    await until(async () => (await insp.locator('#insp-where').inputValue()) === 'cache', 'nested use block follows too');
+    assert.deepEqual(errors, []);
+    await context.close();
+  }
+
   // 2. Import box: text → blocks, hides and clears after an edit; server error points at a block.
   {
     const { context, page, writes } = await open(browser, '/test/commands', {

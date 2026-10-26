@@ -105,22 +105,64 @@
     }
 
     @if (n.type === 'getVar' || n.type === 'setVar' || n.type === 'exists' || n.type === 'deleteVar') {
-      <div class="field">
-        <label class="field__label" for="insp-name">{{ t('commandBlocks.inspector.varName') }}</label>
-        <input id="insp-name" class="field__input field__input--mono" [disabled]="ro()" [value]="n.name" (input)="patchField('name', $event)" autocapitalize="off" spellcheck="false" />
-      </div>
-      <fieldset class="choice">
-        <legend class="field__label">{{ t('commandBlocks.inspector.keptFor') }}</legend>
-        @for (id of storages; track id) {
-          <label class="choice__opt" [class.is-on]="n.storage === id">
-            <input type="radio" name="insp-storage" [disabled]="ro()" [checked]="n.storage === id" (change)="setStorage(id)" />
-            <span class="choice__text">
-              <span class="choice__title">{{ t('commandBlocks.storage.' + id + '.label') }}</span>
-              <span class="choice__hint">{{ t('commandBlocks.storage.' + id + '.hint') }}</span>
-            </span>
-          </label>
+      @if (reads()) {
+        @if (pickable().length && !ro()) {
+          <fieldset class="seg">
+            <legend class="field__label">{{ t('commandBlocks.inspector.pickVar') }}</legend>
+            <div class="seg__row">
+              @for (v of pickable(); track v.storage + ':' + v.name) {
+                <button type="button" class="seg__btn var-pick" [attr.aria-pressed]="isPicked(v)" (click)="pickVariable(v)">
+                  <span class="var-pick__name">{{ v.name }}</span>
+                  <span class="var-pick__where">{{ t('commandBlocks.storage.' + v.storage + '.short') }}</span>
+                </button>
+              }
+            </div>
+          </fieldset>
         }
-      </fieldset>
+        <div class="field">
+          <label class="field__label" for="insp-name">{{ t('commandBlocks.inspector.varName') }}</label>
+          <input id="insp-name" class="field__input field__input--mono" [disabled]="ro()" [value]="n.name" (input)="patchField('name', $event)" autocapitalize="off" spellcheck="false" />
+        </div>
+        <div class="field">
+          <label class="field__label" for="insp-where">{{ t('commandBlocks.inspector.savedIn') }}</label>
+          <select id="insp-where" class="field__input" [disabled]="ro()" (change)="onStorageSelect($event)">
+            @for (id of storages; track id) {
+              <option [value]="id" [selected]="n.storage === id">{{ t('commandBlocks.storage.' + id + '.label') }}</option>
+            }
+          </select>
+        </div>
+        @switch (readStatus()) {
+          @case ('setHere') {
+            <p class="insp__tip">{{ t('commandBlocks.inspector.readSetHere') }}</p>
+          }
+          @case ('empty') {
+            <p class="insp__note insp__note--solo" role="status">
+              <lucide-icon [name]="icons.warn" [size]="15" aria-hidden="true" />
+              <span>{{ t('commandBlocks.inspector.readEmpty', { name: n.name }) }}</span>
+            </p>
+          }
+          @case ('elsewhere') {
+            <p class="insp__tip">{{ t('commandBlocks.inspector.readElsewhere', { where: t('commandBlocks.storage.' + n.storage + '.short') }) }}</p>
+          }
+        }
+      } @else {
+        <div class="field">
+          <label class="field__label" for="insp-name">{{ t('commandBlocks.inspector.varName') }}</label>
+          <input id="insp-name" class="field__input field__input--mono" [disabled]="ro()" [value]="n.name" (input)="patchField('name', $event)" autocapitalize="off" spellcheck="false" />
+        </div>
+        <fieldset class="choice">
+          <legend class="field__label">{{ t('commandBlocks.inspector.keptFor') }}</legend>
+          @for (id of storages; track id) {
+            <label class="choice__opt" [class.is-on]="n.storage === id">
+              <input type="radio" name="insp-storage" [disabled]="ro()" [checked]="n.storage === id" (change)="setStorage(id)" />
+              <span class="choice__text">
+                <span class="choice__title">{{ t('commandBlocks.storage.' + id + '.label') }}</span>
+                <span class="choice__hint">{{ t('commandBlocks.storage.' + id + '.hint') }}</span>
+              </span>
+            </label>
+          }
+        </fieldset>
+      }
       @if (isPerViewer(n.storage) && !n.userSelector && !ro()) {
         <p class="insp__tip">{{ t('commandBlocks.inspector.perViewerTip') }}</p>
       }

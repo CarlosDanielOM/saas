@@ -1131,9 +1131,9 @@
 
 @media (min-width: 640px) {
   .lf-modal.lf-modal--blocks {
-    width: min(100%, 78rem);
-    height: min(94dvh, 60rem);
-    max-height: min(94dvh, 60rem);
+    width: min(100%, 104rem);
+    height: calc(100dvh - 2rem);
+    max-height: calc(100dvh - 2rem);
     border-radius: var(--radius);
   }
 }

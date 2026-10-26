@@ -335,3 +335,43 @@ export function rootFromStored(value: unknown): RootNode | null {
   if (!root || typeof root !== 'object' || (root as RootNode).type !== 'root' || !Array.isArray((root as RootNode).children)) return null;
   return root as RootNode;
 }
+
+// ---------- variables ----------
+
+type VarNode = GetVarNode | SetVarNode | ExistsNode | DeleteVarNode;
+
+export interface KnownVariable {
+  name: string;
+  storage: VarStorage;
+  /** A Set variable block in this command writes it. */
+  setHere: boolean;
+}
+
+function isVarNode(node: AnyNode): node is VarNode {
+  return node.type === 'getVar' || node.type === 'setVar' || node.type === 'exists' || node.type === 'deleteVar';
+}
+
+/** Every variable this command touches, once per name + place, in order of first use. */
+export function knownVariables(root: RootNode): KnownVariable[] {
+  const found = new Map<string, KnownVariable>();
+  const visit = (node: AnyNode): void => {
+    if (isVarNode(node) && node.name) {
+      const key = `${node.storage}:${node.name}`;
+      const prev = found.get(key);
+      found.set(key, { name: node.name, storage: node.storage, setHere: (prev?.setHere ?? false) || node.type === 'setVar' });
+    }
+    childNodes(node).forEach(visit);
+  };
+  visit(root);
+  return [...found.values()];
+}
+
+/** Moves every block for `name` in `from` to `to` (the name in another place is a different variable). */
+export function moveVariable(root: RootNode, name: string, from: VarStorage, to: VarStorage): RootNode {
+  const next = transformTree(root, (node) =>
+    isVarNode(node) && node.name === name && node.storage === from
+      ? ({ ...node, storage: to, ...(isPerViewer(to) ? {} : { userSelector: null }) } as AnyNode)
+      : node
+  );
+  return next?.type === 'root' ? next : root;
+}

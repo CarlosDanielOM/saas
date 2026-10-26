@@ -731,6 +731,13 @@
   gap: 0.75rem;
 }
 
+/* Separates the selected block's details from Try it below them. */
+.bx-insp-tile:not(.is-empty) + .bx-test {
+  margin-top: 0.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+
 .bx-insp-tile.is-empty {
   display: grid;
   gap: 0.2rem;
@@ -983,6 +990,17 @@
 
   .bx-insp-tile {
     flex-direction: column;
+  }
+}
+
+/* Big screens: more room for the library and the details panel too. */
+@media (min-width: 1440px) {
+  .bx-grid {
+    grid-template-columns: 20rem minmax(0, 1fr) 25rem;
+  }
+
+  :host(.is-ro) .bx-grid {
+    grid-template-columns: minmax(0, 1fr) 25rem;
   }
 }
 

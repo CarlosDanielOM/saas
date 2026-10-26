@@ -9151,6 +9151,7 @@
   "commandBlocks": {
     "label": "AST Blocks",
     "announce": {
+      "movedVariable": "Moved “{{name}}” and the blocks that use it",
       "imported": "Turned the text into blocks",
       "loadedExample": "Loaded the example",
       "cleared": "Cleared the command",
@@ -9308,6 +9309,11 @@
       "tooLong": "That text is too long (up to 10,000 characters)."
     },
     "inspector": {
+      "pickVar": "Pick a variable from this command",
+      "savedIn": "Where it was saved",
+      "readSetHere": "Reads the value a Set variable block in this command gives it.",
+      "readEmpty": "Nothing in this command sets “{{name}}” for this run, so it will be empty. Add a Set variable block before it, or pick where another command saved it.",
+      "readElsewhere": "Reads what was saved ({{where}}) by another command or an earlier run. Pick the same place it was saved; the same name in another place is a different variable.",
       "actions": "Block actions",
       "addAfter": "Add after this",
       "addElseIf": "+ Add “else if”",

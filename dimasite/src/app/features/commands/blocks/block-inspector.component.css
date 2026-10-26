@@ -133,6 +133,10 @@
   margin: 0;
 }
 
+.insp__note--solo {
+  margin: 0;
+}
+
 .insp__syntax code,
 .insp__code code,
 .insp__example code,
@@ -356,6 +360,26 @@
   border-color: #7c3aed;
   background: #7c3aed;
   color: #fff;
+}
+
+.var-pick {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: baseline;
+}
+
+.var-pick__name {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.var-pick__where {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.seg__btn[aria-pressed='true'] .var-pick__where {
+  color: rgba(255, 255, 255, 0.85);
 }
 
 .insp__code summary {

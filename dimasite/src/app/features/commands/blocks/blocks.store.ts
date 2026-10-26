@@ -6,6 +6,7 @@ import {
   type BlockNode,
   type DropTarget,
   type RootNode,
+  type VarStorage,
   cloneNode,
   containsId,
   countBlocks,
@@ -14,8 +15,10 @@ import {
   findParent,
   group,
   insertNode,
+  isPerViewer,
   lit,
   moveNode,
+  moveVariable,
   patchNode,
   removeNode
 } from './blocks.model';
@@ -219,6 +222,20 @@ export class BlocksStore {
 
   patch(id: string, patch: Partial<BlockNode>): void {
     this.commit(patchNode(this.root(), id, patch));
+  }
+
+  /**
+   * Where a variable is kept. Changing it on a Set variable block moves the
+   * blocks that use the same variable too, so they keep reading what it sets.
+   */
+  setVarStorage(id: string, storage: VarStorage): void {
+    const node = findNode(this.root(), id);
+    if (!node || !('storage' in node) || node.storage === storage) return;
+    if (node.type === 'setVar' && node.name) {
+      this.commit(moveVariable(this.root(), node.name, node.storage, storage), this.t('movedVariable', { name: node.name }));
+      return;
+    }
+    this.patch(id, { storage, ...(isPerViewer(storage) ? {} : { userSelector: null }) } as Partial<BlockNode>);
   }
 
   /** Put a node into a single slot (if test, compare side, variable value). */
