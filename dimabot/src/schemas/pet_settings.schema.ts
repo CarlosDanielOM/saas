@@ -10,7 +10,7 @@ export interface PetSettings {
     tts: { enabled: boolean; provider: 'piper' | 'kokoro' | 'fish'; language: 'en' | 'es'; voice: string };
     personality: { source: 'custom' | 'profile'; profileId: string; prompt: string };
     rules: string[];
-    behavior: { respondToChat: boolean; respondToEvents: boolean; cooldownSeconds: number; maxReplyLength: number };
+    behavior: { respondToChat: boolean; respondToEvents: boolean; cooldownSeconds: number; maxReplyLength: number; queueSize: number; askLane: 'independent' | 'tts' };
 }
 
 export interface PetSettingsRecord {
@@ -43,7 +43,9 @@ const settingsSchema = new Schema<PetSettings>({
         respondToChat: { type: Boolean, required: true },
         respondToEvents: { type: Boolean, required: true },
         cooldownSeconds: { type: Number, min: 0, max: 3600, required: true },
-        maxReplyLength: { type: Number, min: 30, max: 500, required: true }
+        maxReplyLength: { type: Number, min: 30, max: 500, required: true },
+        queueSize: { type: Number, min: 1, max: 10, default: 5 },
+        askLane: { type: String, enum: ['independent', 'tts'], default: 'independent' }
     }
 }, { _id: false });
 

@@ -186,14 +186,19 @@ try {
     // Real independent producer holds its Mongo request; pending normal TTS must reserve before waiting.
     await save(settings => ({ ...settings, sources: { independent: true, readTts: true }, tts: { ...settings.tts, enabled: true } }));
     pet.ws.close(); pet = await readyPet();
-    const action = suffix => ({ channelId: channel, operation: 'talk', text: `Independent ${suffix}`, origin: { kind: 'chat-command', id: randomUUID(), occurredAt: new Date().toISOString() }, actionKey: 'dima032', actor: { userId: channel, displayName: 'Fixture' } });
+    // Independent lane: pet.ask with the default askLane. (pet.talk now waits inside the TTS queue itself.)
+    const action = suffix => ({ channelId: channel, operation: 'ask', text: `Independent ${suffix}`, origin: { kind: 'chat-command', id: randomUUID(), occurredAt: new Date().toISOString() }, actionKey: 'dima032', actor: { userId: channel, displayName: 'Fixture' } });
     const admitted = await admitPetAction(action('first')); const independentPlay = await pet.event('pet:play', data => data.requestId === admitted.requestId);
     const waiting = await enqueue('Wait for independent pet');
     await until(async () => (await PetRuntime.findById(ownerId).lean()).ttsReservation?.speechId === waiting, 'shared pending turn');
-    const contenders = await Promise.allSettled([admitPetAction(action('concurrent-a')), admitPetAction(action('concurrent-b'))]);
-    assert.ok(contenders.every(result => result.status === 'rejected' && result.reason.code === 'busy'));
+    // Concurrent independent admissions now wait in the pet queue instead of failing busy.
+    const contenders = await Promise.all([admitPetAction(action('concurrent-a')), admitPetAction(action('concurrent-b'))]);
+    assert.deepEqual(contenders.map(result => result.status), ['queued', 'queued']);
     await playback(pet, independentPlay, 0, 'started'); await playback(pet, independentPlay, 1, 'ended');
     const handoff = await playForSpeech(pet, waiting);
+    // The reserved normal TTS turn goes first; the queued pet requests have not started.
+    for (const contender of contenders) assert.equal((await PetRequest.findById(contender.requestId).lean()).status, 'queued');
+    for (const contender of contenders) assert.equal((await call(`/pets/${channel}/requests/${contender.requestId}/cancel`, 'POST', { commandId: randomUUID() })).status, 'cancelled');
     await command('control', { action: 'skip' }); await idle(); assert.ok(pet.events.some(event => event.event === 'pet:stop' && event.data.requestId === handoff.requestId));
     // Studio-only audio; two scenes deliberately reuse clientId, one exact recipient owns media.
     legacy.ws.close(); await save(settings => ({ ...settings, ttsAudio: 'overlay' }));
@@ -259,7 +264,8 @@ try {
         await pause(100); assert.ok((await PetRuntime.findById(ownerId).lean()).ttsReservation);
         assert.equal(liveStudio().some(client => client.events.some(event => event.event === 'overlay-event' && event.data.tts?.speechID === offlineSpeech && event.data.media)), false);
         await save(settings => ({ ...settings, appearance: { kind: 'png', idleAssetId: String(asset), talkingAssetId: String(asset) } }));
-        await assert.rejects(admitPetAction(action('reconnected-during-overlay')), error => error.code === 'busy');
+        // The save dropped the pet lease; queued admission reports the missing player (it never bypasses the reserved TTS turn).
+        await assert.rejects(admitPetAction(action('reconnected-during-overlay')), error => error.code === 'player_unavailable');
         assert.equal(await redis.get(`twitch:${channel}:tts:processing`), offlineSpeech);
         offlineLegacy.emit('speech-ended', { speechID: offlineSpeech, reason: 'ended' }); await idle();
     }
@@ -301,7 +307,9 @@ try {
     await redis.set('dima032:test:long-audio', 'true'); const longStarted = Date.now(), longSpeech = await enqueue('Long normal audio must stay protected');
     const longDelivery = await studioDelivery(longSpeech); await redis.del('dima032:test:long-audio');
     const longRuntime = await PetRuntime.findById(ownerId).lean(); assert.ok(longRuntime.ttsReservation.expiresAt.getTime() >= longStarted + 510000);
-    assert.equal((await separateProducer({ action: action('paused-long-media'), now: longStarted + 241000 })).error, 'busy');
+    // No pet player is connected here (ttsAudio overlay save dropped the lease), so the producer rejects instead of
+    // queueing. The reserved-turn fence for queued pet work is exercised above (concurrent contenders stay queued).
+    assert.equal((await separateProducer({ action: action('paused-long-media'), now: longStarted + 241000 })).error, 'player_unavailable');
     const longPublic = longDelivery.client.namespace.split('/').at(-1);
     const longFull = await call(`/overlay-studio/public/${longPublic}/events/${longDelivery.event.id}?` + new URLSearchParams({ clientId: longDelivery.client.auth.clientId, socketId: longDelivery.client.socketId }));
     assert.equal(longFull.tts.durationMs, 60000); const longMedia = await fetch(base + longFull.media.url); assert.equal(longMedia.status, 200);

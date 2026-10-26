@@ -1,6 +1,7 @@
 import { PetRequest, PetRuntime, PET_TERMINAL, type PetRequestRecord } from '../schemas/pet_runtime.schema.js';
 import { petWakeups } from './wakeups.js';
 import { readTtsTerminal, invalidateReadTts } from './tts_bridge.js';
+import { petLaneTerminal } from './tts_lane.js';
 import { PetReadiness } from './readiness.schema.js';
 
 export { PET_WAKE } from './wakeups.js';
@@ -20,7 +21,9 @@ export async function notifyPet(ownerId: string): Promise<void> {
 }
 export function requestView(request: PetRequestRecord | null) {
     if (!request) return null;
-    return { requestId: request._id, operation: request.operation, status: request.status, version: request.version,
+    // Released desktop/browser players only know the original statuses. A request is
+    // briefly linked as active before its queued -> accepted update lands.
+    return { requestId: request._id, operation: request.operation, status: request.status === 'queued' ? 'accepted' as const : request.status, version: request.version,
         ...(request.outputText ? { text: request.outputText } : {}), ...(request.errorCode ? { errorCode: request.errorCode } : {}) };
 }
 export async function finishRequest(id: string, status: 'completed' | 'cancelled' | 'failed' | 'expired', errorCode?: string, expected?: { ownerId: string; generation: number }) {
@@ -30,6 +33,7 @@ export async function finishRequest(id: string, status: 'completed' | 'cancelled
     if (request) {
         await PetRuntime.updateOne({ _id: request.ownerId, activeRequestId: id, ...(expected ? { generation: expected.generation } : {}) }, { $set: { activeRequestId: null }, $unset: { admissionClaimId: 1 } });
         await readTtsTerminal(request);
+        petLaneTerminal(request);
         await notifyPet(request.ownerId);
     }
     return request;

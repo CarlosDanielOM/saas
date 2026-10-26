@@ -25,8 +25,8 @@ function petHandler(operation: 'talk' | 'ask'): FunctionHandler {
 export function registerPetFunctions(): void {
     for (const operation of ['talk', 'ask'] as const) registerFunction(`pet.${operation}`, petHandler(operation), {
         description: operation === 'talk'
-            ? 'Speaks supplied text through the pet speech queue without an LLM. Requires a configured command or Twitch event action.'
-            : 'Asks the pet personality for a reply, then speaks it through the pet speech queue. Requires a configured command or Twitch event action.',
+            ? 'Speaks supplied text with the pet voice, without an LLM. Waits its turn in the TTS queue, in order with normal TTS messages. Requires a configured command or Twitch event action.'
+            : 'Asks the pet personality for a reply, then speaks it. Waits in the TTS queue or the pet queue, as set on the Pet page. Requires a configured command or Twitch event action.',
         syntax: `pet.${operation} ${operation === 'talk' ? 'text' : 'prompt'}`,
         category: 'pet', planTier: 'premium', surfaces: ['authoring'],
         examples: [`pet.${operation} ${operation === 'talk' ? 'Hello chat!' : 'Welcome our new follower!'}`],

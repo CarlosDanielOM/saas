@@ -72,3 +72,10 @@ test('R8 finishRequest clears its exact runtime link while preserving lease and 
     assert.equal((await finishRequest('request-a','cancelled','tts_ended',{ownerId:owner,generation:7}))?.status,'cancelled');
     assert.deepEqual(runtime,{...previous,activeRequestId:null});
 });
+
+test('released players never see the internal queued status', async () => {
+    const { requestView } = await import('./state.js');
+    const view = requestView({ _id: 'request-q', operation: 'talk', status: 'queued', version: 1 } as never);
+    assert.equal(view!.status, 'accepted');
+    assert.equal(requestView({ _id: 'request-r', operation: 'ask', status: 'playing', version: 3 } as never)!.status, 'playing');
+});

@@ -136,6 +136,10 @@
             <label class="toggle row-toggle"><span>{{ t('respondToChat') }}</span><input type="checkbox" formControlName="respondToChat"></label>
             <label class="toggle row-toggle"><span>{{ t('respondToEvents') }}</span><input type="checkbox" formControlName="respondToEvents"></label>
             <div class="field-pair"><label class="field">{{ t('cooldown') }}<input type="number" min="0" max="3600" step="1" formControlName="cooldownSeconds"></label><label class="field">{{ t('maxLength') }}<input type="number" min="30" max="500" step="1" formControlName="maxReplyLength"></label></div>
+            <label class="field">{{ t('askLane') }}<select formControlName="askLane" [attr.aria-label]="t('askLane')" aria-describedby="ask-lane-help"><option value="tts">{{ t('askLaneTts') }}</option><option value="independent">{{ t('askLaneIndependent') }}</option></select></label>
+            <p id="ask-lane-help">{{ t(draft().behavior.askLane === 'tts' ? 'askLaneTtsHint' : 'askLaneIndependentHint') }}</p>
+            <label class="field">{{ t('queueSize') }}<input type="number" min="1" max="10" step="1" formControlName="queueSize" aria-describedby="queue-help"></label>
+            <p id="queue-help">{{ t('queueHint') }}</p>
           </section>
         </div>
 

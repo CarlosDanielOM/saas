@@ -1,4 +1,6 @@
 export type PetProvider = 'piper' | 'kokoro' | 'fish';
+/** Where $(pet.ask) waits: the shared TTS queue, or the pet's own queue. $(pet.talk) always uses the TTS queue. */
+export type PetAskLane = 'independent' | 'tts';
 
 export interface PetSettings {
   enabled: boolean;
@@ -10,7 +12,7 @@ export interface PetSettings {
   tts: { enabled: boolean; provider: PetProvider; language: 'en' | 'es'; voice: string };
   personality: { source: 'custom' | 'profile'; profileId: string; prompt: string };
   rules: string[];
-  behavior: { respondToChat: boolean; respondToEvents: boolean; cooldownSeconds: number; maxReplyLength: number };
+  behavior: { respondToChat: boolean; respondToEvents: boolean; cooldownSeconds: number; maxReplyLength: number; queueSize: number; askLane: PetAskLane };
 }
 
 export interface PetConfiguration {

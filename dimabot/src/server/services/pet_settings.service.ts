@@ -8,6 +8,7 @@ import { findAsset, registerAssetConsumer, withAssetLibrary } from '../../assets
 import { invalidatePet } from '../../pets/state.js';
 import { validatePetSessions } from '../../pets/peers.js';
 import { hasSharedVtsReadiness } from '../../pets/readiness.js';
+import { PET_DEFAULT_QUEUE_SIZE, PET_MAX_QUEUE_SIZE } from '../../pets/queue_limits.js';
 import UsersSchema from '../../schemas/users.schema.js';
 
 export class PetSettingsError extends Error {
@@ -36,7 +37,7 @@ export function defaultPetSettings(): PetSettings {
         playback: { target: 'browser', desktopSessionId: null, vtsSessionId: null }, enabled: false, name: 'Dima',
         tts: { enabled: true, provider: 'piper', language: 'es', voice: 'es_MX-ald-medium' },
         personality: { source: 'custom', profileId: '', prompt: 'You are a friendly, playful virtual companion. Keep replies short and respectful.' },
-        rules: [], behavior: { respondToChat: true, respondToEvents: true, cooldownSeconds: 15, maxReplyLength: 280 } };
+        rules: [], behavior: { respondToChat: true, respondToEvents: true, cooldownSeconds: 15, maxReplyLength: 280, queueSize: PET_DEFAULT_QUEUE_SIZE, askLane: 'independent' } };
 }
 
 function object(value: unknown, keys: string[]): Record<string, unknown> {
@@ -74,7 +75,9 @@ export function validatePetSettings(input: unknown): PetSettings {
     };
     const tts = object(value.tts, ['enabled', 'provider', 'language', 'voice']);
     const personality = object(value.personality, ['source', 'profileId', 'prompt']);
-    const behavior = object(value.behavior, ['respondToChat', 'respondToEvents', 'cooldownSeconds', 'maxReplyLength']);
+    const behavior = object(value.behavior, ['respondToChat', 'respondToEvents', 'cooldownSeconds', 'maxReplyLength', 'queueSize', 'askLane']);
+    const askLane = behavior.askLane ?? 'independent';
+    if (askLane !== 'independent' && askLane !== 'tts') throw new PetSettingsError('invalid_settings');
     if (!['piper', 'kokoro', 'fish'].includes(String(tts.provider)) || !['en', 'es'].includes(String(tts.language)) ||
         !['custom', 'profile'].includes(String(personality.source))) throw new PetSettingsError('invalid_settings');
     const voice = text(tts.voice, 100);
@@ -92,7 +95,8 @@ export function validatePetSettings(input: unknown): PetSettings {
             prompt: text(personality.prompt, 4000, personality.source === 'profile') },
         rules: value.rules.map(rule => text(rule, 300)),
         behavior: { respondToChat: bool(behavior.respondToChat), respondToEvents: bool(behavior.respondToEvents),
-            cooldownSeconds: integer(behavior.cooldownSeconds, 0, 3600), maxReplyLength: integer(behavior.maxReplyLength, 30, 500) } };
+            cooldownSeconds: integer(behavior.cooldownSeconds, 0, 3600), maxReplyLength: integer(behavior.maxReplyLength, 30, 500),
+            queueSize: integer(behavior.queueSize ?? PET_DEFAULT_QUEUE_SIZE, 1, PET_MAX_QUEUE_SIZE), askLane } };
 }
 
 export async function getPetConfiguration(userId: string, channelID: string) {
@@ -107,6 +111,8 @@ export async function getPetConfiguration(userId: string, channelID: string) {
         ttsAudio: record?.settings.ttsAudio ?? 'pet',
         appearance: record?.settings.appearance ?? defaultPetSettings().appearance,
         playback: record?.settings.playback ?? defaultPetSettings().playback };
+    // Saved before the queue settings existed: normalize on read without writing.
+    settings.behavior = { ...settings.behavior, queueSize: settings.behavior.queueSize ?? PET_DEFAULT_QUEUE_SIZE, askLane: settings.behavior.askLane ?? 'independent' };
     const profiles = (personality?.profiles ?? []).map(profile => ({ id: profile.profileID, name: profile.name }));
     const profile = settings.personality.source === 'profile' ?
         personality?.profiles.find(item => item.profileID === settings.personality.profileId) : null;

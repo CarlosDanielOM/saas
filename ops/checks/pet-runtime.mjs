@@ -185,7 +185,7 @@ if (mongoOnlyRecovery) {
   const started = Date.now();
   const produced = await separateProducer(action('Mongo-only durable recovery'));
   assert.ok(produced.result, JSON.stringify(produced));
-  assert.equal(produced.result.status, 'accepted');
+  assert.equal(produced.result.status, 'queued', 'producers queue; only the API starts requests');
   assert.ok(produced.elapsedMs < 2000, 'disabled hints must not delay admission');
   const requestId = produced.result.requestId;
   const play = await desktop.event('pet:play', data => data.requestId === requestId, 25_000);
@@ -242,7 +242,12 @@ const media = await fetch(base + new URL(play.audio.url).pathname + new URL(play
 assert.equal(media.status, 200); assert.equal((await media.arrayBuffer()).byteLength, 16044);
 assert.match(media.headers.get('cache-control'), /no-store/);
 assert.equal((await fetch(base + `/pets/playback/${requestId}/audio`)).status, 401);
-await assert.rejects(admitPetAction(action('Busy')), /busy/);
+// A busy pet queues new requests (TTS queue for pet.talk) instead of failing busy.
+const waitingTalk = await admitPetAction(action('Busy'));
+assert.equal(waitingTalk.status, 'queued');
+assert.equal((await PetRequest.findById(waitingTalk.requestId).lean()).lane, 'tts');
+assert.equal((await call(`/pets/${owner}/requests/${waitingTalk.requestId}/cancel`, { method: 'POST', token: 'pet-owner-token', body: { commandId: randomUUID() } })).status, 200);
+assert.equal((await PetRequest.findById(waitingTalk.requestId).lean()).status, 'cancelled', 'a queued request can be cancelled before it starts');
 assert.equal((await desktop.send('pet:playback', identityFor(play, 0))).ok, true);
 await until(() => PetRequest.findOne({ _id: requestId, status: 'playing' }).lean(), 'persist actual playing');
 const mouth = { ...identityFor(play, 0), value: 0.5 }; delete mouth.phase;
@@ -263,7 +268,8 @@ assert.equal(firstBilling[0].external_id, `${requestId}:tts`);
 assert.equal(firstBilling[0].metadata.request_id, `${requestId}:tts`);
 assert.equal(firstBilling[0].metadata.usage_source, 'pet');
 // Redis is advisory even in a real producer process: a refused connection cannot delay Mongo admission.
-const outage = await separateProducer(action('Durable admission while Redis hints are unavailable'), { DRAGONFLY_PORT: '1' });
+// pet.talk needs Redis for its TTS queue item; an independent pet.ask is Mongo-only.
+const outage = await separateProducer(action('Durable admission while Redis hints are unavailable', 'ask'), { DRAGONFLY_PORT: '1' });
 assert.ok(outage.result, JSON.stringify(outage));
 assert.ok(outage.elapsedMs < 2000, 'Mongo acceptance must not wait for Redis connect/reconnect');
 // Explicitly prompt the healthy API after proving producer acceptance (recovery also remains enabled).

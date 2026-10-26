@@ -6,7 +6,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { catchError, distinctUntilChanged, firstValueFrom, map, of, switchMap } from 'rxjs';
-import { PetConfiguration, PetProvider, PetSettings } from '../../models/pet-settings.model';
+import { PetAskLane, PetConfiguration, PetProvider, PetSettings } from '../../models/pet-settings.model';
 import { PetSettingsApiService } from '../../services/pet-settings-api.service';
 import { LanguageService } from '../../services/language.service';
 import { SessionAuthService } from '../../services/session-auth.service';
@@ -79,7 +79,9 @@ export class PetPageComponent {
     respondToChat: true,
     respondToEvents: true,
     cooldownSeconds: [15, [Validators.required, Validators.min(0), Validators.max(3600), Validators.pattern(/^\d+$/)]],
-    maxReplyLength: [280, [Validators.required, Validators.min(30), Validators.max(500), Validators.pattern(/^\d+$/)]]
+    maxReplyLength: [280, [Validators.required, Validators.min(30), Validators.max(500), Validators.pattern(/^\d+$/)]],
+    queueSize: [5, [Validators.required, Validators.min(1), Validators.max(10), Validators.pattern(/^\d+$/)]],
+    askLane: this.fb.control<PetAskLane>('independent')
   });
   private readonly values = toSignal(this.form.valueChanges, { initialValue: this.form.getRawValue() });
   readonly streamer = toSignal(this.route.paramMap.pipe(map(() => getRouteParam(this.route, 'streamer') ?? ''), distinctUntilChanged()), { initialValue: '' });
@@ -99,7 +101,8 @@ export class PetPageComponent {
       personality: { source: value.personalitySource, profileId: value.profileId, prompt: value.prompt.trim() },
       rules: value.rules.split('\n').map(rule => rule.trim()).filter(Boolean),
       behavior: { respondToChat: value.respondToChat, respondToEvents: value.respondToEvents,
-        cooldownSeconds: Number(value.cooldownSeconds), maxReplyLength: Number(value.maxReplyLength) } };
+        cooldownSeconds: Number(value.cooldownSeconds), maxReplyLength: Number(value.maxReplyLength),
+        queueSize: Number(value.queueSize), askLane: value.askLane } };
   });
   readonly dirty = computed(() => !!this.config() && JSON.stringify(this.draft()) !== this.initialDraft());
   readonly voices = computed(() => (this.config()?.voices ?? []).filter(voice => voice.provider === this.draft().tts.provider &&
@@ -151,7 +154,8 @@ export class PetPageComponent {
       speechEnabled: settings.tts.enabled,
       provider: settings.tts.provider, language: settings.tts.language, voice: settings.tts.voice,
       personalitySource: settings.personality.source, profileId: settings.personality.profileId, prompt: settings.personality.prompt,
-      rules: settings.rules.join('\n'), ...settings.behavior });
+      rules: settings.rules.join('\n'), ...settings.behavior,
+      queueSize: settings.behavior.queueSize ?? 5, askLane: settings.behavior.askLane ?? 'independent' });
     this.initialDraft.set(JSON.stringify(this.draft()));
     this.error.set('');
   }

@@ -42,7 +42,9 @@ Content-Type: application/json
       "respondToChat": true,
       "respondToEvents": true,
       "cooldownSeconds": 15,
-      "maxReplyLength": 280
+      "maxReplyLength": 280,
+      "queueSize": 5,
+      "askLane": "independent"
     }
   }
 }
@@ -84,7 +86,7 @@ This route is bound to the Twitch account that approved the OAuth grant; it take
       "prompt": "You are a friendly, playful virtual companion. Keep replies short and respectful."
     },
     "rules": [],
-    "behavior": { "respondToChat": true, "respondToEvents": true, "cooldownSeconds": 15, "maxReplyLength": 280 }
+    "behavior": { "respondToChat": true, "respondToEvents": true, "cooldownSeconds": 15, "maxReplyLength": 280, "queueSize": 5, "askLane": "independent" }
   },
   "runtime": {
     "enabled": false,

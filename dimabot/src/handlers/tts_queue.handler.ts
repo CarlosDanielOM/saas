@@ -38,6 +38,7 @@ import { promiseWithTimeout } from "../utils/tts/tts_deadline.util.js";
 import { getTtsPlaybackTimeoutMs } from "../utils/tts/tts_playback_timeout.util.js";
 import { trackAiOperation } from "../utils/posthog_events.js";
 import { enqueueTtsSession, popTtsSession } from '../utils/tts/tts_session.util.js';
+import { petLaneItem, startPetLaneTurn, endPetLaneTurn, type PetLaneItem } from '../pets/tts_lane.js';
 
 const TTS_PROCESSING_TTL_SECONDS = 150;
 const DEFAULT_TTS_SYNTHESIS_TIMEOUT_MS = 45_000;
@@ -120,6 +121,8 @@ class TtsQueueHandler {
   private interruptedSpeechIds = new Map<string, string>();
   private currentTimeouts = new Map<string, NodeJS.Timeout>();
   private readTtsOwners = new Map<string, { speechId: string; source: string; emitted: boolean }>();
+  /** Queue items spoken by the pet ($(pet.talk), TTS-lane $(pet.ask)); the queue waits for the pet to finish. */
+  private petTurns = new Map<string, { speechID: string; item: PetLaneItem; reason?: string }>();
   private playbackPositions = new Map<string, number>();
   private currentFiles = new Map<string, string>();
   private fileCleanupTimeouts = new Map<string, NodeJS.Timeout>();
@@ -167,6 +170,7 @@ class TtsQueueHandler {
   }
 
   async handleOverlayDisconnected(channelID: string): Promise<void> {
+    if (this.petTurns.has(channelID)) return; // The pet, not the speech overlay, plays this item.
     const owner = this.readTtsOwners.get(channelID);
     if (owner) {
       if (!owner.emitted || !owner.source.startsWith('legacy:')) return;
@@ -295,7 +299,7 @@ class TtsQueueHandler {
           this.processingChannels.delete(channelID);
           return;
         }
-        if (!await this.hasOverlayConnection(channelID)) {
+        if (!await this.hasOverlayConnection(channelID) && !await this.petHeadReady(channelID)) {
           this.processingChannels.delete(channelID);
           this.interruptedSpeechIds.delete(channelID);
           return; // Preserve waiting requests until an overlay reconnects.
@@ -348,6 +352,12 @@ class TtsQueueHandler {
 
         if (this.controls.has(channelID) || this.interruptedSpeechIds.get(channelID) === speechID) {
           await this.cleanupSpeech(channelID, speechID, true); continue;
+        }
+        const petItem = petLaneItem(queueItem);
+        if (petItem) {
+          this.headClaims.delete(channelID); // Pet items never create a read-TTS head.
+          if (await this.runPetItem(channelID, speechID, petItem)) return;
+          continue;
         }
         if (!await this.hasOverlayConnection(channelID)) {
           if (await isReadTtsConfigured(channelID)) { await this.requeueUnspoken(channelID, queueItem); return; }
@@ -652,6 +662,8 @@ class TtsQueueHandler {
       });
       if (activeSpeechID) {
         // Best effort: the local lock below must always be dropped.
+        const petTurn = this.petTurns.get(channelID);
+        if (petTurn?.speechID === activeSpeechID) { this.petTurns.delete(channelID); await endPetLaneTurn(petTurn.item, 'failed').catch(() => {}); }
         await releaseReadTts(channelID, activeSpeechID).catch(() => {});
         await endStudioReadTts(channelID, activeSpeechID).catch(() => {});
         this.retireReadOwner(channelID, activeSpeechID);
@@ -671,6 +683,36 @@ class TtsQueueHandler {
         // Drop the in-memory lock even when Redis is unavailable.
       }
     } finally { const freedClaim = this.headClaims.delete(channelID); this.wakeCapacityWaiters(freedClaim); }
+  }
+
+  /** The next waiting item is a pet item; it needs the pet player, not a speech overlay. */
+  private async petHeadReady(channelID: string): Promise<boolean> {
+    const [speechID] = await this.cache!.zRange(`twitch:${channelID}:tts:queue`, 0, 0);
+    if (!speechID) return false;
+    const raw = await this.cache!.get(`twitch:${channelID}:tts:queue:data:${speechID}`);
+    try { return !!raw && !!petLaneItem(JSON.parse(raw)); } catch { return false; }
+  }
+  /**
+   * Hand one queue item to the pet and hold the queue until the pet request
+   * ends. Returns false when the item did not start (the loop moves on).
+   */
+  private async runPetItem(channelID: string, speechID: string, item: PetLaneItem): Promise<boolean> {
+    this.petTurns.set(channelID, { speechID, item });
+    observe('queue_wait', 'tts.pet', 0, 'ok', channelID);
+    await this.cache!.set(`twitch:${channelID}:tts:processing`, speechID, { EX: TTS_PROCESSING_TTL_SECONDS });
+    const cancelled = () => this.controls.has(channelID) || this.interruptedSpeechIds.get(channelID) === speechID || this.activeSpeechIds.get(channelID) !== speechID;
+    let turn: Awaited<ReturnType<typeof startPetLaneTurn>> = null;
+    try { turn = await startPetLaneTurn({ channelId: channelID, speechId: speechID, item, cancelled }); }
+    catch (error) { console.error('Pet TTS-queue turn failed to start', { channelID, speechID, error: error instanceof Error ? error.message : String(error) }); }
+    if (!turn || cancelled()) { await this.cleanupSpeech(channelID, speechID, true); return false; }
+    this.dispatchedSpeechIds.set(channelID, speechID);
+    // Watchdog: pet phases are each capped at 60 s (reply, voice, audio) plus delivery slack.
+    this.armPlaybackTimeout(channelID, speechID, 240_000);
+    console.log('TTS queue handed item to pet', { channelID, speechID, operation: item.operation });
+    void turn.done.then(reason => this.handleSpeechEnded(channelID, speechID, reason)).catch(error => {
+      console.error('Pet TTS-queue turn cleanup failed', { channelID, speechID, error });
+    });
+    return true;
   }
 
   private adoptReadHead(channel: string, item: TtsQueueItem, session: string | null): boolean {
@@ -790,7 +832,7 @@ class TtsQueueHandler {
         if (busy()) continue;
         probes++;
         if (!await this.cache!.zCard(`twitch:${channel}:tts:queue`)) continue;
-        if (busy() || !await this.hasOverlayConnection(channel) || busy()) continue;
+        if (busy() || !await this.hasOverlayConnection(channel) && !await this.petHeadReady(channel) || busy()) continue;
         // processNext revalidates output/session/control/capacity before a provider.
         // Never resumeIfIdle here: an empty/offline probe must not schedule itself.
         void this.processNext(channel);
@@ -992,6 +1034,8 @@ class TtsQueueHandler {
     }
     this.dispatchedSpeechIds.delete(channelID);
     this.activeSpeechIds.delete(channelID);
+    const petTurn = this.petTurns.get(channelID);
+    if (petTurn?.speechID === speechID) petTurn.reason = reason;
     const owner = this.readTtsOwners.get(channelID);
     if (owner?.speechId === speechID) {
       this.readTtsOwners.delete(channelID);
@@ -1107,7 +1151,13 @@ class TtsQueueHandler {
     this.retireReadOwner(channelID, speechID);
     // External failures are reported after local cleanup, never instead of it.
     let failure: unknown;
-    try { await releaseReadTts(channelID, speechID); } catch (error) { failure = error; }
+    const petTurn = this.petTurns.get(channelID);
+    if (petTurn?.speechID === speechID) {
+      this.petTurns.delete(channelID);
+      // Skip/clear/timeout stop the pet; a pet that already finished is left untouched.
+      try { await endPetLaneTurn(petTurn.item, petTurn.reason ?? 'skipped'); } catch (error) { failure = error; }
+    }
+    try { await releaseReadTts(channelID, speechID); } catch (error) { failure ??= error; }
     const timeoutKey = `${channelID}:${speechID}`;
     if (!this.controls.has(channelID) && this.interruptedSpeechIds.get(channelID) === speechID) this.interruptedSpeechIds.delete(channelID);
     if (this.dispatchedSpeechIds.get(channelID) === speechID) this.dispatchedSpeechIds.delete(channelID);

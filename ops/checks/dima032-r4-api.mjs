@@ -158,9 +158,10 @@ try {
     // Only its fixture deadline is extended so slow diagnostics do not expire it.
     await save(settings=>({...settings,enabled:true,sources:{independent:true,readTts:true},tts:{...settings.tts,enabled:true}}));
     const pet=await readyPet();
-    const independent=await separateProducer({action:{channelId:channel,operation:'talk',text:'Independent stays playing',
+    // Independent lane (pet.ask): TTS controls must not stop it. pet.talk would be a TTS queue item.
+    const independent=await separateProducer({action:{channelId:channel,operation:'ask',text:'Independent stays playing',
         origin:{kind:'chat-command',id:randomUUID(),occurredAt:new Date().toISOString()},actionKey:'dima032-r4',actor:{userId:channel,displayName:'Fixture'}}});
-    assert.equal(independent.status,'accepted');const play=await pet.event('pet:play',data=>data.requestId===independent.requestId);
+    assert.equal(independent.status,'queued');const play=await pet.event('pet:play',data=>data.requestId===independent.requestId);
     assert.equal((await playback(pet,play,0,'started')).ok,true);
     await PetRequest.updateOne({_id:play.requestId,status:'playing'},{$set:{phaseDeadline:new Date(Date.now()+120000)}});
     for(const stage of ['reserve','independent'])for(const action of ['skip','clear','stream-end']) {

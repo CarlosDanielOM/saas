@@ -39,13 +39,25 @@ async function produce(input) {
     const result = JSON.parse(line.slice('DIMA032_PRODUCER:'.length)); assert.notEqual(result.pid, process.pid); assert.equal(result.peers, 0); return result;
 }
 try {
+    // A pending normal-TTS reservation no longer rejects: pet.talk joins the TTS queue from bot/cron AST.
     const pending = await Promise.all([produce({ ast: true, action: action('chat-command') }), produce({ ast: true, action: action('twitch-event') })]);
-    assert.ok(pending.every(result => result.result.value === 'Error: busy'), JSON.stringify(pending));
-    assert.equal(await PetRequest.countDocuments({ ownerId }), 0, 'pending reservation rejects bot/cron AST before request/provider dispatch');
+    assert.ok(pending.every(result => result.result.value === ''), JSON.stringify(pending));
+    const laneRows = await PetRequest.find({ ownerId }).lean();
+    assert.equal(laneRows.length, 2); assert.ok(laneRows.every(row => row.status === 'queued' && row.lane === 'tts' && !row.admitted));
+    for (const row of laneRows) {
+        const item = JSON.parse(await redis.get(`twitch:${channel}:tts:queue:data:${row.ttsSpeechId}`));
+        assert.deepEqual(item.pet, { requestId: row._id, ownerId, operation: 'talk' });
+        assert.equal(await redis.zScore(`twitch:${channel}:tts:queue`, row.ttsSpeechId), row.createdAt.getTime(), 'TTS queue order is admission time');
+    }
+    assert.equal((await PetRuntime.findById(ownerId).lean()).activeRequestId, null, 'producers never take the active slot or dispatch providers');
     await PetRuntime.updateOne({ _id: ownerId }, { $set: { ttsReservation: null } });
-    const race = await Promise.all([produce({ ast: false, action: action() }), produce({ ast: false, action: action('twitch-event') })]);
-    assert.equal(race.filter(result => result.result.status === 'accepted').length, 1); assert.equal(race.filter(result => result.result.error === 'busy').length, 1);
-    assert.equal(await PetRequest.countDocuments({ ownerId, admitted: true }), 1);
+    // Concurrent independent pet.ask producers race the real Mongo queue limit: exactly one stays queued.
+    await PetSettingsSchema.updateOne({ userId: user.insertedId }, { $set: { 'settings.behavior.queueSize': 1, 'settings.behavior.askLane': 'independent' } });
+    const ask = kind => ({ ...action(kind), operation: 'ask' });
+    const race = await Promise.all([produce({ ast: false, action: ask('chat-command') }), produce({ ast: false, action: ask('twitch-event') })]);
+    assert.equal(race.filter(result => result.result?.status === 'queued').length, 1, JSON.stringify(race)); assert.equal(race.filter(result => result.result?.error === 'queue_full').length, 1, JSON.stringify(race));
+    assert.equal(await PetRequest.countDocuments({ ownerId, status: 'queued', lane: 'independent' }), 1);
+    assert.equal(await PetRequest.countDocuments({ ownerId, admitted: true }), 0);
     await PetSettingsSchema.updateOne({ userId: user.insertedId }, { $set: { 'settings.sources.independent': false } });
     const disabled = await produce({ ast: true, action: action() }); assert.equal(disabled.result.value, 'Error: pet_source_disabled');
     // Changed cron consumer: actual compiled stream.ended -> clearSpeechFiles,

@@ -2,6 +2,11 @@ import { createHash, randomUUID } from 'node:crypto';
 import Users from '../schemas/users.schema.js';
 import { PetRequest, PetRuntime, PET_TERMINAL, type PetRequestRecord } from '../schemas/pet_runtime.schema.js';
 import { getPetConfiguration } from '../server/services/pet_settings.service.js';
+import { PET_DEFAULT_QUEUE_SIZE, PET_QUEUE_WAIT_MS } from './queue_limits.js';
+import { enqueuePetLaneItem, ttsQueueLength } from './tts_lane.js';
+import { getChannelTtsSettings } from '../schemas/channel_tts_settings.schema.js';
+import { getDragonflyClient } from '../utils/databases/dragonfly.database.js';
+import { generateSpeechID } from '../utils/tts/generate_speech_id.util.js';
 import { PetError, notifyPet, runtimeFor } from './state.js';
 
 /** Internal trusted effect only. Source identity must be derived by the command/event engine. */
@@ -28,6 +33,7 @@ export async function admitPetAction(input: AdmitPetActionInput): Promise<{ requ
     await PetRequest.init();
     const outcome = (record: PetRequestRecord) => {
         if (record.errorCode === 'busy') throw new PetError('busy', 409);
+        if (record.errorCode === 'queue_full') throw new PetError('queue_full', 429);
         if (record.errorCode === 'admission_expired') throw new PetError('admission_expired', 409);
         return { requestId: record._id, status: record.status };
     };
@@ -95,6 +101,7 @@ export async function admitPetAction(input: AdmitPetActionInput): Promise<{ requ
         if (!record) return null;
         if (record.payloadHash !== payloadHash) throw new PetError('idempotency_conflict', 409);
         if (record.errorCode === 'busy') throw new PetError('busy', 409);
+        // Queued rows are already durable; only legacy accepted rows resolve the runtime slot here.
         return resolveAdmission(record);
     };
     const prior = await duplicate();
@@ -106,18 +113,40 @@ export async function admitPetAction(input: AdmitPetActionInput): Promise<{ requ
     if (!(input.origin.kind === 'chat-command' ? settings.behavior.respondToChat : settings.behavior.respondToEvents)) throw new PetError('trigger_disabled', 403);
     if (input.operation === 'talk' && input.text.length > settings.behavior.maxReplyLength) throw new PetError('text_too_long');
     const runtime = await runtimeFor(ownerId, input.channelId);
-    if (runtime.ttsReservation && runtime.ttsReservation.expiresAt.getTime() > Date.now()) throw new PetError('busy', 409);
-    if (runtime.activeRequestId) throw new PetError('busy', 409);
+    // Like the TTS queue, a missing player rejects; a busy pet, pending TTS turn or cooldown waits in line.
     if (!runtime.lease || runtime.lease.expiresAt.getTime() <= Date.now()) throw new PetError('player_unavailable', 409);
-    if (runtime.lastAcceptedAt && runtime.lastAcceptedAt.getTime() + settings.behavior.cooldownSeconds * 1000 > Date.now()) throw new PetError('cooldown', 429);
+    // pet.talk always keeps its place among normal TTS messages; pet.ask follows the owner's choice.
+    const lane = input.operation === 'talk' || settings.behavior.askLane === 'tts' ? 'tts' : 'independent';
+    const queueSize = lane === 'tts' ? (await getChannelTtsSettings(input.channelId)).queue.maxItems : settings.behavior.queueSize ?? PET_DEFAULT_QUEUE_SIZE;
+    const cache = lane === 'tts' ? await getDragonflyClient('pet-tts-lane') : null;
+    const waiting = () => cache ? ttsQueueLength(cache, input.channelId) : PetRequest.countDocuments({ ownerId, status: 'queued', lane: { $ne: 'tts' } });
+    if (await waiting() >= queueSize) throw new PetError('queue_full', 429);
     const now = new Date(), requestId = randomUUID();
+    const ttsSpeechId = lane === 'tts' ? `PET${generateSpeechID(13)}` : undefined;
     try {
-        await PetRequest.create({ _id: requestId, ...input, ownerId, payloadHash, status: 'accepted', version: 1,
+        // Only the API runtime starts queued rows (FIFO) in the single active slot.
+        await PetRequest.create({ _id: requestId, ...input, ownerId, payloadHash, status: 'queued', version: 1, lane, ...(ttsSpeechId ? { ttsSpeechId } : {}),
             admitted: false, generation: runtime.generation, settingsRevision: configuration.revision,
-            phaseDeadline: new Date(now.getTime() + 60_000), createdAt: now, expiresAt: new Date(now.getTime() + 7 * 86400_000) });
+            phaseDeadline: new Date(now.getTime() + PET_QUEUE_WAIT_MS), createdAt: now, expiresAt: new Date(now.getTime() + 7 * 86400_000) });
     } catch (error) {
         if ((error as { code?: number }).code === 11000) return (await duplicate())!;
         throw error;
     }
-    return resolveAdmission((await PetRequest.findById(requestId).lean())!);
+    const fail = async (errorCode: string, status: number) => {
+        const rejected = await PetRequest.findOneAndUpdate({ _id: requestId, status: 'queued' }, { $set: { status: 'failed', errorCode }, $inc: { version: 1 } }, { new: true }).lean();
+        if (rejected) throw new PetError(errorCode, status);
+    };
+    if (cache && ttsSpeechId) {
+        // The TTS queue orders by this score, so the pet speaks in arrival order with normal TTS.
+        try { await enqueuePetLaneItem(cache, { channelId: input.channelId, speechId: ttsSpeechId, timestamp: now.getTime(), text: input.text,
+            item: { requestId, ownerId, operation: input.operation } }); }
+        catch { await fail('queue_unavailable', 503); }
+    } else {
+        // Concurrent producers may pass the count together. Rows strictly ahead in FIFO order
+        // decide deterministically, so at most queueSize of them stay queued.
+        const ahead = await PetRequest.countDocuments({ ownerId, status: 'queued', lane: { $ne: 'tts' }, $or: [{ createdAt: { $lt: now } }, { createdAt: now, _id: { $lt: requestId } }] });
+        if (ahead >= queueSize) await fail('queue_full', 429);
+    }
+    await notifyPet(ownerId);
+    return outcome((await PetRequest.findById(requestId).lean())!);
 }

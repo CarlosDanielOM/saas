@@ -1,6 +1,6 @@
 import { Schema, model } from 'mongoose';
 
-export const PET_STATUSES = ['accepted', 'generating', 'synthesizing', 'ready', 'playing', 'completed', 'cancelled', 'failed', 'expired'] as const;
+export const PET_STATUSES = ['queued', 'accepted', 'generating', 'synthesizing', 'ready', 'playing', 'completed', 'cancelled', 'failed', 'expired'] as const;
 export type PetStatus = typeof PET_STATUSES[number];
 export const PET_TERMINAL: PetStatus[] = ['completed', 'cancelled', 'failed', 'expired'];
 export interface PetRequestRecord {
@@ -10,6 +10,8 @@ export interface PetRequestRecord {
     admitted: boolean; startBefore?: Date; generation: number; settingsRevision: number; status: PetStatus; version: number;
     outputText?: string; errorCode?: string; phaseDeadline: Date;
     deliveryAttempted?: boolean; audioFetched?: boolean;
+    /** 'tts' requests wait in the normal TTS queue as item `ttsSpeechId`; others use the pet's own queue. */
+    lane?: 'independent' | 'tts'; ttsSpeechId?: string;
     privateDir?: string; audio?: { path: string; mimeType: 'audio/wav' | 'audio/mpeg'; durationMs: number };
     createdAt: Date; expiresAt: Date;
 }
@@ -18,13 +20,16 @@ const request = new Schema<PetRequestRecord>({
     origin: { kind: String, id: String, occurredAt: String }, actionKey: String,
     actor: { userId: String, displayName: String }, payloadHash: String,
     admitted: { type: Boolean, default: false }, startBefore: Date, generation: Number, settingsRevision: Number, status: { type: String, enum: PET_STATUSES }, version: Number,
-    deliveryAttempted: Boolean, audioFetched: Boolean, privateDir: String, outputText: String, errorCode: String, phaseDeadline: Date,
+    deliveryAttempted: Boolean, audioFetched: Boolean, lane: { type: String, enum: ['independent', 'tts'] }, ttsSpeechId: String, privateDir: String, outputText: String, errorCode: String, phaseDeadline: Date,
     audio: { type: new Schema({ path: String, mimeType: String, durationMs: Number }, { _id: false }), default: null },
     createdAt: Date, expiresAt: Date
 }, { versionKey: false, collection: 'pet_requests' });
 request.index({ ownerId: 1, 'origin.kind': 1, 'origin.id': 1, actionKey: 1 }, { unique: true });
 request.index({ status: 1, phaseDeadline: 1 });
-// Retain request identity/outcomes for seven days; active phase deadlines are at most 60 seconds.
+// Per-owner FIFO lookup for queued independent requests.
+request.index({ ownerId: 1, status: 1, createdAt: 1 });
+// Retain request identity/outcomes for seven days; active phase deadlines are at most 60 seconds
+// and queued requests expire after PET_QUEUE_WAIT_MS.
 request.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 export const PetRequest = model<PetRequestRecord>('PetRequest', request);
 

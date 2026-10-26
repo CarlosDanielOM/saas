@@ -23,6 +23,8 @@ import { beginPetSnapshot, emitPetSnapshot, emitPetReadyAndPlay } from './delive
 import { initializePetReadiness, refreshPetReadiness, stopPetReadiness } from './readiness.js';
 import { subscribePetWakeups } from './wakeups.js';
 import { issueAudioTicket } from './tokens.js';
+import { claimQueued, nextIndependentQueued } from './queue.js';
+import { registerPetLaneBridge, type PetLaneItem, type PetLaneStart } from './tts_lane.js';
 
 const tasks = new Map<string, { controller: AbortController; requestId: string; generation: number }>();
 const MAX_ACTIVE_PROVIDERS = 4;
@@ -175,17 +177,96 @@ async function cleanAudio(request: PetRequestRecord) {
 }
 const waking = new Set<string>();
 const dirty = new Set<string>();
+// TTS-lane turns waiting for the pet to be free, and their terminal callbacks (API process only).
+const laneWaiters = new Map<string, Set<() => void>>();
+const laneTurns = new Map<string, (reason: string) => void>();
+const cooldownTimers = new Map<string, NodeJS.Timeout>();
+const laneWaiting = new Map<string, number>();
+function signalLane(ownerId: string) {
+    const waiters = laneWaiters.get(ownerId);
+    if (waiters) for (const resolve of [...waiters]) resolve();
+}
+function waitForOwner(ownerId: string, ms: number) {
+    return new Promise<void>(resolve => {
+        const waiters = laneWaiters.get(ownerId) ?? new Set<() => void>();
+        laneWaiters.set(ownerId, waiters);
+        const done = () => { clearTimeout(timer); waiters.delete(done); if (!waiters.size && laneWaiters.get(ownerId) === waiters) laneWaiters.delete(ownerId); resolve(); };
+        const timer = setTimeout(done, ms);
+        waiters.add(done);
+    });
+}
+function scheduleRetry(ownerId: string, at: number) {
+    if (cooldownTimers.has(ownerId)) return;
+    const timer = setTimeout(() => { cooldownTimers.delete(ownerId); void wake(ownerId).catch(() => {}); }, Math.min(Math.max(at - Date.now(), 50), 60_000));
+    timer.unref(); cooldownTimers.set(ownerId, timer);
+}
+/** The free pet first serves a waiting TTS-lane turn (it holds the TTS queue), then its own queue. */
+async function promoteIndependent(ownerId: string) {
+    if (laneWaiting.has(ownerId)) return;
+    const head = await nextIndependentQueued(ownerId);
+    if (!head) return;
+    const claim = await claimQueued(head, { lane: 'independent' });
+    if (claim.kind === 'wait') { if (claim.retryAt) scheduleRetry(ownerId, claim.retryAt); return; }
+    dirty.add(ownerId); // Dispatch the promoted request, or try the next one after a drop.
+}
+async function resumeLane(ownerId: string, channelId: string) {
+    if (!await PetRequest.exists({ ownerId, status: 'queued', lane: 'tts' })) return;
+    const { ttsQueueHandler } = await import('../handlers/tts_queue.handler.js');
+    await ttsQueueHandler.resumeIfIdle(channelId);
+}
+async function startLane(input: PetLaneStart) {
+    const request = await PetRequest.findOne({ _id: input.item.requestId, ownerId: input.item.ownerId }).lean();
+    if (!request || request.status !== 'queued' || request.lane !== 'tts' || request.channelId !== input.channelId || request.ttsSpeechId !== input.speechId) return null;
+    const waitUntil = Math.min(Date.now() + 120_000, request.phaseDeadline.getTime());
+    const ownerId = input.item.ownerId;
+    laneWaiting.set(ownerId, (laneWaiting.get(ownerId) ?? 0) + 1);
+    try { return await claimLane(input, request, waitUntil); }
+    finally {
+        const left = (laneWaiting.get(ownerId) ?? 1) - 1;
+        if (left > 0) laneWaiting.set(ownerId, left); else laneWaiting.delete(ownerId);
+        void wake(ownerId).catch(() => {}); // Let the pet's own queue continue if this turn did not start.
+    }
+}
+async function claimLane(input: PetLaneStart, request: PetRequestRecord, waitUntil: number) {
+    while (true) {
+        if (input.cancelled()) { await finishRequest(request._id, 'cancelled', 'tts_queue_control'); return null; }
+        const current = await PetRequest.findById(request._id).lean();
+        if (!current || current.status !== 'queued') return null;
+        const claim = await claimQueued(current, { lane: 'tts' });
+        if (claim.kind === 'dropped') return null;
+        if (claim.kind === 'promoted') {
+            const done = new Promise<string>(resolve => laneTurns.set(request._id, resolve));
+            // Ended during the claim (e.g. invalidated): the terminal hook ran before registration.
+            const latest = await PetRequest.findById(request._id).lean();
+            if (!latest || PET_TERMINAL.includes(latest.status)) { laneTurns.delete(request._id); return { done: Promise.resolve(`pet:${latest?.status ?? 'missing'}`) }; }
+            return { done };
+        }
+        if (Date.now() >= waitUntil) { await finishRequest(request._id, 'expired', 'busy'); return null; }
+        await waitForOwner(input.item.ownerId, Math.max(50, Math.min(1000, waitUntil - Date.now(), claim.retryAt ? claim.retryAt - Date.now() : 1000)));
+    }
+}
+async function endLane(item: PetLaneItem, reason: string) {
+    signalLane(item.ownerId);
+    const request = await PetRequest.findOne({ _id: item.requestId, ownerId: item.ownerId }).lean();
+    if (!request || PET_TERMINAL.includes(request.status)) return;
+    // Skip/clear/timeout of the TTS queue item stops the pet exactly like a dashboard cancel.
+    const runtime = await PetRuntime.findById(item.ownerId).lean();
+    if (runtime?.activeRequestId === request._id) await invalidatePet(item.ownerId, 'cancelled', { requestId: request._id, generation: runtime.generation });
+    await finishRequest(request._id, 'cancelled', `tts_${/^[a-z_-]{1,40}$/.test(reason) ? reason.replace(/-/g, '_') : 'ended'}`);
+}
 async function wakeOnce(ownerId: string) {
         await refreshPetReadiness(ownerId);
         await broadcast(ownerId);
+        signalLane(ownerId);
         const runtime = await PetRuntime.findById(ownerId).lean();
         if (runtime) observeReadTtsRuntime(runtime);
-        if (!runtime?.activeRequestId) return;
+        if (!runtime) return;
+        if (!runtime.activeRequestId) { await resumeLane(ownerId, runtime.channelId); await promoteIndependent(ownerId); return; }
         const request = await PetRequest.findById(runtime.activeRequestId).lean();
         if (!request) { await invalidatePet(ownerId, 'request_missing'); return; }
         if (PET_TERMINAL.includes(request.status)) {
             await PetRuntime.updateOne({ _id: ownerId, activeRequestId: request._id }, { $set: { activeRequestId: null }, $unset: { admissionClaimId: 1 } });
-            await cleanAudio(request); return;
+            await cleanAudio(request); dirty.add(ownerId); return;
         }
         if (!request.admitted || request.status !== 'accepted' || tasks.has(ownerId) || tasks.size >= MAX_ACTIVE_PROVIDERS) return;
         if (!runtime.lease || !petPeers.get(runtime.lease.holderPeerId)?.socket.connected) { await invalidatePet(ownerId, 'player_unavailable'); return; }
@@ -207,6 +288,11 @@ export async function startPetRuntime() {
     await initializePetReadiness();
     await reconcileReadTtsStartup();
     const closeReadTts = startReadTts();
+    registerPetLaneBridge({ start: startLane, end: endLane, terminal: request => {
+        const resolve = laneTurns.get(request._id);
+        if (!resolve) return;
+        laneTurns.delete(request._id); resolve(`pet:${request.status}`); signalLane(request.ownerId);
+    } });
     const stopWakeups = subscribePetWakeups(owners => { for (const ownerId of owners) void wake(ownerId).catch(() => {}); });
     let recovering = false;
     let recoveryCursor = 0;
@@ -230,6 +316,9 @@ export async function startPetRuntime() {
             }
             const accepted = await PetRequest.find({ status: 'accepted', admitted: true }).sort({ createdAt: 1 }).limit(64).lean();
             for (const request of accepted) await wake(request.ownerId);
+            // Lost wake hints for queued work (either lane) are repaired here.
+            const queuedOwners = await PetRequest.distinct('ownerId', { status: 'queued' });
+            for (const ownerId of queuedOwners.slice(0, 64)) await wake(String(ownerId));
             // A single indexed, rotating header read repairs lost hints even for
             // idle selection changes; only changed/observed work triggers snapshots.
             const connected = [...new Set([...petPeers.values()].map(peer => peer.ownerId).concat(readTtsOwners()))];
@@ -249,5 +338,5 @@ export async function startPetRuntime() {
     };
     const timer = setInterval(() => { void recover().catch(() => {}); }, 15_000); timer.unref();
     await recover();
-    return async () => { clearInterval(timer); for (const task of tasks.values()) task.controller.abort(); stopWakeups(); stopPetReadiness(); await closeReadTts(); };
+    return async () => { clearInterval(timer); registerPetLaneBridge(); for (const timer of cooldownTimers.values()) clearTimeout(timer); cooldownTimers.clear(); for (const task of tasks.values()) task.controller.abort(); stopWakeups(); stopPetReadiness(); await closeReadTts(); };
 }

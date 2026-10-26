@@ -370,8 +370,8 @@ try {
   if (cron) {
     assert.ok(outbound.every(item => item.pid === api.pid), 'the explicitly started API process owns every paid outbound call');
     assert.deepEqual(await assertCronProcesses(), cronProcesses, 'no relevant supervisor/consumer restarted during delivery');
-    assert.equal(await redis.exists(`twitch:${owner}:tts:queue`), 0, 'pet delivery never enters the normal TTS queue');
-    assert.deepEqual(await redis.keys(`twitch:${owner}:tts:queue:data:*`), [], 'normal TTS retains no pet speech');
+    assert.equal(await redis.exists(`twitch:${owner}:tts:queue`), 0, 'finished pet.talk items leave no TTS queue residue');
+    assert.deepEqual(await redis.keys(`twitch:${owner}:tts:queue:data:*`), [], 'finished pet items leave no TTS queue payloads');
     console.log(JSON.stringify({ cronProcessProof: cronProcesses, checkPid: process.pid, apiPid: api.pid,
       claims: cronRecords().filter(row => row.type === 'claimed'), requests: followEvidence.requestCount, usageIds: followEvidence.billing.map(item => item.external_id) }));
   }
