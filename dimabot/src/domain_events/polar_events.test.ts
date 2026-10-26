@@ -6,7 +6,8 @@ import type { Subscription } from '@polar-sh/sdk/models/components/subscription.
 import { CustomerStateMeter$inboundSchema } from '@polar-sh/sdk/models/components/customerstatemeter.js';
 import UsersSchema from '../schemas/users.schema.js';
 import { normalizePolarDomainEvent, polarWebhookProducer, type NormalizePolarWebhookInput } from './polar_events.js';
-import { DomainEventContractError } from './domain_event_contracts.js';
+import { DomainEventContractError, validateDomainEventContract } from './domain_event_contracts.js';
+import { polarEntitlementFingerprint } from './polar_entitlements.js';
 
 const timestamp = new Date('2026-09-04T10:00:00Z');
 const periodEnd = new Date('2027-09-04T10:00:00Z');
@@ -156,13 +157,16 @@ test('SDK parsed customer meters map camelCase to snake_case without unit or bal
     });
     const event = normalizePolarDomainEvent(input('customer.state_changed', {
         id: 'customer-1', externalId, activeMeters: [meter], email: 'private@example.test',
-        metadata: { twitch_id: 'twitch-1' }, activeSubscriptions: [subscription]
+        metadata: { twitch_id: 'twitch-1' }, activeSubscriptions: [subscription], grantedBenefits: [{ id: 'grant-1', benefitId: 'benefit-1', secret: 'omit' }]
     }));
     assert.equal(event.type, 'billing.customer.state.changed');
     assert.deepEqual(event.subject, { provider: 'polar', kind: 'customer', id: 'customer-1' });
     assert.deepEqual(event.payload, {
         customerId: 'customer-1',
-        meters: [{ meter_id: 'meter-1', consumed_units: 12.5, credited_units: 10, balance: -2.5 }]
+        meters: [{ meter_id: 'meter-1', consumed_units: 12.5, credited_units: 10, balance: -2.5 }],
+        activeSubscriptions: [{ id: 'subscription-1', productId: 'product-1', status: 'active',
+            currentPeriodEnd: periodEnd.toISOString(), endsAt: null }],
+        grantedBenefits: [{ id: 'grant-1', benefitId: 'benefit-1' }]
     });
     assert.deepEqual(event.metadata, { originalEventType: 'customer.state_changed', externalCustomerId: externalId });
 });
@@ -174,6 +178,49 @@ test('customer meters preserve zero, empty lists, and omitted optional units', (
     assert.deepEqual(normalizePolarDomainEvent(input('customer.state_changed', {
         id: 'customer-1', activeMeters: []
     })).payload.meters, []);
+});
+
+test('customer entitlement contract preserves empty authority and legacy meter-only rows, rejects partial/malformed snapshots', () => {
+    const current = normalizePolarDomainEvent(input('customer.state_changed', {
+        id: 'customer-1', activeMeters: [], activeSubscriptions: [], grantedBenefits: []
+    }));
+    assert.deepEqual(current.payload, { customerId: 'customer-1', meters: [], activeSubscriptions: [], grantedBenefits: [] });
+    const legacy = normalizePolarDomainEvent(input('customer.state_changed', { id: 'customer-1', activeMeters: [] }));
+    assert.doesNotThrow(() => validateDomainEventContract(legacy));
+    for (const data of [
+        { activeSubscriptions: [] }, { grantedBenefits: [] },
+        { activeSubscriptions: [null], grantedBenefits: [] },
+        { activeSubscriptions: [], grantedBenefits: [{ id: 'grant' }] },
+        { activeSubscriptions: [{ ...subscription, currentPeriodEnd: 'not-an-SDK-Date' }], grantedBenefits: [] }
+    ]) {
+        assert.throws(() => normalizePolarDomainEvent(input('customer.state_changed', { id: 'customer-1', activeMeters: [], ...data })), DomainEventContractError);
+    }
+    assert.throws(() => validateDomainEventContract({ ...current, payload: { ...current.payload, grantedBenefits: undefined } }), DomainEventContractError);
+    assert.throws(() => validateDomainEventContract({ ...current, payload: { ...current.payload, activeSubscriptions: [{ id: 's', productId: 'p', status: 'active', endsAt: 'invalid' }] } }), DomainEventContractError);
+});
+
+test('historical trialStart survives normalization so SDK state and journal entitlement fingerprints match', () => {
+    const state = { id: 'customer-1', activeSubscriptions: [{ ...subscription,
+        trialStart: new Date('2026-08-01T00:00:00Z'), trialEnd: new Date('2026-08-10T00:00:00Z') }], grantedBenefits: [] };
+    const normalized = normalizePolarDomainEvent(input('customer.state_changed', { ...state, activeMeters: [] }));
+    const payload = normalized.payload as { activeSubscriptions: Array<{ id: string; productId: string; status: string; trialStart: string }>;
+        grantedBenefits: Array<{ id: string; benefitId: string }> };
+    assert.equal(payload.activeSubscriptions[0].trialStart, '2026-08-01T00:00:00.000Z');
+    assert.equal(polarEntitlementFingerprint(payload), polarEntitlementFingerprint(state));
+    assert.throws(() => validateDomainEventContract({ ...normalized, payload: { ...payload, meters: [], customerId: 'customer-1',
+        activeSubscriptions: [{ ...payload.activeSubscriptions[0], trialStart: 'invalid' }] } }), DomainEventContractError);
+});
+
+test('lifecycle receipts retain their existing providerData contracts and customer ownership', () => {
+    for (const type of ['subscription.created', 'subscription.active', 'subscription.past_due', 'subscription.revoked',
+        'subscription.canceled', 'subscription.uncanceled', 'benefit_grant.created', 'benefit_grant.updated', 'benefit_grant.cycled', 'benefit_grant.revoked']) {
+        const data = { id: 'resource-1', customerId: 'customer-1', customer: { id: 'customer-1', externalId } };
+        const normalized = normalizePolarDomainEvent(input(type, data));
+        assert.equal(normalized.type, `provider.polar.${type}`);
+        assert.deepEqual(normalized.payload, { providerData: data });
+        assert.deepEqual(normalized.subject, { provider: 'polar', kind: 'customer', id: 'customer-1' });
+        assert.doesNotThrow(() => validateDomainEventContract(normalized));
+    }
 });
 
 test('rejects malformed meters and all nonfinite or nonnumeric units', () => {

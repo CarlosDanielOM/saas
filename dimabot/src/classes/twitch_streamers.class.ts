@@ -8,6 +8,8 @@ import type { ITwitchAccountCache } from '../interfaces/cache/twitch_account.cac
 import type { IUsersCache } from '../interfaces/cache/users.cache.interface.js';
 import { debug, error, info, warn } from "../utils/logger.js";
 import { identifyStreamer } from "../utils/posthog_events.js";
+import { CHECK_PLAN_ACCOUNTS_SCRIPT, PLAN_CACHE_VERSION_FIELD, WRITE_PLAN_ACCOUNT_SCRIPT,
+    planCacheFenceKey, planCacheVersion } from '../utils/plan_cache_fence.js';
 
 type DragonflyClient = Awaited<ReturnType<typeof getDragonflyClient>>;
 
@@ -15,6 +17,28 @@ const REFRESH_LOCK_TTL_MS = 5000;
 const REFRESH_WAIT_TIMEOUT_MS = 4500;
 const REFRESH_WAIT_POLL_MS = 150;
 const TOKEN_EXPIRY_SKEW_SECONDS = 300;
+type VersionedAccount = IUsersCache & { [PLAN_CACHE_VERSION_FIELD]?: string };
+const PLAN_ACCOUNT_FIELDS = 'accounts plan_tier plan_tier_until polar_sh_customer_id polar_plan_event_at polar_plan_event_key';
+
+function publicAccount(account: VersionedAccount): IUsersCache {
+    const { [PLAN_CACHE_VERSION_FIELD]: _version, ...result } = account;
+    return result;
+}
+
+async function checkAccountVersions(cache: DragonflyClient, accounts: VersionedAccount[], publish = false): Promise<boolean> {
+    return Number(await cache.eval(CHECK_PLAN_ACCOUNTS_SCRIPT, {
+        keys: [...accounts.map(account => planCacheFenceKey(account.id)), 'twitch:accounts'],
+        arguments: [...accounts.map(account => account[PLAN_CACHE_VERSION_FIELD] ?? ''), publish ? JSON.stringify(accounts) : '']
+    })) === 1;
+}
+
+async function writeAccount(cache: DragonflyClient, user: IUsers, account: IUsersCache): Promise<boolean> {
+    const version = planCacheVersion(user.polar_plan_event_at, user.polar_plan_event_key);
+    return Number(await cache.eval(WRITE_PLAN_ACCOUNT_SCRIPT, {
+        keys: [planCacheFenceKey(account.id), `accounts:twitch:${account.id}:data`, 'twitch:accounts'],
+        arguments: [version, ...Object.entries(sanitizeCachePayload({ ...account, [PLAN_CACHE_VERSION_FIELD]: version })).flat()]
+    })) === 1;
+}
 
 function sanitizeCachePayload(payload: Record<string, unknown>): Record<string, string> {
     const sanitized: Record<string, string> = {};
@@ -49,7 +73,7 @@ function getTokenCaller(): string {
     return 'unknown';
 }
 
-class TwitchStreamers {
+export class TwitchStreamers {
     private cachePromise: Promise<DragonflyClient> | null = null;
 
     /**
@@ -66,19 +90,21 @@ class TwitchStreamers {
         try {
             const cache = await this.cache;
 
-            const cachedAccounts = await cache.get('twitch:accounts');
-            if(cachedAccounts) {
-                return JSON.parse(cachedAccounts) as IUsersCache[];
+            for (let attempt = 0; attempt < 2; attempt++) {
+                const cachedAccounts = await cache.get('twitch:accounts');
+                if (cachedAccounts) {
+                    const accounts = JSON.parse(cachedAccounts) as VersionedAccount[];
+                    if (await checkAccountVersions(cache, accounts)) return accounts.map(publicAccount);
+                }
+                const keys = await cache.keys('accounts:twitch:*:data');
+                const accounts: VersionedAccount[] = [];
+                for (const key of keys) {
+                    const account = await cache.hGetAll(key) as unknown as VersionedAccount;
+                    if (account.id) accounts.push(account);
+                }
+                if (await checkAccountVersions(cache, accounts, true)) return accounts.map(publicAccount);
             }
-            
-            const keys = await cache.keys('accounts:twitch:*:data');
-            let accounts: IUsersCache[] = [];
-            for(const key of keys) {
-                const account = await cache.hGetAll(key) as unknown as IUsersCache;
-                accounts.push(account);
-            }
-            await cache.set('twitch:accounts', JSON.stringify(accounts), { EX: 3600 });
-            return accounts;
+            return [];
         } catch (err) {
             await error({ function: 'TwitchStreamers.getTwitchAccountsFromCache', error: err instanceof Error ? err.message : String(err) }, { destination: 'both' });
             return [];
@@ -89,7 +115,8 @@ class TwitchStreamers {
         try {
             const cache = await this.cache;
             
-            const result = await UsersSchema.find<IUsers>({ 'accounts.type': 'twitch' }).select('accounts plan_tier polar_sh_customer_id').lean();
+            const result = await UsersSchema.find<IUsers>({ 'accounts.type': 'twitch' }).select(PLAN_ACCOUNT_FIELDS).lean();
+            const accepted: IUsers[] = [];
 
             cache.del(`streamers:by:name`);
             await cache.del('twitch:accounts');
@@ -115,7 +142,8 @@ class TwitchStreamers {
                     up_to_date_permissions: twitchAccount?.up_to_date_permissions ? 'true' : 'false',
                 };
 
-                await cache.hSet(cacheKey, sanitizeCachePayload(twitchAccountCache as unknown as Record<string, unknown>));
+                if (!await writeAccount(cache, user, twitchAccountCache)) continue;
+                accepted.push(user);
 
                 await cache.sAdd(`streamers:by:id`, twitchAccount!.id);
 
@@ -124,7 +152,7 @@ class TwitchStreamers {
             }
 
             info({ message: 'Accounts added to cache' }, { destination: 'console' });
-            return result;
+            return accepted;
         } catch (err) {
             await error({ function: 'TwitchStreamers.getTwitchAccountsFromDB', error: err instanceof Error ? err.message : String(err) }, { destination: 'both' });
             return null;
@@ -135,14 +163,14 @@ class TwitchStreamers {
         try {
             const cache = await this.cache;
 
-            let account = await cache.hGetAll(`accounts:twitch:${id}:data`) as unknown as IUsersCache | null;
-            if (!account || !account.id) {
+            let account = await cache.hGetAll(`accounts:twitch:${id}:data`) as unknown as VersionedAccount | null;
+            if (!account?.id || !await checkAccountVersions(cache, [account])) {
                 account = await this.hydrateTwitchAccountById(id);
             }
 
             if (!account || !account.id) return null;
 
-            return account;
+            return publicAccount(account);
         } catch (err) {
             await error({ function: 'TwitchStreamers.getTwitchAccountById', id, error: err instanceof Error ? err.message : String(err) }, { destination: 'both' });
             return null;
@@ -370,50 +398,52 @@ class TwitchStreamers {
     private async hydrateTwitchAccountById(id: string): Promise<IUsersCache | null> {
         try {
             const cache = await this.cache;
-            const user = await UsersSchema.findOne({
-                'accounts.id': id,
-                'accounts.type': 'twitch'
-            })
-                .select('accounts plan_tier plan_tier_until polar_sh_customer_id')
-                .lean<IUsers | null>();
+            for (let attempt = 0; attempt < 2; attempt++) {
+                const user = await UsersSchema.findOne({
+                    accounts: { $elemMatch: { id, type: 'twitch' } }
+                })
+                    .select(PLAN_ACCOUNT_FIELDS)
+                    .lean<IUsers | null>();
 
-            if (!user) {
-                return null;
+                if (!user) {
+                    return null;
+                }
+
+                const twitchAccount = user.accounts.find((account) => account.type === 'twitch' && account.id === id);
+                if (!twitchAccount) {
+                    return null;
+                }
+
+                const cacheKey = `accounts:twitch:${id}:data`;
+                const existingExpiresAt = await cache.hGet(cacheKey, 'expires_at');
+                const persistedExpiresAt = twitchAccount.access_token_expires_at ? String(twitchAccount.access_token_expires_at) : undefined;
+
+                const accountCache: IUsersCache = {
+                    id: twitchAccount.id,
+                    name: twitchAccount.name ?? '',
+                    email: twitchAccount.email ?? '',
+                    plan_tier: user.plan_tier ?? 'free',
+                    plan_tier_until: user.plan_tier_until ? new Date(user.plan_tier_until).toDateString() : '',
+                    polar_sh_customer_id: user.polar_sh_customer_id ?? '',
+                    refresh_token: decrypt(twitchAccount.refresh_token) ?? '',
+                    access_token: decrypt(twitchAccount.access_token) ?? '',
+                    expires_at: existingExpiresAt || persistedExpiresAt,
+                    actived: twitchAccount.actived ? 'true' : 'false',
+                    chat_enabled: twitchAccount.chat_enabled ? 'true' : 'false',
+                    has_permissions: twitchAccount.has_permissions ? 'true' : 'false',
+                    up_to_date_permissions: twitchAccount.up_to_date_permissions ? 'true' : 'false'
+                };
+
+                if (!await writeAccount(cache, user, accountCache)) continue;
+                await cache.sAdd('streamers:by:id', id);
+                await cache.del('twitch:accounts');
+
+                // Identify in PostHog on first lazy load (deduped per process; re-fires on rename)
+                identifyStreamer(twitchAccount.id, twitchAccount.name ?? '');
+
+                return accountCache;
             }
-
-            const twitchAccount = user.accounts.find((account) => account.type === 'twitch' && account.id === id);
-            if (!twitchAccount) {
-                return null;
-            }
-
-            const cacheKey = `accounts:twitch:${id}:data`;
-            const existingExpiresAt = await cache.hGet(cacheKey, 'expires_at');
-            const persistedExpiresAt = twitchAccount.access_token_expires_at ? String(twitchAccount.access_token_expires_at) : undefined;
-
-            const accountCache: IUsersCache = {
-                id: twitchAccount.id,
-                name: twitchAccount.name ?? '',
-                email: twitchAccount.email ?? '',
-                plan_tier: user.plan_tier ?? 'free',
-                plan_tier_until: user.plan_tier_until ? new Date(user.plan_tier_until).toDateString() : '',
-                polar_sh_customer_id: user.polar_sh_customer_id ?? '',
-                refresh_token: decrypt(twitchAccount.refresh_token) ?? '',
-                access_token: decrypt(twitchAccount.access_token) ?? '',
-                expires_at: existingExpiresAt || persistedExpiresAt,
-                actived: twitchAccount.actived ? 'true' : 'false',
-                chat_enabled: twitchAccount.chat_enabled ? 'true' : 'false',
-                has_permissions: twitchAccount.has_permissions ? 'true' : 'false',
-                up_to_date_permissions: twitchAccount.up_to_date_permissions ? 'true' : 'false'
-            };
-
-            await cache.hSet(cacheKey, sanitizeCachePayload(accountCache as unknown as Record<string, unknown>));
-            await cache.sAdd('streamers:by:id', id);
-            await cache.del('twitch:accounts');
-
-            // Identify in PostHog on first lazy load (deduped per process; re-fires on rename)
-            identifyStreamer(twitchAccount.id, twitchAccount.name ?? '');
-
-            return accountCache;
+            return null;
         } catch (err) {
             await error({ function: 'TwitchStreamers.hydrateTwitchAccountById', id, error: err instanceof Error ? err.message : String(err) }, { destination: 'both' });
             return null;

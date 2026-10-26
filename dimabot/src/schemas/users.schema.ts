@@ -30,6 +30,8 @@ export interface IUsers {
     polar_sh_customer_id: string;
     polar_plan_event_at?: Date;
     polar_plan_event_key?: string;
+    polar_plan_effects_pending?: boolean;
+    polar_plan_entitlement_fingerprint?: string;
     polar_credit_snapshot?: {
         occurredAt: Date;
         eventKey: string;
@@ -86,6 +88,8 @@ const usersSchema = new Schema<IUsers>({
     polar_sh_customer_id: { type: String, default: null },
     polar_plan_event_at: { type: Date },
     polar_plan_event_key: { type: String },
+    polar_plan_effects_pending: { type: Boolean },
+    polar_plan_entitlement_fingerprint: { type: String },
     polar_credit_snapshot: {
         type: new Schema({
             occurredAt: { type: Date, required: true },

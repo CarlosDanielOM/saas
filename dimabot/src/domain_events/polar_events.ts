@@ -19,6 +19,11 @@ export interface PolarBillingPayload extends Record<string, unknown> {
     status?: string;
     cadence?: 'monthly' | 'yearly';
     periodEnd?: string | null;
+    activeSubscriptions?: Array<{
+        id: string; productId: string; status: string;
+        currentPeriodEnd?: string | null; endsAt?: string | null; trialStart?: string | null; trialEnd?: string | null;
+    }>;
+    grantedBenefits?: Array<{ id: string; benefitId: string }>;
     meters?: Array<{
         meter_id: string;
         consumed_units?: number;
@@ -153,6 +158,29 @@ export function normalizePolarDomainEvent(input: NormalizePolarWebhookInput): Jo
                 return normalized;
             })
         };
+        // Optional for retained v1 rows/older producers; new SDK snapshots preserve
+        // both lists. The consumer still fetches authority instead of replaying them.
+        if (data.activeSubscriptions !== undefined || data.grantedBenefits !== undefined) {
+            if (!Array.isArray(data.activeSubscriptions) || !Array.isArray(data.grantedBenefits)) {
+                throw new DomainEventContractError('Polar customer state requires both entitlement arrays');
+            }
+            billing.activeSubscriptions = data.activeSubscriptions.map(value => {
+                if (!isRecord(value)) throw new DomainEventContractError('Polar customer state requires record subscription');
+                const subscription: NonNullable<PolarBillingPayload['activeSubscriptions']>[number] = {
+                    id: requiredString(value.id, 'subscription.id'), productId: requiredString(value.productId, 'subscription.productId'),
+                    status: requiredString(value.status, 'subscription.status')
+                };
+                for (const field of ['currentPeriodEnd', 'endsAt', 'trialStart', 'trialEnd'] as const) {
+                    const date = serializeDate(value[field], `subscription.${field}`);
+                    if (date !== undefined) subscription[field] = date;
+                }
+                return subscription;
+            });
+            billing.grantedBenefits = data.grantedBenefits.map(value => {
+                if (!isRecord(value)) throw new DomainEventContractError('Polar customer state requires record grant');
+                return { id: requiredString(value.id, 'grant.id'), benefitId: requiredString(value.benefitId, 'grant.benefitId') };
+            });
+        }
         payload = billing;
     } else {
         type = `provider.polar.${originalEventType}`;

@@ -2,6 +2,7 @@ import { PRODUCT_IDS } from './referral.js';
 import type { IUsers } from '../schemas/users.schema.js';
 import { getDragonflyClient } from './databases/dragonfly.database.js';
 import { createHash } from 'node:crypto';
+import { ACCEPT_PLAN_CREDITS_SCRIPT, PLAN_CACHE_VERSION_FIELD, planCacheFenceKey, planCacheVersion } from './plan_cache_fence.js';
 import {
     CreditPackConfigurationError,
     buildCreditPackOffers,
@@ -352,7 +353,7 @@ const PLAN_RANK: Record<PlanTier, number> = {
 
 const WINBACK_MONTHS = 6;
 
-function creditPackBillingContextCacheKey(customerId: string): string {
+export function creditPackBillingContextCacheKey(customerId: string): string {
     const customerHash = createHash('sha256').update(customerId).digest('hex').slice(0, 20);
     return `billing:credit-packs:context:v${CREDIT_PACK_BILLING_CONTEXT_CACHE_VERSION}:${customerHash}`;
 }
@@ -1176,34 +1177,50 @@ export async function createCustomerPortalSession(request: CreatePortalSessionRe
     };
 }
 
+interface AiCreditReadDependencies {
+    getCache: typeof getDragonflyClient;
+    getCurrentPlan(id: string, customerId: string): Promise<Pick<IUsers,
+        'plan_tier' | 'polar_sh_customer_id' | 'polar_plan_event_at' | 'polar_plan_event_key'> | null>;
+    getState(customerId: string, signal?: AbortSignal): Promise<{ active_meters?: Array<{ meter_id?: string }> }>;
+}
+
+const aiCreditReadDependencies: AiCreditReadDependencies = {
+    getCache: getDragonflyClient,
+    async getCurrentPlan(id, customerId) {
+        const { default: UsersSchema } = await import('../schemas/users.schema.js');
+        return UsersSchema.findOne({ accounts: { $elemMatch: { type: 'twitch', id } },
+            ...(customerId ? { polar_sh_customer_id: customerId } : {}) })
+            .select('plan_tier polar_sh_customer_id polar_plan_event_at polar_plan_event_key').lean();
+    },
+    getState: (customerId, signal) => polarRequest(`/v1/customers/${customerId}/state`, { method: 'GET', signal })
+};
+
+function unavailableAiCredits(): AiCreditsData {
+    // A rejected plan version must never escape as a paid allowance estimate.
+    return { version: AI_CREDITS_CACHE_SCHEMA_VERSION, used: 0, limit: AI_CREDIT_LIMITS.free,
+        balance: 0, meterId: AI_CREDITS_METER_ID, updatedAt: new Date().toISOString(), available: false, status: 'unavailable' };
+}
+
 export async function getAiCredits(
     user: Pick<IUsers, 'polar_sh_customer_id' | 'plan_tier'>,
     twitchUserId: string,
-    options: { requireVerified?: boolean; signal?: AbortSignal } = {}
+    options: { requireVerified?: boolean; signal?: AbortSignal } = {},
+    injected: Partial<AiCreditReadDependencies> = {}
 ): Promise<AiCreditsData> {
     const channelID = twitchUserId;
-
-    if (!user.polar_sh_customer_id) {
-        const limit = getAiCreditLimitForPlan(user.plan_tier);
-        return {
-            version: AI_CREDITS_CACHE_SCHEMA_VERSION,
-            used: 0,
-            limit,
-            balance: limit,
-            meterId: AI_CREDITS_METER_ID,
-            updatedAt: new Date().toISOString(),
-            available: false,
-            status: 'unavailable'
-        };
-    }
-
-    const cacheClient = await getDragonflyClient('getAiCredits');
+    const deps = { ...aiCreditReadDependencies, ...injected };
+    const cacheClient = await deps.getCache('getAiCredits');
     const cacheKey = `twitch:${channelID}:ai:credits`;
+    const accept = async (payload: AiCreditsData, version: string, raw: string, mode: 'read' | 'write') =>
+        Number(await cacheClient.eval(ACCEPT_PLAN_CREDITS_SCRIPT, {
+            keys: [cacheKey, `twitch:${channelID}:ai:exhaust`, `${channelID}:ai:exhaust`, planCacheFenceKey(channelID)],
+            arguments: [version, raw, mode, payload.status === 'exhausted' ? '1' : '0', String(AI_CREDITS_CACHE_TTL_SECONDS)]
+        })) === 1;
 
     const cached = await cacheClient.get(cacheKey);
     if (cached) {
         try {
-            const parsed = JSON.parse(cached) as Partial<AiCreditsData>;
+            const parsed = JSON.parse(cached) as Partial<AiCreditsData> & { [PLAN_CACHE_VERSION_FIELD]?: string };
             if (parsed.version === AI_CREDITS_CACHE_SCHEMA_VERSION && typeof parsed.used === 'number' && typeof parsed.limit === 'number') {
                 // Paid moderation must not treat a cached unavailable estimate as verified credit.
                 const available = !options.requireVerified || (parsed.available === true && parsed.status !== 'unavailable');
@@ -1219,37 +1236,55 @@ export async function getAiCredits(
                         ? 'exhausted'
                         : 'available'
                 };
-                await syncAiCreditExhaustionStatus(cacheClient, channelID, payload.status === 'exhausted');
-                return payload;
+                if (await accept(payload, parsed[PLAN_CACHE_VERSION_FIELD] ?? '', cached, 'read')) return payload;
             }
         } catch {
             // ignore bad cache
         }
     }
 
-    // Cache miss: fetch fresh from Polar (webhook is preferred source of truth, this is fallback)
+    // A bare caller tier has no freshness proof once a plan fence exists. Read the
+    // exact Twitch owner's current Mongo plan, then fence publication after fetch.
+    let fence: string | null = null;
+    let currentUser = user;
+    let version = '';
     try {
-        const state = await polarRequest<any>(`/v1/customers/${user.polar_sh_customer_id}/state`, { method: 'GET', signal: options.signal });
+        fence = await cacheClient.get(planCacheFenceKey(channelID));
+        if (fence) {
+            const current = await deps.getCurrentPlan(channelID, user.polar_sh_customer_id);
+            if (!current) return unavailableAiCredits();
+            version = planCacheVersion(current.polar_plan_event_at, current.polar_plan_event_key);
+            if (version < fence) return unavailableAiCredits();
+            currentUser = current;
+        }
+        if (!currentUser.polar_sh_customer_id) {
+            return fence ? unavailableAiCredits() : { ...unavailableAiCredits(),
+                limit: getAiCreditLimitForPlan(currentUser.plan_tier), balance: getAiCreditLimitForPlan(currentUser.plan_tier) };
+        }
+        const state = await deps.getState(currentUser.polar_sh_customer_id, options.signal);
         const activeMeters = Array.isArray(state?.active_meters) ? state.active_meters : [];
         const aiMeter = activeMeters.find((m: any) => m?.meter_id === AI_CREDITS_METER_ID);
-        const payload = buildAiCreditsDataFromMeter(aiMeter, user.plan_tier);
+        const payload = buildAiCreditsDataFromMeter(aiMeter, currentUser.plan_tier);
         if (options.requireVerified && !aiMeter) {
             payload.available = false;
             payload.status = 'unavailable';
         }
 
-        await cacheClient.set(cacheKey, JSON.stringify(payload), { EX: AI_CREDITS_CACHE_TTL_SECONDS });
-
-        await syncAiCreditExhaustionStatus(cacheClient, channelID, payload.status === 'exhausted');
-
-        return payload;
+        return await accept(payload, version, JSON.stringify({ ...payload, [PLAN_CACHE_VERSION_FIELD]: version }), 'write')
+            ? payload : unavailableAiCredits();
     } catch (err) {
         console.error('getAiCredits: Polar fetch failed, returning fallback from plan limit', {
             channelID,
             error: err instanceof Error ? err.message : String(err)
         });
 
-        const limit = getAiCreditLimitForPlan(user.plan_tier);
+        // Plan/mapping lookup errors and a fence created during provider failure
+        // cannot revive the caller's old paid allowance or touch exhaustion flags.
+        try {
+            if (fence || await cacheClient.get(planCacheFenceKey(channelID))) return unavailableAiCredits();
+        } catch { return unavailableAiCredits(); }
+
+        const limit = getAiCreditLimitForPlan(currentUser.plan_tier);
         let exhausted = false;
         try {
             const [canonical, legacy] = await Promise.all([

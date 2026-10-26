@@ -333,6 +333,22 @@ export function validateDomainEventContract(input: JournalDomainEventInput, mode
     } else if (original === 'subscription.updated') {
         for (const field of ['subscriptionId', 'productId', 'status', 'cadence']) text(payload[field], `payload.${field}`);
     }
+    if (payload.activeSubscriptions !== undefined || payload.grantedBenefits !== undefined) {
+        requireContract(original === 'customer.state_changed', 'entitlement snapshots require customer.state_changed');
+        requireContract(Array.isArray(payload.activeSubscriptions) && Array.isArray(payload.grantedBenefits), 'both entitlement arrays are required');
+        for (const subscription of payload.activeSubscriptions) {
+            record(subscription, 'entitlement subscription');
+            for (const field of ['id', 'productId', 'status']) text(subscription[field], `subscription.${field}`);
+            for (const field of ['currentPeriodEnd', 'endsAt', 'trialStart', 'trialEnd']) {
+                if (subscription[field] !== undefined && subscription[field] !== null) date(subscription[field], `subscription.${field}`);
+            }
+        }
+        for (const grant of payload.grantedBenefits) {
+            record(grant, 'entitlement grant');
+            text(grant.id, 'grant.id');
+            text(grant.benefitId, 'grant.benefitId');
+        }
+    }
     if (original === 'customer.state_changed' || payload.meters !== undefined) {
         requireContract(Array.isArray(payload.meters), 'payload.meters must be an array');
         for (const meter of payload.meters) {

@@ -1,6 +1,19 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { DOMAIN_EVENT_CONSUMERS } from './domain_event_consumers.js';
+import { POLAR_PLAN_EVENT_TYPES } from './polar_entitlements.js';
+
+test('Polar plan registry accepts state, subscription and benefit lifecycle without changing rewards/credits', () => {
+    const plan = DOMAIN_EVENT_CONSUMERS.find(({ consumer }) => consumer === 'polar-plan-v1')!;
+    assert.deepEqual(plan.eventFilter, { source: 'polar-webhook', type: { $in: POLAR_PLAN_EVENT_TYPES } });
+    for (const type of ['billing.customer.state.changed', 'provider.polar.benefit_grant.revoked', 'provider.polar.subscription.past_due', 'provider.polar.subscription.revoked']) {
+        assert.ok(POLAR_PLAN_EVENT_TYPES.includes(type));
+    }
+    assert.deepEqual(DOMAIN_EVENT_CONSUMERS.find(({ consumer }) => consumer === 'polar-rewards-v1')!.eventFilter,
+        { source: 'polar-webhook', type: 'billing.order.paid' });
+    assert.deepEqual(DOMAIN_EVENT_CONSUMERS.find(({ consumer }) => consumer === 'polar-credits-v1')!.eventFilter,
+        { source: 'polar-webhook', type: 'billing.customer.state.changed' });
+});
 
 test('defense admission is channel v1, exactly production Twitch, marked follow/raid only', () => {
     const definition = DOMAIN_EVENT_CONSUMERS.find(({ consumer }) => consumer === 'follow-defense-v1');

@@ -20,6 +20,7 @@ const SAFE_SUITES = [
     'src/domain_events/chat_announcement_events.test.ts',
     'src/domain_events/follow_defense_events.test.ts',
     'src/domain_events/polar_billing_events.test.ts',
+    'src/utils/billing_plan_fence.test.ts',
     'src/domain_events/polar_events.test.ts',
     'src/domain_events/stream_operations_events.test.ts',
     'src/domain_events/twitch_eventsub_events.test.ts',

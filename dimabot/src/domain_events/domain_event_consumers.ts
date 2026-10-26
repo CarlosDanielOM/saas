@@ -1,6 +1,7 @@
 import type { DomainEventConsumerOptions } from '../utils/domain_event_consumer.js';
 import { GIFT_PACK_PAIRS } from '../utils/credit_gift_provider.js';
 import { WIDGET_EVENT_MAX_AGE_MS } from '../widgets/events.js';
+import { POLAR_PLAN_EVENT_TYPES } from './polar_entitlements.js';
 
 export interface DomainEventConsumerDefinition extends DomainEventConsumerOptions {
     schemaVersions: readonly number[];
@@ -100,7 +101,7 @@ export const DOMAIN_EVENT_CONSUMERS: readonly DomainEventConsumerDefinition[] = 
     {
         consumer: 'polar-plan-v1', topics: ['domain'], schemaVersions: [1],
         adminReplay: true,
-        eventFilter: { source: 'polar-webhook', type: { $in: ['billing.order.paid', 'billing.subscription.updated'] } },
+        eventFilter: { source: 'polar-webhook', type: { $in: POLAR_PLAN_EVENT_TYPES } },
         handler: async (event) => (await import('./polar_billing_events.js')).applyPolarPlanDomainEvent(event)
     },
     {
