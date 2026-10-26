@@ -176,7 +176,7 @@ impl JsValue {
             Self::Object(o) => o
                 .borrow()
                 .iter()
-                .find(|(k, _)| k == &JsString::from(key))
+                .find(|(k, _)| k.units().iter().copied().eq(key.encode_utf16()))
                 .map(|(_, v)| v.clone())
                 .unwrap_or_default(),
             _ => Self::Undefined,

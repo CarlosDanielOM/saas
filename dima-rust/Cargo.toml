@@ -33,6 +33,7 @@ audio = ["dep:symphonia"]
 ast-syntax = ["dep:serde", "dep:serde_json"]
 # Pure evaluator with injected host; no deployed runtime or client dependencies.
 ast-evaluator = ["ast-syntax", "permissions"]
+ast-pure-functions = ["ast-evaluator", "dep:regex"]
 ast-blocks = ["ast-syntax", "dep:regex"]
 # Consolidated helpers are independently selectable; the umbrella is convenient
 # for future bot/API ports. None is enabled by default or by a worker profile.

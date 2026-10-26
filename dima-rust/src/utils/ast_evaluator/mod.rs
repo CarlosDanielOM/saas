@@ -3,6 +3,8 @@
 //! fresh context and explicit host for each sequential run.
 mod context;
 mod host;
+#[cfg(feature = "ast-pure-functions")]
+mod pure;
 mod registry;
 mod storage;
 pub mod value;

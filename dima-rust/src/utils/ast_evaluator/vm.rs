@@ -776,21 +776,34 @@ impl<'e> Vm<'e> {
                                     )),
                                     ctx.clone(),
                                 );
-                            } else if entry.builtin {
-                                last = (registry::builtin(name, &values, &ctx), ctx);
                             } else {
-                                let value = attempt!(
-                                    storage::call(
-                                        host,
-                                        &mut self.stats,
-                                        HostRequest::Function {
-                                            name: name.into(),
-                                            args: values
-                                        },
-                                        &ctx
-                                    )
-                                    .await
-                                );
+                                let value = match entry.dispatch {
+                                    registry::DispatchKind::Context => {
+                                        registry::builtin(name, &values, &ctx)
+                                    }
+                                    #[cfg(feature = "ast-pure-functions")]
+                                    registry::DispatchKind::Pure(function) => {
+                                        attempt!(super::pure::dispatch(
+                                            function,
+                                            &values,
+                                            &ctx,
+                                            host,
+                                            &mut self.stats
+                                        ))
+                                    }
+                                    registry::DispatchKind::Host => attempt!(
+                                        storage::call(
+                                            host,
+                                            &mut self.stats,
+                                            HostRequest::Function {
+                                                name: name.into(),
+                                                args: values
+                                            },
+                                            &ctx
+                                        )
+                                        .await
+                                    ),
+                                };
                                 last = (value, ctx);
                             }
                         }
@@ -875,14 +888,15 @@ impl<'e> Vm<'e> {
                             } else {
                                 &c.user_login
                             };
-                            let display = if !c.user_display_name.is_empty() {
-                                &c.user_display_name
+                            let display = c.effective_user_display_name();
+                            let display = if value::js_truthy(&display) {
+                                display
                             } else {
-                                login
+                                JsValue::string(login)
                             };
                             event_data.set("chatter_user_id", JsValue::string(id));
                             event_data.set("chatter_user_login", JsValue::string(login));
-                            event_data.set("chatter_user_name", JsValue::string(display));
+                            event_data.set("chatter_user_name", display);
                             let mut visited = visited.borrow().clone();
                             if !visited.contains(&key) {
                                 visited.push(key);

@@ -415,7 +415,14 @@ pub mod adapter {
                 "broadcasterId" => context.broadcaster_id = text(&value),
                 "userId" => context.user_id = text(&value),
                 "userLogin" => context.user_login = text(&value),
-                "userDisplayName" => context.user_display_name = text(&value),
+                "userDisplayName" => {
+                    if matches!(value, JsValue::String(_)) {
+                        context.user_display_name = text(&value);
+                        context.user_display_name_override = None;
+                    } else {
+                        context.user_display_name_override = Some(value);
+                    }
+                }
                 "userPlan" => context.user_plan = text(&value),
                 "platform" => context.platform = text(&value),
                 "scopeType" => context.scope_type = text(&value),
@@ -436,9 +443,11 @@ pub mod adapter {
                     context.enforce_function_permissions = !matches!(value, JsValue::Boolean(false))
                 }
                 "argument" => {
-                    context.argument = match value {
-                        JsValue::Undefined => None,
-                        _ => Some(js_string(&value)),
+                    if matches!(value, JsValue::String(_)) {
+                        context.argument = Some(js_string(&value));
+                        context.argument_override = None;
+                    } else {
+                        context.argument_override = Some(value);
                     }
                 }
                 "authorization" => context.authorization = value,
@@ -484,14 +493,18 @@ pub mod adapter {
     }
 
     pub fn engine() -> Engine {
-        configured_engine(false)
+        configured_engine(false, false)
     }
-    fn configured_engine(context_builtins: bool) -> Engine {
+    fn configured_engine(context_builtins: bool, _pure_builtins: bool) -> Engine {
         let mut registry = if context_builtins {
             FunctionRegistry::with_context_builtins()
         } else {
             FunctionRegistry::default()
         };
+        #[cfg(feature = "ast-pure-functions")]
+        if _pure_builtins {
+            registry.register_pure_builtins();
+        }
         for name in [
             "fixture.echo",
             "fixture.value",
@@ -529,7 +542,7 @@ pub mod adapter {
             ("broadcasterId", string(&ctx.broadcaster_id)),
             ("userId", string(&ctx.user_id)),
             ("userLogin", string(&ctx.user_login)),
-            ("userDisplayName", string(&ctx.user_display_name)),
+            ("userDisplayName", ctx.effective_user_display_name()),
             ("userPlan", string(&ctx.user_plan)),
             ("userLevel", JsValue::Number(ctx.user_level)),
             (
@@ -537,13 +550,7 @@ pub mod adapter {
                 JsValue::Boolean(ctx.enforce_function_permissions),
             ),
             ("authorization", ctx.authorization.clone()),
-            (
-                "argument",
-                ctx.argument
-                    .clone()
-                    .map(JsValue::String)
-                    .unwrap_or(JsValue::Undefined),
-            ),
+            ("argument", ctx.effective_argument()),
             ("count", JsValue::Number(ctx.count)),
             (
                 "countModified",
@@ -999,6 +1006,8 @@ pub mod adapter {
         operation: String,
         #[serde(default, rename = "contextBuiltins")]
         context_builtins: bool,
+        #[serde(default, rename = "pureBuiltins")]
+        pure_builtins: bool,
         ast: Option<Box<RawValue>>,
         text: Option<String>,
         context: Option<Box<RawValue>>,
@@ -1031,7 +1040,7 @@ pub mod adapter {
     impl PreparedCase {
         pub fn new(raw: &str) -> Result<Self, Box<dyn std::error::Error>> {
             let input: Input = serde_json::from_str(raw)?;
-            let engine = configured_engine(input.context_builtins);
+            let engine = configured_engine(input.context_builtins, input.pure_builtins);
             let context = ordered(input.context.as_deref())?;
             let host = ordered(input.host.as_deref())?;
             let baseline = Rc::new(

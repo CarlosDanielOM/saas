@@ -715,3 +715,109 @@ fn reference_spread_copies_enumerable_entries_and_shares_contained_values() {
     assert_eq!(text(&entries.borrow()[1].1), "123");
     assert_eq!(host.calls, 0);
 }
+
+#[test]
+fn object_get_compares_borrowed_utf16_keys_and_keeps_first_match_identity() {
+    let child = JsValue::object(vec![("value".into(), JsValue::Number(7.0))]);
+    let object = JsValue::object(vec![
+        (JsString::from_units(vec![0xd800]), JsValue::string("lone")),
+        ("😀".into(), child.clone()),
+        ("é".into(), JsValue::string("composed")),
+        ("e\u{301}".into(), JsValue::string("decomposed")),
+        ("😀".into(), JsValue::string("duplicate")),
+        ("".into(), JsValue::Boolean(false)),
+    ]);
+    let JsValue::Object(original) = child else {
+        panic!("object")
+    };
+    let JsValue::Object(found) = object.get("😀") else {
+        panic!("first matching value")
+    };
+    assert!(Rc::ptr_eq(&original, &found));
+    assert_eq!(text(&object.get("é")), "composed");
+    assert_eq!(text(&object.get("e\u{301}")), "decomposed");
+    assert!(matches!(object.get(""), JsValue::Boolean(false)));
+    assert!(matches!(object.get("\u{fffd}"), JsValue::Undefined));
+    assert!(matches!(object.get("absent"), JsValue::Undefined));
+    assert!(matches!(JsValue::Null.get("key"), JsValue::Undefined));
+    let JsValue::Object(entries) = object else {
+        panic!("object")
+    };
+    assert_eq!(entries.borrow().len(), 6);
+    assert_eq!(entries.borrow()[0].0.units(), &[0xd800]);
+}
+
+#[test]
+fn count_uses_raw_argument_truthiness_without_changing_legacy_coercion() {
+    let engine = Engine::new(FunctionRegistry::with_context_builtins());
+    for (argument_override, expected) in [
+        (None, "7"),
+        (Some(JsValue::Null), "0"),
+        (Some(JsValue::Undefined), "0"),
+        (Some(JsValue::Boolean(false)), "0"),
+        (Some(JsValue::array(vec![])), "0"),
+        (Some(JsValue::array(vec![JsValue::string("+5")])), "5"),
+        (
+            Some(JsValue::object(vec![("toString".into(), JsValue::Null)])),
+            "0",
+        ),
+    ] {
+        let context = ExecutionContext {
+            argument: Some("7".into()),
+            argument_override,
+            ..Default::default()
+        }
+        .into_context();
+        let mut host = Fake::default();
+        let result =
+            run(engine.evaluate(&function("count", vec![]), context.clone(), &mut host)).unwrap();
+        assert_eq!(text(&result.value), expected);
+        assert_eq!(context.borrow().count_modified, Some(true));
+        assert_eq!(host.calls, 0);
+        assert_eq!(result.stats.host_futures, 0);
+        let before = context.borrow().count;
+        run(engine.evaluate(
+            &function("count", vec![lit("2")]),
+            context.clone(),
+            &mut host,
+        ))
+        .unwrap();
+        assert_eq!(context.borrow().count, before + 2.0);
+    }
+}
+
+#[test]
+fn command_reference_preserves_truthy_raw_display_and_falls_back_for_nullish() {
+    let engine = Engine::default();
+    let raw_array = JsValue::array(vec![]);
+    for (display_override, expected) in [
+        (None, JsValue::string("typed")),
+        (Some(JsValue::Null), JsValue::string("login")),
+        (Some(JsValue::Undefined), JsValue::string("login")),
+        (Some(JsValue::Boolean(false)), JsValue::string("login")),
+        (Some(raw_array.clone()), raw_array.clone()),
+    ] {
+        let context = ExecutionContext {
+            broadcaster_id: "channel".into(),
+            user_login: "login".into(),
+            user_display_name: "typed".into(),
+            user_display_name_override: display_override,
+            ..Default::default()
+        }
+        .into_context();
+        let node = AstNode::CommandRef {
+            command_name: "next".into(),
+            args: vec![],
+        };
+        let mut host = Fake::default();
+        run(engine.evaluate(&node, context.clone(), &mut host)).unwrap();
+        let display = context.borrow().command_references.borrow()[0]
+            .event_data
+            .get("chatter_user_name");
+        assert_eq!(display.to_typed_json(), expected.to_typed_json());
+        if let (JsValue::Array(expected), JsValue::Array(actual)) = (expected, display) {
+            assert!(Rc::ptr_eq(&expected, &actual));
+        }
+        assert_eq!(host.calls, 0);
+    }
+}

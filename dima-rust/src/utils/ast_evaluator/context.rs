@@ -183,11 +183,17 @@ pub struct ExecutionContext {
     pub user_id: String,
     pub user_login: String,
     pub user_display_name: String,
+    /// Raw source value when supplied. Some(Undefined/Null) is explicit and
+    /// takes precedence over user_display_name; None uses the typed field.
+    pub user_display_name_override: Option<JsValue>,
     pub user_plan: String,
     pub user_level: f64,
     pub enforce_function_permissions: bool,
     pub authorization: JsValue,
     pub argument: Option<JsString>,
+    /// Raw source value when supplied. Some(Undefined/Null) is explicit and
+    /// takes precedence over argument; None uses the typed field.
+    pub argument_override: Option<JsValue>,
     pub count: f64,
     pub event_data: JsValue,
     pub eventsub_data: JsValue,
@@ -222,11 +228,13 @@ impl Default for ExecutionContext {
             user_id: String::new(),
             user_login: String::new(),
             user_display_name: String::new(),
+            user_display_name_override: None,
             user_plan: "free".into(),
             user_level: 1.0,
             enforce_function_permissions: true,
             authorization: JsValue::Undefined,
             argument: None,
+            argument_override: None,
             count: 0.0,
             event_data: JsValue::Undefined,
             eventsub_data: JsValue::Undefined,
@@ -255,6 +263,24 @@ impl Default for ExecutionContext {
     }
 }
 impl ExecutionContext {
+    /// Returns the raw override when present, without coercion. Changing the
+    /// typed argument does not clear an override; set the override to None to
+    /// resume using the typed field.
+    pub fn effective_argument(&self) -> JsValue {
+        self.argument_override.clone().unwrap_or_else(|| {
+            self.argument
+                .clone()
+                .map(JsValue::String)
+                .unwrap_or_default()
+        })
+    }
+    /// Returns the raw override when present, without coercion. Changing the
+    /// typed display name does not clear an override; None uses the typed field.
+    pub fn effective_user_display_name(&self) -> JsValue {
+        self.user_display_name_override
+            .clone()
+            .unwrap_or_else(|| JsValue::string(&self.user_display_name))
+    }
     pub fn into_context(self) -> Context {
         Rc::new(RefCell::new(self))
     }
@@ -295,10 +321,7 @@ pub fn snapshot_timer_context(context: &Context) -> JsValue {
         ("broadcasterId".into(), JsValue::string(&c.broadcaster_id)),
         ("userId".into(), JsValue::string(&c.user_id)),
         ("userLogin".into(), JsValue::string(&c.user_login)),
-        (
-            "userDisplayName".into(),
-            JsValue::string(&c.user_display_name),
-        ),
+        ("userDisplayName".into(), c.effective_user_display_name()),
         ("userPlan".into(), JsValue::string(&c.user_plan)),
         ("userLevel".into(), JsValue::Number(c.user_level)),
         (
@@ -306,10 +329,7 @@ pub fn snapshot_timer_context(context: &Context) -> JsValue {
             JsValue::Boolean(c.enforce_function_permissions),
         ),
         ("authorization".into(), c.authorization.clone()),
-        (
-            "argument".into(),
-            c.argument.clone().map(JsValue::String).unwrap_or_default(),
-        ),
+        ("argument".into(), c.effective_argument()),
         ("count".into(), JsValue::Number(c.count)),
         ("eventData".into(), c.event_data.clone()),
         ("eventsubData".into(), c.eventsub_data.clone()),

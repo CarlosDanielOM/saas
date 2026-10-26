@@ -32,11 +32,18 @@ pub struct FunctionMetadata {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub surfaces: Option<Vec<String>>,
 }
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum DispatchKind {
+    Host,
+    Context,
+    #[cfg(feature = "ast-pure-functions")]
+    Pure(super::pure::PureFunction),
+}
 #[derive(Clone, Debug)]
 pub struct RegisteredFunction {
     pub name: String,
     pub metadata: Option<FunctionMetadata>,
-    pub(crate) builtin: bool,
+    pub(crate) dispatch: DispatchKind,
 }
 #[derive(Clone, Debug, Default)]
 pub struct FunctionRegistry {
@@ -52,9 +59,30 @@ impl FunctionRegistry {
             RegisteredFunction {
                 name,
                 metadata,
-                builtin: false,
+                dispatch: DispatchKind::Host,
             },
         );
+    }
+    /// Installs only the 27 pure string, user, random and EventSub names.
+    #[cfg(feature = "ast-pure-functions")]
+    pub fn with_pure_builtins() -> Self {
+        let mut registry = Self::default();
+        registry.register_pure_builtins();
+        registry
+    }
+    /// Adds the pure families to this registry, retaining unrelated entries.
+    #[cfg(feature = "ast-pure-functions")]
+    pub fn register_pure_builtins(&mut self) {
+        for (name, function, metadata) in super::pure::definitions() {
+            self.entries.insert(
+                name.into(),
+                RegisteredFunction {
+                    name: name.into(),
+                    metadata: Some(metadata),
+                    dispatch: DispatchKind::Pure(function),
+                },
+            );
+        }
     }
     pub fn metadata(&self, name: &str) -> Option<&FunctionMetadata> {
         self.entries.get(name).and_then(|e| e.metadata.as_ref())
@@ -121,7 +149,7 @@ impl FunctionRegistry {
                 name.into(),
                 RegisteredFunction {
                     name: name.into(),
-                    builtin: true,
+                    dispatch: DispatchKind::Context,
                     metadata: Some(FunctionMetadata {
                         description: description.into(),
                         syntax: syntax.into(),
@@ -146,12 +174,12 @@ pub(crate) fn builtin(name: &str, args: &[JsValue], context: &Context) -> JsValu
                 .filter(|v| js_truthy(v))
                 .cloned()
                 .or_else(|| {
-                    c.argument
-                        .as_ref()
-                        .filter(|s| !s.is_empty())
-                        .map(|s| JsValue::String(s.clone()))
+                    let argument = c.effective_argument();
+                    js_truthy(&argument).then_some(argument)
                 })
                 .unwrap_or_else(|| JsValue::string("0"));
+            // Preserve the existing count coercer contract. The raw override
+            // changes fallback selection, not this builtin's infallible coercion.
             let mut s = js_string(&v);
             if s != super::JsString::from("0") {
                 s = super::JsString::from_units(

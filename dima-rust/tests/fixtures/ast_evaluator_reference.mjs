@@ -44,15 +44,23 @@ const EXPECTED_SOURCE_HASHES = {
 };
 const roleSelections = ['ROLE_TAGS', 'ROLE_TAG_SET', 'BROADCASTER_USER_LEVEL', 'isRoleTag', 'createUserIdentity', 'createBroadcasterIdentity', 'parseUserIdentity'];
 
-async function sourceBundle() {
+// Additive prepared-source bridge: callers may supply narrowly selected extra
+// modules/tests. Baseline hashes/selection and the old corpus remain independent.
+export async function buildSourceBundle(options = {}) {
   const texts = {}, hashes = {}, code = {};
   for (const path of [...modules, ...builtinPaths, rolesPath, ...usedTests]) {
     texts[path] = await readFile(new URL(path, repo), 'utf8');
     hashes[path] = sha256(texts[path]);
   }
   if (Object.keys(EXPECTED_SOURCE_HASHES).length) assert.deepEqual(hashes, EXPECTED_SOURCE_HASHES, 'source hash drift: review source parity before updating guards');
-  for (const path of [...modules, ...builtinPaths, rolesPath]) {
+  for (const path of [...(options.extraModules ?? []), ...(options.extraSources ?? [])]) {
+    assert(!Object.hasOwn(texts,path), `duplicate source bridge path: ${path}`);
+    texts[path] = await readFile(new URL(path,repo),'utf8');
+    hashes[path] = sha256(texts[path]);
+  }
+  for (const path of [...modules, ...builtinPaths, rolesPath, ...(options.extraModules ?? [])]) {
     let text = texts[path];
+    if (options.transformSource) text = options.transformSource(path,text);
     if (path === rolesPath) {
       const ast = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true);
       const found = [];
@@ -87,10 +95,12 @@ async function sourceBundle() {
   return { code, hashes };
 }
 
+const sourceBundle = () => buildSourceBundle();
+
 // Self-contained runtime shared by ordinary generator and serialized offline loader.
 // Only actual source is transpiled. Host adapters below are deterministic test fakes.
-function runtimeFactory(code, vm, contextBuiltins = false) {
-  let builtinOracle;
+function runtimeFactory(code, vm, contextBuiltins = false, options = {}) {
+  let builtinOracle, pureOracle;
   const base = 'dimabot/src/utils/ast_parser/';
   let active;
   const moduleCache = new Map();
@@ -234,6 +244,14 @@ function runtimeFactory(code, vm, contextBuiltins = false) {
     install('break', (_args, ctx) => { if (ctx.loopDepth > 0) ctx.loopExit = 'break'; return ''; });
     install('continue', (_args, ctx) => { if (ctx.loopDepth > 0) ctx.loopExit = 'continue'; return ''; });
   }
+  if (options.pureBuiltins) for (const registration of options.registrations ?? []) {
+    load(registration.path)[registration.exportName]();
+  }
+  for (const override of options.functionOverrides ?? []) {
+    const handler = api.getFunctionHandler(override.handler);
+    if (!handler) throw new Error(`Unknown fixture override handler: ${override.handler}`);
+    api.registerFunction(override.name,handler,override.metadata);
+  }
   install('fixture.effect', (_args, ctx) => {
     const value = effects.nextPetAction(ctx.effectContext, ctx.broadcasterId);
     event('deterministic fake host event: effect action', value); return value;
@@ -275,8 +293,12 @@ function runtimeFactory(code, vm, contextBuiltins = false) {
   function prepareBenchmark(definition) {
     const input = definition.input ?? definition;
     if (input.contextBuiltins && !contextBuiltins) {
-      builtinOracle ??= runtimeFactory(code,vm,true);
+      builtinOracle ??= runtimeFactory(code,vm,true,options);
       return builtinOracle.prepareBenchmark(definition);
+    }
+    if (input.pureBuiltins && !options.pureBuiltins) {
+      pureOracle ??= runtimeFactory(code,vm,contextBuiltins,{...options,pureBuiltins:true});
+      return pureOracle.prepareBenchmark(definition);
     }
     const prepared = compile(input);
     const sample = fresh(input).ctx;
@@ -333,7 +355,14 @@ function runtimeFactory(code, vm, contextBuiltins = false) {
             snapshotVariables: t.snapshot.variables, snapshotResponses: t.snapshot.commandResponses } })) }
     };
   }
-  return { prepareBenchmark, normalizeObservation, execute: async input => normalizeObservation(await prepareBenchmark({input})()) };
+  return { getRegistryMetadata: () => api.getAllRegisteredFunctions().map(({name,metadata})=>({name,metadata})), prepareBenchmark, normalizeObservation, execute: async input => normalizeObservation(await prepareBenchmark({input})()) };
+}
+
+// The pure corpus serializes this SAME factory, including typed/context/host
+// observation logic; no duplicated evaluator, loader or normalization semantics.
+export function createPreparedSourceOracle(code, options = {}) { return runtimeFactory(code,vm,false,options); }
+export function preparedSourceLoaderTransport(code, options = {}) {
+  return `async function createSourceOracle(){const vm=await import('node:vm');return (${runtimeFactory.toString()})(${JSON.stringify(code)},vm,false,${JSON.stringify(options)});}`;
 }
 
 export async function createSourceOracle() { return runtimeFactory((await sourceBundle()).code, vm); }
