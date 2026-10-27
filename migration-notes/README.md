@@ -25,7 +25,9 @@ This directory indexes Rust worker migrations, their source reuse, remaining Typ
 | Cache and logger pre-port review | Logger and plan-cache utilities are accepted as opt-in library code; other cache recommendations remain unselected. No caller adoption or deployment. | [cache-logger-pre-port-review.md](cache-logger-pre-port-review.md) | [TypeScript cache protocol](../dimabot/src/utils/plan_cache_fence.ts) |
 | Shared Rust logger utility | Opt-in core and Redis/OTEL adapters passed capped quality, 56-case source parity, adapter, and disposable-cache verification. No TypeScript caller adoption, worker-profile change, or deployment; logger is independent of plan-cache fencing. | [shared-logger.md](shared-logger.md) | [Rust logger API](../dimabot/src/utils/logger.rs) |
 | Plan-cache fence utility | Accepted opt-in library scope: capped quality and source parity plus 135 disposable Dragonfly scenarios. No caller adoption, worker-profile change, or deployment; mutation deadline expiry was not fault-injected. | [plan-cache-fence.md](plan-cache-fence.md) | [Rust API](../dimabot/src/utils/plan_cache_fence.rs) |
-| Rust source colocation | Standalone crate moved into `dimabot/`; full Cargo checks and tests are pending. | [dimabot-rust-colocation.md](dimabot-rust-colocation.md) | [Rust project guide](../dimabot/RUST.md) |
+| Rust source colocation | Standalone crate moved into `dimabot/`; isolated all-feature checks/Clippy and 520 scoped Rust tests passed (10 ignored), with production unchanged. | [dimabot-rust-colocation.md](dimabot-rust-colocation.md) | [Rust project guide](../dimabot/RUST.md) |
+
+Dependency-complete progress for the 41 paired files is recorded in the [Rust migration completeness audit](rust-migration-completeness.md).
 
 TypeScript util foundations (library only, not deployed) are tracked separately in [ts-util-foundations.md](ts-util-foundations.md): approved crates, parity evidence, known differences, and the wrappers still to build.
 
