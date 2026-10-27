@@ -24,7 +24,7 @@ there is no caller integration or deployment.
 The existing syntax core is reused for parsing and template scanning rather
 than adding a parallel parser:
 
-- [`ast_syntax`](../dima-rust/src/utils/ast_syntax/mod.rs) supplies the
+- [`ast_syntax`](../dimabot/src/utils/ast_parser/syntax.rs) supplies the
   `SyntaxEngine`, prepared grammar, source segments, parser, and syntax errors.
   `BlocksEngine::default()` explicitly chooses
   `SyntaxProfile::TypeScriptCompatible`; callers can opt into Improved with
@@ -222,7 +222,7 @@ paired measurements, cleanup state, and production comparison summary.
 
 ## Paired release benchmark
 
-The [tracked benchmark artifact](../dima-rust/benchmarks/ast-blocks-2026-10-25.json)
+The [tracked benchmark artifact](../dimabot/benchmarks/ast-blocks-2026-10-25.json)
 records 21 paired operation medians: ten text fixtures each have separate
 public import and borrowed compile operations, plus one empty-ternary compile.
 Three verification-only definitions are excluded. Rust used release mode

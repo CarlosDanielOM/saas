@@ -139,3 +139,6 @@ src/server/routes/public/speach
 src/server/routes/public/uploads
 
 /http
+
+# Rust compiler output
+/target/

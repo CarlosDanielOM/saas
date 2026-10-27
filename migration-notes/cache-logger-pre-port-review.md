@@ -60,10 +60,10 @@ Logger decisions implemented and verified in the opt-in Rust core/adapters (see 
 - Apply default keep-all sampling and configurable low-priority sampling/minimum level before payload construction through `log_lazy`.
 - Use UUID cache IDs and bounded JSON serialization limits. Non-JSON JavaScript values are outside this API; context metadata uses an explicit allowlist.
 - Keep cache keys non-colliding with a stable random identifier. The current Dragonfly helper's `errorLogTracker` map has no eviction and keys include the entire error message; if that generic helper is reviewed, consider bounded eviction and stable error categories/time windows.
-- Timestamp formatting could reuse Rust `logger_timestamp` from [`ai_usage_receipts/queue.rs`](../dima-rust/src/workers/ai_usage_receipts/queue.rs), or a cached JS formatter, only after exact output compatibility checks and a benchmark.
-- Reuse [`otel.rs`](../dima-rust/src/utils/otel.rs) for OTLP where appropriate. The logger adapter accepts an existing SDK logger and does not install an exporter or couple logger lifecycle to a worker supervisor.
+- Timestamp formatting could reuse Rust `logger_timestamp` from [`ai_usage_receipts/queue.rs`](../dimabot/src/utils/ai_usage_receipts/queue.rs), or a cached JS formatter, only after exact output compatibility checks and a benchmark.
+- Reuse [`otel.rs`](../dimabot/src/utils/opentelemetry_posthog.rs) for OTLP where appropriate. The logger adapter accepts an existing SDK logger and does not install an exporter or couple logger lifecycle to a worker supervisor.
 - `ai_usage_receipts/queue.rs` retains its private global-only cache logger; the generic logger does not depend on that worker module.
-- [`oauth_debug_cache.ts`](../dimabot/src/utils/oauth_debug_cache.ts) already uses `SET EX`, but timestamp-only IDs can collide within the same millisecond. Rust Twitch diagnostic builders in [`twitch.rs`](../dima-rust/src/utils/twitch.rs) provide sanitization patterns; logger/storage wiring remains separate work.
+- [`oauth_debug_cache.ts`](../dimabot/src/utils/oauth_debug_cache.ts) already uses `SET EX`, but timestamp-only IDs can collide within the same millisecond. Rust Twitch diagnostic builders in [`twitch.rs`](../dimabot/src/utils/twitch.rs) provide sanitization patterns; logger/storage wiring remains separate work.
 - Do not set a globally short timeout on the shared Redis connection to isolate logger writes. Other users of that connection include blocking queues. Give the logger a dedicated bounded sink policy instead.
 
 ## Validation acceptance checklist for future selections

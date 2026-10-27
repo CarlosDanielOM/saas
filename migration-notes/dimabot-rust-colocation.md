@@ -1,0 +1,13 @@
+# dimabot Rust source colocation
+
+The standalone Rust source tree was moved into `dimabot/` so related Rust and TypeScript files are easy to find together. Cargo remains the package `dima-rust` and library crate `dima_rust`; the public Rust API is unchanged.
+
+Examples: the Rust cron index is `dimabot/src/workers/cron.index.rs`, beside `cron.index.ts`; `mongodb.database.rs` sits beside `mongodb.database.ts`; and `ast_parser/evaluator.rs` sits beside the TypeScript evaluator. Rust-only helper modules that do not map one-to-one stay grouped under `src/workers/cron_supervisor/` or their domain's utility subdirectory. `Cargo.toml`, `Cargo.lock`, and `rust-toolchain.toml` now live at the `dimabot/` root.
+
+The relocation audit accounted for all 202 original Rust project files. `Cargo.lock` and frozen parity/benchmark JSON were unchanged. Existing TypeScript implementation files and other application projects were not changed. The existing ignored Cargo target artifacts were moved intact to `dimabot/target/`.
+
+Verification passed: TypeScript `tsc --noEmit`, all 77 ops unit tests, Rust formatting, 23 MJS syntax checks, 12 offline parity oracles, `cargo check --locked --all-targets --all-features`, and `cargo clippy --locked --all-targets --all-features -- -D warnings`. The scoped combined worker/utility test profile recorded 520 passes, 0 failures, and 10 ignored across 37 result suites, including two doctests. This was not an all-features runtime test suite; it covered the worker/supervisor and selected bot, AST, logger/Redis, permissions, plan-cache, Twitch Streamers, JWT, audio, Qdrant, policy, Socket.IO, and Polar profiles. All four worker dependency graphs matched their pre-move graphs after normalizing source-root paths.
+
+Rust verification used a read-only source snapshot under the global compiler lock, with 3 CPUs, 4 GiB RAM and swap limits (no swap), two Cargo jobs, and 256 PIDs. Peak private Cargo cache size was 6,107,701,248 bytes, below its 8 GiB cap; minimum sampled host `MemAvailable` was 10,354,909,184 bytes, above the 4 GiB floor. The temporary compiler was removed. All 19 production container IDs, images, and start times remained unchanged.
+
+The only known failed check is a pre-existing token-storage source-fingerprint mismatch (`0d9547…` in the frozen corpus versus `68f1dc…` in current TypeScript and HEAD); the frozen corpus was preserved. The cron release helper refused the production plan because `/root/saas-rust` does not own the live Compose project at `/root/saas`; no release build or deployment was performed. No production service changed, and no commit or push was made.

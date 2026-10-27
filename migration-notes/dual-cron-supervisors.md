@@ -8,7 +8,7 @@ A fresh pre-deployment baseline covered 19 containers, 90 indexes, and 19 collec
 
 The implementation keeps one `dima-cron` container and assigns each runtime its own registry and supervision boundary:
 
-- `dima-rust/src/supervisor/` and `dima-rust/src/bin/cron_index.rs` define the Rust index for seven native workers. Rust owns their allowlisted child environments, process lifecycle, per-child restart policy, process metrics, bounded telemetry framing, and Redis/Dragonfly export. A failed native child is restarted by Rust without a TypeScript fallback.
+- `dimabot/src/workers/cron_supervisor/` and `dimabot/src/workers/cron.index.rs` define the Rust index for seven native workers. Rust owns their allowlisted child environments, process lifecycle, per-child restart policy, process metrics, bounded telemetry framing, and Redis/Dragonfly export. A failed native child is restarted by Rust without a TypeScript fallback.
 - `dimabot/src/workers/cron.index.ts` owns the 19 TypeScript definitions (18 enabled in the reported production configuration, with EventSub reconciliation disabled); three definitions retain their existing environment flags. `cron_native_bridge.ts` starts and owns exactly one detached Rust index; Node does not own native worker definitions, individual native children, or their metrics.
 - Node remains PID 1 and coordinates both owners. When starting as root it launches the Rust index with UID/GID 65534 and a restricted environment. Rust applies a narrower allowlist to each native worker. The bridge does not accept an arbitrary command or executable.
 - The Rust CLI supports standalone `--once`, `--dry-run`, `--workers`, and `--events-json` operation; worker selection is restricted to registered names.
@@ -55,8 +55,8 @@ No performance improvement is claimed. Historical accepted release evidence rema
 
 ## Source map
 
-- [Rust index CLI](../dima-rust/src/bin/cron_index.rs)
-- [Rust supervisor](../dima-rust/src/supervisor/)
+- [Rust index CLI](../dimabot/src/workers/cron.index.rs)
+- [Rust supervisor](../dimabot/src/workers/cron_supervisor/)
 - [TypeScript cron host](../dimabot/src/workers/cron.index.ts)
 - [Node-to-Rust bridge](../dimabot/src/workers/cron_native_bridge.ts)
 - [Candidate behavior check](../ops/checks/cron-supervisors.mjs)

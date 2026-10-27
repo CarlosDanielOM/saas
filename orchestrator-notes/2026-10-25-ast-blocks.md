@@ -42,7 +42,7 @@ unchanged.
 The source inventory, final oracle identity, verification results, full paired
 medians, and benchmark limitations are recorded in the [AST blocks migration
 note](../migration-notes/ast-blocks.md) and [tracked benchmark
-artifact](../dima-rust/benchmarks/ast-blocks-2026-10-25.json). Capped quality
+artifact](../dimabot/benchmarks/ast-blocks-2026-10-25.json). Capped quality
 and benchmark receipts succeeded. Across repeated profiles there were 163
 test executions, not 163 unique tests; the same 467-case oracle passed in both
 profiles. The release benchmark found lower Rust medians for 19 of 21

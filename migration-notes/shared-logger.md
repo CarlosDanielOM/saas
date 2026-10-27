@@ -41,13 +41,13 @@ The final acceptance summary records 19 production containers unchanged by ident
 
 ## References
 
-- Rust core: [`logger.rs`](../dima-rust/src/utils/logger.rs)
-- Redis adapter: [`redis.rs`](../dima-rust/src/utils/logger/redis.rs)
-- OTEL adapter: [`otel.rs`](../dima-rust/src/utils/logger/otel.rs)
-- Local tests: [`tests.rs`](../dima-rust/src/utils/logger/tests.rs)
-- Adapter checks: [`logger_adapters.rs`](../dima-rust/tests/logger_adapters.rs)
-- Parity oracle: [`logger_parity.rs`](../dima-rust/tests/logger_parity.rs) and [`logger_parity.json`](../dima-rust/tests/fixtures/logger_parity.json)
-- Reproducible source harness: [`logger_reference.mjs`](../dima-rust/tests/fixtures/logger_reference.mjs)
+- Rust core: [`logger.rs`](../dimabot/src/utils/logger.rs)
+- Redis adapter: [`redis.rs`](../dimabot/src/utils/logger/redis.rs)
+- OTEL adapter: [`otel.rs`](../dimabot/src/utils/logger/otel.rs)
+- Local tests: [`tests.rs`](../dimabot/src/utils/logger/tests.rs)
+- Adapter checks: [`logger_adapters.rs`](../dimabot/tests/logger_adapters.rs)
+- Parity oracle: [`logger_parity.rs`](../dimabot/tests/logger_parity.rs) and [`logger_parity.json`](../dimabot/tests/fixtures/logger_parity.json)
+- Reproducible source harness: [`logger_reference.mjs`](../dimabot/tests/fixtures/logger_reference.mjs)
 - TypeScript source: [`logger.ts`](../dimabot/src/utils/logger.ts)
 - Cache/logger review: [`cache-logger-pre-port-review.md`](cache-logger-pre-port-review.md)
 - Deferred TwitchStreamers port: [`twitch-streamers-pre-port-review.md`](twitch-streamers-pre-port-review.md)

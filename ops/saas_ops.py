@@ -308,8 +308,17 @@ class Ops:
             rel = file.relative_to(source)
             if any(part in EXCLUDED or part.startswith(".env") for part in rel.parts):
                 continue
-            if rust_only and rel.parts[0] not in {"Cargo.toml", "Cargo.lock", "rust-toolchain.toml", "src", "tests", "examples"}:
-                continue
+            if rust_only:
+                if rel.parts[0] not in {"Cargo.toml", "Cargo.lock", "rust-toolchain.toml", "src", "tests", "examples"}:
+                    continue
+                # Rust and TypeScript share src/. Only the AST/permission
+                # reference sources are needed by optional Rust parity tests;
+                # do not copy the rest of the Node application to the compiler.
+                if rel.parts[0] == "src" and rel.suffix != ".rs":
+                    reference = rel.parts[:3] in {("src", "utils", "ast_parser"),
+                                                 ("src", "utils", "permissions")}
+                    if rel.suffix != ".ts" or not reference:
+                        continue
             require(not file.is_symlink() and source in file.resolve().parents, f"Unsafe build input: {name}")
             if not file.exists():  # tracked deletions are part of the candidate
                 continue
@@ -507,7 +516,7 @@ class Ops:
             require(not self.docker("container", "ls", "--filter", "label=" + OWNER + ".rust-build=true", "--quiet", capture=True).strip(),
                     "A capped Rust compiler is already running; clean up its owning run first")
             receipt["rust_headroom_start"] = self.rust_headroom(starting=True, memory_gib=memory_gib)
-            self.snapshot(Target("dima-rust", "", ""), path / "rust-source", source_dir, rust_only=True)
+            self.snapshot(Target("dimabot", "", ""), path / "rust-source", source_dir, rust_only=True)
             receipt["rust_source_digest"] = tree_hash(path / "rust-source")
             for filename in ("Cargo.toml", "Cargo.lock", "rust-toolchain.toml"):
                 require((path / "rust-source" / filename).is_file(), "Missing Rust build manifest: " + filename)

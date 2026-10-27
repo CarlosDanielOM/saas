@@ -6,7 +6,7 @@
 
 The remaining `dimabot` Rust migration is being carried out in `/root/saas-rust`. Verified, coherent local commits are allowed and required under the commit policy below during migration; keep them small and logical, and never combine unrelated work or commit another contributor's changes. No agent, delegate, or session may push any work until the user explicitly gives a green light. Migration completion alone does not authorize a push.
 
-Migration scope is limited to `dimabot/` (including the Rust source and crate), directly necessary migration tests, ops integration, and repository guidance or notes. Other sites, extensions, and projects are out of scope unless the user explicitly authorizes work on them; consumer impact alone does not grant authority to change another project.
+Migration scope is limited to `dimabot/` (including the Rust source and crate), directly necessary migration tests, ops integration, and repository guidance or notes. The former standalone Rust directory has been folded into `dimabot/`. Other sites, extensions, and projects are out of scope unless the user explicitly authorizes work on them; consumer impact alone does not grant authority to change another project.
 
 **Migration completeness:** 100% means every TypeScript file feature and accepted improvement, plus every required direct and transitive dependency, is implemented in Rust without relying on unmigrated TypeScript. Report local feature coverage separately from total migration completion and name any blocking dependency. A host boundary, trait, or mock does not complete a feature when its required application-specific adapter is missing. Native Rust crates and standard-library replacements count; npm package internals do not need porting. Type-only TypeScript imports may be replaced by equivalent Rust types. Report deployment or caller-adoption status separately; dependency completeness does not authorize live cutover or make deployment a condition of 100%.
 
@@ -73,7 +73,7 @@ Changes limited to repository guidance (such as `AGENTS.md` or architecture Mark
 
 ## Monorepo Structure
 
-This workspace is a **single git repository** (`saas/`) containing six related projects. There are no nested `.git` folders. Run repository operations from the relevant checkout root; use isolated worktrees/copies when required by the production workflow above.
+This workspace is a **single git repository** (`saas/`) containing seven application projects, with Rust integrated into `dimabot/`. There are no nested `.git` folders. Run repository operations from the relevant checkout root; use isolated worktrees/copies when required by the production workflow above.
 
 - Each subproject manages its own `package.json` and `package-lock.json`.
 - Root `.gitignore` explicitly allows per-project lockfiles.
@@ -83,7 +83,7 @@ This workspace is a **single git repository** (`saas/`) containing six related p
 
 | Project     | Purpose                              | Tech Stack                  | Key Entry Points                              |
 |-------------|--------------------------------------|-----------------------------|-----------------------------------------------|
-| `dimabot/`  | Backend API + Twitch bot + workers   | Node.js / TypeScript        | `src/server/index.ts`, `src/server/server.ts`, `src/workers/cron.index.ts` |
+| `dimabot/`  | Backend API + Twitch bot, workers, and Rust library/native workers | Node.js / TypeScript + Rust | `src/server/index.ts`, `src/server/server.ts`, `src/workers/cron.index.ts`, `Cargo.toml`, `src/lib.rs` |
 | `dimasite/` | Public-facing Angular frontend       | Angular v21 + Signals       | `src/app/app.routes.ts`, `src/styles.css`     |
 | `admin/`    | Internal admin panel                 | Angular v21                 | `src/app/app.routes.ts`                       |
 | `dimadocs/` | Documentation site (public)          | Astro + MDX                 | `astro.config.mjs`, `src/content/docs/`       |

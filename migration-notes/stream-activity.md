@@ -1,6 +1,6 @@
 # Stream activity Rust migration
 
-**Status:** Active in production since 2026-10-21. Its six-group stream suite and the combined production watch passed on latest run `cron-7b8a6c88303d`; the earlier combined production watch passed on `cron-99f8d5165ff2`. **Source commit:** `0e0242a`. **Delivery:** first `saas-ops` cron run `cron-a4c96242b30a`, deployed to the existing `dima-cron` service. This record is the migration history; the detailed contract, procedures, fixtures, and benchmark artifacts remain in [`dima-rust/STREAM_ACTIVITY.md`](../dima-rust/STREAM_ACTIVITY.md).
+**Status:** Active in production since 2026-10-21. Its six-group stream suite and the combined production watch passed on latest run `cron-7b8a6c88303d`; the earlier combined production watch passed on `cron-99f8d5165ff2`. **Source commit:** `0e0242a`. **Delivery:** first `saas-ops` cron run `cron-a4c96242b30a`, deployed to the existing `dima-cron` service. This record is the migration history; the detailed contract, procedures, fixtures, and benchmark artifacts remain in [`dimabot/RUST_STREAM_ACTIVITY.md`](../dimabot/RUST_STREAM_ACTIVITY.md).
 
 This status and the selector descriptions recorded below are historical deployment facts. The scheduled TypeScript worker entrypoint has since been retired; the former `STREAM_ACTIVITY_RUNTIME=typescript` selector is no longer supported. Retirement was accepted in `cron-d02bf5a387d5`; see [the current retirement record](typescript-worker-retirement.md).
 
@@ -10,7 +10,7 @@ Rust ports the existing batch projection from `dimabot/src/utils/stream_activity
 
 The native executable runs as a separately supervised child of the existing cron host. It adds no service or Compose container. A failed child is restarted without silently switching implementations. See the technical reference for environment restrictions, telemetry, lease and checkpoint contracts, migration limits, and follow-up opportunities.
 
-The Rust source now includes a bounded process-health probe for pending activity, checkpoint progress, active-batch size, and last successful work. This health telemetry shipped in combined cron run `cron-240af282cb85`; the bounded production acceptance watch passed. It reads the existing collections without changing the projection or lease contract; details are in the [technical reference](../dima-rust/STREAM_ACTIVITY.md#stream-health-telemetry).
+The Rust source now includes a bounded process-health probe for pending activity, checkpoint progress, active-batch size, and last successful work. This health telemetry shipped in combined cron run `cron-240af282cb85`; the bounded production acceptance watch passed. It reads the existing collections without changing the projection or lease contract; details are in the [technical reference](../dimabot/RUST_STREAM_ACTIVITY.md#stream-health-telemetry).
 
 ## Benefits and evidence
 
@@ -26,9 +26,9 @@ Before deployment, the capped cron candidate passed focused TypeScript/Rust pers
 
 Evidence and procedures:
 
-- [Full behavior and deployment record](../dima-rust/STREAM_ACTIVITY.md)
-- [Initial synthetic benchmark results](../dima-rust/benchmarks/stream_activity-2026-10-20.json)
-- [Batch matrix results](../dima-rust/benchmarks/stream_activity-batches-2026-10-21.json)
+- [Full behavior and deployment record](../dimabot/RUST_STREAM_ACTIVITY.md)
+- [Initial synthetic benchmark results](../dimabot/benchmarks/stream_activity-2026-10-20.json)
+- [Batch matrix results](../dimabot/benchmarks/stream_activity-batches-2026-10-21.json)
 - [Cron candidate workflow and check](../ops/README.md#rust-worker-binaries-in-the-cron-target)
 
 The next optimization candidates documented in the technical reference remain proposals, not deployed changes. Any partitioning or shared-worker changes require explicit checkpoint/lease design and parity coverage.

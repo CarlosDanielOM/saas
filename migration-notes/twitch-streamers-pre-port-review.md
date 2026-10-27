@@ -10,11 +10,11 @@ The TypeScript owner is [`TwitchStreamers`](../dimabot/src/classes/twitch_stream
 
 Reusable Rust library code is present but not adopted by this class:
 
-- [`twitch_tokens.rs`](../dima-rust/src/utils/twitch_tokens.rs) and its [`adapters.rs`](../dima-rust/src/utils/twitch_tokens/adapters.rs) provide opt-in credential lifecycle logic, encrypted-refresh-token compare-and-swap for Mongo writes, conditional cache publication/invalidation, atomic compare-and-delete lock release, and cold-cache reuse of a valid persisted access token.
-- [`credential_crypto.rs`](../dima-rust/src/utils/credential_crypto.rs) covers the legacy stored-credential format.
-- [`mongo.rs`](../dima-rust/src/utils/mongo.rs) and [`redis.rs`](../dima-rust/src/utils/redis.rs) contain shared connection helpers; callers still supply handles to the token adapters.
-- [`posthog.rs`](../dima-rust/src/utils/posthog.rs) includes `StreamerIdentities` deduplication.
-- [`otel.rs`](../dima-rust/src/utils/otel.rs) provides a Rust log export pipeline, but not the full TypeScript shared-logger contract.
+- [`twitch_tokens.rs`](../dimabot/src/utils/tokens.rs) and its [`adapters.rs`](../dimabot/src/utils/tokens/adapters.rs) provide opt-in credential lifecycle logic, encrypted-refresh-token compare-and-swap for Mongo writes, conditional cache publication/invalidation, atomic compare-and-delete lock release, and cold-cache reuse of a valid persisted access token.
+- [`credential_crypto.rs`](../dimabot/src/utils/crypto.rs) covers the legacy stored-credential format.
+- [`mongo.rs`](../dimabot/src/utils/databases/mongodb.database.rs) and [`redis.rs`](../dimabot/src/utils/databases/dragonfly.database.rs) contain shared connection helpers; callers still supply handles to the token adapters.
+- [`posthog.rs`](../dimabot/src/utils/posthog_events.rs) includes `StreamerIdentities` deduplication.
+- [`otel.rs`](../dimabot/src/utils/opentelemetry_posthog.rs) provides a Rust log export pipeline, but not the full TypeScript shared-logger contract.
 
 The plan-cache utility ports the three scripts in [`plan_cache_fence.ts`](../dimabot/src/utils/plan_cache_fence.ts) and two scripts in [`polar_billing_events.ts`](../dimabot/src/domain_events/polar_billing_events.ts); capped source parity and disposable Dragonfly verification passed. It is not connected to this class or any TypeScript caller. See [plan-cache-fence.md](plan-cache-fence.md) for its API, accepted evidence, and limits. The Rust shared logger core and optional Redis/OTEL adapters are also accepted library utilities, not adopted by this class; see [shared-logger.md](shared-logger.md). The token utility itself does not install logger/debug-cache or refresh-all paths. Streamer metadata selection, mapping, query behavior, consumer inventory, and mixed credential-writer coordination remain separate class-port work; the credential utility is not a complete account repository.
 
@@ -68,7 +68,7 @@ The library implementation is complete as opt-in source; adoption and validation
 - [`tokens.ts`](../dimabot/src/utils/tokens.ts)
 - [`account_deletion.ts`](../dimabot/src/utils/account_deletion.ts)
 - [`websocket.ts`](../dimabot/src/server/websocket.ts)
-- [`Rust Twitch token utility`](../dima-rust/src/utils/twitch_tokens.rs)
-- [`Rust token adapters`](../dima-rust/src/utils/twitch_tokens/adapters.rs)
-- [`Rust credential codec`](../dima-rust/src/utils/credential_crypto.rs)
-- [`Rust PostHog helper`](../dima-rust/src/utils/posthog.rs)
+- [`Rust Twitch token utility`](../dimabot/src/utils/tokens.rs)
+- [`Rust token adapters`](../dimabot/src/utils/tokens/adapters.rs)
+- [`Rust credential codec`](../dimabot/src/utils/crypto.rs)
+- [`Rust PostHog helper`](../dimabot/src/utils/posthog_events.rs)

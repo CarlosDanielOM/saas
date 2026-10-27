@@ -55,8 +55,8 @@ Helper cleanup completed with no task-owned temporary resources or test networks
 
 ## Source references
 
-- [Rust worker](../dima-rust/src/workers/raid_sessions.rs)
-- [Rust executable](../dima-rust/src/bin/raid_sessions.rs)
+- [Rust worker](../dimabot/src/utils/raid_sessions.rs)
+- [Rust executable](../dimabot/src/workers/raid_sessions.worker.rs)
 - [Native behavior check](../ops/checks/raid-sessions-rust.mjs)
 - [Existing end-to-end behavior check](../ops/checks/raid-sessions.mjs)
 - [Cron supervisor](../dimabot/src/workers/cron.index.ts)

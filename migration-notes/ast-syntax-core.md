@@ -82,7 +82,7 @@ Tests ran unoptimized with debug info and incremental compilation disabled, in a
 
 ## Compilation microbenchmark
 
-The tracked artifact [`ast-syntax-2026-10-25.json`](../dima-rust/benchmarks/ast-syntax-2026-10-25.json) records exact Rust and TypeScript source hashes, semantic checksums, all three paired raw runs, requests, medians, dependency graph hashes, test counts, and caps. The benchmark compiled syntax and included AST construction/destruction and runtime GC, but did not run evaluation or time JSON serialization/checksums. It used identical inputs, 100 warmups, 500 iterations, seven batches, and three serial rounds in fixed Rust-then-TypeScript order. Reported values are medians of 21 batch per-operation means. Plan-reuse traversal was disabled.
+The tracked artifact [`ast-syntax-2026-10-25.json`](../dimabot/benchmarks/ast-syntax-2026-10-25.json) records exact Rust and TypeScript source hashes, semantic checksums, all three paired raw runs, requests, medians, dependency graph hashes, test counts, and caps. The benchmark compiled syntax and included AST construction/destruction and runtime GC, but did not run evaluation or time JSON serialization/checksums. It used identical inputs, 100 warmups, 500 iterations, seven batches, and three serial rounds in fixed Rust-then-TypeScript order. Reported values are medians of 21 batch per-operation means. Plan-reuse traversal was disabled.
 
 | Input | Rust median (µs/op) | TypeScript median (µs/op) | TypeScript / Rust |
 |---|---:|---:|---:|

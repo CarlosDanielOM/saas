@@ -1,7 +1,7 @@
 // Stage native-cron-fixture.mjs beside cron-boot.mjs for dual-supervisor verification.
 import { rustRegistry, assertSelectedNatives } from '/tmp/saas-fixtures/native-cron-fixture.mjs';
 // saas-ops candidate check: actual cron command, native projector, disposable DBs.
-// Stage cron-boot.mjs, activity.mjs (dima-rust fixture), analytics-store.mjs
+// Stage cron-boot.mjs, activity.mjs (dimabot/tests/fixtures/stream_activity.mjs), analytics-store.mjs
 // (exact dima-analytics/src/store.mjs) under /tmp/saas-fixtures before startup.
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';

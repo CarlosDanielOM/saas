@@ -6,7 +6,7 @@
 
 The remaining `dimabot` Rust migration is being carried out in `/root/saas-rust`. Verified, coherent local commits are allowed and required under the commit policy below during migration; keep them small and logical, and never combine unrelated work or commit another contributor's changes. No agent, delegate, or session may push any work until the user explicitly gives a green light. Migration completion alone does not authorize a push.
 
-Migration scope is limited to `dimabot/` (including the Rust source and crate), directly necessary migration tests, ops integration, and repository guidance or notes. Other sites, extensions, and projects are out of scope unless the user explicitly authorizes work on them; consumer impact alone does not grant authority to change another project.
+Migration scope is limited to `dimabot/` (including the Rust source and crate), directly necessary migration tests, ops integration, and repository guidance or notes. The former standalone Rust directory has been folded into `dimabot/`. Other sites, extensions, and projects are out of scope unless the user explicitly authorizes work on them; consumer impact alone does not grant authority to change another project.
 
 **Migration completeness:** 100% means every TypeScript file feature and accepted improvement, plus every required direct and transitive dependency, is implemented in Rust without relying on unmigrated TypeScript. Report local feature coverage separately from total migration completion and name any blocking dependency. A host boundary, trait, or mock does not complete a feature when its required application-specific adapter is missing. Native Rust crates and standard-library replacements count; npm package internals do not need porting. Type-only TypeScript imports may be replaced by equivalent Rust types. Report deployment or caller-adoption status separately; dependency completeness does not authorize live cutover or make deployment a condition of 100%.
 
@@ -77,9 +77,9 @@ Changes limited to repository guidance (such as `AGENTS.md` or architecture Mark
 
 ## Monorepo Structure
 
-This workspace is a **single git repository** (`saas/`) containing seven existing application projects and the `dima-rust/` Rust project. There are no nested `.git` folders. Run repository operations from the relevant checkout root; use isolated worktrees/copies when required by the production workflow above.
+This workspace is a **single git repository** containing the seven application projects. The Rust crate is part of `dimabot/`, not a separate project or checkout. There are no nested `.git` folders. Run repository operations from the relevant checkout root; use isolated worktrees/copies when required by the production workflow above.
 
-- Each application subproject manages its own `package.json` and `package-lock.json`; `dima-rust/` uses Cargo manifests and a tracked `Cargo.lock`.
+- Each application subproject manages its own `package.json` and `package-lock.json`; `dimabot/` also owns the Rust `Cargo.toml`, `Cargo.lock`, and toolchain pin.
 - Root `.gitignore` explicitly allows per-project lockfiles.
 - Branch policy: `master` (do not rename without explicit request).
 
@@ -87,16 +87,15 @@ This workspace is a **single git repository** (`saas/`) containing seven existin
 
 | Project     | Purpose                              | Tech Stack                  | Key Entry Points                              |
 |-------------|--------------------------------------|-----------------------------|-----------------------------------------------|
-| `dimabot/`  | Backend API + Twitch bot + workers   | Node.js / TypeScript        | `src/server/index.ts`, `src/server/server.ts`, `src/workers/cron.index.ts` |
+| `dimabot/`  | Backend API + Twitch bot, workers, and Rust library/native workers | Node.js / TypeScript + Rust | `src/server/index.ts`, `src/server/server.ts`, `src/workers/cron.index.ts`, `Cargo.toml`, `src/lib.rs` |
 | `dimasite/` | Public-facing Angular frontend       | Angular v21 + Signals       | `src/app/app.routes.ts`, `src/styles.css`     |
 | `admin/`    | Internal admin panel                 | Angular v21                 | `src/app/app.routes.ts`                       |
 | `dimadocs/` | Documentation site (public)          | Astro + MDX                 | `astro.config.mjs`, `src/content/docs/`       |
 | `dimafx/`   | Twitch Extension (client + server)   | HTML/JS + Node.js           | `server/src/server.ts`, `panel.html`, `config.html` |
 | `dimadb/`   | Internal DB console (Redis first)    | Angular v22 + Node          | `src/app/app.routes.ts`, `server/index.mjs`         |
 | `dima-analytics/` | Private observability and resource analytics service | Node.js / Express + PostgreSQL | `src/index.mjs`, `src/store.mjs`, `src/collectors.mjs` |
-| `dima-rust/` | Rust library and seven deployed native cron workers; telemetry release accepted; prior pet release retained as rollback target | Rust | `Cargo.toml`, `src/lib.rs`, `src/workers/`, `src/bin/` |
 
-`dima-rust/` contains shared library utilities and seven native workers. Current deployed run `cron-be76d96c7a39` / image `sha256:f5ccef5ad569484a318da211718d5b903c061913944a9ac8345082fd0ef24c05` keeps Node PID 1 as TypeScript owner and one Rust index as native-worker owner in the existing `dima-cron` container. Rollback with `scripts/saas-ops rollback cron-be76d96c7a39` restores the prior accepted pet release `cron-ea507552f33d` / image `sha256:46706ffeb3c55bfcaf67964675d3fc6404dc965a52b55009c787f1a8b1c328c5`. See [`migration-notes/telemetry-counter-release.md`](migration-notes/telemetry-counter-release.md) for current release evidence. The earlier dual-supervisor acceptance and its original shared-utility rollback history remain in [`migration-notes/dual-cron-supervisors.md`](migration-notes/dual-cron-supervisors.md). Cron builds add binaries to the existing image and add no service or Compose container.
+`dimabot/` contains the shared Rust library and seven native workers alongside the TypeScript application sources. Current deployed run `cron-be76d96c7a39` / image `sha256:f5ccef5ad569484a318da211718d5b903c061913944a9ac8345082fd0ef24c05` keeps Node PID 1 as TypeScript owner and one Rust index as native-worker owner in the existing `dima-cron` container. Rollback with `scripts/saas-ops rollback cron-be76d96c7a39` restores the prior accepted pet release `cron-ea507552f33d` / image `sha256:46706ffeb3c55bfcaf67964675d3fc6404dc965a52b55009c787f1a8b1c328c5`. See [`migration-notes/telemetry-counter-release.md`](migration-notes/telemetry-counter-release.md) for current release evidence. The earlier dual-supervisor acceptance and its original shared-utility rollback history remain in [`migration-notes/dual-cron-supervisors.md`](migration-notes/dual-cron-supervisors.md). Cron builds add binaries to the existing image and add no service or Compose container.
 
 Seven scheduled TypeScript worker entrypoints are retired from the application source tree and preserved in [`archives/typescript-workers/2026-10-21`](archives/typescript-workers/2026-10-21/README.md). Their accepted native replacements remain active; the prior shared-utility run `cron-2056ce9d790c` is the accepted rollback baseline for the dual-supervisor release. Other TypeScript workers, producers, APIs, action execution, and shared helpers remain active. Former TypeScript runtime selectors are retired where they existed; no `RAID_SESSIONS_RUNTIME` selector existed. Native child failures restart that Rust child without a TypeScript fallback. See [`migration-notes/worker-shared-utils.md`](migration-notes/worker-shared-utils.md) and [`migration-notes/typescript-worker-retirement.md`](migration-notes/typescript-worker-retirement.md).
 
@@ -163,7 +162,7 @@ Before implementing data-dependent features or functions that may duplicate exis
 dimabot/src/workers/cron.index.ts  →  dist/workers/cron.index.js
 ```
 
-In the current deployed dual-supervisor run, Node PID 1 owns the TypeScript registry (19 definitions, 18 enabled in the reported production configuration) and starts one detached Rust index. Rust's independent registry in `dima-rust/src/supervisor/registry.rs` owns seven native workers. Both registries and owners run in the same container; do not add another cron service for this split.
+In the current deployed dual-supervisor run, Node PID 1 owns the TypeScript registry (19 definitions, 18 enabled in the reported production configuration) and starts one detached Rust index. Rust's independent registry in `dimabot/src/workers/cron_supervisor/registry.rs` owns seven native workers. Both registries and owners run in the same container; do not add another cron service for this split.
 
 - The TypeScript index supervises only TypeScript workers and restarts only a failed TypeScript child.
 - The Rust index supervises only Rust workers and restarts only a failed Rust child.
@@ -195,7 +194,7 @@ Create a new `*.worker.ts` when the task meets **any** of these criteria:
 Choose the runtime owner first; keep the existing same-container boundary.
 
 - **TypeScript worker:** create `dimabot/src/workers/your-feature.worker.ts`, export its worker definition, and register it in the `WORKERS` array in `dimabot/src/workers/cron.index.ts`. The TypeScript supervisor starts, monitors, and restarts that TypeScript child.
-- **Rust worker:** add the implementation and executable under `dima-rust/src/`, declare its binary in `dima-rust/Cargo.toml` and register its launch/environment/telemetry metadata in `dima-rust/src/supervisor/registry.rs`, then add it to the appropriate worker profile in `ops/saas_ops.py` (`RUST_BINARIES` and profile metadata), `ops/rust_build.sh`, and `dimabot/dockerfile`. Keep the `cron-supervisor` profile isolated from worker executables. The Rust index starts, monitors, and restarts its registered native children. Follow `dima-rust/AGENTS.md` and exact-candidate behavior checks in `ops/README.md`.
+- **Rust worker:** add its implementation under `dimabot/src/` beside its TypeScript counterpart and its executable entrypoint under `dimabot/src/workers/` beside `cron.index.ts`. Declare its binary in `dimabot/Cargo.toml` and register its launch/environment/telemetry metadata in `dimabot/src/workers/cron_supervisor/registry.rs`, then add it to the appropriate worker profile in `ops/saas_ops.py` (`RUST_BINARIES` and profile metadata), `ops/rust_build.sh`, and `dimabot/dockerfile`. Keep the `cron-supervisor` profile isolated from worker executables. The Rust index starts, monitors, and restarts its registered native children. Read `dimabot/RUST_AGENTS.md` and follow exact-candidate behavior checks in `ops/README.md`.
 
 Do not register a native worker in the TypeScript worker list or add a second cron container. Worker pacing changes require the scheduling review described below.
 
@@ -280,7 +279,7 @@ Each major project now contains its own `AGENTS.md` for domain-specific rules:
 - `dimafx/AGENTS.md` – Twitch Extension client/server patterns.
 - `dimadb/AGENTS.md` – Internal DB console (single Node container, Angular CSR).
 - `dima-analytics/AGENTS.md` – Private analytics service, data scopes, retention, and first-install workflow.
-- `dima-rust/AGENTS.md` – Rust library and native cron worker boundaries, capped build policy, dependency usage, and verification commands.
+- `dimabot/RUST_AGENTS.md` – Rust library and native cron worker boundaries, capped build policy, dependency usage, and verification commands.
 
 Root rules in this file always take precedence. Project-specific files add detail, never contradict.
 

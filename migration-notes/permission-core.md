@@ -4,7 +4,7 @@
 
 The pure Rust permission core is source-backed and verified as an opt-in library module behind Cargo feature `permissions`. The final capped compile and test checks passed; this does not represent production caller adoption or production acceptance. No production caller, worker, or release changed. The TypeScript permission implementation remains the only live implementation. [`TAG_PERMISSION_SYSTEM.md`](../TAG_PERMISSION_SYSTEM.md) is planning guidance; the current oracle is the TypeScript source under [`dimabot/src/utils/permissions`](../dimabot/src/utils/permissions/index.ts).
 
-The port covers trusted identity snapshots, badge-derived level and tags, expression validation and evaluation, command and rule decisions, flat access plans, and legacy-level parsing in [`permissions.rs`](../dima-rust/src/utils/permissions.rs). It excludes live callers, role-cache IO, identity resolution, admin middleware, AST origin checks, and permission-error rate limiting. The independent `permissions` feature stays outside Cargo defaults, `bot-utils`, and worker profiles. It reuses Serde dependencies and enables `serde_json/float_roundtrip`; it adds no crate dependency.
+The port covers trusted identity snapshots, badge-derived level and tags, expression validation and evaluation, command and rule decisions, flat access plans, and legacy-level parsing in [`permissions.rs`](../dimabot/src/utils/permissions/index.rs). It excludes live callers, role-cache IO, identity resolution, admin middleware, AST origin checks, and permission-error rate limiting. The independent `permissions` feature stays outside Cargo defaults, `bot-utils`, and worker profiles. It reuses Serde dependencies and enables `serde_json/float_roundtrip`; it adds no crate dependency.
 
 ## API and behavior
 
@@ -12,7 +12,7 @@ The port covers trusted identity snapshots, badge-derived level and tags, expres
 
 Flat access decisions remain separate from general Boolean expression evaluation. This preserves the source's named-account, specific-role, and `everyone` precedence, as well as its order-sensitive recognition of flat shapes. General expressions preserve three-valued `true`/`false`/`unknown` logic through `not`; unknown denies at the final decision boundary. Both `ValidatedExpression::evaluate` and `CompiledPermission::decide` apply the broadcaster override to valid policies, while invalid policies deny even broadcasters. Only the compiled gate applies flat-access precedence. Decisions expose a reason; validation errors preserve source messages and add stable codes and paths.
 
-The usage snippet in [`dima-rust/README.md`](../dima-rust/README.md#opt-in-permission-core) is illustrative; the README snippet itself was not compiled as a doctest. Compatibility details:
+The usage snippet in [`dimabot/RUST.md`](../dimabot/RUST.md#opt-in-permission-core) is illustrative; the README snippet itself was not compiled as a doctest. Compatibility details:
 
 - Account IDs remain strings, including leading zeroes and valid 20-digit IDs; numeric coercion is not performed.
 - `parse_user_identity` accepts a trusted internal snapshot, not client-supplied proof of role claims. It preserves known supplied tags, truncates and clamps a valid snapshot level, and adds `everyone`. The basic constructor does not invent roles or founder inheritance; founder-to-subscription expansion belongs to badge derivation.
@@ -23,7 +23,7 @@ No permission or role-cache behavior changed in TypeScript or at runtime. Cache 
 
 ## Source-backed parity corpus
 
-[`permission_core_reference.mjs`](../dima-rust/tests/fixtures/permission_core_reference.mjs) extracts pure declarations from the current TypeScript sources into an isolated VM and checks or regenerates [`permission_core_cases.json`](../dima-rust/tests/fixtures/permission_core_cases.json). It excludes service setup and does not access a database, cache, network, environment, or clock. The corpus contains **3,681 cases** and has `corpusHash` `f0512d014273ddd92ebee1bfbf194d754c50f2063a11db49850a5aae0f2c38c3`.
+[`permission_core_reference.mjs`](../dimabot/tests/fixtures/permission_core_reference.mjs) extracts pure declarations from the current TypeScript sources into an isolated VM and checks or regenerates [`permission_core_cases.json`](../dimabot/tests/fixtures/permission_core_cases.json). It excludes service setup and does not access a database, cache, network, environment, or clock. The corpus contains **3,681 cases** and has `corpusHash` `f0512d014273ddd92ebee1bfbf194d754c50f2063a11db49850a5aae0f2c38c3`.
 
 | Operation | Cases |
 | --- | ---: |
@@ -38,7 +38,7 @@ No permission or role-cache behavior changed in TypeScript or at runtime. Cache 
 | `inspect` | 13 |
 | `serialize_identity` | 10 |
 
-The corpus records source SHA-256 values for `expression.ts` (`34a3d2900bbad64bde838504e16a73f361bf7d317ef4089dcbf58fe0b1e79ab2`), `index.ts` (`14364559e21b5a801a9229015fc03583bfb5bf9310d8de9477b483398404f6cd`), `roles.ts` (`9469ce3029c6aedce85cc7a6ad3c180adf097051ef6d5c1aa0cac68b7396df20`), and shared fixture `ops/fixtures/permission-expressions.json` (`88ea4ed9276eb48c0ac6a65c75acbdbf985b690fd5b793d22328307540d997a2`). The Node oracle `--check` passed for all 3,681 cases, and the existing TypeScript permission suite had passed 64 tests. The runner confirmed source hashes matched before and after Rust validation. Rust parity coverage lives in [`permission_core_parity.rs`](../dima-rust/tests/permission_core_parity.rs).
+The corpus records source SHA-256 values for `expression.ts` (`34a3d2900bbad64bde838504e16a73f361bf7d317ef4089dcbf58fe0b1e79ab2`), `index.ts` (`14364559e21b5a801a9229015fc03583bfb5bf9310d8de9477b483398404f6cd`), `roles.ts` (`9469ce3029c6aedce85cc7a6ad3c180adf097051ef6d5c1aa0cac68b7396df20`), and shared fixture `ops/fixtures/permission-expressions.json` (`88ea4ed9276eb48c0ac6a65c75acbdbf985b690fd5b793d22328307540d997a2`). The Node oracle `--check` passed for all 3,681 cases, and the existing TypeScript permission suite had passed 64 tests. The runner confirmed source hashes matched before and after Rust validation. Rust parity coverage lives in [`permission_core_parity.rs`](../dimabot/tests/permission_core_parity.rs).
 
 ## Verification
 

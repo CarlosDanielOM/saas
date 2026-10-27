@@ -20,7 +20,7 @@ The cron supervisor runs one raid projector child. The native process reloads it
 
 ## Candidate checks
 
-The change-driven behavior check is [`ops/checks/raid-analytics-change-driven.mjs`](../ops/checks/raid-analytics-change-driven.mjs). It extends prior parity, lease, failure, restart, shutdown, and telemetry coverage with unchanged passes, queue duplicates, same-timestamp additions, legacy-cache adoption, retained lower-ID late follows, open-window semantics, persisted deadlines, quiet restart recovery, and bounded follow batches. Its 20 runtime groups passed against the exact candidate image. The fixture requires the exact analytics store source and disposable MongoDB/Dragonfly dependencies. Run it only against an isolated candidate as described in [`ops/README.md`](../ops/README.md) and the production-host instructions in [`dima-rust/AGENTS.md`](../dima-rust/AGENTS.md).
+The change-driven behavior check is [`ops/checks/raid-analytics-change-driven.mjs`](../ops/checks/raid-analytics-change-driven.mjs). It extends prior parity, lease, failure, restart, shutdown, and telemetry coverage with unchanged passes, queue duplicates, same-timestamp additions, legacy-cache adoption, retained lower-ID late follows, open-window semantics, persisted deadlines, quiet restart recovery, and bounded follow batches. Its 20 runtime groups passed against the exact candidate image. The fixture requires the exact analytics store source and disposable MongoDB/Dragonfly dependencies. Run it only against an isolated candidate as described in [`ops/README.md`](../ops/README.md) and the production-host instructions in [`dimabot/RUST_AGENTS.md`](../dimabot/RUST_AGENTS.md).
 
 ### Candidate verification
 
@@ -40,8 +40,8 @@ The one-time metadata adoption produced 75 sets of period and reciprocity phase 
 
 ## Source references
 
-- [Rust projector](../dima-rust/src/workers/raid_analytics.rs)
-- [Rust executable](../dima-rust/src/bin/raid_analytics.rs)
+- [Rust projector](../dimabot/src/utils/raid_analytics.rs)
+- [Rust executable](../dimabot/src/workers/raid_analytics.worker.rs)
 - [Change-driven candidate check](../ops/checks/raid-analytics-change-driven.mjs)
 - [Historical Rust raid release](raid-analytics.md)
 - [TypeScript raid producer and API freshness contract](../dimabot/src/utils/raid_analytics.ts)

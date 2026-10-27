@@ -16,7 +16,7 @@ No benchmark or production speedup claim is made. Native Mongo/Redis transport-t
 
 ## Source and Rust APIs
 
-The source owner is [`TwitchStreamers`](../dimabot/src/classes/twitch_streamers.class.ts), backed by `UsersSchema`, Dragonfly, the Twitch token helpers, plan-cache Lua fences, logger, and PostHog identity helper. Rust implementation is [`utils::twitch_streamers`](../dima-rust/src/utils/twitch_streamers.rs), with Mongo/Redis/PostHog adapters and the shared metadata mapper in its subdirectory.
+The source owner is [`TwitchStreamers`](../dimabot/src/classes/twitch_streamers.class.ts), backed by `UsersSchema`, Dragonfly, the Twitch token helpers, plan-cache Lua fences, logger, and PostHog identity helper. Rust implementation is [`utils::twitch_streamers`](../dimabot/src/classes/twitch_streamers.class.rs), with Mongo/Redis/PostHog adapters and the shared metadata mapper in its subdirectory.
 
 | TypeScript behavior | Rust API | Notes |
 | --- | --- | --- |
@@ -45,7 +45,7 @@ Before any caller adopts the Rust service:
 
 ## Original mapping contract and deliberate differences
 
-[`twitch_streamers_parity.json`](../dima-rust/tests/fixtures/twitch_streamers_parity.json) contains the TypeScript source hashes, UTC setting, metadata mapping cases, expected string fields, plan version values, consumer inventory, cache-key references, inventory limits, and intentional differences. Its original check covered 16 metadata mapping cases, 98 static call-site inventory entries, and six key-owner references. These counts are not whole-class behavior coverage. The source-backed public-method comparison and its scenario limits are documented in [twitch-streamers-parity.md](twitch-streamers-parity.md).
+[`twitch_streamers_parity.json`](../dimabot/tests/fixtures/twitch_streamers_parity.json) contains the TypeScript source hashes, UTC setting, metadata mapping cases, expected string fields, plan version values, consumer inventory, cache-key references, inventory limits, and intentional differences. Its original check covered 16 metadata mapping cases, 98 static call-site inventory entries, and six key-owner references. These counts are not whole-class behavior coverage. The source-backed public-method comparison and its scenario limits are documented in [twitch-streamers-parity.md](twitch-streamers-parity.md).
 
 Preserved mapping behavior includes free as the missing plan default, English UTC `Date#toDateString` formatting, legacy encrypted credential envelope decoding in the token adapter, stringified boolean cache fields, Twitch selection by `(type,id)` in the same account, cache key families, and plan-cache version compatibility. Metadata is explicitly validated, and account objects redact their full contents from Debug output.
 
@@ -75,9 +75,9 @@ Adapter review also found that Dragonfly forbids `SCAN` plus `TYPE` dynamic key 
 ## Evidence references
 
 - [Pre-port review](twitch-streamers-pre-port-review.md)
-- [Rust API](../dima-rust/src/utils/twitch_streamers.rs)
-- [Token lifecycle API](../dima-rust/src/utils/twitch_tokens.rs)
-- [Parity fixture](../dima-rust/tests/fixtures/twitch_streamers_parity.json)
+- [Rust API](../dimabot/src/classes/twitch_streamers.class.rs)
+- [Token lifecycle API](../dimabot/src/utils/tokens.rs)
+- [Parity fixture](../dimabot/tests/fixtures/twitch_streamers_parity.json)
 - [Plan-cache fence utility](plan-cache-fence.md)
 - [Shared logger utility](shared-logger.md)
 - [Whole-source behavior parity follow-up](twitch-streamers-parity.md)

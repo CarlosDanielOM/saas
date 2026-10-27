@@ -23,7 +23,7 @@ The Polar transport is now available behind `polar-client`; it is deliberately a
 
 ## Consolidated utility modules
 
-**Status: opt-in library source integrated and verified.** These public library modules consolidate small helpers and shared cores. They do not replace TypeScript, wire production callers, or migrate a complete application feature. All listed features are opt-in, outside Cargo `default` and all worker profiles; existing worker utilities have not been moved or reimplemented. The Cargo feature names below were read from `dima-rust/Cargo.toml`.
+**Status: opt-in library source integrated and verified.** These public library modules consolidate small helpers and shared cores. They do not replace TypeScript, wire production callers, or migrate a complete application feature. All listed features are opt-in, outside Cargo `default` and all worker profiles; existing worker utilities have not been moved or reimplemented. The Cargo feature names below were read from `dimabot/Cargo.toml`.
 
 | Feature | Public module | Source references and scope |
 | --- | --- | --- |
@@ -72,14 +72,14 @@ Review found and corrected two behavioral gaps, each reproduced before its fix: 
 
 Formatting and all-features Clippy passed with warnings denied. The complete all-features suite passed 229 tests with four external-service fixture tests ignored. After the final Twitch fixture hardening, the all-features library suite passed again (168 tests, one ignored), the seven parallel Polar tests passed again, and the independent Twitch feature suite passed. Ignored service-backed tests were not run against production; live storage/token adapters remain outside this scope. Three existing worker dependency graphs (`mongo`, `mongo,redis`, and `mongo,redis,http-client,unicode-collation`) match the pre-change baseline; Cargo.lock retains all 534 existing package versions, with only `unicode-normalization` and `uuid` added as root dependencies that were already locked.
 
-These results came from the capped, task-owned Rust environment described in [`dima-rust/AGENTS.md`](../dima-rust/AGENTS.md). Optional features remain library-only and have no production consumer; no runtime deployment was performed. The results do not establish performance characteristics or a complete TypeScript feature migration.
+These results came from the capped, task-owned Rust environment described in [`dimabot/RUST_AGENTS.md`](../dimabot/RUST_AGENTS.md). Optional features remain library-only and have no production consumer; no runtime deployment was performed. The results do not establish performance characteristics or a complete TypeScript feature migration.
 
 Cleanup auditing found that the first auxiliary monitor had exited on a disappearing temporary Cargo file; Docker's hard limits remained enforced. The final affected-feature run repeated formatting, Clippy, all 66 combined utility checks, all eight isolated feature suites, and the no-feature suite with a corrected continuous monitor. All passed. Its 132 monitoring samples recorded at least 12.7 GiB host memory available and less than 2.8 GiB task cache usage. Temporary compiler containers, source copies, and caches were removed; all 18 production container identities and images remained unchanged.
 
 Regenerate the pure source fixture from the repository root:
 
 ```sh
-node --import ./dimabot/node_modules/tsx/dist/loader.mjs dima-rust/tests/fixtures/bot_utils_parity.mjs
+node --import ./dimabot/node_modules/tsx/dist/loader.mjs dimabot/tests/fixtures/bot_utils_parity.mjs
 ```
 
 Run Rust checks from the isolated crate copy inside the capped compiler, never directly on this production host:
@@ -97,7 +97,7 @@ cargo test --locked --no-default-features --features keywords
 
 - **Qdrant:** TypeScript uses REST on `QDRANT_PORT` (6333). The Rust client is gRPC-only, so it reads `QDRANT_GRPC_PORT`, which defaults to 6334, the production server's gRPC port. The crate is pinned to the server's 1.17 minor version.
 - **JWT:** Tokens are byte-identical to Node `jsonwebtoken` for the same `iat`, and Node-signed HS384 tokens verify. Expiry, `nbf`, and audience handling match Node's `jwt.verify` defaults. A missing `exp` is rejected. There is no fallback secret.
-- **RE2:** `translate` rewrites `\d \w \s \b` to ASCII forms and handles several class and escape differences. It also rejects stacked quantifiers (`a**`). All 109 cases in `dima-rust/tests/fixtures/re2_parity_cases.rs`, generated from node `re2`, match. Offsets convert to UTF-16 with `utf16_offset`.
+- **RE2:** `translate` rewrites `\d \w \s \b` to ASCII forms and handles several class and escape differences. It also rejects stacked quantifiers (`a**`). All 109 cases in `dimabot/tests/fixtures/re2_parity_cases.rs`, generated from node `re2`, match. Offsets convert to UTF-16 with `utf16_offset`.
 - **MP3 duration:** On npm's own sample files, symphonia is 26–53 ms shorter because it skips the encoder's header frame. The playback timeout is at least 60 s, so this does not matter. WAV durations keep the exact TypeScript 44-byte header rule.
 - **CORS:** Preflight responses return `200` instead of npm's `204`.
 - **socket.io:** socket.io's defaults are set explicitly, including the 1 MB message limit. socketioxide has no `connectionStateRecovery`.

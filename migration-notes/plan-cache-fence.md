@@ -6,7 +6,7 @@ Status: accepted as an opt-in, library-only Rust utility after final-source qual
 
 ## Source and dependency boundary
 
-The utility is [`dima-rust/src/utils/plan_cache_fence.rs`](../dima-rust/src/utils/plan_cache_fence.rs), gated by Cargo feature `plan-cache=["redis"]`. It ports exactly three Lua scripts from [`dimabot/src/utils/plan_cache_fence.ts`](../dimabot/src/utils/plan_cache_fence.ts) and two from [`dimabot/src/domain_events/polar_billing_events.ts`](../dimabot/src/domain_events/polar_billing_events.ts). TypeScript remains the domain-event and billing owner. Rust depends on the caller-supplied Redis `ConnectionManager`; there is no Polar HTTP, MongoDB, or logging dependency. The billing context key is passed opaquely by the caller, preserving the existing TypeScript hash/key construction without copying billing-hash logic.
+The utility is [`dimabot/src/utils/plan_cache_fence.rs`](../dimabot/src/utils/plan_cache_fence.rs), gated by Cargo feature `plan-cache=["redis"]`. It ports exactly three Lua scripts from [`dimabot/src/utils/plan_cache_fence.ts`](../dimabot/src/utils/plan_cache_fence.ts) and two from [`dimabot/src/domain_events/polar_billing_events.ts`](../dimabot/src/domain_events/polar_billing_events.ts). TypeScript remains the domain-event and billing owner. Rust depends on the caller-supplied Redis `ConnectionManager`; there is no Polar HTTP, MongoDB, or logging dependency. The billing context key is passed opaquely by the caller, preserving the existing TypeScript hash/key construction without copying billing-hash logic.
 
 ## API and protocol contract
 
@@ -34,4 +34,4 @@ The source intentionally rejects invalid JavaScript dates rather than returning 
 
 ## Host limits and cleanup
 
-The production-host checks followed [`dima-rust/AGENTS.md`](../dima-rust/AGENTS.md): 6 CPU, 4 GiB memory and memory-swap (no swap), 256 PIDs, two Cargo jobs, and an 8 GiB private Cargo cache, preserving the 4 GiB production reserve. Task-owned source snapshots, baseline copies, compiler targets, and Cargo caches were removed; receipts, logs, the source-hash manifest, and the validation runner were retained. This library-only acceptance does not authorize building/deploying cron or touching live services.
+The production-host checks followed [`dimabot/RUST_AGENTS.md`](../dimabot/RUST_AGENTS.md): 6 CPU, 4 GiB memory and memory-swap (no swap), 256 PIDs, two Cargo jobs, and an 8 GiB private Cargo cache, preserving the 4 GiB production reserve. Task-owned source snapshots, baseline copies, compiler targets, and Cargo caches were removed; receipts, logs, the source-hash manifest, and the validation runner were retained. This library-only acceptance does not authorize building/deploying cron or touching live services.

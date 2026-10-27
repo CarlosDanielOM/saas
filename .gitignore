@@ -148,8 +148,9 @@ connect.lock
 *.sqlite3
 .gitnexus/
 
-# Per-project lockfiles (each subproject manages its own npm dependencies)
+# Per-project dependency lockfiles
 !dimabot/package-lock.json
+!dimabot/Cargo.lock
 !dimasite/package-lock.json
 !admin/package-lock.json
 !dimadocs/package-lock.json
@@ -169,3 +170,6 @@ dev-agent.md
 /dimafx-logos.zip
 
 !dima-analytics/package-lock.json
+
+# Rust build output in the combined dimabot project
+/dimabot/target/

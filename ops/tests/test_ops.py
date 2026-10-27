@@ -381,7 +381,7 @@ class OpsTests(unittest.TestCase):
 
     def rust_source(self):
         subprocess.run(["git", "init", "-q", str(self.root)], check=True)
-        project = self.root / "dima-rust"
+        project = self.root / "dimabot"
         (project / "src").mkdir(parents=True)
         for name in ("Cargo.toml", "Cargo.lock", "rust-toolchain.toml"):
             (project / name).write_text("fixture")
@@ -395,12 +395,55 @@ class OpsTests(unittest.TestCase):
             (project / name / "stream_activity").write_text("unverified host artifact")
         (project / ".env.prod").write_text("SECRET=private")
         (project / "README.md").write_text("not compiler input")
-        self.ops.snapshot(mod.Target("dima-rust", "", ""), self.path / "rust-source", rust_only=True)
+        self.ops.snapshot(mod.Target("dimabot", "", ""), self.path / "rust-source", rust_only=True)
         self.assertEqual([str(f.relative_to(self.path / "rust-source")) for f in mod.files_under(self.path / "rust-source")],
                          ["Cargo.lock", "Cargo.toml", "rust-toolchain.toml", "src/lib.rs"])
         (project / "src/unsafe.rs").symlink_to(project / ".env.prod")
         with self.assertRaises(mod.OpsError):
-            self.ops.snapshot(mod.Target("dima-rust", "", ""), self.path / "unsafe", rust_only=True)
+            self.ops.snapshot(mod.Target("dimabot", "", ""), self.path / "unsafe", rust_only=True)
+
+    def test_combined_source_snapshots_keep_rust_fixtures_and_node_sources_separate(self):
+        project = self.rust_source()
+        inputs = {
+            "src/workers/cron.index.rs": "fn main() {}",
+            "src/workers/cron.index.ts": "console.log('node cron')",
+            "src/utils/databases/mongodb.database.rs": "// native database module",
+            "src/utils/ast_parser/parser.ts": "// hashed syntax reference",
+            "src/utils/permissions/roles.ts": "// hashed permission reference",
+            "src/server/index.ts": "// Node application, not Rust compiler input",
+            "tests/parity.rs": "// native parity test",
+            "tests/fixtures/cases.json": "{}",
+            "tests/fixtures/reference.mjs": "// source-backed oracle",
+            "examples/fixture.rs": "fn main() {}",
+            "package.json": "{}",
+            ".env.prod": "SECRET=private",
+            "tests/fixtures/.env.test": "SECRET=private",
+            "node_modules/fixture/index.rs": "// dependency artifact",
+            "dist/workers/cron.index.js": "// live build",
+            "target/release/cron_index": "unverified Rust artifact",
+            ".saas-native/cron_index": "unverified staged artifact",
+        }
+        for name, content in inputs.items():
+            path = project / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(content)
+        self.ops.snapshot(mod.Target("dimabot", "", ""), self.path / "rust-source", rust_only=True)
+        rust_files = {str(path.relative_to(self.path / "rust-source"))
+                      for path in mod.files_under(self.path / "rust-source")}
+        self.assertEqual(rust_files, {
+            "Cargo.toml", "Cargo.lock", "rust-toolchain.toml", "src/lib.rs",
+            "src/workers/cron.index.rs", "src/utils/databases/mongodb.database.rs",
+            "src/utils/ast_parser/parser.ts", "src/utils/permissions/roles.ts",
+            "tests/parity.rs", "tests/fixtures/cases.json", "tests/fixtures/reference.mjs",
+            "examples/fixture.rs",
+        })
+        self.ops.snapshot(mod.TARGETS["cron"], self.path / "source")
+        node_files = {str(path.relative_to(self.path / "source"))
+                      for path in mod.files_under(self.path / "source")}
+        self.assertTrue({"src/workers/cron.index.ts", "src/server/index.ts", "package.json"} <= node_files)
+        self.assertTrue(rust_files <= node_files)
+        self.assertFalse({name for name in inputs if name.startswith(
+            (".env", "tests/fixtures/.env", "node_modules/", "dist/", "target/", ".saas-native/"))} & node_files)
 
     def test_cron_dockerfile_stages_every_checked_native_binary(self):
         dockerfile = (mod.ROOT / "dimabot" / "dockerfile").read_text()
@@ -1161,7 +1204,7 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
         for limits in ({"NanoCpus": 4_000_000_000}, {"Memory": 4 * mod.GIB},
                        {"MemorySwap": 4 * mod.GIB}, {"MemorySwap": 8 * mod.GIB}, {"PidsLimit": 512}):
             with self.subTest(limits=limits):
-                for directory in (self.root / "dima-rust", self.path / "source", self.path / "rust-source",
+                for directory in (self.root / "dimabot", self.path / "source", self.path / "rust-source",
                                   self.path / "rust-artifacts"):
                     if directory.exists():
                         mod.shutil.rmtree(directory)
@@ -1224,7 +1267,7 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
     def test_cpu_drift_while_running_or_on_exit_refuses_artifacts_and_cleans_compiler(self):
         for running in (True, False):
             with self.subTest(running=running):
-                for directory in (self.root / "dima-rust", self.path / "source", self.path / "rust-source",
+                for directory in (self.root / "dimabot", self.path / "source", self.path / "rust-source",
                                   self.path / "rust-artifacts"):
                     if directory.exists():
                         mod.shutil.rmtree(directory)
@@ -1382,7 +1425,7 @@ printf '%s\\n' '#!/bin/sh' 'printf "dry-run %s %s\\n" "$0" "$*" >> "$RECIPE_LOG"
                         "supervisor_reqwest", "supervisor_icu"):
             with self.subTest(failure=failure):
                 # Each simulation uses the same task-owned directories, cleared here.
-                for directory in ("dima-rust",):
+                for directory in ("dimabot",):
                     if (self.root / directory).exists():
                         mod.shutil.rmtree(self.root / directory)
                 for directory in ("source", "rust-source", "rust-artifacts"):

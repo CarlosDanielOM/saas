@@ -2,6 +2,12 @@
 
 **This document supplements the root `saas/AGENTS.md`.** Read the root file first for monorepo rules.
 
+Rust is part of this project. `Cargo.toml`, `Cargo.lock`, and `rust-toolchain.toml` live at this directory's root, and Rust modules live beside TypeScript sources under `src/`. Read [`RUST_AGENTS.md`](RUST_AGENTS.md) before Rust changes; the library overview is in [`RUST.md`](RUST.md).
+
+Rust test requests authorize isolated testing only. Never run tests in or mutate production containers or use live production resources; a production release requires a separate explicit user instruction. Follow the [Rust testing isolation rules](RUST_AGENTS.md#production-isolation-for-rust-tests).
+
+For migration completion scoring, distinguish local feature coverage from total dependency-complete migration, and report caller adoption/deployment separately. See [Migration completeness](RUST_AGENTS.md#migration-completeness).
+
 ## Project Purpose
 
 `dimabot/` is the backend API + Twitch bot + background workers. It handles:
@@ -19,6 +25,7 @@
 - `src/server/websocket.ts` – WebSocket event contracts
 - `src/bot/index.ts` – Twitch chat bot entrypoint
 - `src/workers/cron.index.ts` – Cron supervisor (self-healing workers)
+- `src/workers/cron.index.rs` – Native Rust cron index, colocated with the TypeScript supervisor
 
 ## Architecture Notes
 
@@ -30,7 +37,7 @@
 - Seven scheduled TypeScript worker entrypoints are retired from the application source tree and preserved in [`archives/typescript-workers/2026-10-21`](../archives/typescript-workers/2026-10-21/README.md). Their accepted native replacements remain active; prior shared-utility run `cron-2056ce9d790c` is the rollback target for the accepted dual-supervisor release. Former TypeScript runtime selectors are retired where they existed; no `RAID_SESSIONS_RUNTIME` selector existed. Failed native children restart without a TypeScript fallback. See the [shared utility record](../migration-notes/worker-shared-utils.md) and [retirement record](../migration-notes/typescript-worker-retirement.md).
 - **Dual-supervisor accepted release:** `cron-7629f95f5dfd` / image `sha256:f848743bc0f0817656d2399dd00a4e08e5828d2a0261096c551bb48302ae000f` is live in the existing `dima-cron` container: Node PID 1 owns TypeScript workers and one detached Rust index owns seven native workers. Build, exact-image suites, 32-sample production watch, final readbacks, and cleanup passed. The accepted rollback target is `cron-2056ce9d790c` / `sha256:adac7d8de9b5c5cfb138f8051a05123ac02a6c3467cc85784873ee85370d892f`. The TypeScript index sunset remains future work after the final TypeScript responsibility migrates. See [dual-cron-supervisors.md](../migration-notes/dual-cron-supervisors.md).
 - The current source declares seven native executables for `cron:dev` with `CRON_WORKER_RUNTIME=tsx`. Prior accepted shared-utility run `cron-2056ce9d790c` rebuilt all seven; all three dependency graphs matched their previous accepted versions byte-for-byte and its candidate checks and production acceptance passed. Candidate results do not define a standing suite count. Future cron checks verify each new or changed worker, retest existing workers only for concrete impact from their code, relevant dependencies, or shared runtime behavior, and check startup and health for all existing workers after replacement. Use [`ops/README.md`](../ops/README.md) for the workflow.
-- Native migrations replace scheduled entrypoints only. Shared TypeScript helpers, parity references, APIs, request-time behavior, producers, and action execution remain on existing TypeScript paths. In particular, `follow-defense-actions` continues Twitch bans and `roulette-actions` continues winner-action ASTs. See the [stream](../dima-rust/STREAM_ACTIVITY.md), [raid analytics](../migration-notes/raid-change-driven.md), [raid sessions](../migration-notes/raid-sessions.md), [baseline](../migration-notes/follow-defense-baseline.md), [roulette](../migration-notes/roulette-completion.md), [AI receipts](../migration-notes/ai-usage-receipts.md), and [dashboard](../migration-notes/dashboard-activity.md) records.
+- Native migrations replace scheduled entrypoints only. Shared TypeScript helpers, parity references, APIs, request-time behavior, producers, and action execution remain on existing TypeScript paths. In particular, `follow-defense-actions` continues Twitch bans and `roulette-actions` continues winner-action ASTs. See the [stream](RUST_STREAM_ACTIVITY.md), [raid analytics](../migration-notes/raid-change-driven.md), [raid sessions](../migration-notes/raid-sessions.md), [baseline](../migration-notes/follow-defense-baseline.md), [roulette](../migration-notes/roulette-completion.md), [AI receipts](../migration-notes/ai-usage-receipts.md), and [dashboard](../migration-notes/dashboard-activity.md) records.
 - **Account records have distinct roles.** The `accounts` array embedded in `src/schemas/users.schema.ts` stores a user's streaming-platform identities and credentials, such as Twitch or Kick. The separate model in `src/schemas/accounts.schema.ts` stores external non-streaming account records; a Riot account is a possible future example, not an implemented integration. Neither model represents an application authorized to access DomDimaBot. Dima OAuth uses a separate public-client registry and per-user grants, sessions, and refresh-token records; grants and sessions link to `users._id`. See [`OAUTH_BETA.md`](./OAUTH_BETA.md) for the current desktop beta contract.
 - **Moderation actions are always executed by the bot account** (`TWITCH_BOT_ACCOUNT_ID` in `src/utils/header.ts`), whether triggered by the streamer, a mod, a `!`command, or the AI via AST. Helix moderation endpoints require `moderator_id` to match the token owner — always pair the bot token with `moderator_id=TWITCH_BOT_ACCOUNT_ID` via `getTwitchModeratorHeader()`. Never pass a chatter/streamer ID as `moderator_id`.
 
