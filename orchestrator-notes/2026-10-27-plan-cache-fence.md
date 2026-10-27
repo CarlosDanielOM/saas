@@ -1,0 +1,5 @@
+# 2026-10-27 plan-cache fence utility routing
+
+GPT-6.1 Sol at high led the bounded Rust utility implementation; GPT-6 Luna at high handled source-backed documentation reconciliation. Final-source quality passed across three check profiles and two Clippy profiles, 21 standalone and 38 combined unit tests, and source parity for five Lua scripts plus 66 version and five key cases. The disposable Dragonfly fixture passed 135 source-equivalence scenarios, including 16 concurrent invalidation races, prepared-script flush/reload for all five methods and the read-only pipeline, 64/65 batch bounds, and the unsplit 4,096-account aggregate boundary. The final source set matched 175 Rust build/test files. No caller, worker profile, or deployment change occurred; no speedup or model-performance claim follows.
+
+Confidence: single task, low. Supports the existing task-specific Sol implementation / Luna documentation route only; no tier change or broader capability conclusion. Cooperative deadline expiry was not fault-injected. See [plan-cache-fence.md](../migration-notes/plan-cache-fence.md).

@@ -2,11 +2,11 @@
 
 Reviewed on 2026-10-27.
 
-Status: source review plus verified opt-in logger utility; the plan-cache fence and other cache recommendations remain unported and unselected. Logger verification and boundaries are documented in [shared-logger.md](shared-logger.md). Earlier TwitchStreamers improvements remain separately approved in [its pre-port review](twitch-streamers-pre-port-review.md); its Rust class port remains deferred. Source review and mocked fixtures do not establish production behavior, performance gains, or deployment readiness.
+Status: source review plus accepted opt-in logger and plan-cache utilities. The plan-cache utility passed capped quality/source parity and 135 disposable Dragonfly scenarios; neither utility is caller-wired, in a worker profile, or deployed. Other cache recommendations remain unselected. Logger verification and boundaries are documented in [shared-logger.md](shared-logger.md); plan-cache API and evidence limits are in [plan-cache-fence.md](plan-cache-fence.md). Earlier TwitchStreamers improvements remain separately approved in [its pre-port review](twitch-streamers-pre-port-review.md); its Rust class port remains a separate task. No production behavior or performance claim follows from these library checks.
 
 ## Plan-cache protocol
 
-The plan fence is shared by [`plan_cache_fence.ts`](../dimabot/src/utils/plan_cache_fence.ts), [`TwitchStreamers`](../dimabot/src/classes/twitch_streamers.class.ts), [`billing.ts`](../dimabot/src/utils/billing.ts), and [`polar_billing_events.ts`](../dimabot/src/domain_events/polar_billing_events.ts). The utility has three short Lua scripts: conditional account write plus aggregate invalidation, account-list version checking/publication, and credit-cache acceptance. Billing events add `INVALIDATE_PLAN_SCRIPT` and `SYNC_CREDITS_SCRIPT`, which coordinate plan invalidation, credit synchronization, and exhaustion flags. Keep event orchestration in TypeScript; a Rust/shared protocol utility should centralize typed versions, keys, and script behavior without moving domain-event ownership.
+The plan fence is shared by [`plan_cache_fence.ts`](../dimabot/src/utils/plan_cache_fence.ts), [`TwitchStreamers`](../dimabot/src/classes/twitch_streamers.class.ts), [`billing.ts`](../dimabot/src/utils/billing.ts), and [`polar_billing_events.ts`](../dimabot/src/domain_events/polar_billing_events.ts). The opt-in Rust utility ports exactly the three scripts from the first file and two billing scripts from the last; it does not move event orchestration from TypeScript. Its methods, bounds, dependency direction, and remaining credential risks are recorded in [plan-cache-fence.md](plan-cache-fence.md).
 
 Required protocol invariants:
 
@@ -28,11 +28,10 @@ All 17 tests passed (13 plan/cache source-contract mocks and four telemetry test
 
 ## Cache implementation opportunities
 
-Potential follow-up work, subject to selection and validation:
+Remaining follow-up work, subject to selection and validation:
 
-- Define one shared typed API for the plan version/key protocol, retaining Lua atomicity and TypeScript domain-event orchestration.
-- Load/cache prepared Lua scripts and call by SHA, with `NOSCRIPT` recovery. Fewer repeated script bodies may reduce request bandwidth; this is a hypothesis to benchmark, not an established speedup.
-- Where useful, read an account hash and its plan fence atomically to reduce separate reads while preserving the current proof that the snapshot is fenced.
+- Complete the plan-cache utility's source-oracle and disposable Dragonfly verification before describing it as accepted; no callers currently use it.
+- Keep any later integration bounded and credential-aware. This utility does not provide credential CAS, hydrate MongoDB, or reconcile account-list membership.
 - Bound key enumeration and batch pipelines. The approved TwitchStreamers review already calls for explicit removal of stale account IDs and account-list reconciliation for the websocket caller, which needs IDs only. Do not turn an unbounded full key scan into one oversized command.
 - The Dragonfly connection helper already shares a process-wide `connectionPromise`. Do not create a new connection pool per call.
 - The helper's instrumentation wrapper currently measures a limited command list; `hMGet`, expiry, set membership, and multi-command batches are not in that list. If a later port uses these paths, include them in the instrumentation plan and metrics parity review.
@@ -67,11 +66,10 @@ Logger decisions implemented and verified in the opt-in Rust core/adapters (see 
 - [`oauth_debug_cache.ts`](../dimabot/src/utils/oauth_debug_cache.ts) already uses `SET EX`, but timestamp-only IDs can collide within the same millisecond. Rust Twitch diagnostic builders in [`twitch.rs`](../dima-rust/src/utils/twitch.rs) provide sanitization patterns; logger/storage wiring remains separate work.
 - Do not set a globally short timeout on the shared Redis connection to isolate logger writes. Other users of that connection include blocking queues. Give the logger a dedicated bounded sink policy instead.
 
-## Validation acceptance checklist for any future selection
+## Validation acceptance checklist for future selections
 
-- [ ] Source-contract tests cover all three plan scripts plus both Polar billing scripts, including persistent fences, equal/newer ordering, account-list race rejection, raw credit comparison, atomic flag behavior, and both exhaustion keys.
-- [ ] Exercise scripts on disposable Redis/Dragonfly and verify Redis-version-compatible Lua semantics; mocked tests alone are insufficient.
-- [ ] Add mixed-writer cases proving TypeScript and Rust versions/keys remain compatible during an incremental rollout.
+- [x] Source parity for all five scripts and disposable Dragonfly behavior checks passed; see [plan-cache-fence.md](plan-cache-fence.md). The adapter's actual deadline-expiry path was not fault-injected.
+- [ ] Before caller adoption, add mixed-writer cases proving TypeScript and Rust versions/keys remain compatible during an incremental rollout, plus a credential ownership/CAS review.
 - [ ] Benchmark script SHA loading/recovery, atomic reads, batching, and bounded enumeration with representative key counts before making latency or bandwidth claims.
 - [ ] Logger tests cover each destination, blocked/failing sinks, telemetry and OTEL exceptions, TTL/key/payload compatibility, collisions, bounded queue overflow, severity policy, serialization limits/redaction, and shutdown deadlines.
 - [ ] Test all migrated cache commands against disposable fixtures and preserve canonical role-cache rebuild behavior.

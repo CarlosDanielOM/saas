@@ -27,7 +27,7 @@ The disposable adapter fixture confirms 32 Redis `SET` calls and zero `EXPIRE` c
 
 The adapter reuses the existing Redis client and OTEL foundations, UUID generation, and the established timestamp format. The core does not depend on worker modules or the private AI-usage cache logger. The existing TypeScript [`logger.ts`](../dimabot/src/utils/logger.ts), telemetry recording path, OAuth diagnostics, and every worker remain authoritative until a later explicit caller migration. The dedicated logger sink preserves per-call bounds without changing timeout settings on the shared Redis connection.
 
-The separate plan-cache fence remains unported. Therefore the `TwitchStreamers` Rust class port remains deferred even though the shared logger implementation now exists; no logger caller adoption or deployed worker-profile change is included.
+The plan-cache fence is now accepted as a separate opt-in library utility; see [plan-cache-fence.md](plan-cache-fence.md). The `TwitchStreamers` Rust class port remains a separate task pending its consumer inventory and mixed credential-writer review. No logger caller adoption or deployed worker-profile change is included.
 
 ## Verification evidence
 

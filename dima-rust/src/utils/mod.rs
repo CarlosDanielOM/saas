@@ -71,6 +71,8 @@ pub mod eventsub;
 pub mod keywords;
 #[cfg(feature = "logger")]
 pub mod logger;
+#[cfg(feature = "plan-cache")]
+pub mod plan_cache_fence;
 #[cfg(feature = "polar-client")]
 pub mod polar;
 #[cfg(feature = "twitch-client")]

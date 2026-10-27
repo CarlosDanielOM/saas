@@ -2,7 +2,7 @@
 
 Reviewed on 2026-10-27.
 
-Status: approved source improvements recorded; the Rust class port remains deferred because the plan-cache fence is still unported. The shared logger utility passed library verification but is not connected to this class or TypeScript callers. The Rust library utilities exist, but `TwitchStreamers` does not call them. Do not describe this review as a class port, production runtime verification, or production performance result.
+Status: approved source improvements recorded; both the plan-cache fence and shared logger are accepted as opt-in Rust library utilities, but neither is connected to this class or TypeScript callers. The Rust `TwitchStreamers` class port remains a separate task pending its consumer inventory and mixed credential-writer review. Do not describe this review as a class port, production runtime verification, or production performance result.
 
 ## Current ownership and reusable work
 
@@ -16,9 +16,9 @@ Reusable Rust library code is present but not adopted by this class:
 - [`posthog.rs`](../dima-rust/src/utils/posthog.rs) includes `StreamerIdentities` deduplication.
 - [`otel.rs`](../dima-rust/src/utils/otel.rs) provides a Rust log export pipeline, but not the full TypeScript shared-logger contract.
 
-The plan-cache prerequisite remains unported: [`plan_cache_fence.ts`](../dimabot/src/utils/plan_cache_fence.ts) uses versioned Lua fencing across account/list/credit caches. A Rust shared logger core and optional Redis/OTEL adapters passed library verification, but are not connected to this class or TypeScript callers; see [shared-logger.md](shared-logger.md). The token utility itself documents that it does not install logger/debug-cache or refresh-all paths. Streamer metadata selection, mapping, and query behavior also remain class work; the credential utility is not a complete account repository.
+The plan-cache utility ports the three scripts in [`plan_cache_fence.ts`](../dimabot/src/utils/plan_cache_fence.ts) and two scripts in [`polar_billing_events.ts`](../dimabot/src/domain_events/polar_billing_events.ts); capped source parity and disposable Dragonfly verification passed. It is not connected to this class or any TypeScript caller. See [plan-cache-fence.md](plan-cache-fence.md) for its API, accepted evidence, and limits. The Rust shared logger core and optional Redis/OTEL adapters are also accepted library utilities, not adopted by this class; see [shared-logger.md](shared-logger.md). The token utility itself does not install logger/debug-cache or refresh-all paths. Streamer metadata selection, mapping, query behavior, consumer inventory, and mixed credential-writer coordination remain separate class-port work; the credential utility is not a complete account repository.
 
-See the separate [cache and logger pre-port review](cache-logger-pre-port-review.md) for the wider billing-script protocol, logger sink findings, and optional utility recommendations. Those recommendations have not been selected for implementation.
+See the separate [cache and logger pre-port review](cache-logger-pre-port-review.md) for the wider billing-script protocol, logger sink findings, and optional utility recommendations. The logger and plan-cache selections are now implemented; other cache suggestions remain optional.
 
 ## Source-level risks and approved improvements
 
@@ -48,9 +48,9 @@ The existing pacing has coordination and recovery purposes. The Rust token utili
 
 ## Resume checklist
 
-Resume the class port only after both prerequisites are available and reviewed:
+The class port is a separate task. Its remaining review work includes:
 
-- [ ] Port and parity-check the plan-cache version fence, including account writes, aggregate list validation/publication, and billing credit reads/writes; preserve compatibility with TypeScript writers while they remain active.
+- [x] Plan-cache utility source parity and disposable Dragonfly verification passed. Before class/caller adoption, review mixed-writer compatibility and credential CAS ownership; the utility is not a credential-CAS protocol.
 - [x] Verify and accept the opt-in shared logger core/adapters as library code; caller adoption remains separate. Keep OAuth diagnostic wiring usable without exposing credentials.
 - [ ] Inventory every TypeScript writer of Twitch account credentials, permissions, metadata, `twitch:accounts`, and `streamers:by:id`; coordinate mixed-writer compatibility before rollout.
 - [ ] Map current class methods and all callers. Keep metadata queries/mapping and plan-cache behavior in scope; use `StreamerIdentities` where its semantics match.
