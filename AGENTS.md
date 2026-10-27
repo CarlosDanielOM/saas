@@ -2,9 +2,21 @@
 
 **This is the root navigation document for the entire monorepo.** All agents must read this file first.
 
+## Active Rust Migration Rules — 2026-10-27
+
+The remaining `dimabot` Rust migration is being carried out in `/root/saas-rust`. Verified, coherent local commits are allowed and required under the commit policy below during migration; keep them small and logical, and never combine unrelated work or commit another contributor's changes. No agent, delegate, or session may push any work until the user explicitly gives a green light. Migration completion alone does not authorize a push.
+
+Migration scope is limited to `dimabot/` (including the Rust source and crate), directly necessary migration tests, ops integration, and repository guidance or notes. Other sites, extensions, and projects are out of scope unless the user explicitly authorizes work on them; consumer impact alone does not grant authority to change another project.
+
+**Migration completeness:** 100% means every TypeScript file feature and accepted improvement, plus every required direct and transitive dependency, is implemented in Rust without relying on unmigrated TypeScript. Report local feature coverage separately from total migration completion and name any blocking dependency. A host boundary, trait, or mock does not complete a feature when its required application-specific adapter is missing. Native Rust crates and standard-library replacements count; npm package internals do not need porting. Type-only TypeScript imports may be replaced by equivalent Rust types. Report deployment or caller-adoption status separately; dependency completeness does not authorize live cutover or make deployment a condition of 100%.
+
+This checkout, `/root/saas-rust`, is the migration workspace. The production path documented below is `/root/saas`; confirm the current production location, container mounts, and Compose ownership before acting. The migration workspace may share the production host, so all production safeguards still apply.
+
+**Rust migration tests must use isolated resources.** A request to test or validate Rust authorizes disposable testing, not production changes. The delivery workflow below does not authorize a Rust deployment; production release requires a separate explicit user instruction, and passing tests never grants it. Never run test code inside, or stop/start/restart/recreate/remove/rename/reconfigure, a production container. Do not use production databases, caches, queues, credentials, volumes, or networks as test resources. Use uniquely named and labeled task-owned resources; never overwrite an image tag used by a live service. Before and after checks, use read-only inspection to compare production container IDs, images, start times, and relevant mounts/configuration. If production changes unexpectedly, stop and report; do not repair it. Clean up only task-owned resources and never prune shared or production resources. Preserve the Rust CPU, memory, headroom, no-swap, and build limits below.
+
 ## Production Host & Delivery Workflow
 
-**This checkout, `/root/saas`, is on the actual production server.** Docker and live services are available here. Do not assume this is a development-only machine or that Docker is unavailable. Confirm current container mounts and Compose ownership before acting; the paths below describe this host.
+The production deployment guidance below documents `/root/saas` on the actual production server. Do not assume `/root/saas-rust` is on a development-only machine or that Docker is unavailable. Confirm the current production path, container mounts, and Compose ownership before acting.
 
 **A request to implement a change authorizes the complete delivery workflow: edit, validate in isolation, clean up temporary resources, deploy the affected services, and verify production.** Proceed without asking again for routine builds or targeted deployment after validation passes. Respect narrower requests such as review-only, plan-only, or do-not-deploy. Destructive data changes or infrastructure changes outside the requested scope require separate authorization.
 
@@ -274,7 +286,7 @@ Root rules in this file always take precedence. Project-specific files add detai
 
 ## Agent Commit Policy (Important)
 
-When an agent makes file changes that should be tracked in git history, it **must** create a commit. The commit message must clearly identify:
+Agents making verified changes that should be tracked in git history must create small, coherent local commits; this applies during the active Rust migration. Never include unrelated or another contributor's uncommitted changes. Pushes remain prohibited until the user explicitly gives a green light, and migration completion alone does not authorize one. Commit messages must clearly identify:
 
 - **Who performed the work** (model name or harness):
   - `MiniMax M3`, `Grok 4.3`, `Grok Build 0.1`, `Claude 4`, `GPT-5.5`, etc.
@@ -327,8 +339,8 @@ Agent: Claude 4 via claude-code
   - The committing agent should first attempt to verify their changes in a separate worktree/copy. Never stash, reset, overwrite, or commit another contributor's unrelated changes. Do not deploy their incomplete work as part of your task.
   - If verification is impossible due to the other agent's work, the commit message **must** explicitly note the known issue and attribute it to the other agent (e.g., "Build currently fails due to parallel work by Grok 4.3 on X feature – will be resolved once that PR lands").
   - Never commit broken code and blame "the other agent" without clear documentation.
-- Always commit when the change is complete and verified (or the multi-agent exception is documented).
-- Never leave uncommitted work that belongs in the monorepo history.
+- Create a local commit when work is complete and verified (or the multi-agent exception is documented), regardless of migration status.
+- Do not push without the user's explicit green light; migration completion by itself is not authorization.
 - If multiple agents collaborate on a single task, list all contributors in the message.
 - Use conventional commit types (`feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `perf`).
 
