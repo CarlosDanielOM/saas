@@ -8,6 +8,8 @@ Rust test requests authorize isolated testing only. Never run tests in or mutate
 
 For migration completion scoring, distinguish local feature coverage from total dependency-complete migration, and report caller adoption/deployment separately. See [Migration completeness](RUST_AGENTS.md#migration-completeness).
 
+In `/root/saas-rust`, the user explicitly permits deleting TypeScript files after their Rust ports satisfy that strict 100% definition, even when remaining TypeScript imports or builds break. Rust correctness is the migration validation target; do not preserve or recreate retired TypeScript solely for its unmigrated callers. This permission applies only to the migration checkout and does not authorize production changes, deployment, or pushes.
+
 ## Project Purpose
 
 `dimabot/` is the backend API + Twitch bot + background workers. It handles:
