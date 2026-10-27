@@ -2,7 +2,7 @@
 
 Reviewed on 2026-10-27.
 
-Status: approved source improvements recorded; both the plan-cache fence and shared logger are accepted as opt-in Rust library utilities, but neither is connected to this class or TypeScript callers. The Rust `TwitchStreamers` class port remains a separate task pending its consumer inventory and mixed credential-writer review. Do not describe this review as a class port, production runtime verification, or production performance result.
+Status: the opt-in Rust `TwitchStreamers` directory implementation is present, and its capped source/candidate checks and disposable MongoDB/Dragonfly fixtures passed; see [twitch-streamers.md](twitch-streamers.md). The utility still has no TypeScript caller, worker/service wiring, or production adoption. Mixed legacy writer coordination remains a prerequisite for adoption; library acceptance is not production runtime verification or a performance result.
 
 ## Current ownership and reusable work
 
@@ -44,19 +44,21 @@ Approved improvements for a future implementation:
 
 ## Waits and retry behavior to preserve or review
 
-The existing pacing has coordination and recovery purposes. The Rust token utility currently uses a 5,000 ms refresh-lock lease, 150 ms waiter polling, and a 4,500 ms wait timeout. The TypeScript OAuth utility uses 400 ms and 900 ms retry backoffs. Preserve these purposes during review: waiters poll for another owner's usable token, stop when the lock disappears or the timeout expires, and retries back off after transient OAuth failures. Do not simply remove the waits as a speed optimization. Confirm lease safety against request/retry bounds, and change timings only with tests covering owner progress, waiter recovery, lock expiry, and retry outcomes.
+The existing pacing has coordination and recovery purposes. Existing `twitch_tokens` callers retain the 5,000 ms refresh-lock default, 150 ms waiter polling, and 4,500 ms waiter timeout; the new directory adapter opts into a 30-second lease with a 25-second under-lock budget plus a 5-second buffer. Waiters attempt one takeover after their wait, and may still return `Busy` while the owner remains active. The TypeScript OAuth utility uses 400 ms and 900 ms retry backoffs. Preserve these purposes during review: waiters poll for another owner's usable token, stop when the lock disappears or the timeout expires, and retries back off after transient OAuth failures. Do not simply remove the waits as a speed optimization. Confirm lease safety against request/retry bounds, and change timings only with tests covering owner progress, waiter recovery, lock expiry, and retry outcomes. The directory's 28-second default operation deadline may cancel the outer wait earlier; cancellation leaves a distributed lease to expire naturally.
 
 ## Resume checklist
 
-The class port is a separate task. Its remaining review work includes:
+The library implementation is complete as opt-in source; adoption and validation follow-up remain:
 
 - [x] Plan-cache utility source parity and disposable Dragonfly verification passed. Before class/caller adoption, review mixed-writer compatibility and credential CAS ownership; the utility is not a credential-CAS protocol.
 - [x] Verify and accept the opt-in shared logger core/adapters as library code; caller adoption remains separate. Keep OAuth diagnostic wiring usable without exposing credentials.
-- [ ] Inventory every TypeScript writer of Twitch account credentials, permissions, metadata, `twitch:accounts`, and `streamers:by:id`; coordinate mixed-writer compatibility before rollout.
-- [ ] Map current class methods and all callers. Keep metadata queries/mapping and plan-cache behavior in scope; use `StreamerIdentities` where its semantics match.
-- [ ] Add deterministic tests for stale Mongo snapshot vs. token rotation, revocation vs. aggregate cache, removed-account eviction, concurrent refresh coalescing, replacement-lock ownership, lease expiry during slow OAuth/retry, invalid/missing credentials, client acquisition retry, and mapper/error behavior.
-- [ ] Test the websocket ID-only cleanup path and account deletion reconciliation. Verify parity for plan tiers, permission flags, encrypted credential envelopes, expiry handling, and PostHog rename deduplication.
-- [ ] Run exact-candidate checks with disposable fixtures and no production data or external OAuth calls. Report runtime/performance evidence separately; this review makes no production speedup claim.
+- [x] Map current class methods and callers; record the fixture's inventory limits, metadata queries, plan-cache reuse, and ID-only websocket consumer in [twitch-streamers.md](twitch-streamers.md).
+- [x] Implement the opt-in directory/metadata APIs and reuse `StreamerIdentities` where semantics match; see the new migration record.
+- [x] Complete capped exact-source/candidate checks, parity/race cases, disposable MongoDB/Dragonfly adapter fixtures, and cleanup. See [twitch-streamers.md](twitch-streamers.md) and retained acceptance artifacts; no deployment or caller adoption occurred.
+- [x] Exercise ID-list late membership, aggregate revocation/rotation, 16 independent cold point reads, completed-flight replacement, guarded refresh takeover, and bounded orphan scanning. Native adapter fixtures also confirmed matching non-hash cache keys remain untouched.
+- [ ] Coordinate all mixed TypeScript/Rust writers for credentials, permissions, metadata, billing plan fences, account membership, and deletion before any caller adoption. MongoDB and Redis mutations are not a transaction; legacy writers do not participate in Rust CAS.
+- [ ] Integrate explicit error mapping for callers; cover websocket ID-only cleanup and deletion reconciliation, then decide caller/service wiring separately.
+- [x] Keep production adoption and performance reporting separate from library validation; acceptance changed no callers/services and supports no runtime speedup claim.
 
 ## Source references
 

@@ -1,0 +1,1228 @@
+{
+  "version": 1,
+  "timezone": "UTC",
+  "sources": {
+    "src/classes/twitch_streamers.class.ts": "68f1dcf78a3e1502d3aebac8b411d4220572396a7af810a8ca9014403c265694",
+    "src/utils/plan_cache_fence.ts": "2639f0021342fba252e7c9ef331dc42cdb9cc4eb19b5e063eda7d167ac7787ee"
+  },
+  "cases": [
+    {
+      "name": "plan-free",
+      "input": {
+        "accounts": [
+          {
+            "type": "twitch",
+            "id": "fixture-user",
+            "name": "owner",
+            "email": "owner@example.invalid",
+            "access_token": {
+              "iv": "fixture-only",
+              "content": "fixture-access"
+            },
+            "refresh_token": {
+              "iv": "fixture-only",
+              "content": "fixture-refresh"
+            },
+            "access_token_expires_at": 1793104200,
+            "actived": true,
+            "chat_enabled": true,
+            "has_permissions": true,
+            "up_to_date_permissions": true
+          }
+        ],
+        "plan_tier": "free"
+      },
+      "expected": {
+        "id": "fixture-user",
+        "name": "owner",
+        "email": "owner@example.invalid",
+        "plan_tier": "free",
+        "plan_tier_until": "",
+        "polar_sh_customer_id": "",
+        "refresh_token": "fixture-refresh",
+        "access_token": "fixture-access",
+        "expires_at": "1793104200",
+        "actived": "true",
+        "chat_enabled": "true",
+        "has_permissions": "true",
+        "up_to_date_permissions": "true"
+      },
+      "version": ""
+    },
+    {
+      "name": "plan-premium",
+      "input": {
+        "accounts": [
+          {
+            "type": "twitch",
+            "id": "fixture-user",
+            "name": "owner",
+            "email": "owner@example.invalid",
+            "access_token": {
+              "iv": "fixture-only",
+              "content": "fixture-access"
+            },
+            "refresh_token": {
+              "iv": "fixture-only",
+              "content": "fixture-refresh"
+            },
+            "access_token_expires_at": 1793104200,
+            "actived": true,
+            "chat_enabled": true,
+            "has_permissions": true,
+            "up_to_date_permissions": true
+          }
+        ],
+        "plan_tier": "premium"
+      },
+      "expected": {
+        "id": "fixture-user",
+        "name": "owner",
+        "email": "owner@example.invalid",
+        "plan_tier": "premium",
+        "plan_tier_until": "",
+        "polar_sh_customer_id": "",
+        "refresh_token": "fixture-refresh",
+        "access_token": "fixture-access",
+        "expires_at": "1793104200",
+        "actived": "true",
+        "chat_enabled": "true",
+        "has_permissions": "true",
+        "up_to_date_permissions": "true"
+      },
+      "version": ""
+    },
+    {
+      "name": "plan-pro",
+      "input": {
+        "accounts": [
+          {
+            "type": "twitch",
+            "id": "fixture-user",
+            "name": "owner",
+            "email": "owner@example.invalid",
+            "access_token": {
+              "iv": "fixture-only",
+              "content": "fixture-access"
+            },
+            "refresh_token": {
+              "iv": "fixture-only",
+              "content": "fixture-refresh"
+            },
+            "access_token_expires_at": 1793104200,
+            "actived": true,
+            "chat_enabled": true,
+            "has_permissions": true,
+            "up_to_date_permissions": true
+          }
+        ],
+        "plan_tier": "pro"
+      },
+      "expected": {
+        "id": "fixture-user",
+        "name": "owner",
+        "email": "owner@example.invalid",
+        "plan_tier": "pro",
+        "plan_tier_until": "",
+        "polar_sh_customer_id": "",
+        "refresh_token": "fixture-refresh",
+        "access_token": "fixture-access",
+        "expires_at": "1793104200",
+        "actived": "true",
+        "chat_enabled": "true",
+        "has_permissions": "true",
+        "up_to_date_permissions": "true"
+      },
+      "version": ""
+    },
+    {
+      "name": "null-defaults",
+      "input": {
+        "accounts": [
+          {
+            "type": "twitch",
+            "id": "fixture-user",
+            "name": null,
+            "email": null,
+            "access_token": null,
+            "refresh_token": null,
+            "access_token_expires_at": null,
+            "actived": null,
+            "chat_enabled": null,
+            "has_permissions": null,
+            "up_to_date_permissions": null
+          }
+        ],
+        "plan_tier": null,
+        "plan_tier_until": null,
+        "polar_sh_customer_id": null
+      },
+      "expected": {
+        "id": "fixture-user",
+        "name": "",
+        "email": "",
+        "plan_tier": "free",
+        "plan_tier_until": "",
+        "polar_sh_customer_id": "",
+        "refresh_token": "",
+        "access_token": "",
+        "actived": "false",
+        "chat_enabled": "false",
+        "has_permissions": "false",
+        "up_to_date_permissions": "false"
+      },
+      "version": ""
+    },
+    {
+      "name": "false-flags",
+      "input": {
+        "accounts": [
+          {
+            "type": "twitch",
+            "id": "fixture-user",
+            "name": "owner",
+            "email": "owner@example.invalid",
+            "access_token": {
+              "iv": "fixture-only",
+              "content": "fixture-access"
+            },
+            "refresh_token": {
+              "iv": "fixture-only",
+              "content": "fixture-refresh"
+            },
+            "access_token_expires_at": 1793104200,
+            "actived": false,
+            "chat_enabled": false,
+            "has_permissions": false,
+            "up_to_date_permissions": false
+          }
+        ],
+        "plan_tier": "free"
+      },
+      "expected": {
+        "id": "fixture-user",
+        "name": "owner",
+        "email": "owner@example.invalid",
+        "plan_tier": "free",
+        "plan_tier_until": "",
+        "polar_sh_customer_id": "",
+        "refresh_token": "fixture-refresh",
+        "access_token": "fixture-access",
+        "expires_at": "1793104200",
+        "actived": "false",
+        "chat_enabled": "false",
+        "has_permissions": "false",
+        "up_to_date_permissions": "false"
+      },
+      "version": ""
+    },
+    {
+      "name": "missing-flags",
+      "input": {
+        "accounts": [
+          {
+            "type": "twitch",
+            "id": "fixture-user",
+            "name": "owner",
+            "email": "owner@example.invalid",
+            "access_token": {
+              "iv": "fixture-only",
+              "content": "fixture-access"
+            },
+            "refresh_token": {
+              "iv": "fixture-only",
+              "content": "fixture-refresh"
+            },
+            "access_token_expires_at": 1793104200
+          }
+        ],
+        "plan_tier": "free"
+      },
+      "expected": {
+        "id": "fixture-user",
+        "name": "owner",
+        "email": "owner@example.invalid",
+        "plan_tier": "free",
+        "plan_tier_until": "",
+        "polar_sh_customer_id": "",
+        "refresh_token": "fixture-refresh",
+        "access_token": "fixture-access",
+        "expires_at": "1793104200",
+        "actived": "false",
+        "chat_enabled": "false",
+        "has_permissions": "false",
+        "up_to_date_permissions": "false"
+      },
+      "version": ""
+    },
+    {
+      "name": "expired-credential",
+      "input": {
+        "accounts": [
+          {
+            "type": "twitch",
+            "id": "fixture-user",
+            "name": "owner",
+            "email": "owner@example.invalid",
+            "access_token": {
+              "iv": "fixture-only",
+              "content": "fixture-access"
+            },
+            "refresh_token": {
+              "iv": "fixture-only",
+              "content": "fixture-refresh"
+            },
+            "access_token_expires_at": 1,
+            "actived": true,
+            "chat_enabled": true,
+            "has_permissions": true,
+            "up_to_date_permissions": true
+          }
+        ],
+        "plan_tier": "free"
+      },
+      "expected": {
+        "id": "fixture-user",
+        "name": "owner",
+        "email": "owner@example.invalid",
+        "plan_tier": "free",
+        "plan_tier_until": "",
+        "polar_sh_customer_id": "",
+        "refresh_token": "fixture-refresh",
+        "access_token": "fixture-access",
+        "expires_at": "1",
+        "actived": "true",
+        "chat_enabled": "true",
+        "has_permissions": "true",
+        "up_to_date_permissions": "true"
+      },
+      "version": ""
+    },
+    {
+      "name": "zero-expiry",
+      "input": {
+        "accounts": [
+          {
+            "type": "twitch",
+            "id": "fixture-user",
+            "name": "owner",
+            "email": "owner@example.invalid",
+            "access_token": {
+              "iv": "fixture-only",
+              "content": "fixture-access"
+            },
+            "refresh_token": {
+              "iv": "fixture-only",
+              "content": "fixture-refresh"
+            },
+            "access_token_expires_at": 0,
+            "actived": true,
+            "chat_enabled": true,
+            "has_permissions": true,
+            "up_to_date_permissions": true
+          }
+        ],
+        "plan_tier": "free"
+      },
+      "expected": {
+        "id": "fixture-user",
+        "name": "owner",
+        "email": "owner@example.invalid",
+        "plan_tier": "free",
+        "plan_tier_until": "",
+        "polar_sh_customer_id": "",
+        "refresh_token": "fixture-refresh",
+        "access_token": "fixture-access",
+        "actived": "true",
+        "chat_enabled": "true",
+        "has_permissions": "true",
+        "up_to_date_permissions": "true"
+      },
+      "version": ""
+    },
+    {
+      "name": "fractional-expiry",
+      "input": {
+        "accounts": [
+          {
+            "type": "twitch",
+            "id": "fixture-user",
+            "name": "owner",
+            "email": "owner@example.invalid",
+            "access_token": {
+              "iv": "fixture-only",
+              "content": "fixture-access"
+            },
+            "refresh_token": {
+              "iv": "fixture-only",
+              "content": "fixture-refresh"
+            },
+            "access_token_expires_at": 123.5,
+            "actived": true,
+            "chat_enabled": true,
+            "has_permissions": true,
+            "up_to_date_permissions": true
+          }
+        ],
+        "plan_tier": "free"
+      },
+      "expected": {
+        "id": "fixture-user",
+        "name": "owner",
+        "email": "owner@example.invalid",
+        "plan_tier": "free",
+        "plan_tier_until": "",
+        "polar_sh_customer_id": "",
+        "refresh_token": "fixture-refresh",
+        "access_token": "fixture-access",
+        "expires_at": "123.5",
+        "actived": "true",
+        "chat_enabled": "true",
+        "has_permissions": "true",
+        "up_to_date_permissions": "true"
+      },
+      "version": ""
+    },
+    {
+      "name": "until-1969-12-31T23:59:59Z",
+      "input": {
+        "accounts": [
+          {
+            "type": "twitch",
+            "id": "fixture-user",
+            "name": "owner",
+            "email": "owner@example.invalid",
+            "access_token": {
+              "iv": "fixture-only",
+              "content": "fixture-access"
+            },
+            "refresh_token": {
+              "iv": "fixture-only",
+              "content": "fixture-refresh"
+            },
+            "access_token_expires_at": 1793104200,
+            "actived": true,
+            "chat_enabled": true,
+            "has_permissions": true,
+            "up_to_date_permissions": true
+          }
+        ],
+        "plan_tier": "free",
+        "plan_tier_until": "1969-12-31T23:59:59.000Z"
+      },
+      "expected": {
+        "id": "fixture-user",
+        "name": "owner",
+        "email": "owner@example.invalid",
+        "plan_tier": "free",
+        "plan_tier_until": "Wed Dec 31 1969",
+        "polar_sh_customer_id": "",
+        "refresh_token": "fixture-refresh",
+        "access_token": "fixture-access",
+        "expires_at": "1793104200",
+        "actived": "true",
+        "chat_enabled": "true",
+        "has_permissions": "true",
+        "up_to_date_permissions": "true"
+      },
+      "version": ""
+    },
+    {
+      "name": "until-1970-01-01T00:00:00Z",
+      "input": {
+        "accounts": [
+          {
+            "type": "twitch",
+            "id": "fixture-user",
+            "name": "owner",
+            "email": "owner@example.invalid",
+            "access_token": {
+              "iv": "fixture-only",
+              "content": "fixture-access"
+            },
+            "refresh_token": {
+              "iv": "fixture-only",
+              "content": "fixture-refresh"
+            },
+            "access_token_expires_at": 1793104200,
+            "actived": true,
+            "chat_enabled": true,
+            "has_permissions": true,
+            "up_to_date_permissions": true
+          }
+        ],
+        "plan_tier": "free",
+        "plan_tier_until": "1970-01-01T00:00:00.000Z"
+      },
+      "expected": {
+        "id": "fixture-user",
+        "name": "owner",
+        "email": "owner@example.invalid",
+        "plan_tier": "free",
+        "plan_tier_until": "Thu Jan 01 1970",
+        "polar_sh_customer_id": "",
+        "refresh_token": "fixture-refresh",
+        "access_token": "fixture-access",
+        "expires_at": "1793104200",
+        "actived": "true",
+        "chat_enabled": "true",
+        "has_permissions": "true",
+        "up_to_date_permissions": "true"
+      },
+      "version": ""
+    },
+    {
+      "name": "until-2024-02-29T12:34:56Z",
+      "input": {
+        "accounts": [
+          {
+            "type": "twitch",
+            "id": "fixture-user",
+            "name": "owner",
+            "email": "owner@example.invalid",
+            "access_token": {
+              "iv": "fixture-only",
+              "content": "fixture-access"
+            },
+            "refresh_token": {
+              "iv": "fixture-only",
+              "content": "fixture-refresh"
+            },
+            "access_token_expires_at": 1793104200,
+            "actived": true,
+            "chat_enabled": true,
+            "has_permissions": true,
+            "up_to_date_permissions": true
+          }
+        ],
+        "plan_tier": "free",
+        "plan_tier_until": "2024-02-29T12:34:56.000Z"
+      },
+      "expected": {
+        "id": "fixture-user",
+        "name": "owner",
+        "email": "owner@example.invalid",
+        "plan_tier": "free",
+        "plan_tier_until": "Thu Feb 29 2024",
+        "polar_sh_customer_id": "",
+        "refresh_token": "fixture-refresh",
+        "access_token": "fixture-access",
+        "expires_at": "1793104200",
+        "actived": "true",
+        "chat_enabled": "true",
+        "has_permissions": "true",
+        "up_to_date_permissions": "true"
+      },
+      "version": ""
+    },
+    {
+      "name": "until-2026-10-27T23:59:59Z",
+      "input": {
+        "accounts": [
+          {
+            "type": "twitch",
+            "id": "fixture-user",
+            "name": "owner",
+            "email": "owner@example.invalid",
+            "access_token": {
+              "iv": "fixture-only",
+              "content": "fixture-access"
+            },
+            "refresh_token": {
+              "iv": "fixture-only",
+              "content": "fixture-refresh"
+            },
+            "access_token_expires_at": 1793104200,
+            "actived": true,
+            "chat_enabled": true,
+            "has_permissions": true,
+            "up_to_date_permissions": true
+          }
+        ],
+        "plan_tier": "free",
+        "plan_tier_until": "2026-10-27T23:59:59.000Z"
+      },
+      "expected": {
+        "id": "fixture-user",
+        "name": "owner",
+        "email": "owner@example.invalid",
+        "plan_tier": "free",
+        "plan_tier_until": "Tue Oct 27 2026",
+        "polar_sh_customer_id": "",
+        "refresh_token": "fixture-refresh",
+        "access_token": "fixture-access",
+        "expires_at": "1793104200",
+        "actived": "true",
+        "chat_enabled": "true",
+        "has_permissions": "true",
+        "up_to_date_permissions": "true"
+      },
+      "version": ""
+    },
+    {
+      "name": "until-0099-01-01T00:00:00Z",
+      "input": {
+        "accounts": [
+          {
+            "type": "twitch",
+            "id": "fixture-user",
+            "name": "owner",
+            "email": "owner@example.invalid",
+            "access_token": {
+              "iv": "fixture-only",
+              "content": "fixture-access"
+            },
+            "refresh_token": {
+              "iv": "fixture-only",
+              "content": "fixture-refresh"
+            },
+            "access_token_expires_at": 1793104200,
+            "actived": true,
+            "chat_enabled": true,
+            "has_permissions": true,
+            "up_to_date_permissions": true
+          }
+        ],
+        "plan_tier": "free",
+        "plan_tier_until": "0099-01-01T00:00:00.000Z"
+      },
+      "expected": {
+        "id": "fixture-user",
+        "name": "owner",
+        "email": "owner@example.invalid",
+        "plan_tier": "free",
+        "plan_tier_until": "Thu Jan 01 0099",
+        "polar_sh_customer_id": "",
+        "refresh_token": "fixture-refresh",
+        "access_token": "fixture-access",
+        "expires_at": "1793104200",
+        "actived": "true",
+        "chat_enabled": "true",
+        "has_permissions": "true",
+        "up_to_date_permissions": "true"
+      },
+      "version": ""
+    },
+    {
+      "name": "plan-event-version",
+      "input": {
+        "accounts": [
+          {
+            "type": "twitch",
+            "id": "fixture-user",
+            "name": "owner",
+            "email": "owner@example.invalid",
+            "access_token": {
+              "iv": "fixture-only",
+              "content": "fixture-access"
+            },
+            "refresh_token": {
+              "iv": "fixture-only",
+              "content": "fixture-refresh"
+            },
+            "access_token_expires_at": 1793104200,
+            "actived": true,
+            "chat_enabled": true,
+            "has_permissions": true,
+            "up_to_date_permissions": true
+          }
+        ],
+        "plan_tier": "free",
+        "polar_plan_event_at": "2026-10-27T12:00:00.000Z",
+        "polar_plan_event_key": "event-key",
+        "polar_sh_customer_id": "fixture-customer"
+      },
+      "expected": {
+        "id": "fixture-user",
+        "name": "owner",
+        "email": "owner@example.invalid",
+        "plan_tier": "free",
+        "plan_tier_until": "",
+        "polar_sh_customer_id": "fixture-customer",
+        "refresh_token": "fixture-refresh",
+        "access_token": "fixture-access",
+        "expires_at": "1793104200",
+        "actived": "true",
+        "chat_enabled": "true",
+        "has_permissions": "true",
+        "up_to_date_permissions": "true"
+      },
+      "version": "1793102400000:event-key"
+    },
+    {
+      "name": "unicode-metadata",
+      "input": {
+        "accounts": [
+          {
+            "type": "twitch",
+            "id": "fixture-user",
+            "name": "é😀owner",
+            "email": "",
+            "access_token": {
+              "iv": "fixture-only",
+              "content": "fixture-access"
+            },
+            "refresh_token": {
+              "iv": "fixture-only",
+              "content": "fixture-refresh"
+            },
+            "access_token_expires_at": 1793104200,
+            "actived": true,
+            "chat_enabled": true,
+            "has_permissions": true,
+            "up_to_date_permissions": true
+          }
+        ],
+        "plan_tier": "free"
+      },
+      "expected": {
+        "id": "fixture-user",
+        "name": "é😀owner",
+        "email": "",
+        "plan_tier": "free",
+        "plan_tier_until": "",
+        "polar_sh_customer_id": "",
+        "refresh_token": "fixture-refresh",
+        "access_token": "fixture-access",
+        "expires_at": "1793104200",
+        "actived": "true",
+        "chat_enabled": "true",
+        "has_permissions": "true",
+        "up_to_date_permissions": "true"
+      },
+      "version": ""
+    }
+  ],
+  "consumerInventory": [
+    {
+      "file": "src/bot/index.ts",
+      "line": 46,
+      "method": "getTwitchAccountsFromDB"
+    },
+    {
+      "file": "src/commands/add_vip.command.ts",
+      "line": 90,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/commands/command_manager.command.ts",
+      "line": 191,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/commands/command_manager.command.ts",
+      "line": 405,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/commands/duel.command.ts",
+      "line": 28,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/commands/followage.command.ts",
+      "line": 25,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/commands/miyuloot.command.ts",
+      "line": 73,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/commands/timer_manager.command.ts",
+      "line": 67,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/commands/timer_manager.command.ts",
+      "line": 159,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/domain_events/chat_announcement_events.ts",
+      "line": 97,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/functions/channels/get_editors.channel.ts",
+      "line": 20,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/functions/channels/is_live.channel.ts",
+      "line": 62,
+      "method": "getTwitchStreamers"
+    },
+    {
+      "file": "src/functions/chats/control_tts.chat.ts",
+      "line": 10,
+      "method": "getAccountTokenById"
+    },
+    {
+      "file": "src/functions/chats/control_tts.chat.ts",
+      "line": 28,
+      "method": "getAccountTokenById"
+    },
+    {
+      "file": "src/functions/redemptions/custom.redemption.ts",
+      "line": 47,
+      "method": "getAccountTokenById"
+    },
+    {
+      "file": "src/functions/redemptions/resetredemptioncost.redemption.ts",
+      "line": 15,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/functions/redemptions/resetredemptioncost.redemption.ts",
+      "line": 26,
+      "method": "getAccountTokenById"
+    },
+    {
+      "file": "src/functions/redemptions/vip.redemption.ts",
+      "line": 53,
+      "method": "getAccountTokenById"
+    },
+    {
+      "file": "src/functions/triggers/send_trigger.trigger.ts",
+      "line": 24,
+      "method": "getAccountTokenById"
+    },
+    {
+      "file": "src/functions/triggers/send_trigger.trigger.ts",
+      "line": 30,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/handlers/commands.handler.ts",
+      "line": 163,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/handlers/eventsub.handler.ts",
+      "line": 59,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/handlers/eventsub.handler.ts",
+      "line": 72,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/handlers/eventsub.handler.ts",
+      "line": 74,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/handlers/message.handler.ts",
+      "line": 61,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/handlers/redemption.handler.ts",
+      "line": 229,
+      "method": "getAccountTokenById"
+    },
+    {
+      "file": "src/handlers/special_parser.handler.ts",
+      "line": 348,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/handlers/stream_online.handler.ts",
+      "line": 58,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/handlers/tts_queue.handler.ts",
+      "line": 408,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/overlays/interaction-subscriptions.ts",
+      "line": 49,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/roulette/actions.ts",
+      "line": 26,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/scripts/migrate_bits_canonical.script.ts",
+      "line": 210,
+      "method": "getAccountTokenById"
+    },
+    {
+      "file": "src/server/index.ts",
+      "line": 46,
+      "method": "getTwitchAccountsFromDB"
+    },
+    {
+      "file": "src/server/routes/analytics.route.ts",
+      "line": 72,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/server/routes/auth.route.ts",
+      "line": 628,
+      "method": "updateTwitchAccountsInCache"
+    },
+    {
+      "file": "src/server/routes/auth.route.ts",
+      "line": 631,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/server/routes/auth.route.ts",
+      "line": 713,
+      "method": "updateTwitchAccountsInCache"
+    },
+    {
+      "file": "src/server/routes/auth.route.ts",
+      "line": 719,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/server/routes/auth.route.ts",
+      "line": 1291,
+      "method": "updateTwitchAccountsInCache"
+    },
+    {
+      "file": "src/server/routes/auth.route.ts",
+      "line": 1293,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/server/routes/dashboard.route.ts",
+      "line": 171,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/server/routes/dashboard.route.ts",
+      "line": 233,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/server/routes/dashboard.route.ts",
+      "line": 296,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/server/routes/follow_defense.route.ts",
+      "line": 105,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/server/routes/moderation.route.ts",
+      "line": 63,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/server/routes/speech.route.ts",
+      "line": 120,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/server/routes/speech.route.ts",
+      "line": 183,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/server/routes/speech.route.ts",
+      "line": 440,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/server/routes/trigger.route.ts",
+      "line": 385,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/server/routes/trigger.route.ts",
+      "line": 461,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/server/routes/trigger.route.ts",
+      "line": 662,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/server/routes/trigger.route.ts",
+      "line": 1064,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/server/routes/twitch.route.ts",
+      "line": 36,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/server/routes/user.route.ts",
+      "line": 77,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/server/routes/user.route.ts",
+      "line": 382,
+      "method": "updateTwitchAccountsInCache"
+    },
+    {
+      "file": "src/server/services/reward_creation.service.ts",
+      "line": 143,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/server/services/tts/voice_preview.service.ts",
+      "line": 103,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/server/websocket.ts",
+      "line": 66,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/server/websocket.ts",
+      "line": 179,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/server/websocket.ts",
+      "line": 232,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/server/websocket.ts",
+      "line": 285,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/server/websocket.ts",
+      "line": 346,
+      "method": "getTwitchAccountsFromCache"
+    },
+    {
+      "file": "src/utils/account_deletion.ts",
+      "line": 180,
+      "method": "updateTwitchAccountsInCache"
+    },
+    {
+      "file": "src/utils/ai/memory/memory.service.ts",
+      "line": 398,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/utils/ai/memory/stream_memory_runner.ts",
+      "line": 231,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/utils/ai/memory/stream_summary_decider.ts",
+      "line": 388,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/utils/ai/openrouter/ai.ts",
+      "line": 323,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/utils/ai/openrouter/ai.ts",
+      "line": 782,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/utils/ai/openrouter/messages.ai.ts",
+      "line": 105,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/utils/ai/openrouter/messages.ai.ts",
+      "line": 166,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/utils/ai/tools/ast_parser.tool.ts",
+      "line": 115,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/utils/ast_parser/functions/channel.functions.ts",
+      "line": 31,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/utils/ast_parser/functions/channel.functions.ts",
+      "line": 281,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/utils/ast_parser/functions/followage.functions.ts",
+      "line": 26,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/utils/ast_parser/functions/moderation.functions.ts",
+      "line": 290,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/utils/ast_parser/functions/overlay.functions.ts",
+      "line": 23,
+      "method": "getAccountTokenById"
+    },
+    {
+      "file": "src/utils/ast_parser/functions/twitch.functions.ts",
+      "line": 69,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/utils/ast_parser/functions/twitch.functions.ts",
+      "line": 97,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/utils/command_cooldown_write.ts",
+      "line": 11,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/utils/command_cooldown_write.ts",
+      "line": 22,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/utils/eventsub.ts",
+      "line": 350,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/utils/follow_ledger.ts",
+      "line": 863,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/utils/header.ts",
+      "line": 63,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/utils/header.ts",
+      "line": 80,
+      "method": "getAccountTokenById"
+    },
+    {
+      "file": "src/utils/stream_analytics.ts",
+      "line": 1397,
+      "method": "getTwitchStreamers"
+    },
+    {
+      "file": "src/utils/tokens.ts",
+      "line": 108,
+      "method": "updateTwitchAccountsInCache"
+    },
+    {
+      "file": "src/utils/tokens.ts",
+      "line": 109,
+      "method": "getTwitchStreamers"
+    },
+    {
+      "file": "src/utils/tokens.ts",
+      "line": 113,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/utils/tokens.ts",
+      "line": 127,
+      "method": "updateTwitchAccountsInCache"
+    },
+    {
+      "file": "src/utils/tokens.ts",
+      "line": 296,
+      "method": "getAccountRefreshTokenById"
+    },
+    {
+      "file": "src/utils/tokens.ts",
+      "line": 524,
+      "method": "getAccountTokenById"
+    },
+    {
+      "file": "src/workers/eventsub_reconciliation.worker.ts",
+      "line": 76,
+      "method": "getTwitchAccountsFromDB"
+    },
+    {
+      "file": "src/workers/follow_ledger.worker.ts",
+      "line": 259,
+      "method": "getTwitchAccountsFromDB"
+    },
+    {
+      "file": "src/workers/stream_analytics.worker.ts",
+      "line": 126,
+      "method": "getTwitchAccountsFromDB"
+    },
+    {
+      "file": "src/workers/stream_memory.worker.ts",
+      "line": 200,
+      "method": "getTwitchStreamers"
+    },
+    {
+      "file": "src/workers/stream_memory.worker.ts",
+      "line": 429,
+      "method": "getTwitchAccountsFromDB"
+    },
+    {
+      "file": "src/workers/timer.worker.ts",
+      "line": 193,
+      "method": "getTwitchAccountById"
+    },
+    {
+      "file": "src/workers/timer.worker.ts",
+      "line": 247,
+      "method": "getTwitchAccountsFromDB"
+    }
+  ],
+  "cacheKeyOwners": [
+    {
+      "file": "src/classes/twitch_streamers.class.ts",
+      "sha256": "68f1dcf78a3e1502d3aebac8b411d4220572396a7af810a8ca9014403c265694",
+      "note": "cache-key owner/reference; inspect actual operations before adoption"
+    },
+    {
+      "file": "src/domain_events/polar_billing_events.ts",
+      "sha256": "bf134b805840bfee44b94f861736976dc6739ac535e75c6bf2203ae11a54948d",
+      "note": "cache-key owner/reference; inspect actual operations before adoption"
+    },
+    {
+      "file": "src/scripts/invalidate_all_user_permissions.script.ts",
+      "sha256": "e8b038ff53a7dbeecb5a0a503c9965802bcf732fcc422449fc8586bf8465a3d4",
+      "note": "cache-key owner/reference; inspect actual operations before adoption"
+    },
+    {
+      "file": "src/server/routes/auth.route.ts",
+      "sha256": "05a6718d45f27365632ce7928a71a89d1b2e5a9e0e0e3a2a7dc919c8d17b806f",
+      "note": "cache-key owner/reference; inspect actual operations before adoption"
+    },
+    {
+      "file": "src/server/routes/user.route.ts",
+      "sha256": "ab7b5f5d89613dce5cac90f2f419b8aae1fe8516f9cbbaa358663837692094d7",
+      "note": "cache-key owner/reference; inspect actual operations before adoption"
+    },
+    {
+      "file": "src/utils/tokens.ts",
+      "sha256": "b5265073a62aee18e5e3244628be6aa2ed8ae2aba58f05a3ab70d83987796ce4",
+      "note": "cache-key owner/reference; inspect actual operations before adoption"
+    }
+  ],
+  "inventoryLimit": "Default-import aliases and the established deferred-import TwitchStreamers binding. Reflective calls are outside this static inventory; key references are not proof of writes.",
+  "intentionalDifferences": [
+    "Metadata publication preserves credential fields and current permission flags.",
+    "Credential expiry stays paired with its token instead of borrowing a cached expiry for an older DB token.",
+    "Full refresh reconciles removed accounts; per-account refresh is available.",
+    "ID-only consumers use the membership index rather than a serialized account aggregate.",
+    "Errors are explicit rather than false empty/missing success."
+  ]
+}

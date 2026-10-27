@@ -140,3 +140,5 @@ Routing implication (task-specific; retain baseline unless evidence supports a b
 Opt-in AST pure functions: final-source quality/parity, 30 prepared workload pairs, scoped R2 review, and cleanup passed; the ASCII casing fast path was rejected and removed after failing the Unicode guard. [2026-10-26 note](2026-10-26-ast-pure-functions.md). The model baseline is unchanged.
 
 Opt-in Rust plan-cache fence passed capped quality/source parity and 135 disposable Dragonfly scenarios; no caller adoption or deployment. [2026-10-27 note](2026-10-27-plan-cache-fence.md). Single-task low confidence, no tier change.
+
+Opt-in TwitchStreamers library passed capped quality, parity, both profile suites, and disposable MongoDB/Dragonfly adapters; no caller adoption or deployment. [2026-10-27 note](2026-10-27-twitch-streamers.md). Single-task low confidence, no tier change or performance claim.

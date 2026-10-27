@@ -62,6 +62,9 @@ permissions = ["dep:serde", "dep:serde_json", "serde_json/float_roundtrip"]
 cron-queue = ["redis", "dep:serde", "dep:serde_json", "dep:uuid"]
 credential-crypto = ["dep:aes", "dep:ctr", "dep:getrandom", "dep:serde"]
 twitch-tokens = ["twitch-client", "credential-crypto", "mongo", "redis"]
+# Account directory composes existing opt-in protocols without changing workers.
+twitch-streamers = ["twitch-tokens", "plan-cache", "logger"]
+twitch-streamers-posthog = ["twitch-streamers", "posthog"]
 # Standalone process supervision and telemetry; never widens worker profiles.
 cron-supervisor = ["dep:redis", "dep:serde", "dep:serde_json", "dep:tokio", "dep:uuid", "dep:libc", "dep:dotenvy", "tokio/process", "tokio/fs", "tokio/io-util"]
 

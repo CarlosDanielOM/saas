@@ -25,8 +25,10 @@
 //! Cache failure after persistence is distinguished so a retry can hydrate the
 //! rotated token. Mixed TypeScript/Rust writers still require a migration review:
 //! TypeScript does not participate in these CAS writes, and its 5s lease can
-//! expire during an OAuth request. No worker, logger, debug-cache or refresh-all
-//! path is installed here. Numeric expiry outside JS safe-integer magnitude is
+//! expire during an OAuth request. An opt-in longer native lease and refresh
+//! budget do not make mixed writers participate in that coordination. No worker,
+//! logger, debug-cache or refresh-all path is installed here. Numeric expiry
+//! outside JS safe-integer magnitude is
 //! rejected explicitly instead of reproducing scientific-notation parseInt quirks.
 
 mod adapters;
@@ -70,6 +72,9 @@ pub enum TokenStorageError {
     RefreshTransient,
     Revoked,
     RefreshBusy,
+    /// The refresh budget expired; OAuth or persistence may already have acted.
+    RefreshOutcomeUnknown,
+    InvalidRefreshGuard,
     RotatedTokenUnusable,
     PersistenceAfterOAuth,
     CacheAfterPersistence,
@@ -236,6 +241,8 @@ pub struct TwitchTokenStorage {
     clock: Arc<dyn TokenClock>,
     cipher: CredentialCipher,
     refresh_policy: RefreshPolicy,
+    refresh_lease_ms: u64,
+    refresh_budget: Option<Duration>,
 }
 impl TwitchTokenStorage {
     pub fn new(
@@ -252,11 +259,58 @@ impl TwitchTokenStorage {
             clock,
             cipher,
             refresh_policy: RefreshPolicy::default(),
+            refresh_lease_ms: REFRESH_LOCK_TTL_MS,
+            refresh_budget: None,
         }
     }
     pub fn with_refresh_policy(mut self, policy: RefreshPolicy) -> Self {
         self.refresh_policy = policy;
         self
+    }
+
+    /// Bound work under the native refresh lease, leaving at least one second
+    /// for release and scheduling. Existing callers keep the source's 5s lease
+    /// and unbounded refresh behavior unless they opt in. No lease renewal task
+    /// is spawned: cancellation leaves the owner lease to expire naturally.
+    pub fn with_refresh_guard(
+        mut self,
+        lease: Duration,
+        budget: Duration,
+    ) -> Result<Self, TokenStorageError> {
+        let millis = |duration: Duration| {
+            if duration.is_zero() || !duration.subsec_nanos().is_multiple_of(1_000_000) {
+                return Err(TokenStorageError::InvalidRefreshGuard);
+            }
+            u64::try_from(duration.as_millis()).map_err(|_| TokenStorageError::InvalidRefreshGuard)
+        };
+        let lease_ms = millis(lease)?;
+        millis(budget)?;
+        let guarded = budget
+            .checked_add(Duration::from_secs(1))
+            .ok_or(TokenStorageError::InvalidRefreshGuard)?;
+        let now = Instant::now();
+        if guarded > lease || now.checked_add(lease).is_none() || now.checked_add(budget).is_none()
+        {
+            return Err(TokenStorageError::InvalidRefreshGuard);
+        }
+        self.refresh_lease_ms = lease_ms;
+        self.refresh_budget = Some(budget);
+        Ok(self)
+    }
+
+    /// Read or CAS-hydrate credentials without refreshing or checking scopes.
+    /// A partial shared cache tuple is returned as observed: replacing it from
+    /// Mongo could overwrite a concurrent TypeScript writer or revocation.
+    pub async fn account_snapshot(&self, id: &str) -> Result<CachedAccount, TokenStorageError> {
+        let account = self.cached_or_hydrate(id).await?;
+        Self::check_account(&account, id, false)?;
+        Ok(account)
+    }
+
+    /// Class-level getAccountTokenById behavior; header construction applies
+    /// its own streamer permission gate. This never publishes the bot mirror.
+    pub async fn acquire_account_token(&self, id: &str) -> Result<AccessToken, TokenStorageError> {
+        self.account_token(id, false).await
     }
 
     pub async fn acquire_token(&self, auth: &TwitchAuth) -> Result<AccessToken, TokenStorageError> {
@@ -265,8 +319,16 @@ impl TwitchTokenStorage {
         }
         let id = auth.user_id().ok_or(TokenStorageError::IdentityMismatch)?;
         let gate_permissions = matches!(auth, TwitchAuth::Streamer(_));
+        let token = self.account_token(id, gate_permissions).await?;
+        if matches!(auth, TwitchAuth::Bot) {
+            self.cache.put_bot(token.expose_secret()).await?;
+        }
+        Ok(token)
+    }
+
+    async fn account_token(&self, id: &str, gate: bool) -> Result<AccessToken, TokenStorageError> {
         let account = self.cached_or_hydrate(id).await?;
-        Self::check_account(&account, id, gate_permissions)?;
+        Self::check_account(&account, id, gate)?;
         let token = if access_is_usable(
             &account,
             self.clock.now_seconds(),
@@ -274,11 +336,8 @@ impl TwitchTokenStorage {
         ) {
             account.access_token
         } else {
-            self.smart_refresh(id, gate_permissions).await?
+            self.smart_refresh(id, gate).await?
         };
-        if matches!(auth, TwitchAuth::Bot) {
-            self.cache.put_bot(&token).await?;
-        }
         Ok(AccessToken::user(token, id))
     }
 
@@ -407,7 +466,11 @@ impl TwitchTokenStorage {
         let mut entropy = [0; 16];
         getrandom::fill(&mut entropy).map_err(|_| CredentialCryptoError::EntropyUnavailable)?;
         let owner = hex(&entropy);
-        if !self.cache.acquire(id, &owner, REFRESH_LOCK_TTL_MS).await? {
+        if !self
+            .cache
+            .acquire(id, &owner, self.refresh_lease_ms)
+            .await?
+        {
             // 4.5s bounded wait, 150ms polling, then one takeover, as in TS.
             // Check elapsed time before each iteration, including Redis RTTs;
             // the last in-flight iteration may overshoot, as with TS's deadline.
@@ -436,11 +499,20 @@ impl TwitchTokenStorage {
                     break;
                 }
             }
-            if !self.cache.acquire(id, &owner, REFRESH_LOCK_TTL_MS).await? {
+            if !self
+                .cache
+                .acquire(id, &owner, self.refresh_lease_ms)
+                .await?
+            {
                 return Err(TokenStorageError::RefreshBusy);
             }
         }
-        let result = self.refresh_under_lock(id, gate).await;
+        let result = match self.refresh_budget {
+            Some(budget) => tokio::time::timeout(budget, self.refresh_under_lock(id, gate))
+                .await
+                .unwrap_or(Err(TokenStorageError::RefreshOutcomeUnknown)),
+            None => self.refresh_under_lock(id, gate).await,
+        };
         // A failed release leaves a bounded TTL; it must not hide persisted success.
         let _ = self.cache.release(id, &owner).await;
         result

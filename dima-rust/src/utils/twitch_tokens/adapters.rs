@@ -1,7 +1,5 @@
 //! Injected native database handles only; connection creation belongs to caller.
 
-use std::collections::BTreeMap;
-
 use mongodb::{
     Collection, Database,
     bson::{self, Bson, Document, doc},
@@ -224,36 +222,39 @@ impl TokenCache for RedisTokenCache {
     ) -> StorageFuture<'a, Result<Option<CachedAccount>, TokenStorageError>> {
         Box::pin(async move {
             let mut connection = self.connection.clone();
-            let fields: BTreeMap<String, String> = redis::cmd("HGETALL")
+            let fields: [Option<String>; 6] = redis::cmd("HMGET")
                 .arg(self.account_key(id))
+                .arg(&[
+                    "id",
+                    "access_token",
+                    "refresh_token",
+                    "expires_at",
+                    "has_permissions",
+                    "up_to_date_permissions",
+                ])
                 .query_async(&mut connection)
                 .await
                 .map_err(|_| TokenStorageError::CacheUnavailable)?;
             // No synthetic id is written: a partial Rust credential hash remains
             // visibly incomplete to TypeScript's getTwitchAccountById hydrator.
-            if ![
-                "access_token",
-                "refresh_token",
-                "expires_at",
-                "has_permissions",
-                "up_to_date_permissions",
-            ]
-            .iter()
-            .any(|field| fields.contains_key(*field))
-            {
+            if fields[1..].iter().all(Option::is_none) {
                 return Ok(None);
             }
+            let [
+                stored_id,
+                access_token,
+                refresh_token,
+                expires_at,
+                permissions,
+                current_permissions,
+            ] = fields;
             Ok(Some(CachedAccount {
-                id: fields.get("id").cloned().unwrap_or_else(|| id.to_owned()),
-                access_token: fields.get("access_token").cloned().unwrap_or_default(),
-                refresh_token: fields.get("refresh_token").cloned().unwrap_or_default(),
-                expires_at: fields.get("expires_at").cloned().unwrap_or_default(),
-                has_permissions: fields
-                    .get("has_permissions")
-                    .is_some_and(|value| value == "true"),
-                up_to_date_permissions: fields
-                    .get("up_to_date_permissions")
-                    .is_some_and(|value| value == "true"),
+                id: stored_id.unwrap_or_else(|| id.to_owned()),
+                access_token: access_token.unwrap_or_default(),
+                refresh_token: refresh_token.unwrap_or_default(),
+                expires_at: expires_at.unwrap_or_default(),
+                has_permissions: permissions.is_some_and(|value| value == "true"),
+                up_to_date_permissions: current_permissions.is_some_and(|value| value == "true"),
             }))
         })
     }

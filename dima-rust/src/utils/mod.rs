@@ -90,6 +90,8 @@ pub mod cron_queue;
 pub mod permissions;
 #[cfg(feature = "timer-policy")]
 pub mod timer_policy;
+#[cfg(feature = "twitch-streamers")]
+pub mod twitch_streamers;
 #[cfg(feature = "twitch-tokens")]
 pub mod twitch_tokens;
 
