@@ -11,7 +11,7 @@ use crate::utils::{
         READ_PLAN_ACCOUNT_SCRIPT, account_cache_key, plan_cache_fence_key,
     },
     twitch::AccessToken,
-    twitch_tokens::{CachedAccount, TwitchTokenStorage},
+    twitch_tokens::{CachedAccount, TwitchTokenStorage, directory_generation_key},
 };
 use futures_util::TryStreamExt;
 use mongodb::{
@@ -44,6 +44,9 @@ impl StreamerCredentials for NativeCredentials {
     }
     fn token<'a>(&'a self, id: &'a str) -> DirectoryFuture<'a, AccessToken> {
         Box::pin(async move { Ok(self.storage.acquire_account_token(id).await?) })
+    }
+    fn refresh_secret<'a>(&'a self, id: &'a str) -> DirectoryFuture<'a, String> {
+        Box::pin(async move { Ok(self.storage.refresh_secret(id).await?) })
     }
 }
 
@@ -193,7 +196,8 @@ if ARGV[6]~='' and redis.call('GET',KEYS[8])~=ARGV[6] then return {-1,''} end
 local fence=redis.call('GET',KEYS[2]);if fence and fence>ARGV[4] then return {0,''} end
 redis.call('HSET',KEYS[1],unpack(ARGV,7))
 local complete=true
-for _,field in ipairs({'access_token','refresh_token','expires_at','has_permissions','up_to_date_permissions'}) do
+-- Legacy source hashes omit unknown expiry; that does not make metadata incomplete.
+for _,field in ipairs({'access_token','refresh_token','has_permissions','up_to_date_permissions'}) do
  if redis.call('HEXISTS',KEYS[1],field)==0 then complete=false end
 end
 if complete then redis.call('HSET',KEYS[1],'id',ARGV[3]) else redis.call('HDEL',KEYS[1],'id') end
@@ -232,7 +236,7 @@ for i=3,#KEYS,2 do
  local base=2+((i-3)/2)*7;local id=ARGV[base];local version=ARGV[base+1]
  if redis.call('SISMEMBER',KEYS[2],id)~=1 or redis.call('HGET',KEYS[i+1],'id')~=id then return 0 end
  local fence=redis.call('GET',KEYS[i]);if fence and fence>version then return 0 end
- for j=1,5 do if redis.call('HGET',KEYS[i+1],fields[j])~=ARGV[base+1+j] then return 0 end end
+ for j=1,5 do if (redis.call('HGET',KEYS[i+1],fields[j]) or '')~=ARGV[base+1+j] then return 0 end end
 end
 return 1
 "#;
@@ -320,7 +324,7 @@ impl RedisStreamerCache {
         self.key(&account_cache_key(id))
     }
     fn generation(&self, id: &str) -> String {
-        self.key(&format!("streamers:directory:generation:{id}"))
+        self.key(&directory_generation_key(id))
     }
     async fn bounded<T>(
         &self,

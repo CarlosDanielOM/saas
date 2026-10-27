@@ -49,6 +49,8 @@ struct State {
     invalidation_failures: usize,
     aggregate: bool,
     rotate_before_invalidate: Option<(StoredAccount, CachedAccount)>,
+    directory_generation: String,
+    directory_member: bool,
 }
 #[derive(Clone)]
 struct Fixture(Arc<Mutex<State>>);
@@ -183,6 +185,12 @@ impl CredentialStore for Fixture {
     }
 }
 impl TokenCache for Fixture {
+    fn fence<'a>(
+        &'a self,
+        _: &'a str,
+    ) -> StorageFuture<'a, Result<Option<String>, TokenStorageError>> {
+        Box::pin(async { Ok(Some(self.0.lock().unwrap().directory_generation.clone())) })
+    }
     fn account<'a>(
         &'a self,
         _: &'a str,
@@ -199,8 +207,19 @@ impl TokenCache for Fixture {
         account: &'a CachedAccount,
         expected: Option<&'a CachedAccount>,
     ) -> StorageFuture<'a, Result<bool, TokenStorageError>> {
+        self.put_account_fenced(account, expected, None)
+    }
+    fn put_account_fenced<'a>(
+        &'a self,
+        account: &'a CachedAccount,
+        expected: Option<&'a CachedAccount>,
+        fence: Option<&'a str>,
+    ) -> StorageFuture<'a, Result<bool, TokenStorageError>> {
         Box::pin(async move {
             let mut s = self.0.lock().unwrap();
+            if fence.is_some_and(|fence| fence != s.directory_generation) {
+                return Ok(false);
+            }
             if s.cache_failure {
                 return Err(TokenStorageError::CacheUnavailable);
             }
@@ -209,6 +228,7 @@ impl TokenCache for Fixture {
             }
             s.cached = Some(account.clone());
             s.cache_writes += 1;
+            s.directory_member = true;
             Ok(true)
         })
     }
@@ -216,8 +236,18 @@ impl TokenCache for Fixture {
         &'a self,
         expected: &'a CachedAccount,
     ) -> StorageFuture<'a, Result<bool, TokenStorageError>> {
+        self.invalidate_fenced(expected, None)
+    }
+    fn invalidate_fenced<'a>(
+        &'a self,
+        expected: &'a CachedAccount,
+        fence: Option<&'a str>,
+    ) -> StorageFuture<'a, Result<bool, TokenStorageError>> {
         Box::pin(async move {
             let mut s = self.0.lock().unwrap();
+            if fence.is_some_and(|fence| fence != s.directory_generation) {
+                return Ok(false);
+            }
             if s.invalidation_failures > 0 {
                 s.invalidation_failures -= 1;
                 return Err(TokenStorageError::CacheUnavailable);
@@ -473,6 +503,302 @@ async fn paused_cold_hydration_cannot_resurrect_a_completed_revocation() {
     assert!(cached.access_token.is_empty() && cached.refresh_token.is_empty());
     assert_eq!(s.cache_writes, 0);
     assert_eq!(s.exchanges, 0);
+}
+
+#[tokio::test]
+async fn paused_cold_token_hydration_cannot_resurrect_a_native_directory_eviction() {
+    for snapshot in [true, false] {
+        let fixture = Fixture::new("user");
+        let captured = Arc::new(Barrier::new(2));
+        let resume = Arc::new(Barrier::new(2));
+        {
+            let mut state = fixture.0.lock().unwrap();
+            state.cached = None;
+            state.stored.as_mut().unwrap().expires_at = Some(4600.0);
+            state.directory_generation = "before-delete".into();
+            state.load_barriers = Some((captured.clone(), resume.clone()));
+        }
+        let manager = fixture.manager();
+        let request = tokio::spawn(async move {
+            if snapshot {
+                manager
+                    .account_snapshot("user")
+                    .await
+                    .map(|account| account.access_token)
+            } else {
+                manager
+                    .acquire_account_token("user")
+                    .await
+                    .map(|token| token.expose_secret().to_owned())
+            }
+        });
+        tokio::time::timeout(Duration::from_secs(2), captured.wait())
+            .await
+            .unwrap();
+        {
+            let mut state = fixture.0.lock().unwrap();
+            // Native directory deletion removes the hash and membership but
+            // retains a separate generation tombstone. The paused Mongo result
+            // still contains the former valid access/refresh pair.
+            state.stored = None;
+            state.cached = None;
+            state.directory_member = false;
+            state.directory_generation = "after-delete".into();
+        }
+        resume.wait().await;
+        let result = tokio::time::timeout(Duration::from_secs(2), request)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(result.err(), Some(TokenStorageError::CacheUnavailable));
+        let state = fixture.0.lock().unwrap();
+        assert!(
+            state.cached.is_none(),
+            "old hydration must not recreate a deleted credential hash"
+        );
+        assert!(
+            !state.directory_member,
+            "old hydration must not restore directory membership"
+        );
+        assert_eq!(state.cache_writes, 0);
+        assert_eq!(state.exchanges, 0);
+    }
+}
+
+#[tokio::test]
+async fn paused_cold_revocation_repair_cannot_poison_a_new_registration() {
+    let fixture = Fixture::new("user");
+    let captured = Arc::new(Barrier::new(2));
+    let resume = Arc::new(Barrier::new(2));
+    {
+        let mut state = fixture.0.lock().unwrap();
+        state.stored = Some(revoked(state.stored.as_ref().unwrap()));
+        state.cached = None;
+        state.load_barriers = Some((captured.clone(), resume.clone()));
+    }
+    let manager = fixture.manager();
+    let request = tokio::spawn(async move { manager.account_snapshot("user").await });
+    tokio::time::timeout(Duration::from_secs(2), captured.wait())
+        .await
+        .unwrap();
+    {
+        let mut state = fixture.0.lock().unwrap();
+        state.stored = Some(account(
+            "user",
+            "registered-access",
+            "registered-refresh",
+            4600.0,
+            true,
+        ));
+        state.directory_generation = "deleted-then-registered".into();
+    }
+    resume.wait().await;
+    assert_eq!(
+        tokio::time::timeout(Duration::from_secs(2), request)
+            .await
+            .unwrap()
+            .unwrap()
+            .err(),
+        Some(TokenStorageError::CacheUnavailable)
+    );
+    let state = fixture.0.lock().unwrap();
+    assert!(
+        state.cached.is_none(),
+        "a captured revocation must not write flags into the newly registered cold hash"
+    );
+    assert!(!state.directory_member);
+    assert_eq!(state.invalidations, 0);
+}
+
+#[tokio::test]
+async fn paused_cold_hydration_reuses_a_completed_new_registration_without_overwrite() {
+    let fixture = Fixture::new("user");
+    let captured = Arc::new(Barrier::new(2));
+    let resume = Arc::new(Barrier::new(2));
+    {
+        let mut state = fixture.0.lock().unwrap();
+        state.cached = None;
+        state.load_barriers = Some((captured.clone(), resume.clone()));
+    }
+    let manager = fixture.manager();
+    let request = tokio::spawn(async move { manager.account_snapshot("user").await });
+    tokio::time::timeout(Duration::from_secs(2), captured.wait())
+        .await
+        .unwrap();
+    let registered = account(
+        "user",
+        "registered-access",
+        "registered-refresh",
+        4600.0,
+        true,
+    );
+    let expected = decode(&registered);
+    {
+        let mut state = fixture.0.lock().unwrap();
+        state.stored = Some(registered);
+        state.cached = Some(expected.clone());
+        state.directory_member = true;
+        state.directory_generation = "deleted-then-registered".into();
+    }
+    resume.wait().await;
+    assert_eq!(
+        tokio::time::timeout(Duration::from_secs(2), request)
+            .await
+            .unwrap()
+            .unwrap()
+            .unwrap(),
+        expected
+    );
+    let state = fixture.0.lock().unwrap();
+    assert_eq!(state.cached.as_ref(), Some(&expected));
+    assert!(state.directory_member);
+    assert_eq!(state.cache_writes, 0);
+}
+
+#[tokio::test]
+async fn refresh_secret_preserves_stable_partial_credentials_and_reuses_cached_secret() {
+    let fixture = Fixture::new("user");
+    let partial = CachedAccount {
+        id: "user".into(),
+        access_token: "live-cache-access".into(),
+        expires_at: "5000".into(),
+        has_permissions: false,
+        up_to_date_permissions: true,
+        ..Default::default()
+    };
+    fixture.0.lock().unwrap().cached = Some(partial.clone());
+    assert_eq!(
+        fixture.manager().refresh_secret("user").await.unwrap(),
+        "old-refresh"
+    );
+    {
+        let state = fixture.0.lock().unwrap();
+        assert_eq!(state.cached.as_ref(), Some(&partial));
+        assert_eq!(state.cache_writes, 0);
+        assert_eq!(state.store_writes, 0);
+        assert_eq!(state.exchanges, 0);
+    }
+    {
+        let mut state = fixture.0.lock().unwrap();
+        state.cached.as_mut().unwrap().refresh_token = "current-cache-refresh".into();
+        state.stored = None; // A complete cached secret needs no Mongo hydration.
+    }
+    assert_eq!(
+        fixture.manager().refresh_secret("user").await.unwrap(),
+        "current-cache-refresh"
+    );
+
+    let missing = Fixture::new("user");
+    {
+        let mut state = missing.0.lock().unwrap();
+        state.cached.as_mut().unwrap().refresh_token.clear();
+        state.stored.as_mut().unwrap().refresh_token = None;
+    }
+    assert_eq!(
+        missing.manager().refresh_secret("user").await.err(),
+        Some(TokenStorageError::Missing)
+    );
+    assert_eq!(missing.0.lock().unwrap().cache_writes, 0);
+}
+
+#[tokio::test]
+async fn refresh_secret_cold_seed_and_explicit_revocation_keep_their_distinct_contracts() {
+    let fixture = Fixture::new("user");
+    fixture.0.lock().unwrap().cached = None;
+    assert_eq!(
+        fixture.manager().refresh_secret("user").await.unwrap(),
+        "old-refresh"
+    );
+    {
+        let state = fixture.0.lock().unwrap();
+        assert_eq!(state.cache_writes, 1);
+        assert!(state.directory_member);
+        assert_eq!(state.cached.as_ref().unwrap().access_token, "old-access");
+        assert_eq!(state.cached.as_ref().unwrap().expires_at, "1000");
+        assert_eq!(state.exchanges, 0);
+    }
+    fixture.0.lock().unwrap().cached = Some(CachedAccount {
+        id: "user".into(),
+        ..Default::default()
+    });
+    assert_eq!(
+        fixture.manager().refresh_secret("user").await.err(),
+        Some(TokenStorageError::Revoked)
+    );
+    let state = fixture.0.lock().unwrap();
+    assert!(state.cached.as_ref().unwrap().refresh_token.is_empty());
+    assert_eq!(
+        state.cache_writes, 1,
+        "do not hydrate through a revocation tombstone"
+    );
+    assert_eq!(state.exchanges, 0);
+}
+
+#[tokio::test]
+async fn refresh_secret_rereads_current_cache_and_generation_after_authoritative_load() {
+    for change in [
+        "winner",
+        "partial",
+        "revoked",
+        "generation",
+        "deleted",
+        "identity",
+    ] {
+        let fixture = Fixture::new("user");
+        let captured = Arc::new(Barrier::new(2));
+        let resume = Arc::new(Barrier::new(2));
+        {
+            let mut state = fixture.0.lock().unwrap();
+            state.cached.as_mut().unwrap().refresh_token.clear();
+            state.load_barriers = Some((captured.clone(), resume.clone()));
+        }
+        let manager = fixture.manager();
+        let request = tokio::spawn(async move { manager.refresh_secret("user").await });
+        tokio::time::timeout(Duration::from_secs(2), captured.wait())
+            .await
+            .unwrap();
+        {
+            let mut state = fixture.0.lock().unwrap();
+            match change {
+                "winner" => {
+                    state.cached.as_mut().unwrap().refresh_token = "winning-refresh".into();
+                    state.stored = None;
+                }
+                "partial" => {
+                    state.cached.as_mut().unwrap().access_token = "newer-partial-access".into()
+                }
+                "revoked" => {
+                    state.cached = Some(CachedAccount {
+                        id: "user".into(),
+                        ..Default::default()
+                    })
+                }
+                "generation" => state.directory_generation = "new-generation".into(),
+                "deleted" => {
+                    state.cached = None;
+                    state.stored = None;
+                    state.directory_generation = "deleted".into();
+                }
+                "identity" => state.cached.as_mut().unwrap().id = "another-user".into(),
+                _ => unreachable!(),
+            }
+        }
+        resume.wait().await;
+        let result = tokio::time::timeout(Duration::from_secs(2), request)
+            .await
+            .unwrap()
+            .unwrap();
+        match change {
+            "winner" => assert_eq!(result.unwrap(), "winning-refresh"),
+            "revoked" => assert_eq!(result.err(), Some(TokenStorageError::Revoked)),
+            "identity" => assert_eq!(result.err(), Some(TokenStorageError::IdentityMismatch)),
+            _ => assert_eq!(result.err(), Some(TokenStorageError::CacheUnavailable)),
+        }
+        let state = fixture.0.lock().unwrap();
+        assert_eq!(state.cache_writes, 0);
+        assert_eq!(state.store_writes, 0);
+        assert_eq!(state.exchanges, 0);
+    }
 }
 
 #[tokio::test]

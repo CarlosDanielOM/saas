@@ -141,4 +141,4 @@ Opt-in AST pure functions: final-source quality/parity, 30 prepared workload pai
 
 Opt-in Rust plan-cache fence passed capped quality/source parity and 135 disposable Dragonfly scenarios; no caller adoption or deployment. [2026-10-27 note](2026-10-27-plan-cache-fence.md). Single-task low confidence, no tier change.
 
-Opt-in TwitchStreamers library passed capped quality, parity, both profile suites, and disposable MongoDB/Dragonfly adapters; no caller adoption or deployment. [2026-10-27 note](2026-10-27-twitch-streamers.md). Single-task low confidence, no tier change or performance claim.
+Opt-in TwitchStreamers library passed capped quality, parity, both profile suites, and disposable MongoDB/Dragonfly adapters; no caller adoption or deployment. A later explicit whole-class parity request showed why the initial 16 mapping cases were insufficient; the follow-up's 66 mocked scenarios and native race fixtures passed. [2026-10-27 library note](2026-10-27-twitch-streamers.md), [parity follow-up](../migration-notes/twitch-streamers-parity.md). Task-specific observation only: no tier change or performance claim.

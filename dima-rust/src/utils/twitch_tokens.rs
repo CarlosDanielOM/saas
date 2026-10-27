@@ -9,6 +9,8 @@
 //! lock release is atomic compare-delete, and Redis publication compares the
 //! observed credential snapshot. Cold hydration is insert-if-absent; a lost
 //! comparison rereads current cache state instead of using a stale Mongo result.
+//! Native publications and invalidations also compare the directory generation
+//! captured before loading Mongo, including when eviction removed the hash.
 //! Revocation clears the bot mirror and account-list cache, including an older
 //! mirror, only after the account snapshot fence succeeds. Observing an already
 //! revoked Mongo record repairs a failed cache invalidation using that same fence.
@@ -57,6 +59,11 @@ pub const REFRESH_WAIT_TIMEOUT_MS: u64 = 4500;
 pub const REFRESH_WAIT_POLLS: usize = 30;
 pub const ACCESS_EXPIRY_SKEW_SECONDS: i64 = 300;
 pub const WAITER_EXPIRY_SKEW_SECONDS: i64 = 60;
+
+/// Shared with the directory adapter; its tombstone survives account hash DEL.
+pub(crate) fn directory_generation_key(id: &str) -> String {
+    format!("streamers:directory:generation:{id}")
+}
 
 pub type StorageFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
@@ -141,6 +148,15 @@ pub trait TokenCache: Send + Sync {
         &'a self,
         id: &'a str,
     ) -> StorageFuture<'a, Result<Option<CachedAccount>, TokenStorageError>>;
+    /// None preserves adapters without native directory-generation support.
+    /// Some("") is a supported, presently absent generation and must be fenced.
+    /// Adapters returning Some must implement both fenced mutations atomically.
+    fn fence<'a>(
+        &'a self,
+        _id: &'a str,
+    ) -> StorageFuture<'a, Result<Option<String>, TokenStorageError>> {
+        Box::pin(async { Ok(None) })
+    }
     /// Compare the complete observed credential state. None requires all
     /// credential fields to remain absent, including permission flags. Preserve
     /// metadata and never add an id marker to an otherwise partial shared hash.
@@ -149,12 +165,27 @@ pub trait TokenCache: Send + Sync {
         account: &'a CachedAccount,
         expected: Option<&'a CachedAccount>,
     ) -> StorageFuture<'a, Result<bool, TokenStorageError>>;
+    fn put_account_fenced<'a>(
+        &'a self,
+        account: &'a CachedAccount,
+        expected: Option<&'a CachedAccount>,
+        _fence: Option<&'a str>,
+    ) -> StorageFuture<'a, Result<bool, TokenStorageError>> {
+        self.put_account(account, expected)
+    }
     /// Atomically clear only an unchanged/absent credential snapshot, revoke
     /// permission flags, invalidate the aggregate and remove any bot mirror.
     fn invalidate<'a>(
         &'a self,
         expected: &'a CachedAccount,
     ) -> StorageFuture<'a, Result<bool, TokenStorageError>>;
+    fn invalidate_fenced<'a>(
+        &'a self,
+        expected: &'a CachedAccount,
+        _fence: Option<&'a str>,
+    ) -> StorageFuture<'a, Result<bool, TokenStorageError>> {
+        self.invalidate(expected)
+    }
     fn acquire<'a>(
         &'a self,
         id: &'a str,
@@ -307,6 +338,52 @@ impl TwitchTokenStorage {
         Ok(account)
     }
 
+    /// Missing refresh fields use Mongo without replacing an existing partial
+    /// credential tuple. A cold account still uses the guarded hydration path.
+    /// Recheck the current cache after Mongo: a winning current secret is safe
+    /// to reuse, while a changed partial state or deletion must be retried.
+    pub async fn refresh_secret(&self, id: &str) -> Result<String, TokenStorageError> {
+        let observed = match self.cache.account(id).await? {
+            Some(account) => account,
+            None => self.account_snapshot(id).await?,
+        };
+        Self::check_account(&observed, id, false)?;
+        if !observed.refresh_token.is_empty() {
+            return Ok(observed.refresh_token);
+        }
+        if Self::revocation_tombstone(&observed) {
+            return Err(TokenStorageError::Revoked);
+        }
+        let fence = self.cache.fence(id).await?;
+        let authoritative = self.authoritative(id).await;
+        let current = self.cache.account(id).await?;
+        if let Some(account) = &current {
+            Self::check_account(account, id, false)?;
+            if !account.refresh_token.is_empty() {
+                return Ok(account.refresh_token.clone());
+            }
+            if Self::revocation_tombstone(account) {
+                return Err(TokenStorageError::Revoked);
+            }
+        }
+        if current.as_ref() != Some(&observed) || self.cache.fence(id).await? != fence {
+            return Err(TokenStorageError::CacheUnavailable);
+        }
+        let (_, account) = authoritative?;
+        if account.refresh_token.is_empty() {
+            return Err(TokenStorageError::Missing);
+        }
+        Ok(account.refresh_token)
+    }
+
+    fn revocation_tombstone(account: &CachedAccount) -> bool {
+        account.access_token.is_empty()
+            && account.refresh_token.is_empty()
+            && account.expires_at.is_empty()
+            && !account.has_permissions
+            && !account.up_to_date_permissions
+    }
+
     /// Class-level getAccountTokenById behavior; header construction applies
     /// its own streamer permission gate. This never publishes the bot mirror.
     pub async fn acquire_account_token(&self, id: &str) -> Result<AccessToken, TokenStorageError> {
@@ -414,23 +491,35 @@ impl TwitchTokenStorage {
         if let Some(account) = self.cache.account(id).await? {
             return Ok(account);
         }
+        let fence = self.cache.fence(id).await?;
         let (_, account) = self.authoritative(id).await?;
-        if self.repair_revoked(&account, None).await? {
+        if self
+            .repair_revoked(&account, None, fence.as_deref())
+            .await?
+        {
             return self
                 .cache
                 .account(id)
                 .await?
                 .ok_or(TokenStorageError::CacheUnavailable);
         }
-        Ok(self.publish_or_current(&account, None).await?.0)
+        Ok(self
+            .publish_or_current(&account, None, fence.as_deref())
+            .await?
+            .0)
     }
 
     async fn publish_or_current(
         &self,
         account: &CachedAccount,
         expected: Option<&CachedAccount>,
+        fence: Option<&str>,
     ) -> Result<(CachedAccount, bool), TokenStorageError> {
-        if self.cache.put_account(account, expected).await? {
+        if self
+            .cache
+            .put_account_fenced(account, expected, fence)
+            .await?
+        {
             return Ok((account.clone(), true));
         }
         // A newer publication or tombstone won. Never return the stale decoded
@@ -447,6 +536,7 @@ impl TwitchTokenStorage {
         &self,
         authoritative: &CachedAccount,
         observed: Option<&CachedAccount>,
+        fence: Option<&str>,
     ) -> Result<bool, TokenStorageError> {
         if authoritative.has_permissions
             || !authoritative.access_token.is_empty()
@@ -457,7 +547,7 @@ impl TwitchTokenStorage {
         // The snapshot must be captured BEFORE loading Mongo. Rereading here
         // could mistake a concurrently reauthorized cache for the stale state.
         self.cache
-            .invalidate(observed.unwrap_or(authoritative))
+            .invalidate_fenced(observed.unwrap_or(authoritative), fence)
             .await?;
         Ok(true)
     }
@@ -532,8 +622,12 @@ impl TwitchTokenStorage {
         }
         // Mongo is authoritative: a cache failure after a previous rotation must
         // not cause reuse of the consumed refresh token from stale cache data.
+        let fence = self.cache.fence(id).await?;
         let (stored, account) = self.authoritative(id).await?;
-        if self.repair_revoked(&account, observed.as_ref()).await? {
+        if self
+            .repair_revoked(&account, observed.as_ref(), fence.as_deref())
+            .await?
+        {
             return Err(if gate {
                 TokenStorageError::PermissionsDenied
             } else {
@@ -546,7 +640,9 @@ impl TwitchTokenStorage {
             self.clock.now_seconds(),
             ACCESS_EXPIRY_SKEW_SECONDS,
         ) {
-            let (current, _) = self.publish_or_current(&account, observed.as_ref()).await?;
+            let (current, _) = self
+                .publish_or_current(&account, observed.as_ref(), fence.as_deref())
+                .await?;
             Self::check_account(&current, id, gate)?;
             if !access_is_usable(
                 &current,
@@ -568,7 +664,7 @@ impl TwitchTokenStorage {
             Ok(tokens) => tokens,
             Err(failure) if failure.kind == RefreshFailureKind::Permanent => {
                 return self
-                    .permanent_failure(&stored, &account, observed.as_ref(), gate)
+                    .permanent_failure(&stored, &account, observed.as_ref(), gate, fence.as_deref())
                     .await;
             }
             Err(_) => return Err(TokenStorageError::RefreshTransient),
@@ -614,7 +710,7 @@ impl TwitchTokenStorage {
         }
         let cached = self.decode(&replacement)?;
         let (current, published) = self
-            .publish_or_current(&cached, observed.as_ref())
+            .publish_or_current(&cached, observed.as_ref(), fence.as_deref())
             .await
             .map_err(|_| TokenStorageError::CacheAfterPersistence)?;
         Self::check_account(&current, id, gate)?;
@@ -636,9 +732,10 @@ impl TwitchTokenStorage {
         account: &CachedAccount,
         observed: Option<&CachedAccount>,
         gate: bool,
+        fence: Option<&str>,
     ) -> Result<String, TokenStorageError> {
         let (latest, cached) = self.authoritative(&stored.id).await?;
-        if self.repair_revoked(&cached, observed).await? {
+        if self.repair_revoked(&cached, observed, fence).await? {
             return Err(TokenStorageError::Revoked);
         }
         if !cached.refresh_token.is_empty() && cached.refresh_token != account.refresh_token {
@@ -664,7 +761,9 @@ impl TwitchTokenStorage {
                 .reuse_rotated(&stored.id, &account.refresh_token, gate)
                 .await;
         }
-        self.cache.invalidate(observed.unwrap_or(account)).await?;
+        self.cache
+            .invalidate_fenced(observed.unwrap_or(account), fence)
+            .await?;
         Err(TokenStorageError::Revoked)
     }
 
@@ -675,8 +774,12 @@ impl TwitchTokenStorage {
         gate: bool,
     ) -> Result<String, TokenStorageError> {
         let observed = self.cache.account(id).await?;
+        let fence = self.cache.fence(id).await?;
         let (_, current) = self.authoritative(id).await?;
-        if self.repair_revoked(&current, observed.as_ref()).await? {
+        if self
+            .repair_revoked(&current, observed.as_ref(), fence.as_deref())
+            .await?
+        {
             return Err(if gate {
                 TokenStorageError::PermissionsDenied
             } else {
@@ -694,7 +797,9 @@ impl TwitchTokenStorage {
         {
             return Err(TokenStorageError::RotatedTokenUnusable);
         }
-        let (current, _) = self.publish_or_current(&current, observed.as_ref()).await?;
+        let (current, _) = self
+            .publish_or_current(&current, observed.as_ref(), fence.as_deref())
+            .await?;
         Self::check_account(&current, id, gate)?;
         if current.refresh_token.is_empty()
             || current.refresh_token == old_refresh

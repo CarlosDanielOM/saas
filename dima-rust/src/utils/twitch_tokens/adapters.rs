@@ -8,7 +8,7 @@ use redis::aio::ConnectionManager;
 
 use super::{
     CachedAccount, CredentialStore, StorageFuture, StoredAccount, TWITCH_BOT_ACCOUNT_ID,
-    TokenCache, TokenStorageError,
+    TokenCache, TokenStorageError, directory_generation_key,
 };
 use crate::utils::credential_crypto::StoredCredential;
 
@@ -160,6 +160,7 @@ impl RedisTokenCache {
 }
 
 const PUBLISH: &str = r#"
+if #KEYS == 4 and (redis.call('GET', KEYS[4]) or '') ~= ARGV[13] then return 0 end
 local fields = {'access_token', 'refresh_token', 'expires_at', 'has_permissions', 'up_to_date_permissions'}
 local absent = true
 for _, field in ipairs(fields) do
@@ -182,6 +183,7 @@ redis.call('DEL', KEYS[3])
 return 1
 "#;
 const INVALIDATE: &str = r#"
+if #KEYS == 4 and (redis.call('GET', KEYS[4]) or '') ~= ARGV[7] then return 0 end
 local fields = {'access_token', 'refresh_token', 'expires_at', 'has_permissions', 'up_to_date_permissions'}
 local absent = true
 for _, field in ipairs(fields) do
@@ -216,6 +218,20 @@ return 0
 "#;
 
 impl TokenCache for RedisTokenCache {
+    fn fence<'a>(
+        &'a self,
+        id: &'a str,
+    ) -> StorageFuture<'a, Result<Option<String>, TokenStorageError>> {
+        Box::pin(async move {
+            let mut connection = self.connection.clone();
+            let generation: Option<String> = redis::cmd("GET")
+                .arg(self.key(&directory_generation_key(id)))
+                .query_async(&mut connection)
+                .await
+                .map_err(|_| TokenStorageError::CacheUnavailable)?;
+            Ok(Some(generation.unwrap_or_default()))
+        })
+    }
     fn account<'a>(
         &'a self,
         id: &'a str,
@@ -263,6 +279,14 @@ impl TokenCache for RedisTokenCache {
         account: &'a CachedAccount,
         expected: Option<&'a CachedAccount>,
     ) -> StorageFuture<'a, Result<bool, TokenStorageError>> {
+        self.put_account_fenced(account, expected, None)
+    }
+    fn put_account_fenced<'a>(
+        &'a self,
+        account: &'a CachedAccount,
+        expected: Option<&'a CachedAccount>,
+        fence: Option<&'a str>,
+    ) -> StorageFuture<'a, Result<bool, TokenStorageError>> {
         Box::pin(async move {
             if expected.is_some_and(|snapshot| snapshot.id != account.id) {
                 return Err(TokenStorageError::IdentityMismatch);
@@ -270,12 +294,17 @@ impl TokenCache for RedisTokenCache {
             let empty = CachedAccount::default();
             let snapshot = expected.unwrap_or(&empty);
             let mut connection = self.connection.clone();
-            let written: i64 = redis::cmd("EVAL")
+            let mut command = redis::cmd("EVAL");
+            command
                 .arg(PUBLISH)
-                .arg(3)
+                .arg(if fence.is_some() { 4 } else { 3 })
                 .arg(self.account_key(&account.id))
                 .arg(self.key("streamers:by:id"))
-                .arg(self.key("twitch:accounts"))
+                .arg(self.key("twitch:accounts"));
+            if fence.is_some() {
+                command.arg(self.key(&directory_generation_key(&account.id)));
+            }
+            command
                 .arg(if expected.is_some() {
                     "compare"
                 } else {
@@ -307,7 +336,11 @@ impl TokenCache for RedisTokenCache {
                 } else {
                     "false"
                 })
-                .arg(&account.id)
+                .arg(&account.id);
+            if let Some(fence) = fence {
+                command.arg(fence);
+            }
+            let written: i64 = command
                 .query_async(&mut connection)
                 .await
                 .map_err(|_| TokenStorageError::CacheUnavailable)?;
@@ -318,14 +351,26 @@ impl TokenCache for RedisTokenCache {
         &'a self,
         expected: &'a CachedAccount,
     ) -> StorageFuture<'a, Result<bool, TokenStorageError>> {
+        self.invalidate_fenced(expected, None)
+    }
+    fn invalidate_fenced<'a>(
+        &'a self,
+        expected: &'a CachedAccount,
+        fence: Option<&'a str>,
+    ) -> StorageFuture<'a, Result<bool, TokenStorageError>> {
         Box::pin(async move {
             let mut connection = self.connection.clone();
-            let written: i64 = redis::cmd("EVAL")
+            let mut command = redis::cmd("EVAL");
+            command
                 .arg(INVALIDATE)
-                .arg(3)
+                .arg(if fence.is_some() { 4 } else { 3 })
                 .arg(self.account_key(&expected.id))
                 .arg(self.key("twitch:accounts"))
-                .arg(self.key("app:twitch:bot"))
+                .arg(self.key("app:twitch:bot"));
+            if fence.is_some() {
+                command.arg(self.key(&directory_generation_key(&expected.id)));
+            }
+            command
                 .arg(&expected.access_token)
                 .arg(&expected.refresh_token)
                 .arg(&expected.expires_at)
@@ -343,7 +388,11 @@ impl TokenCache for RedisTokenCache {
                     "bot"
                 } else {
                     "streamer"
-                })
+                });
+            if let Some(fence) = fence {
+                command.arg(fence);
+            }
+            let written: i64 = command
                 .query_async(&mut connection)
                 .await
                 .map_err(|_| TokenStorageError::CacheUnavailable)?;

@@ -14,7 +14,7 @@ use dima_rust::utils::{
     },
     twitch_tokens::{
         CredentialStore, MongoCredentialStore, OAuthExchange, RedisTokenCache, StorageFuture,
-        TokenCache, TokenClock, TwitchTokenStorage,
+        StoredAccount, TokenCache, TokenClock, TokenStorageError, TwitchTokenStorage,
     },
 };
 use futures_util::{FutureExt, future::join_all};
@@ -32,6 +32,33 @@ use std::{
     },
     time::{Duration, Instant},
 };
+use tokio::sync::Barrier;
+
+struct PausedCredentialStore {
+    inner: MongoCredentialStore,
+    captured: Arc<Barrier>,
+    resume: Arc<Barrier>,
+}
+impl CredentialStore for PausedCredentialStore {
+    fn load<'a>(
+        &'a self,
+        id: &'a str,
+    ) -> StorageFuture<'a, Result<Option<StoredAccount>, TokenStorageError>> {
+        Box::pin(async move {
+            let result = self.inner.load(id).await?;
+            self.captured.wait().await;
+            self.resume.wait().await;
+            Ok(result)
+        })
+    }
+    fn replace<'a>(
+        &'a self,
+        expected: &'a StoredAccount,
+        replacement: &'a StoredAccount,
+    ) -> StorageFuture<'a, Result<bool, TokenStorageError>> {
+        self.inner.replace(expected, replacement)
+    }
+}
 
 struct FixtureClock(Instant);
 impl TokenClock for FixtureClock {
@@ -410,6 +437,51 @@ async fn twitch_streamers_native_adapters_fixture() {
         assert_eq!(first.unwrap().expose_secret(), "oauth-access");
         assert_eq!(second.unwrap().expose_secret(), "oauth-access");
         assert_eq!(oauth.exchanges.load(Ordering::SeqCst), before_long + 1);
+
+        // A source-valid legacy hash may omit the optional expiry. Reading or
+        // refreshing its metadata must preserve that unknown expiry and flags.
+        users.insert_one(user("legacy-no-expiry", 0.0)).await.unwrap();
+        service.account_by_id("legacy-no-expiry").await.unwrap();
+        let _: i64 = redis::cmd("HDEL").arg(account_key("legacy-no-expiry")).arg("expires_at").query_async(&mut raw).await.unwrap();
+        service.accounts_from_cache().await.expect("stable legacy optional expiry is compatible");
+        let legacy = service.refresh_account("legacy-no-expiry").await.expect("metadata refresh keeps a legacy account readable");
+        assert_eq!(legacy.expires_at, "");
+        assert!(!hash(&mut raw, &account_key("legacy-no-expiry")).await.contains_key("expires_at"));
+        let _: i64 = redis::cmd("HDEL").arg(account_key("legacy-no-expiry")).arg("refresh_token").query_async(&mut raw).await.unwrap();
+        let partial = hash(&mut raw, &account_key("legacy-no-expiry")).await;
+        assert_eq!(service.refresh_token("legacy-no-expiry", Platform::Twitch).await.unwrap(), "mongo-refresh");
+        assert_eq!(hash(&mut raw, &account_key("legacy-no-expiry")).await, partial, "refresh-secret recovery preserves the observed partial tuple");
+
+        // Pause a real native credential read after Mongo captured its result,
+        // then finish native deletion/eviction before permitting publication.
+        for (race_id, revoked) in [("deleted-cold", false), ("deleted-revoked-cold", true)] {
+        let mut record = user(race_id, 4600.0);
+        if revoked {
+            let account = record.get_array_mut("accounts").unwrap()[0].as_document_mut().unwrap();
+            for field in ["access_token", "refresh_token", "access_token_expires_at"] { account.insert(field, Bson::Null); }
+            account.insert("has_permissions", false);
+            account.insert("up_to_date_permissions", false);
+        }
+        users.insert_one(record).await.unwrap();
+        let captured = Arc::new(Barrier::new(2));
+        let resume = Arc::new(Barrier::new(2));
+        let storage = TwitchTokenStorage::new(
+            Arc::new(PausedCredentialStore { inner: MongoCredentialStore::new(&database), captured: captured.clone(), resume: resume.clone() }),
+            Arc::new(RedisTokenCache::with_namespace(connection.clone(), &namespace)),
+            oauth.clone(), clock.clone(), cipher(),
+        );
+        let racing = TwitchStreamers::new(Arc::new(MongoStreamerStore::new(&database)), Arc::new(RedisStreamerCache::with_namespace(connection.clone(), &namespace)), Arc::new(NativeCredentials::new(storage).unwrap()), clock.clone(), DirectoryConfig::default()).unwrap();
+        let (loaded, ()) = tokio::join!(racing.account_token(race_id, Platform::Twitch, &context), async {
+            captured.wait().await;
+            users.delete_one(doc! {"accounts.id":race_id}).await.unwrap();
+            assert!(service.evict_if_absent(race_id).await.unwrap());
+            resume.wait().await;
+        });
+        assert!(loaded.is_err(), "a completed deletion must fence the captured token");
+        assert!(hash(&mut raw, &account_key(race_id)).await.is_empty());
+        let resurrected: bool = redis::cmd("SISMEMBER").arg(key("streamers:by:id")).arg(race_id).query_async(&mut raw).await.unwrap();
+        assert!(!resurrected, "credential publication must not restore deleted membership");
+        }
     }).catch_unwind().await;
 
     // Only the proven-unique task prefix and database are removed. Never FLUSHDB,

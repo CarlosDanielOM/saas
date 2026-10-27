@@ -272,6 +272,18 @@ pub trait DirectoryCache: Send + Sync {
 pub trait StreamerCredentials: Send + Sync {
     fn snapshot<'a>(&'a self, id: &'a str) -> DirectoryFuture<'a, CachedAccount>;
     fn token<'a>(&'a self, id: &'a str) -> DirectoryFuture<'a, AccessToken>;
+    /// Credential providers may recover an absent cached refresh secret without
+    /// replacing the currently observed access token, expiry or permissions.
+    fn refresh_secret<'a>(&'a self, id: &'a str) -> DirectoryFuture<'a, String> {
+        Box::pin(async move {
+            let account = self.snapshot(id).await?;
+            if account.refresh_token.is_empty() {
+                Err(DirectoryError::Missing)
+            } else {
+                Ok(account.refresh_token)
+            }
+        })
+    }
 }
 pub trait StreamerIdentitySink: Send + Sync {
     fn identify<'a>(&'a self, id: &'a str, name: &'a str) -> DirectoryFuture<'a, ()>;
@@ -855,15 +867,15 @@ impl TwitchStreamers {
         platform: Platform,
     ) -> Result<String, DirectoryError> {
         check_id(id)?;
-        let account = if platform == Platform::Twitch {
-            self.inner.credentials.snapshot(id).await?
-        } else {
-            self.inner
-                .cache
-                .kick_credentials(id)
-                .await?
-                .ok_or(DirectoryError::Missing)?
-        };
+        if platform == Platform::Twitch {
+            return self.inner.credentials.refresh_secret(id).await;
+        }
+        let account = self
+            .inner
+            .cache
+            .kick_credentials(id)
+            .await?
+            .ok_or(DirectoryError::Missing)?;
         if account.refresh_token.is_empty() {
             Err(DirectoryError::Missing)
         } else {

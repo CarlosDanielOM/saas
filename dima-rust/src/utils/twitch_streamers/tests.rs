@@ -263,7 +263,6 @@ impl DirectoryCache for Cache {
             if [
                 "access_token",
                 "refresh_token",
-                "expires_at",
                 "has_permissions",
                 "up_to_date_permissions",
             ]
