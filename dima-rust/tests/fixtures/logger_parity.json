@@ -1,0 +1,3647 @@
+{
+  "version": 1,
+  "sources": {
+    "src/utils/logger.ts": "0c0c94539974a230ecad4a5a4236dfa6b53c2ce3f4242b3f58a558109407bc6d",
+    "src/utils/observability/telemetry.ts": "44c9a71e5699abf9ef49242beaf8b883bbc9825e977de29e371011912ce52c2b"
+  },
+  "cases": [
+    {
+      "name": "trace-defaults",
+      "input": {
+        "at": 1793100600000,
+        "level": "trace",
+        "data": {
+          "function": "fixture.run",
+          "message": "local diagnostic",
+          "status": 200
+        }
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:global:trace:",
+            "entry": {
+              "data": {
+                "function": "fixture.run",
+                "message": "local diagnostic",
+                "status": 200
+              },
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "level": "trace",
+              "platform": "twitch"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [
+          {
+            "stream": "stdout",
+            "output": {
+              "level": "trace",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "platform": "twitch",
+              "data": {
+                "function": "fixture.run",
+                "message": "local diagnostic",
+                "status": 200
+              }
+            }
+          }
+        ],
+        "otel": [
+          {
+            "severityText": "trace",
+            "body": {
+              "function": "fixture.run",
+              "message": "local diagnostic",
+              "status": 200
+            }
+          }
+        ],
+        "metadata": [],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "trace-cache",
+      "input": {
+        "at": 1793100600000,
+        "level": "trace",
+        "data": {
+          "function": "fixture.run",
+          "attempt": 2
+        },
+        "options": {
+          "destination": "cache",
+          "channelId": "1234"
+        }
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:1234:trace:",
+            "entry": {
+              "data": {
+                "function": "fixture.run",
+                "attempt": 2
+              },
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "level": "trace",
+              "platform": "twitch",
+              "channelId": "1234"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [],
+        "otel": [
+          {
+            "severityText": "trace",
+            "body": {
+              "function": "fixture.run",
+              "attempt": 2
+            },
+            "attributes": {
+              "destination": "cache",
+              "channelId": "1234"
+            }
+          }
+        ],
+        "metadata": [],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "trace-console",
+      "input": {
+        "at": 1793100600000,
+        "level": "trace",
+        "data": {
+          "function": "fixture.run",
+          "attempt": 2
+        },
+        "options": {
+          "destination": "console",
+          "channelId": "1234"
+        }
+      },
+      "expected": {
+        "writes": [],
+        "console": [
+          {
+            "stream": "stdout",
+            "output": {
+              "level": "trace",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "platform": "twitch",
+              "channelId": "1234",
+              "data": {
+                "function": "fixture.run",
+                "attempt": 2
+              }
+            }
+          }
+        ],
+        "otel": [
+          {
+            "severityText": "trace",
+            "body": {
+              "function": "fixture.run",
+              "attempt": 2
+            },
+            "attributes": {
+              "destination": "console",
+              "channelId": "1234"
+            }
+          }
+        ],
+        "metadata": [],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "trace-both",
+      "input": {
+        "at": 1793100600000,
+        "level": "trace",
+        "data": {
+          "function": "fixture.run",
+          "attempt": 2
+        },
+        "options": {
+          "destination": "both",
+          "channelId": "1234"
+        }
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:1234:trace:",
+            "entry": {
+              "data": {
+                "function": "fixture.run",
+                "attempt": 2
+              },
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "level": "trace",
+              "platform": "twitch",
+              "channelId": "1234"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [
+          {
+            "stream": "stdout",
+            "output": {
+              "level": "trace",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "platform": "twitch",
+              "channelId": "1234",
+              "data": {
+                "function": "fixture.run",
+                "attempt": 2
+              }
+            }
+          }
+        ],
+        "otel": [
+          {
+            "severityText": "trace",
+            "body": {
+              "function": "fixture.run",
+              "attempt": 2
+            },
+            "attributes": {
+              "destination": "both",
+              "channelId": "1234"
+            }
+          }
+        ],
+        "metadata": [],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "debug-defaults",
+      "input": {
+        "at": 1793100600000,
+        "level": "debug",
+        "data": {
+          "function": "fixture.run",
+          "message": "local diagnostic",
+          "status": 200
+        }
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:global:debug:",
+            "entry": {
+              "data": {
+                "function": "fixture.run",
+                "message": "local diagnostic",
+                "status": 200
+              },
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "level": "debug",
+              "platform": "twitch"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [
+          {
+            "stream": "stdout",
+            "output": {
+              "level": "debug",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "platform": "twitch",
+              "data": {
+                "function": "fixture.run",
+                "message": "local diagnostic",
+                "status": 200
+              }
+            }
+          }
+        ],
+        "otel": [
+          {
+            "severityText": "debug",
+            "body": {
+              "function": "fixture.run",
+              "message": "local diagnostic",
+              "status": 200
+            }
+          }
+        ],
+        "metadata": [],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "debug-cache",
+      "input": {
+        "at": 1793100600000,
+        "level": "debug",
+        "data": {
+          "function": "fixture.run",
+          "attempt": 2
+        },
+        "options": {
+          "destination": "cache",
+          "channelId": "1234"
+        }
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:1234:debug:",
+            "entry": {
+              "data": {
+                "function": "fixture.run",
+                "attempt": 2
+              },
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "level": "debug",
+              "platform": "twitch",
+              "channelId": "1234"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [],
+        "otel": [
+          {
+            "severityText": "debug",
+            "body": {
+              "function": "fixture.run",
+              "attempt": 2
+            },
+            "attributes": {
+              "destination": "cache",
+              "channelId": "1234"
+            }
+          }
+        ],
+        "metadata": [],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "debug-console",
+      "input": {
+        "at": 1793100600000,
+        "level": "debug",
+        "data": {
+          "function": "fixture.run",
+          "attempt": 2
+        },
+        "options": {
+          "destination": "console",
+          "channelId": "1234"
+        }
+      },
+      "expected": {
+        "writes": [],
+        "console": [
+          {
+            "stream": "stdout",
+            "output": {
+              "level": "debug",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "platform": "twitch",
+              "channelId": "1234",
+              "data": {
+                "function": "fixture.run",
+                "attempt": 2
+              }
+            }
+          }
+        ],
+        "otel": [
+          {
+            "severityText": "debug",
+            "body": {
+              "function": "fixture.run",
+              "attempt": 2
+            },
+            "attributes": {
+              "destination": "console",
+              "channelId": "1234"
+            }
+          }
+        ],
+        "metadata": [],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "debug-both",
+      "input": {
+        "at": 1793100600000,
+        "level": "debug",
+        "data": {
+          "function": "fixture.run",
+          "attempt": 2
+        },
+        "options": {
+          "destination": "both",
+          "channelId": "1234"
+        }
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:1234:debug:",
+            "entry": {
+              "data": {
+                "function": "fixture.run",
+                "attempt": 2
+              },
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "level": "debug",
+              "platform": "twitch",
+              "channelId": "1234"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [
+          {
+            "stream": "stdout",
+            "output": {
+              "level": "debug",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "platform": "twitch",
+              "channelId": "1234",
+              "data": {
+                "function": "fixture.run",
+                "attempt": 2
+              }
+            }
+          }
+        ],
+        "otel": [
+          {
+            "severityText": "debug",
+            "body": {
+              "function": "fixture.run",
+              "attempt": 2
+            },
+            "attributes": {
+              "destination": "both",
+              "channelId": "1234"
+            }
+          }
+        ],
+        "metadata": [],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "info-defaults",
+      "input": {
+        "at": 1793100600000,
+        "level": "info",
+        "data": {
+          "function": "fixture.run",
+          "message": "local diagnostic",
+          "status": 200
+        }
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:global:info:",
+            "entry": {
+              "data": {
+                "function": "fixture.run",
+                "message": "local diagnostic",
+                "status": 200
+              },
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "level": "info",
+              "platform": "twitch"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [
+          {
+            "stream": "stdout",
+            "output": {
+              "level": "info",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "platform": "twitch",
+              "data": {
+                "function": "fixture.run",
+                "message": "local diagnostic",
+                "status": 200
+              }
+            }
+          }
+        ],
+        "otel": [
+          {
+            "severityText": "info",
+            "body": {
+              "function": "fixture.run",
+              "message": "local diagnostic",
+              "status": 200
+            }
+          }
+        ],
+        "metadata": [],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "info-cache",
+      "input": {
+        "at": 1793100600000,
+        "level": "info",
+        "data": {
+          "function": "fixture.run",
+          "attempt": 2
+        },
+        "options": {
+          "destination": "cache",
+          "channelId": "1234"
+        }
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:1234:info:",
+            "entry": {
+              "data": {
+                "function": "fixture.run",
+                "attempt": 2
+              },
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "level": "info",
+              "platform": "twitch",
+              "channelId": "1234"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [],
+        "otel": [
+          {
+            "severityText": "info",
+            "body": {
+              "function": "fixture.run",
+              "attempt": 2
+            },
+            "attributes": {
+              "destination": "cache",
+              "channelId": "1234"
+            }
+          }
+        ],
+        "metadata": [],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "info-console",
+      "input": {
+        "at": 1793100600000,
+        "level": "info",
+        "data": {
+          "function": "fixture.run",
+          "attempt": 2
+        },
+        "options": {
+          "destination": "console",
+          "channelId": "1234"
+        }
+      },
+      "expected": {
+        "writes": [],
+        "console": [
+          {
+            "stream": "stdout",
+            "output": {
+              "level": "info",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "platform": "twitch",
+              "channelId": "1234",
+              "data": {
+                "function": "fixture.run",
+                "attempt": 2
+              }
+            }
+          }
+        ],
+        "otel": [
+          {
+            "severityText": "info",
+            "body": {
+              "function": "fixture.run",
+              "attempt": 2
+            },
+            "attributes": {
+              "destination": "console",
+              "channelId": "1234"
+            }
+          }
+        ],
+        "metadata": [],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "info-both",
+      "input": {
+        "at": 1793100600000,
+        "level": "info",
+        "data": {
+          "function": "fixture.run",
+          "attempt": 2
+        },
+        "options": {
+          "destination": "both",
+          "channelId": "1234"
+        }
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:1234:info:",
+            "entry": {
+              "data": {
+                "function": "fixture.run",
+                "attempt": 2
+              },
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "level": "info",
+              "platform": "twitch",
+              "channelId": "1234"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [
+          {
+            "stream": "stdout",
+            "output": {
+              "level": "info",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "platform": "twitch",
+              "channelId": "1234",
+              "data": {
+                "function": "fixture.run",
+                "attempt": 2
+              }
+            }
+          }
+        ],
+        "otel": [
+          {
+            "severityText": "info",
+            "body": {
+              "function": "fixture.run",
+              "attempt": 2
+            },
+            "attributes": {
+              "destination": "both",
+              "channelId": "1234"
+            }
+          }
+        ],
+        "metadata": [],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "warn-defaults",
+      "input": {
+        "at": 1793100600000,
+        "level": "warn",
+        "data": {
+          "function": "fixture.run",
+          "message": "local diagnostic",
+          "status": 200
+        }
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:global:warn:",
+            "entry": {
+              "data": {
+                "function": "fixture.run",
+                "message": "local diagnostic",
+                "status": 200
+              },
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "level": "warn",
+              "platform": "twitch"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [
+          {
+            "stream": "stderr",
+            "output": {
+              "level": "warn",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "platform": "twitch",
+              "data": {
+                "function": "fixture.run",
+                "message": "local diagnostic",
+                "status": 200
+              }
+            }
+          }
+        ],
+        "otel": [
+          {
+            "severityText": "warn",
+            "body": {
+              "function": "fixture.run",
+              "message": "local diagnostic",
+              "status": 200
+            }
+          }
+        ],
+        "metadata": [
+          {
+            "at": 1793100600000,
+            "level": "warn",
+            "name": "fixture.run",
+            "channel": "",
+            "traceId": null,
+            "fields": {
+              "function": "fixture.run",
+              "status": 200
+            }
+          }
+        ],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "warn-cache",
+      "input": {
+        "at": 1793100600000,
+        "level": "warn",
+        "data": {
+          "function": "fixture.run",
+          "attempt": 2
+        },
+        "options": {
+          "destination": "cache",
+          "channelId": "1234"
+        }
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:1234:warn:",
+            "entry": {
+              "data": {
+                "function": "fixture.run",
+                "attempt": 2
+              },
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "level": "warn",
+              "platform": "twitch",
+              "channelId": "1234"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [],
+        "otel": [
+          {
+            "severityText": "warn",
+            "body": {
+              "function": "fixture.run",
+              "attempt": 2
+            },
+            "attributes": {
+              "destination": "cache",
+              "channelId": "1234"
+            }
+          }
+        ],
+        "metadata": [
+          {
+            "at": 1793100600000,
+            "level": "warn",
+            "name": "fixture.run",
+            "channel": "1234",
+            "traceId": null,
+            "fields": {
+              "function": "fixture.run",
+              "attempt": 2
+            }
+          }
+        ],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "warn-console",
+      "input": {
+        "at": 1793100600000,
+        "level": "warn",
+        "data": {
+          "function": "fixture.run",
+          "attempt": 2
+        },
+        "options": {
+          "destination": "console",
+          "channelId": "1234"
+        }
+      },
+      "expected": {
+        "writes": [],
+        "console": [
+          {
+            "stream": "stderr",
+            "output": {
+              "level": "warn",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "platform": "twitch",
+              "channelId": "1234",
+              "data": {
+                "function": "fixture.run",
+                "attempt": 2
+              }
+            }
+          }
+        ],
+        "otel": [
+          {
+            "severityText": "warn",
+            "body": {
+              "function": "fixture.run",
+              "attempt": 2
+            },
+            "attributes": {
+              "destination": "console",
+              "channelId": "1234"
+            }
+          }
+        ],
+        "metadata": [
+          {
+            "at": 1793100600000,
+            "level": "warn",
+            "name": "fixture.run",
+            "channel": "1234",
+            "traceId": null,
+            "fields": {
+              "function": "fixture.run",
+              "attempt": 2
+            }
+          }
+        ],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "warn-both",
+      "input": {
+        "at": 1793100600000,
+        "level": "warn",
+        "data": {
+          "function": "fixture.run",
+          "attempt": 2
+        },
+        "options": {
+          "destination": "both",
+          "channelId": "1234"
+        }
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:1234:warn:",
+            "entry": {
+              "data": {
+                "function": "fixture.run",
+                "attempt": 2
+              },
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "level": "warn",
+              "platform": "twitch",
+              "channelId": "1234"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [
+          {
+            "stream": "stderr",
+            "output": {
+              "level": "warn",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "platform": "twitch",
+              "channelId": "1234",
+              "data": {
+                "function": "fixture.run",
+                "attempt": 2
+              }
+            }
+          }
+        ],
+        "otel": [
+          {
+            "severityText": "warn",
+            "body": {
+              "function": "fixture.run",
+              "attempt": 2
+            },
+            "attributes": {
+              "destination": "both",
+              "channelId": "1234"
+            }
+          }
+        ],
+        "metadata": [
+          {
+            "at": 1793100600000,
+            "level": "warn",
+            "name": "fixture.run",
+            "channel": "1234",
+            "traceId": null,
+            "fields": {
+              "function": "fixture.run",
+              "attempt": 2
+            }
+          }
+        ],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "error-defaults",
+      "input": {
+        "at": 1793100600000,
+        "level": "error",
+        "data": {
+          "function": "fixture.run",
+          "message": "local diagnostic",
+          "status": 200
+        }
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:global:error:",
+            "entry": {
+              "data": {
+                "function": "fixture.run",
+                "message": "local diagnostic",
+                "status": 200
+              },
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "level": "error",
+              "platform": "twitch"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [
+          {
+            "stream": "stderr",
+            "output": {
+              "level": "error",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "platform": "twitch",
+              "data": {
+                "function": "fixture.run",
+                "message": "local diagnostic",
+                "status": 200
+              }
+            }
+          }
+        ],
+        "otel": [
+          {
+            "severityText": "error",
+            "body": {
+              "function": "fixture.run",
+              "message": "local diagnostic",
+              "status": 200
+            }
+          }
+        ],
+        "metadata": [
+          {
+            "at": 1793100600000,
+            "level": "error",
+            "name": "fixture.run",
+            "channel": "",
+            "traceId": null,
+            "fields": {
+              "function": "fixture.run",
+              "status": 200
+            }
+          }
+        ],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "error-cache",
+      "input": {
+        "at": 1793100600000,
+        "level": "error",
+        "data": {
+          "function": "fixture.run",
+          "attempt": 2
+        },
+        "options": {
+          "destination": "cache",
+          "channelId": "1234"
+        }
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:1234:error:",
+            "entry": {
+              "data": {
+                "function": "fixture.run",
+                "attempt": 2
+              },
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "level": "error",
+              "platform": "twitch",
+              "channelId": "1234"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [],
+        "otel": [
+          {
+            "severityText": "error",
+            "body": {
+              "function": "fixture.run",
+              "attempt": 2
+            },
+            "attributes": {
+              "destination": "cache",
+              "channelId": "1234"
+            }
+          }
+        ],
+        "metadata": [
+          {
+            "at": 1793100600000,
+            "level": "error",
+            "name": "fixture.run",
+            "channel": "1234",
+            "traceId": null,
+            "fields": {
+              "function": "fixture.run",
+              "attempt": 2
+            }
+          }
+        ],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "error-console",
+      "input": {
+        "at": 1793100600000,
+        "level": "error",
+        "data": {
+          "function": "fixture.run",
+          "attempt": 2
+        },
+        "options": {
+          "destination": "console",
+          "channelId": "1234"
+        }
+      },
+      "expected": {
+        "writes": [],
+        "console": [
+          {
+            "stream": "stderr",
+            "output": {
+              "level": "error",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "platform": "twitch",
+              "channelId": "1234",
+              "data": {
+                "function": "fixture.run",
+                "attempt": 2
+              }
+            }
+          }
+        ],
+        "otel": [
+          {
+            "severityText": "error",
+            "body": {
+              "function": "fixture.run",
+              "attempt": 2
+            },
+            "attributes": {
+              "destination": "console",
+              "channelId": "1234"
+            }
+          }
+        ],
+        "metadata": [
+          {
+            "at": 1793100600000,
+            "level": "error",
+            "name": "fixture.run",
+            "channel": "1234",
+            "traceId": null,
+            "fields": {
+              "function": "fixture.run",
+              "attempt": 2
+            }
+          }
+        ],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "error-both",
+      "input": {
+        "at": 1793100600000,
+        "level": "error",
+        "data": {
+          "function": "fixture.run",
+          "attempt": 2
+        },
+        "options": {
+          "destination": "both",
+          "channelId": "1234"
+        }
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:1234:error:",
+            "entry": {
+              "data": {
+                "function": "fixture.run",
+                "attempt": 2
+              },
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "level": "error",
+              "platform": "twitch",
+              "channelId": "1234"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [
+          {
+            "stream": "stderr",
+            "output": {
+              "level": "error",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "platform": "twitch",
+              "channelId": "1234",
+              "data": {
+                "function": "fixture.run",
+                "attempt": 2
+              }
+            }
+          }
+        ],
+        "otel": [
+          {
+            "severityText": "error",
+            "body": {
+              "function": "fixture.run",
+              "attempt": 2
+            },
+            "attributes": {
+              "destination": "both",
+              "channelId": "1234"
+            }
+          }
+        ],
+        "metadata": [
+          {
+            "at": 1793100600000,
+            "level": "error",
+            "name": "fixture.run",
+            "channel": "1234",
+            "traceId": null,
+            "fields": {
+              "function": "fixture.run",
+              "attempt": 2
+            }
+          }
+        ],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "fatal-defaults",
+      "input": {
+        "at": 1793100600000,
+        "level": "fatal",
+        "data": {
+          "function": "fixture.run",
+          "message": "local diagnostic",
+          "status": 200
+        }
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:global:fatal:",
+            "entry": {
+              "data": {
+                "function": "fixture.run",
+                "message": "local diagnostic",
+                "status": 200
+              },
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "level": "fatal",
+              "platform": "twitch"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [
+          {
+            "stream": "stderr",
+            "output": {
+              "level": "fatal",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "platform": "twitch",
+              "data": {
+                "function": "fixture.run",
+                "message": "local diagnostic",
+                "status": 200
+              }
+            }
+          }
+        ],
+        "otel": [
+          {
+            "severityText": "fatal",
+            "body": {
+              "function": "fixture.run",
+              "message": "local diagnostic",
+              "status": 200
+            }
+          }
+        ],
+        "metadata": [
+          {
+            "at": 1793100600000,
+            "level": "fatal",
+            "name": "fixture.run",
+            "channel": "",
+            "traceId": null,
+            "fields": {
+              "function": "fixture.run",
+              "status": 200
+            }
+          }
+        ],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "fatal-cache",
+      "input": {
+        "at": 1793100600000,
+        "level": "fatal",
+        "data": {
+          "function": "fixture.run",
+          "attempt": 2
+        },
+        "options": {
+          "destination": "cache",
+          "channelId": "1234"
+        }
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:1234:fatal:",
+            "entry": {
+              "data": {
+                "function": "fixture.run",
+                "attempt": 2
+              },
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "level": "fatal",
+              "platform": "twitch",
+              "channelId": "1234"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [],
+        "otel": [
+          {
+            "severityText": "fatal",
+            "body": {
+              "function": "fixture.run",
+              "attempt": 2
+            },
+            "attributes": {
+              "destination": "cache",
+              "channelId": "1234"
+            }
+          }
+        ],
+        "metadata": [
+          {
+            "at": 1793100600000,
+            "level": "fatal",
+            "name": "fixture.run",
+            "channel": "1234",
+            "traceId": null,
+            "fields": {
+              "function": "fixture.run",
+              "attempt": 2
+            }
+          }
+        ],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "fatal-console",
+      "input": {
+        "at": 1793100600000,
+        "level": "fatal",
+        "data": {
+          "function": "fixture.run",
+          "attempt": 2
+        },
+        "options": {
+          "destination": "console",
+          "channelId": "1234"
+        }
+      },
+      "expected": {
+        "writes": [],
+        "console": [
+          {
+            "stream": "stderr",
+            "output": {
+              "level": "fatal",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "platform": "twitch",
+              "channelId": "1234",
+              "data": {
+                "function": "fixture.run",
+                "attempt": 2
+              }
+            }
+          }
+        ],
+        "otel": [
+          {
+            "severityText": "fatal",
+            "body": {
+              "function": "fixture.run",
+              "attempt": 2
+            },
+            "attributes": {
+              "destination": "console",
+              "channelId": "1234"
+            }
+          }
+        ],
+        "metadata": [
+          {
+            "at": 1793100600000,
+            "level": "fatal",
+            "name": "fixture.run",
+            "channel": "1234",
+            "traceId": null,
+            "fields": {
+              "function": "fixture.run",
+              "attempt": 2
+            }
+          }
+        ],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "fatal-both",
+      "input": {
+        "at": 1793100600000,
+        "level": "fatal",
+        "data": {
+          "function": "fixture.run",
+          "attempt": 2
+        },
+        "options": {
+          "destination": "both",
+          "channelId": "1234"
+        }
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:1234:fatal:",
+            "entry": {
+              "data": {
+                "function": "fixture.run",
+                "attempt": 2
+              },
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "level": "fatal",
+              "platform": "twitch",
+              "channelId": "1234"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [
+          {
+            "stream": "stderr",
+            "output": {
+              "level": "fatal",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "platform": "twitch",
+              "channelId": "1234",
+              "data": {
+                "function": "fixture.run",
+                "attempt": 2
+              }
+            }
+          }
+        ],
+        "otel": [
+          {
+            "severityText": "fatal",
+            "body": {
+              "function": "fixture.run",
+              "attempt": 2
+            },
+            "attributes": {
+              "destination": "both",
+              "channelId": "1234"
+            }
+          }
+        ],
+        "metadata": [
+          {
+            "at": 1793100600000,
+            "level": "fatal",
+            "name": "fixture.run",
+            "channel": "1234",
+            "traceId": null,
+            "fields": {
+              "function": "fixture.run",
+              "attempt": 2
+            }
+          }
+        ],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "timestamp-epoch",
+      "input": {
+        "at": 0,
+        "level": "info",
+        "data": {},
+        "options": {
+          "destination": "cache"
+        }
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:global:info:",
+            "entry": {
+              "data": {},
+              "timestamp": "1/1/1970, 12:00:00 AM",
+              "level": "info",
+              "platform": "twitch"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [],
+        "otel": [
+          {
+            "severityText": "info",
+            "body": {},
+            "attributes": {
+              "destination": "cache"
+            }
+          }
+        ],
+        "metadata": [],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "timestamp-before-epoch",
+      "input": {
+        "at": -1,
+        "level": "info",
+        "data": {},
+        "options": {
+          "destination": "cache"
+        }
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:global:info:",
+            "entry": {
+              "data": {},
+              "timestamp": "12/31/1969, 11:59:59 PM",
+              "level": "info",
+              "platform": "twitch"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [],
+        "otel": [
+          {
+            "severityText": "info",
+            "body": {},
+            "attributes": {
+              "destination": "cache"
+            }
+          }
+        ],
+        "metadata": [],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "timestamp-leap-midnight",
+      "input": {
+        "at": 1709164800000,
+        "level": "info",
+        "data": {},
+        "options": {
+          "destination": "cache"
+        }
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:global:info:",
+            "entry": {
+              "data": {},
+              "timestamp": "2/29/2024, 12:00:00 AM",
+              "level": "info",
+              "platform": "twitch"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [],
+        "otel": [
+          {
+            "severityText": "info",
+            "body": {},
+            "attributes": {
+              "destination": "cache"
+            }
+          }
+        ],
+        "metadata": [],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "timestamp-leap-noon",
+      "input": {
+        "at": 1709208000000,
+        "level": "info",
+        "data": {},
+        "options": {
+          "destination": "cache"
+        }
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:global:info:",
+            "entry": {
+              "data": {},
+              "timestamp": "2/29/2024, 12:00:00 PM",
+              "level": "info",
+              "platform": "twitch"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [],
+        "otel": [
+          {
+            "severityText": "info",
+            "body": {},
+            "attributes": {
+              "destination": "cache"
+            }
+          }
+        ],
+        "metadata": [],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "timestamp-year-end",
+      "input": {
+        "at": 1767225599000,
+        "level": "info",
+        "data": {},
+        "options": {
+          "destination": "cache"
+        }
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:global:info:",
+            "entry": {
+              "data": {},
+              "timestamp": "12/31/2025, 11:59:59 PM",
+              "level": "info",
+              "platform": "twitch"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [],
+        "otel": [
+          {
+            "severityText": "info",
+            "body": {},
+            "attributes": {
+              "destination": "cache"
+            }
+          }
+        ],
+        "metadata": [],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "timestamp-millisecond-floor",
+      "input": {
+        "at": 1793062923999,
+        "level": "info",
+        "data": {},
+        "options": {
+          "destination": "cache"
+        }
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:global:info:",
+            "entry": {
+              "data": {},
+              "timestamp": "10/27/2026, 1:02:03 AM",
+              "level": "info",
+              "platform": "twitch"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [],
+        "otel": [
+          {
+            "severityText": "info",
+            "body": {},
+            "attributes": {
+              "destination": "cache"
+            }
+          }
+        ],
+        "metadata": [],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "empty-options",
+      "input": {
+        "at": 1793100600000,
+        "level": "error",
+        "data": {
+          "function": "fixture.options",
+          "status": 503
+        },
+        "options": {}
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:global:error:",
+            "entry": {
+              "data": {
+                "function": "fixture.options",
+                "status": 503
+              },
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "level": "error",
+              "platform": "twitch"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [
+          {
+            "stream": "stderr",
+            "output": {
+              "level": "error",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "platform": "twitch",
+              "data": {
+                "function": "fixture.options",
+                "status": 503
+              }
+            }
+          }
+        ],
+        "otel": [
+          {
+            "severityText": "error",
+            "body": {
+              "function": "fixture.options",
+              "status": 503
+            },
+            "attributes": {}
+          }
+        ],
+        "metadata": [
+          {
+            "at": 1793100600000,
+            "level": "error",
+            "name": "fixture.options",
+            "channel": "",
+            "traceId": null,
+            "fields": {
+              "function": "fixture.options",
+              "status": 503
+            }
+          }
+        ],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "empty-platform",
+      "input": {
+        "at": 1793100600000,
+        "level": "error",
+        "data": {
+          "function": "fixture.options",
+          "status": 503
+        },
+        "options": {
+          "platform": ""
+        }
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:global:error:",
+            "entry": {
+              "data": {
+                "function": "fixture.options",
+                "status": 503
+              },
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "level": "error",
+              "platform": "twitch"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [
+          {
+            "stream": "stderr",
+            "output": {
+              "level": "error",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "platform": "twitch",
+              "data": {
+                "function": "fixture.options",
+                "status": 503
+              }
+            }
+          }
+        ],
+        "otel": [
+          {
+            "severityText": "error",
+            "body": {
+              "function": "fixture.options",
+              "status": 503
+            },
+            "attributes": {
+              "platform": ""
+            }
+          }
+        ],
+        "metadata": [
+          {
+            "at": 1793100600000,
+            "level": "error",
+            "name": "fixture.options",
+            "channel": "",
+            "traceId": null,
+            "fields": {
+              "function": "fixture.options",
+              "status": 503
+            }
+          }
+        ],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "custom-platform",
+      "input": {
+        "at": 1793100600000,
+        "level": "error",
+        "data": {
+          "function": "fixture.options",
+          "status": 503
+        },
+        "options": {
+          "platform": "kick"
+        }
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:kick:global:error:",
+            "entry": {
+              "data": {
+                "function": "fixture.options",
+                "status": 503
+              },
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "level": "error",
+              "platform": "kick"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [
+          {
+            "stream": "stderr",
+            "output": {
+              "level": "error",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "platform": "kick",
+              "data": {
+                "function": "fixture.options",
+                "status": 503
+              }
+            }
+          }
+        ],
+        "otel": [
+          {
+            "severityText": "error",
+            "body": {
+              "function": "fixture.options",
+              "status": 503
+            },
+            "attributes": {
+              "platform": "kick"
+            }
+          }
+        ],
+        "metadata": [
+          {
+            "at": 1793100600000,
+            "level": "error",
+            "name": "fixture.options",
+            "channel": "",
+            "traceId": null,
+            "fields": {
+              "function": "fixture.options",
+              "status": 503
+            }
+          }
+        ],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "empty-channel",
+      "input": {
+        "at": 1793100600000,
+        "level": "error",
+        "data": {
+          "function": "fixture.options",
+          "status": 503
+        },
+        "options": {
+          "channelId": ""
+        }
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:global:error:",
+            "entry": {
+              "data": {
+                "function": "fixture.options",
+                "status": 503
+              },
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "level": "error",
+              "platform": "twitch",
+              "channelId": ""
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [
+          {
+            "stream": "stderr",
+            "output": {
+              "level": "error",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "platform": "twitch",
+              "channelId": "",
+              "data": {
+                "function": "fixture.options",
+                "status": 503
+              }
+            }
+          }
+        ],
+        "otel": [
+          {
+            "severityText": "error",
+            "body": {
+              "function": "fixture.options",
+              "status": 503
+            },
+            "attributes": {
+              "channelId": ""
+            }
+          }
+        ],
+        "metadata": [
+          {
+            "at": 1793100600000,
+            "level": "error",
+            "name": "fixture.options",
+            "channel": "",
+            "traceId": null,
+            "fields": {
+              "function": "fixture.options",
+              "status": 503
+            }
+          }
+        ],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "custom-channel",
+      "input": {
+        "at": 1793100600000,
+        "level": "error",
+        "data": {
+          "function": "fixture.options",
+          "status": 503
+        },
+        "options": {
+          "channelId": "owner-123"
+        }
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:owner-123:error:",
+            "entry": {
+              "data": {
+                "function": "fixture.options",
+                "status": 503
+              },
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "level": "error",
+              "platform": "twitch",
+              "channelId": "owner-123"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [
+          {
+            "stream": "stderr",
+            "output": {
+              "level": "error",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "platform": "twitch",
+              "channelId": "owner-123",
+              "data": {
+                "function": "fixture.options",
+                "status": 503
+              }
+            }
+          }
+        ],
+        "otel": [
+          {
+            "severityText": "error",
+            "body": {
+              "function": "fixture.options",
+              "status": 503
+            },
+            "attributes": {
+              "channelId": "owner-123"
+            }
+          }
+        ],
+        "metadata": [
+          {
+            "at": 1793100600000,
+            "level": "error",
+            "name": "fixture.options",
+            "channel": "owner-123",
+            "traceId": null,
+            "fields": {
+              "function": "fixture.options",
+              "status": 503
+            }
+          }
+        ],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "invalid-metadata-channel",
+      "input": {
+        "at": 1793100600000,
+        "level": "error",
+        "data": {
+          "function": "fixture.options",
+          "status": 503
+        },
+        "options": {
+          "channelId": "bad:channel"
+        }
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:bad:channel:error:",
+            "entry": {
+              "data": {
+                "function": "fixture.options",
+                "status": 503
+              },
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "level": "error",
+              "platform": "twitch",
+              "channelId": "bad:channel"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [
+          {
+            "stream": "stderr",
+            "output": {
+              "level": "error",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "platform": "twitch",
+              "channelId": "bad:channel",
+              "data": {
+                "function": "fixture.options",
+                "status": 503
+              }
+            }
+          }
+        ],
+        "otel": [
+          {
+            "severityText": "error",
+            "body": {
+              "function": "fixture.options",
+              "status": 503
+            },
+            "attributes": {
+              "channelId": "bad:channel"
+            }
+          }
+        ],
+        "metadata": [
+          {
+            "at": 1793100600000,
+            "level": "error",
+            "name": "fixture.options",
+            "channel": "",
+            "traceId": null,
+            "fields": {
+              "function": "fixture.options",
+              "status": 503
+            }
+          }
+        ],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "unicode-options",
+      "input": {
+        "at": 1793100600000,
+        "level": "error",
+        "data": {
+          "function": "fixture.options",
+          "status": 503
+        },
+        "options": {
+          "platform": "twitch",
+          "channelId": "ñ😀"
+        }
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:ñ😀:error:",
+            "entry": {
+              "data": {
+                "function": "fixture.options",
+                "status": 503
+              },
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "level": "error",
+              "platform": "twitch",
+              "channelId": "ñ😀"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [
+          {
+            "stream": "stderr",
+            "output": {
+              "level": "error",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "platform": "twitch",
+              "channelId": "ñ😀",
+              "data": {
+                "function": "fixture.options",
+                "status": 503
+              }
+            }
+          }
+        ],
+        "otel": [
+          {
+            "severityText": "error",
+            "body": {
+              "function": "fixture.options",
+              "status": 503
+            },
+            "attributes": {
+              "platform": "twitch",
+              "channelId": "ñ😀"
+            }
+          }
+        ],
+        "metadata": [
+          {
+            "at": 1793100600000,
+            "level": "error",
+            "name": "fixture.options",
+            "channel": "",
+            "traceId": null,
+            "fields": {
+              "function": "fixture.options",
+              "status": 503
+            }
+          }
+        ],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "payload-null",
+      "input": {
+        "at": 1793100600000,
+        "level": "warn",
+        "data": null
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:global:warn:",
+            "entry": {
+              "data": null,
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "level": "warn",
+              "platform": "twitch"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [
+          {
+            "stream": "stderr",
+            "output": {
+              "level": "warn",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "platform": "twitch",
+              "data": null
+            }
+          }
+        ],
+        "otel": [
+          {
+            "severityText": "warn",
+            "body": null
+          }
+        ],
+        "metadata": [
+          {
+            "at": 1793100600000,
+            "level": "warn",
+            "name": "application",
+            "channel": "",
+            "traceId": null,
+            "fields": {}
+          }
+        ],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "payload-string",
+      "input": {
+        "at": 1793100600000,
+        "level": "warn",
+        "data": "a diagnostic"
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:global:warn:",
+            "entry": {
+              "data": "a diagnostic",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "level": "warn",
+              "platform": "twitch"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [
+          {
+            "stream": "stderr",
+            "output": {
+              "level": "warn",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "platform": "twitch",
+              "data": "a diagnostic"
+            }
+          }
+        ],
+        "otel": [
+          {
+            "severityText": "warn",
+            "body": "a diagnostic"
+          }
+        ],
+        "metadata": [
+          {
+            "at": 1793100600000,
+            "level": "warn",
+            "name": "application",
+            "channel": "",
+            "traceId": null,
+            "fields": {}
+          }
+        ],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "payload-number",
+      "input": {
+        "at": 1793100600000,
+        "level": "warn",
+        "data": 42
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:global:warn:",
+            "entry": {
+              "data": 42,
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "level": "warn",
+              "platform": "twitch"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [
+          {
+            "stream": "stderr",
+            "output": {
+              "level": "warn",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "platform": "twitch",
+              "data": 42
+            }
+          }
+        ],
+        "otel": [
+          {
+            "severityText": "warn",
+            "body": 42
+          }
+        ],
+        "metadata": [
+          {
+            "at": 1793100600000,
+            "level": "warn",
+            "name": "application",
+            "channel": "",
+            "traceId": null,
+            "fields": {}
+          }
+        ],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "payload-bool",
+      "input": {
+        "at": 1793100600000,
+        "level": "warn",
+        "data": false
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:global:warn:",
+            "entry": {
+              "data": false,
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "level": "warn",
+              "platform": "twitch"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [
+          {
+            "stream": "stderr",
+            "output": {
+              "level": "warn",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "platform": "twitch",
+              "data": false
+            }
+          }
+        ],
+        "otel": [
+          {
+            "severityText": "warn",
+            "body": false
+          }
+        ],
+        "metadata": [
+          {
+            "at": 1793100600000,
+            "level": "warn",
+            "name": "application",
+            "channel": "",
+            "traceId": null,
+            "fields": {}
+          }
+        ],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "payload-array",
+      "input": {
+        "at": 1793100600000,
+        "level": "warn",
+        "data": [
+          1,
+          "é😀",
+          null
+        ]
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:global:warn:",
+            "entry": {
+              "data": [
+                1,
+                "é😀",
+                null
+              ],
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "level": "warn",
+              "platform": "twitch"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [
+          {
+            "stream": "stderr",
+            "output": {
+              "level": "warn",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "platform": "twitch",
+              "data": [
+                1,
+                "é😀",
+                null
+              ]
+            }
+          }
+        ],
+        "otel": [
+          {
+            "severityText": "warn",
+            "body": [
+              1,
+              "é😀",
+              null
+            ]
+          }
+        ],
+        "metadata": [
+          {
+            "at": 1793100600000,
+            "level": "warn",
+            "name": "application",
+            "channel": "",
+            "traceId": null,
+            "fields": {}
+          }
+        ],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "payload-allowlist",
+      "input": {
+        "at": 1793100600000,
+        "level": "warn",
+        "data": {
+          "function": "some function()",
+          "step": "😀é",
+          "status": 503,
+          "code": "E_TEST",
+          "errorCode": "error",
+          "operation": "op",
+          "provider": "provider",
+          "attempt": 3,
+          "durationMs": 1.25,
+          "token": "fixture-secret",
+          "message": "not metadata",
+          "error": "private"
+        }
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:global:warn:",
+            "entry": {
+              "data": {
+                "function": "some function()",
+                "step": "😀é",
+                "status": 503,
+                "code": "E_TEST",
+                "errorCode": "error",
+                "operation": "op",
+                "provider": "provider",
+                "attempt": 3,
+                "durationMs": 1.25,
+                "token": "fixture-secret",
+                "message": "not metadata",
+                "error": "private"
+              },
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "level": "warn",
+              "platform": "twitch"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [
+          {
+            "stream": "stderr",
+            "output": {
+              "level": "warn",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "platform": "twitch",
+              "data": {
+                "function": "some function()",
+                "step": "😀é",
+                "status": 503,
+                "code": "E_TEST",
+                "errorCode": "error",
+                "operation": "op",
+                "provider": "provider",
+                "attempt": 3,
+                "durationMs": 1.25,
+                "token": "fixture-secret",
+                "message": "not metadata",
+                "error": "private"
+              }
+            }
+          }
+        ],
+        "otel": [
+          {
+            "severityText": "warn",
+            "body": {
+              "function": "some function()",
+              "step": "😀é",
+              "status": 503,
+              "code": "E_TEST",
+              "errorCode": "error",
+              "operation": "op",
+              "provider": "provider",
+              "attempt": 3,
+              "durationMs": 1.25,
+              "token": "fixture-secret",
+              "message": "not metadata",
+              "error": "private"
+            }
+          }
+        ],
+        "metadata": [
+          {
+            "at": 1793100600000,
+            "level": "warn",
+            "name": "some function__",
+            "channel": "",
+            "traceId": null,
+            "fields": {
+              "function": "some function__",
+              "step": "___",
+              "status": 503,
+              "code": "E_TEST",
+              "errorCode": "error",
+              "operation": "op",
+              "provider": "provider",
+              "attempt": 3,
+              "durationMs": 1.25
+            }
+          }
+        ],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "payload-metadata-wrong-types",
+      "input": {
+        "at": 1793100600000,
+        "level": "warn",
+        "data": {
+          "function": [
+            "array"
+          ],
+          "operation": {
+            "nested": true
+          },
+          "step": null,
+          "status": false,
+          "code": 42
+        }
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:global:warn:",
+            "entry": {
+              "data": {
+                "function": [
+                  "array"
+                ],
+                "operation": {
+                  "nested": true
+                },
+                "step": null,
+                "status": false,
+                "code": 42
+              },
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "level": "warn",
+              "platform": "twitch"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [
+          {
+            "stream": "stderr",
+            "output": {
+              "level": "warn",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "platform": "twitch",
+              "data": {
+                "function": [
+                  "array"
+                ],
+                "operation": {
+                  "nested": true
+                },
+                "step": null,
+                "status": false,
+                "code": 42
+              }
+            }
+          }
+        ],
+        "otel": [
+          {
+            "severityText": "warn",
+            "body": {
+              "function": [
+                "array"
+              ],
+              "operation": {
+                "nested": true
+              },
+              "step": null,
+              "status": false,
+              "code": 42
+            }
+          }
+        ],
+        "metadata": [
+          {
+            "at": 1793100600000,
+            "level": "warn",
+            "name": "array",
+            "channel": "",
+            "traceId": null,
+            "fields": {
+              "status": false,
+              "code": 42
+            }
+          }
+        ],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "payload-metadata-truncation",
+      "input": {
+        "at": 1793100600000,
+        "level": "warn",
+        "data": {
+          "function": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+          "step": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+          "operation": "long operation"
+        }
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:global:warn:",
+            "entry": {
+              "data": {
+                "function": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+                "step": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+                "operation": "long operation"
+              },
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "level": "warn",
+              "platform": "twitch"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [
+          {
+            "stream": "stderr",
+            "output": {
+              "level": "warn",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "platform": "twitch",
+              "data": {
+                "function": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+                "step": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+                "operation": "long operation"
+              }
+            }
+          }
+        ],
+        "otel": [
+          {
+            "severityText": "warn",
+            "body": {
+              "function": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+              "step": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+              "operation": "long operation"
+            }
+          }
+        ],
+        "metadata": [
+          {
+            "at": 1793100600000,
+            "level": "warn",
+            "name": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "channel": "",
+            "traceId": null,
+            "fields": {
+              "function": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+              "step": "________________________________________________________________________________",
+              "operation": "long operation"
+            }
+          }
+        ],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "metadata-name-false",
+      "input": {
+        "at": 1793100600000,
+        "level": "error",
+        "data": {
+          "function": false,
+          "operation": "fallback operation"
+        }
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:global:error:",
+            "entry": {
+              "data": {
+                "function": false,
+                "operation": "fallback operation"
+              },
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "level": "error",
+              "platform": "twitch"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [
+          {
+            "stream": "stderr",
+            "output": {
+              "level": "error",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "platform": "twitch",
+              "data": {
+                "function": false,
+                "operation": "fallback operation"
+              }
+            }
+          }
+        ],
+        "otel": [
+          {
+            "severityText": "error",
+            "body": {
+              "function": false,
+              "operation": "fallback operation"
+            }
+          }
+        ],
+        "metadata": [
+          {
+            "at": 1793100600000,
+            "level": "error",
+            "name": "fallback operation",
+            "channel": "",
+            "traceId": null,
+            "fields": {
+              "function": false,
+              "operation": "fallback operation"
+            }
+          }
+        ],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "metadata-name-zero",
+      "input": {
+        "at": 1793100600000,
+        "level": "error",
+        "data": {
+          "function": 0,
+          "operation": "fallback operation"
+        }
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:global:error:",
+            "entry": {
+              "data": {
+                "function": 0,
+                "operation": "fallback operation"
+              },
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "level": "error",
+              "platform": "twitch"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [
+          {
+            "stream": "stderr",
+            "output": {
+              "level": "error",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "platform": "twitch",
+              "data": {
+                "function": 0,
+                "operation": "fallback operation"
+              }
+            }
+          }
+        ],
+        "otel": [
+          {
+            "severityText": "error",
+            "body": {
+              "function": 0,
+              "operation": "fallback operation"
+            }
+          }
+        ],
+        "metadata": [
+          {
+            "at": 1793100600000,
+            "level": "error",
+            "name": "fallback operation",
+            "channel": "",
+            "traceId": null,
+            "fields": {
+              "function": 0,
+              "operation": "fallback operation"
+            }
+          }
+        ],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "metadata-name-empty",
+      "input": {
+        "at": 1793100600000,
+        "level": "error",
+        "data": {
+          "function": "",
+          "operation": "fallback operation"
+        }
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:global:error:",
+            "entry": {
+              "data": {
+                "function": "",
+                "operation": "fallback operation"
+              },
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "level": "error",
+              "platform": "twitch"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [
+          {
+            "stream": "stderr",
+            "output": {
+              "level": "error",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "platform": "twitch",
+              "data": {
+                "function": "",
+                "operation": "fallback operation"
+              }
+            }
+          }
+        ],
+        "otel": [
+          {
+            "severityText": "error",
+            "body": {
+              "function": "",
+              "operation": "fallback operation"
+            }
+          }
+        ],
+        "metadata": [
+          {
+            "at": 1793100600000,
+            "level": "error",
+            "name": "fallback operation",
+            "channel": "",
+            "traceId": null,
+            "fields": {
+              "function": "",
+              "operation": "fallback operation"
+            }
+          }
+        ],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "metadata-name-empty-array",
+      "input": {
+        "at": 1793100600000,
+        "level": "error",
+        "data": {
+          "function": [],
+          "operation": "fallback operation"
+        }
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:global:error:",
+            "entry": {
+              "data": {
+                "function": [],
+                "operation": "fallback operation"
+              },
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "level": "error",
+              "platform": "twitch"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [
+          {
+            "stream": "stderr",
+            "output": {
+              "level": "error",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "platform": "twitch",
+              "data": {
+                "function": [],
+                "operation": "fallback operation"
+              }
+            }
+          }
+        ],
+        "otel": [
+          {
+            "severityText": "error",
+            "body": {
+              "function": [],
+              "operation": "fallback operation"
+            }
+          }
+        ],
+        "metadata": [
+          {
+            "at": 1793100600000,
+            "level": "error",
+            "name": "",
+            "channel": "",
+            "traceId": null,
+            "fields": {
+              "operation": "fallback operation"
+            }
+          }
+        ],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "metadata-name-nested-array",
+      "input": {
+        "at": 1793100600000,
+        "level": "error",
+        "data": {
+          "function": [
+            "nested",
+            [
+              null,
+              true,
+              "é😀"
+            ]
+          ],
+          "operation": "fallback operation"
+        }
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:global:error:",
+            "entry": {
+              "data": {
+                "function": [
+                  "nested",
+                  [
+                    null,
+                    true,
+                    "é😀"
+                  ]
+                ],
+                "operation": "fallback operation"
+              },
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "level": "error",
+              "platform": "twitch"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [
+          {
+            "stream": "stderr",
+            "output": {
+              "level": "error",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "platform": "twitch",
+              "data": {
+                "function": [
+                  "nested",
+                  [
+                    null,
+                    true,
+                    "é😀"
+                  ]
+                ],
+                "operation": "fallback operation"
+              }
+            }
+          }
+        ],
+        "otel": [
+          {
+            "severityText": "error",
+            "body": {
+              "function": [
+                "nested",
+                [
+                  null,
+                  true,
+                  "é😀"
+                ]
+              ],
+              "operation": "fallback operation"
+            }
+          }
+        ],
+        "metadata": [
+          {
+            "at": 1793100600000,
+            "level": "error",
+            "name": "nested__true____",
+            "channel": "",
+            "traceId": null,
+            "fields": {
+              "operation": "fallback operation"
+            }
+          }
+        ],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "metadata-name-object",
+      "input": {
+        "at": 1793100600000,
+        "level": "error",
+        "data": {
+          "function": {
+            "nested": true
+          },
+          "operation": "fallback operation"
+        }
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:global:error:",
+            "entry": {
+              "data": {
+                "function": {
+                  "nested": true
+                },
+                "operation": "fallback operation"
+              },
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "level": "error",
+              "platform": "twitch"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [
+          {
+            "stream": "stderr",
+            "output": {
+              "level": "error",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "platform": "twitch",
+              "data": {
+                "function": {
+                  "nested": true
+                },
+                "operation": "fallback operation"
+              }
+            }
+          }
+        ],
+        "otel": [
+          {
+            "severityText": "error",
+            "body": {
+              "function": {
+                "nested": true
+              },
+              "operation": "fallback operation"
+            }
+          }
+        ],
+        "metadata": [
+          {
+            "at": 1793100600000,
+            "level": "error",
+            "name": "_object Object_",
+            "channel": "",
+            "traceId": null,
+            "fields": {
+              "operation": "fallback operation"
+            }
+          }
+        ],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "metadata-name-small-exponent",
+      "input": {
+        "at": 1793100600000,
+        "level": "error",
+        "data": {
+          "function": 1e-7,
+          "operation": "fallback operation"
+        }
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:global:error:",
+            "entry": {
+              "data": {
+                "function": 1e-7,
+                "operation": "fallback operation"
+              },
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "level": "error",
+              "platform": "twitch"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [
+          {
+            "stream": "stderr",
+            "output": {
+              "level": "error",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "platform": "twitch",
+              "data": {
+                "function": 1e-7,
+                "operation": "fallback operation"
+              }
+            }
+          }
+        ],
+        "otel": [
+          {
+            "severityText": "error",
+            "body": {
+              "function": 1e-7,
+              "operation": "fallback operation"
+            }
+          }
+        ],
+        "metadata": [
+          {
+            "at": 1793100600000,
+            "level": "error",
+            "name": "1e-7",
+            "channel": "",
+            "traceId": null,
+            "fields": {
+              "function": 1e-7,
+              "operation": "fallback operation"
+            }
+          }
+        ],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "metadata-name-fixed-small",
+      "input": {
+        "at": 1793100600000,
+        "level": "error",
+        "data": {
+          "function": 0.000001,
+          "operation": "fallback operation"
+        }
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:global:error:",
+            "entry": {
+              "data": {
+                "function": 0.000001,
+                "operation": "fallback operation"
+              },
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "level": "error",
+              "platform": "twitch"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [
+          {
+            "stream": "stderr",
+            "output": {
+              "level": "error",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "platform": "twitch",
+              "data": {
+                "function": 0.000001,
+                "operation": "fallback operation"
+              }
+            }
+          }
+        ],
+        "otel": [
+          {
+            "severityText": "error",
+            "body": {
+              "function": 0.000001,
+              "operation": "fallback operation"
+            }
+          }
+        ],
+        "metadata": [
+          {
+            "at": 1793100600000,
+            "level": "error",
+            "name": "0.000001",
+            "channel": "",
+            "traceId": null,
+            "fields": {
+              "function": 0.000001,
+              "operation": "fallback operation"
+            }
+          }
+        ],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "metadata-name-large-fixed",
+      "input": {
+        "at": 1793100600000,
+        "level": "error",
+        "data": {
+          "function": 100000000000000000000,
+          "operation": "fallback operation"
+        }
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:global:error:",
+            "entry": {
+              "data": {
+                "function": 100000000000000000000,
+                "operation": "fallback operation"
+              },
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "level": "error",
+              "platform": "twitch"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [
+          {
+            "stream": "stderr",
+            "output": {
+              "level": "error",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "platform": "twitch",
+              "data": {
+                "function": 100000000000000000000,
+                "operation": "fallback operation"
+              }
+            }
+          }
+        ],
+        "otel": [
+          {
+            "severityText": "error",
+            "body": {
+              "function": 100000000000000000000,
+              "operation": "fallback operation"
+            }
+          }
+        ],
+        "metadata": [
+          {
+            "at": 1793100600000,
+            "level": "error",
+            "name": "100000000000000000000",
+            "channel": "",
+            "traceId": null,
+            "fields": {
+              "function": 100000000000000000000,
+              "operation": "fallback operation"
+            }
+          }
+        ],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "metadata-name-large-exponent",
+      "input": {
+        "at": 1793100600000,
+        "level": "error",
+        "data": {
+          "function": 1e+21,
+          "operation": "fallback operation"
+        }
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:global:error:",
+            "entry": {
+              "data": {
+                "function": 1e+21,
+                "operation": "fallback operation"
+              },
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "level": "error",
+              "platform": "twitch"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [
+          {
+            "stream": "stderr",
+            "output": {
+              "level": "error",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "platform": "twitch",
+              "data": {
+                "function": 1e+21,
+                "operation": "fallback operation"
+              }
+            }
+          }
+        ],
+        "otel": [
+          {
+            "severityText": "error",
+            "body": {
+              "function": 1e+21,
+              "operation": "fallback operation"
+            }
+          }
+        ],
+        "metadata": [
+          {
+            "at": 1793100600000,
+            "level": "error",
+            "name": "1e_21",
+            "channel": "",
+            "traceId": null,
+            "fields": {
+              "function": 1e+21,
+              "operation": "fallback operation"
+            }
+          }
+        ],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    },
+    {
+      "name": "metadata-name-negative-exponent",
+      "input": {
+        "at": 1793100600000,
+        "level": "error",
+        "data": {
+          "function": -1e-7,
+          "operation": "fallback operation"
+        }
+      },
+      "expected": {
+        "writes": [
+          {
+            "keyPrefix": "logger:twitch:global:error:",
+            "entry": {
+              "data": {
+                "function": -1e-7,
+                "operation": "fallback operation"
+              },
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "level": "error",
+              "platform": "twitch"
+            },
+            "ttlSeconds": 604800
+          }
+        ],
+        "console": [
+          {
+            "stream": "stderr",
+            "output": {
+              "level": "error",
+              "timestamp": "10/27/2026, 11:30:00 AM",
+              "platform": "twitch",
+              "data": {
+                "function": -1e-7,
+                "operation": "fallback operation"
+              }
+            }
+          }
+        ],
+        "otel": [
+          {
+            "severityText": "error",
+            "body": {
+              "function": -1e-7,
+              "operation": "fallback operation"
+            }
+          }
+        ],
+        "metadata": [
+          {
+            "at": 1793100600000,
+            "level": "error",
+            "name": "-1e-7",
+            "channel": "",
+            "traceId": null,
+            "fields": {
+              "function": -1e-7,
+              "operation": "fallback operation"
+            }
+          }
+        ],
+        "result": {
+          "success": true,
+          "message": "Logged successfully"
+        }
+      }
+    }
+  ],
+  "intentionalDifferences": [
+    "One SET EX replaces two cache commands while retaining key prefix, entry and TTL.",
+    "Random suffix uses a stronger identifier; exact suffix bytes are not a compatibility contract.",
+    "Independent bounded sinks and explicit per-sink results replace cache-first ordering and accidental sink exception propagation.",
+    "Filtering is opt-in; compatibility fixtures use all levels and no sampling.",
+    "The Rust OTEL adapter normalizes destination/platform attributes and represents JSON null as the string null because native AnyValue has no null variant; core JSON retains null."
+  ],
+  "sourceOnlyBoundaries": [
+    "JavaScript undefined, functions, cyclic references, BigInt and lone UTF-16 surrogates are outside serde_json::Value."
+  ]
+}

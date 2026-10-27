@@ -171,6 +171,35 @@ Build checks and default Rust tests do not require database or cache services; M
 
 The helper keeps Cargo registry and dependency artifacts in a private persistent cache outside the checkout. The deployed candidate adds the Rust index as an eighth binary under the existing capped build policy; see [dual-cron-supervisors.md](../migration-notes/dual-cron-supervisors.md) for accepted release evidence and [worker-shared-utils.md](../migration-notes/worker-shared-utils.md) for the prior accepted build. The stream fixture remains a manual parity/benchmark tool and is not staged in routine cron candidates. Cache reuse reduces compile work only and does not establish Rust worker RAM or CPU savings.
 
+## Opt-in shared logger
+
+`utils::logger` is available with the independent `logger` feature. `logger-redis` adds a `SET ... EX` cache adapter; `logger-otel` adds an adapter for an already-created OpenTelemetry SDK logger. None is in Cargo defaults or deployed worker profiles. This explicitly constructed API reads no environment variables, opens no connections, installs no global logger/provider, and starts no background task. Callers provide sink handles, clock, and ID source:
+
+```rust
+use std::sync::Arc;
+use dima_rust::utils::logger::{
+    Destination, Level, LogOptions, Logger, LoggerConfig, SinkHandles, StdConsole,
+    SystemClock, UuidSource,
+};
+
+let logger = Logger::new(
+    LoggerConfig::default(),
+    SinkHandles { console: Some(Arc::new(StdConsole)), ..SinkHandles::default() },
+    Arc::new(SystemClock),
+    Arc::new(UuidSource),
+)?;
+let report = logger.log(
+    Level::Info,
+    serde_json::json!({"message": "ready"}),
+    LogOptions { destination: Destination::Console, ..LogOptions::default() },
+).await;
+assert!(report.success());
+```
+
+Each `log` report describes the selected sinks' individual outcomes. There is no queue or batching: selected sinks run concurrently, with whole-call and cache item/byte admission limits reserving capacity for warning and higher levels. Missing required sinks and cache/console failures are reported; optional metadata and OpenTelemetry sinks may be skipped. A successful SDK `emit` confirms only local SDK acceptance, not exporter delivery. The caller owns provider `force_flush` and shutdown outside logger lifecycle calls.
+
+The logger preserves the TypeScript logger's UTC timestamp formatting, `logger:<platform>:<channelId>:<level>:<id>` key family, JSON payload shape, and seven-day cache TTL. UUID IDs, atomic Redis `SET EX`, default keep-all sampling, and lazy minimum-level checks are deliberate behavior improvements. Metadata uses an explicit context-field allowlist. Input is bounded by payload bytes and nesting depth and accepts the JSON value domain; JavaScript cycles, `BigInt`, functions, and `undefined` are not representable. Redis timeouts cancel the caller's future but cannot retract a command already sent. Standard OS stdout/stderr writes are uninterruptible by async deadlines. OpenTelemetry maps JSON null to the string `"null"` because `AnyValue` has no null variant; adapter attributes are normalized to OTEL-supported values while the core JSON retains null. Capped quality, 56-case parity, disposable Redis, and loopback OTEL verification passed; see [shared-logger.md](../migration-notes/shared-logger.md) for receipts and limits. No TypeScript logger caller or worker is changed or adopted. The cache plan-fence port is still outstanding, so the TwitchStreamers port remains deferred.
+
 
 ## Raid change-driven release notice
 

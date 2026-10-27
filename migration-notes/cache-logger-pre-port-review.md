@@ -2,7 +2,7 @@
 
 Reviewed on 2026-10-27.
 
-Status: source review only. This note records reusable behavior, implementation constraints, and optional opportunities for a future utility port. The recommendations here are not approved implementation scope. Earlier TwitchStreamers improvements remain separately approved in [its pre-port review](twitch-streamers-pre-port-review.md). Source review and mocked fixtures do not establish Rust parity, production behavior, performance gains, or deployment readiness.
+Status: source review plus verified opt-in logger utility; the plan-cache fence and other cache recommendations remain unported and unselected. Logger verification and boundaries are documented in [shared-logger.md](shared-logger.md). Earlier TwitchStreamers improvements remain separately approved in [its pre-port review](twitch-streamers-pre-port-review.md); its Rust class port remains deferred. Source review and mocked fixtures do not establish production behavior, performance gains, or deployment readiness.
 
 ## Plan-cache protocol
 
@@ -54,17 +54,16 @@ Four deterministic fixtures transpiled from current TypeScript source and used i
 3. An injected OpenTelemetry `emit` exception rejects the logger call after console output has already occurred.
 4. A deliberately fixed `Date.now()` plus `Math.random()` collision overwrites the earlier cached record. This demonstrates collision behavior under constructed inputs; it does not establish a production collision rate.
 
-Potential logger follow-up design, not yet approved for implementation:
+Logger decisions implemented and verified in the opt-in Rust core/adapters (see [shared-logger.md](shared-logger.md)):
 
-- Use one `SET ... EX` operation to close the `SET`/`EXPIRE` gap and reduce the cache write from two commands to one.
-- Isolate best-effort sinks so a cache delay cannot block console output. Decide explicitly whether optional sink errors affect the business operation; do not let logging accidentally become an unbounded request dependency.
-- Use bounded cache/export queues with byte and item limits, drop counters, severity preference, and deadline-bounded shutdown flush. Define whether a result means queued or written to cache; do not report a completed write for queued-only records or imply durability beyond the cache's persistence guarantees.
-- Apply configurable level/sampling checks before timestamp creation, serialization, and sink work. Preserve warn/error/fatal detail.
+- Use one `SET ... EX` operation to close the `SET`/`EXPIRE` gap; the adapter uses a caller-owned Redis connection.
+- Run selected sinks concurrently and report per-sink outcomes. The chosen policy has no background queue or batching; it uses bounded whole-call/cache admission with a warning-and-above reserve. Optional metadata and OTEL sinks can be skipped.
+- Apply default keep-all sampling and configurable low-priority sampling/minimum level before payload construction through `log_lazy`.
+- Use UUID cache IDs and bounded JSON serialization limits. Non-JSON JavaScript values are outside this API; context metadata uses an explicit allowlist.
 - Keep cache keys non-colliding with a stable random identifier. The current Dragonfly helper's `errorLogTracker` map has no eviction and keys include the entire error message; if that generic helper is reviewed, consider bounded eviction and stable error categories/time windows.
-- Add safe bounded serialization for circular values, `BigInt`, and oversized payloads, with sink-specific metadata/redaction and useful local diagnostics.
 - Timestamp formatting could reuse Rust `logger_timestamp` from [`ai_usage_receipts/queue.rs`](../dima-rust/src/workers/ai_usage_receipts/queue.rs), or a cached JS formatter, only after exact output compatibility checks and a benchmark.
-- Reuse [`otel.rs`](../dima-rust/src/utils/otel.rs) for OTLP where appropriate. The bounded metadata export patterns in the supervisor/telemetry code may inform queue design, without coupling logger lifecycle to a worker supervisor.
-- `ai_usage_receipts/queue.rs` already has a private global-only cache logger using `SET EX` and a two-second bound. Extract a focused shared sink if useful; do not make the generic logger depend on the worker module.
+- Reuse [`otel.rs`](../dima-rust/src/utils/otel.rs) for OTLP where appropriate. The logger adapter accepts an existing SDK logger and does not install an exporter or couple logger lifecycle to a worker supervisor.
+- `ai_usage_receipts/queue.rs` retains its private global-only cache logger; the generic logger does not depend on that worker module.
 - [`oauth_debug_cache.ts`](../dimabot/src/utils/oauth_debug_cache.ts) already uses `SET EX`, but timestamp-only IDs can collide within the same millisecond. Rust Twitch diagnostic builders in [`twitch.rs`](../dima-rust/src/utils/twitch.rs) provide sanitization patterns; logger/storage wiring remains separate work.
 - Do not set a globally short timeout on the shared Redis connection to isolate logger writes. Other users of that connection include blocking queues. Give the logger a dedicated bounded sink policy instead.
 

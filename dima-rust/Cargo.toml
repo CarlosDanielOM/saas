@@ -44,6 +44,10 @@ chat-events = ["dep:serde_json"]
 ai-usage = ["dep:serde", "dep:serde_json", "dep:uuid"]
 eventsub = ["dep:serde", "dep:serde_json"]
 domain-events = ["dep:serde", "dep:serde_json"]
+# Explicitly constructed shared logger; no default or worker profile enables it.
+logger = ["dep:serde", "dep:serde_json", "serde_json/float_roundtrip", "dep:tokio", "dep:futures-util", "dep:uuid"]
+logger-redis = ["logger", "redis"]
+logger-otel = ["logger", "otel"]
 twitch-client = ["http-client", "dep:serde_json"]
 polar-client = ["http-client", "dep:serde", "dep:serde_json"]
 # Reusable policies and adapters for future callers; no deployed profile opts in.

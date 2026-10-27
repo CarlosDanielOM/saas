@@ -69,6 +69,8 @@ pub mod domain_events;
 pub mod eventsub;
 #[cfg(feature = "keywords")]
 pub mod keywords;
+#[cfg(feature = "logger")]
+pub mod logger;
 #[cfg(feature = "polar-client")]
 pub mod polar;
 #[cfg(feature = "twitch-client")]

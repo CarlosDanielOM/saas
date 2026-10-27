@@ -2,7 +2,7 @@
 
 Reviewed on 2026-10-27.
 
-Status: approved source improvements recorded; the Rust port is deferred until the plan-cache fence and the complete shared logger have Rust equivalents. The Rust library utilities exist, but `TwitchStreamers` does not call them. Do not describe this review as a port, runtime verification, or production performance result.
+Status: approved source improvements recorded; the Rust class port remains deferred because the plan-cache fence is still unported. The shared logger utility passed library verification but is not connected to this class or TypeScript callers. The Rust library utilities exist, but `TwitchStreamers` does not call them. Do not describe this review as a class port, production runtime verification, or production performance result.
 
 ## Current ownership and reusable work
 
@@ -16,7 +16,7 @@ Reusable Rust library code is present but not adopted by this class:
 - [`posthog.rs`](../dima-rust/src/utils/posthog.rs) includes `StreamerIdentities` deduplication.
 - [`otel.rs`](../dima-rust/src/utils/otel.rs) provides a Rust log export pipeline, but not the full TypeScript shared-logger contract.
 
-Two prerequisites remain unported: [`plan_cache_fence.ts`](../dimabot/src/utils/plan_cache_fence.ts) uses versioned Lua fencing across account/list/credit caches, and [`logger.ts`](../dimabot/src/utils/logger.ts) combines console output, seven-day per-channel Dragonfly diagnostic records, telemetry recording, and OpenTelemetry emission. The token utility itself documents that it does not install the logger/debug-cache or refresh-all paths. Streamer metadata selection, mapping, and query behavior also remain class work; the credential utility is not a complete account repository.
+The plan-cache prerequisite remains unported: [`plan_cache_fence.ts`](../dimabot/src/utils/plan_cache_fence.ts) uses versioned Lua fencing across account/list/credit caches. A Rust shared logger core and optional Redis/OTEL adapters passed library verification, but are not connected to this class or TypeScript callers; see [shared-logger.md](shared-logger.md). The token utility itself documents that it does not install logger/debug-cache or refresh-all paths. Streamer metadata selection, mapping, and query behavior also remain class work; the credential utility is not a complete account repository.
 
 See the separate [cache and logger pre-port review](cache-logger-pre-port-review.md) for the wider billing-script protocol, logger sink findings, and optional utility recommendations. Those recommendations have not been selected for implementation.
 
@@ -51,7 +51,7 @@ The existing pacing has coordination and recovery purposes. The Rust token utili
 Resume the class port only after both prerequisites are available and reviewed:
 
 - [ ] Port and parity-check the plan-cache version fence, including account writes, aggregate list validation/publication, and billing credit reads/writes; preserve compatibility with TypeScript writers while they remain active.
-- [ ] Port the complete shared logger contract: console and channel-scoped cache destinations, seven-day TTL diagnostics, telemetry recording, OpenTelemetry emission, destination selection, and error behavior. Keep OAuth diagnostic wiring usable without exposing credentials.
+- [x] Verify and accept the opt-in shared logger core/adapters as library code; caller adoption remains separate. Keep OAuth diagnostic wiring usable without exposing credentials.
 - [ ] Inventory every TypeScript writer of Twitch account credentials, permissions, metadata, `twitch:accounts`, and `streamers:by:id`; coordinate mixed-writer compatibility before rollout.
 - [ ] Map current class methods and all callers. Keep metadata queries/mapping and plan-cache behavior in scope; use `StreamerIdentities` where its semantics match.
 - [ ] Add deterministic tests for stale Mongo snapshot vs. token rotation, revocation vs. aggregate cache, removed-account eviction, concurrent refresh coalescing, replacement-lock ownership, lease expiry during slow OAuth/retry, invalid/missing credentials, client acquisition retry, and mapper/error behavior.
