@@ -7,7 +7,8 @@
 //! Node's `jwt.verify(token, secret)` defaults: any HMAC algorithm, no clock
 //! tolerance, expired from the `exp` second onward, `nbf` honored, and `aud`
 //! ignored. One stricter rule: `exp` is required (every TypeScript token has
-//! it).
+//! it). `iat` is not required or validated during verification, matching Node
+//! when no maxAge option is supplied. Fractional NumericDate values are honored.
 //!
 //! Unlike TypeScript, there is no built-in fallback secret. TypeScript signs
 //! with a hard-coded development secret when `EMAIL_AUTH_JWT_SECRET` is unset;
@@ -21,6 +22,7 @@ use std::{
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Validation, crypto, decode};
 use serde::{Deserialize, Serialize};
+use serde_json::{Map, Value};
 
 /// `{"alg":"HS256","typ":"JWT"}` in Node's key order. jsonwebtoken's own
 /// `Header` serializes `typ` first, which is valid but not byte-identical.
@@ -38,6 +40,52 @@ pub struct ActivationClaims {
     pub login: String,
     pub iat: u64,
     pub exp: u64,
+}
+
+// Verification requires the accepted expiration claim, but does not inherit
+// the signing-only iat requirement. Flatten keeps absent nbf distinct from an
+// explicit null (Node rejects null, strings and other nonnumeric nbf values).
+#[derive(Deserialize)]
+struct VerificationClaims {
+    sub: String,
+    login: String,
+    exp: Value,
+    #[serde(flatten)]
+    extra: Map<String, Value>,
+}
+
+/// Explicitly initialized activation-token service. Configuration is read once
+/// and retained, equivalent to the source module's environment snapshot, with
+/// the accepted removal of its insecure development-secret fallback.
+#[derive(Clone)]
+pub struct ActivationTokenService {
+    secret: Vec<u8>,
+}
+impl fmt::Debug for ActivationTokenService {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("ActivationTokenService(<redacted>)")
+    }
+}
+impl ActivationTokenService {
+    pub fn from_env() -> Result<Self, MissingSecretError> {
+        Ok(Self {
+            secret: email_auth_secret()?.into_bytes(),
+        })
+    }
+    pub fn new(secret: &[u8]) -> Result<Self, MissingSecretError> {
+        if secret.is_empty() {
+            return Err(MissingSecretError);
+        }
+        Ok(Self {
+            secret: secret.to_vec(),
+        })
+    }
+    pub fn sign(&self, user_id: &str, login: &str) -> jsonwebtoken::errors::Result<String> {
+        sign_activation_token(&self.secret, user_id, login)
+    }
+    pub fn verify(&self, token: &str) -> Option<VerifiedActivation> {
+        verify_activation_token(&self.secret, token)
+    }
 }
 
 /// A successfully verified token, matching the TypeScript return value.
@@ -60,11 +108,12 @@ impl fmt::Display for MissingSecretError {
 
 impl std::error::Error for MissingSecretError {}
 
-/// Reads `EMAIL_AUTH_JWT_SECRET`; missing or blank values are an error.
+/// Reads `EMAIL_AUTH_JWT_SECRET`; missing/empty values are an error.
+/// Whitespace is a valid secret, matching the source truthiness check.
 pub fn email_auth_secret() -> Result<String, MissingSecretError> {
     env::var("EMAIL_AUTH_JWT_SECRET")
         .ok()
-        .filter(|secret| !secret.trim().is_empty())
+        .filter(|secret| !secret.is_empty())
         .ok_or(MissingSecretError)
 }
 
@@ -102,13 +151,33 @@ pub fn sign_activation_token_at(
 
 /// Verifies a token; returns `None` on any failure, like TypeScript.
 pub fn verify_activation_token(secret: &[u8], token: &str) -> Option<VerifiedActivation> {
+    verify_activation_token_at(secret, token, unix_now())
+}
+
+/// Deterministic verification clock, in seconds, for isolated parity checks.
+/// `exp` is required by the accepted native contract; `iat` remains optional.
+pub fn verify_activation_token_at(
+    secret: &[u8],
+    token: &str,
+    now: u64,
+) -> Option<VerifiedActivation> {
     if token.is_empty() {
         return None;
     }
     let claims =
-        decode::<ActivationClaims>(token, &DecodingKey::from_secret(secret), &validation())
+        decode::<VerificationClaims>(token, &DecodingKey::from_secret(secret), &validation())
             .ok()?
             .claims;
+    let expires = claims.exp.as_f64()?;
+    if !expires.is_finite() || now as f64 >= expires {
+        return None;
+    }
+    if let Some(not_before) = claims.extra.get("nbf") {
+        let not_before = not_before.as_f64()?;
+        if !not_before.is_finite() || not_before > now as f64 {
+            return None;
+        }
+    }
     Some(VerifiedActivation {
         user_id: claims.sub,
         login: claims.login,
@@ -119,9 +188,12 @@ fn validation() -> Validation {
     let mut validation = Validation::new(Algorithm::HS256);
     validation.algorithms = vec![Algorithm::HS256, Algorithm::HS384, Algorithm::HS512];
     validation.leeway = 0;
-    // Node treats `now >= exp` as expired; jsonwebtoken expires at `exp < now`.
-    validation.reject_tokens_expiring_in_less_than = 1;
-    validation.validate_nbf = true;
+    // The library accepts integer seconds while Node accepts fractional
+    // NumericDate. Signature/algorithm validation stays native; exact exp/nbf
+    // type and clock checks are performed once above, with Node boundaries.
+    validation.required_spec_claims.clear();
+    validation.validate_exp = false;
+    validation.validate_nbf = false;
     validation.validate_aud = false;
     validation
 }

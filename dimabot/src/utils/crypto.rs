@@ -1,4 +1,6 @@
-//! Legacy `dimabot/src/utils/crypto.ts` storage codec. Opt-in only; no env reads.
+//! Legacy `dimabot/src/utils/crypto.ts` storage codec. Opt-in and explicitly initialized.
+//! [`CredentialCipher::from_env`] snapshots `SECRET_KEY` at application startup;
+//! importing this module never reads process configuration.
 //!
 //! AES-256-CTR with a full 128-bit big-endian counter preserves existing Mongo
 //! envelopes. This format is unauthenticated, as in the source; it is not a new
@@ -61,6 +63,16 @@ impl fmt::Debug for CredentialCipher {
     }
 }
 impl CredentialCipher {
+    /// Read the source module's `SECRET_KEY` once at an explicit application
+    /// initialization boundary. Later environment changes do not affect this
+    /// cipher. Missing/empty, non-UTF8, and invalid-length keys return redacted
+    /// errors; invalid lengths retain the accepted eager-construction check.
+    pub fn from_env() -> Result<Self, CredentialCryptoError> {
+        let secret_key =
+            std::env::var("SECRET_KEY").map_err(|_| CredentialCryptoError::MissingKey)?;
+        Self::new(&secret_key)
+    }
+
     pub fn new(secret_key: &str) -> Result<Self, CredentialCryptoError> {
         if secret_key.is_empty() {
             return Err(CredentialCryptoError::MissingKey);
