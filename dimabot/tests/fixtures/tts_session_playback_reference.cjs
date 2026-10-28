@@ -90,6 +90,10 @@ function mpeg(version, layer, rateIndex, padding, count) {
  try {
   await session.enqueueTtsSession(client,channel,'a',2,JSON.stringify({speechID:'a'}));
   assert.equal((await session.popTtsSession(client,channel)).session,null);
+  await session.enqueueTtsSession(client,channel,'',1,'{}');
+  assert.equal(await session.popTtsSession(client,channel),null);
+  assert.equal(await client.zCard(prefix+'queue'),1);
+  await client.zRem(prefix+'queue','');
   await session.enqueueTtsSession(client,channel,'peeked',20,'{}');
   let crossed = false;
   const competing = {zRange: async (...args) => { const ids = await client.zRange(...args); if (!crossed) { crossed = true; await session.enqueueTtsSession(client,channel,'minimum',1,'{}'); } return ids; }, eval: client.eval.bind(client)};

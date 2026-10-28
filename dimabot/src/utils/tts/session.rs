@@ -88,7 +88,7 @@ impl TtsSession {
                 .arg(0)
                 .query_async(&mut cache)
                 .await?;
-            let Some(id) = ids.first() else {
+            let Some(id) = ids.first().filter(|id| !id.is_empty()) else {
                 return Ok(None);
             };
             let value: Vec<String> = Script::new(POP)

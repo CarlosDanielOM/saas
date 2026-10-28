@@ -78,6 +78,20 @@ async fn actual_lua_session_and_bounded_cleanup() {
         .await
         .unwrap();
     assert_eq!(adapter.pop(&channel).await.unwrap().unwrap().session, None);
+    adapter.enqueue(&channel, "", 1.0, "{}").await.unwrap();
+    assert!(adapter.pop(&channel).await.unwrap().is_none());
+    let count: i64 = redis::cmd("ZCARD")
+        .arg(format!("{prefix}queue"))
+        .query_async(&mut cache)
+        .await
+        .unwrap();
+    assert_eq!(count, 1);
+    let _: i64 = redis::cmd("ZREM")
+        .arg(format!("{prefix}queue"))
+        .arg("")
+        .query_async(&mut cache)
+        .await
+        .unwrap();
     for i in 0..260 {
         adapter
             .enqueue(&channel, &format!("{i}"), i as f64, "{}")
