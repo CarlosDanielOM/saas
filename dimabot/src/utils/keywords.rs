@@ -1,11 +1,11 @@
 //! Keyword validation, Unicode matching, and cache coordination, consolidated
 //! from `keywords.ts` and `keyword_cache.ts`. No connections are opened here.
 //!
-//! [`KeywordStorage`] is the integration boundary for MongoDB, Redis and Pub/Sub;
-//! its atomic operations are deliberately explicit. [`SharedKeywordLoader`]
-//! connects it to the local cache. Applications subscribe to [`KEYWORD_TOPIC`]
-//! and pass decoded events to [`apply_keyword_change`]; connection/subscription
-//! ownership belongs to the application, not this library.
+//! [`KeywordStorage`] defines explicit MongoDB, Redis and Pub/Sub operations;
+//! [`SharedKeywordLoader`] connects storage to the local cache. The opt-in
+//! `keyword-store` feature supplies real native adapters and an explicitly
+//! started, cancellable subscription in `native`. Applications may also own
+//! subscriptions themselves and pass events to [`apply_keyword_change`].
 //!
 //! Length means original UTF-16 code units, as in JS. NFC precedes lowercase;
 //! whitespace is the ECMAScript set (including BOM, excluding NEL). Word
@@ -26,6 +26,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::sync::watch;
 use unicode_normalization::UnicodeNormalization;
+
+#[cfg(feature = "keyword-store")]
+#[path = "keywords/native.rs"]
+pub mod native;
 
 pub const KEYWORD_TOPIC: &str = "keywords:changed";
 pub const SHARED_INDEX_TTL_SECONDS: u64 = 86_400;
@@ -343,6 +347,14 @@ impl<L: KeywordLoader> KeywordIndexCache<L> {
         state.order.retain(|id| id != channel_id);
         state.pending.remove(channel_id);
     }
+    /// Drop all completed and in-flight entries after a subscriber gap. A
+    /// reconnect cannot know which channel changes occurred while disconnected.
+    pub fn invalidate_all(&self) {
+        let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        state.entries.clear();
+        state.order.clear();
+        state.pending.clear();
+    }
     pub async fn get(&self, channel_id: &str) -> LoadResult<L::Error> {
         // Keep each original load's subscribers attached until its final result,
         // including a successor result after successful invalidation. This is
@@ -477,6 +489,12 @@ pub trait KeywordStorage: Send + Sync {
         channel_id: &'a str,
         id: &'a str,
     ) -> impl Future<Output = Result<Option<Value>, Self::Error>> + Send + 'a;
+    /// Mongoose document reads and their JSON cache representation can differ
+    /// (notably empty-object minimization). Native stores may preserve that
+    /// distinction without changing the returned uncached body.
+    fn serialize_body_for_cache(&self, body: &Value) -> Result<String, serde_json::Error> {
+        serde_json::to_string(body)
+    }
     /// Atomic [`SET_IF_REVISION_SCRIPT`], with missing revision treated as '0'.
     /// Return true only if publication succeeded at the expected revision.
     fn set_if_revision<'a>(
@@ -663,7 +681,9 @@ pub async fn get_keyword_body<S: KeywordStorage>(
         else {
             return Ok(None);
         };
-        let json = serde_json::to_string(&row).map_err(KeywordStorageError::Json)?;
+        let json = store
+            .serialize_body_for_cache(&row)
+            .map_err(KeywordStorageError::Json)?;
         if store
             .set_if_revision(&key, &rev_key, &revision, &json, BODY_TTL_SECONDS)
             .await

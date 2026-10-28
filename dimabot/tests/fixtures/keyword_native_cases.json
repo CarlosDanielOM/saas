@@ -1,0 +1,850 @@
+{
+  "schemaVersion": 1,
+  "now": 1700000000123,
+  "timeZone": "UTC",
+  "sources": {
+    "src/utils/availability/schema.ts": "98785af1992534d8d723cd429626d4da268aa8bf41023b3e12b01b2bdc4a2b26",
+    "src/schemas/commands.schema.ts": "1a6ed070b37a850b9d358a86b2f97ff0a5e6b977f41ac7b51f2b01e0d9bb7da3",
+    "src/utils/keywords.ts": "4a8038884f8d2f45dc8dc491bf05d98cd77f9371de1495cd96354868046c2f44",
+    "src/utils/keyword_cache.ts": "8b1713e6dd995c78029ca6105d847b9112d1f46616f71a8cddcb89a078a48e33"
+  },
+  "cases": [
+    {
+      "input": {
+        "_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "activation": "keyword",
+        "channelID": "channel",
+        "cmd": "Hello"
+      },
+      "uncached": {
+        "date": {
+          "day": 14,
+          "month": 11,
+          "year": 2023
+        },
+        "message": "",
+        "authoring": "text",
+        "responses": [],
+        "variables": {},
+        "type": "command",
+        "platform": "twitch",
+        "reserved": false,
+        "description": "No description provided.",
+        "cooldown": 20,
+        "count": 0,
+        "userLevelName": "everyone",
+        "userLevel": 0,
+        "permissionExpression": null,
+        "enabled": true,
+        "paused": false,
+        "premiumRequired": false,
+        "premiumLevelRequired": 0,
+        "_id": "0123456789abcdef01234567",
+        "activation": "keyword",
+        "channelID": "channel",
+        "cmd": "Hello",
+        "permissions": {},
+        "createdAt": "2023-11-14T22:13:20.123Z"
+      },
+      "cached": {
+        "date": {
+          "day": 14,
+          "month": 11,
+          "year": 2023
+        },
+        "message": "",
+        "authoring": "text",
+        "responses": [],
+        "variables": {},
+        "type": "command",
+        "platform": "twitch",
+        "reserved": false,
+        "description": "No description provided.",
+        "cooldown": 20,
+        "count": 0,
+        "userLevelName": "everyone",
+        "userLevel": 0,
+        "permissionExpression": null,
+        "enabled": true,
+        "paused": false,
+        "premiumRequired": false,
+        "premiumLevelRequired": 0,
+        "_id": "0123456789abcdef01234567",
+        "activation": "keyword",
+        "channelID": "channel",
+        "cmd": "Hello",
+        "createdAt": "2023-11-14T22:13:20.123Z"
+      }
+    },
+    {
+      "input": {
+        "_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "activation": "keyword",
+        "channelID": "channel",
+        "cmd": "Hello",
+        "keywordSettings": {}
+      },
+      "uncached": {
+        "date": {
+          "day": 14,
+          "month": 11,
+          "year": 2023
+        },
+        "message": "",
+        "authoring": "text",
+        "responses": [],
+        "variables": {},
+        "type": "command",
+        "platform": "twitch",
+        "reserved": false,
+        "description": "No description provided.",
+        "cooldown": 20,
+        "count": 0,
+        "userLevelName": "everyone",
+        "userLevel": 0,
+        "permissionExpression": null,
+        "enabled": true,
+        "paused": false,
+        "premiumRequired": false,
+        "premiumLevelRequired": 0,
+        "_id": "0123456789abcdef01234567",
+        "activation": "keyword",
+        "channelID": "channel",
+        "cmd": "Hello",
+        "keywordSettings": {
+          "matchMode": "start"
+        },
+        "permissions": {},
+        "createdAt": "2023-11-14T22:13:20.123Z"
+      },
+      "cached": {
+        "date": {
+          "day": 14,
+          "month": 11,
+          "year": 2023
+        },
+        "message": "",
+        "authoring": "text",
+        "responses": [],
+        "variables": {},
+        "type": "command",
+        "platform": "twitch",
+        "reserved": false,
+        "description": "No description provided.",
+        "cooldown": 20,
+        "count": 0,
+        "userLevelName": "everyone",
+        "userLevel": 0,
+        "permissionExpression": null,
+        "enabled": true,
+        "paused": false,
+        "premiumRequired": false,
+        "premiumLevelRequired": 0,
+        "_id": "0123456789abcdef01234567",
+        "activation": "keyword",
+        "channelID": "channel",
+        "cmd": "Hello",
+        "keywordSettings": {
+          "matchMode": "start"
+        },
+        "createdAt": "2023-11-14T22:13:20.123Z"
+      }
+    },
+    {
+      "input": {
+        "_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "activation": "keyword",
+        "channelID": "channel",
+        "cmd": "Hello",
+        "keywordSettings": {
+          "matchMode": null
+        },
+        "date": {
+          "day": null
+        }
+      },
+      "uncached": {
+        "date": {
+          "day": null,
+          "month": 11,
+          "year": 2023
+        },
+        "message": "",
+        "authoring": "text",
+        "responses": [],
+        "variables": {},
+        "type": "command",
+        "platform": "twitch",
+        "reserved": false,
+        "description": "No description provided.",
+        "cooldown": 20,
+        "count": 0,
+        "userLevelName": "everyone",
+        "userLevel": 0,
+        "permissionExpression": null,
+        "enabled": true,
+        "paused": false,
+        "premiumRequired": false,
+        "premiumLevelRequired": 0,
+        "_id": "0123456789abcdef01234567",
+        "activation": "keyword",
+        "channelID": "channel",
+        "cmd": "Hello",
+        "keywordSettings": {
+          "matchMode": null
+        },
+        "permissions": {},
+        "createdAt": "2023-11-14T22:13:20.123Z"
+      },
+      "cached": {
+        "date": {
+          "day": null,
+          "month": 11,
+          "year": 2023
+        },
+        "message": "",
+        "authoring": "text",
+        "responses": [],
+        "variables": {},
+        "type": "command",
+        "platform": "twitch",
+        "reserved": false,
+        "description": "No description provided.",
+        "cooldown": 20,
+        "count": 0,
+        "userLevelName": "everyone",
+        "userLevel": 0,
+        "permissionExpression": null,
+        "enabled": true,
+        "paused": false,
+        "premiumRequired": false,
+        "premiumLevelRequired": 0,
+        "_id": "0123456789abcdef01234567",
+        "activation": "keyword",
+        "channelID": "channel",
+        "cmd": "Hello",
+        "keywordSettings": {
+          "matchMode": null
+        },
+        "createdAt": "2023-11-14T22:13:20.123Z"
+      }
+    },
+    {
+      "input": {
+        "_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "activation": "keyword",
+        "channelID": "channel",
+        "cmd": "Hello",
+        "date": null,
+        "variables": null,
+        "permissions": null,
+        "createdAt": null
+      },
+      "uncached": {
+        "date": null,
+        "message": "",
+        "authoring": "text",
+        "responses": [],
+        "type": "command",
+        "platform": "twitch",
+        "reserved": false,
+        "description": "No description provided.",
+        "cooldown": 20,
+        "count": 0,
+        "userLevelName": "everyone",
+        "userLevel": 0,
+        "permissionExpression": null,
+        "enabled": true,
+        "paused": false,
+        "premiumRequired": false,
+        "premiumLevelRequired": 0,
+        "_id": "0123456789abcdef01234567",
+        "activation": "keyword",
+        "channelID": "channel",
+        "cmd": "Hello",
+        "variables": null,
+        "permissions": null,
+        "createdAt": null
+      },
+      "cached": {
+        "date": null,
+        "message": "",
+        "authoring": "text",
+        "responses": [],
+        "type": "command",
+        "platform": "twitch",
+        "reserved": false,
+        "description": "No description provided.",
+        "cooldown": 20,
+        "count": 0,
+        "userLevelName": "everyone",
+        "userLevel": 0,
+        "permissionExpression": null,
+        "enabled": true,
+        "paused": false,
+        "premiumRequired": false,
+        "premiumLevelRequired": 0,
+        "_id": "0123456789abcdef01234567",
+        "activation": "keyword",
+        "channelID": "channel",
+        "cmd": "Hello",
+        "variables": null,
+        "permissions": null,
+        "createdAt": null
+      }
+    },
+    {
+      "input": {
+        "_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "activation": "keyword",
+        "channelID": "channel",
+        "cmd": "Hello",
+        "enabled": false,
+        "paused": true,
+        "message": "Hi",
+        "count": 7,
+        "cooldown": 0,
+        "variables": {
+          "name": "Dima",
+          "amount": 42,
+          "flag": false,
+          "missing": null
+        },
+        "permissions": {
+          "moderator": true
+        }
+      },
+      "uncached": {
+        "date": {
+          "day": 14,
+          "month": 11,
+          "year": 2023
+        },
+        "authoring": "text",
+        "responses": [],
+        "type": "command",
+        "platform": "twitch",
+        "reserved": false,
+        "description": "No description provided.",
+        "userLevelName": "everyone",
+        "userLevel": 0,
+        "permissionExpression": null,
+        "premiumRequired": false,
+        "premiumLevelRequired": 0,
+        "_id": "0123456789abcdef01234567",
+        "activation": "keyword",
+        "channelID": "channel",
+        "cmd": "Hello",
+        "enabled": false,
+        "paused": true,
+        "message": "Hi",
+        "count": 7,
+        "cooldown": 0,
+        "variables": {
+          "name": "Dima",
+          "amount": "42",
+          "flag": "false",
+          "missing": null
+        },
+        "permissions": {
+          "moderator": true
+        },
+        "createdAt": "2023-11-14T22:13:20.123Z"
+      },
+      "cached": {
+        "date": {
+          "day": 14,
+          "month": 11,
+          "year": 2023
+        },
+        "authoring": "text",
+        "responses": [],
+        "type": "command",
+        "platform": "twitch",
+        "reserved": false,
+        "description": "No description provided.",
+        "userLevelName": "everyone",
+        "userLevel": 0,
+        "permissionExpression": null,
+        "premiumRequired": false,
+        "premiumLevelRequired": 0,
+        "_id": "0123456789abcdef01234567",
+        "activation": "keyword",
+        "channelID": "channel",
+        "cmd": "Hello",
+        "enabled": false,
+        "paused": true,
+        "message": "Hi",
+        "count": 7,
+        "cooldown": 0,
+        "variables": {
+          "name": "Dima",
+          "amount": "42",
+          "flag": "false",
+          "missing": null
+        },
+        "permissions": {
+          "moderator": true
+        },
+        "createdAt": "2023-11-14T22:13:20.123Z"
+      }
+    },
+    {
+      "input": {
+        "_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "activation": "keyword",
+        "channelID": "channel",
+        "cmd": "Hello",
+        "keywordSettings": {
+          "matchMode": "anywhere"
+        },
+        "responses": [
+          "a",
+          {},
+          {
+            "empty": {},
+            "keep": 1
+          }
+        ],
+        "permissionExpression": {},
+        "custom": {
+          "empty": {},
+          "present": [
+            {}
+          ]
+        },
+        "createdAt": {
+          "$date": "2024-01-02T03:04:05.000Z"
+        }
+      },
+      "uncached": {
+        "date": {
+          "day": 14,
+          "month": 11,
+          "year": 2023
+        },
+        "message": "",
+        "authoring": "text",
+        "variables": {},
+        "type": "command",
+        "platform": "twitch",
+        "reserved": false,
+        "description": "No description provided.",
+        "cooldown": 20,
+        "count": 0,
+        "userLevelName": "everyone",
+        "userLevel": 0,
+        "enabled": true,
+        "paused": false,
+        "premiumRequired": false,
+        "premiumLevelRequired": 0,
+        "_id": "0123456789abcdef01234567",
+        "activation": "keyword",
+        "channelID": "channel",
+        "cmd": "Hello",
+        "keywordSettings": {
+          "matchMode": "anywhere"
+        },
+        "responses": [
+          "a",
+          {},
+          {
+            "empty": {},
+            "keep": 1
+          }
+        ],
+        "permissionExpression": {},
+        "custom": {
+          "empty": {},
+          "present": [
+            {}
+          ]
+        },
+        "createdAt": "2024-01-02T03:04:05.000Z",
+        "permissions": {}
+      },
+      "cached": {
+        "date": {
+          "day": 14,
+          "month": 11,
+          "year": 2023
+        },
+        "message": "",
+        "authoring": "text",
+        "variables": {},
+        "type": "command",
+        "platform": "twitch",
+        "reserved": false,
+        "description": "No description provided.",
+        "cooldown": 20,
+        "count": 0,
+        "userLevelName": "everyone",
+        "userLevel": 0,
+        "enabled": true,
+        "paused": false,
+        "premiumRequired": false,
+        "premiumLevelRequired": 0,
+        "_id": "0123456789abcdef01234567",
+        "activation": "keyword",
+        "channelID": "channel",
+        "cmd": "Hello",
+        "keywordSettings": {
+          "matchMode": "anywhere"
+        },
+        "responses": [
+          "a",
+          {},
+          {
+            "keep": 1
+          }
+        ],
+        "custom": {
+          "present": [
+            {}
+          ]
+        },
+        "createdAt": "2024-01-02T03:04:05.000Z"
+      }
+    },
+    {
+      "input": {
+        "_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "activation": "keyword",
+        "channelID": "channel",
+        "cmd": "Hello",
+        "blocks": {
+          "version": 1,
+          "root": {}
+        },
+        "availability": {
+          "token": "hidden"
+        },
+        "availabilityLease": {
+          "token": "hidden"
+        }
+      },
+      "uncached": {
+        "date": {
+          "day": 14,
+          "month": 11,
+          "year": 2023
+        },
+        "message": "",
+        "authoring": "text",
+        "responses": [],
+        "variables": {},
+        "type": "command",
+        "platform": "twitch",
+        "reserved": false,
+        "description": "No description provided.",
+        "cooldown": 20,
+        "count": 0,
+        "userLevelName": "everyone",
+        "userLevel": 0,
+        "permissionExpression": null,
+        "enabled": true,
+        "paused": false,
+        "premiumRequired": false,
+        "premiumLevelRequired": 0,
+        "_id": "0123456789abcdef01234567",
+        "activation": "keyword",
+        "channelID": "channel",
+        "cmd": "Hello",
+        "permissions": {},
+        "createdAt": "2023-11-14T22:13:20.123Z"
+      },
+      "cached": {
+        "date": {
+          "day": 14,
+          "month": 11,
+          "year": 2023
+        },
+        "message": "",
+        "authoring": "text",
+        "responses": [],
+        "variables": {},
+        "type": "command",
+        "platform": "twitch",
+        "reserved": false,
+        "description": "No description provided.",
+        "cooldown": 20,
+        "count": 0,
+        "userLevelName": "everyone",
+        "userLevel": 0,
+        "permissionExpression": null,
+        "enabled": true,
+        "paused": false,
+        "premiumRequired": false,
+        "premiumLevelRequired": 0,
+        "_id": "0123456789abcdef01234567",
+        "activation": "keyword",
+        "channelID": "channel",
+        "cmd": "Hello",
+        "createdAt": "2023-11-14T22:13:20.123Z"
+      }
+    },
+    {
+      "input": {
+        "_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "activation": "keyword",
+        "channelID": "channel",
+        "cmd": "Hello",
+        "permissionExpression": {
+          "op": "tag",
+          "tag": "vip"
+        },
+        "date": {
+          "month": 6
+        },
+        "createdAt": {
+          "$date": "1969-12-31T23:59:59.999Z"
+        }
+      },
+      "uncached": {
+        "date": {
+          "month": 6,
+          "day": 14,
+          "year": 2023
+        },
+        "message": "",
+        "authoring": "text",
+        "responses": [],
+        "variables": {},
+        "type": "command",
+        "platform": "twitch",
+        "reserved": false,
+        "description": "No description provided.",
+        "cooldown": 20,
+        "count": 0,
+        "userLevelName": "everyone",
+        "userLevel": 0,
+        "enabled": true,
+        "paused": false,
+        "premiumRequired": false,
+        "premiumLevelRequired": 0,
+        "_id": "0123456789abcdef01234567",
+        "activation": "keyword",
+        "channelID": "channel",
+        "cmd": "Hello",
+        "permissionExpression": {
+          "op": "tag",
+          "tag": "vip"
+        },
+        "createdAt": "1969-12-31T23:59:59.999Z",
+        "permissions": {}
+      },
+      "cached": {
+        "date": {
+          "month": 6,
+          "day": 14,
+          "year": 2023
+        },
+        "message": "",
+        "authoring": "text",
+        "responses": [],
+        "variables": {},
+        "type": "command",
+        "platform": "twitch",
+        "reserved": false,
+        "description": "No description provided.",
+        "cooldown": 20,
+        "count": 0,
+        "userLevelName": "everyone",
+        "userLevel": 0,
+        "enabled": true,
+        "paused": false,
+        "premiumRequired": false,
+        "premiumLevelRequired": 0,
+        "_id": "0123456789abcdef01234567",
+        "activation": "keyword",
+        "channelID": "channel",
+        "cmd": "Hello",
+        "permissionExpression": {
+          "op": "tag",
+          "tag": "vip"
+        },
+        "createdAt": "1969-12-31T23:59:59.999Z"
+      }
+    },
+    {
+      "input": {
+        "_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "activation": "keyword",
+        "channelID": "channel",
+        "cmd": "Hello",
+        "variables": {},
+        "permissions": {},
+        "keywordSettings": null,
+        "responses": [],
+        "unknown": {}
+      },
+      "uncached": {
+        "date": {
+          "day": 14,
+          "month": 11,
+          "year": 2023
+        },
+        "message": "",
+        "authoring": "text",
+        "type": "command",
+        "platform": "twitch",
+        "reserved": false,
+        "description": "No description provided.",
+        "cooldown": 20,
+        "count": 0,
+        "userLevelName": "everyone",
+        "userLevel": 0,
+        "permissionExpression": null,
+        "enabled": true,
+        "paused": false,
+        "premiumRequired": false,
+        "premiumLevelRequired": 0,
+        "_id": "0123456789abcdef01234567",
+        "activation": "keyword",
+        "channelID": "channel",
+        "cmd": "Hello",
+        "variables": {},
+        "permissions": {},
+        "keywordSettings": null,
+        "responses": [],
+        "unknown": {},
+        "createdAt": "2023-11-14T22:13:20.123Z"
+      },
+      "cached": {
+        "date": {
+          "day": 14,
+          "month": 11,
+          "year": 2023
+        },
+        "message": "",
+        "authoring": "text",
+        "type": "command",
+        "platform": "twitch",
+        "reserved": false,
+        "description": "No description provided.",
+        "cooldown": 20,
+        "count": 0,
+        "userLevelName": "everyone",
+        "userLevel": 0,
+        "permissionExpression": null,
+        "enabled": true,
+        "paused": false,
+        "premiumRequired": false,
+        "premiumLevelRequired": 0,
+        "_id": "0123456789abcdef01234567",
+        "activation": "keyword",
+        "channelID": "channel",
+        "cmd": "Hello",
+        "variables": {},
+        "keywordSettings": null,
+        "responses": [],
+        "createdAt": "2023-11-14T22:13:20.123Z"
+      }
+    },
+    {
+      "input": {
+        "_id": {
+          "$oid": "0123456789abcdef01234567"
+        },
+        "activation": "keyword",
+        "channelID": "channel",
+        "cmd": "Hello",
+        "unknownId": {
+          "$oid": "fedcba987654321001234567"
+        },
+        "unknownDate": {
+          "$date": "2024-12-31T23:59:59.123Z"
+        },
+        "unknownBinary": {
+          "$binary": {
+            "base64": "AAEC/w==",
+            "subType": "00"
+          }
+        }
+      },
+      "uncached": {
+        "date": {
+          "day": 14,
+          "month": 11,
+          "year": 2023
+        },
+        "message": "",
+        "authoring": "text",
+        "responses": [],
+        "variables": {},
+        "type": "command",
+        "platform": "twitch",
+        "reserved": false,
+        "description": "No description provided.",
+        "cooldown": 20,
+        "count": 0,
+        "userLevelName": "everyone",
+        "userLevel": 0,
+        "permissionExpression": null,
+        "enabled": true,
+        "paused": false,
+        "premiumRequired": false,
+        "premiumLevelRequired": 0,
+        "_id": "0123456789abcdef01234567",
+        "activation": "keyword",
+        "channelID": "channel",
+        "cmd": "Hello",
+        "unknownId": "fedcba987654321001234567",
+        "unknownDate": "2024-12-31T23:59:59.123Z",
+        "unknownBinary": "AAEC/w==",
+        "permissions": {},
+        "createdAt": "2023-11-14T22:13:20.123Z"
+      },
+      "cached": {
+        "date": {
+          "day": 14,
+          "month": 11,
+          "year": 2023
+        },
+        "message": "",
+        "authoring": "text",
+        "responses": [],
+        "variables": {},
+        "type": "command",
+        "platform": "twitch",
+        "reserved": false,
+        "description": "No description provided.",
+        "cooldown": 20,
+        "count": 0,
+        "userLevelName": "everyone",
+        "userLevel": 0,
+        "permissionExpression": null,
+        "enabled": true,
+        "paused": false,
+        "premiumRequired": false,
+        "premiumLevelRequired": 0,
+        "_id": "0123456789abcdef01234567",
+        "activation": "keyword",
+        "channelID": "channel",
+        "cmd": "Hello",
+        "unknownId": "fedcba987654321001234567",
+        "unknownDate": "2024-12-31T23:59:59.123Z",
+        "unknownBinary": "AAEC/w==",
+        "createdAt": "2023-11-14T22:13:20.123Z"
+      }
+    }
+  ]
+}
