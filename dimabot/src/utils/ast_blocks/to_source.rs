@@ -13,6 +13,7 @@ const MAX_OUTPUT_BYTES: usize = MAX_COMMAND_TEXT * 3;
 /// of relying on String's automatic geometric growth.
 pub(crate) struct Writer<'a> {
     text: String,
+    bounded: bool,
     pub units: usize,
     pub retained: usize,
     culprit: Option<BlocksError>,
@@ -23,6 +24,7 @@ impl<'a> Writer<'a> {
     pub(crate) fn new(rules: &'a Rules) -> Self {
         Self {
             text: String::new(),
+            bounded: true,
             units: 0,
             retained: 0,
             culprit: None,
@@ -30,12 +32,21 @@ impl<'a> Writer<'a> {
             contributions: None,
         }
     }
+    fn standalone(rules: &'a Rules) -> Self {
+        let mut writer = Self::new(rules);
+        writer.bounded = false;
+        writer
+    }
     pub(crate) fn with_contributions(rules: &'a Rules, sources: usize) -> Self {
         let mut writer = Self::new(rules);
         writer.contributions = Some(vec![0; sources]);
         writer
     }
     fn retain(&mut self, s: &str) {
+        if !self.bounded {
+            self.text.push_str(s);
+            return;
+        }
         let required = self.text.len() + s.len();
         debug_assert!(required <= MAX_OUTPUT_BYTES);
         if required > self.text.capacity() {
@@ -62,6 +73,12 @@ impl<'a> Writer<'a> {
         field: Option<&str>,
         literal: Option<(usize, bool)>,
     ) {
+        // Standalone exported writers return text only: no output cap,
+        // provenance, contribution accounting or UTF16 error budget applies.
+        if !self.bounded {
+            self.text.push_str(s);
+            return;
+        }
         let added = units(s);
         let remaining = MAX_COMMAND_TEXT.saturating_sub(self.units);
         self.units = self.units.saturating_add(added);
@@ -74,7 +91,7 @@ impl<'a> Writer<'a> {
             }
         }
         if self.culprit.is_none() {
-            if self.units <= MAX_COMMAND_TEXT {
+            if !self.bounded || self.units <= MAX_COMMAND_TEXT {
                 self.retain(s);
                 self.retained = self.units;
             } else if let Some((start, direct)) = literal {
@@ -329,7 +346,25 @@ impl<'a> Writer<'a> {
                     None,
                 );
                 self.target(name, *storage, user_selector, n)?;
-                self.accessor(accessor, n)?;
+                let allowed = if matches!(&n.kind, DeleteVar { .. }) {
+                    matches!(
+                        accessor,
+                        Some(BlockAccessor::Clear | BlockAccessor::Remove { .. })
+                    )
+                } else {
+                    matches!(
+                        accessor,
+                        Some(
+                            BlockAccessor::Array
+                                | BlockAccessor::Random
+                                | BlockAccessor::Length
+                                | BlockAccessor::Index { .. }
+                        )
+                    )
+                };
+                if allowed {
+                    self.accessor(accessor, n)?;
+                }
                 self.append(")", n, None);
             }
             SetVar {
@@ -341,7 +376,12 @@ impl<'a> Writer<'a> {
             } => {
                 self.append("%(", n, None);
                 self.target(name, *storage, user_selector, n)?;
-                self.accessor(accessor, n)?;
+                if matches!(
+                    accessor,
+                    Some(BlockAccessor::Append | BlockAccessor::SetIndex { .. })
+                ) {
+                    self.accessor(accessor, n)?;
+                }
                 self.append(" ", n, None);
                 self.seq(value)?;
                 self.append(")", n, None);
@@ -355,7 +395,17 @@ impl<'a> Writer<'a> {
                     self.expr(item)?;
                 }
                 self.append("]", n, None);
-                self.accessor(accessor, n)?;
+                if matches!(
+                    accessor,
+                    Some(
+                        BlockAccessor::Array
+                            | BlockAccessor::Random
+                            | BlockAccessor::Length
+                            | BlockAccessor::Index { .. }
+                    )
+                ) {
+                    self.accessor(accessor, n)?;
+                }
             }
             Template { parts } => {
                 self.append("\"", n, None);
@@ -384,13 +434,37 @@ impl<'a> Writer<'a> {
                     self.append("#", n, Some("loopVar"));
                     self.append(loop_var, n, Some("loopVar"));
                     self.append(" in ", n, None);
-                    self.expr(iterable.as_ref().expect("validated foreach iterable"))?;
+                    self.expr(iterable.as_ref().ok_or_else(|| {
+                        n.error(
+                            BlocksErrorCode::MissingField,
+                            "Fill in the repeat.",
+                            Some("iterable"),
+                        )
+                    })?)?;
                 } else {
-                    self.expr(init.as_ref().expect("validated loop init"))?;
+                    self.expr(init.as_ref().ok_or_else(|| {
+                        n.error(
+                            BlocksErrorCode::MissingField,
+                            "Fill in the repeat.",
+                            Some("init"),
+                        )
+                    })?)?;
                     self.append("; ", n, None);
-                    self.expr(condition.as_ref().expect("validated loop condition"))?;
+                    self.expr(condition.as_ref().ok_or_else(|| {
+                        n.error(
+                            BlocksErrorCode::MissingField,
+                            "Fill in the repeat.",
+                            Some("condition"),
+                        )
+                    })?)?;
                     self.append("; ", n, None);
-                    self.expr(update.as_ref().expect("validated loop update"))?;
+                    self.expr(update.as_ref().ok_or_else(|| {
+                        n.error(
+                            BlocksErrorCode::MissingField,
+                            "Fill in the repeat.",
+                            Some("update"),
+                        )
+                    })?)?;
                 }
                 self.append(" { ", n, None);
                 self.sequence(body, n, " ")?;
@@ -501,6 +575,48 @@ impl<'a> Writer<'a> {
         }
         Ok(self.text)
     }
+}
+
+/// Serialize an already normalized root without parsing or normalizing again.
+/// Like the original standalone writer this imposes no command-output ceiling;
+/// `compile_blocks` remains the bounded application validation boundary.
+pub fn root_to_source(root: &BlockRoot) -> Result<String, BlocksError> {
+    let mut writer = Writer::standalone(super::validate::rules());
+    writer.root(root)?;
+    writer.finish(&mut BlocksStats::default())
+}
+
+/// Serialize one expression in the top-level command context.
+pub fn top_level(node: &BlockNode) -> Result<String, BlocksError> {
+    let mut writer = Writer::standalone(super::validate::rules());
+    writer.top(node)?;
+    writer.finish(&mut BlocksStats::default())
+}
+
+/// Protect each command-syntax start inside plain chat text.
+pub fn escape_chat_text(text: &str) -> String {
+    let node = BlockNode::new(
+        "",
+        BlockKind::Literal {
+            value: String::new(),
+        },
+    );
+    let mut writer = Writer::standalone(super::validate::rules());
+    writer.chat(text, &node);
+    writer.text
+}
+
+/// Render one expression literal, quoting syntax words and unsafe text.
+pub fn literal(value: &str) -> String {
+    let node = BlockNode::new(
+        "",
+        BlockKind::Literal {
+            value: String::new(),
+        },
+    );
+    let mut writer = Writer::standalone(super::validate::rules());
+    writer.literal(value, &node);
+    writer.text
 }
 
 #[cfg(test)]

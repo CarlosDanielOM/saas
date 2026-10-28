@@ -23,8 +23,12 @@ mod validate;
 mod writer;
 
 pub use crate::utils::ast_syntax::SyntaxProfile;
-pub use normalize::{normalize_root, normalize_value, structural_eq, structural_eq_root};
+pub use from_ast::{UnsupportedSyntax, ast_to_block, id_maker, id_maker_with_prefix};
+pub use normalize::{
+    block_shape, normalize_root, normalize_value, structural_eq, structural_eq_root,
+};
 pub use types::*;
+pub use writer::{escape_chat_text, literal, root_to_source, top_level};
 
 use crate::utils::ast_syntax::{
     AstNode, CompiledProgram, Diagnostic, DiagnosticCode, Limits, PreparedGrammar, SourceSegment,
@@ -351,7 +355,7 @@ impl<'a> Operation<'a> {
             return Ok(None);
         }
         let materializing = factory.is_some();
-        let mut converter = Materializer {
+        let mut converter = Materializer::<false> {
             rules: rules(),
             next_id: factory,
             nodes: 0,

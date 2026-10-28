@@ -1,5 +1,33 @@
 use super::types::*;
 
+/// Canonical JSON for a block or root, with every editor `id` removed and
+/// stable field order. Internal equality continues to compare native trees
+/// directly, avoiding serialization and its allocations.
+///
+/// Block/root fields contain only ASCII property names, strings and children;
+/// Serde's sorted JSON maps therefore match the source's key ordering.
+pub fn block_shape<T: serde::Serialize + ?Sized>(node: &T) -> serde_json::Result<String> {
+    fn without_ids(value: &mut serde_json::Value) {
+        match value {
+            serde_json::Value::Object(object) => {
+                object.remove("id");
+                for child in object.values_mut() {
+                    without_ids(child);
+                }
+            }
+            serde_json::Value::Array(children) => {
+                for child in children {
+                    without_ids(child);
+                }
+            }
+            _ => {}
+        }
+    }
+    let mut value = serde_json::to_value(node)?;
+    without_ids(&mut value);
+    serde_json::to_string(&value)
+}
+
 pub fn structural_eq(left: &BlockNode, right: &BlockNode) -> bool {
     left.kind == right.kind
 }
