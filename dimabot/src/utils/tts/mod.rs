@@ -1,5 +1,6 @@
 //! TTS text policies, session queues, and bounded audio-file helpers.
 
+pub mod credit_fallback;
 pub mod playback_timeout;
 #[cfg(feature = "redis")]
 pub mod session;
@@ -229,20 +230,24 @@ pub enum TtsProvider {
 }
 const JS_WS: &str = r"[\x09-\x0d\x20\x{00a0}\x{1680}\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}\x{feff}]";
 
+fn expressive_tag_regex() -> &'static Regex {
+    static TAGS: OnceLock<Regex> = OnceLock::new();
+    TAGS.get_or_init(|| {
+        Regex::new(&format!(
+            r"<{JS_WS}*(/?){JS_WS}*((?i-u:[a-z][a-z -]*?)){JS_WS}*>|\[([^\[\]]*)\]"
+        ))
+        .unwrap()
+    })
+}
+
 pub fn filter_expressive_tts_tags(
     text: &str,
     provider: TtsProvider,
     enabled: Option<&BTreeMap<String, bool>>,
 ) -> String {
-    static TAGS: OnceLock<Regex> = OnceLock::new();
     static HYPHEN: OnceLock<Regex> = OnceLock::new();
     static SPACES: OnceLock<Regex> = OnceLock::new();
-    let tags = TAGS.get_or_init(|| {
-        Regex::new(&format!(
-            r"<{JS_WS}*(/?){JS_WS}*((?i-u:[a-z][a-z -]*?)){JS_WS}*>|\[([^\[\]]*)\]"
-        ))
-        .unwrap()
-    });
+    let tags = expressive_tag_regex();
     let hyphen = HYPHEN.get_or_init(|| Regex::new(&format!(r"{JS_WS}*-{JS_WS}*")).unwrap());
     let replaced = tags.replace_all(text, |captures: &regex::Captures<'_>| {
         let angle = captures.get(2);
@@ -391,6 +396,12 @@ pub fn generate_speech_id(length: usize) -> String {
     output
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TtsMode {
+    Speak,
+    Ai,
+    Clone,
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TtsLanguage {
     En,

@@ -57,6 +57,7 @@ pub mod js_compat;
 pub mod json_number;
 
 pub mod links;
+pub mod tts_defaults;
 
 #[cfg(feature = "tts-services")]
 #[path = "ai/openrouter/app_attribution.util.rs"]

@@ -1,16 +1,10 @@
+pub use crate::utils::tts::TtsMode;
 use crate::utils::{
     js_string::JsString,
     tts::{TtsLanguage, TtsProvider},
 };
 use std::path::PathBuf;
 use tokio::sync::watch;
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum TtsMode {
-    Speak,
-    Ai,
-    Clone,
-}
 
 #[derive(Clone, Debug)]
 pub struct TtsSynthesisRequest {
