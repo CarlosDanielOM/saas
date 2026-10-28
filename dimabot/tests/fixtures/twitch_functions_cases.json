@@ -1,0 +1,6169 @@
+{
+  "sources": {
+    "functions/polls/get.poll.ts": "ef21080c80a26443639d729be750949b0df4de36bc67d69ea0f2589d513f608d",
+    "functions/polls/create.poll.ts": "292acb065f3b2eb495c0ca7c404fab2c35daff92eccb8435166d17da29421c3d",
+    "functions/polls/end.poll.ts": "3db9bfc40d9a175820ec95eee3aa43825b2a06aa4b7b2fe338453d614eb2f583",
+    "functions/predictions/get.prediction.ts": "f973cad1ef8787fc52205c86dbaae4378509a6f4e55a99266b56f592e5406608",
+    "functions/predictions/create.prediction.ts": "2cc377b0e6a931f2549f0e7ac991cfd913a8c90874d261ed1a9604c17d4f2625",
+    "functions/predictions/end.prediction.ts": "3417b245f7d357bd86b2b881bd9b0f0ad51f955385e45f9d57c09958a1cc9d1b",
+    "functions/moderation/ban.moderation.ts": "f3c26763b1beff620591647b5c08a9e8c316074cd5158d21f199f8934e3450d9",
+    "functions/moderation/warn.moderation.ts": "5cb166e278852de803ec7ed544ff2e233a06d96e0cd787bda2d9ac2c62da6cad",
+    "functions/moderation/get_moderators.moderation.ts": "5e5fee0499b7f3c6290a400f647fa5f820f4a7f251382be5c92d3d7ffc0ec1dd",
+    "functions/moderation/moderator_helpers.moderation.ts": "70278a8ca709e0e8e9c629bf6a71e1800fe7da4e44a5475012dddf09f97b30b7",
+    "functions/moderation/execute_action.moderation.ts": "c18ab2b848a7396630f7c2684ab7aff0cf6b188181fe195f49699ac315375ac9",
+    "functions/chats/delete_message.chat.ts": "5b105c9814efab2f1ca0863f14cd8516378bab98933a5dbdf89b2cc2d9c89878",
+    "functions/chats/send_message.chat.ts": "3b5f93b525902d21675c6bf922f3a86b4e2150020b03a1c469ffbc87b54b9639"
+  },
+  "cases": [
+    {
+      "name": "poll-active-selection",
+      "operation": "get_poll",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "response": {
+          "data": [
+            {
+              "id": "old",
+              "title": "Poll old",
+              "choices": [
+                {
+                  "id": "a",
+                  "title": "One",
+                  "votes": 3,
+                  "channel_points_votes": 2
+                },
+                {
+                  "id": "b",
+                  "title": "Two",
+                  "votes": 1
+                }
+              ],
+              "broadcaster_id": "channel",
+              "broadcaster_login": "cdom201",
+              "status": "ARCHIVED"
+            },
+            {
+              "id": "current",
+              "title": "Poll current",
+              "choices": [
+                {
+                  "id": "a",
+                  "title": "One",
+                  "votes": 3,
+                  "channel_points_votes": 2
+                },
+                {
+                  "id": "b",
+                  "title": "Two",
+                  "votes": 1
+                }
+              ],
+              "broadcaster_id": "channel",
+              "broadcaster_login": "cdom201",
+              "status": "ACTIVE"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "result": {
+          "error": false,
+          "message": "Success",
+          "data": {
+            "id": "current",
+            "title": "Poll current",
+            "choices": [
+              {
+                "id": "a",
+                "title": "One",
+                "votes": 3,
+                "channelPointsVotes": 2
+              },
+              {
+                "id": "b",
+                "title": "Two",
+                "votes": 1,
+                "channelPointsVotes": 0
+              }
+            ],
+            "channelID": "channel",
+            "channel": "cdom201",
+            "status": "ACTIVE"
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/polls?broadcaster_id=channel",
+            "authorization": "Bearer fixture-streamer",
+            "body": null
+          }
+        ],
+        "commands": [],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "poll-explicit-id",
+      "operation": "get_poll",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": "old",
+        "status": "ARCHIVED",
+        "response": {
+          "data": [
+            {
+              "id": "old",
+              "title": "Poll old",
+              "choices": [
+                {
+                  "id": "a",
+                  "title": "One",
+                  "votes": 3,
+                  "channel_points_votes": 2
+                },
+                {
+                  "id": "b",
+                  "title": "Two",
+                  "votes": 1
+                }
+              ],
+              "broadcaster_id": "channel",
+              "broadcaster_login": "cdom201",
+              "status": "ARCHIVED"
+            },
+            {
+              "id": "current",
+              "title": "Poll current",
+              "choices": [
+                {
+                  "id": "a",
+                  "title": "One",
+                  "votes": 3,
+                  "channel_points_votes": 2
+                },
+                {
+                  "id": "b",
+                  "title": "Two",
+                  "votes": 1
+                }
+              ],
+              "broadcaster_id": "channel",
+              "broadcaster_login": "cdom201",
+              "status": "ACTIVE"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "result": {
+          "error": false,
+          "message": "Success",
+          "data": {
+            "id": "old",
+            "title": "Poll old",
+            "choices": [
+              {
+                "id": "a",
+                "title": "One",
+                "votes": 3,
+                "channelPointsVotes": 2
+              },
+              {
+                "id": "b",
+                "title": "Two",
+                "votes": 1,
+                "channelPointsVotes": 0
+              }
+            ],
+            "channelID": "channel",
+            "channel": "cdom201",
+            "status": "ARCHIVED"
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/polls?broadcaster_id=channel&id=old",
+            "authorization": "Bearer fixture-streamer",
+            "body": null
+          }
+        ],
+        "commands": [],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "poll-empty",
+      "operation": "get_poll",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "response": {
+          "data": []
+        }
+      },
+      "expected": {
+        "result": {
+          "error": true,
+          "message": "Poll not found",
+          "status": 200,
+          "type": "not_found"
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/polls?broadcaster_id=channel",
+            "authorization": "Bearer fixture-streamer",
+            "body": null
+          }
+        ],
+        "commands": [],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "poll-404",
+      "operation": "get_poll",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "httpStatus": 404,
+        "response": {
+          "data": [
+            {
+              "id": "old",
+              "title": "Poll old",
+              "choices": [
+                {
+                  "id": "a",
+                  "title": "One",
+                  "votes": 3,
+                  "channel_points_votes": 2
+                },
+                {
+                  "id": "b",
+                  "title": "Two",
+                  "votes": 1
+                }
+              ],
+              "broadcaster_id": "channel",
+              "broadcaster_login": "cdom201",
+              "status": "ARCHIVED"
+            },
+            {
+              "id": "current",
+              "title": "Poll current",
+              "choices": [
+                {
+                  "id": "a",
+                  "title": "One",
+                  "votes": 3,
+                  "channel_points_votes": 2
+                },
+                {
+                  "id": "b",
+                  "title": "Two",
+                  "votes": 1
+                }
+              ],
+              "broadcaster_id": "channel",
+              "broadcaster_login": "cdom201",
+              "status": "ACTIVE"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "result": {
+          "error": true,
+          "message": "Poll not found",
+          "status": 404,
+          "type": "not_found"
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/polls?broadcaster_id=channel",
+            "authorization": "Bearer fixture-streamer",
+            "body": null
+          }
+        ],
+        "commands": [],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "poll-provider-error",
+      "operation": "get_poll",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "httpStatus": 403,
+        "response": {
+          "error": "Forbidden",
+          "message": "fixture denied",
+          "status": 403
+        }
+      },
+      "expected": {
+        "result": {
+          "error": true,
+          "message": "fixture denied",
+          "status": 403,
+          "type": "Forbidden"
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/polls?broadcaster_id=channel",
+            "authorization": "Bearer fixture-streamer",
+            "body": null
+          }
+        ],
+        "commands": [],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "poll-cache-hit",
+      "operation": "get_poll",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": true,
+        "id": null,
+        "status": "ARCHIVED",
+        "initial": {
+          "twitch:channel:polls": {
+            "fixture": "cached"
+          }
+        },
+        "authError": "unused"
+      },
+      "expected": {
+        "result": {
+          "error": false,
+          "message": "Success (from cache)",
+          "data": {
+            "fixture": "cached"
+          }
+        },
+        "requests": [],
+        "commands": [
+          [
+            "get",
+            "twitch:channel:polls"
+          ]
+        ],
+        "auth": []
+      }
+    },
+    {
+      "name": "poll-cache-write",
+      "operation": "get_poll",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": true,
+        "id": null,
+        "status": "ARCHIVED",
+        "response": {
+          "data": [
+            {
+              "id": "old",
+              "title": "Poll old",
+              "choices": [
+                {
+                  "id": "a",
+                  "title": "One",
+                  "votes": 3,
+                  "channel_points_votes": 2
+                },
+                {
+                  "id": "b",
+                  "title": "Two",
+                  "votes": 1
+                }
+              ],
+              "broadcaster_id": "channel",
+              "broadcaster_login": "cdom201",
+              "status": "ARCHIVED"
+            },
+            {
+              "id": "current",
+              "title": "Poll current",
+              "choices": [
+                {
+                  "id": "a",
+                  "title": "One",
+                  "votes": 3,
+                  "channel_points_votes": 2
+                },
+                {
+                  "id": "b",
+                  "title": "Two",
+                  "votes": 1
+                }
+              ],
+              "broadcaster_id": "channel",
+              "broadcaster_login": "cdom201",
+              "status": "ACTIVE"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "result": {
+          "error": false,
+          "message": "Success",
+          "data": {
+            "id": "current",
+            "title": "Poll current",
+            "choices": [
+              {
+                "id": "a",
+                "title": "One",
+                "votes": 3,
+                "channelPointsVotes": 2
+              },
+              {
+                "id": "b",
+                "title": "Two",
+                "votes": 1,
+                "channelPointsVotes": 0
+              }
+            ],
+            "channelID": "channel",
+            "channel": "cdom201",
+            "status": "ACTIVE"
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/polls?broadcaster_id=channel",
+            "authorization": "Bearer fixture-streamer",
+            "body": null
+          }
+        ],
+        "commands": [
+          [
+            "get",
+            "twitch:channel:polls"
+          ],
+          [
+            "set",
+            "twitch:channel:polls",
+            {
+              "id": "current",
+              "title": "Poll current",
+              "choices": [
+                {
+                  "id": "a",
+                  "title": "One",
+                  "votes": 3,
+                  "channelPointsVotes": 2
+                },
+                {
+                  "id": "b",
+                  "title": "Two",
+                  "votes": 1,
+                  "channelPointsVotes": 0
+                }
+              ],
+              "channelID": "channel",
+              "channel": "cdom201",
+              "status": "ACTIVE"
+            },
+            null
+          ]
+        ],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "poll-cache-unavailable",
+      "operation": "get_poll",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": true,
+        "id": null,
+        "status": "ARCHIVED",
+        "cacheError": true
+      },
+      "expected": {
+        "result": {
+          "error": true,
+          "message": "Internal server error"
+        },
+        "requests": [],
+        "commands": [],
+        "auth": []
+      }
+    },
+    {
+      "name": "poll-uncached-no-cache-dependency",
+      "operation": "get_poll",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "cacheError": true,
+        "response": {
+          "data": [
+            {
+              "id": "old",
+              "title": "Poll old",
+              "choices": [
+                {
+                  "id": "a",
+                  "title": "One",
+                  "votes": 3,
+                  "channel_points_votes": 2
+                },
+                {
+                  "id": "b",
+                  "title": "Two",
+                  "votes": 1
+                }
+              ],
+              "broadcaster_id": "channel",
+              "broadcaster_login": "cdom201",
+              "status": "ARCHIVED"
+            },
+            {
+              "id": "current",
+              "title": "Poll current",
+              "choices": [
+                {
+                  "id": "a",
+                  "title": "One",
+                  "votes": 3,
+                  "channel_points_votes": 2
+                },
+                {
+                  "id": "b",
+                  "title": "Two",
+                  "votes": 1
+                }
+              ],
+              "broadcaster_id": "channel",
+              "broadcaster_login": "cdom201",
+              "status": "ACTIVE"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "result": {
+          "error": false,
+          "message": "Success",
+          "data": {
+            "id": "current",
+            "title": "Poll current",
+            "choices": [
+              {
+                "id": "a",
+                "title": "One",
+                "votes": 3,
+                "channelPointsVotes": 2
+              },
+              {
+                "id": "b",
+                "title": "Two",
+                "votes": 1,
+                "channelPointsVotes": 0
+              }
+            ],
+            "channelID": "channel",
+            "channel": "cdom201",
+            "status": "ACTIVE"
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/polls?broadcaster_id=channel",
+            "authorization": "Bearer fixture-streamer",
+            "body": null
+          }
+        ],
+        "commands": [],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "poll-invalid-json",
+      "operation": "get_poll",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "rawResponse": "broken"
+      },
+      "expected": {
+        "result": {
+          "error": true,
+          "message": "Internal server error"
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/polls?broadcaster_id=channel",
+            "authorization": "Bearer fixture-streamer",
+            "body": null
+          }
+        ],
+        "commands": [],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "poll-auth-denied",
+      "operation": "get_poll",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "authError": "fixture permissions"
+      },
+      "expected": {
+        "result": {
+          "error": true,
+          "message": "fixture permissions",
+          "status": 403,
+          "type": "permission_error"
+        },
+        "requests": [],
+        "commands": [],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "poll-create-duration-\"60\"",
+      "operation": "create_poll",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "response": {
+          "data": [
+            {
+              "id": "created",
+              "title": "Poll created",
+              "choices": [
+                {
+                  "id": "a",
+                  "title": "One",
+                  "votes": 3,
+                  "channel_points_votes": 2
+                },
+                {
+                  "id": "b",
+                  "title": "Two",
+                  "votes": 1
+                }
+              ],
+              "broadcaster_id": "channel",
+              "broadcaster_login": "cdom201",
+              "status": "ACTIVE"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "result": {
+          "id": "created",
+          "title": "Poll created",
+          "choices": [
+            {
+              "id": "a",
+              "title": "One",
+              "votes": 3
+            },
+            {
+              "id": "b",
+              "title": "Two",
+              "votes": 1
+            }
+          ],
+          "channelID": "channel",
+          "channel": "cdom201"
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/polls",
+            "authorization": "Bearer fixture-streamer",
+            "body": {
+              "broadcaster_id": "channel",
+              "title": "Pick",
+              "choices": [
+                {
+                  "title": "One"
+                },
+                {
+                  "title": "Two"
+                }
+              ],
+              "duration": 60
+            }
+          }
+        ],
+        "commands": [],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "poll-create-duration-\"0x10\"",
+      "operation": "create_poll",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "0x10",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "response": {
+          "data": [
+            {
+              "id": "created",
+              "title": "Poll created",
+              "choices": [
+                {
+                  "id": "a",
+                  "title": "One",
+                  "votes": 3,
+                  "channel_points_votes": 2
+                },
+                {
+                  "id": "b",
+                  "title": "Two",
+                  "votes": 1
+                }
+              ],
+              "broadcaster_id": "channel",
+              "broadcaster_login": "cdom201",
+              "status": "ACTIVE"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "result": {
+          "id": "created",
+          "title": "Poll created",
+          "choices": [
+            {
+              "id": "a",
+              "title": "One",
+              "votes": 3
+            },
+            {
+              "id": "b",
+              "title": "Two",
+              "votes": 1
+            }
+          ],
+          "channelID": "channel",
+          "channel": "cdom201"
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/polls",
+            "authorization": "Bearer fixture-streamer",
+            "body": {
+              "broadcaster_id": "channel",
+              "title": "Pick",
+              "choices": [
+                {
+                  "title": "One"
+                },
+                {
+                  "title": "Two"
+                }
+              ],
+              "duration": 16
+            }
+          }
+        ],
+        "commands": [],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "poll-create-duration-\"\"",
+      "operation": "create_poll",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "response": {
+          "data": [
+            {
+              "id": "created",
+              "title": "Poll created",
+              "choices": [
+                {
+                  "id": "a",
+                  "title": "One",
+                  "votes": 3,
+                  "channel_points_votes": 2
+                },
+                {
+                  "id": "b",
+                  "title": "Two",
+                  "votes": 1
+                }
+              ],
+              "broadcaster_id": "channel",
+              "broadcaster_login": "cdom201",
+              "status": "ACTIVE"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "result": {
+          "id": "created",
+          "title": "Poll created",
+          "choices": [
+            {
+              "id": "a",
+              "title": "One",
+              "votes": 3
+            },
+            {
+              "id": "b",
+              "title": "Two",
+              "votes": 1
+            }
+          ],
+          "channelID": "channel",
+          "channel": "cdom201"
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/polls",
+            "authorization": "Bearer fixture-streamer",
+            "body": {
+              "broadcaster_id": "channel",
+              "title": "Pick",
+              "choices": [
+                {
+                  "title": "One"
+                },
+                {
+                  "title": "Two"
+                }
+              ],
+              "duration": 0
+            }
+          }
+        ],
+        "commands": [],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "poll-create-duration-null",
+      "operation": "create_poll",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": null,
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "response": {
+          "data": [
+            {
+              "id": "created",
+              "title": "Poll created",
+              "choices": [
+                {
+                  "id": "a",
+                  "title": "One",
+                  "votes": 3,
+                  "channel_points_votes": 2
+                },
+                {
+                  "id": "b",
+                  "title": "Two",
+                  "votes": 1
+                }
+              ],
+              "broadcaster_id": "channel",
+              "broadcaster_login": "cdom201",
+              "status": "ACTIVE"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "result": {
+          "id": "created",
+          "title": "Poll created",
+          "choices": [
+            {
+              "id": "a",
+              "title": "One",
+              "votes": 3
+            },
+            {
+              "id": "b",
+              "title": "Two",
+              "votes": 1
+            }
+          ],
+          "channelID": "channel",
+          "channel": "cdom201"
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/polls",
+            "authorization": "Bearer fixture-streamer",
+            "body": {
+              "broadcaster_id": "channel",
+              "title": "Pick",
+              "choices": [
+                {
+                  "title": "One"
+                },
+                {
+                  "title": "Two"
+                }
+              ],
+              "duration": 0
+            }
+          }
+        ],
+        "commands": [],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "poll-create-duration-\"not-a-number\"",
+      "operation": "create_poll",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "not-a-number",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "response": {
+          "data": [
+            {
+              "id": "created",
+              "title": "Poll created",
+              "choices": [
+                {
+                  "id": "a",
+                  "title": "One",
+                  "votes": 3,
+                  "channel_points_votes": 2
+                },
+                {
+                  "id": "b",
+                  "title": "Two",
+                  "votes": 1
+                }
+              ],
+              "broadcaster_id": "channel",
+              "broadcaster_login": "cdom201",
+              "status": "ACTIVE"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "result": {
+          "id": "created",
+          "title": "Poll created",
+          "choices": [
+            {
+              "id": "a",
+              "title": "One",
+              "votes": 3
+            },
+            {
+              "id": "b",
+              "title": "Two",
+              "votes": 1
+            }
+          ],
+          "channelID": "channel",
+          "channel": "cdom201"
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/polls",
+            "authorization": "Bearer fixture-streamer",
+            "body": {
+              "broadcaster_id": "channel",
+              "title": "Pick",
+              "choices": [
+                {
+                  "title": "One"
+                },
+                {
+                  "title": "Two"
+                }
+              ],
+              "duration": null
+            }
+          }
+        ],
+        "commands": [],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "poll-create-duration-2.5",
+      "operation": "create_poll",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": 2.5,
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "response": {
+          "data": [
+            {
+              "id": "created",
+              "title": "Poll created",
+              "choices": [
+                {
+                  "id": "a",
+                  "title": "One",
+                  "votes": 3,
+                  "channel_points_votes": 2
+                },
+                {
+                  "id": "b",
+                  "title": "Two",
+                  "votes": 1
+                }
+              ],
+              "broadcaster_id": "channel",
+              "broadcaster_login": "cdom201",
+              "status": "ACTIVE"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "result": {
+          "id": "created",
+          "title": "Poll created",
+          "choices": [
+            {
+              "id": "a",
+              "title": "One",
+              "votes": 3
+            },
+            {
+              "id": "b",
+              "title": "Two",
+              "votes": 1
+            }
+          ],
+          "channelID": "channel",
+          "channel": "cdom201"
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/polls",
+            "authorization": "Bearer fixture-streamer",
+            "body": {
+              "broadcaster_id": "channel",
+              "title": "Pick",
+              "choices": [
+                {
+                  "title": "One"
+                },
+                {
+                  "title": "Two"
+                }
+              ],
+              "duration": 2.5
+            }
+          }
+        ],
+        "commands": [],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "poll-create-cache-write",
+      "operation": "create_poll",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": true,
+        "id": null,
+        "status": "ARCHIVED",
+        "response": {
+          "data": [
+            {
+              "id": "created",
+              "title": "Poll created",
+              "choices": [
+                {
+                  "id": "a",
+                  "title": "One",
+                  "votes": 3,
+                  "channel_points_votes": 2
+                },
+                {
+                  "id": "b",
+                  "title": "Two",
+                  "votes": 1
+                }
+              ],
+              "broadcaster_id": "channel",
+              "broadcaster_login": "cdom201",
+              "status": "ACTIVE"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "result": {
+          "id": "created",
+          "title": "Poll created",
+          "choices": [
+            {
+              "id": "a",
+              "title": "One",
+              "votes": 3
+            },
+            {
+              "id": "b",
+              "title": "Two",
+              "votes": 1
+            }
+          ],
+          "channelID": "channel",
+          "channel": "cdom201"
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/polls",
+            "authorization": "Bearer fixture-streamer",
+            "body": {
+              "broadcaster_id": "channel",
+              "title": "Pick",
+              "choices": [
+                {
+                  "title": "One"
+                },
+                {
+                  "title": "Two"
+                }
+              ],
+              "duration": 60
+            }
+          }
+        ],
+        "commands": [
+          [
+            "set",
+            "twitch:channel:polls",
+            {
+              "id": "created",
+              "title": "Poll created",
+              "choices": [
+                {
+                  "id": "a",
+                  "title": "One",
+                  "votes": 3
+                },
+                {
+                  "id": "b",
+                  "title": "Two",
+                  "votes": 1
+                }
+              ],
+              "channelID": "channel",
+              "channel": "cdom201"
+            },
+            null
+          ]
+        ],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "poll-create-cache-required",
+      "operation": "create_poll",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "cacheError": true
+      },
+      "expected": {
+        "result": {
+          "error": true,
+          "message": "Internal server error",
+          "type": "error"
+        },
+        "requests": [],
+        "commands": [],
+        "auth": []
+      }
+    },
+    {
+      "name": "poll-create-auth-denied",
+      "operation": "create_poll",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "authError": "fixture permissions"
+      },
+      "expected": {
+        "result": {
+          "error": true,
+          "message": "fixture permissions",
+          "status": 403,
+          "type": "permission_error"
+        },
+        "requests": [],
+        "commands": [],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "poll-end",
+      "operation": "end_poll",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": "ended",
+        "status": "ARCHIVED",
+        "winner": "yes",
+        "response": {
+          "data": [
+            {
+              "id": "ended",
+              "title": "Poll ended",
+              "choices": [
+                {
+                  "id": "a",
+                  "title": "One",
+                  "votes": 3,
+                  "channel_points_votes": 2
+                },
+                {
+                  "id": "b",
+                  "title": "Two",
+                  "votes": 1
+                }
+              ],
+              "broadcaster_id": "channel",
+              "broadcaster_login": "cdom201",
+              "status": "ARCHIVED"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "result": {
+          "error": false,
+          "message": "Poll ended successfully",
+          "data": {
+            "id": "ended",
+            "title": "Poll ended",
+            "choices": [
+              {
+                "id": "a",
+                "title": "One",
+                "votes": 3
+              },
+              {
+                "id": "b",
+                "title": "Two",
+                "votes": 1
+              }
+            ],
+            "channelID": "channel",
+            "channel": "cdom201"
+          }
+        },
+        "requests": [
+          {
+            "method": "PATCH",
+            "path": "/polls",
+            "authorization": "Bearer fixture-streamer",
+            "body": {
+              "broadcaster_id": "channel",
+              "id": "ended",
+              "status": "ARCHIVED"
+            }
+          }
+        ],
+        "commands": [
+          [
+            "delete",
+            "twitch:channel:polls"
+          ]
+        ],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "poll-end-cache-failure",
+      "operation": "end_poll",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": "ended",
+        "status": "ARCHIVED",
+        "cacheError": true,
+        "response": {
+          "data": [
+            {
+              "id": "ended",
+              "title": "Poll ended",
+              "choices": [
+                {
+                  "id": "a",
+                  "title": "One",
+                  "votes": 3,
+                  "channel_points_votes": 2
+                },
+                {
+                  "id": "b",
+                  "title": "Two",
+                  "votes": 1
+                }
+              ],
+              "broadcaster_id": "channel",
+              "broadcaster_login": "cdom201",
+              "status": "ARCHIVED"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "result": {
+          "error": false,
+          "message": "Poll ended successfully",
+          "data": {
+            "id": "ended",
+            "title": "Poll ended",
+            "choices": [
+              {
+                "id": "a",
+                "title": "One",
+                "votes": 3
+              },
+              {
+                "id": "b",
+                "title": "Two",
+                "votes": 1
+              }
+            ],
+            "channelID": "channel",
+            "channel": "cdom201"
+          }
+        },
+        "requests": [
+          {
+            "method": "PATCH",
+            "path": "/polls",
+            "authorization": "Bearer fixture-streamer",
+            "body": {
+              "broadcaster_id": "channel",
+              "id": "ended",
+              "status": "ARCHIVED"
+            }
+          }
+        ],
+        "commands": [],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "poll-invalid-end-status",
+      "operation": "end_poll",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "INVALID",
+        "authError": "unused"
+      },
+      "expected": {
+        "result": {
+          "error": true,
+          "message": "Invalid status",
+          "status": 400,
+          "type": "invalid_status"
+        },
+        "requests": [],
+        "commands": [],
+        "auth": []
+      }
+    },
+    {
+      "name": "prediction-active-selection",
+      "operation": "get_prediction",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "response": {
+          "data": [
+            {
+              "id": "old",
+              "title": "Prediction old",
+              "outcomes": [
+                {
+                  "id": "yes",
+                  "title": "Yes",
+                  "users": 2,
+                  "channel_points": 30,
+                  "top_predictors": [],
+                  "color": "blue"
+                },
+                {
+                  "id": "no",
+                  "title": "No",
+                  "users": 1,
+                  "channel_points": 20,
+                  "top_predictors": [],
+                  "color": "pink"
+                }
+              ],
+              "broadcaster_id": "channel",
+              "broadcaster_login": "cdom201",
+              "status": "RESOLVED",
+              "winning_outcome_id": "yes"
+            },
+            {
+              "id": "current",
+              "title": "Prediction current",
+              "outcomes": [
+                {
+                  "id": "yes",
+                  "title": "Yes",
+                  "users": 2,
+                  "channel_points": 30,
+                  "top_predictors": [],
+                  "color": "blue"
+                },
+                {
+                  "id": "no",
+                  "title": "No",
+                  "users": 1,
+                  "channel_points": 20,
+                  "top_predictors": [],
+                  "color": "pink"
+                }
+              ],
+              "broadcaster_id": "channel",
+              "broadcaster_login": "cdom201",
+              "status": "LOCKED"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "result": {
+          "error": false,
+          "message": "Success",
+          "data": {
+            "id": "current",
+            "title": "Prediction current",
+            "outcomes": [
+              {
+                "id": "yes",
+                "title": "Yes",
+                "users": 2,
+                "channel_points": 30,
+                "top_predictors": [],
+                "color": "blue"
+              },
+              {
+                "id": "no",
+                "title": "No",
+                "users": 1,
+                "channel_points": 20,
+                "top_predictors": [],
+                "color": "pink"
+              }
+            ],
+            "channelID": "channel",
+            "channel": "cdom201",
+            "predictionStatus": "LOCKED",
+            "status": "LOCKED"
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/predictions?broadcaster_id=channel",
+            "authorization": "Bearer fixture-streamer",
+            "body": null
+          }
+        ],
+        "commands": [],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "prediction-explicit-id",
+      "operation": "get_prediction",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": "old",
+        "status": "ARCHIVED",
+        "response": {
+          "data": [
+            {
+              "id": "old",
+              "title": "Prediction old",
+              "outcomes": [
+                {
+                  "id": "yes",
+                  "title": "Yes",
+                  "users": 2,
+                  "channel_points": 30,
+                  "top_predictors": [],
+                  "color": "blue"
+                },
+                {
+                  "id": "no",
+                  "title": "No",
+                  "users": 1,
+                  "channel_points": 20,
+                  "top_predictors": [],
+                  "color": "pink"
+                }
+              ],
+              "broadcaster_id": "channel",
+              "broadcaster_login": "cdom201",
+              "status": "RESOLVED",
+              "winning_outcome_id": "yes"
+            },
+            {
+              "id": "current",
+              "title": "Prediction current",
+              "outcomes": [
+                {
+                  "id": "yes",
+                  "title": "Yes",
+                  "users": 2,
+                  "channel_points": 30,
+                  "top_predictors": [],
+                  "color": "blue"
+                },
+                {
+                  "id": "no",
+                  "title": "No",
+                  "users": 1,
+                  "channel_points": 20,
+                  "top_predictors": [],
+                  "color": "pink"
+                }
+              ],
+              "broadcaster_id": "channel",
+              "broadcaster_login": "cdom201",
+              "status": "LOCKED"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "result": {
+          "error": false,
+          "message": "Success",
+          "data": {
+            "id": "old",
+            "title": "Prediction old",
+            "outcomes": [
+              {
+                "id": "yes",
+                "title": "Yes",
+                "users": 2,
+                "channel_points": 30,
+                "top_predictors": [],
+                "color": "blue"
+              },
+              {
+                "id": "no",
+                "title": "No",
+                "users": 1,
+                "channel_points": 20,
+                "top_predictors": [],
+                "color": "pink"
+              }
+            ],
+            "channelID": "channel",
+            "channel": "cdom201",
+            "predictionStatus": "RESOLVED",
+            "status": "RESOLVED",
+            "winning_outcome_id": "yes",
+            "winning_outcome": {
+              "id": "yes",
+              "title": "Yes",
+              "users": 2,
+              "channel_points": 30,
+              "top_predictors": [],
+              "color": "blue"
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/predictions?broadcaster_id=channel&id=old",
+            "authorization": "Bearer fixture-streamer",
+            "body": null
+          }
+        ],
+        "commands": [],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "prediction-empty",
+      "operation": "get_prediction",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "response": {
+          "data": []
+        }
+      },
+      "expected": {
+        "result": {
+          "error": true,
+          "message": "Prediction not found",
+          "status": 200,
+          "type": "not_found"
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/predictions?broadcaster_id=channel",
+            "authorization": "Bearer fixture-streamer",
+            "body": null
+          }
+        ],
+        "commands": [],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "prediction-404",
+      "operation": "get_prediction",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "httpStatus": 404,
+        "response": {
+          "data": [
+            {
+              "id": "old",
+              "title": "Prediction old",
+              "outcomes": [
+                {
+                  "id": "yes",
+                  "title": "Yes",
+                  "users": 2,
+                  "channel_points": 30,
+                  "top_predictors": [],
+                  "color": "blue"
+                },
+                {
+                  "id": "no",
+                  "title": "No",
+                  "users": 1,
+                  "channel_points": 20,
+                  "top_predictors": [],
+                  "color": "pink"
+                }
+              ],
+              "broadcaster_id": "channel",
+              "broadcaster_login": "cdom201",
+              "status": "RESOLVED",
+              "winning_outcome_id": "yes"
+            },
+            {
+              "id": "current",
+              "title": "Prediction current",
+              "outcomes": [
+                {
+                  "id": "yes",
+                  "title": "Yes",
+                  "users": 2,
+                  "channel_points": 30,
+                  "top_predictors": [],
+                  "color": "blue"
+                },
+                {
+                  "id": "no",
+                  "title": "No",
+                  "users": 1,
+                  "channel_points": 20,
+                  "top_predictors": [],
+                  "color": "pink"
+                }
+              ],
+              "broadcaster_id": "channel",
+              "broadcaster_login": "cdom201",
+              "status": "LOCKED"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "result": {
+          "error": true,
+          "message": "Prediction not found",
+          "status": 404,
+          "type": "not_found"
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/predictions?broadcaster_id=channel",
+            "authorization": "Bearer fixture-streamer",
+            "body": null
+          }
+        ],
+        "commands": [],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "prediction-provider-error",
+      "operation": "get_prediction",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "httpStatus": 403,
+        "response": {
+          "error": "Forbidden",
+          "message": "fixture denied",
+          "status": 403
+        }
+      },
+      "expected": {
+        "result": {
+          "error": true,
+          "message": "fixture denied",
+          "status": 403,
+          "type": "Forbidden"
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/predictions?broadcaster_id=channel",
+            "authorization": "Bearer fixture-streamer",
+            "body": null
+          }
+        ],
+        "commands": [],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "prediction-cache-hit",
+      "operation": "get_prediction",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": true,
+        "id": null,
+        "status": "ARCHIVED",
+        "initial": {
+          "twitch:channel:predictions": {
+            "fixture": "cached"
+          }
+        },
+        "authError": "unused"
+      },
+      "expected": {
+        "result": {
+          "error": false,
+          "message": "Success (from cache)",
+          "data": {
+            "fixture": "cached"
+          }
+        },
+        "requests": [],
+        "commands": [
+          [
+            "get",
+            "twitch:channel:predictions"
+          ]
+        ],
+        "auth": []
+      }
+    },
+    {
+      "name": "prediction-cache-write",
+      "operation": "get_prediction",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": true,
+        "id": null,
+        "status": "ARCHIVED",
+        "response": {
+          "data": [
+            {
+              "id": "old",
+              "title": "Prediction old",
+              "outcomes": [
+                {
+                  "id": "yes",
+                  "title": "Yes",
+                  "users": 2,
+                  "channel_points": 30,
+                  "top_predictors": [],
+                  "color": "blue"
+                },
+                {
+                  "id": "no",
+                  "title": "No",
+                  "users": 1,
+                  "channel_points": 20,
+                  "top_predictors": [],
+                  "color": "pink"
+                }
+              ],
+              "broadcaster_id": "channel",
+              "broadcaster_login": "cdom201",
+              "status": "RESOLVED",
+              "winning_outcome_id": "yes"
+            },
+            {
+              "id": "current",
+              "title": "Prediction current",
+              "outcomes": [
+                {
+                  "id": "yes",
+                  "title": "Yes",
+                  "users": 2,
+                  "channel_points": 30,
+                  "top_predictors": [],
+                  "color": "blue"
+                },
+                {
+                  "id": "no",
+                  "title": "No",
+                  "users": 1,
+                  "channel_points": 20,
+                  "top_predictors": [],
+                  "color": "pink"
+                }
+              ],
+              "broadcaster_id": "channel",
+              "broadcaster_login": "cdom201",
+              "status": "LOCKED"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "result": {
+          "error": false,
+          "message": "Success",
+          "data": {
+            "id": "current",
+            "title": "Prediction current",
+            "outcomes": [
+              {
+                "id": "yes",
+                "title": "Yes",
+                "users": 2,
+                "channel_points": 30,
+                "top_predictors": [],
+                "color": "blue"
+              },
+              {
+                "id": "no",
+                "title": "No",
+                "users": 1,
+                "channel_points": 20,
+                "top_predictors": [],
+                "color": "pink"
+              }
+            ],
+            "channelID": "channel",
+            "channel": "cdom201",
+            "predictionStatus": "LOCKED",
+            "status": "LOCKED"
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/predictions?broadcaster_id=channel",
+            "authorization": "Bearer fixture-streamer",
+            "body": null
+          }
+        ],
+        "commands": [
+          [
+            "get",
+            "twitch:channel:predictions"
+          ],
+          [
+            "set",
+            "twitch:channel:predictions",
+            {
+              "id": "current",
+              "title": "Prediction current",
+              "outcomes": [
+                {
+                  "id": "yes",
+                  "title": "Yes",
+                  "users": 2,
+                  "channel_points": 30,
+                  "top_predictors": [],
+                  "color": "blue"
+                },
+                {
+                  "id": "no",
+                  "title": "No",
+                  "users": 1,
+                  "channel_points": 20,
+                  "top_predictors": [],
+                  "color": "pink"
+                }
+              ],
+              "channelID": "channel",
+              "channel": "cdom201",
+              "predictionStatus": "LOCKED",
+              "status": "LOCKED"
+            },
+            null
+          ]
+        ],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "prediction-cache-unavailable",
+      "operation": "get_prediction",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": true,
+        "id": null,
+        "status": "ARCHIVED",
+        "cacheError": true
+      },
+      "expected": {
+        "result": {
+          "error": true,
+          "message": "Internal server error"
+        },
+        "requests": [],
+        "commands": [],
+        "auth": []
+      }
+    },
+    {
+      "name": "prediction-uncached-no-cache-dependency",
+      "operation": "get_prediction",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "cacheError": true,
+        "response": {
+          "data": [
+            {
+              "id": "old",
+              "title": "Prediction old",
+              "outcomes": [
+                {
+                  "id": "yes",
+                  "title": "Yes",
+                  "users": 2,
+                  "channel_points": 30,
+                  "top_predictors": [],
+                  "color": "blue"
+                },
+                {
+                  "id": "no",
+                  "title": "No",
+                  "users": 1,
+                  "channel_points": 20,
+                  "top_predictors": [],
+                  "color": "pink"
+                }
+              ],
+              "broadcaster_id": "channel",
+              "broadcaster_login": "cdom201",
+              "status": "RESOLVED",
+              "winning_outcome_id": "yes"
+            },
+            {
+              "id": "current",
+              "title": "Prediction current",
+              "outcomes": [
+                {
+                  "id": "yes",
+                  "title": "Yes",
+                  "users": 2,
+                  "channel_points": 30,
+                  "top_predictors": [],
+                  "color": "blue"
+                },
+                {
+                  "id": "no",
+                  "title": "No",
+                  "users": 1,
+                  "channel_points": 20,
+                  "top_predictors": [],
+                  "color": "pink"
+                }
+              ],
+              "broadcaster_id": "channel",
+              "broadcaster_login": "cdom201",
+              "status": "LOCKED"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "result": {
+          "error": false,
+          "message": "Success",
+          "data": {
+            "id": "current",
+            "title": "Prediction current",
+            "outcomes": [
+              {
+                "id": "yes",
+                "title": "Yes",
+                "users": 2,
+                "channel_points": 30,
+                "top_predictors": [],
+                "color": "blue"
+              },
+              {
+                "id": "no",
+                "title": "No",
+                "users": 1,
+                "channel_points": 20,
+                "top_predictors": [],
+                "color": "pink"
+              }
+            ],
+            "channelID": "channel",
+            "channel": "cdom201",
+            "predictionStatus": "LOCKED",
+            "status": "LOCKED"
+          }
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/predictions?broadcaster_id=channel",
+            "authorization": "Bearer fixture-streamer",
+            "body": null
+          }
+        ],
+        "commands": [],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "prediction-invalid-json",
+      "operation": "get_prediction",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "rawResponse": "broken"
+      },
+      "expected": {
+        "result": {
+          "error": true,
+          "message": "Internal server error"
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/predictions?broadcaster_id=channel",
+            "authorization": "Bearer fixture-streamer",
+            "body": null
+          }
+        ],
+        "commands": [],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "prediction-auth-denied",
+      "operation": "get_prediction",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "authError": "fixture permissions"
+      },
+      "expected": {
+        "result": {
+          "error": true,
+          "message": "fixture permissions",
+          "status": 403,
+          "type": "permission_error"
+        },
+        "requests": [],
+        "commands": [],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "prediction-create-duration-\"60\"",
+      "operation": "create_prediction",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "response": {
+          "data": [
+            {
+              "id": "created",
+              "title": "Prediction created",
+              "outcomes": [
+                {
+                  "id": "yes",
+                  "title": "Yes",
+                  "users": 2,
+                  "channel_points": 30,
+                  "top_predictors": [],
+                  "color": "blue"
+                },
+                {
+                  "id": "no",
+                  "title": "No",
+                  "users": 1,
+                  "channel_points": 20,
+                  "top_predictors": [],
+                  "color": "pink"
+                }
+              ],
+              "broadcaster_id": "channel",
+              "broadcaster_login": "cdom201",
+              "status": "ACTIVE"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "result": {
+          "error": false,
+          "message": "Prediction created successfully",
+          "id": "created",
+          "title": "Prediction created",
+          "outcomes": [
+            {
+              "id": "yes",
+              "title": "Yes",
+              "users": 2,
+              "channel_points": 30,
+              "top_predictors": [],
+              "color": "blue"
+            },
+            {
+              "id": "no",
+              "title": "No",
+              "users": 1,
+              "channel_points": 20,
+              "top_predictors": [],
+              "color": "pink"
+            }
+          ],
+          "channelID": "channel",
+          "channel": "cdom201",
+          "predictionStatus": "ACTIVE"
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/predictions",
+            "authorization": "Bearer fixture-streamer",
+            "body": {
+              "broadcaster_id": "channel",
+              "title": "Pick",
+              "outcomes": [
+                {
+                  "title": "One"
+                },
+                {
+                  "title": "Two"
+                }
+              ],
+              "prediction_window": 60
+            }
+          }
+        ],
+        "commands": [],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "prediction-create-duration-\"0x10\"",
+      "operation": "create_prediction",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "0x10",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "response": {
+          "data": [
+            {
+              "id": "created",
+              "title": "Prediction created",
+              "outcomes": [
+                {
+                  "id": "yes",
+                  "title": "Yes",
+                  "users": 2,
+                  "channel_points": 30,
+                  "top_predictors": [],
+                  "color": "blue"
+                },
+                {
+                  "id": "no",
+                  "title": "No",
+                  "users": 1,
+                  "channel_points": 20,
+                  "top_predictors": [],
+                  "color": "pink"
+                }
+              ],
+              "broadcaster_id": "channel",
+              "broadcaster_login": "cdom201",
+              "status": "ACTIVE"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "result": {
+          "error": false,
+          "message": "Prediction created successfully",
+          "id": "created",
+          "title": "Prediction created",
+          "outcomes": [
+            {
+              "id": "yes",
+              "title": "Yes",
+              "users": 2,
+              "channel_points": 30,
+              "top_predictors": [],
+              "color": "blue"
+            },
+            {
+              "id": "no",
+              "title": "No",
+              "users": 1,
+              "channel_points": 20,
+              "top_predictors": [],
+              "color": "pink"
+            }
+          ],
+          "channelID": "channel",
+          "channel": "cdom201",
+          "predictionStatus": "ACTIVE"
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/predictions",
+            "authorization": "Bearer fixture-streamer",
+            "body": {
+              "broadcaster_id": "channel",
+              "title": "Pick",
+              "outcomes": [
+                {
+                  "title": "One"
+                },
+                {
+                  "title": "Two"
+                }
+              ],
+              "prediction_window": 16
+            }
+          }
+        ],
+        "commands": [],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "prediction-create-duration-\"\"",
+      "operation": "create_prediction",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "response": {
+          "data": [
+            {
+              "id": "created",
+              "title": "Prediction created",
+              "outcomes": [
+                {
+                  "id": "yes",
+                  "title": "Yes",
+                  "users": 2,
+                  "channel_points": 30,
+                  "top_predictors": [],
+                  "color": "blue"
+                },
+                {
+                  "id": "no",
+                  "title": "No",
+                  "users": 1,
+                  "channel_points": 20,
+                  "top_predictors": [],
+                  "color": "pink"
+                }
+              ],
+              "broadcaster_id": "channel",
+              "broadcaster_login": "cdom201",
+              "status": "ACTIVE"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "result": {
+          "error": false,
+          "message": "Prediction created successfully",
+          "id": "created",
+          "title": "Prediction created",
+          "outcomes": [
+            {
+              "id": "yes",
+              "title": "Yes",
+              "users": 2,
+              "channel_points": 30,
+              "top_predictors": [],
+              "color": "blue"
+            },
+            {
+              "id": "no",
+              "title": "No",
+              "users": 1,
+              "channel_points": 20,
+              "top_predictors": [],
+              "color": "pink"
+            }
+          ],
+          "channelID": "channel",
+          "channel": "cdom201",
+          "predictionStatus": "ACTIVE"
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/predictions",
+            "authorization": "Bearer fixture-streamer",
+            "body": {
+              "broadcaster_id": "channel",
+              "title": "Pick",
+              "outcomes": [
+                {
+                  "title": "One"
+                },
+                {
+                  "title": "Two"
+                }
+              ],
+              "prediction_window": 0
+            }
+          }
+        ],
+        "commands": [],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "prediction-create-duration-null",
+      "operation": "create_prediction",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": null,
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "response": {
+          "data": [
+            {
+              "id": "created",
+              "title": "Prediction created",
+              "outcomes": [
+                {
+                  "id": "yes",
+                  "title": "Yes",
+                  "users": 2,
+                  "channel_points": 30,
+                  "top_predictors": [],
+                  "color": "blue"
+                },
+                {
+                  "id": "no",
+                  "title": "No",
+                  "users": 1,
+                  "channel_points": 20,
+                  "top_predictors": [],
+                  "color": "pink"
+                }
+              ],
+              "broadcaster_id": "channel",
+              "broadcaster_login": "cdom201",
+              "status": "ACTIVE"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "result": {
+          "error": false,
+          "message": "Prediction created successfully",
+          "id": "created",
+          "title": "Prediction created",
+          "outcomes": [
+            {
+              "id": "yes",
+              "title": "Yes",
+              "users": 2,
+              "channel_points": 30,
+              "top_predictors": [],
+              "color": "blue"
+            },
+            {
+              "id": "no",
+              "title": "No",
+              "users": 1,
+              "channel_points": 20,
+              "top_predictors": [],
+              "color": "pink"
+            }
+          ],
+          "channelID": "channel",
+          "channel": "cdom201",
+          "predictionStatus": "ACTIVE"
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/predictions",
+            "authorization": "Bearer fixture-streamer",
+            "body": {
+              "broadcaster_id": "channel",
+              "title": "Pick",
+              "outcomes": [
+                {
+                  "title": "One"
+                },
+                {
+                  "title": "Two"
+                }
+              ],
+              "prediction_window": 0
+            }
+          }
+        ],
+        "commands": [],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "prediction-create-duration-\"not-a-number\"",
+      "operation": "create_prediction",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "not-a-number",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "response": {
+          "data": [
+            {
+              "id": "created",
+              "title": "Prediction created",
+              "outcomes": [
+                {
+                  "id": "yes",
+                  "title": "Yes",
+                  "users": 2,
+                  "channel_points": 30,
+                  "top_predictors": [],
+                  "color": "blue"
+                },
+                {
+                  "id": "no",
+                  "title": "No",
+                  "users": 1,
+                  "channel_points": 20,
+                  "top_predictors": [],
+                  "color": "pink"
+                }
+              ],
+              "broadcaster_id": "channel",
+              "broadcaster_login": "cdom201",
+              "status": "ACTIVE"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "result": {
+          "error": false,
+          "message": "Prediction created successfully",
+          "id": "created",
+          "title": "Prediction created",
+          "outcomes": [
+            {
+              "id": "yes",
+              "title": "Yes",
+              "users": 2,
+              "channel_points": 30,
+              "top_predictors": [],
+              "color": "blue"
+            },
+            {
+              "id": "no",
+              "title": "No",
+              "users": 1,
+              "channel_points": 20,
+              "top_predictors": [],
+              "color": "pink"
+            }
+          ],
+          "channelID": "channel",
+          "channel": "cdom201",
+          "predictionStatus": "ACTIVE"
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/predictions",
+            "authorization": "Bearer fixture-streamer",
+            "body": {
+              "broadcaster_id": "channel",
+              "title": "Pick",
+              "outcomes": [
+                {
+                  "title": "One"
+                },
+                {
+                  "title": "Two"
+                }
+              ],
+              "prediction_window": null
+            }
+          }
+        ],
+        "commands": [],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "prediction-create-duration-2.5",
+      "operation": "create_prediction",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": 2.5,
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "response": {
+          "data": [
+            {
+              "id": "created",
+              "title": "Prediction created",
+              "outcomes": [
+                {
+                  "id": "yes",
+                  "title": "Yes",
+                  "users": 2,
+                  "channel_points": 30,
+                  "top_predictors": [],
+                  "color": "blue"
+                },
+                {
+                  "id": "no",
+                  "title": "No",
+                  "users": 1,
+                  "channel_points": 20,
+                  "top_predictors": [],
+                  "color": "pink"
+                }
+              ],
+              "broadcaster_id": "channel",
+              "broadcaster_login": "cdom201",
+              "status": "ACTIVE"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "result": {
+          "error": false,
+          "message": "Prediction created successfully",
+          "id": "created",
+          "title": "Prediction created",
+          "outcomes": [
+            {
+              "id": "yes",
+              "title": "Yes",
+              "users": 2,
+              "channel_points": 30,
+              "top_predictors": [],
+              "color": "blue"
+            },
+            {
+              "id": "no",
+              "title": "No",
+              "users": 1,
+              "channel_points": 20,
+              "top_predictors": [],
+              "color": "pink"
+            }
+          ],
+          "channelID": "channel",
+          "channel": "cdom201",
+          "predictionStatus": "ACTIVE"
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/predictions",
+            "authorization": "Bearer fixture-streamer",
+            "body": {
+              "broadcaster_id": "channel",
+              "title": "Pick",
+              "outcomes": [
+                {
+                  "title": "One"
+                },
+                {
+                  "title": "Two"
+                }
+              ],
+              "prediction_window": 2.5
+            }
+          }
+        ],
+        "commands": [],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "prediction-create-cache-write",
+      "operation": "create_prediction",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": true,
+        "id": null,
+        "status": "ARCHIVED",
+        "response": {
+          "data": [
+            {
+              "id": "created",
+              "title": "Prediction created",
+              "outcomes": [
+                {
+                  "id": "yes",
+                  "title": "Yes",
+                  "users": 2,
+                  "channel_points": 30,
+                  "top_predictors": [],
+                  "color": "blue"
+                },
+                {
+                  "id": "no",
+                  "title": "No",
+                  "users": 1,
+                  "channel_points": 20,
+                  "top_predictors": [],
+                  "color": "pink"
+                }
+              ],
+              "broadcaster_id": "channel",
+              "broadcaster_login": "cdom201",
+              "status": "ACTIVE"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "result": {
+          "error": false,
+          "message": "Prediction created successfully",
+          "id": "created",
+          "title": "Prediction created",
+          "outcomes": [
+            {
+              "id": "yes",
+              "title": "Yes",
+              "users": 2,
+              "channel_points": 30,
+              "top_predictors": [],
+              "color": "blue"
+            },
+            {
+              "id": "no",
+              "title": "No",
+              "users": 1,
+              "channel_points": 20,
+              "top_predictors": [],
+              "color": "pink"
+            }
+          ],
+          "channelID": "channel",
+          "channel": "cdom201",
+          "predictionStatus": "ACTIVE"
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/predictions",
+            "authorization": "Bearer fixture-streamer",
+            "body": {
+              "broadcaster_id": "channel",
+              "title": "Pick",
+              "outcomes": [
+                {
+                  "title": "One"
+                },
+                {
+                  "title": "Two"
+                }
+              ],
+              "prediction_window": 60
+            }
+          }
+        ],
+        "commands": [
+          [
+            "set",
+            "twitch:channel:predictions",
+            {
+              "id": "created",
+              "title": "Prediction created",
+              "outcomes": [
+                {
+                  "id": "yes",
+                  "title": "Yes",
+                  "users": 2,
+                  "channel_points": 30,
+                  "top_predictors": [],
+                  "color": "blue"
+                },
+                {
+                  "id": "no",
+                  "title": "No",
+                  "users": 1,
+                  "channel_points": 20,
+                  "top_predictors": [],
+                  "color": "pink"
+                }
+              ],
+              "channelID": "channel",
+              "channel": "cdom201",
+              "predictionStatus": "ACTIVE"
+            },
+            null
+          ]
+        ],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "prediction-create-cache-required",
+      "operation": "create_prediction",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "cacheError": true
+      },
+      "expected": {
+        "result": {
+          "error": true,
+          "message": "Internal server error",
+          "type": "error"
+        },
+        "requests": [],
+        "commands": [],
+        "auth": []
+      }
+    },
+    {
+      "name": "prediction-create-auth-denied",
+      "operation": "create_prediction",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "authError": "fixture permissions"
+      },
+      "expected": {
+        "result": {
+          "error": true,
+          "message": "fixture permissions",
+          "status": 403,
+          "type": "permission_error"
+        },
+        "requests": [],
+        "commands": [],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "prediction-end",
+      "operation": "end_prediction",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": "ended",
+        "status": "RESOLVED",
+        "winner": "yes",
+        "response": {
+          "data": [
+            {
+              "id": "ended",
+              "title": "Prediction ended",
+              "outcomes": [
+                {
+                  "id": "yes",
+                  "title": "Yes",
+                  "users": 2,
+                  "channel_points": 30,
+                  "top_predictors": [],
+                  "color": "blue"
+                },
+                {
+                  "id": "no",
+                  "title": "No",
+                  "users": 1,
+                  "channel_points": 20,
+                  "top_predictors": [],
+                  "color": "pink"
+                }
+              ],
+              "broadcaster_id": "channel",
+              "broadcaster_login": "cdom201",
+              "status": "RESOLVED",
+              "winning_outcome_id": "yes"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "result": {
+          "error": false,
+          "message": "Prediction ended successfully",
+          "data": {
+            "id": "ended",
+            "title": "Prediction ended",
+            "outcomes": [
+              {
+                "id": "yes",
+                "title": "Yes",
+                "users": 2,
+                "channel_points": 30,
+                "top_predictors": [],
+                "color": "blue"
+              },
+              {
+                "id": "no",
+                "title": "No",
+                "users": 1,
+                "channel_points": 20,
+                "top_predictors": [],
+                "color": "pink"
+              }
+            ],
+            "channelID": "channel",
+            "channel": "cdom201",
+            "predictionStatus": "RESOLVED",
+            "winning_outcome_id": "yes",
+            "winning_outcome": {
+              "id": "yes",
+              "title": "Yes",
+              "users": 2,
+              "channel_points": 30,
+              "top_predictors": [],
+              "color": "blue"
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "PATCH",
+            "path": "/predictions",
+            "authorization": "Bearer fixture-streamer",
+            "body": {
+              "broadcaster_id": "channel",
+              "id": "ended",
+              "status": "RESOLVED",
+              "winning_outcome_id": "yes"
+            }
+          }
+        ],
+        "commands": [
+          [
+            "delete",
+            "twitch:channel:predictions"
+          ]
+        ],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "prediction-end-cache-failure",
+      "operation": "end_prediction",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": "ended",
+        "status": "RESOLVED",
+        "cacheError": true,
+        "response": {
+          "data": [
+            {
+              "id": "ended",
+              "title": "Prediction ended",
+              "outcomes": [
+                {
+                  "id": "yes",
+                  "title": "Yes",
+                  "users": 2,
+                  "channel_points": 30,
+                  "top_predictors": [],
+                  "color": "blue"
+                },
+                {
+                  "id": "no",
+                  "title": "No",
+                  "users": 1,
+                  "channel_points": 20,
+                  "top_predictors": [],
+                  "color": "pink"
+                }
+              ],
+              "broadcaster_id": "channel",
+              "broadcaster_login": "cdom201",
+              "status": "RESOLVED",
+              "winning_outcome_id": "yes"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "result": {
+          "error": false,
+          "message": "Prediction ended successfully",
+          "data": {
+            "id": "ended",
+            "title": "Prediction ended",
+            "outcomes": [
+              {
+                "id": "yes",
+                "title": "Yes",
+                "users": 2,
+                "channel_points": 30,
+                "top_predictors": [],
+                "color": "blue"
+              },
+              {
+                "id": "no",
+                "title": "No",
+                "users": 1,
+                "channel_points": 20,
+                "top_predictors": [],
+                "color": "pink"
+              }
+            ],
+            "channelID": "channel",
+            "channel": "cdom201",
+            "predictionStatus": "RESOLVED",
+            "winning_outcome_id": "yes",
+            "winning_outcome": {
+              "id": "yes",
+              "title": "Yes",
+              "users": 2,
+              "channel_points": 30,
+              "top_predictors": [],
+              "color": "blue"
+            }
+          }
+        },
+        "requests": [
+          {
+            "method": "PATCH",
+            "path": "/predictions",
+            "authorization": "Bearer fixture-streamer",
+            "body": {
+              "broadcaster_id": "channel",
+              "id": "ended",
+              "status": "RESOLVED"
+            }
+          }
+        ],
+        "commands": [],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "prediction-invalid-end-status",
+      "operation": "end_prediction",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "INVALID",
+        "authError": "unused"
+      },
+      "expected": {
+        "result": {
+          "error": true,
+          "message": "Invalid status",
+          "status": 400,
+          "type": "invalid_status"
+        },
+        "requests": [],
+        "commands": [],
+        "auth": []
+      }
+    },
+    {
+      "name": "poll-invalid-points--1",
+      "operation": "create_poll",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "points": -1
+      },
+      "expected": {
+        "result": {
+          "error": true,
+          "message": "Channel Points per vote must be a whole number from 0 to 1000000",
+          "status": 400,
+          "type": "validation_error"
+        },
+        "requests": [],
+        "commands": [],
+        "auth": []
+      }
+    },
+    {
+      "name": "poll-invalid-points-0.5",
+      "operation": "create_poll",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "points": 0.5
+      },
+      "expected": {
+        "result": {
+          "error": true,
+          "message": "Channel Points per vote must be a whole number from 0 to 1000000",
+          "status": 400,
+          "type": "validation_error"
+        },
+        "requests": [],
+        "commands": [],
+        "auth": []
+      }
+    },
+    {
+      "name": "poll-invalid-points-1000001",
+      "operation": "create_poll",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "points": 1000001
+      },
+      "expected": {
+        "result": {
+          "error": true,
+          "message": "Channel Points per vote must be a whole number from 0 to 1000000",
+          "status": 400,
+          "type": "validation_error"
+        },
+        "requests": [],
+        "commands": [],
+        "auth": []
+      }
+    },
+    {
+      "name": "poll-enabled-points",
+      "operation": "create_poll",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "points": 15,
+        "response": {
+          "data": [
+            {
+              "id": "created",
+              "title": "Poll created",
+              "choices": [
+                {
+                  "id": "a",
+                  "title": "One",
+                  "votes": 3,
+                  "channel_points_votes": 2
+                },
+                {
+                  "id": "b",
+                  "title": "Two",
+                  "votes": 1
+                }
+              ],
+              "broadcaster_id": "channel",
+              "broadcaster_login": "cdom201",
+              "status": "ACTIVE"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "result": {
+          "id": "created",
+          "title": "Poll created",
+          "choices": [
+            {
+              "id": "a",
+              "title": "One",
+              "votes": 3
+            },
+            {
+              "id": "b",
+              "title": "Two",
+              "votes": 1
+            }
+          ],
+          "channelID": "channel",
+          "channel": "cdom201"
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/polls",
+            "authorization": "Bearer fixture-streamer",
+            "body": {
+              "broadcaster_id": "channel",
+              "title": "Pick",
+              "choices": [
+                {
+                  "title": "One"
+                },
+                {
+                  "title": "Two"
+                }
+              ],
+              "duration": 60,
+              "channel_points_voting_enabled": true,
+              "channel_points_per_vote": 15
+            }
+          }
+        ],
+        "commands": [],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "ban-success",
+      "operation": "ban",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": 60,
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "reason": "fixture reason",
+        "response": {
+          "data": [
+            {
+              "user_id": "viewer",
+              "moderator_id": "698614112"
+            }
+          ]
+        },
+        "headers": {
+          "ratelimit-remaining": "0",
+          "ratelimit-reset": "123",
+          "retry-after": "5"
+        }
+      },
+      "expected": {
+        "result": {
+          "error": false,
+          "message": "Success",
+          "status": 200,
+          "data": {
+            "user_id": "viewer",
+            "moderator_id": "698614112"
+          },
+          "rateLimitRemaining": 0,
+          "rateLimitResetAt": 123000,
+          "retryAfterMs": 5000
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/moderation/bans?broadcaster_id=channel&moderator_id=698614112",
+            "authorization": "Bearer fixture-bot",
+            "body": {
+              "data": {
+                "user_id": "viewer",
+                "duration": 60,
+                "reason": "fixture reason"
+              }
+            }
+          }
+        ],
+        "commands": [],
+        "auth": [
+          "bot"
+        ]
+      }
+    },
+    {
+      "name": "ban-non-json-429",
+      "operation": "ban",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": null,
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "httpStatus": 429,
+        "rawResponse": "busy",
+        "headers": {
+          "retry-after": "30"
+        }
+      },
+      "expected": {
+        "result": {
+          "error": true,
+          "message": "Too Many Requests",
+          "status": 429,
+          "retryAfterMs": 30000
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/moderation/bans?broadcaster_id=channel&moderator_id=698614112",
+            "authorization": "Bearer fixture-bot",
+            "body": {
+              "data": {
+                "user_id": "viewer"
+              }
+            }
+          }
+        ],
+        "commands": [],
+        "auth": [
+          "bot"
+        ]
+      }
+    },
+    {
+      "name": "ban-auth-denied",
+      "operation": "ban",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": null,
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "authError": "fixture permissions"
+      },
+      "expected": {
+        "result": {
+          "error": true,
+          "message": "fixture permissions",
+          "status": 403,
+          "type": "permission_error"
+        },
+        "requests": [],
+        "commands": [],
+        "auth": [
+          "bot"
+        ]
+      }
+    },
+    {
+      "name": "ban-cancelled",
+      "operation": "ban",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": null,
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "cancelled": true
+      },
+      "expected": {
+        "result": {
+          "error": true,
+          "message": "Internal server error",
+          "type": "error"
+        },
+        "requests": [],
+        "commands": [],
+        "auth": [
+          "bot"
+        ]
+      }
+    },
+    {
+      "name": "ban-no-retry-401",
+      "operation": "ban",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": null,
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "httpStatus": 401,
+        "response": {
+          "error": "Unauthorized",
+          "message": "expired"
+        }
+      },
+      "expected": {
+        "result": {
+          "error": true,
+          "message": "expired",
+          "status": 401,
+          "type": "Unauthorized"
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/moderation/bans?broadcaster_id=channel&moderator_id=698614112",
+            "authorization": "Bearer fixture-bot",
+            "body": {
+              "data": {
+                "user_id": "viewer"
+              }
+            }
+          }
+        ],
+        "commands": [],
+        "auth": [
+          "bot"
+        ]
+      }
+    },
+    {
+      "name": "warn-success",
+      "operation": "warn",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "reason": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "response": {
+          "data": [
+            {
+              "user_id": "viewer"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "result": {
+          "error": false,
+          "message": "Warning issued",
+          "status": 200
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/moderation/warnings?broadcaster_id=channel&moderator_id=698614112",
+            "authorization": "Bearer fixture-bot",
+            "body": {
+              "data": {
+                "user_id": "viewer",
+                "reason": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+              }
+            }
+          }
+        ],
+        "commands": [],
+        "auth": [
+          "bot"
+        ]
+      }
+    },
+    {
+      "name": "warn-non-json-500",
+      "operation": "warn",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "httpStatus": 500,
+        "rawResponse": "broken"
+      },
+      "expected": {
+        "result": {
+          "error": true,
+          "message": "Internal Server Error",
+          "status": 500
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/moderation/warnings?broadcaster_id=channel&moderator_id=698614112",
+            "authorization": "Bearer fixture-bot",
+            "body": {
+              "data": {
+                "user_id": "viewer",
+                "reason": "fixture"
+              }
+            }
+          }
+        ],
+        "commands": [],
+        "auth": [
+          "bot"
+        ]
+      }
+    },
+    {
+      "name": "warn-auth-denied",
+      "operation": "warn",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "authError": "fixture permissions"
+      },
+      "expected": {
+        "result": {
+          "error": true,
+          "message": "fixture permissions",
+          "status": 403,
+          "type": "permission_error"
+        },
+        "requests": [],
+        "commands": [],
+        "auth": [
+          "bot"
+        ]
+      }
+    },
+    {
+      "name": "moderators-read",
+      "operation": "moderators",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "response": {
+          "data": [
+            {
+              "user_id": "m1",
+              "user_login": "modone",
+              "user_name": "Mod One"
+            },
+            {
+              "user_id": "m2",
+              "user_login": "modtwo",
+              "user_name": "Mod Two"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "result": {
+          "error": false,
+          "message": "Success",
+          "data": [
+            {
+              "user_id": "m1",
+              "user_login": "modone",
+              "user_name": "Mod One"
+            },
+            {
+              "user_id": "m2",
+              "user_login": "modtwo",
+              "user_name": "Mod Two"
+            }
+          ],
+          "ids": [
+            "m1",
+            "m2"
+          ],
+          "logins": [
+            "modone",
+            "modtwo"
+          ],
+          "displayNames": [
+            "Mod One",
+            "Mod Two"
+          ]
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/moderation/moderators?broadcaster_id=channel",
+            "authorization": "Bearer fixture-streamer",
+            "body": null
+          }
+        ],
+        "commands": [],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "moderators-cache-write",
+      "operation": "moderators",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": true,
+        "id": null,
+        "status": "ARCHIVED",
+        "response": {
+          "data": [
+            {
+              "user_id": "m1",
+              "user_login": "modone",
+              "user_name": "Mod One"
+            },
+            {
+              "user_id": "m2",
+              "user_login": "modtwo",
+              "user_name": "Mod Two"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "result": {
+          "error": false,
+          "message": "Success",
+          "data": [
+            {
+              "user_id": "m1",
+              "user_login": "modone",
+              "user_name": "Mod One"
+            },
+            {
+              "user_id": "m2",
+              "user_login": "modtwo",
+              "user_name": "Mod Two"
+            }
+          ],
+          "ids": [
+            "m1",
+            "m2"
+          ],
+          "logins": [
+            "modone",
+            "modtwo"
+          ],
+          "displayNames": [
+            "Mod One",
+            "Mod Two"
+          ]
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/moderation/moderators?broadcaster_id=channel",
+            "authorization": "Bearer fixture-streamer",
+            "body": null
+          }
+        ],
+        "commands": [
+          [
+            "get",
+            "twitch:channel:moderators"
+          ],
+          [
+            "set",
+            "twitch:channel:moderators",
+            {
+              "error": false,
+              "message": "Success",
+              "data": [
+                {
+                  "user_id": "m1",
+                  "user_login": "modone",
+                  "user_name": "Mod One"
+                },
+                {
+                  "user_id": "m2",
+                  "user_login": "modtwo",
+                  "user_name": "Mod Two"
+                }
+              ],
+              "ids": [
+                "m1",
+                "m2"
+              ],
+              "logins": [
+                "modone",
+                "modtwo"
+              ],
+              "displayNames": [
+                "Mod One",
+                "Mod Two"
+              ]
+            },
+            7200
+          ],
+          [
+            "delete",
+            "twitch:channel:moderators:ids"
+          ],
+          [
+            "delete",
+            "twitch:channel:moderators:logins"
+          ],
+          [
+            "delete",
+            "twitch:channel:moderators:mapping"
+          ],
+          [
+            "addMembers",
+            "twitch:channel:moderators:ids",
+            [
+              "m1",
+              "m2"
+            ]
+          ],
+          [
+            "expire",
+            "twitch:channel:moderators:ids",
+            7200
+          ],
+          [
+            "addMembers",
+            "twitch:channel:moderators:logins",
+            [
+              "modone",
+              "modtwo"
+            ]
+          ],
+          [
+            "expire",
+            "twitch:channel:moderators:logins",
+            7200
+          ],
+          [
+            "hash",
+            "twitch:channel:moderators:mapping",
+            {
+              "modone": "m1",
+              "modtwo": "m2"
+            }
+          ],
+          [
+            "expire",
+            "twitch:channel:moderators:mapping",
+            7200
+          ]
+        ],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "moderators-filtered-request",
+      "operation": "moderators",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "userIds": [
+          "m1",
+          "m2"
+        ],
+        "response": {
+          "data": [
+            {
+              "user_id": "m1",
+              "user_login": "modone",
+              "user_name": "Mod One"
+            },
+            {
+              "user_id": "m2",
+              "user_login": "modtwo",
+              "user_name": "Mod Two"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "result": {
+          "error": false,
+          "message": "Success",
+          "data": [
+            {
+              "user_id": "m1",
+              "user_login": "modone",
+              "user_name": "Mod One"
+            },
+            {
+              "user_id": "m2",
+              "user_login": "modtwo",
+              "user_name": "Mod Two"
+            }
+          ],
+          "ids": [
+            "m1",
+            "m2"
+          ],
+          "logins": [
+            "modone",
+            "modtwo"
+          ],
+          "displayNames": [
+            "Mod One",
+            "Mod Two"
+          ]
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/moderation/moderators?broadcaster_id=channel&user_id=m1&user_id=m2",
+            "authorization": "Bearer fixture-streamer",
+            "body": null
+          }
+        ],
+        "commands": [],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "moderators-empty-cache",
+      "operation": "moderators",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": true,
+        "id": null,
+        "status": "ARCHIVED",
+        "response": {
+          "data": []
+        }
+      },
+      "expected": {
+        "result": {
+          "error": false,
+          "message": "Success",
+          "data": [],
+          "ids": [],
+          "logins": [],
+          "displayNames": []
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/moderation/moderators?broadcaster_id=channel",
+            "authorization": "Bearer fixture-streamer",
+            "body": null
+          }
+        ],
+        "commands": [
+          [
+            "get",
+            "twitch:channel:moderators"
+          ],
+          [
+            "set",
+            "twitch:channel:moderators",
+            {
+              "error": false,
+              "message": "Success",
+              "data": [],
+              "ids": [],
+              "logins": [],
+              "displayNames": []
+            },
+            7200
+          ],
+          [
+            "delete",
+            "twitch:channel:moderators:ids"
+          ],
+          [
+            "delete",
+            "twitch:channel:moderators:logins"
+          ],
+          [
+            "delete",
+            "twitch:channel:moderators:mapping"
+          ]
+        ],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "moderators-cache-hit",
+      "operation": "moderators",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": true,
+        "id": null,
+        "status": "ARCHIVED",
+        "initial": {
+          "twitch:channel:moderators": {
+            "data": [
+              {
+                "user_id": "m1",
+                "user_login": "modone",
+                "user_name": "Mod One"
+              },
+              {
+                "user_id": "m2",
+                "user_login": "modtwo",
+                "user_name": "Mod Two"
+              }
+            ],
+            "ids": [
+              "m1",
+              "m2"
+            ],
+            "logins": [
+              "modone",
+              "modtwo"
+            ],
+            "displayNames": [
+              "Mod One",
+              "Mod Two"
+            ]
+          }
+        }
+      },
+      "expected": {
+        "result": {
+          "error": false,
+          "message": "Success (from cache)",
+          "data": [
+            {
+              "user_id": "m1",
+              "user_login": "modone",
+              "user_name": "Mod One"
+            },
+            {
+              "user_id": "m2",
+              "user_login": "modtwo",
+              "user_name": "Mod Two"
+            }
+          ],
+          "ids": [
+            "m1",
+            "m2"
+          ],
+          "logins": [
+            "modone",
+            "modtwo"
+          ],
+          "displayNames": [
+            "Mod One",
+            "Mod Two"
+          ]
+        },
+        "requests": [],
+        "commands": [
+          [
+            "get",
+            "twitch:channel:moderators"
+          ]
+        ],
+        "auth": []
+      }
+    },
+    {
+      "name": "moderators-auth-denied",
+      "operation": "moderators",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "authError": "fixture permissions"
+      },
+      "expected": {
+        "result": {
+          "error": true,
+          "message": "fixture permissions",
+          "status": 403
+        },
+        "requests": [],
+        "commands": [],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "moderators-cache-required",
+      "operation": "moderators",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "cacheError": true
+      },
+      "expected": {
+        "result": {
+          "error": true,
+          "message": "Internal server error"
+        },
+        "requests": [],
+        "commands": [],
+        "auth": []
+      }
+    },
+    {
+      "name": "moderator-ids-hit",
+      "operation": "moderator_ids",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "sets": {
+          "twitch:channel:moderators:ids": [
+            "m1",
+            "m2"
+          ]
+        }
+      },
+      "expected": {
+        "result": {
+          "error": false,
+          "message": "Success (from cache)",
+          "ids": [
+            "m1",
+            "m2"
+          ]
+        },
+        "requests": [],
+        "commands": [
+          [
+            "members",
+            "twitch:channel:moderators:ids"
+          ]
+        ],
+        "auth": []
+      }
+    },
+    {
+      "name": "moderator-ids-fallback",
+      "operation": "moderator_ids",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "response": {
+          "data": [
+            {
+              "user_id": "m1",
+              "user_login": "modone",
+              "user_name": "Mod One"
+            },
+            {
+              "user_id": "m2",
+              "user_login": "modtwo",
+              "user_name": "Mod Two"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "result": {
+          "error": false,
+          "message": "Success",
+          "ids": [
+            "m1",
+            "m2"
+          ]
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/moderation/moderators?broadcaster_id=channel",
+            "authorization": "Bearer fixture-streamer",
+            "body": null
+          }
+        ],
+        "commands": [
+          [
+            "members",
+            "twitch:channel:moderators:ids"
+          ],
+          [
+            "get",
+            "twitch:channel:moderators"
+          ],
+          [
+            "set",
+            "twitch:channel:moderators",
+            {
+              "error": false,
+              "message": "Success",
+              "data": [
+                {
+                  "user_id": "m1",
+                  "user_login": "modone",
+                  "user_name": "Mod One"
+                },
+                {
+                  "user_id": "m2",
+                  "user_login": "modtwo",
+                  "user_name": "Mod Two"
+                }
+              ],
+              "ids": [
+                "m1",
+                "m2"
+              ],
+              "logins": [
+                "modone",
+                "modtwo"
+              ],
+              "displayNames": [
+                "Mod One",
+                "Mod Two"
+              ]
+            },
+            7200
+          ],
+          [
+            "delete",
+            "twitch:channel:moderators:ids"
+          ],
+          [
+            "delete",
+            "twitch:channel:moderators:logins"
+          ],
+          [
+            "delete",
+            "twitch:channel:moderators:mapping"
+          ],
+          [
+            "addMembers",
+            "twitch:channel:moderators:ids",
+            [
+              "m1",
+              "m2"
+            ]
+          ],
+          [
+            "expire",
+            "twitch:channel:moderators:ids",
+            7200
+          ],
+          [
+            "addMembers",
+            "twitch:channel:moderators:logins",
+            [
+              "modone",
+              "modtwo"
+            ]
+          ],
+          [
+            "expire",
+            "twitch:channel:moderators:logins",
+            7200
+          ],
+          [
+            "hash",
+            "twitch:channel:moderators:mapping",
+            {
+              "modone": "m1",
+              "modtwo": "m2"
+            }
+          ],
+          [
+            "expire",
+            "twitch:channel:moderators:mapping",
+            7200
+          ]
+        ],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "moderator-ids-skip-still-inner-cache",
+      "operation": "moderator_ids",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "skip": true,
+        "initial": {
+          "twitch:channel:moderators": {
+            "ids": [
+              "cached"
+            ]
+          }
+        }
+      },
+      "expected": {
+        "result": {
+          "error": false,
+          "message": "Success",
+          "ids": [
+            "cached"
+          ]
+        },
+        "requests": [],
+        "commands": [
+          [
+            "get",
+            "twitch:channel:moderators"
+          ]
+        ],
+        "auth": []
+      }
+    },
+    {
+      "name": "moderator-id-hit",
+      "operation": "moderator_id",
+      "input": {
+        "channel": "channel",
+        "user": "m1",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "sets": {
+          "twitch:channel:moderators:ids": [
+            "m1"
+          ]
+        }
+      },
+      "expected": {
+        "result": {
+          "error": false,
+          "isModerator": true,
+          "message": "User is a moderator"
+        },
+        "requests": [],
+        "commands": [
+          [
+            "isMember",
+            "twitch:channel:moderators:ids",
+            "m1"
+          ]
+        ],
+        "auth": []
+      }
+    },
+    {
+      "name": "moderator-id-negative-existing",
+      "operation": "moderator_id",
+      "input": {
+        "channel": "channel",
+        "user": "m1",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "sets": {
+          "twitch:channel:moderators:ids": [
+            "other"
+          ]
+        },
+        "authError": "unused"
+      },
+      "expected": {
+        "result": {
+          "error": false,
+          "isModerator": false,
+          "message": "User is not a moderator"
+        },
+        "requests": [],
+        "commands": [
+          [
+            "isMember",
+            "twitch:channel:moderators:ids",
+            "m1"
+          ],
+          [
+            "exists",
+            "twitch:channel:moderators:ids"
+          ]
+        ],
+        "auth": []
+      }
+    },
+    {
+      "name": "moderator-id-fetch",
+      "operation": "moderator_id",
+      "input": {
+        "channel": "channel",
+        "user": "m1",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "response": {
+          "data": [
+            {
+              "user_id": "m1",
+              "user_login": "modone",
+              "user_name": "Mod One"
+            },
+            {
+              "user_id": "m2",
+              "user_login": "modtwo",
+              "user_name": "Mod Two"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "result": {
+          "error": false,
+          "isModerator": true,
+          "message": "User is a moderator"
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/moderation/moderators?broadcaster_id=channel",
+            "authorization": "Bearer fixture-streamer",
+            "body": null
+          }
+        ],
+        "commands": [
+          [
+            "isMember",
+            "twitch:channel:moderators:ids",
+            "m1"
+          ],
+          [
+            "exists",
+            "twitch:channel:moderators:ids"
+          ],
+          [
+            "get",
+            "twitch:channel:moderators"
+          ],
+          [
+            "set",
+            "twitch:channel:moderators",
+            {
+              "error": false,
+              "message": "Success",
+              "data": [
+                {
+                  "user_id": "m1",
+                  "user_login": "modone",
+                  "user_name": "Mod One"
+                },
+                {
+                  "user_id": "m2",
+                  "user_login": "modtwo",
+                  "user_name": "Mod Two"
+                }
+              ],
+              "ids": [
+                "m1",
+                "m2"
+              ],
+              "logins": [
+                "modone",
+                "modtwo"
+              ],
+              "displayNames": [
+                "Mod One",
+                "Mod Two"
+              ]
+            },
+            7200
+          ],
+          [
+            "delete",
+            "twitch:channel:moderators:ids"
+          ],
+          [
+            "delete",
+            "twitch:channel:moderators:logins"
+          ],
+          [
+            "delete",
+            "twitch:channel:moderators:mapping"
+          ],
+          [
+            "addMembers",
+            "twitch:channel:moderators:ids",
+            [
+              "m1",
+              "m2"
+            ]
+          ],
+          [
+            "expire",
+            "twitch:channel:moderators:ids",
+            7200
+          ],
+          [
+            "addMembers",
+            "twitch:channel:moderators:logins",
+            [
+              "modone",
+              "modtwo"
+            ]
+          ],
+          [
+            "expire",
+            "twitch:channel:moderators:logins",
+            7200
+          ],
+          [
+            "hash",
+            "twitch:channel:moderators:mapping",
+            {
+              "modone": "m1",
+              "modtwo": "m2"
+            }
+          ],
+          [
+            "expire",
+            "twitch:channel:moderators:mapping",
+            7200
+          ]
+        ],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "moderator-id-auth-denied",
+      "operation": "moderator_id",
+      "input": {
+        "channel": "channel",
+        "user": "m1",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "authError": "fixture permissions"
+      },
+      "expected": {
+        "result": {
+          "error": true,
+          "isModerator": false,
+          "message": "fixture permissions"
+        },
+        "requests": [],
+        "commands": [
+          [
+            "isMember",
+            "twitch:channel:moderators:ids",
+            "m1"
+          ],
+          [
+            "exists",
+            "twitch:channel:moderators:ids"
+          ],
+          [
+            "get",
+            "twitch:channel:moderators"
+          ]
+        ],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "moderator-login-hit",
+      "operation": "moderator_login",
+      "input": {
+        "channel": "channel",
+        "user": "modone",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "sets": {
+          "twitch:channel:moderators:logins": [
+            "modone"
+          ]
+        }
+      },
+      "expected": {
+        "result": {
+          "error": false,
+          "isModerator": true,
+          "message": "User is a moderator"
+        },
+        "requests": [],
+        "commands": [
+          [
+            "isMember",
+            "twitch:channel:moderators:logins",
+            "modone"
+          ]
+        ],
+        "auth": []
+      }
+    },
+    {
+      "name": "moderator-login-negative-existing",
+      "operation": "moderator_login",
+      "input": {
+        "channel": "channel",
+        "user": "modone",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "sets": {
+          "twitch:channel:moderators:logins": [
+            "other"
+          ]
+        },
+        "authError": "unused"
+      },
+      "expected": {
+        "result": {
+          "error": false,
+          "isModerator": false,
+          "message": "User is not a moderator"
+        },
+        "requests": [],
+        "commands": [
+          [
+            "isMember",
+            "twitch:channel:moderators:logins",
+            "modone"
+          ],
+          [
+            "exists",
+            "twitch:channel:moderators:logins"
+          ]
+        ],
+        "auth": []
+      }
+    },
+    {
+      "name": "moderator-login-fetch",
+      "operation": "moderator_login",
+      "input": {
+        "channel": "channel",
+        "user": "modone",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "response": {
+          "data": [
+            {
+              "user_id": "m1",
+              "user_login": "modone",
+              "user_name": "Mod One"
+            },
+            {
+              "user_id": "m2",
+              "user_login": "modtwo",
+              "user_name": "Mod Two"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "result": {
+          "error": false,
+          "isModerator": true,
+          "message": "User is a moderator"
+        },
+        "requests": [
+          {
+            "method": "GET",
+            "path": "/moderation/moderators?broadcaster_id=channel",
+            "authorization": "Bearer fixture-streamer",
+            "body": null
+          }
+        ],
+        "commands": [
+          [
+            "isMember",
+            "twitch:channel:moderators:logins",
+            "modone"
+          ],
+          [
+            "exists",
+            "twitch:channel:moderators:logins"
+          ],
+          [
+            "get",
+            "twitch:channel:moderators"
+          ],
+          [
+            "set",
+            "twitch:channel:moderators",
+            {
+              "error": false,
+              "message": "Success",
+              "data": [
+                {
+                  "user_id": "m1",
+                  "user_login": "modone",
+                  "user_name": "Mod One"
+                },
+                {
+                  "user_id": "m2",
+                  "user_login": "modtwo",
+                  "user_name": "Mod Two"
+                }
+              ],
+              "ids": [
+                "m1",
+                "m2"
+              ],
+              "logins": [
+                "modone",
+                "modtwo"
+              ],
+              "displayNames": [
+                "Mod One",
+                "Mod Two"
+              ]
+            },
+            7200
+          ],
+          [
+            "delete",
+            "twitch:channel:moderators:ids"
+          ],
+          [
+            "delete",
+            "twitch:channel:moderators:logins"
+          ],
+          [
+            "delete",
+            "twitch:channel:moderators:mapping"
+          ],
+          [
+            "addMembers",
+            "twitch:channel:moderators:ids",
+            [
+              "m1",
+              "m2"
+            ]
+          ],
+          [
+            "expire",
+            "twitch:channel:moderators:ids",
+            7200
+          ],
+          [
+            "addMembers",
+            "twitch:channel:moderators:logins",
+            [
+              "modone",
+              "modtwo"
+            ]
+          ],
+          [
+            "expire",
+            "twitch:channel:moderators:logins",
+            7200
+          ],
+          [
+            "hash",
+            "twitch:channel:moderators:mapping",
+            {
+              "modone": "m1",
+              "modtwo": "m2"
+            }
+          ],
+          [
+            "expire",
+            "twitch:channel:moderators:mapping",
+            7200
+          ]
+        ],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "moderator-login-auth-denied",
+      "operation": "moderator_login",
+      "input": {
+        "channel": "channel",
+        "user": "modone",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "authError": "fixture permissions"
+      },
+      "expected": {
+        "result": {
+          "error": true,
+          "isModerator": false,
+          "message": "fixture permissions"
+        },
+        "requests": [],
+        "commands": [
+          [
+            "isMember",
+            "twitch:channel:moderators:logins",
+            "modone"
+          ],
+          [
+            "exists",
+            "twitch:channel:moderators:logins"
+          ],
+          [
+            "get",
+            "twitch:channel:moderators"
+          ]
+        ],
+        "auth": [
+          "streamer:channel"
+        ]
+      }
+    },
+    {
+      "name": "execute-off",
+      "operation": "execute",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "action": "off",
+        "reason": "fixture reason",
+        "response": {
+          "data": [
+            {
+              "user_id": "viewer",
+              "is_sent": true,
+              "message_id": "notice"
+            }
+          ]
+        },
+        "httpStatus": 200
+      },
+      "expected": {
+        "result": {
+          "error": false,
+          "message": "No action configured for this offense",
+          "action": "off"
+        },
+        "requests": [],
+        "commands": [],
+        "auth": []
+      }
+    },
+    {
+      "name": "execute-warn",
+      "operation": "execute",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "action": "warn",
+        "reason": "fixture reason",
+        "response": {
+          "data": [
+            {
+              "user_id": "viewer",
+              "is_sent": true,
+              "message_id": "notice"
+            }
+          ]
+        },
+        "httpStatus": 200
+      },
+      "expected": {
+        "result": {
+          "error": false,
+          "message": "Warning issued",
+          "action": "warn"
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/moderation/warnings?broadcaster_id=channel&moderator_id=698614112",
+            "authorization": "Bearer fixture-bot",
+            "body": {
+              "data": {
+                "user_id": "viewer",
+                "reason": "fixture reason"
+              }
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/chat/messages",
+            "authorization": "Bearer fixture-app",
+            "body": {
+              "broadcaster_id": "channel",
+              "sender_id": "698614112",
+              "message": "@cdom201 fixture reason",
+              "for_source_only": true
+            }
+          }
+        ],
+        "commands": [
+          [
+            "setNx",
+            "moderation:channel:notice:viewer",
+            "1",
+            60
+          ]
+        ],
+        "auth": [
+          "bot",
+          "app"
+        ]
+      }
+    },
+    {
+      "name": "execute-delete",
+      "operation": "execute",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "action": "delete",
+        "reason": "fixture reason",
+        "response": {
+          "data": [
+            {
+              "user_id": "viewer",
+              "is_sent": true,
+              "message_id": "notice"
+            }
+          ]
+        },
+        "httpStatus": 204
+      },
+      "expected": {
+        "result": {
+          "error": false,
+          "message": "Message deleted",
+          "action": "delete"
+        },
+        "requests": [
+          {
+            "method": "DELETE",
+            "path": "/moderation/chat?broadcaster_id=channel&message_id=message&moderator_id=698614112",
+            "authorization": "Bearer fixture-bot",
+            "body": null
+          },
+          {
+            "method": "POST",
+            "path": "/chat/messages",
+            "authorization": "Bearer fixture-app",
+            "body": {
+              "broadcaster_id": "channel",
+              "sender_id": "698614112",
+              "message": "@cdom201 fixture reason",
+              "for_source_only": true
+            }
+          }
+        ],
+        "commands": [
+          [
+            "setNx",
+            "moderation:channel:notice:viewer",
+            "1",
+            60
+          ]
+        ],
+        "auth": [
+          "bot",
+          "app"
+        ]
+      }
+    },
+    {
+      "name": "execute-timeout",
+      "operation": "execute",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "action": "timeout",
+        "reason": "fixture reason",
+        "response": {
+          "data": [
+            {
+              "user_id": "viewer",
+              "is_sent": true,
+              "message_id": "notice"
+            }
+          ]
+        },
+        "httpStatus": 200
+      },
+      "expected": {
+        "result": {
+          "error": false,
+          "message": "Success",
+          "action": "timeout"
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/moderation/bans?broadcaster_id=channel&moderator_id=698614112",
+            "authorization": "Bearer fixture-bot",
+            "body": {
+              "data": {
+                "user_id": "viewer",
+                "duration": 60,
+                "reason": "fixture reason"
+              }
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/chat/messages",
+            "authorization": "Bearer fixture-app",
+            "body": {
+              "broadcaster_id": "channel",
+              "sender_id": "698614112",
+              "message": "@cdom201 fixture reason",
+              "for_source_only": true
+            }
+          }
+        ],
+        "commands": [
+          [
+            "setNx",
+            "moderation:channel:notice:viewer",
+            "1",
+            60
+          ]
+        ],
+        "auth": [
+          "bot",
+          "app"
+        ]
+      }
+    },
+    {
+      "name": "execute-ban",
+      "operation": "execute",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "action": "ban",
+        "reason": "fixture reason",
+        "response": {
+          "data": [
+            {
+              "user_id": "viewer",
+              "is_sent": true,
+              "message_id": "notice"
+            }
+          ]
+        },
+        "httpStatus": 200
+      },
+      "expected": {
+        "result": {
+          "error": false,
+          "message": "Success",
+          "action": "ban"
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/moderation/bans?broadcaster_id=channel&moderator_id=698614112",
+            "authorization": "Bearer fixture-bot",
+            "body": {
+              "data": {
+                "user_id": "viewer",
+                "reason": "fixture reason"
+              }
+            }
+          },
+          {
+            "method": "POST",
+            "path": "/chat/messages",
+            "authorization": "Bearer fixture-app",
+            "body": {
+              "broadcaster_id": "channel",
+              "sender_id": "698614112",
+              "message": "@cdom201 fixture reason",
+              "for_source_only": true
+            }
+          }
+        ],
+        "commands": [
+          [
+            "setNx",
+            "moderation:channel:notice:viewer",
+            "1",
+            60
+          ]
+        ],
+        "auth": [
+          "bot",
+          "app"
+        ]
+      }
+    },
+    {
+      "name": "execute-unknown",
+      "operation": "execute",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "action": "unknown",
+        "reason": "fixture reason",
+        "response": {
+          "data": [
+            {
+              "user_id": "viewer",
+              "is_sent": true,
+              "message_id": "notice"
+            }
+          ]
+        },
+        "httpStatus": 200
+      },
+      "expected": {
+        "result": {
+          "error": true,
+          "message": "Unknown moderation action: unknown",
+          "action": "unknown"
+        },
+        "requests": [],
+        "commands": [],
+        "auth": []
+      }
+    },
+    {
+      "name": "execute-throttled-notice",
+      "operation": "execute",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "action": "warn",
+        "noticeAcquired": false,
+        "response": {
+          "data": [
+            {}
+          ]
+        }
+      },
+      "expected": {
+        "result": {
+          "error": false,
+          "message": "Warning issued",
+          "action": "warn"
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/moderation/warnings?broadcaster_id=channel&moderator_id=698614112",
+            "authorization": "Bearer fixture-bot",
+            "body": {
+              "data": {
+                "user_id": "viewer",
+                "reason": "fixture"
+              }
+            }
+          }
+        ],
+        "commands": [
+          [
+            "setNx",
+            "moderation:channel:notice:viewer",
+            "1",
+            60
+          ]
+        ],
+        "auth": [
+          "bot"
+        ]
+      }
+    },
+    {
+      "name": "execute-no-notice-on-failure",
+      "operation": "execute",
+      "input": {
+        "channel": "channel",
+        "user": "viewer",
+        "username": "cdom201",
+        "title": "Pick",
+        "choices": [
+          {
+            "title": "One"
+          },
+          {
+            "title": "Two"
+          }
+        ],
+        "duration": "60",
+        "cache": false,
+        "id": null,
+        "status": "ARCHIVED",
+        "action": "warn",
+        "httpStatus": 403,
+        "response": {
+          "error": "Forbidden",
+          "message": "fixture denied"
+        }
+      },
+      "expected": {
+        "result": {
+          "error": true,
+          "message": "fixture denied",
+          "action": "warn"
+        },
+        "requests": [
+          {
+            "method": "POST",
+            "path": "/moderation/warnings?broadcaster_id=channel&moderator_id=698614112",
+            "authorization": "Bearer fixture-bot",
+            "body": {
+              "data": {
+                "user_id": "viewer",
+                "reason": "fixture"
+              }
+            }
+          }
+        ],
+        "commands": [],
+        "auth": [
+          "bot"
+        ]
+      }
+    }
+  ]
+}

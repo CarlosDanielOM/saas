@@ -254,6 +254,11 @@ impl Default for HelixRetryPolicy {
     }
 }
 impl HelixRetryPolicy {
+    /// Preserve raw-fetch callers that must not replay a side-effecting request.
+    pub fn single_attempt() -> Self {
+        Self { delays: Vec::new() }
+    }
+
     /// Empty input uses TS defaults. `[0]` requests one immediate retry.
     pub fn from_millis(delays: &[u64]) -> Self {
         let delays = if delays.is_empty() {

@@ -74,6 +74,9 @@ pub mod schemas;
 #[path = "domain_events/runtime/mod.rs"]
 pub mod domain_event_runtime;
 
+#[cfg(feature = "twitch-functions")]
+pub mod functions;
+
 #[cfg(feature = "cron-supervisor")]
 #[path = "workers/cron_supervisor/mod.rs"]
 pub mod supervisor;
