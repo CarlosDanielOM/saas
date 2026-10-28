@@ -1,0 +1,7 @@
+{
+  "baseline": "112866a0",
+  "replaced_sources": [
+    "dimabot/src/schemas/schema.rs"
+  ],
+  "reason": "expanded actual Mongoose corpus against pre-integration shared date cast"
+}

@@ -1,0 +1,92 @@
+{
+  "engine": "mongoose",
+  "version": "8.24.2",
+  "node": "v24.22.1",
+  "timezone": "UTC",
+  "workload": "invalid",
+  "operations": 10000,
+  "case_indices": [
+    1,
+    2,
+    4,
+    5,
+    9,
+    23,
+    24,
+    25,
+    26,
+    31,
+    33,
+    41,
+    48,
+    50,
+    51,
+    54,
+    57,
+    58,
+    59,
+    60,
+    61,
+    62,
+    63,
+    64,
+    65,
+    72,
+    75,
+    76,
+    77,
+    78
+  ],
+  "samples": [
+    {
+      "elapsed_ns": 519637697,
+      "checksum": 49995000,
+      "valid": 0,
+      "nulls": 0,
+      "invalid": 10000
+    },
+    {
+      "elapsed_ns": 471121648,
+      "checksum": 49995000,
+      "valid": 0,
+      "nulls": 0,
+      "invalid": 10000
+    },
+    {
+      "elapsed_ns": 440311847,
+      "checksum": 49995000,
+      "valid": 0,
+      "nulls": 0,
+      "invalid": 10000
+    },
+    {
+      "elapsed_ns": 454071222,
+      "checksum": 49995000,
+      "valid": 0,
+      "nulls": 0,
+      "invalid": 10000
+    },
+    {
+      "elapsed_ns": 421556536,
+      "checksum": 49995000,
+      "valid": 0,
+      "nulls": 0,
+      "invalid": 10000
+    },
+    {
+      "elapsed_ns": 492027981,
+      "checksum": 49995000,
+      "valid": 0,
+      "nulls": 0,
+      "invalid": 10000
+    },
+    {
+      "elapsed_ns": 500916920,
+      "checksum": 49995000,
+      "valid": 0,
+      "nulls": 0,
+      "invalid": 10000
+    }
+  ],
+  "scope": "caster outcomes; Rust errors do not format details"
+}

@@ -1,0 +1,90 @@
+{
+  "case_indices": [
+    1,
+    2,
+    4,
+    5,
+    9,
+    23,
+    24,
+    25,
+    26,
+    31,
+    33,
+    41,
+    48,
+    50,
+    51,
+    54,
+    57,
+    58,
+    59,
+    60,
+    61,
+    62,
+    63,
+    64,
+    65,
+    72,
+    75,
+    76,
+    77,
+    78
+  ],
+  "engine": "rust",
+  "operations": 10000,
+  "samples": [
+    {
+      "checksum": 49995000,
+      "elapsed_ns": 593572,
+      "invalid": 10000,
+      "nulls": 0,
+      "valid": 0
+    },
+    {
+      "checksum": 49995000,
+      "elapsed_ns": 543667,
+      "invalid": 10000,
+      "nulls": 0,
+      "valid": 0
+    },
+    {
+      "checksum": 49995000,
+      "elapsed_ns": 563235,
+      "invalid": 10000,
+      "nulls": 0,
+      "valid": 0
+    },
+    {
+      "checksum": 49995000,
+      "elapsed_ns": 551724,
+      "invalid": 10000,
+      "nulls": 0,
+      "valid": 0
+    },
+    {
+      "checksum": 49995000,
+      "elapsed_ns": 561672,
+      "invalid": 10000,
+      "nulls": 0,
+      "valid": 0
+    },
+    {
+      "checksum": 49995000,
+      "elapsed_ns": 564117,
+      "invalid": 10000,
+      "nulls": 0,
+      "valid": 0
+    },
+    {
+      "checksum": 49995000,
+      "elapsed_ns": 559879,
+      "invalid": 10000,
+      "nulls": 0,
+      "valid": 0
+    }
+  ],
+  "scope": "caster outcomes; Rust errors do not format details",
+  "timezone": "UTC",
+  "workload": "invalid"
+}

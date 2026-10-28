@@ -1,0 +1,57 @@
+{
+  "zone": "UTC",
+  "samples": 7,
+  "operations": 10000,
+  "warmup_operations": 10000,
+  "scope": "prepared caster outcomes; Node assertion errors include detail/stack, Rust typed errors unformatted; no I/O, JSON, or production",
+  "rows": [
+    {
+      "workload": "numeric",
+      "cases": 16,
+      "operations": 10000,
+      "node_us": 0.1841109,
+      "rust_us": 0.016407699999999997,
+      "ratio": 0.08911856929709214,
+      "checksum": 3377425091,
+      "valid": 10000,
+      "nulls": 0,
+      "invalid": 0
+    },
+    {
+      "workload": "string",
+      "cases": 28,
+      "operations": 10000,
+      "node_us": 0.2968582,
+      "rust_us": 0.20594980000000002,
+      "ratio": 0.693764901895922,
+      "checksum": 3963888031,
+      "valid": 10000,
+      "nulls": 0,
+      "invalid": 0
+    },
+    {
+      "workload": "invalid",
+      "cases": 30,
+      "operations": 10000,
+      "node_us": 47.1121648,
+      "rust_us": 0.0561672,
+      "ratio": 0.0011922016370599893,
+      "checksum": 49995000,
+      "valid": 0,
+      "nulls": 0,
+      "invalid": 10000
+    },
+    {
+      "workload": "mixed",
+      "cases": 80,
+      "operations": 10000,
+      "node_us": 17.1098786,
+      "rust_us": 0.0889646,
+      "ratio": 0.00519960439695931,
+      "checksum": 1422912694,
+      "valid": 6000,
+      "nulls": 250,
+      "invalid": 3750
+    }
+  ]
+}
