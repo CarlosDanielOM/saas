@@ -9,9 +9,9 @@ use std::{
 };
 
 use reqwest::{Client, Response};
-use tokio::sync::watch;
 
 use super::{
+    http_support::{abort_reason, cancellation, new_client, read_audio, transport_error},
     speech_paths::{SpeechPaths, node_join},
     tts_provider::{TtsSynthesisRequest, TtsSynthesisResult},
 };
@@ -94,32 +94,7 @@ pub struct FishTtsService {
 
 impl FishTtsService {
     pub fn new(config: FishConfig) -> Self {
-        #[cfg(any(
-            feature = "email",
-            feature = "posthog",
-            feature = "s3",
-            feature = "otel"
-        ))]
-        crate::utils::install_default_tls_provider();
-        // Node's fetch follows at most twenty redirects. Reqwest strips auth
-        // when host/port changes; reject a scheme-only same-host/port change,
-        // which reqwest otherwise follows without stripping Authorization.
-        let client = Client::builder()
-            .redirect(reqwest::redirect::Policy::custom(|attempt| {
-                let scheme_only_origin_change = attempt.previous().last().is_some_and(|previous| {
-                    previous.scheme() != attempt.url().scheme()
-                        && previous.host_str() == attempt.url().host_str()
-                        && previous.port_or_known_default() == attempt.url().port_or_known_default()
-                });
-                if scheme_only_origin_change {
-                    attempt.stop()
-                } else {
-                    reqwest::redirect::Policy::limited(20).redirect(attempt)
-                }
-            }))
-            .referer(false)
-            .build()
-            .expect("Fish HTTP client configuration is valid");
+        let client = new_client();
         Self { client, config }
     }
 
@@ -295,20 +270,7 @@ impl FishTtsService {
                 break response;
             }
         };
-        let mut result = Vec::new();
-        while let Some(chunk) = response.chunk().await.map_err(transport_error)? {
-            // Infinity in readAudioStream is represented by the largest native
-            // buffer size. A caller's explicit zero rejects any nonempty chunk.
-            if chunk.len()
-                > request
-                    .max_audio_bytes
-                    .unwrap_or(usize::MAX)
-                    .saturating_sub(result.len())
-            {
-                return Err("TTS audio exceeds byte limit".into());
-            }
-            result.extend_from_slice(&chunk);
-        }
+        let result = read_audio(&mut response, request.max_audio_bytes).await?;
         if result.is_empty() {
             return Err(format!(
                 "Fish Audio TTS returned empty audio from '{backend}'"
@@ -329,25 +291,6 @@ fn key<'a>(key: &'a Option<String>, missing: &str) -> Result<&'a str, String> {
 }
 fn no_body(response: &Response) -> bool {
     matches!(response.status().as_u16(), 204 | 205 | 304)
-}
-fn transport_error(error: reqwest::Error) -> String {
-    error.without_url().to_string()
-}
-fn abort_reason(signal: &Option<watch::Receiver<Option<String>>>) -> Option<String> {
-    signal.as_ref().and_then(|signal| signal.borrow().clone())
-}
-async fn cancellation(signal: &mut Option<watch::Receiver<Option<String>>>) {
-    if let Some(signal) = signal {
-        loop {
-            if signal.borrow().is_some() {
-                return;
-            }
-            if signal.changed().await.is_err() {
-                break;
-            }
-        }
-    }
-    std::future::pending::<()>().await;
 }
 fn retry_delay(response: &Response, retry: u32) -> Duration {
     let now = SystemTime::now()

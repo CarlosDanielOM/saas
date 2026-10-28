@@ -165,7 +165,10 @@ pub fn expressive_tags() -> impl Iterator<Item = &'static str> {
         .copied()
 }
 pub fn resolve_kokoro_voice(value: &Value) -> Option<String> {
-    let voice = trim(value.as_str()?).to_lowercase();
+    resolve_kokoro_voice_str(value.as_str()?)
+}
+pub fn resolve_kokoro_voice_str(value: &str) -> Option<String> {
+    let voice = trim(value).to_lowercase();
     KOKORO_VOICES.contains(&voice.as_str()).then_some(voice)
 }
 pub fn normalize_expressive_tags(input: &Value) -> BTreeMap<String, bool> {
