@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "codeCommit": "20cbcbe37bb804b619ac16bf4a88c30f0187a8ae",
+  "sourceTreeSha256": "f6c700acb8757056c099899d234f0be705e190213e917f141d1349e8c02f4042",
+  "compilerReceipt": "compiler-1793224870529362167-receipt.json",
+  "nodeReceipt": "node-1793224753883224280-receipt.json",
+  "ordinaryTestExecutions": {
+    "library": 9,
+    "kokoro": 6,
+    "piper": 13,
+    "fish": 16,
+    "ttsAndJsStringRegression": 4,
+    "total": 48
+  },
+  "explicitFixtureTestExecutions": 5,
+  "sourceCases": {
+    "kokoro": 14,
+    "piperHttp": 12,
+    "piperCli": 8,
+    "total": 34,
+    "piperExactNormalizedOutcomeCases": 19,
+    "piperSpawnDiagnosticCategoryOnlyCases": 1,
+    "publicPaths": 3
+  },
+  "fixtureHashesBeforeAfterIdentical": true,
+  "providerLatencyBenchmark": false,
+  "newReleaseBenchmark": false,
+  "actualPiperEngineOrModelsUsed": false,
+  "realKokoroOrFishProviderUsed": false,
+  "deployment": false,
+  "push": false,
+  "newCargoPackages": false
+}
