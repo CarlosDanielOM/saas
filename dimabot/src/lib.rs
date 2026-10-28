@@ -63,6 +63,9 @@
 pub mod utils;
 pub mod workers;
 
+#[cfg(feature = "bits-rules")]
+pub mod bits_rules;
+
 #[cfg(feature = "domain-events")]
 #[path = "domain_events/mod.rs"]
 pub mod domain_event_contracts;

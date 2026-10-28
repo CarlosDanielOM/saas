@@ -1,0 +1,277 @@
+{
+  "sourceHash": "ced0f00551a5d7ecb91a8cbbe79855673dd6c02dd30b09b4ef0a73e576c56102",
+  "cases": [
+    {
+      "op": "parse",
+      "raw": {
+        "name": " Big ",
+        "min": 100,
+        "max": null,
+        "chat": {
+          "mode": "default"
+        }
+      },
+      "id": "r1",
+      "previous": null,
+      "expected": {
+        "id": "r1",
+        "name": "Big",
+        "enabled": true,
+        "min": 100,
+        "max": null,
+        "chat": {
+          "mode": "default",
+          "message": ""
+        },
+        "alert": true
+      }
+    },
+    {
+      "op": "parse",
+      "raw": {
+        "min": 1.5
+      },
+      "id": "r",
+      "previous": null,
+      "error": "The amount must be a whole number of Bits from 1 to 1,000,000"
+    },
+    {
+      "op": "parse",
+      "raw": {
+        "min": 1,
+        "chat": {
+          "mode": "custom",
+          "message": "  "
+        }
+      },
+      "id": "r",
+      "previous": null,
+      "error": "Write the chat message, or choose the default message"
+    },
+    {
+      "op": "parse",
+      "raw": {
+        "min": 2,
+        "max": 1
+      },
+      "id": "r",
+      "previous": null,
+      "error": "The highest amount must be at least the lowest amount"
+    },
+    {
+      "op": "parse",
+      "raw": {
+        "enabled": false
+      },
+      "id": "r",
+      "previous": {
+        "id": "r",
+        "name": "yes",
+        "enabled": true,
+        "min": 1,
+        "max": 2,
+        "chat": {
+          "mode": "silent",
+          "message": ""
+        },
+        "alert": false
+      },
+      "expected": {
+        "id": "r",
+        "name": "yes",
+        "enabled": false,
+        "min": 1,
+        "max": 2,
+        "chat": {
+          "mode": "silent",
+          "message": ""
+        },
+        "alert": false
+      }
+    },
+    {
+      "op": "legacy",
+      "raw": [
+        {
+          "id": "tier-1",
+          "name": " Nice ",
+          "message": "Nice",
+          "minAmount": 69,
+          "maxAmount": 69
+        },
+        {
+          "id": "tier 2",
+          "message": "",
+          "min_amount": 0,
+          "max_amount": 10
+        },
+        {
+          "name": "broken"
+        }
+      ],
+      "expected": [
+        {
+          "id": "tier-1",
+          "name": "Nice",
+          "enabled": true,
+          "min": 69,
+          "max": 69,
+          "chat": {
+            "mode": "custom",
+            "message": "Nice"
+          },
+          "alert": true
+        },
+        {
+          "id": "legacy-2",
+          "name": "",
+          "enabled": true,
+          "min": 1,
+          "max": 10,
+          "chat": {
+            "mode": "silent",
+            "message": ""
+          },
+          "alert": true
+        }
+      ]
+    },
+    {
+      "op": "legacy",
+      "raw": [
+        {
+          "minAmount": "0x10",
+          "maxAmount": "20.5",
+          "message": " hi "
+        },
+        {
+          "min_amount": null,
+          "minAmount": null,
+          "maxAmount": true,
+          "message": "x"
+        }
+      ],
+      "expected": [
+        {
+          "id": "legacy-1",
+          "name": "",
+          "enabled": true,
+          "min": 16,
+          "max": 21,
+          "chat": {
+            "mode": "custom",
+            "message": " hi "
+          },
+          "alert": true
+        },
+        {
+          "id": "legacy-2",
+          "name": "",
+          "enabled": true,
+          "min": 1,
+          "max": 1,
+          "chat": {
+            "mode": "custom",
+            "message": "x"
+          },
+          "alert": true
+        }
+      ]
+    },
+    {
+      "op": "id",
+      "raw": "abc-_09",
+      "expected": true
+    },
+    {
+      "op": "id",
+      "raw": "hello 文",
+      "expected": false
+    },
+    {
+      "op": "id",
+      "raw": "",
+      "expected": false
+    },
+    {
+      "op": "match",
+      "raw": [
+        {
+          "id": "any",
+          "name": "",
+          "enabled": true,
+          "min": 1,
+          "max": null,
+          "chat": {
+            "mode": "default",
+            "message": ""
+          },
+          "alert": true
+        },
+        {
+          "id": "wide",
+          "name": "",
+          "enabled": true,
+          "min": 50,
+          "max": 150,
+          "chat": {
+            "mode": "custom",
+            "message": "wide"
+          },
+          "alert": true
+        },
+        {
+          "id": "nice",
+          "name": "",
+          "enabled": true,
+          "min": 69,
+          "max": 69,
+          "chat": {
+            "mode": "silent",
+            "message": ""
+          },
+          "alert": true
+        }
+      ],
+      "bits": 69,
+      "expected": "nice"
+    },
+    {
+      "op": "match",
+      "raw": [
+        {
+          "id": "any",
+          "name": "",
+          "enabled": true,
+          "min": 1,
+          "max": null,
+          "chat": {
+            "mode": "default",
+            "message": ""
+          },
+          "alert": true
+        },
+        {
+          "id": "high",
+          "name": "",
+          "enabled": true,
+          "min": 100,
+          "max": null,
+          "chat": {
+            "mode": "default",
+            "message": ""
+          },
+          "alert": true
+        }
+      ],
+      "bits": 1000,
+      "expected": "high"
+    },
+    {
+      "op": "match",
+      "raw": [],
+      "bits": "100",
+      "expected": null
+    }
+  ]
+}

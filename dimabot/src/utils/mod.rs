@@ -50,7 +50,8 @@ pub mod js_compat;
     feature = "ast-evaluator",
     feature = "reward-body",
     feature = "domain-events",
-    feature = "application-schemas"
+    feature = "application-schemas",
+    feature = "bits-rules"
 ))]
 pub mod json_number;
 

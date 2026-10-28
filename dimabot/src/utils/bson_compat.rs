@@ -34,7 +34,7 @@ pub fn normalize_document(document: &mut Document) {
     }
 }
 
-fn normalize_js_numbers(value: &mut Bson) {
+pub(crate) fn normalize_js_numbers(value: &mut Bson) {
     match value {
         Bson::Double(number) => *value = js_number(*number),
         Bson::Int64(number)
@@ -47,6 +47,37 @@ fn normalize_js_numbers(value: &mut Bson) {
         // Int32 already has the representation js_number would produce.
         _ => {}
     }
+}
+
+/// Convert JSON values through JavaScript's binary64 Number boundary before
+/// applying the Node BSON writer's number encoding recursively.
+#[cfg(feature = "bits-rules")]
+pub(crate) fn json_to_bson(value: &serde_json::Value) -> Result<Bson, &'static str> {
+    use serde_json::Value;
+    let converted = match value {
+        Value::Null => Bson::Null,
+        Value::Bool(value) => Bson::Boolean(*value),
+        Value::String(value) => Bson::String(value.clone()),
+        Value::Number(value) => {
+            let mut number = Bson::Double(
+                value
+                    .as_f64()
+                    .ok_or("JSON number is not representable as binary64")?,
+            );
+            normalize_js_numbers(&mut number);
+            number
+        }
+        Value::Array(values) => {
+            Bson::Array(values.iter().map(json_to_bson).collect::<Result<_, _>>()?)
+        }
+        Value::Object(values) => Bson::Document(
+            values
+                .iter()
+                .map(|(key, value)| Ok((key.clone(), json_to_bson(value)?)))
+                .collect::<Result<_, &'static str>>()?,
+        ),
+    };
+    Ok(converted)
 }
 
 #[cfg(test)]

@@ -46,6 +46,10 @@
 use std::collections::BTreeMap;
 use std::ops::Deref;
 
+/// Canonical and historical Bits event names used by the existing EventSub store.
+pub const CANONICAL_BITS_EVENT_TYPE: &str = "channel.bits.use";
+pub const LEGACY_BITS_EVENT_TYPES: [&str; 2] = ["channel.cheer", "channel.bit.use"];
+
 /// Twitch `channel.raid` subscription type.
 pub const RAID_EVENT_TYPE: &str = "channel.raid";
 

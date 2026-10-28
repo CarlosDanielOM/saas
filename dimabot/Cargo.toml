@@ -62,6 +62,7 @@ twitch-functions = ["twitch-streamers", "credit-policy"]
 logger = ["dep:serde", "dep:serde_json", "serde_json/float_roundtrip", "dep:tokio", "dep:futures-util", "dep:uuid"]
 observability = ["redis", "logger", "dep:getrandom", "dep:serde", "dep:serde_json", "dep:uuid"]
 tts-utilities = ["dep:regex", "dep:serde_json", "serde_json/float_roundtrip", "dep:tokio"]
+bits-rules = ["mongo", "eventsub", "serde_json/float_roundtrip"]
 logger-redis = ["logger", "redis"]
 logger-otel = ["logger", "otel"]
 # Explicit cache protocol adapter; no default or deployed profile enables it.
