@@ -67,6 +67,9 @@ pub mod workers;
 #[path = "domain_events/mod.rs"]
 pub mod domain_event_contracts;
 
+#[cfg(feature = "application-schemas")]
+pub mod schemas;
+
 #[cfg(feature = "domain-event-runtime")]
 #[path = "domain_events/runtime/mod.rs"]
 pub mod domain_event_runtime;

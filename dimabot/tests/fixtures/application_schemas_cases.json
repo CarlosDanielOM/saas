@@ -1,0 +1,2934 @@
+{
+  "sources": {
+    "users": "f324f0837b01866a0caf28854c0261b8a2e28f0fb577cd5ae370e45c352fad13",
+    "accounts": "7eab86b048cb05d44e9b17c7498c18b713e4c722b71f58f545158fde040431f1",
+    "admin": "b45fef05b1b176cac11283df5ec7d1d09b1fc327bae98e4e7ca4447f43baa2e0",
+    "app_config": "ae2e1d246a21d5d1931267ce01441e0ca06d032b24a50985738eb3d26520c7b5",
+    "channel_config": "331e11d6f3487f0695080a02dba8f85b554e91b0eb3eed0b78bc3d92085c6a36",
+    "oauth_client": "48e796d493fbbc16466e50c2e6dd9f2c46558c76854b900c8b1d585f20b71dc8",
+    "oauth_grant": "b82f455eeb977def6100a19e3d190acfed616d6fa9ad7501cc3c1f3523c00df1",
+    "oauth_refresh_token": "21568d96d49bc49ee0bc94e0c1b6715cc626368ed736522eeb3ce04152ae54ae",
+    "oauth_session": "d383f6bb4c900cfa8323c32719f1b04c8aec0f468d6cfb0fedae7416d6251556",
+    "credit_gift": "f76f4472354751b42587baa1271214c198aac40b86b5fcb85fd046e4de9c0607",
+    "credit_transaction": "14017b20e83ec2eebf7a10475b5ade495554cc9043685af3dd5045350a9e985f"
+  },
+  "fixedNow": 1900000000000,
+  "definitions": {
+    "users": {
+      "model": "users",
+      "collection": "users",
+      "hidden": [
+        "applied_credit_transaction_ids",
+        "polar_credit_snapshot"
+      ],
+      "indexes": []
+    },
+    "accounts": {
+      "model": "Account",
+      "collection": "accounts",
+      "hidden": [],
+      "indexes": []
+    },
+    "admin": {
+      "model": "Admin",
+      "collection": "admins",
+      "hidden": [],
+      "indexes": []
+    },
+    "app_config": {
+      "model": "app_config",
+      "collection": "app_configs",
+      "hidden": [],
+      "indexes": []
+    },
+    "channel_config": {
+      "model": "channelconfig",
+      "collection": "channelconfigs",
+      "hidden": [],
+      "indexes": []
+    },
+    "oauth_client": {
+      "model": "OAuthClient",
+      "collection": "oauth_clients",
+      "hidden": [],
+      "indexes": [
+        {
+          "keys": {
+            "client_id": 1
+          },
+          "unique": true,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        }
+      ]
+    },
+    "oauth_grant": {
+      "model": "OAuthGrant",
+      "collection": "oauth_grants",
+      "hidden": [],
+      "indexes": [
+        {
+          "keys": {
+            "user_id": 1
+          },
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "user_id": 1,
+            "client_id": 1,
+            "channel_id": 1
+          },
+          "unique": true,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        }
+      ]
+    },
+    "oauth_refresh_token": {
+      "model": "OAuthRefreshToken",
+      "collection": "oauth_refresh_tokens",
+      "hidden": [],
+      "indexes": [
+        {
+          "keys": {
+            "token_hash": 1
+          },
+          "unique": true,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "session_id": 1
+          },
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "expires_at": 1
+          },
+          "unique": false,
+          "sparse": false,
+          "ttl": 0,
+          "partial": null
+        }
+      ]
+    },
+    "oauth_session": {
+      "model": "OAuthSession",
+      "collection": "oauth_sessions",
+      "hidden": [
+        "current_refresh_hash"
+      ],
+      "indexes": [
+        {
+          "keys": {
+            "grant_id": 1
+          },
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "user_id": 1
+          },
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "expires_at": 1
+          },
+          "unique": false,
+          "sparse": false,
+          "ttl": 0,
+          "partial": null
+        }
+      ]
+    },
+    "credit_gift": {
+      "model": "CreditGift",
+      "collection": "creditgifts",
+      "hidden": [
+        "checkoutUrl"
+      ],
+      "indexes": [
+        {
+          "keys": {
+            "nextAttemptAt": 1,
+            "leaseUntil": 1
+          },
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "checkoutId": 1
+          },
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        }
+      ]
+    },
+    "credit_transaction": {
+      "model": "CreditTransaction",
+      "collection": "credittransactions",
+      "hidden": [],
+      "indexes": [
+        {
+          "keys": {
+            "user": 1
+          },
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "type": 1
+          },
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "user": 1,
+            "createdAt": -1
+          },
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "idempotencyKey": 1
+          },
+          "unique": true,
+          "sparse": false,
+          "ttl": null,
+          "partial": {
+            "idempotencyKey": {
+              "$type": "string"
+            }
+          }
+        },
+        {
+          "keys": {
+            "metadata.subscriptionId": 1
+          },
+          "unique": false,
+          "sparse": true,
+          "ttl": null,
+          "partial": null
+        }
+      ]
+    }
+  },
+  "cases": [
+    {
+      "schema": "users",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "accounts": [],
+          "language": null,
+          "last_app_activity_at": null,
+          "plan_tier": "free",
+          "plan_tier_until": null,
+          "polar_sh_customer_id": null,
+          "referralCodeUsed": null,
+          "referrerId": null,
+          "refreshed_at": {
+            "$date": 1900000000000
+          },
+          "reminder_sent_at": null,
+          "token_balance": 0
+        }
+      }
+    },
+    {
+      "schema": "users",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "unknown": "discarded"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "accounts": [],
+          "language": null,
+          "last_app_activity_at": null,
+          "plan_tier": "free",
+          "plan_tier_until": null,
+          "polar_sh_customer_id": null,
+          "referralCodeUsed": null,
+          "referrerId": null,
+          "refreshed_at": {
+            "$date": 1900000000000
+          },
+          "reminder_sent_at": null,
+          "token_balance": 0
+        }
+      }
+    },
+    {
+      "schema": "accounts",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "channelID": null,
+          "channelName": null,
+          "createdAt": {
+            "$date": 1900000000000
+          },
+          "user_email": null,
+          "user_id": null,
+          "user_login": null,
+          "user_type": ""
+        }
+      }
+    },
+    {
+      "schema": "accounts",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "unknown": "discarded"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "channelID": null,
+          "channelName": null,
+          "createdAt": {
+            "$date": 1900000000000
+          },
+          "user_email": null,
+          "user_id": null,
+          "user_login": null,
+          "user_type": ""
+        }
+      }
+    },
+    {
+      "schema": "admin",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "actived": true,
+          "adminID": "",
+          "adminName": "",
+          "channelID": "",
+          "channelName": "",
+          "createdAt": {
+            "$date": 1900000000000
+          },
+          "permissions": [],
+          "role": "channel",
+          "updatedAt": {
+            "$date": 1900000000000
+          }
+        }
+      }
+    },
+    {
+      "schema": "admin",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "unknown": "discarded"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "actived": true,
+          "adminID": "",
+          "adminName": "",
+          "channelID": "",
+          "channelName": "",
+          "createdAt": {
+            "$date": 1900000000000
+          },
+          "permissions": [],
+          "role": "channel",
+          "updatedAt": {
+            "$date": 1900000000000
+          }
+        }
+      }
+    },
+    {
+      "schema": "app_config",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "refreshed_at": {
+            "$date": 1900000000000
+          }
+        }
+      }
+    },
+    {
+      "schema": "app_config",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "unknown": "discarded"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "refreshed_at": {
+            "$date": 1900000000000
+          }
+        }
+      }
+    },
+    {
+      "schema": "channel_config",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "commands": []
+        }
+      }
+    },
+    {
+      "schema": "channel_config",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "unknown": "discarded"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "commands": []
+        }
+      }
+    },
+    {
+      "schema": "oauth_client",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "client_id",
+            "kind": "required"
+          },
+          {
+            "path": "name",
+            "kind": "required"
+          },
+          {
+            "path": "type",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "schema": "oauth_client",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "unknown": "discarded"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "client_id",
+            "kind": "required"
+          },
+          {
+            "path": "name",
+            "kind": "required"
+          },
+          {
+            "path": "type",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "schema": "oauth_grant",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "channel_id",
+            "kind": "required"
+          },
+          {
+            "path": "client_id",
+            "kind": "required"
+          },
+          {
+            "path": "user_id",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "schema": "oauth_grant",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "unknown": "discarded"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "channel_id",
+            "kind": "required"
+          },
+          {
+            "path": "client_id",
+            "kind": "required"
+          },
+          {
+            "path": "user_id",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "schema": "oauth_refresh_token",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "expires_at",
+            "kind": "required"
+          },
+          {
+            "path": "session_id",
+            "kind": "required"
+          },
+          {
+            "path": "token_hash",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "schema": "oauth_refresh_token",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "unknown": "discarded"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "expires_at",
+            "kind": "required"
+          },
+          {
+            "path": "session_id",
+            "kind": "required"
+          },
+          {
+            "path": "token_hash",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "schema": "oauth_session",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "channel_id",
+            "kind": "required"
+          },
+          {
+            "path": "client_id",
+            "kind": "required"
+          },
+          {
+            "path": "current_refresh_hash",
+            "kind": "required"
+          },
+          {
+            "path": "device_name",
+            "kind": "required"
+          },
+          {
+            "path": "expires_at",
+            "kind": "required"
+          },
+          {
+            "path": "grant_id",
+            "kind": "required"
+          },
+          {
+            "path": "idle_expires_at",
+            "kind": "required"
+          },
+          {
+            "path": "last_used_at",
+            "kind": "required"
+          },
+          {
+            "path": "user_id",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "schema": "oauth_session",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "unknown": "discarded"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "channel_id",
+            "kind": "required"
+          },
+          {
+            "path": "client_id",
+            "kind": "required"
+          },
+          {
+            "path": "current_refresh_hash",
+            "kind": "required"
+          },
+          {
+            "path": "device_name",
+            "kind": "required"
+          },
+          {
+            "path": "expires_at",
+            "kind": "required"
+          },
+          {
+            "path": "grant_id",
+            "kind": "required"
+          },
+          {
+            "path": "idle_expires_at",
+            "kind": "required"
+          },
+          {
+            "path": "last_used_at",
+            "kind": "required"
+          },
+          {
+            "path": "user_id",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "schema": "credit_gift",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "benefitId",
+            "kind": "required"
+          },
+          {
+            "path": "buyerId",
+            "kind": "required"
+          },
+          {
+            "path": "buyerLogin",
+            "kind": "required"
+          },
+          {
+            "path": "credits",
+            "kind": "required"
+          },
+          {
+            "path": "fulfillmentProductId",
+            "kind": "required"
+          },
+          {
+            "path": "nextAttemptAt",
+            "kind": "required"
+          },
+          {
+            "path": "noRefundsAcknowledgedAt",
+            "kind": "required"
+          },
+          {
+            "path": "priceAmount",
+            "kind": "required"
+          },
+          {
+            "path": "priceCurrency",
+            "kind": "required"
+          },
+          {
+            "path": "productId",
+            "kind": "required"
+          },
+          {
+            "path": "recipientChannelId",
+            "kind": "required"
+          },
+          {
+            "path": "recipientId",
+            "kind": "required"
+          },
+          {
+            "path": "recipientLogin",
+            "kind": "required"
+          },
+          {
+            "path": "recipientName",
+            "kind": "required"
+          },
+          {
+            "path": "status",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "schema": "credit_gift",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "unknown": "discarded"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "benefitId",
+            "kind": "required"
+          },
+          {
+            "path": "buyerId",
+            "kind": "required"
+          },
+          {
+            "path": "buyerLogin",
+            "kind": "required"
+          },
+          {
+            "path": "credits",
+            "kind": "required"
+          },
+          {
+            "path": "fulfillmentProductId",
+            "kind": "required"
+          },
+          {
+            "path": "nextAttemptAt",
+            "kind": "required"
+          },
+          {
+            "path": "noRefundsAcknowledgedAt",
+            "kind": "required"
+          },
+          {
+            "path": "priceAmount",
+            "kind": "required"
+          },
+          {
+            "path": "priceCurrency",
+            "kind": "required"
+          },
+          {
+            "path": "productId",
+            "kind": "required"
+          },
+          {
+            "path": "recipientChannelId",
+            "kind": "required"
+          },
+          {
+            "path": "recipientId",
+            "kind": "required"
+          },
+          {
+            "path": "recipientLogin",
+            "kind": "required"
+          },
+          {
+            "path": "recipientName",
+            "kind": "required"
+          },
+          {
+            "path": "status",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "schema": "credit_transaction",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "amount",
+            "kind": "required"
+          },
+          {
+            "path": "type",
+            "kind": "required"
+          },
+          {
+            "path": "user",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "schema": "credit_transaction",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "unknown": "discarded"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "amount",
+            "kind": "required"
+          },
+          {
+            "path": "type",
+            "kind": "required"
+          },
+          {
+            "path": "user",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "schema": "users",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "accounts": [
+          {
+            "id": "42",
+            "name": "cdom201",
+            "_id": "507f1f77bcf86cd799439012"
+          }
+        ]
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "accounts": [
+            {
+              "_id": {
+                "$oid": "507f1f77bcf86cd799439012"
+              },
+              "access_token": {
+                "content": null,
+                "iv": null
+              },
+              "access_token_expires_at": null,
+              "actived": true,
+              "chat_enabled": true,
+              "email": null,
+              "has_permissions": true,
+              "id": "42",
+              "name": "cdom201",
+              "refresh_token": {
+                "content": null,
+                "iv": null
+              },
+              "type": "twitch",
+              "up_to_date_permissions": true
+            }
+          ],
+          "language": null,
+          "last_app_activity_at": null,
+          "plan_tier": "free",
+          "plan_tier_until": null,
+          "polar_sh_customer_id": null,
+          "referralCodeUsed": null,
+          "referrerId": null,
+          "refreshed_at": {
+            "$date": 1900000000000
+          },
+          "reminder_sent_at": null,
+          "token_balance": 0
+        }
+      }
+    },
+    {
+      "schema": "users",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "accounts": [
+          {
+            "id": "42"
+          }
+        ],
+        "name": 42,
+        "email": true,
+        "token_balance": "12.5"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "accounts": [
+            {
+              "_id": {
+                "$oid": "generated"
+              },
+              "access_token": {
+                "content": null,
+                "iv": null
+              },
+              "access_token_expires_at": null,
+              "actived": true,
+              "chat_enabled": true,
+              "email": null,
+              "has_permissions": true,
+              "id": "42",
+              "name": null,
+              "refresh_token": {
+                "content": null,
+                "iv": null
+              },
+              "type": "twitch",
+              "up_to_date_permissions": true
+            }
+          ],
+          "email": "true",
+          "language": null,
+          "last_app_activity_at": null,
+          "name": "42",
+          "plan_tier": "free",
+          "plan_tier_until": null,
+          "polar_sh_customer_id": null,
+          "referralCodeUsed": null,
+          "referrerId": null,
+          "refreshed_at": {
+            "$date": 1900000000000
+          },
+          "reminder_sent_at": null,
+          "token_balance": 12.5
+        }
+      }
+    },
+    {
+      "schema": "users",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "accounts": null,
+        "language": null,
+        "plan_tier": null,
+        "token_balance": null
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "accounts": null,
+          "language": null,
+          "last_app_activity_at": null,
+          "plan_tier": null,
+          "plan_tier_until": null,
+          "polar_sh_customer_id": null,
+          "referralCodeUsed": null,
+          "referrerId": null,
+          "refreshed_at": {
+            "$date": 1900000000000
+          },
+          "reminder_sent_at": null,
+          "token_balance": null
+        }
+      }
+    },
+    {
+      "schema": "users",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "accounts": [
+          {
+            "type": "invalid",
+            "actived": "maybe"
+          }
+        ],
+        "language": "fr",
+        "tts_default_provider": "other",
+        "plan_tier": "diamond"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "accounts.0.actived",
+            "kind": "cast"
+          },
+          {
+            "path": "accounts.0.type",
+            "kind": "enum"
+          },
+          {
+            "path": "language",
+            "kind": "enum"
+          },
+          {
+            "path": "plan_tier",
+            "kind": "enum"
+          },
+          {
+            "path": "tts_default_provider",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "schema": "users",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "accounts": [
+          {
+            "actived": "no",
+            "chat_enabled": "1",
+            "has_permissions": 0,
+            "up_to_date_permissions": "yes",
+            "access_token_expires_at": "2000"
+          }
+        ]
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "accounts": [
+            {
+              "_id": {
+                "$oid": "generated"
+              },
+              "access_token": {
+                "content": null,
+                "iv": null
+              },
+              "access_token_expires_at": 2000,
+              "actived": false,
+              "chat_enabled": true,
+              "email": null,
+              "has_permissions": false,
+              "id": null,
+              "name": null,
+              "refresh_token": {
+                "content": null,
+                "iv": null
+              },
+              "type": "twitch",
+              "up_to_date_permissions": true
+            }
+          ],
+          "language": null,
+          "last_app_activity_at": null,
+          "plan_tier": "free",
+          "plan_tier_until": null,
+          "polar_sh_customer_id": null,
+          "referralCodeUsed": null,
+          "referrerId": null,
+          "refreshed_at": {
+            "$date": 1900000000000
+          },
+          "reminder_sent_at": null,
+          "token_balance": 0
+        }
+      }
+    },
+    {
+      "schema": "users",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "polar_credit_snapshot": {
+          "occurredAt": "2030-01-01T00:00:00.000Z",
+          "eventKey": "e",
+          "meters": [
+            {
+              "meter_id": "m",
+              "balance": 4
+            }
+          ]
+        }
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "accounts": [],
+          "language": null,
+          "last_app_activity_at": null,
+          "plan_tier": "free",
+          "plan_tier_until": null,
+          "polar_credit_snapshot": {
+            "eventKey": "e",
+            "meters": [
+              {
+                "balance": 4,
+                "meter_id": "m"
+              }
+            ],
+            "occurredAt": {
+              "$date": 1893456000000
+            }
+          },
+          "polar_sh_customer_id": null,
+          "referralCodeUsed": null,
+          "referrerId": null,
+          "refreshed_at": {
+            "$date": 1900000000000
+          },
+          "reminder_sent_at": null,
+          "token_balance": 0
+        }
+      }
+    },
+    {
+      "schema": "users",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "polar_credit_snapshot": {}
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "polar_credit_snapshot.eventKey",
+            "kind": "required"
+          },
+          {
+            "path": "polar_credit_snapshot.occurredAt",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "schema": "users",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "free_credit_reset": {
+          "periodStart": "2030-01-01T00:00:00Z",
+          "periodEnd": "2030-02-01",
+          "status": "pending",
+          "credits": 5,
+          "externalId": "fixture",
+          "updatedAt": 1900000000000
+        }
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "accounts": [],
+          "free_credit_reset": {
+            "completedAt": null,
+            "credits": 5,
+            "externalId": "fixture",
+            "periodEnd": {
+              "$date": 1896134400000
+            },
+            "periodStart": {
+              "$date": 1893456000000
+            },
+            "status": "pending",
+            "updatedAt": {
+              "$date": 1900000000000
+            }
+          },
+          "language": null,
+          "last_app_activity_at": null,
+          "plan_tier": "free",
+          "plan_tier_until": null,
+          "polar_sh_customer_id": null,
+          "referralCodeUsed": null,
+          "referrerId": null,
+          "refreshed_at": {
+            "$date": 1900000000000
+          },
+          "reminder_sent_at": null,
+          "token_balance": 0
+        }
+      }
+    },
+    {
+      "schema": "users",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "free_credit_reset": {
+          "status": "bad",
+          "credits": -1,
+          "externalId": ""
+        }
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "free_credit_reset.credits",
+            "kind": "min"
+          },
+          {
+            "path": "free_credit_reset.externalId",
+            "kind": "required"
+          },
+          {
+            "path": "free_credit_reset.periodEnd",
+            "kind": "required"
+          },
+          {
+            "path": "free_credit_reset.periodStart",
+            "kind": "required"
+          },
+          {
+            "path": "free_credit_reset.status",
+            "kind": "enum"
+          },
+          {
+            "path": "free_credit_reset.updatedAt",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "schema": "users",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "applied_credit_transaction_ids": [
+          "507f1f77bcf86cd799439012"
+        ],
+        "referrerId": "507f1f77bcf86cd799439012",
+        "refreshed_at": "2030-01-01"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "accounts": [],
+          "applied_credit_transaction_ids": [
+            {
+              "$oid": "507f1f77bcf86cd799439012"
+            }
+          ],
+          "language": null,
+          "last_app_activity_at": null,
+          "plan_tier": "free",
+          "plan_tier_until": null,
+          "polar_sh_customer_id": null,
+          "referralCodeUsed": null,
+          "referrerId": {
+            "$oid": "507f1f77bcf86cd799439012"
+          },
+          "refreshed_at": {
+            "$date": 1893456000000
+          },
+          "reminder_sent_at": null,
+          "token_balance": 0
+        }
+      }
+    },
+    {
+      "schema": "users",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "referrerId": "invalid",
+        "token_balance": "NaN",
+        "plan_tier_until": "nonsense"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "plan_tier_until",
+            "kind": "cast"
+          },
+          {
+            "path": "referrerId",
+            "kind": "cast"
+          },
+          {
+            "path": "token_balance",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "schema": "accounts",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "user_token": {
+          "iv": "a",
+          "content": "b",
+          "extra": "discarded"
+        },
+        "createdAt": "2030-01-01"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "channelID": null,
+          "channelName": null,
+          "createdAt": {
+            "$date": 1893456000000
+          },
+          "user_email": null,
+          "user_id": null,
+          "user_login": null,
+          "user_token": {
+            "content": "b",
+            "iv": "a"
+          },
+          "user_type": ""
+        }
+      }
+    },
+    {
+      "schema": "accounts",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "user_token": null,
+        "user_type": null,
+        "user_id": 123
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "channelID": null,
+          "channelName": null,
+          "createdAt": {
+            "$date": 1900000000000
+          },
+          "user_email": null,
+          "user_id": "123",
+          "user_login": null,
+          "user_token": null,
+          "user_type": null
+        }
+      }
+    },
+    {
+      "schema": "accounts",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "user_refresh_token": {},
+        "user_token": {}
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "channelID": null,
+          "channelName": null,
+          "createdAt": {
+            "$date": 1900000000000
+          },
+          "user_email": null,
+          "user_id": null,
+          "user_login": null,
+          "user_type": ""
+        }
+      }
+    },
+    {
+      "schema": "accounts",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "createdAt": "invalid"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "createdAt",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "schema": "admin",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "role": "creator",
+        "actived": "false",
+        "permissions": "read"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "actived": false,
+          "adminID": "",
+          "adminName": "",
+          "channelID": "",
+          "channelName": "",
+          "createdAt": {
+            "$date": 1900000000000
+          },
+          "permissions": [
+            "read"
+          ],
+          "role": "creator",
+          "updatedAt": {
+            "$date": 1900000000000
+          }
+        }
+      }
+    },
+    {
+      "schema": "admin",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "role": "bad",
+        "permissions": [
+          1,
+          true
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "role",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "schema": "admin",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "role": null,
+        "updatedAt": "2030-01-01",
+        "createdAt": 0
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "actived": true,
+          "adminID": "",
+          "adminName": "",
+          "channelID": "",
+          "channelName": "",
+          "createdAt": {
+            "$date": 0
+          },
+          "permissions": [],
+          "role": null,
+          "updatedAt": {
+            "$date": 1893456000000
+          }
+        }
+      }
+    },
+    {
+      "schema": "app_config",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "name": "twitch",
+        "access_token": {
+          "iv": "x",
+          "content": "y"
+        }
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "access_token": {
+            "content": "y",
+            "iv": "x"
+          },
+          "name": "twitch",
+          "refreshed_at": {
+            "$date": 1900000000000
+          }
+        }
+      }
+    },
+    {
+      "schema": "app_config",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "access_token": null,
+        "refreshed_at": null
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "access_token": null,
+          "refreshed_at": null
+        }
+      }
+    },
+    {
+      "schema": "channel_config",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channel_id": "507f1f77bcf86cd799439012",
+        "channel": "cdom201",
+        "commands": [
+          "a",
+          {
+            "value": 3
+          }
+        ],
+        "date": {
+          "day": 3,
+          "month": 10,
+          "year": 2026
+        }
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "channel": "cdom201",
+          "channel_id": {
+            "$oid": "507f1f77bcf86cd799439012"
+          },
+          "commands": [
+            "a",
+            {
+              "value": 3
+            }
+          ],
+          "date": {
+            "day": "3",
+            "month": "10",
+            "year": "2026"
+          }
+        }
+      }
+    },
+    {
+      "schema": "channel_config",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "commands": "single",
+        "date": {}
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "commands": [
+            "single"
+          ]
+        }
+      }
+    },
+    {
+      "schema": "channel_config",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channel_id": "invalid",
+        "createdAt": "invalid"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "channel_id",
+            "kind": "cast"
+          },
+          {
+            "path": "createdAt",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "schema": "oauth_client",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "client_id": "fixture",
+        "name": "fixture app",
+        "type": "public",
+        "redirect_uris": [
+          "http://127.0.0.1/callback"
+        ],
+        "allowed_scopes": [
+          "profile:read"
+        ]
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "allowed_scopes": [
+            "profile:read"
+          ],
+          "client_id": "fixture",
+          "enabled": true,
+          "name": "fixture app",
+          "redirect_uris": [
+            "http://127.0.0.1/callback"
+          ],
+          "type": "public"
+        }
+      }
+    },
+    {
+      "schema": "oauth_client",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "client_id": "fixture",
+        "name": "fixture app",
+        "type": "public"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "allowed_scopes": [],
+          "client_id": "fixture",
+          "enabled": true,
+          "name": "fixture app",
+          "redirect_uris": [],
+          "type": "public"
+        }
+      }
+    },
+    {
+      "schema": "oauth_client",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "client_id": "fixture",
+        "name": "",
+        "type": "private",
+        "redirect_uris": [
+          "http://127.0.0.1/callback"
+        ],
+        "allowed_scopes": [
+          "profile:read"
+        ],
+        "enabled": "maybe"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "enabled",
+            "kind": "cast"
+          },
+          {
+            "path": "name",
+            "kind": "required"
+          },
+          {
+            "path": "type",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "schema": "oauth_client",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "client_id": "fixture",
+        "name": "fixture app",
+        "type": "public",
+        "redirect_uris": null,
+        "allowed_scopes": null
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "allowed_scopes",
+            "kind": "required"
+          },
+          {
+            "path": "redirect_uris",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "schema": "oauth_grant",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "user_id": "507f1f77bcf86cd799439012",
+        "client_id": "fixture",
+        "channel_id": "42",
+        "scopes": []
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "channel_id": "42",
+          "client_id": "fixture",
+          "revoked_at": null,
+          "scopes": [],
+          "user_id": {
+            "$oid": "507f1f77bcf86cd799439012"
+          }
+        }
+      }
+    },
+    {
+      "schema": "oauth_grant",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "user_id": "invalid",
+        "client_id": "fixture",
+        "channel_id": "42",
+        "scopes": "profile:read"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "user_id",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "schema": "oauth_refresh_token",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "token_hash": "fixture-hash",
+        "session_id": "507f1f77bcf86cd799439012",
+        "expires_at": "2030-01-01"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "expires_at": {
+            "$date": 1893456000000
+          },
+          "session_id": {
+            "$oid": "507f1f77bcf86cd799439012"
+          },
+          "token_hash": "fixture-hash",
+          "used_at": null
+        }
+      }
+    },
+    {
+      "schema": "oauth_refresh_token",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "token_hash": "fixture-hash",
+        "session_id": "507f1f77bcf86cd799439012",
+        "expires_at": "invalid",
+        "used_at": 0
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "expires_at",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "schema": "oauth_session",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "grant_id": "507f1f77bcf86cd799439012",
+        "user_id": "507f1f77bcf86cd799439012",
+        "client_id": "fixture",
+        "channel_id": "42",
+        "device_name": "desktop",
+        "scopes": [],
+        "current_refresh_hash": "fixture-hash",
+        "last_used_at": "2030-01-01",
+        "idle_expires_at": "2030-01-02",
+        "expires_at": "2030-01-03"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "channel_id": "42",
+          "client_id": "fixture",
+          "current_refresh_hash": "fixture-hash",
+          "device_name": "desktop",
+          "expires_at": {
+            "$date": 1893628800000
+          },
+          "grant_id": {
+            "$oid": "507f1f77bcf86cd799439012"
+          },
+          "idle_expires_at": {
+            "$date": 1893542400000
+          },
+          "last_used_at": {
+            "$date": 1893456000000
+          },
+          "revoke_reason": null,
+          "revoked_at": null,
+          "scopes": [],
+          "user_id": {
+            "$oid": "507f1f77bcf86cd799439012"
+          }
+        }
+      }
+    },
+    {
+      "schema": "oauth_session",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "grant_id": "507f1f77bcf86cd799439012",
+        "user_id": "507f1f77bcf86cd799439012",
+        "client_id": "fixture",
+        "channel_id": "42",
+        "device_name": "🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮",
+        "scopes": [],
+        "current_refresh_hash": "fixture-hash",
+        "last_used_at": "2030-01-01",
+        "idle_expires_at": "2030-01-02",
+        "expires_at": "2030-01-03"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "channel_id": "42",
+          "client_id": "fixture",
+          "current_refresh_hash": "fixture-hash",
+          "device_name": "🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮",
+          "expires_at": {
+            "$date": 1893628800000
+          },
+          "grant_id": {
+            "$oid": "507f1f77bcf86cd799439012"
+          },
+          "idle_expires_at": {
+            "$date": 1893542400000
+          },
+          "last_used_at": {
+            "$date": 1893456000000
+          },
+          "revoke_reason": null,
+          "revoked_at": null,
+          "scopes": [],
+          "user_id": {
+            "$oid": "507f1f77bcf86cd799439012"
+          }
+        }
+      }
+    },
+    {
+      "schema": "oauth_session",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "grant_id": "507f1f77bcf86cd799439012",
+        "user_id": "507f1f77bcf86cd799439012",
+        "client_id": "fixture",
+        "channel_id": "42",
+        "device_name": "🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮",
+        "scopes": [],
+        "current_refresh_hash": "fixture-hash",
+        "last_used_at": "2030-01-01",
+        "idle_expires_at": "2030-01-02",
+        "expires_at": "2030-01-03"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "device_name",
+            "kind": "maxlength"
+          }
+        ]
+      }
+    },
+    {
+      "schema": "oauth_session",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "grant_id": "507f1f77bcf86cd799439012",
+        "user_id": "507f1f77bcf86cd799439012",
+        "client_id": "fixture",
+        "channel_id": "42",
+        "device_name": "desktop",
+        "scopes": [],
+        "current_refresh_hash": "",
+        "last_used_at": "2030-01-01",
+        "idle_expires_at": "2030-01-02",
+        "expires_at": "2030-01-03"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "current_refresh_hash",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "schema": "credit_gift",
+      "operation": "construct",
+      "input": {
+        "_id": "buyer-request",
+        "buyerId": "507f1f77bcf86cd799439011",
+        "recipientId": "507f1f77bcf86cd799439012",
+        "buyerLogin": "buyer",
+        "recipientLogin": "cdom201",
+        "recipientName": "Viewer",
+        "recipientChannelId": "42",
+        "productId": "p",
+        "fulfillmentProductId": "f",
+        "benefitId": "b",
+        "credits": 100,
+        "priceAmount": 500,
+        "priceCurrency": "usd",
+        "status": "awaiting_payment",
+        "noRefundsAcknowledgedAt": "2030-01-01",
+        "nextAttemptAt": "2030-01-01"
+      },
+      "expected": {
+        "document": {
+          "_id": "buyer-request",
+          "announcementAttempts": 0,
+          "attempts": 0,
+          "benefitId": "b",
+          "buyerId": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "buyerLogin": "buyer",
+          "credits": 100,
+          "fulfillmentProductId": "f",
+          "nextAttemptAt": {
+            "$date": 1893456000000
+          },
+          "noRefundsAcknowledgedAt": {
+            "$date": 1893456000000
+          },
+          "priceAmount": 500,
+          "priceCurrency": "usd",
+          "productId": "p",
+          "recipientChannelId": "42",
+          "recipientId": {
+            "$oid": "507f1f77bcf86cd799439012"
+          },
+          "recipientLogin": "cdom201",
+          "recipientName": "Viewer",
+          "status": "awaiting_payment"
+        }
+      }
+    },
+    {
+      "schema": "credit_gift",
+      "operation": "construct",
+      "input": {
+        "_id": "buyer-request",
+        "buyerId": "507f1f77bcf86cd799439011",
+        "recipientId": "507f1f77bcf86cd799439012",
+        "buyerLogin": "buyer",
+        "recipientLogin": "cdom201",
+        "recipientName": "Viewer",
+        "recipientChannelId": "42",
+        "productId": "p",
+        "fulfillmentProductId": "f",
+        "benefitId": "b",
+        "credits": "NaN",
+        "priceAmount": 500,
+        "priceCurrency": "usd",
+        "status": "invalid",
+        "noRefundsAcknowledgedAt": "2030-01-01",
+        "nextAttemptAt": "2030-01-01"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "credits",
+            "kind": "cast"
+          },
+          {
+            "path": "status",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "schema": "credit_gift",
+      "operation": "construct",
+      "input": {
+        "_id": "buyer-request",
+        "buyerId": "507f1f77bcf86cd799439011",
+        "recipientId": "507f1f77bcf86cd799439012",
+        "buyerLogin": "buyer",
+        "recipientLogin": "cdom201",
+        "recipientName": "Viewer",
+        "recipientChannelId": "42",
+        "productId": "p",
+        "fulfillmentProductId": "f",
+        "benefitId": "b",
+        "credits": 100,
+        "priceAmount": 500,
+        "priceCurrency": "usd",
+        "status": "awaiting_payment",
+        "noRefundsAcknowledgedAt": "2030-01-01",
+        "nextAttemptAt": "2030-01-01",
+        "checkoutUrl": "https://fixture.invalid/pay",
+        "attempts": "2",
+        "announcementAttempts": null
+      },
+      "expected": {
+        "document": {
+          "_id": "buyer-request",
+          "announcementAttempts": null,
+          "attempts": 2,
+          "benefitId": "b",
+          "buyerId": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "buyerLogin": "buyer",
+          "checkoutUrl": "https://fixture.invalid/pay",
+          "credits": 100,
+          "fulfillmentProductId": "f",
+          "nextAttemptAt": {
+            "$date": 1893456000000
+          },
+          "noRefundsAcknowledgedAt": {
+            "$date": 1893456000000
+          },
+          "priceAmount": 500,
+          "priceCurrency": "usd",
+          "productId": "p",
+          "recipientChannelId": "42",
+          "recipientId": {
+            "$oid": "507f1f77bcf86cd799439012"
+          },
+          "recipientLogin": "cdom201",
+          "recipientName": "Viewer",
+          "status": "awaiting_payment"
+        }
+      }
+    },
+    {
+      "schema": "credit_transaction",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "user": "507f1f77bcf86cd799439012",
+        "type": "manual_credit",
+        "amount": 12.5
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "amount": 12.5,
+          "balanceAfter": null,
+          "metadata": {
+            "description": "",
+            "externalReference": null,
+            "planId": null,
+            "referralCodeUsed": null,
+            "referredUserId": null,
+            "subscriptionId": null
+          },
+          "type": "manual_credit",
+          "user": {
+            "$oid": "507f1f77bcf86cd799439012"
+          }
+        }
+      }
+    },
+    {
+      "schema": "credit_transaction",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "user": "507f1f77bcf86cd799439012",
+        "type": "manual_credit",
+        "amount": 12.5,
+        "metadata": {
+          "subscriptionId": "sub",
+          "rewardTargetType": "bot",
+          "referredUserId": "507f1f77bcf86cd799439011"
+        },
+        "idempotencyKey": "key"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "amount": 12.5,
+          "balanceAfter": null,
+          "idempotencyKey": "key",
+          "metadata": {
+            "description": "",
+            "externalReference": null,
+            "planId": null,
+            "referralCodeUsed": null,
+            "referredUserId": {
+              "$oid": "507f1f77bcf86cd799439011"
+            },
+            "rewardTargetType": "bot",
+            "subscriptionId": "sub"
+          },
+          "type": "manual_credit",
+          "user": {
+            "$oid": "507f1f77bcf86cd799439012"
+          }
+        }
+      }
+    },
+    {
+      "schema": "credit_transaction",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "user": "507f1f77bcf86cd799439012",
+        "type": "invalid",
+        "amount": 12.5,
+        "metadata": {
+          "rewardTargetType": "invalid"
+        }
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "metadata.rewardTargetType",
+            "kind": "enum"
+          },
+          {
+            "path": "type",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "schema": "credit_transaction",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "user": "507f1f77bcf86cd799439012",
+        "type": "manual_credit",
+        "amount": 12.5,
+        "metadata": null,
+        "balanceAfter": "5"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "amount": 12.5,
+          "balanceAfter": 5,
+          "metadata": null,
+          "type": "manual_credit",
+          "user": {
+            "$oid": "507f1f77bcf86cd799439012"
+          }
+        }
+      }
+    },
+    {
+      "schema": "users",
+      "operation": "insert",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011"
+      },
+      "expected": {
+        "document": {
+          "__v": 0,
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "accounts": [],
+          "created_at": {
+            "$date": 1900000000000
+          },
+          "language": null,
+          "last_app_activity_at": null,
+          "plan_tier": "free",
+          "plan_tier_until": null,
+          "polar_sh_customer_id": null,
+          "referralCodeUsed": null,
+          "referrerId": null,
+          "refreshed_at": {
+            "$date": 1900000000000
+          },
+          "reminder_sent_at": null,
+          "token_balance": 0,
+          "updated_at": {
+            "$date": 1900000000000
+          }
+        }
+      }
+    },
+    {
+      "schema": "admin",
+      "operation": "insert",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "updatedAt": 0
+      },
+      "expected": {
+        "document": {
+          "__v": 0,
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "actived": true,
+          "adminID": "",
+          "adminName": "",
+          "channelID": "",
+          "channelName": "",
+          "createdAt": {
+            "$date": 1900000000000
+          },
+          "permissions": [],
+          "role": "channel",
+          "updatedAt": {
+            "$date": 1900000000000
+          }
+        }
+      }
+    },
+    {
+      "schema": "app_config",
+      "operation": "insert",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "refreshed_at": 0
+      },
+      "expected": {
+        "document": {
+          "__v": 0,
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "refreshed_at": {
+            "$date": 1900000000000
+          }
+        }
+      }
+    },
+    {
+      "schema": "oauth_client",
+      "operation": "insert",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "client_id": "fixture",
+        "name": "fixture app",
+        "type": "public",
+        "redirect_uris": [
+          "http://127.0.0.1/callback"
+        ],
+        "allowed_scopes": [
+          "profile:read"
+        ]
+      },
+      "expected": {
+        "document": {
+          "__v": 0,
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "allowed_scopes": [
+            "profile:read"
+          ],
+          "client_id": "fixture",
+          "createdAt": {
+            "$date": 1900000000000
+          },
+          "enabled": true,
+          "name": "fixture app",
+          "redirect_uris": [
+            "http://127.0.0.1/callback"
+          ],
+          "type": "public",
+          "updatedAt": {
+            "$date": 1900000000000
+          }
+        }
+      }
+    },
+    {
+      "schema": "credit_gift",
+      "operation": "insert",
+      "input": {
+        "_id": "buyer-request",
+        "buyerId": "507f1f77bcf86cd799439011",
+        "recipientId": "507f1f77bcf86cd799439012",
+        "buyerLogin": "buyer",
+        "recipientLogin": "cdom201",
+        "recipientName": "Viewer",
+        "recipientChannelId": "42",
+        "productId": "p",
+        "fulfillmentProductId": "f",
+        "benefitId": "b",
+        "credits": 100,
+        "priceAmount": 500,
+        "priceCurrency": "usd",
+        "status": "awaiting_payment",
+        "noRefundsAcknowledgedAt": "2030-01-01",
+        "nextAttemptAt": "2030-01-01"
+      },
+      "expected": {
+        "document": {
+          "__v": 0,
+          "_id": "buyer-request",
+          "announcementAttempts": 0,
+          "attempts": 0,
+          "benefitId": "b",
+          "buyerId": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "buyerLogin": "buyer",
+          "createdAt": {
+            "$date": 1900000000000
+          },
+          "credits": 100,
+          "fulfillmentProductId": "f",
+          "nextAttemptAt": {
+            "$date": 1893456000000
+          },
+          "noRefundsAcknowledgedAt": {
+            "$date": 1893456000000
+          },
+          "priceAmount": 500,
+          "priceCurrency": "usd",
+          "productId": "p",
+          "recipientChannelId": "42",
+          "recipientId": {
+            "$oid": "507f1f77bcf86cd799439012"
+          },
+          "recipientLogin": "cdom201",
+          "recipientName": "Viewer",
+          "status": "awaiting_payment",
+          "updatedAt": {
+            "$date": 1900000000000
+          }
+        }
+      }
+    },
+    {
+      "schema": "credit_transaction",
+      "operation": "insert",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "user": "507f1f77bcf86cd799439012",
+        "type": "manual_credit",
+        "amount": 12.5
+      },
+      "expected": {
+        "document": {
+          "__v": 0,
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "amount": 12.5,
+          "balanceAfter": null,
+          "createdAt": {
+            "$date": 1900000000000
+          },
+          "metadata": {
+            "description": "",
+            "externalReference": null,
+            "planId": null,
+            "referralCodeUsed": null,
+            "referredUserId": null,
+            "subscriptionId": null
+          },
+          "type": "manual_credit",
+          "updatedAt": {
+            "$date": 1900000000000
+          },
+          "user": {
+            "$oid": "507f1f77bcf86cd799439012"
+          }
+        }
+      }
+    }
+  ],
+  "workloads": [
+    {
+      "name": "normal-user",
+      "schema": "users",
+      "iterations": 500,
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "name": "fixture",
+        "email": "fixture@example.invalid",
+        "accounts": [
+          {
+            "_id": "507f1f77bcf86cd799439012",
+            "type": "twitch",
+            "id": "0",
+            "name": "cdom201",
+            "email": "fixture@example.invalid",
+            "access_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "refresh_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "access_token_expires_at": 2000000000
+          }
+        ]
+      }
+    },
+    {
+      "name": "large-user",
+      "schema": "users",
+      "iterations": 500,
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "name": "fixture",
+        "email": "fixture@example.invalid",
+        "accounts": [
+          {
+            "_id": "507f1f77bcf86cd799439012",
+            "type": "twitch",
+            "id": "0",
+            "name": "cdom201",
+            "email": "fixture@example.invalid",
+            "access_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "refresh_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "access_token_expires_at": 2000000000
+          },
+          {
+            "_id": "507f1f77bcf86cd799439012",
+            "type": "twitch",
+            "id": "1",
+            "name": "cdom201",
+            "email": "fixture@example.invalid",
+            "access_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "refresh_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "access_token_expires_at": 2000000000
+          },
+          {
+            "_id": "507f1f77bcf86cd799439012",
+            "type": "twitch",
+            "id": "2",
+            "name": "cdom201",
+            "email": "fixture@example.invalid",
+            "access_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "refresh_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "access_token_expires_at": 2000000000
+          },
+          {
+            "_id": "507f1f77bcf86cd799439012",
+            "type": "twitch",
+            "id": "3",
+            "name": "cdom201",
+            "email": "fixture@example.invalid",
+            "access_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "refresh_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "access_token_expires_at": 2000000000
+          },
+          {
+            "_id": "507f1f77bcf86cd799439012",
+            "type": "twitch",
+            "id": "4",
+            "name": "cdom201",
+            "email": "fixture@example.invalid",
+            "access_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "refresh_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "access_token_expires_at": 2000000000
+          },
+          {
+            "_id": "507f1f77bcf86cd799439012",
+            "type": "twitch",
+            "id": "5",
+            "name": "cdom201",
+            "email": "fixture@example.invalid",
+            "access_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "refresh_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "access_token_expires_at": 2000000000
+          },
+          {
+            "_id": "507f1f77bcf86cd799439012",
+            "type": "twitch",
+            "id": "6",
+            "name": "cdom201",
+            "email": "fixture@example.invalid",
+            "access_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "refresh_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "access_token_expires_at": 2000000000
+          },
+          {
+            "_id": "507f1f77bcf86cd799439012",
+            "type": "twitch",
+            "id": "7",
+            "name": "cdom201",
+            "email": "fixture@example.invalid",
+            "access_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "refresh_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "access_token_expires_at": 2000000000
+          },
+          {
+            "_id": "507f1f77bcf86cd799439012",
+            "type": "twitch",
+            "id": "8",
+            "name": "cdom201",
+            "email": "fixture@example.invalid",
+            "access_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "refresh_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "access_token_expires_at": 2000000000
+          },
+          {
+            "_id": "507f1f77bcf86cd799439012",
+            "type": "twitch",
+            "id": "9",
+            "name": "cdom201",
+            "email": "fixture@example.invalid",
+            "access_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "refresh_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "access_token_expires_at": 2000000000
+          },
+          {
+            "_id": "507f1f77bcf86cd799439012",
+            "type": "twitch",
+            "id": "10",
+            "name": "cdom201",
+            "email": "fixture@example.invalid",
+            "access_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "refresh_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "access_token_expires_at": 2000000000
+          },
+          {
+            "_id": "507f1f77bcf86cd799439012",
+            "type": "twitch",
+            "id": "11",
+            "name": "cdom201",
+            "email": "fixture@example.invalid",
+            "access_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "refresh_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "access_token_expires_at": 2000000000
+          },
+          {
+            "_id": "507f1f77bcf86cd799439012",
+            "type": "twitch",
+            "id": "12",
+            "name": "cdom201",
+            "email": "fixture@example.invalid",
+            "access_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "refresh_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "access_token_expires_at": 2000000000
+          },
+          {
+            "_id": "507f1f77bcf86cd799439012",
+            "type": "twitch",
+            "id": "13",
+            "name": "cdom201",
+            "email": "fixture@example.invalid",
+            "access_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "refresh_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "access_token_expires_at": 2000000000
+          },
+          {
+            "_id": "507f1f77bcf86cd799439012",
+            "type": "twitch",
+            "id": "14",
+            "name": "cdom201",
+            "email": "fixture@example.invalid",
+            "access_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "refresh_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "access_token_expires_at": 2000000000
+          },
+          {
+            "_id": "507f1f77bcf86cd799439012",
+            "type": "twitch",
+            "id": "15",
+            "name": "cdom201",
+            "email": "fixture@example.invalid",
+            "access_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "refresh_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "access_token_expires_at": 2000000000
+          },
+          {
+            "_id": "507f1f77bcf86cd799439012",
+            "type": "twitch",
+            "id": "16",
+            "name": "cdom201",
+            "email": "fixture@example.invalid",
+            "access_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "refresh_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "access_token_expires_at": 2000000000
+          },
+          {
+            "_id": "507f1f77bcf86cd799439012",
+            "type": "twitch",
+            "id": "17",
+            "name": "cdom201",
+            "email": "fixture@example.invalid",
+            "access_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "refresh_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "access_token_expires_at": 2000000000
+          },
+          {
+            "_id": "507f1f77bcf86cd799439012",
+            "type": "twitch",
+            "id": "18",
+            "name": "cdom201",
+            "email": "fixture@example.invalid",
+            "access_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "refresh_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "access_token_expires_at": 2000000000
+          },
+          {
+            "_id": "507f1f77bcf86cd799439012",
+            "type": "twitch",
+            "id": "19",
+            "name": "cdom201",
+            "email": "fixture@example.invalid",
+            "access_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "refresh_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "access_token_expires_at": 2000000000
+          },
+          {
+            "_id": "507f1f77bcf86cd799439012",
+            "type": "twitch",
+            "id": "20",
+            "name": "cdom201",
+            "email": "fixture@example.invalid",
+            "access_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "refresh_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "access_token_expires_at": 2000000000
+          },
+          {
+            "_id": "507f1f77bcf86cd799439012",
+            "type": "twitch",
+            "id": "21",
+            "name": "cdom201",
+            "email": "fixture@example.invalid",
+            "access_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "refresh_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "access_token_expires_at": 2000000000
+          },
+          {
+            "_id": "507f1f77bcf86cd799439012",
+            "type": "twitch",
+            "id": "22",
+            "name": "cdom201",
+            "email": "fixture@example.invalid",
+            "access_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "refresh_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "access_token_expires_at": 2000000000
+          },
+          {
+            "_id": "507f1f77bcf86cd799439012",
+            "type": "twitch",
+            "id": "23",
+            "name": "cdom201",
+            "email": "fixture@example.invalid",
+            "access_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "refresh_token": {
+              "iv": "fixture-iv",
+              "content": "fixture-content"
+            },
+            "access_token_expires_at": 2000000000
+          }
+        ]
+      }
+    }
+  ]
+}

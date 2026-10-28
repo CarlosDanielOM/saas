@@ -1,0 +1,7825 @@
+{
+  "fixedNow": 1900000000000,
+  "timeZone": "UTC",
+  "sources": {
+    "ai_usage_daily": "80b5debff08e77578275a5267df1a1499138441d1bb5d55875f1eb2092318585",
+    "ai_usage_dashboard": "0a284872d00400c766cb61995353dec43214d8564c31abb6e0c9e83e716f36c6",
+    "ai_usage_ledger_state": "ede6fc369c432d97bee0db835871c0773c1000023ac2c34ff044510c5c60121c",
+    "ai_usage_receipt": "87f132f55c47cf082f37dabadc0d42f790e8324d1925f6990a3794f46d845b92",
+    "ast_variables": "b6ae8e21c7db3c0dbbda6e426573f0f913d06750d44b8a153159ec8bcf794f85",
+    "chat_logs": "732abc7b27b820fa6ded0d62b1dc3bf3aed8539c7fd636a47f47d98f70b63433",
+    "command_timer": "db42c5b989f6e154551c714f51736585b0230fa743f6bc51fe935b54530af4f5",
+    "command_user_variables": "c0b95165952a5120526f441996bafcbd15659588b682617301211a4860f4cf64",
+    "countdown_timer": "5d6ab4812c726b2aab0a8fee4a3ca060c6dacc97f59b8aee66c46b669766b990",
+    "countdown_timer_config": "b4cf0d5f8cfe85dc1e04f11970aac8bbab48a27c86fc9fab43d935cdbb1ada8a",
+    "custom_timer": "6c59b38b43615325f87c870dcbd5dfe2cd0b50e91822dbe884d3c32dd45f387f",
+    "dashboard_activity": "38dffd5aa3db17d8b007eb002d59a45d958322fb012ed48381a007f1da031713",
+    "dashboard_insights": "9ef9f26a6649de413cb908a47c534e0091c525d909734624f6c42c58753ee58c",
+    "domain_event": "b73e7918e8cb43dc8bff85b8bab082a875de9b61b45852f7f8acf34ace593d25",
+    "domain_event_checkpoint": "751a15ab92f12b23605962e6fa46cdaa1f208c5680bfd289acff50c68436fc5a",
+    "domain_event_delivery": "d6fd780e484f2e7ef4fe6e4385ee737455908a761dfbdc30bac41791284b5a68",
+    "raid_analytics": "8c2760bff4acd6401d7b207cd6fc42dcdc73435a96af3a965ef0083378a771ea",
+    "raid_session": "ee75eaf8e4d3bbceef9da32aef41b17d04195204833bc2309e31f66cede3f61f",
+    "raid_subscription_preference": "dfbb334ed17ac9557d9c90e648dd69eebd558f89b08547098919c1030848a27f",
+    "stream_activity": "d45de640b797491417845f1918b2ef7cb3d67ddb3836e1c8685f87322a9fb287",
+    "stream_session": "d0394d2fb7ba43b1a90758d4fa1ac4849ea15f6410c9a18e28e687f97ad81026",
+    "stream_subscription_ledger": "250e32ad06fceb28c310850e5461e75d46d86d9482b4ab351fe4424f3a53850e",
+    "stream_timeline": "d677d8e525466b4e30df8341176ca40a09490adb9e315c17a71c8de1541ba347",
+    "stream_viewer_snapshot": "8e03cbb6c859709405f4c02d4ed57fb8f6ee81a0af3241b3a6dc3d846344f862"
+  },
+  "definitions": {
+    "ai_usage_daily": {
+      "collection": "ai_usage_dailies",
+      "stringId": false,
+      "versionKey": true,
+      "journaled": false,
+      "hidden": [],
+      "immutable": [
+        "created_at"
+      ],
+      "indexes": [
+        {
+          "keys": {
+            "channelID": 1,
+            "customerId": 1,
+            "date": 1
+          },
+          "keyOrder": [
+            "channelID",
+            "customerId",
+            "date"
+          ],
+          "unique": true,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "expiresAt": 1
+          },
+          "keyOrder": [
+            "expiresAt"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": 0,
+          "partial": null
+        }
+      ]
+    },
+    "ai_usage_dashboards": {
+      "collection": "ai_usage_dashboards",
+      "stringId": false,
+      "versionKey": true,
+      "journaled": false,
+      "hidden": [],
+      "immutable": [],
+      "indexes": [
+        {
+          "keys": {
+            "key": 1
+          },
+          "keyOrder": [
+            "key"
+          ],
+          "unique": true,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "channelID": 1,
+            "customerId": 1
+          },
+          "keyOrder": [
+            "channelID",
+            "customerId"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "dirty": 1,
+            "refreshedAt": 1
+          },
+          "keyOrder": [
+            "dirty",
+            "refreshedAt"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "expiresAt": 1
+          },
+          "keyOrder": [
+            "expiresAt"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": 0,
+          "partial": null
+        }
+      ]
+    },
+    "ai_usage_ledger_states": {
+      "collection": "ai_usage_ledger_states",
+      "stringId": false,
+      "versionKey": true,
+      "journaled": false,
+      "hidden": [],
+      "immutable": [
+        "created_at"
+      ],
+      "indexes": [
+        {
+          "keys": {
+            "channelID": 1,
+            "customerId": 1
+          },
+          "keyOrder": [
+            "channelID",
+            "customerId"
+          ],
+          "unique": true,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        }
+      ]
+    },
+    "ai_usage_receipts": {
+      "collection": "ai_usage_receipts",
+      "stringId": false,
+      "versionKey": true,
+      "journaled": false,
+      "hidden": [],
+      "immutable": [
+        "created_at"
+      ],
+      "indexes": [
+        {
+          "keys": {
+            "channelID": 1,
+            "customerId": 1,
+            "entryId": 1
+          },
+          "keyOrder": [
+            "channelID",
+            "customerId",
+            "entryId"
+          ],
+          "unique": true,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "channelID": 1,
+            "customerId": 1,
+            "occurredAt": -1,
+            "entryId": -1
+          },
+          "keyOrder": [
+            "channelID",
+            "customerId",
+            "occurredAt",
+            "entryId"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "channelID": 1,
+            "customerId": 1,
+            "category": 1,
+            "occurredAt": -1,
+            "entryId": -1
+          },
+          "keyOrder": [
+            "channelID",
+            "customerId",
+            "category",
+            "occurredAt",
+            "entryId"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "channelID": 1,
+            "customerId": 1,
+            "source": 1,
+            "occurredAt": -1,
+            "entryId": -1
+          },
+          "keyOrder": [
+            "channelID",
+            "customerId",
+            "source",
+            "occurredAt",
+            "entryId"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "channelID": 1,
+            "customerId": 1,
+            "resourceId": 1,
+            "occurredAt": -1,
+            "entryId": -1
+          },
+          "keyOrder": [
+            "channelID",
+            "customerId",
+            "resourceId",
+            "occurredAt",
+            "entryId"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "channelID": 1,
+            "customerId": 1,
+            "requestId": 1,
+            "occurredAt": -1,
+            "entryId": -1
+          },
+          "keyOrder": [
+            "channelID",
+            "customerId",
+            "requestId",
+            "occurredAt",
+            "entryId"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "channelID": 1,
+            "customerId": 1,
+            "entryKind": 1,
+            "occurredAt": -1,
+            "entryId": -1
+          },
+          "keyOrder": [
+            "channelID",
+            "customerId",
+            "entryKind",
+            "occurredAt",
+            "entryId"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "channelID": 1,
+            "customerId": 1,
+            "adjustmentType": 1,
+            "occurredAt": -1,
+            "entryId": -1
+          },
+          "keyOrder": [
+            "channelID",
+            "customerId",
+            "adjustmentType",
+            "occurredAt",
+            "entryId"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "expiresAt": 1
+          },
+          "keyOrder": [
+            "expiresAt"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": 0,
+          "partial": null
+        }
+      ]
+    },
+    "AstVariables": {
+      "collection": "astvariables",
+      "stringId": false,
+      "versionKey": true,
+      "journaled": false,
+      "hidden": [],
+      "immutable": [
+        "createdAt"
+      ],
+      "indexes": [
+        {
+          "keys": {
+            "channelID": 1
+          },
+          "keyOrder": [
+            "channelID"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "channelID": 1,
+            "scopeType": 1,
+            "scopeName": 1,
+            "userId": 1
+          },
+          "keyOrder": [
+            "channelID",
+            "scopeType",
+            "scopeName",
+            "userId"
+          ],
+          "unique": true,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "channelID": 1,
+            "scopeType": 1,
+            "scopeName": 1,
+            "userLogin": 1
+          },
+          "keyOrder": [
+            "channelID",
+            "scopeType",
+            "scopeName",
+            "userLogin"
+          ],
+          "unique": true,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        }
+      ]
+    },
+    "Chat_Log": {
+      "collection": "chat_logs",
+      "stringId": false,
+      "versionKey": true,
+      "journaled": false,
+      "hidden": [],
+      "immutable": [],
+      "indexes": []
+    },
+    "timer_command": {
+      "collection": "timer_commands",
+      "stringId": false,
+      "versionKey": true,
+      "journaled": false,
+      "hidden": [],
+      "immutable": [],
+      "indexes": []
+    },
+    "CommandUserVariables": {
+      "collection": "commanduservariables",
+      "stringId": false,
+      "versionKey": true,
+      "journaled": false,
+      "hidden": [],
+      "immutable": [
+        "createdAt"
+      ],
+      "indexes": [
+        {
+          "keys": {
+            "channelID": 1
+          },
+          "keyOrder": [
+            "channelID"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "userId": 1
+          },
+          "keyOrder": [
+            "userId"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "commandId": 1,
+            "userId": 1
+          },
+          "keyOrder": [
+            "commandId",
+            "userId"
+          ],
+          "unique": true,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        }
+      ]
+    },
+    "Countdowntimer": {
+      "collection": "countdowntimers",
+      "stringId": false,
+      "versionKey": true,
+      "journaled": false,
+      "hidden": [],
+      "immutable": [],
+      "indexes": []
+    },
+    "Countdowntimerconfig": {
+      "collection": "countdowntimerconfigs",
+      "stringId": false,
+      "versionKey": true,
+      "journaled": false,
+      "hidden": [],
+      "immutable": [],
+      "indexes": []
+    },
+    "custom_timer": {
+      "collection": "custom_timers",
+      "stringId": false,
+      "versionKey": true,
+      "journaled": false,
+      "hidden": [],
+      "immutable": [
+        "created_at"
+      ],
+      "indexes": [
+        {
+          "keys": {
+            "channelID": 1
+          },
+          "keyOrder": [
+            "channelID"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "channelID": 1,
+            "name": 1
+          },
+          "keyOrder": [
+            "channelID",
+            "name"
+          ],
+          "unique": true,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        }
+      ]
+    },
+    "dashboard_activity_daily": {
+      "collection": "dashboard_activity_dailies",
+      "stringId": true,
+      "versionKey": false,
+      "journaled": true,
+      "hidden": [],
+      "immutable": [],
+      "indexes": [
+        {
+          "keys": {
+            "channelID": 1,
+            "day": 1,
+            "kind": 1
+          },
+          "keyOrder": [
+            "channelID",
+            "day",
+            "kind"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "expiresAt": 1
+          },
+          "keyOrder": [
+            "expiresAt"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": 0,
+          "partial": null
+        }
+      ]
+    },
+    "dashboard_activity_summary": {
+      "collection": "dashboard_activity_summaries",
+      "stringId": true,
+      "versionKey": false,
+      "journaled": false,
+      "hidden": [],
+      "immutable": [],
+      "indexes": [
+        {
+          "keys": {
+            "nextRefreshAt": 1,
+            "leaseUntil": 1
+          },
+          "keyOrder": [
+            "nextRefreshAt",
+            "leaseUntil"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        }
+      ]
+    },
+    "dashboard_insights": {
+      "collection": "dashboard_insights",
+      "stringId": true,
+      "versionKey": false,
+      "journaled": false,
+      "hidden": [],
+      "immutable": [],
+      "indexes": [
+        {
+          "keys": {
+            "nextRefreshAt": 1,
+            "leaseUntil": 1
+          },
+          "keyOrder": [
+            "nextRefreshAt",
+            "leaseUntil"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "expiresAt": 1
+          },
+          "keyOrder": [
+            "expiresAt"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": 0,
+          "partial": null
+        }
+      ]
+    },
+    "domain_event": {
+      "collection": "domain_events",
+      "stringId": false,
+      "versionKey": false,
+      "journaled": false,
+      "hidden": [],
+      "immutable": [
+        "channelID",
+        "eventKey",
+        "expiresAt",
+        "journaledAt",
+        "metadata",
+        "occurredAt",
+        "ownerUserId",
+        "payload",
+        "schemaVersion",
+        "source",
+        "sourceEventId",
+        "streamID",
+        "subject",
+        "topic",
+        "type"
+      ],
+      "indexes": [
+        {
+          "keys": {
+            "type": 1
+          },
+          "keyOrder": [
+            "type"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "topic": 1
+          },
+          "keyOrder": [
+            "topic"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "ownerUserId": 1
+          },
+          "keyOrder": [
+            "ownerUserId"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "channelID": 1
+          },
+          "keyOrder": [
+            "channelID"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "eventKey": 1
+          },
+          "keyOrder": [
+            "eventKey"
+          ],
+          "unique": true,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "source": 1,
+            "sourceEventId": 1,
+            "type": 1
+          },
+          "keyOrder": [
+            "source",
+            "sourceEventId",
+            "type"
+          ],
+          "unique": true,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "topic": 1,
+            "_id": 1
+          },
+          "keyOrder": [
+            "topic",
+            "_id"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "topic": 1,
+            "source": 1,
+            "_id": 1
+          },
+          "keyOrder": [
+            "topic",
+            "source",
+            "_id"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "channelID": 1,
+            "source": 1,
+            "type": 1,
+            "occurredAt": 1,
+            "_id": 1
+          },
+          "keyOrder": [
+            "channelID",
+            "source",
+            "type",
+            "occurredAt",
+            "_id"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "dispatchPending": 1,
+            "_id": 1
+          },
+          "keyOrder": [
+            "dispatchPending",
+            "_id"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": {
+            "dispatchPending": true
+          }
+        },
+        {
+          "keys": {
+            "topic": 1,
+            "metadata.durableChatHandled": 1,
+            "_id": 1
+          },
+          "keyOrder": [
+            "topic",
+            "metadata.durableChatHandled",
+            "_id"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": {
+            "metadata.durableChatHandled": true
+          }
+        },
+        {
+          "keys": {
+            "expiresAt": 1
+          },
+          "keyOrder": [
+            "expiresAt"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": 0,
+          "partial": null
+        }
+      ]
+    },
+    "domain_event_checkpoint": {
+      "collection": "domain_event_checkpoints",
+      "stringId": false,
+      "versionKey": false,
+      "journaled": false,
+      "hidden": [],
+      "immutable": [
+        "createdAt"
+      ],
+      "indexes": [
+        {
+          "keys": {
+            "consumer": 1,
+            "topic": 1
+          },
+          "keyOrder": [
+            "consumer",
+            "topic"
+          ],
+          "unique": true,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        }
+      ]
+    },
+    "domain_event_delivery": {
+      "collection": "domain_event_deliveries",
+      "stringId": false,
+      "versionKey": false,
+      "journaled": false,
+      "hidden": [],
+      "immutable": [
+        "createdAt"
+      ],
+      "indexes": [
+        {
+          "keys": {
+            "consumer": 1
+          },
+          "keyOrder": [
+            "consumer"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "topic": 1
+          },
+          "keyOrder": [
+            "topic"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "status": 1
+          },
+          "keyOrder": [
+            "status"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "consumer": 1,
+            "eventKey": 1
+          },
+          "keyOrder": [
+            "consumer",
+            "eventKey"
+          ],
+          "unique": true,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "consumer": 1,
+            "status": 1,
+            "nextAttemptAt": 1
+          },
+          "keyOrder": [
+            "consumer",
+            "status",
+            "nextAttemptAt"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "consumer": 1,
+            "status": 1,
+            "lockedUntil": 1
+          },
+          "keyOrder": [
+            "consumer",
+            "status",
+            "lockedUntil"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "consumer": 1,
+            "status": 1,
+            "updatedAt": 1,
+            "_id": 1
+          },
+          "keyOrder": [
+            "consumer",
+            "status",
+            "updatedAt",
+            "_id"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "expiresAt": 1
+          },
+          "keyOrder": [
+            "expiresAt"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": 0,
+          "partial": null
+        }
+      ]
+    },
+    "raid_analytics_history": {
+      "collection": "raid_analytics_histories",
+      "stringId": true,
+      "versionKey": false,
+      "journaled": true,
+      "hidden": [],
+      "immutable": [],
+      "indexes": [
+        {
+          "keys": {
+            "channelID": 1,
+            "occurredAt": -1,
+            "_id": 1
+          },
+          "keyOrder": [
+            "channelID",
+            "occurredAt",
+            "_id"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "channelID": 1,
+            "direction": 1,
+            "peerID": 1,
+            "occurredAt": -1
+          },
+          "keyOrder": [
+            "channelID",
+            "direction",
+            "peerID",
+            "occurredAt"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "channelID": 1,
+            "direction": 1,
+            "followsComputedAt": 1,
+            "occurredAt": 1
+          },
+          "keyOrder": [
+            "channelID",
+            "direction",
+            "followsComputedAt",
+            "occurredAt"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "channelID": 1,
+            "direction": 1,
+            "occurredAt": 1,
+            "_id": 1
+          },
+          "keyOrder": [
+            "channelID",
+            "direction",
+            "occurredAt",
+            "_id"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "expiresAt": 1
+          },
+          "keyOrder": [
+            "expiresAt"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": 0,
+          "partial": null
+        }
+      ]
+    },
+    "raid_analytics_summary": {
+      "collection": "raid_analytics_summaries",
+      "stringId": true,
+      "versionKey": false,
+      "journaled": false,
+      "hidden": [],
+      "immutable": [],
+      "indexes": [
+        {
+          "keys": {
+            "nextRefreshAt": 1,
+            "leaseUntil": 1
+          },
+          "keyOrder": [
+            "nextRefreshAt",
+            "leaseUntil"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        }
+      ]
+    },
+    "raid_session": {
+      "collection": "raid_sessions",
+      "stringId": true,
+      "versionKey": false,
+      "journaled": true,
+      "hidden": [],
+      "immutable": [],
+      "indexes": [
+        {
+          "keys": {
+            "channelID": 1,
+            "startedAt": -1
+          },
+          "keyOrder": [
+            "channelID",
+            "startedAt"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "purgeAt": 1
+          },
+          "keyOrder": [
+            "purgeAt"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": 0,
+          "partial": null
+        }
+      ]
+    },
+    "raid_follower": {
+      "collection": "raid_followers",
+      "stringId": true,
+      "versionKey": false,
+      "journaled": true,
+      "hidden": [],
+      "immutable": [],
+      "indexes": [
+        {
+          "keys": {
+            "sessionID": 1,
+            "followedAt": 1,
+            "_id": 1
+          },
+          "keyOrder": [
+            "sessionID",
+            "followedAt",
+            "_id"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "channelID": 1,
+            "followedAt": 1
+          },
+          "keyOrder": [
+            "channelID",
+            "followedAt"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "sessionID": 1,
+            "userID": 1
+          },
+          "keyOrder": [
+            "sessionID",
+            "userID"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "purgeAt": 1
+          },
+          "keyOrder": [
+            "purgeAt"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": 0,
+          "partial": null
+        }
+      ]
+    },
+    "raid_moderation_request": {
+      "collection": "raid_moderation_requests",
+      "stringId": true,
+      "versionKey": false,
+      "journaled": true,
+      "hidden": [],
+      "immutable": [],
+      "indexes": [
+        {
+          "keys": {
+            "status": 1,
+            "nextAttemptAt": 1
+          },
+          "keyOrder": [
+            "status",
+            "nextAttemptAt"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "purgeAt": 1
+          },
+          "keyOrder": [
+            "purgeAt"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": 0,
+          "partial": null
+        }
+      ]
+    },
+    "raid_subscription_preference": {
+      "collection": "raid_subscription_preferences",
+      "stringId": true,
+      "versionKey": false,
+      "journaled": true,
+      "hidden": [],
+      "immutable": [],
+      "indexes": [
+        {
+          "keys": {
+            "channelID": 1,
+            "direction": 1
+          },
+          "keyOrder": [
+            "channelID",
+            "direction"
+          ],
+          "unique": true,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        }
+      ]
+    },
+    "stream_activity": {
+      "collection": "stream_activities",
+      "stringId": true,
+      "versionKey": false,
+      "journaled": false,
+      "hidden": [],
+      "immutable": [],
+      "indexes": [
+        {
+          "keys": {
+            "processed": 1,
+            "occurredAt": 1,
+            "_id": 1
+          },
+          "keyOrder": [
+            "processed",
+            "occurredAt",
+            "_id"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "channelID": 1,
+            "session_id": 1,
+            "processed": 1,
+            "expiresAt": 1
+          },
+          "keyOrder": [
+            "channelID",
+            "session_id",
+            "processed",
+            "expiresAt"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "channelID": 1,
+            "session_id": 1,
+            "kind": 1,
+            "occurredAt": 1,
+            "_id": 1
+          },
+          "keyOrder": [
+            "channelID",
+            "session_id",
+            "kind",
+            "occurredAt",
+            "_id"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "expiresAt": 1
+          },
+          "keyOrder": [
+            "expiresAt"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": 0,
+          "partial": null
+        },
+        {
+          "keys": {
+            "dashboardProcessed": 1,
+            "kind": 1,
+            "occurredAt": 1,
+            "_id": 1
+          },
+          "keyOrder": [
+            "dashboardProcessed",
+            "kind",
+            "occurredAt",
+            "_id"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "channelID": 1,
+            "dashboardProcessed": 1,
+            "kind": 1,
+            "occurredAt": 1
+          },
+          "keyOrder": [
+            "channelID",
+            "dashboardProcessed",
+            "kind",
+            "occurredAt"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        }
+      ]
+    },
+    "stream_activity_aggregate": {
+      "collection": "stream_activity_aggregates",
+      "stringId": true,
+      "versionKey": false,
+      "journaled": false,
+      "hidden": [],
+      "immutable": [],
+      "indexes": [
+        {
+          "keys": {
+            "channelID": 1,
+            "session_id": 1,
+            "scope": 1,
+            "kind": 1,
+            "key": 1,
+            "count": -1,
+            "_id": 1
+          },
+          "keyOrder": [
+            "channelID",
+            "session_id",
+            "scope",
+            "kind",
+            "key",
+            "count",
+            "_id"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "channelID": 1,
+            "session_id": 1,
+            "scope": 1,
+            "kind": 1,
+            "count": -1,
+            "_id": 1
+          },
+          "keyOrder": [
+            "channelID",
+            "session_id",
+            "scope",
+            "kind",
+            "count",
+            "_id"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "channelID": 1,
+            "session_id": 1,
+            "scope": 1,
+            "bucket": 1
+          },
+          "keyOrder": [
+            "channelID",
+            "session_id",
+            "scope",
+            "bucket"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "expiresAt": 1
+          },
+          "keyOrder": [
+            "expiresAt"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": 0,
+          "partial": null
+        }
+      ]
+    },
+    "stream_activity_state": {
+      "collection": "stream_activity_states",
+      "stringId": true,
+      "versionKey": false,
+      "journaled": false,
+      "hidden": [],
+      "immutable": [],
+      "indexes": []
+    },
+    "StreamSession": {
+      "collection": "streamsessions",
+      "stringId": false,
+      "versionKey": true,
+      "journaled": false,
+      "hidden": [
+        "applied_domain_event_keys"
+      ],
+      "immutable": [
+        "created_at"
+      ],
+      "indexes": [
+        {
+          "keys": {
+            "channelID": 1
+          },
+          "keyOrder": [
+            "channelID"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "stream_id": 1
+          },
+          "keyOrder": [
+            "stream_id"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "started_at": 1
+          },
+          "keyOrder": [
+            "started_at"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "ended_at": 1
+          },
+          "keyOrder": [
+            "ended_at"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "status": 1
+          },
+          "keyOrder": [
+            "status"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "channelID": 1,
+            "started_at": -1
+          },
+          "keyOrder": [
+            "channelID",
+            "started_at"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "channelID": 1,
+            "started_at": -1,
+            "ended_at": 1
+          },
+          "keyOrder": [
+            "channelID",
+            "started_at",
+            "ended_at"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "channelID": 1,
+            "stream_id": 1
+          },
+          "keyOrder": [
+            "channelID",
+            "stream_id"
+          ],
+          "unique": true,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "channelID": 1,
+            "ended_at": 1
+          },
+          "keyOrder": [
+            "channelID",
+            "ended_at"
+          ],
+          "unique": true,
+          "sparse": false,
+          "ttl": null,
+          "partial": {
+            "ended_at": null
+          }
+        }
+      ]
+    },
+    "stream_subscription_ledger": {
+      "collection": "stream_subscription_ledgers",
+      "stringId": false,
+      "versionKey": true,
+      "journaled": false,
+      "hidden": [
+        "applied_event_keys"
+      ],
+      "immutable": [
+        "created_at"
+      ],
+      "indexes": [
+        {
+          "keys": {
+            "platform": 1
+          },
+          "keyOrder": [
+            "platform"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "streamer_id": 1
+          },
+          "keyOrder": [
+            "streamer_id"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "user_id": 1
+          },
+          "keyOrder": [
+            "user_id"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "sub_tier_normalized": 1
+          },
+          "keyOrder": [
+            "sub_tier_normalized"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "status": 1
+          },
+          "keyOrder": [
+            "status"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "last_event_at": 1
+          },
+          "keyOrder": [
+            "last_event_at"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "streamer_id": 1,
+            "status": 1
+          },
+          "keyOrder": [
+            "streamer_id",
+            "status"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "platform": 1,
+            "streamer_id": 1,
+            "user_id": 1,
+            "last_event_at": -1
+          },
+          "keyOrder": [
+            "platform",
+            "streamer_id",
+            "user_id",
+            "last_event_at"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "event_key": 1
+          },
+          "keyOrder": [
+            "event_key"
+          ],
+          "unique": true,
+          "sparse": true,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "platform": 1,
+            "streamer_id": 1,
+            "user_id": 1,
+            "status": 1
+          },
+          "keyOrder": [
+            "platform",
+            "streamer_id",
+            "user_id",
+            "status"
+          ],
+          "unique": true,
+          "sparse": false,
+          "ttl": null,
+          "partial": {
+            "status": "active"
+          }
+        }
+      ]
+    },
+    "stream_participant": {
+      "collection": "stream_participants",
+      "stringId": false,
+      "versionKey": false,
+      "journaled": false,
+      "hidden": [],
+      "immutable": [],
+      "indexes": [
+        {
+          "keys": {
+            "channelID": 1,
+            "session_id": 1,
+            "bucket": 1,
+            "user_id": 1
+          },
+          "keyOrder": [
+            "channelID",
+            "session_id",
+            "bucket",
+            "user_id"
+          ],
+          "unique": true,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "expiresAt": 1
+          },
+          "keyOrder": [
+            "expiresAt"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": 0,
+          "partial": null
+        }
+      ]
+    },
+    "stream_marker": {
+      "collection": "stream_markers",
+      "stringId": false,
+      "versionKey": false,
+      "journaled": false,
+      "hidden": [],
+      "immutable": [],
+      "indexes": [
+        {
+          "keys": {
+            "channelID": 1,
+            "session_id": 1,
+            "key": 1
+          },
+          "keyOrder": [
+            "channelID",
+            "session_id",
+            "key"
+          ],
+          "unique": true,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "channelID": 1,
+            "session_id": 1,
+            "occurredAt": 1,
+            "_id": 1
+          },
+          "keyOrder": [
+            "channelID",
+            "session_id",
+            "occurredAt",
+            "_id"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "channelID": 1,
+            "session_id": 1,
+            "kind": 1,
+            "occurredAt": 1,
+            "_id": 1
+          },
+          "keyOrder": [
+            "channelID",
+            "session_id",
+            "kind",
+            "occurredAt",
+            "_id"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "expiresAt": 1
+          },
+          "keyOrder": [
+            "expiresAt"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": 0,
+          "partial": null
+        }
+      ]
+    },
+    "StreamViewerSnapshot": {
+      "collection": "streamviewersnapshots",
+      "stringId": false,
+      "versionKey": true,
+      "journaled": false,
+      "hidden": [],
+      "immutable": [
+        "created_at"
+      ],
+      "indexes": [
+        {
+          "keys": {
+            "channelID": 1
+          },
+          "keyOrder": [
+            "channelID"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "session_id": 1
+          },
+          "keyOrder": [
+            "session_id"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "stream_id": 1
+          },
+          "keyOrder": [
+            "stream_id"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "captured_at": 1
+          },
+          "keyOrder": [
+            "captured_at"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "channelID": 1,
+            "captured_at": -1
+          },
+          "keyOrder": [
+            "channelID",
+            "captured_at"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        },
+        {
+          "keys": {
+            "session_id": 1,
+            "captured_at": 1
+          },
+          "keyOrder": [
+            "session_id",
+            "captured_at"
+          ],
+          "unique": false,
+          "sparse": false,
+          "ttl": null,
+          "partial": null
+        }
+      ]
+    }
+  },
+  "cases": [
+    {
+      "model": "ai_usage_daily",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "channelID",
+            "kind": "required"
+          },
+          {
+            "path": "customerId",
+            "kind": "required"
+          },
+          {
+            "path": "date",
+            "kind": "required"
+          },
+          {
+            "path": "dayStart",
+            "kind": "required"
+          },
+          {
+            "path": "expiresAt",
+            "kind": "required"
+          },
+          {
+            "path": "retentionTier",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "ai_usage_daily",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channelID": "channel",
+        "customerId": "customer",
+        "date": "2030-03-17",
+        "dayStart": "2030-03-17T17:46:40.000Z",
+        "retentionTier": "free",
+        "expiresAt": "2030-04-17T17:46:40.000Z"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "channelID": "channel",
+          "customerId": "customer",
+          "date": "2030-03-17",
+          "dayStart": {
+            "$date": 1900000000000
+          },
+          "expiresAt": {
+            "$date": 1902678400000
+          },
+          "grantedCredits": 0,
+          "netConsumedCredits": 0,
+          "retentionTier": "free",
+          "spentCredits": 0,
+          "transactionCount": 0
+        }
+      }
+    },
+    {
+      "model": "ai_usage_daily",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channelID": "channel",
+        "customerId": "customer",
+        "date": "2030-03-17",
+        "dayStart": "2030-03-17T17:46:40.000Z",
+        "retentionTier": "free",
+        "expiresAt": "2030-04-17T17:46:40.000Z",
+        "unknown": "discarded"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "channelID": "channel",
+          "customerId": "customer",
+          "date": "2030-03-17",
+          "dayStart": {
+            "$date": 1900000000000
+          },
+          "expiresAt": {
+            "$date": 1902678400000
+          },
+          "grantedCredits": 0,
+          "netConsumedCredits": 0,
+          "retentionTier": "free",
+          "spentCredits": 0,
+          "transactionCount": 0
+        }
+      }
+    },
+    {
+      "model": "ai_usage_daily",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channelID": null,
+        "customerId": null,
+        "date": null,
+        "dayStart": null,
+        "retentionTier": null,
+        "expiresAt": null
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "channelID",
+            "kind": "required"
+          },
+          {
+            "path": "customerId",
+            "kind": "required"
+          },
+          {
+            "path": "date",
+            "kind": "required"
+          },
+          {
+            "path": "dayStart",
+            "kind": "required"
+          },
+          {
+            "path": "expiresAt",
+            "kind": "required"
+          },
+          {
+            "path": "retentionTier",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "ai_usage_dashboards",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "channelID",
+            "kind": "required"
+          },
+          {
+            "path": "customerId",
+            "kind": "required"
+          },
+          {
+            "path": "data",
+            "kind": "required"
+          },
+          {
+            "path": "expiresAt",
+            "kind": "required"
+          },
+          {
+            "path": "key",
+            "kind": "required"
+          },
+          {
+            "path": "planTier",
+            "kind": "required"
+          },
+          {
+            "path": "refreshedAt",
+            "kind": "required"
+          },
+          {
+            "path": "request",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "ai_usage_dashboards",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "key": "report",
+        "channelID": "channel",
+        "customerId": "customer",
+        "planTier": "free",
+        "request": {
+          "period": "day"
+        },
+        "data": {
+          "balance": 3
+        },
+        "refreshedAt": "2030-03-17T17:46:40.000Z",
+        "expiresAt": "2030-04-17T17:46:40.000Z"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "channelID": "channel",
+          "customerId": "customer",
+          "data": {
+            "balance": 3
+          },
+          "dirty": false,
+          "expiresAt": {
+            "$date": 1902678400000
+          },
+          "key": "report",
+          "planTier": "free",
+          "refreshedAt": {
+            "$date": 1900000000000
+          },
+          "request": {
+            "period": "day"
+          }
+        }
+      }
+    },
+    {
+      "model": "ai_usage_dashboards",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "key": "report",
+        "channelID": "channel",
+        "customerId": "customer",
+        "planTier": "free",
+        "request": {
+          "period": "day"
+        },
+        "data": {
+          "balance": 3
+        },
+        "refreshedAt": "2030-03-17T17:46:40.000Z",
+        "expiresAt": "2030-04-17T17:46:40.000Z",
+        "unknown": "discarded"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "channelID": "channel",
+          "customerId": "customer",
+          "data": {
+            "balance": 3
+          },
+          "dirty": false,
+          "expiresAt": {
+            "$date": 1902678400000
+          },
+          "key": "report",
+          "planTier": "free",
+          "refreshedAt": {
+            "$date": 1900000000000
+          },
+          "request": {
+            "period": "day"
+          }
+        }
+      }
+    },
+    {
+      "model": "ai_usage_dashboards",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "key": null,
+        "channelID": null,
+        "customerId": null,
+        "planTier": null,
+        "request": null,
+        "data": null,
+        "refreshedAt": null,
+        "expiresAt": null
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "channelID",
+            "kind": "required"
+          },
+          {
+            "path": "customerId",
+            "kind": "required"
+          },
+          {
+            "path": "data",
+            "kind": "required"
+          },
+          {
+            "path": "expiresAt",
+            "kind": "required"
+          },
+          {
+            "path": "key",
+            "kind": "required"
+          },
+          {
+            "path": "planTier",
+            "kind": "required"
+          },
+          {
+            "path": "refreshedAt",
+            "kind": "required"
+          },
+          {
+            "path": "request",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "ai_usage_ledger_states",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "backfilledAt",
+            "kind": "required"
+          },
+          {
+            "path": "channelID",
+            "kind": "required"
+          },
+          {
+            "path": "coverageStart",
+            "kind": "required"
+          },
+          {
+            "path": "customerId",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "ai_usage_ledger_states",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channelID": "channel",
+        "customerId": "customer",
+        "coverageStart": "2030-03-17T17:46:40.000Z",
+        "backfilledAt": "2030-03-17T17:46:40.000Z"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "backfilledAt": {
+            "$date": 1900000000000
+          },
+          "channelID": "channel",
+          "coverageStart": {
+            "$date": 1900000000000
+          },
+          "customerId": "customer",
+          "reportVersion": 0
+        }
+      }
+    },
+    {
+      "model": "ai_usage_ledger_states",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channelID": "channel",
+        "customerId": "customer",
+        "coverageStart": "2030-03-17T17:46:40.000Z",
+        "backfilledAt": "2030-03-17T17:46:40.000Z",
+        "unknown": "discarded"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "backfilledAt": {
+            "$date": 1900000000000
+          },
+          "channelID": "channel",
+          "coverageStart": {
+            "$date": 1900000000000
+          },
+          "customerId": "customer",
+          "reportVersion": 0
+        }
+      }
+    },
+    {
+      "model": "ai_usage_ledger_states",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channelID": null,
+        "customerId": null,
+        "coverageStart": null,
+        "backfilledAt": null
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "backfilledAt",
+            "kind": "required"
+          },
+          {
+            "path": "channelID",
+            "kind": "required"
+          },
+          {
+            "path": "coverageStart",
+            "kind": "required"
+          },
+          {
+            "path": "customerId",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "ai_usage_receipts",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "category",
+            "kind": "required"
+          },
+          {
+            "path": "channelID",
+            "kind": "required"
+          },
+          {
+            "path": "credits",
+            "kind": "required"
+          },
+          {
+            "path": "customerId",
+            "kind": "required"
+          },
+          {
+            "path": "entryId",
+            "kind": "required"
+          },
+          {
+            "path": "entryKind",
+            "kind": "required"
+          },
+          {
+            "path": "expiresAt",
+            "kind": "required"
+          },
+          {
+            "path": "itemized",
+            "kind": "required"
+          },
+          {
+            "path": "occurredAt",
+            "kind": "required"
+          },
+          {
+            "path": "operation",
+            "kind": "required"
+          },
+          {
+            "path": "provider",
+            "kind": "required"
+          },
+          {
+            "path": "retentionTier",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "ai_usage_receipts",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channelID": "channel",
+        "customerId": "customer",
+        "entryId": "entry",
+        "occurredAt": "2030-03-17T17:46:40.000Z",
+        "entryKind": "usage",
+        "category": "chat",
+        "operation": "completion",
+        "provider": "fixture",
+        "credits": 3,
+        "itemized": true,
+        "retentionTier": "premium",
+        "expiresAt": "2030-04-17T17:46:40.000Z"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "adjustmentType": null,
+          "category": "chat",
+          "channelID": "channel",
+          "credits": 3,
+          "customerId": "customer",
+          "entryId": "entry",
+          "entryKind": "usage",
+          "expiresAt": {
+            "$date": 1902678400000
+          },
+          "itemized": true,
+          "model": null,
+          "occurredAt": {
+            "$date": 1900000000000
+          },
+          "operation": "completion",
+          "provider": "fixture",
+          "quantity": null,
+          "requestId": null,
+          "resourceId": null,
+          "resourceType": null,
+          "retentionTier": "premium",
+          "source": null,
+          "unit": null
+        }
+      }
+    },
+    {
+      "model": "ai_usage_receipts",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channelID": "channel",
+        "customerId": "customer",
+        "entryId": "entry",
+        "occurredAt": "2030-03-17T17:46:40.000Z",
+        "entryKind": "usage",
+        "category": "chat",
+        "operation": "completion",
+        "provider": "fixture",
+        "credits": 3,
+        "itemized": true,
+        "retentionTier": "premium",
+        "expiresAt": "2030-04-17T17:46:40.000Z",
+        "unknown": "discarded"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "adjustmentType": null,
+          "category": "chat",
+          "channelID": "channel",
+          "credits": 3,
+          "customerId": "customer",
+          "entryId": "entry",
+          "entryKind": "usage",
+          "expiresAt": {
+            "$date": 1902678400000
+          },
+          "itemized": true,
+          "model": null,
+          "occurredAt": {
+            "$date": 1900000000000
+          },
+          "operation": "completion",
+          "provider": "fixture",
+          "quantity": null,
+          "requestId": null,
+          "resourceId": null,
+          "resourceType": null,
+          "retentionTier": "premium",
+          "source": null,
+          "unit": null
+        }
+      }
+    },
+    {
+      "model": "ai_usage_receipts",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channelID": null,
+        "customerId": null,
+        "entryId": null,
+        "occurredAt": null,
+        "entryKind": null,
+        "category": null,
+        "operation": null,
+        "provider": null,
+        "credits": null,
+        "itemized": null,
+        "retentionTier": null,
+        "expiresAt": null
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "category",
+            "kind": "required"
+          },
+          {
+            "path": "channelID",
+            "kind": "required"
+          },
+          {
+            "path": "credits",
+            "kind": "required"
+          },
+          {
+            "path": "customerId",
+            "kind": "required"
+          },
+          {
+            "path": "entryId",
+            "kind": "required"
+          },
+          {
+            "path": "entryKind",
+            "kind": "required"
+          },
+          {
+            "path": "expiresAt",
+            "kind": "required"
+          },
+          {
+            "path": "itemized",
+            "kind": "required"
+          },
+          {
+            "path": "occurredAt",
+            "kind": "required"
+          },
+          {
+            "path": "operation",
+            "kind": "required"
+          },
+          {
+            "path": "provider",
+            "kind": "required"
+          },
+          {
+            "path": "retentionTier",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "AstVariables",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "channelID",
+            "kind": "required"
+          },
+          {
+            "path": "userId",
+            "kind": "required"
+          },
+          {
+            "path": "userLogin",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "AstVariables",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channelID": "channel",
+        "userId": "user",
+        "userLogin": "cdom201"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "channelID": "channel",
+          "scopeName": "default",
+          "scopeType": "command",
+          "userId": "user",
+          "userLogin": "cdom201",
+          "variables": {}
+        }
+      }
+    },
+    {
+      "model": "AstVariables",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channelID": "channel",
+        "userId": "user",
+        "userLogin": "cdom201",
+        "unknown": "discarded"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "channelID": "channel",
+          "scopeName": "default",
+          "scopeType": "command",
+          "userId": "user",
+          "userLogin": "cdom201",
+          "variables": {}
+        }
+      }
+    },
+    {
+      "model": "AstVariables",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channelID": null,
+        "userId": null,
+        "userLogin": null
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "channelID",
+            "kind": "required"
+          },
+          {
+            "path": "userId",
+            "kind": "required"
+          },
+          {
+            "path": "userLogin",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "Chat_Log",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "timestamp": {
+            "$date": 1900000000000
+          }
+        }
+      }
+    },
+    {
+      "model": "Chat_Log",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channel": "channel",
+        "username": "cdom201",
+        "message": "fixture"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "channel": "channel",
+          "message": "fixture",
+          "timestamp": {
+            "$date": 1900000000000
+          },
+          "username": "cdom201"
+        }
+      }
+    },
+    {
+      "model": "Chat_Log",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channel": "channel",
+        "username": "cdom201",
+        "message": "fixture",
+        "unknown": "discarded"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "channel": "channel",
+          "message": "fixture",
+          "timestamp": {
+            "$date": 1900000000000
+          },
+          "username": "cdom201"
+        }
+      }
+    },
+    {
+      "model": "Chat_Log",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channel": null,
+        "username": null,
+        "message": null
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "channel": null,
+          "message": null,
+          "timestamp": {
+            "$date": 1900000000000
+          },
+          "username": null
+        }
+      }
+    },
+    {
+      "model": "timer_command",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "channel",
+            "kind": "required"
+          },
+          {
+            "path": "channelID",
+            "kind": "required"
+          },
+          {
+            "path": "command",
+            "kind": "required"
+          },
+          {
+            "path": "timer",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "timer_command",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "command": "test",
+        "timer": 3,
+        "channel": "cdom201",
+        "channelID": "channel"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "channel": "cdom201",
+          "channelID": "channel",
+          "command": "test",
+          "createdAt": {
+            "$date": 1900000000000
+          },
+          "date": {
+            "day": 17,
+            "month": 3,
+            "year": 2030
+          },
+          "timer": 3
+        }
+      }
+    },
+    {
+      "model": "timer_command",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "command": "test",
+        "timer": 3,
+        "channel": "cdom201",
+        "channelID": "channel",
+        "unknown": "discarded"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "channel": "cdom201",
+          "channelID": "channel",
+          "command": "test",
+          "createdAt": {
+            "$date": 1900000000000
+          },
+          "date": {
+            "day": 17,
+            "month": 3,
+            "year": 2030
+          },
+          "timer": 3
+        }
+      }
+    },
+    {
+      "model": "timer_command",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "command": null,
+        "timer": null,
+        "channel": null,
+        "channelID": null
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "channel",
+            "kind": "required"
+          },
+          {
+            "path": "channelID",
+            "kind": "required"
+          },
+          {
+            "path": "command",
+            "kind": "required"
+          },
+          {
+            "path": "timer",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "CommandUserVariables",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "channelID",
+            "kind": "required"
+          },
+          {
+            "path": "commandId",
+            "kind": "required"
+          },
+          {
+            "path": "userId",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "CommandUserVariables",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "commandId": "507f1f77bcf86cd799439012",
+        "channelID": "channel",
+        "userId": "user"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "channelID": "channel",
+          "commandId": {
+            "$oid": "507f1f77bcf86cd799439012"
+          },
+          "userId": "user",
+          "variables": {}
+        }
+      }
+    },
+    {
+      "model": "CommandUserVariables",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "commandId": "507f1f77bcf86cd799439012",
+        "channelID": "channel",
+        "userId": "user",
+        "unknown": "discarded"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "channelID": "channel",
+          "commandId": {
+            "$oid": "507f1f77bcf86cd799439012"
+          },
+          "userId": "user",
+          "variables": {}
+        }
+      }
+    },
+    {
+      "model": "CommandUserVariables",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "commandId": null,
+        "channelID": null,
+        "userId": null
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "channelID",
+            "kind": "required"
+          },
+          {
+            "path": "commandId",
+            "kind": "required"
+          },
+          {
+            "path": "userId",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "Countdowntimer",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "channel",
+            "kind": "required"
+          },
+          {
+            "path": "channelID",
+            "kind": "required"
+          },
+          {
+            "path": "startTime",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "Countdowntimer",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channel": "cdom201",
+        "channelID": "channel",
+        "startTime": 10
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "active": true,
+          "channel": "cdom201",
+          "channelID": "channel",
+          "paused": false,
+          "startTime": 10,
+          "time": 0
+        }
+      }
+    },
+    {
+      "model": "Countdowntimer",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channel": "cdom201",
+        "channelID": "channel",
+        "startTime": 10,
+        "unknown": "discarded"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "active": true,
+          "channel": "cdom201",
+          "channelID": "channel",
+          "paused": false,
+          "startTime": 10,
+          "time": 0
+        }
+      }
+    },
+    {
+      "model": "Countdowntimer",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channel": null,
+        "channelID": null,
+        "startTime": null
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "channel",
+            "kind": "required"
+          },
+          {
+            "path": "channelID",
+            "kind": "required"
+          },
+          {
+            "path": "startTime",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "Countdowntimerconfig",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "bits",
+            "kind": "required"
+          },
+          {
+            "path": "channel",
+            "kind": "required"
+          },
+          {
+            "path": "channelID",
+            "kind": "required"
+          },
+          {
+            "path": "donations",
+            "kind": "required"
+          },
+          {
+            "path": "follows",
+            "kind": "required"
+          },
+          {
+            "path": "raids",
+            "kind": "required"
+          },
+          {
+            "path": "tier1",
+            "kind": "required"
+          },
+          {
+            "path": "tier2",
+            "kind": "required"
+          },
+          {
+            "path": "tier3",
+            "kind": "required"
+          },
+          {
+            "path": "viewers",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "Countdowntimerconfig",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channel": "cdom201",
+        "channelID": "channel",
+        "bits": 1,
+        "tier1": 2,
+        "tier2": 3,
+        "tier3": 4,
+        "follows": 5,
+        "raids": 6,
+        "viewers": 7,
+        "donations": 8
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "bits": 1,
+          "channel": "cdom201",
+          "channelID": "channel",
+          "donations": 8,
+          "follows": 5,
+          "raids": 6,
+          "tier1": 2,
+          "tier2": 3,
+          "tier3": 4,
+          "viewers": 7
+        }
+      }
+    },
+    {
+      "model": "Countdowntimerconfig",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channel": "cdom201",
+        "channelID": "channel",
+        "bits": 1,
+        "tier1": 2,
+        "tier2": 3,
+        "tier3": 4,
+        "follows": 5,
+        "raids": 6,
+        "viewers": 7,
+        "donations": 8,
+        "unknown": "discarded"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "bits": 1,
+          "channel": "cdom201",
+          "channelID": "channel",
+          "donations": 8,
+          "follows": 5,
+          "raids": 6,
+          "tier1": 2,
+          "tier2": 3,
+          "tier3": 4,
+          "viewers": 7
+        }
+      }
+    },
+    {
+      "model": "Countdowntimerconfig",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channel": null,
+        "channelID": null,
+        "bits": null,
+        "tier1": null,
+        "tier2": null,
+        "tier3": null,
+        "follows": null,
+        "raids": null,
+        "viewers": null,
+        "donations": null
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "bits",
+            "kind": "required"
+          },
+          {
+            "path": "channel",
+            "kind": "required"
+          },
+          {
+            "path": "channelID",
+            "kind": "required"
+          },
+          {
+            "path": "donations",
+            "kind": "required"
+          },
+          {
+            "path": "follows",
+            "kind": "required"
+          },
+          {
+            "path": "raids",
+            "kind": "required"
+          },
+          {
+            "path": "tier1",
+            "kind": "required"
+          },
+          {
+            "path": "tier2",
+            "kind": "required"
+          },
+          {
+            "path": "tier3",
+            "kind": "required"
+          },
+          {
+            "path": "viewers",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "custom_timer",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "channel",
+            "kind": "required"
+          },
+          {
+            "path": "channelID",
+            "kind": "required"
+          },
+          {
+            "path": "frequency",
+            "kind": "required"
+          },
+          {
+            "path": "message",
+            "kind": "required"
+          },
+          {
+            "path": "name",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "custom_timer",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "name": "Notice",
+        "message": "Hello",
+        "frequency": 1,
+        "channel": "cdom201",
+        "channelID": "channel"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "active": true,
+          "channel": "cdom201",
+          "channelID": "channel",
+          "frequency": 1,
+          "message": "Hello",
+          "name": "Notice"
+        }
+      }
+    },
+    {
+      "model": "custom_timer",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "name": "Notice",
+        "message": "Hello",
+        "frequency": 1,
+        "channel": "cdom201",
+        "channelID": "channel",
+        "unknown": "discarded"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "active": true,
+          "channel": "cdom201",
+          "channelID": "channel",
+          "frequency": 1,
+          "message": "Hello",
+          "name": "Notice"
+        }
+      }
+    },
+    {
+      "model": "custom_timer",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "name": null,
+        "message": null,
+        "frequency": null,
+        "channel": null,
+        "channelID": null
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "channel",
+            "kind": "required"
+          },
+          {
+            "path": "channelID",
+            "kind": "required"
+          },
+          {
+            "path": "frequency",
+            "kind": "required"
+          },
+          {
+            "path": "message",
+            "kind": "required"
+          },
+          {
+            "path": "name",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "dashboard_activity_daily",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "channelID",
+            "kind": "required"
+          },
+          {
+            "path": "day",
+            "kind": "required"
+          },
+          {
+            "path": "expiresAt",
+            "kind": "required"
+          },
+          {
+            "path": "kind",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "dashboard_activity_daily",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id",
+        "channelID": "channel",
+        "day": "2030-03-17T17:46:40.000Z",
+        "kind": "command",
+        "expiresAt": "2030-04-17T17:46:40.000Z"
+      },
+      "expected": {
+        "document": {
+          "_id": "fixture-id",
+          "channelID": "channel",
+          "count": 0,
+          "day": {
+            "$date": 1900000000000
+          },
+          "expiresAt": {
+            "$date": 1902678400000
+          },
+          "kind": "command",
+          "lastSeq": 0
+        }
+      }
+    },
+    {
+      "model": "dashboard_activity_daily",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id",
+        "channelID": "channel",
+        "day": "2030-03-17T17:46:40.000Z",
+        "kind": "command",
+        "expiresAt": "2030-04-17T17:46:40.000Z",
+        "unknown": "discarded"
+      },
+      "expected": {
+        "document": {
+          "_id": "fixture-id",
+          "channelID": "channel",
+          "count": 0,
+          "day": {
+            "$date": 1900000000000
+          },
+          "expiresAt": {
+            "$date": 1902678400000
+          },
+          "kind": "command",
+          "lastSeq": 0
+        }
+      }
+    },
+    {
+      "model": "dashboard_activity_daily",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id",
+        "channelID": null,
+        "day": null,
+        "kind": null,
+        "expiresAt": null
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "channelID",
+            "kind": "required"
+          },
+          {
+            "path": "day",
+            "kind": "required"
+          },
+          {
+            "path": "expiresAt",
+            "kind": "required"
+          },
+          {
+            "path": "kind",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "dashboard_activity_summary",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id"
+      },
+      "expected": {
+        "document": {
+          "_id": "fixture-id",
+          "error": false,
+          "leaseUntil": {
+            "$date": 0
+          }
+        }
+      }
+    },
+    {
+      "model": "dashboard_activity_summary",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id"
+      },
+      "expected": {
+        "document": {
+          "_id": "fixture-id",
+          "error": false,
+          "leaseUntil": {
+            "$date": 0
+          }
+        }
+      }
+    },
+    {
+      "model": "dashboard_activity_summary",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id",
+        "unknown": "discarded"
+      },
+      "expected": {
+        "document": {
+          "_id": "fixture-id",
+          "error": false,
+          "leaseUntil": {
+            "$date": 0
+          }
+        }
+      }
+    },
+    {
+      "model": "dashboard_activity_summary",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id"
+      },
+      "expected": {
+        "document": {
+          "_id": "fixture-id",
+          "error": false,
+          "leaseUntil": {
+            "$date": 0
+          }
+        }
+      }
+    },
+    {
+      "model": "dashboard_insights",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id"
+      },
+      "expected": {
+        "document": {
+          "_id": "fixture-id",
+          "error": false,
+          "leaseUntil": {
+            "$date": 0
+          }
+        }
+      }
+    },
+    {
+      "model": "dashboard_insights",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id"
+      },
+      "expected": {
+        "document": {
+          "_id": "fixture-id",
+          "error": false,
+          "leaseUntil": {
+            "$date": 0
+          }
+        }
+      }
+    },
+    {
+      "model": "dashboard_insights",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id",
+        "unknown": "discarded"
+      },
+      "expected": {
+        "document": {
+          "_id": "fixture-id",
+          "error": false,
+          "leaseUntil": {
+            "$date": 0
+          }
+        }
+      }
+    },
+    {
+      "model": "dashboard_insights",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id"
+      },
+      "expected": {
+        "document": {
+          "_id": "fixture-id",
+          "error": false,
+          "leaseUntil": {
+            "$date": 0
+          }
+        }
+      }
+    },
+    {
+      "model": "domain_event",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "eventKey",
+            "kind": "required"
+          },
+          {
+            "path": "expiresAt",
+            "kind": "required"
+          },
+          {
+            "path": "occurredAt",
+            "kind": "required"
+          },
+          {
+            "path": "payload",
+            "kind": "required"
+          },
+          {
+            "path": "source",
+            "kind": "required"
+          },
+          {
+            "path": "sourceEventId",
+            "kind": "required"
+          },
+          {
+            "path": "topic",
+            "kind": "required"
+          },
+          {
+            "path": "type",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "domain_event",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "eventKey": "source:event:type",
+        "source": "fixture",
+        "sourceEventId": "event",
+        "type": "stream.started",
+        "topic": "channel",
+        "channelID": "channel",
+        "occurredAt": "2030-03-17T17:46:40.000Z",
+        "payload": {
+          "value": 1
+        },
+        "expiresAt": "2030-04-17T17:46:40.000Z"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "channelID": "channel",
+          "eventKey": "source:event:type",
+          "expiresAt": {
+            "$date": 1902678400000
+          },
+          "journaledAt": {
+            "$date": 1900000000000
+          },
+          "occurredAt": {
+            "$date": 1900000000000
+          },
+          "payload": {
+            "value": 1
+          },
+          "schemaVersion": 1,
+          "source": "fixture",
+          "sourceEventId": "event",
+          "topic": "channel",
+          "type": "stream.started"
+        }
+      }
+    },
+    {
+      "model": "domain_event",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "eventKey": "source:event:type",
+        "source": "fixture",
+        "sourceEventId": "event",
+        "type": "stream.started",
+        "topic": "channel",
+        "channelID": "channel",
+        "occurredAt": "2030-03-17T17:46:40.000Z",
+        "payload": {
+          "value": 1
+        },
+        "expiresAt": "2030-04-17T17:46:40.000Z",
+        "unknown": "discarded"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "channelID": "channel",
+          "eventKey": "source:event:type",
+          "expiresAt": {
+            "$date": 1902678400000
+          },
+          "journaledAt": {
+            "$date": 1900000000000
+          },
+          "occurredAt": {
+            "$date": 1900000000000
+          },
+          "payload": {
+            "value": 1
+          },
+          "schemaVersion": 1,
+          "source": "fixture",
+          "sourceEventId": "event",
+          "topic": "channel",
+          "type": "stream.started"
+        }
+      }
+    },
+    {
+      "model": "domain_event",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "eventKey": null,
+        "source": null,
+        "sourceEventId": null,
+        "type": null,
+        "topic": null,
+        "channelID": null,
+        "occurredAt": null,
+        "payload": null,
+        "expiresAt": null
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "eventKey",
+            "kind": "required"
+          },
+          {
+            "path": "expiresAt",
+            "kind": "required"
+          },
+          {
+            "path": "occurredAt",
+            "kind": "required"
+          },
+          {
+            "path": "payload",
+            "kind": "required"
+          },
+          {
+            "path": "source",
+            "kind": "required"
+          },
+          {
+            "path": "sourceEventId",
+            "kind": "required"
+          },
+          {
+            "path": "topic",
+            "kind": "required"
+          },
+          {
+            "path": "type",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "domain_event_checkpoint",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "consumer",
+            "kind": "required"
+          },
+          {
+            "path": "lastEventID",
+            "kind": "required"
+          },
+          {
+            "path": "topic",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "domain_event_checkpoint",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "consumer": "fixture",
+        "topic": "channel",
+        "lastEventID": "507f1f77bcf86cd799439012"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "consumer": "fixture",
+          "lastEventID": {
+            "$oid": "507f1f77bcf86cd799439012"
+          },
+          "topic": "channel"
+        }
+      }
+    },
+    {
+      "model": "domain_event_checkpoint",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "consumer": "fixture",
+        "topic": "channel",
+        "lastEventID": "507f1f77bcf86cd799439012",
+        "unknown": "discarded"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "consumer": "fixture",
+          "lastEventID": {
+            "$oid": "507f1f77bcf86cd799439012"
+          },
+          "topic": "channel"
+        }
+      }
+    },
+    {
+      "model": "domain_event_checkpoint",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "consumer": null,
+        "topic": null,
+        "lastEventID": null
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "consumer",
+            "kind": "required"
+          },
+          {
+            "path": "lastEventID",
+            "kind": "required"
+          },
+          {
+            "path": "topic",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "domain_event_delivery",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "consumer",
+            "kind": "required"
+          },
+          {
+            "path": "eventID",
+            "kind": "required"
+          },
+          {
+            "path": "eventKey",
+            "kind": "required"
+          },
+          {
+            "path": "expiresAt",
+            "kind": "required"
+          },
+          {
+            "path": "topic",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "domain_event_delivery",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "consumer": "fixture",
+        "topic": "channel",
+        "eventID": "507f1f77bcf86cd799439012",
+        "eventKey": "source:event:type",
+        "expiresAt": "2030-04-17T17:46:40.000Z"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "attempts": 0,
+          "completedAt": null,
+          "consumer": "fixture",
+          "deadLetteredAt": null,
+          "eventID": {
+            "$oid": "507f1f77bcf86cd799439012"
+          },
+          "eventKey": "source:event:type",
+          "expiresAt": {
+            "$date": 1902678400000
+          },
+          "firstAttemptAt": null,
+          "lastAttemptDurationMs": null,
+          "lastDeadLetterError": "",
+          "lastError": "",
+          "lastErrorCode": "",
+          "lastPrerequisiteKind": "",
+          "lastReplayedAt": null,
+          "leaseToken": null,
+          "lockedUntil": null,
+          "nextAttemptAt": null,
+          "replayCount": 0,
+          "skipReason": "",
+          "status": "pending",
+          "topic": "channel"
+        }
+      }
+    },
+    {
+      "model": "domain_event_delivery",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "consumer": "fixture",
+        "topic": "channel",
+        "eventID": "507f1f77bcf86cd799439012",
+        "eventKey": "source:event:type",
+        "expiresAt": "2030-04-17T17:46:40.000Z",
+        "unknown": "discarded"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "attempts": 0,
+          "completedAt": null,
+          "consumer": "fixture",
+          "deadLetteredAt": null,
+          "eventID": {
+            "$oid": "507f1f77bcf86cd799439012"
+          },
+          "eventKey": "source:event:type",
+          "expiresAt": {
+            "$date": 1902678400000
+          },
+          "firstAttemptAt": null,
+          "lastAttemptDurationMs": null,
+          "lastDeadLetterError": "",
+          "lastError": "",
+          "lastErrorCode": "",
+          "lastPrerequisiteKind": "",
+          "lastReplayedAt": null,
+          "leaseToken": null,
+          "lockedUntil": null,
+          "nextAttemptAt": null,
+          "replayCount": 0,
+          "skipReason": "",
+          "status": "pending",
+          "topic": "channel"
+        }
+      }
+    },
+    {
+      "model": "domain_event_delivery",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "consumer": null,
+        "topic": null,
+        "eventID": null,
+        "eventKey": null,
+        "expiresAt": null
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "consumer",
+            "kind": "required"
+          },
+          {
+            "path": "eventID",
+            "kind": "required"
+          },
+          {
+            "path": "eventKey",
+            "kind": "required"
+          },
+          {
+            "path": "expiresAt",
+            "kind": "required"
+          },
+          {
+            "path": "topic",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "raid_analytics_history",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "channelID",
+            "kind": "required"
+          },
+          {
+            "path": "direction",
+            "kind": "required"
+          },
+          {
+            "path": "expiresAt",
+            "kind": "required"
+          },
+          {
+            "path": "occurredAt",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "raid_analytics_history",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id",
+        "channelID": "channel",
+        "direction": "incoming",
+        "occurredAt": "2030-03-17T17:46:40.000Z",
+        "expiresAt": "2030-04-17T17:46:40.000Z"
+      },
+      "expected": {
+        "document": {
+          "_id": "fixture-id",
+          "channelID": "channel",
+          "direction": "incoming",
+          "expiresAt": {
+            "$date": 1902678400000
+          },
+          "followsAfter": null,
+          "followsComputedAt": null,
+          "occurredAt": {
+            "$date": 1900000000000
+          }
+        }
+      }
+    },
+    {
+      "model": "raid_analytics_history",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id",
+        "channelID": "channel",
+        "direction": "incoming",
+        "occurredAt": "2030-03-17T17:46:40.000Z",
+        "expiresAt": "2030-04-17T17:46:40.000Z",
+        "unknown": "discarded"
+      },
+      "expected": {
+        "document": {
+          "_id": "fixture-id",
+          "channelID": "channel",
+          "direction": "incoming",
+          "expiresAt": {
+            "$date": 1902678400000
+          },
+          "followsAfter": null,
+          "followsComputedAt": null,
+          "occurredAt": {
+            "$date": 1900000000000
+          }
+        }
+      }
+    },
+    {
+      "model": "raid_analytics_history",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id",
+        "channelID": null,
+        "direction": null,
+        "occurredAt": null,
+        "expiresAt": null
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "channelID",
+            "kind": "required"
+          },
+          {
+            "path": "direction",
+            "kind": "required"
+          },
+          {
+            "path": "expiresAt",
+            "kind": "required"
+          },
+          {
+            "path": "occurredAt",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "raid_analytics_summary",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id"
+      },
+      "expected": {
+        "document": {
+          "_id": "fixture-id",
+          "error": false,
+          "leaseUntil": {
+            "$date": 0
+          }
+        }
+      }
+    },
+    {
+      "model": "raid_analytics_summary",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id"
+      },
+      "expected": {
+        "document": {
+          "_id": "fixture-id",
+          "error": false,
+          "leaseUntil": {
+            "$date": 0
+          }
+        }
+      }
+    },
+    {
+      "model": "raid_analytics_summary",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id",
+        "unknown": "discarded"
+      },
+      "expected": {
+        "document": {
+          "_id": "fixture-id",
+          "error": false,
+          "leaseUntil": {
+            "$date": 0
+          }
+        }
+      }
+    },
+    {
+      "model": "raid_analytics_summary",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id"
+      },
+      "expected": {
+        "document": {
+          "_id": "fixture-id",
+          "error": false,
+          "leaseUntil": {
+            "$date": 0
+          }
+        }
+      }
+    },
+    {
+      "model": "raid_session",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "backfillUntil",
+            "kind": "required"
+          },
+          {
+            "path": "captureUntil",
+            "kind": "required"
+          },
+          {
+            "path": "channelID",
+            "kind": "required"
+          },
+          {
+            "path": "eventID",
+            "kind": "required"
+          },
+          {
+            "path": "expiresAt",
+            "kind": "required"
+          },
+          {
+            "path": "purgeAt",
+            "kind": "required"
+          },
+          {
+            "path": "raiderID",
+            "kind": "required"
+          },
+          {
+            "path": "retentionHours",
+            "kind": "required"
+          },
+          {
+            "path": "startedAt",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "raid_session",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id",
+        "channelID": "channel",
+        "eventID": "raid-event",
+        "raiderID": "raider",
+        "startedAt": "2030-03-17T17:46:40.000Z",
+        "captureUntil": "2030-04-17T17:46:40.000Z",
+        "retentionHours": 24,
+        "expiresAt": "2030-04-17T17:46:40.000Z",
+        "purgeAt": "2030-04-17T17:46:40.000Z",
+        "backfillUntil": "2030-04-17T17:46:40.000Z"
+      },
+      "expected": {
+        "document": {
+          "_id": "fixture-id",
+          "backfillCursor": "",
+          "backfillDone": false,
+          "backfillUntil": {
+            "$date": 1902678400000
+          },
+          "captureUntil": {
+            "$date": 1902678400000
+          },
+          "channelID": "channel",
+          "endedAt": null,
+          "eventID": "raid-event",
+          "expiresAt": {
+            "$date": 1902678400000
+          },
+          "manualRequestID": "",
+          "purgeAt": {
+            "$date": 1902678400000
+          },
+          "raiderID": "raider",
+          "raiderLogin": "",
+          "raiderName": "",
+          "retentionHours": 24,
+          "startedAt": {
+            "$date": 1900000000000
+          },
+          "viewers": 0
+        }
+      }
+    },
+    {
+      "model": "raid_session",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id",
+        "channelID": "channel",
+        "eventID": "raid-event",
+        "raiderID": "raider",
+        "startedAt": "2030-03-17T17:46:40.000Z",
+        "captureUntil": "2030-04-17T17:46:40.000Z",
+        "retentionHours": 24,
+        "expiresAt": "2030-04-17T17:46:40.000Z",
+        "purgeAt": "2030-04-17T17:46:40.000Z",
+        "backfillUntil": "2030-04-17T17:46:40.000Z",
+        "unknown": "discarded"
+      },
+      "expected": {
+        "document": {
+          "_id": "fixture-id",
+          "backfillCursor": "",
+          "backfillDone": false,
+          "backfillUntil": {
+            "$date": 1902678400000
+          },
+          "captureUntil": {
+            "$date": 1902678400000
+          },
+          "channelID": "channel",
+          "endedAt": null,
+          "eventID": "raid-event",
+          "expiresAt": {
+            "$date": 1902678400000
+          },
+          "manualRequestID": "",
+          "purgeAt": {
+            "$date": 1902678400000
+          },
+          "raiderID": "raider",
+          "raiderLogin": "",
+          "raiderName": "",
+          "retentionHours": 24,
+          "startedAt": {
+            "$date": 1900000000000
+          },
+          "viewers": 0
+        }
+      }
+    },
+    {
+      "model": "raid_session",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id",
+        "channelID": null,
+        "eventID": null,
+        "raiderID": null,
+        "startedAt": null,
+        "captureUntil": null,
+        "retentionHours": null,
+        "expiresAt": null,
+        "purgeAt": null,
+        "backfillUntil": null
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "backfillUntil",
+            "kind": "required"
+          },
+          {
+            "path": "captureUntil",
+            "kind": "required"
+          },
+          {
+            "path": "channelID",
+            "kind": "required"
+          },
+          {
+            "path": "eventID",
+            "kind": "required"
+          },
+          {
+            "path": "expiresAt",
+            "kind": "required"
+          },
+          {
+            "path": "purgeAt",
+            "kind": "required"
+          },
+          {
+            "path": "raiderID",
+            "kind": "required"
+          },
+          {
+            "path": "retentionHours",
+            "kind": "required"
+          },
+          {
+            "path": "startedAt",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "raid_follower",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "channelID",
+            "kind": "required"
+          },
+          {
+            "path": "eventID",
+            "kind": "required"
+          },
+          {
+            "path": "followedAt",
+            "kind": "required"
+          },
+          {
+            "path": "purgeAt",
+            "kind": "required"
+          },
+          {
+            "path": "sessionID",
+            "kind": "required"
+          },
+          {
+            "path": "userID",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "raid_follower",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id",
+        "channelID": "channel",
+        "sessionID": "session",
+        "eventID": "follow-event",
+        "userID": "user",
+        "followedAt": "2030-03-17T17:46:40.000Z",
+        "purgeAt": "2030-04-17T17:46:40.000Z"
+      },
+      "expected": {
+        "document": {
+          "_id": "fixture-id",
+          "channelID": "channel",
+          "eligibleRequestIDs": [],
+          "eventID": "follow-event",
+          "followedAt": {
+            "$date": 1900000000000
+          },
+          "login": "",
+          "name": "",
+          "purgeAt": {
+            "$date": 1902678400000
+          },
+          "queuedRequestIDs": [],
+          "recordedAt": {
+            "$date": 1900000000000
+          },
+          "sessionID": "session",
+          "userID": "user"
+        }
+      }
+    },
+    {
+      "model": "raid_follower",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id",
+        "channelID": "channel",
+        "sessionID": "session",
+        "eventID": "follow-event",
+        "userID": "user",
+        "followedAt": "2030-03-17T17:46:40.000Z",
+        "purgeAt": "2030-04-17T17:46:40.000Z",
+        "unknown": "discarded"
+      },
+      "expected": {
+        "document": {
+          "_id": "fixture-id",
+          "channelID": "channel",
+          "eligibleRequestIDs": [],
+          "eventID": "follow-event",
+          "followedAt": {
+            "$date": 1900000000000
+          },
+          "login": "",
+          "name": "",
+          "purgeAt": {
+            "$date": 1902678400000
+          },
+          "queuedRequestIDs": [],
+          "recordedAt": {
+            "$date": 1900000000000
+          },
+          "sessionID": "session",
+          "userID": "user"
+        }
+      }
+    },
+    {
+      "model": "raid_follower",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id",
+        "channelID": null,
+        "sessionID": null,
+        "eventID": null,
+        "userID": null,
+        "followedAt": null,
+        "purgeAt": null
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "channelID",
+            "kind": "required"
+          },
+          {
+            "path": "eventID",
+            "kind": "required"
+          },
+          {
+            "path": "followedAt",
+            "kind": "required"
+          },
+          {
+            "path": "purgeAt",
+            "kind": "required"
+          },
+          {
+            "path": "sessionID",
+            "kind": "required"
+          },
+          {
+            "path": "userID",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "raid_moderation_request",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "actorID",
+            "kind": "required"
+          },
+          {
+            "path": "channelID",
+            "kind": "required"
+          },
+          {
+            "path": "expiresAt",
+            "kind": "required"
+          },
+          {
+            "path": "purgeAt",
+            "kind": "required"
+          },
+          {
+            "path": "requestedAt",
+            "kind": "required"
+          },
+          {
+            "path": "sessionID",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "raid_moderation_request",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id",
+        "channelID": "channel",
+        "sessionID": "session",
+        "actorID": "actor",
+        "requestedAt": "2030-03-17T17:46:40.000Z",
+        "expiresAt": "2030-04-17T17:46:40.000Z",
+        "purgeAt": "2030-04-17T17:46:40.000Z"
+      },
+      "expected": {
+        "document": {
+          "_id": "fixture-id",
+          "actorID": "actor",
+          "channelID": "channel",
+          "expiresAt": {
+            "$date": 1902678400000
+          },
+          "includeFuture": false,
+          "leaseToken": "",
+          "lockedUntil": {
+            "$date": 0
+          },
+          "nextAttemptAt": {
+            "$date": 0
+          },
+          "origin": "history",
+          "purgeAt": {
+            "$date": 1902678400000
+          },
+          "requestedAt": {
+            "$date": 1900000000000
+          },
+          "sessionID": "session",
+          "status": "pending",
+          "userID": ""
+        }
+      }
+    },
+    {
+      "model": "raid_moderation_request",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id",
+        "channelID": "channel",
+        "sessionID": "session",
+        "actorID": "actor",
+        "requestedAt": "2030-03-17T17:46:40.000Z",
+        "expiresAt": "2030-04-17T17:46:40.000Z",
+        "purgeAt": "2030-04-17T17:46:40.000Z",
+        "unknown": "discarded"
+      },
+      "expected": {
+        "document": {
+          "_id": "fixture-id",
+          "actorID": "actor",
+          "channelID": "channel",
+          "expiresAt": {
+            "$date": 1902678400000
+          },
+          "includeFuture": false,
+          "leaseToken": "",
+          "lockedUntil": {
+            "$date": 0
+          },
+          "nextAttemptAt": {
+            "$date": 0
+          },
+          "origin": "history",
+          "purgeAt": {
+            "$date": 1902678400000
+          },
+          "requestedAt": {
+            "$date": 1900000000000
+          },
+          "sessionID": "session",
+          "status": "pending",
+          "userID": ""
+        }
+      }
+    },
+    {
+      "model": "raid_moderation_request",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id",
+        "channelID": null,
+        "sessionID": null,
+        "actorID": null,
+        "requestedAt": null,
+        "expiresAt": null,
+        "purgeAt": null
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "actorID",
+            "kind": "required"
+          },
+          {
+            "path": "channelID",
+            "kind": "required"
+          },
+          {
+            "path": "expiresAt",
+            "kind": "required"
+          },
+          {
+            "path": "purgeAt",
+            "kind": "required"
+          },
+          {
+            "path": "requestedAt",
+            "kind": "required"
+          },
+          {
+            "path": "sessionID",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "raid_subscription_preference",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "channelID",
+            "kind": "required"
+          },
+          {
+            "path": "direction",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "raid_subscription_preference",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id",
+        "channelID": "channel",
+        "direction": "outgoing"
+      },
+      "expected": {
+        "document": {
+          "_id": "fixture-id",
+          "channelID": "channel",
+          "deleted": false,
+          "direction": "outgoing"
+        }
+      }
+    },
+    {
+      "model": "raid_subscription_preference",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id",
+        "channelID": "channel",
+        "direction": "outgoing",
+        "unknown": "discarded"
+      },
+      "expected": {
+        "document": {
+          "_id": "fixture-id",
+          "channelID": "channel",
+          "deleted": false,
+          "direction": "outgoing"
+        }
+      }
+    },
+    {
+      "model": "raid_subscription_preference",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id",
+        "channelID": null,
+        "direction": null
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "channelID",
+            "kind": "required"
+          },
+          {
+            "path": "direction",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "stream_activity",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "channelID",
+            "kind": "required"
+          },
+          {
+            "path": "expiresAt",
+            "kind": "required"
+          },
+          {
+            "path": "kind",
+            "kind": "required"
+          },
+          {
+            "path": "occurredAt",
+            "kind": "required"
+          },
+          {
+            "path": "session_id",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "stream_activity",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id",
+        "channelID": "channel",
+        "session_id": "507f1f77bcf86cd799439012",
+        "occurredAt": "2030-03-17T17:46:40.000Z",
+        "kind": "message",
+        "expiresAt": "2030-04-17T17:46:40.000Z"
+      },
+      "expected": {
+        "document": {
+          "_id": "fixture-id",
+          "actor": "",
+          "actorLabel": "",
+          "channelID": "channel",
+          "dashboardProcessed": null,
+          "emotes": [],
+          "expiresAt": {
+            "$date": 1902678400000
+          },
+          "key": "",
+          "kind": "message",
+          "label": "",
+          "occurredAt": {
+            "$date": 1900000000000
+          },
+          "outcome": "",
+          "processed": false,
+          "session_id": {
+            "$oid": "507f1f77bcf86cd799439012"
+          },
+          "value": 1
+        }
+      }
+    },
+    {
+      "model": "stream_activity",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id",
+        "channelID": "channel",
+        "session_id": "507f1f77bcf86cd799439012",
+        "occurredAt": "2030-03-17T17:46:40.000Z",
+        "kind": "message",
+        "expiresAt": "2030-04-17T17:46:40.000Z",
+        "unknown": "discarded"
+      },
+      "expected": {
+        "document": {
+          "_id": "fixture-id",
+          "actor": "",
+          "actorLabel": "",
+          "channelID": "channel",
+          "dashboardProcessed": null,
+          "emotes": [],
+          "expiresAt": {
+            "$date": 1902678400000
+          },
+          "key": "",
+          "kind": "message",
+          "label": "",
+          "occurredAt": {
+            "$date": 1900000000000
+          },
+          "outcome": "",
+          "processed": false,
+          "session_id": {
+            "$oid": "507f1f77bcf86cd799439012"
+          },
+          "value": 1
+        }
+      }
+    },
+    {
+      "model": "stream_activity",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id",
+        "channelID": null,
+        "session_id": null,
+        "occurredAt": null,
+        "kind": null,
+        "expiresAt": null
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "channelID",
+            "kind": "required"
+          },
+          {
+            "path": "expiresAt",
+            "kind": "required"
+          },
+          {
+            "path": "kind",
+            "kind": "required"
+          },
+          {
+            "path": "occurredAt",
+            "kind": "required"
+          },
+          {
+            "path": "session_id",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "stream_activity_aggregate",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "expiresAt",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "stream_activity_aggregate",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id",
+        "expiresAt": "2030-04-17T17:46:40.000Z"
+      },
+      "expected": {
+        "document": {
+          "_id": "fixture-id",
+          "actor": "",
+          "bits": 0,
+          "bucket": -1,
+          "chatters": 0,
+          "commands": 0,
+          "count": 0,
+          "emoteMessages": 0,
+          "emotes": 0,
+          "expiresAt": {
+            "$date": 1902678400000
+          },
+          "failures": 0,
+          "follows": 0,
+          "key": "",
+          "lastSeq": 0,
+          "messages": 0,
+          "raids": 0,
+          "redemptions": 0,
+          "subs": 0
+        }
+      }
+    },
+    {
+      "model": "stream_activity_aggregate",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id",
+        "expiresAt": "2030-04-17T17:46:40.000Z",
+        "unknown": "discarded"
+      },
+      "expected": {
+        "document": {
+          "_id": "fixture-id",
+          "actor": "",
+          "bits": 0,
+          "bucket": -1,
+          "chatters": 0,
+          "commands": 0,
+          "count": 0,
+          "emoteMessages": 0,
+          "emotes": 0,
+          "expiresAt": {
+            "$date": 1902678400000
+          },
+          "failures": 0,
+          "follows": 0,
+          "key": "",
+          "lastSeq": 0,
+          "messages": 0,
+          "raids": 0,
+          "redemptions": 0,
+          "subs": 0
+        }
+      }
+    },
+    {
+      "model": "stream_activity_aggregate",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id",
+        "expiresAt": null
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "expiresAt",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "stream_activity_state",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id"
+      },
+      "expected": {
+        "document": {
+          "_id": "fixture-id",
+          "active": {
+            "ids": []
+          },
+          "seq": 0
+        }
+      }
+    },
+    {
+      "model": "stream_activity_state",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id"
+      },
+      "expected": {
+        "document": {
+          "_id": "fixture-id",
+          "active": {
+            "ids": []
+          },
+          "seq": 0
+        }
+      }
+    },
+    {
+      "model": "stream_activity_state",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id",
+        "unknown": "discarded"
+      },
+      "expected": {
+        "document": {
+          "_id": "fixture-id",
+          "active": {
+            "ids": []
+          },
+          "seq": 0
+        }
+      }
+    },
+    {
+      "model": "stream_activity_state",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id"
+      },
+      "expected": {
+        "document": {
+          "_id": "fixture-id",
+          "active": {
+            "ids": []
+          },
+          "seq": 0
+        }
+      }
+    },
+    {
+      "model": "StreamSession",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "channelID",
+            "kind": "required"
+          },
+          {
+            "path": "started_at",
+            "kind": "required"
+          },
+          {
+            "path": "stream_id",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "StreamSession",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channelID": "channel",
+        "stream_id": "stream",
+        "started_at": "2030-03-17T17:46:40.000Z"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "applied_domain_event_keys": [],
+          "average_viewers": 0,
+          "bits": 0,
+          "channel": "",
+          "channelID": "channel",
+          "commands": 0,
+          "consecutive_offline_checks": 0,
+          "donations": 0,
+          "duration_minutes": 0,
+          "ended_at": null,
+          "follows": 0,
+          "last_seen_live_at": null,
+          "messages": 0,
+          "offline_clips_completed_at": null,
+          "offline_summary_enqueued_at": null,
+          "peak_viewers": 0,
+          "sample_count": 0,
+          "sample_total_viewers": 0,
+          "started_at": {
+            "$date": 1900000000000
+          },
+          "status": "live",
+          "stream_id": "stream",
+          "subs": 0
+        }
+      }
+    },
+    {
+      "model": "StreamSession",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channelID": "channel",
+        "stream_id": "stream",
+        "started_at": "2030-03-17T17:46:40.000Z",
+        "unknown": "discarded"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "applied_domain_event_keys": [],
+          "average_viewers": 0,
+          "bits": 0,
+          "channel": "",
+          "channelID": "channel",
+          "commands": 0,
+          "consecutive_offline_checks": 0,
+          "donations": 0,
+          "duration_minutes": 0,
+          "ended_at": null,
+          "follows": 0,
+          "last_seen_live_at": null,
+          "messages": 0,
+          "offline_clips_completed_at": null,
+          "offline_summary_enqueued_at": null,
+          "peak_viewers": 0,
+          "sample_count": 0,
+          "sample_total_viewers": 0,
+          "started_at": {
+            "$date": 1900000000000
+          },
+          "status": "live",
+          "stream_id": "stream",
+          "subs": 0
+        }
+      }
+    },
+    {
+      "model": "StreamSession",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channelID": null,
+        "stream_id": null,
+        "started_at": null
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "channelID",
+            "kind": "required"
+          },
+          {
+            "path": "started_at",
+            "kind": "required"
+          },
+          {
+            "path": "stream_id",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "stream_subscription_ledger",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "streamer_id",
+            "kind": "required"
+          },
+          {
+            "path": "user_id",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "stream_subscription_ledger",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "streamer_id": "channel",
+        "user_id": "user"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "applied_event_keys": [],
+          "ended_at": null,
+          "is_gift": false,
+          "last_event_at": {
+            "$date": 1900000000000
+          },
+          "platform": "twitch",
+          "status": "active",
+          "streamer_id": "channel",
+          "streamer_login": "",
+          "streamer_name": "",
+          "sub_tier_normalized": "unknown",
+          "sub_tier_raw": "",
+          "subbed_at": {
+            "$date": 1900000000000
+          },
+          "user_id": "user",
+          "user_login": "",
+          "user_name": ""
+        }
+      }
+    },
+    {
+      "model": "stream_subscription_ledger",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "streamer_id": "channel",
+        "user_id": "user",
+        "unknown": "discarded"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "applied_event_keys": [],
+          "ended_at": null,
+          "is_gift": false,
+          "last_event_at": {
+            "$date": 1900000000000
+          },
+          "platform": "twitch",
+          "status": "active",
+          "streamer_id": "channel",
+          "streamer_login": "",
+          "streamer_name": "",
+          "sub_tier_normalized": "unknown",
+          "sub_tier_raw": "",
+          "subbed_at": {
+            "$date": 1900000000000
+          },
+          "user_id": "user",
+          "user_login": "",
+          "user_name": ""
+        }
+      }
+    },
+    {
+      "model": "stream_subscription_ledger",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "streamer_id": null,
+        "user_id": null
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "streamer_id",
+            "kind": "required"
+          },
+          {
+            "path": "user_id",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "stream_participant",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "bucket",
+            "kind": "required"
+          },
+          {
+            "path": "channelID",
+            "kind": "required"
+          },
+          {
+            "path": "expiresAt",
+            "kind": "required"
+          },
+          {
+            "path": "session_id",
+            "kind": "required"
+          },
+          {
+            "path": "user_id",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "stream_participant",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channelID": "channel",
+        "session_id": "507f1f77bcf86cd799439012",
+        "bucket": 1,
+        "user_id": "user",
+        "expiresAt": "2030-04-17T17:46:40.000Z"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "bucket": 1,
+          "channelID": "channel",
+          "expiresAt": {
+            "$date": 1902678400000
+          },
+          "session_id": {
+            "$oid": "507f1f77bcf86cd799439012"
+          },
+          "user_id": "user"
+        }
+      }
+    },
+    {
+      "model": "stream_participant",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channelID": "channel",
+        "session_id": "507f1f77bcf86cd799439012",
+        "bucket": 1,
+        "user_id": "user",
+        "expiresAt": "2030-04-17T17:46:40.000Z",
+        "unknown": "discarded"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "bucket": 1,
+          "channelID": "channel",
+          "expiresAt": {
+            "$date": 1902678400000
+          },
+          "session_id": {
+            "$oid": "507f1f77bcf86cd799439012"
+          },
+          "user_id": "user"
+        }
+      }
+    },
+    {
+      "model": "stream_participant",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channelID": null,
+        "session_id": null,
+        "bucket": null,
+        "user_id": null,
+        "expiresAt": null
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "bucket",
+            "kind": "required"
+          },
+          {
+            "path": "channelID",
+            "kind": "required"
+          },
+          {
+            "path": "expiresAt",
+            "kind": "required"
+          },
+          {
+            "path": "session_id",
+            "kind": "required"
+          },
+          {
+            "path": "user_id",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "stream_marker",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "channelID",
+            "kind": "required"
+          },
+          {
+            "path": "expiresAt",
+            "kind": "required"
+          },
+          {
+            "path": "key",
+            "kind": "required"
+          },
+          {
+            "path": "kind",
+            "kind": "required"
+          },
+          {
+            "path": "label",
+            "kind": "required"
+          },
+          {
+            "path": "occurredAt",
+            "kind": "required"
+          },
+          {
+            "path": "session_id",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "stream_marker",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channelID": "channel",
+        "session_id": "507f1f77bcf86cd799439012",
+        "key": "key",
+        "kind": "note",
+        "label": "Label",
+        "occurredAt": "2030-03-17T17:46:40.000Z",
+        "expiresAt": "2030-04-17T17:46:40.000Z"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "channelID": "channel",
+          "expiresAt": {
+            "$date": 1902678400000
+          },
+          "key": "key",
+          "kind": "note",
+          "label": "Label",
+          "occurredAt": {
+            "$date": 1900000000000
+          },
+          "session_id": {
+            "$oid": "507f1f77bcf86cd799439012"
+          }
+        }
+      }
+    },
+    {
+      "model": "stream_marker",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channelID": "channel",
+        "session_id": "507f1f77bcf86cd799439012",
+        "key": "key",
+        "kind": "note",
+        "label": "Label",
+        "occurredAt": "2030-03-17T17:46:40.000Z",
+        "expiresAt": "2030-04-17T17:46:40.000Z",
+        "unknown": "discarded"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "channelID": "channel",
+          "expiresAt": {
+            "$date": 1902678400000
+          },
+          "key": "key",
+          "kind": "note",
+          "label": "Label",
+          "occurredAt": {
+            "$date": 1900000000000
+          },
+          "session_id": {
+            "$oid": "507f1f77bcf86cd799439012"
+          }
+        }
+      }
+    },
+    {
+      "model": "stream_marker",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channelID": null,
+        "session_id": null,
+        "key": null,
+        "kind": null,
+        "label": null,
+        "occurredAt": null,
+        "expiresAt": null
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "channelID",
+            "kind": "required"
+          },
+          {
+            "path": "expiresAt",
+            "kind": "required"
+          },
+          {
+            "path": "key",
+            "kind": "required"
+          },
+          {
+            "path": "kind",
+            "kind": "required"
+          },
+          {
+            "path": "label",
+            "kind": "required"
+          },
+          {
+            "path": "occurredAt",
+            "kind": "required"
+          },
+          {
+            "path": "session_id",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "StreamViewerSnapshot",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "captured_at",
+            "kind": "required"
+          },
+          {
+            "path": "channelID",
+            "kind": "required"
+          },
+          {
+            "path": "session_id",
+            "kind": "required"
+          },
+          {
+            "path": "stream_id",
+            "kind": "required"
+          },
+          {
+            "path": "viewers",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "StreamViewerSnapshot",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channelID": "channel",
+        "session_id": "507f1f77bcf86cd799439012",
+        "stream_id": "stream",
+        "captured_at": "2030-03-17T17:46:40.000Z",
+        "viewers": 3
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "captured_at": {
+            "$date": 1900000000000
+          },
+          "channelID": "channel",
+          "commands": 0,
+          "game_name": "",
+          "messages": 0,
+          "session_id": {
+            "$oid": "507f1f77bcf86cd799439012"
+          },
+          "stream_id": "stream",
+          "title": "",
+          "viewers": 3
+        }
+      }
+    },
+    {
+      "model": "StreamViewerSnapshot",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channelID": "channel",
+        "session_id": "507f1f77bcf86cd799439012",
+        "stream_id": "stream",
+        "captured_at": "2030-03-17T17:46:40.000Z",
+        "viewers": 3,
+        "unknown": "discarded"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "captured_at": {
+            "$date": 1900000000000
+          },
+          "channelID": "channel",
+          "commands": 0,
+          "game_name": "",
+          "messages": 0,
+          "session_id": {
+            "$oid": "507f1f77bcf86cd799439012"
+          },
+          "stream_id": "stream",
+          "title": "",
+          "viewers": 3
+        }
+      }
+    },
+    {
+      "model": "StreamViewerSnapshot",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channelID": null,
+        "session_id": null,
+        "stream_id": null,
+        "captured_at": null,
+        "viewers": null
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "captured_at",
+            "kind": "required"
+          },
+          {
+            "path": "channelID",
+            "kind": "required"
+          },
+          {
+            "path": "session_id",
+            "kind": "required"
+          },
+          {
+            "path": "stream_id",
+            "kind": "required"
+          },
+          {
+            "path": "viewers",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "AstVariables",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channelID": "channel",
+        "userId": "user",
+        "userLogin": "cdom201",
+        "variables": {}
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "channelID": "channel",
+          "scopeName": "default",
+          "scopeType": "command",
+          "userId": "user",
+          "userLogin": "cdom201",
+          "variables": {}
+        }
+      }
+    },
+    {
+      "model": "AstVariables",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channelID": "channel",
+        "userId": "user",
+        "userLogin": "cdom201",
+        "variables": {
+          "counter": 42,
+          "flag": true,
+          "empty": null
+        }
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "channelID": "channel",
+          "scopeName": "default",
+          "scopeType": "command",
+          "userId": "user",
+          "userLogin": "cdom201",
+          "variables": {
+            "counter": "42",
+            "empty": null,
+            "flag": "true"
+          }
+        }
+      }
+    },
+    {
+      "model": "AstVariables",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channelID": "channel",
+        "userId": "user",
+        "userLogin": "cdom201",
+        "variables": null
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "channelID": "channel",
+          "scopeName": "default",
+          "scopeType": "command",
+          "userId": "user",
+          "userLogin": "cdom201",
+          "variables": null
+        }
+      }
+    },
+    {
+      "model": "AstVariables",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channelID": "channel",
+        "userId": "user",
+        "userLogin": "cdom201",
+        "variables": "invalid"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "variables",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "model": "AstVariables",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channelID": "channel",
+        "userId": "user",
+        "userLogin": "cdom201",
+        "variables": {
+          "object": {
+            "nested": true
+          }
+        }
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "variables.object",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "model": "CommandUserVariables",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "commandId": "507f1f77bcf86cd799439012",
+        "channelID": "channel",
+        "userId": "user",
+        "variables": {}
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "channelID": "channel",
+          "commandId": {
+            "$oid": "507f1f77bcf86cd799439012"
+          },
+          "userId": "user",
+          "variables": {}
+        }
+      }
+    },
+    {
+      "model": "CommandUserVariables",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "commandId": "507f1f77bcf86cd799439012",
+        "channelID": "channel",
+        "userId": "user",
+        "variables": {
+          "counter": 42,
+          "flag": true,
+          "empty": null
+        }
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "channelID": "channel",
+          "commandId": {
+            "$oid": "507f1f77bcf86cd799439012"
+          },
+          "userId": "user",
+          "variables": {
+            "counter": "42",
+            "empty": null,
+            "flag": "true"
+          }
+        }
+      }
+    },
+    {
+      "model": "CommandUserVariables",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "commandId": "507f1f77bcf86cd799439012",
+        "channelID": "channel",
+        "userId": "user",
+        "variables": null
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "channelID": "channel",
+          "commandId": {
+            "$oid": "507f1f77bcf86cd799439012"
+          },
+          "userId": "user",
+          "variables": null
+        }
+      }
+    },
+    {
+      "model": "CommandUserVariables",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "commandId": "507f1f77bcf86cd799439012",
+        "channelID": "channel",
+        "userId": "user",
+        "variables": "invalid"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "variables",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "model": "CommandUserVariables",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "commandId": "507f1f77bcf86cd799439012",
+        "channelID": "channel",
+        "userId": "user",
+        "variables": {
+          "object": {
+            "nested": true
+          }
+        }
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "variables.object",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "model": "timer_command",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "command": "test",
+        "timer": 3,
+        "channel": "cdom201",
+        "channelID": "channel",
+        "date": {
+          "day": 1,
+          "month": "2",
+          "year": "2030"
+        }
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "channel": "cdom201",
+          "channelID": "channel",
+          "command": "test",
+          "createdAt": {
+            "$date": 1900000000000
+          },
+          "date": {
+            "day": 1,
+            "month": 2,
+            "year": 2030
+          },
+          "timer": 3
+        }
+      }
+    },
+    {
+      "model": "timer_command",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "command": "test",
+        "timer": 3,
+        "channel": "cdom201",
+        "channelID": "channel",
+        "date": null
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "channel": "cdom201",
+          "channelID": "channel",
+          "command": "test",
+          "createdAt": {
+            "$date": 1900000000000
+          },
+          "date": null,
+          "timer": 3
+        }
+      }
+    },
+    {
+      "model": "timer_command",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "command": "test",
+        "timer": 3,
+        "channel": "cdom201",
+        "channelID": "channel",
+        "date": {
+          "day": null,
+          "month": null,
+          "year": null
+        }
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "channel": "cdom201",
+          "channelID": "channel",
+          "command": "test",
+          "createdAt": {
+            "$date": 1900000000000
+          },
+          "date": {
+            "day": null,
+            "month": null,
+            "year": null
+          },
+          "timer": 3
+        }
+      }
+    },
+    {
+      "model": "timer_command",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "command": "test",
+        "timer": 3,
+        "channel": "cdom201",
+        "channelID": "channel",
+        "date": {
+          "day": "invalid"
+        }
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "date.day",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "model": "custom_timer",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "name": "  Notice  ",
+        "message": "﻿ Hello  ",
+        "frequency": 1,
+        "channel": "cdom201",
+        "channelID": "channel"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "active": true,
+          "channel": "cdom201",
+          "channelID": "channel",
+          "frequency": 1,
+          "message": "Hello",
+          "name": "Notice"
+        }
+      }
+    },
+    {
+      "model": "custom_timer",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "name": " ",
+        "message": "Hello",
+        "frequency": 1,
+        "channel": "cdom201",
+        "channelID": "channel"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "name",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "custom_timer",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "name": "Notice",
+        "message": " ",
+        "frequency": 1,
+        "channel": "cdom201",
+        "channelID": "channel"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "message",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "custom_timer",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "name": "Notice",
+        "message": "Hello",
+        "frequency": 0,
+        "channel": "cdom201",
+        "channelID": "channel"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "frequency",
+            "kind": "min"
+          }
+        ]
+      }
+    },
+    {
+      "model": "custom_timer",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "name": "Notice",
+        "message": "Hello",
+        "frequency": 1441,
+        "channel": "cdom201",
+        "channelID": "channel"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "frequency",
+            "kind": "max"
+          }
+        ]
+      }
+    },
+    {
+      "model": "custom_timer",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "name": "Notice",
+        "message": "Hello",
+        "frequency": 1.5,
+        "channel": "cdom201",
+        "channelID": "channel"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "frequency",
+            "kind": "user defined"
+          }
+        ]
+      }
+    },
+    {
+      "model": "custom_timer",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "name": "Notice",
+        "message": "Hello",
+        "frequency": "3",
+        "channel": "cdom201",
+        "channelID": "channel"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "active": true,
+          "channel": "cdom201",
+          "channelID": "channel",
+          "frequency": 3,
+          "message": "Hello",
+          "name": "Notice"
+        }
+      }
+    },
+    {
+      "model": "custom_timer",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "name": "Notice",
+        "message": "Hello",
+        "frequency": 1440,
+        "channel": "cdom201",
+        "channelID": "channel"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "active": true,
+          "channel": "cdom201",
+          "channelID": "channel",
+          "frequency": 1440,
+          "message": "Hello",
+          "name": "Notice"
+        }
+      }
+    },
+    {
+      "model": "custom_timer",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "name": "🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮",
+        "message": "Hello",
+        "frequency": 1,
+        "channel": "cdom201",
+        "channelID": "channel"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "active": true,
+          "channel": "cdom201",
+          "channelID": "channel",
+          "frequency": 1,
+          "message": "Hello",
+          "name": "🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮"
+        }
+      }
+    },
+    {
+      "model": "custom_timer",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "name": "🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮",
+        "message": "Hello",
+        "frequency": 1,
+        "channel": "cdom201",
+        "channelID": "channel"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "name",
+            "kind": "maxlength"
+          }
+        ]
+      }
+    },
+    {
+      "model": "custom_timer",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "name": "Notice",
+        "message": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "frequency": 1,
+        "channel": "cdom201",
+        "channelID": "channel"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "message",
+            "kind": "maxlength"
+          }
+        ]
+      }
+    },
+    {
+      "model": "custom_timer",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "name": "Notice",
+        "message": "Hello",
+        "frequency": 1,
+        "channel": "cdom201",
+        "channelID": "channel",
+        "frequencyUnit": "seconds"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "frequencyUnit",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "domain_event",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "eventKey": "source:event:type",
+        "source": "fixture",
+        "sourceEventId": "event",
+        "type": "stream.started",
+        "topic": "activity",
+        "occurredAt": "2030-03-17T17:46:40.000Z",
+        "payload": {
+          "value": 1
+        },
+        "expiresAt": "2030-04-17T17:46:40.000Z"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "eventKey": "source:event:type",
+          "expiresAt": {
+            "$date": 1902678400000
+          },
+          "journaledAt": {
+            "$date": 1900000000000
+          },
+          "occurredAt": {
+            "$date": 1900000000000
+          },
+          "payload": {
+            "value": 1
+          },
+          "schemaVersion": 1,
+          "source": "fixture",
+          "sourceEventId": "event",
+          "topic": "activity",
+          "type": "stream.started"
+        }
+      }
+    },
+    {
+      "model": "domain_event",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "eventKey": "source:event:type",
+        "source": "fixture",
+        "sourceEventId": "event",
+        "type": "stream.started",
+        "topic": "channel",
+        "occurredAt": "2030-03-17T17:46:40.000Z",
+        "payload": {
+          "value": 1
+        },
+        "expiresAt": "2030-04-17T17:46:40.000Z"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "channelID",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "domain_event",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "eventKey": "source:event:type",
+        "source": "fixture",
+        "sourceEventId": "event",
+        "type": "stream.started",
+        "topic": "other",
+        "channelID": "channel",
+        "occurredAt": "2030-03-17T17:46:40.000Z",
+        "payload": {
+          "value": 1
+        },
+        "expiresAt": "2030-04-17T17:46:40.000Z"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "topic",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "domain_event",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "eventKey": "source:event:type",
+        "source": "fixture",
+        "sourceEventId": "event",
+        "type": "stream.started",
+        "topic": "channel",
+        "channelID": "channel",
+        "occurredAt": "2030-03-17T17:46:40.000Z",
+        "payload": {
+          "value": 1
+        },
+        "expiresAt": "2030-04-17T17:46:40.000Z",
+        "subject": {}
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "subject.id",
+            "kind": "required"
+          },
+          {
+            "path": "subject.kind",
+            "kind": "required"
+          },
+          {
+            "path": "subject.provider",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "domain_event",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "eventKey": "source:event:type",
+        "source": "fixture",
+        "sourceEventId": "event",
+        "type": "stream.started",
+        "topic": "channel",
+        "channelID": "channel",
+        "occurredAt": "2030-03-17T17:46:40.000Z",
+        "payload": {
+          "value": 1
+        },
+        "expiresAt": "2030-04-17T17:46:40.000Z",
+        "subject": {
+          "provider": "twitch",
+          "kind": "streaming-account",
+          "id": "channel"
+        }
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "channelID": "channel",
+          "eventKey": "source:event:type",
+          "expiresAt": {
+            "$date": 1902678400000
+          },
+          "journaledAt": {
+            "$date": 1900000000000
+          },
+          "occurredAt": {
+            "$date": 1900000000000
+          },
+          "payload": {
+            "value": 1
+          },
+          "schemaVersion": 1,
+          "source": "fixture",
+          "sourceEventId": "event",
+          "subject": {
+            "id": "channel",
+            "kind": "streaming-account",
+            "provider": "twitch"
+          },
+          "topic": "channel",
+          "type": "stream.started"
+        }
+      }
+    },
+    {
+      "model": "domain_event",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "eventKey": "source:event:type",
+        "source": "fixture",
+        "sourceEventId": "event",
+        "type": "stream.started",
+        "topic": "channel",
+        "channelID": "channel",
+        "occurredAt": "2030-03-17T17:46:40.000Z",
+        "payload": {
+          "value": 1
+        },
+        "expiresAt": "2030-04-17T17:46:40.000Z",
+        "schemaVersion": "2"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "channelID": "channel",
+          "eventKey": "source:event:type",
+          "expiresAt": {
+            "$date": 1902678400000
+          },
+          "journaledAt": {
+            "$date": 1900000000000
+          },
+          "occurredAt": {
+            "$date": 1900000000000
+          },
+          "payload": {
+            "value": 1
+          },
+          "schemaVersion": 2,
+          "source": "fixture",
+          "sourceEventId": "event",
+          "topic": "channel",
+          "type": "stream.started"
+        }
+      }
+    },
+    {
+      "model": "domain_event",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "eventKey": "source:event:type",
+        "source": "fixture",
+        "sourceEventId": "event",
+        "type": "stream.started",
+        "topic": "channel",
+        "channelID": "channel",
+        "occurredAt": "2030-03-17T17:46:40.000Z",
+        "payload": {
+          "value": 1
+        },
+        "expiresAt": "2030-04-17T17:46:40.000Z",
+        "metadata": {}
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "channelID": "channel",
+          "eventKey": "source:event:type",
+          "expiresAt": {
+            "$date": 1902678400000
+          },
+          "journaledAt": {
+            "$date": 1900000000000
+          },
+          "occurredAt": {
+            "$date": 1900000000000
+          },
+          "payload": {
+            "value": 1
+          },
+          "schemaVersion": 1,
+          "source": "fixture",
+          "sourceEventId": "event",
+          "topic": "channel",
+          "type": "stream.started"
+        }
+      }
+    },
+    {
+      "model": "domain_event",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "eventKey": "source:event:type",
+        "source": "fixture",
+        "sourceEventId": "event",
+        "type": "stream.started",
+        "topic": "channel",
+        "channelID": "channel",
+        "occurredAt": "2030-03-17T17:46:40.000Z",
+        "payload": {
+          "value": 1
+        },
+        "expiresAt": "2030-04-17T17:46:40.000Z",
+        "metadata": null
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "metadata",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "domain_event",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "eventKey": "source:event:type",
+        "source": "fixture",
+        "sourceEventId": "event",
+        "type": "stream.started",
+        "topic": "channel",
+        "channelID": "channel",
+        "occurredAt": "2030-03-17T17:46:40.000Z",
+        "payload": {},
+        "expiresAt": "2030-04-17T17:46:40.000Z"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "channelID": "channel",
+          "eventKey": "source:event:type",
+          "expiresAt": {
+            "$date": 1902678400000
+          },
+          "journaledAt": {
+            "$date": 1900000000000
+          },
+          "occurredAt": {
+            "$date": 1900000000000
+          },
+          "schemaVersion": 1,
+          "source": "fixture",
+          "sourceEventId": "event",
+          "topic": "channel",
+          "type": "stream.started"
+        }
+      }
+    },
+    {
+      "model": "domain_event_delivery",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "consumer": "fixture",
+        "topic": "channel",
+        "eventID": "507f1f77bcf86cd799439012",
+        "eventKey": "source:event:type",
+        "expiresAt": "2030-04-17T17:46:40.000Z",
+        "status": "bad"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "status",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "domain_event_delivery",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "consumer": "fixture",
+        "topic": "channel",
+        "eventID": "507f1f77bcf86cd799439012",
+        "eventKey": "source:event:type",
+        "expiresAt": "2030-04-17T17:46:40.000Z",
+        "attempts": "2",
+        "replayCount": 0
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "attempts": 2,
+          "completedAt": null,
+          "consumer": "fixture",
+          "deadLetteredAt": null,
+          "eventID": {
+            "$oid": "507f1f77bcf86cd799439012"
+          },
+          "eventKey": "source:event:type",
+          "expiresAt": {
+            "$date": 1902678400000
+          },
+          "firstAttemptAt": null,
+          "lastAttemptDurationMs": null,
+          "lastDeadLetterError": "",
+          "lastError": "",
+          "lastErrorCode": "",
+          "lastPrerequisiteKind": "",
+          "lastReplayedAt": null,
+          "leaseToken": null,
+          "lockedUntil": null,
+          "nextAttemptAt": null,
+          "replayCount": 0,
+          "skipReason": "",
+          "status": "pending",
+          "topic": "channel"
+        }
+      }
+    },
+    {
+      "model": "domain_event_delivery",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "consumer": "fixture",
+        "topic": "channel",
+        "eventID": "507f1f77bcf86cd799439012",
+        "eventKey": "source:event:type",
+        "expiresAt": "2030-04-17T17:46:40.000Z",
+        "lastAttemptDurationMs": -1
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "lastAttemptDurationMs",
+            "kind": "min"
+          }
+        ]
+      }
+    },
+    {
+      "model": "domain_event_delivery",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "consumer": "fixture",
+        "topic": "channel",
+        "eventID": "507f1f77bcf86cd799439012",
+        "eventKey": "source:event:type",
+        "expiresAt": "2030-04-17T17:46:40.000Z",
+        "lastErrorCode": "unknown"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "lastErrorCode",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "domain_event_delivery",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "consumer": "fixture",
+        "topic": "channel",
+        "eventID": "507f1f77bcf86cd799439012",
+        "eventKey": "source:event:type",
+        "expiresAt": "2030-04-17T17:46:40.000Z",
+        "lastPrerequisiteKind": "invalid"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "lastPrerequisiteKind",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "StreamViewerSnapshot",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channelID": "channel",
+        "session_id": "507f1f77bcf86cd799439012",
+        "stream_id": "stream",
+        "captured_at": "2030-03-17T17:46:40.000Z",
+        "viewers": -1
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "viewers",
+            "kind": "min"
+          }
+        ]
+      }
+    },
+    {
+      "model": "StreamViewerSnapshot",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channelID": "channel",
+        "session_id": "507f1f77bcf86cd799439012",
+        "stream_id": "stream",
+        "captured_at": "2030-03-17T17:46:40.000Z",
+        "viewers": 3,
+        "messages": -1
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "messages",
+            "kind": "min"
+          }
+        ]
+      }
+    },
+    {
+      "model": "StreamViewerSnapshot",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channelID": "channel",
+        "session_id": "507f1f77bcf86cd799439012",
+        "stream_id": "stream",
+        "captured_at": "2030-03-17T17:46:40.000Z",
+        "viewers": 3,
+        "commands": -1
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "commands",
+            "kind": "min"
+          }
+        ]
+      }
+    },
+    {
+      "model": "StreamViewerSnapshot",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channelID": "channel",
+        "session_id": "507f1f77bcf86cd799439012",
+        "stream_id": "stream",
+        "captured_at": "2030-03-17T17:46:40.000Z",
+        "viewers": "4",
+        "messages": "2"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "captured_at": {
+            "$date": 1900000000000
+          },
+          "channelID": "channel",
+          "commands": 0,
+          "game_name": "",
+          "messages": 2,
+          "session_id": {
+            "$oid": "507f1f77bcf86cd799439012"
+          },
+          "stream_id": "stream",
+          "title": "",
+          "viewers": 4
+        }
+      }
+    },
+    {
+      "model": "StreamViewerSnapshot",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channelID": "channel",
+        "session_id": "507f1f77bcf86cd799439012",
+        "stream_id": "stream",
+        "captured_at": "2030-03-17T17:46:40.000Z",
+        "viewers": 0
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "captured_at": {
+            "$date": 1900000000000
+          },
+          "channelID": "channel",
+          "commands": 0,
+          "game_name": "",
+          "messages": 0,
+          "session_id": {
+            "$oid": "507f1f77bcf86cd799439012"
+          },
+          "stream_id": "stream",
+          "title": "",
+          "viewers": 0
+        }
+      }
+    },
+    {
+      "model": "StreamSession",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channelID": "channel",
+        "stream_id": "stream",
+        "started_at": "2030-03-17T17:46:40.000Z",
+        "status": "stopped"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "status",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "StreamSession",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channelID": "channel",
+        "stream_id": "stream",
+        "started_at": "2030-03-17T17:46:40.000Z",
+        "ended_at": null,
+        "applied_domain_event_keys": [
+          "a",
+          2
+        ]
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "applied_domain_event_keys": [
+            "a",
+            "2"
+          ],
+          "average_viewers": 0,
+          "bits": 0,
+          "channel": "",
+          "channelID": "channel",
+          "commands": 0,
+          "consecutive_offline_checks": 0,
+          "donations": 0,
+          "duration_minutes": 0,
+          "ended_at": null,
+          "follows": 0,
+          "last_seen_live_at": null,
+          "messages": 0,
+          "offline_clips_completed_at": null,
+          "offline_summary_enqueued_at": null,
+          "peak_viewers": 0,
+          "sample_count": 0,
+          "sample_total_viewers": 0,
+          "started_at": {
+            "$date": 1900000000000
+          },
+          "status": "live",
+          "stream_id": "stream",
+          "subs": 0
+        }
+      }
+    },
+    {
+      "model": "StreamSession",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channelID": "channel",
+        "stream_id": "stream",
+        "started_at": "2030-03-17T17:46:40.000Z",
+        "consecutive_offline_checks": "3"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "applied_domain_event_keys": [],
+          "average_viewers": 0,
+          "bits": 0,
+          "channel": "",
+          "channelID": "channel",
+          "commands": 0,
+          "consecutive_offline_checks": 3,
+          "donations": 0,
+          "duration_minutes": 0,
+          "ended_at": null,
+          "follows": 0,
+          "last_seen_live_at": null,
+          "messages": 0,
+          "offline_clips_completed_at": null,
+          "offline_summary_enqueued_at": null,
+          "peak_viewers": 0,
+          "sample_count": 0,
+          "sample_total_viewers": 0,
+          "started_at": {
+            "$date": 1900000000000
+          },
+          "status": "live",
+          "stream_id": "stream",
+          "subs": 0
+        }
+      }
+    },
+    {
+      "model": "StreamSession",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channelID": "channel",
+        "stream_id": "stream",
+        "started_at": "2030-03-17T17:46:40.000Z",
+        "last_seen_live_at": "not-a-date"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "last_seen_live_at",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "model": "stream_activity",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id",
+        "channelID": "channel",
+        "session_id": "507f1f77bcf86cd799439012",
+        "occurredAt": "2030-03-17T17:46:40.000Z",
+        "kind": "message",
+        "expiresAt": "2030-04-17T17:46:40.000Z",
+        "emotes": [
+          {
+            "key": "emote",
+            "label": "Label",
+            "count": "2",
+            "_id": "507f1f77bcf86cd799439012"
+          }
+        ]
+      },
+      "expected": {
+        "document": {
+          "_id": "fixture-id",
+          "actor": "",
+          "actorLabel": "",
+          "channelID": "channel",
+          "dashboardProcessed": null,
+          "emotes": [
+            {
+              "count": 2,
+              "key": "emote",
+              "label": "Label"
+            }
+          ],
+          "expiresAt": {
+            "$date": 1902678400000
+          },
+          "key": "",
+          "kind": "message",
+          "label": "",
+          "occurredAt": {
+            "$date": 1900000000000
+          },
+          "outcome": "",
+          "processed": false,
+          "session_id": {
+            "$oid": "507f1f77bcf86cd799439012"
+          },
+          "value": 1
+        }
+      }
+    },
+    {
+      "model": "stream_activity",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id",
+        "channelID": "channel",
+        "session_id": "507f1f77bcf86cd799439012",
+        "occurredAt": "2030-03-17T17:46:40.000Z",
+        "kind": "message",
+        "expiresAt": "2030-04-17T17:46:40.000Z",
+        "emotes": []
+      },
+      "expected": {
+        "document": {
+          "_id": "fixture-id",
+          "actor": "",
+          "actorLabel": "",
+          "channelID": "channel",
+          "dashboardProcessed": null,
+          "emotes": [],
+          "expiresAt": {
+            "$date": 1902678400000
+          },
+          "key": "",
+          "kind": "message",
+          "label": "",
+          "occurredAt": {
+            "$date": 1900000000000
+          },
+          "outcome": "",
+          "processed": false,
+          "session_id": {
+            "$oid": "507f1f77bcf86cd799439012"
+          },
+          "value": 1
+        }
+      }
+    },
+    {
+      "model": "stream_activity",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id",
+        "channelID": "channel",
+        "session_id": "507f1f77bcf86cd799439012",
+        "occurredAt": "2030-03-17T17:46:40.000Z",
+        "kind": "message",
+        "expiresAt": "2030-04-17T17:46:40.000Z",
+        "emotes": null
+      },
+      "expected": {
+        "document": {
+          "_id": "fixture-id",
+          "actor": "",
+          "actorLabel": "",
+          "channelID": "channel",
+          "dashboardProcessed": null,
+          "emotes": null,
+          "expiresAt": {
+            "$date": 1902678400000
+          },
+          "key": "",
+          "kind": "message",
+          "label": "",
+          "occurredAt": {
+            "$date": 1900000000000
+          },
+          "outcome": "",
+          "processed": false,
+          "session_id": {
+            "$oid": "507f1f77bcf86cd799439012"
+          },
+          "value": 1
+        }
+      }
+    },
+    {
+      "model": "stream_activity",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id",
+        "channelID": "channel",
+        "session_id": "507f1f77bcf86cd799439012",
+        "occurredAt": "2030-03-17T17:46:40.000Z",
+        "kind": "invalid",
+        "expiresAt": "2030-04-17T17:46:40.000Z"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "kind",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "stream_activity",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id",
+        "channelID": "channel",
+        "session_id": "507f1f77bcf86cd799439012",
+        "occurredAt": "2030-03-17T17:46:40.000Z",
+        "kind": "message",
+        "expiresAt": "2030-04-17T17:46:40.000Z",
+        "dashboardProcessed": null
+      },
+      "expected": {
+        "document": {
+          "_id": "fixture-id",
+          "actor": "",
+          "actorLabel": "",
+          "channelID": "channel",
+          "dashboardProcessed": null,
+          "emotes": [],
+          "expiresAt": {
+            "$date": 1902678400000
+          },
+          "key": "",
+          "kind": "message",
+          "label": "",
+          "occurredAt": {
+            "$date": 1900000000000
+          },
+          "outcome": "",
+          "processed": false,
+          "session_id": {
+            "$oid": "507f1f77bcf86cd799439012"
+          },
+          "value": 1
+        }
+      }
+    },
+    {
+      "model": "stream_activity_state",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id",
+        "active": {}
+      },
+      "expected": {
+        "document": {
+          "_id": "fixture-id",
+          "active": {
+            "ids": []
+          },
+          "seq": 0
+        }
+      }
+    },
+    {
+      "model": "stream_activity_state",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id",
+        "active": {
+          "seq": "3"
+        }
+      },
+      "expected": {
+        "document": {
+          "_id": "fixture-id",
+          "active": {
+            "ids": [],
+            "seq": 3
+          },
+          "seq": 0
+        }
+      }
+    },
+    {
+      "model": "stream_activity_state",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id",
+        "active": {
+          "ids": "one",
+          "seq": 2
+        }
+      },
+      "expected": {
+        "document": {
+          "_id": "fixture-id",
+          "active": {
+            "ids": [
+              "one"
+            ],
+            "seq": 2
+          },
+          "seq": 0
+        }
+      }
+    },
+    {
+      "model": "stream_activity_state",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id",
+        "active": null
+      },
+      "expected": {
+        "document": {
+          "_id": "fixture-id",
+          "active": null,
+          "seq": 0
+        }
+      }
+    },
+    {
+      "model": "ai_usage_receipts",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channelID": "channel",
+        "customerId": "customer",
+        "entryId": "entry",
+        "occurredAt": "2030-03-17T17:46:40.000Z",
+        "entryKind": "usage",
+        "category": "chat",
+        "operation": "completion",
+        "provider": "fixture",
+        "credits": 3,
+        "itemized": true,
+        "retentionTier": "free",
+        "expiresAt": "2030-04-17T17:46:40.000Z"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "adjustmentType": null,
+          "category": "chat",
+          "channelID": "channel",
+          "credits": 3,
+          "customerId": "customer",
+          "entryId": "entry",
+          "entryKind": "usage",
+          "expiresAt": {
+            "$date": 1902678400000
+          },
+          "itemized": true,
+          "model": null,
+          "occurredAt": {
+            "$date": 1900000000000
+          },
+          "operation": "completion",
+          "provider": "fixture",
+          "quantity": null,
+          "requestId": null,
+          "resourceId": null,
+          "resourceType": null,
+          "retentionTier": "free",
+          "source": null,
+          "unit": null
+        }
+      }
+    },
+    {
+      "model": "ai_usage_receipts",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channelID": "channel",
+        "customerId": "customer",
+        "entryId": "entry",
+        "occurredAt": "2030-03-17T17:46:40.000Z",
+        "entryKind": "usage",
+        "category": "chat",
+        "operation": "completion",
+        "provider": "fixture",
+        "credits": 3,
+        "itemized": true,
+        "retentionTier": "premium",
+        "expiresAt": "2030-04-17T17:46:40.000Z"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "adjustmentType": null,
+          "category": "chat",
+          "channelID": "channel",
+          "credits": 3,
+          "customerId": "customer",
+          "entryId": "entry",
+          "entryKind": "usage",
+          "expiresAt": {
+            "$date": 1902678400000
+          },
+          "itemized": true,
+          "model": null,
+          "occurredAt": {
+            "$date": 1900000000000
+          },
+          "operation": "completion",
+          "provider": "fixture",
+          "quantity": null,
+          "requestId": null,
+          "resourceId": null,
+          "resourceType": null,
+          "retentionTier": "premium",
+          "source": null,
+          "unit": null
+        }
+      }
+    },
+    {
+      "model": "ai_usage_receipts",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channelID": "channel",
+        "customerId": "customer",
+        "entryId": "entry",
+        "occurredAt": "2030-03-17T17:46:40.000Z",
+        "entryKind": "usage",
+        "category": "chat",
+        "operation": "completion",
+        "provider": "fixture",
+        "credits": 3,
+        "itemized": true,
+        "retentionTier": "pro",
+        "expiresAt": "2030-04-17T17:46:40.000Z"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "507f1f77bcf86cd799439011"
+          },
+          "adjustmentType": null,
+          "category": "chat",
+          "channelID": "channel",
+          "credits": 3,
+          "customerId": "customer",
+          "entryId": "entry",
+          "entryKind": "usage",
+          "expiresAt": {
+            "$date": 1902678400000
+          },
+          "itemized": true,
+          "model": null,
+          "occurredAt": {
+            "$date": 1900000000000
+          },
+          "operation": "completion",
+          "provider": "fixture",
+          "quantity": null,
+          "requestId": null,
+          "resourceId": null,
+          "resourceType": null,
+          "retentionTier": "pro",
+          "source": null,
+          "unit": null
+        }
+      }
+    },
+    {
+      "model": "ai_usage_receipts",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channelID": "channel",
+        "customerId": "customer",
+        "entryId": "entry",
+        "occurredAt": "2030-03-17T17:46:40.000Z",
+        "entryKind": "usage",
+        "category": "chat",
+        "operation": "completion",
+        "provider": "fixture",
+        "credits": 3,
+        "itemized": true,
+        "retentionTier": "invalid",
+        "expiresAt": "2030-04-17T17:46:40.000Z"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "retentionTier",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "ai_usage_receipts",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channelID": "channel",
+        "customerId": "customer",
+        "entryId": "entry",
+        "occurredAt": "2030-03-17T17:46:40.000Z",
+        "entryKind": "usage",
+        "category": "chat",
+        "operation": "completion",
+        "provider": "fixture",
+        "credits": 3,
+        "itemized": true,
+        "retentionTier": null,
+        "expiresAt": "2030-04-17T17:46:40.000Z"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "retentionTier",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "model": "raid_moderation_request",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id",
+        "channelID": "channel",
+        "sessionID": "session",
+        "actorID": "actor",
+        "requestedAt": "2030-03-17T17:46:40.000Z",
+        "expiresAt": "2030-04-17T17:46:40.000Z",
+        "purgeAt": "2030-04-17T17:46:40.000Z",
+        "origin": "other"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "origin",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "raid_moderation_request",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id",
+        "channelID": "channel",
+        "sessionID": "session",
+        "actorID": "actor",
+        "requestedAt": "2030-03-17T17:46:40.000Z",
+        "expiresAt": "2030-04-17T17:46:40.000Z",
+        "purgeAt": "2030-04-17T17:46:40.000Z",
+        "status": "active"
+      },
+      "expected": {
+        "document": {
+          "_id": "fixture-id",
+          "actorID": "actor",
+          "channelID": "channel",
+          "expiresAt": {
+            "$date": 1902678400000
+          },
+          "includeFuture": false,
+          "leaseToken": "",
+          "lockedUntil": {
+            "$date": 0
+          },
+          "nextAttemptAt": {
+            "$date": 0
+          },
+          "origin": "history",
+          "purgeAt": {
+            "$date": 1902678400000
+          },
+          "requestedAt": {
+            "$date": 1900000000000
+          },
+          "sessionID": "session",
+          "status": "active",
+          "userID": ""
+        }
+      }
+    },
+    {
+      "model": "raid_moderation_request",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id",
+        "channelID": "channel",
+        "sessionID": "session",
+        "actorID": "actor",
+        "requestedAt": "2030-03-17T17:46:40.000Z",
+        "expiresAt": "2030-04-17T17:46:40.000Z",
+        "purgeAt": "2030-04-17T17:46:40.000Z",
+        "status": "unknown"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "status",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "raid_moderation_request",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id",
+        "channelID": "channel",
+        "sessionID": "session",
+        "actorID": "actor",
+        "requestedAt": "2030-03-17T17:46:40.000Z",
+        "expiresAt": "2030-04-17T17:46:40.000Z",
+        "purgeAt": "2030-04-17T17:46:40.000Z",
+        "includeFuture": "true"
+      },
+      "expected": {
+        "document": {
+          "_id": "fixture-id",
+          "actorID": "actor",
+          "channelID": "channel",
+          "expiresAt": {
+            "$date": 1902678400000
+          },
+          "includeFuture": true,
+          "leaseToken": "",
+          "lockedUntil": {
+            "$date": 0
+          },
+          "nextAttemptAt": {
+            "$date": 0
+          },
+          "origin": "history",
+          "purgeAt": {
+            "$date": 1902678400000
+          },
+          "requestedAt": {
+            "$date": 1900000000000
+          },
+          "sessionID": "session",
+          "status": "pending",
+          "userID": ""
+        }
+      }
+    },
+    {
+      "model": "raid_moderation_request",
+      "operation": "construct",
+      "input": {
+        "_id": "fixture-id",
+        "channelID": "channel",
+        "sessionID": "session",
+        "actorID": "actor",
+        "requestedAt": "2030-03-17T17:46:40.000Z",
+        "expiresAt": "2030-04-17T17:46:40.000Z",
+        "purgeAt": "2030-04-17T17:46:40.000Z",
+        "lockedUntil": 0,
+        "nextAttemptAt": 0
+      },
+      "expected": {
+        "document": {
+          "_id": "fixture-id",
+          "actorID": "actor",
+          "channelID": "channel",
+          "expiresAt": {
+            "$date": 1902678400000
+          },
+          "includeFuture": false,
+          "leaseToken": "",
+          "lockedUntil": {
+            "$date": 0
+          },
+          "nextAttemptAt": {
+            "$date": 0
+          },
+          "origin": "history",
+          "purgeAt": {
+            "$date": 1902678400000
+          },
+          "requestedAt": {
+            "$date": 1900000000000
+          },
+          "sessionID": "session",
+          "status": "pending",
+          "userID": ""
+        }
+      }
+    },
+    {
+      "model": "stream_subscription_ledger",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "streamer_id": "channel",
+        "user_id": "user",
+        "platform": "other",
+        "status": "invalid",
+        "sub_tier_normalized": "tier4"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "platform",
+            "kind": "enum"
+          },
+          {
+            "path": "status",
+            "kind": "enum"
+          },
+          {
+            "path": "sub_tier_normalized",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "stream_marker",
+      "operation": "construct",
+      "input": {
+        "_id": "507f1f77bcf86cd799439011",
+        "channelID": "channel",
+        "session_id": "507f1f77bcf86cd799439012",
+        "key": "key",
+        "kind": "note",
+        "label": "🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮🎮",
+        "occurredAt": "2030-03-17T17:46:40.000Z",
+        "expiresAt": "2030-04-17T17:46:40.000Z"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "label",
+            "kind": "maxlength"
+          }
+        ]
+      }
+    }
+  ]
+}
