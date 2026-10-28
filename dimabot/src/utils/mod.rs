@@ -40,7 +40,8 @@
     feature = "twitch-client",
     feature = "qdrant",
     feature = "ast-syntax",
-    feature = "reward-body"
+    feature = "reward-body",
+    feature = "tts-utilities"
 ))]
 pub mod js_compat;
 
@@ -100,6 +101,8 @@ pub mod plan_cache_fence;
 #[cfg(feature = "polar-client")]
 #[path = "polarsh.rs"]
 pub mod polar;
+#[cfg(feature = "tts-utilities")]
+pub mod tts;
 #[cfg(feature = "twitch-client")]
 pub mod twitch;
 

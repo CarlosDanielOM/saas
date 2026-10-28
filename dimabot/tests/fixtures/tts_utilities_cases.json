@@ -1,0 +1,231 @@
+{
+  "sources": {
+    "expressive_tts_tags.util": "03523ebc5bb2f8c99b528e1c61d90126f655716945f100098c6a53b9f731699e",
+    "kokoro_voices.util": "6d06216a94959645a4ed75e82a2b68a39b329c01373f63644f7a3794afc5466b",
+    "speech_template.util": "bff0aa2ee0447c1ca6f1d225bbf5d7055886c92032710a5a1c08d8b91fd7284a",
+    "normalize_tts_message.util": "6e8030f033e9e32c357c669d8b0d09cbc91a30c814cd5ea3c6a0109ccdb88adc",
+    "tts_status": "f351ec860c25d58a9d4a6be3213c22a0dc36ddb1417b7f3471fd6fc7982bc09a"
+  },
+  "cases": [
+    {
+      "op": "voice",
+      "input": " AF_HEART ",
+      "expected": "af_heart"
+    },
+    {
+      "op": "voice",
+      "input": "bad",
+      "expected": null
+    },
+    {
+      "op": "voice",
+      "input": 12,
+      "expected": null
+    },
+    {
+      "op": "template",
+      "input": null,
+      "expected": "$(tts $(user) dice: &t)"
+    },
+    {
+      "op": "template",
+      "input": "  $(tts &t) ",
+      "expected": "$(tts $(user) dice: &t)"
+    },
+    {
+      "op": "template",
+      "input": " hi 文 ",
+      "expected": "$(tts  hi 文 )"
+    },
+    {
+      "op": "template",
+      "input": "  $(tts.foo x)  ",
+      "expected": "  $(tts.foo x)  "
+    },
+    {
+      "op": "filter",
+      "input": "[anger] Stop. [whispering] Secret. <WHISPERING>yes</WHISPERING>",
+      "provider": "fish",
+      "expected": "[angry] Stop. [whisper] Secret. <whisper>yes</whisper>"
+    },
+    {
+      "op": "filter",
+      "input": " [happy] Hello <loud>world</loud> [unknown] ",
+      "provider": "piper",
+      "expected": "Hello world"
+    },
+    {
+      "op": "filter",
+      "input": "1 < 2 and 3 > 2",
+      "provider": "fish",
+      "expected": "1 < 2 and 3 > 2"
+    },
+    {
+      "op": "filter",
+      "input": "< long - pause > A [long-pause]",
+      "provider": "fish",
+      "expected": "<long-pause> A [long-pause]"
+    },
+    {
+      "op": "reinforce",
+      "input": "[happy] Hi [whisper] [whisper] [unknown]",
+      "expected": "[happy] [happy] Hi [whisper] [whisper] [unknown]"
+    },
+    {
+      "op": "normalize",
+      "input": "  Hello Kappa https://example.com/a  ",
+      "options": {
+        "skipEmotes": true,
+        "stripLinks": true,
+        "normalizeWhitespace": true,
+        "maxLength": 280,
+        "emoteNames": [
+          "Kappa"
+        ]
+      },
+      "expected": {
+        "error": false,
+        "message": "TTS message normalized",
+        "text": "Hello [link]",
+        "originalText": "  Hello Kappa https://example.com/a  "
+      }
+    },
+    {
+      "op": "normalize",
+      "input": " \u0001 \t ",
+      "options": {
+        "skipEmotes": false,
+        "stripLinks": false,
+        "normalizeWhitespace": false,
+        "maxLength": 0
+      },
+      "expected": {
+        "error": true,
+        "message": "No speakable text remained after filtering",
+        "text": "",
+        "originalText": " \u0001 \t "
+      }
+    },
+    {
+      "op": "normalize",
+      "input": "😀abc",
+      "options": {
+        "skipEmotes": false,
+        "stripLinks": false,
+        "normalizeWhitespace": false,
+        "maxLength": 3
+      },
+      "expected": {
+        "error": false,
+        "message": "TTS message normalized",
+        "text": "😀a",
+        "originalText": "😀abc"
+      }
+    },
+    {
+      "op": "status",
+      "input": {
+        "connected": true,
+        "playing": false,
+        "preparing": true,
+        "queueLength": 5
+      },
+      "expected": "TTS: connected · preparing · 5 queued"
+    },
+    {
+      "op": "status",
+      "input": {
+        "connected": true,
+        "playing": true,
+        "preparing": true,
+        "queueLength": 0
+      },
+      "expected": "TTS: connected · playing · 0 queued"
+    },
+    {
+      "op": "status",
+      "input": {
+        "connected": true,
+        "playing": false,
+        "preparing": false,
+        "queueLength": 9007199254740992
+      },
+      "expected": null
+    },
+    {
+      "op": "status",
+      "input": {
+        "connected": true,
+        "playing": false,
+        "preparing": false,
+        "queueLength": -1
+      },
+      "expected": null
+    },
+    {
+      "op": "status",
+      "input": {
+        "connected": true,
+        "playing": false,
+        "preparing": false,
+        "queueLength": 1.5
+      },
+      "expected": null
+    },
+    {
+      "op": "normalize",
+      "input": "  😀abc ",
+      "options": {
+        "skipEmotes": false,
+        "stripLinks": false,
+        "normalizeWhitespace": false,
+        "maxLength": 0.5
+      },
+      "expected": {
+        "error": true,
+        "message": "No speakable text remained after filtering",
+        "text": "",
+        "originalText": "  😀abc "
+      }
+    },
+    {
+      "op": "normalize",
+      "input": "onetwo",
+      "options": {
+        "skipEmotes": false,
+        "stripLinks": false,
+        "normalizeWhitespace": true,
+        "maxLength": 0
+      },
+      "expected": {
+        "error": false,
+        "message": "TTS message normalized",
+        "text": "onetwo",
+        "originalText": "onetwo"
+      }
+    },
+    {
+      "op": "splitSurrogate",
+      "input": "😀abc",
+      "options": {
+        "skipEmotes": false,
+        "stripLinks": false,
+        "normalizeWhitespace": false,
+        "maxLength": 1
+      },
+      "expected": [
+        55357
+      ]
+    },
+    {
+      "op": "status",
+      "input": {
+        "connected": false,
+        "playing": false,
+        "preparing": false,
+        "queueLength": 9007199254740991
+      },
+      "expected": "TTS: disconnected · waiting · 9007199254740991 queued"
+    }
+  ]
+}
