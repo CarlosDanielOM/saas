@@ -93,6 +93,8 @@ pub mod eventsub;
 pub mod keywords;
 #[cfg(feature = "logger")]
 pub mod logger;
+#[cfg(feature = "observability")]
+pub mod observability;
 #[cfg(feature = "plan-cache")]
 pub mod plan_cache_fence;
 #[cfg(feature = "polar-client")]

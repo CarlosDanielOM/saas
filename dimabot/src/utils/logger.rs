@@ -108,6 +108,9 @@ pub struct ConsoleRecord {
 }
 #[derive(Clone, Debug, Serialize)]
 pub struct MetadataRecord {
+    /// Whether the caller supplied a channel, including an empty or invalid one.
+    #[serde(skip)]
+    pub channel_explicit: bool,
     pub at: i64,
     pub level: Level,
     pub name: String,
@@ -831,7 +834,7 @@ fn valid_trace(value: &str) -> bool {
             .bytes()
             .all(|c| c.is_ascii_digit() || (b'a'..=b'f').contains(&c))
 }
-fn js_truthy(value: &Value) -> bool {
+pub(crate) fn js_truthy(value: &Value) -> bool {
     match value {
         Value::Null => false,
         Value::Bool(b) => *b,
@@ -857,7 +860,7 @@ fn number_string(value: f64) -> String {
     }
     value.to_string()
 }
-fn metadata_name(value: &Value) -> String {
+pub(crate) fn metadata_name(value: &Value) -> String {
     match value {
         Value::String(s) => clean(s, 100),
         Value::Null => String::new(),
@@ -924,6 +927,7 @@ fn metadata_record(at: i64, level: Level, data: &Value, options: &LogOptions) ->
         .filter(|s| valid_trace(s))
         .map(str::to_owned);
     MetadataRecord {
+        channel_explicit: options.channel_id.is_some(),
         at,
         level,
         name,

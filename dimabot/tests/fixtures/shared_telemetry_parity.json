@@ -1,0 +1,5 @@
+{
+  "metrics": [{"at":10000,"kind":"work_","name":"metric_","channel":"abc-1","outcome":"ok_","count":5,"sum":10000000000008,"max":10000000000000,"histogram":[2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,1]}],
+  "logs": [{"level":"warn","name":"task_","channel":"abc-1","traceId":null,"fields":{"function":"task_","step":"step_","status":200}}],
+  "dropped": 0
+}
