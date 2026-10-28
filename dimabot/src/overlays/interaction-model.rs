@@ -2,7 +2,7 @@
 //! appear in this model, matching interaction-model.ts.
 
 use super::{DomainEventContractError, time::parse_interaction_time};
-use crate::utils::js_compat;
+use crate::utils::{js_compat, js_date};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use std::collections::HashSet;
@@ -270,8 +270,8 @@ pub fn reduce_interaction(
             return None;
         }
         if current.id != next.id
-            && parse_interaction_time(&next.started_at)
-                .zip(parse_interaction_time(&current.started_at))
+            && js_date::parse_date(&next.started_at)
+                .zip(js_date::parse_date(&current.started_at))
                 .is_some_and(|(next, current)| next <= current)
         {
             return None;
@@ -281,8 +281,8 @@ pub fn reduce_interaction(
                 return None;
             }
             if next.phase.rank() == current.phase.rank()
-                && parse_interaction_time(&next.occurred_at)
-                    .zip(parse_interaction_time(&current.occurred_at))
+                && js_date::parse_date(&next.occurred_at)
+                    .zip(js_date::parse_date(&current.occurred_at))
                     .is_some_and(|(next, current)| next < current)
             {
                 return None;

@@ -7,11 +7,21 @@ pub fn parse_contract_time(value: &str) -> Option<i64> {
     parse_iso_time(value, true)
 }
 
-/// `interaction-model.ts` accepts ISO dates with Date.parse's calendar
-/// normalization, optional seconds, and UTC/local-without-offset notation.
-/// The application uses UTC; explicit offsets are always honored.
+/// The interaction contract requires a four-digit ISO date prefix before
+/// applying JavaScript Date.parse to the entire value.
 pub fn parse_interaction_time(value: &str) -> Option<i64> {
-    parse_iso_time(value, false)
+    let b = value.as_bytes();
+    if b.len() < 11
+        || b[4] != b'-'
+        || b[7] != b'-'
+        || b[10] != b'T'
+        || !b[..4].iter().all(u8::is_ascii_digit)
+        || !b[5..7].iter().all(u8::is_ascii_digit)
+        || !b[8..10].iter().all(u8::is_ascii_digit)
+    {
+        return None;
+    }
+    crate::utils::js_date::parse_date(value)
 }
 
 fn parse_iso_time(value: &str, strict: bool) -> Option<i64> {

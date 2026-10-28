@@ -1716,7 +1716,7 @@
             "broadcaster_user_id": "channel",
             "broadcaster_user_login": "teststreamer",
             "broadcaster_user_name": "TestStreamer",
-            "user_id": "788469541",
+            "user_id": "258805652",
             "user_login": "testuser",
             "user_name": "TestUser",
             "bits": 100,
@@ -1769,7 +1769,7 @@
             "broadcaster_user_id": "channel",
             "broadcaster_user_login": "teststreamer",
             "broadcaster_user_name": "TestStreamer",
-            "user_id": "788469541",
+            "user_id": "258805652",
             "user_login": "testuser",
             "user_name": "TestUser",
             "bits": 100,
@@ -1847,7 +1847,7 @@
             "broadcaster_user_id": "channel",
             "broadcaster_user_login": "teststreamer",
             "broadcaster_user_name": "TestStreamer",
-            "user_id": "788469541",
+            "user_id": "258805652",
             "user_login": "testuser",
             "user_name": "TestUser",
             "bits": 100,
@@ -1912,7 +1912,7 @@
             "broadcaster_user_id": "channel",
             "broadcaster_user_login": "teststreamer",
             "broadcaster_user_name": "TestStreamer",
-            "user_id": "479960369",
+            "user_id": "147018694",
             "user_login": "testuser",
             "user_name": "TestUser",
             "bits": 100,
@@ -1965,7 +1965,7 @@
             "broadcaster_user_id": "channel",
             "broadcaster_user_login": "teststreamer",
             "broadcaster_user_name": "TestStreamer",
-            "user_id": "479960369",
+            "user_id": "147018694",
             "user_login": "testuser",
             "user_name": "TestUser",
             "bits": 100,
@@ -2043,7 +2043,7 @@
             "broadcaster_user_id": "channel",
             "broadcaster_user_login": "teststreamer",
             "broadcaster_user_name": "TestStreamer",
-            "user_id": "479960369",
+            "user_id": "147018694",
             "user_login": "testuser",
             "user_name": "TestUser",
             "bits": 100,
@@ -2108,7 +2108,7 @@
             "broadcaster_user_id": "channel",
             "broadcaster_user_login": "teststreamer",
             "broadcaster_user_name": "TestStreamer",
-            "user_id": "143362022",
+            "user_id": "980404632",
             "user_login": "testuser",
             "user_name": "TestUser",
             "bits": 100,
@@ -2161,7 +2161,7 @@
             "broadcaster_user_id": "channel",
             "broadcaster_user_login": "teststreamer",
             "broadcaster_user_name": "TestStreamer",
-            "user_id": "143362022",
+            "user_id": "980404632",
             "user_login": "testuser",
             "user_name": "TestUser",
             "bits": 100,
@@ -2239,7 +2239,7 @@
             "broadcaster_user_id": "channel",
             "broadcaster_user_login": "teststreamer",
             "broadcaster_user_name": "TestStreamer",
-            "user_id": "143362022",
+            "user_id": "980404632",
             "user_login": "testuser",
             "user_name": "TestUser",
             "bits": 100,
@@ -2302,7 +2302,7 @@
             "created_at": "2026-09-05T12:00:00.000Z"
           },
           "event": {
-            "user_id": "886026347",
+            "user_id": "129389289",
             "user_name": "TestFollower",
             "user_login": "testfollower",
             "broadcaster_user_id": "channel",
@@ -2354,7 +2354,7 @@
             "created_at": "2026-09-05T12:00:00.000Z"
           },
           "event": {
-            "user_id": "886026347",
+            "user_id": "129389289",
             "user_name": "TestFollower",
             "user_login": "testfollower",
             "broadcaster_user_id": "channel",
@@ -2431,7 +2431,7 @@
             "created_at": "2026-09-05T12:00:00.000Z"
           },
           "event": {
-            "user_id": "886026347",
+            "user_id": "129389289",
             "user_name": "TestFollower",
             "user_login": "testfollower",
             "broadcaster_user_id": "channel",
@@ -2497,10 +2497,10 @@
             "to_broadcaster_user_id": "channel",
             "to_broadcaster_user_login": "teststreamer",
             "to_broadcaster_user_name": "TestStreamer",
-            "from_broadcaster_user_id": "829076388",
+            "from_broadcaster_user_id": "733261147",
             "from_broadcaster_user_login": "raidstreamer",
             "from_broadcaster_user_name": "RaidStreamer",
-            "viewers": 216
+            "viewers": 94
           }
         },
         "metadata": {
@@ -2554,7 +2554,7 @@
             "broadcaster_user_id": "channel",
             "broadcaster_user_login": "teststreamer",
             "broadcaster_user_name": "TestStreamer",
-            "chatter_user_id": "923596879",
+            "chatter_user_id": "224259423",
             "chatter_user_login": "testviewer",
             "chatter_user_name": "TestViewer",
             "chatter_is_anonymous": false,
@@ -2619,7 +2619,7 @@
             "broadcaster_user_id": "channel",
             "broadcaster_user_login": "teststreamer",
             "broadcaster_user_name": "TestStreamer",
-            "chatter_user_id": "923596879",
+            "chatter_user_id": "224259423",
             "chatter_user_login": "testviewer",
             "chatter_user_name": "TestViewer",
             "chatter_is_anonymous": false,
@@ -2709,7 +2709,7 @@
             "broadcaster_user_id": "channel",
             "broadcaster_user_login": "teststreamer",
             "broadcaster_user_name": "TestStreamer",
-            "chatter_user_id": "923596879",
+            "chatter_user_id": "224259423",
             "chatter_user_login": "testviewer",
             "chatter_user_name": "TestViewer",
             "chatter_is_anonymous": false,
@@ -2785,7 +2785,7 @@
             "broadcaster_user_id": "channel",
             "broadcaster_user_login": "teststreamer",
             "broadcaster_user_name": "TestStreamer",
-            "user_id": "373522484",
+            "user_id": "583737751",
             "user_login": "testuser",
             "user_name": "TestUser",
             "tier": "1000",
@@ -2840,7 +2840,7 @@
             "broadcaster_user_id": "channel",
             "broadcaster_user_login": "teststreamer",
             "broadcaster_user_name": "TestStreamer",
-            "user_id": "373522484",
+            "user_id": "583737751",
             "user_login": "testuser",
             "user_name": "TestUser",
             "tier": "1000",
@@ -2920,7 +2920,7 @@
             "broadcaster_user_id": "channel",
             "broadcaster_user_login": "teststreamer",
             "broadcaster_user_name": "TestStreamer",
-            "user_id": "373522484",
+            "user_id": "583737751",
             "user_login": "testuser",
             "user_name": "TestUser",
             "tier": "1000",
@@ -2987,7 +2987,7 @@
             "broadcaster_user_id": "channel",
             "broadcaster_user_login": "teststreamer",
             "broadcaster_user_name": "TestStreamer",
-            "user_id": "794194386",
+            "user_id": "123913774",
             "user_login": "testuser",
             "user_name": "TestUser",
             "tier": "1000",
@@ -3042,7 +3042,7 @@
             "broadcaster_user_id": "channel",
             "broadcaster_user_login": "teststreamer",
             "broadcaster_user_name": "TestStreamer",
-            "user_id": "794194386",
+            "user_id": "123913774",
             "user_login": "testuser",
             "user_name": "TestUser",
             "tier": "1000",
@@ -3122,7 +3122,7 @@
             "broadcaster_user_id": "channel",
             "broadcaster_user_login": "teststreamer",
             "broadcaster_user_name": "TestStreamer",
-            "user_id": "794194386",
+            "user_id": "123913774",
             "user_login": "testuser",
             "user_name": "TestUser",
             "tier": "1000",
@@ -3189,7 +3189,7 @@
             "broadcaster_user_id": "channel",
             "broadcaster_user_login": "teststreamer",
             "broadcaster_user_name": "TestStreamer",
-            "user_id": "238689076",
+            "user_id": "618912677",
             "user_login": "testuser",
             "user_name": "TestUser",
             "tier": "1000",
@@ -3244,7 +3244,7 @@
             "broadcaster_user_id": "channel",
             "broadcaster_user_login": "teststreamer",
             "broadcaster_user_name": "TestStreamer",
-            "user_id": "238689076",
+            "user_id": "618912677",
             "user_login": "testuser",
             "user_name": "TestUser",
             "tier": "1000",
@@ -3324,7 +3324,7 @@
             "broadcaster_user_id": "channel",
             "broadcaster_user_login": "teststreamer",
             "broadcaster_user_name": "TestStreamer",
-            "user_id": "238689076",
+            "user_id": "618912677",
             "user_login": "testuser",
             "user_name": "TestUser",
             "tier": "1000",
@@ -3391,7 +3391,7 @@
             "broadcaster_user_id": "channel",
             "broadcaster_user_login": "teststreamer",
             "broadcaster_user_name": "TestStreamer",
-            "user_id": "272906372",
+            "user_id": "559449788",
             "user_login": "testuser",
             "user_name": "TestUser",
             "tier": "1000",
@@ -3447,7 +3447,7 @@
             "broadcaster_user_id": "channel",
             "broadcaster_user_login": "teststreamer",
             "broadcaster_user_name": "TestStreamer",
-            "user_id": "272906372",
+            "user_id": "559449788",
             "user_login": "testuser",
             "user_name": "TestUser",
             "tier": "1000",
@@ -3528,7 +3528,7 @@
             "broadcaster_user_id": "channel",
             "broadcaster_user_login": "teststreamer",
             "broadcaster_user_name": "TestStreamer",
-            "user_id": "272906372",
+            "user_id": "559449788",
             "user_login": "testuser",
             "user_name": "TestUser",
             "tier": "1000",
@@ -8380,6 +8380,342 @@
       }
     },
     {
+      "name": "interaction-time/2026-01-01T24:00:00.0001Z",
+      "operation": "interaction",
+      "input": {
+        "id": "poll",
+        "title": "Pick one",
+        "choices": [
+          {
+            "id": "a",
+            "title": "A",
+            "votes": 4,
+            "channel_points_votes": 1
+          },
+          {
+            "id": "b",
+            "title": "B",
+            "votes": 2
+          }
+        ],
+        "started_at": "2026-01-01T24:00:00.0001Z",
+        "ends_at": "2026-09-05T12:01:00.000Z"
+      },
+      "type": "channel.poll.progress",
+      "expected": {
+        "ok": false,
+        "error": "Invalid interaction timestamp"
+      }
+    },
+    {
+      "name": "interaction-time/2026-01-01T24:00:00.001Z",
+      "operation": "interaction",
+      "input": {
+        "id": "poll",
+        "title": "Pick one",
+        "choices": [
+          {
+            "id": "a",
+            "title": "A",
+            "votes": 4,
+            "channel_points_votes": 1
+          },
+          {
+            "id": "b",
+            "title": "B",
+            "votes": 2
+          }
+        ],
+        "started_at": "2026-01-01T24:00:00.001Z",
+        "ends_at": "2026-09-05T12:01:00.000Z"
+      },
+      "type": "channel.poll.progress",
+      "expected": {
+        "ok": false,
+        "error": "Invalid interaction timestamp"
+      }
+    },
+    {
+      "name": "interaction-time/2026-01-01T00:00ZZ",
+      "operation": "interaction",
+      "input": {
+        "id": "poll",
+        "title": "Pick one",
+        "choices": [
+          {
+            "id": "a",
+            "title": "A",
+            "votes": 4,
+            "channel_points_votes": 1
+          },
+          {
+            "id": "b",
+            "title": "B",
+            "votes": 2
+          }
+        ],
+        "started_at": "2026-01-01T00:00ZZ",
+        "ends_at": "2026-09-05T12:01:00.000Z"
+      },
+      "type": "channel.poll.progress",
+      "expected": {
+        "ok": false,
+        "error": "Invalid interaction timestamp"
+      }
+    },
+    {
+      "name": "interaction-time/2026-01-01T00:00Z+00:00",
+      "operation": "interaction",
+      "input": {
+        "id": "poll",
+        "title": "Pick one",
+        "choices": [
+          {
+            "id": "a",
+            "title": "A",
+            "votes": 4,
+            "channel_points_votes": 1
+          },
+          {
+            "id": "b",
+            "title": "B",
+            "votes": 2
+          }
+        ],
+        "started_at": "2026-01-01T00:00Z+00:00",
+        "ends_at": "2026-09-05T12:01:00.000Z"
+      },
+      "type": "channel.poll.progress",
+      "expected": {
+        "ok": false,
+        "error": "Invalid interaction timestamp"
+      }
+    },
+    {
+      "name": "interaction-time/2026-01-01T00:0Z",
+      "operation": "interaction",
+      "input": {
+        "id": "poll",
+        "title": "Pick one",
+        "choices": [
+          {
+            "id": "a",
+            "title": "A",
+            "votes": 4,
+            "channel_points_votes": 1
+          },
+          {
+            "id": "b",
+            "title": "B",
+            "votes": 2
+          }
+        ],
+        "started_at": "2026-01-01T00:0Z",
+        "ends_at": "2026-09-05T12:01:00.000Z"
+      },
+      "type": "channel.poll.progress",
+      "expected": {
+        "ok": false,
+        "error": "Invalid interaction timestamp"
+      }
+    },
+    {
+      "name": "interaction-time/2026-01-01T00:000Z",
+      "operation": "interaction",
+      "input": {
+        "id": "poll",
+        "title": "Pick one",
+        "choices": [
+          {
+            "id": "a",
+            "title": "A",
+            "votes": 4,
+            "channel_points_votes": 1
+          },
+          {
+            "id": "b",
+            "title": "B",
+            "votes": 2
+          }
+        ],
+        "started_at": "2026-01-01T00:000Z",
+        "ends_at": "2026-09-05T12:01:00.000Z"
+      },
+      "type": "channel.poll.progress",
+      "expected": {
+        "ok": false,
+        "error": "Invalid interaction timestamp"
+      }
+    },
+    {
+      "name": "interaction-time/2026-01-01T00:60Z",
+      "operation": "interaction",
+      "input": {
+        "id": "poll",
+        "title": "Pick one",
+        "choices": [
+          {
+            "id": "a",
+            "title": "A",
+            "votes": 4,
+            "channel_points_votes": 1
+          },
+          {
+            "id": "b",
+            "title": "B",
+            "votes": 2
+          }
+        ],
+        "started_at": "2026-01-01T00:60Z",
+        "ends_at": "2026-09-05T12:01:00.000Z"
+      },
+      "type": "channel.poll.progress",
+      "expected": {
+        "ok": false,
+        "error": "Invalid interaction timestamp"
+      }
+    },
+    {
+      "name": "interaction-time/2026-01-01t00:00:00Z",
+      "operation": "interaction",
+      "input": {
+        "id": "poll",
+        "title": "Pick one",
+        "choices": [
+          {
+            "id": "a",
+            "title": "A",
+            "votes": 4,
+            "channel_points_votes": 1
+          },
+          {
+            "id": "b",
+            "title": "B",
+            "votes": 2
+          }
+        ],
+        "started_at": "2026-01-01t00:00:00Z",
+        "ends_at": "2026-09-05T12:01:00.000Z"
+      },
+      "type": "channel.poll.progress",
+      "expected": {
+        "ok": false,
+        "error": "Invalid interaction timestamp"
+      }
+    },
+    {
+      "name": "interaction-time/Jan 1 2026",
+      "operation": "interaction",
+      "input": {
+        "id": "poll",
+        "title": "Pick one",
+        "choices": [
+          {
+            "id": "a",
+            "title": "A",
+            "votes": 4,
+            "channel_points_votes": 1
+          },
+          {
+            "id": "b",
+            "title": "B",
+            "votes": 2
+          }
+        ],
+        "started_at": "Jan 1 2026",
+        "ends_at": "2026-09-05T12:01:00.000Z"
+      },
+      "type": "channel.poll.progress",
+      "expected": {
+        "ok": false,
+        "error": "Invalid interaction timestamp"
+      }
+    },
+    {
+      "name": "interaction-time/+002026-01-01T00:00:00Z",
+      "operation": "interaction",
+      "input": {
+        "id": "poll",
+        "title": "Pick one",
+        "choices": [
+          {
+            "id": "a",
+            "title": "A",
+            "votes": 4,
+            "channel_points_votes": 1
+          },
+          {
+            "id": "b",
+            "title": "B",
+            "votes": 2
+          }
+        ],
+        "started_at": "+002026-01-01T00:00:00Z",
+        "ends_at": "2026-09-05T12:01:00.000Z"
+      },
+      "type": "channel.poll.progress",
+      "expected": {
+        "ok": false,
+        "error": "Invalid interaction timestamp"
+      }
+    },
+    {
+      "name": "interaction-time/2026-1-01T00:00:00Z",
+      "operation": "interaction",
+      "input": {
+        "id": "poll",
+        "title": "Pick one",
+        "choices": [
+          {
+            "id": "a",
+            "title": "A",
+            "votes": 4,
+            "channel_points_votes": 1
+          },
+          {
+            "id": "b",
+            "title": "B",
+            "votes": 2
+          }
+        ],
+        "started_at": "2026-1-01T00:00:00Z",
+        "ends_at": "2026-09-05T12:01:00.000Z"
+      },
+      "type": "channel.poll.progress",
+      "expected": {
+        "ok": false,
+        "error": "Invalid interaction timestamp"
+      }
+    },
+    {
+      "name": "interaction-time/2026-01-1T00:00:00Z",
+      "operation": "interaction",
+      "input": {
+        "id": "poll",
+        "title": "Pick one",
+        "choices": [
+          {
+            "id": "a",
+            "title": "A",
+            "votes": 4,
+            "channel_points_votes": 1
+          },
+          {
+            "id": "b",
+            "title": "B",
+            "votes": 2
+          }
+        ],
+        "started_at": "2026-01-1T00:00:00Z",
+        "ends_at": "2026-09-05T12:01:00.000Z"
+      },
+      "type": "channel.poll.progress",
+      "expected": {
+        "ok": false,
+        "error": "Invalid interaction timestamp"
+      }
+    },
+    {
       "name": "reduce/duplicate",
       "operation": "reduce",
       "input": {
@@ -8964,6 +9300,1632 @@
           "endedAt": null,
           "winnerId": null,
           "occurredAt": "2026-09-05T12:00:00.000Z",
+          "receipt": "next",
+          "revision": 0
+        }
+      },
+      "expected": {
+        "ok": true,
+        "result": null
+      }
+    },
+    {
+      "name": "reduce/date-other-id/legacy-older",
+      "operation": "reduce",
+      "input": {
+        "current": {
+          "kind": "poll",
+          "id": "poll",
+          "title": "Pick one",
+          "phase": "active",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "March 2, 2020 GMT",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": null,
+          "winnerId": null,
+          "occurredAt": "2026-09-05T12:00:00.000Z",
+          "receipt": "current",
+          "revision": 0
+        },
+        "next": {
+          "kind": "poll",
+          "id": "other",
+          "title": "Pick one",
+          "phase": "active",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "March 1, 2020 GMT",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": null,
+          "winnerId": null,
+          "occurredAt": "2026-09-05T12:00:00.000Z",
+          "receipt": "next",
+          "revision": 0
+        }
+      },
+      "expected": {
+        "ok": true,
+        "result": null
+      }
+    },
+    {
+      "name": "reduce/date-equal-rank/legacy-older",
+      "operation": "reduce",
+      "input": {
+        "current": {
+          "kind": "poll",
+          "id": "poll",
+          "title": "Pick one",
+          "phase": "active",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "2026-09-05T12:00:00.000Z",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": null,
+          "winnerId": null,
+          "occurredAt": "March 2, 2020 GMT",
+          "receipt": "current",
+          "revision": 0
+        },
+        "next": {
+          "kind": "poll",
+          "id": "poll",
+          "title": "Pick one",
+          "phase": "active",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "2026-09-05T12:00:00.000Z",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": null,
+          "winnerId": null,
+          "occurredAt": "March 1, 2020 GMT",
+          "receipt": "next",
+          "revision": 0
+        }
+      },
+      "expected": {
+        "ok": true,
+        "result": null
+      }
+    },
+    {
+      "name": "reduce/date-terminal/legacy-older",
+      "operation": "reduce",
+      "input": {
+        "current": {
+          "kind": "poll",
+          "id": "poll",
+          "title": "Pick one",
+          "phase": "completed",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "2026-09-05T12:00:00.000Z",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": "original",
+          "winnerId": null,
+          "occurredAt": "March 2, 2020 GMT",
+          "receipt": "current",
+          "revision": 0
+        },
+        "next": {
+          "kind": "poll",
+          "id": "poll",
+          "title": "Pick one",
+          "phase": "archived",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "2026-09-05T12:00:00.000Z",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": "replacement",
+          "winnerId": null,
+          "occurredAt": "March 1, 2020 GMT",
+          "receipt": "next",
+          "revision": 0
+        }
+      },
+      "expected": {
+        "ok": true,
+        "result": null
+      }
+    },
+    {
+      "name": "reduce/date-other-id/legacy-newer",
+      "operation": "reduce",
+      "input": {
+        "current": {
+          "kind": "poll",
+          "id": "poll",
+          "title": "Pick one",
+          "phase": "active",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "March 1, 2020 GMT",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": null,
+          "winnerId": null,
+          "occurredAt": "2026-09-05T12:00:00.000Z",
+          "receipt": "current",
+          "revision": 0
+        },
+        "next": {
+          "kind": "poll",
+          "id": "other",
+          "title": "Pick one",
+          "phase": "active",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "March 2, 2020 GMT",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": null,
+          "winnerId": null,
+          "occurredAt": "2026-09-05T12:00:00.000Z",
+          "receipt": "next",
+          "revision": 0
+        }
+      },
+      "expected": {
+        "ok": true,
+        "result": {
+          "kind": "poll",
+          "id": "other",
+          "title": "Pick one",
+          "phase": "active",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "March 2, 2020 GMT",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": null,
+          "winnerId": null,
+          "occurredAt": "2026-09-05T12:00:00.000Z",
+          "receipt": "next",
+          "revision": 1
+        }
+      }
+    },
+    {
+      "name": "reduce/date-equal-rank/legacy-newer",
+      "operation": "reduce",
+      "input": {
+        "current": {
+          "kind": "poll",
+          "id": "poll",
+          "title": "Pick one",
+          "phase": "active",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "2026-09-05T12:00:00.000Z",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": null,
+          "winnerId": null,
+          "occurredAt": "March 1, 2020 GMT",
+          "receipt": "current",
+          "revision": 0
+        },
+        "next": {
+          "kind": "poll",
+          "id": "poll",
+          "title": "Pick one",
+          "phase": "active",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "2026-09-05T12:00:00.000Z",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": null,
+          "winnerId": null,
+          "occurredAt": "March 2, 2020 GMT",
+          "receipt": "next",
+          "revision": 0
+        }
+      },
+      "expected": {
+        "ok": true,
+        "result": {
+          "kind": "poll",
+          "id": "poll",
+          "title": "Pick one",
+          "phase": "active",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "2026-09-05T12:00:00.000Z",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": null,
+          "winnerId": null,
+          "occurredAt": "March 2, 2020 GMT",
+          "receipt": "next",
+          "revision": 1
+        }
+      }
+    },
+    {
+      "name": "reduce/date-terminal/legacy-newer",
+      "operation": "reduce",
+      "input": {
+        "current": {
+          "kind": "poll",
+          "id": "poll",
+          "title": "Pick one",
+          "phase": "completed",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "2026-09-05T12:00:00.000Z",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": "original",
+          "winnerId": null,
+          "occurredAt": "March 1, 2020 GMT",
+          "receipt": "current",
+          "revision": 0
+        },
+        "next": {
+          "kind": "poll",
+          "id": "poll",
+          "title": "Pick one",
+          "phase": "archived",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "2026-09-05T12:00:00.000Z",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": "replacement",
+          "winnerId": null,
+          "occurredAt": "March 2, 2020 GMT",
+          "receipt": "next",
+          "revision": 0
+        }
+      },
+      "expected": {
+        "ok": true,
+        "result": {
+          "kind": "poll",
+          "id": "poll",
+          "title": "Pick one",
+          "phase": "archived",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "2026-09-05T12:00:00.000Z",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": "original",
+          "winnerId": null,
+          "occurredAt": "March 2, 2020 GMT",
+          "receipt": "next",
+          "revision": 1
+        }
+      }
+    },
+    {
+      "name": "reduce/date-other-id/legacy-equal",
+      "operation": "reduce",
+      "input": {
+        "current": {
+          "kind": "poll",
+          "id": "poll",
+          "title": "Pick one",
+          "phase": "active",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "03/01/2020 UTC",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": null,
+          "winnerId": null,
+          "occurredAt": "2026-09-05T12:00:00.000Z",
+          "receipt": "current",
+          "revision": 0
+        },
+        "next": {
+          "kind": "poll",
+          "id": "other",
+          "title": "Pick one",
+          "phase": "active",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "March 1 2020 GMT",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": null,
+          "winnerId": null,
+          "occurredAt": "2026-09-05T12:00:00.000Z",
+          "receipt": "next",
+          "revision": 0
+        }
+      },
+      "expected": {
+        "ok": true,
+        "result": null
+      }
+    },
+    {
+      "name": "reduce/date-equal-rank/legacy-equal",
+      "operation": "reduce",
+      "input": {
+        "current": {
+          "kind": "poll",
+          "id": "poll",
+          "title": "Pick one",
+          "phase": "active",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "2026-09-05T12:00:00.000Z",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": null,
+          "winnerId": null,
+          "occurredAt": "03/01/2020 UTC",
+          "receipt": "current",
+          "revision": 0
+        },
+        "next": {
+          "kind": "poll",
+          "id": "poll",
+          "title": "Pick one",
+          "phase": "active",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "2026-09-05T12:00:00.000Z",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": null,
+          "winnerId": null,
+          "occurredAt": "March 1 2020 GMT",
+          "receipt": "next",
+          "revision": 0
+        }
+      },
+      "expected": {
+        "ok": true,
+        "result": {
+          "kind": "poll",
+          "id": "poll",
+          "title": "Pick one",
+          "phase": "active",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "2026-09-05T12:00:00.000Z",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": null,
+          "winnerId": null,
+          "occurredAt": "March 1 2020 GMT",
+          "receipt": "next",
+          "revision": 1
+        }
+      }
+    },
+    {
+      "name": "reduce/date-terminal/legacy-equal",
+      "operation": "reduce",
+      "input": {
+        "current": {
+          "kind": "poll",
+          "id": "poll",
+          "title": "Pick one",
+          "phase": "completed",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "2026-09-05T12:00:00.000Z",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": "original",
+          "winnerId": null,
+          "occurredAt": "03/01/2020 UTC",
+          "receipt": "current",
+          "revision": 0
+        },
+        "next": {
+          "kind": "poll",
+          "id": "poll",
+          "title": "Pick one",
+          "phase": "archived",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "2026-09-05T12:00:00.000Z",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": "replacement",
+          "winnerId": null,
+          "occurredAt": "March 1 2020 GMT",
+          "receipt": "next",
+          "revision": 0
+        }
+      },
+      "expected": {
+        "ok": true,
+        "result": {
+          "kind": "poll",
+          "id": "poll",
+          "title": "Pick one",
+          "phase": "archived",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "2026-09-05T12:00:00.000Z",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": "original",
+          "winnerId": null,
+          "occurredAt": "March 1 2020 GMT",
+          "receipt": "next",
+          "revision": 1
+        }
+      }
+    },
+    {
+      "name": "reduce/date-other-id/invalid-old",
+      "operation": "reduce",
+      "input": {
+        "current": {
+          "kind": "poll",
+          "id": "poll",
+          "title": "Pick one",
+          "phase": "active",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "not a date",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": null,
+          "winnerId": null,
+          "occurredAt": "2026-09-05T12:00:00.000Z",
+          "receipt": "current",
+          "revision": 0
+        },
+        "next": {
+          "kind": "poll",
+          "id": "other",
+          "title": "Pick one",
+          "phase": "active",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "March 1, 2020 GMT",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": null,
+          "winnerId": null,
+          "occurredAt": "2026-09-05T12:00:00.000Z",
+          "receipt": "next",
+          "revision": 0
+        }
+      },
+      "expected": {
+        "ok": true,
+        "result": {
+          "kind": "poll",
+          "id": "other",
+          "title": "Pick one",
+          "phase": "active",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "March 1, 2020 GMT",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": null,
+          "winnerId": null,
+          "occurredAt": "2026-09-05T12:00:00.000Z",
+          "receipt": "next",
+          "revision": 1
+        }
+      }
+    },
+    {
+      "name": "reduce/date-equal-rank/invalid-old",
+      "operation": "reduce",
+      "input": {
+        "current": {
+          "kind": "poll",
+          "id": "poll",
+          "title": "Pick one",
+          "phase": "active",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "2026-09-05T12:00:00.000Z",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": null,
+          "winnerId": null,
+          "occurredAt": "not a date",
+          "receipt": "current",
+          "revision": 0
+        },
+        "next": {
+          "kind": "poll",
+          "id": "poll",
+          "title": "Pick one",
+          "phase": "active",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "2026-09-05T12:00:00.000Z",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": null,
+          "winnerId": null,
+          "occurredAt": "March 1, 2020 GMT",
+          "receipt": "next",
+          "revision": 0
+        }
+      },
+      "expected": {
+        "ok": true,
+        "result": {
+          "kind": "poll",
+          "id": "poll",
+          "title": "Pick one",
+          "phase": "active",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "2026-09-05T12:00:00.000Z",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": null,
+          "winnerId": null,
+          "occurredAt": "March 1, 2020 GMT",
+          "receipt": "next",
+          "revision": 1
+        }
+      }
+    },
+    {
+      "name": "reduce/date-terminal/invalid-old",
+      "operation": "reduce",
+      "input": {
+        "current": {
+          "kind": "poll",
+          "id": "poll",
+          "title": "Pick one",
+          "phase": "completed",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "2026-09-05T12:00:00.000Z",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": "original",
+          "winnerId": null,
+          "occurredAt": "not a date",
+          "receipt": "current",
+          "revision": 0
+        },
+        "next": {
+          "kind": "poll",
+          "id": "poll",
+          "title": "Pick one",
+          "phase": "archived",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "2026-09-05T12:00:00.000Z",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": "replacement",
+          "winnerId": null,
+          "occurredAt": "March 1, 2020 GMT",
+          "receipt": "next",
+          "revision": 0
+        }
+      },
+      "expected": {
+        "ok": true,
+        "result": {
+          "kind": "poll",
+          "id": "poll",
+          "title": "Pick one",
+          "phase": "archived",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "2026-09-05T12:00:00.000Z",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": "original",
+          "winnerId": null,
+          "occurredAt": "March 1, 2020 GMT",
+          "receipt": "next",
+          "revision": 1
+        }
+      }
+    },
+    {
+      "name": "reduce/date-other-id/invalid-new",
+      "operation": "reduce",
+      "input": {
+        "current": {
+          "kind": "poll",
+          "id": "poll",
+          "title": "Pick one",
+          "phase": "active",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "March 1, 2020 GMT",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": null,
+          "winnerId": null,
+          "occurredAt": "2026-09-05T12:00:00.000Z",
+          "receipt": "current",
+          "revision": 0
+        },
+        "next": {
+          "kind": "poll",
+          "id": "other",
+          "title": "Pick one",
+          "phase": "active",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "not a date",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": null,
+          "winnerId": null,
+          "occurredAt": "2026-09-05T12:00:00.000Z",
+          "receipt": "next",
+          "revision": 0
+        }
+      },
+      "expected": {
+        "ok": true,
+        "result": {
+          "kind": "poll",
+          "id": "other",
+          "title": "Pick one",
+          "phase": "active",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "not a date",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": null,
+          "winnerId": null,
+          "occurredAt": "2026-09-05T12:00:00.000Z",
+          "receipt": "next",
+          "revision": 1
+        }
+      }
+    },
+    {
+      "name": "reduce/date-equal-rank/invalid-new",
+      "operation": "reduce",
+      "input": {
+        "current": {
+          "kind": "poll",
+          "id": "poll",
+          "title": "Pick one",
+          "phase": "active",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "2026-09-05T12:00:00.000Z",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": null,
+          "winnerId": null,
+          "occurredAt": "March 1, 2020 GMT",
+          "receipt": "current",
+          "revision": 0
+        },
+        "next": {
+          "kind": "poll",
+          "id": "poll",
+          "title": "Pick one",
+          "phase": "active",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "2026-09-05T12:00:00.000Z",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": null,
+          "winnerId": null,
+          "occurredAt": "not a date",
+          "receipt": "next",
+          "revision": 0
+        }
+      },
+      "expected": {
+        "ok": true,
+        "result": {
+          "kind": "poll",
+          "id": "poll",
+          "title": "Pick one",
+          "phase": "active",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "2026-09-05T12:00:00.000Z",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": null,
+          "winnerId": null,
+          "occurredAt": "not a date",
+          "receipt": "next",
+          "revision": 1
+        }
+      }
+    },
+    {
+      "name": "reduce/date-terminal/invalid-new",
+      "operation": "reduce",
+      "input": {
+        "current": {
+          "kind": "poll",
+          "id": "poll",
+          "title": "Pick one",
+          "phase": "completed",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "2026-09-05T12:00:00.000Z",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": "original",
+          "winnerId": null,
+          "occurredAt": "March 1, 2020 GMT",
+          "receipt": "current",
+          "revision": 0
+        },
+        "next": {
+          "kind": "poll",
+          "id": "poll",
+          "title": "Pick one",
+          "phase": "archived",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "2026-09-05T12:00:00.000Z",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": "replacement",
+          "winnerId": null,
+          "occurredAt": "not a date",
+          "receipt": "next",
+          "revision": 0
+        }
+      },
+      "expected": {
+        "ok": true,
+        "result": {
+          "kind": "poll",
+          "id": "poll",
+          "title": "Pick one",
+          "phase": "archived",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "2026-09-05T12:00:00.000Z",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": "original",
+          "winnerId": null,
+          "occurredAt": "not a date",
+          "receipt": "next",
+          "revision": 1
+        }
+      }
+    },
+    {
+      "name": "reduce/date-other-id/iso-older",
+      "operation": "reduce",
+      "input": {
+        "current": {
+          "kind": "poll",
+          "id": "poll",
+          "title": "Pick one",
+          "phase": "active",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "2020-03-02T00:00:00Z",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": null,
+          "winnerId": null,
+          "occurredAt": "2026-09-05T12:00:00.000Z",
+          "receipt": "current",
+          "revision": 0
+        },
+        "next": {
+          "kind": "poll",
+          "id": "other",
+          "title": "Pick one",
+          "phase": "active",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "2020-03-01T00:00:00Z",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": null,
+          "winnerId": null,
+          "occurredAt": "2026-09-05T12:00:00.000Z",
+          "receipt": "next",
+          "revision": 0
+        }
+      },
+      "expected": {
+        "ok": true,
+        "result": null
+      }
+    },
+    {
+      "name": "reduce/date-equal-rank/iso-older",
+      "operation": "reduce",
+      "input": {
+        "current": {
+          "kind": "poll",
+          "id": "poll",
+          "title": "Pick one",
+          "phase": "active",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "2026-09-05T12:00:00.000Z",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": null,
+          "winnerId": null,
+          "occurredAt": "2020-03-02T00:00:00Z",
+          "receipt": "current",
+          "revision": 0
+        },
+        "next": {
+          "kind": "poll",
+          "id": "poll",
+          "title": "Pick one",
+          "phase": "active",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "2026-09-05T12:00:00.000Z",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": null,
+          "winnerId": null,
+          "occurredAt": "2020-03-01T00:00:00Z",
+          "receipt": "next",
+          "revision": 0
+        }
+      },
+      "expected": {
+        "ok": true,
+        "result": null
+      }
+    },
+    {
+      "name": "reduce/date-terminal/iso-older",
+      "operation": "reduce",
+      "input": {
+        "current": {
+          "kind": "poll",
+          "id": "poll",
+          "title": "Pick one",
+          "phase": "completed",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "2026-09-05T12:00:00.000Z",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": "original",
+          "winnerId": null,
+          "occurredAt": "2020-03-02T00:00:00Z",
+          "receipt": "current",
+          "revision": 0
+        },
+        "next": {
+          "kind": "poll",
+          "id": "poll",
+          "title": "Pick one",
+          "phase": "archived",
+          "choices": [
+            {
+              "id": "a",
+              "title": "A",
+              "votes": 4,
+              "channelPointsVotes": 1,
+              "users": 0,
+              "points": 0
+            },
+            {
+              "id": "b",
+              "title": "B",
+              "votes": 2,
+              "channelPointsVotes": 0,
+              "users": 0,
+              "points": 0
+            }
+          ],
+          "startedAt": "2026-09-05T12:00:00.000Z",
+          "deadline": "2026-09-05T12:01:00.000Z",
+          "endedAt": "replacement",
+          "winnerId": null,
+          "occurredAt": "2020-03-01T00:00:00Z",
           "receipt": "next",
           "revision": 0
         }

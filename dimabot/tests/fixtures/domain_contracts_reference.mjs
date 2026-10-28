@@ -14,6 +14,15 @@ const require = createRequire(path.join(root, 'package.json'));
 const ts = require('typescript');
 const now = Date.UTC(2026, 8, 5, 12);
 const timestamp = new Date(now).toISOString();
+// The source payload generator uses Math.random for fake viewer/user IDs.
+// Inject a seeded Math only into the allowlisted modules, so golden updates
+// are repeatable without changing the host process's global Math object.
+let fixtureSeed = 0x3d19a74b;
+const fixtureMath = Object.create(Math);
+fixtureMath.random = () => {
+  fixtureSeed = (Math.imul(fixtureSeed, 1664525) + 1013904223) >>> 0;
+  return fixtureSeed / 0x100000000;
+};
 class FixtureDate extends Date {
   constructor(...args) { super(...(args.length ? args : [now])); }
   static now() { return now; }
@@ -47,7 +56,7 @@ function load(relative) {
     assert(name.startsWith('.'), `Non-pure import: ${name}`);
     return load(path.posix.normalize(path.posix.join(path.posix.dirname(relative), name)).replace(/\.js$/, '.ts'));
   };
-  new vm.Script(`(function(exports,require,module,Date){${compiled}\n})`, { filename: relative }).runInThisContext()(module.exports, localRequire, module, FixtureDate);
+  new vm.Script(`(function(exports,require,module,Date,Math){${compiled}\n})`, { filename: relative }).runInThisContext()(module.exports, localRequire, module, FixtureDate, fixtureMath);
   return module.exports;
 }
 const contracts = load('src/domain_events/domain_event_contracts.ts');
@@ -158,10 +167,39 @@ for (const [name, mutate] of [
   ['missing-votes',e=>delete e.choices[0].votes],['bad-id',e=>e.id=''],['long-title',e=>e.title='x'.repeat(201)],['missing-end',e=>delete e.ends_at],
 ]) {const event=clone(basePoll);mutate(event);capture(`interaction-invalid/${name}`,'interaction',event,{type:'channel.poll.progress'});}
 for(const started_at of ['2026-02-30T00:00Z','2026-01-01T00:00','2026-01-01T00:00:00z','2026-01-01T00:00:00+0100','2026-01-01T24:00:00.00000001Z','2026-01-01T00:00:00.1234567890123456789Z']) capture(`interaction-time/${started_at}`,'interaction',{...basePoll,started_at},{type:'channel.poll.progress'});
+for (const started_at of [
+  '2026-01-01T24:00:00.0001Z', '2026-01-01T24:00:00.001Z',
+  '2026-01-01T00:00ZZ', '2026-01-01T00:00Z+00:00',
+  '2026-01-01T00:0Z', '2026-01-01T00:000Z', '2026-01-01T00:60Z',
+  '2026-01-01t00:00:00Z', 'Jan 1 2026', '+002026-01-01T00:00:00Z',
+  '2026-1-01T00:00:00Z', '2026-01-1T00:00:00Z',
+]) capture(`interaction-time/${started_at}`, 'interaction', {...basePoll,started_at}, {type:'channel.poll.progress'});
 const current=interactions.parseInteraction('channel.poll.progress',basePoll,timestamp,'current');
 for(const [name,changes] of [['duplicate',{receipt:'current'}],['older',{occurredAt:new FixtureDate(now-1).toISOString()}],['new',{receipt:'new'}],['older-other-id',{id:'older',startedAt:new FixtureDate(now-1).toISOString()}],['newer-other-id',{id:'newer',startedAt:new FixtureDate(now+1).toISOString()}]]) capture(`reduce/${name}`,'reduce',{current,next:{...clone(current),receipt:'next',...changes}});
 capture('reduce/terminal-keeps-end','reduce',{current:{...current,phase:'completed',endedAt:timestamp},next:{...clone(current),phase:'archived',endedAt:new FixtureDate(now+1).toISOString(),receipt:'next'}});
 capture('reduce/terminal-no-regression','reduce',{current:{...current,phase:'completed'},next:{...clone(current),receipt:'next'}});
+// Standalone reducer state can contain dates that parseInteraction would reject.
+for (const [name, oldDate, newDate] of [
+  ['legacy-older', 'March 2, 2020 GMT', 'March 1, 2020 GMT'],
+  ['legacy-newer', 'March 1, 2020 GMT', 'March 2, 2020 GMT'],
+  ['legacy-equal', '03/01/2020 UTC', 'March 1 2020 GMT'],
+  ['invalid-old', 'not a date', 'March 1, 2020 GMT'],
+  ['invalid-new', 'March 1, 2020 GMT', 'not a date'],
+  ['iso-older', '2020-03-02T00:00:00Z', '2020-03-01T00:00:00Z'],
+]) {
+  capture(`reduce/date-other-id/${name}`, 'reduce', {
+    current: {...current, startedAt:oldDate},
+    next: {...clone(current), id:'other', receipt:'next', startedAt:newDate},
+  });
+  capture(`reduce/date-equal-rank/${name}`, 'reduce', {
+    current: {...current, occurredAt:oldDate},
+    next: {...clone(current), receipt:'next', occurredAt:newDate},
+  });
+  capture(`reduce/date-terminal/${name}`, 'reduce', {
+    current: {...current, phase:'completed', occurredAt:oldDate, endedAt:'original'},
+    next: {...clone(current), phase:'archived', receipt:'next', occurredAt:newDate, endedAt:'replacement'},
+  });
+}
 const deliveryPolicy={consumer:'ephemeral',schemaVersions:[1],adminReplay:false,maxEventAgeMs:300000};
 const policyEvent={schemaVersion:1,occurredAt:timestamp,expiresAt:new FixtureDate(now+90*86400000).toISOString()};
 for(const delta of [0,299999,300000]) capture(`policy/age/${delta}`,'policy',{policy:deliveryPolicy,event:policyEvent,now:now+delta});
