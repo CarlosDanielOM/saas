@@ -15,6 +15,12 @@ mongo = ["dep:mongodb", "dep:garde", "dep:futures-util", "dep:serde", "dep:serde
 redis = ["dep:redis", "dep:tokio", "dep:rustls"]
 postgres = ["dep:sqlx", "dep:tokio"]
 http = ["dep:axum", "dep:tokio", "dep:tower-http"]
+# API capabilities are opt-in so existing cron worker graphs stay unchanged.
+# Native WebSockets use Axum's transport rather than a separate client crate.
+http-form = ["http", "axum/form"]
+http-multipart = ["http", "axum/multipart"]
+http-ws = ["http", "axum/ws"]
+http-static = ["http", "tower-http/fs"]
 # Outbound HTTPS is independent from the Axum server capability.
 http-client = ["dep:reqwest", "dep:tokio"]
 # The dashboard's localeCompare game ties need ICU, not codepoint ordering.
