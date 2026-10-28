@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "scope": "Prepared normalization + JSON/UTF8 output encoding + full-byte checksum, no input parse, HTTP or I/O. Sequential pinned containers; not an interleaved study.",
+  "sourceTreeSha256": "b145e6789dd4bab805c4496310d3597de2a2a1f0fbd19484049634e9be10a8e4",
+  "inputsSha256": "317abf0b1d4a186a9e172e4ebe7ff6f1270ad17de8ccb98e01c4c0404409caa5",
+  "warmups": 100,
+  "samples": 7,
+  "cases": [
+    {
+      "name": "normalize-valid",
+      "nodeMedianUs": 2.566394,
+      "rustMedianUs": 1.6963551,
+      "rustOverNode": 0.6609877906510068,
+      "iterations": 10000,
+      "bytes": 1720000,
+      "checksum": 142780000
+    },
+    {
+      "name": "normalize-cuts",
+      "nodeMedianUs": 10.091747999999999,
+      "rustMedianUs": 15.1674329,
+      "rustOverNode": 1.5029539877531624,
+      "iterations": 10000,
+      "bytes": 11680000,
+      "checksum": 1101510000
+    },
+    {
+      "name": "normalize-gender",
+      "nodeMedianUs": 5.755538400000001,
+      "rustMedianUs": 8.1026978,
+      "rustOverNode": 1.4078088333143601,
+      "iterations": 10000,
+      "bytes": 2380000,
+      "checksum": 202310000
+    },
+    {
+      "name": "normalize-large",
+      "nodeMedianUs": 155.67234,
+      "rustMedianUs": 437.766028,
+      "rustOverNode": 2.812098976606891,
+      "iterations": 1000,
+      "bytes": 4406000,
+      "checksum": 420212000
+    }
+  ]
+}

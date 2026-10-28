@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "sourceTreeSha256": "c7686221891ebbee134e8f4399fea7586481057b05760434ec0933eb84206485",
+  "compilerReceipt": "compiler-1793228464989174096-receipt.json",
+  "nodeReceipt": "node-1793228300161265309-receipt.json",
+  "inputsSha256": "317abf0b1d4a186a9e172e4ebe7ff6f1270ad17de8ccb98e01c4c0404409caa5",
+  "scope": "Prepared normalizer + JSON/UTF8 output encoding + checksum scan of every encoded byte. No input parse, VM setup, HTTP, I/O, CPU/RSS or production comparison. Sequential pinned containers on one shared host; not interleaved statistical study.",
+  "warmups": 100,
+  "samples": 7,
+  "cases": [
+    {
+      "name": "normalize-valid",
+      "nodeMedianUs": 2.0500612,
+      "rustMedianUs": 0.6123702,
+      "rustOverNode": 0.29870825319751426,
+      "initialRustMedianUs": 1.6963551,
+      "optimizedOverInitialRust": 0.36099175225753144,
+      "iterations": 10000,
+      "bytes": 1720000,
+      "checksum": 142780000
+    },
+    {
+      "name": "normalize-cuts",
+      "nodeMedianUs": 9.8888634,
+      "rustMedianUs": 9.6632318,
+      "rustOverNode": 0.9771832625375328,
+      "initialRustMedianUs": 15.1674329,
+      "optimizedOverInitialRust": 0.6371039755844248,
+      "iterations": 10000,
+      "bytes": 11680000,
+      "checksum": 1101510000
+    },
+    {
+      "name": "normalize-gender",
+      "nodeMedianUs": 4.9162564,
+      "rustMedianUs": 1.8951952,
+      "rustOverNode": 0.38549559782927517,
+      "initialRustMedianUs": 8.1026978,
+      "optimizedOverInitialRust": 0.23389681397225504,
+      "iterations": 10000,
+      "bytes": 2380000,
+      "checksum": 202310000
+    },
+    {
+      "name": "normalize-large",
+      "nodeMedianUs": 134.655906,
+      "rustMedianUs": 62.157968999999994,
+      "rustOverNode": 0.46160596179123403,
+      "initialRustMedianUs": 437.766028,
+      "optimizedOverInitialRust": 0.14198901930325208,
+      "iterations": 1000,
+      "bytes": 4406000,
+      "checksum": 420212000
+    }
+  ]
+}

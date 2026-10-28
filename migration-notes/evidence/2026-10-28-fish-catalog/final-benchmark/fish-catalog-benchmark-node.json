@@ -1,0 +1,226 @@
+{
+  "schema": 1,
+  "provenance": {
+    "node": "v24.22.1",
+    "versions": {
+      "node": "24.22.1",
+      "acorn": "8.18.0",
+      "ada": "4.0.0",
+      "amaro": "1.1.11",
+      "ares": "1.34.9",
+      "brotli": "1.2.0",
+      "cldr": "48.0",
+      "icu": "78.3",
+      "llhttp": "9.4.3",
+      "merve": "1.2.2",
+      "modules": "137",
+      "napi": "10",
+      "nbytes": "0.1.4",
+      "ncrypto": "0.0.1",
+      "nghttp2": "1.70.0",
+      "nghttp3": "",
+      "ngtcp2": "",
+      "openssl": "3.5.9",
+      "simdjson": "4.6.11",
+      "simdutf": "6.4.0",
+      "sqlite": "3.53.4",
+      "tz": "2026e",
+      "undici": "7.30.1",
+      "unicode": "17.0",
+      "uv": "1.52.1",
+      "uvwasi": "0.0.23",
+      "v8": "13.6.233.17-node.58",
+      "zlib": "1.3.2.1-motley-285e94b",
+      "zstd": "1.5.7"
+    },
+    "sourceHashes": {
+      "src/server/services/tts/fish_voice_catalog.service.ts": "34d6a432cd670049bb06b2b48885080837108eaee8b6fde6034492ef9602b204",
+      "src/server/services/tts/fish_tts.service.ts": "5de59066a2310b22f5b41f0610638233ee42f996872bc5ea7a77ffff5d7114af",
+      "tests/fixtures/fish_catalog_benchmark.mjs": "84818f24a1935811dfa018abe0efdaaf82f132bc884052faacc2641338c53313",
+      "package.json": "cc4939f6416a91d4bfaa5bcdd3d448d2f74103a88bb269e0a8e393615cf32cef",
+      "package-lock.json": "abdf5aa71a8272423ebb9358d7aaa87edd7e65f6605c325fe231a4bcef70eeb7",
+      "node_modules/typescript/package.json": "822ef7ca6452205657b6288b066481ecf508bfbf43455d715cf7d3ec457561e6",
+      "node_modules/typescript/lib/typescript.js": "3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675",
+      "node-executable": "569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108"
+    },
+    "fixtureSha256": "d817a81b0419aa544650fe7014ec8f334e5b9d19be193d695809b956bc7ac27b",
+    "scope": "prepared normalizer, JSON serialization, UTF-8 encoding, full-byte wrapping u32 sum"
+  },
+  "inputsSha256": "317abf0b1d4a186a9e172e4ebe7ff6f1270ad17de8ccb98e01c4c0404409caa5",
+  "warmups": 100,
+  "samples": 7,
+  "workloads": [
+    {
+      "name": "normalize-valid",
+      "iterations": 10000,
+      "warmupChecksum": 1427800,
+      "warmupBytes": 17200,
+      "samples": [
+        {
+          "elapsedNs": "37525956",
+          "checksum": 142780000,
+          "bytes": 1720000
+        },
+        {
+          "elapsedNs": "33981656",
+          "checksum": 142780000,
+          "bytes": 1720000
+        },
+        {
+          "elapsedNs": "32064515",
+          "checksum": 142780000,
+          "bytes": 1720000
+        },
+        {
+          "elapsedNs": "19801363",
+          "checksum": 142780000,
+          "bytes": 1720000
+        },
+        {
+          "elapsedNs": "20500612",
+          "checksum": 142780000,
+          "bytes": 1720000
+        },
+        {
+          "elapsedNs": "19516710",
+          "checksum": 142780000,
+          "bytes": 1720000
+        },
+        {
+          "elapsedNs": "20298184",
+          "checksum": 142780000,
+          "bytes": 1720000
+        }
+      ]
+    },
+    {
+      "name": "normalize-cuts",
+      "iterations": 10000,
+      "warmupChecksum": 11015100,
+      "warmupBytes": 116800,
+      "samples": [
+        {
+          "elapsedNs": "138847108",
+          "checksum": 1101510000,
+          "bytes": 11680000
+        },
+        {
+          "elapsedNs": "122185116",
+          "checksum": 1101510000,
+          "bytes": 11680000
+        },
+        {
+          "elapsedNs": "98588142",
+          "checksum": 1101510000,
+          "bytes": 11680000
+        },
+        {
+          "elapsedNs": "96454615",
+          "checksum": 1101510000,
+          "bytes": 11680000
+        },
+        {
+          "elapsedNs": "106685802",
+          "checksum": 1101510000,
+          "bytes": 11680000
+        },
+        {
+          "elapsedNs": "98888634",
+          "checksum": 1101510000,
+          "bytes": 11680000
+        },
+        {
+          "elapsedNs": "96331324",
+          "checksum": 1101510000,
+          "bytes": 11680000
+        }
+      ]
+    },
+    {
+      "name": "normalize-gender",
+      "iterations": 10000,
+      "warmupChecksum": 2023100,
+      "warmupBytes": 23800,
+      "samples": [
+        {
+          "elapsedNs": "55572382",
+          "checksum": 202310000,
+          "bytes": 2380000
+        },
+        {
+          "elapsedNs": "87093409",
+          "checksum": 202310000,
+          "bytes": 2380000
+        },
+        {
+          "elapsedNs": "53315624",
+          "checksum": 202310000,
+          "bytes": 2380000
+        },
+        {
+          "elapsedNs": "47084692",
+          "checksum": 202310000,
+          "bytes": 2380000
+        },
+        {
+          "elapsedNs": "46877424",
+          "checksum": 202310000,
+          "bytes": 2380000
+        },
+        {
+          "elapsedNs": "48423621",
+          "checksum": 202310000,
+          "bytes": 2380000
+        },
+        {
+          "elapsedNs": "49162564",
+          "checksum": 202310000,
+          "bytes": 2380000
+        }
+      ]
+    },
+    {
+      "name": "normalize-large",
+      "iterations": 1000,
+      "warmupChecksum": 42021200,
+      "warmupBytes": 440600,
+      "samples": [
+        {
+          "elapsedNs": "148502314",
+          "checksum": 420212000,
+          "bytes": 4406000
+        },
+        {
+          "elapsedNs": "148180292",
+          "checksum": 420212000,
+          "bytes": 4406000
+        },
+        {
+          "elapsedNs": "134655906",
+          "checksum": 420212000,
+          "bytes": 4406000
+        },
+        {
+          "elapsedNs": "130513637",
+          "checksum": 420212000,
+          "bytes": 4406000
+        },
+        {
+          "elapsedNs": "132755126",
+          "checksum": 420212000,
+          "bytes": 4406000
+        },
+        {
+          "elapsedNs": "130533925",
+          "checksum": 420212000,
+          "bytes": 4406000
+        },
+        {
+          "elapsedNs": "135914353",
+          "checksum": 420212000,
+          "bytes": 4406000
+        }
+      ]
+    }
+  ]
+}

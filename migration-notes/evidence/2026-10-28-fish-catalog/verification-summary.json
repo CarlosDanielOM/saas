@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "baselineCodeCommit": "26a54cec",
+  "optimizedCodeCommit": "344502ed",
+  "baselineSourceTreeSha256": "b145e6789dd4bab805c4496310d3597de2a2a1f0fbd19484049634e9be10a8e4",
+  "finalSourceTreeSha256": "c7686221891ebbee134e8f4399fea7586481057b05760434ec0933eb84206485",
+  "compilerReceipt": "compiler-1793228464989174096-receipt.json",
+  "nodeReceipt": "node-1793228300161265309-receipt.json",
+  "ordinaryTestExecutions": {
+    "library": 10,
+    "catalog": 9,
+    "kokoro": 6,
+    "piper": 13,
+    "fish": 16,
+    "ttsAndJsStringRegressions": 4,
+    "total": 58
+  },
+  "explicitFixtureTestExecutions": 6,
+  "explicitReleaseBenchmarkExecutions": 1,
+  "sourceScenarios": {
+    "total": 126,
+    "byOperation": {
+      "resolve": 15,
+      "parse": 28,
+      "normalize": 59,
+      "get": 10,
+      "search": 12,
+      "sequence": 2
+    },
+    "sequenceSteps": 108,
+    "recordedSourceHttpCalls": 123
+  },
+  "preparedInputsIdenticalBeforeAfterOptimization": true,
+  "fixtureHashesBeforeAfterIdentical": true,
+  "wholeProjectComplete": false,
+  "archivedBaselineTsFiles": 14,
+  "newTsArchivesInThisWave": 0,
+  "newCargoPackages": false,
+  "deployment": false,
+  "push": false
+}
