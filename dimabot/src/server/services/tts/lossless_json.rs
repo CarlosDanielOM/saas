@@ -143,7 +143,7 @@ impl JsonValue {
     /// Compact, well-formed JSON.stringify output with ECMAScript key order.
     pub fn to_json_string(&self) -> String {
         let mut out = String::new();
-        self.write_compact(&mut out);
+        self.write_json_string(&mut out);
         out
     }
 
@@ -158,23 +158,26 @@ impl JsonValue {
         }
     }
 
-    fn write_compact(&self, out: &mut String) {
+    /// Append compact JSON without allocating intermediate string literals.
+    pub fn write_json_string(&self, out: &mut String) {
         match self {
             Self::Null => out.push_str("null"),
             Self::Bool(value) => out.push_str(if *value { "true" } else { "false" }),
-            Self::Number(value) => out.push_str(&if value.is_finite() {
-                number_string(*value)
-            } else {
-                "null".into()
-            }),
-            Self::String(value) => out.push_str(&value.to_json_string()),
+            Self::Number(value) => {
+                if value.is_finite() {
+                    out.push_str(&number_string(*value));
+                } else {
+                    out.push_str("null");
+                }
+            }
+            Self::String(value) => value.write_json_string(out),
             Self::Array(values) => {
                 out.push('[');
                 for (index, value) in values.iter().enumerate() {
                     if index > 0 {
                         out.push(',');
                     }
-                    value.write_compact(out);
+                    value.write_json_string(out);
                 }
                 out.push(']');
             }
@@ -186,9 +189,9 @@ impl JsonValue {
                     if index > 0 {
                         out.push(',');
                     }
-                    out.push_str(&key.to_json_string());
+                    key.write_json_string(out);
                     out.push(':');
-                    value.write_compact(out);
+                    value.write_json_string(out);
                 }
                 out.push('}');
             }
@@ -210,7 +213,7 @@ impl JsonValue {
                     out.push_str("null");
                 }
             }
-            Self::String(value) => out.push_str(&value.to_json_string()),
+            Self::String(value) => value.write_json_string(out),
             Self::Array(values) => {
                 out.push('[');
                 for (index, value) in values.iter().enumerate() {
@@ -236,7 +239,7 @@ impl JsonValue {
                         out.push(',');
                     }
                     indent(out, depth + 1);
-                    out.push_str(&key.to_json_string());
+                    key.write_json_string(out);
                     out.push_str(": ");
                     value.write(out, depth + 1);
                 }

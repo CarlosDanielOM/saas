@@ -3,8 +3,9 @@
 //! Credentials and endpoints are explicit. Clones share the parsed-response FIFO
 //! cache, and neither HTTP requests nor normalization hold its mutex.
 use std::{
-    collections::{HashMap, HashSet, VecDeque},
-    fmt,
+    borrow::Cow,
+    collections::{HashMap, VecDeque},
+    fmt::{self, Write as _},
     sync::{Arc, Mutex, OnceLock},
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
@@ -15,7 +16,7 @@ use super::{
 };
 use crate::utils::{
     js_compat,
-    js_string::JsString,
+    js_string::{JsString, write_json_utf8},
     json_number::{number_string, string_number},
 };
 use regex::Regex;
@@ -98,14 +99,17 @@ pub struct FishVoiceSearch {
 }
 impl FishVoiceSearch {
     pub fn to_json_string(&self) -> String {
-        format!(
-            "{{\"name\":{},\"gender\":{},\"language\":{},\"license\":{},\"page\":{}}}",
-            self.name.to_json_string(),
-            quote(&self.gender),
-            quote(&self.language),
-            quote(&self.license),
-            self.page
-        )
+        let mut out = String::with_capacity(128);
+        out.push_str("{\"name\":");
+        self.name.write_json_string(&mut out);
+        out.push_str(",\"gender\":");
+        write_json_utf8(&self.gender, &mut out);
+        out.push_str(",\"language\":");
+        write_json_utf8(&self.language, &mut out);
+        out.push_str(",\"license\":");
+        write_json_utf8(&self.license, &mut out);
+        write!(out, ",\"page\":{}}}", self.page).expect("String write");
+        out
     }
 }
 
@@ -234,16 +238,18 @@ pub struct FishSearchResult {
 }
 impl FishSearchResult {
     pub fn to_json_string(&self) -> String {
-        format!(
-            "{{\"items\":[{}],\"page\":{},\"hasMore\":{}}}",
-            self.items
-                .iter()
-                .map(FishVoice::to_json_string)
-                .collect::<Vec<_>>()
-                .join(","),
-            self.page,
-            self.has_more.to_json_string()
-        )
+        let mut out = String::with_capacity(512);
+        out.push_str("{\"items\":[");
+        for (index, voice) in self.items.iter().enumerate() {
+            if index > 0 {
+                out.push(',');
+            }
+            voice.write_json_string(&mut out);
+        }
+        write!(out, "],\"page\":{},\"hasMore\":", self.page).expect("String write");
+        self.has_more.write_json_string(&mut out);
+        out.push('}');
+        out
     }
 }
 
@@ -296,6 +302,34 @@ fn js_number(value: &JsonValue) -> Result<f64, FishCatalogError> {
     }
 }
 
+fn lowercase_tag(value: &JsonValue) -> Result<Cow<'_, str>, FishCatalogError> {
+    let borrowed = match value {
+        JsonValue::String(value) => value.as_str(),
+        JsonValue::Null => Some("null"),
+        JsonValue::Bool(true) => Some("true"),
+        JsonValue::Bool(false) => Some("false"),
+        JsonValue::Object(_) if value.get("toString").is_some() => {
+            return Err(primitive_error());
+        }
+        JsonValue::Object(_) => Some("[object Object]"),
+        _ => None,
+    };
+    if let Some(text) = borrowed {
+        // Only unchanged lowercase ASCII can be borrowed. Non-ASCII always
+        // uses full Unicode lowercase, including mappings such as Kelvin -> k.
+        if text
+            .bytes()
+            .all(|byte| byte.is_ascii() && !byte.is_ascii_uppercase())
+        {
+            return Ok(Cow::Borrowed(text));
+        }
+        return Ok(Cow::Owned(text.to_lowercase()));
+    }
+    // Preserve Array.join coercion and its nested object failures. A lone
+    // surrogate's replacement cannot pass either ASCII style/gender filter.
+    Ok(Cow::Owned(js_string(value)?.to_utf8_lossy().to_lowercase()))
+}
+
 fn cover_pattern() -> &'static Regex {
     static RE: OnceLock<Regex> = OnceLock::new();
     RE.get_or_init(|| {
@@ -331,32 +365,39 @@ pub fn normalize_fish_voice(value: &JsonValue) -> Result<Option<FishVoice>, Fish
     {
         return Ok(None);
     }
-    // Mapping is eager in the source: a later throwing tag still fails even if
-    // six earlier style tags would fill the visible output.
-    let all_tags = array(value.get("tags"))
-        .iter()
-        .map(|tag| js_string(tag).map(|tag| tag.to_utf8_lossy().to_lowercase()))
-        .collect::<Result<Vec<_>, _>>()?;
-    let gender = if all_tags.iter().any(|tag| tag == "female") {
+    // The source maps all tags eagerly. Keep visiting after six style tags so
+    // late coercion failures and female-over-male precedence remain observable.
+    let mut tags: Vec<String> = Vec::new();
+    let mut female = false;
+    let mut male = false;
+    for raw in array(value.get("tags")) {
+        let tag = lowercase_tag(raw)?;
+        match tag.as_ref() {
+            "female" => {
+                female = true;
+                continue;
+            }
+            "male" => {
+                male = true;
+                continue;
+            }
+            "english" | "spanish" => continue,
+            _ => {}
+        }
+        if tags.len() < 6
+            && !tags.iter().any(|existing| existing == tag.as_ref())
+            && style_pattern().is_match(&tag)
+        {
+            tags.push(tag.into_owned());
+        }
+    }
+    let gender = if female {
         Some("female".into())
-    } else if all_tags.iter().any(|tag| tag == "male") {
+    } else if male {
         Some("male".into())
     } else {
         None
     };
-    let mut tags = Vec::new();
-    let mut seen = HashSet::new();
-    for tag in all_tags {
-        if style_pattern().is_match(&tag)
-            && !["female", "male", "english", "spanish"].contains(&tag.as_str())
-            && seen.insert(tag.clone())
-        {
-            tags.push(tag);
-            if tags.len() == 6 {
-                break;
-            }
-        }
-    }
     let sample = array(value.get("samples")).iter().find_map(|sample| {
         let url = text(sample.get("audio"))?;
         if !sample_pattern().is_match(url) {
@@ -681,65 +722,67 @@ pub fn normalize_fish_search(
     })
 }
 
-fn quote(value: &str) -> String {
-    JsString::from(value).to_json_string()
+fn write_nullable_text(value: Option<&str>, out: &mut String) {
+    match value {
+        Some(value) => write_json_utf8(value, out),
+        None => out.push_str("null"),
+    }
 }
 impl FishVoice {
     /// No generic Serialize implementation may replace lone UTF-16 code units.
     pub fn to_json_string(&self) -> String {
-        let languages = self
-            .languages
-            .iter()
-            .map(JsString::to_json_string)
-            .collect::<Vec<_>>()
-            .join(",");
-        let tags = self
-            .tags
-            .iter()
-            .map(|tag| quote(tag))
-            .collect::<Vec<_>>()
-            .join(",");
-        let gender = self
-            .gender
-            .as_deref()
-            .map(quote)
-            .unwrap_or_else(|| "null".into());
-        let licensed = self
-            .licensed
-            .map(|value| value.to_string())
-            .unwrap_or_else(|| "null".into());
-        let cover = self
-            .cover_url
-            .as_deref()
-            .map(quote)
-            .unwrap_or_else(|| "null".into());
-        let sample = self
-            .sample
-            .as_ref()
-            .map(|sample| {
-                format!(
-                    "{{\"url\":{},\"text\":{}}}",
-                    quote(&sample.url),
-                    sample.text.to_json_string()
-                )
-            })
-            .unwrap_or_else(|| "null".into());
-        let uses = self
-            .uses
-            .map(number_string)
-            .unwrap_or_else(|| "null".into());
-        format!(
-            "{{\"id\":{},\"name\":{},\"languages\":[{}],\"gender\":{},\"licensed\":{},\"description\":{},\"tags\":[{}],\"coverUrl\":{},\"sample\":{},\"uses\":{}}}",
-            quote(&self.id),
-            self.name.to_json_string(),
-            languages,
-            gender,
-            licensed,
-            self.description.to_json_string(),
-            tags,
-            cover,
-            sample,
-            uses
-        )
+        let mut out = String::with_capacity(512);
+        self.write_json_string(&mut out);
+        out
+    }
+
+    /// Append the DTO in source property order to an existing JSON buffer.
+    pub fn write_json_string(&self, out: &mut String) {
+        out.push_str("{\"id\":");
+        write_json_utf8(&self.id, out);
+        out.push_str(",\"name\":");
+        self.name.write_json_string(out);
+        out.push_str(",\"languages\":[");
+        for (index, language) in self.languages.iter().enumerate() {
+            if index > 0 {
+                out.push(',');
+            }
+            language.write_json_string(out);
+        }
+        out.push_str("],\"gender\":");
+        write_nullable_text(self.gender.as_deref(), out);
+        out.push_str(",\"licensed\":");
+        out.push_str(match self.licensed {
+            Some(true) => "true",
+            Some(false) => "false",
+            None => "null",
+        });
+        out.push_str(",\"description\":");
+        self.description.write_json_string(out);
+        out.push_str(",\"tags\":[");
+        for (index, tag) in self.tags.iter().enumerate() {
+            if index > 0 {
+                out.push(',');
+            }
+            write_json_utf8(tag, out);
+        }
+        out.push_str("],\"coverUrl\":");
+        write_nullable_text(self.cover_url.as_deref(), out);
+        out.push_str(",\"sample\":");
+        if let Some(sample) = &self.sample {
+            out.push_str("{\"url\":");
+            write_json_utf8(&sample.url, out);
+            out.push_str(",\"text\":");
+            sample.text.write_json_string(out);
+            out.push('}');
+        } else {
+            out.push_str("null");
+        }
+        out.push_str(",\"uses\":");
+        match self.uses {
+            Some(value) => out.push_str(&number_string(value)),
+            None => out.push_str("null"),
+        }
+        out.push('}');
     }
 }

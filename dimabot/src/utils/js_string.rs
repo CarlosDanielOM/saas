@@ -144,13 +144,25 @@ impl JsString {
     /// A complete JSON string literal matching well-formed JSON.stringify.
     /// This is deliberately not a generic Serde implementation.
     pub fn to_json_string(&self) -> String {
-        use std::fmt::Write;
-        let mut out = String::from("\"");
+        let capacity = match &self.0 {
+            Repr::Utf8 { text, .. } => text.len(),
+            Repr::Utf16(units) => units.len(),
+        };
+        let mut out = String::with_capacity(capacity.saturating_add(2));
+        self.write_json_string(&mut out);
+        out
+    }
+
+    /// Append a complete JSON string literal without an intermediate buffer.
+    pub fn write_json_string(&self, out: &mut String) {
+        if let Repr::Utf8 { text, .. } = &self.0 {
+            write_json_utf8(text, out);
+            return;
+        }
+        out.push('"');
         for c in char::decode_utf16(self.code_units()) {
             match c {
-                Err(e) => {
-                    write!(out, "\\u{:04x}", e.unpaired_surrogate()).unwrap();
-                }
+                Err(e) => write_json_escape(e.unpaired_surrogate(), out),
                 Ok('"') => out.push_str("\\\""),
                 Ok('\\') => out.push_str("\\\\"),
                 Ok('\u{0008}') => out.push_str("\\b"),
@@ -158,14 +170,45 @@ impl JsString {
                 Ok('\u{000a}') => out.push_str("\\n"),
                 Ok('\u{000c}') => out.push_str("\\f"),
                 Ok('\u{000d}') => out.push_str("\\r"),
-                Ok(c) if (c as u32) < 0x20 => {
-                    write!(out, "\\u{:04x}", c as u32).unwrap();
-                }
+                Ok(c) if (c as u32) < 0x20 => write_json_escape(c as u16, out),
                 Ok(c) => out.push(c),
             }
         }
         out.push('"');
-        out
+    }
+}
+
+/// Append a borrowed, valid UTF-8 string as a JSON literal. Every escape starts
+/// at an ASCII byte, so copying clean spans preserves UTF-8 boundaries directly.
+pub fn write_json_utf8(value: &str, out: &mut String) {
+    out.push('"');
+    let mut start = 0;
+    for (index, byte) in value.bytes().enumerate() {
+        if byte >= 0x20 && byte != b'"' && byte != b'\\' {
+            continue;
+        }
+        out.push_str(&value[start..index]);
+        match byte {
+            b'"' => out.push_str("\\\""),
+            b'\\' => out.push_str("\\\\"),
+            8 => out.push_str("\\b"),
+            9 => out.push_str("\\t"),
+            10 => out.push_str("\\n"),
+            12 => out.push_str("\\f"),
+            13 => out.push_str("\\r"),
+            byte => write_json_escape(u16::from(byte), out),
+        }
+        start = index + 1;
+    }
+    out.push_str(&value[start..]);
+    out.push('"');
+}
+
+fn write_json_escape(unit: u16, out: &mut String) {
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    out.push_str("\\u");
+    for shift in [12, 8, 4, 0] {
+        out.push(char::from(HEX[usize::from((unit >> shift) & 0xf)]));
     }
 }
 
@@ -182,7 +225,31 @@ impl From<String> for JsString {
 
 #[cfg(test)]
 mod tests {
-    use super::JsString;
+    use super::{JsString, write_json_utf8};
+
+    #[test]
+    fn json_literals_append_and_escape_without_losing_unicode() {
+        for text in [
+            "",
+            "plain / <>&'",
+            "é😀\u{2028}\u{2029}",
+            "\"\\\u{0008}\t\n\u{000c}\r\0\u{0001}\u{001f}",
+            "a\n😀\r\"z",
+        ] {
+            let expected = format!("prefix{}", serde_json::to_string(text).unwrap());
+            let mut borrowed = String::from("prefix");
+            write_json_utf8(text, &mut borrowed);
+            assert_eq!(borrowed, expected);
+            let mut owned = String::from("prefix");
+            JsString::from(text).write_json_string(&mut owned);
+            assert_eq!(owned, expected);
+        }
+        let text = JsString::from_units(vec![0xd800, 0, 0xd83d, 0xde00, 0xdc00]);
+        let mut out = String::from("prefix");
+        text.write_json_string(&mut out);
+        assert_eq!(out, "prefix\"\\ud800\\u0000😀\\udc00\"");
+    }
+
     #[test]
     fn slicing_and_encoding_boundaries() {
         let s = JsString::from("a😀😀b");
