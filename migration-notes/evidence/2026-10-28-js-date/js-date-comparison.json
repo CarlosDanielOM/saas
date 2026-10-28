@@ -1,0 +1,49 @@
+{
+  "zone": "UTC",
+  "samples": 7,
+  "iterations": 100000,
+  "warmup": 10000,
+  "measure": "prepared Node Date.parse/Rust UTF16 entrypoint + u32 checksum",
+  "rows": [
+    {
+      "workload": "iso",
+      "cases": 36,
+      "node_us": 0.15153045,
+      "rust_us": 0.17096845,
+      "ratio": 1.1282778477857092,
+      "checksum": 2208135646,
+      "valid": 55559,
+      "invalid": 44441
+    },
+    {
+      "workload": "legacy",
+      "cases": 43,
+      "node_us": 0.15071521000000002,
+      "rust_us": 0.13399589,
+      "ratio": 0.8890668035429204,
+      "checksum": 546218672,
+      "valid": 81396,
+      "invalid": 18604
+    },
+    {
+      "workload": "invalid",
+      "cases": 101,
+      "node_us": 0.12110956,
+      "rust_us": 0.13148971,
+      "ratio": 1.0857087582516194,
+      "checksum": 704982704,
+      "valid": 0,
+      "invalid": 100000
+    },
+    {
+      "workload": "mixed",
+      "cases": 261,
+      "node_us": 0.17155715000000002,
+      "rust_us": 0.16839724,
+      "ratio": 0.9815810066791154,
+      "checksum": 552115843,
+      "valid": 61300,
+      "invalid": 38700
+    }
+  ]
+}

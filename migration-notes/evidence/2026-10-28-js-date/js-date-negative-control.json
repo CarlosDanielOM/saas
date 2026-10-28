@@ -1,0 +1,8 @@
+{
+  "baseline": "f1c82306",
+  "replaced_sources": [
+    "dimabot/src/domain_events/time.rs",
+    "dimabot/src/overlays/interaction-model.rs"
+  ],
+  "reason": "run expanded actual-source regression corpus against pre-date-integration implementation"
+}

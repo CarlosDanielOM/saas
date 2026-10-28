@@ -1,0 +1,1 @@
+{"cases":261,"checksum":552115843,"invalid":38700,"iterations":100000,"runtime":"rust","samplesNs":[16839724,15762514,16822600,16801572,16974677,17084282,16941093],"valid":61300,"warmup":10000,"workload":"mixed","zone":"UTC"}
