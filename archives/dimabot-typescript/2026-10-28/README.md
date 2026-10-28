@@ -1,6 +1,6 @@
 # Archived dimabot TypeScript source snapshots — 2026-10-28
 
-These twelve files are exact source snapshots preserved with SHA-256 hashes in [`manifest.json`](manifest.json). They cover a bounded set of pure helpers, AST exports, and credential/activation exports accepted for native implementation. The archive supports source and behavior review; it does not mean the surrounding TypeScript callers, service adapters, or the full `dimabot/` migration are complete.
+These fourteen files are exact source snapshots preserved with SHA-256 hashes in [`manifest.json`](manifest.json). They cover a bounded set of pure helpers, AST exports, credential/activation exports, and TTS session/playback helpers accepted for native implementation. The archive supports source and behavior review; it does not mean the surrounding TypeScript callers, service adapters, or the full `dimabot/` migration are complete.
 
 | Archived source | Native implementation area |
 |---|---|
@@ -16,5 +16,7 @@ These twelve files are exact source snapshots preserved with SHA-256 hashes in [
 | `src/utils/ast_blocks/to_source.ts` | [`dimabot/src/utils/ast_blocks/to_source.rs`](../../../dimabot/src/utils/ast_blocks/to_source.rs) |
 | `src/utils/crypto.ts` | [`dimabot/src/utils/crypto.rs`](../../../dimabot/src/utils/crypto.rs) |
 | `src/utils/email/email-activation-token.ts` | [`dimabot/src/utils/email/email-activation-token.rs`](../../../dimabot/src/utils/email/email-activation-token.rs) |
+| `src/utils/tts/tts_session.util.ts` | [`dimabot/src/utils/tts/session.rs`](../../../dimabot/src/utils/tts/session.rs) |
+| `src/utils/tts/tts_playback_timeout.util.ts` | [`dimabot/src/utils/tts/playback_timeout.rs`](../../../dimabot/src/utils/tts/playback_timeout.rs) |
 
-Several helper implementations are consolidated into shared Rust modules. A native helper is only local feature evidence: it does not by itself complete any remaining TypeScript caller or transitive dependency. React Email templates are outside this archive and remain an explicit migration exclusion.
+Several helper implementations are consolidated into shared Rust modules. The TTS session/playback helper source and dependency audit is recorded in [`migration-notes/tts-session-playback-2026-10-28.md`](../../../migration-notes/tts-session-playback-2026-10-28.md). A native helper is only local feature evidence: it does not by itself complete any remaining TypeScript caller or transitive dependency. React Email templates are outside this archive and remain an explicit migration exclusion.

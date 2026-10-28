@@ -78571,9 +78571,20 @@
         "scope": "standalone-credential-codec",
         "status": "direct-native-dependencies-present; caller-adapter-adoption-open",
         "typescriptRuntime": "crypto (default runtime import), process.env SECRET_KEY",
-        "nativeReplacement": ["aes", "ctr", "getrandom", "serde", "std::env"],
+        "nativeReplacement": [
+          "aes",
+          "ctr",
+          "getrandom",
+          "serde",
+          "std::env"
+        ],
         "missingPrimitiveDependency": null,
-        "applicationDependenciesOutsidePrimitive": ["Mongo token persistence", "Redis token caching", "OAuth/auth routes", "overlay/widget/duel/roulette/pet stores"],
+        "applicationDependenciesOutsidePrimitive": [
+          "Mongo token persistence",
+          "Redis token caching",
+          "OAuth/auth routes",
+          "overlay/widget/duel/roulette/pet stores"
+        ],
         "boundary": "No Rust rewiring of the TypeScript callers below is established by this row."
       },
       "callers": {
@@ -78586,7 +78597,10 @@
         "runtimeStatus": "direct-TypeScript-callers-identified-but-not-rewired-to-Rust"
       },
       "testEvidence": {
-        "sourceEvidence": ["dimabot/tests/fixtures/token_storage_parity.mjs", "dimabot/tests/fixtures/twitch_streamers_behavior_reference.mjs"],
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/token_storage_parity.mjs",
+          "dimabot/tests/fixtures/twitch_streamers_behavior_reference.mjs"
+        ],
         "rustBehaviorEvidence": [
           "dimabot/tests/credential_activation.rs::credential_codec_matches_the_source_fixture",
           "dimabot/tests/token_storage_adapters.rs",
@@ -78599,12 +78613,20 @@
         {
           "name": "decrypt",
           "nativeMapping": "CredentialCipher::decrypt(envelope) -> Result<Option<String>, CredentialCryptoError>",
-          "evidence": ["dimabot/src/utils/crypto.rs", "dimabot/tests/credential_activation.rs", "migration-notes/evidence/2026-10-28-foundations/compiler-1793207656819371013.log.gz"]
+          "evidence": [
+            "dimabot/src/utils/crypto.rs",
+            "dimabot/tests/credential_activation.rs",
+            "migration-notes/evidence/2026-10-28-foundations/compiler-1793207656819371013.log.gz"
+          ]
         },
         {
           "name": "encrypt",
           "nativeMapping": "CredentialCipher::encrypt(text) -> Result<StoredCredential, CredentialCryptoError>; encrypt_with_iv is the deterministic parity/test operation",
-          "evidence": ["dimabot/src/utils/crypto.rs", "dimabot/tests/credential_activation.rs", "migration-notes/evidence/2026-10-28-foundations/compiler-1793207656819371013.log.gz"]
+          "evidence": [
+            "dimabot/src/utils/crypto.rs",
+            "dimabot/tests/credential_activation.rs",
+            "migration-notes/evidence/2026-10-28-foundations/compiler-1793207656819371013.log.gz"
+          ]
         }
       ],
       "imports": [
@@ -81114,10 +81136,24 @@
       "dependencyClosure": {
         "scope": "standalone-activation-jwt-signer-and-verifier",
         "status": "direct-native-dependencies-present; route-worker-adoption-open",
-        "typescriptRuntime": ["jsonwebtoken", "process.env EMAIL_AUTH_JWT_SECRET"],
-        "nativeReplacement": ["jsonwebtoken crate with rust_crypto backend", "base64", "serde", "serde_json with float_roundtrip", "std::env and system clock"],
+        "typescriptRuntime": [
+          "jsonwebtoken",
+          "process.env EMAIL_AUTH_JWT_SECRET"
+        ],
+        "nativeReplacement": [
+          "jsonwebtoken crate with rust_crypto backend",
+          "base64",
+          "serde",
+          "serde_json with float_roundtrip",
+          "std::env and system clock"
+        ],
         "missingPrimitiveDependency": null,
-        "applicationDependenciesOutsidePrimitive": ["activation reminder worker", "admin and email-test routes", "email-auth route and Mongo user lookup", "Resend/React Email transport and rendering"],
+        "applicationDependenciesOutsidePrimitive": [
+          "activation reminder worker",
+          "admin and email-test routes",
+          "email-auth route and Mongo user lookup",
+          "Resend/React Email transport and rendering"
+        ],
         "boundary": "The native token API does not implement or rewire these TypeScript callers."
       },
       "callers": {
@@ -81131,7 +81167,10 @@
         "runtimeStatus": "all-direct-source-consumers-traced; native-caller-adoption-not-established"
       },
       "testEvidence": {
-        "sourceEvidence": ["dimabot/tests/fixtures/credential_activation_reference.mjs", "dimabot/tests/fixtures/credential_activation_cases.json"],
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/credential_activation_reference.mjs",
+          "dimabot/tests/fixtures/credential_activation_cases.json"
+        ],
         "rustBehaviorEvidence": [
           "dimabot/tests/credential_activation.rs::activation_signing_and_verification_match_source",
           "dimabot/tests/credential_activation.rs::environment_initialization_matches_the_declared_contract",
@@ -81144,17 +81183,28 @@
         {
           "name": "EmailActivationTokenPayload",
           "nativeMapping": "No exact public replacement claimed: source interface is type-only {sub, login}; Rust ActivationClaims adds iat and exp, and no source consumer imports the interface.",
-          "evidence": ["archives/dimabot-typescript/2026-10-28/src/utils/email/email-activation-token.ts", "dimabot/src/utils/email/email-activation-token.rs"]
+          "evidence": [
+            "archives/dimabot-typescript/2026-10-28/src/utils/email/email-activation-token.ts",
+            "dimabot/src/utils/email/email-activation-token.rs"
+          ]
         },
         {
           "name": "signEmailActivationToken",
           "nativeMapping": "ActivationTokenService::sign / sign_activation_token / sign_activation_token_at",
-          "evidence": ["dimabot/src/utils/email/email-activation-token.rs", "dimabot/tests/credential_activation.rs::activation_signing_and_verification_match_source", "migration-notes/evidence/2026-10-28-foundations/compiler-1793207656819371013.log.gz"]
+          "evidence": [
+            "dimabot/src/utils/email/email-activation-token.rs",
+            "dimabot/tests/credential_activation.rs::activation_signing_and_verification_match_source",
+            "migration-notes/evidence/2026-10-28-foundations/compiler-1793207656819371013.log.gz"
+          ]
         },
         {
           "name": "verifyEmailActivationToken",
           "nativeMapping": "ActivationTokenService::verify / verify_activation_token / verify_activation_token_at -> Option<VerifiedActivation>",
-          "evidence": ["dimabot/src/utils/email/email-activation-token.rs", "dimabot/tests/credential_activation.rs::activation_signing_and_verification_match_source", "migration-notes/evidence/2026-10-28-foundations/compiler-1793207656819371013.log.gz"]
+          "evidence": [
+            "dimabot/src/utils/email/email-activation-token.rs",
+            "dimabot/tests/credential_activation.rs::activation_signing_and_verification_match_source",
+            "migration-notes/evidence/2026-10-28-foundations/compiler-1793207656819371013.log.gz"
+          ]
         }
       ],
       "imports": [
@@ -97310,30 +97360,85 @@
         "role": "application"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/utils/tts/tts_playback_timeout.util.ts",
+        "sha256": "4a93d87b78e79025db05eed4c21e1f76acc2c5cdfa1efeb7dd46e4956276c259",
+        "nativeAreaReference": "migration-notes/tts-session-playback-2026-10-28.md; mapping is not caller-adoption proof"
+      },
+      "featureReview": "reviewed-local-feature-and-helper-dependencies",
+      "localRustEvidence": [
+        "dimabot/src/utils/tts/playback_timeout.rs: audio_file_duration_ms, tts_playback_timeout_ms, async spawn_blocking wrappers with four-permit admission",
+        "dimabot/tests/tts_session_playback.rs: source corpus duration/timeout parity and async wrappers",
+        "dimabot/tests/fixtures/tts_session_playback_reference.cjs: archived-source fallback and Node/npm source oracle",
+        "migration-notes/tts-session-playback-2026-10-28.md: helper dependency audit, caller status, and verification receipts"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "Native std::fs and std::path scanning plus the compatible mp3-duration 1.1 scanner replace node:fs/promises, node:path, node:module/createRequire, and npm mp3-duration for this helper.",
+        "Preserves the source package behavior where bitrate indexes 0 and 15 count padding-only frames and its string-versus-number Layer I check does not take the four-byte padding branch.",
+        "Four blocking scans are admitted at a time; cancellation does not release a permit until the scan finishes."
+      ],
+      "dependencyClosure": {
+        "scope": "audio-file-duration-and-playback-timeout-helper",
+        "status": "direct-native-dependencies-present; helper closure verified; TypeScript caller adoption open",
+        "typescriptRuntime": [
+          "node:fs/promises",
+          "node:module/createRequire",
+          "node:path",
+          "mp3-duration 1.1.0"
+        ],
+        "nativeReplacement": [
+          "std::fs",
+          "std::io",
+          "std::path",
+          "Tokio spawn_blocking",
+          "four-permit Tokio semaphore",
+          "local MP3 duration scanner preserving mp3-duration behavior"
+        ],
+        "missingPrimitiveDependency": null,
+        "applicationDependenciesOutsidePrimitive": [
+          "TTS queue handlers",
+          "Fish/Kokoro/Piper synthesis and provider services",
+          "overlay playback acknowledgement and session orchestration"
+        ],
+        "boundary": "The native helper does not rewire TypeScript handlers or complete provider, queue, or playback application flows."
+      },
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/src/handlers/tts_queue.handler.ts: imports getTtsPlaybackTimeoutMs for playback-ack recovery timeout",
+          "dimabot/src/handlers/dimafx_queue.handler.ts: imports getAudioFileDurationMs"
+        ],
+        "runtimeStatus": "known TypeScript callers remain active; native helper adoption is not established"
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "archives/dimabot-typescript/2026-10-28/manifest.json: exact source SHA-256",
+          "dimabot/tests/fixtures/tts_session_playback_reference.cjs: 52-case corpus including real mp3-duration npm CBR/VBR fixtures",
+          "node-fixtures-1793215087449805709: final archived-source oracle including the empty-ID contract"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/tts_session_playback.rs: actual_lua_session_and_bounded_cleanup and file_duration_matches_typescript_oracle",
+          "compiler-fixtures-1793214023189423553 and compiler-1793214246963446939: full Rust checks and disposable fixture evidence",
+          "compiler-fixtures-1793215411648027574: final a49cac91 snapshot, strict focused/all-feature/no-default checks and seven scoped executions; empty-ID guard regression included"
+        ],
+        "status": "source-backed local helper and dependency closure verified; application caller adoption remains open"
       },
       "exports": [
         {
           "name": "getAudioFileDurationMs",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "audio_file_duration_ms and audio_file_duration_ms_async",
+          "evidence": [
+            "dimabot/src/utils/tts/playback_timeout.rs",
+            "dimabot/tests/tts_session_playback.rs"
+          ]
         },
         {
           "name": "getTtsPlaybackTimeoutMs",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "tts_playback_timeout_ms and tts_playback_timeout_ms_async",
+          "evidence": [
+            "dimabot/src/utils/tts/playback_timeout.rs",
+            "dimabot/tests/tts_session_playback.rs"
+          ]
         }
       ],
       "imports": [
@@ -97343,12 +97448,12 @@
           "specifierCategory": "node-builtin-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named ES import { open }",
+          "runtimeOrTypeDependency": "runtime Node built-in",
+          "defaultSideEffectBarrelDetails": "named import; no default, side-effect, or barrel import",
+          "directDependencyReview": "reviewed",
+          "transitiveDependencyReview": "reviewed",
+          "rustReplacementOrGap": "std::fs::File plus std::io::Read/Seek replace file opening and reads; no missing helper dependency"
         },
         {
           "ordinal": 1,
@@ -97356,12 +97461,12 @@
           "specifierCategory": "node-builtin-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named ES import { createRequire }; used in nested require call",
+          "runtimeOrTypeDependency": "runtime Node built-in loader",
+          "defaultSideEffectBarrelDetails": "named import; nested CommonJS require is a runtime dependency, not an import-only type",
+          "directDependencyReview": "reviewed",
+          "transitiveDependencyReview": "reviewed",
+          "rustReplacementOrGap": "Rust scanner directly implements needed mp3-duration 1.1 behavior; no CommonJS loader required"
         },
         {
           "ordinal": 2,
@@ -97369,15 +97474,28 @@
           "specifierCategory": "node-builtin-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "default ES import path",
+          "runtimeOrTypeDependency": "runtime Node built-in",
+          "defaultSideEffectBarrelDetails": "default import; no side-effect or barrel import",
+          "directDependencyReview": "reviewed",
+          "transitiveDependencyReview": "reviewed",
+          "rustReplacementOrGap": "std::path::Path extension handling replaces path.extname; no missing helper dependency"
+        },
+        {
+          "ordinal": 3,
+          "specifier": "mp3-duration",
+          "specifierCategory": "bare-package-candidate",
+          "relativeSourceCandidates": [],
+          "baselineSourceTargets": [],
+          "importSyntaxKind": "nested CommonJS require via createRequire(import.meta.url)",
+          "runtimeOrTypeDependency": "runtime npm dependency; mp3-duration 1.1.0",
+          "defaultSideEffectBarrelDetails": "not a top-level import; invoked as a runtime duration scanner",
+          "directDependencyReview": "reviewed",
+          "transitiveDependencyReview": "reviewed",
+          "rustReplacementOrGap": "Concrete standard-library MP3 parser ports the observed package behavior; package internals are not needed and no helper-level gap remains"
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-helper-feature-and-dependencies-verified; caller-adoption-unported"
     },
     {
       "source": "src/utils/tts/tts_session.test.ts",
@@ -97486,35 +97604,89 @@
         "role": "application"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/utils/tts/tts_session.util.ts",
+        "sha256": "78044a8de50631bd6287b9e969ddb6130a7dbf9f319d2668c7e08c6e26e703f7",
+        "nativeAreaReference": "migration-notes/tts-session-playback-2026-10-28.md; mapping is not caller-adoption proof"
+      },
+      "featureReview": "reviewed-local-feature-and-helper-dependencies",
+      "localRustEvidence": [
+        "dimabot/src/utils/tts/session.rs: TtsSession::enqueue, pop, reset and declared-key Lua scripts",
+        "dimabot/tests/tts_session_playback.rs: disposable Dragonfly session behavior and deterministic Redis race fixtures",
+        "dimabot/tests/fixtures/tts_session_playback_reference.cjs: archived-source fallback and TypeScript source oracle",
+        "migration-notes/tts-session-playback-2026-10-28.md: helper dependency audit, caller status, and verification receipts"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The source RedisClientType import is type-only and has no runtime Redis package import; the native adapter accepts a concrete redis::aio::ConnectionManager.",
+        "Preserves declared Lua keys, bounded eight-attempt compare-and-pop, reset fencing when queue IDs are reused, and payload cleanup in chunks of 128."
+      ],
+      "dependencyClosure": {
+        "scope": "redis-backed-tts-session-queue-helper",
+        "status": "direct-native-dependencies-present; helper closure verified; TypeScript caller adoption open",
+        "typescriptRuntime": [
+          "none from the type-only redis import; caller provides RedisClientType"
+        ],
+        "typescriptTypeOnly": [
+          "redis.RedisClientType"
+        ],
+        "nativeReplacement": [
+          "redis crate and caller-created redis::aio::ConnectionManager",
+          "std::collections::HashSet"
+        ],
+        "missingPrimitiveDependency": null,
+        "applicationDependenciesOutsidePrimitive": [
+          "TTS producers and handlers",
+          "speech/session notifications",
+          "provider service, queue orchestration and playback state"
+        ],
+        "boundary": "The concrete Rust adapter is implemented; existing application callers still use the archived TypeScript module."
+      },
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/src/pets/tts_lane.ts: dynamic import and enqueue caller",
+          "dimabot/src/handlers/tts_queue.handler.ts: enqueue/pop callers",
+          "dimabot/src/utils/speech.ts: reset caller"
+        ],
+        "runtimeStatus": "known TypeScript callers remain active; native helper adoption is not established"
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "archives/dimabot-typescript/2026-10-28/manifest.json: exact source SHA-256",
+          "dimabot/tests/fixtures/tts_session_playback_reference.cjs: source oracle and reset/pop race cases",
+          "node-fixtures-1793215087449805709: final archived-source oracle including the empty-ID contract"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/tts_session_playback.rs: actual_lua_session_and_bounded_cleanup, race/fencing/chunk cleanup cases",
+          "compiler-fixtures-1793214023189423553 and compiler-1793214246963446939: full Rust checks and disposable Dragonfly fixture evidence",
+          "compiler-fixtures-1793215411648027574: final a49cac91 snapshot, strict focused/all-feature/no-default checks and seven scoped executions; empty-ID guard regression included"
+        ],
+        "status": "source-backed local helper and dependency closure verified; application caller adoption remains open"
       },
       "exports": [
         {
           "name": "enqueueTtsSession",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "TtsSession::enqueue",
+          "evidence": [
+            "dimabot/src/utils/tts/session.rs",
+            "dimabot/tests/tts_session_playback.rs"
+          ]
         },
         {
           "name": "popTtsSession",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "TtsSession::pop",
+          "evidence": [
+            "dimabot/src/utils/tts/session.rs",
+            "dimabot/tests/tts_session_playback.rs"
+          ]
         },
         {
           "name": "resetTtsSession",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "TtsSession::reset",
+          "evidence": [
+            "dimabot/src/utils/tts/session.rs",
+            "dimabot/tests/tts_session_playback.rs"
+          ]
         }
       ],
       "imports": [
@@ -97524,15 +97696,15 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "import type { RedisClientType }",
+          "runtimeOrTypeDependency": "type-only; erased from emitted JavaScript",
+          "defaultSideEffectBarrelDetails": "named type import; no runtime/default/side-effect/barrel import",
+          "directDependencyReview": "reviewed",
+          "transitiveDependencyReview": "reviewed",
+          "rustReplacementOrGap": "Native redis crate and concrete redis::aio::ConnectionManager provide the runtime connection; std::collections::HashSet provides local ID deduplication; no missing helper dependency"
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-helper-feature-and-dependencies-verified; caller-adoption-unported"
     },
     {
       "source": "src/utils/tts/tts_status.ts",

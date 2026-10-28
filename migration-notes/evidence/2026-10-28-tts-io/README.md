@@ -1,0 +1,11 @@
+# TTS session/playback evidence
+
+The [helper migration note](../../tts-session-playback-2026-10-28.md) maps source exports, concrete native dependencies, callers and remaining pipeline work. Fourteen exact TypeScript leaf sources are now archived; this does not establish whole-project completion or deployment readiness.
+
+The final implementation check is `compiler-fixtures-1793215411648027574`, source tree SHA-256 `a49cac91f06745d15357830ae2996a64072e5d85d9425fe7377972ec8773564c`. It passed focused formatting/check/Clippy, three explicit file/Redis fixtures, four TTS/UTF-16 regression executions, all-feature all-target check/Clippy, and no-default all-target check. The ignored normalization benchmark was not run in this wave. `node-fixtures-1793215087449805709` exercises the archived TypeScript helpers, including the final empty-ID case. Earlier post-archive verification and an immutable-fixture recheck are retained separately.
+
+`tts_session_playback_cases.json` contains 52 expected audio results, including the missing-file case. `tts_session_playback_sources.json` pins the source helpers, installed `mp3-duration` implementation/package metadata and the 51 existing fixture-file hashes. The oracle generates synthetic audio fixtures and copies the npm package's two MIT-licensed CBR/VBR test files into the disposable fixture directory. The binary files are not committed; reproduction uses the recorded package and fixture hashes. Its accompanying license is preserved here.
+
+The failed probes demonstrate two MP3 parser compatibility defects and the empty-ID regression before correction. They are not current failures. Logs are losslessly compressed; `compressed-logs.json` records their uncompressed hashes. `sha256.json` covers this bundle. The recorded verifier uses task-specific absolute paths and is evidence of the run, rather than a release command. Every application check, oracle and Cargo command ran inside task-owned capped containers; the driver cleans only its own resources and compares production identities/configuration before and after.
+
+These checks establish behavior and native adapters. No comparative file-I/O or queue benchmark was performed. [Separate normalization measurements](../2026-10-28-utf16-tts/README.md) retain their own workloads and source snapshot.
