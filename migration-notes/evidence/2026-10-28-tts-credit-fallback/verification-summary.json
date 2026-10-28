@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "scope": "Typed TTS credit fallback policy and source/test retirement; not whole TTS or dimabot completion",
+  "pre_retirement": {
+    "node": "node-1793231089412538397",
+    "compiler": "compiler-1793231106968948618",
+    "source_tree_sha256": "deab121b2582b37df720d34cd7872cb95b9ac10a853e12a5955fab97469d367f"
+  },
+  "final": {
+    "node": "node-1793231232336395230",
+    "compiler": "compiler-1793231264957253198",
+    "source_tree_sha256": "0a7ab31bac53f28254243d81805eeda933c856f85839f9ee9f76f1682c50b3e8",
+    "ordinary_executions": 53,
+    "ordinary_breakdown": {
+      "library": 3,
+      "js_string": 1,
+      "credit_fallback": 2,
+      "tts_utilities": 3,
+      "fish_catalog": 9,
+      "kokoro": 6,
+      "piper": 13,
+      "fish": 16
+    },
+    "explicit_fixture_executions": 1,
+    "credit_source_scenarios": 276,
+    "source_case_breakdown": {
+      "matrix": 270,
+      "special": 6
+    },
+    "checks": [
+      "format",
+      "no-default+tts-utilities all-targets check and Clippy -D warnings",
+      "all-features all-targets check and Clippy -D warnings",
+      "no-default-features all-targets check"
+    ],
+    "fixture_sha256": "639821ffcf34025ed1c3ca1b5f70c5e7f8bf4620dc2a157a19aea737f7a7145f",
+    "fixture_before_after_equal": true
+  },
+  "benchmarks": {
+    "credit_fallback": "not measured; structural reuse/copy avoidance is not a speedup claim"
+  },
+  "cargo_packages_added": false,
+  "lockfile_changed": false,
+  "deployed": false,
+  "pushed": false,
+  "caller_adoption": false,
+  "whole_migration_complete": false,
+  "source_commit": "70dc6f6c62b2275a621de5772c092ab24e6ff04a"
+}

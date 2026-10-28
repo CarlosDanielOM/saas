@@ -24485,19 +24485,36 @@
         "role": "test"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "inventoryDisposition": "test-source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/handlers/tts_credit_fallback.test.ts",
+        "sha256": "ebae79d15263f866cf69661a9f964cb41645a1ca383b53dd8ebb0f0a48885669",
+        "nativeAreaReference": "dimabot/tests/tts_credit_fallback.rs; maps helper behavior evidence, not a separate application feature"
+      },
+      "featureReview": "reviewed-test-obligation-mapped-to-native-helper-coverage",
+      "localRustEvidence": [
+        "dimabot/tests/tts_credit_fallback.rs",
+        "migration-notes/tts-credit-fallback-2026-10-28.md",
+        "migration-notes/evidence/2026-10-28-tts-credit-fallback/verification-summary.json"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "Archived test is an evidence obligation, not a separate feature port; Rust coverage is scoped to the helper contract and does not complete queue/pet runtime paths."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "archives/dimabot-typescript/2026-10-28/src/utils/tts/tts_credit_fallback.util.ts"
+        ],
+        "runtimeStatus": "test-only source; no runtime callers"
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "archives/dimabot-typescript/2026-10-28/src/handlers/tts_credit_fallback.test.ts"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/tts_credit_fallback.rs",
+          "migration-notes/evidence/2026-10-28-tts-credit-fallback/verification-summary.json"
+        ],
+        "status": "bounded-helper-test-coverage; source test imports TtsQueueItem as type-only and does not complete queue behavior"
       },
       "exports": [],
       "imports": [
@@ -24514,12 +24531,12 @@
           "baselineSourceTargets": [
             "src/utils/billing.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "type-only AiCreditStatus",
+          "runtimeOrTypeDependency": "type-only",
+          "defaultSideEffectBarrelDetails": "named type import; no side-effect or barrel dependency identified",
+          "directDependencyReview": "reviewed-test-contract",
+          "transitiveDependencyReview": "type-only for this test; billing runtime remains open",
+          "rustReplacementOrGap": "native AiCreditStatus enum is used by bounded Rust helper tests"
         },
         {
           "ordinal": 1,
@@ -24534,12 +24551,12 @@
           "baselineSourceTargets": [
             "src/utils/tts/tts_credit_fallback.util.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named runtime import",
+          "runtimeOrTypeDependency": "runtime",
+          "defaultSideEffectBarrelDetails": "named import; no side-effect or barrel dependency identified",
+          "directDependencyReview": "reviewed-test-contract",
+          "transitiveDependencyReview": "bounded helper behavior only",
+          "rustReplacementOrGap": "Rust helper tests cover the mapped helper contract"
         },
         {
           "ordinal": 2,
@@ -24554,12 +24571,12 @@
           "baselineSourceTargets": [
             "src/handlers/tts_queue.handler.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "type-only TtsQueueItem",
+          "runtimeOrTypeDependency": "type-only",
+          "defaultSideEffectBarrelDetails": "named type import; no side-effect or barrel dependency identified",
+          "directDependencyReview": "reviewed-test-contract",
+          "transitiveDependencyReview": "type shape only; queue runtime remains open",
+          "rustReplacementOrGap": "local CreditFallbackRequest<T> models carried caller-specific fields; not a queue adapter"
         },
         {
           "ordinal": 3,
@@ -24567,12 +24584,12 @@
           "specifierCategory": "node-builtin-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "default runtime import",
+          "runtimeOrTypeDependency": "runtime",
+          "defaultSideEffectBarrelDetails": "default import of Node built-in; no project barrel",
+          "directDependencyReview": "test-harness-only",
+          "transitiveDependencyReview": "native Node test/assert packages are not application runtime dependencies",
+          "rustReplacementOrGap": "Rust test harness and standard assertions"
         },
         {
           "ordinal": 4,
@@ -24580,15 +24597,15 @@
           "specifierCategory": "node-builtin-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "default runtime import",
+          "runtimeOrTypeDependency": "runtime",
+          "defaultSideEffectBarrelDetails": "default import of Node built-in; no project barrel",
+          "directDependencyReview": "test-harness-only",
+          "transitiveDependencyReview": "native Node test/assert packages are not application runtime dependencies",
+          "rustReplacementOrGap": "Rust test harness and standard assertions"
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "archived-test-obligation-mapped-to-native-helper-tests; not-an-independent-application-feature"
     },
     {
       "source": "src/handlers/tts_pet_lane.test.ts",
@@ -97112,30 +97129,58 @@
         "role": "application"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/utils/tts/tts_credit_fallback.util.ts",
+        "sha256": "1e67d7b9368ed7835339e6df2e33a2d1a94e590d288a034532a18915f8c0f2de",
+        "nativeAreaReference": "migration-notes/tts-credit-fallback-2026-10-28.md; local helper behavior only, caller/dependency completion not implied"
+      },
+      "featureReview": "reviewed-local-feature-and-helper-dependencies",
+      "localRustEvidence": [
+        "dimabot/src/utils/tts/credit_fallback.rs",
+        "dimabot/src/utils/tts_defaults.rs",
+        "dimabot/tests/tts_credit_fallback.rs",
+        "migration-notes/tts-credit-fallback-2026-10-28.md",
+        "migration-notes/evidence/2026-10-28-tts-credit-fallback/verification-summary.json"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "Typed Rust request contract does not emulate arbitrary invalid JavaScript object shapes, reflective own-property presence for undefined fields, or executable object hooks.",
+        "Generic caller-specific extra data is cloned only when an owned fallback request is needed; callers may use Arc to share context identity.",
+        "Schema default constants were extracted from the actual DEFAULT_TTS_SETTINGS initializer; channel TTS schema normalization/model/read/upsert remain unported."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/src/handlers/tts_queue.handler.ts",
+          "dimabot/src/pets/runtime.ts"
+        ],
+        "runtimeStatus": "unadopted; both TypeScript callers still import the retired helper; archive permission does not imply Rust caller adoption"
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "archives/dimabot-typescript/2026-10-28/src/handlers/tts_credit_fallback.test.ts"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/tts_credit_fallback.rs",
+          "migration-notes/evidence/2026-10-28-tts-credit-fallback/verification-summary.json"
+        ],
+        "status": "bounded-local-helper-coverage; queue and pet runtime behavior remain open"
       },
       "exports": [
         {
           "name": "TtsCreditFallbackRequest",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "generic CreditFallbackRequest<T: Clone>",
+          "evidence": [
+            "dimabot/src/utils/tts/credit_fallback.rs",
+            "migration-notes/tts-credit-fallback-2026-10-28.md"
+          ]
         },
         {
           "name": "resolveTtsForCreditStatus",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "resolve_tts_for_credit_status",
+          "evidence": [
+            "dimabot/src/utils/tts/credit_fallback.rs",
+            "migration-notes/tts-credit-fallback-2026-10-28.md"
+          ]
         }
       ],
       "imports": [
@@ -97152,12 +97197,12 @@
           "baselineSourceTargets": [
             "src/schemas/channel_tts_settings.schema.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime DEFAULT_TTS_SETTINGS plus type-only TtsLanguage/TtsMode",
+          "runtimeOrTypeDependency": "mixed-runtime-and-type-only",
+          "defaultSideEffectBarrelDetails": "Named constant/type imports from a module that registers channel TTS and Users Mongoose models; native policy replaces only the required constant values and types, with application model registration tracked separately.",
+          "directDependencyReview": "reviewed-for-local-helper",
+          "transitiveDependencyReview": "bounded-to-local-helper-contract; application adapters remain open",
+          "rustReplacementOrGap": "native TtsLanguage/TtsMode enums; PIPER_VOICE_EN/ES extracted only from actual DEFAULT_TTS_SETTINGS initializer; remaining schema behavior is a gap"
         },
         {
           "ordinal": 1,
@@ -97172,12 +97217,12 @@
           "baselineSourceTargets": [
             "src/server/services/tts/tts_provider.interface.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "type-only RuntimeTtsProvider",
+          "runtimeOrTypeDependency": "type-only",
+          "defaultSideEffectBarrelDetails": "named imports; no side-effect or barrel dependency identified",
+          "directDependencyReview": "reviewed-for-local-helper",
+          "transitiveDependencyReview": "bounded-to-local-helper-contract; application adapters remain open",
+          "rustReplacementOrGap": "existing native TtsProvider enum covers this local contract"
         },
         {
           "ordinal": 2,
@@ -97192,12 +97237,12 @@
           "baselineSourceTargets": [
             "src/utils/billing.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "type-only AiCreditStatus union",
+          "runtimeOrTypeDependency": "type-only",
+          "defaultSideEffectBarrelDetails": "named imports; no side-effect or barrel dependency identified",
+          "directDependencyReview": "reviewed-for-local-helper",
+          "transitiveDependencyReview": "bounded-to-local-helper-contract; application adapters remain open",
+          "rustReplacementOrGap": "equivalent native AiCreditStatus enum; billing implementation and caller adapter remain open"
         },
         {
           "ordinal": 3,
@@ -97212,12 +97257,12 @@
           "baselineSourceTargets": [
             "src/utils/tts/expressive_tts_tags.util.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime filterExpressiveTtsTags",
+          "runtimeOrTypeDependency": "runtime",
+          "defaultSideEffectBarrelDetails": "named imports; no side-effect or barrel dependency identified",
+          "directDependencyReview": "reviewed-for-local-helper",
+          "transitiveDependencyReview": "bounded-to-local-helper-contract; application adapters remain open",
+          "rustReplacementOrGap": "reuses existing native expressive_tag_regex/filter and JsString handling"
         },
         {
           "ordinal": 4,
@@ -97232,15 +97277,44 @@
           "baselineSourceTargets": [
             "src/utils/tts/kokoro_voices.util.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime DEFAULT_KOKORO_VOICES and resolveKokoroVoice",
+          "runtimeOrTypeDependency": "runtime",
+          "defaultSideEffectBarrelDetails": "named imports; no side-effect or barrel dependency identified",
+          "directDependencyReview": "reviewed-for-local-helper",
+          "transitiveDependencyReview": "bounded-to-local-helper-contract; application adapters remain open",
+          "rustReplacementOrGap": "reuses existing native Kokoro resolver/defaults"
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "typed-local-helper-feature-and-native-value-dependencies-verified; application-schema-side-effects-and-caller-adoption-open",
+      "dependencyClosure": {
+        "scope": "typed-tts-credit-fallback-policy",
+        "status": "native-value-and-type-dependencies-present; application-schema-and-caller-adoption-open",
+        "typescriptRuntime": [
+          "DEFAULT_TTS_SETTINGS voices constants",
+          "filterExpressiveTtsTags",
+          "DEFAULT_KOKORO_VOICES and resolveKokoroVoice"
+        ],
+        "typescriptTypeOnly": [
+          "TtsLanguage",
+          "TtsMode",
+          "RuntimeTtsProvider",
+          "AiCreditStatus"
+        ],
+        "nativeReplacement": [
+          "tts_defaults Piper constants",
+          "tts enums, expressive filter and Kokoro resolver/defaults",
+          "JsString UTF-16 representation",
+          "Cow and generic caller context"
+        ],
+        "missingPrimitiveDependency": null,
+        "applicationDependenciesOutsidePrimitive": [
+          "channel TTS schema/model registration and Mongo adapters",
+          "billing credit lookup and usage persistence",
+          "TTS queue and pet runtime",
+          "provider application factory, registry and preview"
+        ],
+        "boundary": "Schema constant import also registers Mongoose models in TypeScript; that application initialization is not performed or claimed by the native pure policy."
+      }
     },
     {
       "source": "src/utils/tts/tts_deadline.util.test.ts",

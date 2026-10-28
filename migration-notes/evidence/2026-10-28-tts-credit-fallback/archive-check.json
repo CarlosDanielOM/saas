@@ -1,0 +1,20 @@
+{
+  "baseline_source_files": 806,
+  "archive_files": 16,
+  "all_archive_hashes_match": true,
+  "all_original_paths_absent": true,
+  "new_retirements_byte_exact_to_parent_HEAD": [
+    {
+      "source": "src/utils/tts/tts_credit_fallback.util.ts",
+      "sha256": "1e67d7b9368ed7835339e6df2e33a2d1a94e590d288a034532a18915f8c0f2de"
+    },
+    {
+      "source": "src/handlers/tts_credit_fallback.test.ts",
+      "sha256": "ebae79d15263f866cf69661a9f964cb41645a1ca383b53dd8ebb0f0a48885669"
+    }
+  ],
+  "remaining_ts_files": 790,
+  "remaining_application": 618,
+  "remaining_tests": 166,
+  "react_email_excluded": 6
+}
