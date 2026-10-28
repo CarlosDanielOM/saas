@@ -1,0 +1,18 @@
+{
+  "compiler-fixtures-1793210841489025291.log.gz": {
+    "uncompressed_name": "compiler-fixtures-1793210841489025291.log",
+    "uncompressed_sha256": "7d4d1ec74169d1c847b1300e3c7c8a431abaeb580b3dfd2d653af0f29bb09327"
+  },
+  "compiler-1793210951490191357.log.gz": {
+    "uncompressed_name": "compiler-1793210951490191357.log",
+    "uncompressed_sha256": "a95c9323b22a14159acf7589be91bf50611088cd74962b88230125be5ae9bcc9"
+  },
+  "node-fixtures-1793210630739582927.log.gz": {
+    "uncompressed_name": "node-fixtures-1793210630739582927.log",
+    "uncompressed_sha256": "6eaba187b52a685311778f82ef393e32a888517866b872e152df5b779e321203"
+  },
+  "compiler-1793211107567704287.log.gz": {
+    "uncompressed_name": "compiler-1793211107567704287.log",
+    "uncompressed_sha256": "e568718c98e10aaca896d44e80d1998d6264612645f923045e4ef70401a05624"
+  }
+}

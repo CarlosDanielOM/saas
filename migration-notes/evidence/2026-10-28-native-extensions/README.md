@@ -1,0 +1,13 @@
+# Native extension evidence
+
+The [feature record](../../native-telemetry-tts-bits-2026-10-28.md) explains the tested observability, TTS, and Bits scope and remaining dependencies. These results do not establish full migration or deployment readiness.
+
+`compiler-fixtures-1793210841489025291` passed strict focused checks and 184 test executions, including four explicitly invoked disposable-store fixtures. `compiler-1793210951490191357` passed all-feature all-target check/Clippy and a no-default-feature all-target check. `compiler-1793211107567704287` checked all targets with each new feature independently: `observability`, `tts-utilities`, and `bits-rules`. These three compiler runs share source tree SHA-256 `0f873c40c1e246dfe06a8eb0fb7b4dd7bc03d865a120dc830150b507b727e6c3`.
+
+`node-fixtures-1793210630739582927` checks the actual TypeScript telemetry source, 24 TTS cases, 13 Bits model cases, and the actual Mongoose store against disposable MongoDB. It differs from the compiler snapshot only in the later BSON API spelling fix and native fixture closure capture; TypeScript sources and goldens are identical. The paired store JSON snapshots match numeric values and BSON type names. `sourceHashes` in the TypeScript snapshot is provenance, rather than a native output field.
+
+All checks ran in task-owned, capped containers; fixture resources and the private network were removed after each run. Receipts record image IDs, source hashes, resource/headroom limits and `production_unchanged: true`. No production credentials, data stores, containers or volumes were used for test execution. No deployment or push occurred.
+
+Logs are losslessly compressed; [compressed-logs.json](compressed-logs.json) records uncompressed hashes. [sha256.json](sha256.json) covers this bundle. The [recorded verifier](recorded-verifier/) preserves task-specific absolute paths, not a portable deployment command. The focused feature list and fixture commands are in `telemetry-tts.sh`. The broader matrix used `cargo check --locked --offline --keep-going --all-targets --all-features`, the corresponding Clippy command with `-- -D warnings`, and `cargo check --locked --offline --all-targets --no-default-features`. The feature-isolated run checked all targets with `--no-default-features --features <feature>` for the three features above. Every Cargo invocation was inside the capped compiler container under the repository build lock.
+
+No new performance trial was run for this wave. The separate [foundation benchmark bundle](../2026-10-28-foundations/README.md) retains its own snapshots, workloads, samples, wins and regressions.

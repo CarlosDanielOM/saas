@@ -1,0 +1,97 @@
+{
+  "conflict": {
+    "attempts": 4,
+    "message": "Your Bits rules were changed somewhere else at the same time. Try again.",
+    "status": 409
+  },
+  "created": {
+    "revision": 1.0,
+    "rules": [
+      {
+        "alert": true,
+        "chat": {
+          "message": "new",
+          "mode": "custom"
+        },
+        "enabled": true,
+        "extra": {
+          "decimal": 1.5,
+          "large": 2147483648,
+          "nested": [
+            2,
+            2.5
+          ],
+          "number": 4
+        },
+        "id": "legacy-1",
+        "max": 6,
+        "min": 5,
+        "name": ""
+      }
+    ]
+  },
+  "createdTypes": {
+    "decimal": "double",
+    "large": "double",
+    "nested": [
+      "int",
+      "double"
+    ],
+    "number": "int",
+    "revision": "int"
+  },
+  "explicitNull": {
+    "revision": 0.0,
+    "rules": []
+  },
+  "fraction": {
+    "revision": 2.5,
+    "rules": []
+  },
+  "fractionType": {
+    "revision": "double"
+  },
+  "initial": {
+    "revision": 0.0,
+    "rules": [
+      {
+        "alert": true,
+        "chat": {
+          "message": "new",
+          "mode": "custom"
+        },
+        "enabled": true,
+        "id": "legacy-1",
+        "max": 6,
+        "min": 5,
+        "name": ""
+      }
+    ]
+  },
+  "persisted": {
+    "revision": 1.0,
+    "rules": [
+      {
+        "alert": true,
+        "chat": {
+          "message": "new",
+          "mode": "custom"
+        },
+        "enabled": true,
+        "extra": {
+          "decimal": 1.5,
+          "large": 2147483648.0,
+          "nested": [
+            2,
+            2.5
+          ],
+          "number": 4
+        },
+        "id": "legacy-1",
+        "max": 6,
+        "min": 5,
+        "name": ""
+      }
+    ]
+  }
+}

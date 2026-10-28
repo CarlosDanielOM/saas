@@ -4,6 +4,8 @@
 
 The requested migration remains in progress. The user’s scope is all `dimabot/` TypeScript behavior except the six React Email templates, with no new Cargo dependencies unless needed. Production changes, deployment, and push are not authorized. No total coverage percentage is claimed: feature-file and caller reconciliation is still underway, and several transitive application adapters remain incomplete. The [credential/JWT caller audit](credential-jwt-callers-2026-10-28.md) closes the standalone primitives' native dependency review while identifying their remaining TypeScript callers.
 
+The [next verified local wave](native-telemetry-tts-bits-2026-10-28.md) adds shared native telemetry/inbox/logger adapters, selected TTS utilities, and Bits rules with concrete Mongo storage. It passed 184 focused test executions, a broader compile/lint matrix, and independent feature checks. Compatibility and application-integration gaps remain; no additional TypeScript source was retired in that wave.
+
 The saved baseline at [`dimabot-ts-baseline-2026-10-28.json`](dimabot-ts-baseline-2026-10-28.json) records 806 TypeScript files: 633 application files, 167 tests, and six excluded React Email templates. The 800 in-scope files include test evidence that should be translated into Rust behavior checks where relevant; they are not a one-for-one source-port target. File counts, Rust LOC, and similarly named files do not measure feature completeness.
 
 Report three separate states as work proceeds: verified local Rust behavior, total dependency-complete migration, and caller adoption/deployment. The first can advance while the second remains incomplete; deployment is separately unauthorized and is not a condition for 100% migration.
