@@ -11,7 +11,6 @@
 //! Typed pack fields follow the TS interfaces; arbitrary invalid runtime casts,
 //! prototypes, Symbols, and custom valueOf/toString hooks are outside the API.
 
-use super::js_compat::trim as js_trim;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fmt;
@@ -92,97 +91,9 @@ impl ResetNumber<'_> {
         match self {
             Self::Undefined => f64::NAN,
             Self::Number(value) => value,
-            Self::Json(value) => match value {
-                Value::Null => 0.0,
-                Value::Bool(value) => {
-                    if *value {
-                        1.0
-                    } else {
-                        0.0
-                    }
-                }
-                Value::Number(value) => value.as_f64().unwrap_or(f64::NAN),
-                Value::String(value) => string_number(value),
-                Value::Array(_) => string_number(&array_primitive(value)),
-                Value::Object(_) => f64::NAN,
-            },
+            Self::Json(value) => super::json_number::to_number(value),
         }
     }
-}
-
-fn array_primitive(value: &Value) -> String {
-    match value {
-        Value::Null => String::new(),
-        Value::Array(values) => values
-            .iter()
-            .map(array_primitive)
-            .collect::<Vec<_>>()
-            .join(","),
-        Value::String(value) => value.clone(),
-        Value::Object(_) => "[object Object]".into(),
-        other => other.to_string(),
-    }
-}
-
-fn string_number(value: &str) -> f64 {
-    let value = js_trim(value);
-    if value.is_empty() {
-        return 0.0;
-    }
-    match value {
-        "Infinity" | "+Infinity" => return f64::INFINITY,
-        "-Infinity" => return f64::NEG_INFINITY,
-        _ => {}
-    }
-    for (prefix, radix) in [
-        ("0x", 16),
-        ("0X", 16),
-        ("0o", 8),
-        ("0O", 8),
-        ("0b", 2),
-        ("0B", 2),
-    ] {
-        if let Some(digits) = value.strip_prefix(prefix) {
-            if digits.is_empty() || !digits.chars().all(|ch| ch.is_digit(radix)) {
-                return f64::NAN;
-            }
-            return radix_number(digits, radix);
-        }
-    }
-    // Rust's float parser also accepts `inf`/`infinity`; ECMAScript does not.
-    if !value
-        .bytes()
-        .all(|b| b.is_ascii_digit() || matches!(b, b'+' | b'-' | b'.' | b'e' | b'E'))
-    {
-        return f64::NAN;
-    }
-    value.parse::<f64>().unwrap_or(f64::NAN)
-}
-
-fn radix_number(digits: &str, radix: u32) -> f64 {
-    let width = radix.trailing_zeros() as usize;
-    let bits: Vec<u32> = digits
-        .chars()
-        .flat_map(|ch| {
-            let digit = ch.to_digit(radix).expect("validated radix digit");
-            (0..width).rev().map(move |shift| (digit >> shift) & 1)
-        })
-        .skip_while(|bit| *bit == 0)
-        .collect();
-    if bits.len() > 1024 {
-        return f64::INFINITY;
-    }
-    let mut significand = bits
-        .iter()
-        .take(53)
-        .fold(0_u64, |n, &bit| (n << 1) | u64::from(bit));
-    if bits.len() <= 53 {
-        return significand as f64;
-    }
-    if bits[53] != 0 && (significand & 1 != 0 || bits[54..].contains(&1)) {
-        significand += 1;
-    }
-    (significand as f64) * 2.0_f64.powi((bits.len() - 53) as i32)
 }
 
 fn reset_credits(value: ResetNumber<'_>) -> f64 {

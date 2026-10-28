@@ -186,6 +186,10 @@ pub fn is_raid_event(event_type: &str) -> bool {
 pub fn raid_direction(condition: &Condition) -> RaidDirection {
     let from = has_value(condition.get("from_broadcaster_user_id"));
     let to = has_value(condition.get("to_broadcaster_user_id"));
+    direction_from_presence(from, to)
+}
+
+fn direction_from_presence(from: bool, to: bool) -> RaidDirection {
     if from && !to {
         RaidDirection::Outgoing
     } else {
@@ -226,21 +230,91 @@ pub fn build_expected_condition(
     channel_id: &str,
 ) -> Condition {
     let mut condition = template.clone();
-    if subscription_type == RAID_EVENT_TYPE {
-        let outgoing = has_value(condition.get("from_broadcaster_user_id"));
-        if outgoing {
-            condition.remove("to_broadcaster_user_id");
-            condition.insert("from_broadcaster_user_id", channel_id);
-        } else {
-            condition.remove("from_broadcaster_user_id");
-            condition.insert("to_broadcaster_user_id", channel_id);
-        }
-    } else if subscription_type == "user.update" {
-        condition.insert("user_id", channel_id);
-    } else {
-        condition.insert("broadcaster_user_id", channel_id);
+    let (field, remove) = expected_condition_patch(
+        subscription_type,
+        has_value(condition.get("from_broadcaster_user_id")),
+    );
+    if let Some(remove) = remove {
+        condition.remove(remove);
     }
+    condition.insert(field, channel_id);
     condition
+}
+
+fn expected_condition_patch(
+    subscription_type: &str,
+    outgoing: bool,
+) -> (&'static str, Option<&'static str>) {
+    match subscription_type {
+        RAID_EVENT_TYPE if outgoing => ("from_broadcaster_user_id", Some("to_broadcaster_user_id")),
+        RAID_EVENT_TYPE => ("to_broadcaster_user_id", Some("from_broadcaster_user_id")),
+        "user.update" => ("user_id", None),
+        _ => ("broadcaster_user_id", None),
+    }
+}
+
+/// Dynamic JSON boundary preserving unknown template fields and explicit nulls.
+/// Ordinary persisted/API objects may contain these despite the TypeScript
+/// condition's declared optional-string interface. Both boundaries share the
+/// same field-selection policy.
+pub fn build_expected_condition_value(
+    subscription_type: &str,
+    template: &serde_json::Value,
+    channel_id: &str,
+) -> serde_json::Map<String, serde_json::Value> {
+    let mut condition = template.as_object().cloned().unwrap_or_default();
+    let (field, remove) = expected_condition_patch(
+        subscription_type,
+        json_truthy(condition.get("from_broadcaster_user_id")),
+    );
+    if let Some(remove) = remove {
+        condition.remove(remove);
+    }
+    condition.insert(field.into(), channel_id.into());
+    condition
+}
+
+pub fn raid_direction_value(condition: Option<&serde_json::Value>) -> RaidDirection {
+    direction_from_presence(
+        json_truthy(condition.and_then(|value| value.get("from_broadcaster_user_id"))),
+        json_truthy(condition.and_then(|value| value.get("to_broadcaster_user_id"))),
+    )
+}
+
+pub fn raid_config_type_value<'a>(
+    event_type: &'a str,
+    condition: Option<&serde_json::Value>,
+) -> &'a str {
+    if event_type == RAID_EVENT_TYPE && raid_direction_value(condition) == RaidDirection::Outgoing {
+        OUTGOING_RAID_EVENT
+    } else {
+        event_type
+    }
+}
+
+/// Dynamic string boundary for source callers that pass an unrecognized
+/// direction; as in TypeScript, only the exact outgoing literal is outgoing.
+pub fn raid_condition_value(channel_id: &str, direction: &str) -> Condition {
+    raid_condition(
+        channel_id,
+        if direction == "outgoing" {
+            RaidDirection::Outgoing
+        } else {
+            RaidDirection::Incoming
+        },
+    )
+}
+
+fn json_truthy(value: Option<&serde_json::Value>) -> bool {
+    match value {
+        None | Some(serde_json::Value::Null) => false,
+        Some(serde_json::Value::Bool(value)) => *value,
+        Some(serde_json::Value::Number(value)) => value
+            .as_f64()
+            .is_some_and(|value| value != 0.0 && !value.is_nan()),
+        Some(serde_json::Value::String(value)) => !value.is_empty(),
+        Some(serde_json::Value::Array(_) | serde_json::Value::Object(_)) => true,
+    }
 }
 
 /// Whether a condition field is present with a non-empty value, matching the
@@ -273,10 +347,33 @@ pub fn should_trip_circuit_breaker_with(
     ratio: f64,
     min_count: usize,
 ) -> bool {
-    if total_managed == 0 || unhealthy_managed < min_count.max(1) {
+    should_trip_circuit_breaker_numbers(
+        total_managed as f64,
+        unhealthy_managed as f64,
+        ratio,
+        min_count as f64,
+    )
+}
+
+/// JavaScript-number boundary for arbitrary numeric policy inputs, including
+/// fractional counts and NaN/infinity. The integer API delegates to this same
+/// policy; NaN must propagate through min/max rather than Rust's NaN-ignoring
+/// `f64::min` and `f64::max` behavior.
+pub fn should_trip_circuit_breaker_numbers(
+    total_managed: f64,
+    unhealthy_managed: f64,
+    ratio: f64,
+    min_count: f64,
+) -> bool {
+    let minimum = if min_count.is_nan() {
+        f64::NAN
+    } else {
+        min_count.max(1.0)
+    };
+    if total_managed <= 0.0 || unhealthy_managed < minimum {
         return false;
     }
-    (unhealthy_managed as f64 / total_managed as f64) > ratio.clamp(0.0, 1.0)
+    (unhealthy_managed / total_managed) > ratio.clamp(0.0, 1.0)
 }
 
 /// Canonical JSON for a legal flat EventSub condition.

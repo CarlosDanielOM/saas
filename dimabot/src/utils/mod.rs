@@ -39,9 +39,28 @@
     feature = "cron-queue",
     feature = "twitch-client",
     feature = "qdrant",
-    feature = "ast-syntax"
+    feature = "ast-syntax",
+    feature = "reward-body"
 ))]
 pub mod js_compat;
+
+#[cfg(any(
+    feature = "credit-policy",
+    feature = "ast-evaluator",
+    feature = "reward-body",
+    feature = "domain-events",
+    feature = "application-schemas"
+))]
+pub mod json_number;
+
+pub mod links;
+
+#[cfg(feature = "eventsub")]
+pub mod eventsub_bits_config;
+
+#[cfg(feature = "reward-body")]
+#[path = "twitch_reward_body.util.rs"]
+pub mod twitch_reward_body;
 
 #[cfg(feature = "mongo")]
 pub mod bson_compat;
