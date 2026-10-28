@@ -1,0 +1,124 @@
+[
+  {
+    "label": "AST conversion \u00b7 normal",
+    "group": "AST",
+    "ts": 1421.9739999999774,
+    "rust": 4864.131,
+    "samples": 7,
+    "ratio": 3.4206891265241683
+  },
+  {
+    "label": "AST conversion \u00b7 large",
+    "group": "AST",
+    "ts": 60211.50000000034,
+    "rust": 306844.62,
+    "samples": 7,
+    "ratio": 5.096113200966564
+  },
+  {
+    "label": "Block shape \u00b7 large",
+    "group": "AST",
+    "ts": 1420499.0799999996,
+    "rust": 937212.18,
+    "samples": 7,
+    "ratio": 0.6597766891901122
+  },
+  {
+    "label": "Source writer \u00b7 large",
+    "group": "AST",
+    "ts": 55465.69999999974,
+    "rust": 59247.69,
+    "samples": 7,
+    "ratio": 1.068186104204946
+  },
+  {
+    "label": "JWT sign \u00b7 normal",
+    "group": "Credentials",
+    "ts": 76748.78100000002,
+    "rust": 2298.365,
+    "samples": 7,
+    "ratio": 0.029946599412438865
+  },
+  {
+    "label": "JWT verify \u00b7 normal",
+    "group": "Credentials",
+    "ts": 117307.6390000001,
+    "rust": 3497.352,
+    "samples": 7,
+    "ratio": 0.02981350600705549
+  },
+  {
+    "label": "Schema construction \u00b7 normal",
+    "group": "Schemas",
+    "ts": 205980.86800000007,
+    "rust": 12802.0,
+    "samples": 7,
+    "ratio": 0.06215140330411655
+  },
+  {
+    "label": "Schema + serialization \u00b7 large",
+    "group": "Schemas",
+    "ts": 2921638.39,
+    "rust": 482692.668,
+    "samples": 7,
+    "ratio": 0.1652130084448952
+  },
+  {
+    "label": "Pure helpers \u00b7 core",
+    "group": "Helpers",
+    "ts": 117963697,
+    "rust": 221287068,
+    "samples": 7,
+    "batch": true,
+    "ratio": 1.8758912583080538
+  },
+  {
+    "label": "Pure helpers \u00b7 serialized",
+    "group": "Helpers",
+    "ts": 225765613,
+    "rust": 204768634,
+    "samples": 7,
+    "batch": true,
+    "ratio": 0.9069965584174239
+  },
+  {
+    "label": "Keyword local lookup",
+    "group": "Stores",
+    "ts": 1210.36,
+    "rust": 141.76,
+    "samples": 7,
+    "ratio": 0.1171221785253974
+  },
+  {
+    "label": "Keyword shared lookup",
+    "group": "Stores",
+    "ts": 283727.09,
+    "rust": 266463.25,
+    "samples": 7,
+    "ratio": 0.9391533603647081
+  },
+  {
+    "label": "Keyword refresh",
+    "group": "Stores",
+    "ts": 1837877.91,
+    "rust": 1922799.1,
+    "samples": 7,
+    "ratio": 1.0462061106115585
+  },
+  {
+    "label": "Journal insert *",
+    "group": "Stores",
+    "ts": 1473551.7320000003,
+    "rust": 921531.2570000001,
+    "samples": 1,
+    "ratio": 0.6253810008755091
+  },
+  {
+    "label": "Journal duplicate *",
+    "group": "Stores",
+    "ts": 1540809.122,
+    "rust": 710919.383,
+    "samples": 1,
+    "ratio": 0.46139354502082186
+  }
+]

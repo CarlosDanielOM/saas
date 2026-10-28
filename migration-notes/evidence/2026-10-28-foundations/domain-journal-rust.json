@@ -1,0 +1,15 @@
+{
+  "duplicateMs": 710.919383,
+  "duplicateNsPerOperation": 710919.383,
+  "duplicates": 1000,
+  "implementation": "rust",
+  "insertMs": 921.5312570000001,
+  "insertNsPerOperation": 921531.2570000001,
+  "inserted": 1000,
+  "iterations": 1000,
+  "workload": "domain-event-durable-journal",
+  "writeConcern": {
+    "j": true,
+    "w": 1
+  }
+}

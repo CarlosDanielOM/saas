@@ -1,0 +1,103 @@
+{
+  "implementation": "rust-native-exports",
+  "profile": "release",
+  "runs": [
+    {
+      "iterations": 1000,
+      "medianNsPerOp": 4864.131,
+      "operation": "astToBlock",
+      "samplesNsPerOp": [
+        5039.772,
+        4773.693,
+        4864.131,
+        4858.261,
+        4853.933,
+        4954.792,
+        6031.178
+      ],
+      "sink": 56000,
+      "workload": "normal"
+    },
+    {
+      "iterations": 1000,
+      "medianNsPerOp": 35448.165,
+      "operation": "blockShape",
+      "samplesNsPerOp": [
+        36153.016,
+        35273.028,
+        34659.728,
+        35160.877,
+        35448.165,
+        36789.939,
+        35681.612
+      ],
+      "sink": 6650000,
+      "workload": "normal"
+    },
+    {
+      "iterations": 1000,
+      "medianNsPerOp": 2199.801,
+      "operation": "rootToSource",
+      "samplesNsPerOp": [
+        2199.801,
+        2100.506,
+        2297.505,
+        2117.347,
+        2310.979,
+        2274.431,
+        2154.686
+      ],
+      "sink": 546000,
+      "workload": "normal"
+    },
+    {
+      "iterations": 100,
+      "medianNsPerOp": 306844.62,
+      "operation": "astToBlock",
+      "samplesNsPerOp": [
+        304165.49,
+        306844.62,
+        304733.76,
+        315607.92,
+        308493.8,
+        305178.79,
+        310353.78
+      ],
+      "sink": 179200,
+      "workload": "large"
+    },
+    {
+      "iterations": 100,
+      "medianNsPerOp": 937212.18,
+      "operation": "blockShape",
+      "samplesNsPerOp": [
+        937212.18,
+        907641.9,
+        971665.01,
+        940715.36,
+        940622.96,
+        908467.24,
+        893860.86
+      ],
+      "sink": 20042400,
+      "workload": "large"
+    },
+    {
+      "iterations": 100,
+      "medianNsPerOp": 59247.69,
+      "operation": "rootToSource",
+      "samplesNsPerOp": [
+        59698.03,
+        58937.11,
+        59441.36,
+        59155.51,
+        58492.47,
+        59247.69,
+        78509.46
+      ],
+      "sink": 1898400,
+      "workload": "large"
+    }
+  ],
+  "samples": 7
+}

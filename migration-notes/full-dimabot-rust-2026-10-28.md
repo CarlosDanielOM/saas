@@ -1,0 +1,64 @@
+# Full dimabot TypeScript to Rust migration — 2026-10-28
+
+## Status
+
+The requested migration remains in progress. The user’s scope is all `dimabot/` TypeScript behavior except the six React Email templates, with no new Cargo dependencies unless needed. Production changes, deployment, and push are not authorized. No total coverage percentage is claimed: feature-file and caller reconciliation is still underway, and several transitive application adapters remain incomplete. Standalone JWT feature validation passed; its broader caller audit remains outstanding.
+
+The saved baseline at [`dimabot-ts-baseline-2026-10-28.json`](dimabot-ts-baseline-2026-10-28.json) records 806 TypeScript files: 633 application files, 167 tests, and six excluded React Email templates. The 800 in-scope files include test evidence that should be translated into Rust behavior checks where relevant; they are not a one-for-one source-port target. File counts, Rust LOC, and similarly named files do not measure feature completeness.
+
+Report three separate states as work proceeds: verified local Rust behavior, total dependency-complete migration, and caller adoption/deployment. The first can advance while the second remains incomplete; deployment is separately unauthorized and is not a condition for 100% migration.
+
+## Verified candidate and behavior evidence
+
+The current all-feature matrix candidate passed all-target check and Clippy, plus a no-default-features all-target check, in `compiler-1793207656819371013-receipt.json` and its log under `/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/`. Its source tree SHA-256 is `addf636590911176d33e1881a79f65f57c1f1608ff4230af7cd19cf821295bf7`. The task-owned compiler was capped at 6 CPUs, 4 GiB memory with no swap, 256 PIDs, and two Cargo jobs; the receipt verifies limits and records `production_unchanged: true`. `Cargo.lock` is unchanged and this work adds no Cargo dependencies. The `jwt` feature now explicitly enables `serde_json/float_roundtrip` so binary64 NumericDate values round-trip correctly. Formatting and the focused runtime fixture evidence below belong to their separately named earlier receipts and snapshots.
+
+The credential-activation test target in this matrix log reports 3 passed, 0 failed, and 2 ignored. The ignored child-environment probe is intentionally launched in fresh subprocesses by the configuration-facade test; the other ignored test is a separately requested benchmark. The probe cases run within the facade test and are not added again to the harness test total.
+
+The earlier focused candidate (`compiler-fixtures-1793206387221308123`, source SHA `334f1b38bc7dba66d8699b44776963e02bafc46a7f2f47c01656bda540b3e2e9`) records 450 ordinary Rust test executions, including doctests, with no failures, plus five separately invoked fixture tests against task-owned MongoDB/Redis resources: 455 successful executions total. Its default run reports 17 ignored tests; five were later run explicitly in those fixture checks. The other 12 ignored tests are out of scope and unchanged. Earlier compiler, lint, and feature-registration mismatches were corrected in later passes; their failed logs remain in the raw artifact history and are not current failures.
+
+Focused evidence in that run includes:
+
+- Schema and persistence coverage for 35 TypeScript schema files and 42 Rust models; schema sources include 11 schemas with 70 cases and a further 31 models with 194 cases. The count describes fixture scope, not all Mongo indexes in the application.
+- Ten source-hydration pairs, 84 Twitch function scenarios, 206 domain-contract cases plus 26 runtime cases, 2,720 pure-helper cases, 241 AST cases, and 75 credential/activation cases.
+- Real isolated MongoDB/Redis and Pub/Sub behavior: recovery, two- and five-contender races, bounded disconnect backoff, `CLIENT KILL`/ID recovery, and the keyword adapter’s five-attempt CAS race, TTLs, reconnect/resubscribe, publication, and idle shutdown.
+- Twenty-four parallel native journal receipt inserts, idempotent duplicate receipts with the original result, owner lookup, wakeups, and telemetry. A separate isolated-store moderation check exercised persistence, logging, and notice throttling. Cancellation after response headers interrupted a held HTTP response body.
+
+The run fixed several substantive parity defects: three BSON feature-registration issues; hidden-field leakage and partial-save behavior; and Mongoose validator effects caused by cross-VM realm checks. The last was fixed by applying the same-realm check to a trusted allowlist, without changing business-source semantics. The archive README records the twelve accepted pure-helper/AST/credential source snapshots and their manifest hashes. This is a bounded archive, not a claim that the entire TypeScript tree is complete.
+
+## Current implementation boundaries and remaining gaps
+
+The strongest verified local paths in this batch are shared pure utilities, standalone AST exports, credential/activation primitives, foundational schema/persistence behavior, Twitch function adapters, domain-event contracts/runtime, and keyword storage adapters. This list describes tested areas only; it is not a feature coverage score or dependency-complete migration claim.
+
+The broader API, bot, workers, commands, and shared-helper call graphs remain largely TypeScript. Native wrappers for authentication, logging, and other runtime services still need their full concrete transitive adapters; the shared logger, observability, and inbox paths are not complete. A trait or test mock does not close these dependencies. Known behavior gaps still include legacy Mongoose date casting, arbitrary JavaScript date parsing in the standalone interaction reducer, UTF-16 lone-surrogate behavior, and legacy `Retry-After` date diagnostics. The file/caller/dependency reconciliation and JWT caller audit must be completed before any completion percentage or source-freeze claim.
+
+The initial user scope excludes six React Email templates, not other TypeScript files by default. Keep that exclusion explicit in future inventories. No new Cargo dependency was added for the behavior recorded here.
+
+## Comparative measurements
+
+These are synthetic local measurements for named source snapshots, not production performance claims. [Preserved raw JSON, source hashes, samples, receipts, and verifier commands](evidence/2026-10-28-foundations/README.md) are available in the repository; the original run directory is `/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/`. TypeScript-only measurements use fresh compiled JavaScript or source-VM functions as identified by each artifact. The AST and credential source-VM functions are loaded once; they are not re-created in each measured iteration. Do not substitute old oracle processes with the TypeScript compiler loaded when comparing RSS. The TS/Rust values below share fixture sources and workloads where stated.
+
+| Workload | Observed result | Qualification |
+|---|---|---|
+| AST standalone exports | Rust `blockShape` used about 32% less time at normal size and 34% less at large size. `astToBlock` was about 3.4× slower normal and 5.1× slower large. `rootToSource` was faster normal and about 7% slower large. | Seven samples per operation; keep the large `astToBlock` regression visible. Artifacts: `ast-exports-{ts-fresh,rust-optimized}.json`. |
+| Pure-helper core | Native Rust took 221.287 ms versus 117.964 ms for clean compiled JavaScript, 1,625 cases × 100 iterations with matching source hashes and checksum 5,988,000; Rust was 1.876× slower. | Seven samples. Source core measures returned values before JSON serialization. Artifact pair: `pure-utils-ts-clean.json` and `pure-utils-rust-optimized.json`. |
+| Pure helpers including serialization | Native Rust took 204.769 ms versus 225.766 ms for clean compiled JavaScript on the same cases, iterations, source hashes, and checksum; Rust used 0.907× the elapsed time. | Seven samples. This path includes JSON serialization and produced the same aggregate checksum. Sampled RSS was about 11.59 MB Rust versus 73.24 MB TypeScript. RSS is process-specific; CPU counters differ, so this is not a production memory or CPU claim. Same artifact pair as above. |
+| Credential/activation | Rust was faster in the measured normal and large encrypt, decrypt, sign, and verify operations. | Seven samples with OS entropy for encryption and a fixed NumericDate for sign/verify. Preserve the invalid-key/JWT-exp behavior changes as explicit compatibility/security decisions; the full JWT caller audit is pending. Artifacts: `credential-activation-{ts-fresh,rust}.json`. |
+| Application schemas | Rust was faster in construct/validate and construct/validate/serialize for both normal and large user fixtures; e.g. normal construction was 12.8 µs versus 206.0 µs, large serialization 482.7 µs versus 2.92 ms. | Seven samples in release Rust and clean Mongoose/Node. This isolates model work, not database latency. Artifacts: `application-schemas-{ts,rust}.json`. |
+| Keyword adapters | Results were mixed: Rust local index lookup and count writes were faster; shared lookup and Mongo miss were similar; refresh was slower. | Seven samples, 100 fixture rows, real disposable Mongo/Redis fixtures. Do not generalize fixture timings to production. Artifacts: `keyword-native-{ts,rust}.json`. |
+| Durable domain journal | One isolated trial measured 1,000 inserts and 1,000 duplicates under `w:1,j:true`: Rust 0.922/0.711 ms per operation versus TypeScript 1.474/1.541 ms. | One trial only, not a seven-sample median. Values match and duplicate calls return the original receipt; do not claim a stable speedup. See `domain-journal-ts.json` and the journal benchmark line in `compiler-fixtures-1793206767745562630.log`. |
+
+Possible contributors to measured native advantages include fewer ODM document allocations, direct compiled cryptographic operations, shared pooled clients, and avoiding repeated JSON serialization. These are hypotheses inferred from implementation shape, not isolated causal findings. The TypeScript benchmark setup compiles once; the measured worker loops execute compiled JavaScript. Preserve the core pure-helper regression and mixed AST results alongside the serialization-inclusive and other wins.
+
+## Next migration work
+
+1. Finish the source-backed matrix for the 800 in-scope baseline files, tracing actual runtime imports and transitive dependencies. Classify each as implemented with evidence, an equivalent Rust type-only contract, accepted archive/removal, explicitly out of scope, or outstanding. Map features and callers; do not infer completion from filenames or line counts.
+2. Extend the passed all-feature matrix as ports are added and finish the JWT caller audit. Resolve or deliberately document and test the known Mongoose date-casting, interaction date parsing, UTF-16 lone-surrogate, and `Retry-After` diagnostic differences.
+3. Port the outstanding API, bot, worker, command, and shared-helper behavior, including concrete application adapters for storage, cache, Pub/Sub, HTTP, authentication, logging, telemetry/observability, inbox, email, and any other required service. Name a blocked dependency when one prevents completion.
+4. Continue exact-candidate checks using uniquely named task-owned containers and disposable resources only. Preserve readiness/backlog evidence, source hashes, per-suite counts, resource labels, cleanup receipts, and before/after production identity evidence. Never run runtime tests or probes directly on this host or against production resources.
+5. Keep benchmark comparisons scoped to matching source/workload/checksum and label the one-trial journal result accordingly. Preserve further verified trials alongside the [foundation evidence](evidence/2026-10-28-foundations/README.md).
+
+## Scope and evidence references
+
+Baseline inventory: [`dimabot-ts-baseline-2026-10-28.json`](dimabot-ts-baseline-2026-10-28.json). Source archive and hash manifest: [`archives/dimabot-typescript/2026-10-28/README.md`](../archives/dimabot-typescript/2026-10-28/README.md). Main receipt and raw outputs: `/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/`. Repository migration, testing, and delivery limits: [`AGENTS.md`](../AGENTS.md), [`dimabot/AGENTS.md`](../dimabot/AGENTS.md), [`dimabot/RUST_AGENTS.md`](../dimabot/RUST_AGENTS.md), and [`ops/README.md`](../ops/README.md).
+
+Runtime checks used task-owned resources only. Read-only production identity/configuration comparisons remained unchanged; no production database, cache, queue, credentials, or volume was used for testing. There was no deployment or caller cutover. Continue the user-authorized migration without treating this successful subset as completion.

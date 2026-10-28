@@ -1,0 +1,37 @@
+{
+  "phase": "compiler",
+  "success": true,
+  "steps": [
+    {
+      "name": "bootstrap",
+      "seconds": 4.031,
+      "exit_code": 0
+    },
+    {
+      "name": "locked-fetch",
+      "seconds": 1.91,
+      "exit_code": 0
+    },
+    {
+      "name": "compiler",
+      "seconds": 191.505,
+      "exit_code": 0
+    }
+  ],
+  "limits": {
+    "cpus": 6,
+    "memory": 4294967296,
+    "memory_swap": 4294967296,
+    "pids": 256,
+    "cargo_jobs": 2
+  },
+  "headroom_start": {
+    "mem_available_bytes": 12475584512,
+    "load_1m": 0.88818359375
+  },
+  "minimum_available_bytes": 11850752000,
+  "peak_cache_bytes": 5379035136,
+  "limits_verified": true,
+  "production_unchanged": true,
+  "elapsed_seconds": 198.944
+}

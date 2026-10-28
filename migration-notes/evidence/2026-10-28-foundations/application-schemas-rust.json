@@ -1,0 +1,71 @@
+{
+  "implementation": "rust-native-application-schemas",
+  "profile": "release",
+  "runs": [
+    {
+      "iterations": 500,
+      "medianNsPerOp": 12802.0,
+      "operation": "constructValidate",
+      "samplesNsPerOp": [
+        16303.402,
+        13981.572,
+        12381.416,
+        12802.0,
+        12580.686,
+        14068.576,
+        12797.714
+      ],
+      "sink": 49000,
+      "workload": "normal-user"
+    },
+    {
+      "iterations": 500,
+      "medianNsPerOp": 32677.874,
+      "operation": "constructValidateSerialize",
+      "samplesNsPerOp": [
+        30377.728,
+        32677.874,
+        34000.214,
+        31676.16,
+        33587.658,
+        31961.35,
+        34161.052
+      ],
+      "sink": 2506000,
+      "workload": "normal-user"
+    },
+    {
+      "iterations": 500,
+      "medianNsPerOp": 255632.506,
+      "operation": "constructValidate",
+      "samplesNsPerOp": [
+        249514.964,
+        259809.088,
+        260763.678,
+        246805.73,
+        255632.506,
+        270823.804,
+        243657.352
+      ],
+      "sink": 49000,
+      "workload": "large-user"
+    },
+    {
+      "iterations": 500,
+      "medianNsPerOp": 482692.668,
+      "operation": "constructValidateSerialize",
+      "samplesNsPerOp": [
+        557596.844,
+        476151.896,
+        504904.236,
+        481778.454,
+        496248.82,
+        482692.668,
+        469070.852
+      ],
+      "sink": 32501000,
+      "workload": "large-user"
+    }
+  ],
+  "samples": 7
+}

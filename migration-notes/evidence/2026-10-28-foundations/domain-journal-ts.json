@@ -1,0 +1,1 @@
+{"implementation":"typescript","workload":"domain-event-durable-journal","iterations":1000,"inserted":1000,"duplicates":1000,"insertMs":1473.5517320000001,"duplicateMs":1540.8091220000001,"insertNsPerOperation":1473551.7320000003,"duplicateNsPerOperation":1540809.122,"writeConcern":{"w":1,"j":true},"node":"v24.22.1"}

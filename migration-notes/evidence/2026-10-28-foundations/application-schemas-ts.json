@@ -1,0 +1,73 @@
+{
+  "implementation": "typescript-schema-mongoose-clean-worker",
+  "runtime": "v24.22.1",
+  "mongoose": "8.24.2",
+  "compilerLoaded": false,
+  "samples": 7,
+  "runs": [
+    {
+      "workload": "normal-user",
+      "operation": "constructValidate",
+      "iterations": 500,
+      "samplesNsPerOp": [
+        272446.774,
+        225890.36200000008,
+        228079.08599999998,
+        205980.86800000007,
+        198619.09800000011,
+        192581.68999999977,
+        185234.64799999964
+      ],
+      "medianNsPerOp": 205980.86800000007,
+      "sink": 49000
+    },
+    {
+      "workload": "normal-user",
+      "operation": "constructValidateSerialize",
+      "iterations": 500,
+      "samplesNsPerOp": [
+        268619.0039999997,
+        248288.32199999987,
+        225004.26400000014,
+        262664.7499999999,
+        251554.97800000012,
+        245697.1060000001,
+        275892.04999999993
+      ],
+      "medianNsPerOp": 251554.97800000012,
+      "sink": 2506000
+    },
+    {
+      "workload": "large-user",
+      "operation": "constructValidate",
+      "iterations": 500,
+      "samplesNsPerOp": [
+        3103317.156,
+        2990748.4860000014,
+        2771484.237999999,
+        2817751.102,
+        2706289.622,
+        2679094.499999999,
+        2641935.614000002
+      ],
+      "medianNsPerOp": 2771484.237999999,
+      "sink": 49000
+    },
+    {
+      "workload": "large-user",
+      "operation": "constructValidateSerialize",
+      "iterations": 500,
+      "samplesNsPerOp": [
+        2921638.39,
+        2976925.5940000005,
+        2888259.0439999984,
+        2841218.187999999,
+        2923771.805999997,
+        2915019.9139999966,
+        2955658.135999998
+      ],
+      "medianNsPerOp": 2921638.39,
+      "sink": 32501000
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "scope": "Fully ported pure helpers and credential/JWT exports; no runtime cutover or deployment. Performance regressions remain tracked separately.",
+  "files": [
+    {
+      "source": "src/utils/shared_chat_origin.ts",
+      "sha256": "da3f36a056c7af696c81f27e676f68a1966f12f4cb2bb10745986a64800b620f"
+    },
+    {
+      "source": "src/utils/raid_direction.ts",
+      "sha256": "4dd1222da4f496fcd3f047537be318be4681bb5515849392ee2c628045d0e2c8"
+    },
+    {
+      "source": "src/utils/twitch_reward_body.util.ts",
+      "sha256": "4981de2ad92fb7cdbfbc3c82a595dd2613dd948c1fde2396a7ee3e4dbbb86694"
+    },
+    {
+      "source": "src/utils/eventsub_condition.ts",
+      "sha256": "9cc168f1d91143e8da3e74f06271845247f6ac460618d9134fb433b3925d8d03"
+    },
+    {
+      "source": "src/utils/eventsub_bits_config.ts",
+      "sha256": "9d3d64942102c1826bf0b6fbe7b92cc0c4d5cb34d31cc200c6f73a7d6104218c"
+    },
+    {
+      "source": "src/utils/eventsub_reconciliation_policy.ts",
+      "sha256": "01f9711b9be29933b031fe794ed5613ce200ddc515b82f094db87ac7c1edf7fe"
+    },
+    {
+      "source": "src/utils/links.ts",
+      "sha256": "145c49f639eda2b36bff73d30d8f2b4558f51eab7f56ee7804d88aef8834756a"
+    },
+    {
+      "source": "src/utils/ast_blocks/from_ast.ts",
+      "sha256": "313acea721830325002db9fbe573d27a8f78f2cc16182ce474feb3310439836d"
+    },
+    {
+      "source": "src/utils/ast_blocks/normalize.ts",
+      "sha256": "d07a2c26e1696361ab096e58f6d2fec440959289a4d359643d93918e32f678af"
+    },
+    {
+      "source": "src/utils/ast_blocks/to_source.ts",
+      "sha256": "04a0e5a69b1f2359e7fcba076fc88e2a8478ab0da80ffd001afda29b228fb706"
+    },
+    {
+      "source": "src/utils/crypto.ts",
+      "sha256": "6d2cd4ed54d87a3d0daf0ad7548d02dda07990eb5b3279e613aa260b4d3b2f71"
+    },
+    {
+      "source": "src/utils/email/email-activation-token.ts",
+      "sha256": "73ea7d089c1b8c205c9e11973a7f8fbb47d887a3e08f68e7d76685b41f98836a"
+    }
+  ]
+}
