@@ -719,41 +719,7 @@ fn cast(
             ),
             _ => Err(()),
         },
-        FieldType::Date => match value {
-            Bson::DateTime(value)
-                if value.timestamp_millis().unsigned_abs() <= 8_640_000_000_000_000 =>
-            {
-                Ok(value.into())
-            }
-            Bson::String(text) if text.is_empty() => Ok(Bson::Null),
-            Bson::String(text) => {
-                if let Ok(date) = DateTime::parse_rfc3339_str(&text) {
-                    return Ok(date.into());
-                }
-                if text.len() == 10
-                    && let Ok(date) = DateTime::parse_rfc3339_str(format!("{text}T00:00:00Z"))
-                {
-                    return Ok(date.into());
-                }
-                let value = text.parse::<f64>().map_err(|_| ())?;
-                if !(-271_820.0..275_761.0).contains(&value)
-                    && value.is_finite()
-                    && value.abs() <= 8_640_000_000_000_000.0
-                {
-                    Ok(DateTime::from_millis(value as i64).into())
-                } else {
-                    Err(())
-                }
-            }
-            value => {
-                let value = number(&value).ok_or(())?;
-                if value.is_finite() && value.abs() <= 8_640_000_000_000_000.0 {
-                    Ok(DateTime::from_millis(value as i64).into())
-                } else {
-                    Err(())
-                }
-            }
-        },
+        FieldType::Date => crate::utils::mongoose_date::cast(&value).map_err(|_| ()),
         FieldType::Array(element) => {
             let values = match value {
                 Bson::Array(values) => values,

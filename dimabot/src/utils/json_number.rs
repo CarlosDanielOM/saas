@@ -32,7 +32,7 @@ fn array_primitive(value: &Value) -> String {
     }
 }
 
-fn string_number(value: &str) -> f64 {
+pub(crate) fn string_number(value: &str) -> f64 {
     let value = js_trim(value);
     if value.is_empty() {
         return 0.0;

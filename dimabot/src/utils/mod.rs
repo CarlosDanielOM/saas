@@ -99,6 +99,8 @@ pub mod js_string;
 pub mod keywords;
 #[cfg(feature = "logger")]
 pub mod logger;
+#[cfg(feature = "application-schemas")]
+pub mod mongoose_date;
 #[cfg(feature = "observability")]
 pub mod observability;
 #[cfg(feature = "plan-cache")]
