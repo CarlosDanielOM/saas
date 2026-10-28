@@ -1,4 +1,8 @@
-//! Pure TTS utility policies. No service, cache, or network access.
+//! TTS text policies, session queues, and bounded audio-file helpers.
+
+pub mod playback_timeout;
+#[cfg(feature = "redis")]
+pub mod session;
 
 pub const EMOTIONS: &[&str] = &[
     "happy",

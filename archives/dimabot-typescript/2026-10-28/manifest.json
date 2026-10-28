@@ -1,5 +1,5 @@
 {
-  "scope": "Fully ported pure helpers and credential/JWT exports; no runtime cutover or deployment. Performance regressions remain tracked separately.",
+  "scope": "Completed native leaf helpers, AST exports, credential/JWT exports and TTS session/playback helpers; no runtime cutover or deployment. Performance regressions remain tracked separately.",
   "files": [
     {
       "source": "src/utils/shared_chat_origin.ts",
@@ -48,6 +48,14 @@
     {
       "source": "src/utils/email/email-activation-token.ts",
       "sha256": "73ea7d089c1b8c205c9e11973a7f8fbb47d887a3e08f68e7d76685b41f98836a"
+    },
+    {
+      "source": "src/utils/tts/tts_session.util.ts",
+      "sha256": "78044a8de50631bd6287b9e969ddb6130a7dbf9f319d2668c7e08c6e26e703f7"
+    },
+    {
+      "source": "src/utils/tts/tts_playback_timeout.util.ts",
+      "sha256": "4a93d87b78e79025db05eed4c21e1f76acc2c5cdfa1efeb7dd46e4956276c259"
     }
   ]
 }
