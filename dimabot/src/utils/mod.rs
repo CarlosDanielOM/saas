@@ -91,6 +91,8 @@ pub mod command_cooldown;
 pub mod domain_events;
 #[cfg(feature = "eventsub")]
 pub mod eventsub;
+#[cfg(feature = "tts-utilities")]
+pub mod js_string;
 #[cfg(feature = "keywords")]
 pub mod keywords;
 #[cfg(feature = "logger")]

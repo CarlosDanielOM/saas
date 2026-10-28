@@ -218,6 +218,86 @@
       ]
     },
     {
+      "op": "extract",
+      "input": "😀😀 Kappa﻿",
+      "ranges": [
+        [
+          "0-0",
+          "1-1",
+          "0-1",
+          "0-0",
+          "2-3",
+          "5-10"
+        ]
+      ],
+      "expected": {
+        "units": [
+          [
+            55357
+          ],
+          [
+            56832
+          ],
+          [
+            55357,
+            56832
+          ],
+          [
+            75,
+            97,
+            112,
+            112,
+            97
+          ]
+        ],
+        "wire": "[\"\\ud83d\",\"\\ude00\",\"😀\",\"Kappa\"]"
+      }
+    },
+    {
+      "op": "pipeline",
+      "input": "﻿😀 Kappa 😀  ",
+      "ranges": [
+        [
+          "1-1",
+          "4-8",
+          "4-8"
+        ]
+      ],
+      "options": {
+        "skipEmotes": true,
+        "stripLinks": false,
+        "normalizeWhitespace": true,
+        "maxLength": 1
+      },
+      "expected": {
+        "units": [
+          55357
+        ],
+        "wire": "\"\\ud83d\"",
+        "error": false
+      }
+    },
+    {
+      "op": "pipeline",
+      "input": "",
+      "ranges": [
+        [
+          "0-0"
+        ]
+      ],
+      "options": {
+        "skipEmotes": true,
+        "stripLinks": false,
+        "normalizeWhitespace": true,
+        "maxLength": 4
+      },
+      "expected": {
+        "units": [],
+        "wire": "\"\"",
+        "error": true
+      }
+    },
+    {
       "op": "status",
       "input": {
         "connected": false,

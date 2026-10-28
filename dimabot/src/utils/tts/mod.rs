@@ -420,37 +420,27 @@ pub struct NormalizeTtsMessageOptions<'a> {
     pub strip_links: bool,
     pub normalize_whitespace: bool,
     pub max_length: f64,
-    pub emote_names: &'a [String],
+    pub emote_names: &'a [super::js_string::JsString],
 }
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NormalizeTtsMessageResult {
     pub error: bool,
     pub message: &'static str,
-    pub text: String,
+    pub text: super::js_string::JsString,
     pub original_text: String,
-}
-/// JavaScript's UTF-16 slicing can produce an unpaired surrogate, which a
-/// Rust String cannot represent. Report that case instead of replacing it.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct SplitSurrogate;
-fn utf16_slice(text: &str, start: usize, end: usize) -> Result<String, SplitSurrogate> {
-    let units: Vec<u16> = text.encode_utf16().collect();
-    String::from_utf16(
-        &units[start.min(units.len())..end.min(units.len()).max(start.min(units.len()))],
-    )
-    .map_err(|_| SplitSurrogate)
 }
 pub fn normalize_tts_message(
     text: &str,
     options: &NormalizeTtsMessageOptions<'_>,
-) -> Result<NormalizeTtsMessageResult, SplitSurrogate> {
+) -> NormalizeTtsMessageResult {
     static LINKS: OnceLock<Regex> = OnceLock::new();
     let mut normalized = text.to_owned();
     if options.skip_emotes {
         let emotes: HashSet<&str> = options
             .emote_names
             .iter()
-            .map(|s| trim(s))
+            .filter_map(|s| s.as_str())
+            .map(trim)
             .filter(|s| !s.is_empty())
             .collect();
         if !emotes.is_empty() {
@@ -498,11 +488,12 @@ pub fn normalize_tts_message(
     } else {
         normalized = trim(&normalized).to_owned();
     }
-    if options.max_length > 0.0 && normalized.encode_utf16().count() as f64 > options.max_length {
-        normalized = trim(&utf16_slice(&normalized, 0, options.max_length as usize)?).to_owned();
+    let mut normalized = super::js_string::JsString::from(normalized);
+    if options.max_length > 0.0 && normalized.len() as f64 > options.max_length {
+        normalized = normalized.slice(0, options.max_length as i64).trim();
     }
     let error = normalized.is_empty();
-    Ok(NormalizeTtsMessageResult {
+    NormalizeTtsMessageResult {
         error,
         message: if error {
             "No speakable text remained after filtering"
@@ -511,7 +502,7 @@ pub fn normalize_tts_message(
         },
         text: normalized,
         original_text: text.to_owned(),
-    })
+    }
 }
 
 fn parse_js_integer(text: &str) -> Option<f64> {
@@ -542,10 +533,11 @@ fn slice_index(index: f64, length: usize) -> usize {
 pub fn extract_emote_names(
     message: &str,
     emotes: &[Vec<String>],
-) -> Result<Vec<String>, SplitSurrogate> {
+) -> Vec<super::js_string::JsString> {
     let mut seen = HashSet::new();
     let mut output = Vec::new();
-    let length = message.encode_utf16().count();
+    let message = super::js_string::JsString::from(message);
+    let length = message.len();
     for entry in emotes.iter().flatten() {
         let mut parts = entry.split('-');
         let (Some(start), Some(end)) = (
@@ -556,13 +548,12 @@ pub fn extract_emote_names(
         };
         let start = slice_index(start, length);
         let end = slice_index(end + 1.0, length).max(start);
-        let emote = utf16_slice(message, start, end)?;
-        let emote = trim(&emote);
-        if !emote.is_empty() && seen.insert(emote.to_owned()) {
-            output.push(emote.to_owned());
+        let emote = message.slice(start as i64, end as i64).trim();
+        if !emote.is_empty() && seen.insert(emote.clone()) {
+            output.push(emote);
         }
     }
-    Ok(output)
+    output
 }
 
 /// A timeout leaves the spawned operation running, just as Promise.race does.

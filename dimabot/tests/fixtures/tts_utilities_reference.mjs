@@ -43,6 +43,17 @@ for (const c of cases) {
     case 'reinforce': actual = tags.reinforceFishTtsTags(c.input); break;
     case 'normalize': actual = normalize.normalizeTtsMessage(c.input,c.options); break;
     case 'splitSurrogate': actual = [...Array(normalize.normalizeTtsMessage(c.input,c.options).text.length)].map((_, i) => normalize.normalizeTtsMessage(c.input,c.options).text.charCodeAt(i)); break;
+    case 'extract': {
+      const names = normalize.extractEmoteNames(c.input, Object.fromEntries(c.ranges.map((v, i) => [`e${i}`, v])));
+      actual = {units: names.map(s => Array.from({length:s.length}, (_, i) => s.charCodeAt(i))), wire: JSON.stringify(names)};
+      break;
+    }
+    case 'pipeline': {
+      const names = normalize.extractEmoteNames(c.input, Object.fromEntries(c.ranges.map((v, i) => [`e${i}`, v])));
+      const result = normalize.normalizeTtsMessage(c.input, {...c.options, emoteNames:names});
+      actual = {units:Array.from({length:result.text.length}, (_, i) => result.text.charCodeAt(i)), wire:JSON.stringify(result.text), error:result.error};
+      break;
+    }
     case 'status': actual = status.isTtsStatusData(c.input) ? status.formatTtsStatus(c.input) : null; break;
     default: throw new Error(`unknown operation ${c.op}`);
   }
