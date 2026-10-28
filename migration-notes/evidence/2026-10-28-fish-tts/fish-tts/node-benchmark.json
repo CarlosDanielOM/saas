@@ -1,0 +1,216 @@
+{
+  "schema": 1,
+  "metadata": {
+    "node": "v24.22.1",
+    "versions": {
+      "node": "24.22.1",
+      "acorn": "8.18.0",
+      "ada": "4.0.0",
+      "amaro": "1.1.11",
+      "ares": "1.34.9",
+      "brotli": "1.2.0",
+      "cldr": "48.0",
+      "icu": "78.3",
+      "llhttp": "9.4.3",
+      "merve": "1.2.2",
+      "modules": "137",
+      "napi": "10",
+      "nbytes": "0.1.4",
+      "ncrypto": "0.0.1",
+      "nghttp2": "1.70.0",
+      "nghttp3": "",
+      "ngtcp2": "",
+      "openssl": "3.5.9",
+      "simdjson": "4.6.11",
+      "simdutf": "6.4.0",
+      "sqlite": "3.53.4",
+      "tz": "2026e",
+      "undici": "7.30.1",
+      "unicode": "17.0",
+      "uv": "1.52.1",
+      "uvwasi": "0.0.23",
+      "v8": "13.6.233.17-node.58",
+      "zlib": "1.3.2.1-motley-285e94b",
+      "zstd": "1.5.7"
+    },
+    "msgpackVersion": "3.1.3",
+    "fixtureSha256": "9a0d589d338b2447a8eefc9f1d3242598dc0cbd20d569fa0d99b2ba7323b7148",
+    "harnessSha256": "2486c2b634b151fd692bdcfe7e8c304f7bc590d0a8b15e4da47e40d20eb9c066",
+    "warmupIterations": 100,
+    "samples": 7,
+    "checksum": "sum of every encoded byte over all iterations modulo 2^32"
+  },
+  "cases": [
+    {
+      "name": "basic",
+      "units": {
+        "text": 5,
+        "reference": 32
+      },
+      "iterations": 10000,
+      "bytes": 700000,
+      "checksum": 67720000,
+      "samplesNs": [
+        66840592,
+        42577684,
+        33236637,
+        23293232,
+        23855956,
+        24773235,
+        26296257
+      ]
+    },
+    {
+      "name": "emoji",
+      "units": {
+        "text": 4,
+        "reference": 32
+      },
+      "iterations": 10000,
+      "bytes": 710000,
+      "checksum": 71610000,
+      "samplesNs": [
+        27118246,
+        23403658,
+        25715490,
+        25204070,
+        23715233,
+        24543794,
+        24789746
+      ]
+    },
+    {
+      "name": "unicode-reference",
+      "units": {
+        "text": 4,
+        "reference": 9
+      },
+      "iterations": 10000,
+      "bytes": 500000,
+      "checksum": 62360000,
+      "samplesNs": [
+        23799581,
+        22858326,
+        22568824,
+        27860056,
+        32652393,
+        28243464,
+        33697712
+      ]
+    },
+    {
+      "name": "units-49-high",
+      "units": {
+        "text": 49,
+        "reference": 32
+      },
+      "iterations": 10000,
+      "bytes": 1170000,
+      "checksum": 115240000,
+      "samplesNs": [
+        32276559,
+        31222485,
+        31964043,
+        28011020,
+        27035501,
+        27139917,
+        29597710
+      ]
+    },
+    {
+      "name": "units-50-high",
+      "units": {
+        "text": 50,
+        "reference": 32
+      },
+      "iterations": 10000,
+      "bytes": 1180000,
+      "checksum": 116220000,
+      "samplesNs": [
+        29563357,
+        30399173,
+        30920960,
+        28191708,
+        27824369,
+        27398101,
+        29317746
+      ]
+    },
+    {
+      "name": "units-51-high",
+      "units": {
+        "text": 51,
+        "reference": 32
+      },
+      "iterations": 10000,
+      "bytes": 1190000,
+      "checksum": 118140000,
+      "samplesNs": [
+        31608347,
+        34466802,
+        30369458,
+        31188360,
+        28643804,
+        29672941,
+        49961756
+      ]
+    },
+    {
+      "name": "reference-50-high",
+      "units": {
+        "text": 18,
+        "reference": 50
+      },
+      "iterations": 10000,
+      "bytes": 1030000,
+      "checksum": 109810000,
+      "samplesNs": [
+        49930257,
+        36949972,
+        25220271,
+        27137372,
+        26907701,
+        27655503,
+        36102235
+      ]
+    },
+    {
+      "name": "reference-51-high",
+      "units": {
+        "text": 18,
+        "reference": 51
+      },
+      "iterations": 10000,
+      "bytes": 1040000,
+      "checksum": 111730000,
+      "samplesNs": [
+        25979423,
+        27689908,
+        30034209,
+        25488575,
+        25977770,
+        24579982,
+        25584604
+      ]
+    },
+    {
+      "name": "ascii-bytes-65536",
+      "units": {
+        "text": 65536,
+        "reference": 32
+      },
+      "iterations": 1000,
+      "bytes": 65605000,
+      "checksum": 2068319704,
+      "samplesNs": [
+        509888198,
+        628172722,
+        613199225,
+        619452730,
+        599739532,
+        601647837,
+        646648351
+      ]
+    }
+  ]
+}

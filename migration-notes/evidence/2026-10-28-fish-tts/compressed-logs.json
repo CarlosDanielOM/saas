@@ -1,0 +1,18 @@
+{
+  "compiler-1793222683480124413.log.gz": {
+    "uncompressedSha256": "7673dfaa816be1ce0d658c0f5e847053ea0cb241e791314ba0ef97023a3adcb8",
+    "uncompressedBytes": 7948
+  },
+  "node-1793223021678187908.log.gz": {
+    "uncompressedSha256": "534395195b975b1d2ad022d31cf27bbef2911723e7445995007f481c6862bbf0",
+    "uncompressedBytes": 1076
+  },
+  "compiler-1793223195182073204.log.gz": {
+    "uncompressedSha256": "731c7fb51048878ec0818afe2403dd8c292b4f466ab21280add0de2a93c936f2",
+    "uncompressedBytes": 2805
+  },
+  "compiler-1793222439398514104.log.gz": {
+    "uncompressedSha256": "eca5e4226e015c636e5373af9a43a60140f64076d04168918df7d0307cea1ca6",
+    "uncompressedBytes": 5878
+  }
+}

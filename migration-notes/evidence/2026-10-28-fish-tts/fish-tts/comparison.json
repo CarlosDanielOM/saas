@@ -1,0 +1,92 @@
+{
+  "schema": 1,
+  "sourceTreeSha256": "82dc1017cb864f677438595aa597d26d0764062371ed18a319fb5dfdc6f11440",
+  "compilerReceipt": "compiler-1793222683480124413-receipt.json",
+  "nodeReceipt": "node-1793223021678187908-receipt.json",
+  "scope": "Three-field Fish request MessagePack encoding plus a checksum scan of every output byte. Prepared inputs. No HTTP, JSON, filesystem, production or CPU/RSS comparison. Sequential pinned containers on one shared host, not an interleaved statistical study.",
+  "warmupIterations": 100,
+  "samples": 7,
+  "cases": [
+    {
+      "name": "basic",
+      "iterations": 10000,
+      "bytes": 700000,
+      "checksum": 67720000,
+      "nodeMedianUs": 2.6296257,
+      "rustMedianUs": 0.4204626,
+      "rustOverNode": 0.15989446710990085
+    },
+    {
+      "name": "emoji",
+      "iterations": 10000,
+      "bytes": 710000,
+      "checksum": 71610000,
+      "nodeMedianUs": 2.4789746,
+      "rustMedianUs": 0.34097160000000004,
+      "rustOverNode": 0.1375454189808964
+    },
+    {
+      "name": "unicode-reference",
+      "iterations": 10000,
+      "bytes": 500000,
+      "checksum": 62360000,
+      "nodeMedianUs": 2.7860055999999997,
+      "rustMedianUs": 0.26366989999999996,
+      "rustOverNode": 0.09464083632854148
+    },
+    {
+      "name": "units-49-high",
+      "iterations": 10000,
+      "bytes": 1170000,
+      "checksum": 115240000,
+      "nodeMedianUs": 2.9597710000000004,
+      "rustMedianUs": 0.9990794,
+      "rustOverNode": 0.33755293906183953
+    },
+    {
+      "name": "units-50-high",
+      "iterations": 10000,
+      "bytes": 1180000,
+      "checksum": 116220000,
+      "nodeMedianUs": 2.9317746000000002,
+      "rustMedianUs": 1.0691135999999999,
+      "rustOverNode": 0.36466432310314706
+    },
+    {
+      "name": "units-51-high",
+      "iterations": 10000,
+      "bytes": 1190000,
+      "checksum": 118140000,
+      "nodeMedianUs": 3.118836,
+      "rustMedianUs": 0.5742276000000001,
+      "rustOverNode": 0.18411599712200324
+    },
+    {
+      "name": "reference-50-high",
+      "iterations": 10000,
+      "bytes": 1030000,
+      "checksum": 109810000,
+      "nodeMedianUs": 2.7655502999999997,
+      "rustMedianUs": 1.1345803,
+      "rustOverNode": 0.4102548053456125
+    },
+    {
+      "name": "reference-51-high",
+      "iterations": 10000,
+      "bytes": 1040000,
+      "checksum": 111730000,
+      "nodeMedianUs": 2.5977770000000002,
+      "rustMedianUs": 1.2324606,
+      "rustOverNode": 0.4744289444398037
+    },
+    {
+      "name": "ascii-bytes-65536",
+      "iterations": 1000,
+      "bytes": 65605000,
+      "checksum": 2068319704,
+      "nodeMedianUs": 613.199225,
+      "rustMedianUs": 67.69949199999999,
+      "rustOverNode": 0.11040374684100424
+    }
+  ]
+}

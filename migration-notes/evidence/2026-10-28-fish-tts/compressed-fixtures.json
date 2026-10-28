@@ -1,0 +1,10 @@
+{
+  "fish-tts/fish-sdk-protocol.json.gz": {
+    "uncompressedSha256": "9a0d589d338b2447a8eefc9f1d3242598dc0cbd20d569fa0d99b2ba7323b7148",
+    "uncompressedBytes": 2099135
+  },
+  "fish-tts/fish-tts-reference.json.gz": {
+    "uncompressedSha256": "545b3b4ad1e6a9050032d963428dbcc84f39549ade7ae36d34d59134ffa510c8",
+    "uncompressedBytes": 25521
+  }
+}

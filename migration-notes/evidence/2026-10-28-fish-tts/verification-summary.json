@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "codeCommit": "4aea7f18",
+  "sourceTreeSha256": "82dc1017cb864f677438595aa597d26d0764062371ed18a319fb5dfdc6f11440",
+  "compilerReceipt": "compiler-1793222683480124413-receipt.json",
+  "sourceOracleReceipt": "node-1793223021678187908-receipt.json",
+  "postOracleFixtureConfirmationReceipt": "compiler-1793223195182073204-receipt.json",
+  "ordinaryTestExecutions": 29,
+  "explicitFixtureTests": 3,
+  "explicitReleaseBenchmarkTests": 1,
+  "confirmationFixtureReruns": 3,
+  "sourceCases": {
+    "sdkWireEncoding": 39,
+    "nativeHttpWireReplay": 38,
+    "directErrorBodies": 11,
+    "actualTypescriptService": 11,
+    "publicPath": 3,
+    "sdkRetrySchedules": 7
+  },
+  "fixtureHashesBeforeAfterIdentical": true,
+  "productionContainerCount": 19,
+  "productionUnchanged": true,
+  "deployment": false,
+  "push": false,
+  "newCargoPackages": false
+}
