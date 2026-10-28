@@ -51,11 +51,16 @@ pub mod js_compat;
     feature = "reward-body",
     feature = "domain-events",
     feature = "application-schemas",
-    feature = "bits-rules"
+    feature = "bits-rules",
+    feature = "tts-services"
 ))]
 pub mod json_number;
 
 pub mod links;
+
+#[cfg(feature = "tts-services")]
+#[path = "ai/openrouter/app_attribution.util.rs"]
+pub mod openrouter_attribution;
 
 #[cfg(feature = "eventsub")]
 pub mod eventsub_bits_config;

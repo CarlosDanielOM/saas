@@ -63,6 +63,10 @@
 pub mod utils;
 pub mod workers;
 
+#[cfg(feature = "tts-services")]
+#[path = "server/services/tts/mod.rs"]
+pub mod tts_services;
+
 #[cfg(feature = "bits-rules")]
 pub mod bits_rules;
 
