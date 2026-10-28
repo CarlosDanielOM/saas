@@ -1,0 +1,1096 @@
+{
+  "sourceHashes": {
+    "src/domain_events/twitch_eventsub_events.ts": "98dd1128f2a7ef8bd6bc2c682f4e1311e950995415f7d4facef4915dc71583a6",
+    "src/domain_events/domain_event_contracts.ts": "2d6b55cd95247e0ce4e7a56f26cc07642756c7a0a785f9440dc4215c58601d08",
+    "src/overlays/interaction-model.ts": "fcd77451d18702a7d55b061a7a1e61633770f2749b6de3a1226755a4e06a3be9",
+    "src/domain_events/domain_event.types.ts": "30303af7e97683f75a54c230e7987db8dba2e44e58b63f451a9ab31567cb846b",
+    "src/utils/raid_direction.ts": "4dd1222da4f496fcd3f047537be318be4681bb5515849392ee2c628045d0e2c8",
+    "src/utils/shared_chat_origin.ts": "da3f36a056c7af696c81f27e676f68a1966f12f4cb2bb10745986a64800b620f",
+    "src/domain_events/polar_events.ts": "147b6c2250fdb8befb36d7dd55ac2159cba5ea73665aa9cfb2b22a1b323b51c4"
+  },
+  "cases": [
+    {
+      "name": "twitch/follow",
+      "operation": "twitch",
+      "input": {
+        "messageId": "message",
+        "messageTimestamp": "2026-09-05T12:00:00.123Z",
+        "subscription": {
+          "type": "channel.follow",
+          "version": "2"
+        },
+        "event": {
+          "broadcaster_user_id": "channel",
+          "user_id": "follower"
+        }
+      },
+      "sdkDates": [],
+      "expected": {
+        "ok": true,
+        "result": {
+          "source": "twitch-eventsub",
+          "sourceEventId": "message",
+          "type": "channel.follow.received",
+          "topic": "channel",
+          "schemaVersion": 1,
+          "subject": {
+            "provider": "twitch",
+            "kind": "streaming-account",
+            "id": "channel"
+          },
+          "channelID": "channel",
+          "occurredAt": "2026-09-05T12:00:00.123Z",
+          "payload": {
+            "subscription": {
+              "type": "channel.follow",
+              "version": "2"
+            },
+            "event": {
+              "broadcaster_user_id": "channel",
+              "user_id": "follower"
+            }
+          },
+          "metadata": {
+            "originalEventType": "channel.follow",
+            "subscriptionID": "",
+            "subscriptionVersion": "2",
+            "messageTimestamp": "2026-09-05T12:00:00.123Z",
+            "messageRetry": 0,
+            "staleRetry": false
+          }
+        }
+      }
+    },
+    {
+      "name": "twitch/follow-precise",
+      "operation": "twitch",
+      "input": {
+        "messageId": "message",
+        "messageTimestamp": "2026-09-05T12:00:00.123Z",
+        "subscription": {
+          "type": "channel.follow",
+          "version": "2"
+        },
+        "event": {
+          "broadcaster_user_id": "channel",
+          "user_id": "follower",
+          "followed_at": "2026-09-05T12:00:00.123456789Z"
+        }
+      },
+      "sdkDates": [],
+      "expected": {
+        "ok": true,
+        "result": {
+          "source": "twitch-eventsub",
+          "sourceEventId": "message",
+          "type": "channel.follow.received",
+          "topic": "channel",
+          "schemaVersion": 1,
+          "subject": {
+            "provider": "twitch",
+            "kind": "streaming-account",
+            "id": "channel"
+          },
+          "channelID": "channel",
+          "occurredAt": "2026-09-05T12:00:00.123456789Z",
+          "payload": {
+            "subscription": {
+              "type": "channel.follow",
+              "version": "2"
+            },
+            "event": {
+              "broadcaster_user_id": "channel",
+              "user_id": "follower",
+              "followed_at": "2026-09-05T12:00:00.123456789Z"
+            }
+          },
+          "metadata": {
+            "originalEventType": "channel.follow",
+            "subscriptionID": "",
+            "subscriptionVersion": "2",
+            "messageTimestamp": "2026-09-05T12:00:00.123Z",
+            "messageRetry": 0,
+            "staleRetry": false
+          }
+        }
+      }
+    },
+    {
+      "name": "twitch/unknown-type-before-message-validation",
+      "operation": "twitch",
+      "input": {
+        "subscription": {
+          "type": "unknown"
+        }
+      },
+      "sdkDates": [],
+      "expected": {
+        "ok": true,
+        "result": null
+      }
+    },
+    {
+      "name": "twitch/foreign-notice",
+      "operation": "twitch",
+      "input": {
+        "messageId": "message",
+        "messageTimestamp": "2026-09-05T12:00:00.123Z",
+        "subscription": {
+          "type": "channel.chat.notification"
+        },
+        "event": {
+          "broadcaster_user_id": "receiver",
+          "source_broadcaster_user_id": "origin"
+        }
+      },
+      "sdkDates": [],
+      "expected": {
+        "ok": true,
+        "result": null
+      }
+    },
+    {
+      "name": "twitch/raid/{\"to_broadcaster_user_id\":\"receiver\"}",
+      "operation": "twitch",
+      "input": {
+        "messageId": "raid",
+        "subscription": {
+          "type": "channel.raid",
+          "condition": {
+            "to_broadcaster_user_id": "receiver"
+          }
+        },
+        "event": {
+          "to_broadcaster_user_id": "receiver",
+          "from_broadcaster_user_id": "sender",
+          "viewers": 20
+        },
+        "durableDefenseHandled": true
+      },
+      "sdkDates": [],
+      "expected": {
+        "ok": true,
+        "result": {
+          "source": "twitch-eventsub",
+          "sourceEventId": "raid",
+          "type": "channel.raid.received",
+          "topic": "channel",
+          "schemaVersion": 1,
+          "subject": {
+            "provider": "twitch",
+            "kind": "streaming-account",
+            "id": "receiver"
+          },
+          "channelID": "receiver",
+          "payload": {
+            "subscription": {
+              "type": "channel.raid",
+              "condition": {
+                "to_broadcaster_user_id": "receiver"
+              }
+            },
+            "event": {
+              "to_broadcaster_user_id": "receiver",
+              "from_broadcaster_user_id": "sender",
+              "viewers": 20
+            }
+          },
+          "metadata": {
+            "durableDefenseHandled": true,
+            "originalEventType": "channel.raid",
+            "subscriptionID": "",
+            "subscriptionVersion": "",
+            "messageTimestamp": "",
+            "messageRetry": 0,
+            "staleRetry": false
+          }
+        }
+      }
+    },
+    {
+      "name": "twitch/raid/{\"from_broadcaster_user_id\":\"sender\"}",
+      "operation": "twitch",
+      "input": {
+        "messageId": "raid",
+        "subscription": {
+          "type": "channel.raid",
+          "condition": {
+            "from_broadcaster_user_id": "sender"
+          }
+        },
+        "event": {
+          "to_broadcaster_user_id": "receiver",
+          "from_broadcaster_user_id": "sender",
+          "viewers": 20
+        },
+        "durableDefenseHandled": true
+      },
+      "sdkDates": [],
+      "expected": {
+        "ok": true,
+        "result": {
+          "source": "twitch-eventsub",
+          "sourceEventId": "raid",
+          "type": "channel.raid.sent",
+          "topic": "channel",
+          "schemaVersion": 1,
+          "subject": {
+            "provider": "twitch",
+            "kind": "streaming-account",
+            "id": "sender"
+          },
+          "channelID": "sender",
+          "payload": {
+            "subscription": {
+              "type": "channel.raid",
+              "condition": {
+                "from_broadcaster_user_id": "sender"
+              }
+            },
+            "event": {
+              "to_broadcaster_user_id": "receiver",
+              "from_broadcaster_user_id": "sender",
+              "viewers": 20
+            }
+          },
+          "metadata": {
+            "originalEventType": "channel.raid",
+            "subscriptionID": "",
+            "subscriptionVersion": "",
+            "messageTimestamp": "",
+            "messageRetry": 0,
+            "staleRetry": false
+          }
+        }
+      }
+    },
+    {
+      "name": "twitch/raid/{\"from_broadcaster_user_id\":\"sender\",\"to_broadcaster_user_id\":\"\"}",
+      "operation": "twitch",
+      "input": {
+        "messageId": "raid",
+        "subscription": {
+          "type": "channel.raid",
+          "condition": {
+            "from_broadcaster_user_id": "sender",
+            "to_broadcaster_user_id": ""
+          }
+        },
+        "event": {
+          "to_broadcaster_user_id": "receiver",
+          "from_broadcaster_user_id": "sender",
+          "viewers": 20
+        },
+        "durableDefenseHandled": true
+      },
+      "sdkDates": [],
+      "expected": {
+        "ok": true,
+        "result": {
+          "source": "twitch-eventsub",
+          "sourceEventId": "raid",
+          "type": "channel.raid.sent",
+          "topic": "channel",
+          "schemaVersion": 1,
+          "subject": {
+            "provider": "twitch",
+            "kind": "streaming-account",
+            "id": "sender"
+          },
+          "channelID": "sender",
+          "payload": {
+            "subscription": {
+              "type": "channel.raid",
+              "condition": {
+                "from_broadcaster_user_id": "sender",
+                "to_broadcaster_user_id": ""
+              }
+            },
+            "event": {
+              "to_broadcaster_user_id": "receiver",
+              "from_broadcaster_user_id": "sender",
+              "viewers": 20
+            }
+          },
+          "metadata": {
+            "originalEventType": "channel.raid",
+            "subscriptionID": "",
+            "subscriptionVersion": "",
+            "messageTimestamp": "",
+            "messageRetry": 0,
+            "staleRetry": false
+          }
+        }
+      }
+    },
+    {
+      "name": "twitch/invalid/blank-type",
+      "operation": "twitch",
+      "input": {
+        "messageId": "message",
+        "messageTimestamp": "2026-09-05T12:00:00.123Z",
+        "subscription": {
+          "type": " "
+        },
+        "event": {
+          "broadcaster_user_id": "channel",
+          "user_id": "follower"
+        }
+      },
+      "sdkDates": [],
+      "expected": {
+        "ok": false,
+        "error": "Domain event contract: Twitch subscription.type is required"
+      }
+    },
+    {
+      "name": "twitch/invalid/missing-message",
+      "operation": "twitch",
+      "input": {
+        "messageId": null,
+        "messageTimestamp": "2026-09-05T12:00:00.123Z",
+        "subscription": {
+          "type": "channel.follow",
+          "version": "2"
+        },
+        "event": {
+          "broadcaster_user_id": "channel",
+          "user_id": "follower"
+        }
+      },
+      "sdkDates": [],
+      "expected": {
+        "ok": false,
+        "error": "Domain event contract: Twitch messageId is required"
+      }
+    },
+    {
+      "name": "twitch/invalid/invalid-source",
+      "operation": "twitch",
+      "input": {
+        "messageId": "message",
+        "messageTimestamp": "2026-09-05T12:00:00.123Z",
+        "subscription": {
+          "type": "channel.follow",
+          "version": "2"
+        },
+        "event": {
+          "broadcaster_user_id": "channel",
+          "user_id": "follower"
+        },
+        "source": "other"
+      },
+      "sdkDates": [],
+      "expected": {
+        "ok": false,
+        "error": "Domain event contract: Invalid Twitch producer source"
+      }
+    },
+    {
+      "name": "twitch/invalid/array-event",
+      "operation": "twitch",
+      "input": {
+        "messageId": "message",
+        "messageTimestamp": "2026-09-05T12:00:00.123Z",
+        "subscription": {
+          "type": "channel.follow",
+          "version": "2"
+        },
+        "event": []
+      },
+      "sdkDates": [],
+      "expected": {
+        "ok": false,
+        "error": "Domain event contract: Twitch event must be a record"
+      }
+    },
+    {
+      "name": "twitch/invalid/missing-channel",
+      "operation": "twitch",
+      "input": {
+        "messageId": "message",
+        "messageTimestamp": "2026-09-05T12:00:00.123Z",
+        "subscription": {
+          "type": "channel.follow",
+          "version": "2"
+        },
+        "event": {
+          "user_id": "follower"
+        }
+      },
+      "sdkDates": [],
+      "expected": {
+        "ok": false,
+        "error": "Domain event contract: Durable Twitch event channel.follow is missing a channel ID"
+      }
+    },
+    {
+      "name": "polar/order",
+      "operation": "polar",
+      "input": {
+        "webhookId": "signed-receipt",
+        "eventType": "order.paid",
+        "timestamp": "2026-09-05T12:00:00.123Z",
+        "data": {
+          "id": "order",
+          "customerId": "customer",
+          "productId": "product",
+          "subscriptionId": "subscription",
+          "paid": true,
+          "status": "paid",
+          "totalAmount": 600,
+          "subscription": {
+            "id": "subscription",
+            "recurringInterval": "year",
+            "currentPeriodEnd": "2026-09-05T12:00:00.123Z"
+          },
+          "customer": {
+            "id": "customer",
+            "externalId": "0123456789abcdef01234567",
+            "email": "private@example.test",
+            "metadata": {
+              "twitch_user_id": "legacy-channel"
+            }
+          },
+          "billingName": "Private name"
+        }
+      },
+      "sdkDates": [
+        "subscription.currentPeriodEnd"
+      ],
+      "expected": {
+        "ok": true,
+        "result": {
+          "source": "polar-webhook",
+          "sourceEventId": "signed-receipt",
+          "type": "billing.order.paid",
+          "topic": "domain",
+          "schemaVersion": 1,
+          "subject": {
+            "provider": "polar",
+            "kind": "customer",
+            "id": "customer"
+          },
+          "occurredAt": "2026-09-05T12:00:00.123Z",
+          "payload": {
+            "customerId": "customer",
+            "status": "paid",
+            "orderId": "order",
+            "paid": true,
+            "totalAmount": 600,
+            "productId": "product",
+            "subscriptionId": "subscription",
+            "cadence": "yearly",
+            "periodEnd": "2026-09-05T12:00:00.123Z"
+          },
+          "metadata": {
+            "originalEventType": "order.paid",
+            "externalCustomerId": "0123456789abcdef01234567",
+            "legacyTwitchChannelId": "legacy-channel"
+          }
+        }
+      }
+    },
+    {
+      "name": "polar/order-requires-native-date",
+      "operation": "polar",
+      "input": {
+        "webhookId": "signed-receipt",
+        "eventType": "order.paid",
+        "timestamp": "2026-09-05T12:00:00.123Z",
+        "data": {
+          "id": "order",
+          "customerId": "customer",
+          "productId": "product",
+          "subscriptionId": "subscription",
+          "paid": true,
+          "status": "paid",
+          "totalAmount": 600,
+          "subscription": {
+            "id": "subscription",
+            "recurringInterval": "year",
+            "currentPeriodEnd": "2026-09-05T12:00:00.123Z"
+          },
+          "customer": {
+            "id": "customer",
+            "externalId": "0123456789abcdef01234567",
+            "email": "private@example.test",
+            "metadata": {
+              "twitch_user_id": "legacy-channel"
+            }
+          },
+          "billingName": "Private name"
+        }
+      },
+      "sdkDates": [],
+      "expected": {
+        "ok": false,
+        "error": "Domain event contract: Polar webhook requires a finite Date for subscription.currentPeriodEnd"
+      }
+    },
+    {
+      "name": "polar/one-time",
+      "operation": "polar",
+      "input": {
+        "webhookId": "signed-receipt",
+        "eventType": "order.paid",
+        "timestamp": "2026-09-05T12:00:00.123Z",
+        "data": {
+          "id": "order",
+          "customerId": "customer",
+          "paid": true,
+          "status": "paid",
+          "subscriptionId": null,
+          "productId": null
+        }
+      },
+      "sdkDates": [],
+      "expected": {
+        "ok": true,
+        "result": {
+          "source": "polar-webhook",
+          "sourceEventId": "signed-receipt",
+          "type": "billing.order.paid",
+          "topic": "domain",
+          "schemaVersion": 1,
+          "subject": {
+            "provider": "polar",
+            "kind": "customer",
+            "id": "customer"
+          },
+          "occurredAt": "2026-09-05T12:00:00.123Z",
+          "payload": {
+            "customerId": "customer",
+            "status": "paid",
+            "orderId": "order",
+            "paid": true
+          },
+          "metadata": {
+            "originalEventType": "order.paid"
+          }
+        }
+      }
+    },
+    {
+      "name": "polar/trial-zero",
+      "operation": "polar",
+      "input": {
+        "webhookId": "signed-receipt",
+        "eventType": "order.paid",
+        "timestamp": "2026-09-05T12:00:00.123Z",
+        "data": {
+          "id": "order",
+          "customerId": "customer",
+          "productId": "product",
+          "subscriptionId": "subscription",
+          "paid": true,
+          "status": "paid",
+          "totalAmount": 0,
+          "subscription": {
+            "id": "subscription",
+            "recurringInterval": "year",
+            "currentPeriodEnd": "2026-09-05T12:00:00.123Z"
+          },
+          "customer": {
+            "id": "customer",
+            "externalId": "0123456789abcdef01234567",
+            "email": "private@example.test",
+            "metadata": {
+              "twitch_user_id": "legacy-channel"
+            }
+          },
+          "billingName": "Private name"
+        }
+      },
+      "sdkDates": [
+        "subscription.currentPeriodEnd"
+      ],
+      "expected": {
+        "ok": true,
+        "result": {
+          "source": "polar-webhook",
+          "sourceEventId": "signed-receipt",
+          "type": "billing.order.paid",
+          "topic": "domain",
+          "schemaVersion": 1,
+          "subject": {
+            "provider": "polar",
+            "kind": "customer",
+            "id": "customer"
+          },
+          "occurredAt": "2026-09-05T12:00:00.123Z",
+          "payload": {
+            "customerId": "customer",
+            "status": "paid",
+            "orderId": "order",
+            "paid": true,
+            "totalAmount": 0,
+            "productId": "product",
+            "subscriptionId": "subscription",
+            "cadence": "yearly",
+            "periodEnd": "2026-09-05T12:00:00.123Z"
+          },
+          "metadata": {
+            "originalEventType": "order.paid",
+            "externalCustomerId": "0123456789abcdef01234567",
+            "legacyTwitchChannelId": "legacy-channel"
+          }
+        }
+      }
+    },
+    {
+      "name": "polar/bad-amount/-1",
+      "operation": "polar",
+      "input": {
+        "webhookId": "signed-receipt",
+        "eventType": "order.paid",
+        "timestamp": "2026-09-05T12:00:00.123Z",
+        "data": {
+          "id": "order",
+          "customerId": "customer",
+          "productId": "product",
+          "subscriptionId": "subscription",
+          "paid": true,
+          "status": "paid",
+          "totalAmount": -1,
+          "subscription": {
+            "id": "subscription",
+            "recurringInterval": "year",
+            "currentPeriodEnd": "2026-09-05T12:00:00.123Z"
+          },
+          "customer": {
+            "id": "customer",
+            "externalId": "0123456789abcdef01234567",
+            "email": "private@example.test",
+            "metadata": {
+              "twitch_user_id": "legacy-channel"
+            }
+          },
+          "billingName": "Private name"
+        }
+      },
+      "sdkDates": [
+        "subscription.currentPeriodEnd"
+      ],
+      "expected": {
+        "ok": false,
+        "error": "Domain event contract: Polar order.paid requires a nonnegative totalAmount in cents"
+      }
+    },
+    {
+      "name": "polar/bad-amount/1.5",
+      "operation": "polar",
+      "input": {
+        "webhookId": "signed-receipt",
+        "eventType": "order.paid",
+        "timestamp": "2026-09-05T12:00:00.123Z",
+        "data": {
+          "id": "order",
+          "customerId": "customer",
+          "productId": "product",
+          "subscriptionId": "subscription",
+          "paid": true,
+          "status": "paid",
+          "totalAmount": 1.5,
+          "subscription": {
+            "id": "subscription",
+            "recurringInterval": "year",
+            "currentPeriodEnd": "2026-09-05T12:00:00.123Z"
+          },
+          "customer": {
+            "id": "customer",
+            "externalId": "0123456789abcdef01234567",
+            "email": "private@example.test",
+            "metadata": {
+              "twitch_user_id": "legacy-channel"
+            }
+          },
+          "billingName": "Private name"
+        }
+      },
+      "sdkDates": [
+        "subscription.currentPeriodEnd"
+      ],
+      "expected": {
+        "ok": false,
+        "error": "Domain event contract: Polar order.paid requires a nonnegative totalAmount in cents"
+      }
+    },
+    {
+      "name": "polar/bad-amount/600",
+      "operation": "polar",
+      "input": {
+        "webhookId": "signed-receipt",
+        "eventType": "order.paid",
+        "timestamp": "2026-09-05T12:00:00.123Z",
+        "data": {
+          "id": "order",
+          "customerId": "customer",
+          "productId": "product",
+          "subscriptionId": "subscription",
+          "paid": true,
+          "status": "paid",
+          "totalAmount": "600",
+          "subscription": {
+            "id": "subscription",
+            "recurringInterval": "year",
+            "currentPeriodEnd": "2026-09-05T12:00:00.123Z"
+          },
+          "customer": {
+            "id": "customer",
+            "externalId": "0123456789abcdef01234567",
+            "email": "private@example.test",
+            "metadata": {
+              "twitch_user_id": "legacy-channel"
+            }
+          },
+          "billingName": "Private name"
+        }
+      },
+      "sdkDates": [
+        "subscription.currentPeriodEnd"
+      ],
+      "expected": {
+        "ok": false,
+        "error": "Domain event contract: Polar order.paid requires a nonnegative totalAmount in cents"
+      }
+    },
+    {
+      "name": "polar/bad-amount/9007199254740992",
+      "operation": "polar",
+      "input": {
+        "webhookId": "signed-receipt",
+        "eventType": "order.paid",
+        "timestamp": "2026-09-05T12:00:00.123Z",
+        "data": {
+          "id": "order",
+          "customerId": "customer",
+          "productId": "product",
+          "subscriptionId": "subscription",
+          "paid": true,
+          "status": "paid",
+          "totalAmount": 9007199254740992,
+          "subscription": {
+            "id": "subscription",
+            "recurringInterval": "year",
+            "currentPeriodEnd": "2026-09-05T12:00:00.123Z"
+          },
+          "customer": {
+            "id": "customer",
+            "externalId": "0123456789abcdef01234567",
+            "email": "private@example.test",
+            "metadata": {
+              "twitch_user_id": "legacy-channel"
+            }
+          },
+          "billingName": "Private name"
+        }
+      },
+      "sdkDates": [
+        "subscription.currentPeriodEnd"
+      ],
+      "expected": {
+        "ok": false,
+        "error": "Domain event contract: Polar order.paid requires a nonnegative totalAmount in cents"
+      }
+    },
+    {
+      "name": "polar/conflicting-customer",
+      "operation": "polar",
+      "input": {
+        "webhookId": "signed-receipt",
+        "eventType": "order.paid",
+        "timestamp": "2026-09-05T12:00:00.123Z",
+        "data": {
+          "id": "order",
+          "customerId": "customer",
+          "productId": "product",
+          "subscriptionId": "subscription",
+          "paid": true,
+          "status": "paid",
+          "totalAmount": 600,
+          "subscription": {
+            "id": "subscription",
+            "recurringInterval": "year",
+            "currentPeriodEnd": "2026-09-05T12:00:00.123Z"
+          },
+          "customer": {
+            "id": "other"
+          },
+          "billingName": "Private name"
+        }
+      },
+      "sdkDates": [
+        "subscription.currentPeriodEnd"
+      ],
+      "expected": {
+        "ok": false,
+        "error": "Domain event contract: Polar customerId/customer.id mismatch"
+      }
+    },
+    {
+      "name": "polar/subscription/active",
+      "operation": "polar",
+      "input": {
+        "webhookId": "sub-receipt",
+        "eventType": "subscription.updated",
+        "timestamp": "2026-09-05T12:00:00.123Z",
+        "data": {
+          "id": "sub",
+          "customerId": "customer",
+          "productId": "product",
+          "status": "active",
+          "recurringInterval": "month",
+          "currentPeriodEnd": "2026-09-05T12:00:00.123Z",
+          "endsAt": "2026-10-05T12:00:00.000Z"
+        }
+      },
+      "sdkDates": [
+        "currentPeriodEnd",
+        "endsAt"
+      ],
+      "expected": {
+        "ok": true,
+        "result": {
+          "source": "polar-webhook",
+          "sourceEventId": "sub-receipt",
+          "type": "billing.subscription.updated",
+          "topic": "domain",
+          "schemaVersion": 1,
+          "subject": {
+            "provider": "polar",
+            "kind": "customer",
+            "id": "customer"
+          },
+          "occurredAt": "2026-09-05T12:00:00.123Z",
+          "payload": {
+            "customerId": "customer",
+            "status": "active",
+            "subscriptionId": "sub",
+            "productId": "product",
+            "cadence": "monthly",
+            "periodEnd": "2026-09-05T12:00:00.123Z"
+          },
+          "metadata": {
+            "originalEventType": "subscription.updated"
+          }
+        }
+      }
+    },
+    {
+      "name": "polar/subscription/canceled",
+      "operation": "polar",
+      "input": {
+        "webhookId": "sub-receipt",
+        "eventType": "subscription.updated",
+        "timestamp": "2026-09-05T12:00:00.123Z",
+        "data": {
+          "id": "sub",
+          "customerId": "customer",
+          "productId": "product",
+          "status": "canceled",
+          "recurringInterval": "month",
+          "currentPeriodEnd": "2026-09-05T12:00:00.123Z",
+          "endsAt": "2026-10-05T12:00:00.000Z"
+        }
+      },
+      "sdkDates": [
+        "currentPeriodEnd",
+        "endsAt"
+      ],
+      "expected": {
+        "ok": true,
+        "result": {
+          "source": "polar-webhook",
+          "sourceEventId": "sub-receipt",
+          "type": "billing.subscription.updated",
+          "topic": "domain",
+          "schemaVersion": 1,
+          "subject": {
+            "provider": "polar",
+            "kind": "customer",
+            "id": "customer"
+          },
+          "occurredAt": "2026-09-05T12:00:00.123Z",
+          "payload": {
+            "customerId": "customer",
+            "status": "canceled",
+            "subscriptionId": "sub",
+            "productId": "product",
+            "cadence": "monthly",
+            "periodEnd": "2026-10-05T12:00:00.000Z"
+          },
+          "metadata": {
+            "originalEventType": "subscription.updated"
+          }
+        }
+      }
+    },
+    {
+      "name": "polar/state",
+      "operation": "polar",
+      "input": {
+        "webhookId": "state",
+        "eventType": "customer.state_changed",
+        "timestamp": "2026-09-05T12:00:00.123Z",
+        "data": {
+          "id": "customer",
+          "activeMeters": [
+            {
+              "meterId": "meter",
+              "consumedUnits": 12.5,
+              "creditedUnits": 10,
+              "balance": -2.5
+            }
+          ],
+          "activeSubscriptions": [
+            {
+              "id": "sub",
+              "productId": "product",
+              "status": "trialing",
+              "trialStart": "2026-09-05T12:00:00.123Z",
+              "trialEnd": null
+            }
+          ],
+          "grantedBenefits": [
+            {
+              "id": "grant",
+              "benefitId": "benefit"
+            }
+          ]
+        }
+      },
+      "sdkDates": [
+        "activeSubscriptions.0.trialStart"
+      ],
+      "expected": {
+        "ok": true,
+        "result": {
+          "source": "polar-webhook",
+          "sourceEventId": "state",
+          "type": "billing.customer.state.changed",
+          "topic": "domain",
+          "schemaVersion": 1,
+          "subject": {
+            "provider": "polar",
+            "kind": "customer",
+            "id": "customer"
+          },
+          "occurredAt": "2026-09-05T12:00:00.123Z",
+          "payload": {
+            "customerId": "customer",
+            "meters": [
+              {
+                "meter_id": "meter",
+                "consumed_units": 12.5,
+                "credited_units": 10,
+                "balance": -2.5
+              }
+            ],
+            "activeSubscriptions": [
+              {
+                "id": "sub",
+                "productId": "product",
+                "status": "trialing",
+                "trialStart": "2026-09-05T12:00:00.123Z",
+                "trialEnd": null
+              }
+            ],
+            "grantedBenefits": [
+              {
+                "id": "grant",
+                "benefitId": "benefit"
+              }
+            ]
+          },
+          "metadata": {
+            "originalEventType": "customer.state_changed"
+          }
+        }
+      }
+    },
+    {
+      "name": "polar/unknown-sdk-date",
+      "operation": "polar",
+      "input": {
+        "webhookId": "unknown",
+        "eventType": "product.created",
+        "timestamp": "2026-09-05T12:00:00.123Z",
+        "data": {
+          "id": "product",
+          "createdAt": "2026-09-05T12:00:00.123Z"
+        }
+      },
+      "sdkDates": [
+        "createdAt"
+      ],
+      "expected": {
+        "ok": true,
+        "result": {
+          "source": "polar-webhook",
+          "sourceEventId": "unknown",
+          "type": "provider.polar.product.created",
+          "topic": "domain",
+          "schemaVersion": 1,
+          "subject": {
+            "provider": "polar",
+            "kind": "resource",
+            "id": "product"
+          },
+          "occurredAt": "2026-09-05T12:00:00.123Z",
+          "payload": {
+            "providerData": {
+              "id": "product",
+              "createdAt": "2026-09-05T12:00:00.123Z"
+            }
+          },
+          "metadata": {
+            "originalEventType": "product.created",
+            "unmapped": true
+          }
+        }
+      }
+    },
+    {
+      "name": "polar/unknown-customer",
+      "operation": "polar",
+      "input": {
+        "webhookId": "unknown-customer",
+        "eventType": "customer.new",
+        "timestamp": "2026-09-05T12:00:00.123Z",
+        "data": {
+          "id": "customer",
+          "externalId": "0123456789abcdef01234567"
+        }
+      },
+      "sdkDates": [],
+      "expected": {
+        "ok": true,
+        "result": {
+          "source": "polar-webhook",
+          "sourceEventId": "unknown-customer",
+          "type": "provider.polar.customer.new",
+          "topic": "domain",
+          "schemaVersion": 1,
+          "subject": {
+            "provider": "polar",
+            "kind": "customer",
+            "id": "customer"
+          },
+          "occurredAt": "2026-09-05T12:00:00.123Z",
+          "payload": {
+            "providerData": {
+              "id": "customer",
+              "externalId": "0123456789abcdef01234567"
+            }
+          },
+          "metadata": {
+            "originalEventType": "customer.new",
+            "externalCustomerId": "0123456789abcdef01234567",
+            "unmapped": true
+          }
+        }
+      }
+    }
+  ]
+}

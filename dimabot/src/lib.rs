@@ -63,6 +63,14 @@
 pub mod utils;
 pub mod workers;
 
+#[cfg(feature = "domain-events")]
+#[path = "domain_events/mod.rs"]
+pub mod domain_event_contracts;
+
+#[cfg(feature = "domain-event-runtime")]
+#[path = "domain_events/runtime/mod.rs"]
+pub mod domain_event_runtime;
+
 #[cfg(feature = "cron-supervisor")]
 #[path = "workers/cron_supervisor/mod.rs"]
 pub mod supervisor;
