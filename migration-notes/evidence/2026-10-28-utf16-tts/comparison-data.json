@@ -1,0 +1,26 @@
+[
+  {
+    "name": "ascii",
+    "nodeNs": 10523.679,
+    "rustNs": 5500.7695,
+    "ratio": 0.5227040372478104
+  },
+  {
+    "name": "unicode",
+    "nodeNs": 15207.8285,
+    "rustNs": 4648.4725,
+    "ratio": 0.3056631326425071
+  },
+  {
+    "name": "large",
+    "nodeNs": 669444.55,
+    "rustNs": 418767.06,
+    "ratio": 0.6255440573830946
+  },
+  {
+    "name": "surrogate_truncation",
+    "nodeNs": 11155.1465,
+    "rustNs": 1484.371,
+    "ratio": 0.13306602472679313
+  }
+]

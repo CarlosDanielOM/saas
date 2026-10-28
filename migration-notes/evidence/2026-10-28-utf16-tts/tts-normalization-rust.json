@@ -1,0 +1,168 @@
+{
+  "measurement": "normalization plus UTF-16 checksum; excludes JSON serialization",
+  "runtime": "rust-release",
+  "sourceHashes": {
+    "src/utils/js_string.rs": "db6c7489551d57e2bb051280371f36d3e7a50c9b6457e3c901cef19f75133842",
+    "src/utils/tts/expressive_tts_tags.util.ts": "03523ebc5bb2f8c99b528e1c61d90126f655716945f100098c6a53b9f731699e",
+    "src/utils/tts/mod.rs": "1d4d75c97fc1391a758762cc002694b2bc1ac4132d13981a1d29ad3c439c545b",
+    "src/utils/tts/normalize_tts_message.util.ts": "6e8030f033e9e32c357c669d8b0d09cbc91a30c814cd5ea3c6a0109ccdb88adc",
+    "tests/fixtures/tts_benchmark_prepare.cjs": "f755271757bf42904e781921a20e3892a75f7e55ffcd194e252defea0d7ca1da",
+    "tests/fixtures/tts_normalization_benchmark.cjs": "cd90f9494f1bf8fafce9a7bd803981717b469279e36079e81258b853c116088b",
+    "tests/tts_utilities.rs": "845f5ea403bbff90527068176c5cc5021c8c7d7df83abd1af2e295da244c3186"
+  },
+  "version": 1,
+  "workloads": [
+    {
+      "checksumPerOp": 9648,
+      "iterations": 2000,
+      "medianNsPerOp": 5500.7695,
+      "name": "ascii",
+      "outputCodeUnits": 103,
+      "samples": [
+        {
+          "checksum": 19296000,
+          "elapsedNs": 10997170
+        },
+        {
+          "checksum": 19296000,
+          "elapsedNs": 11083603
+        },
+        {
+          "checksum": 19296000,
+          "elapsedNs": 10724980
+        },
+        {
+          "checksum": 19296000,
+          "elapsedNs": 10843663
+        },
+        {
+          "checksum": 19296000,
+          "elapsedNs": 11001539
+        },
+        {
+          "checksum": 19296000,
+          "elapsedNs": 11183629
+        },
+        {
+          "checksum": 19296000,
+          "elapsedNs": 11070058
+        }
+      ],
+      "warmupIterations": 200
+    },
+    {
+      "checksumPerOp": 2199456,
+      "iterations": 2000,
+      "medianNsPerOp": 4648.4725,
+      "name": "unicode",
+      "outputCodeUnits": 103,
+      "samples": [
+        {
+          "checksum": 103944704,
+          "elapsedNs": 9111307
+        },
+        {
+          "checksum": 103944704,
+          "elapsedNs": 9850592
+        },
+        {
+          "checksum": 103944704,
+          "elapsedNs": 9218378
+        },
+        {
+          "checksum": 103944704,
+          "elapsedNs": 9409476
+        },
+        {
+          "checksum": 103944704,
+          "elapsedNs": 9154740
+        },
+        {
+          "checksum": 103944704,
+          "elapsedNs": 9827479
+        },
+        {
+          "checksum": 103944704,
+          "elapsedNs": 9296945
+        }
+      ],
+      "warmupIterations": 200
+    },
+    {
+      "checksumPerOp": 58072032,
+      "iterations": 100,
+      "medianNsPerOp": 418767.06,
+      "name": "large",
+      "outputCodeUnits": 8191,
+      "samples": [
+        {
+          "checksum": 1512235904,
+          "elapsedNs": 41876706
+        },
+        {
+          "checksum": 1512235904,
+          "elapsedNs": 37447558
+        },
+        {
+          "checksum": 1512235904,
+          "elapsedNs": 35611040
+        },
+        {
+          "checksum": 1512235904,
+          "elapsedNs": 33533407
+        },
+        {
+          "checksum": 1512235904,
+          "elapsedNs": 44269949
+        },
+        {
+          "checksum": 1512235904,
+          "elapsedNs": 49998340
+        },
+        {
+          "checksum": 1512235904,
+          "elapsedNs": 45995963
+        }
+      ],
+      "warmupIterations": 10
+    },
+    {
+      "checksumPerOp": 55357,
+      "iterations": 2000,
+      "medianNsPerOp": 1484.371,
+      "name": "surrogate_truncation",
+      "outputCodeUnits": 1,
+      "samples": [
+        {
+          "checksum": 110714000,
+          "elapsedNs": 2968742
+        },
+        {
+          "checksum": 110714000,
+          "elapsedNs": 2926953
+        },
+        {
+          "checksum": 110714000,
+          "elapsedNs": 3053520
+        },
+        {
+          "checksum": 110714000,
+          "elapsedNs": 2952301
+        },
+        {
+          "checksum": 110714000,
+          "elapsedNs": 2977628
+        },
+        {
+          "checksum": 110714000,
+          "elapsedNs": 2945527
+        },
+        {
+          "checksum": 110714000,
+          "elapsedNs": 3043021
+        }
+      ],
+      "warmupIterations": 200
+    }
+  ]
+}

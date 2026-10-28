@@ -14,7 +14,7 @@ The Node [`telemetry.ts`](../dimabot/src/utils/observability/telemetry.ts) also 
 
 [`tts/mod.rs`](../dimabot/src/utils/tts/mod.rs) ports the pure utility layer: expressive-tag settings/filtering and Fish-tag reinforcement; Kokoro voice validation/defaults; legacy speech-template migration; speech-ID generation; message normalization, spoken-user wording, and supplied emote-range extraction; TTS status parse/format; deadline policy; and bounded audio-stream reading with producer cancellation. Recorded parity is limited to the named utilities and fixtures.
 
-Known boundaries remain: JavaScript can slice a string into a lone UTF-16 surrogate, while Rust reports `SplitSurrogate`; this parity gap is not claimed complete. The Fish HTTP provider adapter and application speech queues are not ported. The channel emote cache, credit fallback selection, Redis session/playback state, and playback-timeout file-duration integration also remain TypeScript.
+The initial utility wave reported a `SplitSurrogate` gap when a valid Unicode input was cut at a UTF-16 boundary. The follow-up now preserves that slice for valid UTF-8 inputs; arbitrary pre-existing ill-formed UTF-16 inputs are outside the current Rust `&str` entrypoint model. See the [UTF-16 TTS follow-up](utf16-tts-2026-10-28.md). The Fish HTTP provider adapter and application speech queues are not ported. The channel emote cache, credit fallback selection, Redis session/playback state, and playback-timeout file-duration integration also remain TypeScript.
 
 ### Bits rules
 

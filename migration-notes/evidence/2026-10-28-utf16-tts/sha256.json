@@ -1,0 +1,18 @@
+{
+  "README.md": "f27e2b7f166f462c3b3ced926c9dd82157495ffecc98da0b0eaa066cdfd0bb78",
+  "comparison-data.json": "707275595aff3c7a2ceea2b0dd3a2799cc3f0ec678880d474374d72219daecb5",
+  "comparison.html": "a52a848282df8b4aeb411a31101ac04d23c9aa89623940113e650d563d8ed468",
+  "compiler-1793212513585649188-receipt.json": "4c6405f08f19303ce9c63731535f3868359199456470019380b6cb010f17e0a0",
+  "compiler-1793212513585649188.log.gz": "24c20eab85ea70dd3cfc165d451480dd409be80bbfd6dbf44823dc1147708fd8",
+  "compressed-logs.json": "32b170ff420b985697068aafa1663a9a44ae6eaa87487201f1996e7920525475",
+  "node-1793212201254161097-receipt.json": "17c907bea6c5401a578c0e3668d238c2e1f883e3c0b970ff1d328938bc3f3cbe",
+  "node-1793212201254161097.log.gz": "5902a00c1927b77dcf61247c67580c16d73975342db6aace1dd466020cec4a72",
+  "prepared/expressive_tts_tags.util.js": "b01d12402ad9fbf5371a1a4dfce7d339f6b65da70d993af8ae721b72026d2dad",
+  "prepared/fixtures.json": "c0f6e7eb0b8236d3193d35afba4d8466e36059a7feaa4fb33154301bb4c33304",
+  "prepared/normalize_tts_message.util.js": "17b5f18b9b1b425d7070a5ee61d7441ccbcfe01e788488378c0b34c31a08dfcd",
+  "prepared/package.json": "dbf8353f77358bc12169b7bb7301e1978d5b503e002ee927229a8993672818fc",
+  "recorded-verifier/utf16.sh": "c86e3b169fbb58e78fb21e00a5cd0db13c3044ecc2ed6c05e61d1b51d0162d3c",
+  "recorded-verifier/validate.py": "cb82425c0379960407d31f1e6dfac182d68d14d217552a83b8be84b0138ac33f",
+  "tts-normalization-rust.json": "418f37bd6bd1813fac83803115dbef9295248b5f8cf5271c0e6a29b0bee7f9b3",
+  "tts-normalization-ts.json": "1aa910c6e35817b3827fad501bda6ceba6fb2b36be7867ba4eabf9c686182075"
+}
