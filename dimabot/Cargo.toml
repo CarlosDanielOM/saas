@@ -62,6 +62,7 @@ channel-tts-settings = ["application-schemas", "tts-utilities"]
 ai-credit-projection = ["credit-policy", "tts-utilities", "plan-cache", "dep:sha2"]
 ai-usage-producer = ["ai-usage", "redis", "credit-policy", "tts-utilities"]
 ai-usage-lock = ["redis", "tts-utilities", "dep:sha2", "dep:uuid"]
+ai-usage-ledger-reads = ["application-schemas", "credit-policy", "tts-utilities"]
 # Borrowed receipt parsing and analytics stay outside deployed worker graphs.
 lossless-json-view = ["tts-utilities"]
 ai-usage-receipt-parser = ["ai-usage", "credit-policy", "lossless-json-view", "js-date", "mongo"]

@@ -91,6 +91,8 @@ pub mod ast_syntax;
 pub mod ai_credit_projection;
 #[cfg(feature = "ai-usage")]
 pub mod ai_usage;
+#[cfg(feature = "ai-usage-ledger-reads")]
+pub mod ai_usage_ledger_reads;
 #[cfg(feature = "ai-usage-lock")]
 pub mod ai_usage_lock;
 #[cfg(feature = "ai-usage-producer")]
