@@ -1,0 +1,14 @@
+set -eu
+export DIMA_MODERATION_SCHEMA_BENCH_SOURCE_ROOT=/source/dimabot
+export DIMA_MODERATION_SCHEMA_BENCH_DIR=/artifacts/moderation-schema-benchmark/attempt1/inputs
+export DIMA_MODERATION_SCHEMA_BENCH_NODE_SHA256=569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108
+export DIMA_MODERATION_SCHEMA_BENCH_INPUT_SHA256=3a71358904c70226586adad936e0fc2394da43868a37a36169c49a497a97d5e1
+export DIMA_MODERATION_SCHEMA_BENCH_REPS=1000
+export DIMA_MODERATION_SCHEMA_BENCH_NODE_PATH=/usr/local/bin/node
+export DIMA_MODERATION_SCHEMA_BENCH_BINARY=/artifacts/moderation-schema-benchmark/attempt1/bin/channel_moderation_settings_benchmark
+export DIMA_MODERATION_SCHEMA_BENCH_BINARY_PROVENANCE=/artifacts/moderation-schema-benchmark/attempt1/binary-provenance.json
+export DIMA_MODERATION_SCHEMA_BENCH_COMPILER_RECEIPT=/artifacts/compiler-1793312408192802668-receipt.json
+export DIMA_MODERATION_SCHEMA_BENCH_BUILD_LOG=/artifacts/moderation-schema-benchmark/attempt1/benchmark-build.jsonl
+export DIMA_MODERATION_SCHEMA_BENCH_PAIRED_DIR=/artifacts/moderation-schema-benchmark/attempt1/paired1
+/usr/local/bin/node /task-tools/moderation_schema_paired_coordinator.cjs
+/usr/local/bin/node tests/fixtures/channel_moderation_settings_benchmark.cjs --check

@@ -1,0 +1,53 @@
+{
+  "reportSha256": "bcdd29ecdea2cdc86665fc6f5e5a6c3c75cd7bbcb9145932ef154fd5edccc254",
+  "workloads": {
+    "defaults": {
+      "nodeMedianNs": 145969.82925,
+      "rustMedianNs": 10361.43075,
+      "nodeRangeNs": [
+        141038.710125,
+        156200.428875
+      ],
+      "rustRangeNs": [
+        9615.86425,
+        12435.9215
+      ],
+      "lowerMedianPercent": 92.90166275918968,
+      "checksum": 433599429
+    },
+    "four-rules": {
+      "nodeMedianNs": 1299941.509125,
+      "rustMedianNs": 112769.9455,
+      "nodeRangeNs": [
+        1242808.896,
+        1386829.567875
+      ],
+      "rustRangeNs": [
+        109806.360875,
+        124843.767625
+      ],
+      "lowerMedianPercent": 91.32499849351635,
+      "checksum": 4060612453
+    },
+    "invalid": {
+      "nodeMedianNs": 323482.888625,
+      "rustMedianNs": 20378.014125,
+      "nodeRangeNs": [
+        308468.842125,
+        346021.561625
+      ],
+      "rustRangeNs": [
+        19874.745125,
+        23410.459625
+      ],
+      "lowerMedianPercent": 93.70043521880895,
+      "checksum": 4163112709
+    }
+  },
+  "beforeAfterHashesEqual": true,
+  "pairedTrialsEach": 7,
+  "warmupsEach": 3,
+  "opsPerSample": 8000,
+  "all60CallsAndAlternatingOrderVerified": true,
+  "coordinatorMediansRecomputed": true
+}

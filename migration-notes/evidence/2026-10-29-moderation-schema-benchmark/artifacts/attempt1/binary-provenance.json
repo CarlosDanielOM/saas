@@ -1,0 +1,36 @@
+{
+  "buildReceipt": "compiler-1793312408192802668-receipt.json",
+  "toolchainImage": "sha256:557a94c82b485a14b569120e00867267108c734efe33f10cc31ca0cd5dd1eca9",
+  "sourceTreeSha256": "661a18bbdb26c596f586587f839e750dfd9adc9837a6ec588d7073f26634f8fe",
+  "sourceInputs": 1343,
+  "binaries": [
+    {
+      "name": "channel_moderation_settings_benchmark",
+      "cargoExecutable": "/target-cache/release/deps/channel_moderation_settings_benchmark-c0ac81c96d0e1c4b",
+      "artifactPath": "moderation-schema-benchmark/attempt1/bin/channel_moderation_settings_benchmark",
+      "sha256": "7d00051b9adac3d809c3a4d4cc121a88086d4bf6a36bd790fe4112a6a3a188a2",
+      "bytes": 2606936,
+      "elfMachine": "x86-64",
+      "staticNoInterpreterOrNeededLibraries": true,
+      "programHeaderTypes": [
+        1,
+        1,
+        1,
+        1,
+        2,
+        4,
+        7,
+        1685382480,
+        1685382481,
+        1685382482
+      ],
+      "profile": {
+        "opt_level": "3",
+        "debuginfo": 0,
+        "debug_assertions": false,
+        "overflow_checks": false,
+        "test": true
+      }
+    }
+  ]
+}

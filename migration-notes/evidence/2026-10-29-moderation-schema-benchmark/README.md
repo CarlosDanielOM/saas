@@ -1,0 +1,7 @@
+# Moderation schema benchmark evidence
+
+Four accepted runs bind to commit `84f95db0` and 1,343 inputs: all 1,341 inputs from the earlier accepted schema binding are unchanged, with two benchmark inputs added. The preformat run is preserved separately. All wave artifacts, including the static binary, input, raw paired report and existing comparison HTML, are retained.
+
+Three warmups and seven paired trials per workload used alternating server order and 8,000 operations per sample. Independently recomputed medians in ns/op (Node / Rust) were 145,969.82925 / 10,361.43075 for defaults, 1,299,941.509125 / 112,769.9455 for four rules, and 323,482.888625 / 20,378.014125 for invalid inputs. Every trial checksum matched; measured ranges did not overlap. Both servers exited successfully, before/after hashes matched, and the post-run fixture check used the same input.
+
+The timer covers source constructor, validation and conversion versus native BSON construction with results retained. Database work, parsing, IPC, JSON output, canonicalization, hashing and result destruction are outside it. Each pool has eight equally weighted inputs rather than a production traffic distribution. These measurements do not establish production latency, CPU, RSS or statistical production impact. The final readback records 19 unchanged production records and no remaining owned resources. No adoption, archive, deployment or push is claimed.

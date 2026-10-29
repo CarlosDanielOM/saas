@@ -1,0 +1,6 @@
+set -eu
+export DIMA_MODERATION_SCHEMA_BENCH_SOURCE_ROOT=/source/dimabot
+export DIMA_MODERATION_SCHEMA_BENCH_DIR=/artifacts/moderation-schema-benchmark/attempt1/inputs
+export DIMA_MODERATION_SCHEMA_BENCH_NODE_SHA256=569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108
+node tests/fixtures/channel_moderation_settings_benchmark.cjs --write
+node tests/fixtures/channel_moderation_settings_benchmark.cjs --check

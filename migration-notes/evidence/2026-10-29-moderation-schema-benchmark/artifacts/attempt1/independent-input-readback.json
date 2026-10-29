@@ -1,0 +1,10 @@
+{
+  "inputSha256": "3a71358904c70226586adad936e0fc2394da43868a37a36169c49a497a97d5e1",
+  "pools": {
+    "defaults": 8,
+    "four-rules": 8,
+    "invalid": 8
+  },
+  "all24CanonicalWiresAndChecksumsVerified": true,
+  "allPreparedSourceNativeSdkHashesVerified": true
+}
