@@ -21,3 +21,6 @@ pub mod permit;
 
 #[cfg(feature = "moderation-offenses")]
 pub mod offenses;
+
+#[cfg(feature = "moderation-seed-plan")]
+pub mod seed_plan;
