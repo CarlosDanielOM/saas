@@ -38,7 +38,14 @@ pub(crate) fn js_round(value: f64) -> f64 {
     if (-0.5..0.0).contains(&value) {
         return -0.0;
     }
-    let floor = value.floor();
+    // The guards bound this conversion to integers exactly representable as f64.
+    // Casting truncates toward zero, so only negative fractions need adjustment.
+    let integral = (value as i64) as f64;
+    let floor = if integral > value {
+        integral - 1.0
+    } else {
+        integral
+    };
     if value - floor < 0.5 {
         floor
     } else {
@@ -81,4 +88,62 @@ pub fn calculate_tts_usage(provider: &str, characters: f64) -> TtsUsageResult {
 #[cfg(feature = "tts-utilities")]
 pub fn calculate_tts_usage_js(provider: &JsString, characters: f64) -> TtsUsageResult {
     calculate_tts_usage(provider.as_str().unwrap_or(""), characters)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::js_round;
+
+    #[test]
+    fn rounds_ties_toward_positive_infinity_and_preserves_negative_zero() {
+        assert_eq!(js_round(1.5), 2.0);
+        assert_eq!(js_round(-1.5), -1.0);
+        assert_eq!(js_round(-0.5).to_bits(), (-0.0_f64).to_bits());
+        assert_eq!(js_round(-0.0).to_bits(), (-0.0_f64).to_bits());
+    }
+
+    #[test]
+    #[ignore = "requires a disposable Node Math.round fixture"]
+    fn matches_node_math_round_raw_bits() {
+        let dir = std::env::var_os("DIMA_JS_ROUND_FIXTURE_DIR")
+            .expect("DIMA_JS_ROUND_FIXTURE_DIR must point to a disposable fixture directory");
+        let text =
+            std::fs::read_to_string(std::path::Path::new(&dir).join("js-round-reference.json"))
+                .expect("read Math.round fixture");
+        let fixture: serde_json::Value = serde_json::from_str(&text).expect("valid JSON fixture");
+        let metadata = &fixture["metadata"];
+        assert_eq!(metadata["schema"].as_u64(), Some(1));
+        assert_eq!(metadata["node"].as_str(), Some("v24.22.1"));
+        assert_eq!(metadata["v8"].as_str(), Some("13.6.233.17-node.58"));
+        for field in ["script", "nodeBinary"] {
+            let hash = metadata["hashes"][field].as_str().expect("fixture hash");
+            assert!(
+                hash.len() == 64
+                    && hash
+                        .bytes()
+                        .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+            );
+        }
+        let cases = fixture["cases"].as_array().expect("fixture cases");
+        assert!(cases.len() >= 2_000);
+        assert_eq!(metadata["count"].as_u64(), Some(cases.len() as u64));
+        for (index, case) in cases.iter().enumerate() {
+            let parse = |field: &str| {
+                let value = case[field].as_str().expect("raw bits");
+                assert!(
+                    value.len() == 16
+                        && value
+                            .bytes()
+                            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+                );
+                u64::from_str_radix(value, 16).expect("hex bits")
+            };
+            let input = parse("input");
+            assert_eq!(
+                js_round(f64::from_bits(input)).to_bits(),
+                parse("output"),
+                "case {index}, input {input:016x}"
+            );
+        }
+    }
 }
