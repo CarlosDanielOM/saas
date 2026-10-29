@@ -119,7 +119,7 @@ pub mod domain_events;
 pub mod eventsub;
 #[cfg(feature = "js-date")]
 pub mod js_date;
-#[cfg(feature = "tts-utilities")]
+#[cfg(any(feature = "tts-utilities", feature = "permissions"))]
 pub mod js_string;
 #[cfg(feature = "keywords")]
 pub mod keywords;

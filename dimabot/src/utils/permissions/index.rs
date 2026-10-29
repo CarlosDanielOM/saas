@@ -3,8 +3,13 @@
 //! Compile stored JSON once, then share the immutable policy across decisions.
 //! Validation preserves tree structure: dashboard allow/exclude shapes have
 //! account/role/default precedence, while other trees use three-valued Boolean
-//! evaluation. Invalid configuration denies even broadcasters. There is no IO,
-//! global cache, role resolution, or authentication in this module.
+//! evaluation. Invalid configuration denies even broadcasters. Evaluation has
+//! no I/O, role resolution or authentication. The error limiter keeps bounded
+//! process-local state for repeated diagnostics.
+
+#[path = "error_rate_limit.rs"]
+pub mod error_rate_limit;
+pub use error_rate_limit::should_log_permission_error;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
