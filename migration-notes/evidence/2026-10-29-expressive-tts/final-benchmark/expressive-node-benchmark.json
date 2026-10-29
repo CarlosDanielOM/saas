@@ -1,0 +1,364 @@
+{
+  "implementation": "actual-typescript",
+  "scope": "prepared filter or reinforce + wrapping sum of every UTF-16 output unit",
+  "inputSha256": "95bbc229a92de5f1b8d12c36e69ab2af3ed06cee160ec31dfe1d24c812a6b195",
+  "warmups": 100,
+  "provenance": {
+    "hashes": {
+      "src/utils/tts/expressive_tts_tags.util.ts": "03523ebc5bb2f8c99b528e1c61d90126f655716945f100098c6a53b9f731699e",
+      "package.json": "cc4939f6416a91d4bfaa5bcdd3d448d2f74103a88bb269e0a8e393615cf32cef",
+      "package-lock.json": "abdf5aa71a8272423ebb9358d7aaa87edd7e65f6605c325fe231a4bcef70eeb7",
+      "node_modules/typescript/package.json": "822ef7ca6452205657b6288b066481ecf508bfbf43455d715cf7d3ec457561e6",
+      "tests/fixtures/expressive_tts_benchmark.mjs": "d59051313c0e0558e33ebad77352f61577367c3ad3e07c7eb344bd968671ec30",
+      "typescript-entry": "3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675",
+      "node-executable": "569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108"
+    },
+    "node": "v24.22.1",
+    "v8": "13.6.233.17-node.58",
+    "typescript": "5.9.3"
+  },
+  "runs": [
+    {
+      "name": "filter-ascii-plain",
+      "iterations": 10000,
+      "expectedUnitsChecksum": 3345,
+      "resultChecksum": 33450000,
+      "samples": [
+        {
+          "elapsedNs": 7119391,
+          "checksum": 33450000
+        },
+        {
+          "elapsedNs": 8282730,
+          "checksum": 33450000
+        },
+        {
+          "elapsedNs": 7284118,
+          "checksum": 33450000
+        },
+        {
+          "elapsedNs": 5377104,
+          "checksum": 33450000
+        },
+        {
+          "elapsedNs": 3795052,
+          "checksum": 33450000
+        },
+        {
+          "elapsedNs": 4721066,
+          "checksum": 33450000
+        },
+        {
+          "elapsedNs": 2442537,
+          "checksum": 33450000
+        }
+      ],
+      "medianNsPerOp": 537.7104,
+      "medianUsPerOp": 0.5377104
+    },
+    {
+      "name": "filter-mixed-aliases",
+      "iterations": 10000,
+      "expectedUnitsChecksum": 5830,
+      "resultChecksum": 58300000,
+      "samples": [
+        {
+          "elapsedNs": 67719106,
+          "checksum": 58300000
+        },
+        {
+          "elapsedNs": 51563776,
+          "checksum": 58300000
+        },
+        {
+          "elapsedNs": 51792222,
+          "checksum": 58300000
+        },
+        {
+          "elapsedNs": 55415583,
+          "checksum": 58300000
+        },
+        {
+          "elapsedNs": 50247409,
+          "checksum": 58300000
+        },
+        {
+          "elapsedNs": 51523951,
+          "checksum": 58300000
+        },
+        {
+          "elapsedNs": 49998412,
+          "checksum": 58300000
+        }
+      ],
+      "medianNsPerOp": 5156.3776,
+      "medianUsPerOp": 5.1563776
+    },
+    {
+      "name": "filter-piper",
+      "iterations": 10000,
+      "expectedUnitsChecksum": 1797,
+      "resultChecksum": 17970000,
+      "samples": [
+        {
+          "elapsedNs": 25527722,
+          "checksum": 17970000
+        },
+        {
+          "elapsedNs": 24793356,
+          "checksum": 17970000
+        },
+        {
+          "elapsedNs": 22642906,
+          "checksum": 17970000
+        },
+        {
+          "elapsedNs": 24245859,
+          "checksum": 17970000
+        },
+        {
+          "elapsedNs": 19878497,
+          "checksum": 17970000
+        },
+        {
+          "elapsedNs": 20053464,
+          "checksum": 17970000
+        },
+        {
+          "elapsedNs": 24399487,
+          "checksum": 17970000
+        }
+      ],
+      "medianNsPerOp": 2424.5859,
+      "medianUsPerOp": 2.4245859
+    },
+    {
+      "name": "filter-unicode-lone",
+      "iterations": 10000,
+      "expectedUnitsChecksum": 259123,
+      "resultChecksum": 2591230000,
+      "samples": [
+        {
+          "elapsedNs": 50651936,
+          "checksum": 2591230000
+        },
+        {
+          "elapsedNs": 39394785,
+          "checksum": 2591230000
+        },
+        {
+          "elapsedNs": 37032868,
+          "checksum": 2591230000
+        },
+        {
+          "elapsedNs": 38187101,
+          "checksum": 2591230000
+        },
+        {
+          "elapsedNs": 38463900,
+          "checksum": 2591230000
+        },
+        {
+          "elapsedNs": 35997819,
+          "checksum": 2591230000
+        },
+        {
+          "elapsedNs": 29796239,
+          "checksum": 2591230000
+        }
+      ],
+      "medianNsPerOp": 3818.7101,
+      "medianUsPerOp": 3.8187100999999997
+    },
+    {
+      "name": "filter-large",
+      "iterations": 1000,
+      "expectedUnitsChecksum": 11110240,
+      "resultChecksum": 2520305408,
+      "samples": [
+        {
+          "elapsedNs": 223549276,
+          "checksum": 2520305408
+        },
+        {
+          "elapsedNs": 208513614,
+          "checksum": 2520305408
+        },
+        {
+          "elapsedNs": 251986329,
+          "checksum": 2520305408
+        },
+        {
+          "elapsedNs": 210586378,
+          "checksum": 2520305408
+        },
+        {
+          "elapsedNs": 206207392,
+          "checksum": 2520305408
+        },
+        {
+          "elapsedNs": 229202609,
+          "checksum": 2520305408
+        },
+        {
+          "elapsedNs": 210384850,
+          "checksum": 2520305408
+        }
+      ],
+      "medianNsPerOp": 210586.378,
+      "medianUsPerOp": 210.586378
+    },
+    {
+      "name": "reinforce-plain",
+      "iterations": 10000,
+      "expectedUnitsChecksum": 3345,
+      "resultChecksum": 33450000,
+      "samples": [
+        {
+          "elapsedNs": 10589852,
+          "checksum": 33450000
+        },
+        {
+          "elapsedNs": 7715576,
+          "checksum": 33450000
+        },
+        {
+          "elapsedNs": 10494024,
+          "checksum": 33450000
+        },
+        {
+          "elapsedNs": 7711259,
+          "checksum": 33450000
+        },
+        {
+          "elapsedNs": 8044563,
+          "checksum": 33450000
+        },
+        {
+          "elapsedNs": 7031967,
+          "checksum": 33450000
+        },
+        {
+          "elapsedNs": 7520983,
+          "checksum": 33450000
+        }
+      ],
+      "medianNsPerOp": 771.5576,
+      "medianUsPerOp": 0.7715576
+    },
+    {
+      "name": "reinforce-groups",
+      "iterations": 10000,
+      "expectedUnitsChecksum": 8504,
+      "resultChecksum": 85040000,
+      "samples": [
+        {
+          "elapsedNs": 58415642,
+          "checksum": 85040000
+        },
+        {
+          "elapsedNs": 35648234,
+          "checksum": 85040000
+        },
+        {
+          "elapsedNs": 34900915,
+          "checksum": 85040000
+        },
+        {
+          "elapsedNs": 41596378,
+          "checksum": 85040000
+        },
+        {
+          "elapsedNs": 47384735,
+          "checksum": 85040000
+        },
+        {
+          "elapsedNs": 65772198,
+          "checksum": 85040000
+        },
+        {
+          "elapsedNs": 50473724,
+          "checksum": 85040000
+        }
+      ],
+      "medianNsPerOp": 4738.4735,
+      "medianUsPerOp": 4.7384735000000004
+    },
+    {
+      "name": "reinforce-unicode-lone",
+      "iterations": 10000,
+      "expectedUnitsChecksum": 228932,
+      "resultChecksum": 2289320000,
+      "samples": [
+        {
+          "elapsedNs": 18952201,
+          "checksum": 2289320000
+        },
+        {
+          "elapsedNs": 21662189,
+          "checksum": 2289320000
+        },
+        {
+          "elapsedNs": 22366308,
+          "checksum": 2289320000
+        },
+        {
+          "elapsedNs": 19375564,
+          "checksum": 2289320000
+        },
+        {
+          "elapsedNs": 18801408,
+          "checksum": 2289320000
+        },
+        {
+          "elapsedNs": 19180248,
+          "checksum": 2289320000
+        },
+        {
+          "elapsedNs": 19104197,
+          "checksum": 2289320000
+        }
+      ],
+      "medianNsPerOp": 1918.0248,
+      "medianUsPerOp": 1.9180248
+    },
+    {
+      "name": "reinforce-large",
+      "iterations": 1000,
+      "expectedUnitsChecksum": 11319552,
+      "resultChecksum": 2729617408,
+      "samples": [
+        {
+          "elapsedNs": 184264138,
+          "checksum": 2729617408
+        },
+        {
+          "elapsedNs": 187476746,
+          "checksum": 2729617408
+        },
+        {
+          "elapsedNs": 179783372,
+          "checksum": 2729617408
+        },
+        {
+          "elapsedNs": 183903210,
+          "checksum": 2729617408
+        },
+        {
+          "elapsedNs": 176118885,
+          "checksum": 2729617408
+        },
+        {
+          "elapsedNs": 187859534,
+          "checksum": 2729617408
+        },
+        {
+          "elapsedNs": 180306932,
+          "checksum": 2729617408
+        }
+      ],
+      "medianNsPerOp": 183903.21,
+      "medianUsPerOp": 183.90321
+    }
+  ]
+}

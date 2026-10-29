@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "productionContainerCount": 19,
+  "productionUnchanged": true,
+  "productionFieldsCompared": [
+    "id",
+    "image",
+    "started",
+    "mounts",
+    "config_image",
+    "entrypoint",
+    "command",
+    "compose"
+  ],
+  "taskOwnedContainersNetworksVolumesRemaining": [],
+  "productionFingerprintSha256": "7eaaaad042c277d84cf49c184f2d7cf5806a641c687772acd8ca69cfc2403c53",
+  "privateBuildCacheRetainedForOngoingMigration": true,
+  "deployed": false,
+  "pushed": false
+}

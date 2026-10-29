@@ -1,0 +1,350 @@
+{
+  "implementation": "native-rust",
+  "inputSha256": "95bbc229a92de5f1b8d12c36e69ab2af3ed06cee160ec31dfe1d24c812a6b195",
+  "runs": [
+    {
+      "expectedUnitsChecksum": 3345,
+      "iterations": 10000,
+      "medianNsPerOp": 176.667,
+      "medianUsPerOp": 0.176667,
+      "name": "filter-ascii-plain",
+      "resultChecksum": 33450000,
+      "samples": [
+        {
+          "checksum": 33450000,
+          "elapsedNs": 1763725
+        },
+        {
+          "checksum": 33450000,
+          "elapsedNs": 2440303
+        },
+        {
+          "checksum": 33450000,
+          "elapsedNs": 1952128
+        },
+        {
+          "checksum": 33450000,
+          "elapsedNs": 1766670
+        },
+        {
+          "checksum": 33450000,
+          "elapsedNs": 1737376
+        },
+        {
+          "checksum": 33450000,
+          "elapsedNs": 1841359
+        },
+        {
+          "checksum": 33450000,
+          "elapsedNs": 1752975
+        }
+      ]
+    },
+    {
+      "expectedUnitsChecksum": 5830,
+      "iterations": 10000,
+      "medianNsPerOp": 5741.072,
+      "medianUsPerOp": 5.741072,
+      "name": "filter-mixed-aliases",
+      "resultChecksum": 58300000,
+      "samples": [
+        {
+          "checksum": 58300000,
+          "elapsedNs": 50596163
+        },
+        {
+          "checksum": 58300000,
+          "elapsedNs": 56801189
+        },
+        {
+          "checksum": 58300000,
+          "elapsedNs": 69528055
+        },
+        {
+          "checksum": 58300000,
+          "elapsedNs": 73089950
+        },
+        {
+          "checksum": 58300000,
+          "elapsedNs": 67066362
+        },
+        {
+          "checksum": 58300000,
+          "elapsedNs": 55515361
+        },
+        {
+          "checksum": 58300000,
+          "elapsedNs": 57410720
+        }
+      ]
+    },
+    {
+      "expectedUnitsChecksum": 1797,
+      "iterations": 10000,
+      "medianNsPerOp": 2239.2667,
+      "medianUsPerOp": 2.2392667,
+      "name": "filter-piper",
+      "resultChecksum": 17970000,
+      "samples": [
+        {
+          "checksum": 17970000,
+          "elapsedNs": 19213792
+        },
+        {
+          "checksum": 17970000,
+          "elapsedNs": 28094469
+        },
+        {
+          "checksum": 17970000,
+          "elapsedNs": 22392667
+        },
+        {
+          "checksum": 17970000,
+          "elapsedNs": 23819822
+        },
+        {
+          "checksum": 17970000,
+          "elapsedNs": 21838438
+        },
+        {
+          "checksum": 17970000,
+          "elapsedNs": 21192519
+        },
+        {
+          "checksum": 17970000,
+          "elapsedNs": 23123696
+        }
+      ]
+    },
+    {
+      "expectedUnitsChecksum": 259123,
+      "iterations": 10000,
+      "medianNsPerOp": 4078.4248,
+      "medianUsPerOp": 4.0784248,
+      "name": "filter-unicode-lone",
+      "resultChecksum": 2591230000,
+      "samples": [
+        {
+          "checksum": 2591230000,
+          "elapsedNs": 40784248
+        },
+        {
+          "checksum": 2591230000,
+          "elapsedNs": 36044287
+        },
+        {
+          "checksum": 2591230000,
+          "elapsedNs": 41860764
+        },
+        {
+          "checksum": 2591230000,
+          "elapsedNs": 46674434
+        },
+        {
+          "checksum": 2591230000,
+          "elapsedNs": 38456095
+        },
+        {
+          "checksum": 2591230000,
+          "elapsedNs": 49421380
+        },
+        {
+          "checksum": 2591230000,
+          "elapsedNs": 39159483
+        }
+      ]
+    },
+    {
+      "expectedUnitsChecksum": 11110240,
+      "iterations": 1000,
+      "medianNsPerOp": 202793.656,
+      "medianUsPerOp": 202.793656,
+      "name": "filter-large",
+      "resultChecksum": 2520305408,
+      "samples": [
+        {
+          "checksum": 2520305408,
+          "elapsedNs": 219194366
+        },
+        {
+          "checksum": 2520305408,
+          "elapsedNs": 201117905
+        },
+        {
+          "checksum": 2520305408,
+          "elapsedNs": 215770541
+        },
+        {
+          "checksum": 2520305408,
+          "elapsedNs": 204577068
+        },
+        {
+          "checksum": 2520305408,
+          "elapsedNs": 197828171
+        },
+        {
+          "checksum": 2520305408,
+          "elapsedNs": 182333139
+        },
+        {
+          "checksum": 2520305408,
+          "elapsedNs": 202793656
+        }
+      ]
+    },
+    {
+      "expectedUnitsChecksum": 3345,
+      "iterations": 10000,
+      "medianNsPerOp": 238.9377,
+      "medianUsPerOp": 0.2389377,
+      "name": "reinforce-plain",
+      "resultChecksum": 33450000,
+      "samples": [
+        {
+          "checksum": 33450000,
+          "elapsedNs": 2436535
+        },
+        {
+          "checksum": 33450000,
+          "elapsedNs": 2420023
+        },
+        {
+          "checksum": 33450000,
+          "elapsedNs": 2389377
+        },
+        {
+          "checksum": 33450000,
+          "elapsedNs": 2408965
+        },
+        {
+          "checksum": 33450000,
+          "elapsedNs": 2358699
+        },
+        {
+          "checksum": 33450000,
+          "elapsedNs": 2195263
+        },
+        {
+          "checksum": 33450000,
+          "elapsedNs": 2291324
+        }
+      ]
+    },
+    {
+      "expectedUnitsChecksum": 8504,
+      "iterations": 10000,
+      "medianNsPerOp": 2043.9577,
+      "medianUsPerOp": 2.0439577,
+      "name": "reinforce-groups",
+      "resultChecksum": 85040000,
+      "samples": [
+        {
+          "checksum": 85040000,
+          "elapsedNs": 20150988
+        },
+        {
+          "checksum": 85040000,
+          "elapsedNs": 20713571
+        },
+        {
+          "checksum": 85040000,
+          "elapsedNs": 20439577
+        },
+        {
+          "checksum": 85040000,
+          "elapsedNs": 20375618
+        },
+        {
+          "checksum": 85040000,
+          "elapsedNs": 20301067
+        },
+        {
+          "checksum": 85040000,
+          "elapsedNs": 20969491
+        },
+        {
+          "checksum": 85040000,
+          "elapsedNs": 21613067
+        }
+      ]
+    },
+    {
+      "expectedUnitsChecksum": 228932,
+      "iterations": 10000,
+      "medianNsPerOp": 2436.9532,
+      "medianUsPerOp": 2.4369532,
+      "name": "reinforce-unicode-lone",
+      "resultChecksum": 2289320000,
+      "samples": [
+        {
+          "checksum": 2289320000,
+          "elapsedNs": 23858082
+        },
+        {
+          "checksum": 2289320000,
+          "elapsedNs": 23081098
+        },
+        {
+          "checksum": 2289320000,
+          "elapsedNs": 25071416
+        },
+        {
+          "checksum": 2289320000,
+          "elapsedNs": 23572338
+        },
+        {
+          "checksum": 2289320000,
+          "elapsedNs": 24369532
+        },
+        {
+          "checksum": 2289320000,
+          "elapsedNs": 25064323
+        },
+        {
+          "checksum": 2289320000,
+          "elapsedNs": 25055146
+        }
+      ]
+    },
+    {
+      "expectedUnitsChecksum": 11319552,
+      "iterations": 1000,
+      "medianNsPerOp": 97760.093,
+      "medianUsPerOp": 97.760093,
+      "name": "reinforce-large",
+      "resultChecksum": 2729617408,
+      "samples": [
+        {
+          "checksum": 2729617408,
+          "elapsedNs": 97760093
+        },
+        {
+          "checksum": 2729617408,
+          "elapsedNs": 108772759
+        },
+        {
+          "checksum": 2729617408,
+          "elapsedNs": 95809350
+        },
+        {
+          "checksum": 2729617408,
+          "elapsedNs": 96095776
+        },
+        {
+          "checksum": 2729617408,
+          "elapsedNs": 103060847
+        },
+        {
+          "checksum": 2729617408,
+          "elapsedNs": 104731105
+        },
+        {
+          "checksum": 2729617408,
+          "elapsedNs": 95445067
+        }
+      ]
+    }
+  ],
+  "scope": "prepared filter or reinforce + wrapping sum of every UTF-16 output unit",
+  "warmups": 100
+}

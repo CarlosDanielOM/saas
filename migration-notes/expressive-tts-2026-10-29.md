@@ -1,0 +1,53 @@
+# Expressive TTS utilities — 2026-10-29
+
+## Status and scope
+
+This wave adds lossless UTF-16 entry points for expressive-tag filtering and Fish cue reinforcement, along with source-selected coverage for the expressive-tag and Kokoro-voice utility modules. It extends the existing `dimabot/src/utils/tts/mod.rs` implementation and delegates the credit fallback and Fish protocol call sites to those public helpers; it does not introduce parallel replacement algorithms. Final source-matched Node/compiler checks, fixture replays, negative control, and release benchmark passed for optimized commit `535385d0` (baseline core `e932c366`). The [evidence README](evidence/2026-10-29-expressive-tts/README.md) indexes outputs and cleanup evidence. The five reused fixtures were source-hash checked; fresh Rust fixture replays covered Fish SDK, Fish service, and credit fallback. Piper/Kokoro and Fish catalog received provenance checks only, as their relevant implementation was unchanged in this wave.
+
+The UTF-8 APIs remain available. Their JavaScript-string counterparts dispatch valid UTF-8 input to the existing APIs, while malformed UTF-16 is scanned through one replacement-character shadow with offsets back to original code units. Filtering copies untouched original units around matched captures; reinforcement uses one shared scanner and preserves original units. The shadow is used for matching, not returned as output. The ordinary JSON configuration path covers data values and does not emulate executable getters, prototypes, or inherited hooks.
+
+The source coverage includes the expressive utility's 75 tags in four ordered groups, 14 aliases, defaults, five runtime exports, and two type-only exports. Kokoro's 54 IDs, two language defaults, and resolver were already present in Rust; the source oracle now covers them alongside the utility exports. This is local utility coverage only. No TypeScript caller adoption, source retirement, deployment, or push is claimed.
+
+## Behavior checks and evidence
+
+The added Rust integration targets are `expressive_lossless.rs`, `expressive_source.rs`, and `expressive_benchmark.rs`; the actual-TypeScript oracle and prepared benchmark scripts are `expressive_tts_reference.mjs` and `expressive_tts_benchmark.mjs` under `dimabot/tests/fixtures/`.
+
+The source oracle evaluates the actual TypeScript modules in a Node VM. Node run `1793236845321448731` passed 1,631 cases: 1,229 filter, 185 reinforcement, 13 normalization, and 204 voice cases. Baseline frozen whole source-tree identity (Rust, TypeScript, tests, and manifests) was `64f8e64c88c0998a47a98b421de34c8c204ba782fc2872c01543ac33cdbc1558`; the script took 7.504 seconds and total run time was 8.793 seconds. Production remained unchanged and resource caps were verified. The public UTF-16 filter and reinforcement APIs passed lossless cases for lone surrogate preservation and captures containing malformed units. The 13 normalization and 204 voice cases use test-adapter projections: `config_projection` maps parsed lossless JSON values into ordinary JSON for normalization, while voice cases pass `JsString::as_str()` to the resolver. These projections test boolean/nullish policy and ASCII-ID rejection; they do not implement a public lossless-JSON normalization or general-value voice adapter. The separate native channel-settings path has its own lossless normalizer sharing the policy. The negative control makes only the general filter's entry conversion lossy in a disposable copy; the corrected run reached the expected source-oracle failure at case `surrogateBefore-piper-absent`, with the original snapshot unchanged. After the filter optimization, Node run `1793237648530574044` passed in 7.503 seconds (8.801 seconds total); post-compiler Node run `1793237863200767480` passed in 2.502 seconds (3.755 seconds total). Both exercised the frozen optimized source, and the snapshot and benchmark input hash remained unchanged through the final run.
+
+The prepared benchmark has nine filter/reinforcement workloads, seven samples, 100 warmups, and 10,000 iterations per workload except two large inputs at 1,000 iterations. Inputs, JSON/configuration, and `JsString` values are prepared before timing. Both implementations time only the operation plus a checksum over every UTF-16 output unit; the TypeScript side runs the actual source function. There is no JSON serialization, file I/O, fixture preparation, provider/network work, or production traffic in the timed section. The baseline Node and Rust reports used input SHA-256 `95bbc229a92de5f1b8d12c36e69ab2af3ed06cee160ec31dfe1d24c812a6b195`; outputs were checked by exact units before timing and sample checksums. All times below are median µs/op:
+
+| Workload | TypeScript | Rust | Result |
+|---|---:|---:|---|
+| Filter, plain | 0.4916652 | 0.5536393 | Rust slower |
+| Filter, aliases | 5.729263 | 6.4215853 | Rust slower |
+| Filter, Piper | 2.087304 | 2.1464207 | Rust slower |
+| Filter, lone surrogate | 3.3296378 | 4.4208915 | Rust slower |
+| Filter, large | 198.972366 | 277.838177 | Rust slower |
+| Reinforce, plain | 0.3993251 | 0.228407 | Rust faster in this fixture |
+| Reinforce, repeated groups | 2.8225917 | 2.0428487 | Rust faster in this fixture |
+| Reinforce, lone surrogate | 2.2567715 | 2.1903721 | Near parity; 2.94% lower elapsed time, no significance claim |
+| Reinforce, large | 187.599727 | 98.800453 | Rust faster in this fixture |
+
+These are the baseline results. Preserve all five filter regressions in the record. The filter-only Rust optimization was committed as `535385d0`; the benchmark fixture and source remained unchanged. Final optimized candidate medians (µs/op) are:
+
+| Workload | TypeScript | Rust | Result |
+|---|---:|---:|---|
+| Filter, plain | 0.5377104 | 0.176667 | Rust lower elapsed time |
+| Filter, aliases | 5.1563776 | 5.741072 | Rust 1.11339× TypeScript time |
+| Filter, Piper | 2.4245859 | 2.2392667 | Rust lower elapsed time |
+| Filter, lone surrogate | 3.8187101 | 4.0784248 | Rust 1.06801× TypeScript time |
+| Filter, large | 210.586378 | 202.793656 | Rust 3.7% lower; near parity, no significance claim |
+| Reinforce, plain | 0.7715576 | 0.2389377 | Rust lower elapsed time |
+| Reinforce, repeated groups | 4.7384735 | 2.0439577 | Rust lower elapsed time |
+| Reinforce, lone surrogate | 1.9180248 | 2.4369532 | Rust 1.27055× TypeScript time |
+| Reinforce, large | 183.90321 | 97.760093 | Rust lower elapsed time |
+
+The final benchmark retains three Rust regressions: filter aliases, filter lone surrogate, and reinforcement lone surrogate. Reinforcement code did not change in the optimization; Node baseline and final reinforcement timings differed materially, so those ratio changes are not attributed to the Rust filter change. Runs were sequential on a shared host, not interleaved. This comparison makes no CPU, RSS, provider-latency, production, or general Rust-faster claim. The final [machine-readable comparison](evidence/2026-10-29-expressive-tts/comparison.json) and [chart](evidence/2026-10-29-expressive-tts/comparison.html) preserve all nine workloads and both baseline and optimized results.
+
+The four baseline source/test files were formatted under capped formatter candidate `1793236810292490787`. Baseline core commit `e932c366` added no crate or manifest change. Its first compiler candidate `1793236911965922835` completed scoped positive tests/replays, then its negative-control harness stopped because the child fixture environment was missing; it failed before the expected source-parity assertion. The original failure remains preserved as `expressive-negative-control-missing-fixture.log`, and is classified as a runner/setup failure rather than an application parity failure. Continuation compiler candidate `1793236993275079981` passed strict TTS and all-feature/all-target checks and Clippy, the corrected negative control, and release benchmark. It took 102.886 seconds for the script (110.317 seconds total), with 7,581,065,216 bytes peak build cache, 10,196,078,592 bytes minimum available memory, and production unchanged. Filter-only optimization commit `535385d0` changed no oracle, test, or benchmark source; the single changed file was formatted under formatter candidate `1793237610839899971`. Final compiler candidate `1793237697061152239` passed formatting, 37 ordinary executions (11 library, four lossless, one JS-string, two credit fallback, 16 Fish provider tests, three TTS), five explicit fixture executions (one expressive, one credit fallback, two Fish SDK, one Fish service), one release benchmark, the expected negative control, standalone TTS and all-feature strict checks/Clippy, and no-default-features check. It took 125.381 seconds for the script (132.772 seconds total), with 7,585,329,152 bytes peak build cache, 10,560,385,024 bytes minimum available memory, six CPUs, 4 GiB memory, no swap, 256 PIDs, two Cargo jobs, and production unchanged. The final source SHA-256 is `294c7470d5fdeda221d24c8588554fab1402e77f6ef3fae7b90fa2e89d85143a`. The final candidate passed against the unchanged benchmark input SHA-256 `95bbc229a92de5f1b8d12c36e69ab2af3ed06cee160ec31dfe1d24c812a6b195`. No crate, manifest/lockfile, default feature, or worker-profile changes were made.
+
+## Integration boundary
+
+No new crate, manifest/lockfile change, default feature, or worker-profile change is part of this wave. The TypeScript utility sources and application callers remain live, and caller adoption and source retirement are tracked separately from dependency completion. Independently, the public normalizer still takes `serde_json::Value`, and the general Kokoro resolver accepts ordinary JSON/string values; the test projections above do not provide a lossless public JSON/value adapter. The whole source/call-graph audit, these lossless config/voice adapters, application bootstrap and deployed module-layout selection, queue behavior, preview, billing/usage, emote caches, normalization of arbitrary lone-surrogate inputs, routes, and broader application integration remain open. The existing native runtime factory and provider dispatch remain available. The six excluded React Email templates are still live source files and are not archived by this wave.
+
+The prior runtime-code commit `bc48e32f3de0f864c8f8eaa7211ca6f35931698a` and its evidence commit `51b484c0` predate this wave. Baseline expressive utility core is recorded in commit `e932c366`; optimized filter code is recorded in `535385d0`. No full migration percentage or caller-adoption status is inferred here. Task-owned cleanup is complete: no task-owned containers, networks, or volumes remain, and 19 production records retained their inspected identities and configuration.

@@ -1,0 +1,211 @@
+{
+  "schema": 1,
+  "inputSha256": "95bbc229a92de5f1b8d12c36e69ab2af3ed06cee160ec31dfe1d24c812a6b195",
+  "scope": "prepared filter/reinforce plus wrapping checksum of every UTF-16 output unit; no preparation or JSON serialization",
+  "samples": 7,
+  "warmups": 100,
+  "sequentialSharedHost": true,
+  "lowerIsBetter": true,
+  "rows": [
+    {
+      "name": "filter-ascii-plain",
+      "operation": "filter",
+      "inputUnits": 37,
+      "outputUnits": 37,
+      "iterations": 10000,
+      "nodeUs": 0.5377104,
+      "rustUs": 0.176667,
+      "rustOverNode": 0.32855418083786364,
+      "checksum": 33450000
+    },
+    {
+      "name": "filter-mixed-aliases",
+      "operation": "filter",
+      "inputUnits": 112,
+      "outputUnits": 62,
+      "iterations": 10000,
+      "nodeUs": 5.1563776,
+      "rustUs": 5.741072,
+      "rustOverNode": 1.1133924714900632,
+      "checksum": 58300000
+    },
+    {
+      "name": "filter-piper",
+      "operation": "filter",
+      "inputUnits": 57,
+      "outputUnits": 20,
+      "iterations": 10000,
+      "nodeUs": 2.4245859,
+      "rustUs": 2.2392667,
+      "rustOverNode": 0.9235666593623266,
+      "checksum": 17970000
+    },
+    {
+      "name": "filter-unicode-lone",
+      "operation": "filter",
+      "inputUnits": 50,
+      "outputUnits": 40,
+      "iterations": 10000,
+      "nodeUs": 3.8187100999999997,
+      "rustUs": 4.0784248,
+      "rustOverNode": 1.0680111066823323,
+      "checksum": 2591230000
+    },
+    {
+      "name": "filter-large",
+      "operation": "filter",
+      "inputUnits": 4896,
+      "outputUnits": 3839,
+      "iterations": 1000,
+      "nodeUs": 210.586378,
+      "rustUs": 202.793656,
+      "rustOverNode": 0.96299512782351,
+      "checksum": 2520305408
+    },
+    {
+      "name": "reinforce-plain",
+      "operation": "reinforce",
+      "inputUnits": 37,
+      "outputUnits": 37,
+      "iterations": 10000,
+      "nodeUs": 0.7715576,
+      "rustUs": 0.2389377,
+      "rustOverNode": 0.3096822583304215,
+      "checksum": 33450000
+    },
+    {
+      "name": "reinforce-groups",
+      "operation": "reinforce",
+      "inputUnits": 65,
+      "outputUnits": 89,
+      "iterations": 10000,
+      "nodeUs": 4.7384735000000004,
+      "rustUs": 2.0439577,
+      "rustOverNode": 0.4313536205277923,
+      "checksum": 85040000
+    },
+    {
+      "name": "reinforce-unicode-lone",
+      "operation": "reinforce",
+      "inputUnits": 41,
+      "outputUnits": 57,
+      "iterations": 10000,
+      "nodeUs": 1.9180248,
+      "rustUs": 2.4369532,
+      "rustOverNode": 1.2705535402879045,
+      "checksum": 2289320000
+    },
+    {
+      "name": "reinforce-large",
+      "operation": "reinforce",
+      "inputUnits": 4416,
+      "outputUnits": 5952,
+      "iterations": 1000,
+      "nodeUs": 183.90321,
+      "rustUs": 97.760093,
+      "rustOverNode": 0.5315844840337479,
+      "checksum": 2729617408
+    }
+  ],
+  "initialRows": [
+    {
+      "name": "filter-ascii-plain",
+      "operation": "filter",
+      "inputUnits": 37,
+      "outputUnits": 37,
+      "iterations": 10000,
+      "nodeUs": 0.4916652,
+      "rustUs": 0.5536393000000001,
+      "rustOverNode": 1.126049392960901,
+      "checksum": 33450000
+    },
+    {
+      "name": "filter-mixed-aliases",
+      "operation": "filter",
+      "inputUnits": 112,
+      "outputUnits": 62,
+      "iterations": 10000,
+      "nodeUs": 5.7292629999999996,
+      "rustUs": 6.421585299999999,
+      "rustOverNode": 1.1208396786811847,
+      "checksum": 58300000
+    },
+    {
+      "name": "filter-piper",
+      "operation": "filter",
+      "inputUnits": 57,
+      "outputUnits": 20,
+      "iterations": 10000,
+      "nodeUs": 2.087304,
+      "rustUs": 2.1464207,
+      "rustOverNode": 1.028322036464262,
+      "checksum": 17970000
+    },
+    {
+      "name": "filter-unicode-lone",
+      "operation": "filter",
+      "inputUnits": 50,
+      "outputUnits": 40,
+      "iterations": 10000,
+      "nodeUs": 3.3296378,
+      "rustUs": 4.4208915,
+      "rustOverNode": 1.3277394616315323,
+      "checksum": 2591230000
+    },
+    {
+      "name": "filter-large",
+      "operation": "filter",
+      "inputUnits": 4896,
+      "outputUnits": 3839,
+      "iterations": 1000,
+      "nodeUs": 198.97236600000002,
+      "rustUs": 277.83817700000003,
+      "rustOverNode": 1.3963656490871703,
+      "checksum": 2520305408
+    },
+    {
+      "name": "reinforce-plain",
+      "operation": "reinforce",
+      "inputUnits": 37,
+      "outputUnits": 37,
+      "iterations": 10000,
+      "nodeUs": 0.39932510000000004,
+      "rustUs": 0.228407,
+      "rustOverNode": 0.5719825776040623,
+      "checksum": 33450000
+    },
+    {
+      "name": "reinforce-groups",
+      "operation": "reinforce",
+      "inputUnits": 65,
+      "outputUnits": 89,
+      "iterations": 10000,
+      "nodeUs": 2.8225917,
+      "rustUs": 2.0428487,
+      "rustOverNode": 0.7237492762414062,
+      "checksum": 85040000
+    },
+    {
+      "name": "reinforce-unicode-lone",
+      "operation": "reinforce",
+      "inputUnits": 41,
+      "outputUnits": 57,
+      "iterations": 10000,
+      "nodeUs": 2.2567714999999997,
+      "rustUs": 2.1903721000000003,
+      "rustOverNode": 0.9705777035911702,
+      "checksum": 2289320000
+    },
+    {
+      "name": "reinforce-large",
+      "operation": "reinforce",
+      "inputUnits": 4416,
+      "outputUnits": 5952,
+      "iterations": 1000,
+      "nodeUs": 187.599727,
+      "rustUs": 98.80045299999999,
+      "rustOverNode": 0.526655633139594,
+      "checksum": 2729617408
+    }
+  ]
+}

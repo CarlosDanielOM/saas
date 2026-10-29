@@ -1,0 +1,350 @@
+{
+  "implementation": "native-rust",
+  "inputSha256": "95bbc229a92de5f1b8d12c36e69ab2af3ed06cee160ec31dfe1d24c812a6b195",
+  "runs": [
+    {
+      "expectedUnitsChecksum": 3345,
+      "iterations": 10000,
+      "medianNsPerOp": 553.6393,
+      "medianUsPerOp": 0.5536393000000001,
+      "name": "filter-ascii-plain",
+      "resultChecksum": 33450000,
+      "samples": [
+        {
+          "checksum": 33450000,
+          "elapsedNs": 5536393
+        },
+        {
+          "checksum": 33450000,
+          "elapsedNs": 5656789
+        },
+        {
+          "checksum": 33450000,
+          "elapsedNs": 5582199
+        },
+        {
+          "checksum": 33450000,
+          "elapsedNs": 5627144
+        },
+        {
+          "checksum": 33450000,
+          "elapsedNs": 5403485
+        },
+        {
+          "checksum": 33450000,
+          "elapsedNs": 5355975
+        },
+        {
+          "checksum": 33450000,
+          "elapsedNs": 5337171
+        }
+      ]
+    },
+    {
+      "expectedUnitsChecksum": 5830,
+      "iterations": 10000,
+      "medianNsPerOp": 6421.5853,
+      "medianUsPerOp": 6.421585299999999,
+      "name": "filter-mixed-aliases",
+      "resultChecksum": 58300000,
+      "samples": [
+        {
+          "checksum": 58300000,
+          "elapsedNs": 74100023
+        },
+        {
+          "checksum": 58300000,
+          "elapsedNs": 65429826
+        },
+        {
+          "checksum": 58300000,
+          "elapsedNs": 64215853
+        },
+        {
+          "checksum": 58300000,
+          "elapsedNs": 63664980
+        },
+        {
+          "checksum": 58300000,
+          "elapsedNs": 63885772
+        },
+        {
+          "checksum": 58300000,
+          "elapsedNs": 63900752
+        },
+        {
+          "checksum": 58300000,
+          "elapsedNs": 66114140
+        }
+      ]
+    },
+    {
+      "expectedUnitsChecksum": 1797,
+      "iterations": 10000,
+      "medianNsPerOp": 2146.4207,
+      "medianUsPerOp": 2.1464207,
+      "name": "filter-piper",
+      "resultChecksum": 17970000,
+      "samples": [
+        {
+          "checksum": 17970000,
+          "elapsedNs": 21043400
+        },
+        {
+          "checksum": 17970000,
+          "elapsedNs": 21464207
+        },
+        {
+          "checksum": 17970000,
+          "elapsedNs": 22708610
+        },
+        {
+          "checksum": 17970000,
+          "elapsedNs": 21341087
+        },
+        {
+          "checksum": 17970000,
+          "elapsedNs": 21587938
+        },
+        {
+          "checksum": 17970000,
+          "elapsedNs": 21409236
+        },
+        {
+          "checksum": 17970000,
+          "elapsedNs": 22108585
+        }
+      ]
+    },
+    {
+      "expectedUnitsChecksum": 259123,
+      "iterations": 10000,
+      "medianNsPerOp": 4420.8915,
+      "medianUsPerOp": 4.4208915,
+      "name": "filter-unicode-lone",
+      "resultChecksum": 2591230000,
+      "samples": [
+        {
+          "checksum": 2591230000,
+          "elapsedNs": 43317284
+        },
+        {
+          "checksum": 2591230000,
+          "elapsedNs": 53575635
+        },
+        {
+          "checksum": 2591230000,
+          "elapsedNs": 44543330
+        },
+        {
+          "checksum": 2591230000,
+          "elapsedNs": 44257767
+        },
+        {
+          "checksum": 2591230000,
+          "elapsedNs": 44176754
+        },
+        {
+          "checksum": 2591230000,
+          "elapsedNs": 43903994
+        },
+        {
+          "checksum": 2591230000,
+          "elapsedNs": 44208915
+        }
+      ]
+    },
+    {
+      "expectedUnitsChecksum": 11110240,
+      "iterations": 1000,
+      "medianNsPerOp": 277838.177,
+      "medianUsPerOp": 277.83817700000003,
+      "name": "filter-large",
+      "resultChecksum": 2520305408,
+      "samples": [
+        {
+          "checksum": 2520305408,
+          "elapsedNs": 277886318
+        },
+        {
+          "checksum": 2520305408,
+          "elapsedNs": 259455004
+        },
+        {
+          "checksum": 2520305408,
+          "elapsedNs": 270015340
+        },
+        {
+          "checksum": 2520305408,
+          "elapsedNs": 277838177
+        },
+        {
+          "checksum": 2520305408,
+          "elapsedNs": 281372931
+        },
+        {
+          "checksum": 2520305408,
+          "elapsedNs": 282584420
+        },
+        {
+          "checksum": 2520305408,
+          "elapsedNs": 275866944
+        }
+      ]
+    },
+    {
+      "expectedUnitsChecksum": 3345,
+      "iterations": 10000,
+      "medianNsPerOp": 228.407,
+      "medianUsPerOp": 0.228407,
+      "name": "reinforce-plain",
+      "resultChecksum": 33450000,
+      "samples": [
+        {
+          "checksum": 33450000,
+          "elapsedNs": 2247010
+        },
+        {
+          "checksum": 33450000,
+          "elapsedNs": 2299089
+        },
+        {
+          "checksum": 33450000,
+          "elapsedNs": 2284070
+        },
+        {
+          "checksum": 33450000,
+          "elapsedNs": 2237322
+        },
+        {
+          "checksum": 33450000,
+          "elapsedNs": 2203830
+        },
+        {
+          "checksum": 33450000,
+          "elapsedNs": 2573362
+        },
+        {
+          "checksum": 33450000,
+          "elapsedNs": 3093807
+        }
+      ]
+    },
+    {
+      "expectedUnitsChecksum": 8504,
+      "iterations": 10000,
+      "medianNsPerOp": 2042.8487,
+      "medianUsPerOp": 2.0428487,
+      "name": "reinforce-groups",
+      "resultChecksum": 85040000,
+      "samples": [
+        {
+          "checksum": 85040000,
+          "elapsedNs": 23669139
+        },
+        {
+          "checksum": 85040000,
+          "elapsedNs": 21508851
+        },
+        {
+          "checksum": 85040000,
+          "elapsedNs": 20389755
+        },
+        {
+          "checksum": 85040000,
+          "elapsedNs": 19517831
+        },
+        {
+          "checksum": 85040000,
+          "elapsedNs": 19491331
+        },
+        {
+          "checksum": 85040000,
+          "elapsedNs": 22468259
+        },
+        {
+          "checksum": 85040000,
+          "elapsedNs": 20428487
+        }
+      ]
+    },
+    {
+      "expectedUnitsChecksum": 228932,
+      "iterations": 10000,
+      "medianNsPerOp": 2190.3721,
+      "medianUsPerOp": 2.1903721000000003,
+      "name": "reinforce-unicode-lone",
+      "resultChecksum": 2289320000,
+      "samples": [
+        {
+          "checksum": 2289320000,
+          "elapsedNs": 21357567
+        },
+        {
+          "checksum": 2289320000,
+          "elapsedNs": 24260637
+        },
+        {
+          "checksum": 2289320000,
+          "elapsedNs": 25628300
+        },
+        {
+          "checksum": 2289320000,
+          "elapsedNs": 21903721
+        },
+        {
+          "checksum": 2289320000,
+          "elapsedNs": 21648383
+        },
+        {
+          "checksum": 2289320000,
+          "elapsedNs": 22781325
+        },
+        {
+          "checksum": 2289320000,
+          "elapsedNs": 21739773
+        }
+      ]
+    },
+    {
+      "expectedUnitsChecksum": 11319552,
+      "iterations": 1000,
+      "medianNsPerOp": 98800.453,
+      "medianUsPerOp": 98.80045299999999,
+      "name": "reinforce-large",
+      "resultChecksum": 2729617408,
+      "samples": [
+        {
+          "checksum": 2729617408,
+          "elapsedNs": 97679194
+        },
+        {
+          "checksum": 2729617408,
+          "elapsedNs": 104798523
+        },
+        {
+          "checksum": 2729617408,
+          "elapsedNs": 98800453
+        },
+        {
+          "checksum": 2729617408,
+          "elapsedNs": 95082947
+        },
+        {
+          "checksum": 2729617408,
+          "elapsedNs": 100917391
+        },
+        {
+          "checksum": 2729617408,
+          "elapsedNs": 93834508
+        },
+        {
+          "checksum": 2729617408,
+          "elapsedNs": 101559693
+        }
+      ]
+    }
+  ],
+  "scope": "prepared filter or reinforce + wrapping sum of every UTF-16 output unit",
+  "warmups": 100
+}

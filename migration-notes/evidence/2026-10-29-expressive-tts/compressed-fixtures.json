@@ -1,0 +1,26 @@
+{
+  "expressive-tts-reference.json.gz": {
+    "uncompressed_sha256": "974e02b0f0073d58fa28779eec03c6988bb24f5ef8a8e390c1d49e0e21c42f94",
+    "uncompressed_bytes": 2311113
+  },
+  "fish-catalog-reference.json.gz": {
+    "uncompressed_sha256": "d817a81b0419aa544650fe7014ec8f334e5b9d19be193d695809b956bc7ac27b",
+    "uncompressed_bytes": 152239
+  },
+  "fish-sdk-protocol.json.gz": {
+    "uncompressed_sha256": "9a0d589d338b2447a8eefc9f1d3242598dc0cbd20d569fa0d99b2ba7323b7148",
+    "uncompressed_bytes": 2099135
+  },
+  "fish-tts-reference.json.gz": {
+    "uncompressed_sha256": "545b3b4ad1e6a9050032d963428dbcc84f39549ade7ae36d34d59134ffa510c8",
+    "uncompressed_bytes": 25521
+  },
+  "piper-kokoro-reference.json.gz": {
+    "uncompressed_sha256": "d140e24c5c6f65ee855d8f55e40f8ee6047fddff8d4b9b50995fcab3e9ff51da",
+    "uncompressed_bytes": 72757
+  },
+  "tts-credit-fallback-reference.json.gz": {
+    "uncompressed_sha256": "429154e7ce98eb6fbe426c7edd21f8a699cd694e0151c41da3b6f75ffea44a70",
+    "uncompressed_bytes": 582745
+  }
+}

@@ -1,0 +1,581 @@
+{
+  "node": "v24.22.1",
+  "v8": "13.6.233.17-node.58",
+  "reports": [
+    {
+      "fixture": "fish-tts/fish-sdk-protocol.json",
+      "sha256": "9a0d589d338b2447a8eefc9f1d3242598dc0cbd20d569fa0d99b2ba7323b7148",
+      "sourceEntriesVerified": 95,
+      "sourceFiles": [
+        {
+          "source": "node_modules/@msgpack/msgpack/dist.esm/CachedKeyDecoder.mjs",
+          "resolvedPath": "/source/dimabot/node_modules/@msgpack/msgpack/dist.esm/CachedKeyDecoder.mjs"
+        },
+        {
+          "source": "node_modules/@msgpack/msgpack/dist.esm/DecodeError.mjs",
+          "resolvedPath": "/source/dimabot/node_modules/@msgpack/msgpack/dist.esm/DecodeError.mjs"
+        },
+        {
+          "source": "node_modules/@msgpack/msgpack/dist.esm/Decoder.mjs",
+          "resolvedPath": "/source/dimabot/node_modules/@msgpack/msgpack/dist.esm/Decoder.mjs"
+        },
+        {
+          "source": "node_modules/@msgpack/msgpack/dist.esm/Encoder.mjs",
+          "resolvedPath": "/source/dimabot/node_modules/@msgpack/msgpack/dist.esm/Encoder.mjs"
+        },
+        {
+          "source": "node_modules/@msgpack/msgpack/dist.esm/ExtData.mjs",
+          "resolvedPath": "/source/dimabot/node_modules/@msgpack/msgpack/dist.esm/ExtData.mjs"
+        },
+        {
+          "source": "node_modules/@msgpack/msgpack/dist.esm/ExtensionCodec.mjs",
+          "resolvedPath": "/source/dimabot/node_modules/@msgpack/msgpack/dist.esm/ExtensionCodec.mjs"
+        },
+        {
+          "source": "node_modules/@msgpack/msgpack/dist.esm/context.mjs",
+          "resolvedPath": "/source/dimabot/node_modules/@msgpack/msgpack/dist.esm/context.mjs"
+        },
+        {
+          "source": "node_modules/@msgpack/msgpack/dist.esm/decode.mjs",
+          "resolvedPath": "/source/dimabot/node_modules/@msgpack/msgpack/dist.esm/decode.mjs"
+        },
+        {
+          "source": "node_modules/@msgpack/msgpack/dist.esm/decodeAsync.mjs",
+          "resolvedPath": "/source/dimabot/node_modules/@msgpack/msgpack/dist.esm/decodeAsync.mjs"
+        },
+        {
+          "source": "node_modules/@msgpack/msgpack/dist.esm/encode.mjs",
+          "resolvedPath": "/source/dimabot/node_modules/@msgpack/msgpack/dist.esm/encode.mjs"
+        },
+        {
+          "source": "node_modules/@msgpack/msgpack/dist.esm/index.mjs",
+          "resolvedPath": "/source/dimabot/node_modules/@msgpack/msgpack/dist.esm/index.mjs"
+        },
+        {
+          "source": "node_modules/@msgpack/msgpack/dist.esm/timestamp.mjs",
+          "resolvedPath": "/source/dimabot/node_modules/@msgpack/msgpack/dist.esm/timestamp.mjs"
+        },
+        {
+          "source": "node_modules/@msgpack/msgpack/dist.esm/utils/int.mjs",
+          "resolvedPath": "/source/dimabot/node_modules/@msgpack/msgpack/dist.esm/utils/int.mjs"
+        },
+        {
+          "source": "node_modules/@msgpack/msgpack/dist.esm/utils/prettyByte.mjs",
+          "resolvedPath": "/source/dimabot/node_modules/@msgpack/msgpack/dist.esm/utils/prettyByte.mjs"
+        },
+        {
+          "source": "node_modules/@msgpack/msgpack/dist.esm/utils/stream.mjs",
+          "resolvedPath": "/source/dimabot/node_modules/@msgpack/msgpack/dist.esm/utils/stream.mjs"
+        },
+        {
+          "source": "node_modules/@msgpack/msgpack/dist.esm/utils/typedArrays.mjs",
+          "resolvedPath": "/source/dimabot/node_modules/@msgpack/msgpack/dist.esm/utils/typedArrays.mjs"
+        },
+        {
+          "source": "node_modules/@msgpack/msgpack/dist.esm/utils/utf8.mjs",
+          "resolvedPath": "/source/dimabot/node_modules/@msgpack/msgpack/dist.esm/utils/utf8.mjs"
+        },
+        {
+          "source": "node_modules/@msgpack/msgpack/package.json",
+          "resolvedPath": "/source/dimabot/node_modules/@msgpack/msgpack/package.json"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/api/errors/BadRequestError.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/api/errors/BadRequestError.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/api/errors/ForbiddenError.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/api/errors/ForbiddenError.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/api/errors/NotFoundError.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/api/errors/NotFoundError.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/api/errors/TooEarlyError.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/api/errors/TooEarlyError.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/api/errors/UnauthorizedError.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/api/errors/UnauthorizedError.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/api/errors/UnprocessableEntityError.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/api/errors/UnprocessableEntityError.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/api/errors/index.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/api/errors/index.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/api/index.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/api/index.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/api/resources/index.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/api/resources/index.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/api/resources/speechToText/Client.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/api/resources/speechToText/Client.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/api/resources/speechToText/index.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/api/resources/speechToText/index.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/api/resources/speechToText/requests/STTRequest.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/api/resources/speechToText/requests/STTRequest.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/api/resources/speechToText/types/STTResponse.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/api/resources/speechToText/types/STTResponse.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/api/resources/textToSpeech/Client.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/api/resources/textToSpeech/Client.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/api/resources/textToSpeech/index.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/api/resources/textToSpeech/index.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/api/resources/textToSpeech/requests/TTSRequest.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/api/resources/textToSpeech/requests/TTSRequest.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/api/resources/user/Client.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/api/resources/user/Client.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/api/resources/user/index.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/api/resources/user/index.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/api/resources/user/types/APICreditResponse.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/api/resources/user/types/APICreditResponse.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/api/resources/user/types/PackageResponse.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/api/resources/user/types/PackageResponse.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/api/resources/voices/Client.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/api/resources/voices/Client.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/api/resources/voices/index.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/api/resources/voices/index.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/api/resources/voices/ivc/Client.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/api/resources/voices/ivc/Client.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/api/resources/voices/ivc/index.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/api/resources/voices/ivc/index.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/api/resources/voices/ivc/requests/ModelCreateRequest.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/api/resources/voices/ivc/requests/ModelCreateRequest.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/api/resources/voices/requests/ModelListRequest.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/api/resources/voices/requests/ModelListRequest.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/api/resources/voices/requests/UpdateModelRequest.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/api/resources/voices/requests/UpdateModelRequest.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/api/resources/voices/types/DeleteVoiceResponse.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/api/resources/voices/types/DeleteVoiceResponse.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/api/resources/voices/types/ModelEntity.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/api/resources/voices/types/ModelEntity.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/api/resources/voices/types/ModelListResponse.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/api/resources/voices/types/ModelListResponse.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/api/resources/voices/types/UpdateVoiceResponse.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/api/resources/voices/types/UpdateVoiceResponse.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/client/FishAudioClient.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/client/FishAudioClient.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/client/play.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/client/play.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/client/utils.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/client/utils.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/client/websocket/TextToSpeechWebSocketClient.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/client/websocket/TextToSpeechWebSocketClient.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/client/websocket/connection.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/client/websocket/connection.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/client/websocket/index.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/client/websocket/index.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/core/fetcher/APIResponse.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/core/fetcher/APIResponse.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/core/fetcher/BinaryResponse.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/core/fetcher/BinaryResponse.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/core/fetcher/EndpointMetadata.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/core/fetcher/EndpointMetadata.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/core/fetcher/EndpointSupplier.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/core/fetcher/EndpointSupplier.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/core/fetcher/Fetcher.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/core/fetcher/Fetcher.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/core/fetcher/Headers.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/core/fetcher/Headers.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/core/fetcher/HttpResponsePromise.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/core/fetcher/HttpResponsePromise.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/core/fetcher/RawResponse.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/core/fetcher/RawResponse.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/core/fetcher/ResponseWithBody.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/core/fetcher/ResponseWithBody.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/core/fetcher/Supplier.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/core/fetcher/Supplier.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/core/fetcher/createRequestUrl.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/core/fetcher/createRequestUrl.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/core/fetcher/getErrorResponseBody.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/core/fetcher/getErrorResponseBody.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/core/fetcher/getFetchFn.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/core/fetcher/getFetchFn.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/core/fetcher/getHeader.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/core/fetcher/getHeader.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/core/fetcher/getRequestBody.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/core/fetcher/getRequestBody.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/core/fetcher/getResponseBody.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/core/fetcher/getResponseBody.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/core/fetcher/index.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/core/fetcher/index.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/core/fetcher/makeRequest.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/core/fetcher/makeRequest.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/core/fetcher/requestWithRetries.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/core/fetcher/requestWithRetries.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/core/fetcher/signals.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/core/fetcher/signals.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/core/form-data-utils/FormDataWrapper.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/core/form-data-utils/FormDataWrapper.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/core/form-data-utils/encodeAsFormParameter.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/core/form-data-utils/encodeAsFormParameter.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/core/form-data-utils/index.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/core/form-data-utils/index.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/core/headers.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/core/headers.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/core/index.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/core/index.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/core/json.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/core/json.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/core/runtime/index.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/core/runtime/index.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/core/runtime/runtime.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/core/runtime/runtime.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/core/url/index.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/core/url/index.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/core/url/join.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/core/url/join.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/core/url/qs.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/core/url/qs.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/environments.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/environments.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/errors/FishAudioError.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/errors/FishAudioError.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/errors/FishAudioTimeoutError.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/errors/FishAudioTimeoutError.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/errors/index.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/errors/index.js"
+        },
+        {
+          "source": "node_modules/fish-audio/dist/esm/index.js",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/dist/esm/index.js"
+        },
+        {
+          "source": "node_modules/fish-audio/package.json",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/package.json"
+        },
+        {
+          "source": "package-lock.json",
+          "resolvedPath": "/source/dimabot/package-lock.json"
+        },
+        {
+          "source": "package.json",
+          "resolvedPath": "/source/dimabot/package.json"
+        },
+        {
+          "source": "tests/fixtures/fish_sdk_oracle.mjs",
+          "resolvedPath": "/source/dimabot/tests/fixtures/fish_sdk_oracle.mjs"
+        }
+      ]
+    },
+    {
+      "fixture": "fish-tts/fish-tts-reference.json",
+      "sha256": "545b3b4ad1e6a9050032d963428dbcc84f39549ade7ae36d34d59134ffa510c8",
+      "sourceEntriesVerified": 12,
+      "sourceFiles": [
+        {
+          "source": "src/server/services/tts/fish_tts.service.ts",
+          "resolvedPath": "/source/dimabot/src/server/services/tts/fish_tts.service.ts"
+        },
+        {
+          "source": "src/server/services/tts/piper_tts.service.ts",
+          "resolvedPath": "/source/dimabot/src/server/services/tts/piper_tts.service.ts"
+        },
+        {
+          "source": "src/utils/tts/expressive_tts_tags.util.ts",
+          "resolvedPath": "/source/dimabot/src/utils/tts/expressive_tts_tags.util.ts"
+        },
+        {
+          "source": "src/utils/tts/tts_deadline.util.ts",
+          "resolvedPath": "/source/dimabot/src/utils/tts/tts_deadline.util.ts"
+        },
+        {
+          "source": "src/utils/ai/openrouter/app_attribution.util.ts",
+          "resolvedPath": "/source/dimabot/src/utils/ai/openrouter/app_attribution.util.ts"
+        },
+        {
+          "source": "src/server/services/tts/tts_provider.interface.ts",
+          "resolvedPath": "/source/dimabot/src/server/services/tts/tts_provider.interface.ts"
+        },
+        {
+          "source": "tests/fixtures/fish_tts_reference.mjs",
+          "resolvedPath": "/source/dimabot/tests/fixtures/fish_tts_reference.mjs"
+        },
+        {
+          "source": "package.json",
+          "resolvedPath": "/source/dimabot/package.json"
+        },
+        {
+          "source": "package-lock.json",
+          "resolvedPath": "/source/dimabot/package-lock.json"
+        },
+        {
+          "source": "node_modules/fish-audio/package.json",
+          "resolvedPath": "/source/dimabot/node_modules/fish-audio/package.json"
+        },
+        {
+          "source": "node_modules/@msgpack/msgpack/package.json",
+          "resolvedPath": "/source/dimabot/node_modules/@msgpack/msgpack/package.json"
+        },
+        {
+          "source": "node_modules/typescript/package.json",
+          "resolvedPath": "/source/dimabot/node_modules/typescript/package.json"
+        }
+      ]
+    },
+    {
+      "fixture": "piper-kokoro/piper-kokoro-reference.json",
+      "sha256": "d140e24c5c6f65ee855d8f55e40f8ee6047fddff8d4b9b50995fcab3e9ff51da",
+      "sourceEntriesVerified": 10,
+      "sourceFiles": [
+        {
+          "source": "src/server/services/tts/piper_tts.service.ts",
+          "resolvedPath": "/source/dimabot/src/server/services/tts/piper_tts.service.ts"
+        },
+        {
+          "source": "src/server/services/tts/kokoro_tts.service.ts",
+          "resolvedPath": "/source/dimabot/src/server/services/tts/kokoro_tts.service.ts"
+        },
+        {
+          "source": "src/utils/tts/kokoro_voices.util.ts",
+          "resolvedPath": "/source/dimabot/src/utils/tts/kokoro_voices.util.ts"
+        },
+        {
+          "source": "src/utils/tts/tts_deadline.util.ts",
+          "resolvedPath": "/source/dimabot/src/utils/tts/tts_deadline.util.ts"
+        },
+        {
+          "source": "src/utils/ai/openrouter/app_attribution.util.ts",
+          "resolvedPath": "/source/dimabot/src/utils/ai/openrouter/app_attribution.util.ts"
+        },
+        {
+          "source": "src/server/services/tts/tts_provider.interface.ts",
+          "resolvedPath": "/source/dimabot/src/server/services/tts/tts_provider.interface.ts"
+        },
+        {
+          "source": "tests/fixtures/piper_kokoro_reference.mjs",
+          "resolvedPath": "/source/dimabot/tests/fixtures/piper_kokoro_reference.mjs"
+        },
+        {
+          "source": "package.json",
+          "resolvedPath": "/source/dimabot/package.json"
+        },
+        {
+          "source": "package-lock.json",
+          "resolvedPath": "/source/dimabot/package-lock.json"
+        },
+        {
+          "source": "node_modules/typescript/package.json",
+          "resolvedPath": "/source/dimabot/node_modules/typescript/package.json"
+        }
+      ]
+    },
+    {
+      "fixture": "fish-catalog/fish-catalog-reference.json",
+      "sha256": "d817a81b0419aa544650fe7014ec8f334e5b9d19be193d695809b956bc7ac27b",
+      "sourceEntriesVerified": 8,
+      "sourceFiles": [
+        {
+          "source": "src/server/services/tts/fish_voice_catalog.service.ts",
+          "resolvedPath": "/source/dimabot/src/server/services/tts/fish_voice_catalog.service.ts"
+        },
+        {
+          "source": "src/server/services/tts/fish_tts.service.ts",
+          "resolvedPath": "/source/dimabot/src/server/services/tts/fish_tts.service.ts"
+        },
+        {
+          "source": "tests/fixtures/fish_catalog_reference.mjs",
+          "resolvedPath": "/source/dimabot/tests/fixtures/fish_catalog_reference.mjs"
+        },
+        {
+          "source": "package.json",
+          "resolvedPath": "/source/dimabot/package.json"
+        },
+        {
+          "source": "package-lock.json",
+          "resolvedPath": "/source/dimabot/package-lock.json"
+        },
+        {
+          "source": "node_modules/typescript/package.json",
+          "resolvedPath": "/source/dimabot/node_modules/typescript/package.json"
+        },
+        {
+          "source": "node_modules/typescript/lib/typescript.js",
+          "resolvedPath": "/source/dimabot/node_modules/typescript/lib/typescript.js"
+        },
+        {
+          "source": "node-executable",
+          "resolvedPath": "/usr/local/bin/node"
+        }
+      ]
+    },
+    {
+      "fixture": "tts-credit-fallback/tts-credit-fallback-reference.json",
+      "sha256": "429154e7ce98eb6fbe426c7edd21f8a699cd694e0151c41da3b6f75ffea44a70",
+      "sourceEntriesVerified": 10,
+      "sourceFiles": [
+        {
+          "source": "src/utils/tts/tts_credit_fallback.util.ts",
+          "resolvedPath": "/source/archives/dimabot-typescript/2026-10-28/src/utils/tts/tts_credit_fallback.util.ts"
+        },
+        {
+          "source": "src/schemas/channel_tts_settings.schema.ts",
+          "resolvedPath": "/source/archives/dimabot-typescript/2026-10-28/src/schemas/channel_tts_settings.schema.ts"
+        },
+        {
+          "source": "src/utils/tts/expressive_tts_tags.util.ts",
+          "resolvedPath": "/source/dimabot/src/utils/tts/expressive_tts_tags.util.ts"
+        },
+        {
+          "source": "src/utils/tts/kokoro_voices.util.ts",
+          "resolvedPath": "/source/dimabot/src/utils/tts/kokoro_voices.util.ts"
+        },
+        {
+          "source": "package.json",
+          "resolvedPath": "/source/dimabot/package.json"
+        },
+        {
+          "source": "package-lock.json",
+          "resolvedPath": "/source/dimabot/package-lock.json"
+        },
+        {
+          "source": "node_modules/typescript/package.json",
+          "resolvedPath": "/source/dimabot/node_modules/typescript/package.json"
+        },
+        {
+          "source": "node_modules/typescript/lib/typescript.js",
+          "resolvedPath": "/source/dimabot/node_modules/typescript/lib/typescript.js"
+        },
+        {
+          "source": "node-executable",
+          "resolvedPath": "/usr/local/bin/node"
+        },
+        {
+          "source": "tests/fixtures/tts_credit_fallback_reference.mjs",
+          "resolvedPath": "/source/dimabot/tests/fixtures/tts_credit_fallback_reference.mjs"
+        }
+      ]
+    }
+  ]
+}

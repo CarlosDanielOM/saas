@@ -1,0 +1,10 @@
+{
+  "source": "dimabot/src/utils/tts/mod.rs",
+  "originalSha256": "3c382b0c2d08e595ed89bd54a8777c5569b602d5366aa2983b7093b31598da59",
+  "mutatedSha256": "868b1deab0b4974e237d030dfd250f963742b189f981e25e255abfcd573529ac",
+  "mutation": "replace unpaired UTF-16 units with U+FFFD at general filter entry; keep actual filter behavior otherwise",
+  "exitCode": 101,
+  "expectedFailureCase": "surrogateBefore-piper-absent (filter)",
+  "failedAtExpectedAssertion": true,
+  "sourceSnapshotUnchanged": true
+}

@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "baselineSourceCommit": "e932c3662049a6ae0b13dc2029441c63a5d36696",
+  "optimizedSourceCommit": "535385d06aaea14d0d6bc448548b100fb99fe973",
+  "baselineSourceTreeSha256": "64f8e64c88c0998a47a98b421de34c8c204ba782fc2872c01543ac33cdbc1558",
+  "finalSourceTreeSha256": "294c7470d5fdeda221d24c8588554fab1402e77f6ef3fae7b90fa2e89d85143a",
+  "finalNode": "node-1793237648530574044",
+  "finalCompiler": "compiler-1793237697061152239",
+  "finalPostNode": "node-1793237863200767480",
+  "ordinaryExecutions": 37,
+  "ordinaryBreakdown": {
+    "library": 11,
+    "expressiveLossless": 4,
+    "jsString": 1,
+    "creditFallback": 2,
+    "fishService": 16,
+    "ttsUtilities": 3
+  },
+  "explicitFixtureExecutions": 5,
+  "fixtureBreakdown": {
+    "expressive": 1,
+    "creditFallback": 1,
+    "fishSdk": 2,
+    "fishService": 1
+  },
+  "releaseBenchmarkExecutions": 1,
+  "sourceCorpus": {
+    "total": 1631,
+    "filter": 1229,
+    "reinforce": 185,
+    "normalize": 13,
+    "voice": 204
+  },
+  "negativeControl": "expected failure surrogateBefore-piper-absent in separately copied lossy mutation; original snapshot unchanged",
+  "initialHarnessFailure": "missing EXPRESSIVE_TTS_FIXTURE_DIR before expected assertion; preserved log; runner-only explicit-env fix",
+  "benchmarkInputSha256": "95bbc229a92de5f1b8d12c36e69ab2af3ed06cee160ec31dfe1d24c812a6b195",
+  "benchmarkScope": "prepared operations plus checksum of every UTF16 output unit; preparation/JSON/I/O excluded; sequential shared host; no CPU/RSS/provider latency or statistical-significance claims",
+  "initialRegressions": 5,
+  "finalRegressions": [
+    "filter-mixed-aliases",
+    "filter-unicode-lone",
+    "reinforce-unicode-lone"
+  ],
+  "benchmarkComparableInputs": true,
+  "reusedSourceFixtures": "five fixtures freshly source-hash checked, JavaScript oracles not regenerated in this wave; Rust replays fresh for SDK/Fish/credit; Piper/Kokoro/catalog provenance checks only",
+  "cargoPackagesAdded": false,
+  "manifestOrLockChange": false,
+  "typescriptRetired": false,
+  "archiveCount": 17,
+  "remainingTypeScript": 789,
+  "reactEmailExcluded": 6,
+  "callerAdoption": "two native helpers adopt shared utility; TS application callers remain",
+  "wholeMigrationComplete": false,
+  "deployed": false,
+  "pushed": false,
+  "normalizationAndVoiceBoundary": "malformed-value config normalization and voice resolution currently replay through test projections; public production lossless-JSON/general-value utility adapters remain open before whole-source retirement; native settings has separate lossless path"
+}
