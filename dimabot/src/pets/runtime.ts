@@ -25,6 +25,9 @@ import { subscribePetWakeups } from './wakeups.js';
 import { issueAudioTicket } from './tokens.js';
 import { claimQueued, nextIndependentQueued } from './queue.js';
 import { registerPetLaneBridge, type PetLaneItem, type PetLaneStart } from './tts_lane.js';
+import { getChannelTtsSettings } from '../schemas/channel_tts_settings.schema.js';
+import { getTtsEmoteNames } from '../utils/tts/emote_names.util.js';
+import { filterPetTalkText } from './speech_text.js';
 
 const tasks = new Map<string, { controller: AbortController; requestId: string; generation: number }>();
 const MAX_ACTIVE_PROVIDERS = 4;
@@ -120,12 +123,23 @@ async function generate(request: PetRequestRecord, signal: AbortSignal) {
         }
         signal.throwIfAborted();
         ({ configuration } = await current(request));
-        request = await phase(request, 'synthesizing', text);
         const cache = await getDragonflyClient('pet-credits');
         let creditStatus: AiCreditStatus = 'unavailable';
         try { creditStatus = await isAiCreditsExhausted(request.channelId, cache) ? 'exhausted' : (await getAiCredits(streamer, request.channelId, { requireVerified: true, signal })).status; }
         catch { /* Existing unavailable-credit rule falls back to Piper. */ }
         const tts = resolveTtsForCreditStatus({ mode: 'speak' as const, text, ...configuration.settings.tts }, creditStatus, streamer.plan_tier);
+        if (request.operation === 'talk') {
+            const settings = await getChannelTtsSettings(request.channelId);
+            const emoteNames = settings.filters.skipEmotes ? await getTtsEmoteNames(request.channelId) : [];
+            signal.throwIfAborted();
+            await current(request);
+            const normalized = filterPetTalkText(text, tts.provider, settings.filters, emoteNames);
+            if (normalized.error) throw new PetError('no_speakable_text');
+            tts.text = normalized.text;
+        }
+        signal.throwIfAborted();
+        await current(request);
+        request = await phase(request, 'synthesizing', tts.text);
         directory = await mkdtemp(path.join(tmpdir(), 'dima-pet-'));
         await PetRequest.updateOne({ _id: request._id, status: 'synthesizing' }, { $set: { privateDir: directory } });
         const audioPath = path.join(directory, tts.provider === 'piper' ? 'speech.wav' : 'speech.mp3');

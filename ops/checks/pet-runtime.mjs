@@ -14,6 +14,7 @@ const mongo = await getMongoDBConnection('pet-runtime-check');
 const redis = await getDragonflyClient('pet-runtime-check');
 const { PetRequest, PetRuntime } = await import('/app/dist/schemas/pet_runtime.schema.js');
 const { PetSettingsSchema } = await import('/app/dist/schemas/pet_settings.schema.js');
+const { upsertChannelTtsSettings } = await import('/app/dist/schemas/channel_tts_settings.schema.js');
 const { OAuthSession } = await import('/app/dist/schemas/oauth_session.schema.js');
 const { ChannelAIPersonalitySchema } = await import('/app/dist/schemas/channel_ai_personality.schema.js');
 const { PetReadiness } = await import('/app/dist/pets/readiness.schema.js');
@@ -267,6 +268,34 @@ assert.equal(firstBilling.length, 1, 'completed replay performs no duplicate ing
 assert.equal(firstBilling[0].external_id, `${requestId}:tts`);
 assert.equal(firstBilling[0].metadata.request_id, `${requestId}:tts`);
 assert.equal(firstBilling[0].metadata.usage_source, 'pet');
+// Pet speech uses the channel filters even when ordinary channel TTS is disabled.
+await redis.set('twitch:global:tts:emotes', JSON.stringify(['Kappa']));
+await redis.set(`twitch:${owner}:emote-catalog:v1`, JSON.stringify({ emotes: [{ id: 'native1', name: 'Pog' }], checkedAt: new Date().toISOString(), retryAt: Date.now() + 3600000 }));
+await upsertChannelTtsSettings(owner, { enabled: false, filters: { skipEmotes: true, stripLinks: true, normalizeWhitespace: true, maxLength: 30 } });
+const filteredInput = action('Kappa Pog [happy] Hello example.com  world');
+const filtered = await admitPetAction(filteredInput);
+const filteredPlay = await desktop.event('pet:play', data => data.requestId === filtered.requestId);
+const filteredRecord = await PetRequest.findById(filtered.requestId).lean();
+assert.equal(filteredRecord.text, filteredInput.text, 'stored idempotency input remains raw');
+assert.equal(filteredRecord.outputText, 'Hello [link] world');
+assert.equal((await redis.lRange('pet:test:provider-calls', 0, -1)).map(JSON.parse).at(-1).body.text, filteredRecord.outputText);
+const filteredBilling = (await redis.lRange('pet:test:billing-events', 0, -1)).map(JSON.parse).find(item => item.external_id === `${filtered.requestId}:tts`);
+assert.equal(filteredBilling.metadata.characters, filteredRecord.outputText.length);
+await desktop.send('pet:playback', identityFor(filteredPlay, 0, 'error'));
+const emptyCounts = { providers: await redis.lLen('pet:test:provider-calls'), billing: await redis.lLen('pet:test:billing-events') };
+const empty = await admitPetAction(action('Kappa [happy]'));
+const emptyRecord = await until(() => PetRequest.findOne({ _id: empty.requestId, status: 'failed', errorCode: 'no_speakable_text' }).lean(), 'empty filtered speech fails');
+assert.ok(!emptyRecord.privateDir);
+assert.equal(await redis.lLen('pet:test:provider-calls'), emptyCounts.providers);
+assert.equal(await redis.lLen('pet:test:billing-events'), emptyCounts.billing);
+await upsertChannelTtsSettings(owner, { enabled: true, filters: { skipEmotes: false, stripLinks: false, normalizeWhitespace: false, maxLength: 30 } });
+const unfiltered = await admitPetAction(action('Kappa example.com 12345678901234567890'));
+const unfilteredPlay = await desktop.event('pet:play', data => data.requestId === unfiltered.requestId);
+const unfilteredText = (await PetRequest.findById(unfiltered.requestId).lean()).outputText;
+assert.equal(unfilteredText, 'Kappa example.com 123456789012');
+assert.equal((await redis.lRange('pet:test:provider-calls', 0, -1)).map(JSON.parse).at(-1).body.text, unfilteredText);
+await desktop.send('pet:playback', identityFor(unfilteredPlay, 0, 'error'));
+await upsertChannelTtsSettings(owner, {});
 // Redis is advisory even in a real producer process: a refused connection cannot delay Mongo admission.
 // pet.talk needs Redis for its TTS queue item; an independent pet.ask is Mongo-only.
 const outage = await separateProducer(action('Durable admission while Redis hints are unavailable', 'ask'), { DRAGONFLY_PORT: '1' });
@@ -317,12 +346,15 @@ await until(() => PetRequest.findOne({ _id: failed.requestId, status: 'failed' }
 assert.equal(await redis.lLen('pet:test:provider-calls'), countBefore + 1, 'no provider retry');
 await redis.del('pet:test:provider-mode');
 // No-tool LLM is raw spoken text; its AST-looking reply never executes.
-const askInput = action('Say something friendly', 'ask');
+await upsertChannelTtsSettings(owner, { filters: { skipEmotes: true, stripLinks: true, normalizeWhitespace: true, maxLength: 30 } });
+const askInput = action('Kappa [happy] example.com', 'ask');
 const ask = await admitPetAction(askInput);
 const askPlay = await desktop.event('pet:play', data => data.requestId === ask.requestId);
 const calls = (await redis.lRange('pet:test:provider-calls', 0, -1)).map(JSON.parse);
 assert.deepEqual(calls.find(item => item.kind === 'llm').body.tools, []);
-assert.ok(calls.some(item => item.kind === 'tts' && item.body.text.includes('$(counter must-not-evaluate)')));
+assert.equal(calls.filter(item => item.kind === 'llm').at(-1).body.messages.at(-1).content, askInput.text);
+assert.equal(calls.filter(item => item.kind === 'tts').at(-1).body.text, 'Kappa [happy] example.com $(counter must-not-evaluate)');
+assert.equal((await PetRequest.findById(ask.requestId).lean()).outputText, 'Kappa [happy] example.com $(counter must-not-evaluate)');
 assert.equal((await desktop.send('pet:playback', identityFor(askPlay, 0))).ok, true);
 assert.equal((await desktop.send('pet:playback', identityFor(askPlay, 1, 'ended'))).ok, true);
 const queued = (await redis.lRange('pet:test:billing-events', 0, -1)).map(JSON.parse);
@@ -337,14 +369,17 @@ assert.equal((await admitPetAction(askInput)).status, 'completed');
 await pause(100);
 assert.equal(await redis.lLen('pet:test:provider-calls'), beforeAskReplay.providers);
 assert.equal(await redis.lLen('pet:test:billing-events'), beforeAskReplay.billing);
+await upsertChannelTtsSettings(owner, {});
 // Exhausted/unverified credits use the existing provider fallback policy.
 await credits('unavailable');
 await save(settings => ({ ...settings, tts: { enabled: true, provider: 'fish', language: 'es', voice: '7b5626abdaa044babfc3829ec15acf31' } }));
 await PetRuntime.updateOne({ _id: ownerId }, { $set: { notBefore: new Date(0) } });
 lease = await acquire(desktop);
-const fallback = await admitPetAction(action('Use free fallback'));
+const fallback = await admitPetAction(action('[happy] Use example.com fallback'));
 const fallbackPlay = await desktop.event('pet:play', data => data.requestId === fallback.requestId);
 assert.equal(fallbackPlay.audio.mimeType, 'audio/wav');
+assert.equal((await PetRequest.findById(fallback.requestId).lean()).outputText, 'Use [link] fallback');
+assert.equal((await redis.lRange('pet:test:provider-calls', 0, -1)).map(JSON.parse).at(-1).body.text, 'Use [link] fallback');
 await desktop.send('pet:playback', identityFor(fallbackPlay, 0, 'error'));
 // Keep unavailable-credit Piper fallback for the admission-only crash fixture;
 // paid Fish in this provider fixture deliberately returns HTTP 503.

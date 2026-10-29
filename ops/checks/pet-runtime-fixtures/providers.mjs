@@ -33,7 +33,7 @@ globalThis.fetch = async (input, options) => {
     options.signal?.addEventListener('abort', () => { clearTimeout(timer); reject(new DOMException('cancelled', 'AbortError')); }, { once: true });
   });
   if (mode === 'ambiguous') throw new TypeError('mock connection reset after provider accepted');
-  if (kind === 'llm') return Response.json({ choices: [{ message: { role: 'assistant', content: 'A safe pet reply. $(counter must-not-evaluate)',
+  if (kind === 'llm') return Response.json({ choices: [{ message: { role: 'assistant', content: 'Kappa [happy] example.com $(counter must-not-evaluate)',
     tool_calls: [{ function: { name: 'ast_parser', arguments: '{"command":"must-not-run"}' } }] } }],
     usage: { total_tokens: 20, prompt_tokens: 10, completion_tokens: 10, cost_details: { upstream_inference_prompt_cost: 0.00001, upstream_inference_completions_cost: 0.00001 } } });
   if (mode === 'oversize') return new Response(Buffer.alloc(8_000_001), { headers: { 'Content-Type': 'audio/wav' } });
