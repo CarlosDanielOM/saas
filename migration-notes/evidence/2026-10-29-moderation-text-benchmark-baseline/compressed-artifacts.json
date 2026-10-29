@@ -1,0 +1,50 @@
+{
+  "artifacts/attempt1/bin/moderation_text_benchmark.gz": {
+    "rawSha256": "62490949d4e79efa81590066d3d528b177ee02941585b4025b2baa39bd7ce483",
+    "rawBytes": 2357744
+  },
+  "artifacts/attempt1/paired1/moderation-text-paired-report.json.gz": {
+    "rawSha256": "4a321e284a6bf88a0ae718dfe6a63720a27cc30d9c30f7c50f9ad604e0400445",
+    "rawBytes": 414444
+  },
+  "artifacts/attempt1/prepared/moderation-text-benchmark-input.json.gz": {
+    "rawSha256": "2a5721276df1bec019b063d11b68678af10d2ab68d2364eba1f1b3e9e3507181",
+    "rawBytes": 176597
+  },
+  "artifacts/attempt1/source-inputs.json.gz": {
+    "rawSha256": "7abcc76aa7341bf83ff466fee6025f3538b515e5dc293ba03d5066a3725b95d9",
+    "rawBytes": 158031
+  },
+  "runs/compiler-1793307573088025938-receipt.json.gz": {
+    "rawSha256": "1ccb412aaaec32b78eaaeadbba6e085c5addf06723aecb712a5786bc79546904",
+    "rawBytes": 161601
+  },
+  "runs/compiler-1793307573088025938.log.gz": {
+    "rawSha256": "8b4ab4b8b1bd8783b639108944cc9c48abfa546a2cc7f1603f9215fb7ccc29cf",
+    "rawBytes": 2084
+  },
+  "runs/format-1793307536445171423-receipt.json.gz": {
+    "rawSha256": "f507773d78fa30d7279b0ba753f0b54c61780c8ee0fef4e437c2623edb044fab",
+    "rawBytes": 161600
+  },
+  "runs/format-1793307536445171423.log.gz": {
+    "rawSha256": "d8df33ba72c691319594a6938a8cc1f756798afbe8a2dc8dedcec22abade739d",
+    "rawBytes": 1833
+  },
+  "runs/node-1793307573090460748-receipt.json.gz": {
+    "rawSha256": "3e93333156f5b54b5c249e25a782c09c2217bd22cce7d3517540c02dfec16e15",
+    "rawBytes": 161475
+  },
+  "runs/node-1793307573090460748.log.gz": {
+    "rawSha256": "005d52565dda9b747a76e87f8eebf4022e35e6b561db49004e173f430f110e21",
+    "rawBytes": 2497
+  },
+  "runs/node-1793307663869458394-receipt.json.gz": {
+    "rawSha256": "05853baf573d4c87a05cc1222eb253f1b8c645175dc2d1a36ca96940ead8ceb8",
+    "rawBytes": 161478
+  },
+  "runs/node-1793307663869458394.log.gz": {
+    "rawSha256": "d399649f25bb2f301683ecb1e65916ce24b13a7c26ca14d30f7586eafde739ae",
+    "rawBytes": 1942
+  }
+}

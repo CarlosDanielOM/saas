@@ -1,0 +1,10 @@
+{
+  "inputSha256": "2a5721276df1bec019b063d11b68678af10d2ab68d2364eba1f1b3e9e3507181",
+  "allMetadataHashesChecked": true,
+  "workloads": {
+    "link-common": 8,
+    "link-large": 8,
+    "fold-text": 8,
+    "escape-regexp": 8
+  }
+}

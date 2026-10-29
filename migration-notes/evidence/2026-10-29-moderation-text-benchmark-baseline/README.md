@@ -1,0 +1,7 @@
+# Initial moderation text performance evidence
+
+Four separate equally weighted eight-case pools were measured in seven alternating pairs after three warmups per actor/workload, 8,000 operations per trial. Actual TypeScript runs in normal CommonJS; native execution uses the exact source-bound static release ELF. Prepared input parity, full manifest/binary/input hashes, all paired checksums, post-check and clean process exits passed. Timers include production function calls and storing their results, with prepared inputs and output-container allocation before timing; hashing, JSON encoding, checksum, IPC and destruction are outside timing.
+
+Median ns/op (TypeScript / Rust): common links 967.84775 / 2452.192; long links 327477.8345 / 27472.622125; folding 469.380375 / 1073.271625; escaping 655.71075 / 288.789625. Common links and folding regress; long links and escaping improve in this synthetic run. Preserve all raw trials and input/source variants when optimizing; do not overwrite this baseline. This is one isolated host run with no CPU, RSS, or production-latency claim.
+
+Capped formatting, scoped Clippy, release compilation, exact static ELF inspection and runtime checks passed. All 19 production records stayed unchanged and no owned resources remained. No source retirement, caller adoption, deployment or push occurred. Performance optimization and the whole application migration remain open.

@@ -1,0 +1,14 @@
+set -eu
+export DIMA_MODERATION_TEXT_SOURCE_ROOT=/source/dimabot
+export DIMA_MODERATION_TEXT_BENCH_DIR=/artifacts/moderation-text-benchmark/attempt1/prepared
+export DIMA_MODERATION_TEXT_NODE_SHA256=569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108
+export DIMA_MODERATION_TEXT_INPUT_SHA256=2a5721276df1bec019b063d11b68678af10d2ab68d2364eba1f1b3e9e3507181
+export DIMA_MODERATION_TEXT_REPS=1000
+export DIMA_MODERATION_TEXT_NODE_PATH=/usr/local/bin/node
+export DIMA_MODERATION_TEXT_BENCH_BINARY=/artifacts/moderation-text-benchmark/attempt1/bin/moderation_text_benchmark
+export DIMA_MODERATION_TEXT_BINARY_PROVENANCE=/artifacts/moderation-text-benchmark/attempt1/binary-provenance.json
+export DIMA_MODERATION_TEXT_COMPILER_RECEIPT=/artifacts/compiler-1793307573088025938-receipt.json
+export DIMA_MODERATION_TEXT_BUILD_LOG=/artifacts/moderation-text-benchmark/attempt1/benchmark-build.jsonl
+export DIMA_MODERATION_TEXT_PAIRED_DIR=/artifacts/moderation-text-benchmark/attempt1/paired1
+/usr/local/bin/node /task-tools/moderation_text_paired_coordinator.cjs
+/usr/local/bin/node tests/fixtures/moderation_text_benchmark.cjs --check
