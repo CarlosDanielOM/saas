@@ -8,8 +8,8 @@
 //! explicitly chooses a UTF-8/BSON boundary.
 
 use super::{
-    DEFAULT_KOKORO_VOICE_ES, TtsProvider, expressive_tag_value, expressive_tags,
-    resolve_kokoro_voice_str,
+    DEFAULT_KOKORO_VOICE_ES, ExpressiveTagConfig, TtsProvider, expressive_tags,
+    resolve_kokoro_voice_json,
 };
 use crate::utils::{
     js_string::JsString,
@@ -64,12 +64,6 @@ fn string(value: Option<&JsonValue>) -> Option<&JsString> {
 }
 fn is_null(value: &JsonValue) -> bool {
     matches!(value, JsonValue::Null)
-}
-fn boolean(value: &JsonValue) -> Option<bool> {
-    match value {
-        JsonValue::Bool(value) => Some(*value),
-        _ => None,
-    }
 }
 fn truthy(value: &JsonValue) -> bool {
     match value {
@@ -160,31 +154,10 @@ fn provider_name(provider: TtsProvider) -> &'static str {
     }
 }
 fn expressive_settings(input: Option<&JsonValue>) -> JsonValue {
-    // Only object/array inputs are admitted by normalizeExpressiveTtsTags;
-    // relevant non-index names on primitive values are absent in either case.
-    let inline = field(input, "inline");
-    let wrapping = field(input, "wrapping");
+    let config = ExpressiveTagConfig::new(input);
     JsonValue::Object(
         expressive_tags()
-            .map(|tag| {
-                let legacy_key = if tag == "long-pause" {
-                    "longPause"
-                } else {
-                    tag
-                };
-                (
-                    JsString::from(tag),
-                    JsonValue::Bool(expressive_tag_value(
-                        [
-                            field(input, tag),
-                            field(inline, legacy_key),
-                            field(wrapping, legacy_key),
-                        ],
-                        is_null,
-                        boolean,
-                    )),
-                )
-            })
+            .map(|tag| (JsString::from(tag), JsonValue::Bool(config.tag(tag))))
             .collect(),
     )
 }
@@ -245,9 +218,8 @@ pub fn normalize_channel_tts_settings(
         .map(JsString::trim)
         .filter(|value| !value.is_empty())
         .unwrap_or_else(|| JsString::from(DEFAULT_CLONE_VOICE));
-    let kokoro_voice = string(field(voices, "kokoroDefault"))
-        .and_then(JsString::as_str)
-        .and_then(resolve_kokoro_voice_str)
+    let kokoro_voice = field(voices, "kokoroDefault")
+        .and_then(resolve_kokoro_voice_json)
         .unwrap_or_else(|| DEFAULT_KOKORO_VOICE_ES.to_owned());
     Ok(object([
         ("channelID", JsonValue::String(channel_id.clone())),

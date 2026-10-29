@@ -91,6 +91,16 @@ for (const [i,tag] of tags.entries()) {
 }
 for (const [name,text] of Object.entries({unknown:'[unknown] [HAPPY] [happy] [happy] [sad]', embedded:'[[happy]] [happy][sad] [laugh]x[laugh]', loneBefore:'\ud800[happy]', loneInside:'[ha\ud800ppy]', loneBetween:'[happy]\ud800[happy]', loneAfter:'[happy]\udc00', loneRepeat:'[happy] [happy]\ud800[happy]', astral:'😀[happy]😀', whitespace:'[happy]\t[happy]  [sad]\n[sad]', empty:''})) addReinforce(name,text);
 for (const [name, value] of Object.entries({null:null, empty:{}, array:[], number:42, string:'x', bool:false, direct:{happy:false,sad:true,angry:0,whisper:'false',cry:null}, legacy:{inline:{happy:false,longPause:false},wrapping:{sad:false,longPause:true}}, precedence:{happy:null,sad:'no',angry:false,inline:{happy:null,sad:false,angry:true,longPause:null},wrapping:{happy:false,sad:false,angry:true,longPause:false}}, masks:{happy:0,sad:'',angry:[],cry:{},inline:{happy:false,sad:false,angry:false,cry:false},wrapping:{happy:false}}, weirdContainers:{inline:'x',wrapping:[false]}, legacyKey:{'long-pause':null,inline:{'long-pause':false,longPause:true},wrapping:{longPause:false}}})) addNormalize(name, JSON.stringify(value));
+for (const tag of tags) {
+  const key = tag === 'long-pause' ? 'longPause' : tag;
+  for (const [kind, value] of [
+    ['direct-false', {[tag]:false}],
+    ['null-fallback', {[tag]:null, inline:{[key]:null}, wrapping:{[key]:false}}],
+    ['nonboolean-mask', {[tag]:0, inline:{[key]:false}}],
+    ['lone-mask', {[tag]:'\ud800', inline:{[key]:false}}],
+  ]) addNormalize(`catalog-${kind}-${tag}`, JSON.stringify(value));
+}
+addNormalize('unknown-lone-key-and-duplicate', '{"\\ud800":false,"unknown":false,"happy":true,"happy":false}');
 addNormalize('lone-string-masks', '{"happy":"\\ud800","inline":{"happy":false,"sad":"\\udc00"},"wrapping":{"sad":false}}');
 for (const voice of voices) for (const [variant, value] of [['exact',voice],['case',voice.toUpperCase()],['trim',` \t${voice}\ufeff`]]) addVoice(`voice-${variant}-${voice}`,JSON.stringify(value));
 for (const [name,value] of Object.entries({empty:'',unknown:'af_unknown',partial:'af_',lone:'af_heart\ud800', kelvin:'aK_heart', dotted:'AF_İEART', sigma:'σ', astral:'😀', null:null, number:123, false:false, object:{voice:'af_heart'}, array:['af_heart']})) addVoice(`voice-${name}`,JSON.stringify(value));

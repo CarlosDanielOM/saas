@@ -4,34 +4,16 @@
 // Run with EXPRESSIVE_TTS_FIXTURE_DIR=/artifacts/expressive-tts and --ignored.
 use dima_rust::utils::{
     js_string::JsString,
-    lossless_json::{JsonValue, parse_json},
+    lossless_json::parse_json,
     tts::{
         DEFAULT_KOKORO_VOICE_EN, DEFAULT_KOKORO_VOICE_ES, DELIVERY, EFFECTS, EMOTIONS,
         KOKORO_VOICES, SOUNDS, TtsProvider, expressive_tags, filter_expressive_tts_tags_js,
-        normalize_expressive_tags, reinforce_fish_tts_tags_js, resolve_kokoro_voice,
-        resolve_kokoro_voice_str,
+        normalize_expressive_tags, normalize_expressive_tags_json, reinforce_fish_tts_tags_js,
+        resolve_kokoro_voice, resolve_kokoro_voice_json,
     },
 };
 use serde_json::{Value, json};
 use std::{collections::BTreeMap, path::PathBuf};
-
-// Config strings are only inspected for boolean type. Preserve nullishness,
-// booleans and object structure even if a string contains an unpaired unit.
-fn config_projection(value: &JsonValue) -> Value {
-    match value {
-        JsonValue::Null => Value::Null,
-        JsonValue::Bool(v) => json!(v),
-        JsonValue::Number(v) => json!(v),
-        JsonValue::String(v) => json!(v.as_str().unwrap_or("")),
-        JsonValue::Array(items) => Value::Array(items.iter().map(config_projection).collect()),
-        JsonValue::Object(fields) => Value::Object(
-            fields
-                .iter()
-                .filter_map(|(k, v)| k.as_str().map(|key| (key.to_owned(), config_projection(v))))
-                .collect(),
-        ),
-    }
-}
 
 fn string_output(value: &JsString) -> Value {
     json!({"units": value.units(), "wire": value.to_json_string()})
@@ -163,23 +145,20 @@ fn expressive_and_kokoro_actual_source() {
             "normalize" => {
                 let raw = case["inputJson"].as_str().expect("missing inputJson");
                 let lossless = parse_json(raw).expect("invalid inputJson");
-                let projected = config_projection(&lossless);
+                let actual = normalize_expressive_tags_json(Some(&lossless));
                 if let Ok(ordinary) = serde_json::from_str::<Value>(raw) {
                     assert_eq!(
                         normalize_expressive_tags(&ordinary),
-                        normalize_expressive_tags(&projected),
-                        "projection in {name}"
+                        actual,
+                        "value resolver in {name}"
                     );
                 }
-                json!(normalize_expressive_tags(&projected))
+                json!(actual)
             }
             "voice" => {
                 let raw = case["inputJson"].as_str().expect("missing inputJson");
                 let lossless = parse_json(raw).expect("invalid inputJson");
-                let actual = match lossless {
-                    JsonValue::String(value) => value.as_str().and_then(resolve_kokoro_voice_str),
-                    _ => None,
-                };
+                let actual = resolve_kokoro_voice_json(&lossless);
                 if let Ok(ordinary) = serde_json::from_str::<Value>(raw) {
                     assert_eq!(
                         resolve_kokoro_voice(&ordinary),
@@ -196,7 +175,7 @@ fn expressive_and_kokoro_actual_source() {
     for (op, minimum) in [
         ("filter", 1000),
         ("reinforce", 150),
-        ("normalize", 10),
+        ("normalize", 310),
         ("voice", 150),
     ] {
         assert!(

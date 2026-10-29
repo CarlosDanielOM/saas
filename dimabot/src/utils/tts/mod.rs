@@ -146,7 +146,10 @@ pub const KOKORO_VOICES: &[&str] = &[
     "zm_yunyang",
 ];
 
-use crate::utils::js_compat::{is_whitespace, trim};
+use crate::utils::{
+    js_compat::{is_whitespace, trim},
+    lossless_json::JsonValue,
+};
 use regex::Regex;
 use serde_json::Value;
 use std::{
@@ -170,6 +173,13 @@ pub fn expressive_tags() -> impl Iterator<Item = &'static str> {
 pub fn resolve_kokoro_voice(value: &Value) -> Option<String> {
     resolve_kokoro_voice_str(value.as_str()?)
 }
+/// Resolve an ordinary JSON value without replacing malformed UTF-16.
+pub fn resolve_kokoro_voice_json(value: &JsonValue) -> Option<String> {
+    match value {
+        JsonValue::String(value) => resolve_kokoro_voice_str(value.as_str()?),
+        _ => None,
+    }
+}
 pub fn resolve_kokoro_voice_str(value: &str) -> Option<String> {
     let voice = trim(value).to_lowercase();
     KOKORO_VOICES.contains(&voice.as_str()).then_some(voice)
@@ -177,6 +187,8 @@ pub fn resolve_kokoro_voice_str(value: &str) -> Option<String> {
 /// Normalize ordinary JSON configuration, including the legacy nested keys.
 /// Executable getters and inherited or prototype hooks are not JSON inputs.
 pub fn normalize_expressive_tags(input: &Value) -> BTreeMap<String, bool> {
+    let inline = input.get("inline");
+    let wrapping = input.get("wrapping");
     expressive_tags()
         .map(|tag| {
             let key = if tag == "long-pause" {
@@ -189,8 +201,8 @@ pub fn normalize_expressive_tags(input: &Value) -> BTreeMap<String, bool> {
                 expressive_tag_value(
                     [
                         input.get(tag),
-                        input.get("inline").and_then(|v| v.get(key)),
-                        input.get("wrapping").and_then(|v| v.get(key)),
+                        inline.and_then(|v| v.get(key)),
+                        wrapping.and_then(|v| v.get(key)),
                     ],
                     Value::is_null,
                     Value::as_bool,
@@ -198,6 +210,51 @@ pub fn normalize_expressive_tags(input: &Value) -> BTreeMap<String, bool> {
             )
         })
         .collect()
+}
+
+/// Normalize lossless JSON data. Missing input is equivalent to undefined;
+/// executable getters and prototype hooks are outside this JSON boundary.
+pub fn normalize_expressive_tags_json(input: Option<&JsonValue>) -> BTreeMap<String, bool> {
+    let config = ExpressiveTagConfig::new(input);
+    expressive_tags()
+        .map(|tag| (tag.to_owned(), config.tag(tag)))
+        .collect()
+}
+
+struct ExpressiveTagConfig<'a> {
+    input: Option<&'a JsonValue>,
+    inline: Option<&'a JsonValue>,
+    wrapping: Option<&'a JsonValue>,
+}
+
+impl<'a> ExpressiveTagConfig<'a> {
+    fn new(input: Option<&'a JsonValue>) -> Self {
+        Self {
+            input,
+            inline: input.and_then(|value| value.get("inline")),
+            wrapping: input.and_then(|value| value.get("wrapping")),
+        }
+    }
+
+    fn tag(&self, tag: &str) -> bool {
+        let key = if tag == "long-pause" {
+            "longPause"
+        } else {
+            tag
+        };
+        expressive_tag_value(
+            [
+                self.input.and_then(|value| value.get(tag)),
+                self.inline.and_then(|value| value.get(key)),
+                self.wrapping.and_then(|value| value.get(key)),
+            ],
+            |value| matches!(value, JsonValue::Null),
+            |value| match value {
+                JsonValue::Bool(value) => Some(*value),
+                _ => None,
+            },
+        )
+    }
 }
 
 /// The nullish chain chooses a value before checking its type. A present

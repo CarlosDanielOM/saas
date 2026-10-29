@@ -2,6 +2,7 @@
 
 use dima_rust::utils::{
     js_string::JsString,
+    lossless_json::{JsonValue, parse_json},
     tts::{
         TtsLanguage, TtsMode, TtsProvider,
         credit_fallback::{
@@ -9,7 +10,9 @@ use dima_rust::utils::{
             resolve_tts_for_credit_status,
         },
         filter_expressive_tts_tags, filter_expressive_tts_tags_js, normalize_expressive_tags,
-        reinforce_fish_tts_tags, reinforce_fish_tts_tags_js,
+        normalize_expressive_tags_json, reinforce_fish_tts_tags, reinforce_fish_tts_tags_js,
+        resolve_kokoro_voice_json,
+        settings::normalize_channel_tts_settings,
     },
 };
 use serde_json::{Value, json};
@@ -149,4 +152,58 @@ fn ordinary_json_nullish_precedence_and_credit_caller_use_shared_policy() {
     assert_eq!(result.text, with_unit("😀", 0xd800, " x"));
     assert_eq!(result.voice.as_str(), Some("af_bella"));
     assert_eq!(result.mode, TtsMode::Speak);
+}
+
+#[test]
+fn lossless_json_adapters_and_settings_share_policy() {
+    let config = parse_json(r#"{"happy":"\ud800","sad":null,"long-pause":null,"inline":{"happy":false,"sad":null,"longPause":false},"wrapping":{"sad":false,"longPause":true},"\udc00":false,"unknown":false,"angry":true,"angry":false}"#).unwrap();
+    let normalized = normalize_expressive_tags_json(Some(&config));
+    assert_eq!(normalized.len(), 75);
+    assert!(normalized["happy"]);
+    assert!(!normalized["sad"]);
+    assert!(!normalized["long-pause"]);
+    assert!(!normalized["angry"]);
+    for raw in ["null", "false", "12", "\"text\"", "[]"] {
+        let value = parse_json(raw).unwrap();
+        assert!(
+            normalize_expressive_tags_json(Some(&value))
+                .values()
+                .all(|v| *v)
+        );
+        assert_eq!(resolve_kokoro_voice_json(&value), None);
+    }
+    assert!(normalize_expressive_tags_json(None).values().all(|v| *v));
+    assert_eq!(
+        resolve_kokoro_voice_json(&parse_json(r#""af_heart\ud800""#).unwrap()),
+        None
+    );
+    assert_eq!(
+        resolve_kokoro_voice_json(&parse_json(r#"" af_Kore ""#).unwrap()).as_deref(),
+        Some("af_kore")
+    );
+
+    let input = JsonValue::Object(vec![
+        (
+            JsString::from("filters"),
+            JsonValue::Object(vec![(JsString::from("expressiveTags"), config)]),
+        ),
+        (
+            JsString::from("voices"),
+            parse_json(r#"{"kokoroDefault":" af_Kore "}"#).unwrap(),
+        ),
+    ]);
+    let output =
+        normalize_channel_tts_settings(Some(&input), &"id".into(), &"channel".into()).unwrap();
+    let tags = output
+        .get("filters")
+        .unwrap()
+        .get("expressiveTags")
+        .unwrap();
+    assert_eq!(tags.get("happy"), Some(&JsonValue::Bool(true)));
+    assert_eq!(tags.get("sad"), Some(&JsonValue::Bool(false)));
+    assert_eq!(tags.get("long-pause"), Some(&JsonValue::Bool(false)));
+    assert_eq!(
+        output.get("voices").unwrap().get("kokoroDefault"),
+        Some(&JsonValue::String("af_kore".into()))
+    );
 }
