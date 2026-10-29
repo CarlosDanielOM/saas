@@ -52,7 +52,7 @@ pub mod js_compat;
     feature = "domain-events",
     feature = "application-schemas",
     feature = "bits-rules",
-    feature = "tts-services"
+    feature = "tts-utilities"
 ))]
 pub mod json_number;
 
@@ -105,6 +105,8 @@ pub mod js_string;
 pub mod keywords;
 #[cfg(feature = "logger")]
 pub mod logger;
+#[cfg(feature = "tts-utilities")]
+pub mod lossless_json;
 #[cfg(feature = "application-schemas")]
 pub mod mongoose_date;
 #[cfg(feature = "observability")]

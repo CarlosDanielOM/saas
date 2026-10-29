@@ -4,6 +4,7 @@ pub mod credit_fallback;
 pub mod playback_timeout;
 #[cfg(feature = "redis")]
 pub mod session;
+pub mod settings;
 
 pub const EMOTIONS: &[&str] = &[
     "happy",
@@ -180,29 +181,35 @@ pub fn normalize_expressive_tags(input: &Value) -> BTreeMap<String, bool> {
             } else {
                 tag
             };
-            // Nullish coalescing precedes the boolean check: a non-boolean direct
-            // value must not fall through to the legacy setting.
-            let value = input
-                .get(tag)
-                .filter(|v| !v.is_null())
-                .or_else(|| {
-                    input
-                        .get("inline")
-                        .and_then(|v| v.get(key))
-                        .filter(|v| !v.is_null())
-                })
-                .or_else(|| {
-                    input
-                        .get("wrapping")
-                        .and_then(|v| v.get(key))
-                        .filter(|v| !v.is_null())
-                });
             (
                 tag.to_owned(),
-                value.and_then(Value::as_bool).unwrap_or(true),
+                expressive_tag_value(
+                    [
+                        input.get(tag),
+                        input.get("inline").and_then(|v| v.get(key)),
+                        input.get("wrapping").and_then(|v| v.get(key)),
+                    ],
+                    Value::is_null,
+                    Value::as_bool,
+                ),
             )
         })
         .collect()
+}
+
+/// The nullish chain chooses a value before checking its type. A present
+/// non-boolean therefore masks a legacy boolean rather than falling through.
+fn expressive_tag_value<T>(
+    candidates: [Option<&T>; 3],
+    is_null: impl Fn(&T) -> bool,
+    as_bool: impl Fn(&T) -> Option<bool>,
+) -> bool {
+    candidates
+        .into_iter()
+        .flatten()
+        .find(|value| !is_null(value))
+        .and_then(as_bool)
+        .unwrap_or(true)
 }
 fn alias(tag: &str) -> &str {
     match tag {

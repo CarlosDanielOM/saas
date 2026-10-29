@@ -1,5 +1,5 @@
 {
-  "scope": "Completed native leaf helpers, AST exports, credential/JWT exports and TTS session/playback and credit fallback helpers; no runtime cutover or deployment. Performance regressions remain tracked separately.",
+  "scope": "Completed native leaf helpers, AST exports, credential/JWT exports, TTS session/playback and credit fallback helpers, and channel TTS settings schema; no runtime cutover or deployment. Performance regressions remain tracked separately.",
   "files": [
     {
       "source": "src/utils/shared_chat_origin.ts",
@@ -60,6 +60,10 @@
     {
       "source": "src/utils/tts/tts_credit_fallback.util.ts",
       "sha256": "1e67d7b9368ed7835339e6df2e33a2d1a94e590d288a034532a18915f8c0f2de"
+    },
+    {
+      "source": "src/schemas/channel_tts_settings.schema.ts",
+      "sha256": "5e943f59906bdf4f63dbb52497ccc8607c6fb069cf8b9af0521a4652245c64c2"
     },
     {
       "source": "src/handlers/tts_credit_fallback.test.ts",

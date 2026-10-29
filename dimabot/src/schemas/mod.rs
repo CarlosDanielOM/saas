@@ -2,6 +2,9 @@
 //! No import-time connection, index creation, environment read or application
 //! startup occurs. Call install_indexes explicitly on an isolated or approved
 //! application database; constructors are pure except fresh ObjectId entropy.
+#[cfg(feature = "channel-tts-settings")]
+#[path = "channel_tts_settings.schema.rs"]
+pub mod channel_tts_settings;
 mod schema;
 pub use schema::*;
 #[path = "accounts.schema.rs"]

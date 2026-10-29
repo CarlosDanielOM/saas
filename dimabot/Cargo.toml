@@ -56,6 +56,8 @@ js-date = ["dep:libc"]
 domain-events = ["dep:serde", "dep:serde_json", "serde_json/float_roundtrip", "eventsub", "js-date"]
 reward-body = ["dep:serde_json", "serde_json/float_roundtrip"]
 application-schemas = ["mongo", "js-date"]
+# Opt-in channel TTS schema; does not alter deployed profiles.
+channel-tts-settings = ["application-schemas", "tts-utilities"]
 keyword-store = ["keywords", "mongo", "redis", "logger-redis", "credit-policy", "dep:libc", "dep:base64"]
 domain-event-runtime = ["domain-events", "mongo", "redis", "logger", "chat-message", "observability", "dep:uuid"]
 twitch-functions = ["twitch-streamers", "credit-policy"]

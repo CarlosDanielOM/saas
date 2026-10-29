@@ -20,7 +20,10 @@ const exists = async file => {
 const helperPaths = [path.join(root, files.helper), path.join(archiveRoot, files.helper)];
 const helperPresence = await Promise.all(helperPaths.map(exists));
 if (helperPresence.filter(Boolean).length !== 1) throw new Error('credit fallback helper must exist at exactly one source or archive path');
-const resolvedPaths = Object.fromEntries(Object.entries(files).map(([key, file]) => [key, key === 'helper' ? helperPaths[helperPresence.indexOf(true)] : path.join(root, file)]));
+const schemaPaths = [path.join(root, files.schema), path.join(archiveRoot, files.schema)];
+const schemaPresence = await Promise.all(schemaPaths.map(exists));
+if (schemaPresence.filter(Boolean).length !== 1) throw new Error('channel TTS settings schema must exist at exactly one source or archive path');
+const resolvedPaths = Object.fromEntries(Object.entries(files).map(([key, file]) => [key, key === 'helper' ? helperPaths[helperPresence.indexOf(true)] : key === 'schema' ? schemaPaths[schemaPresence.indexOf(true)] : path.join(root, file)]));
 const sourcePaths = Object.fromEntries(Object.entries(resolvedPaths).map(([key, file]) => [files[key], path.relative(root, file)]));
 const sources = Object.fromEntries(await Promise.all(Object.entries(resolvedPaths).map(async ([key, file]) => [key, await fs.readFile(file,'utf8')])));
 const hash = b => crypto.createHash('sha256').update(b).digest('hex');
