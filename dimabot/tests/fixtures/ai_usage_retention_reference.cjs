@@ -87,6 +87,9 @@ assert.deepEqual(compiled.diagnostics,[]); const transpiled=compiled.outputText;
 const mod={exports:{}};
 let ticks=[], observations=[];
 class FixtureDate extends Date { constructor(...args) { if(args.length) super(...args); else {const ms=ticks.shift(); assert.notEqual(ms,undefined,'clock exhausted'); observations.push(ms); super(ms);} } static now() { const ms=ticks.shift(); assert.notEqual(ms,undefined,'clock exhausted'); observations.push(ms); return ms; } }
+// Mongoose cloning must observe the native constructor name.
+Object.defineProperty(FixtureDate,'name',{value:'Date'});
+assert.equal(FixtureDate.name,'Date');
 vm.runInNewContext(transpiled,{module:mod,exports:mod.exports,Date:FixtureDate,Dashboards:models[0],AiUsageLedgerStateSchema:models[1],AiUsageReceiptSchema:models[2],AiUsageDailySchema:models[3]},{filename:file});
 const wire = v => BSON.serialize({value:v}).toString('hex');
 function deferred() { let resolve; const promise=new Promise(r=>{resolve=r}); return {promise,resolve}; }

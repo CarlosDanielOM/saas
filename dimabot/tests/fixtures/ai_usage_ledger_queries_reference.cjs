@@ -162,6 +162,9 @@ class FixtureDate extends NativeDate {
   static now() { clockReads++; return fixedClock; }
   static [Symbol.hasInstance](value) { return value instanceof NativeDate; }
 }
+// Mongoose cloning must observe the native constructor name.
+Object.defineProperty(FixtureDate,'name',{value:'Date'});
+assert.equal(FixtureDate.name,'Date');
 const moduleSource={exports:{}};
 vm.runInNewContext(compiled.outputText,{module:moduleSource,exports:moduleSource.exports,
   require:name=>{violations.push(`unexpected import ${name}`);throw Error(name);},Date:FixtureDate,
