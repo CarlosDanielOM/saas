@@ -1,0 +1,6 @@
+[
+  {
+    "path": "artifacts/attempt2/node-provenance/root",
+    "reason": "445 public package files listed/hashes independently verified by replay; not vendored into Git. Existing pinned Node executable reused, hash retained."
+  }
+]

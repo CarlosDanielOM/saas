@@ -1,0 +1,87 @@
+{
+  "status": "Verified local three-export ledger-state read adapter. Full ledger/migration incomplete.",
+  "codeCommit": "ba91a15b8041a894ecf1d017ec5708af8ba0e66e",
+  "sourceTreeSha256": "3193e98b7697bfa7a09d7809e74b529c023e50cf83cd1426fcc8152075d970e8",
+  "sourceInputs": 1278,
+  "strictRun": "compiler-1793281865368129144",
+  "oracleRun": "node-1793281963678956437",
+  "runtimeRun": "compiler-fixtures-1793282076062196276",
+  "postNodeRun": "node-1793282140582889970",
+  "ordinaryTests": 6,
+  "ignoredTestsRun": 2,
+  "actualSourceCases": 216,
+  "sourceDeclarations": 6,
+  "publicPackageFilesHashed": 445,
+  "runtimeScriptSeconds": 8.52,
+  "runtimeTotalSeconds": 19.471,
+  "strictScriptSeconds": 28.991,
+  "strictTotalSeconds": 37.349,
+  "peakCacheBytes": 8453976064,
+  "minimumAvailableBytes": 10409279488,
+  "limits": {
+    "cpus": 6,
+    "memory": 4294967296,
+    "memory_swap": 4294967296,
+    "pids": 256,
+    "cargo_jobs": 2
+  },
+  "productionUnchangedRecords": 19,
+  "ownedResourcesRemaining": {
+    "containers": [],
+    "networks": [],
+    "volumes": []
+  },
+  "earlierFailures": "Optional BSON extjson test API replaced by source/native BSON wrapper bytes; test-only chunk/if Clippy corrections. Original bytes and receipts retained. Native coercion bodies unchanged; four helper visibilities now crate-internal for query reuse.",
+  "runs": [
+    {
+      "run": "compiler-1793281320965219994",
+      "success": false,
+      "sourceTreeSha256": "ebedd0e1af8e3fc6153fd05b5c8b958e55217ace49edcb0ebc334dbe302089d1",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-1793281703177079472",
+      "success": false,
+      "sourceTreeSha256": "70d4556bc6e7fb71a2e417ddebe559a78c6911d2291c9bb1eadffcc30ffdc207",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-1793281865368129144",
+      "success": true,
+      "sourceTreeSha256": "3193e98b7697bfa7a09d7809e74b529c023e50cf83cd1426fcc8152075d970e8",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-fixtures-1793282076062196276",
+      "success": true,
+      "sourceTreeSha256": "3193e98b7697bfa7a09d7809e74b529c023e50cf83cd1426fcc8152075d970e8",
+      "productionUnchanged": true
+    },
+    {
+      "run": "format-1793281285616721596",
+      "success": true,
+      "sourceTreeSha256": "71cf062f576566c9ce65beb2f5e55b87b5f3e1bf5ee43cbe6a3dd3f520600bbb",
+      "productionUnchanged": true
+    },
+    {
+      "run": "format-1793281461850869379",
+      "success": true,
+      "sourceTreeSha256": "62f19b4e77c5f48975d47f97abf2ed365f0c4c9fba70c60dfb23079c448badd8",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793281963678956437",
+      "success": true,
+      "sourceTreeSha256": "3193e98b7697bfa7a09d7809e74b529c023e50cf83cd1426fcc8152075d970e8",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793282140582889970",
+      "success": true,
+      "sourceTreeSha256": "3193e98b7697bfa7a09d7809e74b529c023e50cf83cd1426fcc8152075d970e8",
+      "productionUnchanged": true
+    }
+  ],
+  "performanceMeasured": false,
+  "noSourceRetirementCallerAdoptionDeploymentPush": true
+}

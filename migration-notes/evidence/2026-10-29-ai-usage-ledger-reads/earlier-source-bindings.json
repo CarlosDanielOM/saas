@@ -1,0 +1,32 @@
+[
+  {
+    "run": "compiler-1793281320965219994",
+    "sourceTreeSha256": "ebedd0e1af8e3fc6153fd05b5c8b958e55217ace49edcb0ebc334dbe302089d1",
+    "changedFiles": {
+      "dimabot/src/utils/ai_usage_ledger_reads.rs": {
+        "sha256": "87fe12c651012c0b312ae8312fb6fc93f59918c6e6572185c61da05688a758db",
+        "retainedPath": "attempt1/pre-bson-fixture-fix/dimabot/src/utils/ai_usage_ledger_reads.rs"
+      },
+      "dimabot/tests/ai_usage_ledger_reads.rs": {
+        "sha256": "a3a3b1a0340e2004d33675908cde86cd0434ea49da04718a743d06b715c118a1",
+        "retainedPath": "attempt1/pre-bson-fixture-fix/dimabot/tests/ai_usage_ledger_reads.rs"
+      },
+      "dimabot/tests/fixtures/ai_usage_ledger_reads_reference.cjs": {
+        "sha256": "d14dd5c0d491364c578e0792ce9530daaf63d43d46dfef451a9eabbfd7dc31c8",
+        "retainedPath": "attempt1/pre-bson-fixture-fix/dimabot/tests/fixtures/ai_usage_ledger_reads_reference.cjs"
+      }
+    },
+    "unchangedFilesBoundTo": "ba91a15b8041a894ecf1d017ec5708af8ba0e66e"
+  },
+  {
+    "run": "compiler-1793281703177079472",
+    "sourceTreeSha256": "70d4556bc6e7fb71a2e417ddebe559a78c6911d2291c9bb1eadffcc30ffdc207",
+    "changedFiles": {
+      "dimabot/tests/ai_usage_ledger_reads.rs": {
+        "sha256": "1067c3bcff3682f087c0caeec90252a739e399cf8996b169d0682785d528d5a4",
+        "retainedPath": "attempt2/pre-clippy/dimabot/tests/ai_usage_ledger_reads.rs"
+      }
+    },
+    "unchangedFilesBoundTo": "ba91a15b8041a894ecf1d017ec5708af8ba0e66e"
+  }
+]

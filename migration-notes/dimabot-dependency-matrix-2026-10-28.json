@@ -58509,7 +58509,7 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "reviewed-bounded-partial-request-time-receipt-producer-and-queued-receipt-parser; related AI-usage payload serialization follow-up and request-time lock helper verified; Mongo persistence/full ledger model remain open",
+      "featureReview": "reviewed-bounded-partial-request-time-receipt-producer-parser-lock-helper-and-three-ledger-state-read-exports; Mongo persistence/full ledger model and remaining ledger functions remain open",
       "localRustEvidence": [
         "dimabot/src/utils/ai_usage_producer.rs",
         "dimabot/src/utils/ai_usage.rs",
@@ -58555,7 +58555,19 @@
         "migration-notes/evidence/2026-10-29-ai-usage-lock/source-binding.json",
         "migration-notes/evidence/2026-10-29-ai-usage-lock/pre-fix-source-binding.json",
         "migration-notes/evidence/2026-10-29-ai-usage-lock/artifacts/final-readback.json",
-        "8061af69; frozen source SHA-256 1ad5b80e177dc24240fb4c1cc66b5f19f1c2720d66469f6302f27a26a2359fd4"
+        "8061af69; frozen source SHA-256 1ad5b80e177dc24240fb4c1cc66b5f19f1c2720d66469f6302f27a26a2359fd4",
+        "dimabot/src/utils/ai_usage_ledger_reads.rs",
+        "dimabot/tests/ai_usage_ledger_reads.rs",
+        "dimabot/tests/fixtures/ai_usage_ledger_reads_reference.cjs",
+        "migration-notes/ai-usage-ledger-reads-2026-10-29.md",
+        "migration-notes/evidence/2026-10-29-ai-usage-ledger-reads/README.md",
+        "migration-notes/evidence/2026-10-29-ai-usage-ledger-reads/verification-summary.json",
+        "migration-notes/evidence/2026-10-29-ai-usage-ledger-reads/source-binding.json",
+        "Local code commit ba91a15b8041a894ecf1d017ec5708af8ba0e66e; source tree SHA-256 3193e98b7697bfa7a09d7809e74b529c023e50cf83cd1426fcc8152075d970e8.",
+        "migration-notes/receipt-parser-performance-2026-10-29.md",
+        "migration-notes/evidence/2026-10-29-receipt-parser-performance/README.md",
+        "migration-notes/evidence/2026-10-29-receipt-parser-performance/verification-summary.json",
+        "migration-notes/evidence/2026-10-29-receipt-parser-performance/artifacts/current-benchmark-comparison.json"
       ],
       "behaviorDifferencesOrAcceptedChanges": [
         "Rust QueuedAiUsageReceipt is a typed lossless plain-data builder value, not full parity for the TypeScript interface extending AiUsageTransaction or for the parser/persistence consumer contract.",
@@ -58564,7 +58576,10 @@
         "parseQueuedAiUsageReceipt now has a partial native mapping to parse_queued_ai_usage_receipt, its typed normalized 18-field receipt DTO, and a concrete receipt BSON projection helper. This does not implement persistAiUsageReceipt or the complete Mongoose model, middleware, indexes, or Mongo persistence path.",
         "The new parser preserves lone UTF-16 units in its DTO and replaces them with U+FFFD only at the concrete BSON UTF-8 boundary, matching Node BSON behavior; the existing deployed native worker still uses its old serde_json::Value parser and rejects escaped lone surrogates. The new parser is not adopted.",
         "The related AI-usage PostHog payload pool improved from the initial Rust median 10.3777 to 4.4275 microseconds/op, below the retained TypeScript median 5.5308, in the verified builders/ordered-JSON/UTF-8-checksum benchmark. This is payload serialization evidence only; it does not verify or complete the receipt producer/parser, Mongo persistence, or full ledger behavior.",
-        "The imported withAiUsageLock now has a partial opt-in native request-time implementation with exact-source, protocol and disposable Redis checks; ledger/dashboard callers remain TypeScript, and the native Redis bootstrap does not reproduce the TypeScript logging/telemetry proxy."
+        "The imported withAiUsageLock now has a partial opt-in native request-time implementation with exact-source, protocol and disposable Redis checks; ledger/dashboard callers remain TypeScript, and the native Redis bootstrap does not reproduce the TypeScript logging/telemetry proxy.",
+        "The three source exports hasAiUsageLedgerCoverage, getAiUsageLedgerStatus and getAiUsageLedgerState have a concrete opt-in Mongo read adapter reusing the existing ledger-state schema collection, shared settings/date/BSON/coercion helpers, and driver handles. It implements source coverage filters/projection, state raw-BSON and undefined/null handling, reportVersion || 0, and status date evaluation/error categories. Construction does not connect or install indexes; it adds no retries, deadlines, locks, clock reads or writes.",
+        "Read-slice boundary: declared identity/date inputs and ordinary lean BSON under default Node promotion settings. Executable accessors/functions, custom prototypes, nondefault promoteLongs/promoteValues, malformed-wire decoder equivalence, and JS engine resource exhaustion are not claimed. Four shared helper visibilities changed to pub(crate); helper bodies were unchanged.",
+        "The read adapter is not a ledger writer or full model migration. Receipt persistence, model middleware/indexes, history/transaction queries, retention, backfill and other ledger functions/callers remain open; no TypeScript caller adopted the native module."
       ],
       "callers": {
         "sourceEvidence": [
@@ -58573,7 +58588,7 @@
           "dimabot/src/utils/ai_usage_ledger.ts and dimabot/src/utils/ai_usage_dashboard.ts import withAiUsageLock as a named runtime helper; both callers remain active TypeScript.",
           "migration-notes/ai-usage-lock-handoff.md and migration-notes/ai-usage-lock-2026-10-29.md; compiler-fixtures-1793273489423847194."
         ],
-        "runtimeStatus": "The native queue producer has no adopted Rust call site. The existing native receipt worker is consumer-only and remains on its old serde_json::Value parser, which rejects escaped lone surrogates; the new parser is unadopted. Native parser/BSON projection helpers do not constitute persistAiUsageReceipt or full Mongo model/index/middleware behavior. Queue processing, persistence, locking, reporting, backfill and caller/bootstrap integration remain open. Adoption and deployment are tracked separately from dependency completeness; no deployment occurred. The imported lock helper has a concrete partial native implementation, but no caller has switched; telemetry/logging bootstrap behavior and application persistence/dashboard callbacks remain open."
+        "runtimeStatus": "The native queue producer has no adopted Rust call site. The existing native receipt worker is consumer-only and remains on its old serde_json::Value parser, which rejects escaped lone surrogates; the new parser is unadopted. Native parser/BSON projection helpers do not constitute persistAiUsageReceipt or full Mongo model/index/middleware behavior. Queue processing, persistence, locking, reporting, backfill and caller/bootstrap integration remain open. Adoption and deployment are tracked separately from dependency completeness; no deployment occurred. The imported lock helper has a concrete partial native implementation, but no caller has switched; telemetry/logging bootstrap behavior and application persistence/dashboard callbacks remain open. The three read helpers have a concrete opt-in Rust adapter, but existing callers remain TypeScript and no adoption/deployment occurred."
       },
       "testEvidence": {
         "sourceEvidence": [
@@ -58584,7 +58599,8 @@
           "Pinned Node 24.22.1 / V8 13.6.233.17-node.58 / TypeScript 5.9.3 oracle extracts the complete withAiUsageLock export and validates 291 actual-source scenarios, including 225 UTF-16 key pairs.",
           "Corrected fixture outputs for all 291 source scenarios were byte-identical to the initial source artifact. The native protocol matrix replays 290; the acquire-error scenario is handled in a separate child default-bootstrap category assertion, not by exact exception-text comparison.",
           "The first runtime failure compiler-fixtures-1793273325709715164 was a fixture mistake interpreting source-owned release: undefined as an object. Rust lock code was unchanged; a five-line fixture fallback was applied, only the test hash changed, and prefixed test bytes were SHA-verified.",
-          "Final corrected oracle write/check node-1793273457801069297; final Node source/hash check node-1793273748582165643; formatting format-1793273431814418894."
+          "Final corrected oracle write/check node-1793273457801069297; final Node source/hash check node-1793273748582165643; formatting format-1793273431814418894.",
+          "Ledger-state read oracle extracts the complete three source functions plus report version/status/state declarations from the frozen TypeScript source; 216 actual-source scenarios, six AST declarations and dependency/package hash replay passed. See migration-notes/evidence/2026-10-29-ai-usage-ledger-reads/verification-summary.json."
         ],
         "rustBehaviorEvidence": [
           "Baseline source 77fc976da064a87c02ec1fce93cd0e4820dfe53a7eac9feb5fab453c482d80f7 passed compiler-fixtures-1793256166045626940 and post-Node node-1793256476785298801; its 178 test executions overlap dependency tests and include a subprocess-only no-op helper, not 178 unique cases. This remains the full proof for unchanged credit/TTS behavior.",
@@ -58597,9 +58613,10 @@
           "Related AI-usage payload pool in the verified PostHog payload follow-up: retained TypeScript median 5.5308, initial Rust 10.3777, current Rust 4.4275 microseconds/op (seven trials; prepared builders + ordered JSON + UTF-8 checksum). This does not extend the producer/parser oracle or persistence evidence. See migration-notes/evidence/2026-10-29-posthog-payload-performance/artifacts/current-benchmark-comparison.json; Mongo persistence, indexes, middleware, reporting, backfill and caller adoption remain open.",
           "Strict initial run compiler-1793273119989217718 passed. Final compiler-fixtures-1793273489423847194 passed ten reported executions across nine result groups: one library result, two ordinary source/type/key test results, one 290-case native protocol-matrix replay, and six explicit real-Redis/default-bootstrap tests.",
           "Final run elapsed 185.35 seconds for the script and 196.311 seconds total under 6 CPU, 4 GiB memory/equal swap, 256 PID and two-job limits; peak cache 8,117,489,664 bytes, minimum available memory 10,639,482,880 bytes. Production records remained unchanged and owned test resources were removed.",
-          "No lock-performance benchmark was run; the ten-second acquisition deadline and 30-second heartbeat are correctness behavior, not performance measurements."
+          "No lock-performance benchmark was run; the ten-second acquisition deadline and 30-second heartbeat are correctness behavior, not performance measurements.",
+          "Commit ba91a15b8041a894ecf1d017ec5708af8ba0e66e / source-tree SHA-256 3193e98b7697bfa7a09d7809e74b529c023e50cf83cd1426fcc8152075d970e8: strict checks passed; six ordinary tests and both ignored source replay/private Mongo adapter behavior tests passed. Final pinned Node check passed. Run IDs, exact failure history, resource limits and cleanup readback are in migration-notes/evidence/2026-10-29-ai-usage-ledger-reads/verification-summary.json."
         ],
-        "status": "Partial local receipt builder/queue producer and queued-receipt parser/BSON projection behavior verified at distinct source bindings; a related AI-usage payload serialization follow-up is verified but does not establish ledger or persistence behavior. Complete Mongo persistence, existing worker adoption, and full ledger dependencies remain open.; imported request-time lock helper separately verified, with callers and bootstrap telemetry/logging gap still open"
+        "status": "Partial local receipt builder/queue producer and queued-receipt parser/BSON projection behavior verified at distinct source bindings; a related AI-usage payload serialization follow-up is verified but does not establish ledger or persistence behavior. Complete Mongo persistence, existing worker adoption, and full ledger dependencies remain open.; imported request-time lock helper separately verified, with callers and bootstrap telemetry/logging gap still open Three ledger-state read exports are verified as a distinct opt-in local slice; no read performance was measured."
       },
       "exports": [
         {
@@ -58714,13 +58731,21 @@
         },
         {
           "name": "getAiUsageLedgerState",
-          "nativeMapping": "unreviewed/outside this bounded producer slice",
-          "evidence": []
+          "nativeMapping": "partial: concrete opt-in raw-BSON state read; full ledger dependency/caller migration remains open",
+          "evidence": [
+            "dimabot/src/utils/ai_usage_ledger_reads.rs",
+            "dimabot/tests/ai_usage_ledger_reads.rs",
+            "migration-notes/evidence/2026-10-29-ai-usage-ledger-reads/verification-summary.json"
+          ]
         },
         {
           "name": "getAiUsageLedgerStatus",
-          "nativeMapping": "unreviewed/outside this bounded producer slice",
-          "evidence": []
+          "nativeMapping": "partial: concrete opt-in native status read with source date/coercion/error ordering; full ledger dependency/caller migration remains open",
+          "evidence": [
+            "dimabot/src/utils/ai_usage_ledger_reads.rs",
+            "dimabot/tests/ai_usage_ledger_reads.rs",
+            "migration-notes/evidence/2026-10-29-ai-usage-ledger-reads/verification-summary.json"
+          ]
         },
         {
           "name": "getAiUsageRetentionDays",
@@ -58741,8 +58766,12 @@
         },
         {
           "name": "hasAiUsageLedgerCoverage",
-          "nativeMapping": "unreviewed/outside this bounded producer slice",
-          "evidence": []
+          "nativeMapping": "partial: concrete opt-in native Mongo coverage read; full ledger dependency/caller migration remains open",
+          "evidence": [
+            "dimabot/src/utils/ai_usage_ledger_reads.rs",
+            "dimabot/tests/ai_usage_ledger_reads.rs",
+            "migration-notes/evidence/2026-10-29-ai-usage-ledger-reads/verification-summary.json"
+          ]
         },
         {
           "name": "loadAiUsageLedgerTransactions",
@@ -58830,11 +58859,11 @@
             "src/schemas/ai_usage_ledger_state.schema.ts"
           ],
           "importSyntaxKind": "default runtime import",
-          "runtimeOrTypeDependency": "AiUsageLedgerStateSchema is used by ledger state/backfill functions outside scope.",
+          "runtimeOrTypeDependency": "AiUsageLedgerStateSchema supplies the concrete Mongo collection reused by the three local state read helpers; other ledger/backfill schema consumers remain outside this slice.",
           "defaultSideEffectBarrelDetails": "Direct import; no side-effect import or barrel in this declaration.",
-          "directDependencyReview": "Outside scoped producer functions.",
-          "transitiveDependencyReview": "Backfill/status state persistence remains open.",
-          "rustReplacementOrGap": "No ledger state adapter claimed."
+          "directDependencyReview": "Partial: concrete native collection adapter reuses the existing schema collection and client; schema defaults/writes and other consumers are not ported.",
+          "transitiveDependencyReview": "Coverage/status/state reads verified. Backfill, writers, persistence, queries and remaining ledger dependency closure remain open.",
+          "rustReplacementOrGap": "Opt-in read adapter uses schemas::ai_usage_ledger_state::schema().native_collection(database); no write/model/index migration or caller switch."
         },
         {
           "ordinal": 3,
@@ -58950,7 +58979,7 @@
           "rustReplacementOrGap": "Concrete native RPUSH exists, but is opt-in and not wired into Polar callers/bootstrap."
         }
       ],
-      "rowAssessment": "partial-local-request-time-producer-parser-and-lock-helper-verified; Mongo persistence, bootstrap telemetry/logging and ledger dependency closure remain open"
+      "rowAssessment": "partial-local-request-time-producer-parser-lock-helper-and-three-ledger-state-read-exports-verified; Mongo persistence, remaining ledger dependency closure and caller adoption remain open"
     },
     {
       "source": "src/utils/ai_usage_lock.ts",
