@@ -170,6 +170,8 @@ pub mod plan_cache_fence;
 #[cfg(feature = "polar-client")]
 #[path = "polarsh.rs"]
 pub mod polar;
+#[cfg(feature = "redis-application-runtime")]
+pub mod redis_application_runtime;
 #[cfg(feature = "tts-utilities")]
 pub mod tts;
 #[cfg(any(feature = "credit-policy", feature = "tts-utilities"))]

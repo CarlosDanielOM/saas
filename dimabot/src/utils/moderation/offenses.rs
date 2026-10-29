@@ -4,7 +4,7 @@ use crate::utils::{
     js_string::JsString,
     json_number::number_string,
     observability::{Telemetry, restore_context, telemetry_context},
-    redis::get_redis_client,
+    redis_application_runtime,
 };
 use redis::{RedisResult, aio::ConnectionManager};
 use std::future::Future;
@@ -85,8 +85,8 @@ pub fn resolve_offense_step<'a, T>(rule: OffenseLadder<'a, T>, offense_number: f
 
 /// Supplied manager clones share the existing multiplexed connection. Optional
 /// telemetry reproduces the source wrapper's eval span; incr/expire are not
-/// wrapped in the TypeScript Dragonfly client. Global telemetry bootstrap and
-/// connection event logging remain a shared native dependency gap.
+/// wrapped in the TypeScript Dragonfly client. Native bootstrap is shared;
+/// connection-event logging and process metrics remain shared dependency gaps.
 #[derive(Clone)]
 pub struct OffenseStore {
     cache: ConnectionManager,
@@ -106,7 +106,8 @@ impl OffenseStore {
         }
     }
     pub async fn connect() -> RedisResult<Self> {
-        Ok(Self::new(get_redis_client().await?))
+        let (cache, telemetry) = redis_application_runtime::acquire().await?;
+        Ok(Self { cache, telemetry })
     }
     pub async fn record_offense(
         &self,

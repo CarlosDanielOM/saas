@@ -6,7 +6,7 @@ use crate::utils::{
     js_unicode::lowercase,
     json_number::number_string,
     observability::{Telemetry, restore_context, telemetry_context},
-    redis::get_redis_client,
+    redis_application_runtime,
 };
 use redis::{RedisResult, aio::ConnectionManager};
 use std::{
@@ -201,8 +201,8 @@ fn now_ms() -> f64 {
 }
 
 /// A supplied native manager shares its multiplexed socket with its clones.
-/// Optional explicit telemetry instruments operations; it does not replace the
-/// TypeScript wrapper's global telemetry startup and connection event logging.
+/// Explicit telemetry instruments operations; `connect` uses the shared native
+/// application owner. Connection-event logging and process metrics remain open.
 #[derive(Clone)]
 pub struct PermitStore {
     cache: ConnectionManager,
@@ -222,7 +222,8 @@ impl PermitStore {
         }
     }
     pub async fn connect() -> RedisResult<Self> {
-        Ok(Self::new(get_redis_client().await?))
+        let (cache, telemetry) = redis_application_runtime::acquire().await?;
+        Ok(Self { cache, telemetry })
     }
     pub async fn grant_permit(
         &self,
