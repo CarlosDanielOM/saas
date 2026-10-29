@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const require = createRequire(path.join(root, 'package.json'));
+const {resolveTtsSource} = require('./tests/fixtures/tts_source_resolver.cjs');
 const files = {
   schema:'src/schemas/channel_tts_settings.schema.ts', users:'src/schemas/users.schema.ts',
   tags:'src/utils/tts/expressive_tts_tags.util.ts', voices:'src/utils/tts/kokoro_voices.util.ts'
@@ -32,11 +33,11 @@ export async function loadSource() {
   const schemaPaths = [path.join(root, files.schema), path.join(archiveRoot, files.schema)];
   const schemaPresence = await Promise.all(schemaPaths.map(exists));
   if (schemaPresence.filter(Boolean).length !== 1) throw new Error('channel TTS settings schema must exist at exactly one source or archive path');
-  const resolvedPaths = Object.fromEntries(Object.entries(files).map(([key, file]) => [key, key === 'schema' ? schemaPaths[schemaPresence.indexOf(true)] : path.join(root, file)]));
+  const resolvedPaths = Object.fromEntries(Object.entries(files).map(([key, file]) => [key, key === 'schema' ? schemaPaths[schemaPresence.indexOf(true)] : (file === files.filter || file === files.tags || file === files.voices) ? resolveTtsSource(root, file) : path.join(root, file)]));
   const sourcePaths = Object.fromEntries(Object.entries(resolvedPaths).map(([key, file]) => [files[key], path.relative(root, file)]));
   const sources = Object.fromEntries(await Promise.all(Object.entries(resolvedPaths).map(async ([key,file]) => [key,await fs.readFile(file,'utf8')])));
   const hashes = Object.fromEntries(Object.entries(files).map(([k,p]) => [p,hash(sources[k])]));
-  for (const p of ['package.json','package-lock.json','node_modules/typescript/package.json','node_modules/mongoose/package.json']) hashes[p] = hash(await fs.readFile(path.join(root,p)));
+  for (const p of ['tests/fixtures/tts_source_resolver.cjs','package.json','package-lock.json','node_modules/typescript/package.json','node_modules/mongoose/package.json']) hashes[p] = hash(await fs.readFile(path.join(root,p)));
   for (const p of ['typescript','mongoose']) hashes[`${p}-entry`] = hash(await fs.readFile(require.resolve(p)));
   hashes['node-executable'] = hash(await fs.readFile(process.execPath));
   hashes['tests/fixtures/channel_tts_settings_reference.mjs'] = hash(await fs.readFile(fileURLToPath(import.meta.url)));

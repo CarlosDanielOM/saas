@@ -1,6 +1,6 @@
 # Archived dimabot TypeScript source snapshots — 2026-10-28
 
-These seventeen files are exact source snapshots preserved with SHA-256 hashes in [`manifest.json`](manifest.json). They cover a bounded set of pure helpers, AST exports, credential/activation exports, TTS session/playback and credit fallback helpers, and the channel TTS settings schema accepted for native implementation. The archive supports source and behavior review; it does not mean the surrounding TypeScript callers, service adapters, or the full `dimabot/` migration are complete.
+These nineteen files are exact source snapshots preserved with SHA-256 hashes in [`manifest.json`](manifest.json). They cover a bounded set of pure helpers, AST exports, credential/activation exports, TTS session/playback and credit fallback helpers, and the channel TTS settings schema accepted for native implementation. The archive supports source and behavior review; it does not mean the surrounding TypeScript callers, service adapters, or the full `dimabot/` migration are complete.
 
 | Archived source | Native implementation area |
 |---|---|
@@ -20,6 +20,8 @@ These seventeen files are exact source snapshots preserved with SHA-256 hashes i
 | `src/utils/tts/tts_playback_timeout.util.ts` | [`dimabot/src/utils/tts/playback_timeout.rs`](../../../dimabot/src/utils/tts/playback_timeout.rs) |
 | `src/utils/tts/tts_credit_fallback.util.ts` | [`dimabot/src/utils/tts/credit_fallback.rs`](../../../dimabot/src/utils/tts/credit_fallback.rs) |
 | `src/schemas/channel_tts_settings.schema.ts` | [`dimabot/src/schemas/channel_tts_settings.schema.rs`](../../../dimabot/src/schemas/channel_tts_settings.schema.rs) and [`dimabot/src/utils/tts/settings.rs`](../../../dimabot/src/utils/tts/settings.rs) |
+| `src/utils/tts/expressive_tts_tags.util.ts` | [`dimabot/src/utils/tts/mod.rs`](../../../dimabot/src/utils/tts/mod.rs) and [`tag_types.rs`](../../../dimabot/src/utils/tts/tag_types.rs) |
+| `src/utils/tts/kokoro_voices.util.ts` | [`dimabot/src/utils/tts/mod.rs`](../../../dimabot/src/utils/tts/mod.rs) |
 | `src/handlers/tts_credit_fallback.test.ts` | [`dimabot/tests/tts_credit_fallback.rs`](../../../dimabot/tests/tts_credit_fallback.rs) |
 
 Several helper implementations are consolidated into shared Rust modules. The TTS session/playback helper source and dependency audit is recorded in [`migration-notes/tts-session-playback-2026-10-28.md`](../../../migration-notes/tts-session-playback-2026-10-28.md). A native helper is only local feature evidence: it does not by itself complete any remaining TypeScript caller or transitive dependency. React Email templates are outside this archive and remain an explicit migration exclusion.

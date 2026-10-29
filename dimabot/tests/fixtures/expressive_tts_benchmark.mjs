@@ -16,14 +16,17 @@ if (!['--write', '--check'].includes(mode) || !dir || extra.length) throw Error(
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const require = createRequire(path.join(root, 'package.json'));
 const ts = require('typescript');
+const {resolveTtsSource} = require('./tests/fixtures/tts_source_resolver.cjs');
 const sourcePath = 'src/utils/tts/expressive_tts_tags.util.ts';
-const source = await fs.readFile(path.join(root, sourcePath), 'utf8');
+const resolvedSource = resolveTtsSource(root, sourcePath);
+const sourcePaths = {[sourcePath]: path.relative(root, resolvedSource)};
+const source = await fs.readFile(resolvedSource, 'utf8');
 const js = ts.transpileModule(source, {compilerOptions:{module:ts.ModuleKind.CommonJS, target:ts.ScriptTarget.ES2022}}).outputText;
 const api = {};
 new vm.Script(`(function(exports){${js}\n})`, {filename:sourcePath}).runInThisContext()(api);
 const hash = b => crypto.createHash('sha256').update(b).digest('hex');
-const paths = [sourcePath, 'package.json', 'package-lock.json', 'node_modules/typescript/package.json', 'tests/fixtures/expressive_tts_benchmark.mjs'];
-const hashes = Object.fromEntries(await Promise.all(paths.map(async p => [p, hash(await fs.readFile(path.join(root,p)))])));
+const paths = [sourcePath, 'tests/fixtures/tts_source_resolver.cjs', 'package.json', 'package-lock.json', 'node_modules/typescript/package.json', 'tests/fixtures/expressive_tts_benchmark.mjs'];
+const hashes = Object.fromEntries(await Promise.all(paths.map(async p => [p, hash(await fs.readFile(p === sourcePath ? resolvedSource : path.join(root,p)))])));
 hashes['typescript-entry'] = hash(await fs.readFile(require.resolve('typescript')));
 hashes['node-executable'] = hash(await fs.readFile(process.execPath));
 const units = s => Array.from({length:s.length}, (_, i) => s.charCodeAt(i));
@@ -68,6 +71,7 @@ if (mode === '--check') {
   assert.equal(await fs.readFile(inputPath, 'utf8'), inputBytes, 'prepared input mismatch');
   const report = JSON.parse(await fs.readFile(nodePath, 'utf8'));
   assert.deepEqual(report.provenance.hashes, hashes);
+  assert.deepEqual(report.provenance.sourcePaths, sourcePaths);
   assert.equal(report.provenance.node, process.version); assert.equal(report.provenance.typescript, ts.version);
   validateReport(report, 'actual-typescript');
   try { validateReport(JSON.parse(await fs.readFile(path.join(dir, 'expressive-rust-benchmark.json'), 'utf8')), 'native-rust'); }
@@ -99,7 +103,7 @@ if (mode === '--check') {
     const medianNsPerOp = samples.map(s => s.elapsedNs / w.iterations).sort((a,b) => a-b)[3];
     runs.push({name:w.name, iterations:w.iterations, expectedUnitsChecksum:workloads[index].expectedUnitsChecksum, resultChecksum:samples[0].checksum, samples, medianNsPerOp, medianUsPerOp:medianNsPerOp / 1000});
   }
-  const report = {implementation:'actual-typescript', scope:'prepared filter or reinforce + wrapping sum of every UTF-16 output unit', inputSha256:inputHash, warmups:100, provenance:{hashes,node:process.version, v8:process.versions.v8, typescript:ts.version}, runs};
+  const report = {implementation:'actual-typescript', scope:'prepared filter or reinforce + wrapping sum of every UTF-16 output unit', inputSha256:inputHash, warmups:100, provenance:{hashes,sourcePaths,node:process.version, v8:process.versions.v8, typescript:ts.version}, runs};
   validateReport(report, 'actual-typescript');
   await fs.writeFile(nodePath, JSON.stringify(report, null, 2) + '\n');
   console.log(JSON.stringify({mode:'written', inputSha256:inputHash, workloads:workloads.length}));

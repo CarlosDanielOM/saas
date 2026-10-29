@@ -68,6 +68,14 @@
     {
       "source": "src/handlers/tts_credit_fallback.test.ts",
       "sha256": "ebae79d15263f866cf69661a9f964cb41645a1ca383b53dd8ebb0f0a48885669"
+    },
+    {
+      "source": "src/utils/tts/expressive_tts_tags.util.ts",
+      "sha256": "03523ebc5bb2f8c99b528e1c61d90126f655716945f100098c6a53b9f731699e"
+    },
+    {
+      "source": "src/utils/tts/kokoro_voices.util.ts",
+      "sha256": "6d06216a94959645a4ed75e82a2b68a39b329c01373f63644f7a3794afc5466b"
     }
   ]
 }

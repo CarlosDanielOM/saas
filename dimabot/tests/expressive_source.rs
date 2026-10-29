@@ -6,8 +6,8 @@ use dima_rust::utils::{
     js_string::JsString,
     lossless_json::parse_json,
     tts::{
-        DEFAULT_KOKORO_VOICE_EN, DEFAULT_KOKORO_VOICE_ES, DELIVERY, EFFECTS, EMOTIONS,
-        ExpressiveTtsTagSettings, KOKORO_VOICES, SOUNDS, TtsProvider, expressive_tags,
+        DEFAULT_KOKORO_VOICE_EN, DEFAULT_KOKORO_VOICE_ES, EXPRESSIVE_TTS_TAG_GROUPS,
+        ExpressiveTtsTagSettings, KOKORO_VOICES, TtsProvider, expressive_tags,
         filter_expressive_tts_tags_js, normalize_expressive_tags, normalize_expressive_tags_json,
         reinforce_fish_tts_tags_js, resolve_kokoro_voice, resolve_kokoro_voice_json,
     },
@@ -71,12 +71,12 @@ fn expressive_and_kokoro_actual_source() {
     );
     assert_eq!(
         metadata["groups"],
-        json!([
-            {"name":"emotions", "tags":EMOTIONS},
-            {"name":"delivery", "tags":DELIVERY},
-            {"name":"sounds", "tags":SOUNDS},
-            {"name":"effects", "tags":EFFECTS}
-        ])
+        Value::Array(
+            EXPRESSIVE_TTS_TAG_GROUPS
+                .iter()
+                .map(|(name, tags)| json!({"name": name, "tags": tags}))
+                .collect()
+        )
     );
     assert_eq!(
         metadata["tags"],

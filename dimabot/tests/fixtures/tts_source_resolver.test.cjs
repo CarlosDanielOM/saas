@@ -1,0 +1,26 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const {resolveTtsSource} = require('./tts_source_resolver.cjs');
+const base = fs.mkdtempSync(path.join(os.tmpdir(), 'tts-resolver-'));
+try {
+  const root = path.join(base, 'dimabot');
+  const logical = 'src/utils/tts/expressive_tts_tags.util.ts';
+  const live = path.join(root, logical);
+  const archived = path.join(base, 'archives/dimabot-typescript/2026-10-28', logical);
+  assert.throws(() => resolveTtsSource(root, logical));
+  assert.throws(() => resolveTtsSource(root, '../outside'));
+  fs.mkdirSync(path.dirname(live), {recursive:true});
+  fs.writeFileSync(live, 'live');
+  assert.equal(resolveTtsSource(root, logical), live);
+  fs.mkdirSync(path.dirname(archived), {recursive:true});
+  fs.writeFileSync(archived, 'archive');
+  assert.throws(() => resolveTtsSource(root, logical));
+  fs.unlinkSync(live);
+  assert.equal(resolveTtsSource(root, logical), archived);
+  fs.unlinkSync(archived);
+  fs.mkdirSync(archived);
+  assert.throws(() => resolveTtsSource(root, logical), /not a regular file/);
+  console.log(JSON.stringify({checks:6, scenarios:['missing','unsupported-traversal','live','ambiguous','archive','not-a-file']}));
+} finally { fs.rmSync(base, {recursive:true, force:true}); }

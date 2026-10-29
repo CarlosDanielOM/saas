@@ -164,6 +164,14 @@ pub const DEFAULT_KOKORO_VOICE_EN: &str = "af_heart";
 pub const DEFAULT_KOKORO_VOICE_ES: &str = "ef_dora";
 pub const DEFAULT_SPEECH_TEMPLATE: &str = "$(tts $(user) dice: &t)";
 
+/// Ordered named groups from the expressive TTS catalog.
+pub const EXPRESSIVE_TTS_TAG_GROUPS: &[(&str, &[&str])] = &[
+    ("emotions", EMOTIONS),
+    ("delivery", DELIVERY),
+    ("sounds", SOUNDS),
+    ("effects", EFFECTS),
+];
+
 pub fn expressive_tags() -> impl Iterator<Item = &'static str> {
     EMOTIONS
         .iter()

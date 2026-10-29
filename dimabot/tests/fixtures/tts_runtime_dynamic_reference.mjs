@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 if (process.versions.node !== '24.22.1' || process.versions.v8 !== '13.6.233.17-node.58') throw Error('unexpected Node/V8');
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const require = createRequire(path.join(root, 'package.json'));
+const {resolveTtsSource} = require('./tests/fixtures/tts_source_resolver.cjs');
 const ts = require('typescript');
 if (ts.version !== '5.9.3') throw Error('unexpected TypeScript');
 const [mode, dir, ...extra] = process.argv.slice(2);
@@ -27,9 +28,11 @@ const files = {
   polyfills: 'src/utils/pollyfills.ts',
 };
 const sha = b => crypto.createHash('sha256').update(b).digest('hex');
-const sources = Object.fromEntries(await Promise.all(Object.entries(files).map(async ([k, p]) => [k, await fs.readFile(path.join(root, p), 'utf8')])));
+const resolvedPaths = Object.fromEntries(Object.entries(files).map(([k, p]) => [k, /src\/utils\/tts\/(expressive_tts_tags|kokoro_voices)\.util\.ts$/.test(p) ? resolveTtsSource(root, p) : path.join(root, p)]));
+const sourcePaths = Object.fromEntries(Object.entries(files).map(([k, p]) => [p, path.relative(root, resolvedPaths[k])]));
+const sources = Object.fromEntries(await Promise.all(Object.entries(resolvedPaths).map(async ([k, p]) => [k, await fs.readFile(p, 'utf8')])));
 const hashes = Object.fromEntries(Object.entries(files).map(([k, p]) => [p, sha(sources[k])]));
-for (const p of ['tests/fixtures/tts_runtime_dynamic_reference.mjs', 'package.json', 'package-lock.json', 'node_modules/typescript/package.json']) hashes[p] = sha(await fs.readFile(path.join(root, p)));
+for (const p of ['tests/fixtures/tts_runtime_dynamic_reference.mjs', 'tests/fixtures/tts_source_resolver.cjs', 'package.json', 'package-lock.json', 'node_modules/typescript/package.json']) hashes[p] = sha(await fs.readFile(path.join(root, p)));
 hashes['typescript-implementation'] = sha(await fs.readFile(require.resolve('typescript')));
 hashes['node-executable'] = sha(await fs.readFile(process.execPath));
 const compiled = Object.fromEntries(Object.entries(sources).map(([k, s]) => [k, ts.transpileModule(s, { compilerOptions: { module: ts.ModuleKind.ES2022, target: ts.ScriptTarget.ES2022 } }).outputText]));
@@ -110,7 +113,7 @@ async function run(name) {
 }
 const cases = [];
 for (const name of ['fish-fallback', 'fish-single', 'kokoro-success', 'kokoro-missing', 'piper-cli', 'piper-http', 'catalog-sequence']) cases.push(await run(name));
-const output = JSON.stringify({ schema: 1, provenance: { node: process.versions.node, v8: process.versions.v8, typescript: ts.version, hashes, mocks: 'per-case isolated environment and VM; fake fixture-only filesystem, spawn and allowlisted fetch; synthetic Fish SDK constructor/convert and controlled audio stream (SDK transport not exercised)', projection: 'environment read names, fixture request bodies/auth, SDK constructor and convert, output and file operations; no timestamps' }, cases }, null, 2) + '\n';
+const output = JSON.stringify({ schema: 1, provenance: { node: process.versions.node, v8: process.versions.v8, typescript: ts.version, hashes, sourcePaths, mocks: 'per-case isolated environment and VM; fake fixture-only filesystem, spawn and allowlisted fetch; synthetic Fish SDK constructor/convert and controlled audio stream (SDK transport not exercised)', projection: 'environment read names, fixture request bodies/auth, SDK constructor and convert, output and file operations; no timestamps' }, cases }, null, 2) + '\n';
 const target = path.join(dir, 'tts_runtime_dynamic_reference.json');
 if (mode === '--write') { await fs.mkdir(dir, { recursive: true }); await fs.writeFile(target, output); }
 else { const actual = await fs.readFile(target, 'utf8'); if (!actual || actual !== output) throw Error('dynamic fixture missing, empty or differs'); }
