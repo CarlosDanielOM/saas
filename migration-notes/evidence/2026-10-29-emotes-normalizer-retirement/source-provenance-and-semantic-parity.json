@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "semanticFixtureComparisons": 10,
+  "losslessSourceCases": 1774,
+  "emoteSourceCases": 65,
+  "emoteSourceHashesVerified": 8,
+  "losslessSourceHashesVerified": 15,
+  "benchmark": "Node tooling smoke only; prior paired measurements retained without reinterpretation",
+  "archiveCount": 21
+}

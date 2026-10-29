@@ -1,0 +1,56 @@
+[
+  {
+    "artifact": "format-1793247145741900969.log.gz",
+    "uncompressedSha256": "d8df33ba72c691319594a6938a8cc1f756798afbe8a2dc8dedcec22abade739d",
+    "uncompressedBytes": 1833,
+    "success": true
+  },
+  {
+    "artifact": "format-1793247539367168074.log.gz",
+    "uncompressedSha256": "d8df33ba72c691319594a6938a8cc1f756798afbe8a2dc8dedcec22abade739d",
+    "uncompressedBytes": 1833,
+    "success": true
+  },
+  {
+    "artifact": "node-1793247281804529311.log.gz",
+    "uncompressedSha256": "08ff7c94103ef64c6189d7ceb9d7d5b205bf09ef258522f70a67829bcc771420",
+    "uncompressedBytes": 3908,
+    "success": true
+  },
+  {
+    "artifact": "node-1793247645904868658.log.gz",
+    "uncompressedSha256": "f798830e59eecae75331cce657b978c74227b24ef05bbd4e44b514c8ab8a7b69",
+    "uncompressedBytes": 678,
+    "success": true
+  },
+  {
+    "artifact": "node-1793247788775302457.log.gz",
+    "uncompressedSha256": "f798830e59eecae75331cce657b978c74227b24ef05bbd4e44b514c8ab8a7b69",
+    "uncompressedBytes": 678,
+    "success": true
+  },
+  {
+    "artifact": "node-1793248118632837471.log.gz",
+    "uncompressedSha256": "f798830e59eecae75331cce657b978c74227b24ef05bbd4e44b514c8ab8a7b69",
+    "uncompressedBytes": 678,
+    "success": true
+  },
+  {
+    "artifact": "compiler-fixtures-1793247691734622166.log.gz",
+    "uncompressedSha256": "cca5baff21cc07ebf99e8265c84c0936ae54ced051a9fb4a184bab410f3e5557",
+    "uncompressedBytes": 2854,
+    "success": false
+  },
+  {
+    "artifact": "compiler-fixtures-1793247882516413712.log.gz",
+    "uncompressedSha256": "87bfae58560368e26539c4ecc8107849f611e21d51bc787e3cd70004df73eec4",
+    "uncompressedBytes": 33554,
+    "success": false
+  },
+  {
+    "artifact": "compiler-fixtures-1793248206114963870.log.gz",
+    "uncompressedSha256": "b7bd9241911ac2ffbd5f6b6ba4838ca012c8d2da5e61274300ac2e5b273cc4a4",
+    "uncompressedBytes": 33043,
+    "success": true
+  }
+]

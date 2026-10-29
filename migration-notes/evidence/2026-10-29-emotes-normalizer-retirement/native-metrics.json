@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "metrics": {
+    "source_replayed": 57,
+    "source_skipped": 8,
+    "followers": 12,
+    "shared_http_requests": 1,
+    "pool_requests": 2,
+    "pool_connections": 1,
+    "auth_delay_ms": 300,
+    "http_deadline_ms": 150
+  },
+  "scope": "functional fixture assertions, not elapsed-time or production performance comparisons",
+  "nativeBoundary": "cache connection acquisition occurs before constructor; caller/bootstrap adoption remains open"
+}

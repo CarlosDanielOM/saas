@@ -97075,19 +97075,42 @@
         "role": "test"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/utils/tts/normalize_tts_message.util.test.ts",
+        "sha256": "5f36c7346ecd23130ff9b035b8c3f8561dd094fba6a7b16a696e30ccaefe1d39",
+        "nativeAreaReference": "migration-notes/tts-lossless-normalization-2026-10-29.md; dimabot/src/pets/speech_text.md"
+      },
+      "featureReview": "reviewed-local-feature-and-helper-dependencies; post-retirement verified",
+      "localRustEvidence": [
+        "dimabot/src/utils/tts/mod.rs",
+        "dimabot/tests/tts_utilities.rs",
+        "dimabot/tests/fixtures/tts_lossless_reference.cjs",
+        "migration-notes/tts-lossless-normalization-2026-10-29.md",
+        "migration-notes/tts-normalizer-retirement-2026-10-29.md",
+        "migration-notes/evidence/2026-10-29-emotes-normalizer-retirement/verification-summary.json",
+        "compiler-fixtures-1793248206114963870: frozen source bd42a52ec305f8d35d0797b75f1d4f9404873b960783cc8516a44cc792fbe503"
+      ],
       "behaviorDifferencesOrAcceptedChanges": [],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "Source test imports buildSpokenUserMessage and Node test/assert builtins."
+        ],
+        "runtimeStatus": "test evidence mapped to Rust; no application adoption implied"
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "Two source tests: AST message passthrough and English/Spanish chat-command attribution.",
+          "tts_lossless_reference.cjs: 120 spoken combinations including both languages and AST/chat-command, replayed by tts_utilities.rs.",
+          "node-1793247281804529311: ten old/fresh semantic comparisons and 21 resolver checks passed; default 27-case golden regenerated with unchanged source/case values."
+        ],
+        "rustBehaviorEvidence": [
+          "tts_utilities.rs: ordinary English chat attribution and Spanish AST passthrough; lossless source fixture replay covers both languages and sources.",
+          "Previous verification: migration-notes/tts-lossless-normalization-2026-10-29.md; post-retirement replay passed in compiler-fixtures-1793248206114963870.",
+          "migration-notes/evidence/2026-10-29-emotes-normalizer-retirement/verification-summary.json",
+          "244 ordinary and eleven explicit executions passed; standalone and all-features strict check/Clippy passed."
+        ],
+        "status": "post-retirement source, type/export and helper dependency mapping verified; callers remain unadopted"
       },
       "exports": [],
       "imports": [
@@ -97104,12 +97127,12 @@
           "baselineSourceTargets": [
             "src/utils/tts/normalize_tts_message.util.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
+          "importSyntaxKind": "named runtime import",
+          "runtimeOrTypeDependency": "runtime-test-only",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "directDependencyReview": "mapped to native behavior test",
+          "transitiveDependencyReview": "native test framework or normalizer helper",
+          "rustReplacementOrGap": "Rust tests and source fixture replay"
         },
         {
           "ordinal": 1,
@@ -97117,12 +97140,12 @@
           "specifierCategory": "node-builtin-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
+          "importSyntaxKind": "default runtime test builtin import",
+          "runtimeOrTypeDependency": "runtime-test-only",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "directDependencyReview": "mapped to native behavior test",
+          "transitiveDependencyReview": "native test framework or normalizer helper",
+          "rustReplacementOrGap": "Rust tests and source fixture replay"
         },
         {
           "ordinal": 2,
@@ -97130,15 +97153,15 @@
           "specifierCategory": "node-builtin-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
+          "importSyntaxKind": "default runtime test builtin import",
+          "runtimeOrTypeDependency": "runtime-test-only",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "directDependencyReview": "mapped to native behavior test",
+          "transitiveDependencyReview": "native test framework or normalizer helper",
+          "rustReplacementOrGap": "Rust tests and source fixture replay"
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-normalizer-behavior-and-helper-dependencies-verified;source-retired;application-adoption-open"
     },
     {
       "source": "src/utils/tts/normalize_tts_message.util.ts",
@@ -97148,45 +97171,94 @@
         "role": "application"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/utils/tts/normalize_tts_message.util.ts",
+        "sha256": "6e8030f033e9e32c357c669d8b0d09cbc91a30c814cd5ea3c6a0109ccdb88adc",
+        "nativeAreaReference": "migration-notes/tts-lossless-normalization-2026-10-29.md; dimabot/src/pets/speech_text.md"
+      },
+      "featureReview": "reviewed-local-feature-and-helper-dependencies; post-retirement verified",
+      "localRustEvidence": [
+        "dimabot/src/utils/tts/mod.rs",
+        "dimabot/tests/tts_utilities.rs",
+        "dimabot/tests/fixtures/tts_lossless_reference.cjs",
+        "migration-notes/tts-lossless-normalization-2026-10-29.md",
+        "migration-notes/tts-normalizer-retirement-2026-10-29.md",
+        "migration-notes/evidence/2026-10-29-emotes-normalizer-retirement/verification-summary.json",
+        "compiler-fixtures-1793248206114963870: frozen source bd42a52ec305f8d35d0797b75f1d4f9404873b960783cc8516a44cc792fbe503"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "Ordinary and arbitrary UTF-16 APIs; JS string/regex compatibility preserved within mapped source contracts."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/src/server/routes/speech.route.ts: normalizeTtsMessage and filterExpressiveTtsTags",
+          "dimabot/src/utils/tts/queue_default_tts.util.ts: all three functions and re-export",
+          "captured external pet speech_text.ts: normalizeTtsMessage and re-export; outside frozen baseline"
+        ],
+        "runtimeStatus": "TypeScript callers remain unrewired; runtime, queues, emote lookup and broader application dependencies open; no deployment"
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "Two source tests: AST message passthrough and English/Spanish chat-command attribution.",
+          "tts_lossless_reference.cjs: 120 spoken combinations including both languages and AST/chat-command, replayed by tts_utilities.rs.",
+          "node-1793247281804529311: ten old/fresh semantic comparisons and 21 resolver checks passed; default 27-case golden regenerated with unchanged source/case values."
+        ],
+        "rustBehaviorEvidence": [
+          "tts_utilities.rs: ordinary English chat attribution and Spanish AST passthrough; lossless source fixture replay covers both languages and sources.",
+          "Previous verification: migration-notes/tts-lossless-normalization-2026-10-29.md; post-retirement replay passed in compiler-fixtures-1793248206114963870.",
+          "migration-notes/evidence/2026-10-29-emotes-normalizer-retirement/verification-summary.json",
+          "244 ordinary and eleven explicit executions passed; standalone and all-features strict check/Clippy passed."
+        ],
+        "status": "post-retirement source, type/export and helper dependency mapping verified; callers remain unadopted"
       },
       "exports": [
         {
           "name": "NormalizeTtsMessageOptions",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "NormalizeTtsMessageOptions",
+          "evidence": [
+            "dimabot/src/pets/speech_text.md",
+            "migration-notes/tts-lossless-normalization-2026-10-29.md"
+          ]
         },
         {
           "name": "NormalizeTtsMessageResult",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "NormalizeTtsMessageResult and NormalizeTtsMessageResultJs",
+          "evidence": [
+            "dimabot/src/pets/speech_text.md",
+            "migration-notes/tts-lossless-normalization-2026-10-29.md"
+          ]
         },
         {
           "name": "buildSpokenUserMessage",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "build_spoken_user_message and build_spoken_user_message_js; TtsLanguage and SpeechSource",
+          "evidence": [
+            "dimabot/src/pets/speech_text.md",
+            "migration-notes/tts-lossless-normalization-2026-10-29.md"
+          ]
         },
         {
           "name": "extractEmoteNames",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "extract_emote_names and extract_emote_names_js",
+          "evidence": [
+            "dimabot/src/pets/speech_text.md",
+            "migration-notes/tts-lossless-normalization-2026-10-29.md"
+          ]
         },
         {
           "name": "normalizeTtsMessage",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "normalize_tts_message and normalize_tts_message_js",
+          "evidence": [
+            "dimabot/src/pets/speech_text.md",
+            "migration-notes/tts-lossless-normalization-2026-10-29.md"
+          ]
+        },
+        {
+          "name": "filterExpressiveTtsTags (re-export)",
+          "nativeMapping": "filter_expressive_tts_tags and filter_expressive_tts_tags_js",
+          "evidence": [
+            "dimabot/src/pets/speech_text.md"
+          ]
         }
       ],
       "imports": [
@@ -97203,12 +97275,12 @@
           "baselineSourceTargets": [
             "src/schemas/channel_tts_settings.schema.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
+          "importSyntaxKind": "named type-only import",
+          "runtimeOrTypeDependency": "type-only TtsLanguage",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "directDependencyReview": "equivalent native TtsLanguage",
+          "transitiveDependencyReview": "no runtime schema dependency",
+          "rustReplacementOrGap": "utils::tts::TtsLanguage"
         },
         {
           "ordinal": 1,
@@ -97223,15 +97295,38 @@
           "baselineSourceTargets": [
             "src/utils/tts/expressive_tts_tags.util.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
+          "importSyntaxKind": "named runtime re-export",
+          "runtimeOrTypeDependency": "runtime expressive tag helper",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "directDependencyReview": "native expressive tag helper mapped",
+          "transitiveDependencyReview": "native compatibility and tag utilities",
+          "rustReplacementOrGap": "filter_expressive_tts_tags and filter_expressive_tts_tags_js"
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-normalizer-behavior-and-helper-dependencies-verified;source-retired;application-adoption-open",
+      "dependencyClosure": {
+        "scope": "pure TTS normalization, spoken prefixes, emote extraction and expressive-filter re-export",
+        "status": "local-feature-native-dependencies-implemented-and-source-verified; application callers open",
+        "typescriptRuntime": [
+          "filterExpressiveTtsTags re-export"
+        ],
+        "typescriptTypeOnly": [
+          "TtsLanguage"
+        ],
+        "nativeReplacement": [
+          "existing JsString and lossless JSON adapters",
+          "native ECMAScript whitespace, regex and number parsing",
+          "native TtsLanguage and SpeechSource enums",
+          "shared expressive-tag native policy"
+        ],
+        "missingPrimitiveDependency": null,
+        "applicationDependenciesOutsidePrimitive": [
+          "queue and speech-route orchestration",
+          "settings/emote lookup and bootstrap/caller adoption",
+          "pet runtime, billing and persistence"
+        ],
+        "boundary": "declared typed inputs and ordinary JSON configuration; lossless APIs retain arbitrary UTF-16; no executable hooks/prototypes"
+      }
     },
     {
       "source": "src/utils/tts/queue_default_tts.util.ts",

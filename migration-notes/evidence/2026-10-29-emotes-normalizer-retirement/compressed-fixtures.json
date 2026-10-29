@@ -1,0 +1,77 @@
+[
+  {
+    "artifact": "fixtures/benchmark-tooling-smoke/tts-lossless-benchmark-inputs.json.gz",
+    "uncompressedSha256": "838d13b6a5ee3ab079907f7e19d377a179e00df9d0e4112bcfe94ca7a225f100",
+    "uncompressedBytes": 138830
+  },
+  {
+    "artifact": "fixtures/benchmark-tooling-smoke/tts-lossless-node-benchmark.json.gz",
+    "uncompressedSha256": "517ba4ed477f3145e97bcb88e2093269d4faca537dce7ec9ba3286935a87ae51",
+    "uncompressedBytes": 8782
+  },
+  {
+    "artifact": "fixtures/credit/tts-credit-fallback-reference.json.gz",
+    "uncompressedSha256": "2cfbf0ad8ffd278014d1a106ea15bcaab0c8cd51b85b4abfeff1580ffe53fdf1",
+    "uncompressedBytes": 582945
+  },
+  {
+    "artifact": "fixtures/emotes/twitch_emotes_cases.json.gz",
+    "uncompressedSha256": "837f4e066fa5db8f560b6ccc91d53aa9f2341fccc8c8d0f438ba08c94d3b3b47",
+    "uncompressedBytes": 869613
+  },
+  {
+    "artifact": "fixtures/expressive/expressive-tts-reference.json.gz",
+    "uncompressedSha256": "ac1ebf780ecfbf86a31ed48231ae8a4886c706870817ede2000423f5874dc841",
+    "uncompressedBytes": 3378904
+  },
+  {
+    "artifact": "fixtures/fish/fish-tts-reference.json.gz",
+    "uncompressedSha256": "9c9f1d2e1a9d978073fb2020a084deb2e1e43dde4f97061537bb0c7b422232be",
+    "uncompressedBytes": 26306
+  },
+  {
+    "artifact": "fixtures/lossless/tts_lossless_cases.json.gz",
+    "uncompressedSha256": "c8afe40b3134711acfbc94c593590286cf05a9483185c1852da27d6601a783e0",
+    "uncompressedBytes": 2293443
+  },
+  {
+    "artifact": "fixtures/normalization-prepared/fixtures.json.gz",
+    "uncompressedSha256": "720475f7fcd0f2cfacb5589707448f9cef1869b131b8b5e688adeced1f5cba2e",
+    "uncompressedBytes": 24797
+  },
+  {
+    "artifact": "fixtures/normalization-prepared/package.json.gz",
+    "uncompressedSha256": "dbf8353f77358bc12169b7bb7301e1978d5b503e002ee927229a8993672818fc",
+    "uncompressedBytes": 20
+  },
+  {
+    "artifact": "fixtures/piper-kokoro/piper-kokoro-reference.json.gz",
+    "uncompressedSha256": "f7eb1bbb936f5738b27694690a6ce773d2938f7da66aea6b27a3dfc8a007a498",
+    "uncompressedBytes": 73534
+  },
+  {
+    "artifact": "fixtures/runtime/tts_runtime_dynamic_reference.json.gz",
+    "uncompressedSha256": "11912ad1904b55d83292efce962ab9bececabe41e54b80acb53f6834971360b9",
+    "uncompressedBytes": 10395
+  },
+  {
+    "artifact": "fixtures/runtime/tts_runtime_reference.json.gz",
+    "uncompressedSha256": "4c6bd5a1860e6877fb7e021933eb4f3192fd9638ad42b6b20ee02eb0597a7632",
+    "uncompressedBytes": 5566
+  },
+  {
+    "artifact": "fixtures/settings/channel-tts-settings-reference.json.gz",
+    "uncompressedSha256": "15f4aced66e768b97c3ba494bf06317d4f5da35989d53108fecbe799d7db450f",
+    "uncompressedBytes": 617182
+  },
+  {
+    "artifact": "fixtures/source-provenance-and-semantic-parity.json.gz",
+    "uncompressedSha256": "67f0c0b63e3e51ca3c383b44be9a0ef548237dd1f2f9ccbb0687bef426da58c7",
+    "uncompressedBytes": 308
+  },
+  {
+    "artifact": "fixtures/tts-utilities/tts_utilities_cases.json.gz",
+    "uncompressedSha256": "bde6da59641f1ad1bfbeac05d03d1a08731b579d4aa20db63dad15f6572f830d",
+    "uncompressedBytes": 7763
+  }
+]

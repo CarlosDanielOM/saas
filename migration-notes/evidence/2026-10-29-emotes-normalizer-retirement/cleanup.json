@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "productionBaseline": "user-acknowledged api-bc6455f1979f; original baseline preserved separately",
+  "productionContainerCount": 19,
+  "productionUnchangedDuringValidation": true,
+  "productionFieldsCompared": [
+    "id",
+    "image",
+    "started",
+    "mounts",
+    "config_image",
+    "entrypoint",
+    "command",
+    "compose"
+  ],
+  "productionFingerprintSha256": "50903c6a12f924a8fa842db591bb68472fe98c522309d790a03743714add3536",
+  "taskOwnerLabelsChecked": [
+    "full-rust-1ed57c29044e",
+    "full-rust-32822ac48fa3",
+    "full-rust-5ad445d87cdc",
+    "full-rust-61ce021348b2",
+    "full-rust-805a2ee08847",
+    "full-rust-b229df0d577f"
+  ],
+  "taskOwnedContainersNetworksVolumesRemaining": [],
+  "privateBuildCacheRetainedForOngoingMigration": true,
+  "deployedByMigrationSession": false,
+  "pushed": false
+}

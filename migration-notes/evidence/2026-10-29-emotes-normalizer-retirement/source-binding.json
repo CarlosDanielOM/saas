@@ -1,0 +1,31 @@
+{
+  "sourceTreeSha256": "bd42a52ec305f8d35d0797b75f1d4f9404873b960783cc8516a44cc792fbe503",
+  "commits": {
+    "c96ce06ec4f01f2223a632e60710b0372db96e4e": {
+      "dimabot/Cargo.toml": "e4a4595fbafb351d42da9b36e93e5eddb2e3dd9af5881ffe82a6df7f358bb16a",
+      "dimabot/src/utils/mod.rs": "b414ef6c01ef6830a830d65e52cffaf233e900909d63d3d7145ff0ad0b91e602",
+      "dimabot/src/utils/twitch_emotes.rs": "2ee919fc97b80572425ff9d763866f031dfa595f72b1d7219fb1258879e32975",
+      "dimabot/tests/fixtures/twitch_emotes_reference.cjs": "9ec307c373e53b0835b88a66fbd36789aae3967f387ca3cf6015fe7b126d6619",
+      "dimabot/tests/twitch_emotes.rs": "8b646aaec53e25a6b3647328c2c98f24a6ea4da7156a77c5b16354af5e708be4"
+    },
+    "6878a148fac19dcd7e12c5f5aebb04990d6902fe": {
+      "archives/dimabot-typescript/2026-10-28/README.md": "3a8daca579bf14acadaba9f9fb697d25998183d058da69242059614b7ce3602b",
+      "archives/dimabot-typescript/2026-10-28/manifest.json": "1e892a3e72681e5c059fbc13c18cc4c99520bc6b13c256ad3b093740c25f3add",
+      "archives/dimabot-typescript/2026-10-28/src/utils/tts/normalize_tts_message.util.test.ts": "5f36c7346ecd23130ff9b035b8c3f8561dd094fba6a7b16a696e30ccaefe1d39",
+      "archives/dimabot-typescript/2026-10-28/src/utils/tts/normalize_tts_message.util.ts": "6e8030f033e9e32c357c669d8b0d09cbc91a30c814cd5ea3c6a0109ccdb88adc",
+      "dimabot/tests/fixtures/tts_benchmark_prepare.cjs": "2e326e31e75cbe65d8924be9f4c1795f94def1eb03b81fec4e149705b6e0f329",
+      "dimabot/tests/fixtures/tts_lossless_source.cjs": "ef992f1afcfffb182a2c4eff5ec500556012d22c1f6036bf19ec1259341f5bd5",
+      "dimabot/tests/fixtures/tts_source_resolver.cjs": "a2687c78a9855621a717c3a8cad887b0b0c6efea1157f4f41e0a49e2e99ff13d",
+      "dimabot/tests/fixtures/tts_source_resolver.test.cjs": "6d2b4cb875fe45b964709958584a62df7ae3443c94492b4f8f900e6d3ba1ef40",
+      "dimabot/tests/fixtures/tts_utilities_cases.json": "bde6da59641f1ad1bfbeac05d03d1a08731b579d4aa20db63dad15f6572f830d",
+      "dimabot/tests/fixtures/tts_utilities_reference.mjs": "84b41f99717abc399764b32aa52d3c5d924d7c863aabf664bb4ab521160de0bd"
+    }
+  },
+  "retiredSourcePaths": [
+    "dimabot/src/utils/tts/normalize_tts_message.util.ts",
+    "dimabot/src/utils/tts/normalize_tts_message.util.test.ts"
+  ],
+  "archiveManifestFiles": 21,
+  "old19ManifestEntriesUnchanged": true,
+  "originalBaselineFiles": 806
+}

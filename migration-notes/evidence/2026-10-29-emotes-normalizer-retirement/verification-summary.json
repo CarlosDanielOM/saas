@@ -1,0 +1,76 @@
+{
+  "schema": 1,
+  "emoteSourceCommit": "c96ce06ec4f01f2223a632e60710b0372db96e4e",
+  "normalizerSourceCommit": "6878a148fac19dcd7e12c5f5aebb04990d6902fe",
+  "sourceTreeSha256": "bd42a52ec305f8d35d0797b75f1d4f9404873b960783cc8516a44cc792fbe503",
+  "node": "node-1793248118632837471",
+  "compiler": "compiler-fixtures-1793248206114963870",
+  "ordinaryExecutions": 244,
+  "ordinaryBreakdown": {
+    "twitchEmotesFeatureLibrary": 115,
+    "ttsLibraryAndIntegration": 129
+  },
+  "explicitFixtureExecutions": 11,
+  "explicitBreakdown": {
+    "concreteEmoteSourceAndAdapterSuite": 1,
+    "lossless": 1,
+    "expressive": 1,
+    "credit": 1,
+    "settings": 1,
+    "schema": 1,
+    "fish": 1,
+    "piper": 1,
+    "kokoro": 1,
+    "runtime": 2
+  },
+  "emoteSourceCases": 65,
+  "directConcreteEmoteReplayCases": 57,
+  "directEmoteReplaySkipped": [
+    "fetchFail",
+    "headerFail",
+    "getFail",
+    "setFail",
+    "connectFail",
+    "global-get-fail",
+    "global-set-fail",
+    "singleflight-cleanup"
+  ],
+  "additionalNativeEmoteChecks": [
+    "Redis GET/SET driver errors including global boundaries",
+    "OAuth400 app-header failure without Helix requests",
+    "TCP close fetch failure",
+    "12 followers share one provider request after first waiter cancellation",
+    "two HTTP requests reuse one connection",
+    "300ms auth outside 150ms HTTP/header/body test deadlines",
+    "future retry clock and cache TTL/wire fields",
+    "16MiB HTTP body and depth128 JSON native limits"
+  ],
+  "constructorBoundary": "cache connection acquisition before service construction; source connectFail scenario not direct native replay",
+  "semanticFixtureComparisons": 10,
+  "resolverChecks": 21,
+  "sourceFixtureHashesUnchanged": true,
+  "checks": [
+    "fmt",
+    "twitch-emotes all-target check and Clippy-Dwarnings",
+    "tts-utilities all-target check and Clippy-Dwarnings",
+    "all-features all-target check and Clippy-Dwarnings",
+    "no-default-features all-target check"
+  ],
+  "newDependencyOrLockfileChanged": false,
+  "newOptInFeature": "twitch-emotes",
+  "defaultOrWorkerProfilesChanged": false,
+  "newMatchedBenchmark": false,
+  "nodeBenchmark": "tooling smoke only; workloads match prior final pair; source/provenance input hash changes recorded without reinterpreting old timings",
+  "sourceArchiveCount": 21,
+  "checkoutTypeScriptRemaining": 785,
+  "excludedReactEmailFiles": 6,
+  "originalBaselineTypeScript": 806,
+  "wholeMigrationComplete": false,
+  "applicationCallersAdopted": false,
+  "deployedByMigrationSession": false,
+  "pushed": false,
+  "interimFailuresPreserved": [
+    "compiler-fixtures-1793247691734622166: Redis ToRedisArgs array must be borrowed (test only)",
+    "compiler-fixtures-1793247882516413712: redundant closure rejected by strict Clippy (test only)"
+  ]
+}
