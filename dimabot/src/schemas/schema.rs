@@ -18,6 +18,9 @@ pub enum FieldType {
     ObjectId,
     Mixed,
     Array(Box<FieldType>),
+    /// Opt-in array element casting and validators. The boxed field's name is
+    /// ignored; errors use the containing array path followed by the index.
+    ArrayElement(Box<Field>),
     /// Maps retain empty objects and cast each entry using the declared type.
     Map(Box<FieldType>),
     /// Inline nested paths apply child defaults even when parent is absent.
@@ -37,6 +40,8 @@ pub enum FieldDefault {
     Boolean(bool),
     Array,
     Object,
+    /// A reusable BSON template, cloned on every construction before casting.
+    Value(Bson),
     Now,
     Epoch,
     LocalDay,
@@ -58,6 +63,8 @@ pub struct Field {
     pub trim: bool,
     pub integer: bool,
     pub immutable: bool,
+    /// Opt in to Mongoose-style Mixed value minimization after validation.
+    pub minimize: bool,
 }
 impl Field {
     pub fn new(name: &'static str, kind: FieldType) -> Self {
@@ -75,6 +82,7 @@ impl Field {
             trim: false,
             integer: false,
             immutable: false,
+            minimize: false,
         }
     }
     pub fn default(mut self, default: FieldDefault) -> Self {
@@ -115,6 +123,11 @@ impl Field {
     }
     pub fn integer(mut self) -> Self {
         self.integer = true;
+        self
+    }
+    /// Prune empty ordinary objects in a Mixed field when constructing output.
+    pub fn minimize(mut self) -> Self {
+        self.minimize = true;
         self
     }
     pub fn immutable(mut self) -> Self {
@@ -518,7 +531,7 @@ fn construct_fields(
                 .is_some_and(|(name, expected)| input.get_str(name).ok() == Some(expected));
         let value = match input.get(field.name) {
             Some(value) => Some(value.clone()),
-            None => match field.default {
+            None => match &field.default {
                 FieldDefault::Missing => match &field.kind {
                     FieldType::Object(children) => {
                         let nested =
@@ -532,16 +545,17 @@ fn construct_fields(
                     _ => None,
                 },
                 FieldDefault::Null => Some(Bson::Null),
-                FieldDefault::String(text) => Some(text.into()),
-                FieldDefault::Number(value) => Some(crate::utils::bson_compat::js_number(value)),
-                FieldDefault::Boolean(value) => Some(value.into()),
+                FieldDefault::String(text) => Some((*text).into()),
+                FieldDefault::Number(value) => Some(crate::utils::bson_compat::js_number(*value)),
+                FieldDefault::Boolean(value) => Some((*value).into()),
                 FieldDefault::Array => Some(Bson::Array(Vec::new())),
                 FieldDefault::Now => Some(Bson::DateTime(now)),
                 FieldDefault::Object => Some(Bson::Document(Document::new())),
+                FieldDefault::Value(value) => Some(value.clone()),
                 FieldDefault::Epoch => Some(Bson::DateTime(DateTime::from_millis(0))),
                 FieldDefault::LocalDay | FieldDefault::LocalMonth | FieldDefault::LocalYear => {
                     local_calendar(now).map(|(year, month, day)| {
-                        Bson::Int32(match field.default {
+                        Bson::Int32(match &field.default {
                             FieldDefault::LocalDay => day,
                             FieldDefault::LocalMonth => month,
                             _ => year,
@@ -559,64 +573,16 @@ fn construct_fields(
             }
             continue;
         };
-        let cast = if matches!(value, Bson::Null) {
-            Ok(value)
-        } else {
-            cast(&field.kind, value, now, &path, errors)
-        };
-        let mut value = match cast {
-            Ok(value) => value,
-            Err(()) => {
-                errors.push(FieldError { path, kind: "cast" });
-                continue;
-            }
-        };
-        if field.trim
-            && let Bson::String(text) = &mut value
-        {
-            *text = crate::utils::js_compat::trim(text).into();
-        }
-        if required
-            && (matches!(value, Bson::Null)
-                || matches!(&value,Bson::String(text)if text.is_empty()))
-        {
-            errors.push(FieldError {
-                path: path.clone(),
-                kind: "required",
-            });
+        let Some(value) = cast_field(field, value, now, &path, errors) else {
             continue;
-        }
-        // Mongoose validateSync retains the first failed validator per path.
-        let failed = if let Bson::String(text) = &value {
-            if !field.enum_values.is_empty() && !field.enum_values.contains(&text.as_str()) {
-                Some("enum")
-            } else if field
-                .max_utf16
-                .is_some_and(|max| text.encode_utf16().count() > max)
-            {
-                Some("maxlength")
-            } else {
-                None
-            }
-        } else if let Some(value) = number(&value) {
-            if field.min.is_some_and(|min| value < min) {
-                Some("min")
-            } else if field.max.is_some_and(|max| value > max) {
-                Some("max")
-            } else if field.integer && (!value.is_finite() || value.fract() != 0.0) {
-                Some("user defined")
-            } else {
-                None
-            }
-        } else {
-            None
         };
-        if let Some(kind) = failed {
-            errors.push(FieldError {
-                path: path.clone(),
-                kind,
-            });
-        }
+        validate_field(field, &value, required, &path, errors);
+        let value = if field.minimize && matches!(field.kind, FieldType::Mixed) {
+            minimize_mixed(value, false)
+        } else {
+            Some(value)
+        };
+        let Some(value) = value else { continue };
         if !matches!(&value,Bson::Document(object)if object.is_empty())
             || matches!(&field.kind, FieldType::Map(_))
         {
@@ -624,6 +590,137 @@ fn construct_fields(
         }
     }
     output
+}
+
+// Mongoose cloneObject preserves an object immediately beneath an array, even
+// when its properties have all been minimized. Arrays and null remain values.
+fn minimize_mixed(value: Bson, array_child: bool) -> Option<Bson> {
+    match value {
+        Bson::Document(document) => {
+            // With a truthy own constructor, clone dispatch may fall through
+            // to the inherited valueOf(), which returns the original object.
+            if let Some(constructor) = document.get("constructor") {
+                let truthy = match constructor {
+                    Bson::Null => false,
+                    Bson::Boolean(value) => *value,
+                    Bson::Int32(value) => *value != 0,
+                    Bson::Int64(value) => *value != 0,
+                    Bson::Double(value) => *value != 0.0 && !value.is_nan(),
+                    Bson::String(value) => !value.is_empty(),
+                    _ => true,
+                };
+                let object_named = matches!(constructor, Bson::Document(value)
+                    if value.get_str("name").ok() == Some("Object"));
+                if truthy && !object_named && !document.contains_key("valueOf") {
+                    return Some(Bson::Document(document));
+                }
+            }
+            let mut result = Document::new();
+            for (key, value) in document {
+                // Mongoose cloneObject excludes these special property names.
+                if matches!(key.as_str(), "__proto__" | "constructor" | "prototype") {
+                    continue;
+                }
+                if let Some(value) = minimize_mixed(value, false) {
+                    result.insert(key, value);
+                }
+            }
+            if result.is_empty() && !array_child {
+                None
+            } else {
+                Some(Bson::Document(result))
+            }
+        }
+        Bson::Array(values) => Some(Bson::Array(
+            values
+                .into_iter()
+                .map(|value| {
+                    // Array children are always retained by the clone algorithm.
+                    minimize_mixed(value, true).expect("array child is retained")
+                })
+                .collect(),
+        )),
+        other => Some(other),
+    }
+}
+
+fn cast_field(
+    field: &Field,
+    value: Bson,
+    now: DateTime,
+    path: &str,
+    errors: &mut Vec<FieldError>,
+) -> Option<Bson> {
+    let result = if matches!(value, Bson::Null) {
+        Ok(value)
+    } else {
+        cast(&field.kind, value, now, path, errors)
+    };
+    let mut value = match result {
+        Ok(value) => value,
+        Err(()) => {
+            errors.push(FieldError {
+                path: path.to_owned(),
+                kind: "cast",
+            });
+            return None;
+        }
+    };
+    if field.trim
+        && let Bson::String(text) = &mut value
+    {
+        *text = crate::utils::js_compat::trim(text).into();
+    }
+    Some(value)
+}
+
+fn validate_field(
+    field: &Field,
+    value: &Bson,
+    required: bool,
+    path: &str,
+    errors: &mut Vec<FieldError>,
+) {
+    if required
+        && (matches!(value, Bson::Null) || matches!(value, Bson::String(text) if text.is_empty()))
+    {
+        errors.push(FieldError {
+            path: path.to_owned(),
+            kind: "required",
+        });
+        return;
+    }
+    // Mongoose validateSync retains the first failed validator per path.
+    let failed = if let Bson::String(text) = value {
+        if !field.enum_values.is_empty() && !field.enum_values.contains(&text.as_str()) {
+            Some("enum")
+        } else if field
+            .max_utf16
+            .is_some_and(|max| text.encode_utf16().count() > max)
+        {
+            Some("maxlength")
+        } else {
+            None
+        }
+    } else if let Some(value) = number(value) {
+        if field.min.is_some_and(|min| value < min) {
+            Some("min")
+        } else if field.max.is_some_and(|max| value > max) {
+            Some("max")
+        } else if field.integer && (!value.is_finite() || value.fract() != 0.0) {
+            Some("user defined")
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+    if let Some(kind) = failed {
+        errors.push(FieldError {
+            path: path.to_owned(),
+            kind,
+        });
+    }
 }
 
 #[cfg(unix)]
@@ -738,6 +835,32 @@ fn cast(
                         }
                     }
                 }
+            }
+            Ok(Bson::Array(output))
+        }
+        FieldType::ArrayElement(element) => {
+            let values = match value {
+                Bson::Array(values) => values,
+                value => vec![value],
+            };
+            let mut output = Vec::with_capacity(values.len());
+            // Mongoose casts the entire array first, aborting on the first
+            // cast failure before running per-element validators.
+            for (index, value) in values.into_iter().enumerate() {
+                let element_path = format!("{path}.{index}");
+                match cast_field(element, value, now, &element_path, errors) {
+                    Some(value) => output.push(value),
+                    None => return Ok(Bson::Array(Vec::new())),
+                }
+            }
+            for (index, value) in output.iter().enumerate() {
+                validate_field(
+                    element,
+                    value,
+                    element.required,
+                    &format!("{path}.{index}"),
+                    errors,
+                );
             }
             Ok(Bson::Array(output))
         }
