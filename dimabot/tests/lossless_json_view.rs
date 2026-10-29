@@ -12,6 +12,235 @@ fn nested(depth: usize, leaf: &str) -> String {
     format!("{}{leaf}{}", "[".repeat(depth), "]".repeat(depth))
 }
 
+fn assert_scalar_lookups(raw: &str, cases: &[(&str, Option<f64>)]) {
+    let doc = JsonDocument::parse(raw).unwrap();
+    let owned = parse_json(raw).unwrap();
+    for &(key, expected) in cases {
+        let expected = expected.map(JsonValue::Number);
+        let by_str = doc.root().get(key).map(|value| {
+            value
+                .scalar()
+                .expect("lookup fixture has only scalar queried values")
+        });
+        let by_units = doc.root().get_key(&JsString::from(key)).map(|value| {
+            value
+                .scalar()
+                .expect("lookup fixture has only scalar queried values")
+        });
+        assert_eq!(by_str, expected, "get {key:?} in {raw}");
+        assert_eq!(by_units, expected, "get_key {key:?} in {raw}");
+        assert_eq!(owned.get(key), expected.as_ref(), "owned {key:?} in {raw}");
+    }
+}
+
+#[test]
+fn raw_key_lookup_is_exact_for_empty_prefix_unicode_and_own_names() {
+    let raw = r#"{"":0,"i":1,"id":2,"identifier":3,"é":4,"é":5,"😀":6,"😀x":7,"__proto__":8,"constructor":9,"toString":10,"/":11}"#;
+    assert_scalar_lookups(
+        raw,
+        &[
+            ("", Some(0.0)),
+            ("i", Some(1.0)),
+            ("id", Some(2.0)),
+            ("identifier", Some(3.0)),
+            ("é", Some(4.0)),
+            ("e\u{0301}", Some(5.0)),
+            ("😀", Some(6.0)),
+            ("😀x", Some(7.0)),
+            ("__proto__", Some(8.0)),
+            ("constructor", Some(9.0)),
+            ("toString", Some(10.0)),
+            ("/", Some(11.0)),
+            ("missing", None),
+            ("ID", None),
+            ("ident", None),
+            ("identifierX", None),
+            ("😀xx", None),
+            ("e", None),
+            ("\u{0301}", None),
+            ("__proto", None),
+            ("valueOf", None),
+            ("hasOwnProperty", None),
+        ],
+    );
+}
+
+#[test]
+fn raw_and_escaped_aliases_keep_the_last_value_in_both_orders() {
+    for raw in [
+        r#"{"id":1,"\u0069d":2,"é":3,"\u00e9":4,"😀":5,"\ud83d\ude00":6,"__proto__":7,"\u005f_proto__":8,"é":9,"e\u0301":10}"#,
+        r#"{"\u0069d":1,"id":2,"\u00e9":3,"é":4,"\ud83d\ude00":5,"😀":6,"\u005f_proto__":7,"__proto__":8,"e\u0301":9,"é":10}"#,
+    ] {
+        assert_scalar_lookups(
+            raw,
+            &[
+                ("id", Some(2.0)),
+                ("é", Some(4.0)),
+                ("😀", Some(6.0)),
+                ("__proto__", Some(8.0)),
+                ("e\u{0301}", Some(10.0)),
+                ("i", None),
+                ("idX", None),
+                (r"\u0069d", None),
+                (r"\ud83d\ude00", None),
+            ],
+        );
+    }
+}
+
+#[test]
+fn escaped_keys_preserve_controls_quotes_backslashes_and_literal_escape_text() {
+    let raw = r#"{"":1,"\"":2,"\u0022":3,"\\":4,"\u005c":5,"\/":6,"/":7,"\b":8,"\u0008":9,"\f":10,"\u000c":11,"\n":12,"\u000a":13,"\r":14,"\u000d":15,"\t":16,"\u0009":17,"\u0000":18,"prefix\u0000suffix":19,"\u001f":20,"\\u0061":21,"a":22,"\\n":23,"x\\\"y":24}"#;
+    assert_scalar_lookups(
+        raw,
+        &[
+            ("", Some(1.0)),
+            ("\"", Some(3.0)),
+            ("\\", Some(5.0)),
+            ("/", Some(7.0)),
+            ("\u{0008}", Some(9.0)),
+            ("\u{000c}", Some(11.0)),
+            ("\n", Some(13.0)),
+            ("\r", Some(15.0)),
+            ("\t", Some(17.0)),
+            ("\0", Some(18.0)),
+            ("prefix\0suffix", Some(19.0)),
+            ("\u{001f}", Some(20.0)),
+            (r"\u0061", Some(21.0)),
+            ("a", Some(22.0)),
+            (r"\n", Some(23.0)),
+            ("x\\\"y", Some(24.0)),
+            ("prefix", None),
+            ("prefix\0", None),
+            (r"\u0000", None),
+            ("x\"y", None),
+        ],
+    );
+    // The established serializer supplies every control-character spelling;
+    // the expected values do not reproduce the view's matching implementation.
+    for control in 0_u8..0x20 {
+        let key = char::from(control).to_string();
+        let quoted = serde_json::to_string(&key).unwrap();
+        let raw = format!("{{{quoted}:1,{quoted}:2}}");
+        assert_scalar_lookups(&raw, &[(key.as_str(), Some(2.0))]);
+    }
+}
+
+#[test]
+fn utf16_key_lookup_keeps_lone_surrogates_reversed_pairs_and_replacement_distinct() {
+    let raw = r#"{"plain":0,"�":1,"\ud800":2,"\uD800":3,"\udc00":4,"\uDC00":5,"\udc00\ud800":6,"\ud83d\ude00":7,"😀":8,"\ud800x":9,"x\udc00":10,"\ud800\ud83d\ude00\udc00":11,"\ud800\ud800":12,"\udc00\udc00":13,"\ud800\u0000":14,"\ud800\\":15,"\ud800\"":16}"#;
+    assert_scalar_lookups(raw, &[("�", Some(1.0)), ("😀", Some(8.0))]);
+    let doc = JsonDocument::parse(raw).unwrap();
+    let JsonValue::Object(owned_fields) = parse_json(raw).unwrap() else {
+        panic!("object fixture");
+    };
+    for (units, expected) in [
+        (vec![0xd800], Some(3.0)),
+        (vec![0xdc00], Some(5.0)),
+        (vec![0xdc00, 0xd800], Some(6.0)),
+        (vec![0xd83d, 0xde00], Some(8.0)),
+        (vec![0xd800, 120], Some(9.0)),
+        (vec![120, 0xdc00], Some(10.0)),
+        (vec![0xd800, 0xd83d, 0xde00, 0xdc00], Some(11.0)),
+        (vec![0xd800, 0xd800], Some(12.0)),
+        (vec![0xdc00, 0xdc00], Some(13.0)),
+        (vec![0xd800, 0], Some(14.0)),
+        (vec![0xd800, 92], Some(15.0)),
+        (vec![0xd800, 34], Some(16.0)),
+        (vec![0xd800, 0xdc00], None),
+        (vec![0xdc00, 0xd83d], None),
+        (vec![0xd800, 120, 0], None),
+    ] {
+        let key = JsString::from_units(units);
+        let expected = expected.map(JsonValue::Number);
+        let actual = doc
+            .root()
+            .get_key(&key)
+            .map(|value| value.scalar().unwrap());
+        assert_eq!(actual, expected, "key units {:?}", key.units());
+        // The owned reader has already decoded names and resolved duplicates.
+        let owned = owned_fields
+            .iter()
+            .find(|(name, _)| *name == key)
+            .map(|(_, value)| value);
+        assert_eq!(
+            owned,
+            expected.as_ref(),
+            "owned key units {:?}",
+            key.units()
+        );
+        if let Some(key) = key.as_str() {
+            assert_eq!(
+                doc.root().get(key).map(|value| value.scalar().unwrap()),
+                expected
+            );
+        }
+    }
+}
+
+#[test]
+fn key_lookup_stays_within_its_object_and_skips_whole_nested_subtrees() {
+    let raw = r#"{"target":1,"ignored":{"target":2,"deeper":{"target":3}},"list":[{"target":4},[{"target":5}]],"nested":{"target":6,"\u0074arget":7},"\u0074arget":8,"after":9}"#;
+    assert_scalar_lookups(
+        raw,
+        &[
+            ("target", Some(8.0)),
+            ("after", Some(9.0)),
+            ("deeper", None),
+            ("missing", None),
+        ],
+    );
+    let doc = JsonDocument::parse(raw).unwrap();
+    let root = doc.root();
+    let owned = parse_json(raw).unwrap();
+    for field in ["ignored", "nested"] {
+        let nested = root.get(field).unwrap();
+        let expected = owned.get(field).unwrap().get("target");
+        assert_eq!(nested.get("target").unwrap().scalar().as_ref(), expected);
+        assert_eq!(
+            nested
+                .get_key(&JsString::from("target"))
+                .unwrap()
+                .scalar()
+                .as_ref(),
+            expected
+        );
+        assert!(nested.get("after").is_none());
+    }
+    let list = root.get("list").unwrap();
+    assert!(list.get("target").is_none());
+    assert_eq!(
+        list.array()
+            .unwrap()
+            .next()
+            .unwrap()
+            .get("target")
+            .unwrap()
+            .scalar(),
+        Some(JsonValue::Number(4.0))
+    );
+    for raw in [
+        "{}",
+        "null",
+        "false",
+        "1",
+        r#""id""#,
+        "[]",
+        r#"["id",{"id":1}]"#,
+    ] {
+        let doc = JsonDocument::parse(raw).unwrap();
+        for key in ["", "id", "0", "length", "toString", "__proto__"] {
+            assert!(doc.root().get(key).is_none(), "{raw} {key:?}");
+            assert!(doc.root().get_key(&JsString::from(key)).is_none());
+        }
+        assert!(
+            doc.root()
+                .get_key(&JsString::from_units(vec![0xd800]))
+                .is_none()
+        );
+    }
+}
+
 #[test]
 fn deep_ignored_bytes_remain_borrowed_and_drop_without_an_owned_tree() {
     let raw = format!(

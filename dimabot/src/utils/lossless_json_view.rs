@@ -155,14 +155,40 @@ impl<'a> JsonView<'a> {
         self.tag() == b'n'
     }
 
-    /// Own, last-key-wins lookup, comparing decoded UTF-16 names. JSON's
-    /// __proto__ is an ordinary own field, never a prototype mutation.
+    /// Own, last-key-wins lookup with exact UTF-16 name equality. Unescaped
+    /// names compare borrowed UTF-8; escaped names use the existing decoder.
+    /// JSON's __proto__ is an ordinary own field, never a prototype mutation.
     /// Non-objects yield missing for this plain-own-property API.
     pub fn get(self, key: &str) -> Option<Self> {
-        self.get_key(&JsString::from(key))
+        self.find_key(|name| match name.unescaped_key() {
+            Some(name) => name == key,
+            None => name.as_string().expect("validated object key").as_str() == Some(key),
+        })
     }
 
     pub fn get_key(self, key: &JsString) -> Option<Self> {
+        if let Some(key) = key.as_str() {
+            return self.get(key);
+        }
+        self.find_key(|name| {
+            // Unescaped input is valid UTF-8 and cannot contain an unpaired
+            // UTF-16 unit. Escaped input still uses the established decoder.
+            name.unescaped_key().is_none()
+                && name.as_string().expect("validated object key") == *key
+        })
+    }
+
+    /// Called only for validated object-key tokens. With no escape, removing
+    /// the ASCII quotes leaves the exact UTF-8 name at valid byte boundaries.
+    /// This borrows the source; escaped UTF-16 names stay on the existing path.
+    fn unescaped_key(self) -> Option<&'a str> {
+        debug_assert_eq!(self.tag(), b'"');
+        let raw = self.raw();
+        let body = &raw[1..raw.len() - 1];
+        (!body.as_bytes().contains(&b'\\')).then_some(body)
+    }
+
+    fn find_key(self, mut matches: impl FnMut(Self) -> bool) -> Option<Self> {
         if self.tag() != b'{' {
             return None;
         }
@@ -170,14 +196,12 @@ impl<'a> JsonView<'a> {
         let end = self.spans[self.index].next;
         let mut found = None;
         while index < end {
-            let name = Self { index, ..self }
-                .as_string()
-                .expect("validated object key");
+            let name = Self { index, ..self };
             let value = Self {
                 index: index + 1,
                 ..self
             };
-            if name == *key {
+            if matches(name) {
                 found = Some(value);
             }
             index = self.spans[value.index].next;
