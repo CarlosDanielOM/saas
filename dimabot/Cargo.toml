@@ -64,6 +64,10 @@ ai-usage-producer = ["ai-usage", "redis", "credit-policy", "tts-utilities"]
 # Borrowed receipt parsing and analytics stay outside deployed worker graphs.
 lossless-json-view = ["tts-utilities"]
 ai-usage-receipt-parser = ["ai-usage", "credit-policy", "lossless-json-view", "js-date", "mongo"]
+posthog-lossless = ["http-client", "tts-utilities", "credit-policy", "dep:uuid"]
+posthog-tracking = ["posthog", "ai-usage", "tts-utilities", "posthog-lossless"]
+# File-integrity verification for the isolated benchmark, without MongoDB.
+posthog-benchmark = ["posthog-tracking", "dep:sha2"]
 keyword-store = ["keywords", "mongo", "redis", "logger-redis", "credit-policy", "dep:libc", "dep:base64"]
 domain-event-runtime = ["domain-events", "mongo", "redis", "logger", "chat-message", "observability", "dep:uuid"]
 twitch-functions = ["twitch-streamers", "credit-policy"]

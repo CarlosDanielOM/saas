@@ -175,6 +175,10 @@ pub mod otel;
 #[cfg(feature = "posthog")]
 #[path = "posthog_events.rs"]
 pub mod posthog;
+#[cfg(feature = "posthog-lossless")]
+pub mod posthog_lossless;
+#[cfg(feature = "posthog-tracking")]
+pub mod posthog_tracking;
 #[cfg(feature = "qdrant")]
 #[path = "databases/qdrant.database.rs"]
 pub mod qdrant;

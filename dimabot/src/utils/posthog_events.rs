@@ -2,8 +2,8 @@
 //!
 //! The TypeScript client hard-codes the public project key and US host, and
 //! batches with `flushAt: 20` and `flushInterval: 1000`. [`client_options`]
-//! keeps those values. posthog-rs stamps `$is_server: true` by default;
-//! posthog-node does not, so it is turned off to keep the same event shape.
+//! keeps those values. The installed posthog-node wrapper and posthog-rs both
+//! stamp `$is_server: true`; keep that metadata enabled.
 //!
 //! posthog-rs has no `identify` call. [`identify_event`] builds the same
 //! `$identify` event posthog-node sends (`$set` plus an empty `$set_once`), and
@@ -37,7 +37,7 @@ pub fn client_options(api_key: &str, host: &str) -> ClientOptions {
         .host(host)
         .flush_at(FLUSH_AT)
         .flush_interval_ms(FLUSH_INTERVAL_MS)
-        .is_server(false)
+        .is_server(true)
         .build()
         .expect("static PostHog options are valid")
 }
@@ -137,7 +137,7 @@ mod tests {
             json!({"channel_name": "streamer"})
         );
         assert_eq!(identify["properties"]["$set_once"], json!({}));
-        assert!(identify["properties"].get("$is_server").is_none());
+        assert_eq!(identify["properties"]["$is_server"], true);
 
         assert_eq!(events[1]["event"], "command_executed");
         assert_eq!(events[1]["properties"]["command"], "!hello");
