@@ -254,36 +254,75 @@ fn expressive_tag_replacement(
     captures: &regex::Captures<'_>,
     provider: TtsProvider,
     enabled: Option<&BTreeMap<String, bool>>,
-) -> Cow<'static, str> {
+) -> [&'static str; 3] {
     let angle = captures.get(2);
     let removed = if angle.is_some() { "" } else { " " };
     if provider != TtsProvider::Fish || enabled.is_none() {
-        return Cow::Borrowed(removed);
+        return [removed, "", ""];
     }
-    static HYPHEN: OnceLock<Regex> = OnceLock::new();
-    let hyphen = HYPHEN.get_or_init(|| Regex::new(&format!(r"{JS_WS}*-{JS_WS}*")).unwrap());
     let raw = angle.or_else(|| captures.get(3)).unwrap().as_str();
-    let normalized = if angle.is_some() {
+    let normalized = if angle.is_some() && raw.contains('-') {
+        static HYPHEN: OnceLock<Regex> = OnceLock::new();
+        let hyphen = HYPHEN.get_or_init(|| Regex::new(&format!(r"{JS_WS}*-{JS_WS}*")).unwrap());
         hyphen.replace_all(raw, "-")
     } else {
         Cow::Borrowed(raw)
     };
-    let lower = trim(&normalized).to_lowercase();
-    let tag = alias(&lower);
-    if expressive_tags().any(|candidate| candidate == tag)
-        && enabled.and_then(|values| values.get(tag)).copied() == Some(true)
+    let normalized = trim(&normalized);
+    // ASCII lowercase names already have the source's normalized spelling.
+    // Every non-ASCII input still uses Unicode lowercasing, including Kelvin
+    // signs in square names such as [breaK].
+    let lower = if normalized
+        .bytes()
+        .all(|byte| byte.is_ascii() && !byte.is_ascii_uppercase())
     {
-        Cow::Owned(if angle.is_some() {
-            format!(
-                "<{}{tag}>",
-                captures.get(1).map_or("", |value| value.as_str())
-            )
-        } else {
-            format!("[{tag}]")
-        })
+        Cow::Borrowed(normalized)
     } else {
-        Cow::Borrowed(removed)
+        Cow::Owned(normalized.to_lowercase())
+    };
+    let tag = alias(&lower);
+    if enabled.and_then(|values| values.get(tag)).copied() != Some(true) {
+        return [removed, "", ""];
     }
+    let Some(tag) = expressive_tags().find(|candidate| *candidate == tag) else {
+        return [removed, "", ""];
+    };
+    // Catalog names and marker fragments are static; both representations can
+    // append the same canonical replacement without a per-match String.
+    if angle.is_some() {
+        let opening = if captures.get(1).is_some_and(|value| !value.is_empty()) {
+            "</"
+        } else {
+            "<"
+        };
+        [opening, tag, ">"]
+    } else {
+        ["[", tag, "]"]
+    }
+}
+
+/// The source collapses only U+0020 runs, then trims the ECMAScript edge set.
+/// Retaining characters in place preserves every other UTF-8 byte without a
+/// second replacement buffer.
+fn collapse_spaces_and_trim(text: Cow<'_, str>) -> String {
+    let collapse = text.contains("  ");
+    let mut text = text.into_owned();
+    if collapse {
+        let mut previous_space = false;
+        text.retain(|character| {
+            let space = character == ' ';
+            let keep = !space || !previous_space;
+            previous_space = space;
+            keep
+        });
+    }
+    let end = text.trim_end_matches(is_whitespace).len();
+    text.truncate(end);
+    let start = text.len() - text.trim_start_matches(is_whitespace).len();
+    if start != 0 {
+        drop(text.drain(..start));
+    }
+    text
 }
 
 pub fn filter_expressive_tts_tags(
@@ -291,12 +330,23 @@ pub fn filter_expressive_tts_tags(
     provider: TtsProvider,
     enabled: Option<&BTreeMap<String, bool>>,
 ) -> String {
-    static SPACES: OnceLock<Regex> = OnceLock::new();
-    let replaced = expressive_tag_regex().replace_all(text, |captures: &regex::Captures<'_>| {
-        expressive_tag_replacement(captures, provider, enabled)
-    });
-    let spaces = SPACES.get_or_init(|| Regex::new(" {2,}").unwrap());
-    trim(&spaces.replace_all(&replaced, " ")).to_owned()
+    // Both alternatives start with an ASCII delimiter. Plain text still needs
+    // the source's space collapse and edge trim, but cannot have a tag match.
+    if !text.bytes().any(|byte| matches!(byte, b'<' | b'[')) {
+        return collapse_spaces_and_trim(Cow::Borrowed(text));
+    }
+    let mut result = String::with_capacity(text.len());
+    let mut previous = 0;
+    for captures in expressive_tag_regex().captures_iter(text) {
+        let matched = captures.get(0).unwrap();
+        result.push_str(&text[previous..matched.start()]);
+        for fragment in expressive_tag_replacement(&captures, provider, enabled) {
+            result.push_str(fragment);
+        }
+        previous = matched.end();
+    }
+    result.push_str(&text[previous..]);
+    collapse_spaces_and_trim(Cow::Owned(result))
 }
 
 /// Regex positions in a lossy shadow map back to the untouched UTF-16 input.
@@ -352,12 +402,29 @@ pub fn filter_expressive_tts_tags_js(
     for captures in expressive_tag_regex().captures_iter(&shadow.text) {
         let matched = captures.get(0).unwrap();
         result.extend_from_slice(&units[previous..shadow.unit_offset(matched.start())]);
-        result.extend(expressive_tag_replacement(&captures, provider, enabled).encode_utf16());
+        for fragment in expressive_tag_replacement(&captures, provider, enabled) {
+            result.extend(fragment.encode_utf16());
+        }
         previous = shadow.unit_offset(matched.end());
     }
     result.extend_from_slice(&units[previous..]);
     result.dedup_by(|current, previous| *current == 0x20 && *previous == 0x20);
-    JsString::from_units(result).trim()
+    // Trim the original units before constructing JsString, avoiding a second
+    // validation/copy of an ill-formed result. Surrogates are never whitespace.
+    let whitespace = |unit: &u16| char::from_u32(u32::from(*unit)).is_some_and(is_whitespace);
+    let end = result
+        .iter()
+        .rposition(|unit| !whitespace(unit))
+        .map_or(0, |index| index + 1);
+    result.truncate(end);
+    let start = result
+        .iter()
+        .position(|unit| !whitespace(unit))
+        .unwrap_or(0);
+    if start != 0 {
+        drop(result.drain(..start));
+    }
+    JsString::from_units(result)
 }
 
 /// Reinforce cues without replacing unpaired JavaScript UTF-16 surrogates.
