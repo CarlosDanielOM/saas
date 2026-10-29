@@ -41,7 +41,8 @@
     feature = "qdrant",
     feature = "ast-syntax",
     feature = "reward-body",
-    feature = "tts-utilities"
+    feature = "tts-utilities",
+    feature = "moderation-emote-spam"
 ))]
 pub mod js_compat;
 
@@ -52,9 +53,13 @@ pub mod js_compat;
     feature = "domain-events",
     feature = "application-schemas",
     feature = "bits-rules",
-    feature = "tts-utilities"
+    feature = "tts-utilities",
+    feature = "moderation-emote-spam"
 ))]
 pub mod json_number;
+
+#[cfg(feature = "moderation-emote-spam")]
+pub mod moderation;
 
 pub mod links;
 pub mod tts_defaults;
