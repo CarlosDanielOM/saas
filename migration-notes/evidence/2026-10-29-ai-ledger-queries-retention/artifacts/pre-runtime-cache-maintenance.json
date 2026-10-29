@@ -1,0 +1,72 @@
+{
+  "scope": "Only old single-link ELF test executables in the task-private target/debug/deps; all from completed phases before ledger runtime correction. No dependency, shared cache, release image, source or production mutation.",
+  "beforeAllocatedBytes": 8573349888,
+  "files": [
+    {
+      "path": "target/debug/deps/ai_usage_ledger_queries-493bb1561e386463",
+      "sha256": "93eeead8fdb7652b4974a107f536b2e71ee61dd8b0a961ce3dc4e2d84667640d",
+      "bytes": 32226504,
+      "allocatedBytes": 32227328,
+      "mtimeNs": 1793283354521832337
+    },
+    {
+      "path": "target/debug/deps/ai_usage_ledger_queries-75abffd4dcfa57f0",
+      "sha256": "cba54ff2d5b856cb648fa13b8f550d0ae876bae1fb566ded4c9f204e7d5843fa",
+      "bytes": 32230584,
+      "allocatedBytes": 32231424,
+      "mtimeNs": 1793283620117311968
+    },
+    {
+      "path": "target/debug/deps/ai_usage_retention-ed3ac58cc131fcaf",
+      "sha256": "de0eec6b58f252ea1d5d715446837faf7a2ba055fe0c9f8df3eec10aca93eabb",
+      "bytes": 31470088,
+      "allocatedBytes": 31473664,
+      "mtimeNs": 1793283354609832165
+    },
+    {
+      "path": "target/debug/deps/raid_analytics-5e36b1068d162ff6",
+      "sha256": "fed0431c43c3e3c2f710466294d4a9c7f57cae873d4bca8076c05e5e1a94b92c",
+      "bytes": 33413472,
+      "allocatedBytes": 33415168,
+      "mtimeNs": 1793283017129491406
+    },
+    {
+      "path": "target/debug/deps/raid_analytics-f3e505b3102ca0d1",
+      "sha256": "0475e721a9b0058915f2851af2b444ad2a4ea8ff58a8b9b24e3299d8b9d5002f",
+      "bytes": 33413552,
+      "allocatedBytes": 33415168,
+      "mtimeNs": 1793281733368274521
+    },
+    {
+      "path": "target/debug/deps/roulette_completion-12793874901b915b",
+      "sha256": "b26c0d63f658fc581cb74a943b82e2bf1ee8384b26cf8a797c84a640797b2559",
+      "bytes": 27975600,
+      "allocatedBytes": 27975680,
+      "mtimeNs": 1793281731649281414
+    },
+    {
+      "path": "target/debug/deps/roulette_completion-c2e9aa8f1f9e9aad",
+      "sha256": "6a417ff9f4bd9adc9f0a799018c344330209bbd800aa2b2ebc6e60ba89dd199f",
+      "bytes": 27975528,
+      "allocatedBytes": 27975680,
+      "mtimeNs": 1793283008434508391
+    },
+    {
+      "path": "target/debug/deps/stream_activity-8dd7fce9bfc604a3",
+      "sha256": "6e505ae2833ae6c89e87c840e1a57855c0865e8860508c952a80a1f64de197c7",
+      "bytes": 32259440,
+      "allocatedBytes": 32260096,
+      "mtimeNs": 1793283010075505185
+    },
+    {
+      "path": "target/debug/deps/stream_activity-c4c79cb05179f21b",
+      "sha256": "427b293d4b08d803e977d1f8eaadb77df300ddf640f16cdf2431adc42afeaad2",
+      "bytes": 32259512,
+      "allocatedBytes": 32260096,
+      "mtimeNs": 1793281736129263449
+    }
+  ],
+  "afterAllocatedBytes": 8290115584,
+  "removedAllocatedBytes": 283234304,
+  "productionUnchanged": true
+}

@@ -1,0 +1,44 @@
+{
+  "scope": "Only old single-link ELF test executables in the task-private target/debug/deps; all from completed phases before targeted release NaN verification. No dependency, shared cache, release image, source or production mutation.",
+  "beforeAllocatedBytes": 8447475712,
+  "files": [
+    {
+      "path": "target/debug/deps/ai_usage_ledger_queries-493bb1561e386463",
+      "sha256": "5bf2b830f20ddad1abfcd965fa0dae3b91569c97a987d21667cc8837dbf28828",
+      "bytes": 32230632,
+      "allocatedBytes": 32231424,
+      "mtimeNs": 1793284068631432449
+    },
+    {
+      "path": "target/debug/deps/ai_usage_retention-ed3ac58cc131fcaf",
+      "sha256": "a1210ead685e6becb886ebb995b34efdca420c32d73dab7a4dbf17b49e9dd68c",
+      "bytes": 31470128,
+      "allocatedBytes": 31473664,
+      "mtimeNs": 1793284071062427682
+    },
+    {
+      "path": "target/debug/deps/raid_analytics-7e29232df47a5b94",
+      "sha256": "4eeca4bdb39286fb39a5bb505819e8bafb2fee3661ef7685b0932fc4c42d88da",
+      "bytes": 33413456,
+      "allocatedBytes": 33415168,
+      "mtimeNs": 1793283615608320809
+    },
+    {
+      "path": "target/debug/deps/roulette_completion-07abe52cd79e563c",
+      "sha256": "3f9d354b8c8e86d12c06e65e0744e3becf6b508ee962ecfb4bbdf839c8cec4d7",
+      "bytes": 27975512,
+      "allocatedBytes": 27975680,
+      "mtimeNs": 1793283613665324619
+    },
+    {
+      "path": "target/debug/deps/stream_activity-2ced4f03df35a93f",
+      "sha256": "705895436d158d8ea1ad72ecf4182c6666fd0c99d7da0f5635c87db9d1772db2",
+      "bytes": 32255328,
+      "allocatedBytes": 32256000,
+      "mtimeNs": 1793283618193315740
+    }
+  ],
+  "afterAllocatedBytes": 8290123776,
+  "removedAllocatedBytes": 157351936,
+  "productionUnchanged": true
+}

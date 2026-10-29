@@ -1,0 +1,164 @@
+{
+  "status": "Verified local ledger query/retention adapters; full ledger and migration incomplete.",
+  "codeCommit": "4896f1187db57e9c551214c2e51524096dd9c33a",
+  "sourceTreeSha256": "553a83009ddd381bb94b28cb8dd5f736699bbded3581e2f95dfd20be7091c006",
+  "sourceInputs": 1284,
+  "strictRun": "compiler-1793284032019891565",
+  "oracleRun": "node-1793284231647154788",
+  "queryRuntimeRun": "compiler-fixtures-1793284318631963243",
+  "retentionWireReplayRun": "compiler-fixtures-1793284500245082430",
+  "retentionMutationRun": "compiler-fixtures-1793284538995629407",
+  "queryReleaseRun": "compiler-1793284759267735157",
+  "postNodeRun": "node-1793285417559374117",
+  "queryOrdinaryTests": 8,
+  "retentionOrdinaryTests": 2,
+  "debugIgnoredSuitesRun": 4,
+  "releaseQueryOrdinaryTests": 8,
+  "releaseQuerySourceReplay": true,
+  "querySourceScenarios": 333,
+  "queryDeclarations": 22,
+  "retentionSourceScenarios": 34,
+  "retentionDeclarations": 4,
+  "publicPackageFilesHashedPerFixture": 445,
+  "queryRuntimeScriptSeconds": 9.985,
+  "retentionWireScriptSeconds": 7.152,
+  "retentionMutationScriptSeconds": 2.646,
+  "releaseScriptSeconds": 152.01,
+  "releaseTotalSeconds": 160.525,
+  "peakCacheBytesIncludingFailedChecks": 8573349888,
+  "minimumAvailableBytes": 9527840768,
+  "limits": {
+    "cpus": 6,
+    "memory": 4294967296,
+    "memory_swap": 4294967296,
+    "pids": 256,
+    "cargo_jobs": 2
+  },
+  "productionUnchangedRecords": 19,
+  "remainingOwnedResources": {
+    "containers": [],
+    "networks": [],
+    "volumes": []
+  },
+  "correctnessFix": "Pinned V8 Math.max canonical negative quiet NaN matched without changing shared Number coercion. Exact-bit assertions strengthened; all333 source records/protocols unchanged, native metadata hashes rebound by regeneration.",
+  "earlierFailuresPreserved": "Non-idempotent Rustfmt fixture branch, Clippy bool/chunk fixture styles, TypeScript reverse syntax-kind alias, then actual NaN sign discrepancy. Explicit Node/dependency fixture mounts corrected before runtime.",
+  "runtimeFeatureScope": "Independent single-feature all-target checks; runtime uses combined queries+retention graph to reuse task-private artifacts. Each server-scoped failure-injection suite gets a fresh private Mongo.",
+  "runs": [
+    {
+      "run": "compiler-1793282783432375600",
+      "success": false,
+      "sourceTreeSha256": "c5965952d0f5e5e0130adbe6914d80635f1399f7487e617234b50b651027ee4b",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-1793282968530569870",
+      "success": false,
+      "sourceTreeSha256": "5d787af6c12f0a4e483bd2ef93b5bb490d6f0c8fae5bd269ff1f50be71166d4a",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-1793283144619933516",
+      "success": false,
+      "sourceTreeSha256": "68e47fd031bcd7b5fbd4e751035479d6d48a6852e11424763896e49248f4462b",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-1793283337356513603",
+      "success": true,
+      "sourceTreeSha256": "6f7c4abbc5b1e53202f567e899a0c99a698df9121ba59602b3f89005f1162ddf",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-1793284032019891565",
+      "success": true,
+      "sourceTreeSha256": "553a83009ddd381bb94b28cb8dd5f736699bbded3581e2f95dfd20be7091c006",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-1793284759267735157",
+      "success": true,
+      "sourceTreeSha256": "553a83009ddd381bb94b28cb8dd5f736699bbded3581e2f95dfd20be7091c006",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-fixtures-1793283593482020737",
+      "success": false,
+      "sourceTreeSha256": "bf4490a0aabf1819c3dd2a6a0a5393d7017feded27cf4aba9a6356c98cd196b1",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-fixtures-1793284318631963243",
+      "success": true,
+      "sourceTreeSha256": "553a83009ddd381bb94b28cb8dd5f736699bbded3581e2f95dfd20be7091c006",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-fixtures-1793284500245082430",
+      "success": true,
+      "sourceTreeSha256": "553a83009ddd381bb94b28cb8dd5f736699bbded3581e2f95dfd20be7091c006",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-fixtures-1793284538995629407",
+      "success": true,
+      "sourceTreeSha256": "553a83009ddd381bb94b28cb8dd5f736699bbded3581e2f95dfd20be7091c006",
+      "productionUnchanged": true
+    },
+    {
+      "run": "format-1793282715881625937",
+      "success": true,
+      "sourceTreeSha256": "58e01982a1047314dedba462a889dbd5a83e5f5d8a260462387df1b90456b352",
+      "productionUnchanged": true
+    },
+    {
+      "run": "format-1793282909650052122",
+      "success": true,
+      "sourceTreeSha256": "5d787af6c12f0a4e483bd2ef93b5bb490d6f0c8fae5bd269ff1f50be71166d4a",
+      "productionUnchanged": true
+    },
+    {
+      "run": "format-1793283266223965090",
+      "success": true,
+      "sourceTreeSha256": "5c814b9c61f86bf0b87396b34926e2f21a503940ba0f245e220530fdf7ceaf7f",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793283433874375042",
+      "success": false,
+      "sourceTreeSha256": "6f7c4abbc5b1e53202f567e899a0c99a698df9121ba59602b3f89005f1162ddf",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793283518452738354",
+      "success": true,
+      "sourceTreeSha256": "bf4490a0aabf1819c3dd2a6a0a5393d7017feded27cf4aba9a6356c98cd196b1",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793283776458173180",
+      "success": true,
+      "sourceTreeSha256": "bf4490a0aabf1819c3dd2a6a0a5393d7017feded27cf4aba9a6356c98cd196b1",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793284231647154788",
+      "success": true,
+      "sourceTreeSha256": "553a83009ddd381bb94b28cb8dd5f736699bbded3581e2f95dfd20be7091c006",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793284627899110938",
+      "success": true,
+      "sourceTreeSha256": "553a83009ddd381bb94b28cb8dd5f736699bbded3581e2f95dfd20be7091c006",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793285417559374117",
+      "success": true,
+      "sourceTreeSha256": "553a83009ddd381bb94b28cb8dd5f736699bbded3581e2f95dfd20be7091c006",
+      "productionUnchanged": true
+    }
+  ],
+  "performanceMeasured": false,
+  "noSourceRetirementCallerAdoptionDeploymentPush": true
+}

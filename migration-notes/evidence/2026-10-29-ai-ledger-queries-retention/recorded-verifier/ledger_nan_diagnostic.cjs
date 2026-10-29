@@ -1,0 +1,10 @@
+'use strict';
+const fs=require('node:fs'),crypto=require('node:crypto');
+const bits=n=>{const b=Buffer.alloc(8);b.writeDoubleBE(n);return b.toString('hex')};
+const fields=['\u00853','garbage','NaN','\ud800','',NaN,Infinity,-Infinity];
+const convert=x=>Math.max(0,Number(x));
+const records=fields.map(x=>({input:typeof x==='string'?JSON.stringify(x):String(x),number:bits(Number(x)),max:bits(convert(x)),divide:bits(convert(x)/29.5)}));
+for(let i=0;i<100000;i++)convert(fields[i%fields.length]);
+const warm=fields.map(x=>({input:typeof x==='string'?JSON.stringify(x):String(x),number:bits(Number(x)),max:bits(convert(x)),divide:bits(convert(x)/29.5)}));
+const output={node:process.version,v8:process.versions.v8,nodeSha256:crypto.createHash('sha256').update(fs.readFileSync(process.execPath)).digest('hex'),cold:records,warm};
+fs.writeFileSync('/artifacts/ledger-query-retention/attempt2/nan-diagnostic.json',JSON.stringify(output,null,2)+'\n',{flag:'wx'});console.log(JSON.stringify(output));

@@ -1,0 +1,105 @@
+[
+  {
+    "run": "compiler-1793282783432375600",
+    "sourceTreeSha256": "c5965952d0f5e5e0130adbe6914d80635f1399f7487e617234b50b651027ee4b",
+    "unchangedFilesBoundTo": "4896f1187db57e9c551214c2e51524096dd9c33a",
+    "changedFiles": {
+      "dimabot/src/utils/ai_usage_ledger_queries.rs": {
+        "sha256": "6c6b87c56ef6330c65d798b4b5cda1783e0313299b67996aee055585dbd10b22",
+        "retainedPath": "attempt2/pre-nan-fix/dimabot/src/utils/ai_usage_ledger_queries.rs"
+      },
+      "dimabot/tests/ai_usage_ledger_queries.rs": {
+        "sha256": "eeeedcb9d3a9b768f6d41017568169d680d771346ee0527043282de19456298d",
+        "retainedPath": "attempt1/pre-format/dimabot/tests/ai_usage_ledger_queries.rs"
+      },
+      "dimabot/tests/ai_usage_retention.rs": {
+        "sha256": "2fb0d12428735c855a15a2f9bb8aac253fdccd26601e0010352cd95dd809fa20",
+        "retainedPath": "attempt1/pre-clippy/dimabot/tests/ai_usage_retention.rs"
+      },
+      "dimabot/tests/fixtures/ai_usage_ledger_queries_reference.cjs": {
+        "sha256": "141c706bd21442b83e1013d1645ec35bda77189c60bda791cdd165f6a98e8b48",
+        "retainedPath": "attempt2/pre-ast-alias/dimabot/tests/fixtures/ai_usage_ledger_queries_reference.cjs"
+      }
+    }
+  },
+  {
+    "run": "compiler-1793282968530569870",
+    "sourceTreeSha256": "5d787af6c12f0a4e483bd2ef93b5bb490d6f0c8fae5bd269ff1f50be71166d4a",
+    "unchangedFilesBoundTo": "4896f1187db57e9c551214c2e51524096dd9c33a",
+    "changedFiles": {
+      "dimabot/src/utils/ai_usage_ledger_queries.rs": {
+        "sha256": "6c6b87c56ef6330c65d798b4b5cda1783e0313299b67996aee055585dbd10b22",
+        "retainedPath": "attempt2/pre-nan-fix/dimabot/src/utils/ai_usage_ledger_queries.rs"
+      },
+      "dimabot/tests/ai_usage_ledger_queries.rs": {
+        "sha256": "a7af2db7c5396cb4272c31c0afa422083812cb362085d674e595b4192af5f73a",
+        "retainedPath": "attempt1/pre-clippy2/dimabot/tests/ai_usage_ledger_queries.rs"
+      },
+      "dimabot/tests/ai_usage_retention.rs": {
+        "sha256": "2fb0d12428735c855a15a2f9bb8aac253fdccd26601e0010352cd95dd809fa20",
+        "retainedPath": "attempt1/pre-clippy/dimabot/tests/ai_usage_retention.rs"
+      },
+      "dimabot/tests/fixtures/ai_usage_ledger_queries_reference.cjs": {
+        "sha256": "141c706bd21442b83e1013d1645ec35bda77189c60bda791cdd165f6a98e8b48",
+        "retainedPath": "attempt2/pre-ast-alias/dimabot/tests/fixtures/ai_usage_ledger_queries_reference.cjs"
+      }
+    }
+  },
+  {
+    "run": "compiler-1793283144619933516",
+    "sourceTreeSha256": "68e47fd031bcd7b5fbd4e751035479d6d48a6852e11424763896e49248f4462b",
+    "unchangedFilesBoundTo": "4896f1187db57e9c551214c2e51524096dd9c33a",
+    "changedFiles": {
+      "dimabot/src/utils/ai_usage_ledger_queries.rs": {
+        "sha256": "6c6b87c56ef6330c65d798b4b5cda1783e0313299b67996aee055585dbd10b22",
+        "retainedPath": "attempt2/pre-nan-fix/dimabot/src/utils/ai_usage_ledger_queries.rs"
+      },
+      "dimabot/tests/ai_usage_ledger_queries.rs": {
+        "sha256": "a7af2db7c5396cb4272c31c0afa422083812cb362085d674e595b4192af5f73a",
+        "retainedPath": "attempt1/pre-clippy2/dimabot/tests/ai_usage_ledger_queries.rs"
+      },
+      "dimabot/tests/ai_usage_retention.rs": {
+        "sha256": "8ca49251fe8b3855301cc3c25906ea056d89cd449ab69cad3dd67853a784edce",
+        "retainedPath": "attempt1/pre-clippy2/dimabot/tests/ai_usage_retention.rs"
+      },
+      "dimabot/tests/fixtures/ai_usage_ledger_queries_reference.cjs": {
+        "sha256": "141c706bd21442b83e1013d1645ec35bda77189c60bda791cdd165f6a98e8b48",
+        "retainedPath": "attempt2/pre-ast-alias/dimabot/tests/fixtures/ai_usage_ledger_queries_reference.cjs"
+      }
+    }
+  },
+  {
+    "run": "compiler-fixtures-1793283593482020737",
+    "sourceTreeSha256": "bf4490a0aabf1819c3dd2a6a0a5393d7017feded27cf4aba9a6356c98cd196b1",
+    "unchangedFilesBoundTo": "4896f1187db57e9c551214c2e51524096dd9c33a",
+    "changedFiles": {
+      "dimabot/src/utils/ai_usage_ledger_queries.rs": {
+        "sha256": "6c6b87c56ef6330c65d798b4b5cda1783e0313299b67996aee055585dbd10b22",
+        "retainedPath": "attempt2/pre-nan-fix/dimabot/src/utils/ai_usage_ledger_queries.rs"
+      },
+      "dimabot/tests/ai_usage_ledger_queries.rs": {
+        "sha256": "c9c41ac6045b5cd925cbf492ad13ce177668da46304644dcb1dab7b8146788c7",
+        "retainedPath": "attempt2/pre-nan-fix/dimabot/tests/ai_usage_ledger_queries.rs"
+      }
+    }
+  },
+  {
+    "run": "node-1793283433874375042",
+    "sourceTreeSha256": "6f7c4abbc5b1e53202f567e899a0c99a698df9121ba59602b3f89005f1162ddf",
+    "unchangedFilesBoundTo": "4896f1187db57e9c551214c2e51524096dd9c33a",
+    "changedFiles": {
+      "dimabot/src/utils/ai_usage_ledger_queries.rs": {
+        "sha256": "6c6b87c56ef6330c65d798b4b5cda1783e0313299b67996aee055585dbd10b22",
+        "retainedPath": "attempt2/pre-nan-fix/dimabot/src/utils/ai_usage_ledger_queries.rs"
+      },
+      "dimabot/tests/ai_usage_ledger_queries.rs": {
+        "sha256": "c9c41ac6045b5cd925cbf492ad13ce177668da46304644dcb1dab7b8146788c7",
+        "retainedPath": "attempt2/pre-nan-fix/dimabot/tests/ai_usage_ledger_queries.rs"
+      },
+      "dimabot/tests/fixtures/ai_usage_ledger_queries_reference.cjs": {
+        "sha256": "141c706bd21442b83e1013d1645ec35bda77189c60bda791cdd165f6a98e8b48",
+        "retainedPath": "attempt2/pre-ast-alias/dimabot/tests/fixtures/ai_usage_ledger_queries_reference.cjs"
+      }
+    }
+  }
+]

@@ -1,0 +1,6 @@
+[
+  {
+    "path": "artifacts/attempt2/{queries,retention}-node-provenance/root",
+    "reason": "Public445-file dependency trees and existing pinned Node executable independently hashed; manifests retained instead of vendoring packages or binaries."
+  }
+]

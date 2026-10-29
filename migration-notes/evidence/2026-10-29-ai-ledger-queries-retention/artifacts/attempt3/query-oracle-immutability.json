@@ -1,0 +1,16 @@
+{
+  "all333SourceScenariosResultsAndProtocolsUnchanged": true,
+  "publicDependenciesAndPackagesUnchanged": true,
+  "onlyChangedMetadataHashes": {
+    "src/utils/ai_usage_ledger_queries.rs": {
+      "before": "6c6b87c56ef6330c65d798b4b5cda1783e0313299b67996aee055585dbd10b22",
+      "after": "fe197e705b1db3f27f086963f02fff487ea910d6d1d714da804ec26bfd2d1d66"
+    },
+    "tests/ai_usage_ledger_queries.rs": {
+      "before": "c9c41ac6045b5cd925cbf492ad13ce177668da46304644dcb1dab7b8146788c7",
+      "after": "60e8c693a7eb8e10d2cad1a87ff8c717f8e94bb16a1823af657c6ebbefc5ae1b"
+    }
+  },
+  "oldFixtureSha256": "acdb9d124dc3af580d2e95ac2128f2afa6685c9215f16bc160a80ebfca4d5b35",
+  "newFixtureSha256": "74eaddec69a87820ff836ccffd506f956df491a60b0a93b8265c37fbe0794ab1"
+}
