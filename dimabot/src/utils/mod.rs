@@ -42,7 +42,8 @@
     feature = "ast-syntax",
     feature = "reward-body",
     feature = "tts-utilities",
-    feature = "moderation-emote-spam"
+    feature = "moderation-emote-spam",
+    feature = "moderation-caps"
 ))]
 pub mod js_compat;
 
@@ -54,11 +55,12 @@ pub mod js_compat;
     feature = "application-schemas",
     feature = "bits-rules",
     feature = "tts-utilities",
-    feature = "moderation-emote-spam"
+    feature = "moderation-emote-spam",
+    feature = "moderation-caps"
 ))]
 pub mod json_number;
 
-#[cfg(feature = "moderation-emote-spam")]
+#[cfg(any(feature = "moderation-emote-spam", feature = "moderation-caps"))]
 pub mod moderation;
 
 pub mod links;
@@ -124,7 +126,11 @@ pub mod domain_events;
 pub mod eventsub;
 #[cfg(feature = "js-date")]
 pub mod js_date;
-#[cfg(any(feature = "tts-utilities", feature = "permissions"))]
+#[cfg(any(
+    feature = "tts-utilities",
+    feature = "permissions",
+    feature = "moderation-caps"
+))]
 pub mod js_string;
 #[cfg(feature = "keywords")]
 pub mod keywords;
