@@ -576,6 +576,14 @@ fn relational_greater(left: Option<&Bson>, right: Option<&Bson>) -> PersistenceR
 pub struct DailyRows {
     rows: Vec<(Bson, DailyRow)>,
 }
+impl DailyRows {
+    pub fn len(&self) -> usize {
+        self.rows.len()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.rows.is_empty()
+    }
+}
 #[derive(Clone, Debug)]
 struct DailyRow {
     spent: Sum,
