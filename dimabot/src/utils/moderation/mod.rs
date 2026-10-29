@@ -18,3 +18,6 @@ pub mod spam_categories;
 
 #[cfg(feature = "moderation-permit")]
 pub mod permit;
+
+#[cfg(feature = "moderation-offenses")]
+pub mod offenses;

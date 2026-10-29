@@ -45,7 +45,8 @@
     feature = "moderation-emote-spam",
     feature = "moderation-caps",
     feature = "js-unicode17",
-    feature = "moderation-spam-categories"
+    feature = "moderation-spam-categories",
+    feature = "moderation-offenses"
 ))]
 pub mod js_compat;
 
@@ -59,7 +60,8 @@ pub mod js_compat;
     feature = "tts-utilities",
     feature = "moderation-emote-spam",
     feature = "moderation-caps",
-    feature = "moderation-permit"
+    feature = "moderation-permit",
+    feature = "moderation-offenses"
 ))]
 pub mod json_number;
 
@@ -69,7 +71,8 @@ pub mod json_number;
     feature = "moderation-normalize",
     feature = "moderation-links",
     feature = "moderation-spam-categories",
-    feature = "moderation-permit"
+    feature = "moderation-permit",
+    feature = "moderation-offenses"
 ))]
 pub mod moderation;
 
@@ -141,7 +144,8 @@ pub mod js_date;
     feature = "permissions",
     feature = "moderation-caps",
     feature = "js-unicode17",
-    feature = "moderation-spam-categories"
+    feature = "moderation-spam-categories",
+    feature = "moderation-offenses"
 ))]
 pub mod js_string;
 #[cfg(feature = "js-unicode17")]
