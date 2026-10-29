@@ -93,6 +93,8 @@ pub mod ai_credit_projection;
 pub mod ai_usage;
 #[cfg(feature = "ai-usage-producer")]
 pub mod ai_usage_producer;
+#[cfg(feature = "ai-usage-receipt-parser")]
+pub mod ai_usage_receipt_parser;
 #[cfg(feature = "chat-events")]
 pub mod chat_events;
 #[cfg(feature = "command-utils")]
