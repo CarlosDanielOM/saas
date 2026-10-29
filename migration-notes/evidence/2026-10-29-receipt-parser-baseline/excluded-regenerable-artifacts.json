@@ -1,0 +1,8 @@
+[
+  {
+    "path": "lookup-diagnostic/profile",
+    "sha256": "a9544d0e97fadff727649194ffd2b75c90e714203bcb1d1ae6499a76fe3d4a9e",
+    "bytes": 6969208,
+    "reason": "Regenerable diagnostic executable; source, read-only compile command, release rlib hash/fingerprint and results retained."
+  }
+]

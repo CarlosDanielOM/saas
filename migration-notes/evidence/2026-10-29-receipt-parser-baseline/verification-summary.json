@@ -1,0 +1,106 @@
+{
+  "status": "Verified synthetic baseline; four Rust performance regressions remain open, two pools faster.",
+  "codeCommit": "0389561e6004d3a8f7bc10ca73b3bc49a9016e5e",
+  "sourceTreeSha256": "8dbce36238ca2323d795782d1dc7032f66a372df9053a9e6a56d11df4d7f428a",
+  "sourceInputs": 1275,
+  "sourceWires": 192,
+  "pools": 6,
+  "inputsPerPool": 32,
+  "trialsPerPool": 7,
+  "compilerRun": "compiler-1793274264064252684",
+  "strictRun": "compiler-1793274083369420275",
+  "postNodeRun": "node-1793274460403768280",
+  "diagnosticRun": "compiler-1793274681760889459",
+  "initialLintFailure": "compiler-1793274004764681420",
+  "timedTestSeconds": 41.21,
+  "steps": [
+    {
+      "name": "bootstrap",
+      "seconds": 3.664,
+      "exit_code": 0
+    },
+    {
+      "name": "locked-fetch",
+      "seconds": 2.12,
+      "exit_code": 0
+    },
+    {
+      "name": "compiler",
+      "seconds": 149.233,
+      "exit_code": 0
+    }
+  ],
+  "totalSeconds": 156.805,
+  "limits": {
+    "cpus": 6,
+    "memory": 4294967296,
+    "memory_swap": 4294967296,
+    "pids": 256,
+    "cargo_jobs": 2
+  },
+  "peakCacheBytes": 8169611264,
+  "minimumAvailableBytes": 10518982656,
+  "runs": [
+    {
+      "receipt": "runs/compiler-1793274004764681420-receipt.json.gz",
+      "log": "runs/compiler-1793274004764681420.log.gz",
+      "phase": "compiler",
+      "success": false,
+      "source_tree_sha256": "50f6ef41bbc0bf0f6a601b595259d5ba1bedee76be9025fe51ce9941dae95946",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/compiler-1793274083369420275-receipt.json.gz",
+      "log": "runs/compiler-1793274083369420275.log.gz",
+      "phase": "compiler",
+      "success": true,
+      "source_tree_sha256": "8dbce36238ca2323d795782d1dc7032f66a372df9053a9e6a56d11df4d7f428a",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/compiler-1793274264064252684-receipt.json.gz",
+      "log": "runs/compiler-1793274264064252684.log.gz",
+      "phase": "compiler",
+      "success": true,
+      "source_tree_sha256": "8dbce36238ca2323d795782d1dc7032f66a372df9053a9e6a56d11df4d7f428a",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/compiler-1793274681760889459-receipt.json.gz",
+      "log": "runs/compiler-1793274681760889459.log.gz",
+      "phase": "compiler",
+      "success": true,
+      "source_tree_sha256": "8dbce36238ca2323d795782d1dc7032f66a372df9053a9e6a56d11df4d7f428a",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/format-1793273842956129714-receipt.json.gz",
+      "log": "runs/format-1793273842956129714.log.gz",
+      "phase": "format",
+      "success": true,
+      "source_tree_sha256": "449c90c96a7136317271bb1085fcaaac7bc2f4105c5d33e116aa49309a5ddb17",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/node-1793274189948131358-receipt.json.gz",
+      "log": "runs/node-1793274189948131358.log.gz",
+      "phase": "node",
+      "success": true,
+      "source_tree_sha256": "8dbce36238ca2323d795782d1dc7032f66a372df9053a9e6a56d11df4d7f428a",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/node-1793274460403768280-receipt.json.gz",
+      "log": "runs/node-1793274460403768280.log.gz",
+      "phase": "node",
+      "success": true,
+      "source_tree_sha256": "8dbce36238ca2323d795782d1dc7032f66a372df9053a9e6a56d11df4d7f428a",
+      "production_unchanged": true
+    }
+  ],
+  "comparison": "artifacts/initial-benchmark-comparison.json",
+  "readback": "artifacts/initial-final-readback.json",
+  "scope": "Prepared input parsing, ordered JSON wire encoding and UTF-8 byte checksum only; no Redis/Mongo/I/O/input setup, CPU, RSS or whole-application claim.",
+  "CPUandRSSmeasured": false,
+  "noSourceRetirementCallerAdoptionDeploymentPush": true
+}

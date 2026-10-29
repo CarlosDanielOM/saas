@@ -1,0 +1,100 @@
+{
+  "sourceTreeSha256": "8dbce36238ca2323d795782d1dc7032f66a372df9053a9e6a56d11df4d7f428a",
+  "rlibSha256": "35d6b348c48f6948817bef13d8182fe93709048dbcb7d9e8bd5d9d795ce743a3",
+  "fingerprint": {
+    "rustc": 3749159112502741763,
+    "features": "[\"ai-usage\", \"ai-usage-receipt-parser\", \"credit-policy\", \"js-date\", \"lossless-json-view\", \"mongo\", \"tts-utilities\"]",
+    "declared_features": "[\"ai-credit-projection\", \"ai-usage\", \"ai-usage-lock\", \"ai-usage-producer\", \"ai-usage-receipt-parser\", \"application-schemas\", \"ast-blocks\", \"ast-evaluator\", \"ast-pure-functions\", \"ast-syntax\", \"audio\", \"bits-rules\", \"bot-utils\", \"channel-tts-settings\", \"chat-events\", \"chat-message\", \"command-utils\", \"credential-crypto\", \"credit-policy\", \"cron-queue\", \"cron-supervisor\", \"default\", \"domain-event-runtime\", \"domain-events\", \"email\", \"eventsub\", \"http\", \"http-client\", \"http-form\", \"http-multipart\", \"http-static\", \"http-ws\", \"js-date\", \"jwt\", \"keyword-store\", \"keywords\", \"logger\", \"logger-otel\", \"logger-redis\", \"lossless-json-view\", \"mongo\", \"observability\", \"otel\", \"permissions\", \"plan-cache\", \"polar-client\", \"postgres\", \"posthog\", \"posthog-benchmark\", \"posthog-lossless\", \"posthog-tracking\", \"qdrant\", \"re2-compat\", \"redis\", \"reward-body\", \"s3\", \"socketio\", \"timer-policy\", \"tts-services\", \"tts-utilities\", \"twitch-client\", \"twitch-emotes\", \"twitch-functions\", \"twitch-streamers\", \"twitch-streamers-posthog\", \"twitch-tokens\", \"unicode-collation\"]",
+    "target": 17625200589214727996,
+    "profile": 854319013279132213,
+    "path": 10763286916239946207,
+    "deps": [
+      [
+        310359321821557790,
+        "regex",
+        false,
+        12090147972022802450
+      ],
+      [
+        1713407893597586805,
+        "tokio",
+        false,
+        1293844699813849946
+      ],
+      [
+        1989211782969141762,
+        "mongodb",
+        false,
+        6568473094225311705
+      ],
+      [
+        3405707034081185165,
+        "dotenvy",
+        false,
+        12004297948830824557
+      ],
+      [
+        6444209561448300374,
+        "futures_util",
+        false,
+        16725661750767007116
+      ],
+      [
+        6557439603276904804,
+        "serde",
+        false,
+        12133611739033278181
+      ],
+      [
+        8160210889872729633,
+        "serde_json",
+        false,
+        2333066629075580089
+      ],
+      [
+        8409724296477017820,
+        "rustls",
+        false,
+        9453311851178222467
+      ],
+      [
+        8965365795984555791,
+        "uuid",
+        false,
+        4582224494649362129
+      ],
+      [
+        9857275760291862238,
+        "sha2",
+        false,
+        14285222904352814923
+      ],
+      [
+        17248027142789078851,
+        "garde",
+        false,
+        10626190635400413533
+      ],
+      [
+        18070707816531966863,
+        "libc",
+        false,
+        9018909453144393377
+      ]
+    ],
+    "local": [
+      {
+        "CheckDepInfo": {
+          "dep_info": "release/.fingerprint/dima-rust-876f99c816a4cba7/dep-lib-dima_rust",
+          "checksum": false
+        }
+      }
+    ],
+    "rustflags": [],
+    "config": 9396254390672932401,
+    "compile_kind": 0
+  },
+  "profileSourceSha256": "0277cbcacdb38f6ce23644c989e248cbdf4913e19f6ea892e08f72c52418a224",
+  "inputSha256": "5528e8561c9dd9df464f71e1a4399dcde9fa13af61f34f978ddd9c6d95f55c84",
+  "scope": "Single ASCII source input, native stage diagnostic; twenty lookups approximate parser get calls. No TypeScript or whole-app performance comparison."
+}
