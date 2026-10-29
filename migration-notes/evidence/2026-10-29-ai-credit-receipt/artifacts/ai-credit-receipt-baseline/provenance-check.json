@@ -1,0 +1,10 @@
+{
+  "producerCases": 338,
+  "producerTierCases": 20,
+  "producerSourceAssertions": 3325,
+  "producerSourceBindings": 25,
+  "projectionCases": 1956,
+  "projectionSourceBindings": 7,
+  "benchmarkSourceBindings": 24,
+  "benchmarkInputSha256": "72a0a095c23891dd0b38bdc095ad5b09018c20dd5f7df98da3bd004e07f34fda"
+}

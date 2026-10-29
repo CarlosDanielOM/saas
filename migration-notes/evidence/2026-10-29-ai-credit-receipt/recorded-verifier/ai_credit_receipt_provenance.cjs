@@ -1,0 +1,14 @@
+const fs=require('node:fs'),crypto=require('node:crypto'),path=require('node:path');
+const root='/source/dimabot',base='/artifacts/ai-credit-receipt';
+const sha=file=>crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+const resolve=k=>({node:process.execPath,typescript:require.resolve(`${root}/node_modules/typescript`),typescriptPackage:require.resolve(`${root}/node_modules/typescript/package.json`),reader:`${root}/tests/fixtures/ai_usage_producer_reference.cjs`,loader:`${root}/tests/fixtures/ai_usage_producer_source.cjs`})[k]??path.resolve(root,k);
+const producer=JSON.parse(fs.readFileSync(`${base}/producer/ai_usage_producer_reference.json`));
+for(const [k,v]of Object.entries(producer.metadata.hashes))if(sha(resolve(k))!==v)throw Error(`producer source binding ${k}`);
+const projection=JSON.parse(fs.readFileSync(`${base}/projection/ai_credit_projection_reference.json`));
+const projectionFiles={source:`${root}/src/utils/billing.ts`,oracle:`${root}/tests/fixtures/ai_credit_projection_reference.cjs`,package:`${root}/package.json`,lock:`${root}/package-lock.json`};
+for(const [k,v]of Object.entries(projection.metadata.hashes))if(sha(projectionFiles[k]??resolve(k))!==v)throw Error(`projection source binding ${k}`);
+const benchmark=JSON.parse(fs.readFileSync(`${base}/producer-benchmark/ai-usage-producer-benchmark-input.json`));
+for(const[k,v]of Object.entries(benchmark.hashes))if(sha(resolve(k))!==v)throw Error(`benchmark source binding ${k}`);
+for(const[k,record]of Object.entries(JSON.parse(fs.readFileSync(`${base}/runtime-provenance/files.json`))))if(record.sha256!==sha(`${base}/runtime-provenance/${k}`)||record.sha256!==projection.metadata.hashes[k])throw Error(`runtime provenance ${k}`);
+const report={producerCases:producer.cases.length,producerTierCases:producer.tiers.length,producerSourceAssertions:producer.metadata.assertionCount,producerSourceBindings:Object.keys(producer.metadata.hashes).length,projectionCases:projection.cases.length,projectionSourceBindings:Object.keys(projection.metadata.hashes).length,benchmarkSourceBindings:Object.keys(benchmark.hashes).length,benchmarkInputSha256:sha(`${base}/producer-benchmark/ai-usage-producer-benchmark-input.json`)};
+fs.writeFileSync(`${base}/provenance-check.json`,JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report));

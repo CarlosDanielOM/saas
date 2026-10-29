@@ -1,0 +1,11 @@
+{
+  "productionRecordsCompared": 19,
+  "productionUnchanged": true,
+  "acceptedFingerprintSha256": "b0c26ff54fb02f5cdc83c5e3effa1568d1fb4e882e8c33f48c0dd07cc4475f0b",
+  "ownedResourcesRemaining": {
+    "containers": [],
+    "networks": [],
+    "volumes": []
+  },
+  "sourceTreeSha256": "02ab55a9d484c01af695793b55d6313280f30080c76db5ad9b5a909b440ac78f"
+}

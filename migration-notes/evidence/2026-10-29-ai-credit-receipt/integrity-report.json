@@ -1,0 +1,17 @@
+{
+  "sourceSnapshotFilesVerified": 1243,
+  "sourceTreeSha256": "02ab55a9d484c01af695793b55d6313280f30080c76db5ad9b5a909b440ac78f",
+  "gitSourceBindingsVerified": 32,
+  "baselineGitSourceBindingsVerified": 32,
+  "gzipRawPayloadsVerified": 34,
+  "runReceiptLogPairsVerified": 14,
+  "allRunProductionComparisonsUnchanged": true,
+  "onlyMatrixRowsChanged": [
+    "src/utils/ai_usage_ledger.ts",
+    "src/utils/billing.ts"
+  ],
+  "otherMatrixRowsUnchanged": 804,
+  "topLevelMatrixCompletionUnchanged": true,
+  "visualHtmlHashVerified": true,
+  "checks": "Full frozen source files match current checkout; Git blobs match source bindings; gzip hash and lengths match; retained receipt paths exist; all run outcomes preserved; local documentation links resolve."
+}

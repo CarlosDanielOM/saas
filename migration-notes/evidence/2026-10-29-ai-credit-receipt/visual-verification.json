@@ -1,0 +1,20 @@
+{
+  "htmlSha256": "a18c9eb835e057137e2d7f67d4d9b9812931d7d1b4356de185458df0b6950864",
+  "previewChecks": [
+    {
+      "width": 390,
+      "appearance": "dark",
+      "contentHeight": 2616,
+      "consoleMessages": []
+    },
+    {
+      "width": 718,
+      "appearance": "dark",
+      "contentHeight": 2222,
+      "consoleMessages": []
+    }
+  ],
+  "inspection": "Both screenshots reviewed for legible values, responsive bars and lack of horizontal overflow. Native details elements retain raw trials; no automated interaction or performance claim from visual preview.",
+  "renderAttachmentId": "9cc467f1-f5c3-45a8-989a-e8e02361df4b-8d2745b2-0d66-4832-82f3-40ee571af073-html",
+  "renderHeight": 2000
+}

@@ -1,0 +1,137 @@
+{
+  "sourceTreeSha256": "02ab55a9d484c01af695793b55d6313280f30080c76db5ad9b5a909b440ac78f",
+  "compilerRun": "compiler-fixtures-1793256739341677553",
+  "nodePostRun": "node-1793256972582181383",
+  "allReportedTestExecutions": 26,
+  "testTargetPassedCounts": [
+    19,
+    4,
+    0,
+    1,
+    1,
+    1
+  ],
+  "limits": {
+    "cpus": 6,
+    "memory": 4294967296,
+    "memory_swap": 4294967296,
+    "pids": 256,
+    "cargo_jobs": 2
+  },
+  "peakCacheBytes": 8490975232,
+  "minimumHostAvailableBytes": 8203841536,
+  "compilerScriptSeconds": 174.613,
+  "compilerTotalSeconds": 184.692,
+  "runs": [
+    {
+      "receipt": "runs/compiler-fixtures-1793255399962290566-receipt.json.gz",
+      "log": "runs/compiler-fixtures-1793255399962290566.log.gz",
+      "phase": "compiler-fixtures",
+      "success": false,
+      "source_tree_sha256": "9fe637b44377b20a02fced9512b28ca9017715a469f893148d68439d8e6c03cc"
+    },
+    {
+      "receipt": "runs/compiler-fixtures-1793255901565235359-receipt.json.gz",
+      "log": "runs/compiler-fixtures-1793255901565235359.log.gz",
+      "phase": "compiler-fixtures",
+      "success": false,
+      "source_tree_sha256": "91418dae6af68b2a2050bac973c0e0ead1ed2334131f3ed2f05a4f749cf3f2c3"
+    },
+    {
+      "receipt": "runs/compiler-fixtures-1793256016693648238-receipt.json.gz",
+      "log": "runs/compiler-fixtures-1793256016693648238.log.gz",
+      "phase": "compiler-fixtures",
+      "success": false,
+      "source_tree_sha256": "2c473c4f458e5c9a8e23b69de002c64acaf60b17fdb8b4a0108b372833385560"
+    },
+    {
+      "receipt": "runs/compiler-fixtures-1793256166045626940-receipt.json.gz",
+      "log": "runs/compiler-fixtures-1793256166045626940.log.gz",
+      "phase": "compiler-fixtures",
+      "success": true,
+      "source_tree_sha256": "77fc976da064a87c02ec1fce93cd0e4820dfe53a7eac9feb5fab453c482d80f7"
+    },
+    {
+      "receipt": "runs/compiler-fixtures-1793256739341677553-receipt.json.gz",
+      "log": "runs/compiler-fixtures-1793256739341677553.log.gz",
+      "phase": "compiler-fixtures",
+      "success": true,
+      "source_tree_sha256": "02ab55a9d484c01af695793b55d6313280f30080c76db5ad9b5a909b440ac78f"
+    },
+    {
+      "receipt": "runs/format-1793254981405544348-receipt.json.gz",
+      "log": "runs/format-1793254981405544348.log.gz",
+      "phase": "format",
+      "success": true,
+      "source_tree_sha256": "81b47794fc04aaed18aa24c1994fbcfa641bbf4cf79505fd7d16ddaf909f426e"
+    },
+    {
+      "receipt": "runs/format-1793256687281032300-receipt.json.gz",
+      "log": "runs/format-1793256687281032300.log.gz",
+      "phase": "format",
+      "success": true,
+      "source_tree_sha256": "02ab55a9d484c01af695793b55d6313280f30080c76db5ad9b5a909b440ac78f"
+    },
+    {
+      "receipt": "runs/node-1793255190094375028-receipt.json.gz",
+      "log": "runs/node-1793255190094375028.log.gz",
+      "phase": "node",
+      "success": true,
+      "source_tree_sha256": "9fe637b44377b20a02fced9512b28ca9017715a469f893148d68439d8e6c03cc"
+    },
+    {
+      "receipt": "runs/node-1793255888895301598-receipt.json.gz",
+      "log": "runs/node-1793255888895301598.log.gz",
+      "phase": "node",
+      "success": true,
+      "source_tree_sha256": "91418dae6af68b2a2050bac973c0e0ead1ed2334131f3ed2f05a4f749cf3f2c3"
+    },
+    {
+      "receipt": "runs/node-1793256001477852492-receipt.json.gz",
+      "log": "runs/node-1793256001477852492.log.gz",
+      "phase": "node",
+      "success": true,
+      "source_tree_sha256": "2c473c4f458e5c9a8e23b69de002c64acaf60b17fdb8b4a0108b372833385560"
+    },
+    {
+      "receipt": "runs/node-1793256142818701732-receipt.json.gz",
+      "log": "runs/node-1793256142818701732.log.gz",
+      "phase": "node",
+      "success": true,
+      "source_tree_sha256": "77fc976da064a87c02ec1fce93cd0e4820dfe53a7eac9feb5fab453c482d80f7"
+    },
+    {
+      "receipt": "runs/node-1793256476785298801-receipt.json.gz",
+      "log": "runs/node-1793256476785298801.log.gz",
+      "phase": "node",
+      "success": true,
+      "source_tree_sha256": "77fc976da064a87c02ec1fce93cd0e4820dfe53a7eac9feb5fab453c482d80f7"
+    },
+    {
+      "receipt": "runs/node-1793256716821051050-receipt.json.gz",
+      "log": "runs/node-1793256716821051050.log.gz",
+      "phase": "node",
+      "success": true,
+      "source_tree_sha256": "02ab55a9d484c01af695793b55d6313280f30080c76db5ad9b5a909b440ac78f"
+    },
+    {
+      "receipt": "runs/node-1793256972582181383-receipt.json.gz",
+      "log": "runs/node-1793256972582181383.log.gz",
+      "phase": "node",
+      "success": true,
+      "source_tree_sha256": "02ab55a9d484c01af695793b55d6313280f30080c76db5ad9b5a909b440ac78f"
+    }
+  ],
+  "sourceBindings": 32,
+  "coverage": {
+    "creditSourceCases": 1956,
+    "producerReceiptCases": 338,
+    "producerRetentionCases": 20,
+    "producerSourceAssertions": 3325
+  },
+  "baselineCompilerRun": "compiler-fixtures-1793256166045626940",
+  "baselineNodePostRun": "node-1793256476785298801",
+  "baselineReportedTestExecutions": 178,
+  "checks": "Baseline: fmt, both standalone feature all-target check and strict Clippy, all-features all-target check and strict Clippy, no-default-feature all-target check, ordinary dependency regressions, exact source and real disposable Redis replays, release benchmark. Final producer-only change: fmt, producer ordinary/source/private Redis replays, producer standalone and all-feature all-target check/strict Clippy, no-feature check, release benchmark. Unchanged credit and TTS behavior evidence remains tied to baseline source bindings.",
+  "notes": "Execution totals include overlapping dependencies and a subprocess-only no-op helper entry, not unique test cases. No production mutation, caller adoption, source retirement, deployment or push."
+}

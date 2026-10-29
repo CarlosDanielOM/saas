@@ -1,0 +1,1236 @@
+{
+  "format": 1,
+  "title": "AI usage receipt benchmark",
+  "scope": {
+    "included": [
+      "prepared receipt construction",
+      "JSON encoding",
+      "UTF-8 byte sum"
+    ],
+    "excluded": [
+      "Redis",
+      "setup",
+      "parsing",
+      "clock I/O",
+      "full API latency",
+      "CPU usage",
+      "RSS"
+    ],
+    "entryKind": "usage",
+    "adjustments": "Correctness covered elsewhere; not timed.",
+    "deployment": "No deployment or global-performance claim."
+  },
+  "method": {
+    "trials": 7,
+    "inputsPerWorkload": 32,
+    "warmupOperations": 32000,
+    "units": "microseconds per operation",
+    "medianCalculation": "median of seven elapsed nanosecond samples / iterations / 1000",
+    "ranges": "observed trial min/max, not confidence intervals",
+    "speedupCalculation": "TypeScript median elapsed ns / Rust median elapsed ns",
+    "checksumCalculation": "sum of 32 expected-wire UTF-8 byte sums \u00d7 (iterations / 32), modulo 2^32"
+  },
+  "sources": {
+    "baseline": {
+      "inputPath": "artifacts/ai-credit-receipt-baseline/producer-benchmark/ai-usage-producer-benchmark-input.json.gz",
+      "uncompressedInputSha256": "72a0a095c23891dd0b38bdc095ad5b09018c20dd5f7df98da3bd004e07f34fda",
+      "reports": {
+        "node": {
+          "path": "artifacts/ai-credit-receipt-baseline/producer-benchmark/ai-usage-producer-node-benchmark.json",
+          "sha256": "161364a0244335f5b52c33effa09756b63913fca32deb9ec8393c0ca16d16160"
+        },
+        "rust": {
+          "path": "artifacts/ai-credit-receipt-baseline/producer-benchmark/ai-usage-producer-rust-benchmark.json",
+          "sha256": "58792bcb6cde9f4de2dcfd089cab4b68736c8afe749522c8b9f301fe146c17ca"
+        }
+      }
+    },
+    "optimized": {
+      "inputPath": "artifacts/ai-credit-receipt/producer-benchmark/ai-usage-producer-benchmark-input.json.gz",
+      "uncompressedInputSha256": "2a281ba3d198a30f81b84eff7a53b907344c57027e2ac203d900583d52895732",
+      "reports": {
+        "node": {
+          "path": "artifacts/ai-credit-receipt/producer-benchmark/ai-usage-producer-node-benchmark.json",
+          "sha256": "4e42d983fd71421fab090658673fc0087eb6ad4b43e2c9e1a33312b93f6d03bf"
+        },
+        "rust": {
+          "path": "artifacts/ai-credit-receipt/producer-benchmark/ai-usage-producer-rust-benchmark.json",
+          "sha256": "10e72e924e756dd030afbb1f1a1c3f26fccf75f6dca403de41ae889ca8ad5806"
+        }
+      }
+    }
+  },
+  "verification": {
+    "inputHashesMatchReports": true,
+    "recomputedReportMediansMatch": true,
+    "allSampleChecksumsMatchPreparedExpectedWireChecksums": true,
+    "reportSampleChecksumsVerified": 140,
+    "typescriptSevenTrialsPerWorkloadReusedUnchanged": true,
+    "preparedWorkloadsUnchanged": true,
+    "changedSourceHashes": [
+      "src/utils/ai_usage_producer.rs"
+    ],
+    "reuseAuditPath": "artifacts/ai-credit-receipt/benchmark-reuse-audit.json",
+    "reuseAuditSha256": "1d8eb9d5bc375a6c1f29ada7db1d20567f968f9909611b64347858903c734115",
+    "reuseAudit": {
+      "baselineInputSha256": "72a0a095c23891dd0b38bdc095ad5b09018c20dd5f7df98da3bd004e07f34fda",
+      "inputSha256": "2a281ba3d198a30f81b84eff7a53b907344c57027e2ac203d900583d52895732",
+      "baselineNodeReportSha256": "161364a0244335f5b52c33effa09756b63913fca32deb9ec8393c0ca16d16160",
+      "changedSourceHashes": [
+        "src/utils/ai_usage_producer.rs"
+      ],
+      "behaviorRecordsIdentical": true,
+      "nodeTrialsReusedUnchanged": true,
+      "changedReportFields": [
+        "inputSha256"
+      ],
+      "scope": "Only native core provenance rebound; source TypeScript, harness, prepared payloads, expected wires, checksums and seven timing trials unchanged."
+    }
+  },
+  "workloads": [
+    {
+      "name": "typed-ascii",
+      "label": "Typed ASCII",
+      "iterationsPerTrial": 262144,
+      "warmupOperations": 32000,
+      "inputs": 32,
+      "trials": 7,
+      "entryKinds": [
+        "usage"
+      ],
+      "series": {
+        "typescript": {
+          "medianElapsedNs": 1438713033,
+          "medianUsPerOp": 5.488254673004151,
+          "minUsPerOp": 5.165686855316162,
+          "maxUsPerOp": 5.782744155883789,
+          "samplesElapsedNs": [
+            1515911684,
+            1470863798,
+            1438713033,
+            1443808027,
+            1354153815,
+            1390233851,
+            1378165905
+          ],
+          "samplesUsPerOp": [
+            5.782744155883789,
+            5.610900108337402,
+            5.488254673004151,
+            5.507690532684326,
+            5.165686855316162,
+            5.303321269989014,
+            5.257285709381104
+          ],
+          "sampleChecksums": [
+            4237066240,
+            4237066240,
+            4237066240,
+            4237066240,
+            4237066240,
+            4237066240,
+            4237066240
+          ],
+          "expectedChecksum": 4237066240
+        },
+        "baselineRust": {
+          "medianElapsedNs": 1463532829,
+          "medianUsPerOp": 5.58293468093872,
+          "minUsPerOp": 5.27387349319458,
+          "maxUsPerOp": 6.0023300743103025,
+          "samplesElapsedNs": [
+            1382514293,
+            1450581559,
+            1557690587,
+            1414126610,
+            1463532829,
+            1573474815,
+            1508841302
+          ],
+          "samplesUsPerOp": [
+            5.27387349319458,
+            5.533529506683349,
+            5.942118022918701,
+            5.394464912414551,
+            5.58293468093872,
+            6.0023300743103025,
+            5.7557727890014645
+          ],
+          "sampleChecksums": [
+            4237066240,
+            4237066240,
+            4237066240,
+            4237066240,
+            4237066240,
+            4237066240,
+            4237066240
+          ],
+          "expectedChecksum": 4237066240
+        },
+        "optimizedRust": {
+          "medianElapsedNs": 1239863714,
+          "medianUsPerOp": 4.729704719543457,
+          "minUsPerOp": 4.436103126525879,
+          "maxUsPerOp": 5.310830543518066,
+          "samplesElapsedNs": [
+            1162897818,
+            1238784392,
+            1200115587,
+            1256966452,
+            1392202362,
+            1239863714,
+            1346119577
+          ],
+          "samplesUsPerOp": [
+            4.436103126525879,
+            4.725587432861328,
+            4.578077648162842,
+            4.794946487426758,
+            5.310830543518066,
+            4.729704719543457,
+            5.135038669586182
+          ],
+          "sampleChecksums": [
+            4237066240,
+            4237066240,
+            4237066240,
+            4237066240,
+            4237066240,
+            4237066240,
+            4237066240
+          ],
+          "expectedChecksum": 4237066240
+        }
+      },
+      "ratios": {
+        "typescriptOverOptimizedRust": 1.1603799810855664,
+        "typescriptOverBaselineRust": 0.983041175771261,
+        "optimizedTimeReductionVsBaselineRustPercent": 15.282821851890283,
+        "baselineRustTimeDifferenceVsTypeScriptPercent": 1.7251387476657332
+      },
+      "optimizedAndTypeScriptObservedRangesOverlap": true
+    },
+    {
+      "name": "typed-unicode",
+      "label": "Typed Unicode",
+      "iterationsPerTrial": 262144,
+      "warmupOperations": 32000,
+      "inputs": 32,
+      "trials": 7,
+      "entryKinds": [
+        "usage"
+      ],
+      "series": {
+        "typescript": {
+          "medianElapsedNs": 1729446603,
+          "medianUsPerOp": 6.5973152275085445,
+          "minUsPerOp": 6.073261005401611,
+          "maxUsPerOp": 9.650073028564453,
+          "samplesElapsedNs": [
+            2480720528,
+            2529708744,
+            1649447506,
+            1616519945,
+            1741656454,
+            1592068933,
+            1729446603
+          ],
+          "samplesUsPerOp": [
+            9.463197814941406,
+            9.650073028564453,
+            6.292142890930176,
+            6.166534214019776,
+            6.643892112731933,
+            6.073261005401611,
+            6.5973152275085445
+          ],
+          "sampleChecksums": [
+            279674880,
+            279674880,
+            279674880,
+            279674880,
+            279674880,
+            279674880,
+            279674880
+          ],
+          "expectedChecksum": 279674880
+        },
+        "baselineRust": {
+          "medianElapsedNs": 1496850531,
+          "medianUsPerOp": 5.710031627655029,
+          "minUsPerOp": 5.586934062957764,
+          "maxUsPerOp": 5.837971748352051,
+          "samplesElapsedNs": [
+            1484760634,
+            1516040207,
+            1496850531,
+            1500955590,
+            1481026639,
+            1530389266,
+            1464581243
+          ],
+          "samplesUsPerOp": [
+            5.663912330627442,
+            5.783234432220459,
+            5.710031627655029,
+            5.725691184997559,
+            5.649668270111084,
+            5.837971748352051,
+            5.586934062957764
+          ],
+          "sampleChecksums": [
+            279674880,
+            279674880,
+            279674880,
+            279674880,
+            279674880,
+            279674880,
+            279674880
+          ],
+          "expectedChecksum": 279674880
+        },
+        "optimizedRust": {
+          "medianElapsedNs": 1257867278,
+          "medianUsPerOp": 4.7983828659057615,
+          "minUsPerOp": 4.684851829528808,
+          "maxUsPerOp": 5.088942726135254,
+          "samplesElapsedNs": [
+            1249207237,
+            1257725494,
+            1323813232,
+            1257867278,
+            1334035802,
+            1272762231,
+            1228105798
+          ],
+          "samplesUsPerOp": [
+            4.765347431182861,
+            4.797842002868652,
+            5.049946716308594,
+            4.7983828659057615,
+            5.088942726135254,
+            4.855202602386474,
+            4.684851829528808
+          ],
+          "sampleChecksums": [
+            279674880,
+            279674880,
+            279674880,
+            279674880,
+            279674880,
+            279674880,
+            279674880
+          ],
+          "expectedChecksum": 279674880
+        }
+      },
+      "ratios": {
+        "typescriptOverOptimizedRust": 1.3749038815524384,
+        "typescriptOverBaselineRust": 1.1553903126483909,
+        "optimizedTimeReductionVsBaselineRustPercent": 15.965739267256208,
+        "baselineRustTimeDifferenceVsTypeScriptPercent": -13.449161806818733
+      },
+      "optimizedAndTypeScriptObservedRangesOverlap": false
+    },
+    {
+      "name": "lossless-nullish",
+      "label": "Lossless nullish",
+      "iterationsPerTrial": 262144,
+      "warmupOperations": 32000,
+      "inputs": 32,
+      "trials": 7,
+      "entryKinds": [
+        "usage"
+      ],
+      "series": {
+        "typescript": {
+          "medianElapsedNs": 1382239756,
+          "medianUsPerOp": 5.272826217651367,
+          "minUsPerOp": 5.146812580108643,
+          "maxUsPerOp": 5.392943534851074,
+          "samplesElapsedNs": [
+            1406773452,
+            1413727790,
+            1373009887,
+            1349206037,
+            1372821684,
+            1382239756,
+            1394546040
+          ],
+          "samplesUsPerOp": [
+            5.366414840698242,
+            5.392943534851074,
+            5.237617061614991,
+            5.146812580108643,
+            5.236899124145507,
+            5.272826217651367,
+            5.319770965576172
+          ],
+          "sampleChecksums": [
+            3817914368,
+            3817914368,
+            3817914368,
+            3817914368,
+            3817914368,
+            3817914368,
+            3817914368
+          ],
+          "expectedChecksum": 3817914368
+        },
+        "baselineRust": {
+          "medianElapsedNs": 1505189221,
+          "medianUsPerOp": 5.7418412055969235,
+          "minUsPerOp": 5.412418426513672,
+          "maxUsPerOp": 5.8616473083496095,
+          "samplesElapsedNs": [
+            1418833016,
+            1435042560,
+            1448134624,
+            1505189221,
+            1535592153,
+            1534650588,
+            1536595672
+          ],
+          "samplesUsPerOp": [
+            5.412418426513672,
+            5.4742529296875,
+            5.524195190429688,
+            5.7418412055969235,
+            5.857819187164306,
+            5.854227401733398,
+            5.8616473083496095
+          ],
+          "sampleChecksums": [
+            3817914368,
+            3817914368,
+            3817914368,
+            3817914368,
+            3817914368,
+            3817914368,
+            3817914368
+          ],
+          "expectedChecksum": 3817914368
+        },
+        "optimizedRust": {
+          "medianElapsedNs": 1292881078,
+          "medianUsPerOp": 4.931949913024902,
+          "minUsPerOp": 4.717353897094727,
+          "maxUsPerOp": 5.108545139312744,
+          "samplesElapsedNs": [
+            1236626020,
+            1321716223,
+            1258718083,
+            1339174457,
+            1300632870,
+            1284786315,
+            1292881078
+          ],
+          "samplesUsPerOp": [
+            4.717353897094727,
+            5.041947261810303,
+            4.801628429412842,
+            5.108545139312744,
+            4.9615206527709965,
+            4.90107084274292,
+            4.931949913024902
+          ],
+          "sampleChecksums": [
+            3817914368,
+            3817914368,
+            3817914368,
+            3817914368,
+            3817914368,
+            3817914368,
+            3817914368
+          ],
+          "expectedChecksum": 3817914368
+        }
+      },
+      "ratios": {
+        "typescriptOverOptimizedRust": 1.0691159299339672,
+        "typescriptOverBaselineRust": 0.9183162732733919,
+        "optimizedTimeReductionVsBaselineRustPercent": 14.105079948615973,
+        "baselineRustTimeDifferenceVsTypeScriptPercent": 8.894944922999315
+      },
+      "optimizedAndTypeScriptObservedRangesOverlap": false
+    },
+    {
+      "name": "lossless-surrogate",
+      "label": "Lossless surrogate",
+      "iterationsPerTrial": 262144,
+      "warmupOperations": 32000,
+      "inputs": 32,
+      "trials": 7,
+      "entryKinds": [
+        "usage"
+      ],
+      "series": {
+        "typescript": {
+          "medianElapsedNs": 1707183499,
+          "medianUsPerOp": 6.51238822555542,
+          "minUsPerOp": 6.098707801818848,
+          "maxUsPerOp": 7.034193088531494,
+          "samplesElapsedNs": [
+            1628779091,
+            1598739658,
+            1686408533,
+            1707183499,
+            1723991653,
+            1828367033,
+            1843971513
+          ],
+          "samplesUsPerOp": [
+            6.213299144744873,
+            6.098707801818848,
+            6.433138019561768,
+            6.51238822555542,
+            6.576506244659424,
+            6.974666721343994,
+            7.034193088531494
+          ],
+          "sampleChecksums": [
+            71532544,
+            71532544,
+            71532544,
+            71532544,
+            71532544,
+            71532544,
+            71532544
+          ],
+          "expectedChecksum": 71532544
+        },
+        "baselineRust": {
+          "medianElapsedNs": 1484224860,
+          "medianUsPerOp": 5.661868515014649,
+          "minUsPerOp": 5.599755393981933,
+          "maxUsPerOp": 6.091839294433594,
+          "samplesElapsedNs": [
+            1484224860,
+            1572318661,
+            1596939120,
+            1479667152,
+            1482052902,
+            1555938776,
+            1467942278
+          ],
+          "samplesUsPerOp": [
+            5.661868515014649,
+            5.997919696807862,
+            6.091839294433594,
+            5.644482238769531,
+            5.653583152770996,
+            5.93543539428711,
+            5.599755393981933
+          ],
+          "sampleChecksums": [
+            71532544,
+            71532544,
+            71532544,
+            71532544,
+            71532544,
+            71532544,
+            71532544
+          ],
+          "expectedChecksum": 71532544
+        },
+        "optimizedRust": {
+          "medianElapsedNs": 1361939262,
+          "medianUsPerOp": 5.195385978698731,
+          "minUsPerOp": 4.974388233184815,
+          "maxUsPerOp": 5.290999042510986,
+          "samplesElapsedNs": [
+            1314518390,
+            1376186731,
+            1364530336,
+            1387003653,
+            1304006029,
+            1330824125,
+            1361939262
+          ],
+          "samplesUsPerOp": [
+            5.014489707946777,
+            5.249735759735107,
+            5.205270141601562,
+            5.290999042510986,
+            4.974388233184815,
+            5.076691150665283,
+            5.195385978698731
+          ],
+          "sampleChecksums": [
+            71532544,
+            71532544,
+            71532544,
+            71532544,
+            71532544,
+            71532544,
+            71532544
+          ],
+          "expectedChecksum": 71532544
+        }
+      },
+      "ratios": {
+        "typescriptOverOptimizedRust": 1.2534945915965525,
+        "typescriptOverBaselineRust": 1.1502189088788068,
+        "optimizedTimeReductionVsBaselineRustPercent": 8.239021006560964,
+        "baselineRustTimeDifferenceVsTypeScriptPercent": -13.060027766821802
+      },
+      "optimizedAndTypeScriptObservedRangesOverlap": false
+    },
+    {
+      "name": "lossless-large",
+      "label": "Large payload",
+      "iterationsPerTrial": 32768,
+      "warmupOperations": 32000,
+      "inputs": 32,
+      "trials": 7,
+      "entryKinds": [
+        "usage"
+      ],
+      "series": {
+        "typescript": {
+          "medianElapsedNs": 1235352724,
+          "medianUsPerOp": 37.69997326660156,
+          "minUsPerOp": 35.650264556884764,
+          "maxUsPerOp": 39.33502890014648,
+          "samplesElapsedNs": [
+            1288930227,
+            1168187869,
+            1211299166,
+            1270590101,
+            1237810077,
+            1235352724,
+            1214071729
+          ],
+          "samplesUsPerOp": [
+            39.33502890014648,
+            35.650264556884764,
+            36.96591693115234,
+            38.77533267211914,
+            37.77496572875977,
+            37.69997326660156,
+            37.05052883911133
+          ],
+          "sampleChecksums": [
+            4153962496,
+            4153962496,
+            4153962496,
+            4153962496,
+            4153962496,
+            4153962496,
+            4153962496
+          ],
+          "expectedChecksum": 4153962496
+        },
+        "baselineRust": {
+          "medianElapsedNs": 289453512,
+          "medianUsPerOp": 8.833420166015625,
+          "minUsPerOp": 8.589634948730469,
+          "maxUsPerOp": 10.13547622680664,
+          "samplesElapsedNs": [
+            281465158,
+            284455730,
+            290368136,
+            289453512,
+            332119285,
+            303055933,
+            284348199
+          ],
+          "samplesUsPerOp": [
+            8.589634948730469,
+            8.680899963378906,
+            8.861332275390625,
+            8.833420166015625,
+            10.13547622680664,
+            9.248533111572266,
+            8.677618377685548
+          ],
+          "sampleChecksums": [
+            4153962496,
+            4153962496,
+            4153962496,
+            4153962496,
+            4153962496,
+            4153962496,
+            4153962496
+          ],
+          "expectedChecksum": 4153962496
+        },
+        "optimizedRust": {
+          "medianElapsedNs": 290537688,
+          "medianUsPerOp": 8.866506591796876,
+          "minUsPerOp": 8.38301693725586,
+          "maxUsPerOp": 9.636394500732422,
+          "samplesElapsedNs": [
+            304319704,
+            275854242,
+            302483655,
+            315765375,
+            285362083,
+            290537688,
+            274694699
+          ],
+          "samplesUsPerOp": [
+            9.287100341796876,
+            8.418403381347657,
+            9.231068572998048,
+            9.636394500732422,
+            8.708559661865234,
+            8.866506591796876,
+            8.38301693725586
+          ],
+          "sampleChecksums": [
+            4153962496,
+            4153962496,
+            4153962496,
+            4153962496,
+            4153962496,
+            4153962496,
+            4153962496
+          ],
+          "expectedChecksum": 4153962496
+        }
+      },
+      "ratios": {
+        "typescriptOverOptimizedRust": 4.251953447086011,
+        "typescriptOverBaselineRust": 4.2678795481327585,
+        "optimizedTimeReductionVsBaselineRustPercent": -0.37455962876691284,
+        "baselineRustTimeDifferenceVsTypeScriptPercent": -76.56916066346085
+      },
+      "optimizedAndTypeScriptObservedRangesOverlap": false
+    }
+  ],
+  "retainedRawReports": {
+    "baseline_node": {
+      "format": 1,
+      "label": "prepared receipt builder + JSON + UTF-8 byte sum",
+      "runtime": "node-commonjs",
+      "inputSha256": "72a0a095c23891dd0b38bdc095ad5b09018c20dd5f7df98da3bd004e07f34fda",
+      "workloads": [
+        {
+          "name": "typed-ascii",
+          "iterations": 262144,
+          "warmup": 32000,
+          "checksum": 4237066240,
+          "samples": [
+            1515911684,
+            1470863798,
+            1438713033,
+            1443808027,
+            1354153815,
+            1390233851,
+            1378165905
+          ],
+          "sampleChecksums": [
+            4237066240,
+            4237066240,
+            4237066240,
+            4237066240,
+            4237066240,
+            4237066240,
+            4237066240
+          ],
+          "medianNs": 1438713033
+        },
+        {
+          "name": "typed-unicode",
+          "iterations": 262144,
+          "warmup": 32000,
+          "checksum": 279674880,
+          "samples": [
+            2480720528,
+            2529708744,
+            1649447506,
+            1616519945,
+            1741656454,
+            1592068933,
+            1729446603
+          ],
+          "sampleChecksums": [
+            279674880,
+            279674880,
+            279674880,
+            279674880,
+            279674880,
+            279674880,
+            279674880
+          ],
+          "medianNs": 1729446603
+        },
+        {
+          "name": "lossless-nullish",
+          "iterations": 262144,
+          "warmup": 32000,
+          "checksum": 3817914368,
+          "samples": [
+            1406773452,
+            1413727790,
+            1373009887,
+            1349206037,
+            1372821684,
+            1382239756,
+            1394546040
+          ],
+          "sampleChecksums": [
+            3817914368,
+            3817914368,
+            3817914368,
+            3817914368,
+            3817914368,
+            3817914368,
+            3817914368
+          ],
+          "medianNs": 1382239756
+        },
+        {
+          "name": "lossless-surrogate",
+          "iterations": 262144,
+          "warmup": 32000,
+          "checksum": 71532544,
+          "samples": [
+            1628779091,
+            1598739658,
+            1686408533,
+            1707183499,
+            1723991653,
+            1828367033,
+            1843971513
+          ],
+          "sampleChecksums": [
+            71532544,
+            71532544,
+            71532544,
+            71532544,
+            71532544,
+            71532544,
+            71532544
+          ],
+          "medianNs": 1707183499
+        },
+        {
+          "name": "lossless-large",
+          "iterations": 32768,
+          "warmup": 32000,
+          "checksum": 4153962496,
+          "samples": [
+            1288930227,
+            1168187869,
+            1211299166,
+            1270590101,
+            1237810077,
+            1235352724,
+            1214071729
+          ],
+          "sampleChecksums": [
+            4153962496,
+            4153962496,
+            4153962496,
+            4153962496,
+            4153962496,
+            4153962496,
+            4153962496
+          ],
+          "medianNs": 1235352724
+        }
+      ]
+    },
+    "baseline_rust": {
+      "format": 1,
+      "inputSha256": "72a0a095c23891dd0b38bdc095ad5b09018c20dd5f7df98da3bd004e07f34fda",
+      "label": "prepared receipt builder + JSON + UTF-8 byte sum",
+      "runtime": "rust-release",
+      "workloads": [
+        {
+          "checksum": 4237066240,
+          "iterations": 262144,
+          "medianNs": 1463532829,
+          "name": "typed-ascii",
+          "sampleChecksums": [
+            4237066240,
+            4237066240,
+            4237066240,
+            4237066240,
+            4237066240,
+            4237066240,
+            4237066240
+          ],
+          "samples": [
+            1382514293,
+            1450581559,
+            1557690587,
+            1414126610,
+            1463532829,
+            1573474815,
+            1508841302
+          ],
+          "warmup": 32000
+        },
+        {
+          "checksum": 279674880,
+          "iterations": 262144,
+          "medianNs": 1496850531,
+          "name": "typed-unicode",
+          "sampleChecksums": [
+            279674880,
+            279674880,
+            279674880,
+            279674880,
+            279674880,
+            279674880,
+            279674880
+          ],
+          "samples": [
+            1484760634,
+            1516040207,
+            1496850531,
+            1500955590,
+            1481026639,
+            1530389266,
+            1464581243
+          ],
+          "warmup": 32000
+        },
+        {
+          "checksum": 3817914368,
+          "iterations": 262144,
+          "medianNs": 1505189221,
+          "name": "lossless-nullish",
+          "sampleChecksums": [
+            3817914368,
+            3817914368,
+            3817914368,
+            3817914368,
+            3817914368,
+            3817914368,
+            3817914368
+          ],
+          "samples": [
+            1418833016,
+            1435042560,
+            1448134624,
+            1505189221,
+            1535592153,
+            1534650588,
+            1536595672
+          ],
+          "warmup": 32000
+        },
+        {
+          "checksum": 71532544,
+          "iterations": 262144,
+          "medianNs": 1484224860,
+          "name": "lossless-surrogate",
+          "sampleChecksums": [
+            71532544,
+            71532544,
+            71532544,
+            71532544,
+            71532544,
+            71532544,
+            71532544
+          ],
+          "samples": [
+            1484224860,
+            1572318661,
+            1596939120,
+            1479667152,
+            1482052902,
+            1555938776,
+            1467942278
+          ],
+          "warmup": 32000
+        },
+        {
+          "checksum": 4153962496,
+          "iterations": 32768,
+          "medianNs": 289453512,
+          "name": "lossless-large",
+          "sampleChecksums": [
+            4153962496,
+            4153962496,
+            4153962496,
+            4153962496,
+            4153962496,
+            4153962496,
+            4153962496
+          ],
+          "samples": [
+            281465158,
+            284455730,
+            290368136,
+            289453512,
+            332119285,
+            303055933,
+            284348199
+          ],
+          "warmup": 32000
+        }
+      ]
+    },
+    "optimized_node": {
+      "format": 1,
+      "label": "prepared receipt builder + JSON + UTF-8 byte sum",
+      "runtime": "node-commonjs",
+      "inputSha256": "2a281ba3d198a30f81b84eff7a53b907344c57027e2ac203d900583d52895732",
+      "workloads": [
+        {
+          "name": "typed-ascii",
+          "iterations": 262144,
+          "warmup": 32000,
+          "checksum": 4237066240,
+          "samples": [
+            1515911684,
+            1470863798,
+            1438713033,
+            1443808027,
+            1354153815,
+            1390233851,
+            1378165905
+          ],
+          "sampleChecksums": [
+            4237066240,
+            4237066240,
+            4237066240,
+            4237066240,
+            4237066240,
+            4237066240,
+            4237066240
+          ],
+          "medianNs": 1438713033
+        },
+        {
+          "name": "typed-unicode",
+          "iterations": 262144,
+          "warmup": 32000,
+          "checksum": 279674880,
+          "samples": [
+            2480720528,
+            2529708744,
+            1649447506,
+            1616519945,
+            1741656454,
+            1592068933,
+            1729446603
+          ],
+          "sampleChecksums": [
+            279674880,
+            279674880,
+            279674880,
+            279674880,
+            279674880,
+            279674880,
+            279674880
+          ],
+          "medianNs": 1729446603
+        },
+        {
+          "name": "lossless-nullish",
+          "iterations": 262144,
+          "warmup": 32000,
+          "checksum": 3817914368,
+          "samples": [
+            1406773452,
+            1413727790,
+            1373009887,
+            1349206037,
+            1372821684,
+            1382239756,
+            1394546040
+          ],
+          "sampleChecksums": [
+            3817914368,
+            3817914368,
+            3817914368,
+            3817914368,
+            3817914368,
+            3817914368,
+            3817914368
+          ],
+          "medianNs": 1382239756
+        },
+        {
+          "name": "lossless-surrogate",
+          "iterations": 262144,
+          "warmup": 32000,
+          "checksum": 71532544,
+          "samples": [
+            1628779091,
+            1598739658,
+            1686408533,
+            1707183499,
+            1723991653,
+            1828367033,
+            1843971513
+          ],
+          "sampleChecksums": [
+            71532544,
+            71532544,
+            71532544,
+            71532544,
+            71532544,
+            71532544,
+            71532544
+          ],
+          "medianNs": 1707183499
+        },
+        {
+          "name": "lossless-large",
+          "iterations": 32768,
+          "warmup": 32000,
+          "checksum": 4153962496,
+          "samples": [
+            1288930227,
+            1168187869,
+            1211299166,
+            1270590101,
+            1237810077,
+            1235352724,
+            1214071729
+          ],
+          "sampleChecksums": [
+            4153962496,
+            4153962496,
+            4153962496,
+            4153962496,
+            4153962496,
+            4153962496,
+            4153962496
+          ],
+          "medianNs": 1235352724
+        }
+      ]
+    },
+    "optimized_rust": {
+      "format": 1,
+      "inputSha256": "2a281ba3d198a30f81b84eff7a53b907344c57027e2ac203d900583d52895732",
+      "label": "prepared receipt builder + JSON + UTF-8 byte sum",
+      "runtime": "rust-release",
+      "workloads": [
+        {
+          "checksum": 4237066240,
+          "iterations": 262144,
+          "medianNs": 1239863714,
+          "name": "typed-ascii",
+          "sampleChecksums": [
+            4237066240,
+            4237066240,
+            4237066240,
+            4237066240,
+            4237066240,
+            4237066240,
+            4237066240
+          ],
+          "samples": [
+            1162897818,
+            1238784392,
+            1200115587,
+            1256966452,
+            1392202362,
+            1239863714,
+            1346119577
+          ],
+          "warmup": 32000
+        },
+        {
+          "checksum": 279674880,
+          "iterations": 262144,
+          "medianNs": 1257867278,
+          "name": "typed-unicode",
+          "sampleChecksums": [
+            279674880,
+            279674880,
+            279674880,
+            279674880,
+            279674880,
+            279674880,
+            279674880
+          ],
+          "samples": [
+            1249207237,
+            1257725494,
+            1323813232,
+            1257867278,
+            1334035802,
+            1272762231,
+            1228105798
+          ],
+          "warmup": 32000
+        },
+        {
+          "checksum": 3817914368,
+          "iterations": 262144,
+          "medianNs": 1292881078,
+          "name": "lossless-nullish",
+          "sampleChecksums": [
+            3817914368,
+            3817914368,
+            3817914368,
+            3817914368,
+            3817914368,
+            3817914368,
+            3817914368
+          ],
+          "samples": [
+            1236626020,
+            1321716223,
+            1258718083,
+            1339174457,
+            1300632870,
+            1284786315,
+            1292881078
+          ],
+          "warmup": 32000
+        },
+        {
+          "checksum": 71532544,
+          "iterations": 262144,
+          "medianNs": 1361939262,
+          "name": "lossless-surrogate",
+          "sampleChecksums": [
+            71532544,
+            71532544,
+            71532544,
+            71532544,
+            71532544,
+            71532544,
+            71532544
+          ],
+          "samples": [
+            1314518390,
+            1376186731,
+            1364530336,
+            1387003653,
+            1304006029,
+            1330824125,
+            1361939262
+          ],
+          "warmup": 32000
+        },
+        {
+          "checksum": 4153962496,
+          "iterations": 32768,
+          "medianNs": 290537688,
+          "name": "lossless-large",
+          "sampleChecksums": [
+            4153962496,
+            4153962496,
+            4153962496,
+            4153962496,
+            4153962496,
+            4153962496,
+            4153962496
+          ],
+          "samples": [
+            304319704,
+            275854242,
+            302483655,
+            315765375,
+            285362083,
+            290537688,
+            274694699
+          ],
+          "warmup": 32000
+        }
+      ]
+    }
+  }
+}

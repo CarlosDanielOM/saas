@@ -1,0 +1,32 @@
+[
+  {
+    "path": "ai-credit-receipt/runtime-provenance/node",
+    "sha256": "569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108",
+    "bytes": 132485920
+  },
+  {
+    "path": "ai-credit-receipt/runtime-provenance/typescript",
+    "sha256": "3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675",
+    "bytes": 9112572
+  },
+  {
+    "path": "ai-credit-receipt/runtime-provenance/typescriptPackage",
+    "sha256": "822ef7ca6452205657b6288b066481ecf508bfbf43455d715cf7d3ec457561e6",
+    "bytes": 3620
+  },
+  {
+    "path": "ai-credit-receipt-baseline/runtime-provenance/node",
+    "sha256": "569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108",
+    "bytes": 132485920
+  },
+  {
+    "path": "ai-credit-receipt-baseline/runtime-provenance/typescript",
+    "sha256": "3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675",
+    "bytes": 9112572
+  },
+  {
+    "path": "ai-credit-receipt-baseline/runtime-provenance/typescriptPackage",
+    "sha256": "822ef7ca6452205657b6288b066481ecf508bfbf43455d715cf7d3ec457561e6",
+    "bytes": 3620
+  }
+]

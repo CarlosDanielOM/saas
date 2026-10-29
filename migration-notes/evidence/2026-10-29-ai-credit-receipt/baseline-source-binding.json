@@ -1,0 +1,133 @@
+{
+  "source_tree_sha256": "77fc976da064a87c02ec1fce93cd0e4820dfe53a7eac9feb5fab453c482d80f7",
+  "files": {
+    "dimabot/Cargo.lock": {
+      "commit": "c2a0d6f77019630d3da1207d4dfc1325e88ab7fa",
+      "sha256": "787333fa269752a606040d7393767040ef749ce1e01c2512386bf305bcd7a2c3"
+    },
+    "dimabot/Cargo.toml": {
+      "commit": "c2a0d6f77019630d3da1207d4dfc1325e88ab7fa",
+      "sha256": "ae71a25d2a7ffbe0591f540e2a58629af25b3b974c49ce322ce2e75d80f6b2e9"
+    },
+    "dimabot/rust-toolchain.toml": {
+      "commit": "c2a0d6f77019630d3da1207d4dfc1325e88ab7fa",
+      "sha256": "b9c8d2d59f6f46474c0cfa0b8b77bea21d94fc73a30ad93d5bf6385c422197d2"
+    },
+    "dimabot/src/schemas/ai_usage_receipt.schema.ts": {
+      "commit": "c2a0d6f77019630d3da1207d4dfc1325e88ab7fa",
+      "sha256": "87f132f55c47cf082f37dabadc0d42f790e8324d1925f6990a3794f46d845b92"
+    },
+    "dimabot/src/utils/ai_credit_projection.rs": {
+      "commit": "c2a0d6f77019630d3da1207d4dfc1325e88ab7fa",
+      "sha256": "0a48df01b89d153d6205e74d9d339b859cc2abe76e9a7dbb9f72fb97f46efb98"
+    },
+    "dimabot/src/utils/ai_usage.rs": {
+      "commit": "c2a0d6f77019630d3da1207d4dfc1325e88ab7fa",
+      "sha256": "8c648fc0e30c4ea6fbda799fe8d871cbe715010ba57ede955db591b361653675"
+    },
+    "dimabot/src/utils/ai_usage_classification.ts": {
+      "commit": "c2a0d6f77019630d3da1207d4dfc1325e88ab7fa",
+      "sha256": "00fcd076d0f3460ecea46588904242252a32b9500e43217c67a1a07e1cbe4b36"
+    },
+    "dimabot/src/utils/ai_usage_event.ts": {
+      "commit": "c2a0d6f77019630d3da1207d4dfc1325e88ab7fa",
+      "sha256": "87ff158c166652ea1eb64199ea4c9c6250b35db90399cb658ef6c3086628de60"
+    },
+    "dimabot/src/utils/ai_usage_ledger.ts": {
+      "commit": "c2a0d6f77019630d3da1207d4dfc1325e88ab7fa",
+      "sha256": "3519b440d3d03a9415323f75f113f81627c6b07369ef43903a7b07116df5d4f5"
+    },
+    "dimabot/src/utils/ai_usage_producer.rs": {
+      "commit": "c2a0d6f77019630d3da1207d4dfc1325e88ab7fa",
+      "sha256": "570820bca5d29416b4a161dadcf78f89bee5b37077f06b2cd4ffc160fe160a85"
+    },
+    "dimabot/src/utils/ai_usage_receipts.rs": {
+      "commit": "c2a0d6f77019630d3da1207d4dfc1325e88ab7fa",
+      "sha256": "8710e760c15f9457af775541b4e7ba197a0801d537e5328c1219784f4af0d795"
+    },
+    "dimabot/src/utils/ai_usage_receipts.ts": {
+      "commit": "c2a0d6f77019630d3da1207d4dfc1325e88ab7fa",
+      "sha256": "d92832339b0306249c054816e2105c3fc601a7c27994b6dc7f1b8bec7e607a87"
+    },
+    "dimabot/src/utils/ai_usage_receipts/queue.rs": {
+      "commit": "c2a0d6f77019630d3da1207d4dfc1325e88ab7fa",
+      "sha256": "2948d448946b1b66137b334179b06acc6639a9eca792af58de17e6f078fc9cde"
+    },
+    "dimabot/src/utils/ai_usage_receipts/values.rs": {
+      "commit": "c2a0d6f77019630d3da1207d4dfc1325e88ab7fa",
+      "sha256": "f58895dc46dc1f51f416b96dd0e853f4a53412622cd1d674a2dabf3b0d6f29d0"
+    },
+    "dimabot/src/utils/billing.ts": {
+      "commit": "c2a0d6f77019630d3da1207d4dfc1325e88ab7fa",
+      "sha256": "a14d58f094e58dbb34ff5191cbb09b792759187adaca862413873fa83c780c0d"
+    },
+    "dimabot/src/utils/credit_policy.rs": {
+      "commit": "c2a0d6f77019630d3da1207d4dfc1325e88ab7fa",
+      "sha256": "0b17b85d9191d921b68490bccdbcb53495537f526599d69b5e94ec1db9a7cec3"
+    },
+    "dimabot/src/utils/js_compat.rs": {
+      "commit": "c2a0d6f77019630d3da1207d4dfc1325e88ab7fa",
+      "sha256": "798538b33fa38b7a07935c22430ce12e3d93abc1afb4f605492299bbf27a64bc"
+    },
+    "dimabot/src/utils/js_string.rs": {
+      "commit": "c2a0d6f77019630d3da1207d4dfc1325e88ab7fa",
+      "sha256": "3bd51850c71917763609af33d8598c88ac254e010d7b0ee754f4b4e6c7a4a4d7"
+    },
+    "dimabot/src/utils/json_number.rs": {
+      "commit": "c2a0d6f77019630d3da1207d4dfc1325e88ab7fa",
+      "sha256": "002c39884ee1aa624cb200af77f8a6ddb694d31efd51b5ec318ebf9286845192"
+    },
+    "dimabot/src/utils/lossless_json.rs": {
+      "commit": "c2a0d6f77019630d3da1207d4dfc1325e88ab7fa",
+      "sha256": "33ba6503aead76bec9d9be9f48f208da99aac81154c0f1fda8a49c265e6e4010"
+    },
+    "dimabot/src/utils/mod.rs": {
+      "commit": "c2a0d6f77019630d3da1207d4dfc1325e88ab7fa",
+      "sha256": "3b65deef60c14fa9aa99996f348e5659934b4592129dc89b2700cbe133d6812a"
+    },
+    "dimabot/tests/ai_credit_projection.rs": {
+      "commit": "c2a0d6f77019630d3da1207d4dfc1325e88ab7fa",
+      "sha256": "c47d0905eb6e888ee0a585a132862a43b78c761705e58ea68826e667f43d2d46"
+    },
+    "dimabot/tests/ai_credit_projection_redis.rs": {
+      "commit": "c2a0d6f77019630d3da1207d4dfc1325e88ab7fa",
+      "sha256": "26f2f7d3726b56ffd905d13d55f481926de7011e3e2ff2047dfdf0ac3c59e4e7"
+    },
+    "dimabot/tests/ai_credit_projection_support/mod.rs": {
+      "commit": "c2a0d6f77019630d3da1207d4dfc1325e88ab7fa",
+      "sha256": "d0045dee88f4e2162f5201178b515254826dfa40625d5a465490e6de8bf92cbb"
+    },
+    "dimabot/tests/ai_usage_producer.rs": {
+      "commit": "c2a0d6f77019630d3da1207d4dfc1325e88ab7fa",
+      "sha256": "a394da7219d39774d71227e39bfc105f6b36f8105070da590c9a5e8cc92cf168"
+    },
+    "dimabot/tests/ai_usage_producer_benchmark.rs": {
+      "commit": "c2a0d6f77019630d3da1207d4dfc1325e88ab7fa",
+      "sha256": "afb9e2ff6ab4de94409bc1ee5e6208c8b20bfa17272bb17ad08f1de6517c54d0"
+    },
+    "dimabot/tests/ai_usage_producer_redis.rs": {
+      "commit": "c2a0d6f77019630d3da1207d4dfc1325e88ab7fa",
+      "sha256": "1eb88f1b162e21a4dcdb9f9786d4ce509c8db0e7f69730b81c8b06324c78c244"
+    },
+    "dimabot/tests/fixtures/ai_credit_projection_reference.cjs": {
+      "commit": "c2a0d6f77019630d3da1207d4dfc1325e88ab7fa",
+      "sha256": "77e1c29b3cf347e4ce87f91391a0ec49afc476514f617b108b5b54d1f0869161"
+    },
+    "dimabot/tests/fixtures/ai_usage_producer_benchmark.cjs": {
+      "commit": "c2a0d6f77019630d3da1207d4dfc1325e88ab7fa",
+      "sha256": "fd2958f88444a412277ff7029d9000f3509f4d00eec871c6293b98b00de2b082"
+    },
+    "dimabot/tests/fixtures/ai_usage_producer_reference.cjs": {
+      "commit": "c2a0d6f77019630d3da1207d4dfc1325e88ab7fa",
+      "sha256": "9b62353822fa61df883cb3339c71d1e4d77551aa468c975058efdd8566c0fcb6"
+    },
+    "dimabot/tests/fixtures/ai_usage_producer_source.cjs": {
+      "commit": "c2a0d6f77019630d3da1207d4dfc1325e88ab7fa",
+      "sha256": "61f609e949d9305dec33fdc4dd4a186c93588c143c341ff241e5b69aaf21650b"
+    },
+    "dimabot/tests/support/ai_usage_producer.rs": {
+      "commit": "c2a0d6f77019630d3da1207d4dfc1325e88ab7fa",
+      "sha256": "ed0fe8ad212d85339da229abd23b99e2d32ac226583ce6590c47461e0c54f4a2"
+    }
+  }
+}

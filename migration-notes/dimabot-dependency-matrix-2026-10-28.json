@@ -58509,107 +58509,216 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-bounded-partial-request-time-receipt-producer; ledger consumer/persistence remain open",
+      "localRustEvidence": [
+        "dimabot/src/utils/ai_usage_producer.rs",
+        "dimabot/src/utils/ai_usage.rs",
+        "dimabot/src/utils/credit_policy.rs",
+        "dimabot/src/utils/lossless_json.rs",
+        "dimabot/tests/ai_usage_producer.rs",
+        "dimabot/tests/ai_usage_producer_redis.rs",
+        "dimabot/tests/ai_usage_producer_benchmark.rs",
+        "dimabot/tests/fixtures/ai_usage_producer_reference.cjs",
+        "dimabot/tests/fixtures/ai_usage_producer_source.cjs",
+        "migration-notes/ai-credit-receipt-2026-10-29.md",
+        "compiler-fixtures-1793256166045626940: baseline source 77fc976da064a87c02ec1fce93cd0e4820dfe53a7eac9feb5fab453c482d80f7",
+        "migration-notes/evidence/2026-10-29-ai-credit-receipt/verification-summary.json",
+        "migration-notes/evidence/2026-10-29-ai-credit-receipt/baseline-source-binding.json",
+        "migration-notes/evidence/2026-10-29-ai-credit-receipt/source-binding.json",
+        "migration-notes/evidence/2026-10-29-ai-credit-receipt/artifacts/ai-credit-receipt/benchmark-reuse-audit.json",
+        "migration-notes/evidence/2026-10-29-ai-credit-receipt/artifacts/ai-credit-receipt/producer-benchmark/ai-usage-producer-node-benchmark.json",
+        "migration-notes/evidence/2026-10-29-ai-credit-receipt/artifacts/ai-credit-receipt/producer-benchmark/ai-usage-producer-rust-benchmark.json",
+        "migration-notes/evidence/2026-10-29-ai-credit-receipt/artifacts/ai-credit-receipt/final-readback.json",
+        "Final receipt-producer source tree: 02ab55a9d484c01af695793b55d6313280f30080c76db5ad9b5a909b440ac78f (commit 01d35033)."
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "Rust QueuedAiUsageReceipt is a typed lossless plain-data builder value, not full parity for the TypeScript interface extending AiUsageTransaction or for the parser/persistence consumer contract.",
+        "Escaped lone UTF-16 surrogates remain lossless in the native producer wire, while the existing native ai_usage_receipts worker consumer parses with serde_json::Value and rejects these escaped lone surrogates.",
+        "One RPUSH is issued without application retry; after disconnect/cancellation the append outcome may be uncertain."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/src/utils/polarsh.ts: buildQueuedAiUsageReceipt and enqueueAiUsageReceipt remain active TypeScript callers after Polar accounting.",
+          "dimabot/src/utils/ai_usage_receipts.ts, ai_usage_backfill.ts, ai_usage_backfill_queue.ts, ai_usage_queries.ts and route/dashboard consumers use parser, persistence, reporting, retention, or query exports outside this port."
+        ],
+        "runtimeStatus": "No Rust producer call site is adopted. The existing native receipt worker is a consumer only; parsing, queue processing, Mongo persistence, locking, reporting, backfill and caller/bootstrap integration remain open."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "Pinned Node 24.22.1 / V8 13.6.233.17-node.58 / TypeScript 5.9.3 oracle: 338 receipts, 20 retention cases, and 3,325 source assertions.",
+          "The final source-only optimization regenerated source parity; all 338 receipt, 20 retention, and 3,325 assertion outputs matched. The seven benchmark pools all use entryKind=usage."
+        ],
+        "rustBehaviorEvidence": [
+          "Baseline source 77fc976da064a87c02ec1fce93cd0e4820dfe53a7eac9feb5fab453c482d80f7 passed compiler-fixtures-1793256166045626940 and post-Node node-1793256476785298801; its 178 test executions overlap dependency tests and include a subprocess-only no-op helper, not 178 unique cases. This remains the full proof for unchanged credit/TTS behavior.",
+          "Final producer source 02ab55a9d484c01af695793b55d6313280f30080c76db5ad9b5a909b440ac78f passed compiler-fixtures-1793256739341677553 (184.692s total / 174.613s script) and node-1793256972582181383. The 26 reported executions were 19 library, 4 ordinary receipt, 0 ignored ordinary Redis, 1 source replay, 1 real Redis, and 1 release benchmark.",
+          "Final producer checks: formatting; standalone producer strict check/Clippy; all-feature all-target strict check/Clippy; no-feature check; source and real disposable Redis behavior; release benchmark. Read-only final readback: 19 production records unchanged and no task-owned containers, networks, or volumes remain.",
+          "Final TS/Rust medians in microseconds/op: ASCII 5.488254673/4.729704720 (ranges overlap), Unicode 6.597315228/4.798382866, nullish 5.272826218/4.931949913 (small), surrogate 6.512388226/5.195385979, large 37.699973267/8.866506592. All seven checksums matched each workload. Nullish improved 14.105% versus Rust baseline; large changed +0.375% with overlapping ranges/no material change. See the source-bound benchmark reports.",
+          "Three failed compiler attempts were retained (private test accessor, fixture EOF/socket clone, Clippy seed type annotation); subsequent source-bound runs passed. These were harness corrections, not application defects.",
+          "The optimized-source compiler/benchmark applies only to the producer module. Credit feature evidence remains bound to 77fc976da064a87c02ec1fce93cd0e4820dfe53a7eac9feb5fab453c482d80f7; final producer binding is 02ab55a9d484c01af695793b55d6313280f30080c76db5ad9b5a909b440ac78f."
+        ],
+        "status": "Partial local receipt builder/queue producer behavior verified at distinct baseline and final producer source bindings; consumer compatibility, persistence and full ledger dependencies remain open."
       },
       "exports": [
         {
           "name": "AI_USAGE_RECEIPT_PROCESSING_KEY",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "partial: existing processing key constant; no producer-side processing behavior",
+          "evidence": [
+            "dimabot/src/utils/ai_usage_producer.rs",
+            "dimabot/src/utils/ai_usage.rs",
+            "dimabot/src/utils/credit_policy.rs",
+            "dimabot/src/utils/lossless_json.rs",
+            "dimabot/tests/ai_usage_producer.rs",
+            "dimabot/tests/ai_usage_producer_redis.rs",
+            "dimabot/tests/ai_usage_producer_benchmark.rs",
+            "dimabot/tests/fixtures/ai_usage_producer_reference.cjs",
+            "dimabot/tests/fixtures/ai_usage_producer_source.cjs",
+            "migration-notes/ai-credit-receipt-2026-10-29.md",
+            "compiler-fixtures-1793256166045626940: baseline source 77fc976da064a87c02ec1fce93cd0e4820dfe53a7eac9feb5fab453c482d80f7"
+          ]
         },
         {
           "name": "AI_USAGE_RECEIPT_QUEUE_KEY",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "partial: existing queue key constant exposed by native producer",
+          "evidence": [
+            "dimabot/src/utils/ai_usage_producer.rs",
+            "dimabot/src/utils/ai_usage.rs",
+            "dimabot/src/utils/credit_policy.rs",
+            "dimabot/src/utils/lossless_json.rs",
+            "dimabot/tests/ai_usage_producer.rs",
+            "dimabot/tests/ai_usage_producer_redis.rs",
+            "dimabot/tests/ai_usage_producer_benchmark.rs",
+            "dimabot/tests/fixtures/ai_usage_producer_reference.cjs",
+            "dimabot/tests/fixtures/ai_usage_producer_source.cjs",
+            "migration-notes/ai-credit-receipt-2026-10-29.md",
+            "compiler-fixtures-1793256166045626940: baseline source 77fc976da064a87c02ec1fce93cd0e4820dfe53a7eac9feb5fab453c482d80f7"
+          ]
         },
         {
           "name": "AI_USAGE_REPORT_VERSION",
-          "nativeMapping": "unreviewed",
+          "nativeMapping": "unreviewed/outside this bounded producer slice",
           "evidence": []
         },
         {
           "name": "AiUsageLedgerStatus",
-          "nativeMapping": "unreviewed",
+          "nativeMapping": "unreviewed/outside this bounded producer slice",
           "evidence": []
         },
         {
           "name": "AiUsagePacingHistory",
-          "nativeMapping": "unreviewed",
+          "nativeMapping": "unreviewed/outside this bounded producer slice",
           "evidence": []
         },
         {
           "name": "QueuedAiUsageReceipt",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "partial: typed lossless plain-data queue value for native builder; not full AiUsageTransaction/parser/consumer interface parity",
+          "evidence": [
+            "dimabot/src/utils/ai_usage_producer.rs",
+            "dimabot/src/utils/ai_usage.rs",
+            "dimabot/src/utils/credit_policy.rs",
+            "dimabot/src/utils/lossless_json.rs",
+            "dimabot/tests/ai_usage_producer.rs",
+            "dimabot/tests/ai_usage_producer_redis.rs",
+            "dimabot/tests/ai_usage_producer_benchmark.rs",
+            "dimabot/tests/fixtures/ai_usage_producer_reference.cjs",
+            "dimabot/tests/fixtures/ai_usage_producer_source.cjs",
+            "migration-notes/ai-credit-receipt-2026-10-29.md",
+            "compiler-fixtures-1793256166045626940: baseline source 77fc976da064a87c02ec1fce93cd0e4820dfe53a7eac9feb5fab453c482d80f7"
+          ]
         },
         {
           "name": "adjustAiUsageRetention",
-          "nativeMapping": "unreviewed",
+          "nativeMapping": "unreviewed/outside this bounded producer slice",
           "evidence": []
         },
         {
           "name": "backfillAiUsageLedger",
-          "nativeMapping": "unreviewed",
+          "nativeMapping": "unreviewed/outside this bounded producer slice",
           "evidence": []
         },
         {
           "name": "buildQueuedAiUsageReceipt",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "build_queued_ai_usage_receipt* typed and lossless builder variants",
+          "evidence": [
+            "dimabot/src/utils/ai_usage_producer.rs",
+            "dimabot/src/utils/ai_usage.rs",
+            "dimabot/src/utils/credit_policy.rs",
+            "dimabot/src/utils/lossless_json.rs",
+            "dimabot/tests/ai_usage_producer.rs",
+            "dimabot/tests/ai_usage_producer_redis.rs",
+            "dimabot/tests/ai_usage_producer_benchmark.rs",
+            "dimabot/tests/fixtures/ai_usage_producer_reference.cjs",
+            "dimabot/tests/fixtures/ai_usage_producer_source.cjs",
+            "migration-notes/ai-credit-receipt-2026-10-29.md",
+            "compiler-fixtures-1793256166045626940: baseline source 77fc976da064a87c02ec1fce93cd0e4820dfe53a7eac9feb5fab453c482d80f7"
+          ]
         },
         {
           "name": "enqueueAiUsageReceipt",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "AiUsageProducer::enqueue[_at], one RPUSH to the existing queue",
+          "evidence": [
+            "dimabot/src/utils/ai_usage_producer.rs",
+            "dimabot/src/utils/ai_usage.rs",
+            "dimabot/src/utils/credit_policy.rs",
+            "dimabot/src/utils/lossless_json.rs",
+            "dimabot/tests/ai_usage_producer.rs",
+            "dimabot/tests/ai_usage_producer_redis.rs",
+            "dimabot/tests/ai_usage_producer_benchmark.rs",
+            "dimabot/tests/fixtures/ai_usage_producer_reference.cjs",
+            "dimabot/tests/fixtures/ai_usage_producer_source.cjs",
+            "migration-notes/ai-credit-receipt-2026-10-29.md",
+            "compiler-fixtures-1793256166045626940: baseline source 77fc976da064a87c02ec1fce93cd0e4820dfe53a7eac9feb5fab453c482d80f7"
+          ]
         },
         {
           "name": "getAiUsageLedgerState",
-          "nativeMapping": "unreviewed",
+          "nativeMapping": "unreviewed/outside this bounded producer slice",
           "evidence": []
         },
         {
           "name": "getAiUsageLedgerStatus",
-          "nativeMapping": "unreviewed",
+          "nativeMapping": "unreviewed/outside this bounded producer slice",
           "evidence": []
         },
         {
           "name": "getAiUsageRetentionDays",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "get_ai_usage_retention_days",
+          "evidence": [
+            "dimabot/src/utils/ai_usage_producer.rs",
+            "dimabot/src/utils/ai_usage.rs",
+            "dimabot/src/utils/credit_policy.rs",
+            "dimabot/src/utils/lossless_json.rs",
+            "dimabot/tests/ai_usage_producer.rs",
+            "dimabot/tests/ai_usage_producer_redis.rs",
+            "dimabot/tests/ai_usage_producer_benchmark.rs",
+            "dimabot/tests/fixtures/ai_usage_producer_reference.cjs",
+            "dimabot/tests/fixtures/ai_usage_producer_source.cjs",
+            "migration-notes/ai-credit-receipt-2026-10-29.md",
+            "compiler-fixtures-1793256166045626940: baseline source 77fc976da064a87c02ec1fce93cd0e4820dfe53a7eac9feb5fab453c482d80f7"
+          ]
         },
         {
           "name": "hasAiUsageLedgerCoverage",
-          "nativeMapping": "unreviewed",
+          "nativeMapping": "unreviewed/outside this bounded producer slice",
           "evidence": []
         },
         {
           "name": "loadAiUsageLedgerTransactions",
-          "nativeMapping": "unreviewed",
+          "nativeMapping": "unreviewed/outside this bounded producer slice",
           "evidence": []
         },
         {
           "name": "loadAiUsagePacingHistory",
-          "nativeMapping": "unreviewed",
+          "nativeMapping": "unreviewed/outside this bounded producer slice",
           "evidence": []
         },
         {
           "name": "parseQueuedAiUsageReceipt",
-          "nativeMapping": "unreviewed",
+          "nativeMapping": "unreviewed/outside this bounded producer slice",
           "evidence": []
         },
         {
           "name": "persistAiUsageReceipt",
-          "nativeMapping": "unreviewed",
+          "nativeMapping": "unreviewed/outside this bounded producer slice",
           "evidence": []
         }
       ],
@@ -58627,12 +58736,12 @@
           "baselineSourceTargets": [
             "src/schemas/ai_usage_daily.schema.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "default runtime import",
+          "runtimeOrTypeDependency": "AiUsageDailySchema is used for aggregate persistence/query/retention operations outside scope.",
+          "defaultSideEffectBarrelDetails": "Direct import; no side-effect import or barrel in this declaration.",
+          "directDependencyReview": "Outside scoped producer functions.",
+          "transitiveDependencyReview": "Daily rollup persistence and queries remain open.",
+          "rustReplacementOrGap": "No daily aggregate writer/query port claimed."
         },
         {
           "ordinal": 1,
@@ -58647,12 +58756,12 @@
           "baselineSourceTargets": [
             "src/schemas/ai_usage_dashboard.schema.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "default runtime import",
+          "runtimeOrTypeDependency": "Dashboards is used by receipt persistence/backfill/retention outside the three producer functions.",
+          "defaultSideEffectBarrelDetails": "Direct import; no side-effect import or barrel in this declaration.",
+          "directDependencyReview": "Out of scoped receipt producer.",
+          "transitiveDependencyReview": "Mongo dashboard invalidation and ledger persistence remain open.",
+          "rustReplacementOrGap": "No persistence or dashboard invalidation port in this slice."
         },
         {
           "ordinal": 2,
@@ -58667,12 +58776,12 @@
           "baselineSourceTargets": [
             "src/schemas/ai_usage_ledger_state.schema.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "default runtime import",
+          "runtimeOrTypeDependency": "AiUsageLedgerStateSchema is used by ledger state/backfill functions outside scope.",
+          "defaultSideEffectBarrelDetails": "Direct import; no side-effect import or barrel in this declaration.",
+          "directDependencyReview": "Outside scoped producer functions.",
+          "transitiveDependencyReview": "Backfill/status state persistence remains open.",
+          "rustReplacementOrGap": "No ledger state adapter claimed."
         },
         {
           "ordinal": 3,
@@ -58687,12 +58796,12 @@
           "baselineSourceTargets": [
             "src/schemas/ai_usage_receipt.schema.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "default runtime import plus named type-only import",
+          "runtimeOrTypeDependency": "AiUsageReceiptSchema is runtime for persistence/query; AiUsageRetentionTier is type-only and constrains tier mapping.",
+          "defaultSideEffectBarrelDetails": "Direct import; no side-effect import or barrel in this declaration.",
+          "directDependencyReview": "Runtime model is outside producer scope; retention type supports scoped retention mapping.",
+          "transitiveDependencyReview": "Receipt persistence/query, indexes and Mongo behavior remain open.",
+          "rustReplacementOrGap": "Native builder/queue producer does not persist Mongo receipts."
         },
         {
           "ordinal": 4,
@@ -58707,12 +58816,12 @@
           "baselineSourceTargets": [
             "src/utils/ai_usage_classification.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named runtime import",
+          "runtimeOrTypeDependency": "classifyAdjustment is called by buildQueuedAiUsageReceipt and ledger operations.",
+          "defaultSideEffectBarrelDetails": "Direct import; no side-effect import or barrel in this declaration.",
+          "directDependencyReview": "Partial: native ai_usage::classify_adjustment is reused by producer.",
+          "transitiveDependencyReview": "Application-specific ingestion and persistence remain open.",
+          "rustReplacementOrGap": "Native classification core exists; caller and ledger adapters remain TypeScript."
         },
         {
           "ordinal": 5,
@@ -58727,12 +58836,12 @@
           "baselineSourceTargets": [
             "src/utils/ai_usage_event.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named type-only import",
+          "runtimeOrTypeDependency": "AiUsageContext is type-only in TypeScript and is consumed by the receipt builder.",
+          "defaultSideEffectBarrelDetails": "Direct import; no side-effect import or barrel in this declaration.",
+          "directDependencyReview": "Partial: Rust AiUsageContext is the native plain-data input; lossless UTF-16 entry point is separately provided.",
+          "transitiveDependencyReview": "Context creation, Polar metadata, PostHog and callers remain TypeScript.",
+          "rustReplacementOrGap": "Equivalent native context type covers builder input only; app-specific producer chain remains open."
         },
         {
           "ordinal": 6,
@@ -58747,12 +58856,12 @@
           "baselineSourceTargets": [
             "src/utils/ai_usage_lock.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named runtime import",
+          "runtimeOrTypeDependency": "withAiUsageLock wraps persistence/backfill work, not builder/enqueue/retention lookup.",
+          "defaultSideEffectBarrelDetails": "Direct import; no side-effect import or barrel in this declaration.",
+          "directDependencyReview": "Out of scoped producer functions.",
+          "transitiveDependencyReview": "Lock semantics remain required for ledger persistence.",
+          "rustReplacementOrGap": "No Rust persistence lock adapter claimed."
         },
         {
           "ordinal": 7,
@@ -58767,12 +58876,12 @@
           "baselineSourceTargets": [
             "src/utils/ai_usage_receipts.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named type-only import",
+          "runtimeOrTypeDependency": "AiUsageTransaction and AiUsageWindow are compile-time types used by the broader ledger; QueuedAiUsageReceipt extends AiUsageTransaction.",
+          "defaultSideEffectBarrelDetails": "Direct import; no side-effect import or barrel in this declaration.",
+          "directDependencyReview": "Partial only for plain-data queue receipt builder; other transaction/window consumers remain open.",
+          "transitiveDependencyReview": "Parser, load/query/backfill and report APIs remain open.",
+          "rustReplacementOrGap": "Rust QueuedAiUsageReceipt is not full public AiUsageTransaction/AiUsageWindow parity."
         },
         {
           "ordinal": 8,
@@ -58780,15 +58889,15 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named type-only import",
+          "runtimeOrTypeDependency": "RedisClientType is used only in the enqueueAiUsageReceipt signature.",
+          "defaultSideEffectBarrelDetails": "Direct import; no side-effect import or barrel in this declaration.",
+          "directDependencyReview": "Type-only npm import; native producer uses the existing redis crate and shared ConnectionManager.",
+          "transitiveDependencyReview": "No TypeScript-to-Rust caller switch or application cache adapter.",
+          "rustReplacementOrGap": "Concrete native RPUSH exists, but is opt-in and not wired into Polar callers/bootstrap."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "partial-local-request-time-receipt-builder-and-queue-producer-verified; consumer, persistence and ledger dependency closure open"
     },
     {
       "source": "src/utils/ai_usage_lock.ts",
@@ -77189,138 +77298,259 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-bounded-partial-local-AI-credit-projection; billing adapters and callers remain open",
+      "localRustEvidence": [
+        "dimabot/src/utils/ai_credit_projection.rs",
+        "dimabot/src/utils/credit_policy.rs",
+        "dimabot/src/utils/plan_cache_fence.rs",
+        "dimabot/src/utils/lossless_json.rs",
+        "dimabot/tests/ai_credit_projection.rs",
+        "dimabot/tests/ai_credit_projection_redis.rs",
+        "dimabot/tests/fixtures/ai_credit_projection_reference.cjs",
+        "migration-notes/ai-credit-receipt-2026-10-29.md",
+        "compiler-fixtures-1793256166045626940: baseline source 77fc976da064a87c02ec1fce93cd0e4820dfe53a7eac9feb5fab453c482d80f7",
+        "migration-notes/evidence/2026-10-29-ai-credit-receipt/verification-summary.json",
+        "migration-notes/evidence/2026-10-29-ai-credit-receipt/baseline-source-binding.json"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The Rust PlanTier API covers exactly the declared Free, Premium, Pro, Null, and Undefined variants; arbitrary invalid JavaScript runtime variants are outside the typed API.",
+        "Redis EVAL claims the optional external-ID marker before reading the cached projection. An absent/malformed cache, or a later Lua error after SET NX, can consume the marker without applying the projection; an uncertain result is not replayed.",
+        "Native error payload preserves channelID and error logically; eprintln formatting and Redis diagnostic wording are not Node console.error inspector output."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/src/utils/polarsh.ts: recordAiCreditUsage is called after Polar usage accounting; callers and Polar reconciliation remain TypeScript.",
+          "dimabot/src/handlers/tts_queue.handler.ts and dimabot/src/pets/runtime.ts: isAiCreditsExhausted/getAiCredits checks; no Rust caller adoption.",
+          "dimabot/src/utils/ai/openrouter/ai.ts, messages.ai.ts, moderation/semantic_worker.ts, ai/tools/code_execution.tool.ts: credit exhaustion and verified-credit checks remain TypeScript.",
+          "dimabot/src/utils/billing.ts: getAiCredits and all plan/credit-pack/Polar functions remain open."
+        ],
+        "runtimeStatus": "Only the five local projection functions and scoped constants are partially represented in an opt-in Rust library module. No request-time application adapter or caller is switched; Polar, plan fencing, the rest of billing, callers, bootstrap, and deployment remain open."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "Pinned Node 24.22.1 / V8 13.6.233.17-node.58 / TypeScript 5.9.3 source oracle: 1,956 cases (5 limits, 1,015 meter projections, 504 snapshot applications, 387 record-command cases, 45 exhaustion cases).",
+          "One Rust source replay of the 1,956 credit cases passed."
+        ],
+        "rustBehaviorEvidence": [
+          "Full compiler-fixtures-1793256166045626940 passed in 269.868 seconds (259.765 seconds script time) for source 77fc976da064a87c02ec1fce93cd0e4820dfe53a7eac9feb5fab453c482d80f7.",
+          "Strict standalone/all-feature format/check/Clippy and no-feature checks passed. The run reported 178 test executions including overlapping dependency tests and a subprocess-only no-op helper; this is not 178 unique tests.",
+          "Post-Node source replay node-1793256476785298801 passed with the same source hash. Read-only production inspection found 19 records unchanged.",
+          "Earlier E0616 private test access was corrected to the accessor; a disconnect fixture socket-retention issue was fixed. Those failed attempts were harness issues, not application defects.",
+          "Current bounded receipt-builder optimization compiler and new benchmark remain pending; see migration note.",
+          "migration-notes/evidence/2026-10-29-ai-credit-receipt/baseline-source-binding.json binds the full credit implementation and oracle replay to the unchanged baseline source hash."
+        ],
+        "status": "Partial local projection behavior verified for the exact baseline hash; whole billing export/dependency closure and caller adoption remain open."
       },
       "exports": [
         {
           "name": "AI_CREDITS_CACHE_SCHEMA_VERSION",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "partial: matching Rust AI_CREDITS_CACHE_SCHEMA_VERSION constant",
+          "evidence": [
+            "dimabot/src/utils/ai_credit_projection.rs",
+            "dimabot/src/utils/credit_policy.rs",
+            "dimabot/src/utils/plan_cache_fence.rs",
+            "dimabot/src/utils/lossless_json.rs",
+            "dimabot/tests/ai_credit_projection.rs",
+            "dimabot/tests/ai_credit_projection_redis.rs",
+            "dimabot/tests/fixtures/ai_credit_projection_reference.cjs",
+            "migration-notes/ai-credit-receipt-2026-10-29.md",
+            "compiler-fixtures-1793256166045626940: baseline source 77fc976da064a87c02ec1fce93cd0e4820dfe53a7eac9feb5fab453c482d80f7"
+          ]
         },
         {
           "name": "AI_CREDITS_CACHE_TTL_SECONDS",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "partial: matching Rust AI_CREDITS_CACHE_TTL_SECONDS constant",
+          "evidence": [
+            "dimabot/src/utils/ai_credit_projection.rs",
+            "dimabot/src/utils/credit_policy.rs",
+            "dimabot/src/utils/plan_cache_fence.rs",
+            "dimabot/src/utils/lossless_json.rs",
+            "dimabot/tests/ai_credit_projection.rs",
+            "dimabot/tests/ai_credit_projection_redis.rs",
+            "dimabot/tests/fixtures/ai_credit_projection_reference.cjs",
+            "migration-notes/ai-credit-receipt-2026-10-29.md",
+            "compiler-fixtures-1793256166045626940: baseline source 77fc976da064a87c02ec1fce93cd0e4820dfe53a7eac9feb5fab453c482d80f7"
+          ]
         },
         {
           "name": "AI_CREDITS_METER_ID",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "partial: matching Rust AI_CREDITS_METER_ID constant",
+          "evidence": [
+            "dimabot/src/utils/ai_credit_projection.rs",
+            "dimabot/src/utils/credit_policy.rs",
+            "dimabot/src/utils/plan_cache_fence.rs",
+            "dimabot/src/utils/lossless_json.rs",
+            "dimabot/tests/ai_credit_projection.rs",
+            "dimabot/tests/ai_credit_projection_redis.rs",
+            "dimabot/tests/fixtures/ai_credit_projection_reference.cjs",
+            "migration-notes/ai-credit-receipt-2026-10-29.md",
+            "compiler-fixtures-1793256166045626940: baseline source 77fc976da064a87c02ec1fce93cd0e4820dfe53a7eac9feb5fab453c482d80f7"
+          ]
         },
         {
           "name": "AI_CREDIT_LIMITS",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "partial: declared tier values are represented by get_ai_credit_limit_for_plan; no public Rust limits map constant",
+          "evidence": [
+            "dimabot/src/utils/ai_credit_projection.rs",
+            "dimabot/src/utils/credit_policy.rs",
+            "dimabot/src/utils/plan_cache_fence.rs",
+            "dimabot/src/utils/lossless_json.rs",
+            "dimabot/tests/ai_credit_projection.rs",
+            "dimabot/tests/ai_credit_projection_redis.rs",
+            "dimabot/tests/fixtures/ai_credit_projection_reference.cjs",
+            "migration-notes/ai-credit-receipt-2026-10-29.md",
+            "compiler-fixtures-1793256166045626940: baseline source 77fc976da064a87c02ec1fce93cd0e4820dfe53a7eac9feb5fab453c482d80f7"
+          ]
         },
         {
           "name": "AiCreditStatus",
-          "nativeMapping": "unreviewed",
+          "nativeMapping": "unreviewed/outside this bounded slice",
           "evidence": []
         },
         {
           "name": "AiCreditsData",
-          "nativeMapping": "unreviewed",
+          "nativeMapping": "unreviewed/outside this bounded slice",
           "evidence": []
         },
         {
           "name": "CreditPackBillingContextCacheInput",
-          "nativeMapping": "unreviewed",
+          "nativeMapping": "unreviewed/outside this bounded slice",
           "evidence": []
         },
         {
           "name": "CreditPackCatalog",
-          "nativeMapping": "unreviewed",
+          "nativeMapping": "unreviewed/outside this bounded slice",
           "evidence": []
         },
         {
           "name": "CreditPackCheckoutDecision",
-          "nativeMapping": "unreviewed",
+          "nativeMapping": "unreviewed/outside this bounded slice",
           "evidence": []
         },
         {
           "name": "CreditPackRequestError",
-          "nativeMapping": "unreviewed",
+          "nativeMapping": "unreviewed/outside this bounded slice",
           "evidence": []
         },
         {
           "name": "PolarAiCreditsMeterLike",
-          "nativeMapping": "unreviewed",
+          "nativeMapping": "unreviewed/outside this bounded slice",
           "evidence": []
         },
         {
           "name": "applyAiCreditUsageToSnapshot",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "apply_ai_credit_usage_to_snapshot[_at]",
+          "evidence": [
+            "dimabot/src/utils/ai_credit_projection.rs",
+            "dimabot/src/utils/credit_policy.rs",
+            "dimabot/src/utils/plan_cache_fence.rs",
+            "dimabot/src/utils/lossless_json.rs",
+            "dimabot/tests/ai_credit_projection.rs",
+            "dimabot/tests/ai_credit_projection_redis.rs",
+            "dimabot/tests/fixtures/ai_credit_projection_reference.cjs",
+            "migration-notes/ai-credit-receipt-2026-10-29.md",
+            "compiler-fixtures-1793256166045626940: baseline source 77fc976da064a87c02ec1fce93cd0e4820dfe53a7eac9feb5fab453c482d80f7"
+          ]
         },
         {
           "name": "buildAiCreditsDataFromMeter",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "build_ai_credits_data_from_meter[_at]",
+          "evidence": [
+            "dimabot/src/utils/ai_credit_projection.rs",
+            "dimabot/src/utils/credit_policy.rs",
+            "dimabot/src/utils/plan_cache_fence.rs",
+            "dimabot/src/utils/lossless_json.rs",
+            "dimabot/tests/ai_credit_projection.rs",
+            "dimabot/tests/ai_credit_projection_redis.rs",
+            "dimabot/tests/fixtures/ai_credit_projection_reference.cjs",
+            "migration-notes/ai-credit-receipt-2026-10-29.md",
+            "compiler-fixtures-1793256166045626940: baseline source 77fc976da064a87c02ec1fce93cd0e4820dfe53a7eac9feb5fab453c482d80f7"
+          ]
         },
         {
           "name": "cacheCreditPackBillingContext",
-          "nativeMapping": "unreviewed",
+          "nativeMapping": "unreviewed/outside this bounded slice",
           "evidence": []
         },
         {
           "name": "createBillingCheckout",
-          "nativeMapping": "unreviewed",
+          "nativeMapping": "unreviewed/outside this bounded slice",
           "evidence": []
         },
         {
           "name": "createCreditPackCheckout",
-          "nativeMapping": "unreviewed",
+          "nativeMapping": "unreviewed/outside this bounded slice",
           "evidence": []
         },
         {
           "name": "createCustomerPortalSession",
-          "nativeMapping": "unreviewed",
+          "nativeMapping": "unreviewed/outside this bounded slice",
           "evidence": []
         },
         {
           "name": "creditPackBillingContextCacheKey",
-          "nativeMapping": "unreviewed",
+          "nativeMapping": "unreviewed/outside this bounded slice",
           "evidence": []
         },
         {
           "name": "getAiCreditLimitForPlan",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "get_ai_credit_limit_for_plan for the declared PlanTier variants only",
+          "evidence": [
+            "dimabot/src/utils/ai_credit_projection.rs",
+            "dimabot/src/utils/credit_policy.rs",
+            "dimabot/src/utils/plan_cache_fence.rs",
+            "dimabot/src/utils/lossless_json.rs",
+            "dimabot/tests/ai_credit_projection.rs",
+            "dimabot/tests/ai_credit_projection_redis.rs",
+            "dimabot/tests/fixtures/ai_credit_projection_reference.cjs",
+            "migration-notes/ai-credit-receipt-2026-10-29.md",
+            "compiler-fixtures-1793256166045626940: baseline source 77fc976da064a87c02ec1fce93cd0e4820dfe53a7eac9feb5fab453c482d80f7"
+          ]
         },
         {
           "name": "getAiCredits",
-          "nativeMapping": "unreviewed",
+          "nativeMapping": "unreviewed/outside this bounded slice",
           "evidence": []
         },
         {
           "name": "getBillingContext",
-          "nativeMapping": "unreviewed",
+          "nativeMapping": "unreviewed/outside this bounded slice",
           "evidence": []
         },
         {
           "name": "getCreditPackCatalog",
-          "nativeMapping": "unreviewed",
+          "nativeMapping": "unreviewed/outside this bounded slice",
           "evidence": []
         },
         {
           "name": "isAiCreditsExhausted",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "AiCreditProjection::is_ai_credits_exhausted and is_ai_credits_exhausted_default; cache flags/snapshot only",
+          "evidence": [
+            "dimabot/src/utils/ai_credit_projection.rs",
+            "dimabot/src/utils/credit_policy.rs",
+            "dimabot/src/utils/plan_cache_fence.rs",
+            "dimabot/src/utils/lossless_json.rs",
+            "dimabot/tests/ai_credit_projection.rs",
+            "dimabot/tests/ai_credit_projection_redis.rs",
+            "dimabot/tests/fixtures/ai_credit_projection_reference.cjs",
+            "migration-notes/ai-credit-receipt-2026-10-29.md",
+            "compiler-fixtures-1793256166045626940: baseline source 77fc976da064a87c02ec1fce93cd0e4820dfe53a7eac9feb5fab453c482d80f7"
+          ]
         },
         {
           "name": "recordAiCreditUsage",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "record_command_at and AiCreditProjection::record_ai_credit_usage[_at]; local Redis projection only, no Polar/event accounting",
+          "evidence": [
+            "dimabot/src/utils/ai_credit_projection.rs",
+            "dimabot/src/utils/credit_policy.rs",
+            "dimabot/src/utils/plan_cache_fence.rs",
+            "dimabot/src/utils/lossless_json.rs",
+            "dimabot/tests/ai_credit_projection.rs",
+            "dimabot/tests/ai_credit_projection_redis.rs",
+            "dimabot/tests/fixtures/ai_credit_projection_reference.cjs",
+            "migration-notes/ai-credit-receipt-2026-10-29.md",
+            "compiler-fixtures-1793256166045626940: baseline source 77fc976da064a87c02ec1fce93cd0e4820dfe53a7eac9feb5fab453c482d80f7"
+          ]
         }
       ],
       "imports": [
@@ -77337,12 +77567,12 @@
           "baselineSourceTargets": [
             "src/schemas/users.schema.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named type-only import",
+          "runtimeOrTypeDependency": "IUsers is a compile-time type used by getAiCredits and other billing APIs outside this scope.",
+          "defaultSideEffectBarrelDetails": "Direct named import; no side-effect import or barrel in this declaration.",
+          "directDependencyReview": "Type-only import; not a runtime dependency of the scoped projection functions.",
+          "transitiveDependencyReview": "Other billing APIs remain open; getAiCredits also dynamically imports UsersSchema at runtime.",
+          "rustReplacementOrGap": "No getAiCredits application/schema adapter in this slice."
         },
         {
           "ordinal": 1,
@@ -77357,12 +77587,12 @@
           "baselineSourceTargets": [
             "src/utils/credit_packs.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "mixed named runtime and type-only imports",
+          "runtimeOrTypeDependency": "Credit-pack functions/errors are runtime imports; CreditPackOffer and PolarCreditPackProductLike are type-only. All are used outside this slice.",
+          "defaultSideEffectBarrelDetails": "Direct named import; no side-effect import or barrel in this declaration.",
+          "directDependencyReview": "Outside scoped projection functions.",
+          "transitiveDependencyReview": "Credit-pack catalog, Polar checkout, and application adapters remain open.",
+          "rustReplacementOrGap": "No credit-pack feature completion claimed."
         },
         {
           "ordinal": 2,
@@ -77377,12 +77607,12 @@
           "baselineSourceTargets": [
             "src/utils/databases/dragonfly.database.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named runtime import",
+          "runtimeOrTypeDependency": "getDragonflyClient is used by recordAiCreditUsage and isAiCreditsExhausted, and by other billing functions.",
+          "defaultSideEffectBarrelDetails": "Direct named import; no side-effect import or barrel in this declaration.",
+          "directDependencyReview": "Partial: native Redis ConnectionManager and concrete projection protocol exist, but TypeScript wrapper behavior and application adapter are not ported/adopted.",
+          "transitiveDependencyReview": "Callers, bootstrap/configuration, plan-fence and other billing cache paths remain open.",
+          "rustReplacementOrGap": "Rust Redis protocol adapter is local only; no live TypeScript caller uses it."
         },
         {
           "ordinal": 3,
@@ -77395,12 +77625,12 @@
             "src/utils/plan_cache_fence.d.ts"
           ],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named runtime import",
+          "runtimeOrTypeDependency": "Plan-cache scripts/fence functions are used in getAiCredits and credit-pack/cache APIs, not the five scoped functions.",
+          "defaultSideEffectBarrelDetails": "Direct named import; no side-effect import or barrel in this declaration.",
+          "directDependencyReview": "Outside the bounded projection mapping.",
+          "transitiveDependencyReview": "The concrete application plan-fence and Polar reconciliation path remains open.",
+          "rustReplacementOrGap": "Existing native key/policy helpers are reused where relevant; no complete plan-cache fence adapter is claimed."
         },
         {
           "ordinal": 4,
@@ -77415,12 +77645,12 @@
           "baselineSourceTargets": [
             "src/utils/referral.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named runtime import",
+          "runtimeOrTypeDependency": "PRODUCT_IDS is used by plan/billing code outside the scoped projection functions.",
+          "defaultSideEffectBarrelDetails": "Direct named import; no side-effect import or barrel in this declaration.",
+          "directDependencyReview": "Out of scoped functions; remains open.",
+          "transitiveDependencyReview": "Unreviewed for the rest of billing.",
+          "rustReplacementOrGap": "No closure claim; Polar plan/subscription and checkout paths remain open."
         },
         {
           "ordinal": 5,
@@ -77428,15 +77658,15 @@
           "specifierCategory": "node-builtin-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named runtime import",
+          "runtimeOrTypeDependency": "createHash is used for externalId dedupe in recordAiCreditUsage and hashing elsewhere in billing.",
+          "defaultSideEffectBarrelDetails": "Direct named import; no side-effect import or barrel in this declaration.",
+          "directDependencyReview": "Partial for scoped SHA-256 marker suffix; existing sha2 crate is reused.",
+          "transitiveDependencyReview": "Other billing hash uses remain outside scope.",
+          "rustReplacementOrGap": "No new crate; request-time adapter/caller adoption remains open."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "partial-local-AI-credit-projection-verified; remaining billing exports, Polar dependencies and caller adoption open"
     },
     {
       "source": "src/utils/bits_message.ts",
