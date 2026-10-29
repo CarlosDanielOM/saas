@@ -86820,19 +86820,31 @@
         "role": "test"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/utils/moderation/defaults.test.ts",
+        "sha256": "5c40dce38b888f0076a3d64480087527e9cc7e986fec243ea70fedc6918be9fb",
+        "nativeAreaReference": "see archives/dimabot-typescript/2026-10-28/README.md; mapping is not dependency-completion proof"
+      },
+      "featureReview": "reviewed-seed-plan-four-source-test-groups; post-retirement-validation-accepted",
+      "localRustEvidence": [
+        "dimabot/tests/moderation_seed_plan.rs: native test and 110-case plus five-wire source fixture replay",
+        "migration-notes/evidence/2026-10-29-moderation-seed-plan/README.md: pre-retirement accepted source and native evidence"
+      ],
       "behaviorDifferencesOrAcceptedChanges": [],
       "callers": {
         "sourceEvidence": [],
         "runtimeStatus": "unreviewed"
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "Four groups cover untouched stub, configured or saved documents, create/replace/keep decisions, and empty GET view."
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/moderation_seed_plan.rs",
+          "migration-notes/evidence/2026-10-29-moderation-seed-plan/README.md"
+        ],
+        "status": "The four original source-test behaviors are represented in the accepted native feature evidence. After retirement, the archived seed source replay matched 110 decisions and five ordered view wires; the ordinary native view test passed. The test row records preserved test behavior and does not add a feature completion mapping."
       },
       "exports": [],
       "imports": [
@@ -86883,7 +86895,7 @@
           "rustReplacementOrGap": "unreviewed"
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "mapped-source-test-behaviors; post-retirement-validation-accepted; no additional feature completion mapping"
     },
     {
       "source": "src/utils/moderation/defaults.ts",
@@ -88232,15 +88244,20 @@
         "role": "application"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/utils/moderation/seed_plan.ts",
+        "sha256": "529f7a4e395c2a4181c05be81f73082b7a5b52ef6ee18ea4036f9f66ac86b541",
+        "nativeAreaReference": "see archives/dimabot-typescript/2026-10-28/README.md; mapping is not dependency-completion proof"
+      },
       "featureReview": "reviewed-pure-seed-plan-source-and-type-dependency-closure; broader-defaults-and-application-seeding-remain-open",
       "localRustEvidence": [
         "dimabot/src/utils/moderation/seed_plan.rs: all three pure source functions, ModerationSeedPlan, typed candidate projection, six-field view, and lossless ordered JSON helper",
         "dimabot/src/schemas/channel_moderation_settings.schema.rs: existing MODERATION_SETTINGS_DEFAULTS and IModerationRule used by the native view",
         "dimabot/src/utils/js_string.rs and dimabot/src/utils/json_number.rs: UTF-16 string and JavaScript-compatible number formatting helpers used by the native view",
         "migration-notes/moderation-seed-plan-2026-10-29.md: source/type closure, exact caller boundary, source cases, and accepted validation",
-        "migration-notes/evidence/2026-10-29-moderation-seed-plan/README.md: frozen source binding, oracle readback, accepted runs, final production/resource readback"
+        "migration-notes/evidence/2026-10-29-moderation-seed-plan/README.md: frozen source binding, oracle readback, accepted runs, final production/resource readback",
+        "migration-notes/evidence/2026-10-29-moderation-seed-retirement/README.md: post-retirement source, resolver, replay, and readback evidence"
       ],
       "behaviorDifferencesOrAcceptedChanges": [
         "The declared candidate is mapped to enabled: Option<bool>, rules_len: Option<usize>, and settings_version: Option<f64>. This projection preserves missing/null defaults and is sufficient because the source predicate reads only the rules-array length, not its elements.",
@@ -88268,7 +88285,7 @@
           "migration-notes/moderation-seed-plan-2026-10-29.md",
           "migration-notes/evidence/2026-10-29-moderation-seed-plan/README.md"
         ],
-        "status": "Accepted source reference matched 110 decision cases and five ordered lossless view wires; the source execution used the unchanged seed/schema/spam sources, disconnected real Mongoose and Node crypto with strict TypeScript closure. The native ordinary test verified all six view fields and fresh independent rules vectors; the full fixture replay, no-feature, Mongo/Redis, all-features/all-targets, formatting and Clippy checks passed. The four original source-test behaviors are covered by this feature evidence; the separate test inventory row was not changed."
+        "status": "Accepted post-retirement replay: 110 seed decisions and five ordered lossless view wires matched the accepted reference objects. The ordinary native test verified all six view fields and fresh independent rules vectors. Resolver checks, all three native replays, relevant ordinary tests, formatting, all three feature profiles, all-targets/all-features checks, and Clippy passed. Source retirement does not change the feature-completion counter."
       },
       "exports": [
         {

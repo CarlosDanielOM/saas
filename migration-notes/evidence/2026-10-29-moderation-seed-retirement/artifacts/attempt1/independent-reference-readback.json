@@ -1,0 +1,17 @@
+{
+  "seedCases": 110,
+  "seedViews": 5,
+  "capsCases": 5348,
+  "emoteCases": 360,
+  "allCaseObjectsUnchanged": true,
+  "allUnicodeFactsAndGeneratedRustUnchanged": true,
+  "allSourceNativeSdkFileHashesChecked": true,
+  "seedResolution": {
+    "path": "archives/dimabot-typescript/2026-10-28/src/utils/moderation/seed_plan.ts",
+    "virtualPath": "dimabot/src/utils/moderation/seed_plan.ts",
+    "sha256": "529f7a4e395c2a4181c05be81f73082b7a5b52ef6ee18ea4036f9f66ac86b541",
+    "resolverSha256": "b1a40e5a708e93e51b497251862d12cbf05c2c1fb6e33a41c066022b20746f0c"
+  },
+  "resolverSha256": "b1a40e5a708e93e51b497251862d12cbf05c2c1fb6e33a41c066022b20746f0c",
+  "seedFixtureSha256": "4e22ebfb480f8cfc98340669e90f2166e59a90b19602ae73fb1c7322aaf93d99"
+}

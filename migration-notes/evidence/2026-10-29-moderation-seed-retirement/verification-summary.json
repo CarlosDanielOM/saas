@@ -1,0 +1,73 @@
+{
+  "acceptedRuns": [
+    "node-1793316521093725052",
+    "compiler-1793316521091443097",
+    "compiler-1793316937008591281"
+  ],
+  "runs": [
+    {
+      "run": "format-1793316475251053756",
+      "sourceTreeSha256": "3b3388c4417ab957c5ae4e5c84da01e1e055ae5466e374a6f651431de0018b0b",
+      "classification": "preformat nonfinal",
+      "success": true,
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793316521093725052",
+      "sourceTreeSha256": "4f263a49502e028ad92c966ba8ceeaa8981c8591698b39ac0be2fc8a24a30828",
+      "classification": "accepted final",
+      "success": true,
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-1793316521091443097",
+      "sourceTreeSha256": "4f263a49502e028ad92c966ba8ceeaa8981c8591698b39ac0be2fc8a24a30828",
+      "classification": "accepted final",
+      "success": true,
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-1793316937008591281",
+      "sourceTreeSha256": "4f263a49502e028ad92c966ba8ceeaa8981c8591698b39ac0be2fc8a24a30828",
+      "classification": "accepted final",
+      "success": true,
+      "productionUnchanged": true
+    }
+  ],
+  "sourceInputs": 1350,
+  "sourceReadback": {
+    "seedCases": 110,
+    "seedViews": 5,
+    "capsCases": 5348,
+    "emoteCases": 360,
+    "allCaseObjectsUnchanged": true,
+    "allUnicodeFactsAndGeneratedRustUnchanged": true,
+    "allSourceNativeSdkFileHashesChecked": true,
+    "seedResolution": {
+      "path": "archives/dimabot-typescript/2026-10-28/src/utils/moderation/seed_plan.ts",
+      "virtualPath": "dimabot/src/utils/moderation/seed_plan.ts",
+      "sha256": "529f7a4e395c2a4181c05be81f73082b7a5b52ef6ee18ea4036f9f66ac86b541",
+      "resolverSha256": "b1a40e5a708e93e51b497251862d12cbf05c2c1fb6e33a41c066022b20746f0c"
+    },
+    "resolverSha256": "b1a40e5a708e93e51b497251862d12cbf05c2c1fb6e33a41c066022b20746f0c",
+    "seedFixtureSha256": "4e22ebfb480f8cfc98340669e90f2166e59a90b19602ae73fb1c7322aaf93d99"
+  },
+  "gitBindingException": {
+    "archives/dimabot-typescript/2026-10-28/README.md": {
+      "sourceSha256": "914ef99da02961b1d4bd3484e2a66534b5fb4de74481f62dc425e7f0d612bc1a",
+      "gitCommitSha256": "c3f956e5329488139a7abfee760df37fa16f28a00fbbf93ff549f7bca407a29b",
+      "reason": "accepted source included uncommitted archive README update"
+    }
+  },
+  "productionUnchangedRecords": 19,
+  "remainingOwnedResources": {
+    "containers": [],
+    "networks": [],
+    "volumes": []
+  },
+  "readbackNote": "An intermediate host readback script raised TypeError; this was not an application validation failure. The completed independent readbacks are retained.",
+  "performanceMeasured": false,
+  "deployment": false,
+  "push": false,
+  "integration": "TypeScript defaults and moderation handler callers remain unadopted; migration-checkout TypeScript build integration remains open."
+}

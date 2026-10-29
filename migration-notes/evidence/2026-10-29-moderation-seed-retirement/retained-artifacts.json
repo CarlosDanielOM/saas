@@ -1,0 +1,137 @@
+{
+  "artifacts/attempt1/accepted-source-manifest.json": {
+    "storedPath": "artifacts/attempt1/accepted-source-manifest.json.gz",
+    "rawSha256": "7d5964c1643131e5ca026409adb5c611d5e84bc747a10124cc9677432d941431",
+    "rawBytes": 160770
+  },
+  "artifacts/attempt1/caps-reference/moderation_caps_reference.json": {
+    "storedPath": "artifacts/attempt1/caps-reference/moderation_caps_reference.json.gz",
+    "rawSha256": "f0d5edde4cae6a5310143677f3eae2050e912899eefc2115673a099917e07033",
+    "rawBytes": 2798853
+  },
+  "artifacts/attempt1/emote-reference/moderation_emote_spam_reference.json": {
+    "storedPath": "artifacts/attempt1/emote-reference/moderation_emote_spam_reference.json.gz",
+    "rawSha256": "0b59dba987a5c107ae5c3d0c95b6b59e529c25f27d33e1851b5c63e7a2a62b27",
+    "rawBytes": 106071
+  },
+  "artifacts/attempt1/final-production-resource-readback.json": {
+    "storedPath": "artifacts/attempt1/final-production-resource-readback.json",
+    "rawSha256": "121908c906649af8d49ff465fd1843d15d47110dfbbf907958568d87a9f17cd3",
+    "rawBytes": 28370
+  },
+  "artifacts/attempt1/independent-reference-readback.json": {
+    "storedPath": "artifacts/attempt1/independent-reference-readback.json",
+    "rawSha256": "7f0670abee84256b5cb7c15b05dfae7bdc5076bbcb18c17201ed3229dcc0b97f",
+    "rawBytes": 746
+  },
+  "artifacts/attempt1/seed-reference/moderation-seed-plan-reference.json": {
+    "storedPath": "artifacts/attempt1/seed-reference/moderation-seed-plan-reference.json",
+    "rawSha256": "4e22ebfb480f8cfc98340669e90f2166e59a90b19602ae73fb1c7322aaf93d99",
+    "rawBytes": 25803
+  },
+  "artifacts/attempt1/unicode/caps_unicode_data.rs": {
+    "storedPath": "artifacts/attempt1/unicode/caps_unicode_data.rs",
+    "rawSha256": "f47a1f1595777a04f8f97a688a7ca663b949936a1c92758a83b6860abdd4c344",
+    "rawBytes": 29633
+  },
+  "artifacts/attempt1/unicode/unicode-reference.json": {
+    "storedPath": "artifacts/attempt1/unicode/unicode-reference.json",
+    "rawSha256": "6b227832af90bf1b0f3bc1277e6171035facd7536d94cff4c484d665085e902c",
+    "rawBytes": 62295
+  },
+  "source-exceptions/archive-README.md": {
+    "storedPath": "source-exceptions/archive-README.md",
+    "rawSha256": "914ef99da02961b1d4bd3484e2a66534b5fb4de74481f62dc425e7f0d612bc1a",
+    "rawBytes": 7839
+  },
+  "runs/format-1793316475251053756-receipt.json": {
+    "storedPath": "runs/format-1793316475251053756-receipt.json.gz",
+    "rawSha256": "a4e5d65da4cc4da0ef5d31a14948da052382c92ed48ce8437e42b3aec2e13bf9",
+    "rawBytes": 164379
+  },
+  "runs/format-1793316475251053756.log": {
+    "storedPath": "runs/format-1793316475251053756.log.gz",
+    "rawSha256": "d8df33ba72c691319594a6938a8cc1f756798afbe8a2dc8dedcec22abade739d",
+    "rawBytes": 1833
+  },
+  "runs/node-1793316521093725052-receipt.json": {
+    "storedPath": "runs/node-1793316521093725052-receipt.json.gz",
+    "rawSha256": "1b54f407393af179b1388a95463a30a3851814717c98ab3d363ee1facce9bdad",
+    "rawBytes": 164259
+  },
+  "runs/node-1793316521093725052.log": {
+    "storedPath": "runs/node-1793316521093725052.log.gz",
+    "rawSha256": "114495940c1a73eeb398046666bbfea220e36002e8b939c457aad756dfca9276",
+    "rawBytes": 731
+  },
+  "runs/compiler-1793316521091443097-receipt.json": {
+    "storedPath": "runs/compiler-1793316521091443097-receipt.json.gz",
+    "rawSha256": "05f6870835d7085f2f07eb0849d70829b554948cb0dca9ef96ed2f3885c973f8",
+    "rawBytes": 164385
+  },
+  "runs/compiler-1793316521091443097.log": {
+    "storedPath": "runs/compiler-1793316521091443097.log.gz",
+    "rawSha256": "601472eaee3a088199a46c0749b53cbb8c2b38f28791e915b10a1eeba526da7f",
+    "rawBytes": 3276
+  },
+  "runs/compiler-1793316937008591281-receipt.json": {
+    "storedPath": "runs/compiler-1793316937008591281-receipt.json.gz",
+    "rawSha256": "1e385de3534f08d5887b78107cfc0366fbea40a61db87e7191c9f5d2a8d3213b",
+    "rawBytes": 164386
+  },
+  "runs/compiler-1793316937008591281.log": {
+    "storedPath": "runs/compiler-1793316937008591281.log.gz",
+    "rawSha256": "92c5d71343d1f7c9b1f4f13c83894b02bf1b29f72af38c6f894854288a7e8e4f",
+    "rawBytes": 3089
+  },
+  "reproduction-tools/apply_format.py": {
+    "storedPath": "reproduction-tools/apply_format.py",
+    "rawSha256": "ce77428e3a9ca462e55fc47fe4d21bdb3494df2353f0373257076713ab22a276",
+    "rawBytes": 548
+  },
+  "reproduction-tools/final_readback.py": {
+    "storedPath": "reproduction-tools/final_readback.py",
+    "rawSha256": "2517f7f3d38a84b5894f310f5d9211478bac2fa5a8180e84fcf092ba54ff2120",
+    "rawBytes": 1279
+  },
+  "reproduction-tools/freeze_permit.py": {
+    "storedPath": "reproduction-tools/freeze_permit.py",
+    "rawSha256": "ce689ff71d74e81571d2e7851127adc5e4af7306a10c7823fcf0f9aad6c39924",
+    "rawBytes": 303
+  },
+  "reproduction-tools/freeze_seed_plan.py": {
+    "storedPath": "reproduction-tools/freeze_seed_plan.py",
+    "rawSha256": "98ae7e347446c939102a914722d7d33375372238408194f6ddc1ded7152254f9",
+    "rawBytes": 143
+  },
+  "reproduction-tools/freeze_seed_retirement.py": {
+    "storedPath": "reproduction-tools/freeze_seed_retirement.py",
+    "rawSha256": "f91976c3a48a4e42a58f9f9b5f39991ef734c6757fb221eafc914fbf2f31e1c1",
+    "rawBytes": 144
+  },
+  "reproduction-tools/prepare_posthog_sdk.py": {
+    "storedPath": "reproduction-tools/prepare_posthog_sdk.py",
+    "rawSha256": "fe140630c04c41cfcb3f001e5d416b32d889c52c4ba477ac467ea6220e6c1b26",
+    "rawBytes": 2149
+  },
+  "reproduction-tools/seed_retirement_check1.sh": {
+    "storedPath": "reproduction-tools/seed_retirement_check1.sh",
+    "rawSha256": "45570423632272f2fa4e494c64af01b70423a3fd769c9123ba5083ecd06e4b42",
+    "rawBytes": 358
+  },
+  "reproduction-tools/seed_retirement_node1.sh": {
+    "storedPath": "reproduction-tools/seed_retirement_node1.sh",
+    "rawSha256": "feb5d9e186b94d03e3f1b2670519864c9399356d8bd7b88f42819fd4f2055f46",
+    "rawBytes": 1635
+  },
+  "reproduction-tools/seed_retirement_replay1.sh": {
+    "storedPath": "reproduction-tools/seed_retirement_replay1.sh",
+    "rawSha256": "b82b11b4352efa3718b992ade89801033949a044d7b5b58052e5a7e8bf818738",
+    "rawBytes": 903
+  },
+  "reproduction-tools/validate.py": {
+    "storedPath": "reproduction-tools/validate.py",
+    "rawSha256": "12039de7b3fb152783d1446ce409a7ab0272b1f773624b207cf12763e645e7be",
+    "rawBytes": 12955
+  }
+}
