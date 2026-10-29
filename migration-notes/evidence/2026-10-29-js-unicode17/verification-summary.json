@@ -1,0 +1,89 @@
+{
+  "status": "Verified reusable Unicode 17 string lowercase and NFD/Mark-removal fold core; no selected TypeScript leaf or AST caller adoption is completed by this core.",
+  "codeCommit": "a1088ba9071290cfc1bd3073cd1d8a0f50e5888f",
+  "sourceTreeSha256": "5680c2a75af337fc665d6ad76eebb1f57cb9ef4f066de047be505d16e898c819",
+  "sourceInputs": 1318,
+  "acceptedRuns": [
+    "compiler-1793306075185634397",
+    "compiler-1793306144515399315",
+    "node-1793306075185472154"
+  ],
+  "allCodepoints": 1114112,
+  "lowerContexts": 6432,
+  "mixedCases": 20,
+  "ordinaryTests": 1,
+  "limits": {
+    "cpus": 6,
+    "memory": 4294967296,
+    "memory_swap": 4294967296,
+    "pids": 256,
+    "cargo_jobs": 2
+  },
+  "peakCacheBytes": 3774877696,
+  "minimumAvailableBytes": 8281657344,
+  "productionUnchangedRecords": 19,
+  "performanceMeasured": false,
+  "noRetirementAdoptionDeploymentPush": true,
+  "runs": [
+    {
+      "run": "compiler-1793306075185634397",
+      "success": true,
+      "sourceTreeSha256": "5680c2a75af337fc665d6ad76eebb1f57cb9ef4f066de047be505d16e898c819",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-1793306144515399315",
+      "success": true,
+      "sourceTreeSha256": "5680c2a75af337fc665d6ad76eebb1f57cb9ef4f066de047be505d16e898c819",
+      "productionUnchanged": true
+    },
+    {
+      "run": "format-1793306035981217563",
+      "success": true,
+      "sourceTreeSha256": "83076041ba504828c4bab0f521fc66619319a3b694d9e9cee3e0ab582e1ff166",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793304594190059854",
+      "success": false,
+      "sourceTreeSha256": "89be721f9f45b68737e097334c289b851b08fe2ebeefb00370d1572d2ef94f80",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793304885445468701",
+      "success": false,
+      "sourceTreeSha256": "7fdc99bd3510a7710df688cd9598d59c57eeba7c90ade57fb70e4e2fcbe607f5",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793305057985281330",
+      "success": true,
+      "sourceTreeSha256": "7fdc99bd3510a7710df688cd9598d59c57eeba7c90ade57fb70e4e2fcbe607f5",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793305760605201042",
+      "success": false,
+      "sourceTreeSha256": "7fdc99bd3510a7710df688cd9598d59c57eeba7c90ade57fb70e4e2fcbe607f5",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793305780632020935",
+      "success": true,
+      "sourceTreeSha256": "7fdc99bd3510a7710df688cd9598d59c57eeba7c90ade57fb70e4e2fcbe607f5",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793305838560818548",
+      "success": true,
+      "sourceTreeSha256": "7fdc99bd3510a7710df688cd9598d59c57eeba7c90ade57fb70e4e2fcbe607f5",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793306075185472154",
+      "success": true,
+      "sourceTreeSha256": "5680c2a75af337fc665d6ad76eebb1f57cb9ef4f066de047be505d16e898c819",
+      "productionUnchanged": true
+    }
+  ]
+}

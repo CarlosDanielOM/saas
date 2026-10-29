@@ -1,0 +1,24 @@
+{
+  "acceptedReferenceSha256": "aba3756c8cacc9a25432c282f15141dc5d34da317c13618cfcfa43253c0e3246",
+  "generatedRustSha256": "6c9529a54bd192de38852f31421383d3295dc9010ca463037b6383e361040aeb",
+  "generatorSha256": "7c464ae4144db4a082a56593ddabf7c804a21503489a2db5abf446eb8e942f2f",
+  "counts": {
+    "cased": 4632,
+    "caseIgnorable": 2794,
+    "mark": 2543,
+    "assigned": 299382,
+    "lowercaseMappings": 1488,
+    "nfdMappings": 13253,
+    "casedIgnorableOverlap": 268,
+    "contextualGoldens": 6432,
+    "ranges": {
+      "cased": 158,
+      "caseIgnorable": 464,
+      "mark": 327,
+      "assigned": 735
+    }
+  },
+  "nativeTablesIndependentlyParsed": true,
+  "initialFactsUnchanged": true,
+  "metadataCorrectionOnly": true
+}
