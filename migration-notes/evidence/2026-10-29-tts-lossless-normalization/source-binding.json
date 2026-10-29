@@ -1,0 +1,18 @@
+{
+  "sourceCommit": "782e036316810290e89e8638516f38f0eb081d4d",
+  "sourceTreeSha256": "0f6d2b024c6333461e6bd007512f798d64f09fbcb72629c631866bef9ae0dbd4",
+  "files": {
+    "dimabot/src/lib.rs": "43b52b0f94e29abbfcd2d0a4f7dc49f001ea6986f96aef1a80d38fccb8fd14c3",
+    "dimabot/src/pets/speech_text.md": "0447e4e04c0a0a209ff5ce7a95f5badb4257bf6a816ee9638c547ce520a4b314",
+    "dimabot/src/pets/speech_text.rs": "b8e0068c7bb5e789db7740b393019f807c51958a7e6781c59f9f0965cf692e9a",
+    "dimabot/src/utils/tts/mod.rs": "c2e70fbf4ad4ce8940c74d669f8cbd760207ff36eda367f45bff7e39838e77ae",
+    "dimabot/tests/fixtures/tts_lossless_benchmark.cjs": "6a4a478905a0531b694ee8fb4cb5acf97ad3c097f9946f4e920a87c77430410d",
+    "dimabot/tests/fixtures/tts_lossless_reference.cjs": "04926e112dbffffe5e4dcc860a099ba17dfa6ab4c70236562499c32a94718700",
+    "dimabot/tests/fixtures/tts_lossless_source.cjs": "ef14390e57712ef38e2cdf916838b812ceb188c405084fd3c01c582a5e50b57e",
+    "dimabot/tests/tts_lossless_benchmark.rs": "0f56f70a3ed23716c2f7dc39cdb441c576c36cad6e06b891cca022db4aa1d5a6",
+    "dimabot/tests/tts_utilities.rs": "610786149e935ae3b8b391dfab9a6299d8f55a7d2ea3635da054eb5e2fb67c26"
+  },
+  "initialNativeModuleSha256": "bcce0996eb9bf3cb0a1495bbe1305be2c12107e6245ad6abca0bbd375b9eeb15",
+  "initialSourceTreeSha256": "f7fef45ae7e42ce9ff4de21ffe30cbad6b72b5a7a6cca4846a5c7ef9d17e91d4",
+  "capturedPetHelperSha256": "9a5c1923ef1ceb3e1c454dab4803a589289c04cf1eb954aa3720ca2c163a6561"
+}

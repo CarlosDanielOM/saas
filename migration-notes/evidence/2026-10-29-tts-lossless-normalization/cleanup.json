@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "productionBaseline": "user-acknowledged api-bc6455f1979f; original baseline preserved separately",
+  "productionContainerCount": 19,
+  "productionUnchangedDuringValidation": true,
+  "productionFieldsCompared": [
+    "id",
+    "image",
+    "started",
+    "mounts",
+    "config_image",
+    "entrypoint",
+    "command",
+    "compose"
+  ],
+  "productionFingerprintSha256": "50903c6a12f924a8fa842db591bb68472fe98c522309d790a03743714add3536",
+  "taskOwnedContainersNetworksVolumesRemaining": [],
+  "privateBuildCacheRetainedForOngoingMigration": true,
+  "deployedByMigrationSession": false,
+  "pushed": false
+}

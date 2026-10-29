@@ -1,0 +1,48 @@
+[
+  {
+    "artifact": "fixtures/benchmark/tts-lossless-benchmark-inputs.json.gz",
+    "uncompressedSha256": "0b64cdffa9c43c3e1f0545beed6e64a49727eca2df06ad0d7e4558325d9b895a",
+    "uncompressedBytes": 138788
+  },
+  {
+    "artifact": "fixtures/benchmark/tts-lossless-node-benchmark.json.gz",
+    "uncompressedSha256": "fe46ca1b4899cf287f85e150f40e1985eb9ffc98263a8f38c74cc09dff07730a",
+    "uncompressedBytes": 8789
+  },
+  {
+    "artifact": "fixtures/benchmark/tts-lossless-rust-benchmark.json.gz",
+    "uncompressedSha256": "0c0e1baae0efd60df7dadbcc7bb1d30036d792efa02d8a16e4d9511cfae9a961",
+    "uncompressedBytes": 8730
+  },
+  {
+    "artifact": "fixtures/final-benchmark/tts-lossless-benchmark-inputs.json.gz",
+    "uncompressedSha256": "0b64cdffa9c43c3e1f0545beed6e64a49727eca2df06ad0d7e4558325d9b895a",
+    "uncompressedBytes": 138788
+  },
+  {
+    "artifact": "fixtures/final-benchmark/tts-lossless-node-benchmark.json.gz",
+    "uncompressedSha256": "dff8815c738de754599266c2fe1c3d4f0615dfe3bc97f3e5e47f790137bf2bff",
+    "uncompressedBytes": 8771
+  },
+  {
+    "artifact": "fixtures/final-benchmark/tts-lossless-rust-benchmark.json.gz",
+    "uncompressedSha256": "cf3482b9c38f1e7a53255cf4752496b3dedd8760df64bac896c588b0ab3fc0ac",
+    "uncompressedBytes": 8766
+  },
+  {
+    "artifact": "fixtures/reference/tts_lossless_cases.json.gz",
+    "uncompressedSha256": "fa32ff5137757619c2bcb52b580c44e4989711e741e7e359769c5f3e8823a793",
+    "uncompressedBytes": 2293401
+  },
+  {
+    "artifact": "fixtures/source-provenance-and-counts.json.gz",
+    "uncompressedSha256": "6b3bbcd1be75cfc634bbd3a632c62ed48c94644de506ad5931dada550aa0b0c6",
+    "uncompressedBytes": 986
+  },
+  {
+    "artifact": "initial-native-mod.rs.gz",
+    "uncompressedSha256": "bcce0996eb9bf3cb0a1495bbe1305be2c12107e6245ad6abca0bbd375b9eeb15",
+    "uncompressedBytes": 35418,
+    "purpose": "exact initial measured native module, recovered from author original function and verified against compiler receipt"
+  }
+]

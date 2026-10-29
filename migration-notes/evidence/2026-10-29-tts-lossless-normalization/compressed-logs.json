@@ -1,0 +1,42 @@
+[
+  {
+    "artifact": "format-1793245162226293271.log.gz",
+    "uncompressedSha256": "d8df33ba72c691319594a6938a8cc1f756798afbe8a2dc8dedcec22abade739d",
+    "uncompressedBytes": 1833
+  },
+  {
+    "artifact": "node-1793245222810847343.log.gz",
+    "uncompressedSha256": "56a68eb5c099f855a7782e8edf4af3056f61652a31edd26931f63be728be6659",
+    "uncompressedBytes": 1363
+  },
+  {
+    "artifact": "compiler-1793245261760196976.log.gz",
+    "uncompressedSha256": "265a2945239f5f6de601b514960b7c34e78cad39b07f14bf38d045100a31f117",
+    "uncompressedBytes": 20400
+  },
+  {
+    "artifact": "node-1793245450953370907.log.gz",
+    "uncompressedSha256": "b2692766a691ec02caafb8486e5e8aa9817f7c4e9e372dbcee550ebc53876924",
+    "uncompressedBytes": 821
+  },
+  {
+    "artifact": "format-1793245578220634221.log.gz",
+    "uncompressedSha256": "d8df33ba72c691319594a6938a8cc1f756798afbe8a2dc8dedcec22abade739d",
+    "uncompressedBytes": 1833
+  },
+  {
+    "artifact": "node-1793245647083747340.log.gz",
+    "uncompressedSha256": "0c688102a94b2b1aa635e9d158081c591fd65de1f14e08fa0a624b962eb49991",
+    "uncompressedBytes": 178
+  },
+  {
+    "artifact": "compiler-1793245700167727814.log.gz",
+    "uncompressedSha256": "a76c70a115aecf7875b6c06805249e7189e3aaf8c09006a01d7e1c9199710363",
+    "uncompressedBytes": 20352
+  },
+  {
+    "artifact": "node-1793245911101986999.log.gz",
+    "uncompressedSha256": "b2692766a691ec02caafb8486e5e8aa9817f7c4e9e372dbcee550ebc53876924",
+    "uncompressedBytes": 821
+  }
+]

@@ -1,0 +1,327 @@
+{
+  "schema": 1,
+  "scope": "prepared function plus every output UTF-16 unit checksum; excludes setup, JSON, I/O, provider and network work",
+  "samples": 7,
+  "warmups": 100,
+  "pairs": {
+    "initial": {
+      "sourceTreeSha256": "f7fef45ae7e42ce9ff4de21ffe30cbad6b72b5a7a6cca4846a5c7ef9d17e91d4",
+      "inputSha256": "0b64cdffa9c43c3e1f0545beed6e64a49727eca2df06ad0d7e4558325d9b895a",
+      "runs": [
+        {
+          "name": "ascii",
+          "typeScriptMedianUsPerOp": 1.1376932,
+          "rustMedianUsPerOp": 0.6473096,
+          "typeScriptOverRust": 1.757571956294175,
+          "rustHigherElapsedPercent": -43.10332521983958,
+          "typeScriptSampleRangeUs": [
+            0.9963873999999999,
+            1.3409980000000001
+          ],
+          "rustSampleRangeUs": [
+            0.5929185,
+            0.7321735
+          ]
+        },
+        {
+          "name": "unicode",
+          "typeScriptMedianUsPerOp": 0.9899544,
+          "rustMedianUsPerOp": 0.7417686,
+          "typeScriptOverRust": 1.3345865543513167,
+          "rustHigherElapsedPercent": -25.070427486356948,
+          "typeScriptSampleRangeUs": [
+            0.9049451000000001,
+            1.0855655
+          ],
+          "rustSampleRangeUs": [
+            0.6841135,
+            0.9033941999999999
+          ]
+        },
+        {
+          "name": "large-utf8",
+          "typeScriptMedianUsPerOp": 48.668886,
+          "rustMedianUsPerOp": 44.251883,
+          "typeScriptOverRust": 1.0998150293401074,
+          "rustHigherElapsedPercent": -9.07561968852133,
+          "typeScriptSampleRangeUs": [
+            42.706437,
+            56.12352
+          ],
+          "rustSampleRangeUs": [
+            40.493241999999995,
+            47.925153
+          ]
+        },
+        {
+          "name": "lone-units",
+          "typeScriptMedianUsPerOp": 0.9002494000000001,
+          "rustMedianUsPerOp": 0.4750479,
+          "typeScriptOverRust": 1.8950707918085734,
+          "rustHigherElapsedPercent": -47.23152273136756,
+          "typeScriptSampleRangeUs": [
+            0.7457339,
+            1.2346157
+          ],
+          "rustSampleRangeUs": [
+            0.45970310000000003,
+            0.551439
+          ]
+        },
+        {
+          "name": "emote-tokens",
+          "typeScriptMedianUsPerOp": 4.2192975,
+          "rustMedianUsPerOp": 2.4361684,
+          "typeScriptOverRust": 1.7319400005352665,
+          "rustHigherElapsedPercent": -42.26127927694123,
+          "typeScriptSampleRangeUs": [
+            3.4300001,
+            6.5327111
+          ],
+          "rustSampleRangeUs": [
+            2.3784693999999997,
+            2.9301356999999997
+          ]
+        },
+        {
+          "name": "link-boundaries",
+          "typeScriptMedianUsPerOp": 1.7594197999999999,
+          "rustMedianUsPerOp": 2.1878533,
+          "typeScriptOverRust": 0.8041763129182381,
+          "rustHigherElapsedPercent": 24.3508399757693,
+          "typeScriptSampleRangeUs": [
+            1.7098457,
+            2.2462196
+          ],
+          "rustSampleRangeUs": [
+            2.1491377000000003,
+            2.3331215000000003
+          ]
+        },
+        {
+          "name": "whitespace-controls",
+          "typeScriptMedianUsPerOp": 0.6592508,
+          "rustMedianUsPerOp": 0.7298071,
+          "typeScriptOverRust": 0.9033219874128382,
+          "rustHigherElapsedPercent": 10.702497441034575,
+          "typeScriptSampleRangeUs": [
+            0.6078897,
+            0.7280327999999999
+          ],
+          "rustSampleRangeUs": [
+            0.6070441,
+            0.8728360000000001
+          ]
+        },
+        {
+          "name": "pet-fish",
+          "typeScriptMedianUsPerOp": 6.8591234000000005,
+          "rustMedianUsPerOp": 4.6197738,
+          "typeScriptOverRust": 1.4847314385825559,
+          "rustHigherElapsedPercent": -32.64775204365037,
+          "typeScriptSampleRangeUs": [
+            6.6472386,
+            8.019964
+          ],
+          "rustSampleRangeUs": [
+            4.3483503,
+            4.7988863
+          ]
+        },
+        {
+          "name": "pet-piper",
+          "typeScriptMedianUsPerOp": 6.2907367999999995,
+          "rustMedianUsPerOp": 4.1726642,
+          "typeScriptOverRust": 1.5076067707533234,
+          "rustHigherElapsedPercent": -33.669706225827156,
+          "typeScriptSampleRangeUs": [
+            5.9764761,
+            8.1334415
+          ],
+          "rustSampleRangeUs": [
+            4.0422959999999994,
+            4.5277683
+          ]
+        },
+        {
+          "name": "pet-large",
+          "typeScriptMedianUsPerOp": 194.525525,
+          "rustMedianUsPerOp": 84.433801,
+          "typeScriptOverRust": 2.303882126543136,
+          "rustHigherElapsedPercent": -56.59500160711557,
+          "typeScriptSampleRangeUs": [
+            182.712647,
+            227.104099
+          ],
+          "rustSampleRangeUs": [
+            79.21045699999999,
+            130.897387
+          ]
+        }
+      ]
+    },
+    "final": {
+      "sourceTreeSha256": "0f6d2b024c6333461e6bd007512f798d64f09fbcb72629c631866bef9ae0dbd4",
+      "inputSha256": "0b64cdffa9c43c3e1f0545beed6e64a49727eca2df06ad0d7e4558325d9b895a",
+      "runs": [
+        {
+          "name": "ascii",
+          "typeScriptMedianUsPerOp": 1.3216146000000002,
+          "rustMedianUsPerOp": 0.7501500999999999,
+          "typeScriptOverRust": 1.761800205052296,
+          "rustHigherElapsedPercent": -43.23987492268928,
+          "typeScriptSampleRangeUs": [
+            1.0907813000000002,
+            1.8106978
+          ],
+          "rustSampleRangeUs": [
+            0.5755501000000001,
+            0.8720344999999999
+          ]
+        },
+        {
+          "name": "unicode",
+          "typeScriptMedianUsPerOp": 1.1144505,
+          "rustMedianUsPerOp": 0.7068071,
+          "typeScriptOverRust": 1.5767392546000174,
+          "rustHigherElapsedPercent": -36.577972731853045,
+          "typeScriptSampleRangeUs": [
+            0.9844261,
+            1.3310392999999998
+          ],
+          "rustSampleRangeUs": [
+            0.6736409,
+            0.747424
+          ]
+        },
+        {
+          "name": "large-utf8",
+          "typeScriptMedianUsPerOp": 41.252875,
+          "rustMedianUsPerOp": 40.825725,
+          "typeScriptOverRust": 1.0104627658173861,
+          "rustHigherElapsedPercent": -1.0354429842768686,
+          "typeScriptSampleRangeUs": [
+            39.324572,
+            47.858849
+          ],
+          "rustSampleRangeUs": [
+            39.580491,
+            49.566948
+          ]
+        },
+        {
+          "name": "lone-units",
+          "typeScriptMedianUsPerOp": 1.2871381,
+          "rustMedianUsPerOp": 0.1945615,
+          "typeScriptOverRust": 6.615584789385362,
+          "rustHigherElapsedPercent": -84.88417831777336,
+          "typeScriptSampleRangeUs": [
+            0.7833724,
+            1.4543853
+          ],
+          "rustSampleRangeUs": [
+            0.18756630000000002,
+            0.2075438
+          ]
+        },
+        {
+          "name": "emote-tokens",
+          "typeScriptMedianUsPerOp": 3.4236832,
+          "rustMedianUsPerOp": 2.0052573,
+          "typeScriptOverRust": 1.7073535650512284,
+          "rustHigherElapsedPercent": -41.42982329673494,
+          "typeScriptSampleRangeUs": [
+            3.1309168,
+            6.0484079
+          ],
+          "rustSampleRangeUs": [
+            1.7577396,
+            2.9859163
+          ]
+        },
+        {
+          "name": "link-boundaries",
+          "typeScriptMedianUsPerOp": 2.0189268,
+          "rustMedianUsPerOp": 1.9944819999999999,
+          "typeScriptOverRust": 1.0122562148969005,
+          "rustHigherElapsedPercent": -1.2107818866934683,
+          "typeScriptSampleRangeUs": [
+            1.8093333,
+            2.2259216
+          ],
+          "rustSampleRangeUs": [
+            1.8992246,
+            3.3858222999999996
+          ]
+        },
+        {
+          "name": "whitespace-controls",
+          "typeScriptMedianUsPerOp": 0.6506938,
+          "rustMedianUsPerOp": 0.42226990000000003,
+          "typeScriptOverRust": 1.5409428898436757,
+          "rustHigherElapsedPercent": -35.1046682786896,
+          "typeScriptSampleRangeUs": [
+            0.6011681999999999,
+            0.9427159
+          ],
+          "rustSampleRangeUs": [
+            0.4010933,
+            0.5212414
+          ]
+        },
+        {
+          "name": "pet-fish",
+          "typeScriptMedianUsPerOp": 6.7906803,
+          "rustMedianUsPerOp": 4.532344,
+          "typeScriptOverRust": 1.4982711594706843,
+          "rustHigherElapsedPercent": -33.25640731459556,
+          "typeScriptSampleRangeUs": [
+            6.471329,
+            7.6136348
+          ],
+          "rustSampleRangeUs": [
+            3.8531878,
+            6.1884632
+          ]
+        },
+        {
+          "name": "pet-piper",
+          "typeScriptMedianUsPerOp": 5.8770217,
+          "rustMedianUsPerOp": 3.6657786999999997,
+          "typeScriptOverRust": 1.6032123543082404,
+          "rustHigherElapsedPercent": -37.625231160878656,
+          "typeScriptSampleRangeUs": [
+            5.5752635,
+            6.3711756
+          ],
+          "rustSampleRangeUs": [
+            3.5343736,
+            3.9470946
+          ]
+        },
+        {
+          "name": "pet-large",
+          "typeScriptMedianUsPerOp": 180.610318,
+          "rustMedianUsPerOp": 87.778075,
+          "typeScriptOverRust": 2.05757893414728,
+          "rustHigherElapsedPercent": -51.39919137953126,
+          "typeScriptSampleRangeUs": [
+            165.91931,
+            285.030147
+          ],
+          "rustSampleRangeUs": [
+            82.45389200000001,
+            104.518123
+          ]
+        }
+      ]
+    }
+  },
+  "cautions": [
+    "Separate sequential runs, not a statistical significance analysis.",
+    "Final links and large-UTF8 medians differ by only about 1%; treat as parity.",
+    "UTF8 fastpath was unchanged by the allocation pass; its timing changes are measurement variation.",
+    "Initial link and whitespace-control regressions are preserved.",
+    "No process CPU, RSS, real provider, Twitch or production speed claim."
+  ]
+}
