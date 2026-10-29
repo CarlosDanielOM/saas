@@ -88593,77 +88593,130 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-local-feature-and-dependency-closure",
+      "localRustEvidence": [
+        "dimabot/src/utils/moderation/spam_categories.rs: typed category/exempt enums, constants, policy strings, settings type and ordered question builder",
+        "dimabot/src/utils/js_string.rs: shared ordered JSON string writer used by the question builder",
+        "migration-notes/moderation-spam-categories-2026-10-29.md: source contract, boundary, verification receipts and remaining work",
+        "migration-notes/evidence/2026-10-29-moderation-spam-categories/README.md: indexed source-bound evidence package"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The typed native mapping covers the fixed category catalog. TypeScript exports mutable default arrays; observed callers copy defaults or read policy values, and Rust callers own copied vectors. Runtime mutation of exported JavaScript module objects is not modeled generically.",
+        "The question builder preserves first-key insertion order and last-value replacement for duplicate category keys, while including every selected definition in the aggregate unsafe policy. A verified invitation replaces only the self-promotion policy.",
+        "The source has no imports. Ordered full JSON uses the existing native write_json_utf8 helper; no application-specific runtime dependency or new crate is required.",
+        "The schema, classifier, semantic request path, moderation route and enforcement remain separate and unadopted. This local mapping does not complete the broader moderation migration."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "src/schemas/channel_moderation_settings.schema.ts",
+          "src/utils/moderation/spam.ts",
+          "src/utils/moderation/semantic.ts"
+        ],
+        "runtimeStatus": "Unadopted; TypeScript schema and moderation callers remain live. Traced callers copy default arrays or read policy values; no caller was switched to the native module."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "tests/fixtures/moderation_spam_categories_reference.cjs"
+        ],
+        "rustBehaviorEvidence": [
+          "tests/moderation_spam_categories.rs",
+          "migration-notes/moderation-spam-categories-2026-10-29.md",
+          "migration-notes/evidence/2026-10-29-moderation-spam-categories/README.md"
+        ],
+        "status": "Pinned actual-source oracle write/check and all 752 full ordered JSON cases passed; two ordinary tests, ignored full replay, formatting, strict feature/profile checks and Clippy passed. No performance benchmark was run."
       },
       "exports": [
         {
           "name": "DEFAULT_SPAM_CATEGORIES",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "[SpamCategory; 3] value constant; callers can copy into an owned Vec",
+          "evidence": [
+            "dimabot/src/utils/moderation/spam_categories.rs",
+            "tests/moderation_spam_categories.rs"
+          ]
         },
         {
           "name": "DEFAULT_SPAM_EXEMPT_TAGS",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "[SpamExemptTag; 3] value constant; callers can copy into an owned Vec",
+          "evidence": [
+            "dimabot/src/utils/moderation/spam_categories.rs",
+            "tests/moderation_spam_categories.rs"
+          ]
         },
         {
           "name": "DEFAULT_SPAM_THRESHOLD",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "f64 constant (85.0)",
+          "evidence": [
+            "dimabot/src/utils/moderation/spam_categories.rs",
+            "tests/moderation_spam_categories.rs"
+          ]
         },
         {
           "name": "SPAM_CATEGORIES",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "ordered [SpamCategory; 5] value constant",
+          "evidence": [
+            "dimabot/src/utils/moderation/spam_categories.rs",
+            "tests/moderation_spam_categories.rs"
+          ]
         },
         {
           "name": "SPAM_CATEGORY_POLICIES",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "ordered [(SpamCategory, &str); 5] with source-pinned policy strings",
+          "evidence": [
+            "dimabot/src/utils/moderation/spam_categories.rs",
+            "tests/moderation_spam_categories.rs"
+          ]
         },
         {
           "name": "SPAM_CLASSIFIER_MODEL",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "&str constant",
+          "evidence": [
+            "dimabot/src/utils/moderation/spam_categories.rs",
+            "tests/moderation_spam_categories.rs"
+          ]
         },
         {
           "name": "SPAM_EXEMPT_TAGS",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "ordered [SpamExemptTag; 6] value constant",
+          "evidence": [
+            "dimabot/src/utils/moderation/spam_categories.rs",
+            "tests/moderation_spam_categories.rs"
+          ]
         },
         {
           "name": "SpamCategory",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "closed native SpamCategory enum",
+          "evidence": [
+            "dimabot/src/utils/moderation/spam_categories.rs",
+            "tests/moderation_spam_categories.rs"
+          ]
         },
         {
           "name": "SpamExemptTag",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "closed native SpamExemptTag enum",
+          "evidence": [
+            "dimabot/src/utils/moderation/spam_categories.rs",
+            "tests/moderation_spam_categories.rs"
+          ]
         },
         {
           "name": "SpamProtection",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "native struct with required booleans, optional Vec fields and optional f64 threshold",
+          "evidence": [
+            "dimabot/src/utils/moderation/spam_categories.rs",
+            "tests/moderation_spam_categories.rs"
+          ]
         },
         {
           "name": "categoryQuestions",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "category_questions typed builder with ordered full JSON serialization and invitation override",
+          "evidence": [
+            "dimabot/src/utils/moderation/spam_categories.rs",
+            "tests/moderation_spam_categories.rs"
+          ]
         }
       ],
       "imports": [],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-typed-exports-and-native-value-dependencies-verified;source-live;caller-adoption-open"
     },
     {
       "source": "src/utils/moderation/spam.test.ts",

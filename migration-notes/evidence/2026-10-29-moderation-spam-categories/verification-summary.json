@@ -1,0 +1,62 @@
+{
+  "status": "Verified typed spam category constants, policies and question builder plus native dependencies; surrounding classification/enforcement remains incomplete.",
+  "codeCommit": "f7a3624deb623708088ff9fe4ce3989e34471408",
+  "sourceTreeSha256": "fdb2b56a742d6383c1294427c02c5df6b27040cf123674d6d6b19aeeef723565",
+  "sourceInputs": 1327,
+  "acceptedRuns": [
+    "compiler-1793307328475450434",
+    "node-1793307309167566168"
+  ],
+  "sourceCases": 752,
+  "ordinaryTests": 2,
+  "limits": {
+    "cpus": 6,
+    "memory": 4294967296,
+    "memory_swap": 4294967296,
+    "pids": 256,
+    "cargo_jobs": 2
+  },
+  "peakCacheBytes": 3867004928,
+  "minimumAvailableBytes": 7924006912,
+  "productionUnchangedRecords": 19,
+  "performanceMeasured": false,
+  "noRetirementAdoptionDeploymentPush": true,
+  "runs": [
+    {
+      "run": "compiler-1793307172348054195",
+      "success": true,
+      "sourceTreeSha256": "a6ec2f5175c9633161296fe09624e3a2b87fb2825d84b9808f912d9f66e9847e",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-1793307328475450434",
+      "success": true,
+      "sourceTreeSha256": "fdb2b56a742d6383c1294427c02c5df6b27040cf123674d6d6b19aeeef723565",
+      "productionUnchanged": true
+    },
+    {
+      "run": "format-1793307082446648017",
+      "success": true,
+      "sourceTreeSha256": "368c32c053d05abfea13caebb037468b7dd37a68c281a0ff88e6b1ecc03bac9c",
+      "productionUnchanged": true
+    },
+    {
+      "run": "format-1793307235565656466",
+      "success": true,
+      "sourceTreeSha256": "0e4c6d6ece0de1da52f2157e45a12ade0c5bd99cd9f8285cadb3b134011ad585",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793307172351012716",
+      "success": true,
+      "sourceTreeSha256": "a6ec2f5175c9633161296fe09624e3a2b87fb2825d84b9808f912d9f66e9847e",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793307309167566168",
+      "success": true,
+      "sourceTreeSha256": "fdb2b56a742d6383c1294427c02c5df6b27040cf123674d6d6b19aeeef723565",
+      "productionUnchanged": true
+    }
+  ]
+}

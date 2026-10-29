@@ -1,0 +1,8 @@
+{
+  "referenceSha256": "0bd81f594ae68ac7427fdc1817c2dd9baa83860960199478e3d422f65a4afd84",
+  "cases": 752,
+  "allMetadataHashesChecked": true,
+  "nodeSha256": "569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108",
+  "compiledSha256": "eb7181785b42e999439838dd382ab8903adcd814c0fd33593b8f2aa882223f11",
+  "sdkReadback": "hashed same public workspace SDK bytes mounted read-only by Node driver, not absent snapshot node_modules path"
+}

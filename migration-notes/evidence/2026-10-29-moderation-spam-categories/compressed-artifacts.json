@@ -1,0 +1,66 @@
+{
+  "artifacts/attempt1/reference/moderation_spam_categories_reference.json.gz": {
+    "rawSha256": "2d25de0980a8f6326114eac63e32a2bb97e67d087a51100587373ea65552a2b3",
+    "rawBytes": 4088457
+  },
+  "artifacts/attempt1/source-inputs.json.gz": {
+    "rawSha256": "02092cd88bfe300095167d70ae5f1ecd6ba7ea6b86b09e263c6bb84d109cef10",
+    "rawBytes": 157789
+  },
+  "artifacts/attempt2/reference/moderation_spam_categories_reference.json.gz": {
+    "rawSha256": "0bd81f594ae68ac7427fdc1817c2dd9baa83860960199478e3d422f65a4afd84",
+    "rawBytes": 4088457
+  },
+  "artifacts/attempt2/source-inputs.json.gz": {
+    "rawSha256": "780354c87180af0149b14834a1f1cee7a5232afac935dbaa67728c73c2472b28",
+    "rawBytes": 157789
+  },
+  "runs/compiler-1793307172348054195-receipt.json.gz": {
+    "rawSha256": "e5242ad040e9e41889cb39361d025d3872871b162d1915fe42c731f4805b221c",
+    "rawBytes": 161357
+  },
+  "runs/compiler-1793307172348054195.log.gz": {
+    "rawSha256": "dc86e41992e324347bb3dde5b2259842d9e283bd6fe40197e2b6d866fb643aaf",
+    "rawBytes": 2483
+  },
+  "runs/compiler-1793307328475450434-receipt.json.gz": {
+    "rawSha256": "b3389f8679bddf8176b722076785a2d3b69682d6a25b5044b9cbf3c167c9dde6",
+    "rawBytes": 161361
+  },
+  "runs/compiler-1793307328475450434.log.gz": {
+    "rawSha256": "3ed22a7b2073fe0766ce2241618376ccf9da9d66c90793220755873b3d571ce5",
+    "rawBytes": 2856
+  },
+  "runs/format-1793307082446648017-receipt.json.gz": {
+    "rawSha256": "111bc26b1af8c9e3e9ea1fb10814788d27c68dd35b1f594ae1d71bb530246b9e",
+    "rawBytes": 161356
+  },
+  "runs/format-1793307082446648017.log.gz": {
+    "rawSha256": "d8df33ba72c691319594a6938a8cc1f756798afbe8a2dc8dedcec22abade739d",
+    "rawBytes": 1833
+  },
+  "runs/format-1793307235565656466-receipt.json.gz": {
+    "rawSha256": "b034754e81791dcab374ae871a637c9a57bdd5bea390b68267ebc26bc95507b8",
+    "rawBytes": 161352
+  },
+  "runs/format-1793307235565656466.log.gz": {
+    "rawSha256": "d8df33ba72c691319594a6938a8cc1f756798afbe8a2dc8dedcec22abade739d",
+    "rawBytes": 1833
+  },
+  "runs/node-1793307172351012716-receipt.json.gz": {
+    "rawSha256": "09ba1bc0c76545e09782ad71f0f69619d7d9d4b0209ff42b816633e8c2442893",
+    "rawBytes": 161229
+  },
+  "runs/node-1793307172351012716.log.gz": {
+    "rawSha256": "249baf635bb43877fcb9422efa1a4904b702d0ddf14d3949b7cd0950d5229c81",
+    "rawBytes": 9
+  },
+  "runs/node-1793307309167566168-receipt.json.gz": {
+    "rawSha256": "a17ff57fd03465567a240f0d4ed89c2e0983fb56ea5f64ce58f573be8dbf80d3",
+    "rawBytes": 161229
+  },
+  "runs/node-1793307309167566168.log.gz": {
+    "rawSha256": "249baf635bb43877fcb9422efa1a4904b702d0ddf14d3949b7cd0950d5229c81",
+    "rawBytes": 9
+  }
+}
