@@ -108,7 +108,33 @@ pub fn number_string(n: f64) -> String {
         return "0".into();
     }
     let negative = n < 0.0;
-    let raw = n.abs().to_string();
+    let magnitude = n.abs();
+    // Every integral binary64 within +/-2^53 has exact integer text, and this
+    // whole interval uses fixed-point JS notation. Keep the bound: above it,
+    // the shortest JS spelling can differ from the integer's exact digits.
+    if n.is_finite() && magnitude <= 9_007_199_254_740_992.0 && n.fract() == 0.0 {
+        return (n as i64).to_string();
+    }
+    // Display breaks some equally short decimal ties differently from V8.
+    // Reuse the existing JSON serializer's finite-f64 digit seed once, then
+    // retain the ECMAScript notation normalization below. No Value roundtrip.
+    let mut raw = serde_json::to_string(&magnitude).expect("finite f64 serialization");
+    if (1e-6..1e21).contains(&magnitude) && !raw.contains(['e', 'E']) {
+        // An exponent-free integral float may carry Serde's .0 suffix; its
+        // removal preserves the value. Other fractional trailing zeros still
+        // require the fallback. Integer trailing zeros must be retained.
+        if raw.ends_with(".0") {
+            raw.truncate(raw.len() - 2);
+        }
+        // Keep both shape guards: the serializer's notation policy is not the
+        // JS contract, and e.g. `1.20` still needs existing normalization.
+        if !raw.contains('.') || !raw.ends_with('0') {
+            if negative {
+                raw.insert(0, '-');
+            }
+            return raw;
+        }
+    }
     let (mantissa, exponent) = raw
         .split_once(['e', 'E'])
         .map_or((raw.as_str(), 0), |(m, e)| {
