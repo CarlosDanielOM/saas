@@ -61,7 +61,12 @@ pub mod js_compat;
 ))]
 pub mod json_number;
 
-#[cfg(any(feature = "moderation-emote-spam", feature = "moderation-caps"))]
+#[cfg(any(
+    feature = "moderation-emote-spam",
+    feature = "moderation-caps",
+    feature = "moderation-normalize",
+    feature = "moderation-links"
+))]
 pub mod moderation;
 
 pub mod links;

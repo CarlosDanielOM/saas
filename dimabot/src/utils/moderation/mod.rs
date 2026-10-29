@@ -7,3 +7,8 @@ pub mod emote_spam;
 pub mod caps;
 #[cfg(feature = "moderation-caps")]
 mod caps_unicode_data;
+
+#[cfg(feature = "moderation-links")]
+pub mod links_rule;
+#[cfg(feature = "moderation-normalize")]
+pub mod normalize;
