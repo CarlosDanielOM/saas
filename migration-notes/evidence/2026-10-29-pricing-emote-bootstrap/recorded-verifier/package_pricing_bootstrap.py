@@ -42,7 +42,10 @@ if __name__ == '__main__':
         retain(Path('runs') / p.name,p.read_bytes())
         log = p.with_name(p.name.replace('-receipt.json','.log'))
         retain(Path('runs') / log.name,log.read_bytes())
-        runs.append({'receipt':str(Path('runs')/p.name),'success':v['success'],'phase':v['phase'],'source_tree_sha256':v['source_tree_sha256']})
+        stored_receipt = Path('runs') / p.name
+        if not (PACK / stored_receipt).exists(): stored_receipt = Path(str(stored_receipt)+'.gz')
+        assert (PACK / stored_receipt).is_file()
+        runs.append({'receipt':str(stored_receipt),'success':v['success'],'phase':v['phase'],'source_tree_sha256':v['source_tree_sha256']})
     for dirname in ['pricing-emote-bootstrap','pricing-emote-bootstrap-vm-diagnostic']:
         for p in sorted((ART/dirname).rglob('*')):
             if p.is_file():

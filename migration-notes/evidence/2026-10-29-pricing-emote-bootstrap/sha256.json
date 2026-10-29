@@ -43,7 +43,7 @@
   "checksums/pricing-bootstrap-fixtures-before.sha256": "5b443130735268c66f815faa0a3676aae28dcbff7a5a7fbc1d03c6ee49b530ba",
   "compressed-artifacts.json": "d623e3ec796ec01019ec7294c40146d1ea60712f6ae827513fe553b51ed2375e",
   "recorded-verifier/apply_format.py": "ce77428e3a9ca462e55fc47fe4d21bdb3494df2353f0373257076713ab22a276",
-  "recorded-verifier/package_pricing_bootstrap.py": "5e180b18b27feb66856063b8f85286cfd76e519786a581a0c74689ea8ad7e525",
+  "recorded-verifier/package_pricing_bootstrap.py": "f0cf2b44006c56d4b55d6c7a3ebfa2fe98d43cc859574f70874e55d9cb60e941",
   "recorded-verifier/pricing-bootstrap-node.sh": "b39fb7b9050b7c40832016b00aeca864fab397096b355e7245dbe4babf0c59d2",
   "recorded-verifier/pricing-bootstrap-optimized.sh": "f583970dadf30dbad553fb3bfeb0ac539a26372cfbe049dcec8fef53fc0b0216",
   "recorded-verifier/pricing-bootstrap.sh": "130a2bd1887e5d698c381a472b11946837be9952f414e7730d567a07ab2cea80",
@@ -72,5 +72,5 @@
   "runs/node-1793251602692898500-receipt.json.gz": "7088623d0ad10386d26bc7bff37d3c26b875f9e13bc281f73570ecb876f83ea2",
   "runs/node-1793251602692898500.log.gz": "13e0eeb7bbcb66f3ca04e909d2eb84fe139bcc94cde1eb50ffd097d7288dfb69",
   "source-binding.json": "74739fdda9b814bdc331b2fc20be0e80dbd62ec4177e4ffccf86572102c677b7",
-  "verification-summary.json": "aa9df79f2bb6121c949087f72bb21eb4c40558e47ecbe08a5f3e8e2e6f91d89f"
+  "verification-summary.json": "f8902049ff4ca31bf51fc09fedf159403d8e2b314c7b85dbf8f1a4ae997cda83"
 }

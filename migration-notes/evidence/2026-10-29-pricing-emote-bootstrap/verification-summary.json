@@ -19,67 +19,67 @@
   "compilerTotalSeconds": 247.584,
   "runs": [
     {
-      "receipt": "runs/compiler-fixtures-1793250544101522700-receipt.json",
+      "receipt": "runs/compiler-fixtures-1793250544101522700-receipt.json.gz",
       "success": false,
       "phase": "compiler-fixtures",
       "source_tree_sha256": "13612cc3140dc89deb9075813bead5ff5e0a80788d836ef1a0a856121519ec10"
     },
     {
-      "receipt": "runs/compiler-fixtures-1793250772637164471-receipt.json",
+      "receipt": "runs/compiler-fixtures-1793250772637164471-receipt.json.gz",
       "success": true,
       "phase": "compiler-fixtures",
       "source_tree_sha256": "277908b8410485a1363ea8498a1f747f5deb1280ecc65d38980ec3eacd59bcee"
     },
     {
-      "receipt": "runs/compiler-fixtures-1793251319915932834-receipt.json",
+      "receipt": "runs/compiler-fixtures-1793251319915932834-receipt.json.gz",
       "success": true,
       "phase": "compiler-fixtures",
       "source_tree_sha256": "64984e28f5d64d8b61e99aacc24d868a14c841fa35e0e245d93c1caa7908ad92"
     },
     {
-      "receipt": "runs/format-1793250326208694512-receipt.json",
+      "receipt": "runs/format-1793250326208694512-receipt.json.gz",
       "success": true,
       "phase": "format",
       "source_tree_sha256": "ea092cf51a4ac922327bd9f00e09482e856b06f96e118f04b69a61f9a479384f"
     },
     {
-      "receipt": "runs/format-1793250704780361532-receipt.json",
+      "receipt": "runs/format-1793250704780361532-receipt.json.gz",
       "success": true,
       "phase": "format",
       "source_tree_sha256": "277908b8410485a1363ea8498a1f747f5deb1280ecc65d38980ec3eacd59bcee"
     },
     {
-      "receipt": "runs/format-1793251246249944062-receipt.json",
+      "receipt": "runs/format-1793251246249944062-receipt.json.gz",
       "success": true,
       "phase": "format",
       "source_tree_sha256": "4956a66748d06316f5dfd71777e541c5c677c8064b89e2bba92db92f33890f10"
     },
     {
-      "receipt": "runs/node-1793250393825823937-receipt.json",
+      "receipt": "runs/node-1793250393825823937-receipt.json.gz",
       "success": true,
       "phase": "node",
       "source_tree_sha256": "13612cc3140dc89deb9075813bead5ff5e0a80788d836ef1a0a856121519ec10"
     },
     {
-      "receipt": "runs/node-1793250739374822692-receipt.json",
+      "receipt": "runs/node-1793250739374822692-receipt.json.gz",
       "success": true,
       "phase": "node",
       "source_tree_sha256": "277908b8410485a1363ea8498a1f747f5deb1280ecc65d38980ec3eacd59bcee"
     },
     {
-      "receipt": "runs/node-1793250984278634365-receipt.json",
+      "receipt": "runs/node-1793250984278634365-receipt.json.gz",
       "success": true,
       "phase": "node",
       "source_tree_sha256": "277908b8410485a1363ea8498a1f747f5deb1280ecc65d38980ec3eacd59bcee"
     },
     {
-      "receipt": "runs/node-1793251293953198140-receipt.json",
+      "receipt": "runs/node-1793251293953198140-receipt.json.gz",
       "success": true,
       "phase": "node",
       "source_tree_sha256": "64984e28f5d64d8b61e99aacc24d868a14c841fa35e0e245d93c1caa7908ad92"
     },
     {
-      "receipt": "runs/node-1793251602692898500-receipt.json",
+      "receipt": "runs/node-1793251602692898500-receipt.json.gz",
       "success": true,
       "phase": "node",
       "source_tree_sha256": "64984e28f5d64d8b61e99aacc24d868a14c841fa35e0e245d93c1caa7908ad92"
