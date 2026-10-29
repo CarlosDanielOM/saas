@@ -21,7 +21,7 @@ use super::{
     ai_usage_lock::{AiUsageLock, AiUsageLockError},
     ai_usage_producer::{QueuedAiUsageReceipt, ReceiptClock, SystemReceiptClock},
     ai_usage_receipt_parser::{ParsedAiUsageReceipt, RetentionTier},
-    bson_compat::js_number as bson_number,
+    bson_compat::{js_number as bson_number, normalize_js_numbers},
     credit_policy::JsDate,
     js_date::{parse_date, parse_date_utf16},
     js_string::JsString,
@@ -36,7 +36,7 @@ use mongodb::{
     bson::{Bson, DateTime, Document, doc},
 };
 use redis::aio::ConnectionManager;
-use std::{fmt, sync::Arc};
+use std::{collections::HashMap, fmt, sync::Arc};
 
 const DAY: i64 = 86_400_000;
 
@@ -446,6 +446,11 @@ impl Sum {
         let Some(value) = value else {
             return Ok(Self::Number(f64::NAN));
         };
+        match value {
+            Bson::Int32(value) => return Ok(Self::Number(f64::from(*value))),
+            Bson::Double(value) => return Ok(Self::Number(*value)),
+            _ => {}
+        }
         if let Some(value) = ordinary_json(value) {
             return Ok(match value {
                 JsonValue::String(v) => Self::String(v),
@@ -493,7 +498,12 @@ impl Sum {
     }
 }
 fn bson_truthy(value: Option<&Bson>) -> bool {
-    value.is_some_and(|v| ordinary_json(v).is_none_or(|v| settings::truthy(&v)))
+    match value {
+        Some(Bson::Int32(value)) => *value != 0,
+        Some(Bson::Double(value)) => *value != 0.0 && !value.is_nan(),
+        Some(value) => ordinary_json(value).is_none_or(|v| settings::truthy(&v)),
+        None => false,
+    }
 }
 // The shared adapter's Date/RegExp markers are valid only for Number(array).
 // They cannot stand in for Array.join's actual strings when comparing expiry
@@ -590,38 +600,66 @@ struct DailyRow {
     granted: Sum,
     debited: Sum,
     count: Sum,
-    categories: Document,
+    categories: Vec<(&'static str, DailyCategory)>,
     expires: Option<Bson>,
+}
+
+#[derive(Clone, Debug)]
+struct DailyCategory {
+    credits: Option<Bson>,
+    count: Option<Bson>,
+}
+
+impl DailyCategory {
+    fn document(&self) -> Document {
+        let mut entry = Document::new();
+        for (key, value) in [
+            ("credits", &self.credits),
+            ("transactionCount", &self.count),
+        ] {
+            if let Some(value) = value {
+                let mut value = value.clone();
+                normalize_js_numbers(&mut value);
+                entry.insert(key, value);
+            }
+        }
+        entry
+    }
 }
 
 /// Preserve group encounter order, Map insertion order and normalized-category
 /// overwrite. A Decimal/Long count is an object and is truthy even when zero.
 pub fn reduce_daily_groups(groups: &[Document]) -> PersistenceResult<DailyRows> {
     let mut rows: Vec<(Bson, DailyRow)> = Vec::new();
+    // Borrow keys from the input; rows remain the authority for encounter order.
+    let mut date_indices: HashMap<Option<&str>, usize> = HashMap::new();
     for group in groups {
         let id = group
             .get_document("_id")
             .map_err(|_| AiUsagePersistenceError::GroupType { path: "_id" })?;
         // $dateToString yields only string or null under this exact pipeline.
-        let day = id.get("date").cloned().unwrap_or(Bson::Null);
-        if !matches!(day, Bson::String(_) | Bson::Null) {
-            return Err(AiUsagePersistenceError::GroupType { path: "_id.date" });
-        }
-        let index = match rows.iter().position(|(key, _)| key == &day) {
-            Some(i) => i,
+        let day = match id.get("date") {
+            Some(Bson::String(value)) => Some(value.as_str()),
+            None | Some(Bson::Null) => None,
+            _ => return Err(AiUsagePersistenceError::GroupType { path: "_id.date" }),
+        };
+        let index = match date_indices.get(&day) {
+            Some(&i) => i,
             None => {
+                let i = rows.len();
                 rows.push((
-                    day,
+                    day.map_or(Bson::Null, |value| Bson::String(value.to_owned())),
                     DailyRow {
                         spent: Sum::Number(0.0),
                         granted: Sum::Number(0.0),
                         debited: Sum::Number(0.0),
                         count: Sum::Number(0.0),
-                        categories: Document::new(),
+                        categories: Vec::new(),
                         expires: group.get("expiresAt").cloned(),
                     },
                 ));
-                rows.len() - 1
+                date_indices.insert(day, i);
+                i
             }
         };
         let row = &mut rows[index].1;
@@ -640,20 +678,20 @@ pub fn reduce_daily_groups(groups: &[Document]) -> PersistenceResult<DailyRows> 
         }
         if bson_truthy(group.get("count")) {
             let cat = match id.get("category") {
-                Some(Bson::String(v)) => category(Some(&JsonValue::String(v.as_str().into()))),
+                Some(Bson::String(v)) => normalize_receipt_category(Some(v.as_str())),
                 _ => "uncategorized",
             };
             // Mixed categories retain BSON wrapper values; they are NOT cast
             // to daily Number paths. Node default promotions happen on read.
-            let mut entry = Document::new();
-            for (target, source) in [("credits", "spent"), ("transactionCount", "count")] {
-                if let Some(value) = group.get(source) {
-                    let mut value = doc! {"v":value.clone()};
-                    super::bson_compat::normalize_document(&mut value);
-                    entry.insert(target, value.remove("v").expect("inserted"));
-                }
+            let entry = DailyCategory {
+                credits: group.get("spent").cloned(),
+                count: group.get("count").cloned(),
+            };
+            if let Some((_, previous)) = row.categories.iter_mut().find(|(key, _)| *key == cat) {
+                *previous = entry;
+            } else {
+                row.categories.push((cat, entry));
             }
-            row.categories.insert(cat, entry);
         }
     }
     Ok(DailyRows { rows })
@@ -720,7 +758,11 @@ pub fn prepare_daily_inserts(
         let net = row.spent.clone().add(row.debited.clone()).number() - row.granted.number();
         input.insert("netConsumedCredits", bson_number(net));
         input.insert("transactionCount", row.count.bson());
-        input.insert("categories", row.categories.clone());
+        let mut categories = Document::new();
+        for (key, value) in &row.categories {
+            categories.insert(*key, value.document());
+        }
+        input.insert("categories", categories);
         input.insert("retentionTier", tier.as_str());
         if let Some(expiry) = row.expires.as_ref().and_then(legacy_date) {
             input.insert("expiresAt", expiry);

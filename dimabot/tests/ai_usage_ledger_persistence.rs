@@ -255,6 +255,115 @@ fn group_order_collision_and_wrapper_addition_survive_daily_schema_casting() {
 }
 
 #[test]
+fn date_index_keeps_missing_and_null_together_and_preserves_error_order() {
+    let mut missing = group("2026-10-29", "tts", 1.into(), 1.into());
+    missing.get_document_mut("_id").unwrap().remove("date");
+    let mut null = group("2026-10-29", "tts", 2.into(), 1.into());
+    null.get_document_mut("_id")
+        .unwrap()
+        .insert("date", Bson::Null);
+    let rows = policy::reduce_daily_groups(&[
+        group("2026-10-28", "tts", 1.into(), 1.into()),
+        missing,
+        group("2026-10-29", "tts", 1.into(), 1.into()),
+        null,
+        group("2026-10-28", "tts", 2.into(), 1.into()),
+    ])
+    .unwrap();
+    assert_eq!(rows.len(), 3);
+    let docs = policy::prepare_daily_inserts(
+        &"c".into(),
+        &"u".into(),
+        RetentionTier::Free,
+        &rows,
+        &FixedReceiptClock(date(NOW)),
+    );
+    assert_eq!(docs.len(), 2, "the null date row is not a valid insert");
+    assert_eq!(docs[0].get_str("date").unwrap(), "2026-10-28");
+    assert_eq!(numeric(&docs[0], "spentCredits"), 3.0);
+    assert_eq!(docs[1].get_str("date").unwrap(), "2026-10-29");
+
+    let mut unsupported = group("2026-10-28", "tts", 1.into(), 1.into());
+    unsupported.insert(
+        "expiresAt",
+        Bson::Array(vec![Bson::DateTime(DateTime::from_millis(NOW))]),
+    );
+    let mut invalid_day = group("2026-10-29", "tts", 1.into(), 1.into());
+    invalid_day
+        .get_document_mut("_id")
+        .unwrap()
+        .insert("date", 42);
+    assert!(matches!(
+        policy::reduce_daily_groups(&[unsupported, invalid_day]),
+        Err(AiUsagePersistenceError::UnsupportedLegacy {
+            path: "expiresAt",
+            ..
+        })
+    ));
+}
+
+#[test]
+fn category_replacement_retains_order_presence_and_bson_wrappers() {
+    let decimal_zero = Bson::Decimal128("0".parse().unwrap());
+    let mut absent_count = group("2026-10-29", "memory", 4.into(), 1.into());
+    absent_count.remove("count");
+    // Missing count causes the source sum to become NaN, so keep it in a
+    // separate row that insertMany omits after reduction.
+    absent_count
+        .get_document_mut("_id")
+        .unwrap()
+        .insert("date", "2026-10-28");
+    let rows = policy::reduce_daily_groups(&[
+        group("2026-10-29", "legacy-a", 3.into(), 1.into()),
+        group(
+            "2026-10-29",
+            "tts",
+            Bson::Int64(9_007_199_254_740_992),
+            1.into(),
+        ),
+        group(
+            "2026-10-29",
+            "ai_chat",
+            Bson::Int64(9_007_199_254_740_993),
+            1.into(),
+        ),
+        group("2026-10-29", "legacy-b", Bson::Null, decimal_zero.clone()),
+        group("2026-10-29", "memory", 9.into(), Bson::Double(-0.0)),
+        absent_count,
+    ])
+    .unwrap();
+    let docs = policy::prepare_daily_inserts(
+        &"c".into(),
+        &"u".into(),
+        RetentionTier::Free,
+        &rows,
+        &FixedReceiptClock(date(NOW)),
+    );
+    assert_eq!(docs.len(), 1);
+    let categories = docs[0].get_document("categories").unwrap();
+    assert_eq!(
+        categories.keys().map(String::as_str).collect::<Vec<_>>(),
+        vec!["uncategorized", "tts", "ai_chat"]
+    );
+    let uncategorized = categories.get_document("uncategorized").unwrap();
+    assert_eq!(
+        uncategorized.keys().map(String::as_str).collect::<Vec<_>>(),
+        vec!["credits", "transactionCount"]
+    );
+    assert_eq!(uncategorized.get("credits"), Some(&Bson::Null));
+    assert_eq!(uncategorized.get("transactionCount"), Some(&decimal_zero));
+    assert_eq!(
+        categories.get_document("tts").unwrap().get("credits"),
+        Some(&Bson::Double(9_007_199_254_740_992.0))
+    );
+    assert_eq!(
+        categories.get_document("ai_chat").unwrap().get("credits"),
+        Some(&Bson::Int64(9_007_199_254_740_993))
+    );
+    assert!(!categories.contains_key("memory"));
+}
+
+#[test]
 fn unordered_insert_prevalidation_skips_invalid_rows_and_minimizes_categories() {
     let rows = policy::reduce_daily_groups(&[
         group("bad", "tts", 1.into(), 1.into()),
