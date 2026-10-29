@@ -1,0 +1,11 @@
+{
+  "baselineSha256": "1f0b81c54e3c81000b2875b30e40739b03a4c71009bce8944c3c423fe193f117",
+  "finalSha256": "cac79252af5e07b874ed13a0b9e3d39e5ffc8c526d514a88c50e9bfa983abae9",
+  "rawBytes": 189945843,
+  "onlyDifference": "Single tests/ai_usage_receipt_parser.rs hash, reflecting replay-helper initialization lint fix. All1362receipt cases*5TZ,view observations,AST/type/import evidence,445dependency hashes and64producer recipes byte-identical.",
+  "replacedHashOccurrences": 1,
+  "testSourceHash": {
+    "before": "a908107fb738078861b1f9087b63be01d30779c572aab7562a8b354abc04e3eb",
+    "after": "06dfacd9c2568d19544412437f64358cb767bf46b1541853290586bcbe5b7ddf"
+  }
+}

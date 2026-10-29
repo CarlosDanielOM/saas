@@ -1,0 +1,2235 @@
+{
+  "scope": "Public installed package files and Node executable retained privately for independent hash validation; raw copies intentionally excluded from Git.",
+  "files": [
+    {
+      "path": "attempt1/node-provenance/node",
+      "bytes": 132485920,
+      "sha256": "569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/@mongodb-js/saslprep/dist/code-points-data.js",
+      "bytes": 2894,
+      "sha256": "17e61cf245e5724b6917567e61c9fb1e969934eae55c17c549916c4e668572c2"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/@mongodb-js/saslprep/dist/index.js",
+      "bytes": 2997,
+      "sha256": "3f3905c955a79daa760ef8d2f174faa868016e9b5f8f0e9651e7d6cadcbd073c"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/@mongodb-js/saslprep/dist/memory-code-points.js",
+      "bytes": 1168,
+      "sha256": "8eac1b50b973d7667f289b2b21c35e41e16f59d849ad0ca35254e13a1991d02f"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/@mongodb-js/saslprep/dist/node.js",
+      "bytes": 651,
+      "sha256": "20b6040a9155f4968fbe916e5660a9b0341b6b80498358f08d894eaf27cef6a6"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/aws4/aws4.js",
+      "bytes": 12670,
+      "sha256": "6fe3d3295e99292b9625ce2f0c7e400962c1ad516d1257ab7fb6058247eff4cf"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/aws4/lru.js",
+      "bytes": 1914,
+      "sha256": "8af8cf6660af90da71d04f2e0e4b34a0363f8aff5b9505d52034b92e4b9abfa6"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/bson/lib/bson.cjs",
+      "bytes": 177141,
+      "sha256": "64e5de269bbcdee96f2bebb57cc9729b72aaebde02d832005872b7e575899284"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/bson/package.json",
+      "bytes": 4030,
+      "sha256": "ded0e42e4e1cd876a11c9f799e0692f83ee73ebc9fb7796a5bca05039b4b3e23"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/has-flag/index.js",
+      "bytes": 330,
+      "sha256": "e9e921d4734fee9405bef5886c010c80a8f10fe958e5d71bd5d8eed5e616e78d"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/kareem/index.js",
+      "bytes": 18498,
+      "sha256": "4dc093bbc6c71aa4a7fa6c70888e05e45061057749d84e132b78897300d2b39b"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/memory-pager/index.js",
+      "bytes": 3731,
+      "sha256": "445a15ecfcb5904fb464eb9162ae83226091b9011bb8db024993bad9538be2d1"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongodb-connection-string-url/lib/index.js",
+      "bytes": 8159,
+      "sha256": "d25d261ac4f5d4c5644c9faed15d5412a49e5e7d26e69d3bf79b751567f5eff7"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongodb-connection-string-url/lib/redact.js",
+      "bytes": 4079,
+      "sha256": "d009e26b9e04bc4756fcbfd56cecb0fb7b4d797333d85c3aedda8b14a84df6af"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongodb-connection-string-url/node_modules/tr46/index.js",
+      "bytes": 8590,
+      "sha256": "dd2eae4174a287b5a081feba8c41dd85d713d8b5185b5e98313c7ffe83834646"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongodb-connection-string-url/node_modules/tr46/lib/mappingTable.json",
+      "bytes": 141626,
+      "sha256": "49c6079c1713c0561432acf010fa8d8c88d475e392eb6af0e3b795ca3be8edb5"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongodb-connection-string-url/node_modules/tr46/lib/regexes.js",
+      "bytes": 71290,
+      "sha256": "891f21489462424d90b2b028ff3f4900d45cfb7700ccf945a235d09f77c76bd0"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongodb-connection-string-url/node_modules/tr46/lib/statusMapping.js",
+      "bytes": 123,
+      "sha256": "ab7f706a1e3e74f4efd276560bb50e15f71dd0b20f85e87e21d1c18259420064"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongodb-connection-string-url/node_modules/webidl-conversions/lib/index.js",
+      "bytes": 12725,
+      "sha256": "c3b203d992b46905b610d240313d72e96d04b756942d9612878104ee12b107d4"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongodb-connection-string-url/node_modules/whatwg-url/index.js",
+      "bytes": 1264,
+      "sha256": "b27c577dfd552c6f3d75bec52beefbd062b7bff56e9e1de415edf103c63de243"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongodb-connection-string-url/node_modules/whatwg-url/lib/Function.js",
+      "bytes": 1186,
+      "sha256": "913cb6a510a344fd81bdfd45c5053bc63352d31331e4e97daf6bb9baf8317910"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongodb-connection-string-url/node_modules/whatwg-url/lib/URL-impl.js",
+      "bytes": 5083,
+      "sha256": "e4927e451391c7eddb3e8e644ae1a30ae1235b7556c5dffcaed43a0c90f5216a"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongodb-connection-string-url/node_modules/whatwg-url/lib/URL.js",
+      "bytes": 15382,
+      "sha256": "64e6c311095210c0b4018a132231a7730f86d3f21edb68c76f4b041938253767"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongodb-connection-string-url/node_modules/whatwg-url/lib/URLSearchParams-impl.js",
+      "bytes": 2970,
+      "sha256": "27e7cc0a8142d148529b7865ec10db1ce5e0a39d42004fc080ff42245cd6799c"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongodb-connection-string-url/node_modules/whatwg-url/lib/URLSearchParams.js",
+      "bytes": 17119,
+      "sha256": "1ee8059189e64d52b71ac2bad99f874566d61bfb3937ecbf126c5b90f7f0f38b"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongodb-connection-string-url/node_modules/whatwg-url/lib/encoding.js",
+      "bytes": 328,
+      "sha256": "a63171ed7efc4bf570f07d06aab52ffcda1f0ee965a0bb0fca35e8be5ec3624d"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongodb-connection-string-url/node_modules/whatwg-url/lib/infra.js",
+      "bytes": 518,
+      "sha256": "91fbea02892661405243c59d70441718b92e405e3787ae3297e4ab36bc825bfa"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongodb-connection-string-url/node_modules/whatwg-url/lib/percent-encoding.js",
+      "bytes": 4887,
+      "sha256": "1a5beae2cbd7def6e7a58a1320a4673f4de07106081d68fafcb580ffb815fd78"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongodb-connection-string-url/node_modules/whatwg-url/lib/url-state-machine.js",
+      "bytes": 31747,
+      "sha256": "42b04c1134efa5940fcc87963fe38536befa98462cb0fd112ba4e92e2cd720d7"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongodb-connection-string-url/node_modules/whatwg-url/lib/urlencoded.js",
+      "bytes": 2280,
+      "sha256": "6d050ce6399b0fef3771a1395efb3d3d7e6429e4c9ac36ef4e64ebf3e70238a4"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongodb-connection-string-url/node_modules/whatwg-url/lib/utils.js",
+      "bytes": 5390,
+      "sha256": "3dce521ab525a11eb5d817a78bf3308a8ab2e16b73c5c288f81c8d6ad496fa2e"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongodb-connection-string-url/node_modules/whatwg-url/webidl2js-wrapper.js",
+      "bytes": 170,
+      "sha256": "c139eba2be96bec43b3bb1ed5813e07fd9a25a1c5df8ebf37bda987e10445371"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/index.js",
+      "bytes": 2597,
+      "sha256": "59e21822580047abc5468d740b720d1383fa3569aa2da3ac70325265fbb0e25b"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/aggregate.js",
+      "bytes": 37596,
+      "sha256": "0e0c9816547ef4da635fb713fd04e6609383e63db3f350029e0ef8afa8a31907"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/browserDocument.js",
+      "bytes": 2720,
+      "sha256": "14107c8d276bc07a9fa6963cebe73cee5024e9efa0a772155cc6f715d4f07389"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/cast/bigint.js",
+      "bytes": 1158,
+      "sha256": "256baa99b905277507d063cb381a5aa1c176ba4666da75312e1c369b640f4057"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/cast/boolean.js",
+      "bytes": 860,
+      "sha256": "51def7f9202df7246f3b4cb327c7192cfb76fc74c1f3109bf65dedd9f1ca6092"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/cast/date.js",
+      "bytes": 1126,
+      "sha256": "bed12f8a0fe654c188b666f59b0149a204cad4099e49d6f2a2bc64a978d0bd92"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/cast/decimal128.js",
+      "bytes": 976,
+      "sha256": "72ac0d926b480b8131768ba86cdb4e5e5f253b7eb0333a890d6b4227411bf9e1"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/cast/double.js",
+      "bytes": 1464,
+      "sha256": "075ec3528655bcba85547196e3e469636238cb141b4628575024ff5f139ebb36"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/cast/int32.js",
+      "bytes": 848,
+      "sha256": "bf2d6cd88599202e683b28e25e26e8a1704a1c852dc0e046f2055d57f16525f9"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/cast/number.js",
+      "bytes": 911,
+      "sha256": "64eba1bc79506757414f75e36e81c24a415eab3085dc9aaa2bc18102b5c97661"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/cast/objectid.js",
+      "bytes": 601,
+      "sha256": "691277f556e74b55ce2522b4fcaaf61e2ee0c42f6ef6d333e4e2d0cca9352745"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/cast/string.js",
+      "bytes": 995,
+      "sha256": "168065a40bd99524c44bc52af53b06d738e9a72867e0a2594fd226f687172b6c"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/cast/uuid.js",
+      "bytes": 2042,
+      "sha256": "b7f43534199fed35ebe2847854c555365e83756f7c2aef306c5ae8f0705d389c"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/cast.js",
+      "bytes": 15110,
+      "sha256": "9cd60ac458c289165d947126575feb54b38d7ddf61099a1a3b44b8beded8584c"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/collection.js",
+      "bytes": 6687,
+      "sha256": "4ff589c0560069f1d4b820443a9993a4b3b3b3cab0da24f8d02349b6dd1bfaea"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/connection.js",
+      "bytes": 62064,
+      "sha256": "2eba4041043c2de7ad5ae117797b461a7984f10c9a8def44bf8e107a5e205a5a"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/connectionState.js",
+      "bytes": 547,
+      "sha256": "aa3ce3243db2ec040380a6ed4aac522c6d09f2bba857c46551a6b871178a8a43"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/constants.js",
+      "bytes": 1064,
+      "sha256": "dccad3457eb03928c366a57f6b55e50ac9597821a84f0110e4a99c2545ae49a1"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/cursor/aggregationCursor.js",
+      "bytes": 13025,
+      "sha256": "312885f6f96b900d45d71f0bdefd1ddfd5a356a75ea7c1c1239464a798287e93"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/cursor/changeStream.js",
+      "bytes": 6078,
+      "sha256": "c874af644dc11124d22744a5868f12a9ef4ca33e3cb2a65c21e5173f7e18009d"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/cursor/queryCursor.js",
+      "bytes": 17136,
+      "sha256": "48ee93a64a84a62a377f2e3a0149a1b3f0c8bc8ee29956b691500507979796c9"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/document.js",
+      "bytes": 168416,
+      "sha256": "d19e9bd7cbf55f09cdc8b2ccdacadee739bbd2d639e2b7571e584de53abc3bde"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/documentProvider.js",
+      "bytes": 492,
+      "sha256": "b581a3f0a8f4be7f2a0ec011e2f914d77a2d4313609af5b45bcbb4dffbceb749"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/driver.js",
+      "bytes": 161,
+      "sha256": "174610bf3f8766f842174e29121063ee18e9aa3431b843c64045e1f497347aaa"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/drivers/node-mongodb-native/bulkWriteResult.js",
+      "bytes": 126,
+      "sha256": "46d6bf8da6cee597dfd56c2eac4d2bb11bcd2d739d0d5993f2ea186e743ce89d"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/drivers/node-mongodb-native/collection.js",
+      "bytes": 14580,
+      "sha256": "6f5d8911cc22e40e65325ef16eb74e4232bbaa6c83ca8218e2db657054f875e2"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/drivers/node-mongodb-native/connection.js",
+      "bytes": 16405,
+      "sha256": "51aa4b9dbc6a509011c885f77532265e31abf245303fcba3237cd5b0e6abb9df"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/drivers/node-mongodb-native/index.js",
+      "bytes": 255,
+      "sha256": "ac588a69ad957ab3d90820c5e2c96eabfd99750c47ce89c958162e31746fbb06"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/error/bulkSaveIncompleteError.js",
+      "bytes": 1293,
+      "sha256": "d0620728d3cd1fb4c12e7240d8dc5a56af56f53d5c15f680a4f4edad79d81cbd"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/error/bulkWriteError.js",
+      "bytes": 973,
+      "sha256": "9a40a1c77b4245d3ccecd8cc1b1582f19f80668b24c866d1e87cf4e6194dc455"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/error/cast.js",
+      "bytes": 3860,
+      "sha256": "68f0326dfbb314c81602ee19906b20b7475bd8c4b9746939a0d1931975c0f91e"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/error/createCollectionsError.js",
+      "bytes": 508,
+      "sha256": "87a9d0df91bba10a500a5f5d89c342f56add8775ef6a32bf51d08c0699132d2e"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/error/divergentArray.js",
+      "bytes": 1104,
+      "sha256": "e344ed1b42da4882e9d9257ba61d2831aea77387c715d5d79c4d503f383237e1"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/error/eachAsyncMultiError.js",
+      "bytes": 873,
+      "sha256": "df2c828f71864b7130aa307a2fe968b59f6ee25fe2b46427f11b831c0d6d3a45"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/error/index.js",
+      "bytes": 7705,
+      "sha256": "38b75ce172be13be8475cb88d83dd5c60432b5e6252ce2c7ce9e38a418ed2162"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/error/invalidSchemaOption.js",
+      "bytes": 592,
+      "sha256": "66930fe1d16f2b655fa633aa58a8568241e7c79efc3e32a9a6c051ebdf7a4e88"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/error/messages.js",
+      "bytes": 1979,
+      "sha256": "8ba9c177f3885160ed9c2b78a47d865852ea1b438e97bb203b6f712892504d38"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/error/missingSchema.js",
+      "bytes": 561,
+      "sha256": "ba607e50da701acaa3614496af6f33da18bba1eac5d7f0a4364923b096634868"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/error/mongooseError.js",
+      "bytes": 192,
+      "sha256": "4d174cbe9c0466bce4073913b69840c819a37313c7282107221b20ae76e037ec"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/error/notFound.js",
+      "bytes": 1018,
+      "sha256": "6252aae975c553ede073a89c264acd5aaa644b5c7163b83ac0901a658e48f20b"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/error/objectExpected.js",
+      "bytes": 637,
+      "sha256": "5bdc3f27081a02c0e42197818e183caaaef32385856d747ffed392f2082f01bd"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/error/objectParameter.js",
+      "bytes": 719,
+      "sha256": "95eb37eadda43ee630ebe6a82c4f0ad480a1c6c8fc087a7c6a1fd7cdd8f177eb"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/error/overwriteModel.js",
+      "bytes": 490,
+      "sha256": "270ff97a64c770886120299aaf9d24e0ac5d3de6c4042ca12b2d2ef5d6024834"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/error/parallelSave.js",
+      "bytes": 532,
+      "sha256": "4196c669e4a6c61fead9fcfc3976dbf8f526434f059245b9244b4db757b97add"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/error/parallelValidate.js",
+      "bytes": 556,
+      "sha256": "5227eae795ba713e8a5f8f8eb69d9f76843d0dc4aef62dcad11c672869a5d651"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/error/serverSelection.js",
+      "bytes": 1925,
+      "sha256": "bb7a1e17d81f070c291e303f36bbbbf56b8dd5ba599d4f8e52cd40c0d9d299a3"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/error/setOptionError.js",
+      "bytes": 1987,
+      "sha256": "95a50c668b6fb12675355541462b1bbea6def96d7793ab98da8ce66898c3748e"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/error/strict.js",
+      "bytes": 667,
+      "sha256": "16e3c9293c88878fb189f036882006cd250cfaad2266d0657c7b88befd8c8b99"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/error/strictPopulate.js",
+      "bytes": 645,
+      "sha256": "a36b9af90087e0ddc774d0642268e0d5928ee41f54ab971a9bdbabfe4bb8ec74"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/error/syncIndexes.js",
+      "bytes": 512,
+      "sha256": "40f2f360a4cf5b272a769690ea0b501dcb4bfc835e46a1ac5d98ff26766b773f"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/error/validation.js",
+      "bytes": 2166,
+      "sha256": "8e6dea9b2f8a68ecd25bb7a53b6a0db84fa0de905e01f08cfe4b2229175fed26"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/error/validator.js",
+      "bytes": 2014,
+      "sha256": "19dc10e04f562dc409ff3511c39cf2bdc1dff4a0c7cdf5a1f783039040290caa"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/error/version.js",
+      "bytes": 775,
+      "sha256": "e8a09ba5a024e000bc84451d83f30416dda807b044c51580da16141078e40fab"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/aggregate/prepareDiscriminatorPipeline.js",
+      "bytes": 1858,
+      "sha256": "a1c34dc1a02b8ab17a4b0c5017757e086d40ddc617fd2bbd7b7220c10adf03ff"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/aggregate/stringifyFunctionOperators.js",
+      "bytes": 1428,
+      "sha256": "806eb235a7d303a700382c9e378d94442c67d3fd94e7b5157346b5bb9eff9015"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/arrayDepth.js",
+      "bytes": 766,
+      "sha256": "92006b1126725f8f26bbf09092ae1c12de65d24bb2c5bc4d5998fe4c7a947d5b"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/clone.js",
+      "bytes": 7521,
+      "sha256": "74915a9317d875f8cf8b266f2a3798c0b5859d72e123a40a632d16f3007708c6"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/common.js",
+      "bytes": 3105,
+      "sha256": "5fc36dce058384826d8f74e5da6dae38dcdb00869e5124d158207689e0da9ed0"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/createJSONSchemaTypeDefinition.js",
+      "bytes": 571,
+      "sha256": "7259c0bffa7023d800ddd1792348a015dfaba12e15e4087a67efca5f023da007"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/cursor/eachAsync.js",
+      "bytes": 6626,
+      "sha256": "536bbadd30bd79806c46ad2c7fa1a6fef02a2552854366c10267db41f918e7fa"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/discriminator/applyEmbeddedDiscriminators.js",
+      "bytes": 1102,
+      "sha256": "15394b37b5f1e21ac8173e1a6789842db72dc098b5d54ed854d358f751d48fb8"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/discriminator/areDiscriminatorValuesEqual.js",
+      "bytes": 412,
+      "sha256": "3a98b35dacf23a3af11e6e867213288d1f51d684e8fa0b1022411fc9ccafc13e"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/discriminator/checkEmbeddedDiscriminatorKeyProjection.js",
+      "bytes": 512,
+      "sha256": "9c1c3786f75a27cb2b0fc77625c5cac930d28eb8e8db4ee74b32640bde2d60bd"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/discriminator/getConstructor.js",
+      "bytes": 939,
+      "sha256": "d065c0ca37efe6e0dafa0a577cf98721c63214ffcaff99014fb72c7d166feac7"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/discriminator/getDiscriminatorByValue.js",
+      "bytes": 653,
+      "sha256": "b29ec6914e165055eec083259e6c800ec5baf4207132f535bdba9f4ce36d5486"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/discriminator/getSchemaDiscriminatorByValue.js",
+      "bytes": 735,
+      "sha256": "7099b4361e54dd9429b7457c144d81756d8e1492e6a8112dac2cbd9089d11281"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/discriminator/mergeDiscriminatorSchema.js",
+      "bytes": 2920,
+      "sha256": "1ab98e9e92049d22d24fcb5a329928dd8befa382eb7624173109d87eefc5bd56"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/document/applyDefaults.js",
+      "bytes": 3782,
+      "sha256": "18788371137962fa15d6293cd65e15f49b016d5ef4e06ed69c2f30b09bb93bfb"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/document/applyTimestamps.js",
+      "bytes": 3342,
+      "sha256": "768ce901b1814fbb6921175de70d8b3866891d4511d33fd3a1b4fa7a0898a033"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/document/applyVirtuals.js",
+      "bytes": 3794,
+      "sha256": "b42b8efec77e6fa790059a25a6764ac2d49b21301d0db6dd9a56f6fbdeb59221"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/document/cleanModifiedSubpaths.js",
+      "bytes": 1146,
+      "sha256": "609830f3870ddee8f0c8ed17c198817afab05b827cfb625b809ec58049e467a2"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/document/compile.js",
+      "bytes": 6722,
+      "sha256": "ce3e29c9e340b0ba090a14123548b2067a66caf062cd37cb1a2e1dda3c3a1905"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/document/getDeepestSubdocumentForPath.js",
+      "bytes": 1035,
+      "sha256": "6b6331b7a07756da139a1f29a06a1152c9b2386fd7cbb6172c9643b3a3a42563"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/document/getEmbeddedDiscriminatorPath.js",
+      "bytes": 1858,
+      "sha256": "a1cb5dd8989591de672696ed1751cd4ade54a8a8ca53e601f915c4ae44cb3ee8"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/document/handleSpreadDoc.js",
+      "bytes": 847,
+      "sha256": "4eccc6526ffc895d2d9f768b34e3e4a95b7a9a419a1c31b9c6179ca4c16a85e6"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/each.js",
+      "bytes": 419,
+      "sha256": "c171f52642eab32591c9a6b06fb1b842421e4e8a8e4f2a45126a8d6ba233a996"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/error/combinePathErrors.js",
+      "bytes": 386,
+      "sha256": "6b8edda3bccb1c3d6fcf2d981fe3549387820ecace93fa9d3f15b2e9ba5b2b6e"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/firstKey.js",
+      "bytes": 132,
+      "sha256": "35541eef73c86fbd5c02ee85b19e7b3a21c5dbd40d1d4a4e54eb1b60b09d2392"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/get.js",
+      "bytes": 1279,
+      "sha256": "525ebca64c4b75849f52db654cd7580cb72c7cae06e20cc01617776b6a33e839"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/getConstructorName.js",
+      "bytes": 334,
+      "sha256": "7b4ab76046132df50cbc6f684153d9ca3784cdeadc40ea483cb716de89f18f51"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/getDefaultBulkwriteResult.js",
+      "bytes": 303,
+      "sha256": "f43b16f75c9d4c7ebe05c6e099944bd3b681ed96d89072784f363660fb2f76af"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/getFunctionName.js",
+      "bytes": 188,
+      "sha256": "7e627dd830616fe6b3049f87f44f58d5d3d732042dedc22d72be07a506c43731"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/immediate.js",
+      "bytes": 498,
+      "sha256": "4cd5abe43190318bb671a8e829f9325aa8b8ba471bf6179086aa99b17a615a3a"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/indexes/applySchemaCollation.js",
+      "bytes": 357,
+      "sha256": "490637f6c5a3ad2228f44ee241abd66f831b11aa5ac208b99377d4960feb1aae"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/indexes/decorateDiscriminatorIndexOptions.js",
+      "bytes": 668,
+      "sha256": "f0636ef76c39e90582a529524d18d1d8ba402e2672070a6569775d9ab8bd75a9"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/indexes/getRelatedIndexes.js",
+      "bytes": 1842,
+      "sha256": "d16dc93bac10074d54dde58656190df93bef6021052207741b1902b5a6c9d08b"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/indexes/isDefaultIdIndex.js",
+      "bytes": 444,
+      "sha256": "1b4d47fac618717c86bd0fbb90e6ac362064de6c45ad6741f029f2f26e57d256"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/indexes/isIndexEqual.js",
+      "bytes": 2964,
+      "sha256": "6d05a647c3dd8d656f11be4517f2175ef5f3d82cd98452ba12a34d2a38b74ddf"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/indexes/isIndexSpecEqual.js",
+      "bytes": 945,
+      "sha256": "884e575d459e8f9624ed80fe0c7c789dca2ac946e97a2b6362f8cc6ba3163630"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/indexes/isTextIndex.js",
+      "bytes": 314,
+      "sha256": "c1b3d48c20ba083c20eb54e478309ccf7962a910c8428aafb77841bb9dc12797"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/indexes/isTimeseriesIndex.js",
+      "bytes": 507,
+      "sha256": "8ebd9dc66181906b85f06c36b25ea6a323ab9737dbd95e6bd61f5e9f72e9a8e0"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/isAsyncFunction.js",
+      "bytes": 176,
+      "sha256": "aaf0707495d6e2f4481be6893ef908c8a5335e4c4fa7f161f8d2208705e44726"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/isBsonType.js",
+      "bytes": 210,
+      "sha256": "cb9be48117db8718309a043e08f75a4a14040412e4107a7c1cddc298d19a34b1"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/isMongooseObject.js",
+      "bytes": 550,
+      "sha256": "9b3508ae8258345e08c75c39c1657fff82fa6cc40d7f98980d8afd31216fe817"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/isObject.js",
+      "bytes": 299,
+      "sha256": "154164d388300d994d88dee6188aac32a87312868b5a421b9e648a9d8a63f8d4"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/isPOJO.js",
+      "bytes": 433,
+      "sha256": "5f563ae456a280fe2c5035b52a4c07e71660bf38ab30af7b76a67a866124dd0d"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/isPromise.js",
+      "bytes": 179,
+      "sha256": "ef6a6ab8f15f70b38bedd4ee1416e2e788f6d23f66cb8ad67ae015d92c185608"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/isSimpleValidator.js",
+      "bytes": 454,
+      "sha256": "3b84adb3f586f9db92e7aabc505a37bc0da3c62f1eee20928ff887986228a259"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/minimize.js",
+      "bytes": 636,
+      "sha256": "ee4cd90a8f096f16e7856ad1b84bf504c46a61c45a832f456d474edb8ce97c26"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/model/applyDefaultsToPOJO.js",
+      "bytes": 1444,
+      "sha256": "848b47c7290f07bd19375d6dc2b8b8841be17d693739522b8bb52948148a96fc"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/model/applyHooks.js",
+      "bytes": 4508,
+      "sha256": "f49cd9aaf7e5ead213c4b46ad67d8c5691acd022b2e418244404251ffa48ae4f"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/model/applyMethods.js",
+      "bytes": 2208,
+      "sha256": "d4bb4649fe91977cedf42522eb3061cb6a61944ec35a9da553d58d4134633266"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/model/applyStaticHooks.js",
+      "bytes": 2628,
+      "sha256": "3d8e9a5b252f1d2380c29d926d845ac2b5981b03e49b46985d5901e7a5b3d55e"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/model/applyStatics.js",
+      "bytes": 257,
+      "sha256": "b1f5c2f2c78b046543275c5929c4c9e592e8b9cae2c7e47840625f158594cc75"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/model/castBulkWrite.js",
+      "bytes": 10798,
+      "sha256": "cadcf6b138ae35231816f6b54c3ad2612927e0f6a0a3af8a8f0e6a6ef0332c46"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/model/decorateBulkWriteResult.js",
+      "bytes": 299,
+      "sha256": "6a3e76bc5e0c380b89dd549c5f02274aa6d12e37e2a9dfad7016b08fcee2c1f4"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/model/discriminator.js",
+      "bytes": 8976,
+      "sha256": "b42adbaaffff1a2f2f975d552efcdd753a2b1eb710639ae339560b64d46eb2d7"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/model/pushNestedArrayPaths.js",
+      "bytes": 353,
+      "sha256": "4acb3c62fccdbb7516daccb5a596f68ef00d2fb0b21931743b86929beb4fb442"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/omitUndefined.js",
+      "bytes": 405,
+      "sha256": "bfa8bc11382a9ab7becaa47f3f319719798d15065cb4804a674af57919ce16aa"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/parallelLimit.js",
+      "bytes": 980,
+      "sha256": "f7f2db6139d88ff8ca8e8c59444cdcd1977b10933c64c61591943620a2bd91bd"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/path/parentPaths.js",
+      "bytes": 385,
+      "sha256": "7952e5c3a30010892c8e6b35819e61cf250d44b1c16edd3c2c28a33842f8c0cc"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/path/setDottedPath.js",
+      "bytes": 585,
+      "sha256": "67f3ed5785c34c80462ef8343582a07b9db64a03addf01497dbaee3847198322"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/pluralize.js",
+      "bytes": 1788,
+      "sha256": "7f46f2b65b19fbf221b21e74b5ec912c1ad241a23a80d6f22581ab52a3495694"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/populate/assignRawDocsToIdStructure.js",
+      "bytes": 4145,
+      "sha256": "feacb65e9dbb7eb6f8ab6092a2b22cdd8670085d8de40f555b88095f66602af2"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/populate/assignVals.js",
+      "bytes": 11597,
+      "sha256": "9677cc3d3abdcc17b49c1278ec59fc8390aa80a9774514a55b92cf9e5f5e8177"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/populate/createPopulateQueryFilter.js",
+      "bytes": 3143,
+      "sha256": "3cff5b3acceb1e053c756aab01e79514288d72df36fa86723f1fb6a98a4fd537"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/populate/getModelsMapForPopulate.js",
+      "bytes": 26142,
+      "sha256": "e97eabb427c9e420c724480a2232ea6fe99690beec3abef6f3c00091625efd0e"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/populate/getSchemaTypes.js",
+      "bytes": 8028,
+      "sha256": "7449b1a6c242133c59a4919dd2849737fd05e6cc6774999f3062c9e60b08ee03"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/populate/getVirtual.js",
+      "bytes": 2977,
+      "sha256": "dda38d25adcb75be62c9006b8159d9ecf7e6e92e65baa55f8a38a27b7dc71c05"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/populate/leanPopulateMap.js",
+      "bytes": 66,
+      "sha256": "7e0d9808c53ff5bbb0df3c881f6cf174115e501cdecb7692746369778a11946d"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/populate/lookupLocalFields.js",
+      "bytes": 720,
+      "sha256": "006815f8b63e0e2d8d8a7ba329c0bffc3967a9edef0afc7c5d551499ae8ce93c"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/populate/markArraySubdocsPopulated.js",
+      "bytes": 1280,
+      "sha256": "5c1e1fe9a0a4c21f14a5f1fdd0e1299e220e0b0b48bcc56ef54916ca266adc0c"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/populate/modelNamesFromRefPath.js",
+      "bytes": 2377,
+      "sha256": "afb7108988817735986b23328ef727bde2e99f57f18a4e85912611a77c13ff71"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/populate/removeDeselectedForeignField.js",
+      "bytes": 744,
+      "sha256": "7146d1e176cf0bb9ce770031bde578c86f7518dd784a03e2ceb356784c95c78b"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/populate/setPopulatedVirtualValue.js",
+      "bytes": 1048,
+      "sha256": "eb5a6ce6f313448ab71e956a72537aba25b9103a1f26b65eb820693d508b339a"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/populate/skipPopulateValue.js",
+      "bytes": 192,
+      "sha256": "0b9f754349ebe687e7ba118ce50b571c401fcf6a761e9f989cb1b1927c42a64b"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/populate/validateRef.js",
+      "bytes": 384,
+      "sha256": "9a54cfbfc2f4d5c60c1ac7144a5fd9851a1c032d70b3c33f17f6a04d388ef2c8"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/printJestWarning.js",
+      "bytes": 949,
+      "sha256": "5b4a85e6dcdf57613cf73c21775ccc0b3ea619deb64bb1df2167b8c771b6d89e"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/processConnectionOptions.js",
+      "bytes": 1964,
+      "sha256": "188bdfde2adb93662316fbdfd9b1ab5c120c6409d510d54f18163d40966eb8f2"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/projection/applyProjection.js",
+      "bytes": 2977,
+      "sha256": "e06db841fd5ac0c0fffbd7d568e220da88be5b097afc68a8296faf6243841a79"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/projection/hasIncludedChildren.js",
+      "bytes": 854,
+      "sha256": "2fc9f13daa935ea54898ede9410dcf967f1bffe9ff4a5a001c16aae9976d2a89"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/projection/isDefiningProjection.js",
+      "bytes": 435,
+      "sha256": "67b0697662ab8641b5f6ff5ffdc0e2150ff0511e7e8f108201483ae4134158c7"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/projection/isExclusive.js",
+      "bytes": 874,
+      "sha256": "e5156d51bacd38777811edf62acca93da3d9c4c86427714ee5cf64baf8898417"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/projection/isInclusive.js",
+      "bytes": 934,
+      "sha256": "d45d7742dcbf15b9380a0477f64236309fbc1969fd10e5967875b400d30f465d"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/projection/isNestedProjection.js",
+      "bytes": 233,
+      "sha256": "49f82b6d5e3fad0d65440e0c5a5c400557441fd6384cc87d71d9e6e522a13cc5"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/projection/isPathExcluded.js",
+      "bytes": 798,
+      "sha256": "c7d2812124c9d2e016ee85ccc14dd0183444f3de40d8ca999523351fd8f49bd4"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/projection/isPathSelectedInclusive.js",
+      "bytes": 566,
+      "sha256": "585718f32953ce90fd6312afbec32eec0203e9b7899d19e0d24c5a85fae22bee"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/projection/isSubpath.js",
+      "bytes": 289,
+      "sha256": "27de2f81d1d4113970809a8e478e190ac0af8f0ab7c838827ca56a9994f1f07d"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/projection/parseProjection.js",
+      "bytes": 686,
+      "sha256": "d80b74ee63d44c1846fe8b7dfa22ddb43251d61fd6c15f65c8457d46807ea86d"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/promiseOrCallback.js",
+      "bytes": 1512,
+      "sha256": "bbcbeb6623933a2a71ce010f37bf914a6f83b3ee42a4a78c7abf682495ffef93"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/query/applyGlobalOption.js",
+      "bytes": 837,
+      "sha256": "1d42de7085815ed05ce09980b293f25a75b689298f11bcc98fc6cb62f53aa10d"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/query/cast$expr.js",
+      "bytes": 7736,
+      "sha256": "41c45caff9b10c13e0f20a3e6ba164ccd567336970ff26521fd06ed0f2778ea1"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/query/castFilterPath.js",
+      "bytes": 1101,
+      "sha256": "c53575e0f3ff17785cf22c038dd68d1d62bd03eeb3177069a3190b9fa7a1b367"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/query/castUpdate.js",
+      "bytes": 19066,
+      "sha256": "b2b53126ed947f1fb2fe267fcb3814e40f12181454a7a6ee24f82c48687cef9b"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/query/getEmbeddedDiscriminatorPath.js",
+      "bytes": 3661,
+      "sha256": "cc14d838a7d1ac7dc77c09ae28179be28a2b589d97d143e99ba7646f33d49962"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/query/handleImmutable.js",
+      "bytes": 1434,
+      "sha256": "369e8d3bab777dcb5f0fad2738bd977278a1d87d118ff77e8d4bbb763715c570"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/query/handleReadPreferenceAliases.js",
+      "bytes": 397,
+      "sha256": "d9718fb3cb28b8962d95827929817673b1d2ec6b4ba37c189c218b488a14cb24"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/query/hasDollarKeys.js",
+      "bytes": 328,
+      "sha256": "1ca3f3b0a794a60c2e9be4bfc188aefc3f1be0640c307a842a2cc09b39d0ef85"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/query/isOperator.js",
+      "bytes": 191,
+      "sha256": "c7c2a3568884b88fa39904ebd5c0b9bd3416d4144f7f5a480a293cea82e7a969"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/query/sanitizeFilter.js",
+      "bytes": 1106,
+      "sha256": "3aecfb664970a4eb2739ca18732c5c651b2581c9ac47e893f9fef8339b15b254"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/query/sanitizeProjection.js",
+      "bytes": 296,
+      "sha256": "489a1db6c7a7afe8da24b360ad1194fe8cb95ad30c062c77d36bc08a5fe780d9"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/query/selectPopulatedFields.js",
+      "bytes": 1680,
+      "sha256": "5bea7a227fcb2826b31f5d25c4f8dcadf39f3d59f6bf5bcc3174255ccc1f0379"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/query/trusted.js",
+      "bytes": 299,
+      "sha256": "34230ea8caa6c9875cf9babeb5a434472c159fce855d06b0ff352fb6041fa8c8"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/schema/addAutoId.js",
+      "bytes": 173,
+      "sha256": "24ca659bd2c90142172453d627c4c57e101badeec576d9a06d18133d5b82e9cf"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/schema/applyBuiltinPlugins.js",
+      "bytes": 359,
+      "sha256": "74989fef0916705269a8feac1b870ca286ff3eac70f914deb9ce79d7ef714a88"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/schema/applyPlugins.js",
+      "bytes": 1557,
+      "sha256": "bc558885f81c6621074ad4700d6e688475260c2f141bda8072d1d6a7d3d50b76"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/schema/applyReadConcern.js",
+      "bytes": 575,
+      "sha256": "a77d8d36f4f8ece03c92ca40d5c3be5482d64773dd156d0c4563597e3c904fc8"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/schema/applyWriteConcern.js",
+      "bytes": 1257,
+      "sha256": "88e5993b31a23406270dba08314c5398ba05105c4c915642fdc171261a4ef503"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/schema/cleanPositionalOperators.js",
+      "bytes": 331,
+      "sha256": "f5e1bf3b413637262b204a97ed240e9279b135f3406c53d5693712b6f93976b6"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/schema/getIndexes.js",
+      "bytes": 5729,
+      "sha256": "ad1e5a2dd4f69a7e12b12a649ff5edf63a6e783e16948af134d5977eb2f6a675"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/schema/getKeysInSchemaOrder.js",
+      "bytes": 621,
+      "sha256": "9a2473aa185ce370b3ee09603f3df1af6be3a551a084b3f47425eee898650c22"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/schema/getPath.js",
+      "bytes": 1161,
+      "sha256": "9613eee9b81daa383ea3632b8a1b601159c872fa8a9de22f6590076945e83ec7"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/schema/getSubdocumentStrictValue.js",
+      "bytes": 1012,
+      "sha256": "9e8f3a69fb68849703668dc2e38d9157e4426937b807163454fa4af51f91be7f"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/schema/handleIdOption.js",
+      "bytes": 413,
+      "sha256": "59a53b51f311316a31ecbd6332d851dfee80514917dfe3fc1ce0044b2d967366"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/schema/handleTimestampOption.js",
+      "bytes": 364,
+      "sha256": "bac3286dc83af1022806c9378f80306748eb1ca590a16deaaebb7b9954642a09"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/schema/idGetter.js",
+      "bytes": 590,
+      "sha256": "d7fc8bf80715ad432f3526649bdfb95ac37d69115fec45bce934220b397f2592"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/schema/merge.js",
+      "bytes": 966,
+      "sha256": "8318d223a6f18846d9223ed98ecbc1a3bc4fc95071da739f956abd20320aed95"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/schematype/handleImmutable.js",
+      "bytes": 1305,
+      "sha256": "52a7233ad3e9996f98ca057ceee9aebe80db8077c67b0e0c2f5e85f880c9b363"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/setDefaultsOnInsert.js",
+      "bytes": 4600,
+      "sha256": "45959792d1854b183e28359d34cefb49ca76ac9f2cb711b309ea6be26b9fb4f7"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/specialProperties.js",
+      "bytes": 84,
+      "sha256": "9e0a074e64c9d2060f49e9ba2e3df71fefb9f72d94b6c76ccaa3b909d8ef80cf"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/symbols.js",
+      "bytes": 1171,
+      "sha256": "d50e5434f2727fb36ab6d35e269972997759d2107be70567ae1774c11e4c2a23"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/timers.js",
+      "bytes": 48,
+      "sha256": "1178eebaf80e34ff91669a84597e5085dc327a84f103ed61f63fe806714eeea3"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/timestamps/setDocumentTimestamps.js",
+      "bytes": 894,
+      "sha256": "dd96ae85aac31c1b1055ba268dcf1bcd410809fdb4652b71255c451bf40c9d31"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/timestamps/setupTimestamps.js",
+      "bytes": 3456,
+      "sha256": "6dc54f1b6cb2b0cd509a00120ffc94444e8936e747000737d6530202f11982f6"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/topology/allServersUnknown.js",
+      "bytes": 396,
+      "sha256": "1a8c98d17fa2a9ef7f44cb17df8fad5c34d37164213ca7228fe8b2da0ec285d4"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/topology/isAtlas.js",
+      "bytes": 748,
+      "sha256": "256d59c1f6807cc703de4254bf59ed030cd3c12f4e3711a3ad7354e9c5581167"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/topology/isSSLError.js",
+      "bytes": 559,
+      "sha256": "101a38ac1d5fd693210f47f41f44ab05835321288af550d57954ca325734a609"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/update/applyTimestampsToChildren.js",
+      "bytes": 5899,
+      "sha256": "e66cc5f01010d355cd862993576998f1a7c573d5142dbefd64e79ef90a859e37"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/update/applyTimestampsToUpdate.js",
+      "bytes": 3924,
+      "sha256": "28ac18c94f99d6fc2b5829b60b144b1666edb4bc900eb610e48d82b278bb13d9"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/update/castArrayFilters.js",
+      "bytes": 4535,
+      "sha256": "bf0b39e9f54ec8b05c2ab75f03543b40f4a4ce804e63d789e942678c22846fe4"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/update/decorateUpdateWithVersionKey.js",
+      "bytes": 799,
+      "sha256": "eaefbcbe80fbc4b50ce81dd9c762f18b959384d0a34fcdba5cc3a5603b356973"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/update/modifiedPaths.js",
+      "bytes": 845,
+      "sha256": "35608dc0f5ca1f85f1f951ae5ada62fd2dabfea2c87e203c2c1fdf21c0c3d6a1"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/update/moveImmutableProperties.js",
+      "bytes": 1259,
+      "sha256": "b145a4f09498c11507e61481cd4417e8b0ecf8cb3d90b6bab6fee9019fce9774"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/update/removeUnusedArrayFilters.js",
+      "bytes": 1098,
+      "sha256": "b4a740b2446ab2628050467bdce9e5fa095279510805605cf5049c7cc3f32193"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/update/updatedPathsByArrayFilter.js",
+      "bytes": 775,
+      "sha256": "4a713507bc7fb03d8d8f93a2ac923b2c8bb1be32ec630135491939781b570eaa"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/helpers/updateValidators.js",
+      "bytes": 7405,
+      "sha256": "d6a32fcae07a80dbf92a09d2364a50811c9606dd4e4a3d173ce7413e4dfea20a"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/index.js",
+      "bytes": 315,
+      "sha256": "d91a70387987fd6b5d044298268984581a639788a1e940d10476ce2f77a4e6cb"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/internal.js",
+      "bytes": 1619,
+      "sha256": "e2789c4a80bd67a54889f034b21fa7a0909af3c70a6ccea9a7555946be9348f7"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/model.js",
+      "bytes": 193558,
+      "sha256": "6a290a04d9b618ace1fbfdf83239bab5b071ec158573d41e9f9055ed0e7b0fc1"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/modifiedPathsSnapshot.js",
+      "bytes": 229,
+      "sha256": "b6069b1d6f9e2ab1e5c88f737c8e5658578e56db04306b3e2a47ebdf093abccb"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/mongoose.js",
+      "bytes": 52486,
+      "sha256": "141800e92c653c91489ab109a31e9b914dbb788ca4b20696d6a5781f12c5abb3"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/options/populateOptions.js",
+      "bytes": 829,
+      "sha256": "60fc5d43752f9b76a644d65188ff965a24f27a50ff049d2644e8f0bc38a2438e"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/options/propertyOptions.js",
+      "bytes": 128,
+      "sha256": "3ad7e7208d5d808f4730c670e704eb6b419acd7fbf14ada47a39feb8397446d9"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/options/saveOptions.js",
+      "bytes": 258,
+      "sha256": "4be1f44ab40f3571db6a429a999dc6f5a14113f0202efd4390543683929119f6"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/options/schemaArrayOptions.js",
+      "bytes": 1997,
+      "sha256": "9c812a287d5b3f747f201605edd794e0c08f0bfaaa394872291f2f9786d59e5b"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/options/schemaBufferOptions.js",
+      "bytes": 747,
+      "sha256": "7f493b67e78be358dfc69f08b65a19c89de53a7855345c43fcdfb125b3dd6fa2"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/options/schemaDateOptions.js",
+      "bytes": 1551,
+      "sha256": "e037a497def87be58ceb4b3fecdefd0bd8777c53a0044927a9733b6db9720b27"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/options/schemaDocumentArrayOptions.js",
+      "bytes": 1783,
+      "sha256": "2ae485eccb772ae67ebb81f4902e4ff141f9818fa43410837d1e9f2bb6a3fa75"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/options/schemaMapOptions.js",
+      "bytes": 1114,
+      "sha256": "fb96145d9b3ab97bfe5d91dfc5ac3f77104fae39a5861e900e77a46859eb02ff"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/options/schemaNumberOptions.js",
+      "bytes": 2192,
+      "sha256": "43b435bee58755138b4f25b90da25ef29d36a578ea6fb4b6b40abb68ae51fc60"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/options/schemaObjectIdOptions.js",
+      "bytes": 1413,
+      "sha256": "73aa65a6b07a2904bb0beec5eac504179b0434444baf80c2eedc2073a960109f"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/options/schemaStringOptions.js",
+      "bytes": 3743,
+      "sha256": "020e95b83ded8f7a5d767c8b8200669fe5ccfc7a57aef5c4a6e14c5a84b5fb5e"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/options/schemaSubdocumentOptions.js",
+      "bytes": 1809,
+      "sha256": "830382eae818f3aa720564f555a8d433350db36db70c63f438b88ba2ef892241"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/options/schemaTypeOptions.js",
+      "bytes": 6022,
+      "sha256": "09e1c3d988972e2a632b133cbbb8448176f244e5059321618803fc09b03f15e6"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/options/schemaUnionOptions.js",
+      "bytes": 739,
+      "sha256": "5fcffe630892f00a16a8a77df5a1a4afe7eb35f57e362308ff5449b7c79c9af6"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/options/virtualOptions.js",
+      "bytes": 3677,
+      "sha256": "abe2588db92aec100abf63db78a328580f00694880b69d17e77dc56826503db8"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/options.js",
+      "bytes": 302,
+      "sha256": "bdda0982b1167b9a66cfa0047a6200b5718d70e01a0110b5a46bdcd5e87b7e95"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/plugins/index.js",
+      "bytes": 225,
+      "sha256": "a542eac583d9bbaedbbde378ed1b8adb0d08c010c31db31996ea7a2d9f48e0bf"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/plugins/saveSubdocs.js",
+      "bytes": 2530,
+      "sha256": "db30e5de4baf4638dff69858f051c7764af8639dec95a09447678df069e1cb92"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/plugins/sharding.js",
+      "bytes": 1795,
+      "sha256": "5a27fea4c33252e9657f9bd7398ac3cbf37e78116eba521ae747f66b739418ff"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/plugins/trackTransaction.js",
+      "bytes": 2728,
+      "sha256": "0dea423555a3df482948d02ec9af7b49ab39fb0182732b51a2802980d8fc6057"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/plugins/validateBeforeSave.js",
+      "bytes": 1370,
+      "sha256": "90685c7d603a37fece1c42800c9c49d76a8e91ede66955d99dba00b007b4f354"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/query.js",
+      "bytes": 182478,
+      "sha256": "4613f14a4626d00e1ad85f0cb0c0e1326266be8b8a7eadc372fd93875820816a"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/queryHelpers.js",
+      "bytes": 11542,
+      "sha256": "c83b1e179eee2f92cb55e4efefba40a3ba6f1e5c73e584ce1bc29fd9a3a8e1a7"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/schema/array.js",
+      "bytes": 20908,
+      "sha256": "3ac735b06a68a3d1377a6522dd691698dc0eef22c04675e13524df73954f0035"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/schema/bigint.js",
+      "bytes": 5971,
+      "sha256": "432cc116e81c427605aaf4234df7cb2b6d5185eafe5ad123fb893079cd21917c"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/schema/boolean.js",
+      "bytes": 7605,
+      "sha256": "c923b937fcfca7201a6a61749118d37a8047b3041e448ad2bc3b313fe3f65c54"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/schema/buffer.js",
+      "bytes": 8864,
+      "sha256": "8c2d3c0b0565d596bfc413d5ea812ef4d83e3bf86ed2a9fbc19c42cc078bfc11"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/schema/date.js",
+      "bytes": 12389,
+      "sha256": "1bffe2a1868e648c7b5c28da2b51d362e9d6d441f8dc85e2a240018995323e3c"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/schema/decimal128.js",
+      "bytes": 6198,
+      "sha256": "cbac09aa2fb86a29ba4ee3fdf69afa8f22d536c71b89f7fa50ff0ddda4b4620b"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/schema/documentArray.js",
+      "bytes": 20361,
+      "sha256": "ff7afa43b7530036916462bac3d7e036c0c1b9536c6e22f971c1d186d57389e7"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/schema/documentArrayElement.js",
+      "bytes": 2576,
+      "sha256": "7e51f20ada439a200ad9b8d872bc6c49c23e4a6f3fa551786ebdd0a9b907c92f"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/schema/double.js",
+      "bytes": 5260,
+      "sha256": "4045a26d5bb14e3dddc1e573a3889353dfa5761919398f9d6db3e7feb137c42e"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/schema/index.js",
+      "bytes": 868,
+      "sha256": "68cbcac3c023b0c197facb0f6da86bc55f33f669adb2fd8864588196f7071c05"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/schema/int32.js",
+      "bytes": 6239,
+      "sha256": "8626cdc8776e2acd00cf065d02c6da25becb36772213a00950510dbf1ea7cf1a"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/schema/map.js",
+      "bytes": 5571,
+      "sha256": "27caa89d81605e273ec0aa596abe37884a27ec93586e14d794d1323bf44f4dc4"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/schema/mixed.js",
+      "bytes": 3294,
+      "sha256": "840fcaff2d2f5406eec5b69bf9071c80c4af04f74c962113d29149be0ead6fd1"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/schema/number.js",
+      "bytes": 13249,
+      "sha256": "986ec7fe59c927ac04e48e15950e3cc6e042a4e9b8241dbc8a403d34730a169e"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/schema/objectId.js",
+      "bytes": 8261,
+      "sha256": "2230184abb0825c7d1b1a392c7165e674d90e9ec867f16a46898ddb01fbb82a5"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/schema/operators/bitwise.js",
+      "bytes": 622,
+      "sha256": "acb9f11f607b7c0050161808ad0b8b817beeca942a895445ccbd66bbd3c55d22"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/schema/operators/exists.js",
+      "bytes": 203,
+      "sha256": "aafa0b6c8ff6f599063d541fe3324ecde78453f88ac7033f556a4002cc418bf3"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/schema/operators/geospatial.js",
+      "bytes": 2360,
+      "sha256": "27fcc7341baea9c3048eb6d8c63e598e8385a466e4d9f4eba83d2f5a73c3de6c"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/schema/operators/helpers.js",
+      "bytes": 493,
+      "sha256": "ed756742f76d4522cfb403ca24fac23f8a9c329eedcb2f21b0ec89092c7c4fa0"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/schema/operators/text.js",
+      "bytes": 1153,
+      "sha256": "75cde7e81d9c5df7811df9bbad54f0d5cbe0f2b586452b8b9ee0d6ef2cb19475"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/schema/operators/type.js",
+      "bytes": 447,
+      "sha256": "c6861f62612dcd41b3b9695d289001bd8e4c36a72313758b6f05bd7d09d2d672"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/schema/string.js",
+      "bytes": 20799,
+      "sha256": "ae16be84b7a33ba66b4695decb847dc2f0cde86beb86914b14a7eb687410f072"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/schema/subdocument.js",
+      "bytes": 12804,
+      "sha256": "613c87c18a36cd67d616056f2ad9a2bd936fb2f87a23e62ff7edfdf96bfe2e1b"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/schema/symbols.js",
+      "bytes": 153,
+      "sha256": "4480f773376dbafaf0f0f369adc732e5e72322a5b77950c129ae5af3a323af7b"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/schema/union.js",
+      "bytes": 4068,
+      "sha256": "c6d7ee21e7f5f580ab3b0f4b17325173dd4de0b5c55e1664969ee752063ea643"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/schema/uuid.js",
+      "bytes": 7912,
+      "sha256": "971540f3a1a9b1a8ea0bc02ebe00a7a17bfcf223fec28d8b1e22212a028f838c"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/schema.js",
+      "bytes": 104064,
+      "sha256": "5e3f5e9971a78de0fe2e175799e7774771701f842a8f7568264c26bdb2fd043b"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/schemaType.js",
+      "bytes": 55644,
+      "sha256": "ea76d4fd915c2bde521dfdb46257852464d0ffda4165c8af330e0b30c869e7f0"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/stateMachine.js",
+      "bytes": 5592,
+      "sha256": "5dc5dffa9f12301b9908937717ee98e3351171bf7b71e9af50dbee780616ca23"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/types/array/index.js",
+      "bytes": 3644,
+      "sha256": "8c769c6a5e3616781fb1fa936a30b57fa599cb9ac3343350bf5fabab84cab292"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/types/array/isMongooseArray.js",
+      "bytes": 142,
+      "sha256": "2a80be183f4cae19c74c2fcde45d0b8ed519a024c0dd495321d5afb698d849b0"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/types/array/methods/index.js",
+      "bytes": 29744,
+      "sha256": "ed91b41a41adfbf8ee326e1584cfa32b10ab8d8ccc05f4297f19d45f4b04a2a2"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/types/arraySubdocument.js",
+      "bytes": 4991,
+      "sha256": "8b7d56c22c46ca6bfb4ff49641f7a2a4673f9134e590665451d61927112b308c"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/types/buffer.js",
+      "bytes": 6457,
+      "sha256": "b567add4a466527f9c519ecdbd5aae66b5ee0f364f0de2d55560c9fd0eeac920"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/types/decimal128.js",
+      "bytes": 212,
+      "sha256": "df573aca72b33585b64020a5a73656ac0b9d1b4d3c499b1a5e26978a22d09cef"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/types/documentArray/index.js",
+      "bytes": 3521,
+      "sha256": "ad8171876605d6699210f34bd591d10579bc89a4060b529d0c0f41d3edae52db"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/types/documentArray/isMongooseDocumentArray.js",
+      "bytes": 182,
+      "sha256": "be1d76f4874f0f35f0440ad6aa7c75d852b933712804d05954713384275a17f5"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/types/documentArray/methods/index.js",
+      "bytes": 13551,
+      "sha256": "1615e25e2e0d959112444fae597f5b4120bb934279a96fcc13194cb89b557c41"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/types/double.js",
+      "bytes": 194,
+      "sha256": "4f033c64db13310c1e3070f21d6fb2fddf481fa17ba08c356d07faf16a0c9002"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/types/index.js",
+      "bytes": 498,
+      "sha256": "e2912bfd55bd79b7b244cf510faee6322f01fe324d05f56c23ef0b868df0d1ad"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/types/map.js",
+      "bytes": 12401,
+      "sha256": "54a74edb634030bfc0f0828720146aa327ed6177ee55d1f9855061d3ea3e7b56"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/types/objectid.js",
+      "bytes": 799,
+      "sha256": "cf9b45f18dd2377cabc0e42df51a4eab5ee09278948381b28e9ccf75d9c6ffab"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/types/subdocument.js",
+      "bytes": 12126,
+      "sha256": "e0d0eab294060f783a8c054716e07145e9a1d2deaaeff84f1b0430be21ac18b1"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/types/uuid.js",
+      "bytes": 180,
+      "sha256": "d2c9864b1f6dce3ae33995927cc10fd0d4b175dd760a977dff46b47de9a006b9"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/utils.js",
+      "bytes": 23188,
+      "sha256": "688460341666bfad59d343567b806b844b32ad371a47f31b0298635c9d269ff7"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/validOptions.js",
+      "bytes": 775,
+      "sha256": "ba1f69b23f97a3db56556b54aa30a39bf4bada8940486ff39aa94262f28d658a"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/lib/virtualType.js",
+      "bytes": 6526,
+      "sha256": "7625ca33bfe7f2cb72df0ee42fc9ce45c1d119ad699532f2af2fbd45da4d1155"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/admin.js",
+      "bytes": 4839,
+      "sha256": "34ae4c66f3ec1141cc121598636e8a962539c9c851a5362d5c3694c0358c32aa"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/bson.js",
+      "bytes": 5551,
+      "sha256": "1880a069aa02d09798a3a082d77198aafa4a2d6a1c0315691f25820b58c025ea"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/bulk/common.js",
+      "bytes": 32464,
+      "sha256": "205af34a4c6bce7db5f2b6f7a2e996d047daf611111c2fd7354494e5d1fffe3d"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/bulk/ordered.js",
+      "bytes": 3131,
+      "sha256": "9b5400b47b87b725d5fcd62af8042dd6a4b6cbe8094b7a8b30e79dc6d7e12ca8"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/bulk/unordered.js",
+      "bytes": 4144,
+      "sha256": "1cd5e95a1e023fc3f4b3ff43bf9c2040879f6b193fcda89bcaf579480a624b2e"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/change_stream.js",
+      "bytes": 18216,
+      "sha256": "42efb7e19cfd6c032ba8d6409734844970b63ec26be4a78b99643d47b15bdfcb"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/client-side-encryption/auto_encrypter.js",
+      "bytes": 12421,
+      "sha256": "8f286b88037c5a93d565fcbc94f6a89719daeaf5da1b8f606d3a904e143a5216"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/client-side-encryption/client_encryption.js",
+      "bytes": 26868,
+      "sha256": "bf70a8558f0fe79c7c7c315779094b5885b208205013bbf2846861f4b0ec28ac"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/client-side-encryption/crypto_callbacks.js",
+      "bytes": 2633,
+      "sha256": "425f28490a0375a2d59885f7a9640ad62a16f3a9a81a2f8af493b30d262a766c"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/client-side-encryption/errors.js",
+      "bytes": 4497,
+      "sha256": "da62a989fdae5546f82b3f3e545645df5daae6bda36c99dbeeaed679cb8ae70e"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/client-side-encryption/mongocryptd_manager.js",
+      "bytes": 3960,
+      "sha256": "3d85bd6e10fed04e14b29a0d8741ebc844da9ac08821f3870edfa16cac4d4295"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/client-side-encryption/providers/aws.js",
+      "bytes": 1154,
+      "sha256": "56d0452ebe9ca8569332741071b95b12383745d090a75d184969a7ad0f0340a5"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/client-side-encryption/providers/azure.js",
+      "bytes": 4550,
+      "sha256": "98f435edb82c064ca3a047f7915e0b86f6a5ffbae527d54d500a3f88569c022a"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/client-side-encryption/providers/gcp.js",
+      "bytes": 578,
+      "sha256": "77c563ee0649ad42bda076b6b2ea83e8deb9acf627edcde2cea11c6c2a16a366"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/client-side-encryption/providers/index.js",
+      "bytes": 1630,
+      "sha256": "ee9dbebcd5de3a3f109f56c3ef8d2e396a20f800e1b6bbb0e2f1567c26a04947"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/client-side-encryption/state_machine.js",
+      "bytes": 19607,
+      "sha256": "2c2591aaa070c514ccfe4bdb9f4b4db7b85f181581368860e2315717938bd408"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cmap/auth/auth_provider.js",
+      "bytes": 1476,
+      "sha256": "026adc593cbc9b88f2d8148e4045b12558490bfd424719c6464851bf0d1829d6"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cmap/auth/aws_temporary_credentials.js",
+      "bytes": 6529,
+      "sha256": "532ce65a60b96b42a077e19fbd7ee7861f93ee1880569aaa49a7c8bfc407876a"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cmap/auth/gssapi.js",
+      "bytes": 5756,
+      "sha256": "bc0a4fa84151565980182c2304489556cb92ed1bbae26edd5c25eb806b15cc68"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cmap/auth/mongo_credentials.js",
+      "bytes": 8786,
+      "sha256": "e654f63df667755c9ff519b3494df7235d350606bcaf12904f21f8258279b65d"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cmap/auth/mongodb_aws.js",
+      "bytes": 6334,
+      "sha256": "a210f0b9a11b11e8ee4e2c22332dade4bae675c88914f4741dcdb35a32f77054"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cmap/auth/mongodb_oidc/automated_callback_workflow.js",
+      "bytes": 3274,
+      "sha256": "45276a6db8654ef731db56a77becfde53cf5de69190e11de2d866e96dbe3dd3b"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cmap/auth/mongodb_oidc/azure_machine_workflow.js",
+      "bytes": 2569,
+      "sha256": "a876ac80956594d8da6c036573fc3702aa068e9319534c8364fc516aac9ddff6"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cmap/auth/mongodb_oidc/callback_workflow.js",
+      "bytes": 6069,
+      "sha256": "143821977c3d1af0be08c92c79f016ad92a187752553afba780f1ab8bb615454"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cmap/auth/mongodb_oidc/command_builders.js",
+      "bytes": 1610,
+      "sha256": "8d6021f80991cdd2bff0cc8ad1a6b6f048745754c344665bf0b729dbf6ebd7a7"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cmap/auth/mongodb_oidc/gcp_machine_workflow.js",
+      "bytes": 1594,
+      "sha256": "f7f3a7f840d01dda547fddfc104785a3df94947fc8f7e8b902aa0a373e9fbf72"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cmap/auth/mongodb_oidc/human_callback_workflow.js",
+      "bytes": 5847,
+      "sha256": "333665d63014170f2ff2b5bd88319efa2c11f0c3eecb3000e7cb5cca2d32a537"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cmap/auth/mongodb_oidc/k8s_machine_workflow.js",
+      "bytes": 1109,
+      "sha256": "0b231926542722184b62e72f6a7dde66939d481b4d4421d3e9a6783c8d8fbc16"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cmap/auth/mongodb_oidc/token_cache.js",
+      "bytes": 1502,
+      "sha256": "c4ae5f2b56d4edcc29683a7e870dcde1f83a2f462df655275b7eb303f7369662"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cmap/auth/mongodb_oidc/token_machine_workflow.js",
+      "bytes": 829,
+      "sha256": "ccd8c016fb49f1b59f630d6139fa5d278acd0af686fd71df3ef097e521014f41"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cmap/auth/mongodb_oidc.js",
+      "bytes": 3290,
+      "sha256": "a491b77e762fe2feff4a768887ec49c9b44ac9a2bce8758c07289cc6b149a8d8"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cmap/auth/plain.js",
+      "bytes": 997,
+      "sha256": "8002a9407906c2c80af7580cd77178ec9417dee35e024602fdd896502586bb6b"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cmap/auth/providers.js",
+      "bytes": 775,
+      "sha256": "88d105031025be2b474265772e0532cc0993464c32fb41395ba037b3dc424ba6"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cmap/auth/scram.js",
+      "bytes": 9752,
+      "sha256": "1e325f662b5ba159b995dbea16ce40aac4ce65b34b22e9620d5cf6f6a6d68971"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cmap/auth/x509.js",
+      "bytes": 1417,
+      "sha256": "45d1dba99e8e91023472ade8f57ed1bbc3ebd4f0375c5bc5f0f75def6e247b22"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cmap/command_monitoring_events.js",
+      "bytes": 7811,
+      "sha256": "427cc405c504fae27983a79532039f39c06d75de9b6a95e3fd621b9280bb378f"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cmap/commands.js",
+      "bytes": 22831,
+      "sha256": "3f6c9f4bbcab6e828b9627a86ba8126469360bd9188916ce56b13127ecfa627f"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cmap/connect.js",
+      "bytes": 15266,
+      "sha256": "6cb3b543187825202762c05596113b673fd3d421d69a5644ca061654f11b9c26"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cmap/connection.js",
+      "bytes": 26155,
+      "sha256": "88ed2c2100b9c9357f513232f4643c8dc2b54e1da2daf8b608c1d7b61d784142"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cmap/connection_pool.js",
+      "bytes": 24154,
+      "sha256": "faecdf753193b8401033be307afdb19e9e9dd9d5d45c213836ece86864e5772b"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cmap/connection_pool_events.js",
+      "bytes": 6366,
+      "sha256": "313626759316b86dd128b30c711986700bb9d8d94e31971d9f1b02bed4e66424"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cmap/errors.js",
+      "bytes": 3506,
+      "sha256": "a4481a2d43280727567d149310bde840983bebec46dd7b2800fe896cdfcf199b"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cmap/handshake/client_metadata.js",
+      "bytes": 9753,
+      "sha256": "dd5ef5544577a6e73c4204d218a3c356db17fce4ef3f388a860de45bc58dd2c8"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cmap/metrics.js",
+      "bytes": 1931,
+      "sha256": "a35cd935813bb955f3e8019e40fc61678def9694798e10b80a40c31a9df4a35f"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cmap/stream_description.js",
+      "bytes": 2591,
+      "sha256": "d8b7d2e612f6e9fbf2840bf8a1777cf8cde765d6fd4614bba5e716dc133435cf"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cmap/wire_protocol/compression.js",
+      "bytes": 5816,
+      "sha256": "08a55dab5929972b01ebc71951e7dd1dad7fff0bf54034746305af14451fa8ad"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cmap/wire_protocol/constants.js",
+      "bytes": 1138,
+      "sha256": "94847e6ee86f753cece0f63c26e2ba025f49426972c00fae6ba868b821adc454"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cmap/wire_protocol/on_data.js",
+      "bytes": 4147,
+      "sha256": "239e86e88a4b12ab6d22683378587763051d8f7b7288d03399edfcacebe6acd4"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cmap/wire_protocol/on_demand/document.js",
+      "bytes": 9254,
+      "sha256": "b80f9a243734828f84cf28dca8cd0f6844aa7c62fe52350d24ce020947a4b3e8"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cmap/wire_protocol/responses.js",
+      "bytes": 11965,
+      "sha256": "f3045cb062e9d661f556eac267744298371236a182d59ad4047718329e279000"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cmap/wire_protocol/shared.js",
+      "bytes": 1660,
+      "sha256": "3482cdf4bd824bf26557fd26c94de60e37511912ff44a645f8e18dbcf3fb1a04"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/collection.js",
+      "bytes": 33681,
+      "sha256": "a770d3556e622243797e142d1b2896dc9e55ccf0a475fac43bb128311c33d8b2"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/connection_string.js",
+      "bytes": 43299,
+      "sha256": "f2cc53e9a025cfa449e318451e0c43ae779180a5dce56d7bf1e489c17c494700"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/constants.js",
+      "bytes": 7201,
+      "sha256": "9b3e4d4c4a9ed44990e4bc41df540aece5c499802ddfd3104b1c864601f4bc5b"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cursor/abstract_cursor.js",
+      "bytes": 37055,
+      "sha256": "6d7a338e7751bd725ab6ad857a8c428377b09274bfb3f2064ceaf35fcc15d8d8"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cursor/aggregation_cursor.js",
+      "bytes": 6840,
+      "sha256": "fa7b356ed556a2ac8826b27b7daec9330bb04f86e254db0c1e70ca0d4604c7fb"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cursor/change_stream_cursor.js",
+      "bytes": 4085,
+      "sha256": "8548ef65de9a9af57d9d59b1ee0dffd570933bdcd38af2d075b19141a74b15f1"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cursor/client_bulk_write_cursor.js",
+      "bytes": 2135,
+      "sha256": "e9738307452829fc81e25ce33fb8077365af9ae6155b32e8a47be90af410d817"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cursor/explainable_cursor.js",
+      "bytes": 1296,
+      "sha256": "ed715549c00b09a5c03318cfbee09c665c98d7f2854588643a73fa7351b339a6"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cursor/find_cursor.js",
+      "bytes": 15479,
+      "sha256": "b969340812fdd13ea6ac11ad4157a4325502b1520c0d1f2b84bf518a71e5efc4"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cursor/list_collections_cursor.js",
+      "bytes": 1338,
+      "sha256": "5852bb42b10fabd55802b02f7e17b4c00c86df3f70d566cbef6995afd55adf82"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cursor/list_indexes_cursor.js",
+      "bytes": 1218,
+      "sha256": "42245298d0099e6c3c8416115a451676a6401e3c0e98b3d16c57160f85e5e459"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cursor/list_search_indexes_cursor.js",
+      "bytes": 639,
+      "sha256": "4aae7b079efd86037d3d28a1d374707b82e59331edbd703d3484423707a78d15"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/cursor/run_command_cursor.js",
+      "bytes": 4083,
+      "sha256": "5a85bb1f4027ad235c0ae8c78f9eb33bea1378fc51451e5eb2cacb4084a2e70b"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/db.js",
+      "bytes": 17889,
+      "sha256": "71c8baac24850e22dab189d0661c851bf5baf1e797b74a6e1798f9a02958242a"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/deps.js",
+      "bytes": 5469,
+      "sha256": "7c701162bd2b1baa08f849c774af9f59f9401c31256d11819b3de97db3d261d1"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/encrypter.js",
+      "bytes": 4488,
+      "sha256": "579cbf667189b634dfa95ed6666b00624e873a2cbf2bd38b7f32e7341f3f2cda"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/error.js",
+      "bytes": 44410,
+      "sha256": "7bb9f56df3620fcddf9fb146e4466ce1e79eb574b32a1e6731b6bc54fb920a1c"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/explain.js",
+      "bytes": 2054,
+      "sha256": "5ca6aa1e886c73b5aa1393c015d90bb6a9b1affe00a2b44c87ec6c8d997bbb05"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/gridfs/download.js",
+      "bytes": 11820,
+      "sha256": "7f0dae0aefbd06d34fea2a94ab0ec88e90e28c48d6f02e5a2eee7f67ab9e9070"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/gridfs/index.js",
+      "bytes": 6928,
+      "sha256": "bddb8c2582f5dd454d1e3cd586a73ad0444fc6c8d4471cb1cfaf91d4b613f619"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/gridfs/upload.js",
+      "bytes": 13932,
+      "sha256": "402f5252d4c7d2aee2deff936eecac44f512aa4175c3fc5a04c77dd4f79b65ba"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/index.js",
+      "bytes": 25883,
+      "sha256": "d58c7e45c97513297d1ea31bd2a0331be96595dc9887856abab89f91cf944783"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/mongo_client.js",
+      "bytes": 29041,
+      "sha256": "9330396ff47a83b3ba4d39d40c0dab4afcaab48b1068170c510a24f8ed0367e3"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/mongo_client_auth_providers.js",
+      "bytes": 3902,
+      "sha256": "f5154c72f1317cc0db6f015f061c4f7f0f3abfb1b6f703ad0ff0cd1e6006fa04"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/mongo_logger.js",
+      "bytes": 28948,
+      "sha256": "71e288fe699146147576abf9c7e052f55ef793fef19c743c07e9b9d1196e2483"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/mongo_types.js",
+      "bytes": 1954,
+      "sha256": "7b721a10e723b6a841f584cc2cf5ee99f3d2af9ca2733bbe116a5998b108e01b"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/operations/aggregate.js",
+      "bytes": 3770,
+      "sha256": "fb08f3ace57dfe956fc14941a2fa3c02a64e64f01ed603980d4b9340206ce16f"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/operations/client_bulk_write/client_bulk_write.js",
+      "bytes": 1978,
+      "sha256": "16a100038c90e543f96db0583b39685a207056b9bd0a2f1bd70f39f703794227"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/operations/client_bulk_write/command_builder.js",
+      "bytes": 13741,
+      "sha256": "a191e2eed7e3b0da2e9ca60ce89c29ce8f112305a89d37855b116b8ae63b5143"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/operations/client_bulk_write/executor.js",
+      "bytes": 6348,
+      "sha256": "0b7e1c2bce71746d5a474ff65be9317878a005d77fe06078d5842702127565c9"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/operations/client_bulk_write/results_merger.js",
+      "bytes": 7685,
+      "sha256": "8b862251302009b87f9c129cc3a2710a459f3f608330e47ce18b0ffc95737e50"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/operations/command.js",
+      "bytes": 3689,
+      "sha256": "45ecf1ade086ea2761455e71791be3ad48a87c0947e6769f1aeacc3add76d485"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/operations/count.js",
+      "bytes": 1590,
+      "sha256": "e8c9f6024e26f255c89ef86e911122d263705730c5cbd7e178e66b17da8704fa"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/operations/create_collection.js",
+      "bytes": 4695,
+      "sha256": "8a21e07491ad183c1ccb84deff77342504ab9aa88303aa4907948e0d0bef2b8c"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/operations/delete.js",
+      "bytes": 4460,
+      "sha256": "7dc1728de0e73041af0228189189ca9734501015cd269e26f2d2b25aa80e6a4d"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/operations/distinct.js",
+      "bytes": 2189,
+      "sha256": "5cb83e9f5c6f38d9450441dc151163260158179e39d10717e3b1d1833c26281a"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/operations/drop.js",
+      "bytes": 4028,
+      "sha256": "36bb7676225a0936252dc7f38a008f4f94b3002a8a2162053c596acb90b71fc7"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/operations/estimated_document_count.js",
+      "bytes": 1585,
+      "sha256": "016c03afce838459f8447fee2413d2138c03efe6a1688f837819f8548e13c370"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/operations/execute_operation.js",
+      "bytes": 10666,
+      "sha256": "e0ca240fb28b5364da7307a15d484ccfccac340b38cc06d7cf0c6df13c2697b4"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/operations/find.js",
+      "bytes": 5193,
+      "sha256": "4cdfe7aa85a7b97b8208694ddd7000e858198b3dd229f1c0eb4ce3c50ccc7037"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/operations/find_and_modify.js",
+      "bytes": 6538,
+      "sha256": "635a1dee2dc9a2a4add02f2c6c6e47060887ba2e9102018edf89e4faa30bf003"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/operations/get_more.js",
+      "bytes": 2444,
+      "sha256": "56e37ee0322bbd661b1cc10e3d62263f9d37e00d167129c0407bbf93b05c0366"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/operations/indexes.js",
+      "bytes": 7343,
+      "sha256": "676a5947bbce37f6b1a5a12300b16d02061742557fa4fbad9d9e51baf335b6e3"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/operations/insert.js",
+      "bytes": 2695,
+      "sha256": "08bae757bf6e564f67d59c795c850c3d57d02ed3bdc0e2db45ad94d420a1d839"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/operations/kill_cursors.js",
+      "bytes": 1646,
+      "sha256": "5eb24086402f1e827124dc5dd755f728d82318c08eb7d35b91544965145439d0"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/operations/list_collections.js",
+      "bytes": 2116,
+      "sha256": "3a54f8f4e6cb64012cedb3f9ecde83a52a22a011b51a27feceffeec87f506297"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/operations/list_databases.js",
+      "bytes": 1677,
+      "sha256": "6255b63d9202681b63866c3428a8e91ceb5eb76893fad78427872881174cee0b"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/operations/operation.js",
+      "bytes": 3689,
+      "sha256": "833b4fe2243d5b23524a2258f925f64a6c5b5e13d05da19193c3afde3fb1819c"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/operations/profiling_level.js",
+      "bytes": 1448,
+      "sha256": "6cd10b5585f534769352c35ce50eab3b40ea465e4512f2bcd24cae534582deb5"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/operations/remove_user.js",
+      "bytes": 940,
+      "sha256": "b4986a2a2330769745c8831fbc237ff4a35b563b60b927c5370bb1b4eb2e53b0"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/operations/rename.js",
+      "bytes": 1525,
+      "sha256": "2d507c9e745d644fc5493086dbff241beee0fe0518f3db90df3d74663d451ea0"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/operations/run_command.js",
+      "bytes": 1519,
+      "sha256": "d0f4800edefcc7505f2ccbdf866ed1725d7b6b202e1d2aa9295c802307c1080a"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/operations/search_indexes/create.js",
+      "bytes": 1201,
+      "sha256": "a66cd4d7c2a58ad9ced2955d45357e820ac21ce6ec7eb7b3f0464ab95c639286"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/operations/search_indexes/drop.js",
+      "bytes": 1476,
+      "sha256": "f5f2324966f5cef706959751fa2e10caf4b62a61080071e01edf71f342ef7cd4"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/operations/search_indexes/update.js",
+      "bytes": 1191,
+      "sha256": "4821cdfafa36bdfc64e8cf7354a5441c2d75c677bb2a3765b336d9fc745dd684"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/operations/set_profiling_level.js",
+      "bytes": 1823,
+      "sha256": "6725c1e2d8f45da45f2003f756752201e9b3c60a44be0ebd1bddcf406f95d5d4"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/operations/stats.js",
+      "bytes": 943,
+      "sha256": "8030e85dba19b3e63e14667720cc86c9c4c7102f7cdbf3e3a9d4ea826567e000"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/operations/update.js",
+      "bytes": 7612,
+      "sha256": "a46f68650b0f209a75ccca413f34ff1c62ecd6a3bfc2a5e9d25a63032ea67d38"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/operations/validate_collection.js",
+      "bytes": 1679,
+      "sha256": "78eb27ce53e1fa9d1dabf4d6ae54788dfec72c0998efeb27af6b2be23fa8b5fc"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/read_concern.js",
+      "bytes": 2467,
+      "sha256": "198a68e82d4fc3a980b7abdc92cea64aafb56a8509bcbf2ed3ac10cf6af4d321"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/read_preference.js",
+      "bytes": 8110,
+      "sha256": "e8703ba898da66390bc3b3e6a9bc445f0b9fc80dd7737727a89a3a188729675b"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/resource_management.js",
+      "bytes": 2549,
+      "sha256": "fa81bbb497fe2804d4029055f2b165f4e300e2c97c53c2f61c14836b0a629e50"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/sdam/common.js",
+      "bytes": 1572,
+      "sha256": "78d6d1bb7d307f73cc28919780e8ff45750dd1f6a85c19f4b4e91269dade4b30"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/sdam/events.js",
+      "bytes": 4545,
+      "sha256": "e491d565c931623bc599923264bf9e2453209f2421bce19e11744a6a8d5dd9b7"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/sdam/monitor.js",
+      "bytes": 21641,
+      "sha256": "c445c3e84ee3da532dae8660c71167adebff925b5fe0435c4c9a8b30fa1de8f5"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/sdam/server.js",
+      "bytes": 15857,
+      "sha256": "1e3c7ecb98b8c931575943e50ebb64bc526b8121d88175d43fd9866df9ac41f5"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/sdam/server_description.js",
+      "bytes": 8486,
+      "sha256": "1a90eda205c887e78849283a3f2eec85df322a099ae6a8343fc01c6d58484eb0"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/sdam/server_selection.js",
+      "bytes": 10017,
+      "sha256": "e052f042372fcb111cdca019541f1580ce6e858e30ae4650e33927f76eb77d6d"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/sdam/server_selection_events.js",
+      "bytes": 3174,
+      "sha256": "107f31775a6ff7fa0a48e22b1250b89c19e0651389125eeea5e79cca665fc8be"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/sdam/srv_polling.js",
+      "bytes": 3335,
+      "sha256": "89c202614182c1de29010c1f5812b459b4f13a7a83b4b998ec80dc123719a48d"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/sdam/topology.js",
+      "bytes": 32852,
+      "sha256": "732974571ba6b3a40ca441758c0ca97473a5b261790591a4ff742bd2bff25a78"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/sdam/topology_description.js",
+      "bytes": 19413,
+      "sha256": "55159c17a5e6f3336008ebd1a2822f18e57661c823456c500f6688994858826a"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/sessions.js",
+      "bytes": 38897,
+      "sha256": "e96344b31108b4bbd6b7eda6a48ecc5c7cd0abd9f66c07b29e446565712d06ed"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/sort.js",
+      "bytes": 3049,
+      "sha256": "a2653d5a07802e5a626a84d0dc8491b81368da98f2ac317254a770fff5f95b93"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/timeout.js",
+      "bytes": 11111,
+      "sha256": "c05016e02d13c592469e67032eeec952c8b8a0316b28a2cd9bd9e8e1c0e3c160"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/transactions.js",
+      "bytes": 5489,
+      "sha256": "8809da365c1c0fb908afa5f5d818cf4f8e83b0137a4aeb694bb37d7acc3140bb"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/utils.js",
+      "bytes": 42161,
+      "sha256": "0d9965c040835e252a0813769b6a700a7b0841347943eef0fe4eeb34d0bc0b85"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/lib/write_concern.js",
+      "bytes": 4022,
+      "sha256": "06bfe550a7ccb5166912bf05a0d06da33ad12416ed1d94a0679bf3823842f622"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/mongodb/package.json",
+      "bytes": 7148,
+      "sha256": "54edfda15c69f02c7d6ddf045f339caa1c94cef76b45c2383e1b35071024241b"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/node_modules/ms/index.js",
+      "bytes": 3024,
+      "sha256": "e5f0b6a946a9b2b356a28557728410717df54ea2f599edb619f9839df6b7b0e9"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mongoose/package.json",
+      "bytes": 7019,
+      "sha256": "5136d95bcd0624a94096110ea21ac101b73f1839bc40726eab85649389c17dba"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mpath/index.js",
+      "bytes": 60,
+      "sha256": "876350da710bc01e1c83f2cc459e5ca3311d2a9de67c5ab681f6dee13d541696"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mpath/lib/index.js",
+      "bytes": 8811,
+      "sha256": "1fb8fc9a9efef66661574005c19c46bb5453b5c2c68b2c8dcf5a937ee99c1f28"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mpath/lib/stringToParts.js",
+      "bytes": 1394,
+      "sha256": "a75a4f8ce167259652085842b3778ffca9f2762f06e0a8fa91c2377b9df39079"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mquery/lib/collection/collection.js",
+      "bytes": 790,
+      "sha256": "dcc1ccaab02bcad409c8e51f3ea0c5a2e45b9d58df660a01ea4c6b48333a3f0b"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mquery/lib/collection/index.js",
+      "bytes": 249,
+      "sha256": "287059f943aab146950a0f5c0e8efa9bf01a1761faecaaf14ebbc8cb0296f551"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mquery/lib/collection/node.js",
+      "bytes": 2217,
+      "sha256": "3bdb08c7f6a4dcb8e9613fe46c4e53983a968d8547d1fa70fde4d8444901eae1"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mquery/lib/env.js",
+      "bytes": 662,
+      "sha256": "a467632b0e95a176273c5a870279b05b101cd3e2f97b85ccb698971fa335b515"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mquery/lib/mquery.js",
+      "bytes": 67991,
+      "sha256": "f8551c4ecc1202b78fa93aae42098fdbbc9c478d472cc83b321807b7ef9d72cb"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mquery/lib/permissions.js",
+      "bytes": 1472,
+      "sha256": "57f9bd566c2a0a20a07bdbebcefb6f852b54df44b1f26291be7fa9559194b21f"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mquery/lib/utils.js",
+      "bytes": 6115,
+      "sha256": "9eeebad2e1c5d2c8ea3f102142b3bd53fa0d9448587ef30decfc174c0f856051"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mquery/node_modules/debug/src/common.js",
+      "bytes": 6915,
+      "sha256": "dbe83d2bb5837f3c4d7fe537b8004c585987270eceed5b06b8e078deb0ae214a"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mquery/node_modules/debug/src/index.js",
+      "bytes": 314,
+      "sha256": "aa127ff1752b7d9c7415c5c7bb6994d9aa722b81bcbcab4bd48316b013d23bf3"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mquery/node_modules/debug/src/node.js",
+      "bytes": 4728,
+      "sha256": "d7b26d7c92f8ea7794b77ce11f3c11cd18c9084df7c357e3c7025344fa28aac6"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/mquery/node_modules/ms/index.js",
+      "bytes": 3024,
+      "sha256": "e5f0b6a946a9b2b356a28557728410717df54ea2f599edb619f9839df6b7b0e9"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/punycode/punycode.js",
+      "bytes": 12711,
+      "sha256": "6052a80eac47e46bd4de17ae0095e0192c336d3d7c387d292ad2176ebfc53d04"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/sift/index.js",
+      "bytes": 97,
+      "sha256": "6c2ea11eb02704642caabb0784afe554d4c7b095062654ddbf78b858cf6400fe"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/sift/lib/index.js",
+      "bytes": 31660,
+      "sha256": "7cbf556690ded4be99724e8db640cb0530285d2fe96c606f1343f58ec1aa384f"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/sparse-bitfield/index.js",
+      "bytes": 2303,
+      "sha256": "573bffd440e704dd4fbbfb79421435c106a6957dfe080b1d678352418f12ff2b"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/supports-color/index.js",
+      "bytes": 3065,
+      "sha256": "36ebfad20a03171d97e85fcdd39563c91b56cc0c579b8f7369f7503b7e156b82"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/typescript/lib/typescript.js",
+      "bytes": 9112572,
+      "sha256": "3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675"
+    },
+    {
+      "path": "attempt1/node-provenance/root/node_modules/typescript/package.json",
+      "bytes": 3620,
+      "sha256": "822ef7ca6452205657b6288b066481ecf508bfbf43455d715cf7d3ec457561e6"
+    }
+  ]
+}

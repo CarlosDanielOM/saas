@@ -58509,7 +58509,7 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "reviewed-bounded-partial-request-time-receipt-producer; ledger consumer/persistence remain open",
+      "featureReview": "reviewed-bounded-partial-request-time-receipt-producer-and-queued-receipt-parser; Mongo persistence/full ledger model remain open",
       "localRustEvidence": [
         "dimabot/src/utils/ai_usage_producer.rs",
         "dimabot/src/utils/ai_usage.rs",
@@ -58529,24 +58529,36 @@
         "migration-notes/evidence/2026-10-29-ai-credit-receipt/artifacts/ai-credit-receipt/producer-benchmark/ai-usage-producer-node-benchmark.json",
         "migration-notes/evidence/2026-10-29-ai-credit-receipt/artifacts/ai-credit-receipt/producer-benchmark/ai-usage-producer-rust-benchmark.json",
         "migration-notes/evidence/2026-10-29-ai-credit-receipt/artifacts/ai-credit-receipt/final-readback.json",
-        "Final receipt-producer source tree: 02ab55a9d484c01af695793b55d6313280f30080c76db5ad9b5a909b440ac78f (commit 01d35033)."
+        "Final receipt-producer source tree: 02ab55a9d484c01af695793b55d6313280f30080c76db5ad9b5a909b440ac78f (commit 01d35033).",
+        "dimabot/src/utils/ai_usage_receipt_parser.rs",
+        "dimabot/src/utils/lossless_json_view.rs",
+        "dimabot/tests/ai_usage_receipt_parser.rs",
+        "dimabot/tests/lossless_json_view.rs",
+        "dimabot/tests/fixtures/ai_usage_receipt_parser_reference.cjs",
+        "migration-notes/evidence/2026-10-29-posthog-receipt/verification-summary.json",
+        "migration-notes/evidence/2026-10-29-posthog-receipt/artifacts/parser-oracle-equivalence.json",
+        "migration-notes/evidence/2026-10-29-posthog-receipt/artifacts/parser-source-reuse-audit.json",
+        "Initial parser baseline commit 77141415e72810cf7df5d64b97a53ae0dee1b8af; source tree SHA-256 0551e2ebdbf792b7989a1f32bac37a670db66b7409b390808ad838b8ecfbf42c."
       ],
       "behaviorDifferencesOrAcceptedChanges": [
         "Rust QueuedAiUsageReceipt is a typed lossless plain-data builder value, not full parity for the TypeScript interface extending AiUsageTransaction or for the parser/persistence consumer contract.",
         "Escaped lone UTF-16 surrogates remain lossless in the native producer wire, while the existing native ai_usage_receipts worker consumer parses with serde_json::Value and rejects these escaped lone surrogates.",
-        "One RPUSH is issued without application retry; after disconnect/cancellation the append outcome may be uncertain."
+        "One RPUSH is issued without application retry; after disconnect/cancellation the append outcome may be uncertain.",
+        "parseQueuedAiUsageReceipt now has a partial native mapping to parse_queued_ai_usage_receipt, its typed normalized 18-field receipt DTO, and a concrete receipt BSON projection helper. This does not implement persistAiUsageReceipt or the complete Mongoose model, middleware, indexes, or Mongo persistence path.",
+        "The new parser preserves lone UTF-16 units in its DTO and replaces them with U+FFFD only at the concrete BSON UTF-8 boundary, matching Node BSON behavior; the existing deployed native worker still uses its old serde_json::Value parser and rejects escaped lone surrogates. The new parser is not adopted."
       ],
       "callers": {
         "sourceEvidence": [
           "dimabot/src/utils/polarsh.ts: buildQueuedAiUsageReceipt and enqueueAiUsageReceipt remain active TypeScript callers after Polar accounting.",
           "dimabot/src/utils/ai_usage_receipts.ts, ai_usage_backfill.ts, ai_usage_backfill_queue.ts, ai_usage_queries.ts and route/dashboard consumers use parser, persistence, reporting, retention, or query exports outside this port."
         ],
-        "runtimeStatus": "No Rust producer call site is adopted. The existing native receipt worker is a consumer only; parsing, queue processing, Mongo persistence, locking, reporting, backfill and caller/bootstrap integration remain open."
+        "runtimeStatus": "The native queue producer has no adopted Rust call site. The existing native receipt worker is consumer-only and remains on its old serde_json::Value parser, which rejects escaped lone surrogates; the new parser is unadopted. Native parser/BSON projection helpers do not constitute persistAiUsageReceipt or full Mongo model/index/middleware behavior. Queue processing, persistence, locking, reporting, backfill and caller/bootstrap integration remain open. Adoption and deployment are tracked separately from dependency completeness; no deployment occurred."
       },
       "testEvidence": {
         "sourceEvidence": [
           "Pinned Node 24.22.1 / V8 13.6.233.17-node.58 / TypeScript 5.9.3 oracle: 338 receipts, 20 retention cases, and 3,325 source assertions.",
-          "The final source-only optimization regenerated source parity; all 338 receipt, 20 retention, and 3,325 assertion outputs matched. The seven benchmark pools all use entryKind=usage."
+          "The final source-only optimization regenerated source parity; all 338 receipt, 20 retention, and 3,325 assertion outputs matched. The five benchmark workloads each include seven trials and use entryKind=usage.",
+          "Pinned receipt source proof: 1,362 parser cases per zone across five time zones; the final UTC source/BSON replay and source checks passed at the initial baseline. One parser test late-init style rebind changed the test hash; 31 of 32 production-bound source inputs remained unchanged. See migration-notes/evidence/2026-10-29-posthog-receipt/verification-summary.json and artifacts/parser-oracle-equivalence.json."
         ],
         "rustBehaviorEvidence": [
           "Baseline source 77fc976da064a87c02ec1fce93cd0e4820dfe53a7eac9feb5fab453c482d80f7 passed compiler-fixtures-1793256166045626940 and post-Node node-1793256476785298801; its 178 test executions overlap dependency tests and include a subprocess-only no-op helper, not 178 unique cases. This remains the full proof for unchanged credit/TTS behavior.",
@@ -58554,9 +58566,10 @@
           "Final producer checks: formatting; standalone producer strict check/Clippy; all-feature all-target strict check/Clippy; no-feature check; source and real disposable Redis behavior; release benchmark. Read-only final readback: 19 production records unchanged and no task-owned containers, networks, or volumes remain.",
           "Final TS/Rust medians in microseconds/op: ASCII 5.488254673/4.729704720 (ranges overlap), Unicode 6.597315228/4.798382866, nullish 5.272826218/4.931949913 (small), surrogate 6.512388226/5.195385979, large 37.699973267/8.866506592. All seven checksums matched each workload. Nullish improved 14.105% versus Rust baseline; large changed +0.375% with overlapping ranges/no material change. See the source-bound benchmark reports.",
           "Three failed compiler attempts were retained (private test accessor, fixture EOF/socket clone, Clippy seed type annotation); subsequent source-bound runs passed. These were harness corrections, not application defects.",
-          "The optimized-source compiler/benchmark applies only to the producer module. Credit feature evidence remains bound to 77fc976da064a87c02ec1fce93cd0e4820dfe53a7eac9feb5fab453c482d80f7; final producer binding is 02ab55a9d484c01af695793b55d6313280f30080c76db5ad9b5a909b440ac78f."
+          "The optimized-source compiler/benchmark applies only to the producer module. Credit feature evidence remains bound to 77fc976da064a87c02ec1fce93cd0e4820dfe53a7eac9feb5fab453c482d80f7; final producer binding is 02ab55a9d484c01af695793b55d6313280f30080c76db5ad9b5a909b440ac78f.",
+          "Initial capped compiler run compiler-1793264871810743273 passed five ordinary parser tests, five borrowed-view tests, and one UTC producer/BSON parser replay; these execution counts overlap dependencies and are not unique cases. The separate five-zone proof compiler-1793263458419267176 passed all 1,362 cases in each zone before a later Clippy failure; final UTC replay passed on the final test-only source rebind."
         ],
-        "status": "Partial local receipt builder/queue producer behavior verified at distinct baseline and final producer source bindings; consumer compatibility, persistence and full ledger dependencies remain open."
+        "status": "Partial local receipt builder/queue producer and queued-receipt parser/BSON projection behavior verified at distinct source bindings; complete Mongo persistence, existing worker adoption, and full ledger dependencies remain open."
       },
       "exports": [
         {
@@ -58713,8 +58726,18 @@
         },
         {
           "name": "parseQueuedAiUsageReceipt",
-          "nativeMapping": "unreviewed/outside this bounded producer slice",
-          "evidence": []
+          "nativeMapping": "partial: parse_queued_ai_usage_receipt returns a typed normalized 18-field DTO and exposes a concrete receiptDocument-to-BSON projection helper; not persistAiUsageReceipt or complete Mongoose/Mongo persistence parity",
+          "evidence": [
+            "dimabot/src/utils/ai_usage_receipt_parser.rs",
+            "dimabot/src/utils/lossless_json_view.rs",
+            "dimabot/tests/ai_usage_receipt_parser.rs",
+            "dimabot/tests/lossless_json_view.rs",
+            "dimabot/tests/fixtures/ai_usage_receipt_parser_reference.cjs",
+            "migration-notes/posthog-receipt-2026-10-29.md",
+            "migration-notes/evidence/2026-10-29-posthog-receipt/verification-summary.json",
+            "migration-notes/evidence/2026-10-29-posthog-receipt/artifacts/parser-oracle-equivalence.json",
+            "migration-notes/evidence/2026-10-29-posthog-receipt/artifacts/parser-source-reuse-audit.json"
+          ]
         },
         {
           "name": "persistAiUsageReceipt",
@@ -58897,7 +58920,7 @@
           "rustReplacementOrGap": "Concrete native RPUSH exists, but is opt-in and not wired into Polar callers/bootstrap."
         }
       ],
-      "rowAssessment": "partial-local-request-time-receipt-builder-and-queue-producer-verified; consumer, persistence and ledger dependency closure open"
+      "rowAssessment": "partial-local-request-time-producer-and-queued-receipt-parser-verified; Mongo persistence and ledger dependency closure open"
     },
     {
       "source": "src/utils/ai_usage_lock.ts",
@@ -91799,48 +91822,109 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-bounded-partial-six-export-posthog-wrapper-and-native-adapters; explicit SDK transport/lifecycle differences and broader application adapters remain open",
+      "localRustEvidence": [
+        "dimabot/src/utils/posthog_tracking.rs",
+        "dimabot/src/utils/posthog_lossless.rs",
+        "dimabot/src/utils/ai_usage.rs",
+        "dimabot/src/utils/js_string.rs",
+        "dimabot/src/utils/lossless_json.rs",
+        "dimabot/tests/posthog_tracking.rs",
+        "dimabot/tests/posthog_lossless.rs",
+        "dimabot/tests/fixtures/posthog_tracking_reference.cjs",
+        "dimabot/tests/fixtures/posthog_lossless_reference.cjs",
+        "migration-notes/posthog-receipt-2026-10-29.md",
+        "migration-notes/evidence/2026-10-29-posthog-receipt/verification-summary.json",
+        "migration-notes/evidence/2026-10-29-posthog-receipt/source-binding.json",
+        "Initial baseline commit 77141415e72810cf7df5d64b97a53ae0dee1b8af; source tree SHA-256 0551e2ebdbf792b7989a1f32bac37a670db66b7409b390808ad838b8ecfbf42c."
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "All six exports have local Rust payload/lifecycle counterparts and concrete SDK/lossless adapters. Verification covers 1,042 source wrapper records, 20 native HTTP transport tests and 18 installed-SDK lifecycle scenarios; see the dated migration note and evidence summary.",
+        "Native lossless transport has explicit event preflight (256 KiB), depth (64), response-body (64 KiB) and queued-byte (16 MiB) bounds; redirects/proxies are disabled and shutdown is permanent. These behavior differences, UUIDv4 versus SDK UUIDv7 event metadata, and differing SDK/library metadata prevent a strict source-equivalence claim.",
+        "Initial payload benchmark retains four small-payload regressions (command, TTS, AI usage, AI operation); the two measured faster workloads are TTS Unicode and large TTS. Later optimization work is unverified and has no reported result."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "identifyStreamer: dimabot/src/classes/twitch_streamers.class.ts:151,442.",
+          "trackCommand: dimabot/src/handlers/message.handler.ts:770.",
+          "trackTts: dimabot/src/utils/ast_parser/functions/tts.functions.ts:97,123,148,175,200.",
+          "trackAiUsageRecorded: dimabot/src/utils/polarsh.ts:114,509.",
+          "trackAiOperation: dimabot/src/handlers/tts_queue.handler.ts:249,442,527,583.",
+          "shutdownPosthog has no application caller in the reviewed source."
+        ],
+        "runtimeStatus": "Local six-export implementation and concrete SDK/lossless adapters are verified at the initial baseline, but no application caller has adopted them. The wrapper consumes native AiUsageContext and AI_USAGE_SCHEMA_VERSION; broader Polar/billing/ledger application adapters remain open. Adoption and deployment are tracked separately from dependency completeness; no source retirement or deployment occurred."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "Actual source declaration imports PostHog at runtime from posthog-node and imports AI_USAGE_SCHEMA_VERSION as a runtime binding plus AiUsageContext as a type-only binding from ai_usage_event.ts. The containing ai_usage_event.ts also imports node:crypto for context construction; native ai_usage::create_ai_usage_context uses UUID generation only where context creation needs it, while PostHog tracking accepts an existing context.",
+          "Initial pinned Node run node-1793265499179357802 passed: 1,042 wrapper records, two actual installed-SDK payloads in one case, and 18 SDK lifecycle scenarios. Source tree SHA-256 0551e2ebdbf792b7989a1f32bac37a670db66b7409b390808ad838b8ecfbf42c."
+        ],
+        "rustBehaviorEvidence": [
+          "Initial capped compiler run compiler-1793264871810743273 passed 20 native loopback transport tests and five ordinary wrapper tests; full limits, feature/check results and execution caveats are in migration-notes/evidence/2026-10-29-posthog-receipt/verification-summary.json.",
+          "Four oracle/benchmark --check runs passed in node-1793265499179357802 with the input unchanged. The source-bound initial benchmark is recorded in migration-notes/evidence/2026-10-29-posthog-receipt/artifacts/initial-benchmark-comparison.json; no optimized result is claimed."
+        ],
+        "status": "Partial local six-export behavior and concrete adapters verified at the initial baseline; explicit source/SDK transport differences remain. Application adoption and broader application-specific adapters remain open."
       },
       "exports": [
         {
           "name": "identifyStreamer",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "StreamerIdentityState::identify and PosthogTracking::identify_streamer; process-local unchanged-name deduplication and $identify payload.",
+          "evidence": [
+            "dimabot/src/utils/posthog_tracking.rs",
+            "dimabot/tests/posthog_tracking.rs",
+            "migration-notes/posthog-receipt-2026-10-29.md",
+            "migration-notes/evidence/2026-10-29-posthog-receipt/verification-summary.json"
+          ]
         },
         {
           "name": "shutdownPosthog",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "PosthogTracking::shutdown_posthog and PosthogLosslessTransport::shutdown; permanent native shutdown differs from SDK post-shutdown capture behavior.",
+          "evidence": [
+            "dimabot/src/utils/posthog_tracking.rs",
+            "dimabot/tests/posthog_tracking.rs",
+            "migration-notes/posthog-receipt-2026-10-29.md",
+            "migration-notes/evidence/2026-10-29-posthog-receipt/verification-summary.json"
+          ]
         },
         {
           "name": "trackAiOperation",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "ai_operation and PosthogTracking::track_ai_operation; schema version and request:operation:lifecycle insert ID.",
+          "evidence": [
+            "dimabot/src/utils/posthog_tracking.rs",
+            "dimabot/tests/posthog_tracking.rs",
+            "migration-notes/posthog-receipt-2026-10-29.md",
+            "migration-notes/evidence/2026-10-29-posthog-receipt/verification-summary.json"
+          ]
         },
         {
           "name": "trackAiUsageRecorded",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "ai_usage_recorded and PosthogTracking::track_ai_usage_recorded, with NativeUsageRecorded over an existing AiUsageContext.",
+          "evidence": [
+            "dimabot/src/utils/posthog_tracking.rs",
+            "dimabot/tests/posthog_tracking.rs",
+            "migration-notes/posthog-receipt-2026-10-29.md",
+            "migration-notes/evidence/2026-10-29-posthog-receipt/verification-summary.json"
+          ]
         },
         {
           "name": "trackCommand",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "command and PosthogTracking::track_command; command_executed payload and JS-falsy identity fallback.",
+          "evidence": [
+            "dimabot/src/utils/posthog_tracking.rs",
+            "dimabot/tests/posthog_tracking.rs",
+            "migration-notes/posthog-receipt-2026-10-29.md",
+            "migration-notes/evidence/2026-10-29-posthog-receipt/verification-summary.json"
+          ]
         },
         {
           "name": "trackTts",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "tts and PosthogTracking::track_tts; tts_executed payload and nullable optional properties.",
+          "evidence": [
+            "dimabot/src/utils/posthog_tracking.rs",
+            "dimabot/tests/posthog_tracking.rs",
+            "migration-notes/posthog-receipt-2026-10-29.md",
+            "migration-notes/evidence/2026-10-29-posthog-receipt/verification-summary.json"
+          ]
         }
       ],
       "imports": [
@@ -91857,12 +91941,12 @@
           "baselineSourceTargets": [
             "src/utils/ai_usage_event.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named runtime import plus named type-only import",
+          "runtimeOrTypeDependency": "AI_USAGE_SCHEMA_VERSION is used at runtime by trackAiOperation; AiUsageContext is type-only in the PostHog wrapper and is consumed by trackAiUsageRecorded.",
+          "defaultSideEffectBarrelDetails": "Direct named import; no side-effect import or barrel in this declaration.",
+          "directDependencyReview": "Partial: the native schema-version constant and AiUsageContext live in ai_usage.rs. ai_usage_event.ts separately imports node:crypto for context creation; native UUID generation belongs to ai_usage::create_ai_usage_context and is not needed when PostHog receives an existing context.",
+          "transitiveDependencyReview": "Context creation and application-level billing/Polar adapters remain separately scoped; PostHog wrapper import semantics are source-reviewed.",
+          "rustReplacementOrGap": "Native version constant and context type cover the wrapper dependency; no claim that all ai_usage_event.ts context-factory behavior is part of this PostHog row."
         },
         {
           "ordinal": 1,
@@ -91870,15 +91954,15 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "default runtime import",
+          "runtimeOrTypeDependency": "PostHog is the runtime client for identity, capture and shutdown calls.",
+          "defaultSideEffectBarrelDetails": "Direct default import; no side-effect import or barrel in this declaration.",
+          "directDependencyReview": "Partial: posthog-node SDK behavior is represented by the native posthog-rs adapter and concrete lossless reqwest/Tokio backend, with the bounded differences recorded in the migration note.",
+          "transitiveDependencyReview": "Native crate internals replace npm internals; application caller adoption and the broader billing/ledger adapters remain open.",
+          "rustReplacementOrGap": "Concrete SDK-compatible and lossless backends exist, but permanent shutdown, transport bounds, redirects/proxy policy, event UUID and library metadata differ; strict source-equivalence is not claimed."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "partial-local-six-export-posthog-wrapper-and-concrete-adapters-verified; explicit SDK differences and broader application dependencies open"
     },
     {
       "source": "src/utils/qdrant/collections/twitch/memory.qdrant.collection.ts",

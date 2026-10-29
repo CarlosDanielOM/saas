@@ -1,0 +1,5 @@
+{
+  "sha256": "0ab05c2240b6af9f930b0a2824f89bb239d5cc4bd5e24cd6b866aa29ac753e4d",
+  "bytes": 584953,
+  "method": "Parent host hashlib.sha256 of generated input bytes, checked against separate Node-container sha256sum; literal supplied to native benchmark."
+}

@@ -1,0 +1,25 @@
+{
+  "sourceTreeSha256": "b6e1be19385b237964cefc9746f2832f994389843f293fd17a840c9098b55318",
+  "files": {
+    "dimabot/src/utils/posthog_lossless.rs": {
+      "sha256": "297184e4024ba8ccbe8cd06e89ad985fca0850bd577223c27d54192e5ecf3630",
+      "bytes": 22326,
+      "method": "Recovered verbatim from actual-source fixture"
+    },
+    "dimabot/src/utils/posthog_tracking.rs": {
+      "sha256": "7c119ea19de0414228ae13597894ec8c33a5df4ce9fb54d7a7331639aa902c87",
+      "bytes": 20558,
+      "method": "Recovered verbatim from actual-source fixture"
+    },
+    "dimabot/tests/posthog_lossless.rs": {
+      "sha256": "84f1ba37f69fb3bedc27558c1b1f09f2d94b199f8064429a61d244366de45c4f",
+      "bytes": 30549,
+      "method": "Reconstructed by reversing only documented lint changes, verified byte-exact against contemporaneous frozen-run SHA-256"
+    },
+    "dimabot/tests/ai_usage_receipt_parser.rs": {
+      "sha256": "a908107fb738078861b1f9087b63be01d30779c572aab7562a8b354abc04e3eb",
+      "bytes": 34449,
+      "method": "Reconstructed by reversing only documented lint changes, verified byte-exact against contemporaneous frozen-run SHA-256"
+    }
+  }
+}

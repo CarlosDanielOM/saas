@@ -1,0 +1,21 @@
+{
+  "htmlFile": "initial-posthog-benchmark.html",
+  "previews": [
+    {
+      "width": 390,
+      "height": 933,
+      "appearance": "dark",
+      "consoleMessages": []
+    },
+    {
+      "width": 718,
+      "height": 893,
+      "appearance": "dark",
+      "consoleMessages": []
+    }
+  ],
+  "attachmentId": "9cc467f1-f5c3-45a8-989a-e8e02361df4b-a38612d2-561b-4418-9ad3-949177a9c412-html",
+  "renderHeight": 933,
+  "scope": "New initial PostHog payload chart, shown once; older receipt/pricing charts were not repeated.",
+  "htmlSha256": "99618bec745e3ecd4765983b61a9f21f5a666bac9b88108a6f570aa92d439160"
+}

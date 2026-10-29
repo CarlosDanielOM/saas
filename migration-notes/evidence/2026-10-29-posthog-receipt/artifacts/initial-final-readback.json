@@ -1,0 +1,126 @@
+{
+  "productionRecordsCompared": 19,
+  "productionUnchanged": true,
+  "ownedResourcesRemaining": {
+    "containers": [],
+    "networks": [],
+    "volumes": []
+  },
+  "records": {
+    "/dima-server": {
+      "id": "32ae309244d32648368da780c622de8b9da3debe5315785ebd711aa373ae1f66",
+      "image": "sha256:238e5649913650303a287b4550bc1bcb3929b4fe443ceabdc088c0e3511b714d",
+      "started": "2026-10-29T02:11:45.979275752Z",
+      "mountCommandComposeDigest": "08c9761bd3f3f2ccc7244b41503f48777970e65f8142f2b7008595e61863c401"
+    },
+    "/dima-cron": {
+      "id": "bc91724ab3f197284e9a8f77945e167b260772e7c97efdfa0aaf7f1fb9d633cd",
+      "image": "sha256:e74d867c94aa80bc5032e2726caa6b85ce5329d1af4d6c75686002429415ddf0",
+      "started": "2026-10-26T03:39:18.901826946Z",
+      "mountCommandComposeDigest": "28985b8784476165eda3e230fb9cba36c6c3e6f49a48ebe2b27daa127a657992"
+    },
+    "/dima-bot": {
+      "id": "c6f7527416ceb0d2d8c00f823a1c39f602ee084ea1939c4219cd13c866518ead",
+      "image": "sha256:a001f865dc47694124ef59a1f71cdf80e6214f64613f4e5b4d891088f71dca82",
+      "started": "2026-10-26T03:38:04.11742159Z",
+      "mountCommandComposeDigest": "d9265f75400f1ec1f3556677cfdb755ead64adf9da51d35637235d52cbfd8115"
+    },
+    "/database-private-access": {
+      "id": "856d387a074ddf64c0068316f950d46235a612ae064bb75478aebf4dbb12b4c5",
+      "image": "sha256:4e4d428de823155c52f1957fd3208f2b99b1dcc92dc36321752cb4edb8366301",
+      "started": "2026-10-22T04:32:50.982464917Z",
+      "mountCommandComposeDigest": "5a3adf6ae804f7f24ed7d1a1d8c28b3326e53256e1400a200f9b8612af0aa407"
+    },
+    "/dima-analytics": {
+      "id": "a9c435a553b65b6ef635a44a25f76e3e9aaf5ef1077acf63d3fe9ae46ec23b0d",
+      "image": "sha256:b8aeea3bc04cb31cb5dcb0bc32089d896cd7704da93a809ca9869aea53ccddd3",
+      "started": "2026-10-22T01:19:02.571220201Z",
+      "mountCommandComposeDigest": "2a78226b62c9fac070c05fbbfe6972a0516a1a6e4ca10c93a94eb8a554eefcee"
+    },
+    "/dima-hoststats": {
+      "id": "31b5ae12bee7c77895907316dc0e9c81e8f8b13fbbb69cfbe3e7f085bc86e261",
+      "image": "sha256:d004bbeb6bad3795a9d282e9582bac109fc7c0a9416c14973e3ae0659d3158b9",
+      "started": "2026-10-22T01:18:23.061525678Z",
+      "mountCommandComposeDigest": "3332e14e7a41c94c6774e698737128d2838db6a38985191e54803d616409cd9d"
+    },
+    "/dimafx-server": {
+      "id": "27851ab18d36593e1ebfa705c5bed565d7f87f696951429874510985dfd9269f",
+      "image": "sha256:88f53d552961ada3f9096d0106fc9dcc98dc050e91dd2f4445c664dbb3782ab4",
+      "started": "2026-09-30T21:58:14.005074985Z",
+      "mountCommandComposeDigest": "457a37b1cf77f7d5569ed85fcc67b1bdd1f674d5bf28c2d0e4d0b303b0da724f"
+    },
+    "/dimafx": {
+      "id": "677fa5ef7919ed52bc58ac1c57af00f2a6129f65de350e1a6e4b2682d42e146f",
+      "image": "sha256:72ba65eb42c10344912a84ff42408db7d34f2feb642204570ab8fc5ffd29f1d3",
+      "started": "2026-09-10T08:10:05.911316806Z",
+      "mountCommandComposeDigest": "bc6dbcbd7503e6ad3c2ca797da5f0457d62c5214e9793ee95a208c6d47c33c00"
+    },
+    "/dimadocs": {
+      "id": "868d041cd30eaac0c4e6cf12b9829f8c5e3507aa06e4aec458de1279f3e66301",
+      "image": "sha256:72ba65eb42c10344912a84ff42408db7d34f2feb642204570ab8fc5ffd29f1d3",
+      "started": "2026-09-10T08:10:05.566704246Z",
+      "mountCommandComposeDigest": "1bc1f13213c6a36f8914ed7ded01dfc2fc3429681c4e100cefb891f5ccd5d04d"
+    },
+    "/dima-admin": {
+      "id": "10c81992149a253ec9f7f447957271252bdf2a354412b21dc78a8aefbc0e0e52",
+      "image": "sha256:72ba65eb42c10344912a84ff42408db7d34f2feb642204570ab8fc5ffd29f1d3",
+      "started": "2026-09-10T08:10:05.221059264Z",
+      "mountCommandComposeDigest": "8691e2f4d60eb83a807effe853def2f68cd9417b9222d6e44267637c7270478d"
+    },
+    "/dimabot-site": {
+      "id": "94de7bc4274530683d7c21bdedd28c706f6e483195f7992e2cd3ac510457a597",
+      "image": "sha256:72ba65eb42c10344912a84ff42408db7d34f2feb642204570ab8fc5ffd29f1d3",
+      "started": "2026-09-10T08:10:04.891128899Z",
+      "mountCommandComposeDigest": "cde12176cc9b3afb751642b7c1afe9426abf53113ba7f6f1721de50b67c3fbd1"
+    },
+    "/dimadb": {
+      "id": "92f1fa7cfb6fbcf76a42a84a86b91b8919490ae10f413dfc8947ea3a6fe2ffcd",
+      "image": "sha256:2dcbaf3882acb6c091e702e0b2adc303a47b980a98f18552b62fc1df751f4d50",
+      "started": "2026-09-10T08:05:16.602698792Z",
+      "mountCommandComposeDigest": "6a5454058cd369f62342ed809d28413132c9e3a846f5cba03d18e841e2efe876"
+    },
+    "/lfm2.5-embeddings": {
+      "id": "49c5aac8a37b4af3a0d63850d1e51f93ef9ea63d568d8b26eaca363dc46435ab",
+      "image": "sha256:a9a68f29ed4578f27b3b2faddb5d4ca6717b4554c8ed151fbd15e5a302126e27",
+      "started": "2026-10-19T00:51:05.771228434Z",
+      "mountCommandComposeDigest": "af4014bae403890e4b75cc63f8d8ac168381c8f25f5f3f6cec4c5a65c5352183"
+    },
+    "/piper-tts": {
+      "id": "8c54a1224bce5e36130766dd9ea0ed360552ad68bd12f9b22c630a674ae07636",
+      "image": "sha256:eda7b41aaa7bc7b6bfb3e6cb2465f58a8137a3ed7e8581f9e677ce7751900aff",
+      "started": "2026-09-10T07:44:14.03842885Z",
+      "mountCommandComposeDigest": "9d43f683c4ef1dfa9dde26fca8ee00d261a293758349c2d6ad511ed35b64bfc1"
+    },
+    "/postgres": {
+      "id": "281dc111cd6e7ddf5b28b47b600fa7527bdd4eb59790af8b39dc1ffbb85f1ac3",
+      "image": "sha256:3e8b3adfd27b5707128f60956f62a793c3c9326ea8cfaf0eab7adccb5d700b21",
+      "started": "2026-09-10T07:36:46.171669217Z",
+      "mountCommandComposeDigest": "1bdc1f5056f8cb62b57dc15330b9724a932e0e42cf9f6889255a0d487e2573e8"
+    },
+    "/qdrant": {
+      "id": "bb1b1f9b1c6ed70fa6157f2e493fc5ef2fc06824a5757d7fff6729a6d581bf27",
+      "image": "sha256:f1c7272cdac52b38c1a0e89313922d940ba50afd90d593a1605dbbc214e66ffb",
+      "started": "2026-09-10T07:36:46.291816039Z",
+      "mountCommandComposeDigest": "d4d4cf4d34eadbbf5b94d22b6a51cfd518c58406cc47c4bcc41d6637a44156d3"
+    },
+    "/mongodb": {
+      "id": "6059ed94f90354857102dcd33790c83ecb837be018a3ba03f99c06f6d6ef428a",
+      "image": "sha256:9690b268c50317b2988a7f84f514a2cdcf4de6836e12c295b48f3a203731fce1",
+      "started": "2026-09-10T07:36:46.410337361Z",
+      "mountCommandComposeDigest": "dd412a63206436d8597b149ac7d78c8b3097f787cace29d88992261e14408e15"
+    },
+    "/dragonfly": {
+      "id": "434a101486c8ad36cb1b65dbc16bdc11d1ef232ca16e206cc2f38a2eda9aae33",
+      "image": "sha256:18afa43e911f1dff18c7d1eb452361876d9702bb1cdff5c5d75c69617a4065c9",
+      "started": "2026-09-10T07:36:46.536352651Z",
+      "mountCommandComposeDigest": "a9709e5f4719abec19c04c960e25f468ee78f69af0636d00e58fae02e499c7fb"
+    },
+    "/NPM": {
+      "id": "997f422ddf6b20e2b4b6cbbf13beb639a931b0e5a90cf608f1af80272198582a",
+      "image": "sha256:52b2c59994f3d36acfcf70a1626f29734df0ed8c71bacc0269f78b6f939858bb",
+      "started": "2026-09-10T06:35:49.758534931Z",
+      "mountCommandComposeDigest": "73b75e9c8b9abf3232a60e3e73efcebdb575c191f5038810512cea195cc2a586"
+    }
+  },
+  "scope": "Read-only comparison; no production tests or mutations. Public identities and config digests only; no environment or credentials included."
+}

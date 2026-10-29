@@ -1,0 +1,166 @@
+{
+  "status": "Initial behavior-verified baseline; four small-payload performance regressions remain open.",
+  "sourceTreeSha256": "0551e2ebdbf792b7989a1f32bac37a670db66b7409b390808ad838b8ecfbf42c",
+  "codeCommit": "77141415e72810cf7df5d64b97a53ae0dee1b8af",
+  "compilerRun": "compiler-1793264871810743273",
+  "postNodeRun": "node-1793265499179357802",
+  "finalReportedExecutions": 144,
+  "finalTargetPassedCounts": [
+    105,
+    5,
+    5,
+    20,
+    5,
+    2,
+    1,
+    1
+  ],
+  "countsAreUnique": false,
+  "fullFiveTimezoneRuntimeRun": "compiler-1793263458419267176",
+  "receiptCasesPerZone": 1362,
+  "receiptTimezoneCount": 5,
+  "posthogWrapperRecords": 1042,
+  "installedSdkPayloadCases": 1,
+  "installedSdkPayloads": 2,
+  "installedSdkLifecycleRecords": 18,
+  "limits": {
+    "cpus": 6,
+    "memory": 4294967296,
+    "memory_swap": 4294967296,
+    "pids": 256,
+    "cargo_jobs": 2
+  },
+  "peakPrivateCacheBytes": 7988916224,
+  "minimumHostAvailableBytes": 9549725696,
+  "compilerSeconds": 367.684,
+  "compilerTotalSeconds": 376.581,
+  "runs": [
+    {
+      "receipt": "runs/compiler-1793263191217734206-receipt.json.gz",
+      "log": "runs/compiler-1793263191217734206.log.gz",
+      "phase": "compiler",
+      "success": false,
+      "source_tree_sha256": "b6e1be19385b237964cefc9746f2832f994389843f293fd17a840c9098b55318",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/compiler-1793263458419267176-receipt.json.gz",
+      "log": "runs/compiler-1793263458419267176.log.gz",
+      "phase": "compiler",
+      "success": false,
+      "source_tree_sha256": "b6e1be19385b237964cefc9746f2832f994389843f293fd17a840c9098b55318",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/compiler-1793264319316447359-receipt.json.gz",
+      "log": "runs/compiler-1793264319316447359.log.gz",
+      "phase": "compiler",
+      "success": false,
+      "source_tree_sha256": "2dc5fc0f22b95228850c828ced0b472016a98554d5f58595f500bc3d21095eb1",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/compiler-1793264555600054470-receipt.json.gz",
+      "log": "runs/compiler-1793264555600054470.log.gz",
+      "phase": "compiler",
+      "success": false,
+      "source_tree_sha256": "d6759ec34a37699deae165be47ae52f71d06475a7ebd7f038c1cb555c1e6243e",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/compiler-1793264702735422945-receipt.json.gz",
+      "log": "runs/compiler-1793264702735422945.log.gz",
+      "phase": "compiler",
+      "success": true,
+      "source_tree_sha256": "0551e2ebdbf792b7989a1f32bac37a670db66b7409b390808ad838b8ecfbf42c",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/compiler-1793264871810743273-receipt.json.gz",
+      "log": "runs/compiler-1793264871810743273.log.gz",
+      "phase": "compiler",
+      "success": true,
+      "source_tree_sha256": "0551e2ebdbf792b7989a1f32bac37a670db66b7409b390808ad838b8ecfbf42c",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/format-1793261661342957318-receipt.json.gz",
+      "log": "runs/format-1793261661342957318.log.gz",
+      "phase": "format",
+      "success": true,
+      "source_tree_sha256": "e4a3640d3c85c3d87e68f30150eb7ab0032941f5ab0cb286acfff796493b9e2e",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/format-1793264113756349982-receipt.json.gz",
+      "log": "runs/format-1793264113756349982.log.gz",
+      "phase": "format",
+      "success": true,
+      "source_tree_sha256": "2dc5fc0f22b95228850c828ced0b472016a98554d5f58595f500bc3d21095eb1",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/format-1793264468138313811-receipt.json.gz",
+      "log": "runs/format-1793264468138313811.log.gz",
+      "phase": "format",
+      "success": true,
+      "source_tree_sha256": "d6759ec34a37699deae165be47ae52f71d06475a7ebd7f038c1cb555c1e6243e",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/format-1793264662033333049-receipt.json.gz",
+      "log": "runs/format-1793264662033333049.log.gz",
+      "phase": "format",
+      "success": true,
+      "source_tree_sha256": "3aa0ce7069992c1e14c737747a0ad5fdd2c6be4a18eef96c2e98b67caafd5a20",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/node-1793263088390741109-receipt.json.gz",
+      "log": "runs/node-1793263088390741109.log.gz",
+      "phase": "node",
+      "success": true,
+      "source_tree_sha256": "b6e1be19385b237964cefc9746f2832f994389843f293fd17a840c9098b55318",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/node-1793264177614960026-receipt.json.gz",
+      "log": "runs/node-1793264177614960026.log.gz",
+      "phase": "node",
+      "success": true,
+      "source_tree_sha256": "2dc5fc0f22b95228850c828ced0b472016a98554d5f58595f500bc3d21095eb1",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/node-1793264520423115065-receipt.json.gz",
+      "log": "runs/node-1793264520423115065.log.gz",
+      "phase": "node",
+      "success": true,
+      "source_tree_sha256": "d6759ec34a37699deae165be47ae52f71d06475a7ebd7f038c1cb555c1e6243e",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/node-1793264806441756219-receipt.json.gz",
+      "log": "runs/node-1793264806441756219.log.gz",
+      "phase": "node",
+      "success": true,
+      "source_tree_sha256": "0551e2ebdbf792b7989a1f32bac37a670db66b7409b390808ad838b8ecfbf42c",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/node-1793265499179357802-receipt.json.gz",
+      "log": "runs/node-1793265499179357802.log.gz",
+      "phase": "node",
+      "success": true,
+      "source_tree_sha256": "0551e2ebdbf792b7989a1f32bac37a670db66b7409b390808ad838b8ecfbf42c",
+      "production_unchanged": true
+    }
+  ],
+  "sourceBindingFiles": 1267,
+  "unchangedBaselineGitFiles": 1253,
+  "baselineNativeFilesRetained": 4,
+  "compressedPayloads": 40,
+  "readback": "artifacts/initial-final-readback.json",
+  "performance": "artifacts/initial-benchmark-comparison.json",
+  "noPushDeploymentRetirementOrCallerAdoption": true
+}

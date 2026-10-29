@@ -1,0 +1,10 @@
+{
+  "scope": "Independent raw gzip/hash/size checks and committed source bindings for the initial baseline.",
+  "compressedPayloadsVerified": 40,
+  "sourceSnapshotInputsVerified": 1267,
+  "runtimeBaselineInputsVerified": 1267,
+  "committedSourceFilesVerified": 1257,
+  "runtimeBaselineCommittedFilesVerified": 1253,
+  "runtimeBaselineRetainedNativeFilesVerified": 4,
+  "archiveVerifiedSdkReferences": 10
+}

@@ -1,0 +1,123 @@
+{
+  "scope": "Only stale single-link ELF test executables in this task-private target/debug/deps; no shared cache, source, Cargo dependencies, release images or production resource touched.",
+  "beforeAllocatedBytes": 8490975232,
+  "files": [
+    {
+      "path": "target/debug/deps/twitch_functions-7644dfde5ea06cf4",
+      "sha256": "1e332b7e12177f1426cb44dcae863ed10ee1309e3c24946acd9019c1537fa4e6",
+      "bytes": 38711968,
+      "allocatedBytes": 38715392,
+      "mtimeNs": 1793210929661051055
+    },
+    {
+      "path": "target/debug/deps/twitch_functions-9c54ce2b85400fc9",
+      "sha256": "9ad4fb987b23445574c529dd54b2bf6887e1cfcaf3c37803ddcadf25fcaec36b",
+      "bytes": 38711904,
+      "allocatedBytes": 38715392,
+      "mtimeNs": 1793210204562673795
+    },
+    {
+      "path": "target/debug/deps/twitch_emotes_runtime-eff443da664e1f11",
+      "sha256": "38d86ed8b0ddf1a542fa6639d783484ad84bf4b7a72fad618d7344a45f740da6",
+      "bytes": 38545952,
+      "allocatedBytes": 38551552,
+      "mtimeNs": 1793251368225412918
+    },
+    {
+      "path": "target/debug/deps/twitch_emotes-4e42b00124fc05df",
+      "sha256": "c665dfaf05f2651d0b2297ae8a32f11b653c5584c4b37a88d5232f48c6cb703d",
+      "bytes": 38424704,
+      "allocatedBytes": 38428672,
+      "mtimeNs": 1793251363321422196
+    },
+    {
+      "path": "target/debug/deps/domain_event_runtime-5dc6224d967ab6b8",
+      "sha256": "d1e4f2ad3378387634286037ba9b62ecfbbcc9fecfb61f2b3e8a264f24b527e6",
+      "bytes": 35233824,
+      "allocatedBytes": 35237888,
+      "mtimeNs": 1793218374692594169
+    },
+    {
+      "path": "target/debug/deps/raid_sessions-aa8510ceb876070a",
+      "sha256": "4aa94816fb3c7b603e866cd03fc7c43ee5d05db2299e3a2ba8a9ca79d9bdf429",
+      "bytes": 35187680,
+      "allocatedBytes": 35188736,
+      "mtimeNs": 1793210928995052545
+    },
+    {
+      "path": "target/debug/deps/raid_sessions-3c447fb0648b3bb4",
+      "sha256": "a041016636b02c46f9936df9f7779da66939eceefb1b04ff8d8a015a407e58ef",
+      "bytes": 35187640,
+      "allocatedBytes": 35188736,
+      "mtimeNs": 1793210209865661927
+    },
+    {
+      "path": "target/debug/deps/raid_sessions-fb82f8eb7146f86e",
+      "sha256": "418ce11f6b46e2a7b2ee858452194031d255e00854646a7e6446db91d79ca965",
+      "bytes": 35151600,
+      "allocatedBytes": 35151872,
+      "mtimeNs": 1793218369366604553
+    },
+    {
+      "path": "target/debug/deps/domain_event_runtime-0d83c43fafec69d8",
+      "sha256": "7179264d8ddd2336df09c3ae493e8d2245597afdc18f565f7ac397d550a75fe6",
+      "bytes": 35130240,
+      "allocatedBytes": 35131392,
+      "mtimeNs": 1793210216990645980
+    },
+    {
+      "path": "target/debug/deps/domain_event_runtime-687dc900fe9c8101",
+      "sha256": "07d75f03f46f7c74c9123fa945c656bf848c67eb4ad9d93870ec428a77d83e14",
+      "bytes": 35130344,
+      "allocatedBytes": 35131392,
+      "mtimeNs": 1793210909617095915
+    },
+    {
+      "path": "target/debug/deps/keyword_native_adapters-7e4c1d02027e3c8a",
+      "sha256": "c2fcc2b3a589580e0fc8a154dcc62119424417f52eeb6cfc1682d54bab91042b",
+      "bytes": 34248176,
+      "allocatedBytes": 34250752,
+      "mtimeNs": 1793210916746079960
+    },
+    {
+      "path": "target/debug/deps/keyword_native_adapters-eac610139b8597b2",
+      "sha256": "cec1dfb96b6d84e24e4a44212196aa43ef4170f1f8aa01f98bdade045223cc4a",
+      "bytes": 34248120,
+      "allocatedBytes": 34250752,
+      "mtimeNs": 1793210214047652567
+    },
+    {
+      "path": "target/debug/deps/raid_analytics-f82a11c73e9b1fde",
+      "sha256": "954c9e6db91c93d96f1c463d3451a0778065e2458a23b40f59ee3b52a4335ee1",
+      "bytes": 33442560,
+      "allocatedBytes": 33443840,
+      "mtimeNs": 1793210910465094017
+    },
+    {
+      "path": "target/debug/deps/raid_analytics-9bd31caf5ca34075",
+      "sha256": "c4bf9f19a7296fa5d0e72beab0079399b3dc7bb6cbb95c739dd2352836117bfa",
+      "bytes": 33442560,
+      "allocatedBytes": 33443840,
+      "mtimeNs": 1793210210777659886
+    },
+    {
+      "path": "target/debug/deps/raid_analytics-f6ab3a78f9e5f56f",
+      "sha256": "7329830e5c982b44e88430c85620161b1df5308411e3ba70c2636f959b6ea75a",
+      "bytes": 33439464,
+      "allocatedBytes": 33439744,
+      "mtimeNs": 1793251357420433362
+    },
+    {
+      "path": "target/debug/deps/raid_analytics-9027623fde53b667",
+      "sha256": "a78291ed5e91876dc63459d17982a4deba158c46bcd663bda0e95e062efb4794",
+      "bytes": 33433104,
+      "allocatedBytes": 33435648,
+      "mtimeNs": 1793218368680605891
+    }
+  ],
+  "removedAllocatedBytes": 567705600,
+  "status": "complete",
+  "afterAllocatedBytes": 7923269632,
+  "productionUnchanged": true,
+  "productionRecords": 19
+}

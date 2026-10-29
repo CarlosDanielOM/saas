@@ -1,0 +1,7 @@
+{
+  "scope": "Only byte-identical repeated parser fixture payloads deduplicated. Logical paths remain resolved by retained-artifacts.json. No input, timing or provenance changed.",
+  "storedPathAliases": {
+    "artifacts/attempt2/parser/ai_usage_receipt_parser_reference.json.gz": "artifacts/attempt1/parser/ai_usage_receipt_parser_reference.json.gz",
+    "artifacts/attempt3/parser/ai_usage_receipt_parser_reference.json.gz": "artifacts/attempt1/parser/ai_usage_receipt_parser_reference.json.gz"
+  }
+}
