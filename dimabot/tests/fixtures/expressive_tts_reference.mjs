@@ -56,7 +56,10 @@ const addFilter = (name, text, provider, enabled) => {
   cases.push({name, op:'filter', inputUnits:units(text), provider, ...(enabled === undefined ? {} : {enabledJson:JSON.stringify(enabled)}), expected:stringResult(ex.filterExpressiveTtsTags(text, options))});
 };
 const addReinforce = (name, text) => cases.push({name, op:'reinforce', inputUnits:units(text), expected:stringResult(ex.reinforceFishTtsTags(text))});
-const addNormalize = (name, inputJson) => cases.push({name, op:'normalize', inputJson, expected:ex.normalizeExpressiveTtsTags(JSON.parse(inputJson))});
+const addNormalize = (name, inputJson) => {
+  const expected = ex.normalizeExpressiveTtsTags(JSON.parse(inputJson));
+  cases.push({name, op:'normalize', inputJson, expected, expectedWire:JSON.stringify(expected)});
+};
 const addVoice = (name, inputJson) => cases.push({name, op:'voice', inputJson, expected:ko.resolveKokoroVoice(JSON.parse(inputJson))});
 cases.push({name:'default-options', op:'filter', inputUnits:units(' before [happy] <sad> after '), provider:'piper', expected:stringResult(ex.filterExpressiveTtsTags(' before [happy] <sad> after '))});
 const allTrue = Object.fromEntries(tags.map(t => [t, true]));

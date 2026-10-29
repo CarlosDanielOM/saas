@@ -7,9 +7,9 @@ use dima_rust::utils::{
     lossless_json::parse_json,
     tts::{
         DEFAULT_KOKORO_VOICE_EN, DEFAULT_KOKORO_VOICE_ES, DELIVERY, EFFECTS, EMOTIONS,
-        KOKORO_VOICES, SOUNDS, TtsProvider, expressive_tags, filter_expressive_tts_tags_js,
-        normalize_expressive_tags, normalize_expressive_tags_json, reinforce_fish_tts_tags_js,
-        resolve_kokoro_voice, resolve_kokoro_voice_json,
+        ExpressiveTtsTagSettings, KOKORO_VOICES, SOUNDS, TtsProvider, expressive_tags,
+        filter_expressive_tts_tags_js, normalize_expressive_tags, normalize_expressive_tags_json,
+        reinforce_fish_tts_tags_js, resolve_kokoro_voice, resolve_kokoro_voice_json,
     },
 };
 use serde_json::{Value, json};
@@ -146,6 +146,17 @@ fn expressive_and_kokoro_actual_source() {
                 let raw = case["inputJson"].as_str().expect("missing inputJson");
                 let lossless = parse_json(raw).expect("invalid inputJson");
                 let actual = normalize_expressive_tags_json(Some(&lossless));
+                let typed = ExpressiveTtsTagSettings::from_json(Some(&lossless));
+                let typed_map: BTreeMap<String, bool> = typed
+                    .iter()
+                    .map(|(tag, value)| (tag.as_str().to_owned(), value))
+                    .collect();
+                assert_eq!(typed_map, actual, "typed record in {name}");
+                assert_eq!(
+                    typed.to_json_string(),
+                    case["expectedWire"].as_str().expect("missing expectedWire"),
+                    "ordered JSON in {name}"
+                );
                 if let Ok(ordinary) = serde_json::from_str::<Value>(raw) {
                     assert_eq!(
                         normalize_expressive_tags(&ordinary),
