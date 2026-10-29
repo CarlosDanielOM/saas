@@ -1,0 +1,686 @@
+{
+  "sourceTreeSha256": "d7032bf6e592fba5ab32915a47d6877ad7c546ecb9e345d0fbacdd3d9bce2056",
+  "inputSha256": "bd4d96286803589f2771115afce87fcbdc175df69f1c77866c1a7f306ac771f1",
+  "baselineInputSha256": "0ab05c2240b6af9f930b0a2824f89bb239d5cc4bd5e24cd6b866aa29ac753e4d",
+  "scope": "192sourcepayloads;32variedinputs/pool;7trials;32000warmups;256000regular/32768largeoperations;builders+JSON+UTF8checksum only. TS42trials retained with audited4nativehashrebind; no workload/harness changes. No CPU/RSS/end-to-end claim. Broader regression acceptance separate.",
+  "pools": [
+    {
+      "pool": "command",
+      "operations": 256000,
+      "warmups": 32000,
+      "typescript": {
+        "min": 2.37729151171875,
+        "median": 2.47241321875,
+        "max": 2.53523558984375
+      },
+      "initialRust": {
+        "min": 2.7509796601562497,
+        "median": 2.8084369765625,
+        "max": 2.927345265625
+      },
+      "currentRust": {
+        "min": 2.1680596249999997,
+        "median": 2.23742025,
+        "max": 2.62577640625
+      },
+      "rustVsTypescriptPercent": -9.504599270376312,
+      "typescriptOverRust": 1.105028533977915,
+      "sampleRangesOverlap": true,
+      "typescriptTrials": [
+        {
+          "nanoseconds": 632937784,
+          "checksum": 1019976704
+        },
+        {
+          "nanoseconds": 635661847,
+          "checksum": 1019976704
+        },
+        {
+          "nanoseconds": 610752466,
+          "checksum": 1019976704
+        },
+        {
+          "nanoseconds": 646898746,
+          "checksum": 1019976704
+        },
+        {
+          "nanoseconds": 625929937,
+          "checksum": 1019976704
+        },
+        {
+          "nanoseconds": 608586627,
+          "checksum": 1019976704
+        },
+        {
+          "nanoseconds": 649020311,
+          "checksum": 1019976704
+        }
+      ],
+      "initialRustTrials": [
+        {
+          "checksum": 1019976704,
+          "nanoseconds": 720652115
+        },
+        {
+          "checksum": 1019976704,
+          "nanoseconds": 704250793
+        },
+        {
+          "checksum": 1019976704,
+          "nanoseconds": 705763055
+        },
+        {
+          "checksum": 1019976704,
+          "nanoseconds": 721945648
+        },
+        {
+          "checksum": 1019976704,
+          "nanoseconds": 718959866
+        },
+        {
+          "checksum": 1019976704,
+          "nanoseconds": 712452355
+        },
+        {
+          "checksum": 1019976704,
+          "nanoseconds": 749400388
+        }
+      ],
+      "currentRustTrials": [
+        {
+          "checksum": 1019976704,
+          "nanoseconds": 575770958
+        },
+        {
+          "checksum": 1019976704,
+          "nanoseconds": 555023264
+        },
+        {
+          "checksum": 1019976704,
+          "nanoseconds": 572779584
+        },
+        {
+          "checksum": 1019976704,
+          "nanoseconds": 568317516
+        },
+        {
+          "checksum": 1019976704,
+          "nanoseconds": 627924173
+        },
+        {
+          "checksum": 1019976704,
+          "nanoseconds": 672198760
+        },
+        {
+          "checksum": 1019976704,
+          "nanoseconds": 564167051
+        }
+      ]
+    },
+    {
+      "pool": "tts",
+      "operations": 256000,
+      "warmups": 32000,
+      "typescript": {
+        "min": 3.07829952734375,
+        "median": 3.148834703125,
+        "max": 3.34549356640625
+      },
+      "initialRust": {
+        "min": 3.79720133203125,
+        "median": 3.8980278984375,
+        "max": 4.1111775
+      },
+      "currentRust": {
+        "min": 2.728955703125,
+        "median": 2.8337125624999997,
+        "max": 2.9064998125000003
+      },
+      "rustVsTypescriptPercent": -10.007579639295228,
+      "typescriptOverRust": 1.1112046947863294,
+      "sampleRangesOverlap": false,
+      "typescriptTrials": [
+        {
+          "nanoseconds": 806101684,
+          "checksum": 2642568704
+        },
+        {
+          "nanoseconds": 816012119,
+          "checksum": 2642568704
+        },
+        {
+          "nanoseconds": 856446353,
+          "checksum": 2642568704
+        },
+        {
+          "nanoseconds": 852037375,
+          "checksum": 2642568704
+        },
+        {
+          "nanoseconds": 788044679,
+          "checksum": 2642568704
+        },
+        {
+          "nanoseconds": 794510602,
+          "checksum": 2642568704
+        },
+        {
+          "nanoseconds": 801138377,
+          "checksum": 2642568704
+        }
+      ],
+      "initialRustTrials": [
+        {
+          "checksum": 2642568704,
+          "nanoseconds": 1052461440
+        },
+        {
+          "checksum": 2642568704,
+          "nanoseconds": 1000027438
+        },
+        {
+          "checksum": 2642568704,
+          "nanoseconds": 1025853005
+        },
+        {
+          "checksum": 2642568704,
+          "nanoseconds": 972083541
+        },
+        {
+          "checksum": 2642568704,
+          "nanoseconds": 997895142
+        },
+        {
+          "checksum": 2642568704,
+          "nanoseconds": 987038155
+        },
+        {
+          "checksum": 2642568704,
+          "nanoseconds": 996474152
+        }
+      ],
+      "currentRustTrials": [
+        {
+          "checksum": 2642568704,
+          "nanoseconds": 725430416
+        },
+        {
+          "checksum": 2642568704,
+          "nanoseconds": 713488907
+        },
+        {
+          "checksum": 2642568704,
+          "nanoseconds": 710044474
+        },
+        {
+          "checksum": 2642568704,
+          "nanoseconds": 698612660
+        },
+        {
+          "checksum": 2642568704,
+          "nanoseconds": 727513758
+        },
+        {
+          "checksum": 2642568704,
+          "nanoseconds": 741408488
+        },
+        {
+          "checksum": 2642568704,
+          "nanoseconds": 744063952
+        }
+      ]
+    },
+    {
+      "pool": "ai-usage",
+      "operations": 256000,
+      "warmups": 32000,
+      "typescript": {
+        "min": 5.42919222265625,
+        "median": 5.53082357421875,
+        "max": 5.877240242187501
+      },
+      "initialRust": {
+        "min": 10.30415803125,
+        "median": 10.3776543359375,
+        "max": 10.700147046875
+      },
+      "currentRust": {
+        "min": 4.19722851953125,
+        "median": 4.42753407421875,
+        "max": 4.80690605859375
+      },
+      "rustVsTypescriptPercent": -19.9480147069389,
+      "typescriptOverRust": 1.2491882572794606,
+      "sampleRangesOverlap": false,
+      "typescriptTrials": [
+        {
+          "nanoseconds": 1398405902,
+          "checksum": 280042112
+        },
+        {
+          "nanoseconds": 1389873209,
+          "checksum": 280042112
+        },
+        {
+          "nanoseconds": 1390407289,
+          "checksum": 280042112
+        },
+        {
+          "nanoseconds": 1504573502,
+          "checksum": 280042112
+        },
+        {
+          "nanoseconds": 1454060849,
+          "checksum": 280042112
+        },
+        {
+          "nanoseconds": 1415890835,
+          "checksum": 280042112
+        },
+        {
+          "nanoseconds": 1493130164,
+          "checksum": 280042112
+        }
+      ],
+      "initialRustTrials": [
+        {
+          "checksum": 280042112,
+          "nanoseconds": 2653198750
+        },
+        {
+          "checksum": 280042112,
+          "nanoseconds": 2637864456
+        },
+        {
+          "checksum": 280042112,
+          "nanoseconds": 2640882640
+        },
+        {
+          "checksum": 280042112,
+          "nanoseconds": 2656679510
+        },
+        {
+          "checksum": 280042112,
+          "nanoseconds": 2720821455
+        },
+        {
+          "checksum": 280042112,
+          "nanoseconds": 2681938738
+        },
+        {
+          "checksum": 280042112,
+          "nanoseconds": 2739237644
+        }
+      ],
+      "currentRustTrials": [
+        {
+          "checksum": 280042112,
+          "nanoseconds": 1170007547
+        },
+        {
+          "checksum": 280042112,
+          "nanoseconds": 1105306886
+        },
+        {
+          "checksum": 280042112,
+          "nanoseconds": 1074490501
+        },
+        {
+          "checksum": 280042112,
+          "nanoseconds": 1103668558
+        },
+        {
+          "checksum": 280042112,
+          "nanoseconds": 1133448723
+        },
+        {
+          "checksum": 280042112,
+          "nanoseconds": 1225626926
+        },
+        {
+          "checksum": 280042112,
+          "nanoseconds": 1230567951
+        }
+      ]
+    },
+    {
+      "pool": "ai-operation",
+      "operations": 256000,
+      "warmups": 32000,
+      "typescript": {
+        "min": 4.45150955859375,
+        "median": 4.58321905859375,
+        "max": 4.856074949218749
+      },
+      "initialRust": {
+        "min": 5.068665765625,
+        "median": 5.329254109374999,
+        "max": 5.6593032734375
+      },
+      "currentRust": {
+        "min": 3.77712538671875,
+        "median": 3.8240635156250002,
+        "max": 4.15183602734375
+      },
+      "rustVsTypescriptPercent": -16.56380664470527,
+      "typescriptOverRust": 1.1985206416857004,
+      "sampleRangesOverlap": false,
+      "typescriptTrials": [
+        {
+          "nanoseconds": 1139586447,
+          "checksum": 1224849408
+        },
+        {
+          "nanoseconds": 1157825764,
+          "checksum": 1224849408
+        },
+        {
+          "nanoseconds": 1195748793,
+          "checksum": 1224849408
+        },
+        {
+          "nanoseconds": 1140878386,
+          "checksum": 1224849408
+        },
+        {
+          "nanoseconds": 1243155187,
+          "checksum": 1224849408
+        },
+        {
+          "nanoseconds": 1230587655,
+          "checksum": 1224849408
+        },
+        {
+          "nanoseconds": 1173304079,
+          "checksum": 1224849408
+        }
+      ],
+      "initialRustTrials": [
+        {
+          "checksum": 1224849408,
+          "nanoseconds": 1339357468
+        },
+        {
+          "checksum": 1224849408,
+          "nanoseconds": 1448781638
+        },
+        {
+          "checksum": 1224849408,
+          "nanoseconds": 1420919907
+        },
+        {
+          "checksum": 1224849408,
+          "nanoseconds": 1364289052
+        },
+        {
+          "checksum": 1224849408,
+          "nanoseconds": 1297578436
+        },
+        {
+          "checksum": 1224849408,
+          "nanoseconds": 1429142157
+        },
+        {
+          "checksum": 1224849408,
+          "nanoseconds": 1314043119
+        }
+      ],
+      "currentRustTrials": [
+        {
+          "checksum": 1224849408,
+          "nanoseconds": 1014266656
+        },
+        {
+          "checksum": 1224849408,
+          "nanoseconds": 987746318
+        },
+        {
+          "checksum": 1224849408,
+          "nanoseconds": 970004943
+        },
+        {
+          "checksum": 1224849408,
+          "nanoseconds": 971167462
+        },
+        {
+          "checksum": 1224849408,
+          "nanoseconds": 978960260
+        },
+        {
+          "checksum": 1224849408,
+          "nanoseconds": 1062870023
+        },
+        {
+          "checksum": 1224849408,
+          "nanoseconds": 966944099
+        }
+      ]
+    },
+    {
+      "pool": "tts-unicode",
+      "operations": 256000,
+      "warmups": 32000,
+      "typescript": {
+        "min": 4.3381106406250005,
+        "median": 4.47237219140625,
+        "max": 4.8719218984375
+      },
+      "initialRust": {
+        "min": 3.8980066875,
+        "median": 3.97221230078125,
+        "max": 4.2676224765625
+      },
+      "currentRust": {
+        "min": 2.90516770703125,
+        "median": 3.05730292578125,
+        "max": 3.1005523007812497
+      },
+      "rustVsTypescriptPercent": -31.640239341977917,
+      "typescriptOverRust": 1.4628488900109233,
+      "sampleRangesOverlap": false,
+      "typescriptTrials": [
+        {
+          "nanoseconds": 1136723663,
+          "checksum": 3282072704
+        },
+        {
+          "nanoseconds": 1247212006,
+          "checksum": 3282072704
+        },
+        {
+          "nanoseconds": 1237932393,
+          "checksum": 3282072704
+        },
+        {
+          "nanoseconds": 1135179170,
+          "checksum": 3282072704
+        },
+        {
+          "nanoseconds": 1110556324,
+          "checksum": 3282072704
+        },
+        {
+          "nanoseconds": 1197419873,
+          "checksum": 3282072704
+        },
+        {
+          "nanoseconds": 1144927281,
+          "checksum": 3282072704
+        }
+      ],
+      "initialRustTrials": [
+        {
+          "checksum": 3282072704,
+          "nanoseconds": 1016886349
+        },
+        {
+          "checksum": 3282072704,
+          "nanoseconds": 1004896408
+        },
+        {
+          "checksum": 3282072704,
+          "nanoseconds": 1068841152
+        },
+        {
+          "checksum": 3282072704,
+          "nanoseconds": 1015630786
+        },
+        {
+          "checksum": 3282072704,
+          "nanoseconds": 1080060540
+        },
+        {
+          "checksum": 3282072704,
+          "nanoseconds": 1092511354
+        },
+        {
+          "checksum": 3282072704,
+          "nanoseconds": 997889712
+        }
+      ],
+      "currentRustTrials": [
+        {
+          "checksum": 3282072704,
+          "nanoseconds": 753517700
+        },
+        {
+          "checksum": 3282072704,
+          "nanoseconds": 743722933
+        },
+        {
+          "checksum": 3282072704,
+          "nanoseconds": 744002586
+        },
+        {
+          "checksum": 3282072704,
+          "nanoseconds": 788543474
+        },
+        {
+          "checksum": 3282072704,
+          "nanoseconds": 782669549
+        },
+        {
+          "checksum": 3282072704,
+          "nanoseconds": 786844841
+        },
+        {
+          "checksum": 3282072704,
+          "nanoseconds": 793741389
+        }
+      ]
+    },
+    {
+      "pool": "tts-large",
+      "operations": 32768,
+      "warmups": 32000,
+      "typescript": {
+        "min": 60.534418182373045,
+        "median": 62.7728544921875,
+        "max": 64.91231234741211
+      },
+      "initialRust": {
+        "min": 9.71649673461914,
+        "median": 10.134953979492188,
+        "max": 12.309634399414062
+      },
+      "currentRust": {
+        "min": 8.504189697265625,
+        "median": 8.78883056640625,
+        "max": 9.669223907470704
+      },
+      "rustVsTypescriptPercent": -85.99899488798923,
+      "typescriptOverRust": 7.142344367420807,
+      "sampleRangesOverlap": false,
+      "typescriptTrials": [
+        {
+          "nanoseconds": 2127046651,
+          "checksum": 1770790912
+        },
+        {
+          "nanoseconds": 2027167082,
+          "checksum": 1770790912
+        },
+        {
+          "nanoseconds": 2018305761,
+          "checksum": 1770790912
+        },
+        {
+          "nanoseconds": 2074135885,
+          "checksum": 1770790912
+        },
+        {
+          "nanoseconds": 2056940896,
+          "checksum": 1770790912
+        },
+        {
+          "nanoseconds": 1983591815,
+          "checksum": 1770790912
+        },
+        {
+          "nanoseconds": 2102350860,
+          "checksum": 1770790912
+        }
+      ],
+      "initialRustTrials": [
+        {
+          "checksum": 1770790912,
+          "nanoseconds": 325339895
+        },
+        {
+          "checksum": 1770790912,
+          "nanoseconds": 337458026
+        },
+        {
+          "checksum": 1770790912,
+          "nanoseconds": 331567330
+        },
+        {
+          "checksum": 1770790912,
+          "nanoseconds": 318390165
+        },
+        {
+          "checksum": 1770790912,
+          "nanoseconds": 332241803
+        },
+        {
+          "checksum": 1770790912,
+          "nanoseconds": 332102172
+        },
+        {
+          "checksum": 1770790912,
+          "nanoseconds": 403362100
+        }
+      ],
+      "currentRustTrials": [
+        {
+          "checksum": 1770790912,
+          "nanoseconds": 316841129
+        },
+        {
+          "checksum": 1770790912,
+          "nanoseconds": 287271389
+        },
+        {
+          "checksum": 1770790912,
+          "nanoseconds": 316473702
+        },
+        {
+          "checksum": 1770790912,
+          "nanoseconds": 293979244
+        },
+        {
+          "checksum": 1770790912,
+          "nanoseconds": 280611934
+        },
+        {
+          "checksum": 1770790912,
+          "nanoseconds": 287992400
+        },
+        {
+          "checksum": 1770790912,
+          "nanoseconds": 278665288
+        }
+      ]
+    }
+  ]
+}

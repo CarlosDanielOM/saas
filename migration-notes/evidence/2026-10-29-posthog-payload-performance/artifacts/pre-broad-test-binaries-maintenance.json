@@ -1,0 +1,44 @@
+{
+  "scope": "Only old single-link ELF test executables in the task-private target/debug/deps; all built before the successful broad regression phase. No dependency, shared cache, release image, source or production mutation.",
+  "beforeAllocatedBytes": 8358268928,
+  "files": [
+    {
+      "path": "target/debug/deps/dima_rust-6a448ead438add60",
+      "sha256": "49bd9ef05f1e1d984de00f5b1340c54604ff8c238d3c6ee12f699d6ac78cd11d",
+      "bytes": 18551728,
+      "allocatedBytes": 18554880,
+      "mtimeNs": 1793271817931921664
+    },
+    {
+      "path": "target/debug/deps/json_number_parity-3392333fe688cf3b",
+      "sha256": "9d2c1a030f0040aeead5e2cf73a78de2f26854744780c59bb4988407313f0f6d",
+      "bytes": 2694832,
+      "allocatedBytes": 2695168,
+      "mtimeNs": 1793271558925404392
+    },
+    {
+      "path": "target/debug/deps/json_number_parity-59c0051f4fcd0196",
+      "sha256": "2de792e15216b174e70239ea34d0a35ad1906235b259a2e7e7d0390e068d01bb",
+      "bytes": 2827456,
+      "allocatedBytes": 2830336,
+      "mtimeNs": 1793271817732922035
+    },
+    {
+      "path": "target/debug/deps/posthog_lossless-f7ae45df00b59194",
+      "sha256": "0107a31a109a2955df0d3bbe2e6dea958c8663b352618648401e1e0b0d5ba8b2",
+      "bytes": 13600152,
+      "allocatedBytes": 13602816,
+      "mtimeNs": 1793271820770916373
+    },
+    {
+      "path": "target/debug/deps/posthog_tracking-35d43cab06b5f8e3",
+      "sha256": "0544fbccf768d8f072d5143fbdc1a3b8987d0bddd1794651c1308afe1aa52ecc",
+      "bytes": 23951776,
+      "allocatedBytes": 23953408,
+      "mtimeNs": 1793271821522914971
+    }
+  ],
+  "afterAllocatedBytes": 8296632320,
+  "removedAllocatedBytes": 61636608,
+  "productionUnchanged": true
+}

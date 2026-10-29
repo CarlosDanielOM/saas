@@ -1,0 +1,72 @@
+{
+  "htmlRender": {
+    "htmlRender": {
+      "attachmentId": "9cc467f1-f5c3-45a8-989a-e8e02361df4b-72763e3a-d9ab-451e-9a56-f5c1dfceeae3-html",
+      "title": "PostHog payload benchmark: current Rust candidate",
+      "height": 1061,
+      "heights": [
+        [
+          320,
+          1082
+        ],
+        [
+          375,
+          1061
+        ],
+        [
+          430,
+          1061
+        ],
+        [
+          520,
+          1019
+        ],
+        [
+          640,
+          1019
+        ],
+        [
+          728,
+          998
+        ],
+        [
+          860,
+          998
+        ],
+        [
+          1000,
+          998
+        ],
+        [
+          1144,
+          998
+        ]
+      ]
+    },
+    "message": "Shown to the reader above your reply. Don't mention or describe the page; reply with only what it doesn't already say."
+  },
+  "previews": [
+    {
+      "width": 390,
+      "contentHeight": 1061,
+      "capturedHeight": 1061,
+      "consoleMessages": [],
+      "screenshot": {
+        "mimeType": "image/png",
+        "width": 390,
+        "height": 1061
+      }
+    },
+    {
+      "width": 718,
+      "contentHeight": 998,
+      "capturedHeight": 998,
+      "consoleMessages": [],
+      "screenshot": {
+        "mimeType": "image/png",
+        "width": 718,
+        "height": 998
+      }
+    }
+  ]
+}

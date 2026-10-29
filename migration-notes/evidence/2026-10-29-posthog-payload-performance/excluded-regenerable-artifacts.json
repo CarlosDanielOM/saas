@@ -1,0 +1,8 @@
+[
+  {
+    "path": "number-diagnostic/probe",
+    "sha256": "66b03361915383963b51d2109653329559281e842eee75abefee7a759a829448",
+    "bytes": 5294856,
+    "reason": "Regenerable diagnostic ELF; exact source, mounted-source correction and both run receipts retained."
+  }
+]

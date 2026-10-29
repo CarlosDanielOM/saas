@@ -1,0 +1,5 @@
+{
+  "run": "compiler-1793272574138954149",
+  "reason": "Parent stopped the accidentally broad all-features runtime compile before cache budget guard. Narrow to only the identified schema/domain/keyword consumers and reused broad feature graph. No functional test failure or success inferred.",
+  "signal": "SIGINT to exact owned driver PID"
+}

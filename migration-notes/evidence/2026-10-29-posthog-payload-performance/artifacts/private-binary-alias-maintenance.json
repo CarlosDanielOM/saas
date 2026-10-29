@@ -1,0 +1,117 @@
+{
+  "scope": "Only obsolete worker/test binary aliases wholly inside this task-private debug target, all older than the performance wave. No crate/library dependency, source, image, shared cache or production resource touched.",
+  "beforeAllocatedBytes": 7702609920,
+  "files": [
+    {
+      "path": "target/debug/ai_usage_receipts",
+      "sha256": "053f85da846cd7fcf92f5725d84226fd79967628aba35902c8622d86bfddb541",
+      "bytes": 32988720,
+      "allocatedBytes": 32989184,
+      "inode": 3064175,
+      "device": 2049,
+      "mtimeNs": 1793264906214736685
+    },
+    {
+      "path": "target/debug/deps/ai_usage_receipts-02030e3ff91ff327",
+      "sha256": "053f85da846cd7fcf92f5725d84226fd79967628aba35902c8622d86bfddb541",
+      "bytes": 32988720,
+      "allocatedBytes": 32989184,
+      "inode": 3064175,
+      "device": 2049,
+      "mtimeNs": 1793264906214736685
+    },
+    {
+      "path": "target/debug/raid_sessions",
+      "sha256": "13abd00e72776eb9cf139e35d62721040f095393b984a3504726849aeb9a8596",
+      "bytes": 35293632,
+      "allocatedBytes": 35299328,
+      "inode": 3064185,
+      "device": 2049,
+      "mtimeNs": 1793264913979722324
+    },
+    {
+      "path": "target/debug/deps/raid_sessions-004b9c2904b9c318",
+      "sha256": "13abd00e72776eb9cf139e35d62721040f095393b984a3504726849aeb9a8596",
+      "bytes": 35293632,
+      "allocatedBytes": 35299328,
+      "inode": 3064185,
+      "device": 2049,
+      "mtimeNs": 1793264913979722324
+    },
+    {
+      "path": "target/debug/follow_defense_baseline",
+      "sha256": "5bd45c3cc421a331d630e961d2756d9d795097b5d05f67074abc476ccb8736c4",
+      "bytes": 31410360,
+      "allocatedBytes": 31412224,
+      "inode": 3064168,
+      "device": 2049,
+      "mtimeNs": 1793264908216732982
+    },
+    {
+      "path": "target/debug/deps/follow_defense_baseline-0e3b1aa72e5c503c",
+      "sha256": "5bd45c3cc421a331d630e961d2756d9d795097b5d05f67074abc476ccb8736c4",
+      "bytes": 31410360,
+      "allocatedBytes": 31412224,
+      "inode": 3064168,
+      "device": 2049,
+      "mtimeNs": 1793264908216732982
+    },
+    {
+      "path": "target/debug/roulette_completion",
+      "sha256": "a57779678ffc19a22efcf1c17a8c4327d3bb532efbd893728aa3ee5ef783c145",
+      "bytes": 28124472,
+      "allocatedBytes": 28127232,
+      "inode": 3064153,
+      "device": 2049,
+      "mtimeNs": 1793264914360721619
+    },
+    {
+      "path": "target/debug/deps/roulette_completion-20f20a25e16e5135",
+      "sha256": "a57779678ffc19a22efcf1c17a8c4327d3bb532efbd893728aa3ee5ef783c145",
+      "bytes": 28124472,
+      "allocatedBytes": 28127232,
+      "inode": 3064153,
+      "device": 2049,
+      "mtimeNs": 1793264914360721619
+    },
+    {
+      "path": "target/debug/stream_activity",
+      "sha256": "8363266294555c8b8ffd81f62214860264867c33101590ebf928a56014fce545",
+      "bytes": 32395520,
+      "allocatedBytes": 32399360,
+      "inode": 3064171,
+      "device": 2049,
+      "mtimeNs": 1793264918714713567
+    },
+    {
+      "path": "target/debug/deps/stream_activity-3cef3501446e533a",
+      "sha256": "8363266294555c8b8ffd81f62214860264867c33101590ebf928a56014fce545",
+      "bytes": 32395520,
+      "allocatedBytes": 32399360,
+      "inode": 3064171,
+      "device": 2049,
+      "mtimeNs": 1793264918714713567
+    },
+    {
+      "path": "target/debug/raid_analytics",
+      "sha256": "64d8e03d38d091f5f3f5a9cc9e0538c5e98f9e3cce11dbe6de852eaedcbe045c",
+      "bytes": 33541776,
+      "allocatedBytes": 33542144,
+      "inode": 3064161,
+      "device": 2049,
+      "mtimeNs": 1793264911234727401
+    },
+    {
+      "path": "target/debug/deps/raid_analytics-c33dfc25eb495e78",
+      "sha256": "64d8e03d38d091f5f3f5a9cc9e0538c5e98f9e3cce11dbe6de852eaedcbe045c",
+      "bytes": 33541776,
+      "allocatedBytes": 33542144,
+      "inode": 3064161,
+      "device": 2049,
+      "mtimeNs": 1793264911234727401
+    }
+  ],
+  "afterAllocatedBytes": 7315070976,
+  "conservativeRemovedBytes": 387538944,
+  "productionUnchanged": true
+}

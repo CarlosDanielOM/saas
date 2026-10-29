@@ -1,0 +1,30 @@
+{
+  "scope": "Only four native implementation hashes and resulting input SHA rebound. All TypeScript, loaders/harnesses, prepared pool bytes, expected wires, checksums, workload sizes and every saved Node trial remain byte-identical. No Node timing rerun.",
+  "baselineInputSha256": "0ab05c2240b6af9f930b0a2824f89bb239d5cc4bd5e24cd6b866aa29ac753e4d",
+  "candidateInputSha256": "bd4d96286803589f2771115afce87fcbdc175df69f1c77866c1a7f306ac771f1",
+  "baselineNodeReportSha256": "bed73d2c701285e600afb734d25a2ce619ae0a2e22b279fc0db3152f6f55affe",
+  "candidateNodeReportSha256": "97d0b7b254d8520fd59c7c88fae90cec9fdfead40bc06deecc1f19b0bb72168f",
+  "nativeImplementationHashChanges": {
+    "src/utils/posthog_tracking.rs": {
+      "before": "cf5555491694b9ca4081433c126c8823f774c27e6d5590d71635cb4f8e5c883d",
+      "after": "e9e5a3170b420771c3688c52c2128828acf0e8fa810881c405fbfd62c1db7c10"
+    },
+    "src/utils/lossless_json.rs": {
+      "before": "33ba6503aead76bec9d9be9f48f208da99aac81154c0f1fda8a49c265e6e4010",
+      "after": "ec527f127bc44725a25be2624033cac077bc62e5bf1e06333924ba5aff16fe6a"
+    },
+    "src/utils/js_string.rs": {
+      "before": "3bd51850c71917763609af33d8598c88ac254e010d7b0ee754f4b4e6c7a4a4d7",
+      "after": "17b3e6a6bcd0d92210851eca25da44bbcdb2c2d9e196feb5dab58d06b75d4aed"
+    },
+    "src/utils/json_number.rs": {
+      "before": "002c39884ee1aa624cb200af77f8a6ddb694d31efd51b5ec318ebf9286845192",
+      "after": "f463c65a55bcd611ed9bad2444e50acff697969bb910b7b4c17371d0af21f419"
+    }
+  },
+  "preparedPoolsBytesSha256": "8f2141d3e22c9040da5bbba7a560348fb2fee568f69d604572650d7fc746840a",
+  "expectedSourcePayloads": 192,
+  "savedNodeTrials": 42,
+  "sourceTreeSha256": "d7032bf6e592fba5ab32915a47d6877ad7c546ecb9e345d0fbacdd3d9bce2056",
+  "requiredFollowup": "Independent parent input SHA, native wire/checksum validation before timing, then actual pinned Node --check against current source after native report exists."
+}

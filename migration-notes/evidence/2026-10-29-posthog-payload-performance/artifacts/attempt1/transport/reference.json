@@ -1,0 +1,334 @@
+{
+  "provenance": {
+    "node": "v24.22.1",
+    "v8": "13.6.233.17-node.58",
+    "typescript": "5.9.3",
+    "posthogNode": "5.47.3",
+    "posthogCore": "1.46.1",
+    "hashes": {
+      "src/utils/posthog_events.ts": "19a330a48e8f013f753b1a38d5e03b7d36fb2838e7de69426cd229c78c81086d",
+      "package-lock.json": "abdf5aa71a8272423ebb9358d7aaa87edd7e65f6605c325fe231a4bcef70eeb7",
+      "Cargo.lock": "787333fa269752a606040d7393767040ef749ce1e01c2512386bf305bcd7a2c3",
+      "node_modules/posthog-node/dist/client.js": "d4e0d4c6e7e1595bd323dac2d92807354df99e486584903b0134bd320e97b42b",
+      "node_modules/posthog-node/dist/entrypoints/index.node.js": "1565d78edad825a52a9efb84742033c5141d2d42065a2577e0e200c1f9ff1792",
+      "node_modules/posthog-node/package.json": "d0d1da472434119faf932ce53d2a4e374d5044c5f75e8e6c63e5c657194e63a1",
+      "node_modules/@posthog/core/package.json": "7102a87a3c23e38c628e1f761262c50a5a7c4dd2b4fb912678e977938dbeca86",
+      "node_modules/@posthog/core/dist/posthog-core-stateless.js": "bfe3cf1ad982bb2a6a98f4f603e2e6dff5e740ee1b7428b59c56d055845354b7",
+      "node_modules/typescript/package.json": "822ef7ca6452205657b6288b066481ecf508bfbf43455d715cf7d3ec457561e6",
+      "node_modules/posthog-node/dist/capture-v1/config.js": "7aec0e3cff028d18c3de883629746c37c85e5531ca4c7b8589dea84da66bfcd7",
+      "node_modules/posthog-node/dist/capture-v1/errors.js": "c210aafaf731841921834407197c27783352de5da45fd7a10abf841122ab1cee",
+      "node_modules/posthog-node/dist/capture-v1/routing.js": "04e734c3bb3aac8a836b5c9669b317bd36479fe55dcae7db2db30c6da43f087c",
+      "node_modules/posthog-node/dist/capture-v1/sender.js": "a68f0c25d552936b3b824ca30960f99c1640777e67c3a12441c40dd85e8b4fa3",
+      "node_modules/posthog-node/dist/capture-v1/transform.js": "61dd5037d0fa2c118a6767ed8271bec9fcb07bf8936ddbbdc613626ee8845544",
+      "node_modules/posthog-node/dist/capture-v1/types.js": "e6384cedade96e2c970d3f3e23d975f68bc5d76cbb778e90e0484f6683e40030",
+      "node_modules/posthog-node/dist/entrypoints/index.edge.js": "da1eb62f4e073ff3b7540e6fa386a1bde4feca6f64287a367c1c36a6ae1eaf5b",
+      "node_modules/posthog-node/dist/entrypoints/nestjs.js": "9f60641ccc29ff6c0a2a42aad91dd9be55de9f137c9fe9addaf01f636d73fbf6",
+      "node_modules/posthog-node/dist/experimental.js": "2c093bef17444eab2916cf82463abd9b53edc32a172721abd54473e1b7045c0c",
+      "node_modules/posthog-node/dist/exports.js": "0f036db2baa3c70c28a20b579ff6d0f28f8ef6f06f569b78b6ecdaae71c07c77",
+      "node_modules/posthog-node/dist/extensions/context/context.js": "da4b7b18e78db2ef66bcd5ef866dcb83fff4376d7f4c8e3efa7689ffe82ff9fa",
+      "node_modules/posthog-node/dist/extensions/context/types.js": "e6384cedade96e2c970d3f3e23d975f68bc5d76cbb778e90e0484f6683e40030",
+      "node_modules/posthog-node/dist/extensions/error-tracking/autocapture.js": "04db88f35780fe10b1c0c9a0cc546af73712929f181b76fabef71106c8b01721",
+      "node_modules/posthog-node/dist/extensions/error-tracking/index.js": "bba94093b58063b4ef53fc1869a5734824436ece10f21c1c6879b34d1eb7cac3",
+      "node_modules/posthog-node/dist/extensions/error-tracking/modifiers/context-lines.node.js": "14fcc1abebfb621da2997d705fb5043948057ef98a5acb075389b83dc8887887",
+      "node_modules/posthog-node/dist/extensions/error-tracking/modifiers/module.node.js": "bc396481121ec120e937357c74632f0611101d38df9643e40922cd146678a6ad",
+      "node_modules/posthog-node/dist/extensions/error-tracking/modifiers/relative-path.node.js": "48eb43326b46d011d1ba5e93d287f9fd3903f82c92d1b104cb2e4a866ab7a0d2",
+      "node_modules/posthog-node/dist/extensions/express.js": "29f85ff5a19a6ad97b42d2107fce15d9fcff958f77d1a41790d091fe3729990e",
+      "node_modules/posthog-node/dist/extensions/feature-flags/cache.js": "e6384cedade96e2c970d3f3e23d975f68bc5d76cbb778e90e0484f6683e40030",
+      "node_modules/posthog-node/dist/extensions/feature-flags/crypto.js": "67615edcf8c49f268839cb9fc9de5b73a115378f2ebf5c3413c12b0d40ffb671",
+      "node_modules/posthog-node/dist/extensions/feature-flags/feature-flags.js": "42371a59308d5fef53d0d7a0015da2151cabcb305b62e6add5ceddbe15a1ac87",
+      "node_modules/posthog-node/dist/extensions/nestjs.js": "60af1f94191a5d7a81c89dea627206bece4ed0030806608bd9c44c37db93fee5",
+      "node_modules/posthog-node/dist/extensions/sentry-integration.js": "6347408fe7a0660fb95da4d9ce6476a564aa6b67a6fb540fec7c87e552bf1e5b",
+      "node_modules/posthog-node/dist/extensions/tracing-headers.js": "b35768455859ff2338de884674e4f1a144a51493abbbe5e0c85db3ff9abddfc2",
+      "node_modules/posthog-node/dist/extensions/url-utils.js": "ab550ecc1d1e24c29c641139403f16634035d2d81bdcacada6334c102ab2e790",
+      "node_modules/posthog-node/dist/feature-flag-evaluations.js": "f72b720573a387cd71f0f795a9a5754b7312c0f5865c9b6c64f6df7fd2494779",
+      "node_modules/posthog-node/dist/storage-memory.js": "3dce94d1424d5705589d703d0814e68d80e74ccf407a9982665eaa91349b079f",
+      "node_modules/posthog-node/dist/types.js": "cc8b8f9feb1bd84e9de96cd23bb071538f57dff1f6d236b2f07db7a1eab487de",
+      "node_modules/posthog-node/dist/version.js": "5a234fa14943c38e998ba503bd112212348213db542b4d1519bc3a82d61f8b2f",
+      "node_modules/@posthog/core/dist/cookie.js": "2d875d1f6d8aff6508df61d1488db3d34c2a48df727f5dfd5a5c483ce96cd567",
+      "node_modules/@posthog/core/dist/error-tracking/chunk-ids.js": "9e4f0fdfe669f45e34001f5713146d7cd695407cc8adb3f261061a05a32fb0db",
+      "node_modules/@posthog/core/dist/error-tracking/coercers/dom-exception-coercer.js": "007af1232e68ab112fd5a4c8a8486e649ece58f9c7f6485c2ff2bc50589af150",
+      "node_modules/@posthog/core/dist/error-tracking/coercers/error-coercer.js": "6af839c6f15596b61b544ceafeb5300c5a4e7cd0502e5336979e379ab02d363c",
+      "node_modules/@posthog/core/dist/error-tracking/coercers/error-event-coercer.js": "90e540292022b82e522daf51e6c9bc4bc0c7d57c4c51665b67a02db50a7e49ee",
+      "node_modules/@posthog/core/dist/error-tracking/coercers/event-coercer.js": "04866f04b42ca3bac1cb1749382e7bc55d1f32d93f026db2015ce8dc054028df",
+      "node_modules/@posthog/core/dist/error-tracking/coercers/index.js": "27516c60309dddd59988f71b0ebda7f7466babe4cbe2e403ef085ac42e726e4c",
+      "node_modules/@posthog/core/dist/error-tracking/coercers/object-coercer.js": "75f33dda5ddbb880b2fae55833da8122b8af00402e6e3a781ee809cb8f95d1e9",
+      "node_modules/@posthog/core/dist/error-tracking/coercers/primitive-coercer.js": "44bc0ae3f5f2dafc9b893924027c04c183652f802d4bdb55d81c9038eeea0d13",
+      "node_modules/@posthog/core/dist/error-tracking/coercers/promise-rejection-event.js": "519ac0cedf9e0c0f638c19478f71ae7d147c8836fa690ec9eb55926aaf1477f1",
+      "node_modules/@posthog/core/dist/error-tracking/coercers/string-coercer.js": "d80db875b0cae73f5101fd2329f906c1b94c4fd0b5aa0de42a86c4cc6134768e",
+      "node_modules/@posthog/core/dist/error-tracking/coercers/utils.js": "a87d27143f00fd5be86c18e3909ea19b264ce90c2a4078131cf15cc190f2ff60",
+      "node_modules/@posthog/core/dist/error-tracking/error-properties-builder.js": "bf043106edec7c3a6f8f336fc75415c23c5b5b2e15f2118d566c67d2495fa997",
+      "node_modules/@posthog/core/dist/error-tracking/exception-steps.js": "4f83d40baa99b9cf071319c4f3b1ddb112856743d34d6ff18b262aafd952efe6",
+      "node_modules/@posthog/core/dist/error-tracking/index.js": "8076af79eade59eaa50072411fd69d559b3b7e938f52dcf98d72cdd54eb8fb40",
+      "node_modules/@posthog/core/dist/error-tracking/parsers/base.js": "b4c16f35d959365b5c6a07f3f001d81a760824c0095a33233227a1d9f0c95aa8",
+      "node_modules/@posthog/core/dist/error-tracking/parsers/chrome.js": "f2b4365d2bf8b7c1e4575b157c495d993f04248b62e2542245e1c0fcd8083389",
+      "node_modules/@posthog/core/dist/error-tracking/parsers/gecko.js": "4dda3d5e00369b960cdbfa8cd865e764abe6c22e34b8490e0a6930ce199f5264",
+      "node_modules/@posthog/core/dist/error-tracking/parsers/index.js": "2597d610ade9a476a9f2887a7231b82b027a8973fcced04aa25da8e905a6ec62",
+      "node_modules/@posthog/core/dist/error-tracking/parsers/node.js": "ce0f9af19ed7df3209d595de40ad20096fcbbfa1e93f2e39ef29e82b72b11b8d",
+      "node_modules/@posthog/core/dist/error-tracking/parsers/opera.js": "a06081c8d1b9db2e79f5146e2330b3db2787ab0476628875a3e7f27753bf0244",
+      "node_modules/@posthog/core/dist/error-tracking/parsers/safari.js": "8852575007865db61e302263584a6d03c13767cbcb2940f82344293799f795ab",
+      "node_modules/@posthog/core/dist/error-tracking/parsers/winjs.js": "ba058517df90d7df00392942523abbc4648d1b14e931408162a9f686c2e4516b",
+      "node_modules/@posthog/core/dist/error-tracking/release.js": "726f39005dd85863dbb53d99a786fd4065a18f11295c13b0e0c92677e8441902",
+      "node_modules/@posthog/core/dist/error-tracking/types.js": "7c1bde7cf4ab30197a2769580337a1af78acb97813a9bba8315b08e195783506",
+      "node_modules/@posthog/core/dist/error-tracking/utils.js": "fe1e1d6417c0bfd032adda2557968cdc3030f4c8e9089d0a3a63d41dff069d95",
+      "node_modules/@posthog/core/dist/eventemitter.js": "5dd6e2338bafe8fba6ab1c42a4eaca0b08059850a9fe8df8cc8d518ab466f896",
+      "node_modules/@posthog/core/dist/featureFlagUtils.js": "143fd1e62959ab750251444e49cebb10bf04c7289ca7a114f984db55e6316a9b",
+      "node_modules/@posthog/core/dist/gzip.js": "bc35204c8cd88e366b0522bf8c2e73b58bd053d963333e56ea1c7c440ac66696",
+      "node_modules/@posthog/core/dist/index.js": "3cffdc370cf0bb67dad475d4650846c43cfbeee805edba7d7d0e98b36bf55fcf",
+      "node_modules/@posthog/core/dist/logs/index.js": "15b43e54eec381aa08b7fa7a0a689e48b2ae4c5988207816c6bc139dd1c1745e",
+      "node_modules/@posthog/core/dist/logs/logs-utils.js": "bb3882564951f02ebe09ba3622f5b68dce72cecfd6df0d62b2b6dbbd04def424",
+      "node_modules/@posthog/core/dist/logs/types.js": "e6384cedade96e2c970d3f3e23d975f68bc5d76cbb778e90e0484f6683e40030",
+      "node_modules/@posthog/core/dist/metrics/config.js": "dabef5f64ee646778d193d4745b21f25007e4f4ae1da7b498957797c6e53de1e",
+      "node_modules/@posthog/core/dist/metrics/index.js": "0af3a3c384fd7a64a16d8a626fb6df5ee24ff8eb1cf0a3e6202b07b012b96dd7",
+      "node_modules/@posthog/core/dist/metrics/metrics-utils.js": "65c7d4f02c58c6a49a9ccd2559ffdbef307a708f50082d3170f3b62d2bd94e91",
+      "node_modules/@posthog/core/dist/metrics/types.js": "e6384cedade96e2c970d3f3e23d975f68bc5d76cbb778e90e0484f6683e40030",
+      "node_modules/@posthog/core/dist/posthog-core.js": "fd562e19d50393c241a470592346409e6db4a13f1cd7c4080584ea2ce65c2468",
+      "node_modules/@posthog/core/dist/surveys/activation.js": "034902d5ab80e5433d3ac4b410a4ed0c91d3741beba166261e1d307c7e7315b2",
+      "node_modules/@posthog/core/dist/surveys/events.js": "79d368a5e3afc0e3d0a7de4af72d37fb4a52efb68c1206bcdfe125c025b0ccd0",
+      "node_modules/@posthog/core/dist/surveys/index.js": "b4240d8e68b0d603db9cdb215fb47a87e2a3e5ca024d4fe54f40101c9380161c",
+      "node_modules/@posthog/core/dist/surveys/keys.js": "6332d85868e0f88a1767f211027c44662d22df24748e6a746c8fb891cfae859b",
+      "node_modules/@posthog/core/dist/surveys/translations.js": "7d9b710dd59d7af0bdfb69d1cecedaf8d51f2417266e09de09fa5264f7edbdc6",
+      "node_modules/@posthog/core/dist/surveys/validation.js": "ff07b61db0c39d3e0f191e0eac1e46c742091ecfb30563d6da9e04ffb30f730b",
+      "node_modules/@posthog/core/dist/testing/index.js": "425282e68a90d41c3416a3072c15aec419dc36cc78985b3d5792e5ac4f6daefa",
+      "node_modules/@posthog/core/dist/testing/PostHogCoreTestClient.js": "48799280c972379af9970c2c8f8669f566b796ae174c99054e1afc76da2c0c43",
+      "node_modules/@posthog/core/dist/testing/test-utils.js": "15a91f4f92a11ffa8a0087ec44c5efdb7c903fa0facc468bc378db9aa1f2aab2",
+      "node_modules/@posthog/core/dist/tracing-headers.js": "6aa4ff4214af9b2f5a7d9f07f6f94a2ed835ec72de58ddeac91362a7c0984f8e",
+      "node_modules/@posthog/core/dist/types.js": "d2f8c1e7256dca337b9927019ec202ded1737de02c8fff3fc73895fcc1709364",
+      "node_modules/@posthog/core/dist/utils/bot-detection.js": "a0bd79115c0732444fa99154105119f62a56f0689750a49d42425937da7c9656",
+      "node_modules/@posthog/core/dist/utils/browser-utils.js": "5946413a3cb75b62cddae61a2654ad6f18b649f33c86745e8279080ae8fc4c3c",
+      "node_modules/@posthog/core/dist/utils/bucketed-rate-limiter.js": "8322ef6ba01527f39ccb14e1a32867cb4f970a45fc221c6b84f5fde7b9bbdc55",
+      "node_modules/@posthog/core/dist/utils/index.js": "f48851b6650937ddf6d33fea1d8e3531b02b7c7d42ade4f7fb30b1fc1c5edf47",
+      "node_modules/@posthog/core/dist/utils/logger.js": "43dfbe91d36e3a521e09d101373a292411ae95fe1924c7bb061cb273fd039989",
+      "node_modules/@posthog/core/dist/utils/number-utils.js": "d67a2c343c1b91f54e11bd60078f80e226155ca0cb2fdae1ebf9a84f38aa27c8",
+      "node_modules/@posthog/core/dist/utils/promise-queue.js": "d38af057987122cbe3893d97ff753061507aa949a13474ec019ee2306996ba4c",
+      "node_modules/@posthog/core/dist/utils/string-utils.js": "9e0ea90ef258c41d3b5ae00e52363391b3b4bbff528baf9746af2ee5b925a99f",
+      "node_modules/@posthog/core/dist/utils/type-utils.js": "79e154e1e034a2d78783a512d63ff71f0284ddf0606d4a6c31a9255e310f0679",
+      "node_modules/@posthog/core/dist/utils/user-agent-utils.js": "2c509fa18280610618d81fb5fd0a12a6a1ec2a29a39080930167a3fedb3cd9b4",
+      "node_modules/@posthog/core/dist/vendor/uuidv7.js": "058c83e4e2864f1946a6bc1b1558c2df2b4f87253cd90266259597d0b641e022",
+      "src/utils/js_string.rs": "17b3e6a6bcd0d92210851eca25da44bbcdb2c2d9e196feb5dab58d06b75d4aed",
+      "src/utils/lossless_json.rs": "ec527f127bc44725a25be2624033cac077bc62e5bf1e06333924ba5aff16fe6a",
+      "src/utils/json_number.rs": "002c39884ee1aa624cb200af77f8a6ddb694d31efd51b5ec318ebf9286845192",
+      "src/utils/credit_policy.rs": "0b17b85d9191d921b68490bccdbcb53495537f526599d69b5e94ec1db9a7cec3",
+      "src/utils/posthog_lossless.rs": "d953dc1ed9ae992fc633bcdf3d76fbbdfc047bac3224d501b4a5dab8030ff4ea",
+      "tests/posthog_lossless.rs": "ac21ef18ed8c23dc2009e620cc0d5ebfa82b8cef25a549a8550fab5c3fac9adc",
+      "tests/fixtures/posthog_lossless_reference.cjs": "bb97666954e4c9ec81e1860c2101fa77aa497a2f92132b28285c433890db7654",
+      "posthog-rs-0.27.0/src/event.rs": "5a4112ea152b483a2dc25195bd56901ece4e6da363dd0904babe48776ceae312"
+    }
+  },
+  "cases": [
+    {
+      "name": "identify-capture-normalization-and-utf16",
+      "input": [
+        {
+          "event": "$identify",
+          "distinct_id": "\ud800id\udc00",
+          "properties": {
+            "$set": {
+              "channel_name": "\ud800😀"
+            },
+            "$set_once": {}
+          }
+        },
+        {
+          "event": "fixture",
+          "distinct_id": "id😀\ud800",
+          "properties": {
+            "\udc00": [
+              "\ud800",
+              "😀",
+              null,
+              null,
+              null,
+              0,
+              1e+21
+            ],
+            "object": {
+              "2": "two",
+              "10": "ten",
+              "lone": "\udfff"
+            },
+            "$is_server": false,
+            "$geoip_disable": false,
+            "$lib": "caller-library",
+            "$lib_version": "caller-version"
+          }
+        }
+      ],
+      "batch": [
+        {
+          "event": "$identify",
+          "properties": {
+            "$set": {
+              "channel_name": "\ud800😀"
+            },
+            "$set_once": {},
+            "$lib": "posthog-node",
+            "$lib_version": "5.47.3",
+            "$is_server": true,
+            "$geoip_disable": true
+          },
+          "timestamp": "<sdk-capture-time>",
+          "uuid": "<sdk-uuid-0>",
+          "distinct_id": "\ud800id\udc00"
+        },
+        {
+          "event": "fixture",
+          "properties": {
+            "\udc00": [
+              "\ud800",
+              "😀",
+              null,
+              null,
+              null,
+              0,
+              1e+21
+            ],
+            "object": {
+              "2": "two",
+              "10": "ten",
+              "lone": "\udfff"
+            },
+            "$is_server": true,
+            "$geoip_disable": true,
+            "$lib": "posthog-node",
+            "$lib_version": "5.47.3"
+          },
+          "timestamp": "<sdk-capture-time>",
+          "uuid": "<sdk-uuid-1>",
+          "distinct_id": "id😀\ud800"
+        }
+      ]
+    }
+  ],
+  "lifecycle": [
+    {
+      "name": "defaults-and-empty",
+      "actualDefaults": {
+        "flushAt": 20,
+        "flushInterval": 1000,
+        "maxBatchSize": 100,
+        "maxQueueSize": 10000,
+        "requestTimeout": 10000,
+        "retries": 3,
+        "retryDelay": 3000,
+        "disableGeoip": true
+      },
+      "requests": 0
+    },
+    {
+      "name": "app-threshold",
+      "batchSizes": [
+        20
+      ]
+    },
+    {
+      "name": "app-future-timer",
+      "batchSizes": [
+        1
+      ]
+    },
+    {
+      "name": "ready-backlog",
+      "batchSizes": [
+        100,
+        100,
+        51
+      ]
+    },
+    {
+      "name": "drop-oldest",
+      "capacity": 10000,
+      "first": 2,
+      "last": 10001,
+      "count": 10000,
+      "boundary": "automatic flush held until queue filled"
+    },
+    {
+      "name": "drop-oldest",
+      "capacity": 3,
+      "first": 2,
+      "last": 4,
+      "count": 3,
+      "boundary": "automatic flush held until queue filled"
+    },
+    {
+      "name": "retryable-http",
+      "code": 408,
+      "attempts": 2,
+      "stableBody": true,
+      "fixtureRetryDelay": 1
+    },
+    {
+      "name": "retryable-http",
+      "code": 429,
+      "attempts": 2,
+      "stableBody": true,
+      "fixtureRetryDelay": 1
+    },
+    {
+      "name": "retryable-http",
+      "code": 500,
+      "attempts": 2,
+      "stableBody": true,
+      "fixtureRetryDelay": 1
+    },
+    {
+      "name": "terminal-http-dequeue",
+      "code": 400,
+      "attempts": 1,
+      "remaining": 0,
+      "fixtureRetryDelay": 1
+    },
+    {
+      "name": "terminal-http-dequeue",
+      "code": 413,
+      "attempts": 1,
+      "remaining": 0,
+      "fixtureRetryDelay": 1
+    },
+    {
+      "name": "terminal-http-dequeue",
+      "code": 503,
+      "attempts": 4,
+      "remaining": 0,
+      "fixtureRetryDelay": 1
+    },
+    {
+      "name": "413-split",
+      "batchSizes": [
+        5,
+        2,
+        2,
+        1
+      ],
+      "stableEvents": true
+    },
+    {
+      "name": "exhausted-network-retention",
+      "attemptsBefore": 4,
+      "retained": 1,
+      "attemptsAfter": 5,
+      "stableRetryBody": true,
+      "stableReflushEvent": true,
+      "fixtureRetryDelay": 1
+    },
+    {
+      "name": "request-abort-retains",
+      "attempts": 2,
+      "fixtureTimeout": 10
+    },
+    {
+      "name": "shared-repeated-shutdown",
+      "requests": 1
+    },
+    {
+      "name": "SDK-capture-after-shutdown",
+      "requests": 2,
+      "difference": "SDK permits later capture; native shutdown permanently closes admission"
+    },
+    {
+      "name": "SDK-shutdown-timeout",
+      "fixtureTimeout": 10,
+      "difference": "SDK timeout returns before held fetch settles; native cancels owned HTTP at its deadline"
+    }
+  ]
+}

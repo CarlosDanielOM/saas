@@ -1,0 +1,128 @@
+{
+  "scope": "Only old single-link ELF test executables in the task-private target/debug/deps; all before current-wave format. No dependency, shared cache, release image, source or production mutation.",
+  "beforeAllocatedBytes": 7988928512,
+  "files": [
+    {
+      "path": "target/debug/deps/ai_usage_receipt_parser-48e14aab5380afb0",
+      "sha256": "f9f8978a97982df558f396991224d6ba254757d7a3cd11ad2ca14b6d29214f1e",
+      "bytes": 4148400,
+      "allocatedBytes": 4149248,
+      "mtimeNs": 1793263319823662465
+    },
+    {
+      "path": "target/debug/deps/ai_usage_receipt_parser-a5e559facca6fca8",
+      "sha256": "e27e6b4f56f8a95a82211906849e5ddf6ad3ae35c773c8a10ebf88486eafdcb8",
+      "bytes": 4441064,
+      "allocatedBytes": 4444160,
+      "mtimeNs": 1793264917206716356
+    },
+    {
+      "path": "target/debug/deps/ai_usage_receipts-b20d686bbb41d7ff",
+      "sha256": "1ab5e77968fcdb564d311b612041f20733594a207b5dbccab0b00d35227bb63f",
+      "bytes": 32844656,
+      "allocatedBytes": 32845824,
+      "mtimeNs": 1793251352148443337
+    },
+    {
+      "path": "target/debug/deps/dima_rust-389b11cf81bff1c2",
+      "sha256": "55ff8d34ecad3ccf9c26cba351fdb25a2a9620041bd4b8c1dc98f64a005ae4b0",
+      "bytes": 24533720,
+      "allocatedBytes": 24535040,
+      "mtimeNs": 1793264900034748115
+    },
+    {
+      "path": "target/debug/deps/dima_rust-dfb11ad13d65f5f7",
+      "sha256": "782367c1f76daf84c6403a6ca2aa5bcb01aec010d5f8bf39588db48ab8bc89e7",
+      "bytes": 23335528,
+      "allocatedBytes": 23339008,
+      "mtimeNs": 1793263333532637393
+    },
+    {
+      "path": "target/debug/deps/follow_defense_baseline-9cd49f4995b45774",
+      "sha256": "69b05d76114aa4795655fdc8933360015d37e67aa418fcc2aee59b2dc5963cc8",
+      "bytes": 31336816,
+      "allocatedBytes": 31338496,
+      "mtimeNs": 1793251353131441477
+    },
+    {
+      "path": "target/debug/deps/lossless_json_view-073b2612d4d3db6e",
+      "sha256": "0895977cb6c0bbfec3ebdd1a132d0e172c7f544b65782f398a309e8fa01b45ed",
+      "bytes": 2000848,
+      "allocatedBytes": 2002944,
+      "mtimeNs": 1793264898843750318
+    },
+    {
+      "path": "target/debug/deps/lossless_json_view-3bb227ad40b62112",
+      "sha256": "434db154d0ab703a9628fe367b1f5a04d44cb9a6fe611683b5f33656b2d2089f",
+      "bytes": 1993888,
+      "allocatedBytes": 1994752,
+      "mtimeNs": 1793263321959658558
+    },
+    {
+      "path": "target/debug/deps/posthog_lossless-3e5f220d8de400e4",
+      "sha256": "2ac19bcbc2ad9e71c8002831a26441ead23046432a797a70879ebc3cfa08cd58",
+      "bytes": 13930872,
+      "allocatedBytes": 13934592,
+      "mtimeNs": 1793263324115654615
+    },
+    {
+      "path": "target/debug/deps/posthog_lossless-767d761b3dd1e399",
+      "sha256": "8ae06fd33bef1b4d6ad4906064dfb799639a79414c3f1219ce66ff826a67748b",
+      "bytes": 13930888,
+      "allocatedBytes": 13934592,
+      "mtimeNs": 1793264902406743728
+    },
+    {
+      "path": "target/debug/deps/posthog_tracking-2b2be0a8aec49ab3",
+      "sha256": "e4d3fa24e87ccb4eaf1c5d69e36909c3d578b9e55e85a32684e53946f63b6f70",
+      "bytes": 24102560,
+      "allocatedBytes": 24104960,
+      "mtimeNs": 1793264904302740221
+    },
+    {
+      "path": "target/debug/deps/posthog_tracking-412713b700b4e61b",
+      "sha256": "e1d22993eabb5d415a5d1aaa65d1b295d79ada8f19f22589977c425193341cd4",
+      "bytes": 24139264,
+      "allocatedBytes": 24141824,
+      "mtimeNs": 1793263326271650673
+    },
+    {
+      "path": "target/debug/deps/posthog_tracking-4ad9edbd4f76869c",
+      "sha256": "ad8cc22d16c822b0d2cce90eb700e8e996a471b6efc800391397581e221b73bd",
+      "bytes": 23715352,
+      "allocatedBytes": 23715840,
+      "mtimeNs": 1793263388320537180
+    },
+    {
+      "path": "target/debug/deps/raid_analytics-b1446c3c98bfd6b0",
+      "sha256": "08663751f8dcf5c43d270bf1598eb9de0d7d1721d8d3eac2021da8a3a4424647",
+      "bytes": 33514368,
+      "allocatedBytes": 33517568,
+      "mtimeNs": 1793263317008667613
+    },
+    {
+      "path": "target/debug/deps/raid_sessions-936617ce2891201b",
+      "sha256": "6d97b2dbce1dcb77eee521685368c270558f54811ad65ad4d85e325a9c8013b2",
+      "bytes": 35184432,
+      "allocatedBytes": 35184640,
+      "mtimeNs": 1793251364033420849
+    },
+    {
+      "path": "target/debug/deps/roulette_completion-bbfb3566ca54afaf",
+      "sha256": "f8bb3c26d3437278c5020070b12255bdbf8f16f481731eeb36a6be52267f0f56",
+      "bytes": 28077560,
+      "allocatedBytes": 28078080,
+      "mtimeNs": 1793263315072671153
+    },
+    {
+      "path": "target/debug/deps/stream_activity-efab771fd89e252a",
+      "sha256": "ed2c1b6389dffb9ad394bfff4a556b1db21851b0b5dae88a528fccd326bd55bf",
+      "bytes": 32372048,
+      "allocatedBytes": 32374784,
+      "mtimeNs": 1793263320042662064
+    }
+  ],
+  "afterAllocatedBytes": 7635292160,
+  "removedAllocatedBytes": 353636352,
+  "productionUnchanged": true
+}

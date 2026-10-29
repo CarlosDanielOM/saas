@@ -1,0 +1,258 @@
+{
+  "status": "VERIFIED LOCAL FOLLOW-UP; six synthetic payload medians below retained TypeScript baseline; whole migration incomplete.",
+  "sourceTreeSha256": "d7032bf6e592fba5ab32915a47d6877ad7c546ecb9e345d0fbacdd3d9bce2056",
+  "codeCommit": "beda3aee1ea2d7a2d42b4b666c6dcb2c3c2ef403",
+  "runs": [
+    {
+      "receipt": "runs/compiler-1793267558111214276-receipt.json.gz",
+      "log": "runs/compiler-1793267558111214276.log.gz",
+      "phase": "compiler",
+      "success": true,
+      "source_tree_sha256": "3510d3d36c47c34950574fd9d7a1d42427c50faf0698d962844813f187b1b88a",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/compiler-1793268817230385594-receipt.json.gz",
+      "log": "runs/compiler-1793268817230385594.log.gz",
+      "phase": "compiler",
+      "success": true,
+      "source_tree_sha256": "3510d3d36c47c34950574fd9d7a1d42427c50faf0698d962844813f187b1b88a",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/compiler-1793270379734265688-receipt.json.gz",
+      "log": "runs/compiler-1793270379734265688.log.gz",
+      "phase": "compiler",
+      "success": false,
+      "source_tree_sha256": "adc148dd923e4d1f8de7958f59cc761cfeb8019380fd4fd7c28c18b705b8322d",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/compiler-1793270831751891072-receipt.json.gz",
+      "log": "runs/compiler-1793270831751891072.log.gz",
+      "phase": "compiler",
+      "success": true,
+      "source_tree_sha256": "adc148dd923e4d1f8de7958f59cc761cfeb8019380fd4fd7c28c18b705b8322d",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/compiler-1793270880104187076-receipt.json.gz",
+      "log": "runs/compiler-1793270880104187076.log.gz",
+      "phase": "compiler",
+      "success": true,
+      "source_tree_sha256": "adc148dd923e4d1f8de7958f59cc761cfeb8019380fd4fd7c28c18b705b8322d",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/compiler-1793271500335662854-receipt.json.gz",
+      "log": "runs/compiler-1793271500335662854.log.gz",
+      "phase": "compiler",
+      "success": true,
+      "source_tree_sha256": "d7032bf6e592fba5ab32915a47d6877ad7c546ecb9e345d0fbacdd3d9bce2056",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/compiler-1793271803631923800-receipt.json.gz",
+      "log": "runs/compiler-1793271803631923800.log.gz",
+      "phase": "compiler",
+      "success": true,
+      "source_tree_sha256": "d7032bf6e592fba5ab32915a47d6877ad7c546ecb9e345d0fbacdd3d9bce2056",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/compiler-1793272574138954149-receipt.json.gz",
+      "log": "runs/compiler-1793272574138954149.log.gz",
+      "phase": "compiler",
+      "success": false,
+      "source_tree_sha256": "d7032bf6e592fba5ab32915a47d6877ad7c546ecb9e345d0fbacdd3d9bce2056",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/compiler-1793272670378243591-receipt.json.gz",
+      "log": "runs/compiler-1793272670378243591.log.gz",
+      "phase": "compiler",
+      "success": false,
+      "source_tree_sha256": "d7032bf6e592fba5ab32915a47d6877ad7c546ecb9e345d0fbacdd3d9bce2056",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/compiler-1793272783195663615-receipt.json.gz",
+      "log": "runs/compiler-1793272783195663615.log.gz",
+      "phase": "compiler",
+      "success": true,
+      "source_tree_sha256": "d7032bf6e592fba5ab32915a47d6877ad7c546ecb9e345d0fbacdd3d9bce2056",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/compiler-fixtures-1793271955861772133-receipt.json.gz",
+      "log": "runs/compiler-fixtures-1793271955861772133.log.gz",
+      "phase": "compiler-fixtures",
+      "success": true,
+      "source_tree_sha256": "d7032bf6e592fba5ab32915a47d6877ad7c546ecb9e345d0fbacdd3d9bce2056",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/format-1793267370297086967-receipt.json.gz",
+      "log": "runs/format-1793267370297086967.log.gz",
+      "phase": "format",
+      "success": true,
+      "source_tree_sha256": "e979e8b91a445678dcf296944f8d4a5495962a6e9bce7f3a7ca3adb4923e38e6",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/format-1793270079687803078-receipt.json.gz",
+      "log": "runs/format-1793270079687803078.log.gz",
+      "phase": "format",
+      "success": true,
+      "source_tree_sha256": "51407b3a99ded59938650a739fe07fdd904602f90f9f6bba39bd4b9b684bc8e4",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/format-1793271353735859186-receipt.json.gz",
+      "log": "runs/format-1793271353735859186.log.gz",
+      "phase": "format",
+      "success": true,
+      "source_tree_sha256": "d7032bf6e592fba5ab32915a47d6877ad7c546ecb9e345d0fbacdd3d9bce2056",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/node-1793267901528747065-receipt.json.gz",
+      "log": "runs/node-1793267901528747065.log.gz",
+      "phase": "node",
+      "success": false,
+      "source_tree_sha256": "3510d3d36c47c34950574fd9d7a1d42427c50faf0698d962844813f187b1b88a",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/node-1793268221233584329-receipt.json.gz",
+      "log": "runs/node-1793268221233584329.log.gz",
+      "phase": "node",
+      "success": true,
+      "source_tree_sha256": "3510d3d36c47c34950574fd9d7a1d42427c50faf0698d962844813f187b1b88a",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/node-1793269187508067241-receipt.json.gz",
+      "log": "runs/node-1793269187508067241.log.gz",
+      "phase": "node",
+      "success": false,
+      "source_tree_sha256": "3510d3d36c47c34950574fd9d7a1d42427c50faf0698d962844813f187b1b88a",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/node-1793269924687334120-receipt.json.gz",
+      "log": "runs/node-1793269924687334120.log.gz",
+      "phase": "node",
+      "success": true,
+      "source_tree_sha256": "3510d3d36c47c34950574fd9d7a1d42427c50faf0698d962844813f187b1b88a",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/node-1793270235125845633-receipt.json.gz",
+      "log": "runs/node-1793270235125845633.log.gz",
+      "phase": "node",
+      "success": true,
+      "source_tree_sha256": "adc148dd923e4d1f8de7958f59cc761cfeb8019380fd4fd7c28c18b705b8322d",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/node-1793271430176465107-receipt.json.gz",
+      "log": "runs/node-1793271430176465107.log.gz",
+      "phase": "node",
+      "success": true,
+      "source_tree_sha256": "d7032bf6e592fba5ab32915a47d6877ad7c546ecb9e345d0fbacdd3d9bce2056",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/node-1793271651768855999-receipt.json.gz",
+      "log": "runs/node-1793271651768855999.log.gz",
+      "phase": "node",
+      "success": true,
+      "source_tree_sha256": "d7032bf6e592fba5ab32915a47d6877ad7c546ecb9e345d0fbacdd3d9bce2056",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/node-1793272491713187942-receipt.json.gz",
+      "log": "runs/node-1793272491713187942.log.gz",
+      "phase": "node",
+      "success": true,
+      "source_tree_sha256": "d7032bf6e592fba5ab32915a47d6877ad7c546ecb9e345d0fbacdd3d9bce2056",
+      "production_unchanged": true
+    }
+  ],
+  "broadRun": "compiler-fixtures-1793271955861772133",
+  "broadReportedExecutions": 392,
+  "broadResultCounts": [
+    228,
+    1,
+    4,
+    5,
+    13,
+    7,
+    1,
+    5,
+    3,
+    9,
+    1,
+    3,
+    6,
+    5,
+    13,
+    20,
+    7,
+    2,
+    16,
+    6,
+    2,
+    5,
+    1,
+    2,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    2,
+    1,
+    6,
+    1,
+    1
+  ],
+  "otherConsumerRun": "compiler-1793272783195663615",
+  "otherReportedExecutions": 19,
+  "countsAreUnique": false,
+  "numericEngineCases": 35464,
+  "originalFormatterDifferences": 53,
+  "correctedDifferences": 0,
+  "receiptCasesPerTimezone": 1362,
+  "timezones": 5,
+  "posthogSourceRecords": 1042,
+  "emoteDirectlyReplayed": 57,
+  "emoteSkipped": 9,
+  "emoteCorpus": 66,
+  "limits": {
+    "cpus": 6,
+    "memory": 4294967296,
+    "memory_swap": 4294967296,
+    "pids": 256,
+    "cargo_jobs": 2
+  },
+  "broadPeakCacheBytes": 8127803392,
+  "broadMinimumAvailableBytes": 9385828352,
+  "postNodeRun": "node-1793272491713187942",
+  "performance": "artifacts/current-benchmark-comparison.json",
+  "readback": "artifacts/final-readback.json",
+  "noPushDeploymentAdoptionOrRetirement": true,
+  "CPUandRSSmeasured": false
+}

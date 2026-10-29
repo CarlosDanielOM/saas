@@ -1,0 +1,6 @@
+{
+  "legacyCommit": "77141415",
+  "legacyFile": "dimabot/src/utils/json_number.rs",
+  "legacyFileSha256": "002c39884ee1aa624cb200af77f8a6ddb694d31efd51b5ec318ebf9286845192",
+  "change": "Only seed expression swapped for diagnostic; production file unchanged by parent."
+}

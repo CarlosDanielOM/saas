@@ -1,0 +1,904 @@
+{
+  "schema": 1,
+  "provenance": {
+    "node": "v24.22.1",
+    "versions": {
+      "node": "24.22.1",
+      "acorn": "8.18.0",
+      "ada": "4.0.0",
+      "amaro": "1.1.11",
+      "ares": "1.34.9",
+      "brotli": "1.2.0",
+      "cldr": "48.0",
+      "icu": "78.3",
+      "llhttp": "9.4.3",
+      "merve": "1.2.2",
+      "modules": "137",
+      "napi": "10",
+      "nbytes": "0.1.4",
+      "ncrypto": "0.0.1",
+      "nghttp2": "1.70.0",
+      "nghttp3": "",
+      "ngtcp2": "",
+      "openssl": "3.5.9",
+      "simdjson": "4.6.11",
+      "simdutf": "6.4.0",
+      "sqlite": "3.53.4",
+      "tz": "2026e",
+      "undici": "7.30.1",
+      "unicode": "17.0",
+      "uv": "1.52.1",
+      "uvwasi": "0.0.23",
+      "v8": "13.6.233.17-node.58",
+      "zlib": "1.3.2.1-motley-285e94b",
+      "zstd": "1.5.7"
+    },
+    "sourceHashes": {
+      "src/server/services/tts/fish_tts.service.ts": "5de59066a2310b22f5b41f0610638233ee42f996872bc5ea7a77ffff5d7114af",
+      "src/server/services/tts/piper_tts.service.ts": "c603f39d7a54b33fe9fbd4183d21d411722b8554a5ae0065d015fb45a0362390",
+      "src/utils/tts/expressive_tts_tags.util.ts": "03523ebc5bb2f8c99b528e1c61d90126f655716945f100098c6a53b9f731699e",
+      "src/utils/tts/tts_deadline.util.ts": "cd2eddda7ba752a5716e0cdc68d7a32b5b666c1cbe5d7ae9801ef60b296a519a",
+      "src/utils/ai/openrouter/app_attribution.util.ts": "0073e0b48172fc7ccc449fb6c47e1bcd4ffe39549d6641d32b1d0718a6e01c0c",
+      "src/server/services/tts/tts_provider.interface.ts": "3981fd315a42c42aad3883dd819da2c174534bac037df1b0aa187c5e0d8bd2ad",
+      "tests/fixtures/fish_tts_reference.mjs": "212cb2655fc53c578d1884d5e16aeca3dd22e5c126e13a54e19897116f06d3d3",
+      "tests/fixtures/tts_source_resolver.cjs": "a2687c78a9855621a717c3a8cad887b0b0c6efea1157f4f41e0a49e2e99ff13d",
+      "package.json": "cc4939f6416a91d4bfaa5bcdd3d448d2f74103a88bb269e0a8e393615cf32cef",
+      "package-lock.json": "abdf5aa71a8272423ebb9358d7aaa87edd7e65f6605c325fe231a4bcef70eeb7",
+      "node_modules/fish-audio/package.json": "bcf6bee58b644657bfe800f0fe1422603fc624ce73cea807a1fec47b030bf3a7",
+      "node_modules/@msgpack/msgpack/package.json": "2c481eb6a64d6ab3e6c7b1cbd73fbb8d3461405699e193665b20e607f503b071",
+      "node_modules/typescript/package.json": "822ef7ca6452205657b6288b066481ecf508bfbf43455d715cf7d3ec457561e6"
+    },
+    "sourcePaths": {
+      "src/server/services/tts/fish_tts.service.ts": "src/server/services/tts/fish_tts.service.ts",
+      "src/server/services/tts/piper_tts.service.ts": "src/server/services/tts/piper_tts.service.ts",
+      "src/utils/tts/expressive_tts_tags.util.ts": "../archives/dimabot-typescript/2026-10-28/src/utils/tts/expressive_tts_tags.util.ts",
+      "src/utils/tts/tts_deadline.util.ts": "src/utils/tts/tts_deadline.util.ts",
+      "src/utils/ai/openrouter/app_attribution.util.ts": "src/utils/ai/openrouter/app_attribution.util.ts",
+      "src/server/services/tts/tts_provider.interface.ts": "src/server/services/tts/tts_provider.interface.ts"
+    },
+    "injection": "same-realm transpiled TS; Piper public root only; controlled fetch; fixture-only keys"
+  },
+  "cases": [
+    {
+      "name": "primary",
+      "input": {
+        "channelID": "channel",
+        "speechID": "primary",
+        "outputPath": "<fixture-dir>/audio-private/primary.mp3",
+        "privateOutput": true,
+        "textUnits": [
+          72,
+          101,
+          108,
+          108,
+          111,
+          32,
+          91,
+          104,
+          97,
+          112,
+          112,
+          121,
+          93,
+          32,
+          55357,
+          56832
+        ],
+        "voiceUnits": [
+          32,
+          32,
+          118,
+          111,
+          105,
+          99,
+          101,
+          45,
+          105,
+          100,
+          32,
+          32
+        ]
+      },
+      "configuration": {
+        "openrouterEnabled": true,
+        "fishEnabled": true,
+        "publicApiUrl": "https://fixture.invalid/base///"
+      },
+      "responses": [
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "audio/mpeg"
+          },
+          "bodyBase64": "AQID",
+          "bodyHex": "010203"
+        }
+      ],
+      "requests": [
+        {
+          "url": "https://openrouter.ai/api/v1/audio/speech",
+          "method": "POST",
+          "headers": {
+            "authorization": "Bearer fixture-openrouter-key",
+            "content-type": "application/json",
+            "http-referer": "https://domdimabot.com",
+            "x-openrouter-categories": "general-chat, roleplay",
+            "x-openrouter-description": "DomDimaBot is a Twitch chat bot that helps make streams more engaging and fun.",
+            "x-openrouter-title": "DomDimaBot"
+          },
+          "body": "{\"model\":\"fish-audio/drama-3\",\"input\":\"Hello [happy] 😀\",\"voice\":\"voice-id\",\"response_format\":\"mp3\",\"user\":\"channel\"}",
+          "bodyEncoding": "utf8"
+        }
+      ],
+      "outcome": {
+        "error": false,
+        "message": "Speech synthesized with Fish Audio (fish-audio/drama-3)",
+        "outputPath": "<fixture-dir>/audio-private/primary.mp3",
+        "mimeType": "audio/mpeg"
+      },
+      "files": [
+        {
+          "path": "<fixture-dir>/audio-private/primary.mp3",
+          "base64": "AQID",
+          "hex": "010203"
+        }
+      ]
+    },
+    {
+      "name": "fallback-cues",
+      "input": {
+        "channelID": "channel",
+        "speechID": "fallback-cues",
+        "outputPath": "<fixture-dir>/audio-private/fallback-cues.mp3",
+        "privateOutput": true,
+        "textUnits": [
+          91,
+          104,
+          97,
+          112,
+          112,
+          121,
+          93,
+          32,
+          104,
+          101,
+          108,
+          108,
+          111,
+          32,
+          91,
+          119,
+          104,
+          105,
+          115,
+          112,
+          101,
+          114,
+          93,
+          32,
+          91,
+          119,
+          104,
+          105,
+          115,
+          112,
+          101,
+          114,
+          93,
+          32,
+          32,
+          91,
+          115,
+          97,
+          100,
+          93,
+          32,
+          55357,
+          56832,
+          55296
+        ],
+        "voiceUnits": [
+          32,
+          32,
+          118,
+          111,
+          105,
+          99,
+          101,
+          45,
+          105,
+          100,
+          32,
+          32
+        ]
+      },
+      "configuration": {
+        "openrouterEnabled": true,
+        "fishEnabled": true,
+        "publicApiUrl": "https://fixture.invalid/base///"
+      },
+      "responses": [
+        {
+          "status": 400,
+          "headers": {
+            "content-type": "text/plain"
+          },
+          "bodyBase64": "cHJpdmF0ZSB1cHN0cmVhbSBkZXRhaWxz",
+          "bodyHex": "7072697661746520757073747265616d2064657461696c73"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "audio/mpeg"
+          },
+          "bodyBase64": "AQID",
+          "bodyHex": "010203"
+        }
+      ],
+      "requests": [
+        {
+          "url": "https://openrouter.ai/api/v1/audio/speech",
+          "method": "POST",
+          "headers": {
+            "authorization": "Bearer fixture-openrouter-key",
+            "content-type": "application/json",
+            "http-referer": "https://domdimabot.com",
+            "x-openrouter-categories": "general-chat, roleplay",
+            "x-openrouter-description": "DomDimaBot is a Twitch chat bot that helps make streams more engaging and fun.",
+            "x-openrouter-title": "DomDimaBot"
+          },
+          "body": "{\"model\":\"fish-audio/drama-3\",\"input\":\"[happy] hello [whisper] [whisper]  [sad] 😀\\ud800\",\"voice\":\"voice-id\",\"response_format\":\"mp3\",\"user\":\"channel\"}",
+          "bodyEncoding": "utf8"
+        },
+        {
+          "url": "https://api.fish.audio/v1/tts",
+          "method": "POST",
+          "headers": {
+            "authorization": "Bearer fixture-fish-key",
+            "content-type": "application/msgpack",
+            "model": "s2.1-pro",
+            "user-agent": "fish-audio"
+          },
+          "body": "g6R0ZXh02T5baGFwcHldIFtoYXBweV0gaGVsbG8gW3doaXNwZXJdIFt3aGlzcGVyXSAgW3NhZF0gW3NhZF0g8J+YgO+/vaxyZWZlcmVuY2VfaWSodm9pY2UtaWSmZm9ybWF0o21wMw==",
+          "bodyEncoding": "base64"
+        }
+      ],
+      "outcome": {
+        "error": false,
+        "message": "Speech synthesized with Fish Audio (s2.1-pro)",
+        "outputPath": "<fixture-dir>/audio-private/fallback-cues.mp3",
+        "mimeType": "audio/mpeg"
+      },
+      "files": [
+        {
+          "path": "<fixture-dir>/audio-private/fallback-cues.mp3",
+          "base64": "AQID",
+          "hex": "010203"
+        }
+      ]
+    },
+    {
+      "name": "single-attempt",
+      "input": {
+        "channelID": "channel",
+        "speechID": "single-attempt",
+        "outputPath": "<fixture-dir>/audio-private/single-attempt.mp3",
+        "privateOutput": true,
+        "singleAttempt": true,
+        "textUnits": [
+          104,
+          105
+        ],
+        "voiceUnits": [
+          32,
+          32,
+          118,
+          111,
+          105,
+          99,
+          101,
+          45,
+          105,
+          100,
+          32,
+          32
+        ]
+      },
+      "configuration": {
+        "openrouterEnabled": true,
+        "fishEnabled": true,
+        "publicApiUrl": "https://fixture.invalid/base///"
+      },
+      "responses": [
+        {
+          "status": 400,
+          "headers": {
+            "content-type": "text/plain"
+          },
+          "bodyBase64": "cHJpdmF0ZSB1cHN0cmVhbSBkZXRhaWxz",
+          "bodyHex": "7072697661746520757073747265616d2064657461696c73"
+        }
+      ],
+      "requests": [
+        {
+          "url": "https://openrouter.ai/api/v1/audio/speech",
+          "method": "POST",
+          "headers": {
+            "authorization": "Bearer fixture-openrouter-key",
+            "content-type": "application/json",
+            "http-referer": "https://domdimabot.com",
+            "x-openrouter-categories": "general-chat, roleplay",
+            "x-openrouter-description": "DomDimaBot is a Twitch chat bot that helps make streams more engaging and fun.",
+            "x-openrouter-title": "DomDimaBot"
+          },
+          "body": "{\"model\":\"fish-audio/drama-3\",\"input\":\"hi\",\"voice\":\"voice-id\",\"response_format\":\"mp3\",\"user\":\"channel\"}",
+          "bodyEncoding": "utf8"
+        }
+      ],
+      "outcome": {
+        "error": true,
+        "message": "Fish Audio TTS failed on all enabled backends: fish-audio/drama-3: OpenRouter Fish synthesis failed (HTTP 400)"
+      },
+      "files": []
+    },
+    {
+      "name": "missing-openrouter",
+      "input": {
+        "channelID": "channel",
+        "speechID": "missing-openrouter",
+        "outputPath": "<fixture-dir>/audio-private/missing-openrouter.mp3",
+        "privateOutput": true,
+        "textUnits": [
+          104,
+          105
+        ],
+        "voiceUnits": [
+          32,
+          32,
+          118,
+          111,
+          105,
+          99,
+          101,
+          45,
+          105,
+          100,
+          32,
+          32
+        ]
+      },
+      "configuration": {
+        "openrouterEnabled": false,
+        "fishEnabled": true,
+        "publicApiUrl": "https://fixture.invalid/base///"
+      },
+      "responses": [
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "audio/mpeg"
+          },
+          "bodyBase64": "AQID",
+          "bodyHex": "010203"
+        }
+      ],
+      "requests": [
+        {
+          "url": "https://api.fish.audio/v1/tts",
+          "method": "POST",
+          "headers": {
+            "authorization": "Bearer fixture-fish-key",
+            "content-type": "application/msgpack",
+            "model": "s2.1-pro",
+            "user-agent": "fish-audio"
+          },
+          "body": "g6R0ZXh0omhprHJlZmVyZW5jZV9pZKh2b2ljZS1pZKZmb3JtYXSjbXAz",
+          "bodyEncoding": "base64"
+        }
+      ],
+      "outcome": {
+        "error": false,
+        "message": "Speech synthesized with Fish Audio (s2.1-pro)",
+        "outputPath": "<fixture-dir>/audio-private/missing-openrouter.mp3",
+        "mimeType": "audio/mpeg"
+      },
+      "files": [
+        {
+          "path": "<fixture-dir>/audio-private/missing-openrouter.mp3",
+          "base64": "AQID",
+          "hex": "010203"
+        }
+      ]
+    },
+    {
+      "name": "missing-both",
+      "input": {
+        "channelID": "channel",
+        "speechID": "missing-both",
+        "outputPath": "<fixture-dir>/audio-private/missing-both.mp3",
+        "privateOutput": true,
+        "textUnits": [
+          104,
+          105
+        ],
+        "voiceUnits": [
+          32,
+          32,
+          118,
+          111,
+          105,
+          99,
+          101,
+          45,
+          105,
+          100,
+          32,
+          32
+        ]
+      },
+      "configuration": {
+        "openrouterEnabled": false,
+        "fishEnabled": false,
+        "publicApiUrl": "https://fixture.invalid/base///"
+      },
+      "responses": [],
+      "requests": [],
+      "outcome": {
+        "error": true,
+        "message": "Fish Audio TTS failed on all enabled backends: fish-audio/drama-3: OpenRouter API key is not configured; s2.1-pro: Fish Audio API key is not configured"
+      },
+      "files": []
+    },
+    {
+      "name": "primary-mime",
+      "input": {
+        "channelID": "channel",
+        "speechID": "primary-mime",
+        "outputPath": "<fixture-dir>/audio-private/primary-mime.mp3",
+        "privateOutput": true,
+        "singleAttempt": true,
+        "textUnits": [
+          104,
+          105
+        ],
+        "voiceUnits": [
+          32,
+          32,
+          118,
+          111,
+          105,
+          99,
+          101,
+          45,
+          105,
+          100,
+          32,
+          32
+        ]
+      },
+      "configuration": {
+        "openrouterEnabled": true,
+        "fishEnabled": true,
+        "publicApiUrl": "https://fixture.invalid/base///"
+      },
+      "responses": [
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "text/plain"
+          },
+          "bodyBase64": "eA==",
+          "bodyHex": "78"
+        }
+      ],
+      "requests": [
+        {
+          "url": "https://openrouter.ai/api/v1/audio/speech",
+          "method": "POST",
+          "headers": {
+            "authorization": "Bearer fixture-openrouter-key",
+            "content-type": "application/json",
+            "http-referer": "https://domdimabot.com",
+            "x-openrouter-categories": "general-chat, roleplay",
+            "x-openrouter-description": "DomDimaBot is a Twitch chat bot that helps make streams more engaging and fun.",
+            "x-openrouter-title": "DomDimaBot"
+          },
+          "body": "{\"model\":\"fish-audio/drama-3\",\"input\":\"hi\",\"voice\":\"voice-id\",\"response_format\":\"mp3\",\"user\":\"channel\"}",
+          "bodyEncoding": "utf8"
+        }
+      ],
+      "outcome": {
+        "error": true,
+        "message": "Fish Audio TTS failed on all enabled backends: fish-audio/drama-3: OpenRouter Fish returned an unexpected audio format"
+      },
+      "files": []
+    },
+    {
+      "name": "primary-empty",
+      "input": {
+        "channelID": "channel",
+        "speechID": "primary-empty",
+        "outputPath": "<fixture-dir>/audio-private/primary-empty.mp3",
+        "privateOutput": true,
+        "singleAttempt": true,
+        "textUnits": [
+          104,
+          105
+        ],
+        "voiceUnits": [
+          32,
+          32,
+          118,
+          111,
+          105,
+          99,
+          101,
+          45,
+          105,
+          100,
+          32,
+          32
+        ]
+      },
+      "configuration": {
+        "openrouterEnabled": true,
+        "fishEnabled": true,
+        "publicApiUrl": "https://fixture.invalid/base///"
+      },
+      "responses": [
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "audio/mpeg"
+          },
+          "bodyBase64": "",
+          "bodyHex": ""
+        }
+      ],
+      "requests": [
+        {
+          "url": "https://openrouter.ai/api/v1/audio/speech",
+          "method": "POST",
+          "headers": {
+            "authorization": "Bearer fixture-openrouter-key",
+            "content-type": "application/json",
+            "http-referer": "https://domdimabot.com",
+            "x-openrouter-categories": "general-chat, roleplay",
+            "x-openrouter-description": "DomDimaBot is a Twitch chat bot that helps make streams more engaging and fun.",
+            "x-openrouter-title": "DomDimaBot"
+          },
+          "body": "{\"model\":\"fish-audio/drama-3\",\"input\":\"hi\",\"voice\":\"voice-id\",\"response_format\":\"mp3\",\"user\":\"channel\"}",
+          "bodyEncoding": "utf8"
+        }
+      ],
+      "outcome": {
+        "error": true,
+        "message": "Fish Audio TTS failed on all enabled backends: fish-audio/drama-3: Fish Audio TTS returned empty audio from 'fish-audio/drama-3'"
+      },
+      "files": []
+    },
+    {
+      "name": "primary-null",
+      "input": {
+        "channelID": "channel",
+        "speechID": "primary-null",
+        "outputPath": "<fixture-dir>/audio-private/primary-null.mp3",
+        "privateOutput": true,
+        "singleAttempt": true,
+        "textUnits": [
+          104,
+          105
+        ],
+        "voiceUnits": [
+          32,
+          32,
+          118,
+          111,
+          105,
+          99,
+          101,
+          45,
+          105,
+          100,
+          32,
+          32
+        ]
+      },
+      "configuration": {
+        "openrouterEnabled": true,
+        "fishEnabled": true,
+        "publicApiUrl": "https://fixture.invalid/base///"
+      },
+      "responses": [
+        {
+          "status": 204,
+          "headers": {
+            "content-type": "audio/mpeg"
+          },
+          "bodyBase64": null,
+          "bodyHex": null
+        }
+      ],
+      "requests": [
+        {
+          "url": "https://openrouter.ai/api/v1/audio/speech",
+          "method": "POST",
+          "headers": {
+            "authorization": "Bearer fixture-openrouter-key",
+            "content-type": "application/json",
+            "http-referer": "https://domdimabot.com",
+            "x-openrouter-categories": "general-chat, roleplay",
+            "x-openrouter-description": "DomDimaBot is a Twitch chat bot that helps make streams more engaging and fun.",
+            "x-openrouter-title": "DomDimaBot"
+          },
+          "body": "{\"model\":\"fish-audio/drama-3\",\"input\":\"hi\",\"voice\":\"voice-id\",\"response_format\":\"mp3\",\"user\":\"channel\"}",
+          "bodyEncoding": "utf8"
+        }
+      ],
+      "outcome": {
+        "error": true,
+        "message": "Fish Audio TTS failed on all enabled backends: fish-audio/drama-3: OpenRouter Fish returned an unexpected audio format"
+      },
+      "files": []
+    },
+    {
+      "name": "fallback-error-json",
+      "input": {
+        "channelID": "channel",
+        "speechID": "fallback-error-json",
+        "outputPath": "<fixture-dir>/audio-private/fallback-error-json.mp3",
+        "privateOutput": true,
+        "textUnits": [
+          104,
+          105
+        ],
+        "voiceUnits": [
+          32,
+          32,
+          118,
+          111,
+          105,
+          99,
+          101,
+          45,
+          105,
+          100,
+          32,
+          32
+        ]
+      },
+      "configuration": {
+        "openrouterEnabled": true,
+        "fishEnabled": true,
+        "publicApiUrl": "https://fixture.invalid/base///"
+      },
+      "responses": [
+        {
+          "status": 400,
+          "headers": {
+            "content-type": "text/plain"
+          },
+          "bodyBase64": "cHJpdmF0ZSB1cHN0cmVhbSBkZXRhaWxz",
+          "bodyHex": "7072697661746520757073747265616d2064657461696c73"
+        },
+        {
+          "status": 400,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "bodyBase64": "eyJkZXRhaWwiOiJiYWQifQ==",
+          "bodyHex": "7b2264657461696c223a22626164227d"
+        }
+      ],
+      "requests": [
+        {
+          "url": "https://openrouter.ai/api/v1/audio/speech",
+          "method": "POST",
+          "headers": {
+            "authorization": "Bearer fixture-openrouter-key",
+            "content-type": "application/json",
+            "http-referer": "https://domdimabot.com",
+            "x-openrouter-categories": "general-chat, roleplay",
+            "x-openrouter-description": "DomDimaBot is a Twitch chat bot that helps make streams more engaging and fun.",
+            "x-openrouter-title": "DomDimaBot"
+          },
+          "body": "{\"model\":\"fish-audio/drama-3\",\"input\":\"hi\",\"voice\":\"voice-id\",\"response_format\":\"mp3\",\"user\":\"channel\"}",
+          "bodyEncoding": "utf8"
+        },
+        {
+          "url": "https://api.fish.audio/v1/tts",
+          "method": "POST",
+          "headers": {
+            "authorization": "Bearer fixture-fish-key",
+            "content-type": "application/msgpack",
+            "model": "s2.1-pro",
+            "user-agent": "fish-audio"
+          },
+          "body": "g6R0ZXh0omhprHJlZmVyZW5jZV9pZKh2b2ljZS1pZKZmb3JtYXSjbXAz",
+          "bodyEncoding": "base64"
+        }
+      ],
+      "outcome": {
+        "error": true,
+        "message": "Fish Audio TTS failed on all enabled backends: fish-audio/drama-3: OpenRouter Fish synthesis failed (HTTP 400); s2.1-pro: Status code: 400\nBody: {\n  \"detail\": \"bad\"\n}"
+      },
+      "files": []
+    },
+    {
+      "name": "byte-limit",
+      "input": {
+        "channelID": "channel",
+        "speechID": "byte-limit",
+        "outputPath": "<fixture-dir>/audio-private/byte-limit.mp3",
+        "privateOutput": true,
+        "singleAttempt": true,
+        "maxAudioBytes": 2,
+        "textUnits": [
+          104,
+          105
+        ],
+        "voiceUnits": [
+          32,
+          32,
+          118,
+          111,
+          105,
+          99,
+          101,
+          45,
+          105,
+          100,
+          32,
+          32
+        ]
+      },
+      "configuration": {
+        "openrouterEnabled": true,
+        "fishEnabled": true,
+        "publicApiUrl": "https://fixture.invalid/base///"
+      },
+      "responses": [
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "audio/mpeg"
+          },
+          "bodyBase64": "AQID",
+          "bodyHex": "010203"
+        }
+      ],
+      "requests": [
+        {
+          "url": "https://openrouter.ai/api/v1/audio/speech",
+          "method": "POST",
+          "headers": {
+            "authorization": "Bearer fixture-openrouter-key",
+            "content-type": "application/json",
+            "http-referer": "https://domdimabot.com",
+            "x-openrouter-categories": "general-chat, roleplay",
+            "x-openrouter-description": "DomDimaBot is a Twitch chat bot that helps make streams more engaging and fun.",
+            "x-openrouter-title": "DomDimaBot"
+          },
+          "body": "{\"model\":\"fish-audio/drama-3\",\"input\":\"hi\",\"voice\":\"voice-id\",\"response_format\":\"mp3\",\"user\":\"channel\"}",
+          "bodyEncoding": "utf8"
+        }
+      ],
+      "outcome": {
+        "error": true,
+        "message": "Fish Audio TTS failed on all enabled backends: fish-audio/drama-3: TTS audio exceeds byte limit"
+      },
+      "files": []
+    },
+    {
+      "name": "public-path",
+      "input": {
+        "channelID": "a b",
+        "speechID": "x?#",
+        "outputPath": "<fixture-dir>/audio-private/public-path.mp3",
+        "privateOutput": false,
+        "textUnits": [
+          104,
+          105
+        ],
+        "voiceUnits": [
+          32,
+          32,
+          118,
+          111,
+          105,
+          99,
+          101,
+          45,
+          105,
+          100,
+          32,
+          32
+        ]
+      },
+      "configuration": {
+        "openrouterEnabled": true,
+        "fishEnabled": true,
+        "publicApiUrl": "https://fixture.invalid/base///"
+      },
+      "responses": [
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "audio/mpeg"
+          },
+          "bodyBase64": "AQID",
+          "bodyHex": "010203"
+        }
+      ],
+      "requests": [
+        {
+          "url": "https://openrouter.ai/api/v1/audio/speech",
+          "method": "POST",
+          "headers": {
+            "authorization": "Bearer fixture-openrouter-key",
+            "content-type": "application/json",
+            "http-referer": "https://domdimabot.com",
+            "x-openrouter-categories": "general-chat, roleplay",
+            "x-openrouter-description": "DomDimaBot is a Twitch chat bot that helps make streams more engaging and fun.",
+            "x-openrouter-title": "DomDimaBot"
+          },
+          "body": "{\"model\":\"fish-audio/drama-3\",\"input\":\"hi\",\"voice\":\"voice-id\",\"response_format\":\"mp3\",\"user\":\"a b\"}",
+          "bodyEncoding": "utf8"
+        }
+      ],
+      "outcome": {
+        "error": false,
+        "message": "Speech synthesized with Fish Audio (fish-audio/drama-3)",
+        "outputPath": "<fixture-dir>/audio-public/a b/x?#.mp3",
+        "publicPath": "https://fixture.invalid/base/speech/audio/a%20b/x%3F%23",
+        "mimeType": "audio/mpeg"
+      },
+      "files": [
+        {
+          "path": "<fixture-dir>/audio-public/a b/x?#.mp3",
+          "base64": "AQID",
+          "hex": "010203"
+        }
+      ]
+    }
+  ],
+  "publicPathCases": [
+    {
+      "channelUnits": [
+        97,
+        32,
+        98
+      ],
+      "speechUnits": [
+        120,
+        63,
+        35
+      ],
+      "result": "https://fixture.invalid/base/speech/audio/a%20b/x%3F%23"
+    },
+    {
+      "channelUnits": [
+        55357,
+        56832
+      ],
+      "speechUnits": [
+        97,
+        47,
+        98
+      ],
+      "result": "https://fixture.invalid/base/speech/audio/%F0%9F%98%80/a%2Fb"
+    },
+    {
+      "channelUnits": [
+        55296
+      ],
+      "speechUnits": [
+        120
+      ],
+      "error": {
+        "name": "URIError",
+        "message": "URI malformed"
+      }
+    }
+  ]
+}

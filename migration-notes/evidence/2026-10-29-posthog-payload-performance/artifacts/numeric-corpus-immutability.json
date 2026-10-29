@@ -1,0 +1,20 @@
+{
+  "firstFixtureSha256": "4637825d75b477d4906d8f39caae0b33b169eb12969bd5893793ef3d383abeeb",
+  "correctedFixtureSha256": "b41fef5d032142349d440450c36edffb9b485ae06eb23c2cb9078d91eb167eff",
+  "caseCount": 35464,
+  "everyRawBitGroupStringAndJsonWireUnchanged": true,
+  "canonicalCaseArraySha256": "c219573792bcff1928f10944efc3ba271b7ec5af50dbeea845c3dd2226402958",
+  "changedSourcePaths": [
+    "src/utils/json_number.rs",
+    "tests/json_number_parity.rs"
+  ],
+  "unchangedMetadata": [
+    "count",
+    "groupCounts",
+    "generator",
+    "oracle",
+    "node",
+    "typescript",
+    "reference"
+  ]
+}

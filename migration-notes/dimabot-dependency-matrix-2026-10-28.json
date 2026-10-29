@@ -58509,7 +58509,7 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "reviewed-bounded-partial-request-time-receipt-producer-and-queued-receipt-parser; Mongo persistence/full ledger model remain open",
+      "featureReview": "reviewed-bounded-partial-request-time-receipt-producer-and-queued-receipt-parser; related AI-usage payload serialization follow-up verified; Mongo persistence/full ledger model remain open",
       "localRustEvidence": [
         "dimabot/src/utils/ai_usage_producer.rs",
         "dimabot/src/utils/ai_usage.rs",
@@ -58538,14 +58538,19 @@
         "migration-notes/evidence/2026-10-29-posthog-receipt/verification-summary.json",
         "migration-notes/evidence/2026-10-29-posthog-receipt/artifacts/parser-oracle-equivalence.json",
         "migration-notes/evidence/2026-10-29-posthog-receipt/artifacts/parser-source-reuse-audit.json",
-        "Initial parser baseline commit 77141415e72810cf7df5d64b97a53ae0dee1b8af; source tree SHA-256 0551e2ebdbf792b7989a1f32bac37a670db66b7409b390808ad838b8ecfbf42c."
+        "Initial parser baseline commit 77141415e72810cf7df5d64b97a53ae0dee1b8af; source tree SHA-256 0551e2ebdbf792b7989a1f32bac37a670db66b7409b390808ad838b8ecfbf42c.",
+        "migration-notes/evidence/2026-10-29-posthog-payload-performance/README.md",
+        "migration-notes/evidence/2026-10-29-posthog-payload-performance/verification-summary.json",
+        "migration-notes/evidence/2026-10-29-posthog-payload-performance/source-binding.json",
+        "migration-notes/evidence/2026-10-29-posthog-payload-performance/artifacts/current-benchmark-comparison.json"
       ],
       "behaviorDifferencesOrAcceptedChanges": [
         "Rust QueuedAiUsageReceipt is a typed lossless plain-data builder value, not full parity for the TypeScript interface extending AiUsageTransaction or for the parser/persistence consumer contract.",
         "Escaped lone UTF-16 surrogates remain lossless in the native producer wire, while the existing native ai_usage_receipts worker consumer parses with serde_json::Value and rejects these escaped lone surrogates.",
         "One RPUSH is issued without application retry; after disconnect/cancellation the append outcome may be uncertain.",
         "parseQueuedAiUsageReceipt now has a partial native mapping to parse_queued_ai_usage_receipt, its typed normalized 18-field receipt DTO, and a concrete receipt BSON projection helper. This does not implement persistAiUsageReceipt or the complete Mongoose model, middleware, indexes, or Mongo persistence path.",
-        "The new parser preserves lone UTF-16 units in its DTO and replaces them with U+FFFD only at the concrete BSON UTF-8 boundary, matching Node BSON behavior; the existing deployed native worker still uses its old serde_json::Value parser and rejects escaped lone surrogates. The new parser is not adopted."
+        "The new parser preserves lone UTF-16 units in its DTO and replaces them with U+FFFD only at the concrete BSON UTF-8 boundary, matching Node BSON behavior; the existing deployed native worker still uses its old serde_json::Value parser and rejects escaped lone surrogates. The new parser is not adopted.",
+        "The related AI-usage PostHog payload pool improved from the initial Rust median 10.3777 to 4.4275 microseconds/op, below the retained TypeScript median 5.5308, in the verified builders/ordered-JSON/UTF-8-checksum benchmark. This is payload serialization evidence only; it does not verify or complete the receipt producer/parser, Mongo persistence, or full ledger behavior."
       ],
       "callers": {
         "sourceEvidence": [
@@ -58558,7 +58563,8 @@
         "sourceEvidence": [
           "Pinned Node 24.22.1 / V8 13.6.233.17-node.58 / TypeScript 5.9.3 oracle: 338 receipts, 20 retention cases, and 3,325 source assertions.",
           "The final source-only optimization regenerated source parity; all 338 receipt, 20 retention, and 3,325 assertion outputs matched. The five benchmark workloads each include seven trials and use entryKind=usage.",
-          "Pinned receipt source proof: 1,362 parser cases per zone across five time zones; the final UTC source/BSON replay and source checks passed at the initial baseline. One parser test late-init style rebind changed the test hash; 31 of 32 production-bound source inputs remained unchanged. See migration-notes/evidence/2026-10-29-posthog-receipt/verification-summary.json and artifacts/parser-oracle-equivalence.json."
+          "Pinned receipt source proof: 1,362 parser cases per zone across five time zones; the final UTC source/BSON replay and source checks passed at the initial baseline. One parser test late-init style rebind changed the test hash; 31 of 32 production-bound source inputs remained unchanged. See migration-notes/evidence/2026-10-29-posthog-receipt/verification-summary.json and artifacts/parser-oracle-equivalence.json.",
+          "Related verified payload follow-up is bound to source tree SHA-256 d7032bf6e592fba5ab32915a47d6877ad7c546ecb9e345d0fbacdd3d9bce2056 (commit beda3aee1ea2d7a2d42b4b666c6dcb2c3c2ef403); evidence and limits are recorded in migration-notes/evidence/2026-10-29-posthog-payload-performance/."
         ],
         "rustBehaviorEvidence": [
           "Baseline source 77fc976da064a87c02ec1fce93cd0e4820dfe53a7eac9feb5fab453c482d80f7 passed compiler-fixtures-1793256166045626940 and post-Node node-1793256476785298801; its 178 test executions overlap dependency tests and include a subprocess-only no-op helper, not 178 unique cases. This remains the full proof for unchanged credit/TTS behavior.",
@@ -58567,9 +58573,10 @@
           "Final TS/Rust medians in microseconds/op: ASCII 5.488254673/4.729704720 (ranges overlap), Unicode 6.597315228/4.798382866, nullish 5.272826218/4.931949913 (small), surrogate 6.512388226/5.195385979, large 37.699973267/8.866506592. All seven checksums matched each workload. Nullish improved 14.105% versus Rust baseline; large changed +0.375% with overlapping ranges/no material change. See the source-bound benchmark reports.",
           "Three failed compiler attempts were retained (private test accessor, fixture EOF/socket clone, Clippy seed type annotation); subsequent source-bound runs passed. These were harness corrections, not application defects.",
           "The optimized-source compiler/benchmark applies only to the producer module. Credit feature evidence remains bound to 77fc976da064a87c02ec1fce93cd0e4820dfe53a7eac9feb5fab453c482d80f7; final producer binding is 02ab55a9d484c01af695793b55d6313280f30080c76db5ad9b5a909b440ac78f.",
-          "Initial capped compiler run compiler-1793264871810743273 passed five ordinary parser tests, five borrowed-view tests, and one UTC producer/BSON parser replay; these execution counts overlap dependencies and are not unique cases. The separate five-zone proof compiler-1793263458419267176 passed all 1,362 cases in each zone before a later Clippy failure; final UTC replay passed on the final test-only source rebind."
+          "Initial capped compiler run compiler-1793264871810743273 passed five ordinary parser tests, five borrowed-view tests, and one UTC producer/BSON parser replay; these execution counts overlap dependencies and are not unique cases. The separate five-zone proof compiler-1793263458419267176 passed all 1,362 cases in each zone before a later Clippy failure; final UTC replay passed on the final test-only source rebind.",
+          "Related AI-usage payload pool in the verified PostHog payload follow-up: retained TypeScript median 5.5308, initial Rust 10.3777, current Rust 4.4275 microseconds/op (seven trials; prepared builders + ordered JSON + UTF-8 checksum). This does not extend the producer/parser oracle or persistence evidence. See migration-notes/evidence/2026-10-29-posthog-payload-performance/artifacts/current-benchmark-comparison.json; Mongo persistence, indexes, middleware, reporting, backfill and caller adoption remain open."
         ],
-        "status": "Partial local receipt builder/queue producer and queued-receipt parser/BSON projection behavior verified at distinct source bindings; complete Mongo persistence, existing worker adoption, and full ledger dependencies remain open."
+        "status": "Partial local receipt builder/queue producer and queued-receipt parser/BSON projection behavior verified at distinct source bindings; a related AI-usage payload serialization follow-up is verified but does not establish ledger or persistence behavior. Complete Mongo persistence, existing worker adoption, and full ledger dependencies remain open."
       },
       "exports": [
         {
@@ -91822,7 +91829,7 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "reviewed-bounded-partial-six-export-posthog-wrapper-and-native-adapters; explicit SDK transport/lifecycle differences and broader application adapters remain open",
+      "featureReview": "reviewed-bounded-partial-six-export-posthog-wrapper-and-native-adapters; verified synthetic payload performance follow-up; explicit SDK transport/lifecycle differences and broader application adapters remain open",
       "localRustEvidence": [
         "dimabot/src/utils/posthog_tracking.rs",
         "dimabot/src/utils/posthog_lossless.rs",
@@ -91836,12 +91843,16 @@
         "migration-notes/posthog-receipt-2026-10-29.md",
         "migration-notes/evidence/2026-10-29-posthog-receipt/verification-summary.json",
         "migration-notes/evidence/2026-10-29-posthog-receipt/source-binding.json",
-        "Initial baseline commit 77141415e72810cf7df5d64b97a53ae0dee1b8af; source tree SHA-256 0551e2ebdbf792b7989a1f32bac37a670db66b7409b390808ad838b8ecfbf42c."
+        "Initial baseline commit 77141415e72810cf7df5d64b97a53ae0dee1b8af; source tree SHA-256 0551e2ebdbf792b7989a1f32bac37a670db66b7409b390808ad838b8ecfbf42c.",
+        "migration-notes/evidence/2026-10-29-posthog-payload-performance/README.md",
+        "migration-notes/evidence/2026-10-29-posthog-payload-performance/verification-summary.json",
+        "migration-notes/evidence/2026-10-29-posthog-payload-performance/source-binding.json",
+        "migration-notes/evidence/2026-10-29-posthog-payload-performance/artifacts/current-benchmark-comparison.json"
       ],
       "behaviorDifferencesOrAcceptedChanges": [
         "All six exports have local Rust payload/lifecycle counterparts and concrete SDK/lossless adapters. Verification covers 1,042 source wrapper records, 20 native HTTP transport tests and 18 installed-SDK lifecycle scenarios; see the dated migration note and evidence summary.",
         "Native lossless transport has explicit event preflight (256 KiB), depth (64), response-body (64 KiB) and queued-byte (16 MiB) bounds; redirects/proxies are disabled and shutdown is permanent. These behavior differences, UUIDv4 versus SDK UUIDv7 event metadata, and differing SDK/library metadata prevent a strict source-equivalence claim.",
-        "Initial payload benchmark retains four small-payload regressions (command, TTS, AI usage, AI operation); the two measured faster workloads are TTS Unicode and large TTS. Later optimization work is unverified and has no reported result."
+        "The initial payload benchmark and its four small-payload regressions (command, TTS, AI usage, AI operation) remain preserved as baseline history. A verified follow-up measured all six current Rust synthetic payload medians 9.5%–86.0% below the retained TypeScript medians, closing those four measured regressions in this bounded comparison; the command sample ranges overlap, so no statistical-significance claim is made. The two Unicode/large TTS pools also remain faster by median. Timing covers prepared payload builders, ordered JSON and UTF-8 checksum only; it is not an HTTP, queue, application or production-latency result."
       ],
       "callers": {
         "sourceEvidence": [
@@ -91852,18 +91863,20 @@
           "trackAiOperation: dimabot/src/handlers/tts_queue.handler.ts:249,442,527,583.",
           "shutdownPosthog has no application caller in the reviewed source."
         ],
-        "runtimeStatus": "Local six-export implementation and concrete SDK/lossless adapters are verified at the initial baseline, but no application caller has adopted them. The wrapper consumes native AiUsageContext and AI_USAGE_SCHEMA_VERSION; broader Polar/billing/ledger application adapters remain open. Adoption and deployment are tracked separately from dependency completeness; no source retirement or deployment occurred."
+        "runtimeStatus": "Local six-export implementation and concrete SDK/lossless adapters are verified, and a source-bound synthetic payload follow-up closes the four initial measured small-payload regressions in that bounded benchmark. No application caller has adopted the native wrapper. The wrapper consumes native AiUsageContext and AI_USAGE_SCHEMA_VERSION; broader Polar/billing/ledger application adapters remain open. Adoption and deployment are tracked separately from dependency completeness; no source retirement or deployment occurred."
       },
       "testEvidence": {
         "sourceEvidence": [
           "Actual source declaration imports PostHog at runtime from posthog-node and imports AI_USAGE_SCHEMA_VERSION as a runtime binding plus AiUsageContext as a type-only binding from ai_usage_event.ts. The containing ai_usage_event.ts also imports node:crypto for context construction; native ai_usage::create_ai_usage_context uses UUID generation only where context creation needs it, while PostHog tracking accepts an existing context.",
-          "Initial pinned Node run node-1793265499179357802 passed: 1,042 wrapper records, two actual installed-SDK payloads in one case, and 18 SDK lifecycle scenarios. Source tree SHA-256 0551e2ebdbf792b7989a1f32bac37a670db66b7409b390808ad838b8ecfbf42c."
+          "Initial pinned Node run node-1793265499179357802 passed: 1,042 wrapper records, two actual installed-SDK payloads in one case, and 18 SDK lifecycle scenarios. Source tree SHA-256 0551e2ebdbf792b7989a1f32bac37a670db66b7409b390808ad838b8ecfbf42c.",
+          "Verified follow-up source binding: commit beda3aee1ea2d7a2d42b4b666c6dcb2c3c2ef403, source tree SHA-256 d7032bf6e592fba5ab32915a47d6877ad7c546ecb9e345d0fbacdd3d9bce2056; 1,269 frozen inputs. Numeric formatter source change is recorded at commit b58fa296."
         ],
         "rustBehaviorEvidence": [
           "Initial capped compiler run compiler-1793264871810743273 passed 20 native loopback transport tests and five ordinary wrapper tests; full limits, feature/check results and execution caveats are in migration-notes/evidence/2026-10-29-posthog-receipt/verification-summary.json.",
-          "Four oracle/benchmark --check runs passed in node-1793265499179357802 with the input unchanged. The source-bound initial benchmark is recorded in migration-notes/evidence/2026-10-29-posthog-receipt/artifacts/initial-benchmark-comparison.json; no optimized result is claimed."
+          "Four oracle/benchmark --check runs passed in node-1793265499179357802 with the input unchanged. The source-bound initial benchmark is recorded in migration-notes/evidence/2026-10-29-posthog-receipt/artifacts/initial-benchmark-comparison.json; no optimized result is claimed.",
+          "Verified follow-up: compiler-fixtures-1793271955861772133 passed 392 reported executions (overlapping counts, not unique cases), including 1,362 receipt/parser cases in each of five time zones, 338 producer and 1,956 projection replays, 20 native transport/wrapper checks, isolated Redis/Mongo/TTS/emote integrations, and strict all-feature/Clippy checks; 57 of 66 emote corpus cases were replayed and nine explicitly skipped. compiler-1793272783195663615 passed 19 reported numeric-consumer executions, and node-1793272491713187942 passed official benchmark and source checks. The numeric engine passed 35,464 actual String/JSON cases after correcting 53 pre-existing formatter differences with the existing serde_json seed and safe-integer fast path; inputs/groups/expectations remained unchanged. The six prepared payload pools used 192 source wires, 32 varied inputs per pool and seven trials, retaining the original 42 TypeScript trials with four audited native-hash rebinds. Median microseconds/op (TypeScript / initial Rust / current Rust): command 2.4724 / 2.8084 / 2.2374 (ranges overlap); TTS 3.1488 / 3.8980 / 2.8337; AI usage 5.5308 / 10.3777 / 4.4275; AI operation 4.5832 / 5.3293 / 3.8241; TTS Unicode 4.4724 / 3.9722 / 3.0573; large TTS 62.7729 / 10.1350 / 8.7888. These are builders + ordered JSON + UTF-8 checksum timings only, not CPU/RSS/network/HTTP/queue/application/production latency. Read-only final readback found 19 production records unchanged and zero task-owned resources."
         ],
-        "status": "Partial local six-export behavior and concrete adapters verified at the initial baseline; explicit source/SDK transport differences remain. Application adoption and broader application-specific adapters remain open."
+        "status": "Partial local six-export behavior and concrete adapters verified with explicit SDK/transport differences; verified synthetic payload follow-up closes the four initial measured small-payload regressions in the bounded builder/JSON/checksum comparison, with overlapping command ranges and no statistical-significance claim. Application adoption and broader application-specific adapters remain open."
       },
       "exports": [
         {
