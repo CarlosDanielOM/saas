@@ -1,7 +1,10 @@
 //! Owned JSON.parse/JSON.stringify values shared by pure policies and services.
 //! Escaped lone UTF-16 units, binary64 numbers and object property order survive
 //! parsing. Duplicate properties replace their value without moving their key.
-use crate::utils::{js_string::JsString, json_number::number_string};
+use crate::utils::{
+    js_string::{JsString, write_json_utf8},
+    json_number::number_string,
+};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum JsonValue {
@@ -11,6 +14,102 @@ pub enum JsonValue {
     String(JsString),
     Array(Vec<JsonValue>),
     Object(Vec<(JsString, JsonValue)>),
+}
+
+/// Scalar fields or an existing value borrowed for JSON serialization. This
+/// avoids constructing an owned tree solely to write a known object's wire.
+#[derive(Clone, Copy, Debug)]
+pub enum JsonValueRef<'a> {
+    Null,
+    Bool(bool),
+    Number(f64),
+    Utf8(&'a str),
+    String(&'a JsString),
+    Value(&'a JsonValue),
+}
+
+impl JsonValueRef<'_> {
+    /// Materialize the same raw binary64/UTF-16 value for owned API callers.
+    pub fn into_owned(self) -> JsonValue {
+        match self {
+            Self::Null => JsonValue::Null,
+            Self::Bool(value) => JsonValue::Bool(value),
+            Self::Number(value) => JsonValue::Number(value),
+            Self::Utf8(value) => JsonValue::String(value.into()),
+            Self::String(value) => JsonValue::String(value.clone()),
+            Self::Value(value) => value.clone(),
+        }
+    }
+
+    /// Append with the existing JSON.stringify number and string policies.
+    pub fn write_json_string(self, out: &mut String) {
+        match self {
+            Self::Null => JsonValue::Null.write_json_string(out),
+            Self::Bool(value) => JsonValue::Bool(value).write_json_string(out),
+            Self::Number(value) => JsonValue::Number(value).write_json_string(out),
+            Self::Utf8(value) => write_json_utf8(value, out),
+            Self::String(value) => value.write_json_string(out),
+            Self::Value(value) => value.write_json_string(out),
+        }
+    }
+
+    fn capacity_hint(self) -> usize {
+        match self {
+            Self::Null => 4,
+            Self::Bool(_) => 5,
+            Self::Number(_) | Self::Value(_) => 32,
+            Self::Utf8(value) => value.len().saturating_add(2),
+            Self::String(value) => value
+                .as_str()
+                .map_or_else(|| value.len().saturating_mul(6), str::len)
+                .saturating_add(2),
+        }
+    }
+}
+
+/// Serialize borrowed fields with static names in ECMAScript property order.
+/// The initial reserve is a saturating hint capped at 64 KiB; escaping and
+/// nested values may grow the output beyond it. This is not a memory limit.
+pub fn fields_to_json_string(fields: &[(&'static str, JsonValueRef<'_>)]) -> String {
+    let capacity = fields
+        .iter()
+        .fold(2_usize, |size, (key, value)| {
+            size.saturating_add(key.len())
+                .saturating_add(value.capacity_hint())
+                .saturating_add(4) // quotes, colon and separator
+        })
+        .min(64 * 1024);
+    let mut out = String::with_capacity(capacity);
+    write_json_fields(fields, &mut out);
+    out
+}
+
+/// Append a complete object, retaining duplicate fields exactly as the owned
+/// serializer does. Only canonical index names require an auxiliary sort.
+pub fn write_json_fields(fields: &[(&'static str, JsonValueRef<'_>)], out: &mut String) {
+    if fields.iter().any(|(key, _)| array_index_str(key).is_some()) {
+        let mut entries = fields.to_vec();
+        entries.sort_by_key(|(key, _)| array_index_str(key).map_or((1, 0), |index| (0, index)));
+        write_borrowed_object(entries, out);
+    } else {
+        write_borrowed_object(fields.iter().copied(), out);
+    }
+}
+
+fn write_borrowed_object<'a>(
+    entries: impl IntoIterator<Item = (&'static str, JsonValueRef<'a>)>,
+    out: &mut String,
+) {
+    out.push('{');
+    for (index, (key, value)) in entries.into_iter().enumerate() {
+        if index > 0 {
+            out.push(',');
+        }
+        write_json_utf8(key, out);
+        out.push(':');
+        value.write_json_string(out);
+    }
+    out.push('}');
 }
 
 fn json_space(value: &str) -> &str {
@@ -123,7 +222,10 @@ fn parse_validated(raw: &str, depth: usize, depth_error: &str) -> Result<JsonVal
 }
 
 fn array_index(key: &JsString) -> Option<u32> {
-    let key = key.as_str()?;
+    array_index_str(key.as_str()?)
+}
+
+fn array_index_str(key: &str) -> Option<u32> {
     if key.is_empty()
         || (key.len() > 1 && key.starts_with('0'))
         || !key.bytes().all(|byte| byte.is_ascii_digit())

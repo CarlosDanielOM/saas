@@ -5,7 +5,9 @@ use dima_rust::utils::{
     ai_usage::EntryKind,
     ai_usage_receipt_parser::{ParsedAiUsageReceipt, RetentionTier, parse_queued_ai_usage_receipt},
     js_string::JsString,
-    lossless_json::{JsonValue, parse_json},
+    lossless_json::{
+        JsonValue, JsonValueRef, fields_to_json_string, parse_json, write_json_fields,
+    },
     lossless_json_view::{JsonDocument, JsonView, js_number as view_number},
 };
 use mongodb::bson::{Bson, Document};
@@ -286,6 +288,203 @@ fn deep_input_is_borrowed_while_coerced_arrays_remain_lossless_and_strict() {
     assert!(parse(&format!(r#""unknown":{ignored}"#)).is_some());
     let malformed = format!("{}[1,]{}", "[".repeat(4096), "]".repeat(4096));
     assert!(parse(&format!(r#""unknown":{malformed}"#)).is_none());
+}
+
+fn assert_owned_receipt_wire(receipt: &ParsedAiUsageReceipt) {
+    let ordered = receipt.ordered_fields();
+    let owned = receipt.as_value();
+    let JsonValue::Object(fields) = &owned else {
+        panic!("receipt object");
+    };
+    assert_eq!(ordered.len(), 18);
+    assert_eq!(fields.len(), ordered.len());
+    assert_eq!(receipt.json(), owned.to_json_string());
+    for ((key, expected), (owned_key, value)) in ordered.iter().zip(fields) {
+        assert_eq!(owned_key.as_str(), Some(*key));
+        assert_eq!(value, expected);
+        let named = receipt.get(key).unwrap();
+        assert_eq!(&named, expected);
+        if let JsonValue::Number(expected) = expected {
+            for value in [value, &named] {
+                let JsonValue::Number(value) = value else {
+                    panic!("numeric field");
+                };
+                assert_eq!(value.to_bits(), expected.to_bits(), "{key}");
+            }
+        }
+    }
+    assert!(receipt.get("missing").is_none());
+    assert!(receipt.get("__proto__").is_none());
+    let utf8 = receipt.try_utf8_fields();
+    assert_eq!(
+        utf8.is_some(),
+        ordered.iter().all(|(_, value)| match value {
+            JsonValue::String(value) => value.as_str().is_some(),
+            _ => true,
+        })
+    );
+    if let Some(utf8) = utf8 {
+        assert_eq!(utf8.len(), ordered.len());
+        for ((key, value), (expected_key, expected)) in utf8.iter().zip(&ordered) {
+            assert_eq!(key, expected_key);
+            if let JsonValue::Number(expected) = expected {
+                assert_eq!(
+                    value.as_f64().unwrap().to_bits(),
+                    expected.to_bits(),
+                    "{key}"
+                );
+            } else {
+                assert_eq!(&parse_json(&value.to_string()).unwrap(), expected);
+            }
+        }
+    }
+}
+
+#[test]
+fn borrowed_receipt_wire_and_owned_apis_share_all_eighteen_fields() {
+    let receipt = parse(r#""channelID":"channel😀","customerId":"customer","id":"entry","requestId":" request ","occurredAt":"2026-10-29T01:02:03.004Z","entryKind":"adjustment","category":"credit_adjustment","operation":" manual ","source":" dashboard ","adjustmentType":"other","provider":" provider ","model":" model ","quantity":-0,"unit":"tokens","credits":-0,"resourceType":"llm_generation","resourceId":" resource ","itemized":true"#).unwrap();
+    assert_owned_receipt_wire(&receipt);
+    assert_eq!(
+        receipt.json(),
+        r#"{"channelID":"channel😀","customerId":"customer","id":"entry","requestId":"request","occurredAt":"2026-10-29T01:02:03.004Z","entryKind":"adjustment","category":"credit_adjustment","operation":"manual","source":"dashboard","adjustmentType":"other","provider":"provider","model":"model","quantity":0,"unit":"tokens","credits":0,"resourceType":"llm_generation","resourceId":"resource","itemized":true}"#
+    );
+    assert_eq!(receipt.credits().to_bits(), (-0.0_f64).to_bits());
+    assert_eq!(receipt.quantity().unwrap().to_bits(), (-0.0_f64).to_bits());
+    let owned = receipt.as_value();
+    let fields = receipt.ordered_fields();
+    let named = receipt.get("channelID").unwrap();
+    let utf8 = receipt.try_utf8_fields().unwrap();
+    drop(receipt);
+    assert_eq!(owned.get("channelID"), Some(&named));
+    assert_eq!(fields[0].1, named);
+    assert_eq!(utf8[0].1.as_str(), Some("channel😀"));
+
+    let receipt = parse(r#""unused":null"#).unwrap();
+    assert_owned_receipt_wire(&receipt);
+    assert_eq!(
+        receipt.json(),
+        r#"{"channelID":"c","customerId":"u","id":"e","requestId":null,"occurredAt":"1970-01-01T00:00:00.000Z","entryKind":"usage","category":"uncategorized","operation":"usage","source":null,"adjustmentType":null,"provider":"unknown","model":null,"quantity":null,"unit":null,"credits":1,"resourceType":null,"resourceId":null,"itemized":false}"#
+    );
+}
+
+#[test]
+fn borrowed_receipt_wire_keeps_lone_units_and_each_utf16_slice_boundary() {
+    let receipt = parse(r#""channelID":"c\ud800","customerId":"u\udc00","id":"e\udc00\ud800","requestId":"\ud800","operation":"\udc00","source":"😀\ud800","provider":"\ud800😀","model":"\udc00\ud800","resourceId":"\ud800\u0000\udc00","credits":-0,"quantity":1e9999"#).unwrap();
+    assert_owned_receipt_wire(&receipt);
+    assert!(receipt.try_utf8_fields().is_none());
+    assert!(receipt.json().contains(r#""id":"e\udc00\ud800""#));
+    assert!(
+        receipt
+            .json()
+            .contains(r#""resourceId":"\ud800\u0000\udc00""#)
+    );
+    assert_eq!(receipt.get("quantity"), Some(JsonValue::Null));
+    for prefix in [126, 127, 128, 129] {
+        let payload = format!("{}😀tail", "a".repeat(prefix));
+        let quoted = serde_json::to_string(&format!(" {payload} ")).unwrap();
+        let receipt = parse(&format!(r#""requestId":{quoted},"operation":{quoted},"source":{quoted},"provider":{quoted},"model":{quoted},"resourceId":{quoted},"credits":-0,"quantity":-0"#)).unwrap();
+        assert_owned_receipt_wire(&receipt);
+        let expected: Vec<_> = payload.encode_utf16().take(128).collect();
+        for field in [
+            "requestId",
+            "operation",
+            "source",
+            "provider",
+            "model",
+            "resourceId",
+        ] {
+            assert_eq!(
+                string_field(&receipt, field).units(),
+                expected,
+                "{prefix} {field}"
+            );
+        }
+        assert_eq!(receipt.try_utf8_fields().is_none(), prefix == 127);
+    }
+}
+
+#[test]
+fn borrowed_json_fields_reuse_number_string_and_nested_value_policies() {
+    let units = JsString::from_units(vec![0xd800, 0, 0xd83d, 0xde00, 0xdc00]);
+    let nested =
+        parse_json(r#"{"10":"ten","2":[-0,1e9999,"\ud800"],"\ud800":"lone-key"}"#).unwrap();
+    let fields = [
+        ("null", JsonValueRef::Null),
+        ("false", JsonValueRef::Bool(false)),
+        ("true", JsonValueRef::Bool(true)),
+        ("zero", JsonValueRef::Number(-0.0)),
+        ("finite", JsonValueRef::Number(1.5)),
+        ("nan", JsonValueRef::Number(f64::NAN)),
+        ("infinity", JsonValueRef::Number(f64::INFINITY)),
+        ("negativeInfinity", JsonValueRef::Number(f64::NEG_INFINITY)),
+        ("utf8", JsonValueRef::Utf8("é😀\n\"\\")),
+        ("utf16", JsonValueRef::String(&units)),
+        ("nested", JsonValueRef::Value(&nested)),
+        ("\"\0\\", JsonValueRef::Bool(true)),
+    ];
+    let expected = r#"{"null":null,"false":false,"true":true,"zero":0,"finite":1.5,"nan":null,"infinity":null,"negativeInfinity":null,"utf8":"é😀\n\"\\","utf16":"\ud800\u0000😀\udc00","nested":{"2":[0,null,"\ud800"],"10":"ten","\ud800":"lone-key"},"\"\u0000\\":true}"#;
+    assert_eq!(fields_to_json_string(&fields), expected);
+    let mut appended = String::from("prefix");
+    write_json_fields(&fields, &mut appended);
+    assert_eq!(appended, format!("prefix{expected}"));
+    assert_eq!(fields_to_json_string(&[]), "{}");
+    assert_eq!(
+        JsonValueRef::String(&units).into_owned(),
+        JsonValue::String(units.clone())
+    );
+    assert_eq!(JsonValueRef::Value(&nested).into_owned(), nested);
+    assert_eq!(
+        JsonValueRef::Utf8("é😀").into_owned(),
+        JsonValue::String("é😀".into())
+    );
+    for number in [
+        -0.0,
+        0.0,
+        f64::from_bits(0x7ff8_0000_0000_0042),
+        f64::INFINITY,
+        f64::NEG_INFINITY,
+    ] {
+        let JsonValue::Number(owned) = JsonValueRef::Number(number).into_owned() else {
+            panic!("number projection");
+        };
+        assert_eq!(owned.to_bits(), number.to_bits());
+        let mut borrowed_wire = String::new();
+        JsonValueRef::Number(number).write_json_string(&mut borrowed_wire);
+        assert_eq!(borrowed_wire, JsonValue::Number(number).to_json_string());
+    }
+}
+
+#[test]
+fn borrowed_static_field_names_keep_stable_ecmascript_index_order() {
+    let names = [
+        "z",
+        "4294967294",
+        "10",
+        "2",
+        "0",
+        "01",
+        "2",
+        "4294967295",
+        "-0",
+        "1e0",
+        "00",
+        "18446744073709551616",
+    ];
+    let fields: Vec<_> = names
+        .iter()
+        .enumerate()
+        .map(|(index, &key)| (key, JsonValueRef::Number(index as f64)))
+        .collect();
+    let owned = JsonValue::Object(
+        names
+            .iter()
+            .enumerate()
+            .map(|(index, &key)| (JsString::from_static(key), JsonValue::Number(index as f64)))
+            .collect(),
+    );
+    let expected = r#"{"0":4,"2":3,"2":6,"10":2,"4294967294":1,"z":0,"01":5,"4294967295":7,"-0":8,"1e0":9,"00":10,"18446744073709551616":11}"#;
+    assert_eq!(fields_to_json_string(&fields), expected);
+    assert_eq!(fields_to_json_string(&fields), owned.to_json_string());
 }
 
 fn field<'a>(v: &'a JsonValue, k: &str) -> &'a JsonValue {

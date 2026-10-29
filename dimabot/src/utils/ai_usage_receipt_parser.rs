@@ -11,7 +11,7 @@ use super::{
     credit_policy::JsDate,
     js_date::{parse_date, parse_date_utf16},
     js_string::JsString,
-    lossless_json::JsonValue,
+    lossless_json::{JsonValue, JsonValueRef, fields_to_json_string},
     lossless_json_view::{JsonDocument, JsonView, js_number},
 };
 use mongodb::bson::{Bson, DateTime, Document};
@@ -41,9 +41,6 @@ pub struct ParsedAiUsageReceipt {
     itemized: bool,
 }
 
-fn string(value: &str) -> JsonValue {
-    JsonValue::String(value.into())
-}
 fn text(value: Option<JsonView<'_>>) -> Option<JsString> {
     value.and_then(JsonView::as_string)
 }
@@ -244,51 +241,66 @@ impl ParsedAiUsageReceipt {
         self.entry_kind
     }
 
-    /// Source object-literal order, with all eighteen keys and explicit nulls.
-    /// Binary64 values (including negative zero) and UTF-16 units are retained.
-    pub fn ordered_fields(&self) -> Vec<(&'static str, JsonValue)> {
-        let optional = |value: &Option<JsString>| {
+    // One field mapping for borrowed wire and owned APIs. The ISO temporary
+    // stays alive through the callback and cannot escape as a borrowed value.
+    fn with_ordered_fields<T>(
+        &self,
+        use_fields: impl FnOnce(&[(&'static str, JsonValueRef<'_>)]) -> T,
+    ) -> T {
+        fn optional(value: &Option<JsString>) -> JsonValueRef<'_> {
             value
                 .as_ref()
-                .map_or(JsonValue::Null, |value| JsonValue::String(value.clone()))
-        };
-        vec![
-            ("channelID", JsonValue::String(self.channel_id.clone())),
-            ("customerId", JsonValue::String(self.customer_id.clone())),
-            ("id", JsonValue::String(self.id.clone())),
+                .map_or(JsonValueRef::Null, JsonValueRef::String)
+        }
+        let occurred_at = self.occurred_at.to_iso_string().expect("parser date");
+        use_fields(&[
+            ("channelID", JsonValueRef::String(&self.channel_id)),
+            ("customerId", JsonValueRef::String(&self.customer_id)),
+            ("id", JsonValueRef::String(&self.id)),
             ("requestId", optional(&self.request_id)),
-            (
-                "occurredAt",
-                string(&self.occurred_at.to_iso_string().expect("parser date")),
-            ),
-            ("entryKind", string(self.entry_kind.as_str())),
-            ("category", string(self.category)),
-            ("operation", JsonValue::String(self.operation.clone())),
+            ("occurredAt", JsonValueRef::Utf8(&occurred_at)),
+            ("entryKind", JsonValueRef::Utf8(self.entry_kind.as_str())),
+            ("category", JsonValueRef::Utf8(self.category)),
+            ("operation", JsonValueRef::String(&self.operation)),
             ("source", optional(&self.source)),
             (
                 "adjustmentType",
-                self.adjustment_type.map_or(JsonValue::Null, string),
+                self.adjustment_type
+                    .map_or(JsonValueRef::Null, JsonValueRef::Utf8),
             ),
-            ("provider", JsonValue::String(self.provider.clone())),
+            ("provider", JsonValueRef::String(&self.provider)),
             ("model", optional(&self.model)),
             (
                 "quantity",
-                self.quantity.map_or(JsonValue::Null, JsonValue::Number),
+                self.quantity
+                    .map_or(JsonValueRef::Null, JsonValueRef::Number),
             ),
             (
                 "unit",
-                self.unit
-                    .map_or(JsonValue::Null, |value| string(value.as_str())),
+                self.unit.map_or(JsonValueRef::Null, |value| {
+                    JsonValueRef::Utf8(value.as_str())
+                }),
             ),
-            ("credits", JsonValue::Number(self.credits)),
+            ("credits", JsonValueRef::Number(self.credits)),
             (
                 "resourceType",
-                self.resource_type
-                    .map_or(JsonValue::Null, |value| string(value.as_str())),
+                self.resource_type.map_or(JsonValueRef::Null, |value| {
+                    JsonValueRef::Utf8(value.as_str())
+                }),
             ),
             ("resourceId", optional(&self.resource_id)),
-            ("itemized", JsonValue::Bool(self.itemized)),
-        ]
+            ("itemized", JsonValueRef::Bool(self.itemized)),
+        ])
+    }
+    /// Source object-literal order, with all eighteen keys and explicit nulls.
+    /// Binary64 values (including negative zero) and UTF-16 units are retained.
+    pub fn ordered_fields(&self) -> Vec<(&'static str, JsonValue)> {
+        self.with_ordered_fields(|fields| {
+            fields
+                .iter()
+                .map(|(key, value)| (*key, value.into_owned()))
+                .collect()
+        })
     }
     /// Ordinary Unicode convenience path; fails instead of replacing IDs or
     /// metadata. Entries retain source order even without Serde preserve_order.
@@ -312,23 +324,27 @@ impl ParsedAiUsageReceipt {
             .collect()
     }
     pub fn as_value(&self) -> JsonValue {
-        JsonValue::Object(
-            self.ordered_fields()
-                .into_iter()
-                .map(|(key, value)| (key.into(), value))
-                .collect(),
-        )
+        self.with_ordered_fields(|fields| {
+            JsonValue::Object(
+                fields
+                    .iter()
+                    .map(|(key, value)| (JsString::from_static(key), value.into_owned()))
+                    .collect(),
+            )
+        })
     }
     pub fn get(&self, key: &str) -> Option<JsonValue> {
-        self.ordered_fields()
-            .into_iter()
-            .find(|(name, _)| *name == key)
-            .map(|(_, value)| value)
+        self.with_ordered_fields(|fields| {
+            fields
+                .iter()
+                .find(|(name, _)| *name == key)
+                .map(|(_, value)| value.into_owned())
+        })
     }
     /// Well-formed JSON.stringify wire: lone units escape; signed zero becomes
     /// "0" here only. The structured DTO retains its original numeric bits.
     pub fn json(&self) -> String {
-        self.as_value().to_json_string()
+        self.with_ordered_fields(fields_to_json_string)
     }
     /// Concrete receiptDocument + schema casting + Node BSON writer boundary.
     /// This projects exactly the source's fields, without _id, timestamps or
