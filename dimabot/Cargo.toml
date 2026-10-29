@@ -58,6 +58,8 @@ reward-body = ["dep:serde_json", "serde_json/float_roundtrip"]
 application-schemas = ["mongo", "js-date"]
 # Opt-in channel TTS schema; does not alter deployed profiles.
 channel-tts-settings = ["application-schemas", "tts-utilities"]
+# Opt-in moderation model; native policy and caller-owned MongoDB persistence.
+channel-moderation-settings = ["application-schemas", "moderation-spam-categories", "moderation-caps", "dep:uuid"]
 # Request-time usage adapters, independent of deployed workers and defaults.
 ai-credit-projection = ["credit-policy", "tts-utilities", "plan-cache", "dep:sha2"]
 ai-usage-producer = ["ai-usage", "redis", "credit-policy", "tts-utilities"]
