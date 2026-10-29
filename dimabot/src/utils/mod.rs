@@ -91,6 +91,8 @@ pub mod ast_syntax;
 pub mod ai_credit_projection;
 #[cfg(feature = "ai-usage")]
 pub mod ai_usage;
+#[cfg(feature = "ai-usage-ledger-queries")]
+pub mod ai_usage_ledger_queries;
 #[cfg(feature = "ai-usage-ledger-reads")]
 pub mod ai_usage_ledger_reads;
 #[cfg(feature = "ai-usage-lock")]
@@ -99,6 +101,8 @@ pub mod ai_usage_lock;
 pub mod ai_usage_producer;
 #[cfg(feature = "ai-usage-receipt-parser")]
 pub mod ai_usage_receipt_parser;
+#[cfg(feature = "ai-usage-retention")]
+pub mod ai_usage_retention;
 #[cfg(feature = "chat-events")]
 pub mod chat_events;
 #[cfg(feature = "command-utils")]
