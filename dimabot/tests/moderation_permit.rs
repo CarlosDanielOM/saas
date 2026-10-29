@@ -357,5 +357,31 @@ fn replay_actual_permit_source() {
             serde_json::json!(["connect", "get", "get", "released"])
         );
     }
+    // The native unit read_tasks_keep_parent_telemetry_context asserts this
+    // same parent in each read future; this records the actual source result.
+    let context_case = &fixture["contextCase"];
+    let parent = serde_json::json!({
+        "traceId": "0123456789abcdef0123456789abcdef",
+        "spanId": "0123456789abcdef",
+        "sampled": true,
+        "channel": "permit_channel"
+    });
+    assert_eq!(context_case["parent"], parent);
+    assert_eq!(context_case["result"], false);
+    let context_reads = context_case["reads"].as_array().unwrap();
+    assert_eq!(context_reads.len(), 2);
+    for read in context_reads {
+        assert_eq!(read["context"], parent);
+    }
+    let channel = JsString::from("permit_channel");
+    let login = JsString::from("USER");
+    assert_eq!(
+        units(&context_reads[0]["key"]),
+        permit_user_key(&channel, &login).units()
+    );
+    assert_eq!(
+        units(&context_reads[1]["key"]),
+        permit_channel_key(&channel).units()
+    );
     assert_eq!(fixture["setFailure"]["error"], true);
 }

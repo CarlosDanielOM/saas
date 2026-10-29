@@ -2,8 +2,11 @@
 //! The default client follows the shared native connection policy; see the
 //! migration handoff for its telemetry/logging differences from the TS wrapper.
 use crate::utils::{
-    js_string::JsString, js_unicode::lowercase, json_number::number_string,
-    observability::Telemetry, redis::get_redis_client,
+    js_string::JsString,
+    js_unicode::lowercase,
+    json_number::number_string,
+    observability::{Telemetry, restore_context, telemetry_context},
+    redis::get_redis_client,
 };
 use redis::{RedisResult, aio::ConnectionManager};
 use std::{
@@ -24,11 +27,20 @@ where
 {
     let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
     let other_sender = sender.clone();
+    let parent_context = telemetry_context();
     tokio::spawn(async move {
-        tokio::join!(biased;
-            async { let _ = sender.send(user.await); },
-            async { let _ = other_sender.send(channel.await); }
-        );
+        let coordinator = async move {
+            tokio::join!(biased;
+                async { let _ = sender.send(user.await); },
+                async { let _ = other_sender.send(channel.await); }
+            );
+        };
+        if let Some(context) = parent_context {
+            let channel_id = context.channel.clone();
+            restore_context(Some(context), &channel_id, coordinator).await;
+        } else {
+            coordinator.await;
+        }
     });
     let missing = || redis::RedisError::from(std::io::Error::other("permit read task exited"));
     let first = receiver.recv().await.ok_or_else(missing)??;
@@ -312,9 +324,42 @@ pub async fn has_active_permit(channel_id: &JsString, login: &JsString) -> Redis
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
+    use crate::utils::observability::{TraceContext, telemetry_context, with_telemetry_context};
+    use std::sync::{Arc, Mutex};
     use std::time::Duration;
     use tokio::sync::{Barrier, Notify};
+
+    #[tokio::test]
+    async fn read_tasks_keep_parent_telemetry_context() {
+        let parent = TraceContext {
+            trace_id: "0123456789abcdef0123456789abcdef".into(),
+            span_id: "0123456789abcdef".into(),
+            sampled: true,
+            channel: "permit_channel".into(),
+            outcome: None,
+        };
+        let observed = Arc::new(Mutex::new(Vec::new()));
+        let read = || {
+            let observed = observed.clone();
+            async move {
+                observed.lock().unwrap().push(telemetry_context());
+                Ok(None)
+            }
+        };
+        let result = with_telemetry_context(parent, concurrent_reads(read(), read())).await;
+        assert!(!result.unwrap());
+        let observed = observed.lock().unwrap();
+        assert_eq!(observed.len(), 2, "both read futures must run");
+        for context in observed.iter() {
+            let context = context
+                .as_ref()
+                .expect("read lost parent telemetry context");
+            assert_eq!(context.trace_id, "0123456789abcdef0123456789abcdef");
+            assert_eq!(context.span_id, "0123456789abcdef");
+            assert_eq!(context.channel, "permit_channel");
+            assert!(context.sampled);
+        }
+    }
 
     #[tokio::test]
     async fn errors_do_not_wait_for_the_other_started_read() {

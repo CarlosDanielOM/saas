@@ -4,6 +4,7 @@
 const fs = require('node:fs'), path = require('node:path'), crypto = require('node:crypto');
 const assert = require('node:assert/strict'), vm = require('node:vm');
 const {createRequire} = require('node:module');
+const {AsyncLocalStorage} = require('node:async_hooks');
 const digest = x => crypto.createHash('sha256').update(x).digest('hex');
 const nodePin = '569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108';
 assert.equal(process.env.DIMA_PERMIT_NODE_SHA256, nodePin);
@@ -36,12 +37,18 @@ assert(ts.isInterfaceDeclaration(exported[3]) && ts.isTypeAliasDeclaration(expor
 const units = s => Array.from({length:s.length}, (_,i) => s.charCodeAt(i));
 const hex = s => Buffer.from(s, 'utf8').toString('hex');
 const bits = n => {const b = Buffer.alloc(8); b.writeDoubleBE(n); return b.toString('hex');};
-let events = [], replies = {}, failures = [], now = 1700000000123, heldRead = null;
+let events = [], replies = {}, failures = [], now = 1700000000123, heldRead = null, contextProbe = null;
+const contextStorage = new AsyncLocalStorage();
 class FixedDate extends Date { static now() { return now; } }
 const cache = {
   async set(key, value, options) { events.push({cmd:'set', key:units(key), keyHex:hex(key), value, exBits:bits(options.EX), exString:String(options.EX)}); if (failures.includes('set')) throw Error('set failure'); return 'OK'; },
   async get(key) {
     events.push({cmd:'get', key:units(key), keyHex:hex(key)});
+    if (contextProbe) {
+      const context = contextStorage.getStore();
+      assert.strictEqual(context, contextProbe.parent, 'source GET lost AsyncLocalStorage context');
+      contextProbe.reads.push({key:units(key), context:{...context}});
+    }
     if (failures.includes(key)) throw Error('get failure');
     if (heldRead && key === heldRead.key) { await heldRead.gate; events.push({cmd:'released', key:units(key)}); heldRead.finished(); }
     return Object.hasOwn(replies,key) ? replies[key] : null;
@@ -101,6 +108,20 @@ async function run() {
   heldReads.push({failed,beforeRelease,afterRelease:events.map(event=>event.cmd),error});
   heldRead=null;
  }
+ // Match the native read_tasks_keep_parent_telemetry_context unit: both
+ // missing GETs observe the same fixed parent, and the result is false.
+ const parent={traceId:'0123456789abcdef0123456789abcdef',spanId:'0123456789abcdef',sampled:true,channel:'permit_channel'};
+ const contextChannel='permit_channel', contextLogin='USER';
+ events=[]; replies={}; failures=[];
+ contextProbe={parent, reads:[]};
+ const contextResult=await contextStorage.run(parent, () => api.hasActivePermit(contextChannel,contextLogin));
+ assert.equal(contextResult,false);
+ assert.deepEqual(events.map(event=>event.cmd), ['connect','get','get']);
+ assert.equal(contextProbe.reads.length,2);
+ assert.deepEqual(contextProbe.reads.map(read=>read.key), [units(api.permitUserKey(contextChannel,contextLogin)),units(api.permitChannelKey(contextChannel))]);
+ for (const read of contextProbe.reads) assert.deepEqual(read.context,parent);
+ const contextCase={parent,result:contextResult,reads:contextProbe.reads};
+ contextProbe=null;
  events=[]; failures=['set']; let error=false; try {await api.grantPermit('x',1,'u');} catch {error=true;} assert(error);
  const files=['src/utils/moderation/permit.ts','src/utils/moderation/permit.rs','src/utils/databases/dragonfly.database.ts','src/utils/databases/dragonfly.database.rs','src/utils/observability/telemetry.ts','src/utils/observability/mod.rs','src/utils/js_string.rs','src/utils/js_unicode.rs','src/utils/js_unicode_data.rs','src/utils/js_compat.rs','src/utils/json_number.rs','tests/moderation_permit.rs','tests/moderation_permit_redis.rs','Cargo.toml','Cargo.lock','rust-toolchain.toml','package.json','package-lock.json'];
  const hashes=Object.fromEntries(files.map(f=>[f,digest(read(f))]));
@@ -108,7 +129,7 @@ async function run() {
  hashes['typescript-package.json']=digest(fs.readFileSync(localRequire.resolve('typescript/package.json')));
  hashes['oracle-script']=digest(fs.readFileSync(__filename));
  hashes['permit-canonical-declarations']=digest(ts.createPrinter({removeComments:true,newLine:ts.NewLineKind.LineFeed}).printFile(sf));
- const output=JSON.stringify({format:1, implementation:'actual-typescript', versions:{node:process.versions.node,v8:process.versions.v8,icu:process.versions.icu,unicode:process.versions.unicode,typescript:ts.version}, nodeExecutableSha256:nodePin, sourceSha256:hashes, constants:{min:api.PERMIT_MIN_SECONDS,max:api.PERMIT_MAX_SECONDS,default:api.PERMIT_DEFAULT_SECONDS,usage:api.PERMIT_USAGE}, parsed,logins,keys,grants,reads,heldReads,setFailure:{events,error}},null,2)+'\n';
+ const output=JSON.stringify({format:1, implementation:'actual-typescript', versions:{node:process.versions.node,v8:process.versions.v8,icu:process.versions.icu,unicode:process.versions.unicode,typescript:ts.version}, nodeExecutableSha256:nodePin, sourceSha256:hashes, constants:{min:api.PERMIT_MIN_SECONDS,max:api.PERMIT_MAX_SECONDS,default:api.PERMIT_DEFAULT_SECONDS,usage:api.PERMIT_USAGE}, parsed,logins,keys,grants,reads,heldReads,contextCase,setFailure:{events,error}},null,2)+'\n';
  const target=path.join(dir,name);
  if(mode==='--write') fs.writeFileSync(target,output,{flag:'wx'}); else assert.equal(fs.readFileSync(target,'utf8'),output);
  console.log(`${name} sha256=${digest(output)} parsed=${parsed.length} keys=${keys.length} grants=${grants.length} reads=${reads.length}`);
