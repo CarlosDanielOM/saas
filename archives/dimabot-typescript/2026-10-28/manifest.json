@@ -76,6 +76,14 @@
     {
       "source": "src/utils/tts/kokoro_voices.util.ts",
       "sha256": "6d06216a94959645a4ed75e82a2b68a39b329c01373f63644f7a3794afc5466b"
+    },
+    {
+      "source": "src/utils/tts/normalize_tts_message.util.ts",
+      "sha256": "6e8030f033e9e32c357c669d8b0d09cbc91a30c814cd5ea3c6a0109ccdb88adc"
+    },
+    {
+      "source": "src/utils/tts/normalize_tts_message.util.test.ts",
+      "sha256": "5f36c7346ecd23130ff9b035b8c3f8561dd094fba6a7b16a696e30ccaefe1d39"
     }
   ]
 }

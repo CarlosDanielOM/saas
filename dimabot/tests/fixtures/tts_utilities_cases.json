@@ -307,5 +307,16 @@
       },
       "expected": "TTS: disconnected · waiting · 9007199254740991 queued"
     }
-  ]
+  ],
+  "provenance": {
+    "sourcePaths": {
+      "src/utils/tts/expressive_tts_tags.util.ts": "../archives/dimabot-typescript/2026-10-28/src/utils/tts/expressive_tts_tags.util.ts",
+      "src/utils/tts/kokoro_voices.util.ts": "../archives/dimabot-typescript/2026-10-28/src/utils/tts/kokoro_voices.util.ts",
+      "src/utils/tts/speech_template.util.ts": "src/utils/tts/speech_template.util.ts",
+      "src/utils/tts/normalize_tts_message.util.ts": "../archives/dimabot-typescript/2026-10-28/src/utils/tts/normalize_tts_message.util.ts",
+      "src/utils/tts/tts_status.ts": "src/utils/tts/tts_status.ts"
+    },
+    "readerSha256": "84b41f99717abc399764b32aa52d3c5d924d7c863aabf664bb4ab521160de0bd",
+    "resolverSha256": "a2687c78a9855621a717c3a8cad887b0b0c6efea1157f4f41e0a49e2e99ff13d"
+  }
 }

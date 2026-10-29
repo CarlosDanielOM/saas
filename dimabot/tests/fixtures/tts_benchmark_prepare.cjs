@@ -11,7 +11,8 @@ fs.writeFileSync(path.join(out, 'package.json'), '{"type":"commonjs"}\n');
 const root = path.resolve(__dirname, '../..');
 const {resolveTtsSource} = require('./tts_source_resolver.cjs');
 const tagPath = 'src/utils/tts/expressive_tts_tags.util.ts';
-const sourceFile = name => name === tagPath ? resolveTtsSource(root, name) : path.join(root, name);
+const normalizerPath = 'src/utils/tts/normalize_tts_message.util.ts';
+const sourceFile = name => [tagPath, normalizerPath].includes(name) ? resolveTtsSource(root, name) : path.join(root, name);
 const sources = [
   'src/utils/tts/normalize_tts_message.util.ts',
   'src/utils/tts/expressive_tts_tags.util.ts',
@@ -43,5 +44,5 @@ const workloads = definitions.map(([name, input, iterations, warmupIterations, m
   for (let i = 0; i < text.length; i++) checksumPerOp = (checksumPerOp + text.charCodeAt(i)) >>> 0;
   return {name, input, options, iterations, warmupIterations, outputCodeUnits: text.length, checksumPerOp};
 });
-const prepared = {version: 1, sourceHashes, sourcePaths: {[tagPath]: path.relative(root, sourceFile(tagPath))}, workloads};
+const prepared = {version: 1, sourceHashes, sourcePaths: Object.fromEntries([tagPath, normalizerPath].map(name => [name, path.relative(root, sourceFile(name))])), workloads};
 fs.writeFileSync(path.join(out, 'fixtures.json'), `${JSON.stringify(prepared, null, 2)}\n`);

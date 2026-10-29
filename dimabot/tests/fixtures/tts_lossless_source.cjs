@@ -16,7 +16,7 @@ function one(logical) {
 function loadSources() {
   if (process.version !== 'v24.22.1' || process.versions.v8 !== '13.6.233.17-node.58' || ts.version !== '5.9.3') throw Error('wrong oracle toolchain');
   const files = {
-    normalizer:path.join(root,'src/utils/tts/normalize_tts_message.util.ts'),
+    normalizer:resolveTtsSource(root,'src/utils/tts/normalize_tts_message.util.ts'),
     expressive:resolveTtsSource(root,'src/utils/tts/expressive_tts_tags.util.ts'),
     pet:path.join(petDir,'speech_text.ts'), petTest:path.join(petDir,'speech_text.test.ts'),
     creditFallback:one('src/utils/tts/tts_credit_fallback.util.ts'),

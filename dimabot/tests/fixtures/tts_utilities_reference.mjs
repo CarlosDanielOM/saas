@@ -16,12 +16,14 @@ const root = new URL('../../src/utils/tts/', import.meta.url);
 const context = vm.createContext({});
 const cache = new Map();
 const sources = {};
+const sourcePaths = {};
 function load(name) {
   if (cache.has(name)) return cache.get(name);
   const logical = `src/utils/tts/${name}.ts`;
-  const isRetired = name === 'expressive_tts_tags.util' || name === 'kokoro_voices.util';
+  const isRetired = name === 'expressive_tts_tags.util' || name === 'kokoro_voices.util' || name === 'normalize_tts_message.util';
   const resolved = isRetired ? resolveTtsSource(botRoot, logical) : new URL(name + '.ts', root);
   if (isRetired) console.log(`${logical}: ${path.relative(botRoot, resolved)}`);
+  sourcePaths[logical] = path.relative(botRoot, resolved instanceof URL ? fileURLToPath(resolved) : resolved);
   const source = readFileSync(resolved, 'utf8');
   sources[name] = createHash('sha256').update(source).digest('hex');
   const compiled = ts.transpileModule(source, {compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
@@ -68,7 +70,8 @@ for (const c of cases) {
   c.expected = JSON.parse(JSON.stringify(actual));
 }
 assert.equal(tags.EXPRESSIVE_TTS_TAGS.length,75);
-const output = {sources, cases};
+const provenance = {sourcePaths, readerSha256:createHash('sha256').update(readFileSync(fileURLToPath(import.meta.url))).digest('hex'), resolverSha256:createHash('sha256').update(readFileSync(require.resolve('./tts_source_resolver.cjs'))).digest('hex')};
+const output = {sources, cases, provenance};
 const serialized = JSON.stringify(output, null, 2) + '\n';
 if (process.argv[2] === '--write') writeFileSync(fixturePath, serialized);
 else {
