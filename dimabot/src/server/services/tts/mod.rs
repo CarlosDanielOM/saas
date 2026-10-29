@@ -6,5 +6,6 @@ pub mod kokoro_tts;
 #[doc(hidden)]
 pub mod lossless_json;
 pub mod piper_tts;
+pub mod runtime;
 pub mod speech_paths;
 pub mod tts_provider;

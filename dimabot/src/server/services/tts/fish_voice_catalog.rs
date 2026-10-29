@@ -1,7 +1,9 @@
 //! Fish voice validation, normalization and pooled catalog transport.
 //!
-//! Credentials and endpoints are explicit. Clones share the parsed-response FIFO
-//! cache, and neither HTTP requests nor normalization hold its mutex.
+//! Endpoints and default credentials are explicit; an optional application
+//! adapter reads the current credential on a cache miss. Clones share the
+//! parsed-response FIFO cache, and neither HTTP requests nor normalization hold
+//! its mutex.
 use std::{
     borrow::Cow,
     collections::{HashMap, VecDeque},
@@ -13,6 +15,7 @@ use std::{
 use super::{
     fish_tts::{DEFAULT_FISH_TTS_REFERENCE_ID, FISH_VOICES},
     http_support,
+    tts_provider::Environment,
 };
 use crate::utils::{
     js_compat,
@@ -493,6 +496,7 @@ pub type FishCatalogClock = Arc<dyn Fn() -> Duration + Send + Sync>;
 pub struct FishCatalog {
     client: reqwest::Client,
     pub config: FishCatalogConfig,
+    environment: Option<Environment>,
     clock: FishCatalogClock,
     cache: Arc<Mutex<CatalogCache>>,
 }
@@ -524,10 +528,19 @@ impl FishCatalog {
         Self {
             client,
             config,
+            environment: None,
             clock,
             cache: Arc::new(Mutex::new(CatalogCache::default())),
         }
     }
+
+    /// Cache hits bypass this adapter, matching the source's credential read
+    /// after its Map lookup. Cloning the catalog still shares the same cache.
+    pub fn with_environment(mut self, environment: Environment) -> Self {
+        self.environment = Some(environment);
+        self
+    }
+
     async fn get(&self, endpoint: &str) -> Result<Arc<JsonValue>, FishCatalogError> {
         {
             let cache = self.cache.lock().unwrap_or_else(|error| error.into_inner());
@@ -539,9 +552,11 @@ impl FishCatalog {
                 return Ok(Arc::clone(&entry.value));
             }
         }
-        let key = self
-            .config
-            .key
+        let configured_key = self.environment.as_ref().map_or_else(
+            || self.config.key.clone(),
+            |environment| environment("FISH_AUDIO_API_KEY"),
+        );
+        let key = configured_key
             .as_deref()
             .map(js_compat::trim)
             .filter(|key| !key.is_empty())

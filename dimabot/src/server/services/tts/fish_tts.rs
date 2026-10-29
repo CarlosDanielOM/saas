@@ -13,7 +13,7 @@ use reqwest::{Client, Response};
 use super::{
     http_support::{abort_reason, cancellation, new_client, read_audio, transport_error},
     speech_paths::{SpeechPaths, node_join},
-    tts_provider::{TtsSynthesisRequest, TtsSynthesisResult},
+    tts_provider::{Environment, TtsSynthesisRequest, TtsSynthesisResult},
 };
 use crate::utils::{js_string::JsString, openrouter_attribution::OPENROUTER_APP_HEADERS};
 
@@ -90,17 +90,35 @@ impl FishConfig {
 pub struct FishTtsService {
     client: Client,
     pub config: FishConfig,
+    environment: Option<Environment>,
 }
 
 impl FishTtsService {
     pub fn new(config: FishConfig) -> Self {
-        let client = new_client();
-        Self { client, config }
+        Self::with_client(config, new_client())
     }
 
     /// An injected client owns its own redirect, proxy, TLS and pooling policy.
     pub fn with_client(config: FishConfig, client: Client) -> Self {
-        Self { client, config }
+        Self {
+            client,
+            config,
+            environment: None,
+        }
+    }
+
+    /// Read the active backend's credential at attempt time instead of taking
+    /// both credentials before directory I/O or the primary request completes.
+    /// Without this adapter, explicit configuration retains its original API.
+    pub fn with_environment(mut self, environment: Environment) -> Self {
+        self.environment = Some(environment);
+        self
+    }
+
+    fn configured_key(&self, name: &str, configured: &Option<String>) -> Option<String> {
+        self.environment
+            .as_ref()
+            .map_or_else(|| configured.clone(), |environment| environment(name))
     }
     pub fn name(&self) -> &'static str {
         "fish"
@@ -187,10 +205,9 @@ impl FishTtsService {
         backend: &str,
     ) -> Result<Vec<u8>, String> {
         let mut response = if backend == FISH_OPENROUTER_MODEL {
-            let api_key = key(
-                &self.config.openrouter_api_key,
-                "OpenRouter API key is not configured",
-            )?;
+            let configured_key =
+                self.configured_key("OPENROUTER_API_KEY", &self.config.openrouter_api_key);
+            let api_key = key(&configured_key, "OpenRouter API key is not configured")?;
             let body = format!(
                 "{{\"model\":{},\"input\":{},\"voice\":{},\"response_format\":\"mp3\",\"user\":{}}}",
                 json(FISH_OPENROUTER_MODEL),
@@ -225,10 +242,9 @@ impl FishTtsService {
             }
             response
         } else {
-            let api_key = key(
-                &self.config.fish_api_key,
-                "Fish Audio API key is not configured",
-            )?;
+            let configured_key =
+                self.configured_key("FISH_AUDIO_API_KEY", &self.config.fish_api_key);
+            let api_key = key(&configured_key, "Fish Audio API key is not configured")?;
             let text = protocol::reinforce_js(&request.text);
             let body = encode_fish_msgpack(&text, reference);
             // Body::from(Vec) owns shared immutable bytes; try_clone below is

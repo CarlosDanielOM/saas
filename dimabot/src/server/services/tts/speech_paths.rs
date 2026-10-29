@@ -1,10 +1,18 @@
 use std::path::{Path, PathBuf};
 
 /// The caller supplies the deployed module's public/speech directory explicitly.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct SpeechPaths {
     pub speech_root: PathBuf,
     pub public_api_url: String,
+}
+impl std::fmt::Debug for SpeechPaths {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SpeechPaths")
+            .field("speech_root", &"[REDACTED]")
+            .field("public_api_url", &"[REDACTED]")
+            .finish()
+    }
 }
 impl SpeechPaths {
     pub fn new(speech_root: PathBuf, configured_api_url: Option<&str>, production: bool) -> Self {

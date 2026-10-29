@@ -23,7 +23,7 @@ use tokio::{
 use super::{
     http_support::{abort_reason, cancellation, new_client, read_audio, transport_error},
     speech_paths::{SpeechPaths, node_join},
-    tts_provider::{TtsSynthesisRequest, TtsSynthesisResult},
+    tts_provider::{Environment, TtsSynthesisRequest, TtsSynthesisResult},
 };
 use crate::utils::{js_compat, js_string::JsString};
 
@@ -34,13 +34,25 @@ const TERMINATION_GRACE: Duration = Duration::from_millis(100);
 const STDERR_UNITS: usize = 4096;
 const MAX_ERROR_BODY_BYTES: usize = 1024 * 1024;
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct PiperConfig {
     pub paths: SpeechPaths,
     pub python_bin: PathBuf,
     pub data_dir: Option<String>,
     pub http_url: Option<String>,
     pub timeout: Duration,
+}
+
+impl std::fmt::Debug for PiperConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PiperConfig")
+            .field("paths", &self.paths)
+            .field("python_bin", &"[REDACTED]")
+            .field("data_dir", &self.data_dir.as_ref().map(|_| "[REDACTED]"))
+            .field("http_url", &self.http_url.as_ref().map(|_| "[REDACTED]"))
+            .field("timeout", &self.timeout)
+            .finish()
+    }
 }
 
 impl PiperConfig {
@@ -67,6 +79,7 @@ impl PiperConfig {
 pub struct PiperTtsService {
     client: Client,
     pub config: PiperConfig,
+    environment: Option<Environment>,
 }
 
 impl PiperTtsService {
@@ -76,7 +89,19 @@ impl PiperTtsService {
 
     /// An injected client owns its redirect, proxy, TLS and pooling policy.
     pub fn with_client(config: PiperConfig, client: Client) -> Self {
-        Self { client, config }
+        Self {
+            client,
+            config,
+            environment: None,
+        }
+    }
+
+    /// Keep HTTP selection after output-directory I/O, and defer CLI-only
+    /// configuration until that branch starts. Explicit configurations keep
+    /// working without an application environment adapter.
+    pub fn with_environment(mut self, environment: Environment) -> Self {
+        self.environment = Some(environment);
+        self
     }
 
     pub fn name(&self) -> &'static str {
@@ -109,7 +134,13 @@ impl PiperTtsService {
         if let Some(reason) = abort_reason(&request.signal) {
             return TtsSynthesisResult::failure(reason);
         }
-        let result = if let Some(url) = self.config.http_url() {
+        let mut http_config = self.config.clone();
+        if let Some(environment) = &self.environment {
+            http_config.http_url = environment("PIPER_HTTP_URL");
+        }
+        // A slash-only configured URL normalizes to the empty string and is
+        // false in the source. Whitespace left before those slashes is truthy.
+        let result = if let Some(url) = http_config.http_url().filter(|url| !url.is_empty()) {
             self.run_http(request, &output_path, url).await
         } else {
             self.run_cli(request, &output_path).await
@@ -205,7 +236,14 @@ impl PiperTtsService {
     ) -> Result<&'static str, String> {
         let mut request = request.clone();
         request.output_path = output_path.to_owned();
-        let config = self.config.clone();
+        let mut config = self.config.clone();
+        if let Some(environment) = &self.environment {
+            config.data_dir = environment("PIPER_DATA_DIR");
+            config.python_bin = environment("PIPER_PYTHON_BIN")
+                .filter(|bin| !bin.is_empty())
+                .unwrap_or_else(|| "python3".into())
+                .into();
+        }
         let (mut sender, receiver) = oneshot::channel();
         // The owner detects receiver closure when the synthesize future is
         // abandoned; it remains alive long enough to kill and reap the child.

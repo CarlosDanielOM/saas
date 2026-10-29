@@ -3,8 +3,12 @@ use crate::utils::{
     js_string::JsString,
     tts::{TtsLanguage, TtsProvider},
 };
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::Arc};
 use tokio::sync::watch;
+
+/// Application-owned lookup, evaluated only at the provider's source read point.
+/// The adapter and its returned values must never be included in diagnostics.
+pub type Environment = Arc<dyn Fn(&str) -> Option<String> + Send + Sync>;
 
 #[derive(Clone, Debug)]
 pub struct TtsSynthesisRequest {
