@@ -33,6 +33,264 @@ fn assert_scalar_lookups(raw: &str, cases: &[(&str, Option<f64>)]) {
     }
 }
 
+fn assert_string_leaf(raw: &str, units: &[u16], wire: &str) {
+    let doc = JsonDocument::parse(raw).unwrap();
+    let view = doc.root();
+    let expected = JsString::from_units(units.to_vec());
+    assert_eq!(
+        parse_json(raw).unwrap(),
+        JsonValue::String(expected.clone())
+    );
+    assert_eq!(view.scalar(), Some(JsonValue::String(expected.clone())));
+    assert_eq!(view.as_string(), Some(expected.clone()));
+    assert_eq!(view.js_string().unwrap(), expected);
+    assert_eq!(view.js_string().unwrap().to_json_string(), wire, "{raw}");
+    assert_eq!(view.truthy(), !units.is_empty(), "{raw}");
+    assert_eq!(view.as_bool(), None);
+    assert!(!view.is_null());
+    assert!(view.array().is_none());
+}
+
+fn assert_number_bits(actual: f64, expected: f64) {
+    if expected.is_nan() {
+        assert!(actual.is_nan());
+    } else {
+        assert_eq!(actual.to_bits(), expected.to_bits());
+    }
+}
+
+#[test]
+fn validated_string_leaves_keep_raw_and_escaped_utf16_identity() {
+    for (raw, text, wire) in [
+        (r#""""#, "", r#""""#),
+        (r#""ascii""#, "ascii", r#""ascii""#),
+        (r#""a\u0073cii""#, "ascii", r#""ascii""#),
+        (r#""é😀é""#, "é😀e\u{0301}", r#""é😀é""#),
+        (
+            r#""\u00e9\uD83D\uDE00e\u0301""#,
+            "é😀e\u{0301}",
+            r#""é😀é""#,
+        ),
+        (r#"" ""#, " ", r#"" ""#),
+        (r#"" \t\n\r""#, " \t\n\r", r#"" \t\n\r""#),
+        (
+            r#""\ufeff\u3000""#,
+            "\u{feff}\u{3000}",
+            "\"\u{feff}\u{3000}\"",
+        ),
+        (r#""\\u0061""#, r"\u0061", r#""\\u0061""#),
+        (
+            r#""\"\\\/\b\f\n\r\t\u0000\u001f""#,
+            "\"\\/\u{0008}\u{000c}\n\r\t\0\u{001f}",
+            r#""\"\\/\b\f\n\r\t\u0000\u001f""#,
+        ),
+    ] {
+        assert_string_leaf(raw, &text.encode_utf16().collect::<Vec<_>>(), wire);
+        let surrounded = format!(" \t{raw}\r\n");
+        assert_string_leaf(&surrounded, &text.encode_utf16().collect::<Vec<_>>(), wire);
+    }
+    for (raw, units, wire) in [
+        (r#""\ud800""#, &[0xd800][..], r#""\ud800""#),
+        (r#""\udc00""#, &[0xdc00][..], r#""\udc00""#),
+        (
+            r#""\udc00\ud800""#,
+            &[0xdc00, 0xd800][..],
+            r#""\udc00\ud800""#,
+        ),
+        (
+            r#""\ud800\ud800""#,
+            &[0xd800, 0xd800][..],
+            r#""\ud800\ud800""#,
+        ),
+        (r#""\ud83d\ude00""#, &[0xd83d, 0xde00][..], r#""😀""#),
+        (
+            r#""\ud800\ud83d\ude00\udc00""#,
+            &[0xd800, 0xd83d, 0xde00, 0xdc00][..],
+            r#""\ud800😀\udc00""#,
+        ),
+    ] {
+        assert_string_leaf(raw, units, wire);
+    }
+    for control in 0_u8..0x20 {
+        let text = char::from(control).to_string();
+        let quoted = serde_json::to_string(&text).unwrap();
+        assert_string_leaf(&quoted, &[u16::from(control)], &quoted);
+    }
+    for raw in [r#""a😀b""#, r#""a\ud83d\ude00b""#] {
+        let doc = JsonDocument::parse(raw).unwrap();
+        let value = doc.root().as_string().unwrap();
+        assert_eq!(value.slice(1, 2).units(), vec![0xd83d]);
+        assert_eq!(value.slice(2, 3).units(), vec![0xde00]);
+        assert_eq!(value.slice(1, 2).to_json_string(), r#""\ud83d""#);
+        assert_eq!(value.slice(2, 3).to_json_string(), r#""\ude00""#);
+    }
+    for prefix in [126, 127, 128] {
+        let text = format!("{}😀tail", "a".repeat(prefix));
+        let expected: Vec<_> = text.encode_utf16().take(128).collect();
+        for raw in [
+            serde_json::to_string(&text).unwrap(),
+            format!("\"{}\\ud83d\\ude00tail\"", "a".repeat(prefix)),
+        ] {
+            let doc = JsonDocument::parse(&raw).unwrap();
+            assert_eq!(
+                doc.root().as_string().unwrap().slice(0, 128).units(),
+                expected
+            );
+        }
+    }
+    let owned = {
+        let raw = String::from(r#""copied é😀""#);
+        let doc = JsonDocument::parse(&raw).unwrap();
+        doc.root().as_string().unwrap()
+    };
+    assert_eq!(owned.as_str(), Some("copied é😀"));
+}
+
+#[test]
+fn string_truthiness_and_nonstring_scalar_policies_stay_distinct() {
+    for (raw, truthy, text, number, wire) in [
+        ("null", false, "null", 0.0, "null"),
+        ("false", false, "false", 0.0, "false"),
+        ("true", true, "true", 1.0, "true"),
+        ("0", false, "0", 0.0, "0"),
+        ("-0", false, "0", -0.0, "0"),
+        ("1e-4000", false, "0", 0.0, "0"),
+        ("-1e-4000", false, "0", -0.0, "0"),
+        ("5e-324", true, "5e-324", f64::from_bits(1), "5e-324"),
+        ("1e9999", true, "Infinity", f64::INFINITY, "null"),
+        ("-1e9999", true, "-Infinity", f64::NEG_INFINITY, "null"),
+    ] {
+        let doc = JsonDocument::parse(raw).unwrap();
+        let root = doc.root();
+        assert_eq!(root.scalar(), Some(parse_json(raw).unwrap()));
+        assert_eq!(root.scalar().unwrap().to_json_string(), wire);
+        assert_eq!(root.as_string(), None);
+        assert_eq!(root.truthy(), truthy, "{raw}");
+        assert_eq!(root.js_string().unwrap().as_str(), Some(text), "{raw}");
+        assert_number_bits(js_number(Some(root)).unwrap(), number);
+    }
+    for (raw, truthy, number) in [
+        (r#""""#, false, 0.0),
+        (r#"" ""#, true, 0.0),
+        (r#""\t\n\r""#, true, 0.0),
+        (r#""\ufeff\u3000""#, true, 0.0),
+        (r#""\u0000""#, true, f64::NAN),
+        (r#""\ud800""#, true, f64::NAN),
+        (r#""false""#, true, f64::NAN),
+        (r#""-0""#, true, -0.0),
+        (r#""1e9999""#, true, f64::INFINITY),
+    ] {
+        let doc = JsonDocument::parse(raw).unwrap();
+        assert_eq!(doc.root().truthy(), truthy, "{raw}");
+        assert_number_bits(js_number(Some(doc.root())).unwrap(), number);
+    }
+    assert!(js_number(None).unwrap().is_nan());
+    for raw in ["[]", "[null]", "{}", r#"{"toString":null}"#] {
+        let doc = JsonDocument::parse(raw).unwrap();
+        assert!(doc.root().truthy(), "{raw}");
+        assert!(doc.root().scalar().is_none());
+        assert!(doc.root().as_string().is_none());
+    }
+}
+
+#[test]
+fn iterative_array_coercion_keeps_string_identity_null_join_and_object_errors() {
+    for (leaf, wire, number) in [
+        ("[]", r#""""#, 0.0),
+        ("[null]", r#""""#, 0.0),
+        (r#"[" -0 "]"#, r#"" -0 ""#, -0.0),
+        (r#"["\u0020-0\u0020"]"#, r#"" -0 ""#, -0.0),
+        (
+            r#"["\ufeff0x20000000000003\u3000"]"#,
+            "\"\u{feff}0x20000000000003\u{3000}\"",
+            9_007_199_254_740_996.0,
+        ),
+        (
+            r#"["a","\u0062",null,["\ud800","😀"],[]]"#,
+            r#""a,b,,\ud800,😀,""#,
+            f64::NAN,
+        ),
+        (
+            r#"[null,[],"",["a",null],"\u0000","😀"]"#,
+            r#"",,,a,,\u0000,😀""#,
+            f64::NAN,
+        ),
+        (
+            r#"[{},null,["a",false,true,-0,1e9999]]"#,
+            r#""[object Object],,a,false,true,0,Infinity""#,
+            f64::NAN,
+        ),
+    ] {
+        let JsonValue::String(expected) = parse_json(wire).unwrap() else {
+            panic!("explicit string wire");
+        };
+        for depth in [0, 1, 128, 256] {
+            let raw = nested(depth, leaf);
+            let doc = JsonDocument::parse(&raw).unwrap();
+            assert!(doc.root().truthy());
+            assert_eq!(doc.root().js_string().unwrap(), expected, "{depth} {leaf}");
+            assert_eq!(doc.root().js_string().unwrap().to_json_string(), wire);
+            assert_number_bits(js_number(Some(doc.root())).unwrap(), number);
+        }
+    }
+    for leaf in [
+        r#"["ok",{"toString":null},"\ud800"]"#,
+        r#"["",{"to\u0053tring":0,"toString":false}]"#,
+        r#"{"toString":"","valueOf":null}"#,
+    ] {
+        for depth in [0, 1, 128, 256] {
+            let raw = nested(depth, leaf);
+            let doc = JsonDocument::parse(&raw).unwrap();
+            assert!(doc.root().truthy());
+            let error = doc.root().js_string().unwrap_err();
+            assert_eq!(error.name(), "TypeError");
+            assert_eq!(
+                error.to_string(),
+                "Cannot convert object to primitive value"
+            );
+            assert_eq!(js_number(Some(doc.root())).unwrap_err(), error);
+        }
+    }
+    let doc = JsonDocument::parse(r#"{"__proto__":{"toString":null},"valueOf":""}"#).unwrap();
+    assert_eq!(
+        doc.root().js_string().unwrap().as_str(),
+        Some("[object Object]")
+    );
+    assert!(js_number(Some(doc.root())).unwrap().is_nan());
+}
+
+#[test]
+fn string_leaf_shortcuts_require_whole_input_validation_first() {
+    for invalid in [
+        r#""\q""#,
+        r#""\u12XZ""#,
+        r#""\ud800\u12X0""#,
+        "\"raw\nline\"",
+        "\"raw\0nul\"",
+        "\"text\\",
+        r#"{"wanted":"ok","ignored":"\q"}"#,
+        r#"{"wanted":"","ignored":[1,]}"#,
+        r#"{"toString":null,"ignored":"\q"}"#,
+    ] {
+        for depth in [0, 1, 128, 256] {
+            assert!(
+                JsonDocument::parse(&nested(depth, invalid)).is_err(),
+                "{invalid:?}"
+            );
+        }
+    }
+    for valid in [r#""""#, r#""ascii""#, r#""\u0000""#, r#""\ud800""#] {
+        for invalid in [
+            format!("\u{feff}{valid}"),
+            format!("{valid} false"),
+            format!("{valid}\u{000b}"),
+            format!("{valid}]"),
+        ] {
+            assert!(JsonDocument::parse(&invalid).is_err(), "{invalid:?}");
+        }
+    }
+}
+
 #[test]
 fn raw_key_lookup_is_exact_for_empty_prefix_unicode_and_own_names() {
     let raw = r#"{"":0,"i":1,"id":2,"identifier":3,"é":4,"é":5,"😀":6,"😀x":7,"__proto__":8,"constructor":9,"toString":10,"/":11}"#;
