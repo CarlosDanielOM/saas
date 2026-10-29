@@ -1,8 +1,31 @@
-# Moderation text benchmark: initial paired baseline
+# Moderation text benchmark: optimized follow-up and preserved baseline
 
-This report records the first paired prepared benchmark of the verified Rust moderation text helpers. It shows mixed results: Rust was slower for common links and text folding, and faster for long links and regex escaping. Treat these as per-helper timings on one isolated host over prepared synthetic inputs. They do not establish production latency, a broad Rust performance advantage, or CPU or memory improvement.
+The final paired candidate improves the earlier common-link and folding regressions while retaining the long-link behavior close to the original Rust baseline. The implementation changes target measured workloads structurally: short ASCII links use bounded stack tables and borrowed byte comparisons, and folding streams canonical decomposition while omitting canonical ordering after an exhaustive property check established that all reordered nonstarters from Unicode 17-assigned scalars are removed by the Unicode 17 Mark filter. These are explanations of code structure associated with the candidate, not profiler-derived causal shares. Treat all timings as per-helper results on one isolated host over prepared synthetic inputs. They do not establish production latency, statistical significance, CPU or memory improvement, or a broad Rust performance advantage.
 
-## Results
+## Final optimized candidate
+
+The candidate used source commit `5f55177e43d364a3eca42d12afc2cd357e921e52`, a 1,329-input snapshot SHA-256 `41de940174dcfebac3c8df89f9760fcf61f00d426ebf2afd8543c7130583966a`, prepared input SHA-256 `13b2aae63bb128f59ba7e40e612c9635b6de0c0454811053448a025256e23270`, and exact static release ELF SHA-256 `780d4889b5bb2f3663e1c8e8423647bcac48dc0af1880151620b035b148d8935`. The paired report SHA-256 is `8f18adf4fc90a975fdd33bc7156d84aae95969079f26d7b8e2663726bd499124`.
+
+Each of four separate eight-item pools used three warmups per actor/workload and seven alternating paired trials; every timed trial evaluated 8,000 operations. The table gives median ns/op and the observed seven-trial min–max ranges. The common-link median is 6.55% lower for Rust, a modest margin with overlapping observed ranges. The other medians are 91.18% lower for long links, 36.92% lower for folding, and 63.08% lower for escaping.
+
+| Workload | TypeScript median (ns/op) | Rust median (ns/op) | Rust vs. TypeScript | Observed seven-trial range, TypeScript / Rust (ns/op) |
+|---|---:|---:|---:|---:|
+| Common links | 890.222375 | 831.927 | 6.55% lower | 792.240125–1,050.27725 / 799.114375–1,381.725625 |
+| Long links | 333,214.9865 | 29,378.458 | 91.18% lower | 311,358.85–347,596.84175 / 27,304.55975–33,256.3255 |
+| Text folding | 599.8035 | 378.356125 | 36.92% lower | 468.937125–648.544625 / 330.772125–518.195625 |
+| Regex escaping | 741.421125 | 273.73525 | 63.08% lower | 609.08575–1,366.888 / 246.148625–350.507875 |
+
+Against the initial Rust medians below, the optimized Rust medians changed by −66.07% for common links, +6.94% for long links, −64.75% for folding, and −5.21% for escaping. Long-link timing therefore remains near the original baseline, with a small median regression and its observed range retained for inspection. Matching checksums remained `3247409029` (common links), `1082847493` (long links), `2319121653` (folding), and `1891937349` (regex escaping). The TypeScript compiled hashes, prepared pools and expected wires were byte-equivalent to the baseline; only native `links_rule.rs` and `js_unicode.rs` hashes changed. Before/after manifests, checksums and source post-check passed; both actors exited successfully.
+
+The source oracle run `1793307998679265820` regenerated the benchmark source artifact and checked 45,057 link cases, 228 source normalization cases and two nullish cases without semantic changes. Compiler run `1793307998691861153` passed the Unicode property check and independent ordered-NFD sequence cases, followed by ordinary link/normalizer cases and full lowercase/folding replay over all 1,114,112 code-point values (including 2,048 surrogate values), 6,432 contextual cases and 20 mixed cases; exhaustive replay took 4.84 seconds. Compiler run `1793308084908088926` passed the source corpora, full replays, release `--no-run`, no-feature, Mongo/Redis, all-feature/all-target and strict Clippy checks. Its compiler step took 107.701 seconds (114.534 seconds total), with 8,418,181,120 bytes minimum available and 3,877,752,832 bytes cache. Paired measurement run `1793308237897067163` took 33.013 seconds (34.302 seconds total), with 9,181,810,688 bytes minimum available. These used 6 CPUs, 4 GiB memory with no swap, 256 PIDs and two Cargo jobs. These records are not CPU/RSS measurements.
+
+The [optimized evidence package](evidence/2026-10-29-moderation-text-benchmark-optimized/README.md) contains the current artifacts and raw runs; it retains 66 files with 65 indexed payloads. The final readback confirmed all before/after manifest, binary and input hashes and checksums, source post-check and clean exit; all 19 production records were unchanged and no task-owned resources remained. No source retirement, caller adoption, new crate, deployment, push or total-migration completion occurred.
+
+## Preserved initial paired baseline
+
+The initial benchmark below remains an immutable historical result. Its regressions and exact artifacts are retained without rewriting them to reflect the follow-up.
+
+## Initial baseline results
 
 Eight equally weighted prepared cases were used per workload. Each timed trial evaluated the eight cases 1,000 times each (8,000 operations per actor/workload). Each actor/workload had three warmup passes followed by seven alternating paired trials. Across four workloads this produced 56 timed actor-trials, or 224,000 timed operations per actor. Warmups are separate from those timed samples.
 
@@ -29,8 +52,8 @@ Pinned Node preparation and source write/check passed in run `179330757309046074
 
 Independent readback verified the paired report, input, ELF and source bindings. Final production inspection found 19 production records unchanged and zero task-owned resources remaining. The [evidence package](evidence/2026-10-29-moderation-text-benchmark-baseline/README.md) retains the source snapshot, artifacts, commands, raw runs, checksums and readback.
 
-## Interpretation and next work
+## Initial baseline interpretation and follow-up
 
-The regressions are retained. Candidate changes to common-link allocations and folding buffers/context lookups are being authored separately and remain unverified; those are structural hypotheses, not profiler-derived causes. Any follow-up must use a separate source snapshot, input artifact, result report and evidence attempt, with actual source-output parity checked against the prepared baseline. Do not overwrite or merge results into this initial record.
+The initial regressions are retained exactly as measured. The separately measured optimized candidate is described above with its own source snapshot, input artifact, report and evidence package. The observed changes do not prove which individual code change caused a timing difference; no profiling or statistical analysis was done.
 
 Correctness verification for the text ports is separate and remains valid. This benchmark did not retire TypeScript source, switch callers, deploy, push, add a crate, or validate a migration cutover. TypeScript sources and callers remain live, and wider moderation migration remains incomplete.

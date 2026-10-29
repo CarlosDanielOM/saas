@@ -1,0 +1,11 @@
+{
+  "inputSha256": "13b2aae63bb128f59ba7e40e612c9635b6de0c0454811053448a025256e23270",
+  "sourcePreparedPoolsByteEquivalent": true,
+  "compiledTypeScriptUnchanged": true,
+  "sourceOracleCasesUnchanged": true,
+  "changedBenchmarkNativeHashes": [
+    "src/utils/js_unicode.rs",
+    "src/utils/moderation/links_rule.rs"
+  ],
+  "allMetadataHashesChecked": true
+}

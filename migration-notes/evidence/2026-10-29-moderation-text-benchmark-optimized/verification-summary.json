@@ -1,0 +1,213 @@
+{
+  "status": "Verified corrective candidate source parity and paired prepared benchmarks; all current medians lower in this run, common-link margin modest. Initial regressions preserved; broader migration incomplete.",
+  "codeCommit": "5f55177e43d364a3eca42d12afc2cd357e921e52",
+  "sourceTreeSha256": "41de940174dcfebac3c8df89f9760fcf61f00d426ebf2afd8543c7130583966a",
+  "sourceInputs": 1329,
+  "acceptedRuns": [
+    "compiler-1793307998691861153",
+    "node-1793307998679265820",
+    "compiler-1793308084908088926",
+    "node-1793308237897067163"
+  ],
+  "limits": {
+    "cpus": 6,
+    "memory": 4294967296,
+    "memory_swap": 4294967296,
+    "pids": 256,
+    "cargo_jobs": 2
+  },
+  "peakCacheBytes": 3877752832,
+  "minimumAvailableBytes": 8418181120,
+  "productionUnchangedRecords": 19,
+  "performanceMeasured": true,
+  "benchmark": {
+    "reportSha256": "8f18adf4fc90a975fdd33bc7156d84aae95969079f26d7b8e2663726bd499124",
+    "sourceTreeSha256": "41de940174dcfebac3c8df89f9760fcf61f00d426ebf2afd8543c7130583966a",
+    "binarySha256": "780d4889b5bb2f3663e1c8e8423647bcac48dc0af1880151620b035b148d8935",
+    "allBeforeAfterHashesEqual": true,
+    "allChecksumsEqualBaseline": true,
+    "workloads": {
+      "link-common": {
+        "medianNsPerOp": {
+          "node": 890.222375,
+          "rust": 831.927
+        },
+        "minNsPerOp": {
+          "node": 792.240125,
+          "rust": 799.114375
+        },
+        "maxNsPerOp": {
+          "node": 1050.27725,
+          "rust": 1381.725625
+        },
+        "rawNsPerOp": {
+          "node": [
+            1050.27725,
+            1002.168375,
+            792.240125,
+            817.763125,
+            890.222375,
+            853.165625,
+            1008.59925
+          ],
+          "rust": [
+            1381.725625,
+            1182.36225,
+            814.659625,
+            799.114375,
+            831.927,
+            802.304125,
+            892.84125
+          ]
+        },
+        "rustChangePercent": -6.548405953063141,
+        "rustChangeFromBaselinePercent": -66.07414916939621,
+        "checksum": 3247409029
+      },
+      "link-large": {
+        "medianNsPerOp": {
+          "node": 333214.9865,
+          "rust": 29378.458
+        },
+        "minNsPerOp": {
+          "node": 311358.85,
+          "rust": 27304.55975
+        },
+        "maxNsPerOp": {
+          "node": 347596.84175,
+          "rust": 33256.3255
+        },
+        "rawNsPerOp": {
+          "node": [
+            311358.85,
+            344834.937,
+            332673.48475,
+            347596.84175,
+            333214.9865,
+            338145.59475,
+            323177.677875
+          ],
+          "rust": [
+            29667.807375,
+            28764.970125,
+            27304.55975,
+            29190.91175,
+            30903.3605,
+            33256.3255,
+            29378.458
+          ]
+        },
+        "rustChangePercent": -91.18333232590065,
+        "rustChangeFromBaselinePercent": 6.9372186838535965,
+        "checksum": 1082847493
+      },
+      "fold-text": {
+        "medianNsPerOp": {
+          "node": 599.8035,
+          "rust": 378.356125
+        },
+        "minNsPerOp": {
+          "node": 468.937125,
+          "rust": 330.772125
+        },
+        "maxNsPerOp": {
+          "node": 648.544625,
+          "rust": 518.195625
+        },
+        "rawNsPerOp": {
+          "node": [
+            622.1665,
+            554.402,
+            636.812875,
+            648.544625,
+            574.916875,
+            599.8035,
+            468.937125
+          ],
+          "rust": [
+            378.356125,
+            337.507,
+            518.195625,
+            330.772125,
+            440.277,
+            419.907875,
+            362.47025
+          ]
+        },
+        "rustChangePercent": -36.91998712911811,
+        "rustChangeFromBaselinePercent": -64.74740259717572,
+        "checksum": 2319121653
+      },
+      "escape-regexp": {
+        "medianNsPerOp": {
+          "node": 741.421125,
+          "rust": 273.73525
+        },
+        "minNsPerOp": {
+          "node": 609.08575,
+          "rust": 246.148625
+        },
+        "maxNsPerOp": {
+          "node": 1366.888,
+          "rust": 350.507875
+        },
+        "rawNsPerOp": {
+          "node": [
+            741.421125,
+            1366.888,
+            1269.98875,
+            761.554,
+            699.6255,
+            671.282375,
+            609.08575
+          ],
+          "rust": [
+            276.41025,
+            251.074,
+            246.148625,
+            350.507875,
+            273.73525,
+            268.541625,
+            342.35125
+          ]
+        },
+        "rustChangePercent": -63.07965328071816,
+        "rustChangeFromBaselinePercent": -5.212920997421566,
+        "checksum": 1891937349
+      }
+    }
+  },
+  "noRetirementAdoptionDeploymentPush": true,
+  "runs": [
+    {
+      "run": "compiler-1793307998691861153",
+      "success": true,
+      "sourceTreeSha256": "41de940174dcfebac3c8df89f9760fcf61f00d426ebf2afd8543c7130583966a",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-1793308084908088926",
+      "success": true,
+      "sourceTreeSha256": "41de940174dcfebac3c8df89f9760fcf61f00d426ebf2afd8543c7130583966a",
+      "productionUnchanged": true
+    },
+    {
+      "run": "format-1793307946390081543",
+      "success": true,
+      "sourceTreeSha256": "8b966099e62af37f4084e1e43154e0e4533afd6dc7d7ee91d0e290e807eedd0b",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793307998679265820",
+      "success": true,
+      "sourceTreeSha256": "41de940174dcfebac3c8df89f9760fcf61f00d426ebf2afd8543c7130583966a",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793308237897067163",
+      "success": true,
+      "sourceTreeSha256": "41de940174dcfebac3c8df89f9760fcf61f00d426ebf2afd8543c7130583966a",
+      "productionUnchanged": true
+    }
+  ]
+}
