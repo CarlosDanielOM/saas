@@ -87270,78 +87270,136 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-bounded-partial-permit-source-and-native-store; global runtime telemetry/process metrics, connection-event logging, and TypeScript caller adoption remain open",
+      "localRustEvidence": [
+        "dimabot/src/utils/moderation/permit.rs: typed normalization, parsing, constants, user/channel keys, grant planning, concurrent active-permit reads, PermitStore, and default exports",
+        "dimabot/src/utils/databases/dragonfly.database.rs: concrete shared Redis/Dragonfly ConnectionManager acquisition from DRAGONFLY_HOST/DRAGONFLY_PORT with bounded initial connect/PING; no cache telemetry wrapper",
+        "dimabot/src/utils/observability/mod.rs: explicit native Telemetry operations used only when supplied to PermitStore::with_telemetry",
+        "migration-notes/moderation-permit-2026-10-29.md: source contract, context correction, isolated Redis behavior, remaining dependency gaps, and accepted evidence",
+        "migration-notes/evidence/2026-10-29-moderation-permit-retirement/README.md: source-bound accepted compiler, Node, fixture, private Redis, production-identity, and cleanup evidence"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The native typed API preserves the source behavior for string arguments and models optional login as None (null/undefined); empty login selects the channel-wide key. Arbitrary invalid JavaScript casts, custom coercion hooks, and non-string arguments are outside this API contract.",
+        "Duration parsing preserves the source ASCII-digit/range decisions, including very long digit strings that overflow JavaScript parseInt to Infinity; values above 600 use the same out-of-range branch.",
+        "The native default exports acquire the shared concrete Redis/Dragonfly manager and implement SET key value EX seconds and concurrent user/channel GET operations. The shared manager has a five-second initial connect/PING bound and no per-command timeout; no application retry is added for an uncertain SET.",
+        "The TypeScript wrapper starts global telemetry, instruments cache calls and successful GET hit/miss outcomes, and logs connect/error events with caller-specific suppression. Native operation telemetry is opt-in; the default path does not reproduce process telemetry/metrics bootstrap or connection-event logging. The source runtime wrapper therefore remains a missing application-specific dependency."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "src/utils/ast_parser/functions/moderation.functions.ts: parses permit command arguments and calls grantPermit",
+          "src/handlers/moderation.handler.ts: calls hasActivePermit from moderation paths"
+        ],
+        "runtimeStatus": "Unadopted; TypeScript permit source and both caller paths remain live. No Rust application caller or wrapper adapter is integrated."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "src/utils/moderation/permit_offenses.test.ts",
+          "tests/fixtures/moderation_permit_reference.cjs"
+        ],
+        "rustBehaviorEvidence": [
+          "tests/moderation_permit.rs",
+          "tests/moderation_permit_redis.rs",
+          "migration-notes/moderation-permit-2026-10-29.md",
+          "migration-notes/evidence/2026-10-29-moderation-permit-retirement/README.md"
+        ],
+        "status": "Final frozen source oracle matched 395 parse, 39 login, 156 key, 78 grant, eight read, and two held-read cases; the final native/source AsyncLocalStorage context case and strict compiler/fixture checks passed. The initial context-negative run caught lost parent telemetry context and was corrected before final acceptance. Isolated private Redis checks passed for SET/TTL/expiry, empty and absent reads, both GET error sides, invalid SET, concurrent cloned managers, opt-in telemetry, caller cancellation after an applied write, and an applied write with a lost reply and no retry. No performance measurement was made."
       },
       "exports": [
         {
           "name": "PERMIT_DEFAULT_SECONDS",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "60-second channel-wide default constant",
+          "evidence": [
+            "dimabot/src/utils/moderation/permit.rs",
+            "tests/moderation_permit.rs"
+          ]
         },
         {
           "name": "PERMIT_MAX_SECONDS",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "600-second upper-bound constant",
+          "evidence": [
+            "dimabot/src/utils/moderation/permit.rs",
+            "tests/moderation_permit.rs"
+          ]
         },
         {
           "name": "PERMIT_MIN_SECONDS",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "1-second lower-bound constant",
+          "evidence": [
+            "dimabot/src/utils/moderation/permit.rs",
+            "tests/moderation_permit.rs"
+          ]
         },
         {
           "name": "PERMIT_USAGE",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "Native string constant assembled from the source-compatible usage template and duration bounds",
+          "evidence": [
+            "dimabot/src/utils/moderation/permit.rs",
+            "tests/moderation_permit.rs"
+          ]
         },
         {
           "name": "PermitParseResult",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "Typed Rust enum Error(&'static str) | Target(PermitTarget)",
+          "evidence": [
+            "dimabot/src/utils/moderation/permit.rs",
+            "tests/moderation_permit.rs"
+          ]
         },
         {
           "name": "PermitTarget",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "Typed Rust struct with optional JsString login and u32 seconds",
+          "evidence": [
+            "dimabot/src/utils/moderation/permit.rs",
+            "tests/moderation_permit.rs"
+          ]
         },
         {
           "name": "grantPermit",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "grant_permit; default export uses PermitStore::connect, which acquires the shared native connection manager",
+          "evidence": [
+            "dimabot/src/utils/moderation/permit.rs",
+            "tests/moderation_permit.rs"
+          ]
         },
         {
           "name": "hasActivePermit",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "has_active_permit; default export uses PermitStore::connect and two independent GET futures",
+          "evidence": [
+            "dimabot/src/utils/moderation/permit.rs",
+            "tests/moderation_permit.rs"
+          ]
         },
         {
           "name": "normalizePermitLogin",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "normalize_permit_login(&JsString): ECMAScript trim, leading @ removal, and shared Unicode 17 lowercase",
+          "evidence": [
+            "dimabot/src/utils/moderation/permit.rs",
+            "tests/moderation_permit.rs"
+          ]
         },
         {
           "name": "parsePermitArgs",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "parse_permit_args(&[JsString]): source-compatible trim, optional login/duration interpretation, and range errors",
+          "evidence": [
+            "dimabot/src/utils/moderation/permit.rs",
+            "tests/moderation_permit.rs"
+          ]
         },
         {
           "name": "permitChannelKey",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "permit_channel_key(&JsString)",
+          "evidence": [
+            "dimabot/src/utils/moderation/permit.rs",
+            "tests/moderation_permit.rs"
+          ]
         },
         {
           "name": "permitUserKey",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "permit_user_key(&JsString, &JsString)",
+          "evidence": [
+            "dimabot/src/utils/moderation/permit.rs",
+            "tests/moderation_permit.rs"
+          ]
         }
       ],
       "imports": [
@@ -87358,15 +87416,15 @@
           "baselineSourceTargets": [
             "src/utils/databases/dragonfly.database.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named-runtime-import",
+          "runtimeOrTypeDependency": "Runtime import of getDragonflyClient from src/utils/databases/dragonfly.database.ts; the wrapper uses redis and telemetry at runtime.",
+          "defaultSideEffectBarrelDetails": "The import itself has no side-effect form. Calling getDragonflyClient starts global telemetry, wraps cache operations with spans and GET hit/miss metrics, and installs caller-specific connect/error logging.",
+          "directDependencyReview": "Reviewed. A concrete native Redis/Dragonfly ConnectionManager and default acquisition path exist in dimabot/src/utils/databases/dragonfly.database.rs; the source wrapper is only partially replaced.",
+          "transitiveDependencyReview": "Partial/open. Native shared connection acquisition and explicit opt-in operation telemetry exist. Default global telemetry/process metrics and wrapper connection-event logging with caller suppression remain missing.",
+          "rustReplacementOrGap": "Native get_redis_client provides concrete host/port parsing, shared connection acquisition, and bounded initial PING. PermitStore::with_telemetry provides opt-in spans and GET hit/miss observations; no default telemetry bootstrap, process metrics, connection/error event logging, or Rust caller adoption is integrated."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "partial-local-permit-source-behavior-and-concrete-native-redis-adapter-verified; global-telemetry/process-metrics/connection-event-logging and TypeScript-caller-adoption remain open"
     },
     {
       "source": "src/utils/moderation/rules/blacklist.rule.ts",

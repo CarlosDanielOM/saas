@@ -1,0 +1,210 @@
+[package]
+name = "dima-rust"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[features]
+# Preserve the original complete foundation for manual/library consumers.
+# Deployed MongoDB workers select only `--no-default-features --features mongo`.
+default = ["mongo", "redis", "postgres", "http"]
+mongo = ["dep:mongodb", "dep:garde", "dep:futures-util", "dep:serde", "dep:serde_json", "dep:sha2", "dep:dotenvy", "dep:tokio", "dep:rustls"]
+redis = ["dep:redis", "dep:tokio", "dep:rustls"]
+postgres = ["dep:sqlx", "dep:tokio"]
+http = ["dep:axum", "dep:tokio", "dep:tower-http"]
+# API capabilities are opt-in so existing cron worker graphs stay unchanged.
+# Native WebSockets use Axum's transport rather than a separate client crate.
+http-form = ["http", "axum/form"]
+http-multipart = ["http", "axum/multipart"]
+http-ws = ["http", "axum/ws"]
+http-static = ["http", "tower-http/fs"]
+# Outbound HTTPS is independent from the Axum server capability.
+http-client = ["dep:reqwest", "dep:tokio"]
+# The dashboard's localeCompare game ties need ICU, not codepoint ordering.
+unicode-collation = ["dep:icu_collator"]
+# Opt-in service foundations for TypeScript util ports. None is in `default`
+# or in a deployed worker profile; enable each one only where it is used.
+# email, posthog, s3, and otel also compile aws-lc-rs into rustls; see
+# `utils::install_default_tls_provider`.
+socketio = ["http", "dep:socketioxide", "dep:serde_json"]
+email = ["dep:resend-rs", "dep:rustls", "dep:serde_json", "dep:tokio"]
+posthog = ["dep:posthog-rs", "dep:rustls", "dep:serde_json", "dep:tokio"]
+qdrant = ["dep:qdrant-client", "dep:tokio", "dep:serde", "dep:serde_json", "dep:regex", "dep:md-5"]
+s3 = ["dep:aws-sdk-s3", "dep:rustls", "dep:tokio"]
+otel = ["dep:opentelemetry", "dep:opentelemetry_sdk", "dep:opentelemetry-otlp", "dep:rustls"]
+jwt = ["dep:jsonwebtoken", "dep:base64", "dep:serde", "dep:serde_json", "serde_json/float_roundtrip"]
+re2-compat = ["dep:regex"]
+audio = ["dep:symphonia"]
+# Pure syntax only; no runtime, transport, worker or default-feature coupling.
+ast-syntax = ["dep:serde", "dep:serde_json"]
+# Pure evaluator with injected host; no deployed runtime or client dependencies.
+ast-evaluator = ["ast-syntax", "permissions"]
+ast-pure-functions = ["ast-evaluator", "dep:regex"]
+ast-blocks = ["ast-syntax", "dep:regex"]
+# Consolidated helpers are independently selectable; the umbrella is convenient
+# for future bot/API ports. None is enabled by default or by a worker profile.
+bot-utils = ["command-utils", "keywords", "chat-events", "ai-usage", "eventsub", "domain-events"]
+command-utils = ["dep:serde_json", "dep:tokio", "dep:uuid"]
+keywords = ["dep:regex", "dep:serde", "dep:serde_json", "dep:tokio", "dep:unicode-normalization"]
+chat-events = ["dep:serde_json"]
+ai-usage = ["dep:serde", "dep:serde_json", "dep:uuid"]
+eventsub = ["dep:serde", "dep:serde_json"]
+js-date = ["dep:libc"]
+domain-events = ["dep:serde", "dep:serde_json", "serde_json/float_roundtrip", "eventsub", "js-date"]
+reward-body = ["dep:serde_json", "serde_json/float_roundtrip"]
+application-schemas = ["mongo", "js-date"]
+# Opt-in channel TTS schema; does not alter deployed profiles.
+channel-tts-settings = ["application-schemas", "tts-utilities"]
+# Request-time usage adapters, independent of deployed workers and defaults.
+ai-credit-projection = ["credit-policy", "tts-utilities", "plan-cache", "dep:sha2"]
+ai-usage-producer = ["ai-usage", "redis", "credit-policy", "tts-utilities"]
+ai-usage-lock = ["redis", "tts-utilities", "dep:sha2", "dep:uuid"]
+ai-usage-ledger-reads = ["application-schemas", "credit-policy", "tts-utilities"]
+ai-usage-ledger-queries = ["ai-usage-ledger-reads", "ai-usage-receipt-parser"]
+ai-usage-retention = ["application-schemas", "ai-usage-receipt-parser"]
+ai-usage-ledger-persistence = ["ai-usage-lock", "ai-usage-producer", "ai-usage-receipt-parser", "ai-usage-ledger-reads", "application-schemas"]
+ai-usage-ledger-backfill = ["ai-usage-ledger-persistence"]
+# Borrowed receipt parsing and analytics stay outside deployed worker graphs.
+lossless-json-view = ["tts-utilities"]
+ai-usage-receipt-parser = ["ai-usage", "credit-policy", "lossless-json-view", "js-date", "mongo"]
+posthog-lossless = ["http-client", "tts-utilities", "credit-policy", "dep:uuid"]
+posthog-tracking = ["posthog", "ai-usage", "tts-utilities", "posthog-lossless"]
+# File-integrity verification for the isolated benchmark, without MongoDB.
+posthog-benchmark = ["posthog-tracking", "dep:sha2"]
+keyword-store = ["keywords", "mongo", "redis", "logger-redis", "credit-policy", "dep:libc", "dep:base64"]
+domain-event-runtime = ["domain-events", "mongo", "redis", "logger", "chat-message", "observability", "dep:uuid"]
+twitch-functions = ["twitch-streamers", "credit-policy"]
+# Explicitly constructed shared logger; no default or worker profile enables it.
+logger = ["dep:serde", "dep:serde_json", "serde_json/float_roundtrip", "dep:tokio", "dep:futures-util", "dep:uuid"]
+observability = ["redis", "logger", "dep:getrandom", "dep:serde", "dep:serde_json", "dep:uuid"]
+tts-utilities = ["dep:regex", "dep:serde_json", "serde_json/float_roundtrip", "dep:tokio"]
+tts-services = ["tts-utilities", "http-client", "js-date", "tokio/fs", "tokio/io-util", "tokio/process"]
+bits-rules = ["mongo", "eventsub", "serde_json/float_roundtrip"]
+logger-redis = ["logger", "redis"]
+logger-otel = ["logger", "otel"]
+# Explicit cache protocol adapter; no default or deployed profile enables it.
+plan-cache = ["redis"]
+twitch-client = ["http-client", "dep:serde_json"]
+polar-client = ["http-client", "dep:serde", "dep:serde_json"]
+# Reusable policies and adapters for future callers; no deployed profile opts in.
+chat-message = ["dep:serde", "dep:serde_json"]
+timer-policy = ["dep:serde", "dep:serde_json"]
+# JS JSON numbers require correctly rounded binary64 input, including extremes.
+credit-policy = ["dep:serde", "dep:serde_json", "serde_json/float_roundtrip"]
+# Pure permission policies; intentionally outside bot-utils and worker profiles.
+permissions = ["dep:serde", "dep:serde_json", "serde_json/float_roundtrip"]
+moderation-emote-spam = ["dep:serde_json", "serde_json/float_roundtrip"]
+moderation-caps = ["dep:serde_json", "serde_json/float_roundtrip"]
+js-unicode17 = ["dep:serde_json", "dep:unicode-normalization"]
+moderation-normalize = ["js-unicode17"]
+moderation-links = ["js-unicode17"]
+moderation-spam-categories = ["dep:serde_json"]
+moderation-permit = ["js-unicode17", "redis", "observability", "serde_json/float_roundtrip"]
+cron-queue = ["redis", "dep:serde", "dep:serde_json", "dep:uuid"]
+credential-crypto = ["dep:aes", "dep:ctr", "dep:getrandom", "dep:serde"]
+twitch-tokens = ["twitch-client", "credential-crypto", "mongo", "redis"]
+# Concrete channel/global emote cache, independent of deployed worker profiles.
+twitch-emotes = ["twitch-tokens", "tts-utilities", "js-date"]
+# Account directory composes existing opt-in protocols without changing workers.
+twitch-streamers = ["twitch-tokens", "plan-cache", "logger"]
+twitch-streamers-posthog = ["twitch-streamers", "posthog"]
+# Standalone process supervision and telemetry; never widens worker profiles.
+cron-supervisor = ["dep:redis", "dep:serde", "dep:serde_json", "dep:tokio", "dep:uuid", "dep:libc", "dep:dotenvy", "tokio/process", "tokio/fs", "tokio/io-util"]
+
+[[bin]]
+name = "cron_index"
+path = "src/workers/cron.index.rs"
+required-features = ["cron-supervisor"]
+
+[[bin]]
+name = "stream_activity"
+path = "src/workers/stream_activity.worker.rs"
+required-features = ["mongo"]
+
+[[bin]]
+name = "raid_analytics"
+path = "src/workers/raid_analytics.worker.rs"
+required-features = ["mongo"]
+
+[[bin]]
+name = "follow_defense_baseline"
+path = "src/workers/follow_defense_baseline.worker.rs"
+required-features = ["mongo", "redis"]
+
+[[bin]]
+name = "roulette_completion"
+path = "src/workers/roulette_completion.worker.rs"
+required-features = ["mongo"]
+
+[[bin]]
+name = "ai_usage_receipts"
+path = "src/workers/ai_usage_receipts.worker.rs"
+required-features = ["mongo", "redis"]
+
+[[bin]]
+name = "raid_sessions"
+path = "src/workers/raid_sessions.worker.rs"
+required-features = ["mongo", "redis"]
+
+[[example]]
+name = "stream_activity_fixture"
+path = "examples/stream_activity_fixture.rs"
+required-features = ["mongo"]
+
+[[test]]
+name = "js_date"
+required-features = ["js-date"]
+
+[[bin]]
+name = "dashboard_activity"
+path = "src/workers/dashboard_activity.worker.rs"
+required-features = ["mongo", "redis", "http-client", "unicode-collation"]
+
+[dependencies]
+aes = { version = "=0.8.4", optional = true, default-features = false }
+ctr = { version = "=0.9.2", optional = true, default-features = false }
+getrandom = { version = "=0.4.3", optional = true }
+axum = { version = "0.8.9", optional = true, default-features = false, features = ["http1", "json", "tokio"] }
+dotenvy = { version = "0.15.7", optional = true }
+garde = { version = "0.23.0", optional = true, features = ["derive"] }
+futures-util = { version = "0.3.34", optional = true }
+icu_collator = { version = "2.3.0", optional = true }
+libc = { version = "=0.2.191", optional = true }
+# compat-3-3-0 keeps BSON 3 only; compat-3-0-0 would also pull BSON 2.
+mongodb = { version = "3.9.1", optional = true, default-features = false, features = ["compat-3-3-0", "bson-3", "rustls-tls", "dns-resolver"] }
+redis = { version = "1.7.1", optional = true, default-features = false, features = ["tokio-rustls-comp", "script", "connection-manager"] }
+reqwest = { version = "0.12.28", optional = true, default-features = false, features = ["json", "rustls-tls-native-roots"] }
+# MongoDB selects ring itself. Redis TLS needs an explicit provider when built
+# alone; it must not depend on MongoDB or SQLx feature unification for one.
+rustls = { version = "0.23.46", optional = true, default-features = false, features = ["ring", "std", "tls12"] }
+serde = { version = "1.0.229", optional = true, features = ["derive"] }
+serde_json = { version = "1.0.154", optional = true, features = ["raw_value"] }
+sha2 = { version = "0.10.9", optional = true }
+sqlx = { version = "0.9.0", optional = true, default-features = false, features = ["postgres", "runtime-tokio", "tls-rustls-ring"] }
+tokio = { version = "1.54.0", optional = true, features = ["rt-multi-thread", "macros", "signal", "sync", "time", "net"] }
+# Service foundations below are optional and outside every worker profile.
+# Each disables crate defaults so TLS stays on rustls (no OpenSSL on musl).
+# Same base64 jsonwebtoken already uses, for Node-identical JWT segments.
+base64 = { version = "0.22.1", optional = true }
+aws-sdk-s3 = { version = "1.154.0", optional = true, default-features = false, features = ["rt-tokio", "default-https-client", "http-1x", "sigv4a"] }
+jsonwebtoken = { version = "11.1.0", optional = true, default-features = false, features = ["rust_crypto"] }
+opentelemetry = { version = "0.33.1", optional = true, default-features = false, features = ["logs"] }
+opentelemetry_sdk = { version = "0.33.1", optional = true, default-features = false, features = ["logs"] }
+opentelemetry-otlp = { version = "0.33.1", optional = true, default-features = false, features = ["http-proto", "logs", "reqwest-blocking-client", "reqwest-rustls"] }
+posthog-rs = { version = "0.27.0", optional = true, default-features = false, features = ["async-client"] }
+# Match the production server minor (qdrant v1.17.0); Qdrant supports one minor of skew.
+qdrant-client = { version = "~1.17.0", optional = true, default-features = false, features = ["serde"] }
+md-5 = { version = "0.11.0", optional = true }
+regex = { version = "1.13.1", optional = true }
+resend-rs = { version = "0.35.0", optional = true, default-features = false, features = ["rustls-tls"] }
+socketioxide = { version = "0.18.7", optional = true }
+symphonia = { version = "0.6.1", optional = true, default-features = false, features = ["mp3", "id3v2"] }
+tower-http = { version = "0.7.1", optional = true, features = ["cors"] }
+unicode-normalization = { version = "=0.1.26", optional = true }
+uuid = { version = "=1.28.0", optional = true, features = ["v4"] }
+
+[dev-dependencies]
+serde_json = { version = "1.0.154", features = ["raw_value"] }

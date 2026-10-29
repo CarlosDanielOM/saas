@@ -1,0 +1,12 @@
+{
+  "newReferenceSha256": "a4c0cd830198fc9edc47c90707805a7e9078bf2f1184a6800d01b6a263f2c95e",
+  "sameFactsAndNativeRustBytes": true,
+  "allNonProvenanceFieldsEqual": true,
+  "newResolution": {
+    "path": "archives/dimabot-typescript/2026-10-28/src/utils/moderation/rules/caps.rule.ts",
+    "virtual_path": "dimabot/src/utils/moderation/rules/caps.rule.ts",
+    "sha256": "62f7fe37760cbf5640544cab646a639d06b42883532657634a00e25488888797",
+    "resolver_sha256": "c5216efecc4e2cd347763a39fb25ece30945e1d39c2628120ab5e92f5d6a611e"
+  },
+  "allInputAndTranspiledHashesUnchangedExceptGeneratorScript": true
+}

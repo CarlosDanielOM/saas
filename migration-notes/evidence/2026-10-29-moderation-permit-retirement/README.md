@@ -1,0 +1,7 @@
+# Moderation permit and rule retirement evidence
+
+The final accepted compiler, Node, and fixture runs bind to commit `23355cca` and the 1,335-input source manifest. All 1,325 Git inputs were checked against that commit and ten SDK references against the earlier independently verified binding. The initial permit implementation (`c962f437`), negative candidate and its expected context-test failure are retained separately; the failed run is not bound to the fixed source.
+
+The archive readback records 5,348 caps and 360 emote-spam source cases unchanged from before archive. The final permit Node record reports 395 parses, 156 keys, 78 grants and eight reads; the preserved fixtures contain the remaining detailed scenarios. The final context test and fixture replays passed, including the isolated Redis transport test. Archive manifest hashes and the three changed ledger rows are checked against `c7ecc396` and its parent. Final readback records 19 unchanged production resources and no remaining owned containers, networks or volumes.
+
+Caps and emote-spam source/archive work is complete, while TypeScript dispatcher and combined blacklist test imports are not adopted and TypeScript build integration remains open. Permit remains partial because global telemetry, runtime process metrics and connection-event logging adapters are missing. Overall migration remains incomplete. No benchmark, deployment or push is claimed.

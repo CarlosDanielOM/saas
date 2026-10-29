@@ -1,0 +1,19 @@
+{
+  "sha256": "1f194af76c739062e8d11ff1189de938507ffcf394c4bdaf4f3f4643dbc6146c",
+  "groups": {
+    "parsed": 395,
+    "logins": 39,
+    "keys": 156,
+    "grants": 78,
+    "reads": 8,
+    "heldReads": 2
+  },
+  "versions": {
+    "node": "24.22.1",
+    "v8": "13.6.233.17-node.58",
+    "icu": "78.3",
+    "unicode": "17.0",
+    "typescript": "5.9.3"
+  },
+  "nativeSourceFingerprintsChecked": true
+}

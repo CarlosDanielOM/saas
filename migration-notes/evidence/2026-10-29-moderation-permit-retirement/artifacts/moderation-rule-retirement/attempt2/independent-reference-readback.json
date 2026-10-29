@@ -1,0 +1,143 @@
+{
+  "caps": {
+    "sha256": "7e753eb802a33a349175e08a0c287d8a41c56afcdae76af3ee8767ba9543a9cf",
+    "sourceCases": 5348,
+    "unchangedCaseObjects": true,
+    "resolution": {
+      "path": "archives/dimabot-typescript/2026-10-28/src/utils/moderation/rules/caps.rule.ts",
+      "virtualPath": "dimabot/src/utils/moderation/rules/caps.rule.ts",
+      "sha256": "62f7fe37760cbf5640544cab646a639d06b42883532657634a00e25488888797",
+      "resolverSha256": "c5216efecc4e2cd347763a39fb25ece30945e1d39c2628120ab5e92f5d6a611e"
+    },
+    "allNativeSdkAndArchivedSourceFingerprintsChecked": true
+  },
+  "emote": {
+    "sha256": "02408c9716ced89ec4dc90dc7fa2593aab955edaca75464bfd01ac5ee2719116",
+    "sourceCases": 360,
+    "unchangedCaseObjects": true,
+    "resolution": {
+      "path": "archives/dimabot-typescript/2026-10-28/src/utils/moderation/rules/emote_spam.rule.ts",
+      "virtualPath": "dimabot/src/utils/moderation/rules/emote_spam.rule.ts",
+      "sha256": "24e7c603569d1063642575372de1066e4f5d5d5de46c88e15e450a549c17f12f",
+      "resolverSha256": "c5216efecc4e2cd347763a39fb25ece30945e1d39c2628120ab5e92f5d6a611e"
+    },
+    "allNativeSdkAndArchivedSourceFingerprintsChecked": true
+  },
+  "permit": {
+    "sha256": "50266811360c5bb833f8db4c63404ecb7191160943cdd64c856e8058fe17145f",
+    "contextCase": {
+      "parent": {
+        "traceId": "0123456789abcdef0123456789abcdef",
+        "spanId": "0123456789abcdef",
+        "sampled": true,
+        "channel": "permit_channel"
+      },
+      "result": false,
+      "reads": [
+        {
+          "key": [
+            109,
+            111,
+            100,
+            101,
+            114,
+            97,
+            116,
+            105,
+            111,
+            110,
+            58,
+            112,
+            101,
+            114,
+            109,
+            105,
+            116,
+            95,
+            99,
+            104,
+            97,
+            110,
+            110,
+            101,
+            108,
+            58,
+            112,
+            101,
+            114,
+            109,
+            105,
+            116,
+            58,
+            117,
+            115,
+            101,
+            114,
+            58,
+            117,
+            115,
+            101,
+            114
+          ],
+          "context": {
+            "traceId": "0123456789abcdef0123456789abcdef",
+            "spanId": "0123456789abcdef",
+            "sampled": true,
+            "channel": "permit_channel"
+          }
+        },
+        {
+          "key": [
+            109,
+            111,
+            100,
+            101,
+            114,
+            97,
+            116,
+            105,
+            111,
+            110,
+            58,
+            112,
+            101,
+            114,
+            109,
+            105,
+            116,
+            95,
+            99,
+            104,
+            97,
+            110,
+            110,
+            101,
+            108,
+            58,
+            112,
+            101,
+            114,
+            109,
+            105,
+            116,
+            58,
+            99,
+            104,
+            97,
+            110,
+            110,
+            101,
+            108
+          ],
+          "context": {
+            "traceId": "0123456789abcdef0123456789abcdef",
+            "spanId": "0123456789abcdef",
+            "sampled": true,
+            "channel": "permit_channel"
+          }
+        }
+      ]
+    },
+    "priorGroupsUnchanged": true
+  }
+}

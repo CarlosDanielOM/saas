@@ -1,0 +1,101 @@
+{
+  "acceptedRuns": [
+    "compiler-1793309891342492944",
+    "node-1793309891350167771",
+    "compiler-fixtures-1793309985004657594"
+  ],
+  "sourceTreeSha256": "154399463d3773c5d12c06279333ad024fd604adcf173aafb65408b40147238f",
+  "sourceInputs": 1335,
+  "gitInputs": 1325,
+  "sdkReferences": 10,
+  "runs": [
+    {
+      "run": "compiler-1793308739937136353",
+      "success": true,
+      "productionUnchanged": true,
+      "sourceTreeSha256": "20a6d0ea8e1c2b4e5f198c540023c03fc888676ba4c080139a6e8c4445c02bdb",
+      "classification": "successful"
+    },
+    {
+      "run": "compiler-1793309518205057473",
+      "success": false,
+      "productionUnchanged": true,
+      "sourceTreeSha256": "c6a85ebb27e11c96dd9828f93f50c76cdf24594a057f5d07b159dadf6293a3f8",
+      "classification": "expected negative context test"
+    },
+    {
+      "run": "compiler-1793309891342492944",
+      "success": true,
+      "productionUnchanged": true,
+      "sourceTreeSha256": "154399463d3773c5d12c06279333ad024fd604adcf173aafb65408b40147238f",
+      "classification": "successful"
+    },
+    {
+      "run": "compiler-fixtures-1793309120142991782",
+      "success": true,
+      "productionUnchanged": true,
+      "sourceTreeSha256": "20a6d0ea8e1c2b4e5f198c540023c03fc888676ba4c080139a6e8c4445c02bdb",
+      "classification": "successful"
+    },
+    {
+      "run": "compiler-fixtures-1793309985004657594",
+      "success": true,
+      "productionUnchanged": true,
+      "sourceTreeSha256": "154399463d3773c5d12c06279333ad024fd604adcf173aafb65408b40147238f",
+      "classification": "successful"
+    },
+    {
+      "run": "format-1793308636087473181",
+      "success": true,
+      "productionUnchanged": true,
+      "sourceTreeSha256": "4d3f30a3b091276c01a599a48499a554a64a3105f7b81e24a268302797130473",
+      "classification": "successful"
+    },
+    {
+      "run": "format-1793309805664359685",
+      "success": true,
+      "productionUnchanged": true,
+      "sourceTreeSha256": "74cd50a239d319b2f4040f54dde5ced4dab1b121b13bb75b2ac6879324f7b3b9",
+      "classification": "successful"
+    },
+    {
+      "run": "node-1793308739937216994",
+      "success": true,
+      "productionUnchanged": true,
+      "sourceTreeSha256": "20a6d0ea8e1c2b4e5f198c540023c03fc888676ba4c080139a6e8c4445c02bdb",
+      "classification": "successful"
+    },
+    {
+      "run": "node-1793309568518419916",
+      "success": true,
+      "productionUnchanged": true,
+      "sourceTreeSha256": "c6a85ebb27e11c96dd9828f93f50c76cdf24594a057f5d07b159dadf6293a3f8",
+      "classification": "successful"
+    },
+    {
+      "run": "node-1793309891350167771",
+      "success": true,
+      "productionUnchanged": true,
+      "sourceTreeSha256": "154399463d3773c5d12c06279333ad024fd604adcf173aafb65408b40147238f",
+      "classification": "successful"
+    }
+  ],
+  "capsSourceCases": 5348,
+  "emoteSourceCases": 360,
+  "permitNodeLogCounts": {
+    "parsed": 395,
+    "keys": 156,
+    "grants": 78,
+    "reads": 8
+  },
+  "productionUnchangedRecords": 19,
+  "remainingOwnedResources": {
+    "containers": [],
+    "networks": [],
+    "volumes": []
+  },
+  "coverage": "Caps and emote-spam source/archive work complete; TypeScript dispatcher and combined blacklist test imports remain unadopted, leaving TypeScript build integration open. Permit remains partial: global telemetry, runtime process metrics and connection-event logging adapters are missing. Overall Rust migration incomplete.",
+  "benchmarkMeasured": false,
+  "deployed": false,
+  "pushed": false
+}
