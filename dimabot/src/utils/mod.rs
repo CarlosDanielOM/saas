@@ -87,6 +87,8 @@ pub mod ast_evaluator;
 #[path = "ast_parser/syntax.rs"]
 pub mod ast_syntax;
 
+#[cfg(feature = "ai-credit-projection")]
+pub mod ai_credit_projection;
 #[cfg(feature = "ai-usage")]
 pub mod ai_usage;
 #[cfg(feature = "chat-events")]
