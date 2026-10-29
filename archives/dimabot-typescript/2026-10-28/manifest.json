@@ -96,6 +96,14 @@
     {
       "source": "src/utils/moderation/rules/emote_spam.rule.ts",
       "sha256": "24e7c603569d1063642575372de1066e4f5d5d5de46c88e15e450a549c17f12f"
+    },
+    {
+      "source": "src/utils/moderation/seed_plan.ts",
+      "sha256": "529f7a4e395c2a4181c05be81f73082b7a5b52ef6ee18ea4036f9f66ac86b541"
+    },
+    {
+      "source": "src/utils/moderation/defaults.test.ts",
+      "sha256": "5c40dce38b888f0076a3d64480087527e9cc7e986fec243ea70fedc6918be9fb"
     }
   ]
 }

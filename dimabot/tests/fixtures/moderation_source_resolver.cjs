@@ -5,6 +5,7 @@ const path = require('node:path');
 const allowed = new Set([
   'src/utils/moderation/rules/caps.rule.ts',
   'src/utils/moderation/rules/emote_spam.rule.ts',
+  'src/utils/moderation/seed_plan.ts',
 ]);
 function resolveModerationSource(root, logicalPath) {
   if (!allowed.has(logicalPath)) throw new Error(`unsupported moderation source: ${logicalPath}`);

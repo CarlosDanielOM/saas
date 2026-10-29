@@ -163,11 +163,43 @@ fn replay_actual_seed_plan() {
         data["nodeSha"],
         "569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108"
     );
+    // The fixture reader accepts exactly one regular, non-symlink source.
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .canonicalize()
+        .unwrap();
+    let logical = "src/utils/moderation/seed_plan.ts";
+    let live = root.join(logical);
+    let archive = root
+        .parent()
+        .unwrap()
+        .join("archives/dimabot-typescript/2026-10-28")
+        .join(logical);
+    let candidates: Vec<_> = [live, archive]
+        .into_iter()
+        .filter(|path| match std::fs::symlink_metadata(path) {
+            Ok(_) => true,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => false,
+            Err(e) => panic!("source metadata: {e}"),
+        })
+        .collect();
+    assert_eq!(
+        candidates.len(),
+        1,
+        "exactly one live/archive seed source required"
+    );
+    assert!(
+        std::fs::symlink_metadata(&candidates[0])
+            .unwrap()
+            .file_type()
+            .is_file(),
+        "source must be a regular non-symlink file"
+    );
+    let seed_source = std::fs::read(&candidates[0]).unwrap();
+    assert_eq!(
+        sha256_hex(&seed_source),
+        data["hashes"][logical].as_str().unwrap()
+    );
     for (name, bytes) in [
-        (
-            "src/utils/moderation/seed_plan.ts",
-            include_bytes!("../src/utils/moderation/seed_plan.ts").as_slice(),
-        ),
         (
             "src/utils/moderation/seed_plan.rs",
             include_bytes!("../src/utils/moderation/seed_plan.rs").as_slice(),
@@ -207,6 +239,10 @@ fn replay_actual_seed_plan() {
         (
             "tests/moderation_seed_plan.rs",
             include_bytes!("moderation_seed_plan.rs").as_slice(),
+        ),
+        (
+            "tests/fixtures/moderation_source_resolver.cjs",
+            include_bytes!("fixtures/moderation_source_resolver.cjs").as_slice(),
         ),
         (
             "tests/fixtures/moderation_seed_plan_reference.cjs",

@@ -1,6 +1,7 @@
 'use strict';
 // Actual unchanged TypeScript module, real pinned Mongoose, no database.
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),Module=require('node:module'),assert=require('node:assert/strict');
+const {resolveModerationSource,overlaySource}=require('./moderation_source_resolver.cjs');
 const root=fs.realpathSync(process.env.DIMA_SEED_PLAN_SOURCE_ROOT || path.join(__dirname,'../..'));
 const sha=b=>crypto.createHash('sha256').update(b).digest('hex');const read=f=>fs.readFileSync(path.join(root,f));
 const pins={
@@ -47,8 +48,10 @@ const overlayFor=file=>overlays[path.relative(root,path.resolve(file)).split(pat
 host.readFile=file=>overlayFor(file)??origRead(file);
 host.getSourceFile=(file,version,...rest)=>{const text=overlayFor(file);return text===undefined?origGet(file,version,...rest):ts.createSourceFile(file,text,version,true,ts.ScriptKind.TS);};
 const seedFile='src/utils/moderation/seed_plan.ts';
-assert.equal(sha(read(seedFile)),'529f7a4e395c2a4181c05be81f73082b7a5b52ef6ee18ea4036f9f66ac86b541');
-const seedAst=ast(seedFile);assert(seedAst.statements.some(s=>ts.isTypeAliasDeclaration(s)&&s.name.text==='ModerationSeedPlan'&&s.modifiers?.some(m=>m.kind===ts.SyntaxKind.ExportKeyword)));
+const seedSource=resolveModerationSource(root,seedFile);
+overlaySource(host,ts,seedSource);
+assert.equal(sha(seedSource.bytes),'529f7a4e395c2a4181c05be81f73082b7a5b52ef6ee18ea4036f9f66ac86b541');
+const seedAst=ts.createSourceFile(seedSource.virtualPath,seedSource.bytes.toString('utf8'),ts.ScriptTarget.ES2022,true);assert.deepEqual(seedAst.parseDiagnostics,[]);assert(seedAst.statements.some(s=>ts.isTypeAliasDeclaration(s)&&s.name.text==='ModerationSeedPlan'&&s.modifiers?.some(m=>m.kind===ts.SyntaxKind.ExportKeyword)));
 const seedImports=seedAst.statements.filter(ts.isImportDeclaration).map(s=>s.getText(seedAst));
 assert.equal(seedImports.length,1);assert.match(seedImports[0],/type IChannelModerationSettings/);assert.match(seedImports[0],/MODERATION_SETTINGS_DEFAULTS/);
 const program=ts.createProgram([path.join(root,seedFile)],options,host);
@@ -60,7 +63,7 @@ function load(name,text,required){const out=ts.transpileModule(text,{compilerOpt
 const spamApi=load(spamFile,spam,{});
 const api=load(schemaFile,source,{'../utils/moderation/spam_categories.js':spamApi,'crypto':crypto,'mongoose':localMongoose});
 
-const seed=load(seedFile,read(seedFile).toString('utf8'),{'../../schemas/channel_moderation_settings.schema.js':api});
+const seed=load(seedFile,seedSource.bytes.toString('utf8'),{'../../schemas/channel_moderation_settings.schema.js':api});
 assert.deepEqual(Object.keys(seed).sort(),['existingChannelModerationView','isUntouchedLazyStub','planModerationSeed'].sort());
 const enabled=['missing','true','false'],rules=['missing','null','empty','nonempty'],versions=['missing','null','0','-0','1','1.00000001','2','NaN','Infinity'];
 function candidate(e,r,v) {
@@ -74,9 +77,10 @@ for(const e of enabled)for(const r of rules)for(const v of versions){const c=can
 const viewInputs=[['channel','streamer'],['  a\t','\n b '],['😀','𝄞'],['\ud800','x\udfff'],['a\ud800b','\udc00😀']];
 const views=viewInputs.map(([id,name])=>({idUnits:Array.from({length:id.length},(_,i)=>id.charCodeAt(i)),nameUnits:Array.from({length:name.length},(_,i)=>name.charCodeAt(i)),wire:JSON.stringify(seed.existingChannelModerationView(id,name))}));
 const files=['src/utils/moderation/seed_plan.ts','src/utils/moderation/seed_plan.rs','src/schemas/channel_moderation_settings.schema.ts','src/schemas/channel_moderation_settings.schema.rs','src/schemas/schema.rs','src/utils/moderation/spam_categories.ts','src/utils/moderation/spam_categories.rs','src/utils/js_string.rs','src/utils/json_number.rs','src/utils/js_compat.rs','tests/moderation_seed_plan.rs','tests/fixtures/moderation_seed_plan_reference.cjs','Cargo.toml','Cargo.lock','rust-toolchain.toml','package.json','package-lock.json'];
-const hashes=Object.fromEntries(files.map(f=>[f,sha(read(f))]));
+const hashes=Object.fromEntries(files.map(f=>[f,f===seedFile?sha(seedSource.bytes):sha(read(f))]));
+hashes['tests/fixtures/moderation_source_resolver.cjs']=sha(read('tests/fixtures/moderation_source_resolver.cjs'));
 for(const [name,module] of [['typescript-js','typescript'],['typescript-package','typescript/package.json'],['mongoose-js','mongoose'],['mongoose-package','mongoose/package.json']])hashes[name]=sha(fs.readFileSync(local.resolve(module)));
 const mongooseDir=path.dirname(local.resolve('mongoose/package.json'));for(const file of ['lib/document.js','lib/schema.js','lib/model.js'])hashes[`mongoose/${file}`]=sha(fs.readFileSync(path.join(mongooseDir,file)));
-const result={format:1,nodeSha:nodePin,versions:{node:process.versions.node,v8:process.versions.v8,icu:process.versions.icu,unicode:process.versions.unicode,typescript:ts.version,mongoose:mongoose.version},hashes,pins,compiled,seedImports,modelImports:imports,cases,views};
+const result={format:1,nodeSha:nodePin,versions:{node:process.versions.node,v8:process.versions.v8,icu:process.versions.icu,unicode:process.versions.unicode,typescript:ts.version,mongoose:mongoose.version},hashes,pins,compiled,seedImports,modelImports:imports,seedResolution:{path:seedSource.relativePath,virtualPath:`dimabot/${seedFile}`,sha256:sha(seedSource.bytes),resolverSha256:hashes['tests/fixtures/moderation_source_resolver.cjs']},cases,views};
 const output=JSON.stringify(result,null,2)+'\n';
 const [mode,dir,...extra]=process.argv.slice(2);assert(['--write','--check'].includes(mode)&&dir&&path.isAbsolute(dir)&&!extra.length);const real=fs.realpathSync(dir),workspace=fs.realpathSync(path.join(root,'..'));assert.equal(real,dir);assert(real!==workspace&&!real.startsWith(workspace+path.sep));const file=path.join(real,'moderation-seed-plan-reference.json');assert.deepEqual(fs.readdirSync(real),mode==='--write'?[]:[path.basename(file)]);if(mode==='--write')fs.writeFileSync(file,output,{flag:'wx'});else assert.equal(fs.readFileSync(file,'utf8'),output);console.log(JSON.stringify({mode,sha256:sha(output),cases:cases.length,views:views.length}));

@@ -1,7 +1,7 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path');
 const {resolveModerationSource,overlaySource}=require('./moderation_source_resolver.cjs');
-const names=['src/utils/moderation/rules/caps.rule.ts','src/utils/moderation/rules/emote_spam.rule.ts'];
+const names=['src/utils/moderation/rules/caps.rule.ts','src/utils/moderation/rules/emote_spam.rule.ts','src/utils/moderation/seed_plan.ts'];
 for(const name of names) test(`strict live/archive resolution: ${name}`,t=>{
  const base=fs.mkdtempSync(path.join(os.tmpdir(),'moderation-resolver-'));t.after(()=>fs.rmSync(base,{recursive:true,force:true}));
  const root=path.join(base,'dimabot'),live=path.join(root,name),archive=path.join(base,'archives/dimabot-typescript/2026-10-28',name);
