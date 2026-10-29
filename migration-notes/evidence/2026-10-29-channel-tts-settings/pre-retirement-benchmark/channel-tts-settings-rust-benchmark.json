@@ -1,0 +1,253 @@
+{
+  "implementation": "native-rust",
+  "runs": [
+    {
+      "iterations": 10000,
+      "name": "empty",
+      "samples": [
+        {
+          "bytes": 15340000,
+          "checksum": 1401430000,
+          "elapsedNs": "223996149"
+        },
+        {
+          "bytes": 15340000,
+          "checksum": 1401430000,
+          "elapsedNs": "189294517"
+        },
+        {
+          "bytes": 15340000,
+          "checksum": 1401430000,
+          "elapsedNs": "196639625"
+        },
+        {
+          "bytes": 15340000,
+          "checksum": 1401430000,
+          "elapsedNs": "184312575"
+        },
+        {
+          "bytes": 15340000,
+          "checksum": 1401430000,
+          "elapsedNs": "188483075"
+        },
+        {
+          "bytes": 15340000,
+          "checksum": 1401430000,
+          "elapsedNs": "143001921"
+        },
+        {
+          "bytes": 15340000,
+          "checksum": 1401430000,
+          "elapsedNs": "136797229"
+        }
+      ]
+    },
+    {
+      "iterations": 10000,
+      "name": "provider-kokoro",
+      "samples": [
+        {
+          "bytes": 15350000,
+          "checksum": 1402600000,
+          "elapsedNs": "188088416"
+        },
+        {
+          "bytes": 15350000,
+          "checksum": 1402600000,
+          "elapsedNs": "192299156"
+        },
+        {
+          "bytes": 15350000,
+          "checksum": 1402600000,
+          "elapsedNs": "198901702"
+        },
+        {
+          "bytes": 15350000,
+          "checksum": 1402600000,
+          "elapsedNs": "191492693"
+        },
+        {
+          "bytes": 15350000,
+          "checksum": 1402600000,
+          "elapsedNs": "198666832"
+        },
+        {
+          "bytes": 15350000,
+          "checksum": 1402600000,
+          "elapsedNs": "230413320"
+        },
+        {
+          "bytes": 15350000,
+          "checksum": 1402600000,
+          "elapsedNs": "224593627"
+        }
+      ]
+    },
+    {
+      "iterations": 10000,
+      "name": "number-66",
+      "samples": [
+        {
+          "bytes": 15340000,
+          "checksum": 1401340000,
+          "elapsedNs": "237403534"
+        },
+        {
+          "bytes": 15340000,
+          "checksum": 1401340000,
+          "elapsedNs": "240546591"
+        },
+        {
+          "bytes": 15340000,
+          "checksum": 1401340000,
+          "elapsedNs": "231520695"
+        },
+        {
+          "bytes": 15340000,
+          "checksum": 1401340000,
+          "elapsedNs": "218505323"
+        },
+        {
+          "bytes": 15340000,
+          "checksum": 1401340000,
+          "elapsedNs": "202736095"
+        },
+        {
+          "bytes": 15340000,
+          "checksum": 1401340000,
+          "elapsedNs": "214670400"
+        },
+        {
+          "bytes": 15340000,
+          "checksum": 1401340000,
+          "elapsedNs": "224507798"
+        }
+      ]
+    },
+    {
+      "iterations": 10000,
+      "name": "tag-long-pause",
+      "samples": [
+        {
+          "bytes": 15350000,
+          "checksum": 1402180000,
+          "elapsedNs": "141951733"
+        },
+        {
+          "bytes": 15350000,
+          "checksum": 1402180000,
+          "elapsedNs": "143421708"
+        },
+        {
+          "bytes": 15350000,
+          "checksum": 1402180000,
+          "elapsedNs": "143097681"
+        },
+        {
+          "bytes": 15350000,
+          "checksum": 1402180000,
+          "elapsedNs": "142596511"
+        },
+        {
+          "bytes": 15350000,
+          "checksum": 1402180000,
+          "elapsedNs": "139279658"
+        },
+        {
+          "bytes": 15350000,
+          "checksum": 1402180000,
+          "elapsedNs": "152344542"
+        },
+        {
+          "bytes": 15350000,
+          "checksum": 1402180000,
+          "elapsedNs": "151569980"
+        }
+      ]
+    },
+    {
+      "iterations": 1000,
+      "name": "large",
+      "samples": [
+        {
+          "bytes": 9506000,
+          "checksum": 917601000,
+          "elapsedNs": "37178212"
+        },
+        {
+          "bytes": 9506000,
+          "checksum": 917601000,
+          "elapsedNs": "52285102"
+        },
+        {
+          "bytes": 9506000,
+          "checksum": 917601000,
+          "elapsedNs": "48552789"
+        },
+        {
+          "bytes": 9506000,
+          "checksum": 917601000,
+          "elapsedNs": "48079432"
+        },
+        {
+          "bytes": 9506000,
+          "checksum": 917601000,
+          "elapsedNs": "42415302"
+        },
+        {
+          "bytes": 9506000,
+          "checksum": 917601000,
+          "elapsedNs": "57775605"
+        },
+        {
+          "bytes": 9506000,
+          "checksum": 917601000,
+          "elapsedNs": "63955953"
+        }
+      ]
+    },
+    {
+      "iterations": 10000,
+      "name": "saved-all-tags",
+      "samples": [
+        {
+          "bytes": 15780000,
+          "checksum": 1436300000,
+          "elapsedNs": "174835171"
+        },
+        {
+          "bytes": 15780000,
+          "checksum": 1436300000,
+          "elapsedNs": "168354472"
+        },
+        {
+          "bytes": 15780000,
+          "checksum": 1436300000,
+          "elapsedNs": "177694687"
+        },
+        {
+          "bytes": 15780000,
+          "checksum": 1436300000,
+          "elapsedNs": "182601058"
+        },
+        {
+          "bytes": 15780000,
+          "checksum": 1436300000,
+          "elapsedNs": "195469723"
+        },
+        {
+          "bytes": 15780000,
+          "checksum": 1436300000,
+          "elapsedNs": "187135091"
+        },
+        {
+          "bytes": 15780000,
+          "checksum": 1436300000,
+          "elapsedNs": "172261239"
+        }
+      ]
+    }
+  ],
+  "scope": "prepared normalize + JSON + UTF-8 + full byte sum",
+  "warmups": 100
+}

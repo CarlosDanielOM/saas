@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "source_commit": "e4308e57324d5a6783226c5507ea4af9bae24e83",
+  "scope": "native channel TTS settings for the declared ordinary-JSON/schema-valid-BSON contract; no full ODM or whole TTS/migration completion",
+  "final_source_tree_sha256": "0b8de5bf5986e9a546449eb466f54777bfcc7249fa4ebadb09f722a046f5e3c7",
+  "final_compiler": "compiler-fixtures-1793233281096683230",
+  "final_node": "node-fixtures-1793233234807630079",
+  "ordinary_executions": 114,
+  "ordinary_breakdown": {
+    "library": 56,
+    "settings_normalization": 7,
+    "settings_schema": 1,
+    "js_string": 1,
+    "credit": 2,
+    "tts_utilities": 3,
+    "fish_catalog": 9,
+    "kokoro": 6,
+    "piper": 13,
+    "fish": 16
+  },
+  "explicit_fixture_executions": 4,
+  "fixture_scopes": {
+    "settings_pure_cases": 308,
+    "mongoose_schema_cases": 11,
+    "mongo_replay": "concrete source/native scenarios including no-op timestamp, empty-ID update/save, targeted update/concurrency, defaults and unique index",
+    "credit_regression_cases": 276
+  },
+  "release_benchmark_executions": 1,
+  "matched_benchmark_workloads": 6,
+  "benchmark_comparison": "final-benchmark/comparison-final.json",
+  "shared_json_move": "implementation identical except parser visibility and module doc; old path reexports preserved",
+  "checks": [
+    "cargo fmt --all -- --check",
+    "standalone channel-tts-settings all-targets check and Clippy -D warnings",
+    "all-features all-targets check and Clippy -D warnings",
+    "no-default-features all-targets check"
+  ],
+  "fixture_before_after_equal": true,
+  "cargo_packages_added": false,
+  "lockfile_changed": false,
+  "deployed": false,
+  "pushed": false,
+  "caller_adoption": false,
+  "whole_migration_complete": false
+}

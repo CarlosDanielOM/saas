@@ -35546,90 +35546,159 @@
         "role": "application"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/schemas/channel_tts_settings.schema.ts",
+        "sha256": "5e943f59906bdf4f63dbb52497ccc8607c6fb069cf8b9af0521a4652245c64c2",
+        "nativeAreaReference": "migration-notes/channel-tts-settings-2026-10-29.md; local schema/settings behavior only, caller adoption and TTS application dependency closure remain open"
+      },
+      "featureReview": "reviewed-local-feature-and-dependency-closure",
+      "localRustEvidence": [
+        "dimabot/src/schemas/channel_tts_settings.schema.rs: concrete caller-owned Mongo repository, schema, get/upsert, BSON boundary and targeted Fish update",
+        "dimabot/src/utils/tts/settings.rs: defaults and ordinary-JSON normalizer",
+        "dimabot/src/utils/lossless_json.rs: shared lossless JSON representation; prior service path re-exports it",
+        "dimabot/tests/channel_tts_settings.rs; dimabot/tests/channel_tts_settings_normalization.rs; dimabot/tests/channel_tts_settings_schema.rs",
+        "migration-notes/channel-tts-settings-2026-10-29.md",
+        "migration-notes/evidence/2026-10-29-channel-tts-settings/README.md",
+        "compiler-fixtures-1793233281096683230: final post-archive compiler/source snapshot and scoped check receipt"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "Local normalization targets ordinary JSON data, not accessors, custom prototypes, functions or executable coercion hooks; an own non-callable toString yields the source-compatible TypeError.",
+        "BSON boundary supports plain data and promoted int64 values only within inclusive +/-2^53; depth greater than 128 and non-plain BSON values such as Date, ObjectId, Binary and unpromoted Long return explicit boundary errors.",
+        "Unknown nested BSON fields are projected out before normalization; unknown top-level stored fields survive writes.",
+        "UTF-16 strings remain lossless in pure JSON; lone surrogates become U+FFFD only at the BSON write boundary.",
+        "The source find/set/save upsert marks filters modified on every existing-document save, including a no-op update that advances updatedAt; other unchanged values are not overwritten.",
+        "No import-time Mongoose model registration, connection, index installation or application startup side effect is reproduced by the opt-in native feature."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/src/server/routes/speech.route.ts",
+          "dimabot/src/server/services/tts/voice_preview.service.ts",
+          "dimabot/src/utils/tts/queue_default_tts.util.ts",
+          "dimabot/src/handlers/tts_queue.handler.ts",
+          "dimabot/src/handlers/dimafx_queue.handler.ts",
+          "dimabot/src/pets/admission.ts",
+          "dimabot/src/overlays/test-playback.ts",
+          "dimabot/src/utils/ast_parser/functions/channel.functions.ts"
+        ],
+        "runtimeStatus": "Unadopted; TypeScript source callers still import the retired schema module. Provider/application factory, queues, billing/usage, synthesis/preview orchestration and emote-cache effects remain open."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "archives/dimabot-typescript/2026-10-28/src/schemas/channel_tts_settings.schema.ts: archived exact source",
+          "dimabot/tests/fixtures/channel_tts_settings_reference.mjs: source oracle and Mongoose/Mongo source-write fixture",
+          "node-fixtures-1793233234807630079: final post-archive source oracle, 308 pure settings cases, 11 Mongoose schema cases and isolated Mongo write replay"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/channel_tts_settings.rs",
+          "dimabot/tests/channel_tts_settings_normalization.rs",
+          "dimabot/tests/channel_tts_settings_schema.rs",
+          "compiler-fixtures-1793233281096683230: final source tree 0b8de5bf5986e9a546449eb466f54777bfcc7249fa4ebadb09f722a046f5e3c7; 114 ordinary and four explicit source-backed executions; all formatting/check/Clippy/no-default checks passed",
+          "276-case prior credit-fallback replay passed in the same explicit fixture matrix"
+        ],
+        "status": "post-archive local behavior and source oracle verified; application callers remain unadopted"
       },
       "exports": [
         {
           "name": "ChannelTtsSettingsData",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "native JsonValue settings tree validated/cast by channel_tts_settings::schema()",
+          "evidence": [
+            "dimabot/src/schemas/channel_tts_settings.schema.rs",
+            "dimabot/src/utils/tts/settings.rs"
+          ]
         },
         {
           "name": "ChannelTtsSettingsDocument",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "caller-owned Mongo Document plus SchemaRepository boundary; no Mongoose hydrated-document identity equivalent claimed",
+          "evidence": [
+            "dimabot/src/schemas/channel_tts_settings.schema.rs"
+          ]
         },
         {
           "name": "ChannelTtsSettingsSchema",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "schema() plus get_channel_tts_settings_model(&Database); no import-time model registration",
+          "evidence": [
+            "dimabot/src/schemas/channel_tts_settings.schema.rs"
+          ]
         },
         {
           "name": "DEFAULT_TTS_SETTINGS",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "create_default_channel_tts_settings; PIPER_VOICE_EN/ES, DEFAULT_KOKORO_VOICE_ES and native defaults",
+          "evidence": [
+            "dimabot/src/utils/tts/settings.rs",
+            "dimabot/src/utils/tts_defaults.rs",
+            "dimabot/src/utils/tts/mod.rs"
+          ]
         },
         {
           "name": "IChannelTtsSettings",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "native schema fields and BSON Document; no separate hydrated ODM interface",
+          "evidence": [
+            "dimabot/src/schemas/channel_tts_settings.schema.rs"
+          ]
         },
         {
           "name": "TtsLanguage",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "native TtsLanguage enum",
+          "evidence": [
+            "dimabot/src/utils/tts/mod.rs"
+          ]
         },
         {
           "name": "TtsMode",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "native TtsMode enum",
+          "evidence": [
+            "dimabot/src/utils/tts/mod.rs"
+          ]
         },
         {
           "name": "TtsProvider",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "native TtsProvider enum",
+          "evidence": [
+            "dimabot/src/utils/tts/mod.rs"
+          ]
         },
         {
           "name": "createDefaultChannelTtsSettings",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "create_default_channel_tts_settings",
+          "evidence": [
+            "dimabot/src/utils/tts/settings.rs"
+          ]
         },
         {
           "name": "getChannelTtsSettings",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "get_channel_tts_settings(&Database, channel_id, channel)",
+          "evidence": [
+            "dimabot/src/schemas/channel_tts_settings.schema.rs"
+          ]
         },
         {
           "name": "getChannelTtsSettingsModel",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "get_channel_tts_settings_model(&Database)",
+          "evidence": [
+            "dimabot/src/schemas/channel_tts_settings.schema.rs"
+          ]
         },
         {
           "name": "normalizeChannelTtsSettings",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "normalize_channel_tts_settings",
+          "evidence": [
+            "dimabot/src/utils/tts/settings.rs"
+          ]
         },
         {
           "name": "setChannelFishVoice",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "set_channel_fish_voice(&Database, channel_id, voice, channel, now)",
+          "evidence": [
+            "dimabot/src/schemas/channel_tts_settings.schema.rs"
+          ]
         },
         {
           "name": "upsertChannelTtsSettings",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "upsert_channel_tts_settings(&Database, channel_id, input, channel, now)",
+          "evidence": [
+            "dimabot/src/schemas/channel_tts_settings.schema.rs"
+          ]
         }
       ],
       "imports": [
@@ -35646,12 +35715,12 @@
           "baselineSourceTargets": [
             "src/utils/tts/expressive_tts_tags.util.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime EXPRESSIVE_TTS_TAGS and normalizeExpressiveTtsTags; type-only ExpressiveTtsTagSettings",
+          "runtimeOrTypeDependency": "mixed-runtime-and-type-only",
+          "defaultSideEffectBarrelDetails": "Reuses the native ordered expressive-tag catalog, selector and existing settings fields; type-only shape is represented through native schema/JSON data.",
+          "directDependencyReview": "reviewed-local-feature",
+          "transitiveDependencyReview": "reviewed-for-this-local-feature; surrounding callers/application services remain outside this row closure",
+          "rustReplacementOrGap": "existing native expressive tag functions plus schema fields; no helper dependency gap for this slice"
         },
         {
           "ordinal": 1,
@@ -35666,12 +35735,12 @@
           "baselineSourceTargets": [
             "src/utils/tts/kokoro_voices.util.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime DEFAULT_KOKORO_VOICES and resolveKokoroVoice",
+          "runtimeOrTypeDependency": "runtime",
+          "defaultSideEffectBarrelDetails": "Reuses the existing native Kokoro voice resolver and default; no parallel catalog added.",
+          "directDependencyReview": "reviewed-local-feature",
+          "transitiveDependencyReview": "reviewed-for-this-local-feature; surrounding callers/application services remain outside this row closure",
+          "rustReplacementOrGap": "existing native Kokoro resolver/default; no helper dependency gap for this slice"
         },
         {
           "ordinal": 2,
@@ -35686,12 +35755,12 @@
           "baselineSourceTargets": [
             "src/schemas/users.schema.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime default UsersSchema model",
+          "runtimeOrTypeDependency": "runtime",
+          "defaultSideEffectBarrelDetails": "Replaced for this adapter by the existing native users schema/collection and an exact accounts $elemMatch query; no Mongoose registration side effect.",
+          "directDependencyReview": "reviewed-concrete-adapter",
+          "transitiveDependencyReview": "reviewed-for-this-local-feature; surrounding callers/application services remain outside this row closure",
+          "rustReplacementOrGap": "native users schema and MongoDB driver; other application Users model consumers remain independently tracked"
         },
         {
           "ordinal": 3,
@@ -35699,15 +35768,47 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime Schema/model; inline type-only HydratedDocument/Model; regular named Types import used only as an ObjectId type namespace",
+          "runtimeOrTypeDependency": "mixed-runtime-and-type-only",
+          "defaultSideEffectBarrelDetails": "Schema behavior is implemented with the existing native schema repository and MongoDB driver; Mongoose hydrated-model identity is not claimed. No connection/index creation is implicit.",
+          "directDependencyReview": "reviewed-concrete-adapter",
+          "transitiveDependencyReview": "reviewed-for-this-local-feature; surrounding callers/application services remain outside this row closure",
+          "rustReplacementOrGap": "native schema repository and mongodb crate; no npm package internal port is required"
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-channel-settings-schema-and-persistence-reviewed;application-callers-and-full-tts-dependency-closure-open",
+      "dependencyClosure": {
+        "scope": "channel-tts-settings-normalization-schema-and-caller-owned-Mongo-adapter",
+        "status": "local-feature-dependencies-implemented-and-reviewed; application callers and broader TTS dependency graph remain open",
+        "typescriptRuntime": [
+          "expressive tag functions/catalog",
+          "Kokoro resolver/default",
+          "UsersSchema model/query",
+          "Mongoose schema/model casting, validation, timestamps and writes"
+        ],
+        "typescriptTypeOnly": [
+          "ExpressiveTtsTagSettings",
+          "HydratedDocument<IChannelTtsSettings>",
+          "Model<IChannelTtsSettings>",
+          "Types.ObjectId type namespace"
+        ],
+        "nativeReplacement": [
+          "existing expressive-tag selector/catalog and Kokoro resolver/default",
+          "TtsProvider/TtsLanguage/TtsMode enums and Piper defaults",
+          "lossless JsonValue and JsString",
+          "existing schema repository and caller-owned MongoDB Database/driver",
+          "explicit source-compatible find/set/save dirty-path logic and targeted Fish update"
+        ],
+        "missingPrimitiveDependency": null,
+        "applicationDependenciesOutsidePrimitive": [
+          "TypeScript speech/settings callers and adoption",
+          "provider application factory/configuration and service registration",
+          "queues and synthesis/preview orchestration",
+          "billing/usage behavior",
+          "emote catalog/cache effects"
+        ],
+        "boundary": "Explicit native schema/Database/index APIs replace the source module registration; TypeScript source consumers still import the retired module and have not adopted native APIs. Ordinary JSON and schema-valid BSON behavior is covered, with the documented BSON/data boundaries."
+      }
     },
     {
       "source": "src/schemas/chat_logs.schema.ts",

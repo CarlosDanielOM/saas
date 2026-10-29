@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "scope": "prepared normalization + JSON/UTF8 + full-byte sum; excludes parsing, VM setup, MongoDB and I/O",
+  "node_run": "node-fixtures-1793233234807630079",
+  "compiler_run": "compiler-fixtures-1793233281096683230",
+  "source_tree_sha256": "0b8de5bf5986e9a546449eb466f54777bfcc7249fa4ebadb09f722a046f5e3c7",
+  "samples": 7,
+  "warmups": 100,
+  "inputs_sha256": "bb94b740b0e3fd2bba00eac974280acf76155198b06f972bf1b7b6edbcb32db3",
+  "rows": [
+    {
+      "workload": "empty",
+      "node_us": 34.601071600000004,
+      "rust_us": 20.3305421,
+      "rust_over_node": 0.5875697242856489,
+      "bytes_per_op": 1534,
+      "checksum_per_sample": 1401430000
+    },
+    {
+      "workload": "provider-kokoro",
+      "node_us": 33.4866481,
+      "rust_us": 20.933221099999997,
+      "rust_over_node": 0.6251214226484495,
+      "bytes_per_op": 1535,
+      "checksum_per_sample": 1402600000
+    },
+    {
+      "workload": "number-66",
+      "node_us": 33.629628,
+      "rust_us": 22.450364,
+      "rust_over_node": 0.6675769354332436,
+      "bytes_per_op": 1534,
+      "checksum_per_sample": 1401340000
+    },
+    {
+      "workload": "tag-long-pause",
+      "node_us": 37.2891049,
+      "rust_us": 14.2223032,
+      "rust_over_node": 0.3814063984142457,
+      "bytes_per_op": 1535,
+      "checksum_per_sample": 1402180000
+    },
+    {
+      "workload": "large",
+      "node_us": 146.001651,
+      "rust_us": 41.358985000000004,
+      "rust_over_node": 0.28327751581384514,
+      "bytes_per_op": 9506,
+      "checksum_per_sample": 917601000
+    },
+    {
+      "workload": "saved-all-tags",
+      "node_us": 36.8612615,
+      "rust_us": 17.6927251,
+      "rust_over_node": 0.47998154105496366,
+      "bytes_per_op": 1578,
+      "checksum_per_sample": 1436300000
+    }
+  ],
+  "limits": "sequential pinned containers on one shared host; not interleaved, no causal significance or production/CPU/RSS claim"
+}

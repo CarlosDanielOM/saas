@@ -1,0 +1,229 @@
+{
+  "implementation": "actual-typescript",
+  "scope": "prepared normalize + JSON + UTF-8 + full byte sum",
+  "warmups": 100,
+  "runs": [
+    {
+      "name": "empty",
+      "iterations": 10000,
+      "samples": [
+        {
+          "elapsedNs": "379297850",
+          "bytes": 15340000,
+          "checksum": 1401430000
+        },
+        {
+          "elapsedNs": "351891042",
+          "bytes": 15340000,
+          "checksum": 1401430000
+        },
+        {
+          "elapsedNs": "350131015",
+          "bytes": 15340000,
+          "checksum": 1401430000
+        },
+        {
+          "elapsedNs": "352445772",
+          "bytes": 15340000,
+          "checksum": 1401430000
+        },
+        {
+          "elapsedNs": "360115778",
+          "bytes": 15340000,
+          "checksum": 1401430000
+        },
+        {
+          "elapsedNs": "335560291",
+          "bytes": 15340000,
+          "checksum": 1401430000
+        },
+        {
+          "elapsedNs": "330105795",
+          "bytes": 15340000,
+          "checksum": 1401430000
+        }
+      ]
+    },
+    {
+      "name": "provider-kokoro",
+      "iterations": 10000,
+      "samples": [
+        {
+          "elapsedNs": "364728087",
+          "bytes": 15350000,
+          "checksum": 1402600000
+        },
+        {
+          "elapsedNs": "346571319",
+          "bytes": 15350000,
+          "checksum": 1402600000
+        },
+        {
+          "elapsedNs": "350746017",
+          "bytes": 15350000,
+          "checksum": 1402600000
+        },
+        {
+          "elapsedNs": "350800149",
+          "bytes": 15350000,
+          "checksum": 1402600000
+        },
+        {
+          "elapsedNs": "336440531",
+          "bytes": 15350000,
+          "checksum": 1402600000
+        },
+        {
+          "elapsedNs": "313238840",
+          "bytes": 15350000,
+          "checksum": 1402600000
+        },
+        {
+          "elapsedNs": "328294820",
+          "bytes": 15350000,
+          "checksum": 1402600000
+        }
+      ]
+    },
+    {
+      "name": "number-66",
+      "iterations": 10000,
+      "samples": [
+        {
+          "elapsedNs": "365856392",
+          "bytes": 15340000,
+          "checksum": 1401340000
+        },
+        {
+          "elapsedNs": "355763757",
+          "bytes": 15340000,
+          "checksum": 1401340000
+        },
+        {
+          "elapsedNs": "341941515",
+          "bytes": 15340000,
+          "checksum": 1401340000
+        },
+        {
+          "elapsedNs": "338597552",
+          "bytes": 15340000,
+          "checksum": 1401340000
+        },
+        {
+          "elapsedNs": "328174679",
+          "bytes": 15340000,
+          "checksum": 1401340000
+        },
+        {
+          "elapsedNs": "351373412",
+          "bytes": 15340000,
+          "checksum": 1401340000
+        },
+        {
+          "elapsedNs": "387901485",
+          "bytes": 15340000,
+          "checksum": 1401340000
+        }
+      ]
+    },
+    {
+      "name": "tag-long-pause",
+      "iterations": 10000,
+      "samples": [
+        {
+          "elapsedNs": "593520385",
+          "bytes": 15350000,
+          "checksum": 1402180000
+        },
+        {
+          "elapsedNs": "394968854",
+          "bytes": 15350000,
+          "checksum": 1402180000
+        },
+        {
+          "elapsedNs": "395557476",
+          "bytes": 15350000,
+          "checksum": 1402180000
+        },
+        {
+          "elapsedNs": "379136108",
+          "bytes": 15350000,
+          "checksum": 1402180000
+        },
+        {
+          "elapsedNs": "393068324",
+          "bytes": 15350000,
+          "checksum": 1402180000
+        },
+        {
+          "elapsedNs": "373288673",
+          "bytes": 15350000,
+          "checksum": 1402180000
+        },
+        {
+          "elapsedNs": "379848111",
+          "bytes": 15350000,
+          "checksum": 1402180000
+        }
+      ]
+    },
+    {
+      "name": "large",
+      "iterations": 1000,
+      "samples": [
+        {
+          "elapsedNs": "142038051",
+          "bytes": 9506000,
+          "checksum": 917601000
+        },
+        {
+          "elapsedNs": "142149602",
+          "bytes": 9506000,
+          "checksum": 917601000
+        },
+        {
+          "elapsedNs": "129563203",
+          "bytes": 9506000,
+          "checksum": 917601000
+        },
+        {
+          "elapsedNs": "148191818",
+          "bytes": 9506000,
+          "checksum": 917601000
+        },
+        {
+          "elapsedNs": "144318573",
+          "bytes": 9506000,
+          "checksum": 917601000
+        },
+        {
+          "elapsedNs": "140589689",
+          "bytes": 9506000,
+          "checksum": 917601000
+        },
+        {
+          "elapsedNs": "130244951",
+          "bytes": 9506000,
+          "checksum": 917601000
+        }
+      ]
+    }
+  ],
+  "provenance": {
+    "src/schemas/channel_tts_settings.schema.ts": "5e943f59906bdf4f63dbb52497ccc8607c6fb069cf8b9af0521a4652245c64c2",
+    "src/schemas/users.schema.ts": "f324f0837b01866a0caf28854c0261b8a2e28f0fb577cd5ae370e45c352fad13",
+    "src/utils/tts/expressive_tts_tags.util.ts": "03523ebc5bb2f8c99b528e1c61d90126f655716945f100098c6a53b9f731699e",
+    "src/utils/tts/kokoro_voices.util.ts": "6d06216a94959645a4ed75e82a2b68a39b329c01373f63644f7a3794afc5466b",
+    "package.json": "cc4939f6416a91d4bfaa5bcdd3d448d2f74103a88bb269e0a8e393615cf32cef",
+    "package-lock.json": "abdf5aa71a8272423ebb9358d7aaa87edd7e65f6605c325fe231a4bcef70eeb7",
+    "node_modules/typescript/package.json": "822ef7ca6452205657b6288b066481ecf508bfbf43455d715cf7d3ec457561e6",
+    "node_modules/mongoose/package.json": "5136d95bcd0624a94096110ea21ac101b73f1839bc40726eab85649389c17dba",
+    "typescript-entry": "3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675",
+    "mongoose-entry": "59e21822580047abc5468d740b720d1383fa3569aa2da3ac70325265fbb0e25b",
+    "node-executable": "569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108",
+    "tests/fixtures/channel_tts_settings_reference.mjs": "13ffc96cd45cbda9a99616e6dc0d1eb1dc4fb1ae8ca532834125df97bf4f48f2",
+    "benchmark": "c1bab01d7ea19dd82304ba70288a84a26c6e9d2b5312747d188a016d153e64fa",
+    "fixture": "bc6d5293932c01dc80dc885c5a18c77b27ebf2e71f0949b8c92ba6db5d446b28",
+    "inputs": "e20c7c61fdb2a7efbd50eff9a2dee573210d14fff04011d57c88592e8760af3e"
+  }
+}

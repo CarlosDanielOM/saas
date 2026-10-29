@@ -1,0 +1,15 @@
+{
+  "baseline_source_files": 806,
+  "archive_files": 17,
+  "all_archive_hashes_match": true,
+  "all_original_paths_absent": true,
+  "new_retirement": {
+    "source": "src/schemas/channel_tts_settings.schema.ts",
+    "sha256": "5e943f59906bdf4f63dbb52497ccc8607c6fb069cf8b9af0521a4652245c64c2",
+    "byte_exact_to_parent_commit": "7ab2626b5cf4b1bfc20f656d18118f7860284c41"
+  },
+  "remaining_ts_files": 789,
+  "remaining_application": 617,
+  "remaining_tests": 166,
+  "react_email_excluded": 6
+}

@@ -1,0 +1,212 @@
+{
+  "implementation": "native-rust",
+  "runs": [
+    {
+      "iterations": 10000,
+      "name": "empty",
+      "samples": [
+        {
+          "bytes": 15340000,
+          "checksum": 1401430000,
+          "elapsedNs": "223905394"
+        },
+        {
+          "bytes": 15340000,
+          "checksum": 1401430000,
+          "elapsedNs": "195656980"
+        },
+        {
+          "bytes": 15340000,
+          "checksum": 1401430000,
+          "elapsedNs": "168398018"
+        },
+        {
+          "bytes": 15340000,
+          "checksum": 1401430000,
+          "elapsedNs": "189485828"
+        },
+        {
+          "bytes": 15340000,
+          "checksum": 1401430000,
+          "elapsedNs": "133553548"
+        },
+        {
+          "bytes": 15340000,
+          "checksum": 1401430000,
+          "elapsedNs": "201166059"
+        },
+        {
+          "bytes": 15340000,
+          "checksum": 1401430000,
+          "elapsedNs": "207366742"
+        }
+      ]
+    },
+    {
+      "iterations": 10000,
+      "name": "provider-kokoro",
+      "samples": [
+        {
+          "bytes": 15350000,
+          "checksum": 1402600000,
+          "elapsedNs": "209188847"
+        },
+        {
+          "bytes": 15350000,
+          "checksum": 1402600000,
+          "elapsedNs": "195529300"
+        },
+        {
+          "bytes": 15350000,
+          "checksum": 1402600000,
+          "elapsedNs": "209730410"
+        },
+        {
+          "bytes": 15350000,
+          "checksum": 1402600000,
+          "elapsedNs": "221837299"
+        },
+        {
+          "bytes": 15350000,
+          "checksum": 1402600000,
+          "elapsedNs": "242812619"
+        },
+        {
+          "bytes": 15350000,
+          "checksum": 1402600000,
+          "elapsedNs": "160713033"
+        },
+        {
+          "bytes": 15350000,
+          "checksum": 1402600000,
+          "elapsedNs": "222449386"
+        }
+      ]
+    },
+    {
+      "iterations": 10000,
+      "name": "number-66",
+      "samples": [
+        {
+          "bytes": 15340000,
+          "checksum": 1401340000,
+          "elapsedNs": "222092156"
+        },
+        {
+          "bytes": 15340000,
+          "checksum": 1401340000,
+          "elapsedNs": "217123310"
+        },
+        {
+          "bytes": 15340000,
+          "checksum": 1401340000,
+          "elapsedNs": "239581027"
+        },
+        {
+          "bytes": 15340000,
+          "checksum": 1401340000,
+          "elapsedNs": "235158873"
+        },
+        {
+          "bytes": 15340000,
+          "checksum": 1401340000,
+          "elapsedNs": "229773786"
+        },
+        {
+          "bytes": 15340000,
+          "checksum": 1401340000,
+          "elapsedNs": "248595522"
+        },
+        {
+          "bytes": 15340000,
+          "checksum": 1401340000,
+          "elapsedNs": "261925281"
+        }
+      ]
+    },
+    {
+      "iterations": 10000,
+      "name": "tag-long-pause",
+      "samples": [
+        {
+          "bytes": 15350000,
+          "checksum": 1402180000,
+          "elapsedNs": "189422852"
+        },
+        {
+          "bytes": 15350000,
+          "checksum": 1402180000,
+          "elapsedNs": "145263223"
+        },
+        {
+          "bytes": 15350000,
+          "checksum": 1402180000,
+          "elapsedNs": "138699067"
+        },
+        {
+          "bytes": 15350000,
+          "checksum": 1402180000,
+          "elapsedNs": "138612996"
+        },
+        {
+          "bytes": 15350000,
+          "checksum": 1402180000,
+          "elapsedNs": "149527701"
+        },
+        {
+          "bytes": 15350000,
+          "checksum": 1402180000,
+          "elapsedNs": "136397916"
+        },
+        {
+          "bytes": 15350000,
+          "checksum": 1402180000,
+          "elapsedNs": "141292985"
+        }
+      ]
+    },
+    {
+      "iterations": 1000,
+      "name": "large",
+      "samples": [
+        {
+          "bytes": 9506000,
+          "checksum": 917601000,
+          "elapsedNs": "37060040"
+        },
+        {
+          "bytes": 9506000,
+          "checksum": 917601000,
+          "elapsedNs": "41077555"
+        },
+        {
+          "bytes": 9506000,
+          "checksum": 917601000,
+          "elapsedNs": "43676635"
+        },
+        {
+          "bytes": 9506000,
+          "checksum": 917601000,
+          "elapsedNs": "44988952"
+        },
+        {
+          "bytes": 9506000,
+          "checksum": 917601000,
+          "elapsedNs": "48954690"
+        },
+        {
+          "bytes": 9506000,
+          "checksum": 917601000,
+          "elapsedNs": "69731208"
+        },
+        {
+          "bytes": 9506000,
+          "checksum": 917601000,
+          "elapsedNs": "73022092"
+        }
+      ]
+    }
+  ],
+  "scope": "prepared normalize + JSON + UTF-8 + full byte sum",
+  "warmups": 100
+}

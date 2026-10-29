@@ -1,0 +1,13 @@
+import fs from 'node:fs/promises';
+import {loadSource} from '/source/dimabot/tests/fixtures/channel_tts_settings_reference.mjs';
+const source=await loadSource();
+const ref=JSON.parse(await fs.readFile('/artifacts/channel-tts-settings/channel-tts-settings-mongo.json','utf8'));
+const raw=ref.mongo.noopBefore;
+const doc=source.api.ChannelTtsSettingsSchema.hydrate(raw);
+const normalized=source.api.normalizeChannelTtsSettings({},'no-op','same');
+const before=JSON.stringify(doc.toObject());
+const prior=doc.toObject();
+doc.set(normalized);
+const report={modifiedPaths:doc.modifiedPaths(),directModifiedPaths:doc.directModifiedPaths(),changed:doc.getChanges(),before,after:JSON.stringify(doc.toObject()),input:normalized,prior};
+await fs.writeFile('/artifacts/channel-tts-settings/dirty-path-probe.json',JSON.stringify(report,null,2)+'\n');
+console.log(JSON.stringify({modifiedPaths:report.modifiedPaths,directModifiedPaths:report.directModifiedPaths,changed:report.changed}));

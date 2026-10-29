@@ -1,0 +1,50 @@
+{
+  "scope": "prepared normalization + JSON/UTF8 + full-byte sum; excludes parsing, VM init, Mongo and I/O",
+  "node_run": "node-fixtures-1793232285891580315",
+  "rust_run": "compiler-1793232495517979502",
+  "rust_source_tree_sha256": "329f6f9b5a3d7db6c4f7b95288fd90b6c891ece32fe427fd4509536b35f6f5c7",
+  "qualification": "Pure code already passed source replay; snapshot still had known Mongo timestamp mismatch outside benchmark scope",
+  "inputs_sha256": "e20c7c61fdb2a7efbd50eff9a2dee573210d14fff04011d57c88592e8760af3e",
+  "rows": [
+    {
+      "workload": "empty",
+      "node_us": 35.1891042,
+      "rust_us": 19.565698,
+      "rust_over_node": 0.5560158021868599,
+      "bytes_per_op": 1534,
+      "checksum_per_sample": 1401430000
+    },
+    {
+      "workload": "provider-kokoro",
+      "node_us": 34.6571319,
+      "rust_us": 20.973041000000002,
+      "rust_over_node": 0.6051580107816135,
+      "bytes_per_op": 1535,
+      "checksum_per_sample": 1402600000
+    },
+    {
+      "workload": "number-66",
+      "node_us": 35.1373412,
+      "rust_us": 23.5158873,
+      "rust_over_node": 0.6692563095809878,
+      "bytes_per_op": 1534,
+      "checksum_per_sample": 1401340000
+    },
+    {
+      "workload": "tag-long-pause",
+      "node_us": 39.3068324,
+      "rust_us": 14.1292985,
+      "rust_over_node": 0.3594616415847338,
+      "bytes_per_op": 1535,
+      "checksum_per_sample": 1402180000
+    },
+    {
+      "workload": "large",
+      "node_us": 142.038051,
+      "rust_us": 44.988952,
+      "rust_over_node": 0.3167387308067188,
+      "bytes_per_op": 9506,
+      "checksum_per_sample": 917601000
+    }
+  ]
+}
