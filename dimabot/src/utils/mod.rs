@@ -43,7 +43,8 @@
     feature = "reward-body",
     feature = "tts-utilities",
     feature = "moderation-emote-spam",
-    feature = "moderation-caps"
+    feature = "moderation-caps",
+    feature = "js-unicode17"
 ))]
 pub mod js_compat;
 
@@ -129,9 +130,15 @@ pub mod js_date;
 #[cfg(any(
     feature = "tts-utilities",
     feature = "permissions",
-    feature = "moderation-caps"
+    feature = "moderation-caps",
+    feature = "js-unicode17"
 ))]
 pub mod js_string;
+#[cfg(feature = "js-unicode17")]
+pub mod js_unicode;
+#[cfg(feature = "js-unicode17")]
+#[rustfmt::skip]
+mod js_unicode_data;
 #[cfg(feature = "keywords")]
 pub mod keywords;
 #[cfg(feature = "logger")]
