@@ -317,14 +317,14 @@ fn expressive_tag_regex() -> &'static Regex {
     })
 }
 
-fn expressive_tag_replacement(
+fn expressive_tag_replacement<F: Fn(&str) -> bool>(
     captures: &regex::Captures<'_>,
     provider: TtsProvider,
-    enabled: Option<&BTreeMap<String, bool>>,
+    enabled: &F,
 ) -> [&'static str; 3] {
     let angle = captures.get(2);
     let removed = if angle.is_some() { "" } else { " " };
-    if provider != TtsProvider::Fish || enabled.is_none() {
+    if provider != TtsProvider::Fish {
         return [removed, "", ""];
     }
     let raw = angle.or_else(|| captures.get(3)).unwrap().as_str();
@@ -348,7 +348,7 @@ fn expressive_tag_replacement(
         Cow::Owned(normalized.to_lowercase())
     };
     let tag = alias(&lower);
-    if enabled.and_then(|values| values.get(tag)).copied() != Some(true) {
+    if !enabled(tag) {
         return [removed, "", ""];
     }
     let Some(tag) = expressive_tags().find(|candidate| *candidate == tag) else {
@@ -396,6 +396,16 @@ pub fn filter_expressive_tts_tags(
     text: &str,
     provider: TtsProvider,
     enabled: Option<&BTreeMap<String, bool>>,
+) -> String {
+    filter_expressive_tts_tags_with(text, provider, &|tag| {
+        enabled.and_then(|values| values.get(tag)).copied() == Some(true)
+    })
+}
+
+fn filter_expressive_tts_tags_with<F: Fn(&str) -> bool>(
+    text: &str,
+    provider: TtsProvider,
+    enabled: &F,
 ) -> String {
     // Both alternatives start with an ASCII delimiter. Plain text still needs
     // the source's space collapse and edge trim, but cannot have a tag match.
@@ -458,9 +468,35 @@ pub fn filter_expressive_tts_tags_js(
     provider: TtsProvider,
     enabled: Option<&BTreeMap<String, bool>>,
 ) -> super::js_string::JsString {
+    filter_expressive_tts_tags_js_with(text, provider, &|tag| {
+        enabled.and_then(|values| values.get(tag)).copied() == Some(true)
+    })
+}
+
+/// Filter against raw JSON configuration: only a literal `true` enables a
+/// canonical tag. Missing, null, and non-object configurations enable none.
+pub fn filter_expressive_tts_tags_json_js(
+    text: &super::js_string::JsString,
+    provider: TtsProvider,
+    enabled: Option<&super::lossless_json::JsonValue>,
+) -> super::js_string::JsString {
+    use super::lossless_json::JsonValue;
+    filter_expressive_tts_tags_js_with(text, provider, &|tag| {
+        matches!(
+            enabled.and_then(|values| values.get(tag)),
+            Some(JsonValue::Bool(true))
+        )
+    })
+}
+
+fn filter_expressive_tts_tags_js_with<F: Fn(&str) -> bool>(
+    text: &super::js_string::JsString,
+    provider: TtsProvider,
+    enabled: &F,
+) -> super::js_string::JsString {
     use super::js_string::JsString;
     if let Some(text) = text.as_str() {
-        return filter_expressive_tts_tags(text, provider, enabled).into();
+        return filter_expressive_tts_tags_with(text, provider, enabled).into();
     }
     let units = text.units();
     let shadow = Utf16RegexShadow::new(&units);
@@ -698,7 +734,6 @@ pub fn normalize_tts_message(
     text: &str,
     options: &NormalizeTtsMessageOptions<'_>,
 ) -> NormalizeTtsMessageResult {
-    static LINKS: OnceLock<Regex> = OnceLock::new();
     let mut normalized = text.to_owned();
     if options.skip_emotes {
         let emotes: HashSet<&str> = options
@@ -731,7 +766,7 @@ pub fn normalize_tts_message(
         }
     }
     if options.strip_links {
-        let links = LINKS.get_or_init(|| Regex::new(r"(?i-u:((http|https)://)?(www\.)?[a-z0-9-]+(\.[a-z0-9-]{2,})+(:[0-9]+)?)(/[^\x09-\x0d\x20\x{00a0}\x{1680}\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}\x{feff}]*)?(\?[^\x09-\x0d\x20\x{00a0}\x{1680}\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}\x{feff}]+)?").unwrap());
+        let links = link_regex();
         normalized = links.replace_all(&normalized, "[link]").into_owned();
     }
     normalized = normalized.chars().map(|c| if matches!(c, '\u{0000}'..='\u{0008}' | '\u{000b}' | '\u{000c}' | '\u{000e}'..='\u{001f}' | '\u{007f}') { ' ' } else { c }).collect();
@@ -770,6 +805,159 @@ pub fn normalize_tts_message(
     }
 }
 
+/// Lossless counterpart of `NormalizeTtsMessageResult`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct NormalizeTtsMessageResultJs {
+    pub error: bool,
+    pub message: &'static str,
+    pub text: super::js_string::JsString,
+    pub original_text: super::js_string::JsString,
+}
+
+/// Normalize arbitrary JavaScript UTF-16, retaining the UTF-8 fast path.
+pub fn normalize_tts_message_js(
+    text: &super::js_string::JsString,
+    options: &NormalizeTtsMessageOptions<'_>,
+) -> NormalizeTtsMessageResultJs {
+    use super::js_string::JsString;
+    if let Some(valid) = text.as_str() {
+        let result = normalize_tts_message(valid, options);
+        return NormalizeTtsMessageResultJs {
+            error: result.error,
+            message: result.message,
+            text: result.text,
+            original_text: result.original_text.into(),
+        };
+    }
+    let ws = |unit: u16| char::from_u32(u32::from(unit)).is_some_and(is_whitespace);
+    let mut units = text.units();
+    if options.skip_emotes {
+        let names: HashSet<Vec<u16>> = options
+            .emote_names
+            .iter()
+            .map(|name| name.trim().units())
+            .filter(|name| !name.is_empty())
+            .collect();
+        if !names.is_empty() {
+            let mut start = 0;
+            let mut write = 0;
+            while start < units.len() {
+                let whitespace = ws(units[start]);
+                let mut end = start + 1;
+                while end < units.len() && ws(units[end]) == whitespace {
+                    end += 1;
+                }
+                if whitespace || !names.contains(&units[start..end]) {
+                    units.copy_within(start..end, write);
+                    write += end - start;
+                }
+                start = end;
+            }
+            units.truncate(write);
+        }
+    }
+    if options.strip_links {
+        let shadow = Utf16RegexShadow::new(&units);
+        let mut matches = link_regex().find_iter(&shadow.text).peekable();
+        if matches.peek().is_some() {
+            let mut out = Vec::with_capacity(units.len());
+            let mut previous = 0;
+            for matched in matches {
+                out.extend_from_slice(&units[previous..shadow.unit_offset(matched.start())]);
+                out.extend("[link]".encode_utf16());
+                previous = shadow.unit_offset(matched.end());
+            }
+            out.extend_from_slice(&units[previous..]);
+            units = out;
+        }
+    }
+    let mut write = 0;
+    let mut previous_ws = false;
+    for read in 0..units.len() {
+        let unit = units[read];
+        let unit = if matches!(unit, 0..=8 | 11 | 12 | 14..=31 | 127) {
+            32
+        } else {
+            unit
+        };
+        if options.normalize_whitespace && ws(unit) {
+            if !previous_ws {
+                units[write] = 32;
+                write += 1;
+            }
+            previous_ws = true;
+        } else {
+            units[write] = unit;
+            write += 1;
+            previous_ws = false;
+        }
+    }
+    units.truncate(write);
+    let start = units
+        .iter()
+        .position(|&unit| !ws(unit))
+        .unwrap_or(units.len());
+    let mut end = units
+        .iter()
+        .rposition(|&unit| !ws(unit))
+        .map_or(start, |i| i + 1);
+    if options.max_length > 0.0 && (end - start) as f64 > options.max_length {
+        end = start + (options.max_length as i64 as usize).min(end - start);
+        while end > start && ws(units[end - 1]) {
+            end -= 1;
+        }
+    }
+    units.truncate(end);
+    if start != 0 {
+        drop(units.drain(..start));
+    }
+    let normalized = JsString::from_units(units);
+    let error = normalized.is_empty();
+    NormalizeTtsMessageResultJs {
+        error,
+        message: if error {
+            "No speakable text remained after filtering"
+        } else {
+            "TTS message normalized"
+        },
+        text: normalized,
+        original_text: text.clone(),
+    }
+}
+
+/// Lossless `buildSpokenUserMessage`; `ChatCommand` is the source default.
+pub fn build_spoken_user_message_js(
+    user: &super::js_string::JsString,
+    message: &super::js_string::JsString,
+    language: TtsLanguage,
+    source: SpeechSource,
+) -> super::js_string::JsString {
+    use super::js_string::JsString;
+    if let (Some(user), Some(message)) = (user.as_str(), message.as_str()) {
+        return build_spoken_user_message(user, message, language, source).into();
+    }
+    let user = user.trim();
+    if source == SpeechSource::Ast || user.is_empty() {
+        return message.clone();
+    }
+    let mut units = user.units();
+    units.extend(
+        if language == TtsLanguage::En {
+            " say: "
+        } else {
+            " dice: "
+        }
+        .encode_utf16(),
+    );
+    units.extend(message.code_units());
+    JsString::from_units(units)
+}
+
+fn link_regex() -> &'static Regex {
+    static LINKS: OnceLock<Regex> = OnceLock::new();
+    LINKS.get_or_init(|| Regex::new(r"(?i-u:((http|https)://)?(www\.)?[a-z0-9-]+(\.[a-z0-9-]{2,})+(:[0-9]+)?)(/[^\x09-\x0d\x20\x{00a0}\x{1680}\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}\x{feff}]*)?(\?[^\x09-\x0d\x20\x{00a0}\x{1680}\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}\x{feff}]+)?").unwrap())
+}
+
 fn parse_js_integer(text: &str) -> Option<f64> {
     let text = text.trim_start_matches(is_whitespace);
     let (negative, rest) = if let Some(rest) = text.strip_prefix('-') {
@@ -799,11 +987,36 @@ pub fn extract_emote_names(
     message: &str,
     emotes: &[Vec<String>],
 ) -> Vec<super::js_string::JsString> {
+    let message = super::js_string::JsString::from(message);
+    extract_emote_entries(
+        &message,
+        emotes.iter().flatten().map(|s| Cow::Borrowed(s.as_str())),
+    )
+}
+
+/// Preserve property and entry order, UTF-16 slices, and first occurrence.
+pub fn extract_emote_names_js(
+    message: &super::js_string::JsString,
+    emotes: &[Vec<super::js_string::JsString>],
+) -> Vec<super::js_string::JsString> {
+    extract_emote_entries(
+        message,
+        emotes.iter().flatten().map(|entry| match entry.as_str() {
+            Some(text) => Cow::Borrowed(text),
+            None => Cow::Owned(entry.to_utf8_lossy()),
+        }),
+    )
+}
+
+fn extract_emote_entries<'a>(
+    message: &super::js_string::JsString,
+    entries: impl Iterator<Item = Cow<'a, str>>,
+) -> Vec<super::js_string::JsString> {
     let mut seen = HashSet::new();
     let mut output = Vec::new();
-    let message = super::js_string::JsString::from(message);
     let length = message.len();
-    for entry in emotes.iter().flatten() {
+    // An unpaired surrogate terminates parseInt just like U+FFFD.
+    for entry in entries {
         let mut parts = entry.split('-');
         let (Some(start), Some(end)) = (
             parts.next().and_then(parse_js_integer),

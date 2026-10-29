@@ -63,6 +63,10 @@
 pub mod utils;
 pub mod workers;
 
+#[cfg(feature = "tts-utilities")]
+#[path = "pets/speech_text.rs"]
+pub mod pet_speech_text;
+
 #[cfg(feature = "tts-services")]
 #[path = "server/services/tts/mod.rs"]
 pub mod tts_services;

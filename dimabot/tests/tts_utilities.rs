@@ -282,3 +282,351 @@ fn normalization_benchmark() {
     let report = json!({"version":1,"runtime":"rust-release","measurement":"normalization plus UTF-16 checksum; excludes JSON serialization","sourceHashes":fixture["sourceHashes"],"workloads":results});
     std::fs::write(output_path, serde_json::to_vec_pretty(&report).unwrap()).unwrap();
 }
+
+#[test]
+fn lossless_normalization_and_pet_composition() {
+    use dima_rust::pet_speech_text::filter_pet_talk_text;
+    let lone = JsString::from_units(vec![0xd800]);
+    let emotes = [lone.clone()];
+    let options = NormalizeTtsMessageOptions {
+        skip_emotes: true,
+        strip_links: true,
+        normalize_whitespace: true,
+        max_length: 100.0,
+        emote_names: &emotes,
+    };
+    let input = JsString::from_units(vec![
+        0xd800, 32, 97, 46, 99, 111, 109, 47, 0xdc00, 32, 0xd801,
+    ]);
+    let result = normalize_tts_message_js(&input, &options);
+    assert_eq!(result.original_text, input);
+    assert_eq!(
+        result.text.units(),
+        vec![91, 108, 105, 110, 107, 93, 32, 0xd801]
+    );
+    let spoken = build_spoken_user_message_js(
+        &lone,
+        &result.text,
+        TtsLanguage::En,
+        SpeechSource::ChatCommand,
+    );
+    assert_eq!(spoken.units()[..7], [0xd800, 32, 115, 97, 121, 58, 32]);
+    let names = extract_emote_names_js(&input, &[vec!["0-0".into(), "0-0".into()]]);
+    assert_eq!(names, vec![lone]);
+    let pet = filter_pet_talk_text(
+        &JsString::from("[happy] a.com"),
+        TtsProvider::Piper,
+        &options,
+        None,
+    );
+    assert_eq!(pet.original_text.as_str(), Some("a.com"));
+    assert_eq!(pet.text.as_str(), Some("[link]"));
+}
+
+#[test]
+fn lossless_pet_raw_tag_settings_and_spoken_default() {
+    use dima_rust::pet_speech_text::filter_pet_talk_text;
+    use dima_rust::utils::lossless_json::parse_json;
+    let opts = NormalizeTtsMessageOptions {
+        skip_emotes: false,
+        strip_links: true,
+        normalize_whitespace: true,
+        max_length: 100.0,
+        emote_names: &[],
+    };
+    let text = JsString::from("[happy] [sad] a.com");
+    let tags = parse_json(r#"{"happy":false,"happy":true,"sad":false,"x":"\ud800"}"#).unwrap();
+    let result = filter_pet_talk_text(&text, TtsProvider::Fish, &opts, Some(&tags));
+    assert_eq!(result.original_text, JsString::from("[happy] a.com"));
+    assert_eq!(result.text, JsString::from("[happy] [link]"));
+    let missing = filter_pet_talk_text(&text, TtsProvider::Fish, &opts, None);
+    assert_eq!(missing.original_text, JsString::from("a.com"));
+    assert_eq!(missing.text, JsString::from("[link]"));
+    let user = JsString::from_units(vec![32, 0xd800, 32]);
+    let message = JsString::from_units(vec![0xdc00]);
+    assert_eq!(
+        build_spoken_user_message_js(&user, &message, TtsLanguage::Es, SpeechSource::ChatCommand)
+            .units(),
+        vec![0xd800, 32, 100, 105, 99, 101, 58, 32, 0xdc00]
+    );
+}
+
+// Generated only by the pinned actual-TypeScript oracle in a disposable environment.
+#[test]
+#[ignore]
+fn lossless_actual_source_replay() {
+    use dima_rust::pet_speech_text::filter_pet_talk_text;
+    use dima_rust::utils::lossless_json::parse_json;
+
+    fn decode(value: &Value, id: &str) -> JsString {
+        let units = value
+            .as_array()
+            .unwrap_or_else(|| panic!("{id}: missing unit array"))
+            .iter()
+            .map(|unit| {
+                let n = unit
+                    .as_u64()
+                    .unwrap_or_else(|| panic!("{id}: non-integer unit"));
+                u16::try_from(n).unwrap_or_else(|_| panic!("{id}: out-of-range UTF-16 unit {n}"))
+            })
+            .collect();
+        JsString::from_units(units)
+    }
+    fn options<'a>(c: &Value, emotes: &'a [JsString]) -> NormalizeTtsMessageOptions<'a> {
+        let max_length = match c["maxLength"].as_str().expect("maxLength") {
+            "NaN" => f64::NAN,
+            "Infinity" => f64::INFINITY,
+            "-Infinity" => f64::NEG_INFINITY,
+            value => value.parse().expect("maxLength number"),
+        };
+        NormalizeTtsMessageOptions {
+            skip_emotes: c["skip"].as_bool().expect("skip"),
+            strip_links: c["stripLinks"].as_bool().expect("stripLinks"),
+            normalize_whitespace: c["normalizeWhitespace"]
+                .as_bool()
+                .expect("normalizeWhitespace"),
+            max_length,
+            emote_names: emotes,
+        }
+    }
+    let dir = std::env::var("DIMA_TTS_LOSSLESS_FIXTURES").expect("fixture directory required");
+    let input = std::fs::read_to_string(std::path::Path::new(&dir).join("tts_lossless_cases.json"))
+        .expect("oracle fixture required");
+    let fixture: Value = serde_json::from_str(&input).expect("valid oracle fixture");
+    assert_eq!(fixture["schema"], 2);
+    assert_eq!(fixture["provenance"]["node"], "v24.22.1");
+    assert_eq!(fixture["provenance"]["v8"], "13.6.233.17-node.58");
+    assert_eq!(fixture["provenance"]["typescript"], "5.9.3");
+    assert_eq!(
+        fixture["provenance"]["hashes"]["pet"],
+        "9a5c1923ef1ceb3e1c454dab4803a589289c04cf1eb954aa3720ca2c163a6561"
+    );
+    for name in [
+        "normalizer",
+        "expressive",
+        "pet",
+        "petTest",
+        "creditFallback",
+        "schema",
+        "voices",
+        "resolver",
+        "loader",
+        "oracle",
+        "package",
+        "lock",
+        "typescript",
+        "typescriptPackage",
+        "node",
+    ] {
+        let hash = fixture["provenance"]["hashes"][name]
+            .as_str()
+            .expect("source hash");
+        assert_eq!(hash.len(), 64, "{name} hash");
+        assert!(hash.bytes().all(|b| b.is_ascii_hexdigit()), "{name} hash");
+        assert!(
+            !fixture["provenance"]["sourcePaths"][name]
+                .as_str()
+                .expect("source path")
+                .is_empty(),
+            "{name} path"
+        );
+    }
+    assert_eq!(
+        fixture["metadata"]["exports"]["normalizer"],
+        json!([
+            "buildSpokenUserMessage",
+            "extractEmoteNames",
+            "filterExpressiveTtsTags",
+            "normalizeTtsMessage"
+        ])
+    );
+    assert_eq!(
+        fixture["metadata"]["exports"]["pet"],
+        json!(["filterPetTalkText"])
+    );
+    assert_eq!(
+        fixture["metadata"]["exports"]["creditFallback"],
+        json!(["resolveTtsForCreditStatus"])
+    );
+    assert_eq!(
+        fixture["metadata"]["exports"]["expressive"],
+        json!([
+            "EXPRESSIVE_TTS_TAGS",
+            "EXPRESSIVE_TTS_TAG_GROUPS",
+            "filterExpressiveTtsTags",
+            "normalizeExpressiveTtsTags",
+            "reinforceFishTtsTags"
+        ])
+    );
+    assert_eq!(
+        fixture["metadata"]["ast"]["schema"]["aliases"]["TtsLanguage"],
+        "'en' | 'es'"
+    );
+    assert_eq!(
+        fixture["metadata"]["ast"]["schema"]["aliases"]["TtsProvider"],
+        "'piper' | 'fish' | 'kokoro'"
+    );
+    let ast = &fixture["metadata"]["ast"]["normalizer"];
+    assert_eq!(
+        ast["interfaces"]["NormalizeTtsMessageOptions"],
+        json!([
+            {"name":"skipEmotes","optional":false,"type":"boolean"},
+            {"name":"stripLinks","optional":false,"type":"boolean"},
+            {"name":"normalizeWhitespace","optional":false,"type":"boolean"},
+            {"name":"maxLength","optional":false,"type":"number"},
+            {"name":"emoteNames","optional":true,"type":"string[]"}
+        ])
+    );
+    assert_eq!(
+        ast["interfaces"]["NormalizeTtsMessageResult"],
+        json!([
+            {"name":"error","optional":false,"type":"boolean"},
+            {"name":"message","optional":false,"type":"string"},
+            {"name":"text","optional":false,"type":"string"},
+            {"name":"originalText","optional":false,"type":"string"}
+        ])
+    );
+    assert_eq!(ast["imports"][0]["typeOnly"], true);
+    assert_eq!(
+        ast["imports"][0]["module"],
+        "../../schemas/channel_tts_settings.schema.js"
+    );
+    assert_eq!(
+        ast["reexports"][0]["module"],
+        "./expressive_tts_tags.util.js"
+    );
+    assert_eq!(ast["reexports"][0]["names"], "{ filterExpressiveTtsTags }");
+    assert_eq!(
+        ast["returns"]["normalizeTtsMessage"],
+        "NormalizeTtsMessageResult"
+    );
+    assert_eq!(ast["returns"]["extractEmoteNames"], "string[]");
+    assert_eq!(
+        ast["functions"]["normalizeTtsMessage"][1]["type"],
+        "NormalizeTtsMessageOptions"
+    );
+    assert_eq!(
+        ast["functions"]["buildSpokenUserMessage"][2]["type"],
+        "TtsLanguage"
+    );
+    assert_eq!(
+        ast["functions"]["buildSpokenUserMessage"][3]["type"],
+        "'chat-command' | 'ast' | 'redemption'"
+    );
+    assert_eq!(
+        ast["functions"]["buildSpokenUserMessage"][3]["default"],
+        "'chat-command'"
+    );
+    assert_eq!(
+        fixture["metadata"]["ast"]["pet"]["imports"][0]["typeOnly"],
+        true
+    );
+    assert_eq!(
+        fixture["metadata"]["ast"]["pet"]["imports"][1]["module"],
+        "../utils/tts/normalize_tts_message.util.js"
+    );
+    let cases = fixture["cases"].as_array().expect("cases required");
+    assert!(!cases.is_empty(), "empty oracle fixture");
+    let mut counts = [0_usize; 4];
+    for c in cases {
+        let id = c["id"].as_str().expect("case ID");
+        let input = decode(&c["input"], id);
+        match c["op"].as_str().expect("operation") {
+            "normalize" | "pet" => {
+                let emotes: Vec<_> = c["emotes"]
+                    .as_array()
+                    .expect("emotes")
+                    .iter()
+                    .map(|v| decode(v, id))
+                    .collect();
+                let opts = options(c, &emotes);
+                let actual = if c["op"] == "pet" {
+                    counts[1] += 1;
+                    let provider = match c["provider"].as_str().expect("provider") {
+                        "fish" => TtsProvider::Fish,
+                        "kokoro" => TtsProvider::Kokoro,
+                        "piper" => TtsProvider::Piper,
+                        other => panic!("{id}: unknown provider {other}"),
+                    };
+                    // Parse the literal, not a serde value: escaped lones and duplicate keys survive.
+                    let tags = c["tagsJson"]
+                        .as_str()
+                        .map(|raw| parse_json(raw).expect("lossless tags"));
+                    filter_pet_talk_text(&input, provider, &opts, tags.as_ref())
+                } else {
+                    counts[0] += 1;
+                    normalize_tts_message_js(&input, &opts)
+                };
+                let expected = &c["expected"];
+                assert_eq!(
+                    actual.error,
+                    expected["error"].as_bool().expect("error"),
+                    "{id}: error"
+                );
+                assert_eq!(
+                    actual.message,
+                    expected["message"].as_str().expect("message"),
+                    "{id}: message"
+                );
+                assert_eq!(actual.text, decode(&expected["text"], id), "{id}: text");
+                assert_eq!(
+                    actual.original_text,
+                    decode(&expected["originalText"], id),
+                    "{id}: originalText"
+                );
+            }
+            "extract" => {
+                counts[2] += 1;
+                let groups: Vec<Vec<JsString>> = c["groups"]
+                    .as_array()
+                    .expect("groups")
+                    .iter()
+                    .map(|group| {
+                        group
+                            .as_array()
+                            .expect("entries")
+                            .iter()
+                            .map(|v| decode(v, id))
+                            .collect()
+                    })
+                    .collect();
+                let expected: Vec<_> = c["expected"]
+                    .as_array()
+                    .expect("expected names")
+                    .iter()
+                    .map(|v| decode(v, id))
+                    .collect();
+                assert_eq!(
+                    extract_emote_names_js(&input, &groups),
+                    expected,
+                    "{id}: extracted names and order"
+                );
+            }
+            "spoken" => {
+                counts[3] += 1;
+                let user = decode(&c["user"], id);
+                let lang = match c["language"].as_str().expect("language") {
+                    "en" => TtsLanguage::En,
+                    "es" => TtsLanguage::Es,
+                    other => panic!("{id}: language {other}"),
+                };
+                let source = match c["source"].as_str().expect("source") {
+                    "default" | "chat-command" => SpeechSource::ChatCommand,
+                    "ast" => SpeechSource::Ast,
+                    "redemption" => SpeechSource::Redemption,
+                    other => panic!("{id}: source {other}"),
+                };
+                assert_eq!(
+                    build_spoken_user_message_js(&user, &input, lang, source),
+                    decode(&c["expected"], id),
+                    "{id}: spoken"
+                );
+            }
+            other => panic!("{id}: unknown operation {other}"),
+        }
+    }
+    assert!(
+        counts.iter().all(|count| *count > 0),
+        "missing operation coverage: {counts:?}"
+    );
+}
