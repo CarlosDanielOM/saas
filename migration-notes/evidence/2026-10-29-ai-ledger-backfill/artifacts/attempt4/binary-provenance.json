@@ -1,0 +1,36 @@
+{
+  "buildReceipt": "compiler-1793298764759098752-receipt.json",
+  "toolchainImage": "sha256:557a94c82b485a14b569120e00867267108c734efe33f10cc31ca0cd5dd1eca9",
+  "sourceTreeSha256": "4e45a6406f4724a9f1a1500d795ae60fd1ec3fb2580c4fd61fb7e745276b4118",
+  "sourceInputs": 1294,
+  "binaries": [
+    {
+      "name": "ai_usage_ledger_backfill",
+      "cargoExecutable": "/target-cache/release/deps/ai_usage_ledger_backfill-7db5f3b100b711d8",
+      "artifactPath": "ledger-backfill/attempt4/bin/ai_usage_ledger_backfill",
+      "sha256": "594accd05c48591000541fe0d8edf5c527087905313f72df6c60d3dcc25a0c4f",
+      "bytes": 16655416,
+      "elfMachine": "x86-64",
+      "staticNoInterpreterOrNeededLibraries": true,
+      "programHeaderTypes": [
+        1,
+        1,
+        1,
+        1,
+        2,
+        4,
+        7,
+        1685382480,
+        1685382481,
+        1685382482
+      ],
+      "profile": {
+        "opt_level": "3",
+        "debuginfo": 0,
+        "debug_assertions": false,
+        "overflow_checks": false,
+        "test": true
+      }
+    }
+  ]
+}

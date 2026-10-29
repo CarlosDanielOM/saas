@@ -1,0 +1,111 @@
+{
+  "status": "Verified bounded native backfill; full ledger and migration remain incomplete.",
+  "codeCommit": "68d0236778e1fce6d76185947d3828f7944eb53c",
+  "sourceTreeSha256": "4e45a6406f4724a9f1a1500d795ae60fd1ec3fb2580c4fd61fb7e745276b4118",
+  "sourceInputs": 1294,
+  "acceptedRuns": [
+    "compiler-1793298764759098752",
+    "node-1793298764783132911",
+    "node-fixtures-1793298844986452413",
+    "compiler-1793298899575861137"
+  ],
+  "ordinaryCases": 6,
+  "actualSourceCases": 341,
+  "privateProtocolSuites": 1,
+  "privateProtocolSeconds": 3.32,
+  "lockSourceCases": 291,
+  "productionUnchangedRecords": 19,
+  "limits": {
+    "cpus": 6,
+    "memory": 4294967296,
+    "memory_swap": 4294967296,
+    "pids": 256,
+    "cargo_jobs": 2
+  },
+  "minimumAvailableBytes": 8764702720,
+  "peakCacheBytes": 2469974016,
+  "performanceMeasured": false,
+  "noRetirementAdoptionDeploymentPush": true,
+  "mongoServerMinimum": "8.0 (Client::bulk_write)",
+  "intentionalLegacyBoundary": "Inherited UnsupportedLegacy for Date/RegExp expiry arrays and top RegExp; guard retained before daily deletion.",
+  "runs": [
+    {
+      "run": "compiler-1793298354568909582",
+      "success": false,
+      "sourceTreeSha256": "d1b62a04ad087f2b325cda19c596d9d6b5652bd76d7d152a12acdd254547afcc",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-1793298421295918687",
+      "success": false,
+      "sourceTreeSha256": "39b11302cd43597cb479083c5d472239c1358d510c478bc0ad0c85c90e6f842b",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-1793298456046009838",
+      "success": true,
+      "sourceTreeSha256": "43cf5a62cce6bcc144c945dc6de543ab5369a44e8691cc7f95939281ce081c82",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-1793298764759098752",
+      "success": true,
+      "sourceTreeSha256": "4e45a6406f4724a9f1a1500d795ae60fd1ec3fb2580c4fd61fb7e745276b4118",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-1793298899575861137",
+      "success": true,
+      "sourceTreeSha256": "4e45a6406f4724a9f1a1500d795ae60fd1ec3fb2580c4fd61fb7e745276b4118",
+      "productionUnchanged": true
+    },
+    {
+      "run": "format-1793298314599245881",
+      "success": true,
+      "sourceTreeSha256": "8cf418f53f2f4322bdcea616afb104f78f3a97f4f5c315f788ffa15c257ec56f",
+      "productionUnchanged": true
+    },
+    {
+      "run": "format-1793298394590302105",
+      "success": true,
+      "sourceTreeSha256": "0e0ad2f0ea7b07a1e9a99399497bf26f59cab0bbe7d9ebb7d1971da12746a2ec",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793298365973870271",
+      "success": false,
+      "sourceTreeSha256": "d1b62a04ad087f2b325cda19c596d9d6b5652bd76d7d152a12acdd254547afcc",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793298421296377275",
+      "success": true,
+      "sourceTreeSha256": "39b11302cd43597cb479083c5d472239c1358d510c478bc0ad0c85c90e6f842b",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793298456035433378",
+      "success": true,
+      "sourceTreeSha256": "43cf5a62cce6bcc144c945dc6de543ab5369a44e8691cc7f95939281ce081c82",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793298764783132911",
+      "success": true,
+      "sourceTreeSha256": "4e45a6406f4724a9f1a1500d795ae60fd1ec3fb2580c4fd61fb7e745276b4118",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-fixtures-1793298716290506847",
+      "success": false,
+      "sourceTreeSha256": "43cf5a62cce6bcc144c945dc6de543ab5369a44e8691cc7f95939281ce081c82",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-fixtures-1793298844986452413",
+      "success": true,
+      "sourceTreeSha256": "4e45a6406f4724a9f1a1500d795ae60fd1ec3fb2580c4fd61fb7e745276b4118",
+      "productionUnchanged": true
+    }
+  ]
+}

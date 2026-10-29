@@ -1,0 +1,50 @@
+[
+  {
+    "run": "compiler-1793298354568909582",
+    "unchangedFilesBoundTo": "68d0236778e1fce6d76185947d3828f7944eb53c",
+    "changedFiles": {
+      "dimabot/src/utils/ai_usage_ledger_backfill.rs": {
+        "sha256": "9f4ce49c0061c57ef2aae7177ed8bc5e18506b14cca17be9aa12f537d60de340",
+        "retainedPath": "attempt1/source/dimabot/src/utils/ai_usage_ledger_backfill.rs"
+      },
+      "dimabot/tests/ai_usage_ledger_backfill.rs": {
+        "sha256": "2539463aff4056a20be4626ba0e74b1504bd1607d72512549aab98a91527bbf9",
+        "retainedPath": "attempt1/source/dimabot/tests/ai_usage_ledger_backfill.rs"
+      }
+    }
+  },
+  {
+    "run": "compiler-1793298421295918687",
+    "unchangedFilesBoundTo": "68d0236778e1fce6d76185947d3828f7944eb53c",
+    "changedFiles": {
+      "dimabot/tests/ai_usage_ledger_backfill.rs": {
+        "sha256": "2539463aff4056a20be4626ba0e74b1504bd1607d72512549aab98a91527bbf9",
+        "retainedPath": "attempt1/source/dimabot/tests/ai_usage_ledger_backfill.rs"
+      }
+    }
+  },
+  {
+    "run": "node-1793298365973870271",
+    "unchangedFilesBoundTo": "68d0236778e1fce6d76185947d3828f7944eb53c",
+    "changedFiles": {
+      "dimabot/src/utils/ai_usage_ledger_backfill.rs": {
+        "sha256": "9f4ce49c0061c57ef2aae7177ed8bc5e18506b14cca17be9aa12f537d60de340",
+        "retainedPath": "attempt1/source/dimabot/src/utils/ai_usage_ledger_backfill.rs"
+      },
+      "dimabot/tests/ai_usage_ledger_backfill.rs": {
+        "sha256": "2539463aff4056a20be4626ba0e74b1504bd1607d72512549aab98a91527bbf9",
+        "retainedPath": "attempt1/source/dimabot/tests/ai_usage_ledger_backfill.rs"
+      }
+    }
+  },
+  {
+    "run": "node-fixtures-1793298716290506847",
+    "unchangedFilesBoundTo": "68d0236778e1fce6d76185947d3828f7944eb53c",
+    "changedFiles": {
+      "dimabot/tests/ai_usage_ledger_backfill.rs": {
+        "sha256": "f546993184318921fe177b36729cc91648d73f63d390633019a90fa683fc6d6e",
+        "retainedPath": "attempt3/source/dimabot/tests/ai_usage_ledger_backfill.rs"
+      }
+    }
+  }
+]

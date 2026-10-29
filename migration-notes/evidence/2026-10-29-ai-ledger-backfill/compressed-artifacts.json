@@ -1,0 +1,146 @@
+{
+  "runs/compiler-1793298354568909582-receipt.json.gz": {
+    "rawSha256": "78e3446fd4d511c399210e5ed5d8697615e8510318112e3f680eebcf608396d6",
+    "rawBytes": 157388
+  },
+  "runs/compiler-1793298354568909582.log.gz": {
+    "rawSha256": "d5f4e0e44f2e45da722d59d6609be80879aeaf8521d44b336fe2d6cf2f383360",
+    "rawBytes": 2867
+  },
+  "runs/compiler-1793298421295918687-receipt.json.gz": {
+    "rawSha256": "4e7826f71c8df24e32a9357be767b8558e789bdad20fae2ecb7c769d7c9ad7f6",
+    "rawBytes": 157387
+  },
+  "runs/compiler-1793298421295918687.log.gz": {
+    "rawSha256": "3b9315b245964c17de1a46567864f6784fd339e4a8757f09374be631c8a117b6",
+    "rawBytes": 2457
+  },
+  "runs/compiler-1793298456046009838-receipt.json.gz": {
+    "rawSha256": "9c703618a42ce7667660255feb05208e945019c18f05ea1f2c1bd9056c49068e",
+    "rawBytes": 157336
+  },
+  "runs/compiler-1793298456046009838.log.gz": {
+    "rawSha256": "4ef0d45e214082387614f14f2bd4a996f2d5b857a35238413838d0c476afcd56",
+    "rawBytes": 2052
+  },
+  "runs/compiler-1793298764759098752-receipt.json.gz": {
+    "rawSha256": "7d8496a61663bb0ef27650c1ee31ad0a122d773a4605352c9fb7596763ae8a2d",
+    "rawBytes": 157337
+  },
+  "runs/compiler-1793298764759098752.log.gz": {
+    "rawSha256": "4f724880ab01908e461e5c7cc1c3c430076c0fad452cd035fdf9cdc1075ca289",
+    "rawBytes": 2052
+  },
+  "runs/compiler-1793298899575861137-receipt.json.gz": {
+    "rawSha256": "a645bf7b97997e7b9db6ca686f51b7e0dcdfde10c2ee3ede748827355f2f7eff",
+    "rawBytes": 157337
+  },
+  "runs/compiler-1793298899575861137.log.gz": {
+    "rawSha256": "dee2fb84446c5a19cb273a332b74a2c98abd914ce30c8e49c1bbd1baf347f096",
+    "rawBytes": 13259
+  },
+  "runs/format-1793298314599245881-receipt.json.gz": {
+    "rawSha256": "2f804f8d99fe6b9e295101f4b078563912d29a21ce9dfb675989826c8ec825c8",
+    "rawBytes": 157329
+  },
+  "runs/format-1793298314599245881.log.gz": {
+    "rawSha256": "d8df33ba72c691319594a6938a8cc1f756798afbe8a2dc8dedcec22abade739d",
+    "rawBytes": 1833
+  },
+  "runs/format-1793298394590302105-receipt.json.gz": {
+    "rawSha256": "cc954c21539a09ae200c1c4daf3efce63f9e14b34216542cd0545e7d08808473",
+    "rawBytes": 157331
+  },
+  "runs/format-1793298394590302105.log.gz": {
+    "rawSha256": "d8df33ba72c691319594a6938a8cc1f756798afbe8a2dc8dedcec22abade739d",
+    "rawBytes": 1833
+  },
+  "runs/node-1793298365973870271-receipt.json.gz": {
+    "rawSha256": "732f59c05ed71a1d6281df576b4a930a904a176911667600945fce72c6d7375e",
+    "rawBytes": 157255
+  },
+  "runs/node-1793298365973870271.log.gz": {
+    "rawSha256": "014254c689e8a342ac9c25c99e13800f07b2a21f64cd13e301e3538b7b1e5726",
+    "rawBytes": 1116
+  },
+  "runs/node-1793298421296377275-receipt.json.gz": {
+    "rawSha256": "f40be5b146cf256412e25cc546ad106c135b6ba0e0925768b536d0e1e2af3499",
+    "rawBytes": 157210
+  },
+  "runs/node-1793298421296377275.log.gz": {
+    "rawSha256": "345469576bc55f112ab0398144beb91f72ab7afd4fd67159725231057f7715c7",
+    "rawBytes": 59
+  },
+  "runs/node-1793298456035433378-receipt.json.gz": {
+    "rawSha256": "c3d77d0f9a3179db54f7a0d965b0583992f8c9ec6a5a1db0606c1955c29d6806",
+    "rawBytes": 157207
+  },
+  "runs/node-1793298456035433378.log.gz": {
+    "rawSha256": "249baf635bb43877fcb9422efa1a4904b702d0ddf14d3949b7cd0950d5229c81",
+    "rawBytes": 9
+  },
+  "runs/node-1793298764783132911-receipt.json.gz": {
+    "rawSha256": "36bfd879a834ba8113ccd1ca527c4200ea03a50612f9173cf05ae14927f0f1a0",
+    "rawBytes": 157208
+  },
+  "runs/node-1793298764783132911.log.gz": {
+    "rawSha256": "249baf635bb43877fcb9422efa1a4904b702d0ddf14d3949b7cd0950d5229c81",
+    "rawBytes": 9
+  },
+  "runs/node-fixtures-1793298716290506847-receipt.json.gz": {
+    "rawSha256": "6503b47478b924a2a0cfcf725828eb977c2cce15a52965506c4f8eaad1326a51",
+    "rawBytes": 157283
+  },
+  "runs/node-fixtures-1793298716290506847.log.gz": {
+    "rawSha256": "27943b949141b88b7b316d369c5768d6612e0b599795a92095e14c25ac86fb72",
+    "rawBytes": 1764
+  },
+  "runs/node-fixtures-1793298844986452413-receipt.json.gz": {
+    "rawSha256": "a242cb44402501507bc65dbe683af3672c48f3b718ff32f3a61eff7f32f89aaf",
+    "rawBytes": 157224
+  },
+  "runs/node-fixtures-1793298844986452413.log.gz": {
+    "rawSha256": "d697ca0ba7ca6c76e809d9605bc113dbaa99c359474028778901c8a1af254d8a",
+    "rawBytes": 1707
+  },
+  "artifacts/attempt1/source/snapshot.json.gz": {
+    "rawSha256": "71a39db2146112049d19f16ee821980211aec82745bd445186757c8d2f41019a",
+    "rawBytes": 153831
+  },
+  "artifacts/attempt2/lock/ai_usage_lock_reference.json.gz": {
+    "rawSha256": "e9da7080833016020b43a9d1567904fef82a3228f62e536951cd2f0e566507d7",
+    "rawBytes": 4788471
+  },
+  "artifacts/attempt2/reference/ai_usage_ledger_backfill_reference.json.gz": {
+    "rawSha256": "7216da02f99cd40bec6f94574d7ebfe917528d82336076d0d99e0e37d7340136",
+    "rawBytes": 28976253
+  },
+  "artifacts/attempt2/source/snapshot.json.gz": {
+    "rawSha256": "cd03d6ac59b456b044c40e93824abe564dacdf9489c2996def9707315971a9db",
+    "rawBytes": 153831
+  },
+  "artifacts/attempt3/backfill-build.jsonl.gz": {
+    "rawSha256": "76d48a49502ae84dbc47ba238b9c3b8680130ca99f6ab1964e608f268a1a15fd",
+    "rawBytes": 202884
+  },
+  "artifacts/attempt3/reference/ai_usage_ledger_backfill_reference.json.gz": {
+    "rawSha256": "7674ea9f21b7a649212bb18bda6ca07d9646d0953e73bbbed02f157dc2771694",
+    "rawBytes": 28976253
+  },
+  "artifacts/attempt3/source/snapshot.json.gz": {
+    "rawSha256": "fed35d512b2e0364ff75c44ac2c20f078ab07a4c2d702261ddb5adba331f40fb",
+    "rawBytes": 153831
+  },
+  "artifacts/attempt4/backfill-build.jsonl.gz": {
+    "rawSha256": "f484dc53bffced116cffc59df9a7eabf80aca9fd5a63d7642e63f351e28c0bed",
+    "rawBytes": 202877
+  },
+  "artifacts/attempt4/reference/ai_usage_ledger_backfill_reference.json.gz": {
+    "rawSha256": "3b9698d4246160dc6d445d87048d9fe42b0f03acc2122efbd634b88eb7803747",
+    "rawBytes": 28976253
+  },
+  "artifacts/attempt4/source/snapshot.json.gz": {
+    "rawSha256": "6f379b328bee097d222aeffa206a9f5cc678a08c82cd2355f57a610b68518da1",
+    "rawBytes": 153831
+  }
+}
