@@ -1,0 +1,9 @@
+{
+  "sourceTreeSha256": "d658d2f8014e87dd70c6f0041331939e4aaef04878a836eb4ed268a540aec29f",
+  "gitCommit": "dc417ce21a38ec91070ce310b8c230ad346dcc8e",
+  "compilerRun": "compiler-1793275744561745277",
+  "rlibSha256": "a0be48207b3f0ad2cfc777f0e3dff4f5923783ae367e93c8fa75da2e4da42555",
+  "profileSourceSha256": "0277cbcacdb38f6ce23644c989e248cbdf4913e19f6ea892e08f72c52418a224",
+  "inputSha256": "5528e8561c9dd9df464f71e1a4399dcde9fa13af61f34f978ddd9c6d95f55c84",
+  "scope": "Separate seven-trial native stages on one ASCII source input; not additive and no TypeScript or whole-application comparison. Diagnostic tests passed; attempt4 whole compiler phase later failed only because a parent report was added to the broad integrity manifest. Corrected protected-input replay passed separately."
+}

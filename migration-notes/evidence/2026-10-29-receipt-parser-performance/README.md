@@ -1,0 +1,9 @@
+# Receipt parser performance evidence
+
+Three bounded native changes were measured against the same 42 saved TypeScript trials: borrowed key lookup, borrowed field serialization, and validated string scalar shortcuts. All six final Rust medians are lower than TypeScript. The [summary](verification-summary.json), [six-pool data](artifacts/attempt4/comparison-data.json), and raw reports retain every trial and range. These are sequential synthetic wall-time measurements; no statistical, CPU, RSS, database, queue, network, or whole-application claim is made.
+
+The [initial baseline](../2026-10-29-receipt-parser-baseline/README.md) retains four original Rust regressions. Attempts 2 and 3 preserve intermediate candidates and their three remaining regressions. Every candidate has an audited native-only hash rebind: TypeScript source/harness, raw prepared inputs, 192 expected source wires, operation counts and saved trials remain unchanged. Independent SHA checks and pinned Node --check follow each native run.
+
+Each frozen candidate is bound to its local code commit and ten unchanged SDK source references. Actual-source parser results, producer recipes, wires, BSON expectations and all five timezone results stayed identical. Final validation includes strict checks, focused ordinary tests, the source corpus and producer/BSON replay under all five timezones. Earlier failed fixture setup, run receipts, exact Rlib stage diagnostics and scoped cache maintenance remain recorded. Raw compressed artifacts retain their decompressed hash and size; regenerable profile executables are excluded with hashes.
+
+Final readback verifies 19 unchanged production records and no task-owned containers, networks or volumes. No TypeScript retirement, caller adoption, deployment or push occurred. The full migration remains incomplete.

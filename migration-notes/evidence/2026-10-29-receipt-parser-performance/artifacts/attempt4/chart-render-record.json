@@ -1,0 +1,58 @@
+{
+  "previewWidths": [
+    390,
+    718
+  ],
+  "previewContentHeights": [
+    876,
+    786
+  ],
+  "appearance": "dark",
+  "consoleMessages": [],
+  "render": {
+    "htmlRender": {
+      "attachmentId": "9cc467f1-f5c3-45a8-989a-e8e02361df4b-2ad53120-3594-4780-96d2-1dd65e18e871-html",
+      "title": "Receipt parser benchmark",
+      "height": 876,
+      "heights": [
+        [
+          320,
+          928
+        ],
+        [
+          375,
+          876
+        ],
+        [
+          430,
+          876
+        ],
+        [
+          520,
+          803
+        ],
+        [
+          640,
+          803
+        ],
+        [
+          728,
+          786
+        ],
+        [
+          860,
+          786
+        ],
+        [
+          1000,
+          751
+        ],
+        [
+          1144,
+          751
+        ]
+      ]
+    },
+    "message": "Shown to the reader above your reply. Don't mention or describe the page; reply with only what it doesn't already say."
+  }
+}

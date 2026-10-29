@@ -1,0 +1,18 @@
+{
+  "scope": "Only one native implementation hash and the resulting input SHA rebound. Every TypeScript source, loader/harness, raw prepared-pool suffix, source wire, checksum, warmup, operation count and saved Node trial is unchanged. No Node timing rerun.",
+  "baselineInputSha256": "2342386c3dde9f63206402cd7e82d83b88360f9cbab7d90ef69ee5a52e0e287e",
+  "candidateInputSha256": "4833733d9eee157f17b0095315d8dc6ffea034a5b305e52834ac8b1087b91653",
+  "baselineNodeReportSha256": "84dc4afee0b522b2ee94999390999f197fee7d0919daf7a3beb4868188b5d96c",
+  "candidateNodeReportSha256": "b723649ccc62f740120aeacb2b1d81a8e9031a6a8333a4bf91e4402e4837f49c",
+  "nativeHashChanges": {
+    "src/utils/lossless_json_view.rs": {
+      "before": "d3582b6b5ff8b0c635f1ecefc0e0b66265f069ae19273232d0be21a36f3036f1",
+      "after": "746e4b1732e8e5a4f240c864707fa08f5c95dcd84c61101c6909832ed650c351"
+    }
+  },
+  "preparedPoolsRawBytesSha256": "8a5ca4dd97fcc53e604951456426f24f34211cf7583ecd8f0209083220476533",
+  "sourceWires": 192,
+  "savedNodeTrials": 42,
+  "sourceTreeSha256": "d658d2f8014e87dd70c6f0041331939e4aaef04878a836eb4ed268a540aec29f",
+  "requiredFollowup": "Independent input SHA before/after, native192wire/checksum prevalidation and fresh report, then actual pinned Node --check against current source."
+}

@@ -1,0 +1,6 @@
+755bb61882c3d5a171fa21142ae799a00d86ea35f675b02e3155f467567648da  /artifacts/receipt-parser-benchmark/attempt4/benchmark/inputs.json
+a80243060251b9301b2760dc988559492cea4e9c0e7f24b4cce665d875264e2e  /artifacts/receipt-parser-benchmark/attempt4/parser-oracle-immutability.json
+ca72937ee2a762dc4f0af18a8e0b3e813452eb56add14657b70af4ce33ce331c  /artifacts/receipt-parser-benchmark/attempt4/benchmark/node-report.json
+cbfe3d98dca0fd2bb1d6ecc20a77efae73efe3e6a31a2cd99a576c7f0f628fb7  /artifacts/receipt-parser-benchmark/attempt4/parser/ai_usage_receipt_parser_reference.json
+e7f5a9302ad23eb71ec107c1475d199ad4620b25eef54b878ed2feac36fdd5c7  /artifacts/receipt-parser-benchmark/attempt4/benchmark/native-report.json
+f0c8aac08cee289c0f74816f45afa999077193897150e6d02bb71365566f2c59  /artifacts/receipt-parser-benchmark/attempt4/benchmark-reuse-audit.json

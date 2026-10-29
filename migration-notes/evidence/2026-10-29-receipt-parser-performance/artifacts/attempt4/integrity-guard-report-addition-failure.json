@@ -1,0 +1,9 @@
+{
+  "failedRun": "compiler-1793280560652256002",
+  "cause": "Parent generated chart comparison data inside the directory monitored by the broad manifest; only one new report path was added. All five replay executions passed.",
+  "added": [
+    "4c95db63d0dc48ffb092c6328989093f82d7c30bed4a1b3a268f5a00d9ea725b  /artifacts/receipt-parser-benchmark/attempt4/comparison-data.json"
+  ],
+  "removedOrChangedExistingFiles": [],
+  "correction": "Fresh replay uses explicit protected parser/benchmark subdirectories, with unique before/after manifests. No timing rerun or native implementation change."
+}

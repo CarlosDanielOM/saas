@@ -1,86 +1,88 @@
-# AI usage receipt parser benchmark baseline — 2026-10-29
+# AI usage receipt parser performance — 2026-10-29
 
-Status: **verified baseline; four Rust time regressions remain open**. The
-benchmark harness is committed as
-`0389561e6004d3a8f7bc10ca73b3bc49a9016e5e`. A separate bounded lookup
-optimization is in verification, but no candidate timing or performance
-acceptance exists yet. This note reports only the initial matched baseline.
+Status: **verified local parser result**. The final Rust source is bound to
+`5afe5d1e16992dc8cf4d71f89084096bf4a5e513bfcd34f461672dba07914a2e`. The
+original benchmark harness and 42 Node trials are retained. All six final Rust
+medians are below their matched Node medians; this is a narrow parser benchmark,
+not an application-wide performance claim.
 
-## Matched baseline
+## Matched benchmark
 
-Source tree SHA-256:
-`8dbce36238ca2323d795782d1dc7032f66a372df9053a9e6a56d11df4d7f428a`;
-input SHA-256:
-`2342386c3dde9f63206402cd7e82d83b88360f9cbab7d90ef69ee5a52e0e287e`.
-The source binding covers 1,275 files and the six pools contain 192
-prevalidated source wires. Each pool has 32 inputs and seven trials.
+The comparison reuses the original 192 prepared inputs and expected wires
+(six pools, 32 inputs per pool), harness, warmups, trial counts and Node
+measurements. Three audited native-source rebinds track the lookup, borrowed
+wire and borrowed scalar changes. The independently checked input SHA-256 is
+`755bb61882c3d5a171fa21142ae799a00d86ea35f675b02e3155f467567648da`.
 
-| Pool | Node median µs/op (range) | Rust median µs/op (range) | Rust/Node median time |
-|---|---:|---:|---:|
-| ascii | 6.4754 (6.2281–7.0369) | 58.8629 (57.2925–63.5998) | 9.09x |
-| unicode | 8.8659 (8.6150–13.2711) | 70.0094 (67.6673–71.3212) | 7.90x |
-| coercion-duplicates | 8.8327 (8.7014–10.2306) | 88.3840 (86.4125–102.1838) | 10.01x |
-| rejected | 12.2683 (11.2813–13.5841) | 5.5008 (5.3075–6.3887) | 0.448x |
-| deep-ignored | 21.1810 (20.8195–22.9414) | 57.7481 (53.6163–61.1509) | 2.73x |
-| deep-coerced | 76.1945 (74.5679–78.9801) | 56.8779 (53.6262–62.6905) | 0.746x |
+| Pool | Node median µs/op | Initial Rust | Lookup Rust | Wire Rust | Final scalar Rust median (range) |
+|---|---:|---:|---:|---:|---:|
+| ascii | 6.4754 | 58.8629 | 11.2499 | 8.9767 | 4.7953 (4.7083–5.1830) |
+| unicode | 8.8659 | 70.0094 | 16.3876 | 14.8817 | 7.3380 (7.2079–7.5224) |
+| coercion-duplicates | 8.8327 | 88.3840 | 14.0488 | 13.0848 | 7.5399 (7.2534–8.1223) |
+| rejected | 12.2683 | 5.5008 | 1.6298 | 1.6251 | 0.8389 (0.7666–1.0998) |
+| deep-ignored | 21.1810 | 57.7481 | 14.5885 | 14.1514 | 8.8309 (8.5841–9.9814) |
+| deep-coerced | 76.1945 | 56.8779 | 17.2280 | 14.1977 | 11.5947 (11.4050–11.9558) |
 
-The four Rust regressions are ascii, unicode, coercion-duplicates and
-deep-ignored. Rust has lower median time for rejected and deep-coerced. The
-Node timing retains 42 trials from actual transpiled CommonJS source; an
-isolated VM realm matched all 192 expected source wires before timing. Node and
-Rust both matched every checksum.
+The initial candidate regressed in ascii, unicode, coercion-duplicates and
+deep-ignored; rejected and deep-coerced were already faster. The key lookup,
+wire serialization, then scalar changes reduced the first four in successive
+matched measurements. The final run also measured every previously faster
+pool. The retained actual-transpiled-CommonJS Node run used 42 trials total;
+its isolated VM realm matched all 192 expected wires before timing. Each Rust
+pool used seven trials over 32 inputs. Regular pools used 32,000 warmups;
+timed operations were 32,000 for ascii and 16,000 for unicode,
+coercion-duplicates and rejected. Deep pools used 2,048 warmups and 2,048
+timed operations. The operation parses a prepared
+JSON string, creates the ordered normalized 18-field receipt wire (or null on
+rejection), then adds each UTF-8 byte to a wrapping checksum. It excludes
+input setup, queues, databases, network, and whole-application work; it reports
+neither CPU nor RSS, and makes no statistical or production latency claim.
 
-Each operation parses a prepared JSON string, creates the ordered normalized
-18-field receipt wire (or null for rejection), and adds each UTF-8 byte to a
-wrapping checksum. Regular pools use 32,000 warmups; their timed operations are
-32,000 for ascii and 16,000 for unicode, coercion-duplicates and rejected.
-Deep pools use 2,048 warmups and 2,048 timed operations. Inputs and expected
-wires are prepared outside timing. This covers parser work, ordered wire
-encoding and checksum only; it excludes input setup, queueing, database and
-network I/O, and measures neither CPU nor RSS nor whole-application latency.
+The final benchmark phase (`compiler-1793280560652256002`) completed its
+release benchmark, matched all 192 wires/checksums and passed the five-TZ
+replay, but the overall phase **failed** its broad-manifest guard because the
+parent had added `attempt4/comparison-data.json` inside the monitored directory.
+Evidence shows only that new report path was added; no existing file changed.
+The corrected guarded replay (`compiler-1793280942006666851`) then passed all
+1,362 source cases plus 64 producer/BSON recipes in each of five time zones,
+with parser and benchmark files protected byte-for-byte. It did not rerun the
+timings. Final actual-source/benchmark `--check`
+`node-1793280993094123148` passed against the same source fingerprint.
 
-## Verification and diagnostic
+## Verification and implementation notes
 
-Strict checks passed (`compiler-1793274083369420275`), the Node
-source/benchmark check passed (`node-1793274189948131358`), release plus
-all-feature and no-default strict checks passed
-(`compiler-1793274264064252684`), and final Node `--check` passed
-(`node-1793274460403768280`). The final compiler phase took 149.233 seconds
-for its script and 156.805 seconds total, with a 41.21-second timed test. It
-ran under 6 CPU, 4 GiB memory/equal swap, 256 PID and two-job caps; peak cache
-was 8,169,611,264 bytes and minimum available memory was 10,518,982,656 bytes.
-Readback verified 19 production records unchanged and no task-owned resources
-remaining.
+Pinned compiler run `compiler-1793280370053397498` passed formatting,
+all-feature/all-target check and Clippy with warnings denied, no-default check,
+and ordinary tests (2 core-library, 2 new view-library, 9 parser and 14 view
+tests). The actual-source oracle `node-1793280499896669546` passed: all 1,362
+cases, producer recipes, wires, BSON and five-time-zone results were byte
+identical to the prior oracle; only the two native source file hashes differed.
+Final Node validation passed; the parent’s final readback/evidence packaging
+is documented in the [performance evidence package](evidence/2026-10-29-receipt-parser-performance/README.md).
 
-The retained first lint failure (`compiler-1793274004764681420`) was a
-constant profile assertion in the benchmark harness. An equivalent `if` guard
-fixed that assertion without changing parser behavior, prepared inputs or
-source wires.
+The final scalar implementation is local commit
+`4bc0b1fc648cd074d8ed67e3805dfd1acb962871` (two source/test files). The changes
+reuse validated borrowed spans: unescaped object keys compare
+without decoding; borrowed receipt fields write the ordered wire without an
+intermediate owned JSON tree; and validated unescaped string leaves avoid
+decoding for truthiness and return directly for string coercion. Escaped names
+and strings retain the established decoder, including exact UTF-16 behavior.
+The separate ASCII scalar diagnostic fell from 1,485.83 ns to 12.658 ns for
+three truthiness checks, from 2,478.11 ns to 661.677 ns for four decodes, from
+2,769.82 ns to 680.588 ns for four coercions, and from 7,556.32 ns to
+3,205.808 ns for DTO parse. These separate stage measurements are not additive
+or an application comparison.
 
-A separate exact-release profile of one ASCII input
-(`compiler-1793274681760889459`, seven trials of 3,200 operations) reported:
-
-| Stage | Median µs/pass |
-|---|---:|
-| Validate and index | 0.958 |
-| Twenty field lookups | 57.442 |
-| Parse normalized DTO | 57.498 |
-| Prepared DTO wire | 7.742 |
-| Parse plus wire | 64.780 |
-
-These diagnostic stages are separate, not additive end-to-end figures, and
-have no Node comparison. The static source trace points to repeated decoding
-of object keys in the parser's `get` path. Sol at xhigh authored a bounded
-candidate using borrowed UTF-8 matching with an escaped UTF-16 fallback.
-Formatting has been applied and its checks are running; there are no candidate
-timings yet.
+Validation used the established limits: 6 CPU, 4 GiB memory with equal swap
+(no swap), 256 PIDs, two build jobs and an 8 GiB task cache. Final strict,
+replay and Node checks observed production records unchanged (19 records).
+No deployment, push, caller adoption or TypeScript retirement occurred. This
+result does not make the broader Rust migration complete.
 
 The [baseline evidence package](evidence/2026-10-29-receipt-parser-baseline/README.md)
-contains the [comparison and raw trials](evidence/2026-10-29-receipt-parser-baseline/artifacts/initial-benchmark-comparison.json),
-[verification summary](evidence/2026-10-29-receipt-parser-baseline/verification-summary.json),
-[source binding](evidence/2026-10-29-receipt-parser-baseline/source-binding.json),
-[lookup diagnostic source proof](evidence/2026-10-29-receipt-parser-baseline/artifacts/lookup-diagnostic/source-proof.json)
-and [stage report](evidence/2026-10-29-receipt-parser-baseline/artifacts/lookup-diagnostic/report.jsonl).
-
-No caller adoption, TypeScript retirement, deployment or push occurred. The
-broader Rust migration remains incomplete.
+retains the original benchmark, oracle and source-binding records. Lookup,
+wire and scalar author handoffs below document each bounded change and the
+parent’s corresponding validation:
+[lookup handoff](borrowed-json-lookup-performance-handoff.md),
+[wire handoff](receipt-wire-performance-handoff.md),
+[scalar handoff](borrowed-json-scalar-performance-handoff.md).

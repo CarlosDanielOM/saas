@@ -1,0 +1,107 @@
+{
+  "scope": "Only old single-link ELF test executables in the task-private target/debug/deps; all from completed phases before scalar checks. No dependency, shared cache, release image, source or production mutation.",
+  "beforeAllocatedBytes": 8434233344,
+  "files": [
+    {
+      "path": "target/debug/deps/ai_credit_projection-ce825af4e4066b75",
+      "sha256": "8b04cc2f6d8a407b7a5c4a4c1802b5700034e0ced04eee5991bf44968890e09c",
+      "bytes": 12675952,
+      "allocatedBytes": 12677120,
+      "mtimeNs": 1793278508703748946
+    },
+    {
+      "path": "target/debug/deps/ai_usage_producer-a9d04a3c8ed7467f",
+      "sha256": "6c02ca23edf220ed920497b18498b7b5671fb4c91936215aa8d38d9cc0eaa217",
+      "bytes": 2603632,
+      "allocatedBytes": 2605056,
+      "mtimeNs": 1793278510450745333
+    },
+    {
+      "path": "target/debug/deps/ai_usage_receipt_parser-241bb5eb9fb7fc5b",
+      "sha256": "6d2f09c5bd6f12a1085b445f0c1b7cf74f2b722a25d58d80b8c504d0ad121f05",
+      "bytes": 4272528,
+      "allocatedBytes": 4276224,
+      "mtimeNs": 1793277180743485160
+    },
+    {
+      "path": "target/debug/deps/ai_usage_receipts-d2f7a401382ab3ee",
+      "sha256": "630c24b1848b5bdf001f29dd3951e8ef24e4d6fb2ac0294040b9f9a87d15e311",
+      "bytes": 32995928,
+      "allocatedBytes": 32997376,
+      "mtimeNs": 1793272704021248105
+    },
+    {
+      "path": "target/debug/deps/dima_rust-bfc834d203bef403",
+      "sha256": "7a98c039144d64da60e1b5744e1bfd1f82dfb23a689a977081e6f91b4fa0e112",
+      "bytes": 8259784,
+      "allocatedBytes": 8261632,
+      "mtimeNs": 1793277168342510514
+    },
+    {
+      "path": "target/debug/deps/follow_defense_baseline-5ef9cb647ec7975f",
+      "sha256": "44a55d49aa27467629ef1cd672176c91779c0f72f5748ba6245649591824cf54",
+      "bytes": 31413760,
+      "allocatedBytes": 31416320,
+      "mtimeNs": 1793272708097240376
+    },
+    {
+      "path": "target/debug/deps/lossless_json_view-86912dd4f7dfec96",
+      "sha256": "6ba0e0cf89c4ac0d7ae0bee2525fa21425f25ff905644116933bb2b32ba35d54",
+      "bytes": 2012296,
+      "allocatedBytes": 2015232,
+      "mtimeNs": 1793277182467481636
+    },
+    {
+      "path": "target/debug/deps/posthog_lossless-f7b2f7ae4b0a7dfc",
+      "sha256": "2146fc377446d8f6f4400c81d78b98ccd90ee857dffae9c35993b0dbc633247a",
+      "bytes": 13951408,
+      "allocatedBytes": 13955072,
+      "mtimeNs": 1793278512447741202
+    },
+    {
+      "path": "target/debug/deps/posthog_tracking-f7fae7f002611982",
+      "sha256": "34836fee21c52e00deff3486c8a9eaf2cb9d6e7ad37f5c966c76d1e4ba01bded",
+      "bytes": 24350864,
+      "allocatedBytes": 24354816,
+      "mtimeNs": 1793278514914736099
+    },
+    {
+      "path": "target/debug/deps/raid_analytics-a6088efdc8aaaec5",
+      "sha256": "21ae90da856fe39134d68b4eff1bfd5c6d0ed4ae86db33e917f002a47c9fe0d6",
+      "bytes": 33413520,
+      "allocatedBytes": 33415168,
+      "mtimeNs": 1793277178422489905
+    },
+    {
+      "path": "target/debug/deps/raid_sessions-bd6f72361162392d",
+      "sha256": "edb17e28fbb6892e53cf53e987e505da6a2b4ad31a7004227b6f1f8c9dbeeada",
+      "bytes": 35301392,
+      "allocatedBytes": 35303424,
+      "mtimeNs": 1793272713781229600
+    },
+    {
+      "path": "target/debug/deps/roulette_completion-91d998964659f27c",
+      "sha256": "22ed22122a43d9374cad68fc5bf65c84fcfd73c262065bb955a600737c2933df",
+      "bytes": 27975528,
+      "allocatedBytes": 27975680,
+      "mtimeNs": 1793277176504493827
+    },
+    {
+      "path": "target/debug/deps/stream_activity-356c5b0bb8686156",
+      "sha256": "ff61c270e127ba4b02358d38488db8136db749e1578dbde17f3f2984a7df2f68",
+      "bytes": 32255336,
+      "allocatedBytes": 32256000,
+      "mtimeNs": 1793277180777485091
+    },
+    {
+      "path": "target/debug/deps/tts_usage_pricing-0e0075124a00a356",
+      "sha256": "4ca2125df026716f76936a1d7102519b16cb045e93e434a68dc3b2e869099d79",
+      "bytes": 2195320,
+      "allocatedBytes": 2195456,
+      "mtimeNs": 1793278514526736901
+    }
+  ],
+  "afterAllocatedBytes": 8170528768,
+  "removedAllocatedBytes": 263704576,
+  "productionUnchanged": true
+}

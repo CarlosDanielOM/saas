@@ -1,0 +1,11 @@
+{
+  "previousFixtureSha256": "3750feba24c39c0d4ef92fe5fab4164271fa19410bcc64be3bde897afc1889b9",
+  "candidateFixtureSha256": "8cf859aced7ef435f882521719a3ac05de981c44f689834fc454c8867bc57eb5",
+  "allCasesProducerRecipesWiresBsonAndZoneResultsUnchanged": true,
+  "onlyChangedTopLevel": [
+    "metadata"
+  ],
+  "unchangedTopLevelKeys": [
+    "results"
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "status": "Verified synthetic parser performance: all six final medians lower than retained TypeScript trials. Whole migration incomplete.",
+  "codeCommit": "4bc0b1fc648cd074d8ed67e3805dfd1acb962871",
+  "sourceTreeSha256": "5afe5d1e16992dc8cf4d71f89084096bf4a5e513bfcd34f461672dba07914a2e",
+  "sourceInputs": 1275,
+  "strictRun": "compiler-1793280370053397498",
+  "oracleRun": "node-1793280499896669546",
+  "releaseRun": "compiler-1793280942006666851",
+  "benchmarkRunWithLaterReportGuardFailure": "compiler-1793280560652256002",
+  "postNodeRun": "node-1793280993094123148",
+  "sourceWires": 192,
+  "sourceCasesPerZone": 1362,
+  "producerRecipesPerZone": 64,
+  "zones": [
+    "UTC",
+    "America/New_York",
+    "Europe/Berlin",
+    "Australia/Lord_Howe",
+    "Pacific/Apia"
+  ],
+  "pools": 6,
+  "inputsPerPool": 32,
+  "trialsPerPool": 7,
+  "inputSha256": "755bb61882c3d5a171fa21142ae799a00d86ea35f675b02e3155f467567648da",
+  "limits": {
+    "cpus": 6,
+    "memory": 4294967296,
+    "memory_swap": 4294967296,
+    "pids": 256,
+    "cargo_jobs": 2
+  },
+  "scope": "Prepared JSON parse, normalized18-field ordered wire encoding and UTF-8 checksum only. No input setup, DB, queue, HTTP, CPU, RSS, application latency or statistical-significance claim.",
+  "productionUnchanged": true,
+  "remainingOwnedResources": {
+    "containers": [],
+    "networks": [],
+    "volumes": []
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "allCasesProducerRecipesWiresBsonAndZoneResultsUnchanged": true,
+  "oldFixtureSha256": "144b3177a07ca4db1116cce86cc0797b6bf9f82e64237ee8b93a75ca4a60f67f",
+  "newFixtureSha256": "cbfe3d98dca0fd2bb1d6ecc20a77efae73efe3e6a31a2cd99a576c7f0f628fb7",
+  "onlyChangedTopLevel": [
+    "metadata"
+  ],
+  "changedMetadataHashes": {
+    "src/utils/lossless_json_view.rs": {
+      "before": "746e4b1732e8e5a4f240c864707fa08f5c95dcd84c61101c6909832ed650c351",
+      "after": "90ab5f93432ee50d9a65a16fff0f4de13efb70b788d67925ed9feca212c000d2"
+    },
+    "tests/lossless_json_view.rs": {
+      "before": "80bee3cd977decddfa839a6c3afdcc862be14e7e9603119d316b6765c5df3fc9",
+      "after": "3530e40ffa92635236838f0ef1ee12fbae68c9c2d60e765be36e8839d1516e85"
+    }
+  },
+  "unchangedResultsTailSha256": "880aa7dc0fcacfa5768eee24a7dee888e255338ba85948fd221af176f47b0317"
+}

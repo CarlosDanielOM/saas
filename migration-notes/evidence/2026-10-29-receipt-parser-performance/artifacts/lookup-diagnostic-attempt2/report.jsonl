@@ -1,0 +1,5 @@
+{"stage":"validate-and-index","operationsPerSample":3200,"samplesNs":[4282411, 3448670, 3292687, 3348131, 3291116, 3576589, 3521696],"medianNsPerPass":1077.709375,"checksum":3916800}
+{"stage":"twenty-field-lookups","operationsPerSample":3200,"samplesNs":[6792083, 6883513, 6248986, 7615053, 6673371, 4071437, 4135286],"medianNsPerPass":2085.4284375,"checksum":256000}
+{"stage":"parse-to-normalized-dto","operationsPerSample":3200,"samplesNs":[28932433, 29815077, 33985318, 43026814, 42884707, 26164138, 24742996],"medianNsPerPass":9317.2115625,"checksum":0}
+{"stage":"prepared-dto-wire","operationsPerSample":3200,"samplesNs":[36810729, 31239846, 31878262, 30938812, 31327769, 29586829, 33609054],"medianNsPerPass":9789.9278125,"checksum":8780800}
+{"stage":"parse-and-wire","operationsPerSample":3200,"samplesNs":[52665820, 48342110, 51298016, 56904708, 63298666, 50480825, 49448632],"medianNsPerPass":16030.63,"checksum":8780800}

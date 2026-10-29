@@ -1,0 +1,189 @@
+{
+  "status": "Verified synthetic parser performance: all six final medians lower than retained TypeScript trials. Whole migration incomplete.",
+  "codeCommit": "4bc0b1fc648cd074d8ed67e3805dfd1acb962871",
+  "sourceTreeSha256": "5afe5d1e16992dc8cf4d71f89084096bf4a5e513bfcd34f461672dba07914a2e",
+  "sourceInputs": 1275,
+  "strictRun": "compiler-1793280370053397498",
+  "oracleRun": "node-1793280499896669546",
+  "releaseRun": "compiler-1793280942006666851",
+  "benchmarkRunWithLaterReportGuardFailure": "compiler-1793280560652256002",
+  "postNodeRun": "node-1793280993094123148",
+  "sourceWires": 192,
+  "sourceCasesPerZone": 1362,
+  "producerRecipesPerZone": 64,
+  "zones": [
+    "UTC",
+    "America/New_York",
+    "Europe/Berlin",
+    "Australia/Lord_Howe",
+    "Pacific/Apia"
+  ],
+  "pools": 6,
+  "inputsPerPool": 32,
+  "trialsPerPool": 7,
+  "inputSha256": "755bb61882c3d5a171fa21142ae799a00d86ea35f675b02e3155f467567648da",
+  "limits": {
+    "cpus": 6,
+    "memory": 4294967296,
+    "memory_swap": 4294967296,
+    "pids": 256,
+    "cargo_jobs": 2
+  },
+  "scope": "Prepared JSON parse, normalized18-field ordered wire encoding and UTF-8 checksum only. No input setup, DB, queue, HTTP, CPU, RSS, application latency or statistical-significance claim.",
+  "productionUnchanged": true,
+  "remainingOwnedResources": {
+    "containers": [],
+    "networks": [],
+    "volumes": []
+  },
+  "runs": [
+    {
+      "phase": "compiler",
+      "success": true,
+      "source_tree_sha256": "d658d2f8014e87dd70c6f0041331939e4aaef04878a836eb4ed268a540aec29f",
+      "production_unchanged": true,
+      "receipt": "runs/compiler-1793275342253474513-receipt.json.gz",
+      "log": "runs/compiler-1793275342253474513.log.gz"
+    },
+    {
+      "phase": "compiler",
+      "success": true,
+      "source_tree_sha256": "d658d2f8014e87dd70c6f0041331939e4aaef04878a836eb4ed268a540aec29f",
+      "production_unchanged": true,
+      "receipt": "runs/compiler-1793275744561745277-receipt.json.gz",
+      "log": "runs/compiler-1793275744561745277.log.gz"
+    },
+    {
+      "phase": "compiler",
+      "success": true,
+      "source_tree_sha256": "9a01095527ddb6c9c1222b97454d74f8dc030f81c2843d37f28fb6fce9882f03",
+      "production_unchanged": true,
+      "receipt": "runs/compiler-1793277151397221656-receipt.json.gz",
+      "log": "runs/compiler-1793277151397221656.log.gz"
+    },
+    {
+      "phase": "compiler",
+      "success": true,
+      "source_tree_sha256": "9a01095527ddb6c9c1222b97454d74f8dc030f81c2843d37f28fb6fce9882f03",
+      "production_unchanged": true,
+      "receipt": "runs/compiler-1793278134934851076-receipt.json.gz",
+      "log": "runs/compiler-1793278134934851076.log.gz"
+    },
+    {
+      "phase": "compiler",
+      "success": true,
+      "source_tree_sha256": "9a01095527ddb6c9c1222b97454d74f8dc030f81c2843d37f28fb6fce9882f03",
+      "production_unchanged": true,
+      "receipt": "runs/compiler-1793278836475399160-receipt.json.gz",
+      "log": "runs/compiler-1793278836475399160.log.gz"
+    },
+    {
+      "phase": "compiler",
+      "success": true,
+      "source_tree_sha256": "5afe5d1e16992dc8cf4d71f89084096bf4a5e513bfcd34f461672dba07914a2e",
+      "production_unchanged": true,
+      "receipt": "runs/compiler-1793280370053397498-receipt.json.gz",
+      "log": "runs/compiler-1793280370053397498.log.gz"
+    },
+    {
+      "phase": "compiler",
+      "success": false,
+      "source_tree_sha256": "5afe5d1e16992dc8cf4d71f89084096bf4a5e513bfcd34f461672dba07914a2e",
+      "production_unchanged": true,
+      "receipt": "runs/compiler-1793280560652256002-receipt.json.gz",
+      "log": "runs/compiler-1793280560652256002.log.gz"
+    },
+    {
+      "phase": "compiler",
+      "success": true,
+      "source_tree_sha256": "5afe5d1e16992dc8cf4d71f89084096bf4a5e513bfcd34f461672dba07914a2e",
+      "production_unchanged": true,
+      "receipt": "runs/compiler-1793280942006666851-receipt.json.gz",
+      "log": "runs/compiler-1793280942006666851.log.gz"
+    },
+    {
+      "phase": "format",
+      "success": true,
+      "source_tree_sha256": "0a0a9960a3ad3981c7ac6adc642e55c3fcc346c36660321376cb87410798210d",
+      "production_unchanged": true,
+      "receipt": "runs/format-1793275264851514983-receipt.json.gz",
+      "log": "runs/format-1793275264851514983.log.gz"
+    },
+    {
+      "phase": "format",
+      "success": true,
+      "source_tree_sha256": "deb317e3eef51a39d6d0177d14b5caeed77db3b280d8ee809ef04b6a1e40b1f7",
+      "production_unchanged": true,
+      "receipt": "runs/format-1793276910103167335-receipt.json.gz",
+      "log": "runs/format-1793276910103167335.log.gz"
+    },
+    {
+      "phase": "format",
+      "success": true,
+      "source_tree_sha256": "65a4be7f7494902692294142f729d7ab7d9aaca3c7c7b2ab842c325808853b98",
+      "production_unchanged": true,
+      "receipt": "runs/format-1793280001142702831-receipt.json.gz",
+      "log": "runs/format-1793280001142702831.log.gz"
+    },
+    {
+      "phase": "node",
+      "success": true,
+      "source_tree_sha256": "d658d2f8014e87dd70c6f0041331939e4aaef04878a836eb4ed268a540aec29f",
+      "production_unchanged": true,
+      "receipt": "runs/node-1793275620278515719-receipt.json.gz",
+      "log": "runs/node-1793275620278515719.log.gz"
+    },
+    {
+      "phase": "node",
+      "success": true,
+      "source_tree_sha256": "d658d2f8014e87dd70c6f0041331939e4aaef04878a836eb4ed268a540aec29f",
+      "production_unchanged": true,
+      "receipt": "runs/node-1793276433324142264-receipt.json.gz",
+      "log": "runs/node-1793276433324142264.log.gz"
+    },
+    {
+      "phase": "node",
+      "success": false,
+      "source_tree_sha256": "9a01095527ddb6c9c1222b97454d74f8dc030f81c2843d37f28fb6fce9882f03",
+      "production_unchanged": true,
+      "receipt": "runs/node-1793277391005280127-receipt.json.gz",
+      "log": "runs/node-1793277391005280127.log.gz"
+    },
+    {
+      "phase": "node",
+      "success": true,
+      "source_tree_sha256": "9a01095527ddb6c9c1222b97454d74f8dc030f81c2843d37f28fb6fce9882f03",
+      "production_unchanged": true,
+      "receipt": "runs/node-1793277654352257053-receipt.json.gz",
+      "log": "runs/node-1793277654352257053.log.gz"
+    },
+    {
+      "phase": "node",
+      "success": true,
+      "source_tree_sha256": "9a01095527ddb6c9c1222b97454d74f8dc030f81c2843d37f28fb6fce9882f03",
+      "production_unchanged": true,
+      "receipt": "runs/node-1793278570600166603-receipt.json.gz",
+      "log": "runs/node-1793278570600166603.log.gz"
+    },
+    {
+      "phase": "node",
+      "success": true,
+      "source_tree_sha256": "5afe5d1e16992dc8cf4d71f89084096bf4a5e513bfcd34f461672dba07914a2e",
+      "production_unchanged": true,
+      "receipt": "runs/node-1793280499896669546-receipt.json.gz",
+      "log": "runs/node-1793280499896669546.log.gz"
+    },
+    {
+      "phase": "node",
+      "success": true,
+      "source_tree_sha256": "5afe5d1e16992dc8cf4d71f89084096bf4a5e513bfcd34f461672dba07914a2e",
+      "production_unchanged": true,
+      "receipt": "runs/node-1793280993094123148-receipt.json.gz",
+      "log": "runs/node-1793280993094123148.log.gz"
+    }
+  ],
+  "initialBaselineEvidence": "../2026-10-29-receipt-parser-baseline/README.md",
+  "stageDiagnosticsAreSeparateNotAdditive": true,
+  "CPUandRSSmeasured": false,
+  "noSourceRetirementCallerAdoptionDeploymentPush": true
+}

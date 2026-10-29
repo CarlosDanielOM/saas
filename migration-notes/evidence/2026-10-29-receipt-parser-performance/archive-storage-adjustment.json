@@ -1,0 +1,6 @@
+{
+  "file": "recorded-verifier/receipt_scalar_release.sh.gz",
+  "rawSha256": "5b4b4292af3e7c85f0abc0767e740e9b513a19cc11c92d94df840747b2db87c3",
+  "rawBytes": 1836,
+  "reason": "Preserve the exact executed verifier, including its blank final line, in gzip rather than rewriting immutable verifier bytes to satisfy git whitespace checks. No source, fixture, trial, checksum or run receipt changed."
+}

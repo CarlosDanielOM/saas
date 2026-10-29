@@ -1,0 +1,157 @@
+{
+  "status": "Wire serializer verified; three small valid-input time regressions remain versus TypeScript.",
+  "sourceTreeSha256": "9a01095527ddb6c9c1222b97454d74f8dc030f81c2843d37f28fb6fce9882f03",
+  "gitCommit": "9f1e4d47c5d2dbf7c31005e363dd22e686197127",
+  "pools": [
+    {
+      "name": "ascii",
+      "nodeUs": {
+        "min": 6.22808040625,
+        "median": 6.47541971875,
+        "max": 7.0368708125
+      },
+      "initialRustMedianUs": 58.8629305625,
+      "lookupRustMedianUs": 11.2499044375,
+      "wireRustUs": {
+        "min": 8.69995975,
+        "median": 8.9766924375,
+        "max": 9.60342409375,
+        "trials": [
+          9.56987725,
+          9.16735640625,
+          9.60342409375,
+          8.842875875,
+          8.9766924375,
+          8.69995975,
+          8.80271340625
+        ]
+      },
+      "wireRustToNodeRatio": 1.3862719062839126
+    },
+    {
+      "name": "unicode",
+      "nodeUs": {
+        "min": 8.6149574375,
+        "median": 8.8659495,
+        "max": 13.2711005625
+      },
+      "initialRustMedianUs": 70.00943475,
+      "lookupRustMedianUs": 16.387602,
+      "wireRustUs": {
+        "min": 14.0872453125,
+        "median": 14.8816500625,
+        "max": 15.510595125,
+        "trials": [
+          14.5907145625,
+          14.99251275,
+          14.0872453125,
+          14.8816500625,
+          15.510595125,
+          14.6195655,
+          15.3486135
+        ]
+      },
+      "wireRustToNodeRatio": 1.67851735028493
+    },
+    {
+      "name": "coercion-duplicates",
+      "nodeUs": {
+        "min": 8.701437625,
+        "median": 8.832704125,
+        "max": 10.23064525
+      },
+      "initialRustMedianUs": 88.3840251875,
+      "lookupRustMedianUs": 14.0488243125,
+      "wireRustUs": {
+        "min": 11.3519075625,
+        "median": 13.0847989375,
+        "max": 14.075184,
+        "trials": [
+          12.3658148125,
+          12.0757665,
+          11.3519075625,
+          14.075184,
+          13.95234325,
+          13.0847989375,
+          13.125543375
+        ]
+      },
+      "wireRustToNodeRatio": 1.4814035149739604
+    },
+    {
+      "name": "rejected",
+      "nodeUs": {
+        "min": 11.281298875,
+        "median": 12.268294625,
+        "max": 13.58411875
+      },
+      "initialRustMedianUs": 5.5008303125,
+      "lookupRustMedianUs": 1.6298309375,
+      "wireRustUs": {
+        "min": 1.568495375,
+        "median": 1.625097,
+        "max": 1.843576875,
+        "trials": [
+          1.843576875,
+          1.6074056875,
+          1.625097,
+          1.5983444375,
+          1.791463625,
+          1.6916685625,
+          1.568495375
+        ]
+      },
+      "wireRustToNodeRatio": 0.1324631539813546
+    },
+    {
+      "name": "deep-ignored",
+      "nodeUs": {
+        "min": 20.8195068359375,
+        "median": 21.1810283203125,
+        "max": 22.94138671875
+      },
+      "initialRustMedianUs": 57.7481005859375,
+      "lookupRustMedianUs": 14.58850732421875,
+      "wireRustUs": {
+        "min": 12.51725830078125,
+        "median": 14.15142822265625,
+        "max": 20.1954443359375,
+        "trials": [
+          14.75820849609375,
+          12.69415234375,
+          14.15142822265625,
+          13.7414755859375,
+          16.7613017578125,
+          20.1954443359375,
+          12.51725830078125
+        ]
+      },
+      "wireRustToNodeRatio": 0.6681180917493558
+    },
+    {
+      "name": "deep-coerced",
+      "nodeUs": {
+        "min": 74.56794677734375,
+        "median": 76.1945283203125,
+        "max": 78.98005859375
+      },
+      "initialRustMedianUs": 56.8779345703125,
+      "lookupRustMedianUs": 17.227953125,
+      "wireRustUs": {
+        "min": 14.0889873046875,
+        "median": 14.19765234375,
+        "max": 15.6758408203125,
+        "trials": [
+          14.19765234375,
+          14.0889873046875,
+          14.12915478515625,
+          14.18937060546875,
+          14.35447900390625,
+          15.6758408203125,
+          14.7882900390625
+        ]
+      },
+      "wireRustToNodeRatio": 0.18633427697150118
+    }
+  ]
+}

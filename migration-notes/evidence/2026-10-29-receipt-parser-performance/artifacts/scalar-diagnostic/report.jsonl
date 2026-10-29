@@ -1,0 +1,4 @@
+{"stage":"three-string-truthiness-checks","operationsPerSample":3200,"samplesNs":[5069054, 5183379, 4776447, 4705423, 4754655, 4643777, 4595799],"medianNsPerPass":1485.8296875,"checksum":76800}
+{"stage":"four-string-decodes","operationsPerSample":3200,"samplesNs":[7929963, 7911548, 7889758, 7958756, 8155236, 10985355, 7753934],"medianNsPerPass":2478.1134375,"checksum":1177600}
+{"stage":"four-string-coercions","operationsPerSample":3200,"samplesNs":[8863411, 8543582, 9360332, 9587639, 8354337, 8004242, 9005417],"medianNsPerPass":2769.8159375,"checksum":1177600}
+{"stage":"parse-to-normalized-dto","operationsPerSample":3200,"samplesNs":[28873771, 25413209, 24175984, 23945760, 25091968, 23455072, 24180210],"medianNsPerPass":7556.315625,"checksum":0}

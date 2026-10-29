@@ -1,0 +1,7 @@
+{
+  "sourceTreeSha256": "9a01095527ddb6c9c1222b97454d74f8dc030f81c2843d37f28fb6fce9882f03",
+  "gitCommit": "9f1e4d47c5d2dbf7c31005e363dd22e686197127",
+  "rlibSha256": "729a93f6202d5dd5259bfd639d88789118c53d2887dbc0df030aca4e4b8d2f16",
+  "profileSourceSha256": "119ee3aab190fe9cb3f106ae80a181259c12f67d4f8af264155db338e6324625",
+  "scope": "Native-only single ASCII input,7samples3200operations; separate stages,not additive decomposition or TypeScript comparison."
+}

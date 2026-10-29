@@ -1,0 +1,86 @@
+{
+  "scope": "Only old single-link ELF test executables in the task-private target/debug/deps; all from completed phases before the borrowed-lookup checks. No dependency, shared cache, release image, source or production mutation.",
+  "beforeAllocatedBytes": 8279097344,
+  "files": [
+    {
+      "path": "target/debug/deps/additional_schemas-c567bcbca0881862",
+      "sha256": "a3b85b00de1ea3c5eb912fd9a83d3480ed02eaed3d7583de65059b5298d2179c",
+      "bytes": 31135264,
+      "allocatedBytes": 31137792,
+      "mtimeNs": 1793272717466222613
+    },
+    {
+      "path": "target/debug/deps/ai_usage_lock-31b1d74b4d21916c",
+      "sha256": "2bcb36dc79462b060a2f8a104bb6eb133bf70b01662973b19b7355f295ad4388",
+      "bytes": 13710824,
+      "allocatedBytes": 13713408,
+      "mtimeNs": 1793273507696725704
+    },
+    {
+      "path": "target/debug/deps/application_schemas-3716c800af3895d1",
+      "sha256": "6b622310c2a4d8d661f6e5994b29cc8d8ff2a35a39a66751f561e03b1a4e6e6e",
+      "bytes": 30887232,
+      "allocatedBytes": 30887936,
+      "mtimeNs": 1793272795358074934
+    },
+    {
+      "path": "target/debug/deps/dima_rust-dbb5bce4719f50f3",
+      "sha256": "6066b115a7457a2175470b97e6a4759e21f1b3db8a42aac003b95cbdf2d06fa4",
+      "bytes": 4898928,
+      "allocatedBytes": 4902912,
+      "mtimeNs": 1793273143985414262
+    },
+    {
+      "path": "target/debug/deps/domain_contracts-00cd098284fbeb5d",
+      "sha256": "e9dc37036c209e7582e59944b49ea249a885223d6a3695c8cad7246f0ba881d0",
+      "bytes": 3261152,
+      "allocatedBytes": 3264512,
+      "mtimeNs": 1793272720539216787
+    },
+    {
+      "path": "target/debug/deps/keyword_native_hydration-fa7fa236ddd25c20",
+      "sha256": "1f997188ee8bd63a1354c1a2726825faab4c4a56f4dc8ae76026f6af07238e93",
+      "bytes": 3913320,
+      "allocatedBytes": 3915776,
+      "mtimeNs": 1793272702408251163
+    },
+    {
+      "path": "target/debug/deps/mongoose_date-6b3cda025e7b3cd3",
+      "sha256": "8b896f3ec53719cb20f149e4065aa140a20a02ea8c5cb59eadff89118fa35af4",
+      "bytes": 30296248,
+      "allocatedBytes": 30298112,
+      "mtimeNs": 1793272799259067538
+    },
+    {
+      "path": "target/debug/deps/raid_analytics-45e3ba21f5b70364",
+      "sha256": "31024a65f239e6f5fd9b9c5cf8ec81f81010dda74bc39cb11f3b645ff2f19337",
+      "bytes": 33545560,
+      "allocatedBytes": 33546240,
+      "mtimeNs": 1793272709581237563
+    },
+    {
+      "path": "target/debug/deps/roulette_completion-fcfcd27ef4b2f1ad",
+      "sha256": "6beb163961456bd182f4eba7afb52d246f53a8b614ea0a190e6129f076ea7305",
+      "bytes": 28128560,
+      "allocatedBytes": 28131328,
+      "mtimeNs": 1793272712732231589
+    },
+    {
+      "path": "target/debug/deps/schema_core_contracts-ae474bd387129340",
+      "sha256": "3a11747e05c5b90b24ed67b17b2c069a2bd56197dac650cf704214f7368fb9d0",
+      "bytes": 2894384,
+      "allocatedBytes": 2895872,
+      "mtimeNs": 1793272704655246902
+    },
+    {
+      "path": "target/debug/deps/stream_activity-9acd18bdbb85eedf",
+      "sha256": "e98b5d34150792739a501b7ecfbbfc9bc91cdce786eaea8e69b918cf4eb2c90e",
+      "bytes": 32399384,
+      "allocatedBytes": 32403456,
+      "mtimeNs": 1793272717813221955
+    }
+  ],
+  "afterAllocatedBytes": 8064000000,
+  "removedAllocatedBytes": 215097344,
+  "productionUnchanged": true
+}

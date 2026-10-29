@@ -1,0 +1,9 @@
+{
+  "failedRun": "node-1793277391005280127",
+  "reason": "PostHog --write owns directory creation; parent pre-created an empty tracking directory. Parser source write/check already passed.",
+  "emptyOwnedDirectoriesRemoved": [
+    "tracking",
+    "transport"
+  ],
+  "resume": "Keep generated parser fixture; --check it and generate remaining oracle directories using each actual CLI contract."
+}

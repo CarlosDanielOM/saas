@@ -1,0 +1,8 @@
+{
+  "allCasesProducerRecipesWiresBsonAndZoneResultsUnchanged": true,
+  "oldFixtureSha256": "8cf859aced7ef435f882521719a3ac05de981c44f689834fc454c8867bc57eb5",
+  "newFixtureSha256": "144b3177a07ca4db1116cce86cc0797b6bf9f82e64237ee8b93a75ca4a60f67f",
+  "onlyChangedTopLevel": [
+    "metadata"
+  ]
+}

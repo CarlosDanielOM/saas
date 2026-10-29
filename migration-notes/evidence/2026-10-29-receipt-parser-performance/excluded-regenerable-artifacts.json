@@ -1,0 +1,32 @@
+[
+  {
+    "path": "lookup-diagnostic-attempt2/profile",
+    "sha256": "4aeb5f23a346954a0993027a1f5d770e3a79c433cd39238c022f175e4ec4b9da",
+    "bytes": 6969368,
+    "reason": "Regenerable diagnostic executable; source, release rlib hash and reports retained."
+  },
+  {
+    "path": "lookup-diagnostic-attempt3/profile",
+    "sha256": "5824867f62ac612f1af90e99c92ff7617debe505e8766a00d33c6ae4aa86e6d5",
+    "bytes": 6976936,
+    "reason": "Regenerable diagnostic executable; source, release rlib hash and reports retained."
+  },
+  {
+    "path": "lookup-diagnostic-attempt4/profile",
+    "sha256": "3fe67c1c8710eb98b4aefc1a21ff7486c16e63c84f1c02d0bfa6fe49c81904a1",
+    "bytes": 6976768,
+    "reason": "Regenerable diagnostic executable; source, release rlib hash and reports retained."
+  },
+  {
+    "path": "scalar-diagnostic/profile",
+    "sha256": "bde99fdde7e36be3255f147c1f6de12f325ddb4b9dcbed7ff38a1f74e00ea045",
+    "bytes": 6917400,
+    "reason": "Regenerable diagnostic executable; source, release rlib hash and reports retained."
+  },
+  {
+    "path": "scalar-diagnostic-attempt4/profile",
+    "sha256": "596845de74136bd65415010388c1ec592b1bbeab4d693b51858cf14f15660dea",
+    "bytes": 6916848,
+    "reason": "Regenerable diagnostic executable; source, release rlib hash and reports retained."
+  }
+]
