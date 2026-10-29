@@ -7,12 +7,14 @@ const crypto = require('node:crypto');
 const vm = require('node:vm');
 const { createRequire } = require('node:module');
 const assert = require('node:assert/strict');
+const {resolveModerationSource} = require('./moderation_source_resolver.cjs');
 
 const sha = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 const sourceRoot = path.resolve(process.env.DIMA_CAPS_SOURCE_ROOT || path.join(__dirname, '../..'));
 const sourceReal = fs.realpathSync(sourceRoot);
+const resolved = resolveModerationSource(sourceReal, 'src/utils/moderation/rules/caps.rule.ts');
 const pin = (name, expected) => {
-    const bytes = fs.readFileSync(path.join(sourceReal, name));
+    const bytes = name === 'src/utils/moderation/rules/caps.rule.ts' ? resolved.bytes : fs.readFileSync(path.join(sourceReal, name));
     assert.equal(sha(bytes), expected, `SHA-256 mismatch: ${name}`);
     return bytes;
 };
@@ -118,6 +120,7 @@ const reference = {
     format: 1,
     versions: { node: process.versions.node, v8: process.versions.v8, icu: process.versions.icu, unicode: process.versions.unicode, typescript: ts.version },
     sha256: { node_binary: expectedNode, inputs: pins, script: sha(fs.readFileSync(__filename)), transpiled_module: sha(compiled.outputText), native_generated_file: sha(rust) },
+    source_resolution: { path: resolved.relativePath, virtual_path: 'dimabot/src/utils/moderation/rules/caps.rule.ts', sha256: sha(resolved.bytes), resolver_sha256: sha(fs.readFileSync(require.resolve('./moderation_source_resolver.cjs'))) },
     ast_declarations: declPins,
     LETTER: { count: letterCount, range_count: letterRanges.length, ranges: letterRanges },
     UPPERCASE_LETTER: { count: uppercaseCount, range_count: uppercaseRanges.length, ranges: uppercaseRanges },

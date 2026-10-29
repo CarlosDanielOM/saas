@@ -50,7 +50,7 @@ for (const [id,text,emotes,mode,min,max,length] of [
   ['bench-no-emotes','hello quiet lowercase 123',[],'count',8,70,5],
   ['bench-overlap','ABABABAABABABA',['ABA','BA'],'percentage',1,20,0],
 ]) add(id,text,emotes,mode,min,max,length);
-const metadata = {format:1, versions:{node:process.versions.node,v8:process.versions.v8,icu:process.versions.icu,unicode:process.versions.unicode,typescript:'5.9.3'}, nodeSha:lib.nodePin, pins:lib.pins, hashes:lib.hashes, compiledSha:lib.compiledSha, unicodeReferenceSha:'0eb8062e28d946ef74174a362c48c049f758940d8a4eb159c023eb8369b3a6b1', fields:lib.fields, alias:lib.alias, total:cases.length};
+const metadata = {format:1, versions:{node:process.versions.node,v8:process.versions.v8,icu:process.versions.icu,unicode:process.versions.unicode,typescript:'5.9.3'}, nodeSha:lib.nodePin, pins:lib.pins, hashes:lib.hashes, compiledSha:lib.compiledSha, unicodeReferenceSha:lib.unicodeSha, sourceResolution:lib.sourceResolution, fields:lib.fields, alias:lib.alias, total:cases.length};
 const output = JSON.stringify({metadata,cases},null,2)+'\n';
 const [mode,dir,...extra]=process.argv.slice(2);
 assert(['--write','--check'].includes(mode) && dir && path.isAbsolute(dir) && extra.length===0,'usage: --write|--check ABSOLUTE_EXTERNAL_DIR');

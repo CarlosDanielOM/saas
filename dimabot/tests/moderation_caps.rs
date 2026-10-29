@@ -98,6 +98,73 @@ fn nullish_text_uses_empty_string() {
     assert_eq!((guarded.caps_count, guarded.letter_count), (0, 0));
 }
 
+// Exact behavior cases from the archived caps.rule.test.ts; source oracle
+// and pinned Unicode range replay provide the independent comparison.
+#[test]
+fn archived_caps_test_examples() {
+    let count = rule(CapsThresholdMode::Count, 8.0, 70.0, 10.0);
+    let percentage = rule(CapsThresholdMode::Percentage, 8.0, 70.0, 10.0);
+    let run = |r, text: &str| {
+        evaluate_caps_rule(
+            r,
+            CapsEvaluationInput {
+                text: Some(&JsString::from(text)),
+                emote_texts: None,
+            },
+        )
+    };
+    let loud = run(count, "THIS IS WAY TOO LOUD");
+    assert!(loud.triggered);
+    assert_eq!((loud.caps_count, loud.letter_count), (16, 16));
+    let quiet = run(count, "HELLO how are you today friend");
+    assert!(!quiet.triggered);
+    assert_eq!(quiet.caps_count, 5);
+    let digits = run(count, "GG123!!!????");
+    assert!(!digits.triggered);
+    assert_eq!(digits.letter_count, 2);
+    assert!(!run(count, "GG").triggered);
+    assert!(!run(count, "LOL OMG").triggered);
+    let mostly = run(percentage, "THIS IS MOSTLY CAPS now ok");
+    assert!(mostly.triggered && mostly.caps_percentage >= 70.0);
+    assert!(
+        !run(
+            percentage,
+            "This is a totally normal sentence with A FEW caps words"
+        )
+        .triggered
+    );
+    let short = run(percentage, "LOL");
+    assert!(!short.triggered);
+    assert_eq!(short.caps_percentage, 100.0);
+    let accented = run(count, "ÁÉÍÓÚ ÜÑÇ ĤÊĽĻÕ");
+    assert!(accented.triggered);
+    assert_eq!(accented.caps_count, accented.letter_count);
+    let lowercase = run(count, "áéíóú üñç ça va très bien");
+    assert!(!lowercase.triggered);
+    assert_eq!(lowercase.caps_count, 0);
+    let text = JsString::from("KAPPA KAPPA KAPPA KAPPA hello there friend");
+    let emotes = [JsString::from("KAPPA")];
+    let stripped = evaluate_caps_rule(
+        count,
+        CapsEvaluationInput {
+            text: Some(&text),
+            emote_texts: Some(&emotes),
+        },
+    );
+    assert!(!stripped.triggered);
+    assert_eq!(stripped.caps_count, 0);
+    let hello = JsString::from("HELLO WORLD");
+    assert_eq!(strip_emote_texts(&hello, None).as_ref(), &hello);
+    assert_eq!(strip_emote_texts(&hello, Some(&[])).as_ref(), &hello);
+    assert_eq!(
+        strip_emote_texts(&JsString::from("KAPPA hello"), Some(&emotes)).as_str(),
+        Some("  hello")
+    );
+    let empty = run(count, "");
+    assert!(!empty.triggered);
+    assert_eq!(empty.letter_count, 0);
+}
+
 #[test]
 #[ignore = "external pinned actual-source corpus required"]
 fn replay_actual_source() {

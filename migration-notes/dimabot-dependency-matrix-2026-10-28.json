@@ -87459,19 +87459,31 @@
         "role": "test"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/utils/moderation/rules/caps.rule.test.ts",
+        "sha256": "e5c57c81e142ade8079a77bc5dc9c345a0dde2c8f695e4a5fca45064738887ce",
+        "nativeAreaReference": "see archives/dimabot-typescript/2026-10-28/README.md; mapping is not dependency-completion proof"
+      },
+      "featureReview": "test-behavior-mapped;post-retirement-replay-pending",
+      "localRustEvidence": [
+        "dimabot/tests/moderation_caps.rs: targeted original test examples and native source replay",
+        "dimabot/tests/fixtures/moderation_caps_reference.cjs: source-backed coverage",
+        "migration-notes/moderation-rule-retirement-handoff.md"
+      ],
       "behaviorDifferencesOrAcceptedChanges": [],
       "callers": {
         "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "runtimeStatus": "Test-only source; application dispatcher adoption remains open."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "archives/dimabot-typescript/2026-10-28/src/utils/moderation/rules/caps.rule.test.ts"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/moderation_caps.rs: archived_caps_test_examples and replay_actual_source"
+        ],
+        "status": "mapped test behaviors; fresh post-retirement execution pending"
       },
       "exports": [],
       "imports": [
@@ -87522,7 +87534,7 @@
           "rustReplacementOrGap": "unreviewed"
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "test-behavior-mapped-not-an-independent-feature-completion;post-retirement-verification-pending"
     },
     {
       "source": "src/utils/moderation/rules/caps.rule.ts",
@@ -87532,8 +87544,12 @@
         "role": "application"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/utils/moderation/rules/caps.rule.ts",
+        "sha256": "62f7fe37760cbf5640544cab646a639d06b42883532657634a00e25488888797",
+        "nativeAreaReference": "see archives/dimabot-typescript/2026-10-28/README.md; mapping is not dependency-completion proof"
+      },
       "featureReview": "reviewed-local-feature-and-dependency-closure",
       "localRustEvidence": [
         "dimabot/src/utils/moderation/caps.rs: pure native evaluator and sequential literal emote replacement, gated by moderation-caps",
@@ -87546,14 +87562,14 @@
         "The declared TypeScript contract is mapped, including input/result types and the four required Pick fields. The schema import is type-only; CapsThresholdMode and the three numeric fields have equivalent native types, so no runtime schema adapter is required.",
         "JsString preserves UTF-16 code units and the local KMP path preserves JavaScript literal replacement for ill-formed surrogate sequences; valid UTF-8 replacement uses Rust str::replace. Unicode L/Lu facts are pinned to the actual source regexes and runtime.",
         "Arbitrary untyped JavaScript casts, coercion hooks, and prototype behavior beyond the declared TypeScript interface are outside this native contract.",
-        "Only the selected pure evaluator is locally complete. Moderation settings persistence, registry/dispatch, message context preparation, and enforcement remain open; this mapping does not retire or adopt the TypeScript source."
+        "Only the selected pure evaluator is locally complete. Moderation settings persistence, registry/dispatch, message context preparation, and enforcement remain open; source is archived; application caller adoption remains open."
       ],
       "callers": {
         "sourceEvidence": [
           "src/utils/moderation/rules/index.ts",
           "src/handlers/moderation.handler.ts"
         ],
-        "runtimeStatus": "Unadopted; the TypeScript rule registry and moderation handler still execute the caps evaluator. Broader settings, context preparation, and enforcement paths remain open."
+        "runtimeStatus": "Unadopted TypeScript dispatcher still imports the removed module; source checkout build/runtime requires caller migration or another authorized integration; the retained mixed emote/blacklist test also imports the removed emote rule. No deployment occurred."
       },
       "testEvidence": {
         "sourceEvidence": [
@@ -87567,7 +87583,7 @@
           "migration-notes/moderation-caps-2026-10-29.md",
           "migration-notes/evidence/2026-10-29-moderation-caps/README.md"
         ],
-        "status": "Source oracle and native replay passed for the declared evaluator contract; formatting, scoped and strict Clippy, ordinary cases, feature/profile checks, and exact-ELF paired evaluator benchmark passed. No application caller adoption is established."
+        "status": "Source oracle and native replay passed for the declared evaluator contract; formatting, scoped and strict Clippy, ordinary cases, feature/profile checks, and exact-ELF paired evaluator benchmark passed. No application caller adoption is established. Source archived; post-retirement fixture and replay verification pending."
       },
       "exports": [
         {
@@ -87730,8 +87746,12 @@
         "role": "application"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/utils/moderation/rules/emote_spam.rule.ts",
+        "sha256": "24e7c603569d1063642575372de1066e4f5d5d5de46c88e15e450a549c17f12f",
+        "nativeAreaReference": "see archives/dimabot-typescript/2026-10-28/README.md; mapping is not dependency-completion proof"
+      },
       "featureReview": "reviewed-local-feature-and-helper-dependencies",
       "localRustEvidence": [
         "dimabot/src/utils/moderation/emote_spam.rs",
@@ -87744,14 +87764,14 @@
       "behaviorDifferencesOrAcceptedChanges": [
         "The pure evaluator uses exact binary64 strict comparison and nullish count fallback; returned count bits are preserved. Declared typed objects/numeric fields are mapped to native structs; arbitrary JavaScript runtime casts/prototypes are excluded.",
         "The single schema import is type-only and selects a required numeric maxEmoteCount field. Equivalent native types replace it without loading or requiring the unmigrated settings schema runtime.",
-        "No crate or lockfile was added. The opt-in feature gates existing serde_json/JS numeric helpers used by replay, while runtime evaluation uses std only. No source retirement, caller adoption, deployment, push or performance result."
+        "No crate or lockfile was added. The opt-in feature gates existing serde_json/JS numeric helpers used by replay, while runtime evaluation uses std only. Source is archived; no caller adoption, deployment, push or new performance result."
       ],
       "callers": {
         "sourceEvidence": [
           "dimabot/src/utils/moderation/rules/index.ts",
           "dimabot/src/handlers/moderation.handler.ts"
         ],
-        "runtimeStatus": "Existing TypeScript rule registry/handlers remain unadopted. Broader schema, fragment counting and enforcement are separate incomplete application paths."
+        "runtimeStatus": "Unadopted TypeScript dispatcher still imports the removed module; source checkout build/runtime requires caller migration or another authorized integration; the retained mixed emote/blacklist test also imports the removed emote rule. No deployment occurred."
       },
       "testEvidence": {
         "sourceEvidence": [
@@ -87762,7 +87782,7 @@
           "No-feature, Mongo/Redis worker-profile and all-feature/all-target check/Clippy passed at source 0b49c85bb833d183b42618c081d644f0c7f51bd98d341269317559d4c4d95dd7 (1305 inputs), code 33bb8f46.",
           "migration-notes/evidence/2026-10-29-moderation-emote-spam/verification-summary.json"
         ],
-        "status": "pure helper exports and equivalent type-only dependency verified; source live and caller adoption open"
+        "status": "pure helper exports and equivalent type-only dependency verified; source archived and caller adoption open; post-retirement fixture and replay verification pending."
       },
       "exports": [
         {
@@ -87812,7 +87832,7 @@
           "rustReplacementOrGap": "EmoteSpamRule { max_emote_count: f64 } replaces the selected type field."
         }
       ],
-      "rowAssessment": "local-helper-feature-and-native-dependencies-verified;source-live;application-caller-adoption-open"
+      "rowAssessment": "local-helper-feature-and-native-dependencies-verified;source-archived;application-caller-adoption-open"
     },
     {
       "source": "src/utils/moderation/rules/index.ts",

@@ -7,6 +7,7 @@ const crypto = require('node:crypto');
 const Module = require('node:module');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
+const {resolveModerationSource, overlaySource} = require('./moderation_source_resolver.cjs');
 const root = fs.realpathSync(process.env.DIMA_CAPS_SOURCE_ROOT || path.join(__dirname, '../..'));
 const sha = data => crypto.createHash('sha256').update(data).digest('hex');
 const pins = {
@@ -17,9 +18,10 @@ const pins = {
   'rust-toolchain.toml': 'b9c8d2d59f6f46474c0cfa0b8b77bea21d94fc73a30ad93d5bf6385c422197d2',
   'node_modules/typescript/package.json': '822ef7ca6452205657b6288b066481ecf508bfbf43455d715cf7d3ec457561e6',
   'node_modules/typescript/lib/typescript.js': '3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675',
-  'tests/fixtures/moderation_caps_unicode_prepare.cjs': '386edd347d7896fb0d22df35bff98f8c3f6b1e853f286dcfa44c6da424a03c65',
+  'tests/fixtures/moderation_caps_unicode_prepare.cjs': '73a1d0fab391ed8460397bd41f489928057f8971c0d5cc871b55e2ffb71474f5',
 };
-const read = name => fs.readFileSync(path.join(root, name));
+const resolved = resolveModerationSource(root, 'src/utils/moderation/rules/caps.rule.ts');
+const read = name => name === 'src/utils/moderation/rules/caps.rule.ts' ? resolved.bytes : fs.readFileSync(path.join(root, name));
 for (const [name, digest] of Object.entries(pins)) assert.equal(sha(read(name)), digest, name);
 const nodePin = '569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108';
 assert.equal(process.env.DIMA_CAPS_NODE_SHA256, nodePin, 'explicit Node SHA required');
@@ -29,7 +31,7 @@ const local = Module.createRequire(path.join(root, 'package.json'));
 const ts = local('typescript');
 assert.equal(ts.version, '5.9.3');
 assert.equal(fs.realpathSync(local.resolve('typescript')), fs.realpathSync(path.join(root, 'node_modules/typescript/lib/typescript.js')));
-const sourceName = path.join(root, 'src/utils/moderation/rules/caps.rule.ts');
+const sourceName = resolved.virtualPath;
 const schemaName = path.join(root, 'src/schemas/channel_moderation_settings.schema.ts');
 const source = read('src/utils/moderation/rules/caps.rule.ts').toString('utf8');
 const ast = ts.createSourceFile(sourceName, source, ts.ScriptTarget.ES2022, true);
@@ -54,8 +56,12 @@ const fields = names.map(name => {
 });
 const declaration = `${alias.getText(schema)}\nexport interface IModerationRule { ${fields.join('\n')} }\n`;
 const options = {target:ts.ScriptTarget.ES2022, module:ts.ModuleKind.CommonJS, moduleResolution:ts.ModuleResolutionKind.Node10, strict:true, noEmit:true, skipLibCheck:true, types:[], lib:['lib.es2022.d.ts']};
-const host = ts.createCompilerHost(options), readFile = host.readFile.bind(host);
+const host = overlaySource(ts.createCompilerHost(options), ts, resolved), readFile = host.readFile.bind(host);
 host.readFile = file => path.resolve(file) === schemaName ? declaration : readFile(file);
+const getSourceFile = host.getSourceFile.bind(host);
+host.getSourceFile = (file, languageVersion, ...rest) => path.resolve(file) === schemaName
+  ? ts.createSourceFile(file, declaration, languageVersion, true, ts.ScriptKind.TS)
+  : getSourceFile(file, languageVersion, ...rest);
 const program = ts.createProgram([sourceName], options, host);
 assert.deepEqual(ts.getPreEmitDiagnostics(program).map(d => ts.flattenDiagnosticMessageText(d.messageText, '\n')), []);
 const compiled = ts.transpileModule(source, {compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}, reportDiagnostics:true});
@@ -75,9 +81,15 @@ assert.equal(sha(read(nativeTable)), 'f47a1f1595777a04f8f97a688a7ca663b949936a1c
 const unicodeDir = process.env.DIMA_CAPS_UNICODE_DIR;
 assert(unicodeDir && path.isAbsolute(unicodeDir));
 const unicodeBytes = fs.readFileSync(path.join(unicodeDir, 'unicode-reference.json'));
-assert.equal(sha(unicodeBytes), '0eb8062e28d946ef74174a362c48c049f758940d8a4eb159c023eb8369b3a6b1');
+const unicodeSha = process.env.DIMA_CAPS_UNICODE_REFERENCE_SHA256;
+assert(/^[a-f0-9]{64}$/.test(unicodeSha || ''), 'explicit Unicode reference SHA required');
+assert.equal(sha(unicodeBytes), unicodeSha);
 const unicode = JSON.parse(unicodeBytes);
 assert.equal(unicode.sha256.native_generated_file, sha(read(nativeTable)));
-const files = ['src/utils/moderation/caps.rs',nativeTable,'src/utils/js_string.rs','src/utils/js_compat.rs','src/utils/json_number.rs','tests/moderation_caps.rs','tests/fixtures/moderation_caps_source.cjs','tests/fixtures/moderation_caps_reference.cjs','tests/moderation_caps_benchmark.rs','tests/fixtures/moderation_caps_benchmark.cjs'];
+assert.equal(unicode.sha256.inputs['src/utils/moderation/rules/caps.rule.ts'], pins['src/utils/moderation/rules/caps.rule.ts']);
+assert.equal(unicode.sha256.script, pins['tests/fixtures/moderation_caps_unicode_prepare.cjs']);
+assert.deepEqual(unicode.source_resolution, {path:resolved.relativePath, virtual_path:'dimabot/src/utils/moderation/rules/caps.rule.ts', sha256:sha(resolved.bytes), resolver_sha256:sha(read('tests/fixtures/moderation_source_resolver.cjs'))});
+const files = ['tests/fixtures/moderation_source_resolver.cjs','src/utils/moderation/caps.rs',nativeTable,'src/utils/js_string.rs','src/utils/js_compat.rs','src/utils/json_number.rs','tests/moderation_caps.rs','tests/fixtures/moderation_caps_source.cjs','tests/fixtures/moderation_caps_reference.cjs','tests/moderation_caps_benchmark.rs','tests/fixtures/moderation_caps_benchmark.cjs'];
 const hashes = Object.fromEntries(files.map(file => [file, sha(read(file))]));
-module.exports = {root, sha, read, pins, hashes, unicode, exports:runtime.exports, commonJsExports:runtime.exports, vmExports:sandbox.exports, compiledSha, nodePin, fields, alias:alias.getText(schema)};
+hashes[resolved.relativePath] = sha(resolved.bytes);
+module.exports = {root, sha, read, pins, hashes, unicode, unicodeSha, sourceResolution: {path:resolved.relativePath, virtualPath:'dimabot/src/utils/moderation/rules/caps.rule.ts', sha256:sha(resolved.bytes), resolverSha256:sha(read('tests/fixtures/moderation_source_resolver.cjs'))}, exports:runtime.exports, commonJsExports:runtime.exports, vmExports:sandbox.exports, compiledSha, nodePin, fields, alias:alias.getText(schema)};

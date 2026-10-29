@@ -5,10 +5,15 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
-const ts = require('typescript');
-const root = path.resolve(__dirname, '../..');
+const {createRequire} = require('node:module');
+const {resolveModerationSource, overlaySource} = require('./moderation_source_resolver.cjs');
+const root = fs.realpathSync(process.env.DIMA_EMOTE_SPAM_SOURCE_ROOT || path.resolve(__dirname, '../..'));
+const local = createRequire(path.join(root, 'package.json'));
+const ts = local('typescript');
+assert.equal(fs.realpathSync(local.resolve('typescript')), fs.realpathSync(path.join(root, 'node_modules/typescript/lib/typescript.js')));
 const sha = data => crypto.createHash('sha256').update(data).digest('hex');
-const read = file => fs.readFileSync(path.join(root, file));
+const resolved = resolveModerationSource(root, 'src/utils/moderation/rules/emote_spam.rule.ts');
+const read = file => file === 'src/utils/moderation/rules/emote_spam.rule.ts' ? resolved.bytes : fs.readFileSync(path.join(root, file));
 const files = {
   source: 'src/utils/moderation/rules/emote_spam.rule.ts',
   schema: 'src/schemas/channel_moderation_settings.schema.ts',
@@ -29,6 +34,8 @@ const hashes = Object.fromEntries(Object.entries(files).map(([key, file]) => [ke
 for (const [key, pin] of Object.entries(pins)) assert.equal(hashes[key], pin, key);
 hashes.node = sha(fs.readFileSync(process.execPath));
 hashes.oracle = sha(fs.readFileSync(__filename));
+hashes.resolver = sha(fs.readFileSync(require.resolve('./moderation_source_resolver.cjs')));
+assert.equal(hashes.node, '569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108');
 assert.equal(process.version, 'v24.22.1');
 assert.equal(process.versions.v8, '13.6.233.17-node.58');
 assert.equal(ts.version, '5.9.3');
@@ -50,17 +57,24 @@ const fields = rule.members.filter(m => m.name?.getText(schema) === 'maxEmoteCou
 assert.equal(fields.length, 1);
 assert(ts.isPropertySignature(fields[0]) && !fields[0].questionToken && fields[0].type.kind === ts.SyntaxKind.NumberKeyword);
 const field = fields[0].getText(schema);
-const extraction = `interface IModerationRule { ${field} }\n` + [result, fn].map(s => s.getText(ast)).join('\n');
-const virtual = path.join(root, '__emote_spam_oracle__.ts');
-const options = {target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, strict: true, noEmit: true, skipLibCheck: true, types: [], lib: ['lib.es2022.d.ts']};
-const host = ts.createCompilerHost(options), readFile = host.readFile.bind(host), exists = host.fileExists.bind(host);
-host.readFile = file => file === virtual ? extraction : readFile(file);
-host.fileExists = file => file === virtual || exists(file);
-const program = ts.createProgram([virtual], options, host);
+// Typecheck the complete actual file at its original virtual filename; only
+// the erased schema import is represented by the selected actual field.
+const declaration = `export interface IModerationRule { ${field} }\n`;
+const sourceName = resolved.virtualPath;
+const schemaName = path.join(root, files.schema);
+const options = {target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, moduleResolution: ts.ModuleResolutionKind.Node10, strict: true, noEmit: true, skipLibCheck: true, types: [], lib: ['lib.es2022.d.ts']};
+const host = overlaySource(ts.createCompilerHost(options), ts, resolved), readFile = host.readFile.bind(host);
+host.readFile = file => path.resolve(file) === schemaName ? declaration : readFile(file);
+const getSourceFile = host.getSourceFile.bind(host);
+host.getSourceFile = (file, languageVersion, ...rest) => path.resolve(file) === schemaName
+  ? ts.createSourceFile(file, declaration, languageVersion, true, ts.ScriptKind.TS)
+  : getSourceFile(file, languageVersion, ...rest);
+const program = ts.createProgram([sourceName], options, host);
 assert.deepEqual(ts.getPreEmitDiagnostics(program).map(d => ts.flattenDiagnosticMessageText(d.messageText, '\n')), []);
-const sf = program.getSourceFile(virtual), checker = program.getTypeChecker();
-const signature = checker.signatureToString(checker.getSignatureFromDeclaration(sf.statements.find(ts.isFunctionDeclaration)), undefined, ts.TypeFormatFlags.NoTruncation);
-const compiled = ts.transpileModule(extraction, {compilerOptions: {target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS}, reportDiagnostics: true});
+const sf = program.getSourceFile(sourceName), checker = program.getTypeChecker();
+const declarationFn = sf.statements.find(s => ts.isFunctionDeclaration(s) && s.name.text === 'evaluateEmoteSpamRule');
+const signature = checker.signatureToString(checker.getSignatureFromDeclaration(declarationFn), undefined, ts.TypeFormatFlags.NoTruncation);
+const compiled = ts.transpileModule(source, {compilerOptions: {target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS}, reportDiagnostics: true});
 assert.deepEqual(compiled.diagnostics, []);
 const context = {exports: {}};
 vm.runInNewContext(compiled.outputText, context);
@@ -79,7 +93,7 @@ for (const limit of numbers) for (const count of numbers) add(`${limit}-${count}
 for (const limit of numbers) for (const kind of ['missing', 'null']) add(`${limit}-${kind}`, limit, null, kind);
 const nativeFiles = ['src/utils/moderation/emote_spam.rs', 'tests/moderation_emote_spam.rs', 'src/utils/json_number.rs', 'src/utils/js_compat.rs'];
 const nativeHashes = Object.fromEntries(nativeFiles.map(file => [file, sha(read(file))]));
-const output = JSON.stringify({metadata: {schema: 1, node: process.version, v8: process.versions.v8, typescript: ts.version, hashes, nativeHashes, import: imp.getText(ast), field, signature, exports: ['EmoteSpamEvaluationResult', 'evaluateEmoteSpamRule'], total: cases.length}, cases}, null, 2) + '\n';
+const output = JSON.stringify({metadata: {schema: 1, sourceResolution: {path:resolved.relativePath, virtualPath:'dimabot/src/utils/moderation/rules/emote_spam.rule.ts', sha256:sha(resolved.bytes), resolverSha256:hashes.resolver}, compiledSha:sha(compiled.outputText), node: process.version, v8: process.versions.v8, typescript: ts.version, hashes, nativeHashes, import: imp.getText(ast), field, signature, exports: ['EmoteSpamEvaluationResult', 'evaluateEmoteSpamRule'], total: cases.length}, cases}, null, 2) + '\n';
 const [mode, dir, ...extra] = process.argv.slice(2);
 assert(['--write', '--check'].includes(mode) && dir && !extra.length, 'usage: --write DIR | --check DIR');
 const real = fs.realpathSync(dir), repo = fs.realpathSync(path.join(root, '..'));

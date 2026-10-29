@@ -84,6 +84,18 @@
     {
       "source": "src/utils/tts/normalize_tts_message.util.test.ts",
       "sha256": "5f36c7346ecd23130ff9b035b8c3f8561dd094fba6a7b16a696e30ccaefe1d39"
+    },
+    {
+      "source": "src/utils/moderation/rules/caps.rule.ts",
+      "sha256": "62f7fe37760cbf5640544cab646a639d06b42883532657634a00e25488888797"
+    },
+    {
+      "source": "src/utils/moderation/rules/caps.rule.test.ts",
+      "sha256": "e5c57c81e142ade8079a77bc5dc9c345a0dde2c8f695e4a5fca45064738887ce"
+    },
+    {
+      "source": "src/utils/moderation/rules/emote_spam.rule.ts",
+      "sha256": "24e7c603569d1063642575372de1066e4f5d5d5de46c88e15e450a549c17f12f"
     }
   ]
 }
