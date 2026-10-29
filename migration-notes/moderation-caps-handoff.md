@@ -1,0 +1,9 @@
+# Caps rule: native verification handoff (2026-10-29)
+
+**Status: verified opt-in pure evaluator; no caller adoption or deployment.** The Rust port maps the two source functions and equivalent result/input types, with the selected four required settings fields from the type-only schema import. This closes the `caps.rule.ts` feature row in the migration inventory. Moderation settings, the rule registry and application, message counting, and enforcement remain open and in TypeScript.
+
+The source exports `stripEmoteTexts` and `evaluateCapsRule`. The evaluator applies the source's nullish text fallback, sequential literal UTF-16 emote replacement, Unicode `L`/`Lu` classification, length guard and count/percentage thresholds. Its selected typed contract does not model arbitrary JavaScript casts, coercion hooks, or prototype behavior. Rust uses `JsString` to retain UTF-16 code units including unpaired surrogates, KMP for the non-UTF-8 replacement path, and a generated Unicode 17 range table derived from the pinned TypeScript regexes. The UTF-8 replacement path uses Rust's standard library. No external runtime adapter or new crate is required.
+
+The opt-in `moderation-caps` feature gates the implementation. There is no TypeScript caller switch, source retirement, release, or push. The local evaluator is complete for the declared scope; total migration completion remains incomplete and unscored because broader moderation application behavior and dependencies remain unmigrated.
+
+Exact-source, Unicode, replay, build, and paired benchmark evidence is recorded in [moderation-caps-2026-10-29.md](moderation-caps-2026-10-29.md). The benchmark compares the actual CommonJS TypeScript module with the exact static Rust release ELF across eight prepared cases; it is a narrow evaluator-loop result and does not establish application latency or general Rust superiority.

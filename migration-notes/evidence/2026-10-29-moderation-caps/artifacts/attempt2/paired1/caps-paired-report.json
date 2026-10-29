@@ -1,0 +1,459 @@
+{
+  "format": 1,
+  "status": "passed",
+  "warmups": [
+    {
+      "index": 1,
+      "node": {
+        "raw": "{\"elapsedNs\":\"290374487\",\"checksum\":1053648229,\"total\":16000}",
+        "parsed": {
+          "elapsedNs": "290374487",
+          "checksum": 1053648229,
+          "total": 16000
+        }
+      },
+      "rust": {
+        "raw": "{\"checksum\":1053648229,\"elapsedNs\":\"36258998\",\"total\":16000}",
+        "parsed": {
+          "checksum": 1053648229,
+          "elapsedNs": "36258998",
+          "total": 16000
+        }
+      }
+    },
+    {
+      "index": 2,
+      "rust": {
+        "raw": "{\"checksum\":1053648229,\"elapsedNs\":\"36950363\",\"total\":16000}",
+        "parsed": {
+          "checksum": 1053648229,
+          "elapsedNs": "36950363",
+          "total": 16000
+        }
+      },
+      "node": {
+        "raw": "{\"elapsedNs\":\"315959511\",\"checksum\":1053648229,\"total\":16000}",
+        "parsed": {
+          "elapsedNs": "315959511",
+          "checksum": 1053648229,
+          "total": 16000
+        }
+      }
+    },
+    {
+      "index": 3,
+      "node": {
+        "raw": "{\"elapsedNs\":\"286652746\",\"checksum\":1053648229,\"total\":16000}",
+        "parsed": {
+          "elapsedNs": "286652746",
+          "checksum": 1053648229,
+          "total": 16000
+        }
+      },
+      "rust": {
+        "raw": "{\"checksum\":1053648229,\"elapsedNs\":\"40066580\",\"total\":16000}",
+        "parsed": {
+          "checksum": 1053648229,
+          "elapsedNs": "40066580",
+          "total": 16000
+        }
+      }
+    }
+  ],
+  "trials": [
+    {
+      "index": 1,
+      "node": {
+        "raw": "{\"elapsedNs\":\"308355237\",\"checksum\":1053648229,\"total\":16000}",
+        "parsed": {
+          "elapsedNs": "308355237",
+          "checksum": 1053648229,
+          "total": 16000
+        }
+      },
+      "rust": {
+        "raw": "{\"checksum\":1053648229,\"elapsedNs\":\"39407264\",\"total\":16000}",
+        "parsed": {
+          "checksum": 1053648229,
+          "elapsedNs": "39407264",
+          "total": 16000
+        }
+      }
+    },
+    {
+      "index": 2,
+      "rust": {
+        "raw": "{\"checksum\":1053648229,\"elapsedNs\":\"37853724\",\"total\":16000}",
+        "parsed": {
+          "checksum": 1053648229,
+          "elapsedNs": "37853724",
+          "total": 16000
+        }
+      },
+      "node": {
+        "raw": "{\"elapsedNs\":\"312465156\",\"checksum\":1053648229,\"total\":16000}",
+        "parsed": {
+          "elapsedNs": "312465156",
+          "checksum": 1053648229,
+          "total": 16000
+        }
+      }
+    },
+    {
+      "index": 3,
+      "node": {
+        "raw": "{\"elapsedNs\":\"296349139\",\"checksum\":1053648229,\"total\":16000}",
+        "parsed": {
+          "elapsedNs": "296349139",
+          "checksum": 1053648229,
+          "total": 16000
+        }
+      },
+      "rust": {
+        "raw": "{\"checksum\":1053648229,\"elapsedNs\":\"52753734\",\"total\":16000}",
+        "parsed": {
+          "checksum": 1053648229,
+          "elapsedNs": "52753734",
+          "total": 16000
+        }
+      }
+    },
+    {
+      "index": 4,
+      "rust": {
+        "raw": "{\"checksum\":1053648229,\"elapsedNs\":\"39589064\",\"total\":16000}",
+        "parsed": {
+          "checksum": 1053648229,
+          "elapsedNs": "39589064",
+          "total": 16000
+        }
+      },
+      "node": {
+        "raw": "{\"elapsedNs\":\"333191208\",\"checksum\":1053648229,\"total\":16000}",
+        "parsed": {
+          "elapsedNs": "333191208",
+          "checksum": 1053648229,
+          "total": 16000
+        }
+      }
+    },
+    {
+      "index": 5,
+      "node": {
+        "raw": "{\"elapsedNs\":\"282923921\",\"checksum\":1053648229,\"total\":16000}",
+        "parsed": {
+          "elapsedNs": "282923921",
+          "checksum": 1053648229,
+          "total": 16000
+        }
+      },
+      "rust": {
+        "raw": "{\"checksum\":1053648229,\"elapsedNs\":\"45204733\",\"total\":16000}",
+        "parsed": {
+          "checksum": 1053648229,
+          "elapsedNs": "45204733",
+          "total": 16000
+        }
+      }
+    },
+    {
+      "index": 6,
+      "rust": {
+        "raw": "{\"checksum\":1053648229,\"elapsedNs\":\"51305843\",\"total\":16000}",
+        "parsed": {
+          "checksum": 1053648229,
+          "elapsedNs": "51305843",
+          "total": 16000
+        }
+      },
+      "node": {
+        "raw": "{\"elapsedNs\":\"277022298\",\"checksum\":1053648229,\"total\":16000}",
+        "parsed": {
+          "elapsedNs": "277022298",
+          "checksum": 1053648229,
+          "total": 16000
+        }
+      }
+    },
+    {
+      "index": 7,
+      "node": {
+        "raw": "{\"elapsedNs\":\"301854682\",\"checksum\":1053648229,\"total\":16000}",
+        "parsed": {
+          "elapsedNs": "301854682",
+          "checksum": 1053648229,
+          "total": 16000
+        }
+      },
+      "rust": {
+        "raw": "{\"checksum\":1053648229,\"elapsedNs\":\"44360122\",\"total\":16000}",
+        "parsed": {
+          "checksum": 1053648229,
+          "elapsedNs": "44360122",
+          "total": 16000
+        }
+      }
+    }
+  ],
+  "order": [
+    {
+      "phase": "warmup",
+      "index": 1,
+      "server": "node"
+    },
+    {
+      "phase": "warmup",
+      "index": 1,
+      "server": "rust"
+    },
+    {
+      "phase": "warmup",
+      "index": 2,
+      "server": "rust"
+    },
+    {
+      "phase": "warmup",
+      "index": 2,
+      "server": "node"
+    },
+    {
+      "phase": "warmup",
+      "index": 3,
+      "server": "node"
+    },
+    {
+      "phase": "warmup",
+      "index": 3,
+      "server": "rust"
+    },
+    {
+      "phase": "trial",
+      "index": 1,
+      "server": "node"
+    },
+    {
+      "phase": "trial",
+      "index": 1,
+      "server": "rust"
+    },
+    {
+      "phase": "trial",
+      "index": 2,
+      "server": "rust"
+    },
+    {
+      "phase": "trial",
+      "index": 2,
+      "server": "node"
+    },
+    {
+      "phase": "trial",
+      "index": 3,
+      "server": "node"
+    },
+    {
+      "phase": "trial",
+      "index": 3,
+      "server": "rust"
+    },
+    {
+      "phase": "trial",
+      "index": 4,
+      "server": "rust"
+    },
+    {
+      "phase": "trial",
+      "index": 4,
+      "server": "node"
+    },
+    {
+      "phase": "trial",
+      "index": 5,
+      "server": "node"
+    },
+    {
+      "phase": "trial",
+      "index": 5,
+      "server": "rust"
+    },
+    {
+      "phase": "trial",
+      "index": 6,
+      "server": "rust"
+    },
+    {
+      "phase": "trial",
+      "index": 6,
+      "server": "node"
+    },
+    {
+      "phase": "trial",
+      "index": 7,
+      "server": "node"
+    },
+    {
+      "phase": "trial",
+      "index": 7,
+      "server": "rust"
+    }
+  ],
+  "servers": {
+    "node": {
+      "executable": "/usr/local/bin/node",
+      "args": [
+        "/source/dimabot/tests/fixtures/moderation_caps_benchmark.cjs"
+      ],
+      "stdout": [
+        "{\"ready\":true,\"pool\":[\"bench-ascii\",\"bench-unicode\",\"bench-astral\",\"bench-emotes\",\"bench-lone\",\"bench-long\",\"bench-no-emotes\",\"bench-overlap\"],\"repetitions\":2000,\"realm\":\"commonjs\",\"crossCheckRealm\":\"vm\",\"commonJsCompiledSha\":\"79019d513792dafebf29963d5e0649cfd2e6bcd1a69fb00dedceb41b9e019694\",\"vmCompiledSha\":\"79019d513792dafebf29963d5e0649cfd2e6bcd1a69fb00dedceb41b9e019694\",\"hashes\":{\"src/utils/moderation/caps.rs\":\"815088acaf0afe7338baae37816f645238e6063c310a305d326df842f0493396\",\"src/utils/moderation/caps_unicode_data.rs\":\"f47a1f1595777a04f8f97a688a7ca663b949936a1c92758a83b6860abdd4c344\",\"src/utils/js_string.rs\":\"17b3e6a6bcd0d92210851eca25da44bbcdb2c2d9e196feb5dab58d06b75d4aed\",\"src/utils/js_compat.rs\":\"798538b33fa38b7a07935c22430ce12e3d93abc1afb4f605492299bbf27a64bc\",\"src/utils/json_number.rs\":\"f463c65a55bcd611ed9bad2444e50acff697969bb910b7b4c17371d0af21f419\",\"tests/moderation_caps.rs\":\"e0f5d905774e3aa5ce0b38f39106e96a2694cd05e68494fc4ad12462be44443c\",\"tests/fixtures/moderation_caps_source.cjs\":\"05edb743b3bebbd616ca13affe9796eb05e44a91bdb31f584a3136f45339169a\",\"tests/fixtures/moderation_caps_reference.cjs\":\"1616d68548ca359987863d42e3a1946dc8320f78825ff946635d1e14a6749db4\",\"tests/moderation_caps_benchmark.rs\":\"4975fb651f08b9fe6b80039f0db4b59fe13103ff6ead8732a0c6677cb62b491e\",\"tests/fixtures/moderation_caps_benchmark.cjs\":\"c38b0ef3632fdf171ba9e15a51fc5d3edde574ef8350d8d5fcb7aab8220d113c\"},\"nodeSha\":\"569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108\",\"referenceSha\":\"bb3d8ddb1e196b9197bc9908c78b8acf5472c38a3be4a9a793325340f84b020e\"}",
+        "{\"elapsedNs\":\"290374487\",\"checksum\":1053648229,\"total\":16000}",
+        "{\"elapsedNs\":\"315959511\",\"checksum\":1053648229,\"total\":16000}",
+        "{\"elapsedNs\":\"286652746\",\"checksum\":1053648229,\"total\":16000}",
+        "{\"elapsedNs\":\"308355237\",\"checksum\":1053648229,\"total\":16000}",
+        "{\"elapsedNs\":\"312465156\",\"checksum\":1053648229,\"total\":16000}",
+        "{\"elapsedNs\":\"296349139\",\"checksum\":1053648229,\"total\":16000}",
+        "{\"elapsedNs\":\"333191208\",\"checksum\":1053648229,\"total\":16000}",
+        "{\"elapsedNs\":\"282923921\",\"checksum\":1053648229,\"total\":16000}",
+        "{\"elapsedNs\":\"277022298\",\"checksum\":1053648229,\"total\":16000}",
+        "{\"elapsedNs\":\"301854682\",\"checksum\":1053648229,\"total\":16000}"
+      ],
+      "stderr": "",
+      "exit": {
+        "code": 0,
+        "signal": null
+      }
+    },
+    "rust": {
+      "executable": "/artifacts/moderation-caps/attempt2/bin/moderation_caps_benchmark",
+      "args": [
+        "prepared_benchmark_server",
+        "--ignored",
+        "--exact",
+        "--nocapture"
+      ],
+      "stdout": [
+        "",
+        "running 1 test",
+        "{\"pool\":[\"bench-ascii\",\"bench-unicode\",\"bench-astral\",\"bench-emotes\",\"bench-lone\",\"bench-long\",\"bench-no-emotes\",\"bench-overlap\"],\"ready\":true,\"repetitions\":2000}",
+        "{\"checksum\":1053648229,\"elapsedNs\":\"36258998\",\"total\":16000}",
+        "{\"checksum\":1053648229,\"elapsedNs\":\"36950363\",\"total\":16000}",
+        "{\"checksum\":1053648229,\"elapsedNs\":\"40066580\",\"total\":16000}",
+        "{\"checksum\":1053648229,\"elapsedNs\":\"39407264\",\"total\":16000}",
+        "{\"checksum\":1053648229,\"elapsedNs\":\"37853724\",\"total\":16000}",
+        "{\"checksum\":1053648229,\"elapsedNs\":\"52753734\",\"total\":16000}",
+        "{\"checksum\":1053648229,\"elapsedNs\":\"39589064\",\"total\":16000}",
+        "{\"checksum\":1053648229,\"elapsedNs\":\"45204733\",\"total\":16000}",
+        "{\"checksum\":1053648229,\"elapsedNs\":\"51305843\",\"total\":16000}",
+        "{\"checksum\":1053648229,\"elapsedNs\":\"44360122\",\"total\":16000}",
+        "test prepared_benchmark_server ... ok",
+        "",
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.39s",
+        ""
+      ],
+      "stderr": "",
+      "exit": {
+        "code": 0,
+        "signal": null
+      }
+    }
+  },
+  "hashesBefore": {
+    "node": "569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108",
+    "binary": "ae401e9a034de359dfeea70efaebd73b726e70e46dd7e8596e6454ee52150395",
+    "provenance": "d4f01a432e67d2c0007a33deea635dccae3a1be162e9cbae9464857cdb1890cc",
+    "receipt": "2ce9640598e56426c8ad52fcb2a633dbadd618535e125bb14620da37c1098ccb",
+    "buildLog": "4c58a8cd9e3c097f295f0155bb718542f973b117bf1490fea63341ce1cadd293",
+    "reference": "bb3d8ddb1e196b9197bc9908c78b8acf5472c38a3be4a9a793325340f84b020e",
+    "unicode": "0eb8062e28d946ef74174a362c48c049f758940d8a4eb159c023eb8369b3a6b1",
+    "coordinator": "78c9c32d4aa54c7b27d1948a2ac1b60a11942e21fffee53f3e9826b7151ed698",
+    "sourceTs": "62f7fe37760cbf5640544cab646a639d06b42883532657634a00e25488888797",
+    "native": "815088acaf0afe7338baae37816f645238e6063c310a305d326df842f0493396",
+    "table": "f47a1f1595777a04f8f97a688a7ca663b949936a1c92758a83b6860abdd4c344",
+    "rustBenchmark": "4975fb651f08b9fe6b80039f0db4b59fe13103ff6ead8732a0c6677cb62b491e",
+    "nodeBenchmark": "c38b0ef3632fdf171ba9e15a51fc5d3edde574ef8350d8d5fcb7aab8220d113c",
+    "loader": "05edb743b3bebbd616ca13affe9796eb05e44a91bdb31f584a3136f45339169a",
+    "oracle": "1616d68548ca359987863d42e3a1946dc8320f78825ff946635d1e14a6749db4"
+  },
+  "hashesAfter": {
+    "node": "569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108",
+    "binary": "ae401e9a034de359dfeea70efaebd73b726e70e46dd7e8596e6454ee52150395",
+    "provenance": "d4f01a432e67d2c0007a33deea635dccae3a1be162e9cbae9464857cdb1890cc",
+    "receipt": "2ce9640598e56426c8ad52fcb2a633dbadd618535e125bb14620da37c1098ccb",
+    "buildLog": "4c58a8cd9e3c097f295f0155bb718542f973b117bf1490fea63341ce1cadd293",
+    "reference": "bb3d8ddb1e196b9197bc9908c78b8acf5472c38a3be4a9a793325340f84b020e",
+    "unicode": "0eb8062e28d946ef74174a362c48c049f758940d8a4eb159c023eb8369b3a6b1",
+    "coordinator": "78c9c32d4aa54c7b27d1948a2ac1b60a11942e21fffee53f3e9826b7151ed698",
+    "sourceTs": "62f7fe37760cbf5640544cab646a639d06b42883532657634a00e25488888797",
+    "native": "815088acaf0afe7338baae37816f645238e6063c310a305d326df842f0493396",
+    "table": "f47a1f1595777a04f8f97a688a7ca663b949936a1c92758a83b6860abdd4c344",
+    "rustBenchmark": "4975fb651f08b9fe6b80039f0db4b59fe13103ff6ead8732a0c6677cb62b491e",
+    "nodeBenchmark": "c38b0ef3632fdf171ba9e15a51fc5d3edde574ef8350d8d5fcb7aab8220d113c",
+    "loader": "05edb743b3bebbd616ca13affe9796eb05e44a91bdb31f584a3136f45339169a",
+    "oracle": "1616d68548ca359987863d42e3a1946dc8320f78825ff946635d1e14a6749db4"
+  },
+  "caveats": [
+    "One equally weighted mixed pool of eight prepared cases; not a production workload or a per-case distribution.",
+    "Timers cover only the evaluator loop over prebuilt inputs with output containers allocated in advance. Parsing, IPC, wire serialization, checksum and destruction are outside the timer.",
+    "Both processes share one capped execution environment; results do not establish end-to-end production latency."
+  ],
+  "readiness": {
+    "node": {
+      "raw": "{\"ready\":true,\"pool\":[\"bench-ascii\",\"bench-unicode\",\"bench-astral\",\"bench-emotes\",\"bench-lone\",\"bench-long\",\"bench-no-emotes\",\"bench-overlap\"],\"repetitions\":2000,\"realm\":\"commonjs\",\"crossCheckRealm\":\"vm\",\"commonJsCompiledSha\":\"79019d513792dafebf29963d5e0649cfd2e6bcd1a69fb00dedceb41b9e019694\",\"vmCompiledSha\":\"79019d513792dafebf29963d5e0649cfd2e6bcd1a69fb00dedceb41b9e019694\",\"hashes\":{\"src/utils/moderation/caps.rs\":\"815088acaf0afe7338baae37816f645238e6063c310a305d326df842f0493396\",\"src/utils/moderation/caps_unicode_data.rs\":\"f47a1f1595777a04f8f97a688a7ca663b949936a1c92758a83b6860abdd4c344\",\"src/utils/js_string.rs\":\"17b3e6a6bcd0d92210851eca25da44bbcdb2c2d9e196feb5dab58d06b75d4aed\",\"src/utils/js_compat.rs\":\"798538b33fa38b7a07935c22430ce12e3d93abc1afb4f605492299bbf27a64bc\",\"src/utils/json_number.rs\":\"f463c65a55bcd611ed9bad2444e50acff697969bb910b7b4c17371d0af21f419\",\"tests/moderation_caps.rs\":\"e0f5d905774e3aa5ce0b38f39106e96a2694cd05e68494fc4ad12462be44443c\",\"tests/fixtures/moderation_caps_source.cjs\":\"05edb743b3bebbd616ca13affe9796eb05e44a91bdb31f584a3136f45339169a\",\"tests/fixtures/moderation_caps_reference.cjs\":\"1616d68548ca359987863d42e3a1946dc8320f78825ff946635d1e14a6749db4\",\"tests/moderation_caps_benchmark.rs\":\"4975fb651f08b9fe6b80039f0db4b59fe13103ff6ead8732a0c6677cb62b491e\",\"tests/fixtures/moderation_caps_benchmark.cjs\":\"c38b0ef3632fdf171ba9e15a51fc5d3edde574ef8350d8d5fcb7aab8220d113c\"},\"nodeSha\":\"569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108\",\"referenceSha\":\"bb3d8ddb1e196b9197bc9908c78b8acf5472c38a3be4a9a793325340f84b020e\"}",
+      "parsed": {
+        "ready": true,
+        "pool": [
+          "bench-ascii",
+          "bench-unicode",
+          "bench-astral",
+          "bench-emotes",
+          "bench-lone",
+          "bench-long",
+          "bench-no-emotes",
+          "bench-overlap"
+        ],
+        "repetitions": 2000,
+        "realm": "commonjs",
+        "crossCheckRealm": "vm",
+        "commonJsCompiledSha": "79019d513792dafebf29963d5e0649cfd2e6bcd1a69fb00dedceb41b9e019694",
+        "vmCompiledSha": "79019d513792dafebf29963d5e0649cfd2e6bcd1a69fb00dedceb41b9e019694",
+        "hashes": {
+          "src/utils/moderation/caps.rs": "815088acaf0afe7338baae37816f645238e6063c310a305d326df842f0493396",
+          "src/utils/moderation/caps_unicode_data.rs": "f47a1f1595777a04f8f97a688a7ca663b949936a1c92758a83b6860abdd4c344",
+          "src/utils/js_string.rs": "17b3e6a6bcd0d92210851eca25da44bbcdb2c2d9e196feb5dab58d06b75d4aed",
+          "src/utils/js_compat.rs": "798538b33fa38b7a07935c22430ce12e3d93abc1afb4f605492299bbf27a64bc",
+          "src/utils/json_number.rs": "f463c65a55bcd611ed9bad2444e50acff697969bb910b7b4c17371d0af21f419",
+          "tests/moderation_caps.rs": "e0f5d905774e3aa5ce0b38f39106e96a2694cd05e68494fc4ad12462be44443c",
+          "tests/fixtures/moderation_caps_source.cjs": "05edb743b3bebbd616ca13affe9796eb05e44a91bdb31f584a3136f45339169a",
+          "tests/fixtures/moderation_caps_reference.cjs": "1616d68548ca359987863d42e3a1946dc8320f78825ff946635d1e14a6749db4",
+          "tests/moderation_caps_benchmark.rs": "4975fb651f08b9fe6b80039f0db4b59fe13103ff6ead8732a0c6677cb62b491e",
+          "tests/fixtures/moderation_caps_benchmark.cjs": "c38b0ef3632fdf171ba9e15a51fc5d3edde574ef8350d8d5fcb7aab8220d113c"
+        },
+        "nodeSha": "569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108",
+        "referenceSha": "bb3d8ddb1e196b9197bc9908c78b8acf5472c38a3be4a9a793325340f84b020e"
+      }
+    },
+    "rust": {
+      "raw": "{\"pool\":[\"bench-ascii\",\"bench-unicode\",\"bench-astral\",\"bench-emotes\",\"bench-lone\",\"bench-long\",\"bench-no-emotes\",\"bench-overlap\"],\"ready\":true,\"repetitions\":2000}",
+      "parsed": {
+        "pool": [
+          "bench-ascii",
+          "bench-unicode",
+          "bench-astral",
+          "bench-emotes",
+          "bench-lone",
+          "bench-long",
+          "bench-no-emotes",
+          "bench-overlap"
+        ],
+        "ready": true,
+        "repetitions": 2000
+      }
+    }
+  },
+  "metrics": {
+    "checksum": 1053648229,
+    "nodeMedianNs": "301854682",
+    "rustMedianNs": "44360122",
+    "nodeNsPerOp": 18865.917625,
+    "rustNsPerOp": 2772.507625
+  }
+}

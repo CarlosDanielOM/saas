@@ -87505,38 +87505,75 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-local-feature-and-dependency-closure",
+      "localRustEvidence": [
+        "dimabot/src/utils/moderation/caps.rs: pure native evaluator and sequential literal emote replacement, gated by moderation-caps",
+        "dimabot/src/utils/moderation/caps_unicode_data.rs: source-derived Unicode L/Lu ranges from the pinned runtime",
+        "dimabot/src/utils/js_string.rs and dimabot/src/utils/json_number.rs: existing JavaScript string/number compatibility facilities",
+        "migration-notes/moderation-caps-2026-10-29.md: source bindings, isolated verification, benchmark scope, and remaining migration boundary",
+        "migration-notes/evidence/2026-10-29-moderation-caps/README.md: indexed source binding, raw receipts, paired report, and independent final readback"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The declared TypeScript contract is mapped, including input/result types and the four required Pick fields. The schema import is type-only; CapsThresholdMode and the three numeric fields have equivalent native types, so no runtime schema adapter is required.",
+        "JsString preserves UTF-16 code units and the local KMP path preserves JavaScript literal replacement for ill-formed surrogate sequences; valid UTF-8 replacement uses Rust str::replace. Unicode L/Lu facts are pinned to the actual source regexes and runtime.",
+        "Arbitrary untyped JavaScript casts, coercion hooks, and prototype behavior beyond the declared TypeScript interface are outside this native contract.",
+        "Only the selected pure evaluator is locally complete. Moderation settings persistence, registry/dispatch, message context preparation, and enforcement remain open; this mapping does not retire or adopt the TypeScript source."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "src/utils/moderation/rules/index.ts",
+          "src/handlers/moderation.handler.ts"
+        ],
+        "runtimeStatus": "Unadopted; the TypeScript rule registry and moderation handler still execute the caps evaluator. Broader settings, context preparation, and enforcement paths remain open."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "src/utils/moderation/rules/caps.rule.test.ts",
+          "tests/fixtures/moderation_caps_source.cjs",
+          "tests/fixtures/moderation_caps_reference.cjs"
+        ],
+        "rustBehaviorEvidence": [
+          "tests/moderation_caps.rs",
+          "tests/fixtures/moderation_caps_benchmark.cjs",
+          "migration-notes/moderation-caps-2026-10-29.md",
+          "migration-notes/evidence/2026-10-29-moderation-caps/README.md"
+        ],
+        "status": "Source oracle and native replay passed for the declared evaluator contract; formatting, scoped and strict Clippy, ordinary cases, feature/profile checks, and exact-ELF paired evaluator benchmark passed. No application caller adoption is established."
       },
       "exports": [
         {
           "name": "CapsEvaluationInput",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "CapsEvaluationInput using JsString and optional references to represent the source nullish text fallback",
+          "evidence": [
+            "dimabot/src/utils/moderation/caps.rs",
+            "migration-notes/moderation-caps-2026-10-29.md"
+          ]
         },
         {
           "name": "CapsEvaluationResult",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "CapsEvaluationResult with trigger, caps count, letter count, and percentage",
+          "evidence": [
+            "dimabot/src/utils/moderation/caps.rs"
+          ]
         },
         {
           "name": "evaluateCapsRule",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "evaluate_caps_rule with source-derived Unicode classification and equivalent threshold behavior",
+          "evidence": [
+            "dimabot/src/utils/moderation/caps.rs",
+            "dimabot/src/utils/moderation/caps_unicode_data.rs",
+            "tests/moderation_caps.rs",
+            "migration-notes/moderation-caps-2026-10-29.md"
+          ]
         },
         {
           "name": "stripEmoteTexts",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "strip_emote_texts with sequential non-overlapping literal replacement",
+          "evidence": [
+            "dimabot/src/utils/moderation/caps.rs",
+            "tests/moderation_caps.rs",
+            "migration-notes/moderation-caps-2026-10-29.md"
+          ]
         }
       ],
       "imports": [
@@ -87553,15 +87590,15 @@
           "baselineSourceTargets": [
             "src/schemas/channel_moderation_settings.schema.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "type-only Pick<IModerationRule, capsThresholdMode | minCapsCount | maxCapsPercentage | minMessageLength>",
+          "runtimeOrTypeDependency": "type-only contract",
+          "defaultSideEffectBarrelDetails": "Named type import only; no runtime, side-effect, or barrel dependency.",
+          "directDependencyReview": "reviewed-type-only-contract",
+          "transitiveDependencyReview": "The four selected schema properties map to CapsThresholdMode and f64 settings in Rust; the enum and numeric types are equivalent. Schema runtime behavior is not imported by this source function.",
+          "rustReplacementOrGap": "Equivalent native types cover the selected type-only contract. The separate moderation settings schema, persistence, defaults, and enforcement paths remain unmigrated."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "mapped-local-feature-and-selected-dependency-closure; broader-moderation-application-remains-open"
     },
     {
       "source": "src/utils/moderation/rules/emote_spam_blacklist.rule.test.ts",

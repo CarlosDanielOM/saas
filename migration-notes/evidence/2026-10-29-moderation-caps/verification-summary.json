@@ -1,0 +1,142 @@
+{
+  "status": "Verified caps evaluator, emote stripping and equivalent type-only schema contract; broader moderation remains incomplete.",
+  "codeCommit": "b44f3c9f21bcb6cacc69522b1c1ede3d5eea81ce",
+  "sourceTreeSha256": "7fdc99bd3510a7710df688cd9598d59c57eeba7c90ade57fb70e4e2fcbe607f5",
+  "sourceInputs": 1313,
+  "acceptedRuns": [
+    "compiler-1793304885449512726",
+    "compiler-1793305057976047544",
+    "node-1793305838560818548"
+  ],
+  "sourceCases": 5348,
+  "ordinaryTests": 3,
+  "limits": {
+    "cpus": 6,
+    "memory": 4294967296,
+    "memory_swap": 4294967296,
+    "pids": 256,
+    "cargo_jobs": 2
+  },
+  "peakCacheBytes": 3728130048,
+  "minimumAvailableBytes": 8605839360,
+  "productionUnchangedRecords": 19,
+  "performanceMeasured": true,
+  "benchmark": {
+    "reportSha256": "8e91150ba54872ced1c5f6dee238e694acb98fd710b787546d8875f112e80406",
+    "sourceTreeSha256": "7fdc99bd3510a7710df688cd9598d59c57eeba7c90ade57fb70e4e2fcbe607f5",
+    "checksum": 1053648229,
+    "totalPerActorTrial": 16000,
+    "actorTrials": 14,
+    "medianNsPerOp": {
+      "node": 18865.917625,
+      "rust": 2772.507625
+    },
+    "minNsPerOp": {
+      "node": 17313.893625,
+      "rust": 2365.85775
+    },
+    "maxNsPerOp": {
+      "node": 20824.4505,
+      "rust": 3297.108375
+    },
+    "rawNsPerOp": {
+      "node": [
+        19272.2023125,
+        19529.07225,
+        18521.8211875,
+        20824.4505,
+        17682.7450625,
+        17313.893625,
+        18865.917625
+      ],
+      "rust": [
+        2462.954,
+        2365.85775,
+        3297.108375,
+        2474.3165,
+        2825.2958125,
+        3206.6151875,
+        2772.507625
+      ]
+    },
+    "percentLower": 85.3041464501783,
+    "allPairedChecksumsEqual": true,
+    "allBeforeAfterHashesEqual": true,
+    "productionUnchanged": true
+  },
+  "noRetirementAdoptionDeploymentPush": true,
+  "runs": [
+    {
+      "run": "compiler-1793304594188699786",
+      "success": true,
+      "sourceTreeSha256": "89be721f9f45b68737e097334c289b851b08fe2ebeefb00370d1572d2ef94f80",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-1793304885449512726",
+      "success": true,
+      "sourceTreeSha256": "7fdc99bd3510a7710df688cd9598d59c57eeba7c90ade57fb70e4e2fcbe607f5",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-1793305057976047544",
+      "success": true,
+      "sourceTreeSha256": "7fdc99bd3510a7710df688cd9598d59c57eeba7c90ade57fb70e4e2fcbe607f5",
+      "productionUnchanged": true
+    },
+    {
+      "run": "format-1793304375279730496",
+      "success": true,
+      "sourceTreeSha256": "73223a974bd6a1fbd4075ff59f42d9792e7e4a60cf7aeb4d4406d8b3ece6a787",
+      "productionUnchanged": true
+    },
+    {
+      "run": "format-1793304519797167043",
+      "success": true,
+      "sourceTreeSha256": "89be721f9f45b68737e097334c289b851b08fe2ebeefb00370d1572d2ef94f80",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793302898978941901",
+      "success": true,
+      "sourceTreeSha256": "0b49c85bb833d183b42618c081d644f0c7f51bd98d341269317559d4c4d95dd7",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793304594190059854",
+      "success": false,
+      "sourceTreeSha256": "89be721f9f45b68737e097334c289b851b08fe2ebeefb00370d1572d2ef94f80",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793304885445468701",
+      "success": false,
+      "sourceTreeSha256": "7fdc99bd3510a7710df688cd9598d59c57eeba7c90ade57fb70e4e2fcbe607f5",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793305057985281330",
+      "success": true,
+      "sourceTreeSha256": "7fdc99bd3510a7710df688cd9598d59c57eeba7c90ade57fb70e4e2fcbe607f5",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793305760605201042",
+      "success": false,
+      "sourceTreeSha256": "7fdc99bd3510a7710df688cd9598d59c57eeba7c90ade57fb70e4e2fcbe607f5",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793305780632020935",
+      "success": true,
+      "sourceTreeSha256": "7fdc99bd3510a7710df688cd9598d59c57eeba7c90ade57fb70e4e2fcbe607f5",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793305838560818548",
+      "success": true,
+      "sourceTreeSha256": "7fdc99bd3510a7710df688cd9598d59c57eeba7c90ade57fb70e4e2fcbe607f5",
+      "productionUnchanged": true
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "reportSha256": "8e91150ba54872ced1c5f6dee238e694acb98fd710b787546d8875f112e80406",
+  "sourceTreeSha256": "7fdc99bd3510a7710df688cd9598d59c57eeba7c90ade57fb70e4e2fcbe607f5",
+  "checksum": 1053648229,
+  "totalPerActorTrial": 16000,
+  "actorTrials": 14,
+  "medianNsPerOp": {
+    "node": 18865.917625,
+    "rust": 2772.507625
+  },
+  "minNsPerOp": {
+    "node": 17313.893625,
+    "rust": 2365.85775
+  },
+  "maxNsPerOp": {
+    "node": 20824.4505,
+    "rust": 3297.108375
+  },
+  "rawNsPerOp": {
+    "node": [
+      19272.2023125,
+      19529.07225,
+      18521.8211875,
+      20824.4505,
+      17682.7450625,
+      17313.893625,
+      18865.917625
+    ],
+    "rust": [
+      2462.954,
+      2365.85775,
+      3297.108375,
+      2474.3165,
+      2825.2958125,
+      3206.6151875,
+      2772.507625
+    ]
+  },
+  "percentLower": 85.3041464501783,
+  "allPairedChecksumsEqual": true,
+  "allBeforeAfterHashesEqual": true,
+  "productionUnchanged": true
+}

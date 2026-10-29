@@ -1,0 +1,15 @@
+{
+  "versions": {
+    "node": "24.22.1",
+    "v8": "13.6.233.17-node.58",
+    "icu": "78.3",
+    "unicode": "17.0",
+    "typescript": "5.9.3"
+  },
+  "nativeGeneratedFileSha256": "f47a1f1595777a04f8f97a688a7ca663b949936a1c92758a83b6860abdd4c344",
+  "fullRangeTablesParsedAndMatchedToReference": true,
+  "letters": 145672,
+  "letterRanges": 684,
+  "uppercase": 1886,
+  "uppercaseRanges": 655
+}
