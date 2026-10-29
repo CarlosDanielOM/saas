@@ -1,0 +1,10 @@
+{
+  "core-reference": {
+    "sha256": "b8c42ec12eb4876997b252c31c647ea5a6997c3c34e4467dbfd38d9e9fca7022",
+    "cases": 78
+  },
+  "model-reference": {
+    "sha256": "584b4982e71a90108160e678c7b5cbddd854a1091445bff4de8132d470b6bb06",
+    "cases": 54
+  }
+}

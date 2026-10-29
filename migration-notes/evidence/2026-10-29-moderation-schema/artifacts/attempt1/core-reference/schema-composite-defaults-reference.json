@@ -1,0 +1,2398 @@
+{
+  "format": 1,
+  "versions": {
+    "node": "24.22.1",
+    "v8": "13.6.233.17-node.58",
+    "icu": "78.3",
+    "unicode": "17.0",
+    "typescript": "5.9.3",
+    "mongoose": "8.24.2",
+    "bson": "6.10.4"
+  },
+  "nodeExecutableSha256": "569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108",
+  "sourceSha256": {
+    "src/schemas/schema.rs": "54f45bd6275f7e0d63c8cdeaf05e8edec04f9a8b3eaf9a7f99b03f74bf74c900",
+    "src/schemas/channel_moderation_settings.schema.ts": "e7ab82dd1eb02eaaddc5cfc93f41a4b8ff09b14ce0b488a870cbf5c727a23653",
+    "src/utils/moderation/spam_categories.ts": "29dd0951ea0b89567c55b5dce4d2795a74c78e6064b32cbd26a3ecafaa435088",
+    "src/utils/bson_compat.rs": "bd6772ef74ec73708d3828d59496c8d2a9156d2325864b63c7f40544300802e4",
+    "src/utils/mongoose_date.rs": "d64fc10dfce3513d02598c9408bd3b6b5cccb7ed3c2e6fbad589f61e20087573",
+    "src/utils/json_number.rs": "f463c65a55bcd611ed9bad2444e50acff697969bb910b7b4c17371d0af21f419",
+    "src/utils/js_compat.rs": "798538b33fa38b7a07935c22430ce12e3d93abc1afb4f605492299bbf27a64bc",
+    "tests/schema_composite_defaults.rs": "afe7473ae7567f258b98f2a806e0ae81350d1ee9e78e59a4b162297ee91132b7",
+    "Cargo.toml": "a22c49f0c3ed48cbfc495bdb9649015da02647c6191ae75485bf69edcd9fbd82",
+    "Cargo.lock": "787333fa269752a606040d7393767040ef749ce1e01c2512386bf305bcd7a2c3",
+    "rust-toolchain.toml": "b9c8d2d59f6f46474c0cfa0b8b77bea21d94fc73a30ad93d5bf6385c422197d2",
+    "package.json": "cc4939f6416a91d4bfaa5bcdd3d448d2f74103a88bb269e0a8e393615cf32cef",
+    "package-lock.json": "abdf5aa71a8272423ebb9358d7aaa87edd7e65f6605c325fe231a4bcef70eeb7",
+    "typescript-js": "3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675",
+    "typescript-package": "822ef7ca6452205657b6288b066481ecf508bfbf43455d715cf7d3ec457561e6",
+    "mongoose-js": "59e21822580047abc5468d740b720d1383fa3569aa2da3ac70325265fbb0e25b",
+    "mongoose-package": "5136d95bcd0624a94096110ea21ac101b73f1839bc40726eab85649389c17dba",
+    "bson-js": "64e5de269bbcdee96f2bebb57cc9729b72aaebde02d832005872b7e575899284",
+    "bson-package": "ded0e42e4e1cd876a11c9f799e0692f83ee73ebc9fb7796a5bca05039b4b3e23",
+    "mongoose/lib/schema/array.js": "3ac735b06a68a3d1377a6522dd691698dc0eef22c04675e13524df73954f0035",
+    "mongoose/lib/schema/string.js": "ae16be84b7a33ba66b4695decb847dc2f0cde86beb86914b14a7eb687410f072",
+    "mongoose/lib/schemaType.js": "ea76d4fd915c2bde521dfdb46257852464d0ffda4165c8af330e0b30c869e7f0",
+    "mongoose/lib/document.js": "d19e9bd7cbf55f09cdc8b2ccdacadee739bbd2d639e2b7571e584de53abc3bde",
+    "mongoose/lib/helpers/document/applyDefaults.js": "18788371137962fa15d6293cd65e15f49b016d5ef4e06ed69c2f30b09bb93bfb",
+    "oracle-script": "176e3690c1c9584841fd976470bf2340fa904690089e66db2550856d40e8fa98"
+  },
+  "cases": [
+    {
+      "model": "composite",
+      "input": {},
+      "expected": {
+        "document": {
+          "categories": [
+            "spam",
+            "ads",
+            "self_promotion"
+          ],
+          "codes": [],
+          "exemptTags": [
+            "mod",
+            "editor",
+            "admin"
+          ],
+          "first": {
+            "action": "warn",
+            "timeoutSeconds": 60
+          },
+          "second": {
+            "action": "delete",
+            "timeoutSeconds": 60
+          },
+          "third": {
+            "action": "timeout",
+            "timeoutSeconds": 60
+          },
+          "variations": {
+            "entries": [],
+            "mode": "off"
+          },
+          "weights": [
+            2,
+            3
+          ]
+        }
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "first": null,
+        "second": null,
+        "third": null,
+        "categories": null,
+        "exemptTags": null,
+        "weights": null,
+        "variations": null
+      },
+      "expected": {
+        "document": {
+          "categories": null,
+          "codes": [],
+          "exemptTags": null,
+          "first": null,
+          "second": null,
+          "third": null,
+          "variations": null,
+          "weights": null
+        }
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "first": {},
+        "second": {},
+        "third": {}
+      },
+      "expected": {
+        "document": {
+          "categories": [
+            "spam",
+            "ads",
+            "self_promotion"
+          ],
+          "codes": [],
+          "exemptTags": [
+            "mod",
+            "editor",
+            "admin"
+          ],
+          "first": {
+            "action": "warn",
+            "timeoutSeconds": 60
+          },
+          "second": {
+            "action": "warn",
+            "timeoutSeconds": 60
+          },
+          "third": {
+            "action": "warn",
+            "timeoutSeconds": 60
+          },
+          "variations": {
+            "entries": [],
+            "mode": "off"
+          },
+          "weights": [
+            2,
+            3
+          ]
+        }
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "first": {
+          "action": "ban"
+        },
+        "second": {
+          "timeoutSeconds": "10"
+        },
+        "third": {
+          "action": "off",
+          "timeoutSeconds": "2"
+        }
+      },
+      "expected": {
+        "document": {
+          "categories": [
+            "spam",
+            "ads",
+            "self_promotion"
+          ],
+          "codes": [],
+          "exemptTags": [
+            "mod",
+            "editor",
+            "admin"
+          ],
+          "first": {
+            "action": "ban",
+            "timeoutSeconds": 60
+          },
+          "second": {
+            "action": "warn",
+            "timeoutSeconds": 10
+          },
+          "third": {
+            "action": "off",
+            "timeoutSeconds": 2
+          },
+          "variations": {
+            "entries": [],
+            "mode": "off"
+          },
+          "weights": [
+            2,
+            3
+          ]
+        }
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "variations": {
+          "mode": "custom",
+          "entries": [
+            "a",
+            {
+              "source": "x"
+            }
+          ]
+        }
+      },
+      "expected": {
+        "document": {
+          "categories": [
+            "spam",
+            "ads",
+            "self_promotion"
+          ],
+          "codes": [],
+          "exemptTags": [
+            "mod",
+            "editor",
+            "admin"
+          ],
+          "first": {
+            "action": "warn",
+            "timeoutSeconds": 60
+          },
+          "second": {
+            "action": "delete",
+            "timeoutSeconds": 60
+          },
+          "third": {
+            "action": "timeout",
+            "timeoutSeconds": 60
+          },
+          "variations": {
+            "entries": [
+              "a",
+              {
+                "source": "x"
+              }
+            ],
+            "mode": "custom"
+          },
+          "weights": [
+            2,
+            3
+          ]
+        }
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "variations": {}
+      },
+      "expected": {
+        "document": {
+          "categories": [
+            "spam",
+            "ads",
+            "self_promotion"
+          ],
+          "codes": [],
+          "exemptTags": [
+            "mod",
+            "editor",
+            "admin"
+          ],
+          "first": {
+            "action": "warn",
+            "timeoutSeconds": 60
+          },
+          "second": {
+            "action": "delete",
+            "timeoutSeconds": 60
+          },
+          "third": {
+            "action": "timeout",
+            "timeoutSeconds": 60
+          },
+          "weights": [
+            2,
+            3
+          ]
+        }
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "variations": {
+          "mode": "off",
+          "entries": []
+        }
+      },
+      "expected": {
+        "document": {
+          "categories": [
+            "spam",
+            "ads",
+            "self_promotion"
+          ],
+          "codes": [],
+          "exemptTags": [
+            "mod",
+            "editor",
+            "admin"
+          ],
+          "first": {
+            "action": "warn",
+            "timeoutSeconds": 60
+          },
+          "second": {
+            "action": "delete",
+            "timeoutSeconds": 60
+          },
+          "third": {
+            "action": "timeout",
+            "timeoutSeconds": 60
+          },
+          "variations": {
+            "entries": [],
+            "mode": "off"
+          },
+          "weights": [
+            2,
+            3
+          ]
+        }
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": "spam"
+      },
+      "expected": {
+        "document": {
+          "categories": [
+            "spam"
+          ],
+          "codes": [],
+          "exemptTags": [
+            "mod",
+            "editor",
+            "admin"
+          ],
+          "first": {
+            "action": "warn",
+            "timeoutSeconds": 60
+          },
+          "second": {
+            "action": "delete",
+            "timeoutSeconds": 60
+          },
+          "third": {
+            "action": "timeout",
+            "timeoutSeconds": 60
+          },
+          "variations": {
+            "entries": [],
+            "mode": "off"
+          },
+          "weights": [
+            2,
+            3
+          ]
+        }
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": "unknown"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "categories.0",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          null,
+          "spam",
+          null
+        ]
+      },
+      "expected": {
+        "document": {
+          "categories": [
+            null,
+            "spam",
+            null
+          ],
+          "codes": [],
+          "exemptTags": [
+            "mod",
+            "editor",
+            "admin"
+          ],
+          "first": {
+            "action": "warn",
+            "timeoutSeconds": 60
+          },
+          "second": {
+            "action": "delete",
+            "timeoutSeconds": 60
+          },
+          "third": {
+            "action": "timeout",
+            "timeoutSeconds": 60
+          },
+          "variations": {
+            "entries": [],
+            "mode": "off"
+          },
+          "weights": [
+            2,
+            3
+          ]
+        }
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          2,
+          true
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "categories.0",
+            "kind": "enum"
+          },
+          {
+            "path": "categories.1",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          {
+            "_id": "ads"
+          }
+        ]
+      },
+      "expected": {
+        "document": {
+          "categories": [
+            "ads"
+          ],
+          "codes": [],
+          "exemptTags": [
+            "mod",
+            "editor",
+            "admin"
+          ],
+          "first": {
+            "action": "warn",
+            "timeoutSeconds": 60
+          },
+          "second": {
+            "action": "delete",
+            "timeoutSeconds": 60
+          },
+          "third": {
+            "action": "timeout",
+            "timeoutSeconds": 60
+          },
+          "variations": {
+            "entries": [],
+            "mode": "off"
+          },
+          "weights": [
+            2,
+            3
+          ]
+        }
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          "bad",
+          "ads",
+          "also-bad"
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "categories.0",
+            "kind": "enum"
+          },
+          {
+            "path": "categories.2",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          "bad",
+          {},
+          "also-bad"
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "categories.1",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          {},
+          "bad",
+          {}
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "categories.0",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "weights": "3"
+      },
+      "expected": {
+        "document": {
+          "categories": [
+            "spam",
+            "ads",
+            "self_promotion"
+          ],
+          "codes": [],
+          "exemptTags": [
+            "mod",
+            "editor",
+            "admin"
+          ],
+          "first": {
+            "action": "warn",
+            "timeoutSeconds": 60
+          },
+          "second": {
+            "action": "delete",
+            "timeoutSeconds": 60
+          },
+          "third": {
+            "action": "timeout",
+            "timeoutSeconds": 60
+          },
+          "variations": {
+            "entries": [],
+            "mode": "off"
+          },
+          "weights": [
+            3
+          ]
+        }
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "weights": [
+          null,
+          0,
+          11,
+          "3"
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "weights.1",
+            "kind": "min"
+          },
+          {
+            "path": "weights.2",
+            "kind": "max"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "weights": [
+          "bad",
+          3
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "weights.0",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "weights": [
+          0,
+          "bad",
+          11
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "weights.1",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "codes": [
+          "bad",
+          "wide",
+          "ok",
+          null
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "codes.0",
+            "kind": "enum"
+          },
+          {
+            "path": "codes.1",
+            "kind": "maxlength"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "second": {
+          "action": "invalid",
+          "timeoutSeconds": 0
+        }
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "second.action",
+            "kind": "enum"
+          },
+          {
+            "path": "second.timeoutSeconds",
+            "kind": "min"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "second": {
+          "action": null,
+          "timeoutSeconds": null
+        }
+      },
+      "expected": {
+        "document": {
+          "categories": [
+            "spam",
+            "ads",
+            "self_promotion"
+          ],
+          "codes": [],
+          "exemptTags": [
+            "mod",
+            "editor",
+            "admin"
+          ],
+          "first": {
+            "action": "warn",
+            "timeoutSeconds": 60
+          },
+          "second": {
+            "action": null,
+            "timeoutSeconds": null
+          },
+          "third": {
+            "action": "timeout",
+            "timeoutSeconds": 60
+          },
+          "variations": {
+            "entries": [],
+            "mode": "off"
+          },
+          "weights": [
+            2,
+            3
+          ]
+        }
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "second": {
+          "action": 5
+        }
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "second.action",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "third": "bad"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "third",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          "spam",
+          "spam"
+        ]
+      },
+      "expected": {
+        "document": {
+          "categories": [
+            "spam",
+            "spam"
+          ],
+          "codes": [],
+          "exemptTags": [
+            "mod",
+            "editor",
+            "admin"
+          ],
+          "first": {
+            "action": "warn",
+            "timeoutSeconds": 60
+          },
+          "second": {
+            "action": "delete",
+            "timeoutSeconds": 60
+          },
+          "third": {
+            "action": "timeout",
+            "timeoutSeconds": 60
+          },
+          "variations": {
+            "entries": [],
+            "mode": "off"
+          },
+          "weights": [
+            2,
+            3
+          ]
+        }
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          "spam",
+          "bad"
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "categories.1",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          "spam",
+          null
+        ]
+      },
+      "expected": {
+        "document": {
+          "categories": [
+            "spam",
+            null
+          ],
+          "codes": [],
+          "exemptTags": [
+            "mod",
+            "editor",
+            "admin"
+          ],
+          "first": {
+            "action": "warn",
+            "timeoutSeconds": 60
+          },
+          "second": {
+            "action": "delete",
+            "timeoutSeconds": 60
+          },
+          "third": {
+            "action": "timeout",
+            "timeoutSeconds": 60
+          },
+          "variations": {
+            "entries": [],
+            "mode": "off"
+          },
+          "weights": [
+            2,
+            3
+          ]
+        }
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          "spam",
+          1
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "categories.1",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          "ads",
+          "spam"
+        ]
+      },
+      "expected": {
+        "document": {
+          "categories": [
+            "ads",
+            "spam"
+          ],
+          "codes": [],
+          "exemptTags": [
+            "mod",
+            "editor",
+            "admin"
+          ],
+          "first": {
+            "action": "warn",
+            "timeoutSeconds": 60
+          },
+          "second": {
+            "action": "delete",
+            "timeoutSeconds": 60
+          },
+          "third": {
+            "action": "timeout",
+            "timeoutSeconds": 60
+          },
+          "variations": {
+            "entries": [],
+            "mode": "off"
+          },
+          "weights": [
+            2,
+            3
+          ]
+        }
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          "ads",
+          "bad"
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "categories.1",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          "ads",
+          null
+        ]
+      },
+      "expected": {
+        "document": {
+          "categories": [
+            "ads",
+            null
+          ],
+          "codes": [],
+          "exemptTags": [
+            "mod",
+            "editor",
+            "admin"
+          ],
+          "first": {
+            "action": "warn",
+            "timeoutSeconds": 60
+          },
+          "second": {
+            "action": "delete",
+            "timeoutSeconds": 60
+          },
+          "third": {
+            "action": "timeout",
+            "timeoutSeconds": 60
+          },
+          "variations": {
+            "entries": [],
+            "mode": "off"
+          },
+          "weights": [
+            2,
+            3
+          ]
+        }
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          "ads",
+          1
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "categories.1",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          "self_promotion",
+          "spam"
+        ]
+      },
+      "expected": {
+        "document": {
+          "categories": [
+            "self_promotion",
+            "spam"
+          ],
+          "codes": [],
+          "exemptTags": [
+            "mod",
+            "editor",
+            "admin"
+          ],
+          "first": {
+            "action": "warn",
+            "timeoutSeconds": 60
+          },
+          "second": {
+            "action": "delete",
+            "timeoutSeconds": 60
+          },
+          "third": {
+            "action": "timeout",
+            "timeoutSeconds": 60
+          },
+          "variations": {
+            "entries": [],
+            "mode": "off"
+          },
+          "weights": [
+            2,
+            3
+          ]
+        }
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          "self_promotion",
+          "bad"
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "categories.1",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          "self_promotion",
+          null
+        ]
+      },
+      "expected": {
+        "document": {
+          "categories": [
+            "self_promotion",
+            null
+          ],
+          "codes": [],
+          "exemptTags": [
+            "mod",
+            "editor",
+            "admin"
+          ],
+          "first": {
+            "action": "warn",
+            "timeoutSeconds": 60
+          },
+          "second": {
+            "action": "delete",
+            "timeoutSeconds": 60
+          },
+          "third": {
+            "action": "timeout",
+            "timeoutSeconds": 60
+          },
+          "variations": {
+            "entries": [],
+            "mode": "off"
+          },
+          "weights": [
+            2,
+            3
+          ]
+        }
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          "self_promotion",
+          1
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "categories.1",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          "profanity",
+          "spam"
+        ]
+      },
+      "expected": {
+        "document": {
+          "categories": [
+            "profanity",
+            "spam"
+          ],
+          "codes": [],
+          "exemptTags": [
+            "mod",
+            "editor",
+            "admin"
+          ],
+          "first": {
+            "action": "warn",
+            "timeoutSeconds": 60
+          },
+          "second": {
+            "action": "delete",
+            "timeoutSeconds": 60
+          },
+          "third": {
+            "action": "timeout",
+            "timeoutSeconds": 60
+          },
+          "variations": {
+            "entries": [],
+            "mode": "off"
+          },
+          "weights": [
+            2,
+            3
+          ]
+        }
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          "profanity",
+          "bad"
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "categories.1",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          "profanity",
+          null
+        ]
+      },
+      "expected": {
+        "document": {
+          "categories": [
+            "profanity",
+            null
+          ],
+          "codes": [],
+          "exemptTags": [
+            "mod",
+            "editor",
+            "admin"
+          ],
+          "first": {
+            "action": "warn",
+            "timeoutSeconds": 60
+          },
+          "second": {
+            "action": "delete",
+            "timeoutSeconds": 60
+          },
+          "third": {
+            "action": "timeout",
+            "timeoutSeconds": 60
+          },
+          "variations": {
+            "entries": [],
+            "mode": "off"
+          },
+          "weights": [
+            2,
+            3
+          ]
+        }
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          "profanity",
+          1
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "categories.1",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          "insults",
+          "spam"
+        ]
+      },
+      "expected": {
+        "document": {
+          "categories": [
+            "insults",
+            "spam"
+          ],
+          "codes": [],
+          "exemptTags": [
+            "mod",
+            "editor",
+            "admin"
+          ],
+          "first": {
+            "action": "warn",
+            "timeoutSeconds": 60
+          },
+          "second": {
+            "action": "delete",
+            "timeoutSeconds": 60
+          },
+          "third": {
+            "action": "timeout",
+            "timeoutSeconds": 60
+          },
+          "variations": {
+            "entries": [],
+            "mode": "off"
+          },
+          "weights": [
+            2,
+            3
+          ]
+        }
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          "insults",
+          "bad"
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "categories.1",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          "insults",
+          null
+        ]
+      },
+      "expected": {
+        "document": {
+          "categories": [
+            "insults",
+            null
+          ],
+          "codes": [],
+          "exemptTags": [
+            "mod",
+            "editor",
+            "admin"
+          ],
+          "first": {
+            "action": "warn",
+            "timeoutSeconds": 60
+          },
+          "second": {
+            "action": "delete",
+            "timeoutSeconds": 60
+          },
+          "third": {
+            "action": "timeout",
+            "timeoutSeconds": 60
+          },
+          "variations": {
+            "entries": [],
+            "mode": "off"
+          },
+          "weights": [
+            2,
+            3
+          ]
+        }
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          "insults",
+          1
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "categories.1",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          "bad",
+          "spam"
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "categories.0",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          "bad",
+          "bad"
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "categories.0",
+            "kind": "enum"
+          },
+          {
+            "path": "categories.1",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          "bad",
+          null
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "categories.0",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          "bad",
+          1
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "categories.0",
+            "kind": "enum"
+          },
+          {
+            "path": "categories.1",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          "",
+          "spam"
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "categories.0",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          "",
+          "bad"
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "categories.0",
+            "kind": "enum"
+          },
+          {
+            "path": "categories.1",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          "",
+          null
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "categories.0",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          "",
+          1
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "categories.0",
+            "kind": "enum"
+          },
+          {
+            "path": "categories.1",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          null,
+          "spam"
+        ]
+      },
+      "expected": {
+        "document": {
+          "categories": [
+            null,
+            "spam"
+          ],
+          "codes": [],
+          "exemptTags": [
+            "mod",
+            "editor",
+            "admin"
+          ],
+          "first": {
+            "action": "warn",
+            "timeoutSeconds": 60
+          },
+          "second": {
+            "action": "delete",
+            "timeoutSeconds": 60
+          },
+          "third": {
+            "action": "timeout",
+            "timeoutSeconds": 60
+          },
+          "variations": {
+            "entries": [],
+            "mode": "off"
+          },
+          "weights": [
+            2,
+            3
+          ]
+        }
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          null,
+          "bad"
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "categories.1",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          null,
+          null
+        ]
+      },
+      "expected": {
+        "document": {
+          "categories": [
+            null,
+            null
+          ],
+          "codes": [],
+          "exemptTags": [
+            "mod",
+            "editor",
+            "admin"
+          ],
+          "first": {
+            "action": "warn",
+            "timeoutSeconds": 60
+          },
+          "second": {
+            "action": "delete",
+            "timeoutSeconds": 60
+          },
+          "third": {
+            "action": "timeout",
+            "timeoutSeconds": 60
+          },
+          "variations": {
+            "entries": [],
+            "mode": "off"
+          },
+          "weights": [
+            2,
+            3
+          ]
+        }
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          null,
+          1
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "categories.1",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          0,
+          "spam"
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "categories.0",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          0,
+          "bad"
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "categories.0",
+            "kind": "enum"
+          },
+          {
+            "path": "categories.1",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          0,
+          null
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "categories.0",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          0,
+          1
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "categories.0",
+            "kind": "enum"
+          },
+          {
+            "path": "categories.1",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          1,
+          "spam"
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "categories.0",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          1,
+          "bad"
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "categories.0",
+            "kind": "enum"
+          },
+          {
+            "path": "categories.1",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          1,
+          null
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "categories.0",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          1,
+          1
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "categories.0",
+            "kind": "enum"
+          },
+          {
+            "path": "categories.1",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          true,
+          "spam"
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "categories.0",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          true,
+          "bad"
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "categories.0",
+            "kind": "enum"
+          },
+          {
+            "path": "categories.1",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          true,
+          null
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "categories.0",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          true,
+          1
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "categories.0",
+            "kind": "enum"
+          },
+          {
+            "path": "categories.1",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          false,
+          "spam"
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "categories.0",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          false,
+          "bad"
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "categories.0",
+            "kind": "enum"
+          },
+          {
+            "path": "categories.1",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          false,
+          null
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "categories.0",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "composite",
+      "input": {
+        "categories": [
+          false,
+          1
+        ]
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "categories.0",
+            "kind": "enum"
+          },
+          {
+            "path": "categories.1",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "model": "empty",
+      "input": {},
+      "expected": {
+        "document": {
+          "children": [
+            {}
+          ],
+          "map": {}
+        }
+      }
+    },
+    {
+      "model": "empty",
+      "input": {
+        "mixed": {},
+        "single": {},
+        "children": [
+          {}
+        ],
+        "map": {}
+      },
+      "expected": {
+        "document": {
+          "children": [
+            {}
+          ],
+          "map": {}
+        }
+      }
+    },
+    {
+      "model": "empty",
+      "input": {
+        "mixed": null,
+        "single": null,
+        "children": null,
+        "map": null
+      },
+      "expected": {
+        "document": {
+          "children": null,
+          "map": null,
+          "mixed": null,
+          "single": null
+        }
+      }
+    },
+    {
+      "model": "empty",
+      "input": {
+        "mixed": {
+          "nested": {}
+        },
+        "single": {
+          "unknown": "discarded"
+        },
+        "children": [
+          {
+            "unknown": "discarded"
+          },
+          {}
+        ],
+        "map": {
+          "a": 4
+        }
+      },
+      "expected": {
+        "document": {
+          "children": [
+            {},
+            {}
+          ],
+          "map": {
+            "a": "4"
+          }
+        }
+      }
+    },
+    {
+      "model": "empty",
+      "input": {
+        "children": []
+      },
+      "expected": {
+        "document": {
+          "children": [],
+          "map": {}
+        }
+      }
+    },
+    {
+      "model": "empty",
+      "input": {
+        "children": {}
+      },
+      "expected": {
+        "document": {
+          "children": [
+            {}
+          ],
+          "map": {}
+        }
+      }
+    }
+  ],
+  "actualCases": [
+    {
+      "input": {
+        "channelID": "c",
+        "rules": [
+          {
+            "id": "r",
+            "type": "caps"
+          }
+        ]
+      },
+      "selected": {
+        "first": {
+          "action": "warn",
+          "timeoutSeconds": 60
+        },
+        "second": {
+          "action": "delete",
+          "timeoutSeconds": 60
+        },
+        "spamProtection": {
+          "categories": [
+            "spam",
+            "ads",
+            "self_promotion"
+          ],
+          "enabled": true,
+          "exemptTags": [
+            "mod",
+            "editor",
+            "admin"
+          ],
+          "reviewAllMessages": false,
+          "thresholdPercent": 85
+        },
+        "third": {
+          "action": "timeout",
+          "timeoutSeconds": 60
+        },
+        "variations": {
+          "entries": [],
+          "mode": "off"
+        }
+      },
+      "errors": []
+    },
+    {
+      "input": {
+        "channelID": "c",
+        "spamProtection": {
+          "categories": [
+            "bad"
+          ],
+          "exemptTags": [
+            "invalid"
+          ]
+        },
+        "rules": [
+          {
+            "id": "r",
+            "type": "caps"
+          }
+        ]
+      },
+      "selected": {
+        "first": {
+          "action": "warn",
+          "timeoutSeconds": 60
+        },
+        "second": {
+          "action": "delete",
+          "timeoutSeconds": 60
+        },
+        "spamProtection": {
+          "categories": [
+            "bad"
+          ],
+          "enabled": true,
+          "exemptTags": [
+            "invalid"
+          ],
+          "reviewAllMessages": false,
+          "thresholdPercent": 85
+        },
+        "third": {
+          "action": "timeout",
+          "timeoutSeconds": 60
+        },
+        "variations": {
+          "entries": [],
+          "mode": "off"
+        }
+      },
+      "errors": [
+        {
+          "path": "spamProtection.categories.0",
+          "kind": "enum"
+        },
+        {
+          "path": "spamProtection.exemptTags.0",
+          "kind": "enum"
+        }
+      ]
+    },
+    {
+      "input": {
+        "channelID": "c",
+        "spamProtection": {
+          "categories": [
+            "spam",
+            null
+          ],
+          "exemptTags": [
+            "mod"
+          ]
+        },
+        "rules": [
+          {
+            "id": "r",
+            "type": "caps",
+            "secondOffense": {
+              "action": "ban"
+            },
+            "variations": {
+              "mode": "custom",
+              "entries": [
+                "x"
+              ]
+            }
+          }
+        ]
+      },
+      "selected": {
+        "first": {
+          "action": "warn",
+          "timeoutSeconds": 60
+        },
+        "second": {
+          "action": "ban",
+          "timeoutSeconds": 60
+        },
+        "spamProtection": {
+          "categories": [
+            "spam",
+            null
+          ],
+          "enabled": true,
+          "exemptTags": [
+            "mod"
+          ],
+          "reviewAllMessages": false,
+          "thresholdPercent": 85
+        },
+        "third": {
+          "action": "timeout",
+          "timeoutSeconds": 60
+        },
+        "variations": {
+          "entries": [
+            "x"
+          ],
+          "mode": "custom"
+        }
+      },
+      "errors": []
+    },
+    {
+      "input": {
+        "channelID": "c",
+        "spamProtection": null,
+        "rules": [
+          {
+            "id": "r",
+            "type": "caps",
+            "secondOffense": null,
+            "thirdOffense": {}
+          }
+        ]
+      },
+      "selected": {
+        "first": {
+          "action": "warn",
+          "timeoutSeconds": 60
+        },
+        "second": null,
+        "spamProtection": null,
+        "third": {
+          "action": "warn",
+          "timeoutSeconds": 60
+        },
+        "variations": {
+          "entries": [],
+          "mode": "off"
+        }
+      },
+      "errors": []
+    }
+  ],
+  "elementDefaults": [
+    {
+      "label": "undefined",
+      "errors": [],
+      "document": {
+        "values": [
+          null
+        ]
+      },
+      "slots": [
+        "undefined"
+      ]
+    },
+    {
+      "label": "null",
+      "errors": [],
+      "document": {
+        "values": [
+          null
+        ]
+      },
+      "slots": [
+        "null"
+      ]
+    },
+    {
+      "label": "sparse",
+      "errors": [],
+      "document": {
+        "values": [
+          null
+        ]
+      },
+      "slots": [
+        "undefined"
+      ]
+    },
+    {
+      "label": "empty",
+      "errors": [],
+      "document": {
+        "values": []
+      },
+      "slots": []
+    }
+  ],
+  "cloneEvidence": {
+    "mutated": {
+      "categories": [
+        "spam",
+        "ads",
+        "self_promotion",
+        "insults"
+      ],
+      "codes": [],
+      "exemptTags": [
+        "mod",
+        "editor",
+        "admin"
+      ],
+      "first": {
+        "action": "warn",
+        "timeoutSeconds": 60
+      },
+      "second": {
+        "action": "ban",
+        "timeoutSeconds": 60
+      },
+      "third": {
+        "action": "timeout",
+        "timeoutSeconds": 60
+      },
+      "variations": {
+        "entries": [
+          "local"
+        ],
+        "mode": "off"
+      },
+      "weights": [
+        2,
+        3
+      ]
+    },
+    "independent": {
+      "categories": [
+        "spam",
+        "ads",
+        "self_promotion"
+      ],
+      "codes": [],
+      "exemptTags": [
+        "mod",
+        "editor",
+        "admin"
+      ],
+      "first": {
+        "action": "warn",
+        "timeoutSeconds": 60
+      },
+      "second": {
+        "action": "delete",
+        "timeoutSeconds": 60
+      },
+      "third": {
+        "action": "timeout",
+        "timeoutSeconds": 60
+      },
+      "variations": {
+        "entries": [],
+        "mode": "off"
+      },
+      "weights": [
+        2,
+        3
+      ]
+    },
+    "fresh": {
+      "categories": [
+        "spam",
+        "ads",
+        "self_promotion"
+      ],
+      "codes": [],
+      "exemptTags": [
+        "mod",
+        "editor",
+        "admin"
+      ],
+      "first": {
+        "action": "warn",
+        "timeoutSeconds": 60
+      },
+      "second": {
+        "action": "delete",
+        "timeoutSeconds": 60
+      },
+      "third": {
+        "action": "timeout",
+        "timeoutSeconds": 60
+      },
+      "variations": {
+        "entries": [],
+        "mode": "off"
+      },
+      "weights": [
+        2,
+        3
+      ]
+    }
+  }
+}

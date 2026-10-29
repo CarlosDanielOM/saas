@@ -1,0 +1,175 @@
+{
+  "status": "Bounded channel moderation schema and composite core source feature coverage; whole-application adoption and overall Rust migration remain incomplete.",
+  "acceptedRuns": [
+    "node-1793311821006651643",
+    "compiler-1793311821020142484",
+    "compiler-fixtures-1793311873934271303"
+  ],
+  "sourceTreeSha256": "f630b11bf6ed08984f28de5cc14262c139c6541c581823561c1d53e3d93630fd",
+  "sourceInputs": 1341,
+  "gitInputs": 1331,
+  "sdkReferences": 10,
+  "coreSourceCases": 97,
+  "selectedActualModelRecords": 4,
+  "fullModelCases": 56,
+  "runs": [
+    {
+      "run": "compiler-1793311058806879224",
+      "success": false,
+      "productionUnchanged": true,
+      "sourceTreeSha256": "b6e155b47a30e92f3349c79b66b393212b99c95378ab08b54e95e975e948bae9",
+      "classification": "obsolete BSON v3 test API"
+    },
+    {
+      "run": "compiler-1793311153425699095",
+      "success": true,
+      "productionUnchanged": true,
+      "sourceTreeSha256": "2de8d5aff819117327602f43656a88a01a838279506612ad050fe81774ff98f9",
+      "classification": "successful nonfinal candidate"
+    },
+    {
+      "run": "compiler-1793311232008086775",
+      "success": false,
+      "productionUnchanged": true,
+      "sourceTreeSha256": "2de8d5aff819117327602f43656a88a01a838279506612ad050fe81774ff98f9",
+      "classification": "nested Mixed source mismatch"
+    },
+    {
+      "run": "compiler-1793311337627170780",
+      "success": false,
+      "productionUnchanged": true,
+      "sourceTreeSha256": "2de8d5aff819117327602f43656a88a01a838279506612ad050fe81774ff98f9",
+      "classification": "stale Cargo include_bytes source hash guard, mtime issue"
+    },
+    {
+      "run": "compiler-1793311505008038427",
+      "success": true,
+      "productionUnchanged": true,
+      "sourceTreeSha256": "3e4a5573d40abd87895df5309be5a0679f2a3c994600118accefefaa6d8c415b",
+      "classification": "successful nonfinal candidate"
+    },
+    {
+      "run": "compiler-1793311637676422299",
+      "success": false,
+      "productionUnchanged": true,
+      "sourceTreeSha256": "3e4a5573d40abd87895df5309be5a0679f2a3c994600118accefefaa6d8c415b",
+      "classification": "constructor/valueOf Mixed dispatch source mismatch"
+    },
+    {
+      "run": "compiler-1793311821020142484",
+      "success": true,
+      "productionUnchanged": true,
+      "sourceTreeSha256": "f630b11bf6ed08984f28de5cc14262c139c6541c581823561c1d53e3d93630fd",
+      "classification": "accepted final"
+    },
+    {
+      "run": "compiler-fixtures-1793311587439324424",
+      "success": false,
+      "productionUnchanged": true,
+      "sourceTreeSha256": "3e4a5573d40abd87895df5309be5a0679f2a3c994600118accefefaa6d8c415b",
+      "classification": "cast-error harness label mismatch; source error metadata retained"
+    },
+    {
+      "run": "compiler-fixtures-1793311873934271303",
+      "success": true,
+      "productionUnchanged": true,
+      "sourceTreeSha256": "f630b11bf6ed08984f28de5cc14262c139c6541c581823561c1d53e3d93630fd",
+      "classification": "accepted final"
+    },
+    {
+      "run": "format-1793311038914214060",
+      "success": true,
+      "productionUnchanged": true,
+      "sourceTreeSha256": "94912c0de4ea1970bd8b33d47f7ea32ce5487dfb774db32d94d254d409c392d5",
+      "classification": "successful nonfinal candidate"
+    },
+    {
+      "run": "format-1793311429202510011",
+      "success": true,
+      "productionUnchanged": true,
+      "sourceTreeSha256": "2de8d5aff819117327602f43656a88a01a838279506612ad050fe81774ff98f9",
+      "classification": "successful nonfinal candidate"
+    },
+    {
+      "run": "format-1793311465064525331",
+      "success": true,
+      "productionUnchanged": true,
+      "sourceTreeSha256": "4a255a24d523f06ca51b5172760c97d36762429aca72a8a9d37202eed13590d3",
+      "classification": "successful nonfinal candidate"
+    },
+    {
+      "run": "format-1793311786331226408",
+      "success": true,
+      "productionUnchanged": true,
+      "sourceTreeSha256": "6aff0c6bda974e70a0a1fbaf5c423945b439df498847bfe6ec2e9b999eecb6ae",
+      "classification": "successful nonfinal candidate"
+    },
+    {
+      "run": "node-1793311058791146323",
+      "success": false,
+      "productionUnchanged": true,
+      "sourceTreeSha256": "b6e155b47a30e92f3349c79b66b393212b99c95378ab08b54e95e975e948bae9",
+      "classification": "oracle missing parenthesis"
+    },
+    {
+      "run": "node-1793311153413647620",
+      "success": true,
+      "productionUnchanged": true,
+      "sourceTreeSha256": "2de8d5aff819117327602f43656a88a01a838279506612ad050fe81774ff98f9",
+      "classification": "successful nonfinal candidate"
+    },
+    {
+      "run": "node-1793311505008036373",
+      "success": true,
+      "productionUnchanged": true,
+      "sourceTreeSha256": "3e4a5573d40abd87895df5309be5a0679f2a3c994600118accefefaa6d8c415b",
+      "classification": "successful nonfinal candidate"
+    },
+    {
+      "run": "node-1793311821006651643",
+      "success": true,
+      "productionUnchanged": true,
+      "sourceTreeSha256": "f630b11bf6ed08984f28de5cc14262c139c6541c581823561c1d53e3d93630fd",
+      "classification": "accepted final"
+    }
+  ],
+  "finalFixtureReceipt": {
+    "steps": [
+      {
+        "name": "bootstrap",
+        "seconds": 3.702,
+        "exit_code": 0
+      },
+      {
+        "name": "locked-fetch",
+        "seconds": 1.736,
+        "exit_code": 0
+      },
+      {
+        "name": "compiler-fixtures",
+        "seconds": 147.058,
+        "exit_code": 0
+      }
+    ],
+    "elapsedSeconds": 156.944,
+    "minimumAvailableBytes": 7823761408,
+    "peakCacheBytes": 4800012288,
+    "limits": {
+      "cpus": 6,
+      "memory": 4294967296,
+      "memory_swap": 4294967296,
+      "pids": 256,
+      "cargo_jobs": 2
+    }
+  },
+  "productionUnchangedRecords": 19,
+  "remainingOwnedResources": {
+    "containers": [],
+    "networks": [],
+    "volumes": []
+  },
+  "performanceMeasured": false,
+  "typescriptRetired": false,
+  "deployed": false,
+  "pushed": false
+}

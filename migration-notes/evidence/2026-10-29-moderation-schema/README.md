@@ -1,0 +1,7 @@
+# Moderation schema evidence
+
+The final accepted Node, compiler and fixture runs bind to model commit `3bfbfbd1` and core commit `956aa9dc`. All 1,341 frozen inputs are accounted for: 1,331 match Git at the model commit, and ten SDK references match the previously verified binding. All four candidate artifact waves and the full receipt/log interval are preserved. Earlier failures retain their own source hashes and classifications; the stale Cargo source-hash guard is not a model mismatch.
+
+The independent readback records 97 core cases, four selected actual model records and 56 full model cases. Final runs report six ordinary new tests, two source replay tests, a new private Mongo test and an existing application persistence test; existing core, application and channel TTS regression tests also passed. No-feature, Mongo/Redis, all-features/all-targets and strict Clippy checks passed. The final fixture phase took 147.058 seconds within a 156.944 second run; minimum available memory was 7,823,761,408 bytes and peak cache was 4,800,012,288 bytes. Final readback records 19 unchanged production records and no remaining owned resources.
+
+Mixed minimization is explicit opt-in and leaves existing descriptors unchanged. Ordinary JSON/BSON coverage does not establish parity for sparse or undefined JavaScript values, executable hooks, or exotic constructor metadata. This is bounded source-file feature coverage; whole-application adoption and overall migration remain incomplete. No benchmark, TypeScript retirement, deployment or push is claimed.
