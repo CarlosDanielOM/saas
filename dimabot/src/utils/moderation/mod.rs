@@ -15,3 +15,6 @@ pub mod normalize;
 
 #[cfg(feature = "moderation-spam-categories")]
 pub mod spam_categories;
+
+#[cfg(feature = "moderation-permit")]
+pub mod permit;

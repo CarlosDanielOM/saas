@@ -58,7 +58,8 @@ pub mod js_compat;
     feature = "bits-rules",
     feature = "tts-utilities",
     feature = "moderation-emote-spam",
-    feature = "moderation-caps"
+    feature = "moderation-caps",
+    feature = "moderation-permit"
 ))]
 pub mod json_number;
 
@@ -67,7 +68,8 @@ pub mod json_number;
     feature = "moderation-caps",
     feature = "moderation-normalize",
     feature = "moderation-links",
-    feature = "moderation-spam-categories"
+    feature = "moderation-spam-categories",
+    feature = "moderation-permit"
 ))]
 pub mod moderation;
 
