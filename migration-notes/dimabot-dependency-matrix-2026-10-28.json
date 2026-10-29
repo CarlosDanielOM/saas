@@ -90881,27 +90881,59 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-local-feature-and-helper-dependencies",
+      "localRustEvidence": [
+        "dimabot/src/utils/permissions/error_rate_limit.rs",
+        "dimabot/src/utils/permissions/index.rs",
+        "dimabot/src/utils/js_string.rs",
+        "dimabot/tests/permission_error_rate_limit.rs",
+        "dimabot/tests/fixtures/permission_error_rate_limit_reference.cjs",
+        "migration-notes/permission-error-rate-limit-2026-10-29.md",
+        "migration-notes/evidence/2026-10-29-permission-error-rate-limit/verification-summary.json"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "Fixed capacity 2000, least-recently-logged order, denied-call order preservation and binary64/default clock semantics match the source. The reusable core uses a bounded linked arena and standard HashMap; a mutex and OnceLock provide the concrete process-wide wrapper.",
+        "Keys preserve arbitrary UTF-16 through existing JsString. String keys and numeric/default timing inputs follow the source declaration; invalid JavaScript runtime casts are excluded.",
+        "No new Cargo crate, feature or lock change. Existing permissions feature reuses the independent string utility. No scheduler delay, polling loop or retry was introduced. Key-count boundedness is not a hard total-byte bound for arbitrarily long strings.",
+        "TypeScript source and callers remain live; no retirement/adoption/deployment/push or measured performance claim."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/src/utils/permissions/roles.ts",
+          "dimabot/src/handlers/moderation.handler.ts",
+          "dimabot/src/handlers/message.handler.ts",
+          "dimabot/src/utils/permissions/index.ts"
+        ],
+        "runtimeStatus": "Source callers/barrel remain TypeScript and have not adopted the native wrapper. Caller adoption is separate from this leaf helper dependency closure."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "Full actual-module AST/export/type/source/runtime checks;2113-operation source trace plus final2000-key ordered state; independent native/reader/Node hashes verified."
+        ],
+        "rustBehaviorEvidence": [
+          "Three new ordinary tests including32 concurrent callers and real default clock;19 existing permission/string library tests;2113-operation native replay with full final state comparison.",
+          "No-feature, Mongo/Redis worker-profile and all-feature/all-target checks and strict Clippy passed at source5bbd8f709ca352d0621c69e3fa5a5613deda9622eb82a5dacd74535c2753b756 (1301 inputs), codef3894821.",
+          "migration-notes/evidence/2026-10-29-permission-error-rate-limit/verification-summary.json"
+        ],
+        "status": "local helper export and all std/existing native dependencies verified; no external application adapter required; source live/callers unadopted"
       },
       "exports": [
         {
           "name": "shouldLogPermissionError",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "complete native should_log_permission_error global wrapper and PermissionErrorLimiter core, including standard clock/defaults and bounded state",
+          "evidence": [
+            "dimabot/src/utils/permissions/error_rate_limit.rs",
+            "dimabot/src/utils/permissions/index.rs",
+            "dimabot/src/utils/js_string.rs",
+            "dimabot/tests/permission_error_rate_limit.rs",
+            "dimabot/tests/fixtures/permission_error_rate_limit_reference.cjs",
+            "migration-notes/permission-error-rate-limit-2026-10-29.md",
+            "migration-notes/evidence/2026-10-29-permission-error-rate-limit/verification-summary.json"
+          ]
         }
       ],
       "imports": [],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-helper-feature-and-native-dependencies-verified;source-live;application-caller-adoption-open"
     },
     {
       "source": "src/utils/permissions/expression.test.ts",

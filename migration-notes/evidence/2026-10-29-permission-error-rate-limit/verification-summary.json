@@ -1,0 +1,53 @@
+{
+  "status": "Verified native permission error limiter and global wrapper; whole permission/handler migration incomplete.",
+  "codeCommit": "f3894821e8f334ec7139116a586288cbad3411c6",
+  "sourceTreeSha256": "5bbd8f709ca352d0621c69e3fa5a5613deda9622eb82a5dacd74535c2753b756",
+  "sourceInputs": 1301,
+  "acceptedRuns": [
+    "compiler-1793301719984530274",
+    "node-1793301719976570795",
+    "compiler-1793301823170643516"
+  ],
+  "sourceOperations": 2113,
+  "orderedFinalTrackedKeys": 2000,
+  "newOrdinaryTests": 3,
+  "existingLibraryTests": 19,
+  "limits": {
+    "cpus": 6,
+    "memory": 4294967296,
+    "memory_swap": 4294967296,
+    "pids": 256,
+    "cargo_jobs": 2
+  },
+  "peakCacheBytes": 3610828800,
+  "minimumAvailableBytes": 8840032256,
+  "productionUnchangedRecords": 19,
+  "performanceMeasured": false,
+  "noRetirementAdoptionDeploymentPush": true,
+  "runs": [
+    {
+      "run": "compiler-1793301719984530274",
+      "success": true,
+      "sourceTreeSha256": "5bbd8f709ca352d0621c69e3fa5a5613deda9622eb82a5dacd74535c2753b756",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-1793301823170643516",
+      "success": true,
+      "sourceTreeSha256": "5bbd8f709ca352d0621c69e3fa5a5613deda9622eb82a5dacd74535c2753b756",
+      "productionUnchanged": true
+    },
+    {
+      "run": "format-1793301518333459419",
+      "success": true,
+      "sourceTreeSha256": "787f673d2cf0cdce86662df18e95c2ccc53777266125e92bd3d1ae1653699793",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793301719976570795",
+      "success": true,
+      "sourceTreeSha256": "5bbd8f709ca352d0621c69e3fa5a5613deda9622eb82a5dacd74535c2753b756",
+      "productionUnchanged": true
+    }
+  ]
+}

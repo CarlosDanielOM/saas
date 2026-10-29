@@ -1,0 +1,20 @@
+{
+  "allNativeAndReaderHashesVerified": true,
+  "files": {
+    "Cargo.toml": "e09684451e091e414cad80c663b6874a5bcb7f79f30135d4d25fd1eac9503818",
+    "Cargo.lock": "787333fa269752a606040d7393767040ef749ce1e01c2512386bf305bcd7a2c3",
+    "rust-toolchain.toml": "b9c8d2d59f6f46474c0cfa0b8b77bea21d94fc73a30ad93d5bf6385c422197d2",
+    "src/lib.rs": "43b52b0f94e29abbfcd2d0a4f7dc49f001ea6986f96aef1a80d38fccb8fd14c3",
+    "src/utils/mod.rs": "29c7aab8956ab29daec73f963f9a57081888f4ccd38f072a6ed0aca8a5ac7283",
+    "src/utils/js_compat.rs": "798538b33fa38b7a07935c22430ce12e3d93abc1afb4f605492299bbf27a64bc",
+    "src/utils/js_string.rs": "17b3e6a6bcd0d92210851eca25da44bbcdb2c2d9e196feb5dab58d06b75d4aed",
+    "src/utils/permissions/index.rs": "d5d03449b3dbe01142710a4436caae4a0817fbddcdfb7d2ad73847f95cc28601",
+    "src/utils/permissions/error_rate_limit.rs": "13c2c5577666f9896e8fad98d038a607f1119aa919c19fb8ff4eedf8b9ddd215",
+    "tests/permission_error_rate_limit.rs": "038948100bd2c26db804150157812aed01ab485eb056da5eab6d6c151f5036e0",
+    "tests/fixtures/permission_error_rate_limit_reference.cjs": "0947b0c3beffb40103f548ea7b3f352cb881c9228f498c53dbc1fa5028776e97"
+  },
+  "nodeSha256": "569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108",
+  "operationCount": 2113,
+  "trackedKeys": 2000,
+  "sourceSha256": "4e840093ef500738588ea7990f4303ea18f9368abd4d9e898557af73e08e8d56"
+}
