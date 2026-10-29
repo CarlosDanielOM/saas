@@ -1,0 +1,734 @@
+{
+  "metadata": {
+    "schema": 1,
+    "node": "v24.22.1",
+    "v8": "13.6.233.17-node.58",
+    "typescript": "5.9.3",
+    "hashes": {
+      "source": "00fcd076d0f3460ecea46588904242252a32b9500e43217c67a1a07e1cbe4b36",
+      "package": "cc4939f6416a91d4bfaa5bcdd3d448d2f74103a88bb269e0a8e393615cf32cef",
+      "lock": "abdf5aa71a8272423ebb9358d7aaa87edd7e65f6605c325fe231a4bcef70eeb7",
+      "typescript": "3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675",
+      "typescriptPackage": "822ef7ca6452205657b6288b066481ecf508bfbf43455d715cf7d3ec457561e6",
+      "node": "569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108",
+      "oracle": "580eb255a7a4fabe8c789dfc143bb1e616df55d972e0110af4abf5f2f20ddb2e"
+    },
+    "nativeHashes": {
+      "src/utils/ai_usage.rs": "a4d9b103569b5bce80150091ff028dbe09f90bdada0b7572525705e46a0431b5",
+      "src/utils/tts/settings.rs": "e49542fb02eadaedfd28099c829f6b0bd43302af72d725147e3112b188f34fa9",
+      "src/utils/lossless_json.rs": "81655862a29d68c01ab49a79027788c569d688bc1f7c9e55cbea20816dc7f2a6",
+      "src/utils/js_string.rs": "17b3e6a6bcd0d92210851eca25da44bbcdb2c2d9e196feb5dab58d06b75d4aed",
+      "src/utils/json_number.rs": "f463c65a55bcd611ed9bad2444e50acff697969bb910b7b4c17371d0af21f419",
+      "tests/ai_usage_classification.rs": "fc056bb734bb6a50a30488472f47aed01602ebaa0f2f34c200eb2191a9617699"
+    },
+    "signature": "(input: { entryKind?: unknown; operation?: unknown; source?: unknown; reason?: unknown; adjustmentType?: unknown; }): string | null",
+    "tuple": "readonly [\"manual_grant\", \"monthly_reset\", \"subscription_credits\", \"purchased_pack\", \"gifted_credits\", \"native_grant\", \"refund\", \"correction\", \"activation\", \"other\"]",
+    "exports": [
+      "ADJUSTMENT_TYPES",
+      "classifyAdjustment"
+    ],
+    "total": 100
+  },
+  "cases": [
+    {
+      "id": "empty",
+      "raw": "{}",
+      "result": {
+        "value": null
+      }
+    },
+    {
+      "id": "null-input",
+      "raw": "null",
+      "result": {
+        "error": "TypeError"
+      }
+    },
+    {
+      "id": "wrong-kind",
+      "raw": "{\"entryKind\":\"usage\",\"source\":{\"toString\":null}}",
+      "result": {
+        "value": null
+      }
+    },
+    {
+      "id": "explicit-manual_grant",
+      "raw": "{\"entryKind\":\"adjustment\",\"adjustmentType\":\"manual_grant\",\"source\":{\"toString\":null},\"operation\":{\"toString\":null}}",
+      "result": {
+        "value": "manual_grant"
+      }
+    },
+    {
+      "id": "explicit-monthly_reset",
+      "raw": "{\"entryKind\":\"adjustment\",\"adjustmentType\":\"monthly_reset\",\"source\":{\"toString\":null},\"operation\":{\"toString\":null}}",
+      "result": {
+        "value": "monthly_reset"
+      }
+    },
+    {
+      "id": "explicit-subscription_credits",
+      "raw": "{\"entryKind\":\"adjustment\",\"adjustmentType\":\"subscription_credits\",\"source\":{\"toString\":null},\"operation\":{\"toString\":null}}",
+      "result": {
+        "value": "subscription_credits"
+      }
+    },
+    {
+      "id": "explicit-purchased_pack",
+      "raw": "{\"entryKind\":\"adjustment\",\"adjustmentType\":\"purchased_pack\",\"source\":{\"toString\":null},\"operation\":{\"toString\":null}}",
+      "result": {
+        "value": "purchased_pack"
+      }
+    },
+    {
+      "id": "explicit-gifted_credits",
+      "raw": "{\"entryKind\":\"adjustment\",\"adjustmentType\":\"gifted_credits\",\"source\":{\"toString\":null},\"operation\":{\"toString\":null}}",
+      "result": {
+        "value": "gifted_credits"
+      }
+    },
+    {
+      "id": "explicit-native_grant",
+      "raw": "{\"entryKind\":\"adjustment\",\"adjustmentType\":\"native_grant\",\"source\":{\"toString\":null},\"operation\":{\"toString\":null}}",
+      "result": {
+        "value": "native_grant"
+      }
+    },
+    {
+      "id": "explicit-refund",
+      "raw": "{\"entryKind\":\"adjustment\",\"adjustmentType\":\"refund\",\"source\":{\"toString\":null},\"operation\":{\"toString\":null}}",
+      "result": {
+        "value": "refund"
+      }
+    },
+    {
+      "id": "explicit-correction",
+      "raw": "{\"entryKind\":\"adjustment\",\"adjustmentType\":\"correction\",\"source\":{\"toString\":null},\"operation\":{\"toString\":null}}",
+      "result": {
+        "value": "correction"
+      }
+    },
+    {
+      "id": "explicit-activation",
+      "raw": "{\"entryKind\":\"adjustment\",\"adjustmentType\":\"activation\",\"source\":{\"toString\":null},\"operation\":{\"toString\":null}}",
+      "result": {
+        "value": "activation"
+      }
+    },
+    {
+      "id": "explicit-other",
+      "raw": "{\"entryKind\":\"adjustment\",\"adjustmentType\":\"other\",\"source\":{\"toString\":null},\"operation\":{\"toString\":null}}",
+      "result": {
+        "value": "other"
+      }
+    },
+    {
+      "id": "collision-polar_meter_credit-monthly_reset-Free benefits",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"polar_meter_credit\",\"operation\":\"monthly_reset\",\"reason\":\"Free benefits\"}",
+      "result": {
+        "value": "native_grant"
+      }
+    },
+    {
+      "id": "collision-polar_meter_credit-monthly_reset-other",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"polar_meter_credit\",\"operation\":\"monthly_reset\",\"reason\":\"other\"}",
+      "result": {
+        "value": "native_grant"
+      }
+    },
+    {
+      "id": "collision-polar_meter_credit-purchase_pack-Free benefits",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"polar_meter_credit\",\"operation\":\"purchase_pack\",\"reason\":\"Free benefits\"}",
+      "result": {
+        "value": "native_grant"
+      }
+    },
+    {
+      "id": "collision-polar_meter_credit-purchase_pack-other",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"polar_meter_credit\",\"operation\":\"purchase_pack\",\"reason\":\"other\"}",
+      "result": {
+        "value": "native_grant"
+      }
+    },
+    {
+      "id": "collision-polar_meter_credit-refund-Free benefits",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"polar_meter_credit\",\"operation\":\"refund\",\"reason\":\"Free benefits\"}",
+      "result": {
+        "value": "native_grant"
+      }
+    },
+    {
+      "id": "collision-polar_meter_credit-refund-other",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"polar_meter_credit\",\"operation\":\"refund\",\"reason\":\"other\"}",
+      "result": {
+        "value": "native_grant"
+      }
+    },
+    {
+      "id": "collision-polar_meter_credit-correction-Free benefits",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"polar_meter_credit\",\"operation\":\"correction\",\"reason\":\"Free benefits\"}",
+      "result": {
+        "value": "native_grant"
+      }
+    },
+    {
+      "id": "collision-polar_meter_credit-correction-other",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"polar_meter_credit\",\"operation\":\"correction\",\"reason\":\"other\"}",
+      "result": {
+        "value": "native_grant"
+      }
+    },
+    {
+      "id": "collision-polar_meter_credit-unknown-Free benefits",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"polar_meter_credit\",\"operation\":\"unknown\",\"reason\":\"Free benefits\"}",
+      "result": {
+        "value": "native_grant"
+      }
+    },
+    {
+      "id": "collision-polar_meter_credit-unknown-other",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"polar_meter_credit\",\"operation\":\"unknown\",\"reason\":\"other\"}",
+      "result": {
+        "value": "native_grant"
+      }
+    },
+    {
+      "id": "collision-free_credit_reset-monthly_reset-Free benefits",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"free_credit_reset\",\"operation\":\"monthly_reset\",\"reason\":\"Free benefits\"}",
+      "result": {
+        "value": "monthly_reset"
+      }
+    },
+    {
+      "id": "collision-free_credit_reset-monthly_reset-other",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"free_credit_reset\",\"operation\":\"monthly_reset\",\"reason\":\"other\"}",
+      "result": {
+        "value": "monthly_reset"
+      }
+    },
+    {
+      "id": "collision-free_credit_reset-purchase_pack-Free benefits",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"free_credit_reset\",\"operation\":\"purchase_pack\",\"reason\":\"Free benefits\"}",
+      "result": {
+        "value": "monthly_reset"
+      }
+    },
+    {
+      "id": "collision-free_credit_reset-purchase_pack-other",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"free_credit_reset\",\"operation\":\"purchase_pack\",\"reason\":\"other\"}",
+      "result": {
+        "value": "monthly_reset"
+      }
+    },
+    {
+      "id": "collision-free_credit_reset-refund-Free benefits",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"free_credit_reset\",\"operation\":\"refund\",\"reason\":\"Free benefits\"}",
+      "result": {
+        "value": "monthly_reset"
+      }
+    },
+    {
+      "id": "collision-free_credit_reset-refund-other",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"free_credit_reset\",\"operation\":\"refund\",\"reason\":\"other\"}",
+      "result": {
+        "value": "monthly_reset"
+      }
+    },
+    {
+      "id": "collision-free_credit_reset-correction-Free benefits",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"free_credit_reset\",\"operation\":\"correction\",\"reason\":\"Free benefits\"}",
+      "result": {
+        "value": "monthly_reset"
+      }
+    },
+    {
+      "id": "collision-free_credit_reset-correction-other",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"free_credit_reset\",\"operation\":\"correction\",\"reason\":\"other\"}",
+      "result": {
+        "value": "monthly_reset"
+      }
+    },
+    {
+      "id": "collision-free_credit_reset-unknown-Free benefits",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"free_credit_reset\",\"operation\":\"unknown\",\"reason\":\"Free benefits\"}",
+      "result": {
+        "value": "monthly_reset"
+      }
+    },
+    {
+      "id": "collision-free_credit_reset-unknown-other",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"free_credit_reset\",\"operation\":\"unknown\",\"reason\":\"other\"}",
+      "result": {
+        "value": "monthly_reset"
+      }
+    },
+    {
+      "id": "collision-free_credit_reset_worker-monthly_reset-Free benefits",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"free_credit_reset_worker\",\"operation\":\"monthly_reset\",\"reason\":\"Free benefits\"}",
+      "result": {
+        "value": "monthly_reset"
+      }
+    },
+    {
+      "id": "collision-free_credit_reset_worker-monthly_reset-other",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"free_credit_reset_worker\",\"operation\":\"monthly_reset\",\"reason\":\"other\"}",
+      "result": {
+        "value": "monthly_reset"
+      }
+    },
+    {
+      "id": "collision-free_credit_reset_worker-purchase_pack-Free benefits",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"free_credit_reset_worker\",\"operation\":\"purchase_pack\",\"reason\":\"Free benefits\"}",
+      "result": {
+        "value": "monthly_reset"
+      }
+    },
+    {
+      "id": "collision-free_credit_reset_worker-purchase_pack-other",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"free_credit_reset_worker\",\"operation\":\"purchase_pack\",\"reason\":\"other\"}",
+      "result": {
+        "value": "monthly_reset"
+      }
+    },
+    {
+      "id": "collision-free_credit_reset_worker-refund-Free benefits",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"free_credit_reset_worker\",\"operation\":\"refund\",\"reason\":\"Free benefits\"}",
+      "result": {
+        "value": "monthly_reset"
+      }
+    },
+    {
+      "id": "collision-free_credit_reset_worker-refund-other",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"free_credit_reset_worker\",\"operation\":\"refund\",\"reason\":\"other\"}",
+      "result": {
+        "value": "monthly_reset"
+      }
+    },
+    {
+      "id": "collision-free_credit_reset_worker-correction-Free benefits",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"free_credit_reset_worker\",\"operation\":\"correction\",\"reason\":\"Free benefits\"}",
+      "result": {
+        "value": "monthly_reset"
+      }
+    },
+    {
+      "id": "collision-free_credit_reset_worker-correction-other",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"free_credit_reset_worker\",\"operation\":\"correction\",\"reason\":\"other\"}",
+      "result": {
+        "value": "monthly_reset"
+      }
+    },
+    {
+      "id": "collision-free_credit_reset_worker-unknown-Free benefits",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"free_credit_reset_worker\",\"operation\":\"unknown\",\"reason\":\"Free benefits\"}",
+      "result": {
+        "value": "monthly_reset"
+      }
+    },
+    {
+      "id": "collision-free_credit_reset_worker-unknown-other",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"free_credit_reset_worker\",\"operation\":\"unknown\",\"reason\":\"other\"}",
+      "result": {
+        "value": "monthly_reset"
+      }
+    },
+    {
+      "id": "collision-admin_credit_grant-monthly_reset-Free benefits",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"admin_credit_grant\",\"operation\":\"monthly_reset\",\"reason\":\"Free benefits\"}",
+      "result": {
+        "value": "monthly_reset"
+      }
+    },
+    {
+      "id": "collision-admin_credit_grant-monthly_reset-other",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"admin_credit_grant\",\"operation\":\"monthly_reset\",\"reason\":\"other\"}",
+      "result": {
+        "value": "monthly_reset"
+      }
+    },
+    {
+      "id": "collision-admin_credit_grant-purchase_pack-Free benefits",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"admin_credit_grant\",\"operation\":\"purchase_pack\",\"reason\":\"Free benefits\"}",
+      "result": {
+        "value": "manual_grant"
+      }
+    },
+    {
+      "id": "collision-admin_credit_grant-purchase_pack-other",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"admin_credit_grant\",\"operation\":\"purchase_pack\",\"reason\":\"other\"}",
+      "result": {
+        "value": "manual_grant"
+      }
+    },
+    {
+      "id": "collision-admin_credit_grant-refund-Free benefits",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"admin_credit_grant\",\"operation\":\"refund\",\"reason\":\"Free benefits\"}",
+      "result": {
+        "value": "manual_grant"
+      }
+    },
+    {
+      "id": "collision-admin_credit_grant-refund-other",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"admin_credit_grant\",\"operation\":\"refund\",\"reason\":\"other\"}",
+      "result": {
+        "value": "manual_grant"
+      }
+    },
+    {
+      "id": "collision-admin_credit_grant-correction-Free benefits",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"admin_credit_grant\",\"operation\":\"correction\",\"reason\":\"Free benefits\"}",
+      "result": {
+        "value": "manual_grant"
+      }
+    },
+    {
+      "id": "collision-admin_credit_grant-correction-other",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"admin_credit_grant\",\"operation\":\"correction\",\"reason\":\"other\"}",
+      "result": {
+        "value": "manual_grant"
+      }
+    },
+    {
+      "id": "collision-admin_credit_grant-unknown-Free benefits",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"admin_credit_grant\",\"operation\":\"unknown\",\"reason\":\"Free benefits\"}",
+      "result": {
+        "value": "manual_grant"
+      }
+    },
+    {
+      "id": "collision-admin_credit_grant-unknown-other",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"admin_credit_grant\",\"operation\":\"unknown\",\"reason\":\"other\"}",
+      "result": {
+        "value": "manual_grant"
+      }
+    },
+    {
+      "id": "collision-credit_pack_purchase-monthly_reset-Free benefits",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"credit_pack_purchase\",\"operation\":\"monthly_reset\",\"reason\":\"Free benefits\"}",
+      "result": {
+        "value": "monthly_reset"
+      }
+    },
+    {
+      "id": "collision-credit_pack_purchase-monthly_reset-other",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"credit_pack_purchase\",\"operation\":\"monthly_reset\",\"reason\":\"other\"}",
+      "result": {
+        "value": "monthly_reset"
+      }
+    },
+    {
+      "id": "collision-credit_pack_purchase-purchase_pack-Free benefits",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"credit_pack_purchase\",\"operation\":\"purchase_pack\",\"reason\":\"Free benefits\"}",
+      "result": {
+        "value": "purchased_pack"
+      }
+    },
+    {
+      "id": "collision-credit_pack_purchase-purchase_pack-other",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"credit_pack_purchase\",\"operation\":\"purchase_pack\",\"reason\":\"other\"}",
+      "result": {
+        "value": "purchased_pack"
+      }
+    },
+    {
+      "id": "collision-credit_pack_purchase-refund-Free benefits",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"credit_pack_purchase\",\"operation\":\"refund\",\"reason\":\"Free benefits\"}",
+      "result": {
+        "value": "purchased_pack"
+      }
+    },
+    {
+      "id": "collision-credit_pack_purchase-refund-other",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"credit_pack_purchase\",\"operation\":\"refund\",\"reason\":\"other\"}",
+      "result": {
+        "value": "purchased_pack"
+      }
+    },
+    {
+      "id": "collision-credit_pack_purchase-correction-Free benefits",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"credit_pack_purchase\",\"operation\":\"correction\",\"reason\":\"Free benefits\"}",
+      "result": {
+        "value": "purchased_pack"
+      }
+    },
+    {
+      "id": "collision-credit_pack_purchase-correction-other",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"credit_pack_purchase\",\"operation\":\"correction\",\"reason\":\"other\"}",
+      "result": {
+        "value": "purchased_pack"
+      }
+    },
+    {
+      "id": "collision-credit_pack_purchase-unknown-Free benefits",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"credit_pack_purchase\",\"operation\":\"unknown\",\"reason\":\"Free benefits\"}",
+      "result": {
+        "value": "purchased_pack"
+      }
+    },
+    {
+      "id": "collision-credit_pack_purchase-unknown-other",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"credit_pack_purchase\",\"operation\":\"unknown\",\"reason\":\"other\"}",
+      "result": {
+        "value": "purchased_pack"
+      }
+    },
+    {
+      "id": "collision-activation-monthly_reset-Free benefits",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"activation\",\"operation\":\"monthly_reset\",\"reason\":\"Free benefits\"}",
+      "result": {
+        "value": "monthly_reset"
+      }
+    },
+    {
+      "id": "collision-activation-monthly_reset-other",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"activation\",\"operation\":\"monthly_reset\",\"reason\":\"other\"}",
+      "result": {
+        "value": "monthly_reset"
+      }
+    },
+    {
+      "id": "collision-activation-purchase_pack-Free benefits",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"activation\",\"operation\":\"purchase_pack\",\"reason\":\"Free benefits\"}",
+      "result": {
+        "value": "purchased_pack"
+      }
+    },
+    {
+      "id": "collision-activation-purchase_pack-other",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"activation\",\"operation\":\"purchase_pack\",\"reason\":\"other\"}",
+      "result": {
+        "value": "purchased_pack"
+      }
+    },
+    {
+      "id": "collision-activation-refund-Free benefits",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"activation\",\"operation\":\"refund\",\"reason\":\"Free benefits\"}",
+      "result": {
+        "value": "refund"
+      }
+    },
+    {
+      "id": "collision-activation-refund-other",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"activation\",\"operation\":\"refund\",\"reason\":\"other\"}",
+      "result": {
+        "value": "refund"
+      }
+    },
+    {
+      "id": "collision-activation-correction-Free benefits",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"activation\",\"operation\":\"correction\",\"reason\":\"Free benefits\"}",
+      "result": {
+        "value": "correction"
+      }
+    },
+    {
+      "id": "collision-activation-correction-other",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"activation\",\"operation\":\"correction\",\"reason\":\"other\"}",
+      "result": {
+        "value": "correction"
+      }
+    },
+    {
+      "id": "collision-activation-unknown-Free benefits",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"activation\",\"operation\":\"unknown\",\"reason\":\"Free benefits\"}",
+      "result": {
+        "value": "activation"
+      }
+    },
+    {
+      "id": "collision-activation-unknown-other",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"activation\",\"operation\":\"unknown\",\"reason\":\"other\"}",
+      "result": {
+        "value": "activation"
+      }
+    },
+    {
+      "id": "collision-unknown-monthly_reset-Free benefits",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"unknown\",\"operation\":\"monthly_reset\",\"reason\":\"Free benefits\"}",
+      "result": {
+        "value": "monthly_reset"
+      }
+    },
+    {
+      "id": "collision-unknown-monthly_reset-other",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"unknown\",\"operation\":\"monthly_reset\",\"reason\":\"other\"}",
+      "result": {
+        "value": "monthly_reset"
+      }
+    },
+    {
+      "id": "collision-unknown-purchase_pack-Free benefits",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"unknown\",\"operation\":\"purchase_pack\",\"reason\":\"Free benefits\"}",
+      "result": {
+        "value": "purchased_pack"
+      }
+    },
+    {
+      "id": "collision-unknown-purchase_pack-other",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"unknown\",\"operation\":\"purchase_pack\",\"reason\":\"other\"}",
+      "result": {
+        "value": "purchased_pack"
+      }
+    },
+    {
+      "id": "collision-unknown-refund-Free benefits",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"unknown\",\"operation\":\"refund\",\"reason\":\"Free benefits\"}",
+      "result": {
+        "value": "refund"
+      }
+    },
+    {
+      "id": "collision-unknown-refund-other",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"unknown\",\"operation\":\"refund\",\"reason\":\"other\"}",
+      "result": {
+        "value": "refund"
+      }
+    },
+    {
+      "id": "collision-unknown-correction-Free benefits",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"unknown\",\"operation\":\"correction\",\"reason\":\"Free benefits\"}",
+      "result": {
+        "value": "correction"
+      }
+    },
+    {
+      "id": "collision-unknown-correction-other",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"unknown\",\"operation\":\"correction\",\"reason\":\"other\"}",
+      "result": {
+        "value": "correction"
+      }
+    },
+    {
+      "id": "collision-unknown-unknown-Free benefits",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"unknown\",\"operation\":\"unknown\",\"reason\":\"Free benefits\"}",
+      "result": {
+        "value": "activation"
+      }
+    },
+    {
+      "id": "collision-unknown-unknown-other",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"unknown\",\"operation\":\"unknown\",\"reason\":\"other\"}",
+      "result": {
+        "value": "other"
+      }
+    },
+    {
+      "id": "missing",
+      "raw": "{\"entryKind\":\"adjustment\"}",
+      "result": {
+        "value": "other"
+      }
+    },
+    {
+      "id": "nulls",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":null,\"operation\":null,\"reason\":null}",
+      "result": {
+        "value": "other"
+      }
+    },
+    {
+      "id": "false",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":false,\"operation\":false}",
+      "result": {
+        "value": "other"
+      }
+    },
+    {
+      "id": "zero",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":0,\"operation\":-0}",
+      "result": {
+        "value": "other"
+      }
+    },
+    {
+      "id": "numbers",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":1e400,\"operation\":-1e400}",
+      "result": {
+        "value": "other"
+      }
+    },
+    {
+      "id": "unicode",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"activa\\u0074ion\",\"reason\":\"Free benefits\\ud800\"}",
+      "result": {
+        "value": "activation"
+      }
+    },
+    {
+      "id": "surrogate",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"\\ud800\",\"operation\":\"\\udfff\",\"reason\":\"Free benefits\"}",
+      "result": {
+        "value": "activation"
+      }
+    },
+    {
+      "id": "array",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":[[\"activation\"]]}",
+      "result": {
+        "value": "activation"
+      }
+    },
+    {
+      "id": "nestedNull",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":[null,[\"activation\"]]}",
+      "result": {
+        "value": "other"
+      }
+    },
+    {
+      "id": "object",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":{}}",
+      "result": {
+        "value": "other"
+      }
+    },
+    {
+      "id": "sourceError",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":{\"toString\":null},\"operation\":\"refund\"}",
+      "result": {
+        "error": "TypeError"
+      }
+    },
+    {
+      "id": "operationError",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"polar_meter_credit\",\"operation\":{\"toString\":null}}",
+      "result": {
+        "error": "TypeError"
+      }
+    },
+    {
+      "id": "nestedError",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":[[{\"toString\":false}]]}",
+      "result": {
+        "error": "TypeError"
+      }
+    },
+    {
+      "id": "duplicate",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"activation\",\"source\":\"admin_credit_grant\"}",
+      "result": {
+        "value": "manual_grant"
+      }
+    },
+    {
+      "id": "duplicateKind",
+      "raw": "{\"entryKind\":\"adjustment\",\"entryKind\":\"usage\",\"entryKind\":\"adjustment\",\"source\":\"activation\"}",
+      "result": {
+        "value": "activation"
+      }
+    },
+    {
+      "id": "reasonArray",
+      "raw": "{\"entryKind\":\"adjustment\",\"source\":\"other\",\"reason\":[\"Free benefits\"]}",
+      "result": {
+        "value": "other"
+      }
+    },
+    {
+      "id": "explicitArray",
+      "raw": "{\"entryKind\":\"adjustment\",\"adjustmentType\":[\"refund\"],\"operation\":\"correction\"}",
+      "result": {
+        "value": "correction"
+      }
+    }
+  ]
+}

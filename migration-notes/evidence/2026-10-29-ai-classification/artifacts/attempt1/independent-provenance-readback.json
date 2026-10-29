@@ -1,0 +1,21 @@
+{
+  "nativeFiles": {
+    "src/utils/ai_usage.rs": "a4d9b103569b5bce80150091ff028dbe09f90bdada0b7572525705e46a0431b5",
+    "src/utils/tts/settings.rs": "e49542fb02eadaedfd28099c829f6b0bd43302af72d725147e3112b188f34fa9",
+    "src/utils/lossless_json.rs": "81655862a29d68c01ab49a79027788c569d688bc1f7c9e55cbea20816dc7f2a6",
+    "src/utils/js_string.rs": "17b3e6a6bcd0d92210851eca25da44bbcdb2c2d9e196feb5dab58d06b75d4aed",
+    "src/utils/json_number.rs": "f463c65a55bcd611ed9bad2444e50acff697969bb910b7b4c17371d0af21f419",
+    "tests/ai_usage_classification.rs": "fc056bb734bb6a50a30488472f47aed01602ebaa0f2f34c200eb2191a9617699"
+  },
+  "sourceToolchainOracleHashes": {
+    "source": "00fcd076d0f3460ecea46588904242252a32b9500e43217c67a1a07e1cbe4b36",
+    "package": "cc4939f6416a91d4bfaa5bcdd3d448d2f74103a88bb269e0a8e393615cf32cef",
+    "lock": "abdf5aa71a8272423ebb9358d7aaa87edd7e65f6605c325fe231a4bcef70eeb7",
+    "typescript": "3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675",
+    "typescriptPackage": "822ef7ca6452205657b6288b066481ecf508bfbf43455d715cf7d3ec457561e6",
+    "node": "569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108",
+    "oracle": "580eb255a7a4fabe8c789dfc143bb1e616df55d972e0110af4abf5f2f20ddb2e"
+  },
+  "all100CasesPresentUnique": true,
+  "allHashesVerifiedAgainstFrozenSourceAndPinnedNode": true
+}

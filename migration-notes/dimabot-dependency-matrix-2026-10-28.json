@@ -57991,32 +57991,82 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-local-feature-and-helper-dependencies",
+      "localRustEvidence": [
+        "dimabot/src/utils/ai_usage.rs",
+        "dimabot/src/utils/js_string.rs",
+        "dimabot/src/utils/lossless_json.rs",
+        "dimabot/src/utils/tts/settings.rs",
+        "dimabot/src/utils/json_number.rs",
+        "dimabot/tests/ai_usage_classification.rs",
+        "dimabot/tests/fixtures/ai_usage_classification_reference.cjs",
+        "migration-notes/ai-usage-classification-2026-10-29.md",
+        "migration-notes/evidence/2026-10-29-ai-classification/README.md",
+        "migration-notes/evidence/2026-10-29-ai-classification/verification-summary.json"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The source mapping uses the new lossless JSON-data API, not the weaker legacy serde entry point. Ordinary JSON objects/unknown fields, duplicate keys and arbitrary UTF-16 strings are preserved; executable hooks, custom prototypes and invalid JS runtime casts are excluded. Top-level null is outside the declared object contract: its TypeError name is preserved but exact message is not.",
+        "The two APIs share one policy and registry. The source has no imports or I/O; all directly needed coercion/string/number helpers and crate dependencies are native. No new dependency or feature was added.",
+        "TypeScript source remains live for current callers and source oracles. Native legacy call sites were not switched to the new API; adoption is separate from this leaf feature dependency mapping. No classifier performance result is claimed."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/src/utils/ai_usage_ledger.ts",
+          "dimabot/src/utils/ai_usage_receipts.ts",
+          "dimabot/src/utils/ai_usage_queries.ts",
+          "dimabot/src/utils/ai_usage_ledger.test.ts"
+        ],
+        "runtimeStatus": "TypeScript callers remain active; native receipt/parser/query/backfill callers retain the compatible legacy API. No caller adoption, deployment or source retirement occurred."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "Pinned full actual-source TypeScript export AST and typecheck, 100 unique source cases; native/Node/SDK/source/oracle hashes independently verified.",
+          "Consumer source oracles: producer338 and20 tiers, parser1362 in five timezones, queries333, persistence204, backfill341; lock291 reference rechecked."
+        ],
+        "rustBehaviorEvidence": [
+          "Two focused ordinary tests, three existing AI usage library tests and all100 actual-source records passed.",
+          "Thirty-eight ordinary consumer tests and all corresponding source replays passed. No-feature, Mongo/Redis worker-profile and all-feature/all-target checks plus strict Clippy passed.",
+          "Code e5fad37a; source4e922ee376bfcadd8affb05739e869271b8fa4e5c811bdcb61214596aa5aa97c (1298 inputs).",
+          "migration-notes/evidence/2026-10-29-ai-classification/verification-summary.json"
+        ],
+        "status": "local helper exports and direct/transitive native dependencies verified at the documented JSON-data boundary; source remains live and callers unadopted"
       },
       "exports": [
         {
           "name": "ADJUSTMENT_TYPES",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "complete native ordered ten-label ADJUSTMENT_TYPES registry",
+          "evidence": [
+            "dimabot/src/utils/ai_usage.rs",
+            "dimabot/src/utils/js_string.rs",
+            "dimabot/src/utils/lossless_json.rs",
+            "dimabot/src/utils/tts/settings.rs",
+            "dimabot/src/utils/json_number.rs",
+            "dimabot/tests/ai_usage_classification.rs",
+            "dimabot/tests/fixtures/ai_usage_classification_reference.cjs",
+            "migration-notes/ai-usage-classification-2026-10-29.md",
+            "migration-notes/evidence/2026-10-29-ai-classification/README.md",
+            "migration-notes/evidence/2026-10-29-ai-classification/verification-summary.json"
+          ]
         },
         {
           "name": "classifyAdjustment",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "complete ordinary JSON-data object boundary via ai_usage::classify_adjustment_json -> Result<Option<&str>, SettingsError>; shares policy with legacy serde API",
+          "evidence": [
+            "dimabot/src/utils/ai_usage.rs",
+            "dimabot/src/utils/js_string.rs",
+            "dimabot/src/utils/lossless_json.rs",
+            "dimabot/src/utils/tts/settings.rs",
+            "dimabot/src/utils/json_number.rs",
+            "dimabot/tests/ai_usage_classification.rs",
+            "dimabot/tests/fixtures/ai_usage_classification_reference.cjs",
+            "migration-notes/ai-usage-classification-2026-10-29.md",
+            "migration-notes/evidence/2026-10-29-ai-classification/README.md",
+            "migration-notes/evidence/2026-10-29-ai-classification/verification-summary.json"
+          ]
         }
       ],
       "imports": [],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-helper-feature-and-native-dependencies-verified;source-live;application-caller-adoption-open"
     },
     {
       "source": "src/utils/ai_usage_dashboard.ts",

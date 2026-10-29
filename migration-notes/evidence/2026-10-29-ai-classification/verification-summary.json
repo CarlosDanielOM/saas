@@ -1,0 +1,82 @@
+{
+  "status": "Verified pure classification exports and native dependencies within ordinary JSON-data object boundary; broader application migration incomplete.",
+  "codeCommit": "e5fad37af1941b7e51ced6217b2a79ed78ec19c0",
+  "sourceTreeSha256": "4e922ee376bfcadd8affb05739e869271b8fa4e5c811bdcb61214596aa5aa97c",
+  "sourceInputs": 1298,
+  "acceptedRuns": [
+    "compiler-1793299987183286077",
+    "node-1793299987184873431",
+    "compiler-1793300124243405961",
+    "node-1793300276390314123",
+    "compiler-1793300437308104735"
+  ],
+  "classificationSourceCases": 100,
+  "ordinaryClassificationTests": 2,
+  "existingAiUsageLibraryTests": 3,
+  "consumerOrdinaryTests": 38,
+  "consumerSourceRecords": {
+    "producer": 338,
+    "producerTiers": 20,
+    "parserPerTimezone": 1362,
+    "parserTimezones": 5,
+    "queries": 333,
+    "persistence": 204,
+    "backfill": 341,
+    "lockReferenceRechecked": 291
+  },
+  "limits": {
+    "cpus": 6,
+    "memory": 4294967296,
+    "memory_swap": 4294967296,
+    "pids": 256,
+    "cargo_jobs": 2
+  },
+  "peakCacheBytes": 3584106496,
+  "minimumAvailableBytes": 8608210944,
+  "productionUnchangedRecords": 19,
+  "performanceMeasured": false,
+  "noRetirementAdoptionDeploymentPush": true,
+  "boundaries": [
+    "Ordinary JSON data, lossless UTF16, no executable coercion hooks/custom prototypes.",
+    "Top-level null outside declared object contract: TypeError name preserved but exact error message not reproduced.",
+    "Legacy serde entry point retains historical weaker coercion; new lossless API maps complete source boundary."
+  ],
+  "runs": [
+    {
+      "run": "compiler-1793299987183286077",
+      "success": true,
+      "sourceTreeSha256": "4e922ee376bfcadd8affb05739e869271b8fa4e5c811bdcb61214596aa5aa97c",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-1793300124243405961",
+      "success": true,
+      "sourceTreeSha256": "4e922ee376bfcadd8affb05739e869271b8fa4e5c811bdcb61214596aa5aa97c",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-1793300437308104735",
+      "success": true,
+      "sourceTreeSha256": "4e922ee376bfcadd8affb05739e869271b8fa4e5c811bdcb61214596aa5aa97c",
+      "productionUnchanged": true
+    },
+    {
+      "run": "format-1793299935443473214",
+      "success": true,
+      "sourceTreeSha256": "1c62bfc8ccfe76afcd0d6bff7f9b0580ed304755337b4115f1d45f4d09e91b3f",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793299987184873431",
+      "success": true,
+      "sourceTreeSha256": "4e922ee376bfcadd8affb05739e869271b8fa4e5c811bdcb61214596aa5aa97c",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793300276390314123",
+      "success": true,
+      "sourceTreeSha256": "4e922ee376bfcadd8affb05739e869271b8fa4e5c811bdcb61214596aa5aa97c",
+      "productionUnchanged": true
+    }
+  ]
+}
