@@ -1,5 +1,6 @@
 //! Receipt persistence and UTC daily repair, retaining the Mongoose BSON shapes.
 use super::{Result, queue, values::*};
+use crate::utils::ai_usage_aggregate_policy::group_fields;
 use futures_util::TryStreamExt;
 use mongodb::{
     Database,
@@ -8,22 +9,6 @@ use mongodb::{
 use redis::aio::ConnectionManager;
 use std::collections::HashMap;
 
-pub(super) fn usage() -> Document {
-    doc! {"$and":[{"$gt":["$credits",0]},{"$ne":["$entryKind","adjustment"]}]}
-}
-pub(super) fn group_fields(id: Document, dashboard: bool) -> Document {
-    let mut group = doc! {"_id":id,
-    "spent":{"$sum":{"$cond":[usage(),"$credits",0]}},
-    "granted":{"$sum":{"$cond":[{"$lt":["$credits",0]},{"$multiply":["$credits",-1]},0]}},
-    "debited":{"$sum":{"$cond":[{"$and":[{"$gt":["$credits",0]},{"$eq":["$entryKind","adjustment"]}]},"$credits",0]}},
-    "count":{"$sum":{"$cond":[usage(),1,0]}}};
-    if dashboard {
-        group.insert("adjustments",doc!{"$sum":{"$cond":[{"$or":[{"$eq":["$entryKind","adjustment"]},{"$lt":["$credits",0]}]},1,0]}});
-    } else {
-        group.insert("expiresAt", doc! {"$max":"$expiresAt"});
-    }
-    group
-}
 #[allow(clippy::too_many_arguments)]
 pub(super) async fn aggregate(
     database: &Database,

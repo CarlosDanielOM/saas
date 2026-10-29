@@ -91,6 +91,10 @@ pub mod ast_syntax;
 pub mod ai_credit_projection;
 #[cfg(feature = "ai-usage")]
 pub mod ai_usage;
+#[cfg(all(feature = "mongo", feature = "redis"))]
+pub(crate) mod ai_usage_aggregate_policy;
+#[cfg(feature = "ai-usage-ledger-persistence")]
+pub mod ai_usage_ledger_persistence;
 #[cfg(feature = "ai-usage-ledger-queries")]
 pub mod ai_usage_ledger_queries;
 #[cfg(feature = "ai-usage-ledger-reads")]
