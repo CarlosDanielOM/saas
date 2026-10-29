@@ -1,0 +1,62 @@
+[
+  {
+    "artifact": "fixtures/benchmark-tooling-smoke/expressive-benchmark-inputs.json.gz",
+    "uncompressedSha256": "95bbc229a92de5f1b8d12c36e69ab2af3ed06cee160ec31dfe1d24c812a6b195",
+    "uncompressedBytes": 254128
+  },
+  {
+    "artifact": "fixtures/benchmark-tooling-smoke/expressive-node-benchmark.json.gz",
+    "uncompressedSha256": "40b0d6852e280aa4ab3a05029872f7fb651bc194c79a87505dd9c0f538205e94",
+    "uncompressedBytes": 8986
+  },
+  {
+    "artifact": "fixtures/credit/tts-credit-fallback-reference.json.gz",
+    "uncompressedSha256": "3b3ef7018c8670a74eb6b53ec503d948136bea419373bf0ede96d628b9ba0a2a",
+    "uncompressedBytes": 582945
+  },
+  {
+    "artifact": "fixtures/expressive/expressive-tts-reference.json.gz",
+    "uncompressedSha256": "5eb7ec38a8a81220e39931173f9a8ddd23edc9154c43ec9d9fe4b90541dd4609",
+    "uncompressedBytes": 3378904
+  },
+  {
+    "artifact": "fixtures/fish/fish-tts-reference.json.gz",
+    "uncompressedSha256": "2ad2927563bf173ecc684729a19be7296f9776d06e2478152658f190d3b38742",
+    "uncompressedBytes": 26306
+  },
+  {
+    "artifact": "fixtures/normalization-prepared/fixtures.json.gz",
+    "uncompressedSha256": "ed70e13fa939deae7e63a596ed168a860e0e468d4f99d0c5ea8316f016e7d3bb",
+    "uncompressedBytes": 24657
+  },
+  {
+    "artifact": "fixtures/normalization-prepared/package.json.gz",
+    "uncompressedSha256": "dbf8353f77358bc12169b7bb7301e1978d5b503e002ee927229a8993672818fc",
+    "uncompressedBytes": 20
+  },
+  {
+    "artifact": "fixtures/piper-kokoro/piper-kokoro-reference.json.gz",
+    "uncompressedSha256": "cfd5c7591935a7ad8dfcdb032d0469cabff9a06cf39c668938e44664b54ecf7d",
+    "uncompressedBytes": 73534
+  },
+  {
+    "artifact": "fixtures/provenance-and-semantic-parity.json.gz",
+    "uncompressedSha256": "96c234ffc6853ae548ca6fa922573d87cac2771721844c166c00e21da5b57350",
+    "uncompressedBytes": 20345
+  },
+  {
+    "artifact": "fixtures/runtime/tts_runtime_dynamic_reference.json.gz",
+    "uncompressedSha256": "ff13873a5542e24d3af62b9b081c40ca034c409020420a50eaf0242cb46c72e6",
+    "uncompressedBytes": 10395
+  },
+  {
+    "artifact": "fixtures/runtime/tts_runtime_reference.json.gz",
+    "uncompressedSha256": "4c6bd5a1860e6877fb7e021933eb4f3192fd9638ad42b6b20ee02eb0597a7632",
+    "uncompressedBytes": 5566
+  },
+  {
+    "artifact": "fixtures/settings/channel-tts-settings-reference.json.gz",
+    "uncompressedSha256": "448a4b8bcd4cb3e296f8e4dd8f93f9dd6da8f25f99a9ebf30c4aea822540335a",
+    "uncompressedBytes": 617182
+  }
+]

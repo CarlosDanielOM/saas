@@ -96778,59 +96778,153 @@
         "role": "application"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/utils/tts/expressive_tts_tags.util.ts",
+        "sha256": "03523ebc5bb2f8c99b528e1c61d90126f655716945f100098c6a53b9f731699e",
+        "nativeAreaReference": "migration-notes/expressive-tts-2026-10-29.md; migration-notes/tts-value-adapters-2026-10-29.md; migration-notes/tts-tag-types-2026-10-29.md; migration-notes/tts-utility-retirement-2026-10-29.md"
+      },
+      "featureReview": "reviewed-local-feature-and-helper-dependencies",
+      "localRustEvidence": [
+        "dimabot/src/utils/tts/mod.rs",
+        "dimabot/src/utils/tts/tag_types.rs",
+        "migration-notes/expressive-tts-2026-10-29.md",
+        "migration-notes/tts-value-adapters-2026-10-29.md",
+        "migration-notes/tts-tag-types-2026-10-29.md",
+        "migration-notes/tts-utility-retirement-2026-10-29.md",
+        "migration-notes/evidence/2026-10-29-tts-utility-retirement/verification-summary.json",
+        "compiler-1793244158042369061: final post-archive source tree ad8bf05c0fc6f95b324de6f63e859d6cc5d008a5ef17d15758a9f2ab79aafb2e"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "Ordinary JSON without executable hooks/prototypes; arbitrary UTF-16 through lossless JSON and JsString adapters. Typed providers are the supported contract; map iteration is lexical while the typed JSON writer preserves canonical source order."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/src/utils/tts/normalize_tts_message.util.ts: re-export",
+          "dimabot/src/server/services/tts/fish_tts.service.ts",
+          "dimabot/src/utils/tts/expressive_tts_tags.test.ts",
+          "migration-notes/evidence/2026-10-29-tts-tag-types/external-source-api-bc6455f1979f/dimabot/src/pets/speech_text.ts and speech_text.test.ts: accepted external pet helper and test remain open"
+        ],
+        "runtimeStatus": "TypeScript application callers not rewired; native Fish, credit fallback and channel settings utilities reuse native policy; no deployment implied"
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/expressive_tts_reference.mjs: actual source exports, catalog, types and 1932 source cases; 314 exact normalization wires",
+          "migration-notes/expressive-tts-2026-10-29.md",
+          "migration-notes/tts-value-adapters-2026-10-29.md",
+          "migration-notes/tts-tag-types-2026-10-29.md",
+          "node-1793243808422442823: final archive-resolved source oracle and nine provenance reports; eight prior/fresh semantic comparisons"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/expressive_source.rs",
+          "migration-notes/expressive-tts-2026-10-29.md",
+          "migration-notes/tts-value-adapters-2026-10-29.md",
+          "migration-notes/tts-tag-types-2026-10-29.md",
+          "migration-notes/evidence/2026-10-29-tts-utility-retirement/verification-summary.json",
+          "compiler-1793244158042369061: 127 ordinary and nine explicit fixture executions; strict formatting/check/Clippy passed"
+        ],
+        "status": "post-archive local helper behavior, exports and native dependency closure verified; application callers remain unadopted"
       },
       "exports": [
         {
           "name": "EXPRESSIVE_TTS_TAGS",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "expressive_tags() ordered iterator",
+          "evidence": [
+            "dimabot/src/utils/tts/mod.rs",
+            "dimabot/src/utils/tts/tag_types.rs",
+            "migration-notes/expressive-tts-2026-10-29.md",
+            "migration-notes/tts-value-adapters-2026-10-29.md",
+            "migration-notes/tts-tag-types-2026-10-29.md"
+          ]
         },
         {
           "name": "EXPRESSIVE_TTS_TAG_GROUPS",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "EXPRESSIVE_TTS_TAG_GROUPS ordered named slices",
+          "evidence": [
+            "dimabot/src/utils/tts/mod.rs",
+            "dimabot/src/utils/tts/tag_types.rs",
+            "migration-notes/expressive-tts-2026-10-29.md",
+            "migration-notes/tts-value-adapters-2026-10-29.md",
+            "migration-notes/tts-tag-types-2026-10-29.md"
+          ]
         },
         {
           "name": "ExpressiveTtsTag",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "tag_types::ExpressiveTtsTag checked canonical index, FromStr and iterator",
+          "evidence": [
+            "dimabot/src/utils/tts/mod.rs",
+            "dimabot/src/utils/tts/tag_types.rs",
+            "migration-notes/expressive-tts-2026-10-29.md",
+            "migration-notes/tts-value-adapters-2026-10-29.md",
+            "migration-notes/tts-tag-types-2026-10-29.md"
+          ]
         },
         {
           "name": "ExpressiveTtsTagSettings",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "tag_types::ExpressiveTtsTagSettings total catalog-sized bool record and ordered JSON writer",
+          "evidence": [
+            "dimabot/src/utils/tts/mod.rs",
+            "dimabot/src/utils/tts/tag_types.rs",
+            "migration-notes/expressive-tts-2026-10-29.md",
+            "migration-notes/tts-value-adapters-2026-10-29.md",
+            "migration-notes/tts-tag-types-2026-10-29.md"
+          ]
         },
         {
           "name": "filterExpressiveTtsTags",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "filter_expressive_tts_tags and filter_expressive_tts_tags_js",
+          "evidence": [
+            "dimabot/src/utils/tts/mod.rs",
+            "dimabot/src/utils/tts/tag_types.rs",
+            "migration-notes/expressive-tts-2026-10-29.md",
+            "migration-notes/tts-value-adapters-2026-10-29.md",
+            "migration-notes/tts-tag-types-2026-10-29.md"
+          ]
         },
         {
           "name": "normalizeExpressiveTtsTags",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "normalize_expressive_tags, normalize_expressive_tags_json and ExpressiveTtsTagSettings::from_json",
+          "evidence": [
+            "dimabot/src/utils/tts/mod.rs",
+            "dimabot/src/utils/tts/tag_types.rs",
+            "migration-notes/expressive-tts-2026-10-29.md",
+            "migration-notes/tts-value-adapters-2026-10-29.md",
+            "migration-notes/tts-tag-types-2026-10-29.md"
+          ]
         },
         {
           "name": "reinforceFishTtsTags",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "reinforce_fish_tts_tags and reinforce_fish_tts_tags_js",
+          "evidence": [
+            "dimabot/src/utils/tts/mod.rs",
+            "dimabot/src/utils/tts/tag_types.rs",
+            "migration-notes/expressive-tts-2026-10-29.md",
+            "migration-notes/tts-value-adapters-2026-10-29.md",
+            "migration-notes/tts-tag-types-2026-10-29.md"
+          ]
         }
       ],
       "imports": [],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-helper-feature-and-native-dependencies-verified;source-retired;application-caller-adoption-open",
+      "dependencyClosure": {
+        "scope": "pure expressive TTS tags",
+        "status": "direct and transitive local native dependencies present; application adoption open",
+        "typescriptRuntime": [
+          "no imports"
+        ],
+        "typescriptTypeOnly": [
+          "no imports"
+        ],
+        "nativeReplacement": [
+          "Rust std and catalog data",
+          "regex crate and JS compatibility/UTF-16 utilities"
+        ],
+        "missingPrimitiveDependency": null,
+        "applicationDependenciesOutsidePrimitive": [
+          "emotes, queue, pet runtime, billing and provider pipeline remain open"
+        ],
+        "boundary": "source retirement is not application caller adoption or deployment"
+      }
     },
     {
       "source": "src/utils/tts/generate_speech_id.util.ts",
@@ -96872,39 +96966,106 @@
         "role": "application"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/utils/tts/kokoro_voices.util.ts",
+        "sha256": "6d06216a94959645a4ed75e82a2b68a39b329c01373f63644f7a3794afc5466b",
+        "nativeAreaReference": "migration-notes/expressive-tts-2026-10-29.md; migration-notes/tts-value-adapters-2026-10-29.md; migration-notes/tts-tag-types-2026-10-29.md; migration-notes/tts-utility-retirement-2026-10-29.md"
+      },
+      "featureReview": "reviewed-local-feature-and-helper-dependencies",
+      "localRustEvidence": [
+        "dimabot/src/utils/tts/mod.rs",
+        "migration-notes/expressive-tts-2026-10-29.md",
+        "migration-notes/tts-value-adapters-2026-10-29.md",
+        "migration-notes/tts-tag-types-2026-10-29.md",
+        "migration-notes/tts-utility-retirement-2026-10-29.md",
+        "migration-notes/evidence/2026-10-29-tts-utility-retirement/verification-summary.json",
+        "compiler-1793244158042369061: final post-archive source tree ad8bf05c0fc6f95b324de6f63e859d6cc5d008a5ef17d15758a9f2ab79aafb2e"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "Voice resolution supports source-declared string inputs and ordinary JSON data; no executable hooks or custom prototypes. Lossless JSON preserves UTF-16 values and uses the shared JavaScript trim/lowercase policy; unknown or malformed IDs return None."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/src/server/routes/speech.route.ts",
+          "dimabot/src/server/services/pet_settings.service.ts",
+          "dimabot/src/server/services/tts/voice_preview.service.ts",
+          "dimabot/src/server/services/tts/kokoro_tts.service.ts",
+          "archived channel settings and credit fallback source"
+        ],
+        "runtimeStatus": "TypeScript application callers not rewired; native Fish, credit fallback and channel settings utilities reuse native policy; no deployment implied"
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/expressive_tts_reference.mjs: actual source exports, catalog, types and 1932 source cases; 314 exact normalization wires",
+          "migration-notes/expressive-tts-2026-10-29.md",
+          "migration-notes/tts-value-adapters-2026-10-29.md",
+          "migration-notes/tts-tag-types-2026-10-29.md",
+          "node-1793243808422442823: final archive-resolved source oracle and nine provenance reports; eight prior/fresh semantic comparisons"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/expressive_source.rs",
+          "migration-notes/expressive-tts-2026-10-29.md",
+          "migration-notes/tts-value-adapters-2026-10-29.md",
+          "migration-notes/tts-tag-types-2026-10-29.md",
+          "migration-notes/evidence/2026-10-29-tts-utility-retirement/verification-summary.json",
+          "compiler-1793244158042369061: 127 ordinary and nine explicit fixture executions; strict formatting/check/Clippy passed"
+        ],
+        "status": "post-archive local helper behavior, exports and native dependency closure verified; application callers remain unadopted"
       },
       "exports": [
         {
           "name": "DEFAULT_KOKORO_VOICES",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "DEFAULT_KOKORO_VOICE_EN and DEFAULT_KOKORO_VOICE_ES",
+          "evidence": [
+            "dimabot/src/utils/tts/mod.rs",
+            "migration-notes/expressive-tts-2026-10-29.md",
+            "migration-notes/tts-value-adapters-2026-10-29.md",
+            "migration-notes/tts-tag-types-2026-10-29.md"
+          ]
         },
         {
           "name": "KOKORO_VOICES",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "KOKORO_VOICES ordered slice",
+          "evidence": [
+            "dimabot/src/utils/tts/mod.rs",
+            "migration-notes/expressive-tts-2026-10-29.md",
+            "migration-notes/tts-value-adapters-2026-10-29.md",
+            "migration-notes/tts-tag-types-2026-10-29.md"
+          ]
         },
         {
           "name": "resolveKokoroVoice",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "resolve_kokoro_voice, resolve_kokoro_voice_json and resolve_kokoro_voice_str",
+          "evidence": [
+            "dimabot/src/utils/tts/mod.rs",
+            "migration-notes/expressive-tts-2026-10-29.md",
+            "migration-notes/tts-value-adapters-2026-10-29.md",
+            "migration-notes/tts-tag-types-2026-10-29.md"
+          ]
         }
       ],
       "imports": [],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-helper-feature-and-native-dependencies-verified;source-retired;application-caller-adoption-open",
+      "dependencyClosure": {
+        "scope": "pure Kokoro voices",
+        "status": "direct and transitive local native dependencies present; application adoption open",
+        "typescriptRuntime": [
+          "no imports"
+        ],
+        "typescriptTypeOnly": [
+          "no imports"
+        ],
+        "nativeReplacement": [
+          "Rust std and catalog data",
+          "JS whitespace compatibility and native strings"
+        ],
+        "missingPrimitiveDependency": null,
+        "applicationDependenciesOutsidePrimitive": [
+          "emotes, queue, pet runtime, billing and provider pipeline remain open"
+        ],
+        "boundary": "source retirement is not application caller adoption or deployment"
+      }
     },
     {
       "source": "src/utils/tts/normalize_tts_message.util.test.ts",

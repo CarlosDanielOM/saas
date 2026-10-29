@@ -1,0 +1,29 @@
+{
+  "sourceCommit": "797479aa92cc6965ec3979cadcfe3dca1fbcf989",
+  "sourceTreeSha256": "ad8bf05c0fc6f95b324de6f63e859d6cc5d008a5ef17d15758a9f2ab79aafb2e",
+  "files": {
+    "archives/dimabot-typescript/2026-10-28/README.md": "a8e58d134e2fdb2c496e3e29fe297a1003b414e0e44db6b5b90fcf52ab9ccf6e",
+    "archives/dimabot-typescript/2026-10-28/manifest.json": "8be04bc4a5571ef1b65b95de7d4828ca9a03d12d05c120cee42ed177ba8c5060",
+    "archives/dimabot-typescript/2026-10-28/src/utils/tts/expressive_tts_tags.util.ts": "03523ebc5bb2f8c99b528e1c61d90126f655716945f100098c6a53b9f731699e",
+    "archives/dimabot-typescript/2026-10-28/src/utils/tts/kokoro_voices.util.ts": "6d06216a94959645a4ed75e82a2b68a39b329c01373f63644f7a3794afc5466b",
+    "dimabot/src/utils/tts/mod.rs": "b57721c2ef77cb66ed9e18b98976571e12b395fe96776ec119c2ee2ca83ec991",
+    "dimabot/tests/expressive_source.rs": "73a879c33bee56c52a05c35d94c8740e6928a8cb6b9a2105a5c790806b7d9c19",
+    "dimabot/tests/fixtures/channel_tts_settings_reference.mjs": "427fe68c65799259db13c393c31ca9cdca69da5a434ca24365ecdaae1ce74462",
+    "dimabot/tests/fixtures/expressive_tts_benchmark.mjs": "ad0f70701bb1396ca1683770b5778f5b843f0ef6866728b1c0d14833c25567e6",
+    "dimabot/tests/fixtures/expressive_tts_reference.mjs": "abf56b22bac0637f07fff8f7c1214f48ca8d667218195bf10bed4d324a29a499",
+    "dimabot/tests/fixtures/fish_tts_reference.mjs": "212cb2655fc53c578d1884d5e16aeca3dd22e5c126e13a54e19897116f06d3d3",
+    "dimabot/tests/fixtures/piper_kokoro_reference.mjs": "7c75d7628a6ca7a27d404802421a901882755bd86ad511cd125ebfcab99a6152",
+    "dimabot/tests/fixtures/tts_benchmark_prepare.cjs": "71bdb7cfbcb67897d2ab9bd1953c85485bd844cf5084c77df327c2580f4e3d3e",
+    "dimabot/tests/fixtures/tts_credit_fallback_reference.mjs": "815b36e405c75a5c5335d224dc3cf219a8eff0d43c56248834178194b2fa60e7",
+    "dimabot/tests/fixtures/tts_runtime_dynamic_reference.mjs": "7c540c40f14190b2baa090ba1c90daa3579addf2a008926ef60f77ecacc4394e",
+    "dimabot/tests/fixtures/tts_source_resolver.cjs": "66f5c2ac98f46c16ecc0e964d68372eb0dff458485146185e1238d5d94cb1e38",
+    "dimabot/tests/fixtures/tts_source_resolver.test.cjs": "f0a04e63750b266d191ddd1ebc61559fdb83a7753d20471edfaa3cd22f4f2311",
+    "dimabot/tests/fixtures/tts_utilities_reference.mjs": "a8dc814979c26b2ec334887cf19bb0a7983c0e7f8322f2bff43944363d8a3db3"
+  },
+  "absentLivePaths": [
+    "dimabot/src/utils/tts/expressive_tts_tags.util.ts",
+    "dimabot/src/utils/tts/kokoro_voices.util.ts"
+  ],
+  "archiveManifestFiles": 19,
+  "prior17EntriesUnchanged": true
+}

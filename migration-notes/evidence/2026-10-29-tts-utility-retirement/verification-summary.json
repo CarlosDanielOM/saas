@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "sourceCommit": "797479aa92cc6965ec3979cadcfe3dca1fbcf989",
+  "sourceTreeSha256": "ad8bf05c0fc6f95b324de6f63e859d6cc5d008a5ef17d15758a9f2ab79aafb2e",
+  "node": "node-1793243808422442823",
+  "compiler": "compiler-1793244158042369061",
+  "ordinaryExecutions": 127,
+  "ordinaryBreakdown": {
+    "library": 64,
+    "settingsNormalization": 7,
+    "settingsSchema": 1,
+    "expressiveLossless": 5,
+    "expressiveTagTypes": 3,
+    "jsString": 1,
+    "kokoro": 6,
+    "piper": 13,
+    "creditFallback": 2,
+    "fishProviders": 16,
+    "runtime": 6,
+    "ttsUtilities": 3
+  },
+  "explicitFixtureExecutions": 9,
+  "explicitBreakdown": {
+    "expressive": 1,
+    "creditFallback": 1,
+    "settingsNormalization": 1,
+    "settingsSchema": 1,
+    "fishService": 1,
+    "piper": 1,
+    "kokoro": 1,
+    "runtime": 2
+  },
+  "expressiveSourceCases": 1932,
+  "orderedRecordJsonWiresCompared": 314,
+  "provenanceReports": 9,
+  "semanticComparisonsWithPriorFixtures": 8,
+  "resolverScenarios": 6,
+  "checks": [
+    "fmt",
+    "tts-utilities all-target check and Clippy -D warnings",
+    "all-features all-target check and Clippy -D warnings",
+    "no-default-features all-target check"
+  ],
+  "sourceFixtureHashesUnchanged": true,
+  "newPairedBenchmark": false,
+  "nodeBenchmarkRun": "tooling smoke only; not a new Rust comparison",
+  "benchmarkInputSha256": "95bbc229a92de5f1b8d12c36e69ab2af3ed06cee160ec31dfe1d24c812a6b195",
+  "manifestLockDependencyDefaultWorkerProfileChanged": false,
+  "sourceArchiveCount": 19,
+  "checkoutTypeScriptRemaining": 787,
+  "excludedReactEmailFiles": 6,
+  "originalBaselineTypeScript": 806,
+  "externalProductionDelta": {
+    "commit": "9d35bd1ece3304627bdadee637e899d51cc6d7ad",
+    "newSourceObligations": 2,
+    "changedSource": "dimabot/src/pets/runtime.ts",
+    "status": "pending native pet.talk reconciliation; preserved source reference is not a completed archive"
+  },
+  "callerAdoption": "TypeScript callers unadopted; native local helpers and grouped export source verified",
+  "wholeMigrationComplete": false,
+  "deployedByMigrationSession": false,
+  "pushed": false
+}

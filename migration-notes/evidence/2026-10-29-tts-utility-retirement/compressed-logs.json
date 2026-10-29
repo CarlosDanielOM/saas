@@ -1,0 +1,17 @@
+[
+  {
+    "artifact": "format-1793243709730010624.log.gz",
+    "uncompressedSha256": "d8df33ba72c691319594a6938a8cc1f756798afbe8a2dc8dedcec22abade739d",
+    "uncompressedBytes": 1833
+  },
+  {
+    "artifact": "node-1793243808422442823.log.gz",
+    "uncompressedSha256": "53c2c7ac8803b7042f9ff74943a98ae582698e8fcdfba850f5e3d24112057d27",
+    "uncompressedBytes": 3949
+  },
+  {
+    "artifact": "compiler-1793244158042369061.log.gz",
+    "uncompressedSha256": "3cb9a3c615af81f41c6f2d840ef19649c8be0f19485e1fa724677a1c51ac3412",
+    "uncompressedBytes": 20217
+  }
+]
