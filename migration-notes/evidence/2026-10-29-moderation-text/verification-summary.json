@@ -1,0 +1,66 @@
+{
+  "status": "Verified complete selected typed normalize.ts and links.rule.ts exports plus concrete native dependencies; broader moderation remains incomplete.",
+  "codeCommit": "8023df02b4fb6fe90278238941c43de9c878c26a",
+  "sourceTreeSha256": "a60560797db690243386bfeb50452739fa712cd4a46730c074baef4ff5338025",
+  "sourceInputs": 1324,
+  "acceptedRuns": [
+    "compiler-1793306498926949161",
+    "compiler-1793306568333996549",
+    "node-1793306498927961527"
+  ],
+  "linksCases": 45057,
+  "normalizerCases": 228,
+  "nullishNormalizerCases": 2,
+  "ordinaryTests": 4,
+  "existingRelatedOrdinaryTests": 5,
+  "limits": {
+    "cpus": 6,
+    "memory": 4294967296,
+    "memory_swap": 4294967296,
+    "pids": 256,
+    "cargo_jobs": 2
+  },
+  "peakCacheBytes": 3825397760,
+  "minimumAvailableBytes": 8620507136,
+  "productionUnchangedRecords": 19,
+  "performanceMeasured": false,
+  "noRetirementAdoptionDeploymentPush": true,
+  "runs": [
+    {
+      "run": "compiler-1793306445067569104",
+      "success": false,
+      "sourceTreeSha256": "31d05bda6e61ae4feca10fb30889c99139a30ee0cd630e448a3b4508e10a3a3c",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-1793306498926949161",
+      "success": true,
+      "sourceTreeSha256": "a60560797db690243386bfeb50452739fa712cd4a46730c074baef4ff5338025",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-1793306568333996549",
+      "success": true,
+      "sourceTreeSha256": "a60560797db690243386bfeb50452739fa712cd4a46730c074baef4ff5338025",
+      "productionUnchanged": true
+    },
+    {
+      "run": "format-1793306390556900756",
+      "success": true,
+      "sourceTreeSha256": "fe51eebc0ca4edc1c0d4e78ce2a0ac5682d77de31c2b15c4d90edbce8e62cd4f",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793306445052349026",
+      "success": true,
+      "sourceTreeSha256": "31d05bda6e61ae4feca10fb30889c99139a30ee0cd630e448a3b4508e10a3a3c",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793306498927961527",
+      "success": true,
+      "sourceTreeSha256": "a60560797db690243386bfeb50452739fa712cd4a46730c074baef4ff5338025",
+      "productionUnchanged": true
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "links": {
+    "filename": "moderation_links_reference.json",
+    "sha256": "1922c61e5b8154de414aea06ec23198c21bb1d71b4c857578f4401b1f56903df",
+    "cases": 45057
+  },
+  "normalize": {
+    "filename": "moderation-normalize-reference.json",
+    "sha256": "d83ed5947d5cb2bf17d7c2bd0eedebe986c07cec592041804310667e87fedc0e",
+    "cases": 228
+  }
+}

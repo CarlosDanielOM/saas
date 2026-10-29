@@ -1,0 +1,9 @@
+# Moderation normalize verification handoff (2026-10-29)
+
+**Status: verified both declared typed exports and their native value dependencies; no caller adoption or deployment.** `normalize.ts` has two exports, `foldText` and `escapeRegExp`, and no imports. `fold_text(Some(&JsString))` delegates to the verified Unicode 17 core; `fold_text(None)` models the source's nullish `text ?? ''` fallback. `escape_reg_exp(&JsString)` escapes the source's exact ASCII regex metacharacter set and preserves all other UTF-16 units, including lone surrogates. Invalid JavaScript casts, custom coercion hooks, and prototype behavior outside the typed contract are not included; the source's `escapeRegExp` has no nullish fallback.
+
+The native dependencies are `JsString`, JavaScript whitespace compatibility used by string handling, the generated Unicode 17 casing/property data, and the existing `unicode-normalization` 0.1.26 NFD implementation guarded by Unicode 17 assigned boundaries. No application-specific service or runtime adapter is required for these typed exports. The Unicode NFD/casing compatibility boundary is documented in the [shared core handoff](js-unicode-core-handoff.md).
+
+The actual TypeScript oracle validated the whole source structure and invoked its actual exports in a VM. Its final source-bound output covered 228 string cases and two nullish fold cases. Native replay, source checks, feature/profile checks and strict Clippy passed; no benchmark was run. Exact receipts and the remaining application boundary are in [moderation-text-2026-10-29.md](moderation-text-2026-10-29.md) and the indexed [evidence package](evidence/2026-10-29-moderation-text/README.md).
+
+TypeScript callers in blacklist rules, advanced moderation and variations remain live and unadopted. This verifies the selected utility exports only; broader moderation settings, registries, callers and enforcement remain open. No source retirement, deployment, or push occurred.
