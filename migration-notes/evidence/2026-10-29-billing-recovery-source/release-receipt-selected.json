@@ -1,0 +1,8 @@
+{
+  "run": "api-ee0635765a02",
+  "target": "api",
+  "status": "deployed",
+  "image": "sha256:22091c1adbd9a0891cefe2496bf5c2df8967aa6a10fdf0ca33945cd9cef16030",
+  "source_digest": "a77f37a44ffcc8453c5f6f15808931fcb6d9bb6decfda8ebffdd3f4ec32d075e",
+  "deployed_container": "34b055fd16739f2f15ba97181868929a0fc3232e3327ad5340bb5b99de25bf6d"
+}

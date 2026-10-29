@@ -1,0 +1,57 @@
+{
+  "purpose": "Read-only source capture for the accepted billing recovery behavior; captured files are committed references, not extracted from a running image.",
+  "productionRepository": "/root/saas",
+  "productionHead": "55bd0bb79a6edc441ec9f5104c13576fca0324b3",
+  "sourceCommit": "55bd0bb79a6edc441ec9f5104c13576fca0324b3",
+  "sourceParent": "9d35bd1ece3304627bdadee637e899d51cc6d7ad",
+  "sourceSubject": "fix(billing): recover past-due plans without repeat trials",
+  "releaseRun": "api-ee0635765a02",
+  "capturedSourceFiles": [
+    {
+      "repositoryPath": "dimabot/src/utils/billing.ts",
+      "capturedPath": "external-source-api-ee0635765a02/dimabot/src/utils/billing.ts",
+      "gitBlob": "4c4832af2ccf34732d26cee598e1f972afe843b4",
+      "sha256": "2bcb086c6ef1c668a392a983bfbb6107f9555c63c6b903e1aebf3f59c9e1791f",
+      "bytes": 47951
+    },
+    {
+      "repositoryPath": "ops/checks/billing-subscription-checkout.mjs",
+      "capturedPath": "external-source-api-ee0635765a02/ops/checks/billing-subscription-checkout.mjs",
+      "gitBlob": "1b817482646bb3957ac2bf3a86f5cf1e33032b41",
+      "sha256": "cebfc0969162b8d7bc127755f462c4f065fe4b8a183a881bcf0d003cf080e472",
+      "bytes": 13545
+    }
+  ],
+  "commitPatch": {
+    "path": "billing-recovery-commit.patch.gz",
+    "compression": "gzip",
+    "uncompressedSha256": "9dc6a9f9fd5103682e3516be4bbee3a10917c3ed82b7efce4cdaa3725ec7e5ac",
+    "uncompressedBytes": 14788,
+    "compressedSha256": "160bb1c32747393c176eccb6df29c6bb132eecac4f581173e4867d1f0bcd12ed",
+    "compressedBytes": 3312
+  },
+  "releaseReceiptPath": "/root/.local/state/saas-ops/649a957c15888e53/api-ee0635765a02/receipt.json",
+  "releaseReceiptExcerpt": {
+    "path": "release-receipt-selected.json",
+    "sha256": "1959e24f1ef9af4b394d962327353e76436f488d8f98ad7d2e2aa232bfb55407"
+  },
+  "workspaceComparison": {
+    "billingBaselinePath": "migration-notes/dimabot-ts-baseline-2026-10-28.json#files/src/utils/billing.ts",
+    "billingBaselineSha256": "a14d58f094e58dbb34ff5191cbb09b792759187adaca862413873fa83c780c0d",
+    "billingWorkspaceCurrentSha256": "a14d58f094e58dbb34ff5191cbb09b792759187adaca862413873fa83c780c0d",
+    "billingProductionCommitSha256": "2bcb086c6ef1c668a392a983bfbb6107f9555c63c6b903e1aebf3f59c9e1791f",
+    "polarshWorkspaceSha256": "5164452aea1747b72a410098bb8cd54c2cc0a4312f52e40728936c9c2f6e9fec",
+    "polarshProductionHeadSha256": "5164452aea1747b72a410098bb8cd54c2cc0a4312f52e40728936c9c2f6e9fec",
+    "nativeBillingRsExists": false
+  },
+  "limits": [
+    "No application, Node, Cargo, test, container, network, or production mutation was performed.",
+    "The receipt fields are deployment metadata and do not prove that bytes were extracted from the running image.",
+    "The captured behavior-check script is a committed reference and was not executed in this task."
+  ],
+  "evidenceReadme": {
+    "path": "README.md",
+    "sha256": "c78dcb7698fcbcac8012df65c6083a338136666e4ad3e0f5ac23aa67b0f13120",
+    "bytes": 2124
+  }
+}
