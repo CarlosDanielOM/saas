@@ -19,9 +19,9 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
-use redis::aio::ConnectionManager;
+use redis::aio::{ConnectionManager, ConnectionManagerConfig};
 use reqwest::Client;
-use tokio::sync::watch;
+use tokio::sync::{OnceCell, watch};
 
 use super::{
     js_date::parse_date_utf16,
@@ -34,6 +34,7 @@ use super::{
 
 pub const MAX_EMOTE_RESPONSE_BYTES: usize = 16 * 1024 * 1024;
 pub const EMOTE_REQUEST_TIMEOUT: Duration = Duration::from_secs(3);
+pub const EMOTE_CACHE_INIT_TIMEOUT: Duration = Duration::from_secs(5);
 const GLOBAL_KEY: &str = "twitch:global:tts:emotes";
 const HOUR_MS: f64 = 3_600_000.0;
 const DAY_MS: f64 = 86_400_000.0;
@@ -126,6 +127,154 @@ impl ChannelEmoteCatalog {
 
     pub fn to_json_string(&self) -> String {
         self.to_json_value().to_json_string()
+    }
+}
+
+/// Lazy concrete cache boundary. Construction performs no I/O or environment
+/// reads. Supply an application-owned token storage and an unconnected Redis
+/// client; this wrapper does not initialize Mongo, indexes, or background jobs.
+/// Clones share successful initialization and all catalog singleflights. A
+/// failed initialization is retryable, and its detached leader survives waiter
+/// cancellation. The application still owns logging, telemetry and bootstrap.
+#[derive(Clone)]
+pub struct TwitchEmoteRuntime {
+    config: Arc<RuntimeConfig>,
+    ready: Arc<OnceCell<TwitchEmoteCatalog>>,
+    initializing: SingleFlight<Option<TwitchEmoteCatalog>>,
+}
+
+struct RuntimeConfig {
+    client_id: String,
+    endpoints: TwitchEndpoints,
+    http: Client,
+    tokens: Arc<TwitchTokenStorage>,
+    redis: redis::Client,
+    clock: Arc<dyn EmoteClock>,
+    connect_timeout: Duration,
+    request_timeout: Duration,
+}
+
+impl TwitchEmoteRuntime {
+    pub fn new(
+        client_id: impl Into<String>,
+        endpoints: TwitchEndpoints,
+        http: Client,
+        tokens: Arc<TwitchTokenStorage>,
+        redis: redis::Client,
+    ) -> Self {
+        Self::from_config(RuntimeConfig {
+            client_id: client_id.into(),
+            endpoints,
+            http,
+            tokens,
+            redis,
+            clock: Arc::new(SystemEmoteClock),
+            connect_timeout: EMOTE_CACHE_INIT_TIMEOUT,
+            request_timeout: EMOTE_REQUEST_TIMEOUT,
+        })
+    }
+
+    fn from_config(config: RuntimeConfig) -> Self {
+        Self {
+            config: Arc::new(config),
+            ready: Arc::new(OnceCell::new()),
+            initializing: SingleFlight::default(),
+        }
+    }
+
+    /// Reconfiguration creates a separate initialization and flight scope.
+    pub fn with_clock(self, clock: Arc<dyn EmoteClock>) -> Self {
+        self.reconfigure(Some(clock), None, None)
+    }
+
+    /// Override the connect-and-PING bound, for isolated fixtures.
+    pub fn with_connect_timeout(self, timeout: Duration) -> Self {
+        self.reconfigure(None, Some(timeout), None)
+    }
+
+    /// Override the HTTP response/body bound independently of initialization.
+    pub fn with_request_timeout(self, timeout: Duration) -> Self {
+        self.reconfigure(None, None, Some(timeout))
+    }
+
+    fn reconfigure(
+        self,
+        clock: Option<Arc<dyn EmoteClock>>,
+        connect: Option<Duration>,
+        request: Option<Duration>,
+    ) -> Self {
+        let c = &self.config;
+        Self::from_config(RuntimeConfig {
+            client_id: c.client_id.clone(),
+            endpoints: c.endpoints.clone(),
+            http: c.http.clone(),
+            tokens: c.tokens.clone(),
+            redis: c.redis.clone(),
+            clock: clock.unwrap_or_else(|| c.clock.clone()),
+            connect_timeout: connect.unwrap_or(c.connect_timeout),
+            request_timeout: request.unwrap_or(c.request_timeout),
+        })
+    }
+
+    async fn catalog(&self) -> Option<TwitchEmoteCatalog> {
+        if let Some(catalog) = self.ready.get() {
+            return Some(catalog.clone());
+        }
+        let config = self.config.clone();
+        let ready = self.ready.clone();
+        self.initializing
+            .run(JsString::from(""), None, async move {
+                ready
+                    .get_or_try_init(|| async {
+                        let manager = tokio::time::timeout(config.connect_timeout, async {
+                            let options = ConnectionManagerConfig::new().set_response_timeout(None);
+                            let mut manager = config
+                                .redis
+                                .get_connection_manager_with_config(options)
+                                .await
+                                .map_err(|_| ())?;
+                            let _: String = redis::cmd("PING")
+                                .query_async(&mut manager)
+                                .await
+                                .map_err(|_| ())?;
+                            Ok::<_, ()>(manager)
+                        })
+                        .await
+                        .map_err(|_| ())??;
+                        Ok::<_, ()>(
+                            TwitchEmoteCatalog::new(
+                                config.client_id.clone(),
+                                config.endpoints.clone(),
+                                config.http.clone(),
+                                config.tokens.clone(),
+                                manager,
+                            )
+                            .with_clock(config.clock.clone())
+                            .with_request_timeout(config.request_timeout),
+                        )
+                    })
+                    .await
+                    .ok()
+                    .cloned()
+            })
+            .await
+    }
+
+    pub async fn get_channel_emote_catalog(&self, channel_id: &JsString) -> ChannelEmoteCatalog {
+        if !valid_channel_id(channel_id) {
+            return ChannelEmoteCatalog::unavailable();
+        }
+        match self.catalog().await {
+            Some(catalog) => catalog.get_channel_emote_catalog(channel_id).await,
+            None => ChannelEmoteCatalog::unavailable(),
+        }
+    }
+
+    pub async fn get_tts_emote_names(&self, channel_id: &JsString) -> Vec<JsString> {
+        match self.catalog().await {
+            Some(catalog) => catalog.get_tts_emote_names(channel_id).await,
+            None => Vec::new(),
+        }
     }
 }
 

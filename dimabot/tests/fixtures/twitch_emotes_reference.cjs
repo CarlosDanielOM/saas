@@ -88,7 +88,7 @@ async function fixture() {
     ['global-filter-and-order',{body:{data:[{name:'a'},{name:''},{name:'b'},{name:'a'},{name:3},{name:'\ud800'}]}},''],
     ['global-cache-dedup',{cache:{'twitch:global:tts:emotes':'["a","a","b",""]'}},''],
     ['global-corrupt',{cache:{'twitch:global:tts:emotes':'{'},body:{data:[{name:'never'}]}},''],
-    ['global-null-body',{body:null},''], ['global-primitive-body',{body:42},''], ['global-null-item',{body:{data:[null]}},''], ['global-get-fail',{getFail:true},''], ['global-set-fail',{setFail:true},'']]) await run(id,spec,'names',arg);
+    ['global-null-body',{body:null},''], ['global-primitive-body',{body:42},''], ['global-null-item',{body:{data:[null]}},''], ['global-get-fail',{getFail:true},''], ['global-set-fail',{setFail:true},''], ['global-connect-fail',{connectFail:true},'']]) await run(id,spec,'names',arg);
   // The shared promise must be removed after resolution so a later call can
   // retry. Use a held fetch rather than timing or artificial sleeps.
   let release;
