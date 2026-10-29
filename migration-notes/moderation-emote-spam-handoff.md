@@ -1,0 +1,9 @@
+# Emote-spam pure evaluator handoff
+
+The source exports `EmoteSpamEvaluationResult` and `evaluateEmoteSpamRule`. Its only import is type-only `Pick<IModerationRule, 'maxEmoteCount'>`; the source schema declares the selected `maxEmoteCount` property as required. The Rust evaluator uses `f64` and `Option<f64>`, with `None` representing the source's nullish fallback. It uses IEEE comparison and preserves the original non-nullish binary64 value. The input object is non-null and typed; arbitrary runtime casts, JavaScript coercion, and prototype behavior are not modeled.
+
+The verified native counterpart is `dimabot/src/utils/moderation/emote_spam.rs`, gated by the opt-in `moderation-emote-spam` Cargo feature. Evaluation itself is std-only. The feature uses the existing JavaScript-compatible JSON-number path and `serde_json` with `float_roundtrip` for external replay; this is not a runtime dependency of the evaluator and does not couple it to credit-policy.
+
+Source parity and scoped Rust verification passed. The oracle checked the full source AST/exports, type-only schema dependency and source pin, then generated 360 cases from the actual TypeScript source. The native replay compared result bits, trigger decisions, and ordered JSON output for all 360 cases. The complete receipts, compiler limits, and migration boundaries are recorded in [moderation-emote-spam-2026-10-29.md](moderation-emote-spam-2026-10-29.md).
+
+This verifies the selected pure numeric evaluator only. The surrounding moderation registry, fragment counting, settings, and enforcement path remain TypeScript; there is no caller adoption, retirement, deployment, or performance claim. The 1,305-file snapshot is an input inventory, not the number of parity cases. The nullish oracle cases exercise the explicit runtime fallback; the input object itself remains non-null.

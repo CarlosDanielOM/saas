@@ -87666,28 +87666,62 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-local-feature-and-helper-dependencies",
+      "localRustEvidence": [
+        "dimabot/src/utils/moderation/emote_spam.rs",
+        "dimabot/src/utils/moderation/mod.rs",
+        "dimabot/tests/moderation_emote_spam.rs",
+        "dimabot/tests/fixtures/moderation_emote_spam_reference.cjs",
+        "migration-notes/moderation-emote-spam-2026-10-29.md",
+        "migration-notes/evidence/2026-10-29-moderation-emote-spam/verification-summary.json"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The pure evaluator uses exact binary64 strict comparison and nullish count fallback; returned count bits are preserved. Declared typed objects/numeric fields are mapped to native structs; arbitrary JavaScript runtime casts/prototypes are excluded.",
+        "The single schema import is type-only and selects a required numeric maxEmoteCount field. Equivalent native types replace it without loading or requiring the unmigrated settings schema runtime.",
+        "No crate or lockfile was added. The opt-in feature gates existing serde_json/JS numeric helpers used by replay, while runtime evaluation uses std only. No source retirement, caller adoption, deployment, push or performance result."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/src/utils/moderation/rules/index.ts",
+          "dimabot/src/handlers/moderation.handler.ts"
+        ],
+        "runtimeStatus": "Existing TypeScript rule registry/handlers remain unadopted. Broader schema, fragment counting and enforcement are separate incomplete application paths."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "Actual complete TypeScript AST/function and type-only schema field extraction, strict typechecking and pinned source/SDK/runtime checks; 360 numeric/nullish cases."
+        ],
+        "rustBehaviorEvidence": [
+          "Two ordinary cases; all 360 source cases compare exact triggered/count bits/ordered JSON wire; native and SDK provenance independently verified.",
+          "No-feature, Mongo/Redis worker-profile and all-feature/all-target check/Clippy passed at source 0b49c85bb833d183b42618c081d644f0c7f51bd98d341269317559d4c4d95dd7 (1305 inputs), code 33bb8f46.",
+          "migration-notes/evidence/2026-10-29-moderation-emote-spam/verification-summary.json"
+        ],
+        "status": "pure helper exports and equivalent type-only dependency verified; source live and caller adoption open"
       },
       "exports": [
         {
           "name": "EmoteSpamEvaluationResult",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "complete native EmoteSpamEvaluationResult bool/count fields with binary64 preservation",
+          "evidence": [
+            "dimabot/src/utils/moderation/emote_spam.rs",
+            "dimabot/src/utils/moderation/mod.rs",
+            "dimabot/tests/moderation_emote_spam.rs",
+            "dimabot/tests/fixtures/moderation_emote_spam_reference.cjs",
+            "migration-notes/moderation-emote-spam-2026-10-29.md",
+            "migration-notes/evidence/2026-10-29-moderation-emote-spam/verification-summary.json"
+          ]
         },
         {
           "name": "evaluateEmoteSpamRule",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "complete native evaluate_emote_spam_rule with equivalent rule/input structs and exact numeric/nullish behavior",
+          "evidence": [
+            "dimabot/src/utils/moderation/emote_spam.rs",
+            "dimabot/src/utils/moderation/mod.rs",
+            "dimabot/tests/moderation_emote_spam.rs",
+            "dimabot/tests/fixtures/moderation_emote_spam_reference.cjs",
+            "migration-notes/moderation-emote-spam-2026-10-29.md",
+            "migration-notes/evidence/2026-10-29-moderation-emote-spam/verification-summary.json"
+          ]
         }
       ],
       "imports": [
@@ -87707,12 +87741,12 @@
           "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
           "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "directDependencyReview": "Type-only Pick<IModerationRule,maxEmoteCount> maps to required native f64 field, verified against actual schema AST.",
+          "transitiveDependencyReview": "No runtime schema import or application adapter is required by this pure evaluator. Broader schema and moderation caller migration remains separate.",
+          "rustReplacementOrGap": "EmoteSpamRule { max_emote_count: f64 } replaces the selected type field."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-helper-feature-and-native-dependencies-verified;source-live;application-caller-adoption-open"
     },
     {
       "source": "src/utils/moderation/rules/index.ts",

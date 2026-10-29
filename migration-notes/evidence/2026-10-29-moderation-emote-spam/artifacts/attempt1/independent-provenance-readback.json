@@ -1,0 +1,21 @@
+{
+  "all360CasesPresentUnique": true,
+  "allNativeSourceSchemaSdkNodeOracleHashesVerified": true,
+  "nativeHashes": {
+    "src/utils/moderation/emote_spam.rs": "84a7dace99cd228e4cce19891f21f605dd4e5ec4cf060b3bbe13b7fa9847999c",
+    "tests/moderation_emote_spam.rs": "2d6eb345a00292d2a3e2764486735b145e935637ade4d51790a85f8c4d99dc7a",
+    "src/utils/json_number.rs": "f463c65a55bcd611ed9bad2444e50acff697969bb910b7b4c17371d0af21f419",
+    "src/utils/js_compat.rs": "798538b33fa38b7a07935c22430ce12e3d93abc1afb4f605492299bbf27a64bc"
+  },
+  "hashes": {
+    "source": "24e7c603569d1063642575372de1066e4f5d5d5de46c88e15e450a549c17f12f",
+    "schema": "e7ab82dd1eb02eaaddc5cfc93f41a4b8ff09b14ce0b488a870cbf5c727a23653",
+    "package": "cc4939f6416a91d4bfaa5bcdd3d448d2f74103a88bb269e0a8e393615cf32cef",
+    "lock": "abdf5aa71a8272423ebb9358d7aaa87edd7e65f6605c325fe231a4bcef70eeb7",
+    "toolchain": "b9c8d2d59f6f46474c0cfa0b8b77bea21d94fc73a30ad93d5bf6385c422197d2",
+    "typescript": "3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675",
+    "typescriptPackage": "822ef7ca6452205657b6288b066481ecf508bfbf43455d715cf7d3ec457561e6",
+    "node": "569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108",
+    "oracle": "865e9efd8f14bd43de717f15e47f5ac26d246a6b5b0764809a9b3650e5a7c57f"
+  }
+}

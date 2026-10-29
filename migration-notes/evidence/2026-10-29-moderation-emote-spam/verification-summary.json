@@ -1,0 +1,51 @@
+{
+  "status": "Verified pure emote-spam evaluator and equivalent type-only schema contract; broader moderation remains incomplete.",
+  "codeCommit": "33bb8f460a668e35234b1d3b8d98c321305b154d",
+  "sourceTreeSha256": "0b49c85bb833d183b42618c081d644f0c7f51bd98d341269317559d4c4d95dd7",
+  "sourceInputs": 1305,
+  "acceptedRuns": [
+    "compiler-1793302248518831893",
+    "node-1793302248517993453",
+    "compiler-1793302461772086894"
+  ],
+  "sourceCases": 360,
+  "ordinaryTests": 2,
+  "limits": {
+    "cpus": 6,
+    "memory": 4294967296,
+    "memory_swap": 4294967296,
+    "pids": 256,
+    "cargo_jobs": 2
+  },
+  "peakCacheBytes": 3666329600,
+  "minimumAvailableBytes": 8732250112,
+  "productionUnchangedRecords": 19,
+  "performanceMeasured": false,
+  "noRetirementAdoptionDeploymentPush": true,
+  "runs": [
+    {
+      "run": "compiler-1793302248518831893",
+      "success": true,
+      "sourceTreeSha256": "0b49c85bb833d183b42618c081d644f0c7f51bd98d341269317559d4c4d95dd7",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-1793302461772086894",
+      "success": true,
+      "sourceTreeSha256": "0b49c85bb833d183b42618c081d644f0c7f51bd98d341269317559d4c4d95dd7",
+      "productionUnchanged": true
+    },
+    {
+      "run": "format-1793302207225108236",
+      "success": true,
+      "sourceTreeSha256": "0507184e365561e1dc31171c1295680b94cefdd01560c93a2b8fc0b279b84268",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793302248517993453",
+      "success": true,
+      "sourceTreeSha256": "0b49c85bb833d183b42618c081d644f0c7f51bd98d341269317559d4c4d95dd7",
+      "productionUnchanged": true
+    }
+  ]
+}
