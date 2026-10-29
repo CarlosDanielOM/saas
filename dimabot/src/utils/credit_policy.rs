@@ -15,6 +15,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fmt;
 
+use super::tts_usage_pricing::js_round;
+pub use super::tts_usage_pricing::{TtsUsageResult, calculate_tts_usage};
+
 /// ECMAScript Date's TimeClip range, integral milliseconds, and invalid state.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct JsDate(Option<i64>);
@@ -436,61 +439,4 @@ pub fn get_recharge_expiry(
         expires_at: JsDate(Some(expiry)).to_iso_string().expect("valid expiry"),
         days_remaining,
     })
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct TtsUsageResult {
-    pub characters: f64,
-    pub credits_consumed: f64,
-    pub polarsh_cost: f64,
-    pub cost_usd: f64,
-}
-
-/// JS Math.round ties toward +infinity and retains -0. Adding 0.5 before
-/// flooring would incorrectly round values just below a tie and large integers.
-fn js_round(value: f64) -> f64 {
-    if !value.is_finite() || value == 0.0 || value.abs() >= 4_503_599_627_370_496.0 {
-        return value;
-    }
-    if (-0.5..0.0).contains(&value) {
-        return -0.0;
-    }
-    let floor = value.floor();
-    if value - floor < 0.5 {
-        floor
-    } else {
-        floor + 1.0
-    }
-}
-
-pub fn calculate_tts_usage(provider: &str, characters: f64) -> TtsUsageResult {
-    let credits_consumed = match provider {
-        "fish" => (characters * 1.5).ceil(),
-        "piper" => (characters / 50.0).ceil(),
-        "kokoro" => (characters / 15.0).ceil(),
-        // Source rate table is an ordinary Object. Inherited members are
-        // nonnumeric and fail `ratio > 0`, so they yield zero rather than 100.
-        "constructor"
-        | "__defineGetter__"
-        | "__defineSetter__"
-        | "hasOwnProperty"
-        | "__lookupGetter__"
-        | "__lookupSetter__"
-        | "isPrototypeOf"
-        | "propertyIsEnumerable"
-        | "toString"
-        | "valueOf"
-        | "__proto__"
-        | "toLocaleString" => 0.0,
-        _ => (characters / 100.0).ceil(),
-    };
-    let polarsh_cost = credits_consumed / 1000.0;
-    let cost_usd = credits_consumed * 0.00001;
-    TtsUsageResult {
-        characters,
-        credits_consumed,
-        polarsh_cost: js_round(polarsh_cost * 100_000.0) / 100_000.0,
-        cost_usd: js_round(cost_usd * 100_000.0) / 100_000.0,
-    }
 }

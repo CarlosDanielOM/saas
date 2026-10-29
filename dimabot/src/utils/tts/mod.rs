@@ -5,6 +5,8 @@ pub mod playback_timeout;
 #[cfg(feature = "redis")]
 pub mod session;
 pub mod settings;
+pub use super::tts_usage_pricing as usage;
+pub use usage::{TtsUsageResult, calculate_tts_usage, calculate_tts_usage_js};
 mod tag_types;
 pub use tag_types::{ExpressiveTtsTag, ExpressiveTtsTagSettings};
 

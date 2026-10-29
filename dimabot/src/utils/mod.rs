@@ -118,6 +118,9 @@ pub mod plan_cache_fence;
 pub mod polar;
 #[cfg(feature = "tts-utilities")]
 pub mod tts;
+#[cfg(any(feature = "credit-policy", feature = "tts-utilities"))]
+#[path = "tts/usage.rs"]
+pub mod tts_usage_pricing;
 #[cfg(feature = "twitch-client")]
 pub mod twitch;
 #[cfg(feature = "twitch-emotes")]
