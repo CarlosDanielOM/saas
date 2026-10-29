@@ -1,0 +1,10 @@
+{
+  "expectedExit": 1,
+  "actualExit": 1,
+  "restoredOriginalMisnamedClockOnly": true,
+  "schemaDateAssertionCaughtDayStartCoercion": true,
+  "noOracleArtifactsWritten": true,
+  "currentOracleSha256": "818ff4e97d3d425a12d5e8300f67fb5f827cd281956a82f971e2d5899160b553",
+  "diagnosticSourceSha256": "80a70bdb2ae3b59784b3196ce57f8bb73b25be8869dc76c328041991860286e2",
+  "nodeSha256": "569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108"
+}

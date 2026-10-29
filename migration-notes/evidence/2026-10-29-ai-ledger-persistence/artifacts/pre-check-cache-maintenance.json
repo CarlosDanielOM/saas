@@ -1,0 +1,8 @@
+{
+  "scope": "Only old single-link ELF test executables in the task-private target/debug/deps; all from completed phases before initial persistence verification. No dependency, shared cache, release image, source or production mutation.",
+  "beforeAllocatedBytes": 8352686080,
+  "files": [],
+  "afterAllocatedBytes": 8352686080,
+  "removedAllocatedBytes": 0,
+  "productionUnchanged": true
+}

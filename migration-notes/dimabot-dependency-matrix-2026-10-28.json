@@ -58499,7 +58499,7 @@
       ],
       "rowAssessment": "unreviewed-no-feature-completion-inferred"
     },
-    {
+            {
       "source": "src/utils/ai_usage_ledger.ts",
       "baseline": {
         "sha256": "3519b440d3d03a9415323f75f113f81627c6b07369ef43903a7b07116df5d4f5",
@@ -58509,7 +58509,7 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "reviewed-bounded-partial-request-time-receipt-producer-parser-lock-helper-state-reads-history-transactions-and-retention-exports; persistence/backfill/model/bootstrap/API/caller adoption remain open",
+      "featureReview": "reviewed-bounded-partial-request-time-receipt-producer-parser-lock-helper-state-reads-history-transactions-retention-and-persistence-exports; backfill/model-bootstrap/API/caller adoption remain open",
       "localRustEvidence": [
         "dimabot/src/utils/ai_usage_producer.rs",
         "dimabot/src/utils/ai_usage.rs",
@@ -58579,7 +58579,14 @@
         "migration-notes/ai-usage-ledger-queries-handoff.md",
         "migration-notes/ai-usage-retention-handoff.md",
         "migration-notes/evidence/2026-10-29-ai-ledger-queries-retention/README.md",
-        "4896f1187db57e9c551214c2e51524096dd9c33a; eight related code/wiring/test/oracle files; frozen source SHA-256 553a83009ddd381bb94b28cb8dd5f736699bbded3581e2f95dfd20be7091c006; 1,284 inputs."
+        "4896f1187db57e9c551214c2e51524096dd9c33a; eight related code/wiring/test/oracle files; frozen source SHA-256 553a83009ddd381bb94b28cb8dd5f736699bbded3581e2f95dfd20be7091c006; 1,284 inputs.",
+        "dimabot/src/utils/ai_usage_ledger_persistence.rs",
+        "dimabot/src/utils/ai_usage_aggregate_policy.rs",
+        "dimabot/tests/ai_usage_ledger_persistence.rs",
+        "dimabot/tests/fixtures/ai_usage_ledger_persistence_reference.cjs",
+        "migration-notes/ai-usage-ledger-persistence-handoff.md",
+        "migration-notes/ai-usage-ledger-persistence-2026-10-29.md",
+        "Verified persistence code commit a872419d87d7a43672efb7fc9024c4d4963a7f97; immutable source tree SHA-256 390eb3029166aa393ba3d863997faa14a67cae5fc4bcd0309fffa91d9c1f1dda; 1,289 source inputs."
       ],
       "behaviorDifferencesOrAcceptedChanges": [
         "Rust QueuedAiUsageReceipt is a typed lossless plain-data builder value, not full parity for the TypeScript interface extending AiUsageTransaction or for the parser/persistence consumer contract.",
@@ -58595,7 +58602,10 @@
         "loadAiUsagePacingHistory and loadAiUsageLedgerTransactions now have a verified opt-in native adapter with full pacing/window interfaces and a raw 16-own-field lean BSON carrier; state coverage, daily aggregation, receipt sort and complete cursor-before-map error order are preserved. Existing callers remain TypeScript.",
         "Query adapter compatibility is bounded to declared identity/date inputs and ordinary lean BSON under Node default promotion; custom accessors/prototypes, nondefault promotion, malformed-wire decoder equivalence and engine exhaustion are not claimed. The native Math.max branch preserves the observed V8 NaN sign bit; shared Number conversion is unchanged.",
         "adjustAiUsageRetention has a verified opt-in native adapter reusing four existing schema collections and RetentionTier. It preserves ordered model writes and concurrent final deletes; sibling work can continue after an early error or cancellation, so caller runtime/client lifetime matters and mutation outcome may be uncertain.",
-        "Queries and retention add opt-in features only; no package, lockfile, default-feature, deployed-profile, source-retirement, caller-adoption, or deployment change. No benchmark was run for these exports."
+        "Queries and retention add opt-in features only; no package, lockfile, default-feature, deployed-profile, source-retirement, caller-adoption, or deployment change. No benchmark was run for these exports.",
+        "persistAiUsageReceipt now has a concrete opt-in Mongo/Redis adapter using the existing AiUsageLock, explicit Database/shared ConnectionManager, and borrowed producer DTO without a JSON round trip. The selected Mongoose update/default/timestamp behavior and daily insertMany/rebuild behavior were verified against the declared plain-data boundary; this does not implement the broader model lifecycle.",
+        "The native daily reducer intentionally rejects expiry arrays containing Date or RegExp values (including nested arrays) and top-level RegExp before daily delete/insert. Top-level Date and supported ordinary values remain covered. Private raw-Mongo sentinel checks prove daily rows stay unchanged and already-visible dirty/upsert writes remain visible; this is a deliberate partial-parity boundary, not exhaustive malformed-legacy parity.",
+        "No benchmark or performance result was produced for persistence. Backfill remains unverified/excluded; TypeScript callers, API/bootstrap integration, billing path adoption, worker parser/adoption and source retirement remain open."
       ],
       "callers": {
         "sourceEvidence": [
@@ -58607,7 +58617,7 @@
           "dimabot/src/utils/ai_usage_dashboard.ts: consumers of pacing interface remain TypeScript; no current runtime call to loadAiUsagePacingHistory was found.",
           "dimabot/src/utils/ai_usage_backfill.ts and retention/model consumers remain outside this bounded adapter."
         ],
-        "runtimeStatus": "The native queue producer has no adopted Rust call site. The existing native receipt worker is consumer-only and remains on its old serde_json::Value parser, which rejects escaped lone surrogates; the new parser is unadopted. Native parser/BSON projection helpers do not constitute persistAiUsageReceipt or full Mongo model/index/middleware behavior. Queue processing, persistence, locking, reporting, backfill and caller/bootstrap integration remain open. Adoption and deployment are tracked separately from dependency completeness; no deployment occurred. The imported lock helper has a concrete partial native implementation, but no caller has switched; telemetry/logging bootstrap behavior and application persistence/dashboard callbacks remain open. The three read helpers have a concrete opt-in Rust adapter, but existing callers remain TypeScript and no adoption/deployment occurred. The history/transaction query and retention implementations are opt-in native slices with no adopted application call sites; API, persistence, backfill/rebuild, bootstrap and model lifecycle integration remain open."
+        "runtimeStatus": "The native queue producer has no adopted Rust call site. The existing native receipt worker is consumer-only and remains on its old serde_json::Value parser, which rejects escaped lone surrogates; the new parser is unadopted. Native parser/BSON projection helpers do not constitute persistAiUsageReceipt or full Mongo model/index/middleware behavior. Queue processing, persistence, locking, reporting, backfill and caller/bootstrap integration remain open. Adoption and deployment are tracked separately from dependency completeness; no deployment occurred. The imported lock helper has a concrete partial native implementation, but no caller has switched; telemetry/logging bootstrap behavior and application persistence/dashboard callbacks remain open. The three read helpers have a concrete opt-in Rust adapter, but existing callers remain TypeScript and no adoption/deployment occurred. The history/transaction query and retention implementations are opt-in native slices with no adopted application call sites; API, persistence, backfill/rebuild, bootstrap and model lifecycle integration remain open. The native persistAiUsageReceipt/daily rebuild adapter is verified as an opt-in local slice, but existing TypeScript ledger/queue/API callers remain active and have not adopted it; backfill, model/bootstrap integration, billing-path adoption and the worker parser remain open. The explicitly unsupported malformed legacy expiry projection remains a bounded partial-parity case. No persistence benchmark, source retirement, deployment, or push occurred."
       },
       "testEvidence": {
         "sourceEvidence": [
@@ -58622,7 +58632,10 @@
           "Ledger-state read oracle extracts the complete three source functions plus report version/status/state declarations from the frozen TypeScript source; 216 actual-source scenarios, six AST declarations and dependency/package hash replay passed. See migration-notes/evidence/2026-10-29-ai-usage-ledger-reads/verification-summary.json.",
           "Combined query oracle: 333 actual-source scenarios and 22 declarations passed; retention oracle: 34 scenarios and four declarations passed. Frozen source SHA-256 553a83009ddd381bb94b28cb8dd5f736699bbded3581e2f95dfd20be7091c006 (1,284 input bindings).",
           "Query source replay passed all 333 scenarios against fresh private Mongo after the native Math.max NaN sign-bit correction; retention source replay passed 34 scenarios; separate retention private Mongo mutation/pool/index/disconnect/cancellation exercise passed. Targeted query release-profile replay also passed all eight ordinary tests and all 333 source scenarios in compiler-1793284759267735157.",
-          "Corrected query oracle regeneration preserved source outputs, protocols, packages and dependencies; only two native query bindings changed. Final pinned Node checks passed both oracles in node-1793285417559374117; source bindings and readback are being packaged under migration-notes/evidence/2026-10-29-ai-ledger-queries-retention/."
+          "Corrected query oracle regeneration preserved source outputs, protocols, packages and dependencies; only two native query bindings changed. Final pinned Node checks passed both oracles in node-1793285417559374117; source bindings and readback are being packaged under migration-notes/evidence/2026-10-29-ai-ledger-queries-retention/.",
+          "Final persistence oracle: node-1793290980286199461 passed generation/check of all 204 actual-source cases; final all-six checks and old-clock negative control passed at node-1793291412733747560.",
+          "Corrected persistence/private-resource and query replay passed at compiler-fixtures-1793291161151841227: all 204 persistence cases, real private Mongo/Redis suite (2.42 seconds), and all 333 query source cases. Corrected retention source-wire replay passed all 34 cases at compiler-fixtures-1793291257891114152.",
+          "Independent readback confirmed the 204-file evidence package (203 indexed file hashes, 94 gzip raw-payload hashes/sizes, 10 reconstructed failed-source bindings, and 29 run receipt/log pairs); 1,289 source inputs bind to a872419d plus 10 unchanged archive SDK references. Final production/resource readback confirmed 19 acknowledged production records unchanged and zero task-owned containers, networks, or volumes."
         ],
         "rustBehaviorEvidence": [
           "Baseline source 77fc976da064a87c02ec1fce93cd0e4820dfe53a7eac9feb5fab453c482d80f7 passed compiler-fixtures-1793256166045626940 and post-Node node-1793256476785298801; its 178 test executions overlap dependency tests and include a subprocess-only no-op helper, not 178 unique cases. This remains the full proof for unchanged credit/TTS behavior.",
@@ -58639,9 +58652,10 @@
           "Commit ba91a15b8041a894ecf1d017ec5708af8ba0e66e / source-tree SHA-256 3193e98b7697bfa7a09d7809e74b529c023e50cf83cd1426fcc8152075d970e8: strict checks passed; six ordinary tests and both ignored source replay/private Mongo adapter behavior tests passed. Final pinned Node check passed. Run IDs, exact failure history, resource limits and cleanup readback are in migration-notes/evidence/2026-10-29-ai-usage-ledger-reads/verification-summary.json.",
           "Combined strict all-target feature checks, all-feature checks, Clippy -D warnings, no-default-feature compiler check, eight query and two retention ordinary tests passed: compiler-1793284032019891565 (126.21 s script / 135.056 s total; 6 CPU, 4 GiB memory/equal swap, 256 PID, two jobs; peak cache 8,447,475,712 bytes, minimum available memory 9,546,145,792 bytes).",
           "Query corrected source replay passed 333 scenarios including fresh Mongo sort/aggregate/legacy/error/pool/cancellation checks: compiler-fixtures-1793284318631963243 (9.985 s script / 21.742 s total). Retention replay passed 34 full BSON/cast/clock/failure/concurrency cases: compiler-fixtures-1793284500245082430 (7.152 s / 17.949 s); separate private Mongo behavior passed compiler-fixtures-1793284538995629407 (2.646 s / 12.615 s). Final Node source checks passed node-1793284627899110938 (3.502 s / 4.753 s).",
-          "Initial query replay caught a source-compatible V8 Math.max NaN sign-bit difference. A pinned Node diagnostic verified the behavior; only the native query Math.max branch changed, not shared Number conversion. Three ordinary cases now assert total and average f64 bits. Corrective Node write/check passed node-1793284231647154788. Targeted release-profile compiler-1793284759267735157 passed eight ordinary tests and all 333 source scenarios (152.01 s script / 160.525 s phase; peak cache 8,352,686,080 bytes; minimum available memory 10,539,753,472 bytes). No performance benchmark was run for any of the three exports."
+          "Initial query replay caught a source-compatible V8 Math.max NaN sign-bit difference. A pinned Node diagnostic verified the behavior; only the native query Math.max branch changed, not shared Number conversion. Three ordinary cases now assert total and average f64 bits. Corrective Node write/check passed node-1793284231647154788. Targeted release-profile compiler-1793284759267735157 passed eight ordinary tests and all 333 source scenarios (152.01 s script / 160.525 s phase; peak cache 8,352,686,080 bytes; minimum available memory 10,539,753,472 bytes). No performance benchmark was run for any of the three exports.",
+          "Final immutable source 390eb3029166aa393ba3d863997faa14a67cae5fc4bcd0309fffa91d9c1f1dda: compiler-1793290925888826111 passed strict compilation/Clippy -D warnings, no-feature and worker-profile checks, all-features check, ordinary persistence/category/query/producer/parser/retention groups, and the affected worker grouping test. The separate private Mongo/Redis replay passed; all final run receipts report production_unchanged=true. No benchmark was run for this slice."
         ],
-        "status": "Partial local receipt builder/queue producer and queued-receipt parser/BSON projection behavior verified at distinct source bindings; a related AI-usage payload serialization follow-up is verified but does not establish ledger or persistence behavior. Complete Mongo persistence, existing worker adoption, and full ledger dependencies remain open.; imported request-time lock helper separately verified, with callers and bootstrap telemetry/logging gap still open Three ledger-state read exports are verified as a distinct opt-in local slice; no read performance was measured. Two history/transaction exports and retention adapter are verified as opt-in local slices; query release-profile replay passed; evidence packaging/source readback remains in progress. No performance was measured for these exports. Final pinned Node checks passed both oracles (node-1793285417559374117); parent production readback found 19 records unchanged."
+        "status": "Partial local receipt builder/queue producer and queued-receipt parser/BSON projection behavior verified at distinct source bindings; a related AI-usage payload serialization follow-up is verified but does not establish ledger or persistence behavior. Complete Mongo persistence, existing worker adoption, and full ledger dependencies remain open.; imported request-time lock helper separately verified, with callers and bootstrap telemetry/logging gap still open Three ledger-state read exports are verified as a distinct opt-in local slice; no read performance was measured. Two history/transaction exports and retention adapter are verified as opt-in local slices; query release-profile replay passed; independent readback confirmed the complete AI ledger persistence evidence package (204 files, 203 indexed hashes, 94 gzip payload hashes/sizes, 10 reconstructed failed-source bindings, and 29 run receipt/log pairs). No performance was measured for these exports. Final pinned Node checks passed both oracles (node-1793285417559374117); parent production readback found 19 records unchanged."
       },
       "exports": [
         {
@@ -58841,8 +58855,17 @@
         },
         {
           "name": "persistAiUsageReceipt",
-          "nativeMapping": "unreviewed/outside this bounded producer slice",
-          "evidence": []
+          "nativeMapping": "partial: verified opt-in native Mongo/Redis receipt persistence and UTC daily rebuild adapter using the producer DTO directly; selected Mongoose update and insertMany behavior are covered; broader model/bootstrap/backfill/API/caller adoption and malformed legacy expiry parity remain open",
+          "evidence": [
+            "dimabot/src/utils/ai_usage_ledger_persistence.rs",
+            "dimabot/src/utils/ai_usage_aggregate_policy.rs",
+            "dimabot/tests/ai_usage_ledger_persistence.rs",
+            "dimabot/tests/fixtures/ai_usage_ledger_persistence_reference.cjs",
+            "migration-notes/ai-usage-ledger-persistence-handoff.md",
+            "migration-notes/ai-usage-ledger-persistence-2026-10-29.md",
+            "compiler-1793290925888826111; compiler-fixtures-1793291161151841227; compiler-fixtures-1793291257891114152; node-1793290980286199461; node-1793291412733747560",
+            "Final source tree SHA-256 390eb3029166aa393ba3d863997faa14a67cae5fc4bcd0309fffa91d9c1f1dda (1,289 inputs); evidence package readback confirmed at migration-notes/evidence/2026-10-29-ai-ledger-persistence/ (204 files total; 203 indexed hashes; 94 gzip payload hashes/sizes; 10 reconstructed failed-source bindings; 29 run receipt/log pairs)."
+          ]
         }
       ],
       "imports": [
@@ -59020,7 +59043,7 @@
           "rustReplacementOrGap": "No Redis runtime dependency is introduced for queries or retention."
         }
       ],
-      "rowAssessment": "partial-local-request-time-producer-parser-lock-helper-state-reads-history-transactions-and-retention-exports-verified; persistence/backfill/model/bootstrap/API/caller adoption remain open"
+      "rowAssessment": "partial-local-request-time-producer-parser-lock-helper-state-reads-history-transactions-retention-and-persistAiUsageReceipt adapter verified within declared inputs and Mongo/Redis boundary; legacy expiry projection has an explicit unsupported case; backfill/model/bootstrap/API/caller adoption remain open"
     },
     {
       "source": "src/utils/ai_usage_lock.ts",

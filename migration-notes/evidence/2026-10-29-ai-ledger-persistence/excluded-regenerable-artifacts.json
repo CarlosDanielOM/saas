@@ -1,0 +1,7 @@
+{
+  "publicDependencyTrees": "Dependency manifests retain hashes; public package trees and pinned Node executable are not vendored.",
+  "unintegratedDrafts": [
+    "ai_usage_ledger_backfill",
+    "ai_usage_daily_reducer_benchmark"
+  ]
+}

@@ -1,0 +1,11 @@
+# Native ledger receipt persistence evidence
+
+The [verification summary](verification-summary.json) records the verified bounded adapter, its intentional unsupported legacy boundary, exact checks, and remaining work. Eight ordinary persistence tests, all 204 actual-source scenarios, concrete private Mongo/Redis failure and preservation checks, all 333 corrected query scenarios, and all 34 corrected retention scenarios passed. Source hashes bind 1,289 inputs to the local code commit and ten unchanged archive-verified SDK references.
+
+Earlier failures and source bytes are retained. In particular, pre-correction oracle data is historical failure evidence, not an accepted reference: an incorrectly named Date subclass changed Mongoose clone behavior, and direct BSON serialization used different undefined defaults from the actual Mongo driver. Final fixtures preserve Date identity and use installed driver options, with explicit guards and an old-clock negative control. Native Date and missing-filter null behavior were retained. Earlier incorrect field order and extended-year expectations were corrected without dropping scenarios.
+
+An early compiler-cache guard failed above 8 GiB. The owned maintenance record retains the full manifest and internal-hardlink proof before completed private release artifacts were removed. Later accepted runs passed under the existing CPU/memory/no-swap/build limits. All post-acknowledgement checks retain the acknowledged billing API baseline; prior records and both unexpected-change stops are preserved. Final readback found 19 unchanged production records and zero owned containers, networks, or volumes.
+
+The artifact index covers stored bytes; compressed payloads also retain raw hashes. Public dependency trees and the pinned Node executable are represented by manifests rather than vendored copies. Reproduction tools include numbered scripts and current helper versions; early driver-command corrections remain visible in raw logs.
+
+No performance benchmark, TypeScript retirement, application cutover, deployment, or push occurred. Backfill and reducer-benchmark drafts are excluded from this verified snapshot. Full ledger and full migration completion remain open.

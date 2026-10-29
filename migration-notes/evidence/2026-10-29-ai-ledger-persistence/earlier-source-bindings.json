@@ -1,0 +1,252 @@
+[
+  {
+    "run": "compiler-1793288853970985462",
+    "sourceTreeSha256": "cd1902112dc631f6082cc1b58513f28829c5ef9ba3afc41ae510dfcd584abc8b",
+    "unchangedFilesBoundTo": "a872419d87d7a43672efb7fc9024c4d4963a7f97",
+    "changedFiles": {
+      "dimabot/src/utils/ai_usage_ledger_persistence.rs": {
+        "sha256": "defdcb7e2e3d4a3bfd6024435a55dee410ecac0a63f065d72579ac150dc7ed49",
+        "retainedPath": "attempt2/authored-source/dimabot/src/utils/ai_usage_ledger_persistence.rs"
+      },
+      "dimabot/tests/ai_usage_ledger_persistence.rs": {
+        "sha256": "805d8a298a7934fdc773415ea0d9637b6511c537fbb04b3f6be7618fc47c2fa9",
+        "retainedPath": "attempt1/authored-source/dimabot/tests/ai_usage_ledger_persistence.rs"
+      },
+      "dimabot/tests/fixtures/ai_usage_ledger_persistence_reference.cjs": {
+        "sha256": "53fdfe0f2e4cace87477804fc7d56b4e94020ba4df7eb269b513d8f67210d5f0",
+        "retainedPath": "attempt4/authored-source/dimabot/tests/fixtures/ai_usage_ledger_persistence_reference.cjs"
+      },
+      "dimabot/tests/fixtures/ai_usage_ledger_queries_reference.cjs": {
+        "sha256": "88333201c9ba38966b82895aeb96eacf63d8a0690f2b2a51f06de6629fc5e1cb",
+        "retainedPath": "attempt4/authored-source/dimabot/tests/fixtures/ai_usage_ledger_queries_reference.cjs"
+      },
+      "dimabot/tests/fixtures/ai_usage_retention_reference.cjs": {
+        "sha256": "52ade04edd182dbfebba894d7d56ebbaa227b1ae7e53dc28b06118445a4bf69a",
+        "retainedPath": "attempt4/authored-source/dimabot/tests/fixtures/ai_usage_retention_reference.cjs"
+      }
+    }
+  },
+  {
+    "run": "compiler-1793288901514716905",
+    "sourceTreeSha256": "cd1902112dc631f6082cc1b58513f28829c5ef9ba3afc41ae510dfcd584abc8b",
+    "unchangedFilesBoundTo": "a872419d87d7a43672efb7fc9024c4d4963a7f97",
+    "changedFiles": {
+      "dimabot/src/utils/ai_usage_ledger_persistence.rs": {
+        "sha256": "defdcb7e2e3d4a3bfd6024435a55dee410ecac0a63f065d72579ac150dc7ed49",
+        "retainedPath": "attempt2/authored-source/dimabot/src/utils/ai_usage_ledger_persistence.rs"
+      },
+      "dimabot/tests/ai_usage_ledger_persistence.rs": {
+        "sha256": "805d8a298a7934fdc773415ea0d9637b6511c537fbb04b3f6be7618fc47c2fa9",
+        "retainedPath": "attempt1/authored-source/dimabot/tests/ai_usage_ledger_persistence.rs"
+      },
+      "dimabot/tests/fixtures/ai_usage_ledger_persistence_reference.cjs": {
+        "sha256": "53fdfe0f2e4cace87477804fc7d56b4e94020ba4df7eb269b513d8f67210d5f0",
+        "retainedPath": "attempt4/authored-source/dimabot/tests/fixtures/ai_usage_ledger_persistence_reference.cjs"
+      },
+      "dimabot/tests/fixtures/ai_usage_ledger_queries_reference.cjs": {
+        "sha256": "88333201c9ba38966b82895aeb96eacf63d8a0690f2b2a51f06de6629fc5e1cb",
+        "retainedPath": "attempt4/authored-source/dimabot/tests/fixtures/ai_usage_ledger_queries_reference.cjs"
+      },
+      "dimabot/tests/fixtures/ai_usage_retention_reference.cjs": {
+        "sha256": "52ade04edd182dbfebba894d7d56ebbaa227b1ae7e53dc28b06118445a4bf69a",
+        "retainedPath": "attempt4/authored-source/dimabot/tests/fixtures/ai_usage_retention_reference.cjs"
+      }
+    }
+  },
+  {
+    "run": "compiler-1793289003501096173",
+    "sourceTreeSha256": "cd1902112dc631f6082cc1b58513f28829c5ef9ba3afc41ae510dfcd584abc8b",
+    "unchangedFilesBoundTo": "a872419d87d7a43672efb7fc9024c4d4963a7f97",
+    "changedFiles": {
+      "dimabot/src/utils/ai_usage_ledger_persistence.rs": {
+        "sha256": "defdcb7e2e3d4a3bfd6024435a55dee410ecac0a63f065d72579ac150dc7ed49",
+        "retainedPath": "attempt2/authored-source/dimabot/src/utils/ai_usage_ledger_persistence.rs"
+      },
+      "dimabot/tests/ai_usage_ledger_persistence.rs": {
+        "sha256": "805d8a298a7934fdc773415ea0d9637b6511c537fbb04b3f6be7618fc47c2fa9",
+        "retainedPath": "attempt1/authored-source/dimabot/tests/ai_usage_ledger_persistence.rs"
+      },
+      "dimabot/tests/fixtures/ai_usage_ledger_persistence_reference.cjs": {
+        "sha256": "53fdfe0f2e4cace87477804fc7d56b4e94020ba4df7eb269b513d8f67210d5f0",
+        "retainedPath": "attempt4/authored-source/dimabot/tests/fixtures/ai_usage_ledger_persistence_reference.cjs"
+      },
+      "dimabot/tests/fixtures/ai_usage_ledger_queries_reference.cjs": {
+        "sha256": "88333201c9ba38966b82895aeb96eacf63d8a0690f2b2a51f06de6629fc5e1cb",
+        "retainedPath": "attempt4/authored-source/dimabot/tests/fixtures/ai_usage_ledger_queries_reference.cjs"
+      },
+      "dimabot/tests/fixtures/ai_usage_retention_reference.cjs": {
+        "sha256": "52ade04edd182dbfebba894d7d56ebbaa227b1ae7e53dc28b06118445a4bf69a",
+        "retainedPath": "attempt4/authored-source/dimabot/tests/fixtures/ai_usage_retention_reference.cjs"
+      }
+    }
+  },
+  {
+    "run": "compiler-1793289145686467400",
+    "sourceTreeSha256": "0100e807d1bababe04a548b0d252a796cbc9742dcad90c496f4e28fef197e665",
+    "unchangedFilesBoundTo": "a872419d87d7a43672efb7fc9024c4d4963a7f97",
+    "changedFiles": {
+      "dimabot/src/utils/ai_usage_ledger_persistence.rs": {
+        "sha256": "defdcb7e2e3d4a3bfd6024435a55dee410ecac0a63f065d72579ac150dc7ed49",
+        "retainedPath": "attempt2/authored-source/dimabot/src/utils/ai_usage_ledger_persistence.rs"
+      },
+      "dimabot/tests/ai_usage_ledger_persistence.rs": {
+        "sha256": "0a5120a83b8ba09bec3f44dd08dcd51c2ac00a3d4236386cc47523c1a34e15fb",
+        "retainedPath": "attempt2/authored-source/dimabot/tests/ai_usage_ledger_persistence.rs"
+      },
+      "dimabot/tests/fixtures/ai_usage_ledger_persistence_reference.cjs": {
+        "sha256": "53fdfe0f2e4cace87477804fc7d56b4e94020ba4df7eb269b513d8f67210d5f0",
+        "retainedPath": "attempt4/authored-source/dimabot/tests/fixtures/ai_usage_ledger_persistence_reference.cjs"
+      },
+      "dimabot/tests/fixtures/ai_usage_ledger_queries_reference.cjs": {
+        "sha256": "88333201c9ba38966b82895aeb96eacf63d8a0690f2b2a51f06de6629fc5e1cb",
+        "retainedPath": "attempt4/authored-source/dimabot/tests/fixtures/ai_usage_ledger_queries_reference.cjs"
+      },
+      "dimabot/tests/fixtures/ai_usage_retention_reference.cjs": {
+        "sha256": "52ade04edd182dbfebba894d7d56ebbaa227b1ae7e53dc28b06118445a4bf69a",
+        "retainedPath": "attempt4/authored-source/dimabot/tests/fixtures/ai_usage_retention_reference.cjs"
+      }
+    }
+  },
+  {
+    "run": "compiler-1793289863393398508",
+    "sourceTreeSha256": "93e3f46421f4f86db4c51a031934b3b6db627fb1cc31452264ba5afba0dc7129",
+    "unchangedFilesBoundTo": "a872419d87d7a43672efb7fc9024c4d4963a7f97",
+    "changedFiles": {
+      "dimabot/src/utils/ai_usage_ledger_persistence.rs": {
+        "sha256": "950619e371d2d35cb1a99829dcd53272a64d3f5d792cffe559e3a59e2e14fe98",
+        "retainedPath": "attempt3/authored-source/dimabot/src/utils/ai_usage_ledger_persistence.rs"
+      },
+      "dimabot/tests/ai_usage_ledger_persistence.rs": {
+        "sha256": "de35d0ed3addb64e6312122a8bd1049ee2d9f8a4ce1957f6e6fc953770a880ee",
+        "retainedPath": "attempt3/authored-source/dimabot/tests/ai_usage_ledger_persistence.rs"
+      },
+      "dimabot/tests/fixtures/ai_usage_ledger_persistence_reference.cjs": {
+        "sha256": "53fdfe0f2e4cace87477804fc7d56b4e94020ba4df7eb269b513d8f67210d5f0",
+        "retainedPath": "attempt4/authored-source/dimabot/tests/fixtures/ai_usage_ledger_persistence_reference.cjs"
+      },
+      "dimabot/tests/fixtures/ai_usage_ledger_queries_reference.cjs": {
+        "sha256": "88333201c9ba38966b82895aeb96eacf63d8a0690f2b2a51f06de6629fc5e1cb",
+        "retainedPath": "attempt4/authored-source/dimabot/tests/fixtures/ai_usage_ledger_queries_reference.cjs"
+      },
+      "dimabot/tests/fixtures/ai_usage_retention_reference.cjs": {
+        "sha256": "52ade04edd182dbfebba894d7d56ebbaa227b1ae7e53dc28b06118445a4bf69a",
+        "retainedPath": "attempt4/authored-source/dimabot/tests/fixtures/ai_usage_retention_reference.cjs"
+      }
+    }
+  },
+  {
+    "run": "compiler-1793290842602887725",
+    "sourceTreeSha256": "bd9b844087a405a4eb4ab0de5c9b94ee4063ca6a88d9416069e4c9f2ec87f6e1",
+    "unchangedFilesBoundTo": "a872419d87d7a43672efb7fc9024c4d4963a7f97",
+    "changedFiles": {
+      "dimabot/src/utils/ai_usage_ledger_persistence.rs": {
+        "sha256": "950619e371d2d35cb1a99829dcd53272a64d3f5d792cffe559e3a59e2e14fe98",
+        "retainedPath": "attempt3/authored-source/dimabot/src/utils/ai_usage_ledger_persistence.rs"
+      },
+      "dimabot/tests/ai_usage_ledger_persistence.rs": {
+        "sha256": "a0883f74493939babeb2050679b68e27b48d85929885aa2e73f6f05e02f4808c",
+        "retainedPath": "attempt6/authored-source/dimabot/tests/ai_usage_ledger_persistence.rs"
+      }
+    }
+  },
+  {
+    "run": "compiler-fixtures-1793289268733412117",
+    "sourceTreeSha256": "0100e807d1bababe04a548b0d252a796cbc9742dcad90c496f4e28fef197e665",
+    "unchangedFilesBoundTo": "a872419d87d7a43672efb7fc9024c4d4963a7f97",
+    "changedFiles": {
+      "dimabot/src/utils/ai_usage_ledger_persistence.rs": {
+        "sha256": "defdcb7e2e3d4a3bfd6024435a55dee410ecac0a63f065d72579ac150dc7ed49",
+        "retainedPath": "attempt2/authored-source/dimabot/src/utils/ai_usage_ledger_persistence.rs"
+      },
+      "dimabot/tests/ai_usage_ledger_persistence.rs": {
+        "sha256": "0a5120a83b8ba09bec3f44dd08dcd51c2ac00a3d4236386cc47523c1a34e15fb",
+        "retainedPath": "attempt2/authored-source/dimabot/tests/ai_usage_ledger_persistence.rs"
+      },
+      "dimabot/tests/fixtures/ai_usage_ledger_persistence_reference.cjs": {
+        "sha256": "53fdfe0f2e4cace87477804fc7d56b4e94020ba4df7eb269b513d8f67210d5f0",
+        "retainedPath": "attempt4/authored-source/dimabot/tests/fixtures/ai_usage_ledger_persistence_reference.cjs"
+      },
+      "dimabot/tests/fixtures/ai_usage_ledger_queries_reference.cjs": {
+        "sha256": "88333201c9ba38966b82895aeb96eacf63d8a0690f2b2a51f06de6629fc5e1cb",
+        "retainedPath": "attempt4/authored-source/dimabot/tests/fixtures/ai_usage_ledger_queries_reference.cjs"
+      },
+      "dimabot/tests/fixtures/ai_usage_retention_reference.cjs": {
+        "sha256": "52ade04edd182dbfebba894d7d56ebbaa227b1ae7e53dc28b06118445a4bf69a",
+        "retainedPath": "attempt4/authored-source/dimabot/tests/fixtures/ai_usage_retention_reference.cjs"
+      }
+    }
+  },
+  {
+    "run": "compiler-fixtures-1793290168306756349",
+    "sourceTreeSha256": "c2731d9f2bd98e03e521f726b0f9e418e2b6a784d628d6e84acac286fab9ff99",
+    "unchangedFilesBoundTo": "a872419d87d7a43672efb7fc9024c4d4963a7f97",
+    "changedFiles": {
+      "dimabot/src/utils/ai_usage_ledger_persistence.rs": {
+        "sha256": "950619e371d2d35cb1a99829dcd53272a64d3f5d792cffe559e3a59e2e14fe98",
+        "retainedPath": "attempt3/authored-source/dimabot/src/utils/ai_usage_ledger_persistence.rs"
+      },
+      "dimabot/tests/ai_usage_ledger_persistence.rs": {
+        "sha256": "20e0124c766aecd8246eb1efc2d39487af14508655a55a4f74b3f19551694161",
+        "retainedPath": "attempt5/authored-source/dimabot/tests/ai_usage_ledger_persistence.rs"
+      },
+      "dimabot/tests/fixtures/ai_usage_ledger_persistence_reference.cjs": {
+        "sha256": "53fdfe0f2e4cace87477804fc7d56b4e94020ba4df7eb269b513d8f67210d5f0",
+        "retainedPath": "attempt4/authored-source/dimabot/tests/fixtures/ai_usage_ledger_persistence_reference.cjs"
+      },
+      "dimabot/tests/fixtures/ai_usage_ledger_queries_reference.cjs": {
+        "sha256": "88333201c9ba38966b82895aeb96eacf63d8a0690f2b2a51f06de6629fc5e1cb",
+        "retainedPath": "attempt4/authored-source/dimabot/tests/fixtures/ai_usage_ledger_queries_reference.cjs"
+      },
+      "dimabot/tests/fixtures/ai_usage_retention_reference.cjs": {
+        "sha256": "52ade04edd182dbfebba894d7d56ebbaa227b1ae7e53dc28b06118445a4bf69a",
+        "retainedPath": "attempt4/authored-source/dimabot/tests/fixtures/ai_usage_retention_reference.cjs"
+      }
+    }
+  },
+  {
+    "run": "compiler-fixtures-1793290566457403891",
+    "sourceTreeSha256": "d46fc105d3655edb0b7e89d6a886baf7d13fa4a26a352060dc8d528a1ec155d3",
+    "unchangedFilesBoundTo": "a872419d87d7a43672efb7fc9024c4d4963a7f97",
+    "changedFiles": {
+      "dimabot/src/utils/ai_usage_ledger_persistence.rs": {
+        "sha256": "950619e371d2d35cb1a99829dcd53272a64d3f5d792cffe559e3a59e2e14fe98",
+        "retainedPath": "attempt3/authored-source/dimabot/src/utils/ai_usage_ledger_persistence.rs"
+      },
+      "dimabot/tests/ai_usage_ledger_persistence.rs": {
+        "sha256": "20e0124c766aecd8246eb1efc2d39487af14508655a55a4f74b3f19551694161",
+        "retainedPath": "attempt5/authored-source/dimabot/tests/ai_usage_ledger_persistence.rs"
+      },
+      "dimabot/tests/fixtures/ai_usage_ledger_persistence_reference.cjs": {
+        "sha256": "451303f9b0b352eb6bfd6fcd9c8d3ac3e50dcaf0b9c809db94f134bbe5b38cb4",
+        "retainedPath": "attempt5/authored-source/dimabot/tests/fixtures/ai_usage_ledger_persistence_reference.cjs"
+      }
+    }
+  },
+  {
+    "run": "node-1793288944272880116",
+    "sourceTreeSha256": "cd1902112dc631f6082cc1b58513f28829c5ef9ba3afc41ae510dfcd584abc8b",
+    "unchangedFilesBoundTo": "a872419d87d7a43672efb7fc9024c4d4963a7f97",
+    "changedFiles": {
+      "dimabot/src/utils/ai_usage_ledger_persistence.rs": {
+        "sha256": "defdcb7e2e3d4a3bfd6024435a55dee410ecac0a63f065d72579ac150dc7ed49",
+        "retainedPath": "attempt2/authored-source/dimabot/src/utils/ai_usage_ledger_persistence.rs"
+      },
+      "dimabot/tests/ai_usage_ledger_persistence.rs": {
+        "sha256": "805d8a298a7934fdc773415ea0d9637b6511c537fbb04b3f6be7618fc47c2fa9",
+        "retainedPath": "attempt1/authored-source/dimabot/tests/ai_usage_ledger_persistence.rs"
+      },
+      "dimabot/tests/fixtures/ai_usage_ledger_persistence_reference.cjs": {
+        "sha256": "53fdfe0f2e4cace87477804fc7d56b4e94020ba4df7eb269b513d8f67210d5f0",
+        "retainedPath": "attempt4/authored-source/dimabot/tests/fixtures/ai_usage_ledger_persistence_reference.cjs"
+      },
+      "dimabot/tests/fixtures/ai_usage_ledger_queries_reference.cjs": {
+        "sha256": "88333201c9ba38966b82895aeb96eacf63d8a0690f2b2a51f06de6629fc5e1cb",
+        "retainedPath": "attempt4/authored-source/dimabot/tests/fixtures/ai_usage_ledger_queries_reference.cjs"
+      },
+      "dimabot/tests/fixtures/ai_usage_retention_reference.cjs": {
+        "sha256": "52ade04edd182dbfebba894d7d56ebbaa227b1ae7e53dc28b06118445a4bf69a",
+        "retainedPath": "attempt4/authored-source/dimabot/tests/fixtures/ai_usage_retention_reference.cjs"
+      }
+    }
+  }
+]

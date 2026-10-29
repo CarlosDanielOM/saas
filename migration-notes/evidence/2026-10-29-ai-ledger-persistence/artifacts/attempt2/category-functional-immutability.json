@@ -1,0 +1,50 @@
+[
+  {
+    "name": "parser",
+    "before": "receipt-parser-benchmark/attempt4/parser/ai_usage_receipt_parser_reference.json",
+    "after": "ledger-persistence/attempt2/parser/ai_usage_receipt_parser_reference.json",
+    "beforeSha256": "cbfe3d98dca0fd2bb1d6ecc20a77efae73efe3e6a31a2cd99a576c7f0f628fb7",
+    "afterSha256": "d9bbaa42bd16300d43e339abf84cbc3937d6e95832448616021c09dc45edd327",
+    "omittedProvenanceOnlyKeys": [
+      "metadata"
+    ],
+    "allFunctionalDataEqual": true
+  },
+  {
+    "name": "queries",
+    "before": "ledger-query-retention/attempt3/queries/ai_usage_ledger_queries_reference.json",
+    "after": "ledger-persistence/attempt2/queries/ai_usage_ledger_queries_reference.json",
+    "beforeSha256": "74eaddec69a87820ff836ccffd506f956df491a60b0a93b8265c37fbe0794ab1",
+    "afterSha256": "86c897f87999114d2762172dedf4f62f2fdbc70ee9fa2f7a6b24bfb89f87f95f",
+    "omittedProvenanceOnlyKeys": [
+      "metadata"
+    ],
+    "allFunctionalDataEqual": true
+  },
+  {
+    "name": "retention",
+    "before": "ledger-query-retention/attempt2/retention/ai_usage_retention_reference.json",
+    "after": "ledger-persistence/attempt2/retention/ai_usage_retention_reference.json",
+    "beforeSha256": "045e2c132a15c0f5139f41d2c10dd5a0cd0596a3437b4e901734ba43509af54a",
+    "afterSha256": "359299451379c18a3141af4a2b6b773205f9ebf62a52506f003a4f3f67430b4a",
+    "omittedProvenanceOnlyKeys": [
+      "hashes"
+    ],
+    "allFunctionalDataEqual": true
+  },
+  {
+    "name": "producer",
+    "before": "receipt-parser-benchmark/attempt3/producer/ai_usage_producer_reference.json",
+    "after": "ledger-persistence/attempt2/producer/ai_usage_producer_reference.json",
+    "beforeSha256": "99312624e712d14d38cd902de98c957d8e0deff7b203d715825d675ce4878680",
+    "afterSha256": "8cc758f42b6285a381c56ddc99e10ad8a147b2b5bf7a5668ec0024994471fbb0",
+    "omittedProvenanceOnlyKeys": [
+      "metadata"
+    ],
+    "explicitIsolatedNamespaceRemap": {
+      "from": "producer-fixture-ledgerpersist20261029:",
+      "to": "producer-fixture-wire20261029native1:"
+    },
+    "allFunctionalDataEqual": true
+  }
+]

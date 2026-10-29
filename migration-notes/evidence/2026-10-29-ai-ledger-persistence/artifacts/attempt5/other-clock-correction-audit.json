@@ -1,0 +1,59 @@
+[
+  {
+    "feature": "queries",
+    "records": 333,
+    "everyInputResultProtocolClockAndErrorNamePathCodeUnchanged": true,
+    "messageCorrectionsDueToNativeDateConstructorName": [
+      {
+        "id": "cast-256",
+        "beforeMessage": "Cast to date failed for value \"FixtureDate Invalid Date\" (type FixtureDate) at path \"expiresAt\" for model \"ai_usage_receipts\"",
+        "afterMessage": "Cast to date failed for value \"Invalid Date\" (type Date) at path \"expiresAt\" for model \"ai_usage_receipts\""
+      },
+      {
+        "id": "cast-258",
+        "beforeMessage": "Cast to date failed for value \"FixtureDate Invalid Date\" (type FixtureDate) at path \"expiresAt\" for model \"ai_usage_receipts\"",
+        "afterMessage": "Cast to date failed for value \"Invalid Date\" (type Date) at path \"expiresAt\" for model \"ai_usage_receipts\""
+      },
+      {
+        "id": "cast-260",
+        "beforeMessage": "Cast to date failed for value \"FixtureDate Invalid Date\" (type FixtureDate) at path \"expiresAt\" for model \"ai_usage_receipts\"",
+        "afterMessage": "Cast to date failed for value \"Invalid Date\" (type Date) at path \"expiresAt\" for model \"ai_usage_receipts\""
+      },
+      {
+        "id": "cast-262",
+        "beforeMessage": "Cast to date failed for value \"FixtureDate Invalid Date\" (type FixtureDate) at path \"expiresAt\" for model \"ai_usage_receipts\"",
+        "afterMessage": "Cast to date failed for value \"Invalid Date\" (type Date) at path \"expiresAt\" for model \"ai_usage_receipts\""
+      }
+    ],
+    "before": "attempt2/queries/ai_usage_ledger_queries_reference.json",
+    "after": "attempt5/queries/ai_usage_ledger_queries_reference.json",
+    "beforeSha256": "86c897f87999114d2762172dedf4f62f2fdbc70ee9fa2f7a6b24bfb89f87f95f",
+    "afterSha256": "95d4dc0f8700de56cf4f63bf59815a53f45c18d2d43f1a2dec32586167ad82be"
+  },
+  {
+    "feature": "retention",
+    "records": 34,
+    "everyInputResultProtocolClockAndErrorNamePathCodeUnchanged": true,
+    "messageCorrectionsDueToNativeDateConstructorName": [
+      {
+        "id": "now--8640000000000001",
+        "beforeMessage": "Cast to date failed for value \"NaN\" (type number) at path \"coverageStart\"",
+        "afterMessage": "Cast to date failed for value \"Invalid Date\" (type Date) at path \"coverageStart\""
+      },
+      {
+        "id": "now--8640000000000000",
+        "beforeMessage": "Cast to date failed for value \"NaN\" (type number) at path \"coverageStart\"",
+        "afterMessage": "Cast to date failed for value \"Invalid Date\" (type Date) at path \"coverageStart\""
+      },
+      {
+        "id": "now-8640000000000001",
+        "beforeMessage": "Cast to date failed for value \"NaN\" (type number) at path \"coverageStart\"",
+        "afterMessage": "Cast to date failed for value \"Invalid Date\" (type Date) at path \"coverageStart\""
+      }
+    ],
+    "before": "attempt2/retention/ai_usage_retention_reference.json",
+    "after": "attempt5/retention/ai_usage_retention_reference.json",
+    "beforeSha256": "359299451379c18a3141af4a2b6b773205f9ebf62a52506f003a4f3f67430b4a",
+    "afterSha256": "acb845d5e415ec569ae2556314c1c488820db5637ea7c6bb087db13b37e2a103"
+  }
+]

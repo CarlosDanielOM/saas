@@ -1,0 +1,238 @@
+{
+  "status": "Verified bounded native receipt persistence and daily repair; full ledger and migration incomplete.",
+  "codeCommit": "a872419d87d7a43672efb7fc9024c4d4963a7f97",
+  "categoryCommit": "72d15962b64fc643fbe8cb47977fe5912d12d206",
+  "oracleClockCommit": "3e404d5afde5433f85251cefb1db92d7b0e5ffb1",
+  "sourceTreeSha256": "390eb3029166aa393ba3d863997faa14a67cae5fc4bcd0309fffa91d9c1f1dda",
+  "sourceInputs": 1289,
+  "acceptedFinalRuns": [
+    "compiler-1793290925888826111",
+    "node-1793290980286199461",
+    "compiler-fixtures-1793291161151841227",
+    "compiler-fixtures-1793291257891114152",
+    "node-1793291412733747560"
+  ],
+  "persistenceOrdinaryTests": 8,
+  "persistenceSourceScenarios": 204,
+  "privatePersistenceSuites": 1,
+  "privatePersistenceTestSeconds": 2.42,
+  "correctedQuerySourceScenarios": 333,
+  "correctedRetentionSourceScenarios": 34,
+  "categoryRegression": {
+    "producerCases": 338,
+    "parserCasesPerTimezone": 1362,
+    "parserTimezones": 5,
+    "queryCases": 333,
+    "run": "compiler-1793289358032795786",
+    "focusedStrictRun": "compiler-1793289702168491160"
+  },
+  "productionUnchangedRecords": 19,
+  "acknowledgedBillingRelease": "api-ee0635765a02",
+  "remainingOwnedResources": {
+    "containers": [],
+    "networks": [],
+    "volumes": []
+  },
+  "limits": {
+    "cpus": 6,
+    "memory": 4294967296,
+    "memory_swap": 4294967296,
+    "pids": 256,
+    "cargo_jobs": 2
+  },
+  "peakCacheBytesIncludingFailedChecks": 8610725888,
+  "minimumAvailableBytes": 8810905600,
+  "cacheFailure": "An early run stopped after the 8GiB cache guard triggered. Maintenance separately records 8625401856 bytes before deleting only completed private release artifacts with all hardlinks proven internal. Do not describe every historic attempt as below the cache limit.",
+  "intentionalLegacyBoundary": "Nested Date/RegExp expiry arrays and top-level RegExp expiry are explicitly unsupported before daily deletion. Real malformed raw-document sentinels remain byte-identical; preceding dirty/upsert effects can remain. This prevents data loss but is not source parity for those legacy values.",
+  "oracleCorrections": [
+    "Extended-year false test expectation corrected against actual source.",
+    "Native daily field encounter order corrected.",
+    "FixtureDate constructor name corrupted Mongoose cloning; final Date identity and payload guards plus a failing old-clock negative control retain Dates.",
+    "Raw BSON and Mongo driver undefined defaults differ; actual installed driver options and independent null probe now govern collection snapshots; synthetic aggregate replies remain separate.",
+    "Existing query/retention corrected only four/three Date-related error messages; complete audits retained."
+  ],
+  "performanceMeasured": false,
+  "noSourceRetirementCallerAdoptionDeploymentPush": true,
+  "remainingWork": [
+    "Exact unsupported legacy coercion",
+    "Backfill integration and verification",
+    "Application bootstrap/telemetry/model lifecycle and broader caller/billing/worker parser obligations",
+    "Full TypeScript-to-Rust migration"
+  ],
+  "runs": [
+    {
+      "run": "compiler-1793288853970985462",
+      "success": false,
+      "sourceTreeSha256": "cd1902112dc631f6082cc1b58513f28829c5ef9ba3afc41ae510dfcd584abc8b",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-1793288901514716905",
+      "success": false,
+      "sourceTreeSha256": "cd1902112dc631f6082cc1b58513f28829c5ef9ba3afc41ae510dfcd584abc8b",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-1793289003501096173",
+      "success": false,
+      "sourceTreeSha256": "cd1902112dc631f6082cc1b58513f28829c5ef9ba3afc41ae510dfcd584abc8b",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-1793289145686467400",
+      "success": false,
+      "sourceTreeSha256": "0100e807d1bababe04a548b0d252a796cbc9742dcad90c496f4e28fef197e665",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-1793289358032795786",
+      "success": true,
+      "sourceTreeSha256": "0100e807d1bababe04a548b0d252a796cbc9742dcad90c496f4e28fef197e665",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-1793289702168491160",
+      "success": true,
+      "sourceTreeSha256": "0100e807d1bababe04a548b0d252a796cbc9742dcad90c496f4e28fef197e665",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-1793289863393398508",
+      "success": false,
+      "sourceTreeSha256": "93e3f46421f4f86db4c51a031934b3b6db627fb1cc31452264ba5afba0dc7129",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-1793289977375531988",
+      "success": true,
+      "sourceTreeSha256": "c2731d9f2bd98e03e521f726b0f9e418e2b6a784d628d6e84acac286fab9ff99",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-1793290491207286612",
+      "success": true,
+      "sourceTreeSha256": "d46fc105d3655edb0b7e89d6a886baf7d13fa4a26a352060dc8d528a1ec155d3",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-1793290842602887725",
+      "success": false,
+      "sourceTreeSha256": "bd9b844087a405a4eb4ab0de5c9b94ee4063ca6a88d9416069e4c9f2ec87f6e1",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-1793290925888826111",
+      "success": true,
+      "sourceTreeSha256": "390eb3029166aa393ba3d863997faa14a67cae5fc4bcd0309fffa91d9c1f1dda",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-fixtures-1793289268733412117",
+      "success": false,
+      "sourceTreeSha256": "0100e807d1bababe04a548b0d252a796cbc9742dcad90c496f4e28fef197e665",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-fixtures-1793290168306756349",
+      "success": false,
+      "sourceTreeSha256": "c2731d9f2bd98e03e521f726b0f9e418e2b6a784d628d6e84acac286fab9ff99",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-fixtures-1793290566457403891",
+      "success": false,
+      "sourceTreeSha256": "d46fc105d3655edb0b7e89d6a886baf7d13fa4a26a352060dc8d528a1ec155d3",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-fixtures-1793291161151841227",
+      "success": true,
+      "sourceTreeSha256": "390eb3029166aa393ba3d863997faa14a67cae5fc4bcd0309fffa91d9c1f1dda",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-fixtures-1793291257891114152",
+      "success": true,
+      "sourceTreeSha256": "390eb3029166aa393ba3d863997faa14a67cae5fc4bcd0309fffa91d9c1f1dda",
+      "productionUnchanged": true
+    },
+    {
+      "run": "format-1793288814791531968",
+      "success": true,
+      "sourceTreeSha256": "10352fb24cc57d6a53e0447834150f6b233154935f0d1c50a980c146b4b6e321",
+      "productionUnchanged": true
+    },
+    {
+      "run": "format-1793289120618126602",
+      "success": true,
+      "sourceTreeSha256": "0100e807d1bababe04a548b0d252a796cbc9742dcad90c496f4e28fef197e665",
+      "productionUnchanged": true
+    },
+    {
+      "run": "format-1793289816788962518",
+      "success": true,
+      "sourceTreeSha256": "14739c0a6668674020932291a6914cf542db141a4a118be61d3344a0302b25ca",
+      "productionUnchanged": true
+    },
+    {
+      "run": "format-1793289932779569183",
+      "success": true,
+      "sourceTreeSha256": "c2731d9f2bd98e03e521f726b0f9e418e2b6a784d628d6e84acac286fab9ff99",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793288944272880116",
+      "success": false,
+      "sourceTreeSha256": "cd1902112dc631f6082cc1b58513f28829c5ef9ba3afc41ae510dfcd584abc8b",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793289013101536726",
+      "success": true,
+      "sourceTreeSha256": "cd1902112dc631f6082cc1b58513f28829c5ef9ba3afc41ae510dfcd584abc8b",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793289185771977206",
+      "success": true,
+      "sourceTreeSha256": "0100e807d1bababe04a548b0d252a796cbc9742dcad90c496f4e28fef197e665",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793289863903201029",
+      "success": true,
+      "sourceTreeSha256": "93e3f46421f4f86db4c51a031934b3b6db627fb1cc31452264ba5afba0dc7129",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793290053878052059",
+      "success": true,
+      "sourceTreeSha256": "c2731d9f2bd98e03e521f726b0f9e418e2b6a784d628d6e84acac286fab9ff99",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793290490088670921",
+      "success": true,
+      "sourceTreeSha256": "d46fc105d3655edb0b7e89d6a886baf7d13fa4a26a352060dc8d528a1ec155d3",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793290843251084276",
+      "success": true,
+      "sourceTreeSha256": "bd9b844087a405a4eb4ab0de5c9b94ee4063ca6a88d9416069e4c9f2ec87f6e1",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793290980286199461",
+      "success": true,
+      "sourceTreeSha256": "390eb3029166aa393ba3d863997faa14a67cae5fc4bcd0309fffa91d9c1f1dda",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793291412733747560",
+      "success": true,
+      "sourceTreeSha256": "390eb3029166aa393ba3d863997faa14a67cae5fc4bcd0309fffa91d9c1f1dda",
+      "productionUnchanged": true
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "before": "attempt2/persistence/ai_usage_ledger_persistence_reference.json",
+  "after": "attempt4/persistence/ai_usage_ledger_persistence_reference.json",
+  "beforeSha256": "0ac76be9afe6f2ff7c94add3f950832fdc14593168ad06e9a2cd24e529facf81",
+  "afterSha256": "50da4ade497116b130de4f7328589db25bd44a077a1931942b99ad9c35412f0f",
+  "sourceRecords": 204,
+  "everyRecordIncludingInputsOutputsErrorsClocksAndBsonCallsEqual": true,
+  "onlyChangedRootKey": "metadata"
+}

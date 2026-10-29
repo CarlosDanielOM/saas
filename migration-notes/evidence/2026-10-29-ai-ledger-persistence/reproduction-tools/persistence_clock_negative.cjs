@@ -1,0 +1,9 @@
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),{spawnSync}=require('node:child_process'),crypto=require('node:crypto');
+const filename='/source/dimabot/tests/fixtures/ai_usage_ledger_persistence_reference.cjs',directory=process.argv[2];
+const patch=String.raw`const fs=require('node:fs'),Module=require('node:module'),path=require('node:path');const filename=process.argv[1];let source=fs.readFileSync(filename,'utf8');source=source.replace("Object.defineProperty(FixtureDate,'name',{value:'Date'});",'').replace("assert.equal(FixtureDate.name,'Date','fixture Date must preserve Mongoose clone semantics');",'');const child=new Module(filename);child.filename=filename;child.paths=Module._nodeModulePaths(path.dirname(filename));child._compile(source,filename);`;
+const result=spawnSync(process.execPath,['--eval',patch,filename,'--write',directory],{encoding:'utf8'});
+fs.writeFileSync(path.join(path.dirname(directory),'clock-negative.log'),result.stdout+result.stderr,{flag:'wx'});
+assert.equal(result.status,1);assert(result.stderr.includes('actual schema Date lost at dayStart'),result.stderr);assert.deepEqual(fs.readdirSync(directory),[]);
+const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
+fs.writeFileSync(path.join(path.dirname(directory),'clock-negative.json'),JSON.stringify({expectedExit:1,actualExit:result.status,restoredOriginalMisnamedClockOnly:true,schemaDateAssertionCaughtDayStartCoercion:true,noOracleArtifactsWritten:true,currentOracleSha256:sha(fs.readFileSync(filename)),diagnosticSourceSha256:sha(fs.readFileSync(__filename)),nodeSha256:sha(fs.readFileSync(process.execPath))},null,2)+'\n',{flag:'wx'});
+console.log('Negative control passed: old clock class loses schema Date; fixture rejects it before writing goldens.');

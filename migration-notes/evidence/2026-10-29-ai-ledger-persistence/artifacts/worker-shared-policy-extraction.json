@@ -1,0 +1,8 @@
+{
+  "originalWorkerSha256": "3b956aadd79c056ccfb43340e5fe3a2121d0a239faf5d1634c520e2ce421a709",
+  "candidateWorkerSha256": "10a32c0801e18b92f57bfb9552120197aefb5f671f7002f586851f82a76ecbf1",
+  "oldExpressionBodiesSha256": "0814ed3c8dc5e467c4ad3e149de5562e7226d8e5eede1c814be1ebbe60292e29",
+  "newExpressionBodiesSha256": "0814ed3c8dc5e467c4ad3e149de5562e7226d8e5eede1c814be1ebbe60292e29",
+  "expressionsIdenticalExceptVisibility": true,
+  "scope": "Only pure usage/group_fields moved and one import added; aggregate/reducer/worker IO, loops, queue, clocks, lease and scheduling bodies unchanged. Impacted worker grouping/profile must be verified."
+}
