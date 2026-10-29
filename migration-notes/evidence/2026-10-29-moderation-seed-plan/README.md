@@ -1,0 +1,7 @@
+# Moderation seed plan evidence
+
+The final Node and two compiler runs bind to commit `fb642a0c` and all 1,350 frozen inputs, including ten previously verified SDK references. The source fixture covers 110 decision cases and five lossless ordered view wires. It executes the unchanged seed, model and spam sources with real disconnected Mongoose and crypto, and checks the strict TypeScript closure. The ordinary native test covers all six view fields and independent owned rule vectors. No database access is required for this pure module; prior model evidence covers isolated native Mongo behavior.
+
+The view holds borrowed UTF-16 channel strings and a fresh owned rules vector. Its JSON helper constructs and encodes a fresh view; it does not serialize a caller-mutated view. The typed candidate projects the rules length, which is all the source reads; arbitrary JavaScript runtime casts, prototypes and global defaults mutation are outside this contract.
+
+Initial Node and compiler launches were refused before resource creation by the 8 GiB startup headroom guard. No available-byte reading or run receipt was captured for those refusals. Accepted full checks ran afterward; their phase took 116.49 seconds and total time was 123.892 seconds. Final readback records 19 unchanged production records and no remaining owned resources. Broader defaults.ts Mongo, cache and registration paths and caller adoption remain open. No new benchmark, TypeScript retirement, deployment or push is claimed.

@@ -1,0 +1,86 @@
+{
+  "acceptedRuns": [
+    "node-1793314343442641635",
+    "compiler-1793314343446707321",
+    "compiler-1793314472014779107"
+  ],
+  "runs": [
+    {
+      "run": "compiler-1793314343446707321",
+      "sourceTreeSha256": "d8572c21fa330101815337afd904c2481b3c4a7c5a46afdfbf5a004456c9948a",
+      "classification": "accepted final",
+      "success": true,
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-1793314472014779107",
+      "sourceTreeSha256": "d8572c21fa330101815337afd904c2481b3c4a7c5a46afdfbf5a004456c9948a",
+      "classification": "accepted final",
+      "success": true,
+      "productionUnchanged": true
+    },
+    {
+      "run": "format-1793314113305779061",
+      "sourceTreeSha256": "c9bbb3f1388f4b02812d48e5c4467b7af3823fd9dd40d8cbb2c3269fee5289e5",
+      "classification": "successful preformat nonfinal",
+      "success": true,
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793314343442641635",
+      "sourceTreeSha256": "d8572c21fa330101815337afd904c2481b3c4a7c5a46afdfbf5a004456c9948a",
+      "classification": "accepted final",
+      "success": true,
+      "productionUnchanged": true
+    }
+  ],
+  "fixtureSha256": "09efa8c6312cf99fa60e6f6d9a324d652ab9ba87a70509a5135c039809f6c044",
+  "sourceInputs": 1350,
+  "decisionCases": 110,
+  "losslessViewCases": 5,
+  "headroomGuard": "Initial Node and compiler launches were refused before resource creation by the 8 GiB startup headroom guard; no available-byte reading was captured and no run receipts were produced.",
+  "acceptedFullReceipt": {
+    "steps": [
+      {
+        "name": "bootstrap",
+        "seconds": 3.955,
+        "exit_code": 0
+      },
+      {
+        "name": "locked-fetch",
+        "seconds": 1.795,
+        "exit_code": 0
+      },
+      {
+        "name": "compiler",
+        "seconds": 116.49,
+        "exit_code": 0
+      }
+    ],
+    "elapsedSeconds": 123.892,
+    "headroomStart": {
+      "mem_available_bytes": 9352069120,
+      "load_1m": 1.74658203125
+    },
+    "minimumAvailableBytes": 7742357504,
+    "peakCacheBytes": 5177495552,
+    "limits": {
+      "cpus": 6,
+      "memory": 4294967296,
+      "memory_swap": 4294967296,
+      "pids": 256,
+      "cargo_jobs": 2
+    }
+  },
+  "productionUnchangedRecords": 19,
+  "remainingOwnedResources": {
+    "containers": [],
+    "networks": [],
+    "volumes": []
+  },
+  "coverage": "Pure source seed-plan exports and their required native model/core/default dependencies verified. Broader defaults.ts Mongo, cache, and registration paths and caller adoption remain open.",
+  "benchmarkMeasured": false,
+  "typescriptRetired": false,
+  "deployed": false,
+  "pushed": false
+}

@@ -1,0 +1,6 @@
+{
+  "fixtureSha256": "09efa8c6312cf99fa60e6f6d9a324d652ab9ba87a70509a5135c039809f6c044",
+  "decisionCases": 110,
+  "losslessViewCases": 5,
+  "allSourceNativeSdkHashesChecked": true
+}

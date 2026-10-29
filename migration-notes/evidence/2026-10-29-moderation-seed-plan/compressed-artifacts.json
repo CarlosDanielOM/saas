@@ -1,0 +1,47 @@
+{
+  "artifacts/attempt1/source-inputs.json.gz": {
+    "rawSha256": "912bf75890dbe3e4272e198bbf9facb6a12b027e7a7c61e074cbfce81e61a924",
+    "rawBytes": 160708,
+    "compressedSha256": "0b3a1b4258a71f36b8b6a19142f01d27c5688c05119d197a2d120b25765f3620"
+  },
+  "runs/compiler-1793314343446707321-receipt.json.gz": {
+    "rawSha256": "834844e851f9124b5eee1d656dd32e30a2f6a816b8bb3e76a53994e3723e6ff4",
+    "rawBytes": 164324,
+    "compressedSha256": "9974d2c0222cfbb1db2db7cb508fbd6226db03b5e581ca0141fd536ad7629249"
+  },
+  "runs/compiler-1793314343446707321.log.gz": {
+    "rawSha256": "60a5271073333345eff2afba05b71724d3fc0e13858a61261421fbf4b42d134a",
+    "rawBytes": 2418,
+    "compressedSha256": "0f4d90532ebef5139920a0358938a524f87f10d4d0c2d7a7fe17b8421800b6f3"
+  },
+  "runs/compiler-1793314472014779107-receipt.json.gz": {
+    "rawSha256": "f0afd46526d7e75d6d7755b33824a42a1ba044fd86e59aa862208f5fc05ca94d",
+    "rawBytes": 164325,
+    "compressedSha256": "e0b1d01649fcc5d5930eb1b34b9dca775da59a571842ac7ccb28a64545eeeeae"
+  },
+  "runs/compiler-1793314472014779107.log.gz": {
+    "rawSha256": "d79eb41fa7eb20132f25e1c2b85d0dc97b70b9ee52e45d133f07109cc0b05876",
+    "rawBytes": 2584,
+    "compressedSha256": "322d45edbeb40c98de9e5bda50dc4e3ea6bdd5f136423e45cf96c8ffcbc84798"
+  },
+  "runs/format-1793314113305779061-receipt.json.gz": {
+    "rawSha256": "a2e3816e0313e11a01448c30aa1645949c747ee27f688ed74298ba8175d82236",
+    "rawBytes": 164318,
+    "compressedSha256": "b98da1b472c07e41f333413e886933ec4366d8c9e8da08d130d854e006250dbf"
+  },
+  "runs/format-1793314113305779061.log.gz": {
+    "rawSha256": "d8df33ba72c691319594a6938a8cc1f756798afbe8a2dc8dedcec22abade739d",
+    "rawBytes": 1833,
+    "compressedSha256": "ae106fa54c0a55d82e88ba77f61cbd2a4cfcc810fedf8a20aee6dce4105586ef"
+  },
+  "runs/node-1793314343442641635-receipt.json.gz": {
+    "rawSha256": "ed662a27c650dd44373d7101e24c57bcefe2a06324bdf9fd737c2c4118a16d1d",
+    "rawBytes": 164195,
+    "compressedSha256": "ad10d27d53cbf1a01c00bf93b29cbeb5d21bb0d131d0b7a4fe2ed2c7d74aeaac"
+  },
+  "runs/node-1793314343442641635.log.gz": {
+    "rawSha256": "dfacb7c8062c4f64cc3860cc718f5e89e9e5699cc6fe3fc7cc95794a4de04361",
+    "rawBytes": 243,
+    "compressedSha256": "e6aa05f4c4dd717705e6adbf26630a8ece12ebc726160446533bf753eb386f77"
+  }
+}

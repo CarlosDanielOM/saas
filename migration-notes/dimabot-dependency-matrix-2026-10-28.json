@@ -88234,38 +88234,74 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-pure-seed-plan-source-and-type-dependency-closure; broader-defaults-and-application-seeding-remain-open",
+      "localRustEvidence": [
+        "dimabot/src/utils/moderation/seed_plan.rs: all three pure source functions, ModerationSeedPlan, typed candidate projection, six-field view, and lossless ordered JSON helper",
+        "dimabot/src/schemas/channel_moderation_settings.schema.rs: existing MODERATION_SETTINGS_DEFAULTS and IModerationRule used by the native view",
+        "dimabot/src/utils/js_string.rs and dimabot/src/utils/json_number.rs: UTF-16 string and JavaScript-compatible number formatting helpers used by the native view",
+        "migration-notes/moderation-seed-plan-2026-10-29.md: source/type closure, exact caller boundary, source cases, and accepted validation",
+        "migration-notes/evidence/2026-10-29-moderation-seed-plan/README.md: frozen source binding, oracle readback, accepted runs, final production/resource readback"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The declared candidate is mapped to enabled: Option<bool>, rules_len: Option<usize>, and settings_version: Option<f64>. This projection preserves missing/null defaults and is sufficient because the source predicate reads only the rules-array length, not its elements.",
+        "The native predicate preserves strict enabled === false and strict version === 1 after nullish version defaulting, including the tested fractional, NaN, and infinite numeric values. Null/undefined document input maps to None.",
+        "The plan union maps to Create, ReplaceStub, and Keep. The native view exposes all six source fields, borrows UTF-16 channel strings, and owns a fresh rules Vec on each call; it adds no invented ID/date and performs no database write.",
+        "The additional ordered-JSON helper encodes only a newly constructed view. It is not an application serializer for an externally mutated view; typed callers can inspect or mutate the returned native struct fields directly.",
+        "The source default object is mutable JavaScript, but in-repository references found read or spread its values; arbitrary external mutation of the shared object is outside this fixed-catalog typed mapping, consistent with mapped default constants."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "src/utils/moderation/defaults.ts: imports planModerationSeed and re-exports the three pure helpers; the wider seedDefaultModerationSettings function performs Mongo/race/cache/logging orchestration",
+          "src/server/routes/moderation.route.ts: uses existingChannelModerationView for the in-memory empty GET response",
+          "src/server/routes/auth.route.ts: calls the wider seedDefaultModerationSettings registration routine"
+        ],
+        "runtimeStatus": "Unadopted. The application callers remain TypeScript; the pure helper row does not include the surrounding Mongo, cache, registration, or logging workflow."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "src/utils/moderation/defaults.test.ts: four test groups for stub recognition, saved documents, plan outcomes, and the empty GET view",
+          "tests/fixtures/moderation_seed_plan_reference.cjs",
+          "migration-notes/evidence/2026-10-29-moderation-seed-plan/README.md"
+        ],
+        "rustBehaviorEvidence": [
+          "tests/moderation_seed_plan.rs",
+          "migration-notes/moderation-seed-plan-2026-10-29.md",
+          "migration-notes/evidence/2026-10-29-moderation-seed-plan/README.md"
+        ],
+        "status": "Accepted source reference matched 110 decision cases and five ordered lossless view wires; the source execution used the unchanged seed/schema/spam sources, disconnected real Mongoose and Node crypto with strict TypeScript closure. The native ordinary test verified all six view fields and fresh independent rules vectors; the full fixture replay, no-feature, Mongo/Redis, all-features/all-targets, formatting and Clippy checks passed. The four original source-test behaviors are covered by this feature evidence; the separate test inventory row was not changed."
       },
       "exports": [
         {
           "name": "ModerationSeedPlan",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "Rust enum ModerationSeedPlan::Create | ReplaceStub | Keep, with source strings exposed by as_str()",
+          "evidence": [
+            "dimabot/src/utils/moderation/seed_plan.rs",
+            "tests/moderation_seed_plan.rs"
+          ]
         },
         {
           "name": "existingChannelModerationView",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "existing_channel_moderation_view returning all six typed view fields and a fresh owned Vec<IModerationRule>; ordered JSON helper covers only a fresh view",
+          "evidence": [
+            "dimabot/src/utils/moderation/seed_plan.rs",
+            "tests/moderation_seed_plan.rs"
+          ]
         },
         {
           "name": "isUntouchedLazyStub",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "is_untouched_lazy_stub(Option<&Candidate>) with source nullish, empty-length, strict boolean and strict numeric checks",
+          "evidence": [
+            "dimabot/src/utils/moderation/seed_plan.rs",
+            "tests/moderation_seed_plan.rs"
+          ]
         },
         {
           "name": "planModerationSeed",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "plan_moderation_seed(Option<&Candidate>) returning the mapped closed plan enum",
+          "evidence": [
+            "dimabot/src/utils/moderation/seed_plan.rs",
+            "tests/moderation_seed_plan.rs"
+          ]
         }
       ],
       "imports": [
@@ -88282,15 +88318,15 @@
           "baselineSourceTargets": [
             "src/schemas/channel_moderation_settings.schema.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named runtime import of MODERATION_SETTINGS_DEFAULTS plus named type-only import of IChannelModerationSettings",
+          "runtimeOrTypeDependency": "Runtime fixed settings defaults (offenseWindowSeconds, settingsVersion); type-only rules array contract used by the empty view.",
+          "defaultSideEffectBarrelDetails": "These exports read the two default values and use IChannelModerationSettings only in a type assertion. The source schema module also defines the Mongoose model, but this pure helper does not call it or perform Mongo work; the native source mapping uses the equivalent existing native defaults and IModerationRule type.",
+          "directDependencyReview": "Reviewed. The runtime defaults map to native MODERATION_SETTINGS_DEFAULTS; the type-only rules field maps to Vec<IModerationRule> from the existing schema model.",
+          "transitiveDependencyReview": "Complete for these pure exports: existing schema defaults/type, JsString, and shared JavaScript-compatible number formatting cover the used behavior. Broader defaults.ts orchestration and caller paths are separate application dependencies and remain open.",
+          "rustReplacementOrGap": "No dependency gap in the pure source/type contract. No Mongo adapter, callback, or mock is needed for these functions. Arbitrary external mutation of the mutable JavaScript defaults object remains outside the fixed-catalog typed boundary."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "mapped-local-feature-and-selected-dependency-closure; broader-defaults-and-application-seeding-remain-open"
     },
     {
       "source": "src/utils/moderation/semantic_worker.ts",
