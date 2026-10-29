@@ -1,5 +1,5 @@
 {
-  "README.md": "a051066e4f4295d93d187586d35ab04d1e8456702cea7f3888ec4b8247b0b28c",
+  "README.md": "34d458b076e851eb12925d643fee6ff6a2c021bce666c4290dc4e4d2fb6d05d2",
   "cleanup.json": "749034dff9084bf9fcce0b7d75ec4dc1a390ce386f28abc2c52112b0effe3b08",
   "compiler-1793241065037267404-receipt.json": "ddb49311c0acad5451b9a9e9c8ce783eb3b06bac6f6c0b473eb9edab89fadd3e",
   "compiler-1793241065037267404.log.gz": "5e3fb084e26256d21f88100bd7270ace37e486e410d2bb2ec3fed9cb6d52cf64",
@@ -9,8 +9,8 @@
   "external-source-api-bc6455f1979f/dimabot/src/pets/runtime.ts": "533a2d71e10b303ce1f8e7113f83c2c9a704bcce42a355d80fe39ec7811067ba",
   "external-source-api-bc6455f1979f/dimabot/src/pets/speech_text.test.ts": "b23b754c5bd65f9066ab09d2f81509692c984ac736f720b195f44cefe0c1cb96",
   "external-source-api-bc6455f1979f/dimabot/src/pets/speech_text.ts": "9a5c1923ef1ceb3e1c454dab4803a589289c04cf1eb954aa3720ca2c163a6561",
-  "external-source-api-bc6455f1979f/manifest.json": "75765a8b076dbfd4f5ed219b5d8c1a681bf56182fc3b968a912ae5b90de3006e",
-  "external-source-api-bc6455f1979f/pet-talk-change.patch": "a9de3faa1a9174169608a2d93341daa0b65fa7733f2418f9e0b14db054069bc8",
+  "external-source-api-bc6455f1979f/manifest.json": "4f4f91a2676efff4c028648ac31b360823874d291a04e34577583539a32af940",
+  "external-source-api-bc6455f1979f/pet-talk-change.patch.gz": "6c1d9e8c685cc4bff55091d055f9f384b1a75100e34600c451cc589b913a927f",
   "format-1793240819016642967-receipt.json": "b75110361d56dc741fc004ca3a5ee7efdbc794c74851332269d188c481f18213",
   "format-1793240819016642967.log.gz": "ae106fa54c0a55d82e88ba77f61cbd2a4cfcc810fedf8a20aee6dce4105586ef",
   "node-1793240971993488017-receipt.json": "0d6b8d55f55c3788db09685e094aa306a533dbb7f1fffb1e8c3c720de71d0e7b",

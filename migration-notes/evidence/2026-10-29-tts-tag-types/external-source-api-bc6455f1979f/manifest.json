@@ -22,5 +22,11 @@
     }
   ],
   "baselineInventoryDelta": "two added TS references (one app helper, one test) beyond original 806-file snapshot; runtime.ts behavior changed",
-  "migrationStatus": "open; reconcile when native pet runtime and helpers are migrated"
+  "migrationStatus": "open; reconcile when native pet runtime and helpers are migrated",
+  "patch": {
+    "file": "pet-talk-change.patch.gz",
+    "uncompressedSha256": "a9de3faa1a9174169608a2d93341daa0b65fa7733f2418f9e0b14db054069bc8",
+    "uncompressedBytes": 5328,
+    "source": "exact git show --format= of the recorded production source delta"
+  }
 }
