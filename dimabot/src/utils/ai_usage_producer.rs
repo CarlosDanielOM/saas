@@ -11,7 +11,7 @@ use std::{
 };
 
 use super::{
-    ai_usage::{AiUsageContext, classify_adjustment},
+    ai_usage::{AiUsageContext, EntryKind, classify_adjustment},
     credit_policy::{InvalidDate, JsDate},
     js_string::{JsString, write_json_utf8},
     lossless_json::JsonValue,
@@ -119,6 +119,16 @@ enum Context<'a> {
     Lossless(&'a JsonValue),
 }
 impl Context<'_> {
+    fn is_adjustment(&self) -> bool {
+        match self {
+            Self::Native(c) => c.entry_kind == EntryKind::Adjustment,
+            Self::Lossless(value) => matches!(
+                value.get("entryKind"),
+                Some(JsonValue::String(kind)) if kind.as_str() == Some("adjustment")
+            ),
+        }
+    }
+
     fn get(&self, key: &str) -> Option<Cow<'_, JsonValue>> {
         match self {
             Self::Lossless(value) => value.get(key).map(Cow::Borrowed),
@@ -337,23 +347,26 @@ fn build(
     // token; replacement in this policy-only projection cannot create a match.
     // Extra reason/adjustmentType values use strict equality/includes in TS, so
     // ignoring nonstrings is exact. Original output fields remain lossless.
-    let mut classification = serde_json::Map::new();
-    for key in [
-        "entryKind",
-        "source",
-        "operation",
-        "adjustmentType",
-        "reason",
-    ] {
-        if let Some(JsonValue::String(value)) = context.get(key).as_deref() {
-            classification.insert(key.into(), serde_json::Value::String(value.to_utf8_lossy()));
+    let adjustment = if context.is_adjustment() {
+        let mut classification = serde_json::Map::new();
+        for key in [
+            "entryKind",
+            "source",
+            "operation",
+            "adjustmentType",
+            "reason",
+        ] {
+            if let Some(JsonValue::String(value)) = context.get(key).as_deref() {
+                classification.insert(key.into(), serde_json::Value::String(value.to_utf8_lossy()));
+            }
         }
-    }
+        classify_adjustment(&serde_json::Value::Object(classification))
+    } else {
+        None
+    };
     put(
         "adjustmentType",
-        classify_adjustment(&serde_json::Value::Object(classification))
-            .map(s)
-            .unwrap_or(JsonValue::Null),
+        adjustment.map(s).unwrap_or(JsonValue::Null),
     );
     if let Some(v) = context.get("provider") {
         put("provider", v.into_owned());
