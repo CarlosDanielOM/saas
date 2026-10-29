@@ -1,37 +1,13 @@
 //! The installed fish-audio 0.1.0 HTTP subset, without its unused WebSocket API.
 use super::super::lossless_json::{JsonValue as ErrorJson, parse_with_depth_error};
-use crate::utils::{js_compat, js_string::JsString, tts::reinforce_fish_tts_tags};
+use crate::utils::{js_compat, js_string::JsString, tts::reinforce_fish_tts_tags_js};
 
 fn parse_json(text: &str) -> Result<ErrorJson, String> {
     parse_with_depth_error(text, "Fish Audio error JSON nesting exceeds limit")
 }
 
 pub(super) fn reinforce_js(text: &JsString) -> JsString {
-    if let Some(text) = text.as_str() {
-        return JsString::from(reinforce_fish_tts_tags(text));
-    }
-    // A lone surrogate is neither an ASCII cue character nor JS whitespace, so
-    // no match can span it. Preserve it while reusing the existing cue helper.
-    let mut output = Vec::new();
-    let mut chunk = Vec::new();
-    let mut units = text.code_units().peekable();
-    while let Some(unit) = units.next() {
-        if (0xd800..=0xdbff).contains(&unit)
-            && units.peek().is_some_and(|u| (0xdc00..=0xdfff).contains(u))
-        {
-            chunk.push(unit);
-            chunk.push(units.next().expect("peeked low surrogate"));
-        } else if (0xd800..=0xdfff).contains(&unit) {
-            output
-                .extend(reinforce_fish_tts_tags(&String::from_utf16_lossy(&chunk)).encode_utf16());
-            chunk.clear();
-            output.push(unit);
-        } else {
-            chunk.push(unit);
-        }
-    }
-    output.extend(reinforce_fish_tts_tags(&String::from_utf16_lossy(&chunk)).encode_utf16());
-    JsString::from_units(output)
+    reinforce_fish_tts_tags_js(text)
 }
 
 /// Encode the direct SDK's request, before any provider-specific cue expansion.
@@ -235,6 +211,25 @@ mod tests {
             .to_json_string(),
             "\"[happy] [happy]\\ud800\""
         );
+    }
+
+    #[test]
+    fn reinforcement_reuses_lossless_cue_groups_before_encoding() {
+        let text = JsString::from_units(
+            "[happy]\u{a0}[happy]😀"
+                .encode_utf16()
+                .chain([0xd800])
+                .chain("[pause]".encode_utf16())
+                .collect(),
+        );
+        let expected = JsString::from_units(
+            "[happy]\u{a0}[happy]😀"
+                .encode_utf16()
+                .chain([0xd800])
+                .chain("[pause] [pause]".encode_utf16())
+                .collect(),
+        );
+        assert_eq!(reinforce_js(&text), expected);
     }
 
     #[test]

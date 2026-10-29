@@ -150,6 +150,7 @@ use crate::utils::js_compat::{is_whitespace, trim};
 use regex::Regex;
 use serde_json::Value;
 use std::{
+    borrow::Cow,
     collections::{BTreeMap, HashSet},
     sync::OnceLock,
 };
@@ -173,6 +174,8 @@ pub fn resolve_kokoro_voice_str(value: &str) -> Option<String> {
     let voice = trim(value).to_lowercase();
     KOKORO_VOICES.contains(&voice.as_str()).then_some(voice)
 }
+/// Normalize ordinary JSON configuration, including the legacy nested keys.
+/// Executable getters and inherited or prototype hooks are not JSON inputs.
 pub fn normalize_expressive_tags(input: &Value) -> BTreeMap<String, bool> {
     expressive_tags()
         .map(|tag| {
@@ -247,55 +250,150 @@ fn expressive_tag_regex() -> &'static Regex {
     })
 }
 
+fn expressive_tag_replacement(
+    captures: &regex::Captures<'_>,
+    provider: TtsProvider,
+    enabled: Option<&BTreeMap<String, bool>>,
+) -> Cow<'static, str> {
+    let angle = captures.get(2);
+    let removed = if angle.is_some() { "" } else { " " };
+    if provider != TtsProvider::Fish || enabled.is_none() {
+        return Cow::Borrowed(removed);
+    }
+    static HYPHEN: OnceLock<Regex> = OnceLock::new();
+    let hyphen = HYPHEN.get_or_init(|| Regex::new(&format!(r"{JS_WS}*-{JS_WS}*")).unwrap());
+    let raw = angle.or_else(|| captures.get(3)).unwrap().as_str();
+    let normalized = if angle.is_some() {
+        hyphen.replace_all(raw, "-")
+    } else {
+        Cow::Borrowed(raw)
+    };
+    let lower = trim(&normalized).to_lowercase();
+    let tag = alias(&lower);
+    if expressive_tags().any(|candidate| candidate == tag)
+        && enabled.and_then(|values| values.get(tag)).copied() == Some(true)
+    {
+        Cow::Owned(if angle.is_some() {
+            format!(
+                "<{}{tag}>",
+                captures.get(1).map_or("", |value| value.as_str())
+            )
+        } else {
+            format!("[{tag}]")
+        })
+    } else {
+        Cow::Borrowed(removed)
+    }
+}
+
 pub fn filter_expressive_tts_tags(
     text: &str,
     provider: TtsProvider,
     enabled: Option<&BTreeMap<String, bool>>,
 ) -> String {
-    static HYPHEN: OnceLock<Regex> = OnceLock::new();
     static SPACES: OnceLock<Regex> = OnceLock::new();
-    let tags = expressive_tag_regex();
-    let hyphen = HYPHEN.get_or_init(|| Regex::new(&format!(r"{JS_WS}*-{JS_WS}*")).unwrap());
-    let replaced = tags.replace_all(text, |captures: &regex::Captures<'_>| {
-        let angle = captures.get(2);
-        let raw = angle.or_else(|| captures.get(3)).unwrap().as_str();
-        let normalized = if angle.is_some() {
-            hyphen.replace_all(raw, "-").into_owned()
-        } else {
-            raw.to_owned()
-        };
-        let lower = trim(&normalized).to_lowercase();
-        let tag = alias(&lower);
-        if provider == TtsProvider::Fish
-            && expressive_tags().any(|t| t == tag)
-            && enabled.and_then(|v| v.get(tag)).copied() == Some(true)
-        {
-            if angle.is_some() {
-                format!("<{}{tag}>", captures.get(1).map_or("", |v| v.as_str()))
-            } else {
-                format!("[{tag}]")
-            }
-        } else if angle.is_some() {
-            String::new()
-        } else {
-            " ".to_owned()
-        }
+    let replaced = expressive_tag_regex().replace_all(text, |captures: &regex::Captures<'_>| {
+        expressive_tag_replacement(captures, provider, enabled)
     });
     let spaces = SPACES.get_or_init(|| Regex::new(" {2,}").unwrap());
     trim(&spaces.replace_all(&replaced, " ")).to_owned()
 }
 
-pub fn reinforce_fish_tts_tags(text: &str) -> String {
+/// Regex positions in a lossy shadow map back to the untouched UTF-16 input.
+/// These patterns cannot end inside an astral pair, and a lone surrogate is
+/// neither a cue character nor JavaScript whitespace. In a square-tag capture,
+/// either a surrogate or its U+FFFD shadow makes the tag unknown.
+struct Utf16RegexShadow {
+    text: String,
+    offsets: Vec<(usize, usize)>,
+}
+
+impl Utf16RegexShadow {
+    fn new(units: &[u16]) -> Self {
+        let mut text = String::with_capacity(units.len());
+        let mut offsets = vec![(0, 0)];
+        let mut unit_offset = 0;
+        for decoded in char::decode_utf16(units.iter().copied()) {
+            let (character, width) = match decoded {
+                Ok(character) => (character, character.len_utf16()),
+                Err(_) => ('\u{fffd}', 1),
+            };
+            text.push(character);
+            unit_offset += width;
+            offsets.push((text.len(), unit_offset));
+        }
+        Self { text, offsets }
+    }
+
+    fn unit_offset(&self, byte: usize) -> usize {
+        let index = self
+            .offsets
+            .binary_search_by_key(&byte, |offset| offset.0)
+            .expect("regex offset must be a character boundary");
+        self.offsets[index].1
+    }
+}
+
+/// Lossless JavaScript string variant. Configuration represents ordinary JSON
+/// values; executable getters and prototype hooks are outside this boundary.
+pub fn filter_expressive_tts_tags_js(
+    text: &super::js_string::JsString,
+    provider: TtsProvider,
+    enabled: Option<&BTreeMap<String, bool>>,
+) -> super::js_string::JsString {
+    use super::js_string::JsString;
+    if let Some(text) = text.as_str() {
+        return filter_expressive_tts_tags(text, provider, enabled).into();
+    }
+    let units = text.units();
+    let shadow = Utf16RegexShadow::new(&units);
+    let mut result = Vec::with_capacity(units.len());
+    let mut previous = 0;
+    for captures in expressive_tag_regex().captures_iter(&shadow.text) {
+        let matched = captures.get(0).unwrap();
+        result.extend_from_slice(&units[previous..shadow.unit_offset(matched.start())]);
+        result.extend(expressive_tag_replacement(&captures, provider, enabled).encode_utf16());
+        previous = shadow.unit_offset(matched.end());
+    }
+    result.extend_from_slice(&units[previous..]);
+    result.dedup_by(|current, previous| *current == 0x20 && *previous == 0x20);
+    JsString::from_units(result).trim()
+}
+
+/// Reinforce cues without replacing unpaired JavaScript UTF-16 surrogates.
+pub fn reinforce_fish_tts_tags_js(text: &super::js_string::JsString) -> super::js_string::JsString {
+    use super::js_string::JsString;
+    if let Some(text) = text.as_str() {
+        return reinforce_fish_tts_tags(text).into();
+    }
+    let units = text.units();
+    let shadow = Utf16RegexShadow::new(&units);
+    let mut output = Vec::with_capacity(units.len());
+    let mut previous = 0;
+    for_each_fish_reinforcement(&shadow.text, |start, end| {
+        let start = shadow.unit_offset(start);
+        let end = shadow.unit_offset(end);
+        output.extend_from_slice(&units[previous..end]);
+        output.push(0x20);
+        output.extend_from_slice(&units[start..end]);
+        previous = end;
+    });
+    output.extend_from_slice(&units[previous..]);
+    JsString::from_units(output)
+}
+
+/// Locate singleton cues using the source's complete greedy repeat group.
+/// Backreferences compare the original lowercase ASCII capture exactly; a
+/// different cue, unknown marker, or non-whitespace unit ends the group.
+fn for_each_fish_reinforcement(text: &str, mut expand: impl FnMut(usize, usize)) {
     static CUE: OnceLock<Regex> = OnceLock::new();
     let cue = CUE.get_or_init(|| Regex::new(r"\[([a-z -]+)\]").unwrap());
-    let mut out = String::with_capacity(text.len());
     let mut cursor = 0;
     while let Some(c) = cue.captures(&text[cursor..]) {
         let m = c.get(0).unwrap();
         let start = cursor + m.start();
         let end = cursor + m.end();
         let tag = c.get(1).unwrap().as_str();
-        out.push_str(&text[cursor..end]);
         let mut end_group = end;
         loop {
             let tail = &text[end_group..];
@@ -311,13 +409,21 @@ pub fn reinforce_fish_tts_tags(text: &str) -> String {
             }
         }
         if end_group == end && expressive_tags().any(|candidate| candidate == tag) {
-            out.push(' ');
-            out.push_str(&text[start..end]);
-        } else {
-            out.push_str(&text[end..end_group]);
+            expand(start, end);
         }
         cursor = end_group;
     }
+}
+
+pub fn reinforce_fish_tts_tags(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut cursor = 0;
+    for_each_fish_reinforcement(text, |start, end| {
+        out.push_str(&text[cursor..end]);
+        out.push(' ');
+        out.push_str(&text[start..end]);
+        cursor = end;
+    });
     out.push_str(&text[cursor..]);
     out
 }

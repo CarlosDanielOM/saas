@@ -1,7 +1,7 @@
 //! Credit policy for queue/pet requests, before conversion to synthesis input.
 use super::{
     DEFAULT_KOKORO_VOICE_EN, DEFAULT_KOKORO_VOICE_ES, TtsLanguage, TtsMode, TtsProvider,
-    expressive_tag_regex, resolve_kokoro_voice_str,
+    resolve_kokoro_voice_str,
 };
 use crate::utils::{
     js_string::JsString,
@@ -32,60 +32,8 @@ pub struct CreditFallbackRequest<T: Clone> {
 }
 
 /// Removes tags for the two non-expressive providers, preserving UTF-16 code units.
-/// The shadow string only supplies regex positions; retained text comes from the
-/// original units, including unpaired surrogates and whitespace around them.
 pub fn filter_fallback_text(text: &JsString) -> JsString {
-    if let Some(text) = text.as_str() {
-        return super::filter_expressive_tts_tags(text, TtsProvider::Piper, None).into();
-    }
-    let tags = expressive_tag_regex();
-    let units = text.units();
-    let mut shadow = String::new();
-    let mut offsets = vec![(0, 0)];
-    let mut index = 0;
-    while index < units.len() {
-        let first = units[index];
-        let pair = (0xd800..=0xdbff).contains(&first)
-            && units
-                .get(index + 1)
-                .is_some_and(|u| (0xdc00..=0xdfff).contains(u));
-        let c = if pair {
-            char::from_u32(
-                0x10000
-                    + ((u32::from(first) - 0xd800) << 10)
-                    + (u32::from(units[index + 1]) - 0xdc00),
-            )
-            .unwrap()
-        } else {
-            char::from_u32(u32::from(first)).unwrap_or('\u{fffd}')
-        };
-        shadow.push(c);
-        index += if pair { 2 } else { 1 };
-        offsets.push((shadow.len(), index));
-    }
-    let at = |byte| {
-        offsets
-            .binary_search_by_key(&byte, |p| p.0)
-            .map(|i| offsets[i].1)
-            .unwrap()
-    };
-    let mut result = Vec::new();
-    let mut previous = 0;
-    for m in tags.find_iter(&shadow) {
-        result.extend_from_slice(&units[at(previous)..at(m.start())]);
-        if m.as_str().starts_with('[') {
-            result.push(0x20);
-        }
-        previous = m.end();
-    }
-    result.extend_from_slice(&units[at(previous)..]);
-    let mut collapsed = Vec::with_capacity(result.len());
-    for unit in result {
-        if unit != 0x20 || collapsed.last() != Some(&0x20) {
-            collapsed.push(unit);
-        }
-    }
-    JsString::from_units(collapsed).trim()
+    super::filter_expressive_tts_tags_js(text, TtsProvider::Piper, None)
 }
 
 pub fn resolve_tts_for_credit_status<'a, T: Clone>(
@@ -102,6 +50,8 @@ pub fn resolve_tts_for_credit_status<'a, T: Clone>(
     } else {
         TtsProvider::Piper
     };
+    // Every catalog ID is ASCII; trimming and lowercasing cannot make a lone
+    // surrogate into one of those IDs.
     let kokoro_voice = |v: &JsString| v.as_str().and_then(resolve_kokoro_voice_str);
     let voice = if provider == TtsProvider::Kokoro {
         (request.provider == TtsProvider::Kokoro)
