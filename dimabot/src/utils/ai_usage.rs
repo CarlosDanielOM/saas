@@ -318,40 +318,93 @@ fn coerced_field(input: &Value, key: &str) -> String {
     }
 }
 
+/// Legacy serde boundary used by existing callers. Its historical coercion of
+/// objects and numbers is retained, including treating own `toString` fields
+/// as ordinary objects rather than reporting JavaScript coercion errors. Use
+/// `classify_adjustment_json` for the full ordinary JSON-data contract.
 pub fn classify_adjustment(input: &Value) -> Option<&'static str> {
     if input.get("entryKind").and_then(Value::as_str) != Some("adjustment") {
         return None;
     }
-    if let Some(found) = input
-        .get("adjustmentType")
-        .and_then(Value::as_str)
-        .and_then(|explicit| ADJUSTMENT_TYPES.into_iter().find(|&kind| kind == explicit))
-    {
+    if let Some(found) = explicit_adjustment(input.get("adjustmentType").and_then(Value::as_str)) {
         return Some(found);
     }
     let source = coerced_field(input, "source");
     let operation = coerced_field(input, "operation");
-    Some(if source == "polar_meter_credit" {
+    Some(adjustment_policy(
+        Some(&source),
+        Some(&operation),
+        input.get("reason").and_then(Value::as_str) == Some("Free benefits"),
+    ))
+}
+
+fn explicit_adjustment(value: Option<&str>) -> Option<&'static str> {
+    value.and_then(|explicit| ADJUSTMENT_TYPES.into_iter().find(|&kind| kind == explicit))
+}
+
+// Both strings are already coerced before this policy is entered, even when
+// an earlier policy branch would otherwise make the operation unnecessary.
+fn adjustment_policy(
+    source: Option<&str>,
+    operation: Option<&str>,
+    free_benefits: bool,
+) -> &'static str {
+    if source == Some("polar_meter_credit") {
         "native_grant"
-    } else if ["free_credit_reset", "free_credit_reset_worker"].contains(&source.as_str())
-        || operation == "monthly_reset"
+    } else if matches!(
+        source,
+        Some("free_credit_reset" | "free_credit_reset_worker")
+    ) || operation == Some("monthly_reset")
     {
         "monthly_reset"
-    } else if source == "admin_credit_grant" {
+    } else if source == Some("admin_credit_grant") {
         "manual_grant"
-    } else if source == "credit_pack_purchase" || operation == "purchase_pack" {
+    } else if source == Some("credit_pack_purchase") || operation == Some("purchase_pack") {
         "purchased_pack"
-    } else if operation == "refund" {
+    } else if operation == Some("refund") {
         "refund"
-    } else if operation == "correction" {
+    } else if operation == Some("correction") {
         "correction"
-    } else if source == "activation"
-        || input.get("reason").and_then(Value::as_str) == Some("Free benefits")
-    {
+    } else if source == Some("activation") || free_benefits {
         "activation"
     } else {
         "other"
-    })
+    }
+}
+
+/// Source-equivalent classification for ordinary JSON-data objects. Strings
+/// retain UTF-16, duplicate fields use their last value, and non-callable own
+/// `toString` fields report TypeError. Executable hooks and custom prototypes
+/// are outside this boundary. A null top-level input reports TypeError.
+#[cfg(feature = "tts-utilities")]
+pub fn classify_adjustment_json(
+    input: &super::lossless_json::JsonValue,
+) -> Result<Option<&'static str>, super::tts::settings::SettingsError> {
+    use super::{js_string::JsString, lossless_json::JsonValue, tts::settings};
+    if matches!(input, JsonValue::Null) {
+        return Err(settings::SettingsError);
+    }
+    let string = |key| match input.get(key) {
+        Some(JsonValue::String(value)) => value.as_str(),
+        _ => None,
+    };
+    if string("entryKind") != Some("adjustment") {
+        return Ok(None);
+    }
+    if let Some(found) = explicit_adjustment(string("adjustmentType")) {
+        return Ok(Some(found));
+    }
+    let coerce = |key| match input.get(key) {
+        Some(value) if settings::truthy(value) => settings::js_string(value),
+        _ => Ok(JsString::from_static("")),
+    };
+    let source = coerce("source")?;
+    let operation = coerce("operation")?;
+    Ok(Some(adjustment_policy(
+        source.as_str(),
+        operation.as_str(),
+        string("reason") == Some("Free benefits"),
+    )))
 }
 
 #[cfg(test)]
