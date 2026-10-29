@@ -1,0 +1,10 @@
+{
+  "pricingCases": 1738,
+  "emoteCases": 66,
+  "originalEmoteCasesUnchanged": 65,
+  "pricingBindings": 7,
+  "emoteBindings": 8,
+  "benchmarkInputSha256": "83ac085b3541474db906d8808923518168303d6ad1f96f8eea83158af62eddbe",
+  "roundingCases": 4157,
+  "roundingBindings": 2
+}

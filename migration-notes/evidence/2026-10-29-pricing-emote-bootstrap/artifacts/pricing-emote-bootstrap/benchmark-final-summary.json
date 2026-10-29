@@ -1,0 +1,105 @@
+{
+  "inputSha256": "83ac085b3541474db906d8808923518168303d6ad1f96f8eea83158af62eddbe",
+  "rows": [
+    {
+      "name": "piper",
+      "typescript_us": 0.035337074279785156,
+      "rust_baseline_us": 0.03280479049682617,
+      "rust_us": 0.034631752014160154,
+      "rust_div_ts": 0.9800401623507217,
+      "rust_final_div_baseline": 1.0556919123598958,
+      "typescript_range_us": [
+        0.029318912506103516,
+        0.037279346466064456
+      ],
+      "rust_range_us": [
+        0.0281734619140625,
+        0.03795795059204102
+      ]
+    },
+    {
+      "name": "fish",
+      "typescript_us": 0.029114944458007812,
+      "rust_baseline_us": 0.029778411865234375,
+      "rust_us": 0.02635820007324219,
+      "rust_div_ts": 0.9053151418941688,
+      "rust_final_div_baseline": 0.8851445870427628,
+      "typescript_range_us": [
+        0.02599164581298828,
+        0.03395356369018555
+      ],
+      "rust_range_us": [
+        0.026265399932861328,
+        0.030398818969726564
+      ]
+    },
+    {
+      "name": "kokoro",
+      "typescript_us": 0.02513925552368164,
+      "rust_baseline_us": 0.044151805877685545,
+      "rust_us": 0.02973251724243164,
+      "rust_div_ts": 1.1827127185378685,
+      "rust_final_div_baseline": 0.6734156542724461,
+      "typescript_range_us": [
+        0.024158069610595703,
+        0.028309711456298826
+      ],
+      "rust_range_us": [
+        0.02939565658569336,
+        0.03195397186279297
+      ]
+    },
+    {
+      "name": "unknown",
+      "typescript_us": 0.030647502899169923,
+      "rust_baseline_us": 0.031662708282470704,
+      "rust_us": 0.0282559814453125,
+      "rust_div_ts": 0.9219668414185159,
+      "rust_final_div_baseline": 0.8924057030508583,
+      "typescript_range_us": [
+        0.025976509094238282,
+        0.03676691055297852
+      ],
+      "rust_range_us": [
+        0.027909374237060545,
+        0.02895923614501953
+      ]
+    },
+    {
+      "name": "inherited",
+      "typescript_us": 0.26240250778198243,
+      "rust_baseline_us": 0.01905685043334961,
+      "rust_us": 0.019475109100341798,
+      "rust_div_ts": 0.07421845646583045,
+      "rust_final_div_baseline": 1.021947942995881,
+      "typescript_range_us": [
+        0.2473880386352539,
+        0.2837917175292969
+      ],
+      "rust_range_us": [
+        0.017643218994140626,
+        0.023678272247314454
+      ]
+    },
+    {
+      "name": "mixed",
+      "typescript_us": 0.09694685363769531,
+      "rust_baseline_us": 0.026842350006103514,
+      "rust_us": 0.02668844223022461,
+      "rust_div_ts": 0.2752894109381131,
+      "rust_final_div_baseline": 0.994266233178395,
+      "typescript_range_us": [
+        0.09126707458496094,
+        0.14488008117675782
+      ],
+      "rust_range_us": [
+        0.024945789337158204,
+        0.02796945571899414
+      ]
+    }
+  ],
+  "ordinaryExecutions": 254,
+  "explicitFixtureExecutions": 5,
+  "releaseBenchmarkExecutions": 1,
+  "allExecutions": 260
+}

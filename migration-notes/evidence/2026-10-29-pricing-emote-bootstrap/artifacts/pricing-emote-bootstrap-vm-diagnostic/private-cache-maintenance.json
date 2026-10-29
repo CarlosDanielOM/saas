@@ -1,0 +1,56 @@
+{
+  "scope": "Only task-private stale dima_rust library-test executables; raw proof and caches of shared dependencies retained",
+  "removed": [
+    {
+      "path": "target/debug/deps/dima_rust-0a21d70f0e9f39f7",
+      "sha256": "e397e031439fed9fecd4b2045c17dcc034ac4bb6081554545e350b51f58104c4",
+      "allocated_bytes": 28434432
+    },
+    {
+      "path": "target/debug/deps/dima_rust-3215b8e779404d82",
+      "sha256": "4b5158e3aea86b62d4ae85c5b16013309d61ca0740300181e45efbaa2c075308",
+      "allocated_bytes": 1269760
+    },
+    {
+      "path": "target/debug/deps/dima_rust-3b1e09b304f2fc2c",
+      "sha256": "cfb0f0ddc0fb8427e9856b4243cec90d53719b458549c09a2757f2926f07867b",
+      "allocated_bytes": 6975488
+    },
+    {
+      "path": "target/debug/deps/dima_rust-455a37e32bf1af3f",
+      "sha256": "e35eb9d0ad6ff3dcc3aef1b872aca145c1eeb6f1c05b6acece832df5418b7e71",
+      "allocated_bytes": 28434432
+    },
+    {
+      "path": "target/debug/deps/dima_rust-54dc17e451ae8ca1",
+      "sha256": "8cda6d35aff8c5715fdc891a988e10adcf1061d5544fe06b55fdc4d2cd5ca302",
+      "allocated_bytes": 6926336
+    },
+    {
+      "path": "target/debug/deps/dima_rust-5bca7d849e521fa1",
+      "sha256": "2656033747ccc3cd2bb335d285757475a598c0c5fa9ce07603825f79ea99414b",
+      "allocated_bytes": 19472384
+    },
+    {
+      "path": "target/debug/deps/dima_rust-71900754067cb62c",
+      "sha256": "49ace64a1a346bab453b32ab276529e01652adf31869cf8f34841e875638721c",
+      "allocated_bytes": 1343488
+    },
+    {
+      "path": "target/debug/deps/dima_rust-92ee59afcfc5d877",
+      "sha256": "02e0689113a1f89b8bc701acd31aea48a7d619a70ecba3fd12361a8e034d0237",
+      "allocated_bytes": 12836864
+    },
+    {
+      "path": "target/debug/deps/dima_rust-c7844ace395e8a65",
+      "sha256": "3a1b9357a9377379d3b97c0cb0d16e55019731dfe89844f9c5446e5ecd8f182d",
+      "allocated_bytes": 7417856
+    },
+    {
+      "path": "target/debug/deps/dima_rust-fd0e638c7d939b32",
+      "sha256": "f36a9335303a4ed42d8188d0b08a0847bd03639392455002909e04a6adf57502",
+      "allocated_bytes": 7335936
+    }
+  ],
+  "freed_allocated_bytes": 120446976
+}

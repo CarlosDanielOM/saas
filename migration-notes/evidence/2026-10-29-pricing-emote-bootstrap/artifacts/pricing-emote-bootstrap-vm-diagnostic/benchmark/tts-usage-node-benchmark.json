@@ -1,0 +1,224 @@
+{
+  "implementation": "actual-typescript",
+  "inputSha256": "34f96b74ee94d810aa614046856593324c0edd368d971249234ff82614cb888d",
+  "warmupPasses": 100,
+  "measurement": "prepared pool pricing plus four scalar scaled fields, wrapping u32",
+  "runs": [
+    {
+      "name": "piper",
+      "iterations": 262144,
+      "resultChecksum": 2175623168,
+      "samples": [
+        {
+          "elapsedNs": 171434353,
+          "checksum": 2175623168
+        },
+        {
+          "elapsedNs": 168570639,
+          "checksum": 2175623168
+        },
+        {
+          "elapsedNs": 159694622,
+          "checksum": 2175623168
+        },
+        {
+          "elapsedNs": 164663239,
+          "checksum": 2175623168
+        },
+        {
+          "elapsedNs": 165705373,
+          "checksum": 2175623168
+        },
+        {
+          "elapsedNs": 164357327,
+          "checksum": 2175623168
+        },
+        {
+          "elapsedNs": 159708908,
+          "checksum": 2175623168
+        }
+      ],
+      "medianUsPerOp": 0.6281404075622559
+    },
+    {
+      "name": "fish",
+      "iterations": 262144,
+      "resultChecksum": 2059984896,
+      "samples": [
+        {
+          "elapsedNs": 162096933,
+          "checksum": 2059984896
+        },
+        {
+          "elapsedNs": 161370612,
+          "checksum": 2059984896
+        },
+        {
+          "elapsedNs": 161447434,
+          "checksum": 2059984896
+        },
+        {
+          "elapsedNs": 159294183,
+          "checksum": 2059984896
+        },
+        {
+          "elapsedNs": 163152459,
+          "checksum": 2059984896
+        },
+        {
+          "elapsedNs": 161107739,
+          "checksum": 2059984896
+        },
+        {
+          "elapsedNs": 162600706,
+          "checksum": 2059984896
+        }
+      ],
+      "medianUsPerOp": 0.6158730850219727
+    },
+    {
+      "name": "kokoro",
+      "iterations": 262144,
+      "resultChecksum": 4036583424,
+      "samples": [
+        {
+          "elapsedNs": 165863477,
+          "checksum": 4036583424
+        },
+        {
+          "elapsedNs": 197310364,
+          "checksum": 4036583424
+        },
+        {
+          "elapsedNs": 174992588,
+          "checksum": 4036583424
+        },
+        {
+          "elapsedNs": 155384598,
+          "checksum": 4036583424
+        },
+        {
+          "elapsedNs": 164276525,
+          "checksum": 4036583424
+        },
+        {
+          "elapsedNs": 168992198,
+          "checksum": 4036583424
+        },
+        {
+          "elapsedNs": 166459154,
+          "checksum": 4036583424
+        }
+      ],
+      "medianUsPerOp": 0.6349912796020508
+    },
+    {
+      "name": "unknown",
+      "iterations": 262144,
+      "resultChecksum": 608329728,
+      "samples": [
+        {
+          "elapsedNs": 160888489,
+          "checksum": 608329728
+        },
+        {
+          "elapsedNs": 160185301,
+          "checksum": 608329728
+        },
+        {
+          "elapsedNs": 162166052,
+          "checksum": 608329728
+        },
+        {
+          "elapsedNs": 167031045,
+          "checksum": 608329728
+        },
+        {
+          "elapsedNs": 175000634,
+          "checksum": 608329728
+        },
+        {
+          "elapsedNs": 162093406,
+          "checksum": 608329728
+        },
+        {
+          "elapsedNs": 162901819,
+          "checksum": 608329728
+        }
+      ],
+      "medianUsPerOp": 0.6186143951416015
+    },
+    {
+      "name": "inherited",
+      "iterations": 262144,
+      "resultChecksum": 2280390656,
+      "samples": [
+        {
+          "elapsedNs": 262357873,
+          "checksum": 2280390656
+        },
+        {
+          "elapsedNs": 228569429,
+          "checksum": 2280390656
+        },
+        {
+          "elapsedNs": 239549046,
+          "checksum": 2280390656
+        },
+        {
+          "elapsedNs": 236532677,
+          "checksum": 2280390656
+        },
+        {
+          "elapsedNs": 256810310,
+          "checksum": 2280390656
+        },
+        {
+          "elapsedNs": 230278541,
+          "checksum": 2280390656
+        },
+        {
+          "elapsedNs": 204368977,
+          "checksum": 2280390656
+        }
+      ],
+      "medianUsPerOp": 0.9023005561828613
+    },
+    {
+      "name": "mixed",
+      "iterations": 262144,
+      "resultChecksum": 2762604544,
+      "samples": [
+        {
+          "elapsedNs": 188677834,
+          "checksum": 2762604544
+        },
+        {
+          "elapsedNs": 191023467,
+          "checksum": 2762604544
+        },
+        {
+          "elapsedNs": 188235846,
+          "checksum": 2762604544
+        },
+        {
+          "elapsedNs": 170272066,
+          "checksum": 2762604544
+        },
+        {
+          "elapsedNs": 189667878,
+          "checksum": 2762604544
+        },
+        {
+          "elapsedNs": 176103859,
+          "checksum": 2762604544
+        },
+        {
+          "elapsedNs": 219637068,
+          "checksum": 2762604544
+        }
+      ],
+      "medianUsPerOp": 0.7197488174438477
+    }
+  ]
+}

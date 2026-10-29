@@ -117,3 +117,22 @@ read-only production fingerprint
 `50903c6a12f924a8fa842db591bb68472fe98c522309d790a03743714add3536` was
 unchanged across the 19-record checks; this work made no production mutation.
 The task-owned candidate containers and private fixture network were removed.
+
+## Follow-up shared-runtime bootstrap
+
+The 2026-10-29 pricing/emote wave adds a separate lazy concrete Redis
+initialization wrapper around this catalog: it accepts an unconnected Redis
+client, connects and pings on first valid request under a five-second bound,
+and caches only successful initialization. The paired source oracle now has
+66 emote cases, including a global connection-failure case; the baseline
+candidate replayed the existing concrete 57-of-66 catalog corpus separately
+from the two runtime initialization failure-result checks. This wrapper fills
+the cache initialization boundary while caller-owned token-storage
+construction, bootstrap, logging, telemetry, and application adoption remain
+open. See [TTS pricing and emote bootstrap](tts-pricing-emote-bootstrap-2026-10-29.md)
+for final pricing/emote source, compiler and cleanup receipts. Final source
+`64984e28f5d64d8b61e99aacc24d868a14c841fa35e0e245d93c1caa7908ad92` passed
+the actual-source and runtime fixtures, and the final cleanup receipt confirms
+19 unchanged production records and removal of all task-owned containers,
+networks, and volumes. The pricing benchmark does not measure emote API or HTTP
+performance. Application caller adoption remains open.

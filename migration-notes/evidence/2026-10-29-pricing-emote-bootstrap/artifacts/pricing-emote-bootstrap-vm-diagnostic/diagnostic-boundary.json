@@ -1,0 +1,19 @@
+{
+  "source_tree_sha256": "13612cc3140dc89deb9075813bead5ff5e0a80788d836ef1a0a856121519ec10",
+  "node_run": "node-1793250393825823937",
+  "compiler_run": "compiler-fixtures-1793250544101522700",
+  "purpose": "Initial Node VM timings diagnostic only; no matched Rust report generated. Parent corrected benchmark to normal CommonJS realm. Compiler stopped on mistaken test comparison of preserved Serde51.0 and JS51; native pricing policy unchanged. Task resources cleaned and production unchanged.",
+  "frozen_bindings": {
+    "dimabot/src/utils/tts/usage.rs": "ed40222e69c77fc73d0b01e5d865a8bf52adb3bc803d842c5c37c2cbe9a55c9b",
+    "dimabot/src/utils/credit_policy.rs": "0b17b85d9191d921b68490bccdbcb53495537f526599d69b5e94ec1db9a7cec3",
+    "dimabot/src/utils/mod.rs": "7d8a9758e289bb8b81692b7f87aec762b2c0c3dabb381df862c911d02230523d",
+    "dimabot/src/utils/tts/mod.rs": "248e05ba4213c1f82f64726ff5cd9adff6e52a79fc83c194e567919ce3d93bd6",
+    "dimabot/src/utils/twitch_emotes.rs": "41582d689f72e42f2d4fd635d01a57aa24a120215fb98044e99a778a65ccbc01",
+    "dimabot/tests/twitch_emotes_runtime.rs": "a54e51cb3644aec5bb1480cea916eccf8f6ec22adc030fa11ed2da43bbde0035",
+    "dimabot/tests/tts_usage_pricing.rs": "9e8cac1beda8001c2913f673a96cd3acdbe49bd37b38ea00ee6f5c8ddb643bd1",
+    "dimabot/tests/tts_usage_benchmark.rs": "9d44d0a8fc546b64dc8a27355716c570162cb517ff26b788662c00576a710f6c",
+    "dimabot/tests/fixtures/tts_usage_oracle.cjs": "38bb4d3bd1cb77a195baf3bc11fa2d835725e49630f43237a2d3f435275a710b",
+    "dimabot/tests/fixtures/tts_usage_benchmark.cjs": "42053c70433ceae2f19d97d3d7502919318ca1520aacd84bd9b467a5966684eb",
+    "dimabot/tests/fixtures/twitch_emotes_reference.cjs": "7134745a9cbf7535c5234811bbfd14b391b64311bf280af7c50d33c7be04d712"
+  }
+}

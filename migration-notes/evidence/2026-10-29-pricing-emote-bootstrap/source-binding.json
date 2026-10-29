@@ -1,0 +1,65 @@
+{
+  "source_tree_sha256": "64984e28f5d64d8b61e99aacc24d868a14c841fa35e0e245d93c1caa7908ad92",
+  "files": {
+    "dimabot/src/utils/twitch_emotes.rs": {
+      "commit": "92e1804d6a65b8c5e5cf44076d51d614285de9f3",
+      "sha256": "41582d689f72e42f2d4fd635d01a57aa24a120215fb98044e99a778a65ccbc01"
+    },
+    "dimabot/tests/twitch_emotes_runtime.rs": {
+      "commit": "92e1804d6a65b8c5e5cf44076d51d614285de9f3",
+      "sha256": "a54e51cb3644aec5bb1480cea916eccf8f6ec22adc030fa11ed2da43bbde0035"
+    },
+    "dimabot/tests/fixtures/twitch_emotes_reference.cjs": {
+      "commit": "92e1804d6a65b8c5e5cf44076d51d614285de9f3",
+      "sha256": "7134745a9cbf7535c5234811bbfd14b391b64311bf280af7c50d33c7be04d712"
+    },
+    "dimabot/src/utils/credit_policy.rs": {
+      "commit": "7ea5904e91eca9314f8c914c60ba3cbf212f555e",
+      "sha256": "0b17b85d9191d921b68490bccdbcb53495537f526599d69b5e94ec1db9a7cec3"
+    },
+    "dimabot/src/utils/mod.rs": {
+      "commit": "7ea5904e91eca9314f8c914c60ba3cbf212f555e",
+      "sha256": "7d8a9758e289bb8b81692b7f87aec762b2c0c3dabb381df862c911d02230523d"
+    },
+    "dimabot/src/utils/tts/mod.rs": {
+      "commit": "7ea5904e91eca9314f8c914c60ba3cbf212f555e",
+      "sha256": "248e05ba4213c1f82f64726ff5cd9adff6e52a79fc83c194e567919ce3d93bd6"
+    },
+    "dimabot/src/utils/tts/usage.rs": {
+      "commit": "7dfd1c8637574ba0ec1bc129880b95966cef6923",
+      "sha256": "20eb517983db1c674dd46114293e233ec48897c9583ab83ffbcc650db350a6a6"
+    },
+    "dimabot/tests/tts_usage_pricing.rs": {
+      "commit": "7ea5904e91eca9314f8c914c60ba3cbf212f555e",
+      "sha256": "fc54ebf7017f000919688b4b37a16befbfa3031bd09c8d1d52679f607cbca597"
+    },
+    "dimabot/tests/tts_usage_benchmark.rs": {
+      "commit": "7ea5904e91eca9314f8c914c60ba3cbf212f555e",
+      "sha256": "45ecd8302f8cf6fd410baa4c4fa687d530ea5f93d97560c9d00687f98a18177a"
+    },
+    "dimabot/tests/fixtures/tts_usage_oracle.cjs": {
+      "commit": "7ea5904e91eca9314f8c914c60ba3cbf212f555e",
+      "sha256": "393ebe3257523e6287b06593a37720fe3d5b13c5f1c78be812f6eb7caeff3871"
+    },
+    "dimabot/tests/fixtures/tts_usage_benchmark.cjs": {
+      "commit": "7ea5904e91eca9314f8c914c60ba3cbf212f555e",
+      "sha256": "c873e59eb2359ed53649fbd51ae6be2ad36bee812006e673025da8069d4222e4"
+    },
+    "dimabot/tests/fixtures/js_round_reference.cjs": {
+      "commit": "7dfd1c8637574ba0ec1bc129880b95966cef6923",
+      "sha256": "4414e23c0f92ab760aa40b9b72ea871e7c4c5d33633ef6293fa0736cd381c1b1"
+    },
+    "dimabot/Cargo.toml": {
+      "commit": "7ea5904e91eca9314f8c914c60ba3cbf212f555e",
+      "sha256": "e4a4595fbafb351d42da9b36e93e5eddb2e3dd9af5881ffe82a6df7f358bb16a"
+    },
+    "dimabot/Cargo.lock": {
+      "commit": "7ea5904e91eca9314f8c914c60ba3cbf212f555e",
+      "sha256": "787333fa269752a606040d7393767040ef749ce1e01c2512386bf305bcd7a2c3"
+    },
+    "dimabot/rust-toolchain.toml": {
+      "commit": "7ea5904e91eca9314f8c914c60ba3cbf212f555e",
+      "sha256": "b9c8d2d59f6f46474c0cfa0b8b77bea21d94fc73a30ad93d5bf6385c422197d2"
+    }
+  }
+}

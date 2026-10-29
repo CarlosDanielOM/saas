@@ -1,0 +1,9 @@
+0c40500dcf164b27b47fd1dd340d4a2e1030fe0d908497ae28d50fa2d7af3406  /artifacts/pricing-emote-bootstrap/pricing/tts-usage-pricing.json
+739b9c385beb57c6042057932b39b4672ceb486eabca707a5d6dfa41d5ca043b  /artifacts/pricing-emote-bootstrap/emotes/twitch_emotes_cases.json
+83ac085b3541474db906d8808923518168303d6ad1f96f8eea83158af62eddbe  /artifacts/pricing-emote-bootstrap/benchmark/tts-usage-benchmark-input.json
+a9b9952a406694ec5ee84bdc1ef7b0bc413b1ae85bfe4fca7ece5c776ee5ad61  /artifacts/pricing-emote-bootstrap/benchmark-baseline-summary.json
+b81ac0ae3c45bc676fdf7dc0e86e3356a4b7fa08c3917d6243a64378a38fbb4f  /artifacts/pricing-emote-bootstrap/rounding/js-round-reference.json
+cb62511e823bcfbc2f1278f8bcf42674ef4960fce6153a0f2a7b18e12f48ddc2  /artifacts/pricing-emote-bootstrap/source-commits-baseline.json
+e4ef119b3bc246032ea76e01f5433f623b43edb49049b8aeaf95f573eb4393d8  /artifacts/pricing-emote-bootstrap/benchmark/tts-usage-node-benchmark.json
+e82df21bc59bab61a2657f972cd0e1601448f22dec2078defe9e292e813dc3db  /artifacts/pricing-emote-bootstrap/provenance-check.json
+ec5c4295bf9d6141a2269ae5298c673c64762f9b81384f7b0de1c89694203baa  /artifacts/pricing-emote-bootstrap/benchmark/tts-usage-rust-baseline-benchmark.json

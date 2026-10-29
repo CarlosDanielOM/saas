@@ -96433,38 +96433,73 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-bounded-pure-pricing; tracking and billing dependency closure open",
+      "localRustEvidence": [
+        "dimabot/src/utils/tts/usage.rs",
+        "dimabot/src/utils/tts/mod.rs",
+        "dimabot/src/utils/credit_policy.rs",
+        "dimabot/tests/tts_usage_pricing.rs",
+        "dimabot/tests/fixtures/tts_usage_oracle.cjs",
+        "migration-notes/tts-pricing-emote-bootstrap-2026-10-29.md",
+        "migration-notes/evidence/2026-10-29-pricing-emote-bootstrap/verification-summary.json",
+        "compiler-fixtures-1793251319915932834: final source 64984e28f5d64d8b61e99aacc24d868a14c841fa35e0e245d93c1caa7908ad92"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The native bounded exact-floor implementation is covered by 4,157 JavaScript Math.round raw-bit cases in both standalone credit-policy and TTS-utilities profiles; non-finite inputs, negative zero, ties and values at/above the exact-integer boundary retain explicit guards."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/src/handlers/tts_queue.handler.ts: trackTtsUsage",
+          "dimabot/src/pets/runtime.ts: trackTtsUsage",
+          "dimabot/src/server/services/tts/voice_preview.service.ts: calculateTtsUsage and trackTtsUsage"
+        ],
+        "runtimeStatus": "Pricing calculation has verified native local coverage; all three callers still invoke TypeScript. Tracking, logging, cache mutation, durable billing/ledger and PostHog remain open."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "Actual tts_usage.ts was loaded by the isolated Node oracle; 1,738 pricing cases compared all four raw binary64 fields and serialized wire values.",
+          "Same-realm six-workload prepared benchmark used unchanged input SHA-256 83ac085b3541474db906d8808923518168303d6ad1f96f8eea83158af62eddbe."
+        ],
+        "rustBehaviorEvidence": [
+          "tts_usage_pricing.rs: formula, special provider names, shared credit-policy API/Serde and lossless TTS JSON behavior.",
+          "Final compiler: 254 ordinary executions (overlapping), five explicit fixture executions, one release benchmark; standalone credit-policy and TTS-utilities all-target strict check/Clippy, all-features strict check/Clippy, and no-feature all-target check passed.",
+          "migration-notes/evidence/2026-10-29-pricing-emote-bootstrap/verification-summary.json",
+          "compiler-fixtures-1793251319915932834: final source 64984e28f5d64d8b61e99aacc24d868a14c841fa35e0e245d93c1caa7908ad92"
+        ],
+        "status": "bounded pure pricing behavior verified; tracking feature and application dependency closure remain open"
       },
       "exports": [
         {
           "name": "TtsUsageResult",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "TtsUsageResult shared by utils::tts_usage_pricing, utils::tts and utils::credit_policy",
+          "evidence": [
+            "dimabot/src/utils/tts/usage.rs",
+            "migration-notes/tts-pricing-emote-bootstrap-2026-10-29.md"
+          ]
         },
         {
           "name": "TtsUsageTrackOptions",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "OPEN: no native tracking-options/API adapter in this slice",
+          "evidence": [
+            "migration-notes/tts-pricing-emote-bootstrap-2026-10-29.md"
+          ]
         },
         {
           "name": "calculateTtsUsage",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "calculate_tts_usage and calculate_tts_usage_js",
+          "evidence": [
+            "dimabot/src/utils/tts/usage.rs",
+            "dimabot/tests/tts_usage_pricing.rs",
+            "migration-notes/tts-pricing-emote-bootstrap-2026-10-29.md",
+            "migration-notes/evidence/2026-10-29-pricing-emote-bootstrap/verification-summary.json"
+          ]
         },
         {
           "name": "trackTtsUsage",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "OPEN: pricing helper only; Redis tracking, logging, durable Polar/ledger path, and PostHog integration remain TypeScript",
+          "evidence": [
+            "migration-notes/tts-pricing-emote-bootstrap-2026-10-29.md"
+          ]
         }
       ],
       "imports": [
@@ -96481,12 +96516,12 @@
           "baselineSourceTargets": [
             "src/utils/ai_usage_event.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
+          "importSyntaxKind": "named type-only import",
+          "runtimeOrTypeDependency": "type-only AiUsageResourceType used by TtsUsageTrackOptions",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "directDependencyReview": "No runtime dependency for pure pricing; equivalent tracking type/application mapping not claimed.",
+          "transitiveDependencyReview": "Tracking options are open.",
+          "rustReplacementOrGap": "TtsUsageTrackOptions and AiUsageResourceType mapping for tracking remain open."
         },
         {
           "ordinal": 1,
@@ -96501,12 +96536,12 @@
           "baselineSourceTargets": [
             "src/utils/databases/dragonfly.database.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
+          "importSyntaxKind": "named runtime import",
+          "runtimeOrTypeDependency": "Runtime tracking only; not called by calculateTtsUsage",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "directDependencyReview": "Used by trackTtsUsage to obtain Dragonfly Messages client.",
+          "transitiveDependencyReview": "Native lazy Redis client exists but this tracking behavior and logging integration are not ported.",
+          "rustReplacementOrGap": "OPEN: sequential HINCR/EXPIRE calls, Messages key contract, local month-expiry rule and error handling."
         },
         {
           "ordinal": 2,
@@ -96521,12 +96556,12 @@
           "baselineSourceTargets": [
             "src/utils/logger.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
+          "importSyntaxKind": "named runtime import",
+          "runtimeOrTypeDependency": "Runtime tracking failure logging only; not called by calculateTtsUsage",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "directDependencyReview": "Used by trackTtsUsage cache-failure path.",
+          "transitiveDependencyReview": "Application logger/telemetry path not implemented by pure pricing helper.",
+          "rustReplacementOrGap": "OPEN: application logging and telemetry adapter."
         },
         {
           "ordinal": 3,
@@ -96541,15 +96576,40 @@
           "baselineSourceTargets": [
             "src/utils/polarsh.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
+          "importSyntaxKind": "named runtime import",
+          "runtimeOrTypeDependency": "Runtime tracking/billing only; not called by calculateTtsUsage",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "directDependencyReview": "Used by trackTtsUsage durable Polar event ingestion.",
+          "transitiveDependencyReview": "Polar, durable usage ledger and PostHog dependencies are not in the pure pricing module.",
+          "rustReplacementOrGap": "OPEN: durable billing/ledger/PostHog integration."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "partial-local-pure-pricing-verified; tracking-and-application-dependency-closure-open",
+      "dependencyClosure": {
+        "scope": "calculateTtsUsage pure calculation and TtsUsageResult only",
+        "status": "bounded local pricing behavior verified; source tracking feature dependency closure open",
+        "typescriptRuntime": [
+          "getDragonflyClient for trackTtsUsage",
+          "error logger for tracking failures",
+          "ingestPolarSHEvent for billing/durable usage"
+        ],
+        "typescriptTypeOnly": [
+          "AiUsageResourceType used in TtsUsageTrackOptions"
+        ],
+        "nativeReplacement": [
+          "shared utils::tts_usage_pricing implementation reused by credit_policy and TTS utilities",
+          "JavaScript-compatible bounded rounding, provider formula and TtsUsageResult wire/Serde forms"
+        ],
+        "missingPrimitiveDependency": null,
+        "applicationDependenciesOutsidePrimitive": [
+          "TtsUsageTrackOptions tracking API",
+          "sequential Dragonfly HINCR/EXPIRE and local 30-day expiry behavior",
+          "application logging/telemetry",
+          "durable Polar/ledger/PostHog usage path",
+          "callers in TTS queue, pet runtime and voice preview remain TypeScript"
+        ],
+        "boundary": "Pure pricing is verified; no tracking, billing, caller adoption or application dependency-complete migration is claimed."
+      }
     },
     {
       "source": "src/utils/tts/emote_names.util.ts",
@@ -96561,23 +96621,52 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-bounded-global-and-channel-TTS-emote-name-composition; application adapter closure open",
+      "localRustEvidence": [
+        "dimabot/src/utils/twitch_emotes.rs",
+        "dimabot/tests/twitch_emotes.rs",
+        "dimabot/tests/twitch_emotes_runtime.rs",
+        "dimabot/tests/fixtures/twitch_emotes_reference.cjs",
+        "migration-notes/twitch-emotes-2026-10-29.md",
+        "migration-notes/tts-pricing-emote-bootstrap-2026-10-29.md",
+        "migration-notes/evidence/2026-10-29-pricing-emote-bootstrap/verification-summary.json",
+        "migration-notes/evidence/2026-10-29-pricing-emote-bootstrap/artifacts/pricing-emote-bootstrap/cleanup.json",
+        "compiler-fixtures-1793251319915932834: final source 64984e28f5d64d8b61e99aacc24d868a14c841fa35e0e245d93c1caa7908ad92"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "Underlying channel catalog uses accepted 16 MiB response and 128-level JSON depth bounds.",
+        "Promise identity is unmodeled; shared in-flight work/cancellation behavior is tested."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/src/utils/tts/queue_default_tts.util.ts: getTtsEmoteNames when skipEmotes is enabled"
+        ],
+        "runtimeStatus": "Native catalog/name-composition behavior is local only; TTS queue remains TypeScript and has not adopted the Rust runtime."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "Actual global/channel emote source oracle contains 66 cases. Existing concrete replay covered 57/66; additional concrete checks are described in twitch-emotes-2026-10-29.md."
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/twitch_emotes.rs: global/channel names and cache/source behavior.",
+          "dimabot/tests/twitch_emotes_runtime.rs: separate channel/global connection failure results and lazy initialization behavior.",
+          "migration-notes/tts-pricing-emote-bootstrap-2026-10-29.md",
+          "migration-notes/evidence/2026-10-29-pricing-emote-bootstrap/verification-summary.json",
+          "migration-notes/evidence/2026-10-29-pricing-emote-bootstrap/artifacts/pricing-emote-bootstrap/cleanup.json",
+          "compiler-fixtures-1793251319915932834: final source 64984e28f5d64d8b61e99aacc24d868a14c841fa35e0e245d93c1caa7908ad92"
+        ],
+        "status": "bounded local emote lookup/name composition verified; caller/bootstrap dependencies open"
       },
       "exports": [
         {
           "name": "getTtsEmoteNames",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "TwitchEmoteRuntime::get_tts_emote_names (combines global and channel names, preserving insertion order and deduplicating)",
+          "evidence": [
+            "dimabot/src/utils/twitch_emotes.rs",
+            "dimabot/tests/twitch_emotes.rs",
+            "dimabot/tests/twitch_emotes_runtime.rs",
+            "migration-notes/tts-pricing-emote-bootstrap-2026-10-29.md"
+          ]
         }
       ],
       "imports": [
@@ -96594,12 +96683,12 @@
           "baselineSourceTargets": [
             "src/utils/databases/dragonfly.database.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
+          "importSyntaxKind": "named runtime import",
+          "runtimeOrTypeDependency": "Runtime Dragonfly cache reads/writes",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "directDependencyReview": "Native runtime implements concrete cache manager for catalog/name path; general Dragonfly application wrapper not ported.",
+          "transitiveDependencyReview": "Catalog cache commands are source-fixture verified; bootstrap/logging/telemetry and general utility call sites remain open.",
+          "rustReplacementOrGap": "Native Redis manager/cache commands within catalog runtime; general application Dragonfly API/adoption OPEN."
         },
         {
           "ordinal": 1,
@@ -96614,12 +96703,12 @@
           "baselineSourceTargets": [
             "src/utils/header.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
+          "importSyntaxKind": "named runtime import",
+          "runtimeOrTypeDependency": "Runtime Twitch app authorization header",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "directDependencyReview": "Native TwitchTokenStorage and app OAuth/header construction cover catalog request dependency.",
+          "transitiveDependencyReview": "Application token storage construction/bootstrap and logging/telemetry remain caller-owned.",
+          "rustReplacementOrGap": "Concrete native token/header path exists; application bootstrap/adoption OPEN."
         },
         {
           "ordinal": 2,
@@ -96634,12 +96723,12 @@
           "baselineSourceTargets": [
             "src/utils/links.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
+          "importSyntaxKind": "named runtime import",
+          "runtimeOrTypeDependency": "Runtime Helix endpoint URL construction",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "directDependencyReview": "TwitchEndpoints provides native Helix configuration for catalog requests.",
+          "transitiveDependencyReview": "Local catalog request verified; application endpoint configuration/bootstrap remains open.",
+          "rustReplacementOrGap": "Native endpoint/request path exists; application bootstrap/adoption OPEN."
         },
         {
           "ordinal": 3,
@@ -96654,15 +96743,38 @@
           "baselineSourceTargets": [
             "src/utils/twitch_emotes.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
+          "importSyntaxKind": "named runtime import",
+          "runtimeOrTypeDependency": "Runtime channel catalog composition",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "directDependencyReview": "Native TwitchEmoteRuntime owns channel lookup and TTS name composition.",
+          "transitiveDependencyReview": "Twitch runtime token/bootstrap, logger/telemetry and application caller adoption remain open.",
+          "rustReplacementOrGap": "Native local equivalent exists; application integration remains OPEN."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "partial-local-global-channel-emote-name-behavior-verified; application-adapter-and-caller-closure-open",
+      "dependencyClosure": {
+        "scope": "global/channel TTS emote-name loading, merging and deduplication through native runtime",
+        "status": "bounded local native behavior verified; TTS queue caller and application bootstrap remain open",
+        "typescriptRuntime": [
+          "getDragonflyClient",
+          "getTwitchAppHeader",
+          "getTwitchHelixUrl",
+          "getChannelEmoteCatalog"
+        ],
+        "typescriptTypeOnly": [],
+        "nativeReplacement": [
+          "TwitchEmoteRuntime global and channel emote-name lookup",
+          "concrete Redis manager, TwitchTokenStorage app OAuth/header and TwitchEndpoints adapters"
+        ],
+        "missingPrimitiveDependency": null,
+        "applicationDependenciesOutsidePrimitive": [
+          "TTS queue/default-speech integration",
+          "application token-storage construction/bootstrap",
+          "application logging/telemetry",
+          "application caller adoption"
+        ],
+        "boundary": "Local native global/channel composition is implemented and source-tested; this does not complete queue, application adapter, or caller migration."
+      }
     },
     {
       "source": "src/utils/tts/expressive_tts_tags.test.ts",
@@ -98189,28 +98301,63 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-bounded-channel-emote-catalog-and-lazy-cache-bootstrap; application-wide adapter closure open",
+      "localRustEvidence": [
+        "dimabot/src/utils/twitch_emotes.rs",
+        "dimabot/tests/twitch_emotes.rs",
+        "dimabot/tests/twitch_emotes_runtime.rs",
+        "dimabot/tests/fixtures/twitch_emotes_reference.cjs",
+        "migration-notes/twitch-emotes-2026-10-29.md",
+        "migration-notes/tts-pricing-emote-bootstrap-2026-10-29.md",
+        "migration-notes/evidence/2026-10-29-pricing-emote-bootstrap/verification-summary.json",
+        "migration-notes/evidence/2026-10-29-pricing-emote-bootstrap/artifacts/pricing-emote-bootstrap/cleanup.json",
+        "compiler-fixtures-1793251319915932834: final source 64984e28f5d64d8b61e99aacc24d868a14c841fa35e0e245d93c1caa7908ad92"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "Native response bodies are limited to 16 MiB and lossless JSON nesting to 128 levels; these are accepted native bounds, not source bounds.",
+        "JavaScript Promise object identity is not represented; coalesced shared work and cancellation behavior were exercised."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/src/utils/dashboard_activity.ts: getChannelEmoteCatalog and type-only ChannelEmoteCatalog",
+          "dimabot/src/utils/ai/emote_context.ai.ts: getChannelEmoteCatalog",
+          "dimabot/src/utils/tts/emote_names.util.ts: channel catalog lookup"
+        ],
+        "runtimeStatus": "Native local catalog/runtime exists; current application callers remain TypeScript and have not adopted it. General Dragonfly convenience API, app-wide bootstrap, logging/telemetry and caller rewiring remain open."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "Actual Twitch emote source oracle expanded from 65 to 66 cases with a separate global connection-failure case.",
+          "Concrete source replay covered 57/66 catalog cases; the nine skips remain explicit."
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/twitch_emotes.rs: catalog source behavior and concrete adapters.",
+          "dimabot/tests/twitch_emotes_runtime.rs: channel and global connection-failure expected results; lazy connect/PING, retry and shared initialization behavior.",
+          "migration-notes/tts-pricing-emote-bootstrap-2026-10-29.md",
+          "migration-notes/evidence/2026-10-29-pricing-emote-bootstrap/verification-summary.json",
+          "migration-notes/evidence/2026-10-29-pricing-emote-bootstrap/artifacts/pricing-emote-bootstrap/cleanup.json",
+          "compiler-fixtures-1793251319915932834: final source 64984e28f5d64d8b61e99aacc24d868a14c841fa35e0e245d93c1caa7908ad92"
+        ],
+        "status": "bounded local channel catalog and lazy cache initialization verified; caller/bootstrap adoption open"
       },
       "exports": [
         {
           "name": "ChannelEmoteCatalog",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "ChannelEmoteCatalog with Emote and CatalogStatus (lossless checkedAt/JSON representation)",
+          "evidence": [
+            "dimabot/src/utils/twitch_emotes.rs",
+            "migration-notes/tts-pricing-emote-bootstrap-2026-10-29.md"
+          ]
         },
         {
           "name": "getChannelEmoteCatalog",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "TwitchEmoteCatalog::get_channel_emote_catalog and TwitchEmoteRuntime::get_channel_emote_catalog",
+          "evidence": [
+            "dimabot/src/utils/twitch_emotes.rs",
+            "dimabot/tests/twitch_emotes.rs",
+            "dimabot/tests/twitch_emotes_runtime.rs",
+            "migration-notes/tts-pricing-emote-bootstrap-2026-10-29.md"
+          ]
         }
       ],
       "imports": [
@@ -98227,12 +98374,12 @@
           "baselineSourceTargets": [
             "src/utils/databases/dragonfly.database.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
+          "importSyntaxKind": "named runtime import",
+          "runtimeOrTypeDependency": "Runtime getDragonflyClient cache acquisition",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "directDependencyReview": "TwitchEmoteRuntime provides bounded lazy concrete Redis manager connect and PING; it does not port the general getDragonflyClient wrapper.",
+          "transitiveDependencyReview": "Redis connection-manager crate and command path covered; global bootstrap/logging/telemetry and other Dragonfly call sites remain outside this slice.",
+          "rustReplacementOrGap": "Local catalog has concrete Redis manager path; application-wide Dragonfly API/adoption remains OPEN."
         },
         {
           "ordinal": 1,
@@ -98247,12 +98394,12 @@
           "baselineSourceTargets": [
             "src/utils/header.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
+          "importSyntaxKind": "named runtime import",
+          "runtimeOrTypeDependency": "Runtime Twitch app authorization header",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "directDependencyReview": "Native token storage and Twitch app OAuth/header construction used by catalog runtime.",
+          "transitiveDependencyReview": "Concrete catalog adapter covered; global application token-storage bootstrap, logger and telemetry are caller-owned/open.",
+          "rustReplacementOrGap": "Native TwitchTokenStorage plus OAuth app token/header methods for this catalog; application bootstrap/adoption remains OPEN."
         },
         {
           "ordinal": 2,
@@ -98267,15 +98414,39 @@
           "baselineSourceTargets": [
             "src/utils/links.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
+          "importSyntaxKind": "named runtime import",
+          "runtimeOrTypeDependency": "Runtime Helix endpoint URL construction",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "directDependencyReview": "TwitchEndpoints supplies the concrete Helix endpoint configuration and request path.",
+          "transitiveDependencyReview": "Catalog request behavior is source-fixture verified; application endpoint configuration/bootstrap still needs caller integration.",
+          "rustReplacementOrGap": "Native TwitchEndpoints and catalog request builder; application caller configuration/adoption remains OPEN."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "partial-local-catalog-and-cache-bootstrap-verified; application-adapter-and-caller-closure-open",
+      "dependencyClosure": {
+        "scope": "channel catalog, its existing global TTS composition input, and lazy concrete Redis cache initialization only",
+        "status": "bounded local native behavior and concrete catalog adapters verified; application callers and general bootstrap closure open",
+        "typescriptRuntime": [
+          "getDragonflyClient application wrapper",
+          "getTwitchAppHeader application helper",
+          "getTwitchHelixUrl application helper"
+        ],
+        "typescriptTypeOnly": [],
+        "nativeReplacement": [
+          "TwitchEmoteRuntime lazy Redis ConnectionManager initialization and PING (five-second bound; successful initialization cached; failures retryable)",
+          "TwitchTokenStorage with native app OAuth/header construction",
+          "TwitchEndpoints and native reqwest client",
+          "source-matched channel catalog/cache behavior within explicit 16 MiB body and 128 nesting limits"
+        ],
+        "missingPrimitiveDependency": null,
+        "applicationDependenciesOutsidePrimitive": [
+          "constructing/providing existing token storage and runtime bootstrap",
+          "application-wide logger/telemetry integration",
+          "general Dragonfly API and other callers",
+          "application caller adoption"
+        ],
+        "boundary": "Constructor performs no I/O or environment read. Cache connect/PING is bounded at five seconds; separate three-second request/body deadline starts after token/header setup. Promise identity is not modeled; shared work/cancellation behavior is covered."
+      }
     },
     {
       "source": "src/utils/twitch_helix_retry.ts",

@@ -1,0 +1,166 @@
+{
+  "runs/compiler-fixtures-1793250544101522700-receipt.json.gz": {
+    "sha256": "8c6c1811c981300983917e0e0b3da63096ec297d2dc55672510b37acc7d1dae7",
+    "bytes": 149554
+  },
+  "runs/compiler-fixtures-1793250544101522700.log.gz": {
+    "sha256": "cd1c6e7cbdcd11f030e4b87cf646bf72389e93f8527f155b2fc73b1a15f9a681",
+    "bytes": 32509
+  },
+  "runs/compiler-fixtures-1793250772637164471-receipt.json.gz": {
+    "sha256": "25c25b443c08c19d39131d60de962e4416dddc8f3606fafe1e3ce5ce535c3696",
+    "bytes": 149495
+  },
+  "runs/compiler-fixtures-1793250772637164471.log.gz": {
+    "sha256": "e3b94e9c332e06981cf5b40b0f32778b4be9ca45825cad404a61c271caaed50c",
+    "bytes": 33381
+  },
+  "runs/compiler-fixtures-1793251319915932834-receipt.json.gz": {
+    "sha256": "9c6054247a3cdc6d9f137aa01d5565413b3d0b43c2409a8942d2480f926d46fb",
+    "bytes": 149617
+  },
+  "runs/compiler-fixtures-1793251319915932834.log.gz": {
+    "sha256": "6830155a720f41d78d8e788f2572d7f908314b5949b28e89027070c5ac42753f",
+    "bytes": 34926
+  },
+  "runs/format-1793250326208694512-receipt.json.gz": {
+    "sha256": "31fee69a285b11e4b8793c4abae4c28bba890e0b1050da0571764e940b8d6d63",
+    "bytes": 149472
+  },
+  "runs/format-1793250326208694512.log.gz": {
+    "sha256": "d8df33ba72c691319594a6938a8cc1f756798afbe8a2dc8dedcec22abade739d",
+    "bytes": 1833
+  },
+  "runs/format-1793250704780361532-receipt.json.gz": {
+    "sha256": "3ec151611db37b657926738683500a2e9cca125f0805d3a7992d343bae365ee1",
+    "bytes": 149472
+  },
+  "runs/format-1793250704780361532.log.gz": {
+    "sha256": "d8df33ba72c691319594a6938a8cc1f756798afbe8a2dc8dedcec22abade739d",
+    "bytes": 1833
+  },
+  "runs/format-1793251246249944062-receipt.json.gz": {
+    "sha256": "b74a3f3ae78e8ad0f64db950d09977fa9808c6d0d20e5e0531f864653a6566fa",
+    "bytes": 149591
+  },
+  "runs/format-1793251246249944062.log.gz": {
+    "sha256": "d8df33ba72c691319594a6938a8cc1f756798afbe8a2dc8dedcec22abade739d",
+    "bytes": 1833
+  },
+  "runs/node-1793250393825823937-receipt.json.gz": {
+    "sha256": "9480ba26a91ef77d8837f5af7b284e18eaedaeb21a9e91680e5f52e65ad08016",
+    "bytes": 149352
+  },
+  "runs/node-1793250393825823937.log.gz": {
+    "sha256": "d37cc125206da7c97877c6b7e9372a0ea1b63b657748319a47c2afae6d4c1413",
+    "bytes": 273
+  },
+  "runs/node-1793250739374822692-receipt.json.gz": {
+    "sha256": "d1a1d71f86ad41db5b306f347b070e01594f2a33ed00fa4ed97d4fd121124e68",
+    "bytes": 149349
+  },
+  "runs/node-1793250739374822692.log.gz": {
+    "sha256": "e75a4f49dfc1bb3895549939ae3c5221dafeb3f295e3ef741b3855eaabf30751",
+    "bytes": 273
+  },
+  "runs/node-1793250984278634365-receipt.json.gz": {
+    "sha256": "2a7f7f5b92a92b4f44b57a0557637dc5f2cfafc82c68d2d4e229c5d86f0cb927",
+    "bytes": 149348
+  },
+  "runs/node-1793250984278634365.log.gz": {
+    "sha256": "e75a4f49dfc1bb3895549939ae3c5221dafeb3f295e3ef741b3855eaabf30751",
+    "bytes": 273
+  },
+  "runs/node-1793251293953198140-receipt.json.gz": {
+    "sha256": "654cf64f9983103cc076b330fc4197f02cf8d4bdb00bcfe39c320c77b0923abd",
+    "bytes": 149465
+  },
+  "runs/node-1793251293953198140.log.gz": {
+    "sha256": "64443ae89c7a1e79f19e3214fd33a899f17e9419c8962e87bf48370294fa16a0",
+    "bytes": 250
+  },
+  "runs/node-1793251602692898500-receipt.json.gz": {
+    "sha256": "0de2eb8390988b01af26ad389606c6f03990e1bb1eb7aa211fa681664d5c14c7",
+    "bytes": 149467
+  },
+  "runs/node-1793251602692898500.log.gz": {
+    "sha256": "f039813e66d50ca8abf7bb37c1e64855124ce72a12e55e1c84ea9c8100b97501",
+    "bytes": 315
+  },
+  "artifacts/pricing-emote-bootstrap/benchmark/tts-usage-benchmark-input.json.gz": {
+    "sha256": "83ac085b3541474db906d8808923518168303d6ad1f96f8eea83158af62eddbe",
+    "bytes": 75138
+  },
+  "artifacts/pricing-emote-bootstrap/emotes/twitch_emotes_cases.json.gz": {
+    "sha256": "739b9c385beb57c6042057932b39b4672ceb486eabca707a5d6dfa41d5ca043b",
+    "bytes": 869802
+  },
+  "artifacts/pricing-emote-bootstrap/pricing/tts-usage-pricing.json.gz": {
+    "sha256": "0c40500dcf164b27b47fd1dd340d4a2e1030fe0d908497ae28d50fa2d7af3406",
+    "bytes": 766936
+  },
+  "artifacts/pricing-emote-bootstrap/rounding/js-round-reference.json.gz": {
+    "sha256": "b81ac0ae3c45bc676fdf7dc0e86e3356a4b7fa08c3917d6243a64378a38fbb4f",
+    "bytes": 345358
+  },
+  "artifacts/pricing-emote-bootstrap-vm-diagnostic/benchmark/tts-usage-benchmark-input.json.gz": {
+    "sha256": "34f96b74ee94d810aa614046856593324c0edd368d971249234ff82614cb888d",
+    "bytes": 75093
+  },
+  "artifacts/pricing-emote-bootstrap-vm-diagnostic/emotes/twitch_emotes_cases.json.gz": {
+    "sha256": "739b9c385beb57c6042057932b39b4672ceb486eabca707a5d6dfa41d5ca043b",
+    "bytes": 869802
+  },
+  "artifacts/pricing-emote-bootstrap-vm-diagnostic/frozen-source/dimabot__src__utils__credit_policy.rs.gz": {
+    "sha256": "0b17b85d9191d921b68490bccdbcb53495537f526599d69b5e94ec1db9a7cec3",
+    "bytes": 14807
+  },
+  "artifacts/pricing-emote-bootstrap-vm-diagnostic/frozen-source/dimabot__src__utils__mod.rs.gz": {
+    "sha256": "7d8a9758e289bb8b81692b7f87aec762b2c0c3dabb381df862c911d02230523d",
+    "bytes": 6609
+  },
+  "artifacts/pricing-emote-bootstrap-vm-diagnostic/frozen-source/dimabot__src__utils__tts__mod.rs.gz": {
+    "sha256": "248e05ba4213c1f82f64726ff5cd9adff6e52a79fc83c194e567919ce3d93bd6",
+    "bytes": 36134
+  },
+  "artifacts/pricing-emote-bootstrap-vm-diagnostic/frozen-source/dimabot__src__utils__tts__usage.rs.gz": {
+    "sha256": "ed40222e69c77fc73d0b01e5d865a8bf52adb3bc803d842c5c37c2cbe9a55c9b",
+    "bytes": 2903
+  },
+  "artifacts/pricing-emote-bootstrap-vm-diagnostic/frozen-source/dimabot__src__utils__twitch_emotes.rs.gz": {
+    "sha256": "41582d689f72e42f2d4fd635d01a57aa24a120215fb98044e99a778a65ccbc01",
+    "bytes": 35919
+  },
+  "artifacts/pricing-emote-bootstrap-vm-diagnostic/frozen-source/dimabot__tests__fixtures__tts_usage_benchmark.cjs.gz": {
+    "sha256": "42053c70433ceae2f19d97d3d7502919318ca1520aacd84bd9b467a5966684eb",
+    "bytes": 4620
+  },
+  "artifacts/pricing-emote-bootstrap-vm-diagnostic/frozen-source/dimabot__tests__fixtures__tts_usage_oracle.cjs.gz": {
+    "sha256": "38bb4d3bd1cb77a195baf3bc11fa2d835725e49630f43237a2d3f435275a710b",
+    "bytes": 4639
+  },
+  "artifacts/pricing-emote-bootstrap-vm-diagnostic/frozen-source/dimabot__tests__fixtures__twitch_emotes_reference.cjs.gz": {
+    "sha256": "7134745a9cbf7535c5234811bbfd14b391b64311bf280af7c50d33c7be04d712",
+    "bytes": 8778
+  },
+  "artifacts/pricing-emote-bootstrap-vm-diagnostic/frozen-source/dimabot__tests__tts_usage_benchmark.rs.gz": {
+    "sha256": "9d44d0a8fc546b64dc8a27355716c570162cb517ff26b788662c00576a710f6c",
+    "bytes": 4608
+  },
+  "artifacts/pricing-emote-bootstrap-vm-diagnostic/frozen-source/dimabot__tests__tts_usage_pricing.rs.gz": {
+    "sha256": "9e8cac1beda8001c2913f673a96cd3acdbe49bd37b38ea00ee6f5c8ddb643bd1",
+    "bytes": 4238
+  },
+  "artifacts/pricing-emote-bootstrap-vm-diagnostic/frozen-source/dimabot__tests__twitch_emotes_runtime.rs.gz": {
+    "sha256": "a54e51cb3644aec5bb1480cea916eccf8f6ec22adc030fa11ed2da43bbde0035",
+    "bytes": 12272
+  },
+  "artifacts/pricing-emote-bootstrap-vm-diagnostic/pricing/tts-usage-pricing.json.gz": {
+    "sha256": "2a6c05a43bfc1034b1306465c9f61791c7e08f3900ee037460b0b93fcc87db3d",
+    "bytes": 766899
+  },
+  "artifacts/pricing-emote-bootstrap-vm-diagnostic/source-snapshot.json.gz": {
+    "sha256": "e934376443c8334408f60bab725a792b76674ee1bd5b6cd095c1f58ac90a23d2",
+    "bytes": 146101
+  }
+}

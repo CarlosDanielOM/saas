@@ -1,0 +1,25 @@
+[
+  {
+    "commit": "92e1804d6a65b8c5e5cf44076d51d614285de9f3",
+    "paths": [
+      "dimabot/src/utils/twitch_emotes.rs",
+      "dimabot/tests/twitch_emotes_runtime.rs",
+      "dimabot/tests/fixtures/twitch_emotes_reference.cjs"
+    ],
+    "sourceTreeSha256": "277908b8410485a1363ea8498a1f747f5deb1280ecc65d38980ec3eacd59bcee"
+  },
+  {
+    "commit": "7ea5904e91eca9314f8c914c60ba3cbf212f555e",
+    "paths": [
+      "dimabot/src/utils/credit_policy.rs",
+      "dimabot/src/utils/mod.rs",
+      "dimabot/src/utils/tts/mod.rs",
+      "dimabot/src/utils/tts/usage.rs",
+      "dimabot/tests/tts_usage_pricing.rs",
+      "dimabot/tests/tts_usage_benchmark.rs",
+      "dimabot/tests/fixtures/tts_usage_oracle.cjs",
+      "dimabot/tests/fixtures/tts_usage_benchmark.cjs"
+    ],
+    "sourceTreeSha256": "277908b8410485a1363ea8498a1f747f5deb1280ecc65d38980ec3eacd59bcee"
+  }
+]
