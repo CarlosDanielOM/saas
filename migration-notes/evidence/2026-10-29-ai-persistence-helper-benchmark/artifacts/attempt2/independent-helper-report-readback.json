@@ -1,0 +1,95 @@
+{
+  "scope": "prebuilt receipt DTO -> real account lease -> dirty dashboard -> receipt upsert -> real aggregate -> daily replacement; inserts and duplicate repair",
+  "excluded": [
+    "producer/classification invocation before supplied DTO",
+    "queue/worker/app bootstrap",
+    "client/model/index initialization",
+    "reset/seed",
+    "IPC",
+    "readback/checksum",
+    "contention/error/provider paths",
+    "application connection telemetry wrappers"
+  ],
+  "all28ActorSamplesPairOrderBsonSnapshotsCountsHashesAndRecomputedTimingsVerified": true,
+  "reportSha256": "b4a8de7b3029643121d0371ed367278ad9b0f7c84cc891a1fb0de9f88225d6eb",
+  "inputSha256": "94e6390430271adbe271bef6e8727a8fd74838032e3b8ca8575ae909ce7167c3",
+  "sourceSha256": "76fccbe9f5e9af85be7195e384ff8717d133b9b65e1340a6362f9021a1249915",
+  "nativeExecutableSha256": "2455084bda9caac87f015890a10b7403e42cf2b3c521514adba566e47d48ca67",
+  "nodeExecutableSha256": "569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108",
+  "sourceTreeSha256": "c4d921cf976d383daf7840efda2ea9bd843351dabb235da1cd9e6caaa79986af",
+  "workloads": [
+    {
+      "workload": "insert",
+      "operationsPerSample": 32,
+      "pairedTrials": 7,
+      "node": {
+        "medianMsPerReceipt": 5.38785315625,
+        "minMsPerReceipt": 4.9729034375,
+        "maxMsPerReceipt": 6.343015375,
+        "allSevenMsPerReceipt": [
+          6.343015375,
+          5.30765453125,
+          5.479543625,
+          5.38785315625,
+          4.9729034375,
+          5.513783375,
+          5.2991764375
+        ]
+      },
+      "rust": {
+        "medianMsPerReceipt": 3.96147925,
+        "minMsPerReceipt": 3.73483596875,
+        "maxMsPerReceipt": 4.800972,
+        "allSevenMsPerReceipt": [
+          3.96147925,
+          3.86385075,
+          3.95595671875,
+          3.73483596875,
+          4.1595959375,
+          4.800972,
+          4.03344090625
+        ]
+      },
+      "rustMedianTimeReductionPercent": 26.47388235879039
+    },
+    {
+      "workload": "duplicate-repair",
+      "operationsPerSample": 32,
+      "pairedTrials": 7,
+      "node": {
+        "medianMsPerReceipt": 5.068453,
+        "minMsPerReceipt": 4.464905625,
+        "maxMsPerReceipt": 5.3777783125,
+        "allSevenMsPerReceipt": [
+          5.3777783125,
+          4.86177340625,
+          4.464905625,
+          5.2762475625,
+          5.068453,
+          5.32979753125,
+          4.6227644375
+        ]
+      },
+      "rust": {
+        "medianMsPerReceipt": 3.8027581875,
+        "minMsPerReceipt": 3.68812503125,
+        "maxMsPerReceipt": 4.39774578125,
+        "allSevenMsPerReceipt": [
+          4.064831875,
+          3.93466215625,
+          3.74437259375,
+          3.8027581875,
+          3.68812503125,
+          3.7383400625,
+          4.39774578125
+        ]
+      },
+      "rustMedianTimeReductionPercent": 24.97201438979507
+    }
+  ],
+  "cleanup": {
+    "databaseDropped": true,
+    "redisMarkerDeleted": true
+  },
+  "poolRepresentationBoundary": "Same32 input receipt values. Native pool digest uses serde sorted object keys; Node digest uses original DTO property order. Both independently recomputed."
+}

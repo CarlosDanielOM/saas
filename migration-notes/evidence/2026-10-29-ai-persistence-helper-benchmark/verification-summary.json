@@ -1,0 +1,147 @@
+{
+  "status": "Verified single-host matched helper benchmark; no whole-application performance or migration completion claim.",
+  "codeCommit": "22cb791fd005628a1bd95f37c554f90d01462e26",
+  "sourceTreeSha256": "c4d921cf976d383daf7840efda2ea9bd843351dabb235da1cd9e6caaa79986af",
+  "sourceInputs": 1296,
+  "acceptedRuns": [
+    "compiler-1793299376013082945",
+    "node-1793299376008552028",
+    "node-fixtures-1793299654020839804"
+  ],
+  "limits": {
+    "cpus": 6,
+    "memory": 4294967296,
+    "memory_swap": 4294967296,
+    "pids": 256,
+    "cargo_jobs": null
+  },
+  "productionUnchangedRecords": 19,
+  "all28SamplesVerified": true,
+  "scope": "prebuilt receipt DTO -> real account lease -> dirty dashboard -> receipt upsert -> real aggregate -> daily replacement; inserts and duplicate repair",
+  "excluded": [
+    "producer/classification invocation before supplied DTO",
+    "queue/worker/app bootstrap",
+    "client/model/index initialization",
+    "reset/seed",
+    "IPC",
+    "readback/checksum",
+    "contention/error/provider paths",
+    "application connection telemetry wrappers"
+  ],
+  "workloads": [
+    {
+      "workload": "insert",
+      "operationsPerSample": 32,
+      "pairedTrials": 7,
+      "node": {
+        "medianMsPerReceipt": 5.38785315625,
+        "minMsPerReceipt": 4.9729034375,
+        "maxMsPerReceipt": 6.343015375,
+        "allSevenMsPerReceipt": [
+          6.343015375,
+          5.30765453125,
+          5.479543625,
+          5.38785315625,
+          4.9729034375,
+          5.513783375,
+          5.2991764375
+        ]
+      },
+      "rust": {
+        "medianMsPerReceipt": 3.96147925,
+        "minMsPerReceipt": 3.73483596875,
+        "maxMsPerReceipt": 4.800972,
+        "allSevenMsPerReceipt": [
+          3.96147925,
+          3.86385075,
+          3.95595671875,
+          3.73483596875,
+          4.1595959375,
+          4.800972,
+          4.03344090625
+        ]
+      },
+      "rustMedianTimeReductionPercent": 26.47388235879039
+    },
+    {
+      "workload": "duplicate-repair",
+      "operationsPerSample": 32,
+      "pairedTrials": 7,
+      "node": {
+        "medianMsPerReceipt": 5.068453,
+        "minMsPerReceipt": 4.464905625,
+        "maxMsPerReceipt": 5.3777783125,
+        "allSevenMsPerReceipt": [
+          5.3777783125,
+          4.86177340625,
+          4.464905625,
+          5.2762475625,
+          5.068453,
+          5.32979753125,
+          4.6227644375
+        ]
+      },
+      "rust": {
+        "medianMsPerReceipt": 3.8027581875,
+        "minMsPerReceipt": 3.68812503125,
+        "maxMsPerReceipt": 4.39774578125,
+        "allSevenMsPerReceipt": [
+          4.064831875,
+          3.93466215625,
+          3.74437259375,
+          3.8027581875,
+          3.68812503125,
+          3.7383400625,
+          4.39774578125
+        ]
+      },
+      "rustMedianTimeReductionPercent": 24.97201438979507
+    }
+  ],
+  "reportSha256": "b4a8de7b3029643121d0371ed367278ad9b0f7c84cc891a1fb0de9f88225d6eb",
+  "noRetirementAdoptionDeploymentPush": true,
+  "runs": [
+    {
+      "run": "compiler-1793299276494636336",
+      "success": false,
+      "sourceTreeSha256": "6038a51dc48adb30765540d7fdc56d592771c2c18769958437494e5314ecf0ff",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-1793299376013082945",
+      "success": true,
+      "sourceTreeSha256": "c4d921cf976d383daf7840efda2ea9bd843351dabb235da1cd9e6caaa79986af",
+      "productionUnchanged": true
+    },
+    {
+      "run": "format-1793299252127899937",
+      "success": true,
+      "sourceTreeSha256": "5f801c175cf88afa211472c2f9de9997d0cae14d18ea7e7a689b76991e2327fb",
+      "productionUnchanged": true
+    },
+    {
+      "run": "format-1793299350511119141",
+      "success": true,
+      "sourceTreeSha256": "c4d921cf976d383daf7840efda2ea9bd843351dabb235da1cd9e6caaa79986af",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793299296500504592",
+      "success": false,
+      "sourceTreeSha256": "6038a51dc48adb30765540d7fdc56d592771c2c18769958437494e5314ecf0ff",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793299376008552028",
+      "success": true,
+      "sourceTreeSha256": "c4d921cf976d383daf7840efda2ea9bd843351dabb235da1cd9e6caaa79986af",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-fixtures-1793299654020839804",
+      "success": true,
+      "sourceTreeSha256": "c4d921cf976d383daf7840efda2ea9bd843351dabb235da1cd9e6caaa79986af",
+      "productionUnchanged": true
+    }
+  ]
+}

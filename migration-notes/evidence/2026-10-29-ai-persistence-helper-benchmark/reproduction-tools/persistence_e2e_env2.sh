@@ -1,0 +1,9 @@
+export TZ=UTC
+export DIMA_RUST_TEST_RESOURCE_OWNER=dimabot-migration
+export DIMA_TEST_MONGO_URI=mongodb://ai-usage-persistence-bench-mongo-fixture:27017
+export DIMA_TEST_REDIS_URI=redis://ai-usage-persistence-bench-redis-fixture:6379/
+export DIMA_AI_PERSISTENCE_BENCH_TOKEN=persistbench20261029b
+export DIMA_AI_PERSISTENCE_BENCH_DATABASE=ai_usage_persistence_bench_persistbench20261029b
+export DIMA_AI_PERSISTENCE_BENCH_DIR=/artifacts/ledger-persistence-e2e/attempt2/prepared
+export DIMA_AI_PERSISTENCE_BENCH_NODE=/usr/local/bin/node
+export DIMA_AI_PERSISTENCE_BENCH_NODE_SHA256=569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108

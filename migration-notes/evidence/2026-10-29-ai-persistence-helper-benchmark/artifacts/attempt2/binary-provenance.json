@@ -1,0 +1,36 @@
+{
+  "buildReceipt": "compiler-1793299376013082945-receipt.json",
+  "toolchainImage": "sha256:557a94c82b485a14b569120e00867267108c734efe33f10cc31ca0cd5dd1eca9",
+  "sourceTreeSha256": "c4d921cf976d383daf7840efda2ea9bd843351dabb235da1cd9e6caaa79986af",
+  "sourceInputs": 1296,
+  "binaries": [
+    {
+      "name": "ai_usage_persistence_e2e_benchmark",
+      "cargoExecutable": "/target-cache/release/deps/ai_usage_persistence_e2e_benchmark-f70ed385c43f8bc4",
+      "artifactPath": "ledger-persistence-e2e/attempt2/bin/ai_usage_persistence_e2e_benchmark",
+      "sha256": "2455084bda9caac87f015890a10b7403e42cf2b3c521514adba566e47d48ca67",
+      "bytes": 14490640,
+      "elfMachine": "x86-64",
+      "staticNoInterpreterOrNeededLibraries": true,
+      "programHeaderTypes": [
+        1,
+        1,
+        1,
+        1,
+        2,
+        4,
+        7,
+        1685382480,
+        1685382481,
+        1685382482
+      ],
+      "profile": {
+        "opt_level": "3",
+        "debuginfo": 0,
+        "debug_assertions": false,
+        "overflow_checks": false,
+        "test": true
+      }
+    }
+  ]
+}
