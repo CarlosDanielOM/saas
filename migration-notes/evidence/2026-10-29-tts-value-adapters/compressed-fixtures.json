@@ -1,0 +1,14 @@
+{
+  "channel-tts-settings-reference.json.gz": {
+    "uncompressed_sha256": "7a91d8d2769cf8e0e3daff4cad726ffd2461da364780d0af2daa50f973028b0a",
+    "uncompressed_bytes": 616982
+  },
+  "expressive-tts-reference.json.gz": {
+    "uncompressed_sha256": "6049b50f99877f55358bf3b5cd49912c4153ea9efd6987136d7c3086b3075d71",
+    "uncompressed_bytes": 2950357
+  },
+  "tts-credit-fallback-reference.json.gz": {
+    "uncompressed_sha256": "429154e7ce98eb6fbe426c7edd21f8a699cd694e0151c41da3b6f75ffea44a70",
+    "uncompressed_bytes": 582745
+  }
+}

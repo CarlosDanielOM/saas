@@ -1,0 +1,64 @@
+{
+  "schema": 1,
+  "sourceCommit": "14c8d171a7542e3327ede9e0aee5146514e76392",
+  "sourceTreeSha256": "4cc5a9dac720136211179a3835a64b5b9f7e10308d9f8a75cec0567e8cdcfc19",
+  "node": "node-1793239069194106370",
+  "compiler": "compiler-1793239113115650059",
+  "ordinaryExecutions": 75,
+  "ordinaryBreakdown": {
+    "library": 56,
+    "settingsNormalization": 7,
+    "settingsSchema": 1,
+    "expressiveLossless": 5,
+    "jsString": 1,
+    "creditFallback": 2,
+    "ttsUtilities": 3
+  },
+  "explicitExecutions": 4,
+  "explicitBreakdown": {
+    "expressiveSource": 1,
+    "settingsPureSource": 1,
+    "settingsSchemaMetadata": 1,
+    "creditFallbackSource": 1
+  },
+  "sourceCorpus": {
+    "expressive": {
+      "total": 1932,
+      "filter": 1229,
+      "reinforce": 185,
+      "normalize": 314,
+      "voice": 204
+    },
+    "settingsPure": 308,
+    "settingsSchemaMetadata": 11,
+    "creditFallback": 276
+  },
+  "addedExpressiveNormalizationCases": 301,
+  "publicProductionApis": [
+    "normalize_expressive_tags_json(Option<&JsonValue>) -> BTreeMap<String,bool>",
+    "resolve_kokoro_voice_json(&JsonValue) -> Option<String>"
+  ],
+  "nativeSettingsAdoption": "borrowed config view caches inline/wrapping once; no temporary map/projection; source-ordered JSON output",
+  "projectionGapClosed": true,
+  "typeContractAudit": "closed tag union / complete boolean record not yet represented by explicit closed Rust types; audit before source retirement",
+  "benchmark": "none in this wave; earlier measurements belong their recorded source/workload, with all regressions preserved",
+  "reusedSourceFixtures": "two source-hash-verified fixtures; JavaScript goldens not regenerated, native pure/schema/credit replays fresh",
+  "checks": [
+    "fmt",
+    "tts-utilities all-target check and Clippy -D warnings",
+    "channel-tts-settings all-target check and Clippy -D warnings",
+    "all-features all-target check and Clippy -D warnings",
+    "no-default-features all-target check"
+  ],
+  "testScope": "no concrete Mongo transport/write-plan or HTTP/provider rerun; those adapters unchanged",
+  "sourceFixtureHashesUnchanged": true,
+  "sourceArchiveCount": 17,
+  "typeScriptRemaining": 789,
+  "reactEmailExcluded": 6,
+  "cargoPackagesAdded": false,
+  "manifestLockDefaultWorkerProfileChanged": false,
+  "callerAdoption": "native settings uses adapters; TypeScript application callers remain",
+  "wholeMigrationComplete": false,
+  "deployed": false,
+  "pushed": false
+}

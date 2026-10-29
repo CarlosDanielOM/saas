@@ -1,0 +1,108 @@
+{
+  "node": "v24.22.1",
+  "v8": "13.6.233.17-node.58",
+  "reports": [
+    {
+      "fixture": "channel-tts-settings/channel-tts-settings-reference.json",
+      "sha256": "7a91d8d2769cf8e0e3daff4cad726ffd2461da364780d0af2daa50f973028b0a",
+      "sourceEntriesVerified": 12,
+      "sourceFiles": [
+        {
+          "source": "src/schemas/channel_tts_settings.schema.ts",
+          "resolvedPath": "/source/archives/dimabot-typescript/2026-10-28/src/schemas/channel_tts_settings.schema.ts"
+        },
+        {
+          "source": "src/schemas/users.schema.ts",
+          "resolvedPath": "/source/dimabot/src/schemas/users.schema.ts"
+        },
+        {
+          "source": "src/utils/tts/expressive_tts_tags.util.ts",
+          "resolvedPath": "/source/dimabot/src/utils/tts/expressive_tts_tags.util.ts"
+        },
+        {
+          "source": "src/utils/tts/kokoro_voices.util.ts",
+          "resolvedPath": "/source/dimabot/src/utils/tts/kokoro_voices.util.ts"
+        },
+        {
+          "source": "package.json",
+          "resolvedPath": "/source/dimabot/package.json"
+        },
+        {
+          "source": "package-lock.json",
+          "resolvedPath": "/source/dimabot/package-lock.json"
+        },
+        {
+          "source": "node_modules/typescript/package.json",
+          "resolvedPath": "/source/dimabot/node_modules/typescript/package.json"
+        },
+        {
+          "source": "node_modules/mongoose/package.json",
+          "resolvedPath": "/source/dimabot/node_modules/mongoose/package.json"
+        },
+        {
+          "source": "typescript-entry",
+          "resolvedPath": "/source/dimabot/node_modules/typescript/lib/typescript.js"
+        },
+        {
+          "source": "mongoose-entry",
+          "resolvedPath": "/source/dimabot/node_modules/mongoose/index.js"
+        },
+        {
+          "source": "node-executable",
+          "resolvedPath": "/usr/local/bin/node"
+        },
+        {
+          "source": "tests/fixtures/channel_tts_settings_reference.mjs",
+          "resolvedPath": "/source/dimabot/tests/fixtures/channel_tts_settings_reference.mjs"
+        }
+      ]
+    },
+    {
+      "fixture": "tts-credit-fallback/tts-credit-fallback-reference.json",
+      "sha256": "429154e7ce98eb6fbe426c7edd21f8a699cd694e0151c41da3b6f75ffea44a70",
+      "sourceEntriesVerified": 10,
+      "sourceFiles": [
+        {
+          "source": "src/utils/tts/tts_credit_fallback.util.ts",
+          "resolvedPath": "/source/archives/dimabot-typescript/2026-10-28/src/utils/tts/tts_credit_fallback.util.ts"
+        },
+        {
+          "source": "src/schemas/channel_tts_settings.schema.ts",
+          "resolvedPath": "/source/archives/dimabot-typescript/2026-10-28/src/schemas/channel_tts_settings.schema.ts"
+        },
+        {
+          "source": "src/utils/tts/expressive_tts_tags.util.ts",
+          "resolvedPath": "/source/dimabot/src/utils/tts/expressive_tts_tags.util.ts"
+        },
+        {
+          "source": "src/utils/tts/kokoro_voices.util.ts",
+          "resolvedPath": "/source/dimabot/src/utils/tts/kokoro_voices.util.ts"
+        },
+        {
+          "source": "package.json",
+          "resolvedPath": "/source/dimabot/package.json"
+        },
+        {
+          "source": "package-lock.json",
+          "resolvedPath": "/source/dimabot/package-lock.json"
+        },
+        {
+          "source": "node_modules/typescript/package.json",
+          "resolvedPath": "/source/dimabot/node_modules/typescript/package.json"
+        },
+        {
+          "source": "node_modules/typescript/lib/typescript.js",
+          "resolvedPath": "/source/dimabot/node_modules/typescript/lib/typescript.js"
+        },
+        {
+          "source": "node-executable",
+          "resolvedPath": "/usr/local/bin/node"
+        },
+        {
+          "source": "tests/fixtures/tts_credit_fallback_reference.mjs",
+          "resolvedPath": "/source/dimabot/tests/fixtures/tts_credit_fallback_reference.mjs"
+        }
+      ]
+    }
+  ]
+}
