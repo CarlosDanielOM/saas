@@ -120,6 +120,8 @@ pub mod polar;
 pub mod tts;
 #[cfg(feature = "twitch-client")]
 pub mod twitch;
+#[cfg(feature = "twitch-emotes")]
+pub mod twitch_emotes;
 
 #[cfg(feature = "chat-message")]
 pub mod chat_message;

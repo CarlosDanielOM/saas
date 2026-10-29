@@ -83,6 +83,8 @@ permissions = ["dep:serde", "dep:serde_json", "serde_json/float_roundtrip"]
 cron-queue = ["redis", "dep:serde", "dep:serde_json", "dep:uuid"]
 credential-crypto = ["dep:aes", "dep:ctr", "dep:getrandom", "dep:serde"]
 twitch-tokens = ["twitch-client", "credential-crypto", "mongo", "redis"]
+# Concrete channel/global emote cache, independent of deployed worker profiles.
+twitch-emotes = ["twitch-tokens", "tts-utilities", "js-date"]
 # Account directory composes existing opt-in protocols without changing workers.
 twitch-streamers = ["twitch-tokens", "plan-cache", "logger"]
 twitch-streamers-posthog = ["twitch-streamers", "posthog"]
