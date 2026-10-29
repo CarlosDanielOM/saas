@@ -12,3 +12,6 @@ mod caps_unicode_data;
 pub mod links_rule;
 #[cfg(feature = "moderation-normalize")]
 pub mod normalize;
+
+#[cfg(feature = "moderation-spam-categories")]
+pub mod spam_categories;
