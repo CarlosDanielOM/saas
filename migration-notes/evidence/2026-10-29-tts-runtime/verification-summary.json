@@ -1,0 +1,75 @@
+{
+  "schema": 1,
+  "source_commit": "bc48e32f3de0f864c8f8eaa7211ca6f35931698a",
+  "final_compiler": "compiler-1793235519923031551",
+  "final_node": "node-1793235471833078624",
+  "final_source_tree_sha256": "80846b66199103deea86f9225a69796516c6243930fede9b5da3a7f6b805c6a8",
+  "ordinary_executions": 64,
+  "ordinary_breakdown": {
+    "library": 10,
+    "fish_catalog": 9,
+    "js_string": 1,
+    "kokoro": 6,
+    "piper": 13,
+    "fish": 16,
+    "runtime": 6,
+    "tts_utilities": 3
+  },
+  "explicit_fixture_executions": 8,
+  "fixture_execution_breakdown": {
+    "runtime_config": 1,
+    "runtime_dynamic_source": 1,
+    "fish_sdk": 2,
+    "fish_service": 1,
+    "piper": 1,
+    "kokoro": 1,
+    "fish_catalog": 1
+  },
+  "new_source_groups": {
+    "configuration": 13,
+    "module_directories": 5,
+    "dynamic_flows": 7
+  },
+  "independent_environment_boundary_probe": {
+    "node": "node-1793234525524297207",
+    "source_tree_sha256": "0b8de5bf5986e9a546449eb466f54777bfcc7249fa4ebadb09f722a046f5e3c7",
+    "input_os_byte_hex": "ff",
+    "decoded_code_point": 65533,
+    "native_correspondence": "isolated child Rust test with env_clear and OsString raw byte; no parent environment mutation"
+  },
+  "shared_connection_proof": {
+    "origin": "one loopback origin only",
+    "accepted_tcp_connections": 1,
+    "http_requests": 8,
+    "providers": [
+      "Piper",
+      "Kokoro",
+      "Fish primary",
+      "Fish direct",
+      "Fish catalog"
+    ],
+    "performance_claim": false
+  },
+  "source_mocks": "dynamic source oracle mocks fixture-only filesystem/spawn/fetch and Fish SDK transport; native loopback/CLI tests and separate source-verified SDK replays establish the corresponding native adapters",
+  "reused_source_fixtures": "source hashes checked against this snapshot; previous JavaScript oracle generation not re-executed; Rust replays freshly executed",
+  "checks": [
+    "format",
+    "standalone tts-services all-targets check and Clippy -D warnings",
+    "all-features all-targets check and Clippy -D warnings",
+    "no-default-features all-targets check"
+  ],
+  "fixture_before_after_equal": true,
+  "benchmarks": {
+    "new_factory_comparative_benchmark": false,
+    "existing_numbers": "see settings/codec/catalog evidence; connection reuse is functional evidence only"
+  },
+  "typescript_retired": false,
+  "archive_count": 17,
+  "remaining_typescript": 789,
+  "cargo_packages_added": false,
+  "manifest_or_lock_changed": false,
+  "caller_adoption": false,
+  "whole_migration_complete": false,
+  "deployed": false,
+  "pushed": false
+}

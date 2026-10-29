@@ -1,0 +1,13 @@
+import fs from 'node:fs/promises';
+import {spawnSync} from 'node:child_process';
+import crypto from 'node:crypto';
+import assert from 'node:assert/strict';
+const dir='/artifacts/tts-runtime';
+await fs.mkdir(dir,{recursive:true});
+const script=Buffer.concat([Buffer.from("DIMA_TTS_ENV_BOUNDARY='"),Buffer.from([255]),Buffer.from("'\nexport DIMA_TTS_ENV_BOUNDARY\nexec \"$DIMA_NODE_PROBE_EXEC\" -p 'JSON.stringify(process.env.DIMA_TTS_ENV_BOUNDARY)'\n")]);
+const file=dir+'/invalid-env-child.sh';await fs.writeFile(file,script);
+const result=spawnSync('/bin/sh',[file],{env:{DIMA_NODE_PROBE_EXEC:process.execPath},encoding:'utf8',timeout:5000});
+assert.equal(result.status,0,result.stderr);const value=JSON.parse(result.stdout.trim());
+assert.deepEqual(Array.from(value,c=>c.codePointAt(0)),[65533]);
+const report={node:process.version,v8:process.versions.v8,inputHex:'ff',value,codePoints:Array.from(value,c=>c.codePointAt(0)),scriptSha256:crypto.createHash('sha256').update(script).digest('hex')};
+await fs.writeFile(dir+'/env-bytes-source-proof.json',JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report));

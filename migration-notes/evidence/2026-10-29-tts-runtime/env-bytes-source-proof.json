@@ -1,0 +1,10 @@
+{
+  "node": "v24.22.1",
+  "v8": "13.6.233.17-node.58",
+  "inputHex": "ff",
+  "value": "�",
+  "codePoints": [
+    65533
+  ],
+  "scriptSha256": "5585aadf3f27649c32bbbfc3cb3324b7600319b696454d1ce7f7e583e9857cb7"
+}
