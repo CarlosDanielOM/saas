@@ -1,0 +1,92 @@
+{
+  "artifacts/attempt1/reference/ai_usage_lock_reference.json.gz": {
+    "originalPath": "artifacts/attempt1/reference/ai_usage_lock_reference.json",
+    "rawSha256": "5e9885380345067b107890d1d831fdb43c8381dd64499d25ddc7001bd14a0b28",
+    "rawBytes": 4788471
+  },
+  "artifacts/attempt2/reference/ai_usage_lock_reference.json.gz": {
+    "originalPath": "artifacts/attempt2/reference/ai_usage_lock_reference.json",
+    "rawSha256": "598186c534477a994b3c202fc2e903d77570fa73614c335ea721f864040943c8",
+    "rawBytes": 4788471
+  },
+  "runs/compiler-1793273119989217718-receipt.json.gz": {
+    "originalPath": "runs/compiler-1793273119989217718-receipt.json",
+    "rawSha256": "2d12b7316fd89f2536dc90861a505f22f2d8db306b02ea68ef7c0c4019619de7",
+    "rawBytes": 154588
+  },
+  "runs/compiler-1793273119989217718.log.gz": {
+    "originalPath": "runs/compiler-1793273119989217718.log",
+    "rawSha256": "0143d1a9cfbdc2a53f490b032bc3fa33d0d1f0e14a0470c54d58a411c88873bf",
+    "rawBytes": 4282
+  },
+  "runs/compiler-fixtures-1793273325709715164-receipt.json.gz": {
+    "originalPath": "runs/compiler-fixtures-1793273325709715164-receipt.json",
+    "rawSha256": "3d98eee2d9aa2070656f00056a31c016eecdcad3434581fc78b447962f352183",
+    "rawBytes": 154663
+  },
+  "runs/compiler-fixtures-1793273325709715164.log.gz": {
+    "originalPath": "runs/compiler-fixtures-1793273325709715164.log",
+    "rawSha256": "c6649999cc143d074247db96352e1ce27bf2a11adc2f921155f62ba1934290e4",
+    "rawBytes": 2882
+  },
+  "runs/compiler-fixtures-1793273489423847194-receipt.json.gz": {
+    "originalPath": "runs/compiler-fixtures-1793273489423847194-receipt.json",
+    "rawSha256": "c2fc6f1b201fb686193ae431ca699d3b53edb9a747b48120f9d713dfa12d44fd",
+    "rawBytes": 154608
+  },
+  "runs/compiler-fixtures-1793273489423847194.log.gz": {
+    "originalPath": "runs/compiler-fixtures-1793273489423847194.log",
+    "rawSha256": "8b2d4fe4ec90390f57364a866b53c04e52628f5de0e16ca6c88f907cfd3ebf30",
+    "rawBytes": 6818
+  },
+  "runs/format-1793273011921687926-receipt.json.gz": {
+    "originalPath": "runs/format-1793273011921687926-receipt.json",
+    "rawSha256": "84e63ddb2e898e93f8733d67d6d6cc1dc846b2ce833ee9b7947caa80c6483421",
+    "rawBytes": 154582
+  },
+  "runs/format-1793273011921687926.log.gz": {
+    "originalPath": "runs/format-1793273011921687926.log",
+    "rawSha256": "d8df33ba72c691319594a6938a8cc1f756798afbe8a2dc8dedcec22abade739d",
+    "rawBytes": 1833
+  },
+  "runs/format-1793273431814418894-receipt.json.gz": {
+    "originalPath": "runs/format-1793273431814418894-receipt.json",
+    "rawSha256": "d1aa2e81e16e344e9735ae5fc135400a4e79bcbb23e1fd9dee0e342d58c4c6e1",
+    "rawBytes": 154582
+  },
+  "runs/format-1793273431814418894.log.gz": {
+    "originalPath": "runs/format-1793273431814418894.log",
+    "rawSha256": "d8df33ba72c691319594a6938a8cc1f756798afbe8a2dc8dedcec22abade739d",
+    "rawBytes": 1833
+  },
+  "runs/node-1793273101315751694-receipt.json.gz": {
+    "originalPath": "runs/node-1793273101315751694-receipt.json",
+    "rawSha256": "c5e8ee952a7acd91b120ae54a533f3f74e43e28e10d151d16767d198b2cdbda5",
+    "rawBytes": 154458
+  },
+  "runs/node-1793273101315751694.log.gz": {
+    "originalPath": "runs/node-1793273101315751694.log",
+    "rawSha256": "345469576bc55f112ab0398144beb91f72ab7afd4fd67159725231057f7715c7",
+    "rawBytes": 59
+  },
+  "runs/node-1793273457801069297-receipt.json.gz": {
+    "originalPath": "runs/node-1793273457801069297-receipt.json",
+    "rawSha256": "c619eee43610a8a87b5a01e3c172a89a978ddf5d29ce54cab7c43e8bcea600a1",
+    "rawBytes": 154458
+  },
+  "runs/node-1793273457801069297.log.gz": {
+    "originalPath": "runs/node-1793273457801069297.log",
+    "rawSha256": "345469576bc55f112ab0398144beb91f72ab7afd4fd67159725231057f7715c7",
+    "rawBytes": 59
+  },
+  "runs/node-1793273748582165643-receipt.json.gz": {
+    "originalPath": "runs/node-1793273748582165643-receipt.json",
+    "rawSha256": "1e29b256d509c8cdeba6bd7cb3d9ea1f129059164ac1b76096b22598a5ee7601",
+    "rawBytes": 154460
+  },
+  "runs/node-1793273748582165643.log.gz": {
+    "originalPath": "runs/node-1793273748582165643.log",
+    "rawSha256": "484468644a33154b1c6bd8365d3faf3c90ff058b36be2f9438a2cfd39517b414",
+    "rawBytes": 34
+  }
+}

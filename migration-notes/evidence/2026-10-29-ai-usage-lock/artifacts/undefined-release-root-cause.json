@@ -1,0 +1,22 @@
+{
+  "hypothesis": "Two source configurations have an own release property whose value is undefined. The JS fixture reply treats !spec as default, while native fixture_reply tried decoding that tagged primitive as an object and panicked in its RESP thread, preventing the release reply.",
+  "cases": [
+    {
+      "id": "renew-error-284",
+      "kind": "renew-error",
+      "release": {
+        "$undefined": true
+      },
+      "expectedStatus": "rejected"
+    },
+    {
+      "id": "renew-error-286",
+      "kind": "renew-error",
+      "release": {
+        "$undefined": true
+      },
+      "expectedStatus": "rejected"
+    }
+  ],
+  "productionLockModuleChanged": false
+}

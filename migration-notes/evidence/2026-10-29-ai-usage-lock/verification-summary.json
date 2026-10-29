@@ -1,0 +1,123 @@
+{
+  "status": "Verified local request-time helper and concrete native Redis adapter; bootstrap telemetry/logging and broader application dependency closure remain open.",
+  "codeCommit": "8061af697e0a8681ee9fb868cc105ef38ee2daea",
+  "sourceTreeSha256": "1ad5b80e177dc24240fb4c1cc66b5f19f1c2720d66469f6302f27a26a2359fd4",
+  "sourceInputs": 1272,
+  "sourceOracleCases": 291,
+  "keyPairs": 225,
+  "concreteProtocolReplays": 290,
+  "separateDefaultAcquisitionCase": "Native child tests verify bootstrap success/failure and no callback after failure; original mock exception text is not claimed equivalent.",
+  "reportedExecutions": 10,
+  "executionGroups": [
+    1,
+    2,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+  ],
+  "countsAreUnique": false,
+  "compilerRun": "compiler-fixtures-1793273489423847194",
+  "postNodeRun": "node-1793273748582165643",
+  "steps": [
+    {
+      "name": "bootstrap",
+      "seconds": 4.145,
+      "exit_code": 0
+    },
+    {
+      "name": "locked-fetch",
+      "seconds": 2.131,
+      "exit_code": 0
+    },
+    {
+      "name": "compiler-fixtures",
+      "seconds": 185.35,
+      "exit_code": 0
+    }
+  ],
+  "elapsedSeconds": 196.311,
+  "limits": {
+    "cpus": 6,
+    "memory": 4294967296,
+    "memory_swap": 4294967296,
+    "pids": 256,
+    "cargo_jobs": 2
+  },
+  "peakCacheBytes": 8117489664,
+  "minimumAvailableBytes": 10639482880,
+  "initialRuntimeFixtureFailure": "compiler-fixtures-1793273325709715164",
+  "all291SourceCasesUnchangedAfterFixtureFix": true,
+  "runs": [
+    {
+      "receipt": "runs/compiler-1793273119989217718-receipt.json.gz",
+      "log": "runs/compiler-1793273119989217718.log.gz",
+      "phase": "compiler",
+      "success": true,
+      "source_tree_sha256": "0b6893993ba7d47f225467fff289828143cdc501cde4630a927d670e35bdd1b6",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/compiler-fixtures-1793273325709715164-receipt.json.gz",
+      "log": "runs/compiler-fixtures-1793273325709715164.log.gz",
+      "phase": "compiler-fixtures",
+      "success": false,
+      "source_tree_sha256": "0b6893993ba7d47f225467fff289828143cdc501cde4630a927d670e35bdd1b6",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/compiler-fixtures-1793273489423847194-receipt.json.gz",
+      "log": "runs/compiler-fixtures-1793273489423847194.log.gz",
+      "phase": "compiler-fixtures",
+      "success": true,
+      "source_tree_sha256": "1ad5b80e177dc24240fb4c1cc66b5f19f1c2720d66469f6302f27a26a2359fd4",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/format-1793273011921687926-receipt.json.gz",
+      "log": "runs/format-1793273011921687926.log.gz",
+      "phase": "format",
+      "success": true,
+      "source_tree_sha256": "a1062108fd2792b95a0aa3fd0e4894476da160a75386e94c702e37e1296a8f86",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/format-1793273431814418894-receipt.json.gz",
+      "log": "runs/format-1793273431814418894.log.gz",
+      "phase": "format",
+      "success": true,
+      "source_tree_sha256": "1ad5b80e177dc24240fb4c1cc66b5f19f1c2720d66469f6302f27a26a2359fd4",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/node-1793273101315751694-receipt.json.gz",
+      "log": "runs/node-1793273101315751694.log.gz",
+      "phase": "node",
+      "success": true,
+      "source_tree_sha256": "0b6893993ba7d47f225467fff289828143cdc501cde4630a927d670e35bdd1b6",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/node-1793273457801069297-receipt.json.gz",
+      "log": "runs/node-1793273457801069297.log.gz",
+      "phase": "node",
+      "success": true,
+      "source_tree_sha256": "1ad5b80e177dc24240fb4c1cc66b5f19f1c2720d66469f6302f27a26a2359fd4",
+      "production_unchanged": true
+    },
+    {
+      "receipt": "runs/node-1793273748582165643-receipt.json.gz",
+      "log": "runs/node-1793273748582165643.log.gz",
+      "phase": "node",
+      "success": true,
+      "source_tree_sha256": "1ad5b80e177dc24240fb4c1cc66b5f19f1c2720d66469f6302f27a26a2359fd4",
+      "production_unchanged": true
+    }
+  ],
+  "noProductionMutationPushDeploymentRetirementOrAdoption": true,
+  "performanceMeasured": false,
+  "readback": "artifacts/final-readback.json"
+}

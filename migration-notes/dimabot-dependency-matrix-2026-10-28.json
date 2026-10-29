@@ -58509,7 +58509,7 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "reviewed-bounded-partial-request-time-receipt-producer-and-queued-receipt-parser; related AI-usage payload serialization follow-up verified; Mongo persistence/full ledger model remain open",
+      "featureReview": "reviewed-bounded-partial-request-time-receipt-producer-and-queued-receipt-parser; related AI-usage payload serialization follow-up and request-time lock helper verified; Mongo persistence/full ledger model remain open",
       "localRustEvidence": [
         "dimabot/src/utils/ai_usage_producer.rs",
         "dimabot/src/utils/ai_usage.rs",
@@ -58542,7 +58542,20 @@
         "migration-notes/evidence/2026-10-29-posthog-payload-performance/README.md",
         "migration-notes/evidence/2026-10-29-posthog-payload-performance/verification-summary.json",
         "migration-notes/evidence/2026-10-29-posthog-payload-performance/source-binding.json",
-        "migration-notes/evidence/2026-10-29-posthog-payload-performance/artifacts/current-benchmark-comparison.json"
+        "migration-notes/evidence/2026-10-29-posthog-payload-performance/artifacts/current-benchmark-comparison.json",
+        "dimabot/src/utils/ai_usage_lock.rs",
+        "dimabot/src/utils/mod.rs",
+        "dimabot/Cargo.toml",
+        "dimabot/tests/ai_usage_lock.rs",
+        "dimabot/tests/fixtures/ai_usage_lock_reference.cjs",
+        "migration-notes/ai-usage-lock-handoff.md",
+        "migration-notes/ai-usage-lock-2026-10-29.md",
+        "migration-notes/evidence/2026-10-29-ai-usage-lock/README.md",
+        "migration-notes/evidence/2026-10-29-ai-usage-lock/verification-summary.json",
+        "migration-notes/evidence/2026-10-29-ai-usage-lock/source-binding.json",
+        "migration-notes/evidence/2026-10-29-ai-usage-lock/pre-fix-source-binding.json",
+        "migration-notes/evidence/2026-10-29-ai-usage-lock/artifacts/final-readback.json",
+        "8061af69; frozen source SHA-256 1ad5b80e177dc24240fb4c1cc66b5f19f1c2720d66469f6302f27a26a2359fd4"
       ],
       "behaviorDifferencesOrAcceptedChanges": [
         "Rust QueuedAiUsageReceipt is a typed lossless plain-data builder value, not full parity for the TypeScript interface extending AiUsageTransaction or for the parser/persistence consumer contract.",
@@ -58550,21 +58563,28 @@
         "One RPUSH is issued without application retry; after disconnect/cancellation the append outcome may be uncertain.",
         "parseQueuedAiUsageReceipt now has a partial native mapping to parse_queued_ai_usage_receipt, its typed normalized 18-field receipt DTO, and a concrete receipt BSON projection helper. This does not implement persistAiUsageReceipt or the complete Mongoose model, middleware, indexes, or Mongo persistence path.",
         "The new parser preserves lone UTF-16 units in its DTO and replaces them with U+FFFD only at the concrete BSON UTF-8 boundary, matching Node BSON behavior; the existing deployed native worker still uses its old serde_json::Value parser and rejects escaped lone surrogates. The new parser is not adopted.",
-        "The related AI-usage PostHog payload pool improved from the initial Rust median 10.3777 to 4.4275 microseconds/op, below the retained TypeScript median 5.5308, in the verified builders/ordered-JSON/UTF-8-checksum benchmark. This is payload serialization evidence only; it does not verify or complete the receipt producer/parser, Mongo persistence, or full ledger behavior."
+        "The related AI-usage PostHog payload pool improved from the initial Rust median 10.3777 to 4.4275 microseconds/op, below the retained TypeScript median 5.5308, in the verified builders/ordered-JSON/UTF-8-checksum benchmark. This is payload serialization evidence only; it does not verify or complete the receipt producer/parser, Mongo persistence, or full ledger behavior.",
+        "The imported withAiUsageLock now has a partial opt-in native request-time implementation with exact-source, protocol and disposable Redis checks; ledger/dashboard callers remain TypeScript, and the native Redis bootstrap does not reproduce the TypeScript logging/telemetry proxy."
       ],
       "callers": {
         "sourceEvidence": [
           "dimabot/src/utils/polarsh.ts: buildQueuedAiUsageReceipt and enqueueAiUsageReceipt remain active TypeScript callers after Polar accounting.",
-          "dimabot/src/utils/ai_usage_receipts.ts, ai_usage_backfill.ts, ai_usage_backfill_queue.ts, ai_usage_queries.ts and route/dashboard consumers use parser, persistence, reporting, retention, or query exports outside this port."
+          "dimabot/src/utils/ai_usage_receipts.ts, ai_usage_backfill.ts, ai_usage_backfill_queue.ts, ai_usage_queries.ts and route/dashboard consumers use parser, persistence, reporting, retention, or query exports outside this port.",
+          "dimabot/src/utils/ai_usage_ledger.ts and dimabot/src/utils/ai_usage_dashboard.ts import withAiUsageLock as a named runtime helper; both callers remain active TypeScript.",
+          "migration-notes/ai-usage-lock-handoff.md and migration-notes/ai-usage-lock-2026-10-29.md; compiler-fixtures-1793273489423847194."
         ],
-        "runtimeStatus": "The native queue producer has no adopted Rust call site. The existing native receipt worker is consumer-only and remains on its old serde_json::Value parser, which rejects escaped lone surrogates; the new parser is unadopted. Native parser/BSON projection helpers do not constitute persistAiUsageReceipt or full Mongo model/index/middleware behavior. Queue processing, persistence, locking, reporting, backfill and caller/bootstrap integration remain open. Adoption and deployment are tracked separately from dependency completeness; no deployment occurred."
+        "runtimeStatus": "The native queue producer has no adopted Rust call site. The existing native receipt worker is consumer-only and remains on its old serde_json::Value parser, which rejects escaped lone surrogates; the new parser is unadopted. Native parser/BSON projection helpers do not constitute persistAiUsageReceipt or full Mongo model/index/middleware behavior. Queue processing, persistence, locking, reporting, backfill and caller/bootstrap integration remain open. Adoption and deployment are tracked separately from dependency completeness; no deployment occurred. The imported lock helper has a concrete partial native implementation, but no caller has switched; telemetry/logging bootstrap behavior and application persistence/dashboard callbacks remain open."
       },
       "testEvidence": {
         "sourceEvidence": [
           "Pinned Node 24.22.1 / V8 13.6.233.17-node.58 / TypeScript 5.9.3 oracle: 338 receipts, 20 retention cases, and 3,325 source assertions.",
           "The final source-only optimization regenerated source parity; all 338 receipt, 20 retention, and 3,325 assertion outputs matched. The five benchmark workloads each include seven trials and use entryKind=usage.",
           "Pinned receipt source proof: 1,362 parser cases per zone across five time zones; the final UTC source/BSON replay and source checks passed at the initial baseline. One parser test late-init style rebind changed the test hash; 31 of 32 production-bound source inputs remained unchanged. See migration-notes/evidence/2026-10-29-posthog-receipt/verification-summary.json and artifacts/parser-oracle-equivalence.json.",
-          "Related verified payload follow-up is bound to source tree SHA-256 d7032bf6e592fba5ab32915a47d6877ad7c546ecb9e345d0fbacdd3d9bce2056 (commit beda3aee1ea2d7a2d42b4b666c6dcb2c3c2ef403); evidence and limits are recorded in migration-notes/evidence/2026-10-29-posthog-payload-performance/."
+          "Related verified payload follow-up is bound to source tree SHA-256 d7032bf6e592fba5ab32915a47d6877ad7c546ecb9e345d0fbacdd3d9bce2056 (commit beda3aee1ea2d7a2d42b4b666c6dcb2c3c2ef403); evidence and limits are recorded in migration-notes/evidence/2026-10-29-posthog-payload-performance/.",
+          "Pinned Node 24.22.1 / V8 13.6.233.17-node.58 / TypeScript 5.9.3 oracle extracts the complete withAiUsageLock export and validates 291 actual-source scenarios, including 225 UTF-16 key pairs.",
+          "Corrected fixture outputs for all 291 source scenarios were byte-identical to the initial source artifact. The native protocol matrix replays 290; the acquire-error scenario is handled in a separate child default-bootstrap category assertion, not by exact exception-text comparison.",
+          "The first runtime failure compiler-fixtures-1793273325709715164 was a fixture mistake interpreting source-owned release: undefined as an object. Rust lock code was unchanged; a five-line fixture fallback was applied, only the test hash changed, and prefixed test bytes were SHA-verified.",
+          "Final corrected oracle write/check node-1793273457801069297; final Node source/hash check node-1793273748582165643; formatting format-1793273431814418894."
         ],
         "rustBehaviorEvidence": [
           "Baseline source 77fc976da064a87c02ec1fce93cd0e4820dfe53a7eac9feb5fab453c482d80f7 passed compiler-fixtures-1793256166045626940 and post-Node node-1793256476785298801; its 178 test executions overlap dependency tests and include a subprocess-only no-op helper, not 178 unique cases. This remains the full proof for unchanged credit/TTS behavior.",
@@ -58574,9 +58594,12 @@
           "Three failed compiler attempts were retained (private test accessor, fixture EOF/socket clone, Clippy seed type annotation); subsequent source-bound runs passed. These were harness corrections, not application defects.",
           "The optimized-source compiler/benchmark applies only to the producer module. Credit feature evidence remains bound to 77fc976da064a87c02ec1fce93cd0e4820dfe53a7eac9feb5fab453c482d80f7; final producer binding is 02ab55a9d484c01af695793b55d6313280f30080c76db5ad9b5a909b440ac78f.",
           "Initial capped compiler run compiler-1793264871810743273 passed five ordinary parser tests, five borrowed-view tests, and one UTC producer/BSON parser replay; these execution counts overlap dependencies and are not unique cases. The separate five-zone proof compiler-1793263458419267176 passed all 1,362 cases in each zone before a later Clippy failure; final UTC replay passed on the final test-only source rebind.",
-          "Related AI-usage payload pool in the verified PostHog payload follow-up: retained TypeScript median 5.5308, initial Rust 10.3777, current Rust 4.4275 microseconds/op (seven trials; prepared builders + ordered JSON + UTF-8 checksum). This does not extend the producer/parser oracle or persistence evidence. See migration-notes/evidence/2026-10-29-posthog-payload-performance/artifacts/current-benchmark-comparison.json; Mongo persistence, indexes, middleware, reporting, backfill and caller adoption remain open."
+          "Related AI-usage payload pool in the verified PostHog payload follow-up: retained TypeScript median 5.5308, initial Rust 10.3777, current Rust 4.4275 microseconds/op (seven trials; prepared builders + ordered JSON + UTF-8 checksum). This does not extend the producer/parser oracle or persistence evidence. See migration-notes/evidence/2026-10-29-posthog-payload-performance/artifacts/current-benchmark-comparison.json; Mongo persistence, indexes, middleware, reporting, backfill and caller adoption remain open.",
+          "Strict initial run compiler-1793273119989217718 passed. Final compiler-fixtures-1793273489423847194 passed ten reported executions across nine result groups: one library result, two ordinary source/type/key test results, one 290-case native protocol-matrix replay, and six explicit real-Redis/default-bootstrap tests.",
+          "Final run elapsed 185.35 seconds for the script and 196.311 seconds total under 6 CPU, 4 GiB memory/equal swap, 256 PID and two-job limits; peak cache 8,117,489,664 bytes, minimum available memory 10,639,482,880 bytes. Production records remained unchanged and owned test resources were removed.",
+          "No lock-performance benchmark was run; the ten-second acquisition deadline and 30-second heartbeat are correctness behavior, not performance measurements."
         ],
-        "status": "Partial local receipt builder/queue producer and queued-receipt parser/BSON projection behavior verified at distinct source bindings; a related AI-usage payload serialization follow-up is verified but does not establish ledger or persistence behavior. Complete Mongo persistence, existing worker adoption, and full ledger dependencies remain open."
+        "status": "Partial local receipt builder/queue producer and queued-receipt parser/BSON projection behavior verified at distinct source bindings; a related AI-usage payload serialization follow-up is verified but does not establish ledger or persistence behavior. Complete Mongo persistence, existing worker adoption, and full ledger dependencies remain open.; imported request-time lock helper separately verified, with callers and bootstrap telemetry/logging gap still open"
       },
       "exports": [
         {
@@ -58887,11 +58910,11 @@
             "src/utils/ai_usage_lock.ts"
           ],
           "importSyntaxKind": "named runtime import",
-          "runtimeOrTypeDependency": "withAiUsageLock wraps persistence/backfill work, not builder/enqueue/retention lookup.",
-          "defaultSideEffectBarrelDetails": "Direct import; no side-effect import or barrel in this declaration.",
-          "directDependencyReview": "Out of scoped producer functions.",
-          "transitiveDependencyReview": "Lock semantics remain required for ledger persistence.",
-          "rustReplacementOrGap": "No Rust persistence lock adapter claimed."
+          "runtimeOrTypeDependency": "withAiUsageLock wraps ledger persistence/backfill and dashboard refresh work in an account lock.",
+          "defaultSideEffectBarrelDetails": "Direct named import; no side-effect import or barrel in this declaration.",
+          "directDependencyReview": "Partial: the opt-in native request-time lock helper implements the source lock protocol, while native bootstrap caller logging/telemetry behavior remains open.",
+          "transitiveDependencyReview": "The lock callback is caller-supplied computation and is not a missing adapter; the TypeScript ledger/dashboard callers, persistence and dashboard application path remain open.",
+          "rustReplacementOrGap": "Concrete local with_ai_usage_lock implementation exists but is not adopted by callers; telemetry/logging proxy is not reproduced."
         },
         {
           "ordinal": 7,
@@ -58927,7 +58950,7 @@
           "rustReplacementOrGap": "Concrete native RPUSH exists, but is opt-in and not wired into Polar callers/bootstrap."
         }
       ],
-      "rowAssessment": "partial-local-request-time-producer-and-queued-receipt-parser-verified; Mongo persistence and ledger dependency closure open"
+      "rowAssessment": "partial-local-request-time-producer-parser-and-lock-helper-verified; Mongo persistence, bootstrap telemetry/logging and ledger dependency closure remain open"
     },
     {
       "source": "src/utils/ai_usage_lock.ts",
@@ -58939,28 +58962,86 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-bounded-partial-request-time-lock-helper; exact source and native protocol verified; bootstrap telemetry/logging and caller adoption remain open",
+      "localRustEvidence": [
+        "dimabot/src/utils/ai_usage_lock.rs",
+        "dimabot/src/utils/mod.rs",
+        "dimabot/Cargo.toml",
+        "dimabot/tests/ai_usage_lock.rs",
+        "dimabot/tests/fixtures/ai_usage_lock_reference.cjs",
+        "migration-notes/ai-usage-lock-handoff.md",
+        "migration-notes/ai-usage-lock-2026-10-29.md",
+        "migration-notes/evidence/2026-10-29-ai-usage-lock/README.md",
+        "migration-notes/evidence/2026-10-29-ai-usage-lock/verification-summary.json",
+        "migration-notes/evidence/2026-10-29-ai-usage-lock/source-binding.json",
+        "migration-notes/evidence/2026-10-29-ai-usage-lock/pre-fix-source-binding.json",
+        "migration-notes/evidence/2026-10-29-ai-usage-lock/artifacts/final-readback.json",
+        "8061af69; frozen source SHA-256 1ad5b80e177dc24240fb4c1cc66b5f19f1c2720d66469f6302f27a26a2359fd4"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The native lock preserves exact JSON-pair UTF-16 key hashing, UUIDv4 ownership, NX/EX120, 50 ms contention waits, the ten-second monotonic acquire deadline, first renewal after 30 seconds, and exact owner-fenced renewal/release Lua.",
+        "Renewal uses one bounded in-flight command and skips missed ticks; JavaScript setInterval can overlap. Cancellation or panic stops native renewal and retains TTL, while JavaScript promises have no equivalent caller cancellation. Normal callback errors are retained; release errors supersede results as in finally.",
+        "The existing native Redis bootstrap is reused but does not reproduce getDragonflyClient caller logging and telemetry proxy behavior. The concrete adapter/bootstrap dependency is therefore partial.",
+        "The native default-bootstrap acquire-error case is checked in an isolated child by error category, not exact source exception text. No TypeScript caller is adopted; the generic callback represents caller-supplied work and is not a missing adapter."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/src/utils/ai_usage_ledger.ts: persistAiUsageReceipt and ledger/backfill work use withAiUsageLock.",
+          "dimabot/src/utils/ai_usage_dashboard.ts: dashboard refresh uses withAiUsageLock."
+        ],
+        "runtimeStatus": "Both TypeScript callers remain active. The opt-in Rust helper has no adopted application call site; ledger persistence/backfill, dashboard aggregation/persistence and caller bootstrap remain TypeScript. The existing native receipt-worker lock is separate and unchanged."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "Pinned Node 24.22.1 / V8 13.6.233.17-node.58 / TypeScript 5.9.3 oracle extracts the complete withAiUsageLock export and validates 291 actual-source scenarios, including 225 UTF-16 key pairs.",
+          "Corrected fixture outputs for all 291 source scenarios were byte-identical to the initial source artifact. The native protocol matrix replays 290; the acquire-error scenario is handled in a separate child default-bootstrap category assertion, not by exact exception-text comparison.",
+          "The first runtime failure compiler-fixtures-1793273325709715164 was a fixture mistake interpreting source-owned release: undefined as an object. Rust lock code was unchanged; a five-line fixture fallback was applied, only the test hash changed, and prefixed test bytes were SHA-verified.",
+          "Final corrected oracle write/check node-1793273457801069297; final Node source/hash check node-1793273748582165643; formatting format-1793273431814418894."
+        ],
+        "rustBehaviorEvidence": [
+          "Strict initial run compiler-1793273119989217718 passed. Final compiler-fixtures-1793273489423847194 passed ten reported executions across nine result groups: one library result, two ordinary source/type/key test results, one 290-case native protocol-matrix replay, and six explicit real-Redis/default-bootstrap tests.",
+          "Final run elapsed 185.35 seconds for the script and 196.311 seconds total under 6 CPU, 4 GiB memory/equal swap, 256 PID and two-job limits; peak cache 8,117,489,664 bytes, minimum available memory 10,639,482,880 bytes. Production records remained unchanged and owned test resources were removed.",
+          "No lock-performance benchmark was run; the ten-second acquisition deadline and 30-second heartbeat are correctness behavior, not performance measurements."
+        ],
+        "status": "Partial local request-time lock helper verified by exact-source, native protocol and disposable Redis/default-bootstrap checks. Native bootstrap telemetry/logging behavior and TypeScript caller adoption remain open."
       },
       "exports": [
         {
           "name": "withAiUsageLock",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "partial: with_ai_usage_lock and AiUsageLock::with implement the opt-in request-time account lock; native Redis bootstrap omits the TypeScript logging/telemetry proxy and callers remain TypeScript",
+          "evidence": [
+            "dimabot/src/utils/ai_usage_lock.rs",
+            "dimabot/src/utils/mod.rs",
+            "dimabot/Cargo.toml",
+            "dimabot/tests/ai_usage_lock.rs",
+            "dimabot/tests/fixtures/ai_usage_lock_reference.cjs",
+            "migration-notes/ai-usage-lock-handoff.md",
+            "migration-notes/ai-usage-lock-2026-10-29.md",
+            "migration-notes/evidence/2026-10-29-ai-usage-lock/README.md",
+            "migration-notes/evidence/2026-10-29-ai-usage-lock/verification-summary.json",
+            "migration-notes/evidence/2026-10-29-ai-usage-lock/source-binding.json",
+            "migration-notes/evidence/2026-10-29-ai-usage-lock/pre-fix-source-binding.json",
+            "migration-notes/evidence/2026-10-29-ai-usage-lock/artifacts/final-readback.json",
+            "8061af69; frozen source SHA-256 1ad5b80e177dc24240fb4c1cc66b5f19f1c2720d66469f6302f27a26a2359fd4"
+          ]
         }
       ],
       "imports": [
         {
           "ordinal": 0,
+          "specifier": "node:crypto",
+          "specifierCategory": "node-builtin-candidate",
+          "relativeSourceCandidates": [],
+          "baselineSourceTargets": [],
+          "importSyntaxKind": "named runtime import",
+          "runtimeOrTypeDependency": "createHash computes SHA-256 over the exact JSON pair; randomUUID creates each acquisition owner.",
+          "defaultSideEffectBarrelDetails": "Direct named import; no side-effect import or barrel in this declaration.",
+          "directDependencyReview": "Runtime builtin imports; mapped to the already pinned Rust sha2::Sha256 and uuid::Uuid::new_v4 implementations.",
+          "transitiveDependencyReview": "SHA-256, UUID generation and Tokio are already present in the crate dependency graph; no new Cargo dependency or lockfile change.",
+          "rustReplacementOrGap": "Concrete hashing and UUID replacements exist. No npm internals are required."
+        },
+        {
+          "ordinal": 1,
           "specifier": "./databases/dragonfly.database.js",
           "specifierCategory": "relative-module-candidate",
           "relativeSourceCandidates": [
@@ -58972,28 +59053,15 @@
           "baselineSourceTargets": [
             "src/utils/databases/dragonfly.database.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
-        },
-        {
-          "ordinal": 1,
-          "specifier": "node:crypto",
-          "specifierCategory": "node-builtin-candidate",
-          "relativeSourceCandidates": [],
-          "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named runtime import",
+          "runtimeOrTypeDependency": "getDragonflyClient supplies the default Redis client and accepts a caller label for its existing logging/telemetry proxy.",
+          "defaultSideEffectBarrelDetails": "Direct named import; no side-effect import or barrel in this declaration.",
+          "directDependencyReview": "Partial: native helper reuses utils::redis::get_redis_client and ConnectionManager; the native bootstrap does not reproduce caller-specific logging and telemetry proxy behavior.",
+          "transitiveDependencyReview": "Plain-TCP configuration and bounded native connection initialization exist. Ledger/dashboard application callbacks and their database/cache caller path remain TypeScript.",
+          "rustReplacementOrGap": "Partial concrete Redis adapter exists behind opt-in ai-usage-lock; existing TS caller/bootstrap adoption and telemetry wrapper remain open."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "partial-local-opt-in-request-time-lock-and-lease-verified; native bootstrap telemetry/logging behavior and TypeScript callers remain open"
     },
     {
       "source": "src/utils/ai_usage_queries.ts",

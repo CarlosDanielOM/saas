@@ -1,0 +1,7 @@
+{
+  "all291CasesAndSourceResultsUnchanged": true,
+  "onlyChangedNativeBinding": [
+    "tests/ai_usage_lock.rs"
+  ],
+  "sourceImplementationUnchanged": true
+}
