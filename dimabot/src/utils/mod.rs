@@ -111,6 +111,8 @@ pub mod keywords;
 pub mod logger;
 #[cfg(feature = "tts-utilities")]
 pub mod lossless_json;
+#[cfg(feature = "lossless-json-view")]
+pub mod lossless_json_view;
 #[cfg(feature = "application-schemas")]
 pub mod mongoose_date;
 #[cfg(feature = "observability")]

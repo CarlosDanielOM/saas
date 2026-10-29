@@ -65,7 +65,7 @@ fn string(value: Option<&JsonValue>) -> Option<&JsString> {
 fn is_null(value: &JsonValue) -> bool {
     matches!(value, JsonValue::Null)
 }
-fn truthy(value: &JsonValue) -> bool {
+pub(crate) fn truthy(value: &JsonValue) -> bool {
     match value {
         JsonValue::Null => false,
         JsonValue::Bool(value) => *value,
@@ -82,7 +82,7 @@ fn nullish_flag(value: Option<&JsonValue>) -> JsonValue {
 }
 
 /// JSON-data String(value), including Array.join and own non-callable toString.
-fn js_string(value: &JsonValue) -> Result<JsString, SettingsError> {
+pub(crate) fn js_string(value: &JsonValue) -> Result<JsString, SettingsError> {
     match value {
         JsonValue::Null => Ok(JsString::from("null")),
         JsonValue::Bool(value) => Ok(JsString::from(if *value { "true" } else { "false" })),
@@ -104,7 +104,7 @@ fn js_string(value: &JsonValue) -> Result<JsString, SettingsError> {
         }
     }
 }
-fn js_number(value: Option<&JsonValue>) -> Result<f64, SettingsError> {
+pub(crate) fn js_number(value: Option<&JsonValue>) -> Result<f64, SettingsError> {
     Ok(match value {
         None => f64::NAN,
         Some(JsonValue::Null) => 0.0,
