@@ -1,4 +1,6 @@
 //! Lossless JavaScript strings at UTF-16 slicing and encoding boundaries.
+use std::borrow::Cow;
+
 use super::js_compat::is_whitespace;
 
 /// Valid Unicode stays UTF-8; only ill-formed UTF-16 needs the fallback.
@@ -9,7 +11,12 @@ pub struct JsString(Repr);
 enum Repr {
     // Cache ASCII classification once so repeated indexed slices do not scan
     // the entire source text for every emote.
-    Utf8 { text: String, ascii: bool },
+    // Cow keeps literal property names allocation-free while retaining the
+    // same content-based equality/hash as owned UTF-8 in this single variant.
+    Utf8 {
+        text: Cow<'static, str>,
+        ascii: bool,
+    },
     Utf16(Vec<u16>),
 }
 
@@ -37,7 +44,19 @@ impl Iterator for CodeUnits<'_> {
 impl JsString {
     fn utf8(text: String) -> Self {
         let ascii = text.is_ascii();
-        Self(Repr::Utf8 { text, ascii })
+        Self(Repr::Utf8 {
+            text: Cow::Owned(text),
+            ascii,
+        })
+    }
+
+    /// Borrow a compile-time string without allocating. `From<&str>` still
+    /// copies arbitrary borrowed text, so no caller's lifetime is extended.
+    pub fn from_static(text: &'static str) -> Self {
+        Self(Repr::Utf8 {
+            text: Cow::Borrowed(text),
+            ascii: text.is_ascii(),
+        })
     }
     pub fn from_units(units: Vec<u16>) -> Self {
         match String::from_utf16(&units) {
@@ -136,7 +155,7 @@ impl JsString {
     /// Node's UTF-8/BSON boundary replaces each unpaired code unit with U+FFFD.
     pub fn to_utf8_lossy(&self) -> String {
         match &self.0 {
-            Repr::Utf8 { text, .. } => text.clone(),
+            Repr::Utf8 { text, .. } => text.as_ref().to_owned(),
             Repr::Utf16(units) => String::from_utf16_lossy(units),
         }
     }
@@ -226,6 +245,81 @@ impl From<String> for JsString {
 #[cfg(test)]
 mod tests {
     use super::{JsString, write_json_utf8};
+    use std::{
+        collections::{HashMap, HashSet, hash_map::DefaultHasher},
+        hash::{Hash, Hasher},
+    };
+
+    #[test]
+    fn static_and_owned_strings_share_content_equality_and_hashing() {
+        let hash = |value: &JsString| {
+            let mut hasher = DefaultHasher::new();
+            value.hash(&mut hasher);
+            hasher.finish()
+        };
+        for text in ["", "channel_id", "é😀\u{2028}", "\"\\\0\n"] {
+            let borrowed = JsString::from_static(text);
+            let owned = JsString::from(text.to_owned());
+            let units = JsString::from_units(text.encode_utf16().collect());
+            assert_eq!(borrowed, owned);
+            assert_eq!(borrowed, units);
+            assert_eq!(hash(&borrowed), hash(&owned));
+            assert_eq!(hash(&borrowed), hash(&units));
+            assert_eq!(borrowed.clone().as_str().unwrap().as_ptr(), text.as_ptr());
+
+            let mut map = HashMap::new();
+            map.insert(borrowed.clone(), 1);
+            assert_eq!(map.get(&owned), Some(&1));
+            assert_eq!(map.insert(units.clone(), 2), Some(1));
+            assert_eq!(map.len(), 1);
+            assert_eq!(map.remove(&borrowed), Some(2));
+            map.insert(owned.clone(), 3);
+            assert_eq!(map.get(&borrowed), Some(&3));
+
+            let mut set = HashSet::new();
+            assert!(set.insert(owned));
+            assert!(!set.insert(borrowed.clone()));
+            assert!(set.contains(&units));
+            assert_eq!(set.take(&borrowed), Some(units));
+        }
+        let copied = {
+            let temporary = String::from("temporary é😀");
+            JsString::from(temporary.as_str())
+        };
+        assert_eq!(copied.as_str(), Some("temporary é😀"));
+    }
+
+    #[test]
+    fn static_strings_keep_utf16_slicing_trim_and_json_boundaries() {
+        for text in ["", " ascii \t", "\u{feff} a😀é\u{2028}", "a\n\"\\😀"] {
+            let borrowed = JsString::from_static(text);
+            let owned = JsString::from(text);
+            assert_eq!(borrowed.len(), text.encode_utf16().count());
+            assert_eq!(borrowed.units(), owned.units());
+            assert_eq!(borrowed.trim(), owned.trim());
+            assert_eq!(borrowed.to_utf8_lossy(), text);
+            assert_eq!(
+                borrowed.to_json_string(),
+                serde_json::to_string(text).unwrap()
+            );
+            for start in [-99, -3, -1, 0, 1, 2, 3, 99] {
+                for end in [-99, -3, -1, 0, 1, 2, 3, 99] {
+                    let actual = borrowed.slice(start, end);
+                    let expected = owned.slice(start, end);
+                    assert_eq!(actual, expected, "{text:?} {start} {end}");
+                    assert_eq!(actual.to_json_string(), expected.to_json_string());
+                }
+            }
+        }
+        let split = JsString::from_static("a😀b").slice(2, 3);
+        assert_eq!(split.units(), vec![0xde00]);
+        assert_eq!(split.to_json_string(), r#""\ude00""#);
+        assert_eq!(split.to_utf8_lossy(), "�");
+        assert_eq!(
+            JsString::from_static("\u{feff} a😀é\u{2028}").trim(),
+            JsString::from("a😀é")
+        );
+    }
 
     #[test]
     fn json_literals_append_and_escape_without_losing_unicode() {

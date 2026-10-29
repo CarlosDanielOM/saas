@@ -1,7 +1,10 @@
 #![cfg(feature = "posthog-tracking")]
 
 use dima_rust::utils::{
-    ai_usage::{AiUsageContextInput, create_ai_usage_context},
+    ai_usage::{
+        AiUsageContext, AiUsageContextInput, Category, EntryKind, ResourceType, UsageUnit,
+        create_ai_usage_context,
+    },
     js_string::JsString,
     lossless_json::{JsonValue, parse_json},
     posthog::{FLUSH_AT, FLUSH_INTERVAL_MS, POSTHOG_HOST, POSTHOG_PROJECT_KEY},
@@ -143,6 +146,218 @@ fn direct_conversion_preserves_bits_and_defaults_without_acquiring_production_ru
     let _ = tracking::trackAiUsageRecorded;
     let _ = tracking::trackAiOperation;
     let _ = tracking::shutdownPosthog;
+}
+
+#[test]
+fn native_and_plain_usage_keep_every_field_order_bits_and_absence() {
+    // Manually constructed DTOs must stay raw, without the context factory's
+    // normalization, finite-number policy or schema-version default.
+    let mut context = AiUsageContext {
+        schema_version: 255,
+        pricing_version: " raw 😀 ".into(),
+        entry_id: "e😀".into(),
+        request_id: " r ".into(),
+        parent_request_id: Some(String::new()),
+        entry_kind: EntryKind::Adjustment,
+        category: Category::Other,
+        operation: " op ".into(),
+        source: " source ".into(),
+        provider: " provider ".into(),
+        model: Some(String::new()),
+        channel_id: Some("ch".into()),
+        quantity: Some(-0.0),
+        unit: Some(UsageUnit::Minutes),
+        resource_type: Some(ResourceType::VodAnalysis),
+        resource_id: Some(String::new()),
+    };
+    let native = NativeUsageRecorded {
+        context: &context,
+        credits: -0.0,
+        reason: " reason ",
+        polar_cost_amount: Some(0.0),
+        input_tokens: Some(1.0),
+        output_tokens: Some(2.0),
+        total_tokens: Some(3.0),
+    }
+    .prepare()
+    .unwrap();
+    assert_eq!(native.distinct_id, JsString::from("ch"));
+    assert_eq!(
+        native.properties.to_json_string(),
+        r#"{"$insert_id":"e😀","schema_version":255,"pricing_version":" raw 😀 ","entry_id":"e😀","request_id":" r ","parent_request_id":"","entry_kind":"adjustment","category":"other","operation":" op ","source":" source ","provider":" provider ","model":"","channel_id":"ch","credits":0,"reason":" reason ","polar_cost_amount":0,"quantity":0,"unit":"minutes","resource_type":"vod_analysis","resource_id":"","input_tokens":1,"output_tokens":2,"total_tokens":3}"#
+    );
+    assert_eq!(
+        native_context(&context).unwrap().to_json_string(),
+        r#"{"schemaVersion":255,"pricingVersion":" raw 😀 ","entryId":"e😀","requestId":" r ","entryKind":"adjustment","category":"other","operation":" op ","source":" source ","provider":" provider ","parentRequestId":"","model":"","channelID":"ch","resourceId":"","unit":"minutes","resourceType":"vod_analysis","quantity":0}"#
+    );
+    let names: Vec<_> = if let JsonValue::Object(fields) = &native.properties {
+        fields.iter().map(|(k, _)| k.clone()).collect()
+    } else {
+        panic!("object")
+    };
+    for include_text in [false, true] {
+        context.parent_request_id = include_text.then(String::new);
+        context.model = include_text.then(String::new);
+        context.resource_id = include_text.then(String::new);
+        context.unit = include_text.then_some(UsageUnit::Tokens);
+        context.resource_type = include_text.then_some(ResourceType::LlmGeneration);
+        for channel in [None, Some(""), Some(" ch😀 ")] {
+            context.channel_id = channel.map(str::to_owned);
+            for value in [
+                None,
+                Some(-0.0),
+                Some(0.0),
+                Some(f64::from_bits(0x7ff8_0000_0000_0042)),
+                Some(f64::INFINITY),
+                Some(f64::NEG_INFINITY),
+                Some(f64::from_bits(1)),
+                Some(f64::MAX),
+            ] {
+                context.quantity = value;
+                let dto = NativeUsageRecorded {
+                    context: &context,
+                    credits: value.unwrap_or(-0.0),
+                    reason: " reason ",
+                    polar_cost_amount: value,
+                    input_tokens: value,
+                    output_tokens: value,
+                    total_tokens: value,
+                };
+                let mut fields = vec![
+                    ("context", native_context(&context).unwrap()),
+                    ("credits", JsonValue::Number(dto.credits)),
+                    ("reason", s(dto.reason)),
+                ];
+                if let Some(value) = value {
+                    for name in [
+                        "polarCostAmount",
+                        "inputTokens",
+                        "outputTokens",
+                        "totalTokens",
+                    ] {
+                        fields.push((name, JsonValue::Number(value)));
+                    }
+                }
+                let plain = ai_usage_recorded(&obj(fields)).unwrap();
+                let direct = dto.prepare().unwrap();
+                assert_eq!(direct.event, plain.event);
+                assert_eq!(direct.distinct_id, plain.distinct_id);
+                assert_eq!(
+                    direct.distinct_id.as_str(),
+                    Some(channel.filter(|c| !c.is_empty()).unwrap_or("billing: r "))
+                );
+                assert_raw(&direct.properties, &plain.properties);
+                assert_eq!(
+                    direct.properties.to_json_string(),
+                    plain.properties.to_json_string()
+                );
+                let JsonValue::Object(fields) = &direct.properties else {
+                    panic!("object")
+                };
+                assert_eq!(
+                    fields.iter().map(|(k, _)| k.clone()).collect::<Vec<_>>(),
+                    names
+                );
+                for (name, present) in [
+                    ("parentRequestId", include_text),
+                    ("model", include_text),
+                    ("resourceId", include_text),
+                    ("unit", include_text),
+                    ("resourceType", include_text),
+                    ("channelID", channel.is_some()),
+                    ("quantity", value.is_some()),
+                ] {
+                    assert_eq!(
+                        native_context(&context).unwrap().get(name).is_some(),
+                        present
+                    );
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn plain_usage_keeps_falsy_channel_casts_utf16_and_required_error_order() {
+    let base = parse_json(r#"{"schemaVersion":1,"pricingVersion":"p","entryId":["cast"],"requestId":"r\ud800","entryKind":"usage","category":"other","operation":"op","source":"src","provider":"p"}"#).unwrap();
+    let params = |context| {
+        obj(vec![
+            ("context", context),
+            ("credits", JsonValue::Number(-0.0)),
+            ("reason", JsonValue::Null),
+        ])
+    };
+    for channel in [
+        None,
+        Some(JsonValue::Null),
+        Some(JsonValue::Bool(false)),
+        Some(JsonValue::Number(-0.0)),
+        Some(JsonValue::Number(f64::NAN)),
+        Some(s("")),
+    ] {
+        let mut context = base.clone();
+        let JsonValue::Object(fields) = &mut context else {
+            panic!("object")
+        };
+        if let Some(value) = &channel {
+            fields.push((JsString::from("channelID"), value.clone()));
+        }
+        let prepared = ai_usage_recorded(&params(context)).unwrap();
+        assert_eq!(
+            prepared.distinct_id.to_json_string(),
+            r#""billing:r\ud800""#
+        );
+        assert_raw(
+            get(&prepared.properties, "channel_id"),
+            channel.as_ref().unwrap_or(&JsonValue::Null),
+        );
+        assert_eq!(
+            get(&prepared.properties, "$insert_id"),
+            get(&base, "entryId")
+        );
+        assert_eq!(get(&prepared.properties, "entry_id"), get(&base, "entryId"));
+        assert_eq!(get(&prepared.properties, "reason"), &JsonValue::Null);
+        assert_eq!(
+            number(get(&prepared.properties, "credits")).to_bits(),
+            (-0.0_f64).to_bits()
+        );
+    }
+    for channel in [
+        JsonValue::Bool(true),
+        JsonValue::Number(1.0),
+        obj(vec![]),
+        JsonValue::Array(vec![]),
+    ] {
+        let mut context = base.clone();
+        let JsonValue::Object(fields) = &mut context else {
+            panic!("object")
+        };
+        fields.push((JsString::from("channelID"), channel));
+        assert_eq!(
+            ai_usage_recorded(&params(context)),
+            Err(CaptureError::InvalidInput("channelID"))
+        );
+    }
+    for (raw, expected) in [
+        (r#"{}"#, "requestId"),
+        (r#"{"requestId":"r"}"#, "entryId"),
+        (r#"{"channelID":"ch"}"#, "entryId"),
+        (r#"{"channelID":"ch","entryId":"e"}"#, "schemaVersion"),
+        (r#"{"channelID":true}"#, "channelID"),
+    ] {
+        assert_eq!(
+            ai_usage_recorded(&params(parse_json(raw).unwrap())),
+            Err(CaptureError::InvalidInput(expected))
+        );
+    }
+    assert_eq!(
+        ai_usage_recorded(&obj(vec![])),
+        Err(CaptureError::InvalidInput("context"))
+    );
+    assert_eq!(
+        ai_usage_recorded(&params(JsonValue::Null)),
+        Err(CaptureError::InvalidInput("context"))
+    );
 }
 
 // Task-owned HTTP fixture. Accept/read/write have absolute bounds and byte caps.

@@ -182,18 +182,20 @@ impl JsonValue {
                 out.push(']');
             }
             Self::Object(values) => {
-                let mut entries: Vec<_> = values.iter().collect();
-                entries.sort_by_key(|(key, _)| array_index(key).map_or((1, 0), |index| (0, index)));
-                out.push('{');
-                for (index, (key, value)) in entries.iter().enumerate() {
-                    if index > 0 {
-                        out.push(',');
-                    }
-                    key.write_json_string(out);
-                    out.push(':');
-                    value.write_json_string(out);
+                // With no canonical index keys, ECMAScript's order is exactly
+                // insertion order. Do not allocate/sort a reference vector for
+                // the common event/settings objects whose keys are all names.
+                if values.iter().any(|(key, _)| array_index(key).is_some()) {
+                    let mut entries: Vec<_> = values.iter().collect();
+                    // Keep the original stable sort for indices, including
+                    // manually constructed duplicate keys and boundary cases.
+                    entries.sort_by_key(|(key, _)| {
+                        array_index(key).map_or((1, 0), |index| (0, index))
+                    });
+                    write_json_object(entries, out);
+                } else {
+                    write_json_object(values, out);
                 }
-                out.push('}');
             }
         }
     }
@@ -249,5 +251,82 @@ impl JsonValue {
                 out.push('}');
             }
         }
+    }
+}
+
+fn write_json_object<'a>(
+    entries: impl IntoIterator<Item = &'a (JsString, JsonValue)>,
+    out: &mut String,
+) {
+    out.push('{');
+    for (index, (key, value)) in entries.into_iter().enumerate() {
+        if index > 0 {
+            out.push(',');
+        }
+        key.write_json_string(out);
+        out.push(':');
+        value.write_json_string(out);
+    }
+    out.push('}');
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{JsonValue, parse_json};
+    use crate::utils::js_string::JsString;
+
+    #[test]
+    fn compact_objects_keep_nonnumeric_insertion_duplicates_and_utf16() {
+        let mut fields: Vec<_> = ["z", "01", "-0", "1.0", "4294967295", "", "z"]
+            .into_iter()
+            .enumerate()
+            .map(|(index, key)| (JsString::from_static(key), JsonValue::Number(index as f64)))
+            .collect();
+        fields.push((
+            JsString::from_units(vec![0xd800]),
+            JsonValue::String(JsString::from_units(vec![0xdc00])),
+        ));
+        let value = JsonValue::Object(fields);
+        assert_eq!(value.get("z"), Some(&JsonValue::Number(6.0)));
+        let expected =
+            r#"{"z":0,"01":1,"-0":2,"1.0":3,"4294967295":4,"":5,"z":6,"\ud800":"\udc00"}"#;
+        assert_eq!(value.to_json_string(), expected);
+        let mut appended = String::from("prefix");
+        value.write_json_string(&mut appended);
+        assert_eq!(appended, format!("prefix{expected}"));
+        assert_eq!(JsonValue::Object(Vec::new()).to_json_string(), "{}");
+    }
+
+    #[test]
+    fn compact_objects_keep_stable_index_order_at_canonical_boundaries() {
+        let fields = [
+            "z",
+            "4294967294",
+            "10",
+            "2",
+            "0",
+            "01",
+            "2",
+            "4294967295",
+            "-0",
+            "1e0",
+            "00",
+            "18446744073709551616",
+        ]
+        .into_iter()
+        .enumerate()
+        .map(|(index, key)| (JsString::from(key), JsonValue::Number(index as f64)))
+        .collect();
+        let value = JsonValue::Object(vec![
+            (JsString::from_static("outer"), JsonValue::Object(fields)),
+            (
+                JsString::from_static("tail"),
+                JsonValue::Array(vec![parse_json(r#"{"b":1,"a":2,"b":3}"#).unwrap()]),
+            ),
+        ]);
+        assert_eq!(
+            value.to_json_string(),
+            r#"{"outer":{"0":4,"2":3,"2":6,"10":2,"4294967294":1,"z":0,"01":5,"4294967295":7,"-0":8,"1e0":9,"00":10,"18446744073709551616":11},"tail":[{"b":3,"a":2}]}"#
+        );
     }
 }

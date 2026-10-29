@@ -45,11 +45,14 @@ pub struct PreparedEvent {
     pub properties: JsonValue,
 }
 
-fn key(s: &str) -> JsString {
-    JsString::from(s)
+fn key(s: &'static str) -> JsString {
+    JsString::from_static(s)
 }
 fn text(s: &str) -> JsonValue {
     JsonValue::String(JsString::from(s))
+}
+fn static_text(s: &'static str) -> JsonValue {
+    JsonValue::String(JsString::from_static(s))
 }
 fn required<'a>(v: &'a JsonValue, name: &'static str) -> Result<&'a JsonValue, CaptureError> {
     v.get(name).ok_or(CaptureError::InvalidInput(name))
@@ -81,7 +84,7 @@ fn fallback(v: &JsonValue, name: &str, other: &str) -> JsonValue {
         _ => optional(v, other),
     }
 }
-fn object(fields: Vec<(&str, JsonValue)>) -> JsonValue {
+fn object(fields: impl IntoIterator<Item = (&'static str, JsonValue)>) -> JsonValue {
     JsonValue::Object(fields.into_iter().map(|(k, v)| (key(k), v)).collect())
 }
 
@@ -89,7 +92,7 @@ pub fn command(p: &JsonValue) -> Result<PreparedEvent, CaptureError> {
     Ok(PreparedEvent {
         event: "command_executed",
         distinct_id: required_string(p, "channelID")?,
-        properties: object(vec![
+        properties: object([
             ("channel_id", field(p, "channelID")?),
             ("channel_name", field(p, "channelName")?),
             ("command", field(p, "command")?),
@@ -106,7 +109,7 @@ pub fn tts(p: &JsonValue) -> Result<PreparedEvent, CaptureError> {
     Ok(PreparedEvent {
         event: "tts_executed",
         distinct_id: required_string(p, "channelID")?,
-        properties: object(vec![
+        properties: object([
             ("channel_id", field(p, "channelID")?),
             ("channel_name", field(p, "channelName")?),
             ("source", field(p, "source")?),
@@ -128,41 +131,89 @@ pub fn ai_usage_recorded(p: &JsonValue) -> Result<PreparedEvent, CaptureError> {
     if !matches!(c, JsonValue::Object(_)) {
         return Err(CaptureError::InvalidInput("context"));
     }
-    let channel = optional(c, "channelID");
+    prepare_usage_recorded(&PlainUsageRecorded {
+        context: c,
+        params: p,
+    })
+}
+
+// Only field access differs between the two public usage builders. The final
+// mapping and its evaluation/error order stay in one assembler. Native access
+// constructs final values directly instead of cloning them through two owned
+// intermediate JSON objects.
+trait UsageRecordedSource {
+    fn context_value(&self, name: &'static str) -> Option<JsonValue>;
+    fn parameter_value(&self, name: &'static str) -> Option<JsonValue>;
+}
+struct PlainUsageRecorded<'a> {
+    context: &'a JsonValue,
+    params: &'a JsonValue,
+}
+impl UsageRecordedSource for PlainUsageRecorded<'_> {
+    fn context_value(&self, name: &'static str) -> Option<JsonValue> {
+        self.context.get(name).cloned()
+    }
+    fn parameter_value(&self, name: &'static str) -> Option<JsonValue> {
+        self.params.get(name).cloned()
+    }
+}
+
+fn prepare_usage_recorded(
+    source: &impl UsageRecordedSource,
+) -> Result<PreparedEvent, CaptureError> {
+    let context = |name| {
+        source
+            .context_value(name)
+            .ok_or(CaptureError::InvalidInput(name))
+    };
+    let parameter = |name| {
+        source
+            .parameter_value(name)
+            .ok_or(CaptureError::InvalidInput(name))
+    };
+    let optional_context = |name| source.context_value(name).unwrap_or(JsonValue::Null);
+    let optional_parameter = |name| source.parameter_value(name).unwrap_or(JsonValue::Null);
+    let channel = optional_context("channelID");
     let distinct_id = if falsy(&channel) {
+        let JsonValue::String(request_id) = context("requestId")? else {
+            return Err(CaptureError::InvalidInput("requestId"));
+        };
         let mut units: Vec<u16> = "billing:".encode_utf16().collect();
-        units.extend(required_string(c, "requestId")?.code_units());
+        units.extend(request_id.code_units());
         JsString::from_units(units)
     } else {
-        required_string(c, "channelID")?
+        let JsonValue::String(channel) = &channel else {
+            return Err(CaptureError::InvalidInput("channelID"));
+        };
+        channel.clone()
     };
     Ok(PreparedEvent {
         event: "ai_usage_recorded",
         distinct_id,
-        properties: object(vec![
-            ("$insert_id", field(c, "entryId")?),
-            ("schema_version", field(c, "schemaVersion")?),
-            ("pricing_version", field(c, "pricingVersion")?),
-            ("entry_id", field(c, "entryId")?),
-            ("request_id", field(c, "requestId")?),
-            ("parent_request_id", optional(c, "parentRequestId")),
-            ("entry_kind", field(c, "entryKind")?),
-            ("category", field(c, "category")?),
-            ("operation", field(c, "operation")?),
-            ("source", field(c, "source")?),
-            ("provider", field(c, "provider")?),
-            ("model", optional(c, "model")),
+        properties: object([
+            ("$insert_id", context("entryId")?),
+            ("schema_version", context("schemaVersion")?),
+            ("pricing_version", context("pricingVersion")?),
+            ("entry_id", context("entryId")?),
+            ("request_id", context("requestId")?),
+            ("parent_request_id", optional_context("parentRequestId")),
+            ("entry_kind", context("entryKind")?),
+            ("category", context("category")?),
+            ("operation", context("operation")?),
+            ("source", context("source")?),
+            ("provider", context("provider")?),
+            ("model", optional_context("model")),
             ("channel_id", channel),
-            ("credits", field(p, "credits")?),
-            ("reason", field(p, "reason")?),
-            ("polar_cost_amount", optional(p, "polarCostAmount")),
-            ("quantity", optional(c, "quantity")),
-            ("unit", optional(c, "unit")),
-            ("resource_type", optional(c, "resourceType")),
-            ("resource_id", optional(c, "resourceId")),
-            ("input_tokens", optional(p, "inputTokens")),
-            ("output_tokens", optional(p, "outputTokens")),
-            ("total_tokens", optional(p, "totalTokens")),
+            ("credits", parameter("credits")?),
+            ("reason", parameter("reason")?),
+            ("polar_cost_amount", optional_parameter("polarCostAmount")),
+            ("quantity", optional_context("quantity")),
+            ("unit", optional_context("unit")),
+            ("resource_type", optional_context("resourceType")),
+            ("resource_id", optional_context("resourceId")),
+            ("input_tokens", optional_parameter("inputTokens")),
+            ("output_tokens", optional_parameter("outputTokens")),
+            ("total_tokens", optional_parameter("totalTokens")),
         ]),
     })
 }
@@ -178,8 +229,8 @@ pub fn native_context(c: &AiUsageContext) -> Result<JsonValue, CaptureError> {
         ("pricingVersion", text(&c.pricing_version)),
         ("entryId", text(&c.entry_id)),
         ("requestId", text(&c.request_id)),
-        ("entryKind", text(c.entry_kind.as_str())),
-        ("category", text(c.category.as_str())),
+        ("entryKind", static_text(c.entry_kind.as_str())),
+        ("category", static_text(c.category.as_str())),
         ("operation", text(&c.operation)),
         ("source", text(&c.source)),
         ("provider", text(&c.provider)),
@@ -215,22 +266,46 @@ pub struct NativeUsageRecorded<'a> {
 }
 impl NativeUsageRecorded<'_> {
     pub fn prepare(&self) -> Result<PreparedEvent, CaptureError> {
-        let mut fields = vec![
-            ("context", native_context(self.context)?),
-            ("credits", JsonValue::Number(self.credits)),
-            ("reason", text(self.reason)),
-        ];
-        for (name, value) in [
-            ("polarCostAmount", self.polar_cost_amount),
-            ("inputTokens", self.input_tokens),
-            ("outputTokens", self.output_tokens),
-            ("totalTokens", self.total_tokens),
-        ] {
-            if let Some(value) = value {
-                fields.push((name, JsonValue::Number(value)));
-            }
+        prepare_usage_recorded(self)
+    }
+}
+impl UsageRecordedSource for NativeUsageRecorded<'_> {
+    // Each assembler call supplies a literal name, allowing direct DTO field
+    // access after inlining rather than constructing an owned context object.
+    #[inline]
+    fn context_value(&self, name: &'static str) -> Option<JsonValue> {
+        let c = self.context;
+        match name {
+            "schemaVersion" => Some(JsonValue::Number(f64::from(c.schema_version))),
+            "pricingVersion" => Some(text(&c.pricing_version)),
+            "entryId" => Some(text(&c.entry_id)),
+            "requestId" => Some(text(&c.request_id)),
+            "parentRequestId" => c.parent_request_id.as_deref().map(text),
+            "entryKind" => Some(static_text(c.entry_kind.as_str())),
+            "category" => Some(static_text(c.category.as_str())),
+            "operation" => Some(text(&c.operation)),
+            "source" => Some(text(&c.source)),
+            "provider" => Some(text(&c.provider)),
+            "model" => c.model.as_deref().map(text),
+            "channelID" => c.channel_id.as_deref().map(text),
+            "quantity" => c.quantity.map(JsonValue::Number),
+            "unit" => c.unit.map(|v| static_text(v.as_str())),
+            "resourceType" => c.resource_type.map(|v| static_text(v.as_str())),
+            "resourceId" => c.resource_id.as_deref().map(text),
+            _ => None,
         }
-        ai_usage_recorded(&object(fields))
+    }
+    #[inline]
+    fn parameter_value(&self, name: &'static str) -> Option<JsonValue> {
+        match name {
+            "credits" => Some(JsonValue::Number(self.credits)),
+            "reason" => Some(text(self.reason)),
+            "polarCostAmount" => self.polar_cost_amount.map(JsonValue::Number),
+            "inputTokens" => self.input_tokens.map(JsonValue::Number),
+            "outputTokens" => self.output_tokens.map(JsonValue::Number),
+            "totalTokens" => self.total_tokens.map(JsonValue::Number),
+            _ => None,
+        }
     }
 }
 
@@ -245,7 +320,7 @@ pub fn ai_operation(p: &JsonValue) -> Result<PreparedEvent, CaptureError> {
     Ok(PreparedEvent {
         event: "ai_operation",
         distinct_id: required_string(p, "channelID")?,
-        properties: object(vec![
+        properties: object([
             (
                 "$insert_id",
                 JsonValue::String(JsString::from_units(insert)),
@@ -288,12 +363,12 @@ impl StreamerIdentityState {
         Some(PreparedEvent {
             event: "$identify",
             distinct_id: id.clone(),
-            properties: object(vec![
+            properties: object([
                 (
                     "$set",
-                    object(vec![("channel_name", JsonValue::String(name.clone()))]),
+                    object([("channel_name", JsonValue::String(name.clone()))]),
                 ),
-                ("$set_once", object(vec![])),
+                ("$set_once", object([])),
             ]),
         })
     }
