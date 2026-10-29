@@ -91,6 +91,8 @@ pub mod ast_syntax;
 pub mod ai_credit_projection;
 #[cfg(feature = "ai-usage")]
 pub mod ai_usage;
+#[cfg(feature = "ai-usage-producer")]
+pub mod ai_usage_producer;
 #[cfg(feature = "chat-events")]
 pub mod chat_events;
 #[cfg(feature = "command-utils")]
