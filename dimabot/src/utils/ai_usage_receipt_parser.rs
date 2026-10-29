@@ -6,7 +6,9 @@
 //! for the opt-in module/feature wiring the parent must review. Strings stay
 //! UTF-16 until the explicit BSON adapter.
 use super::{
-    ai_usage::{EntryKind, ResourceType, UsageUnit, classify_adjustment},
+    ai_usage::{
+        EntryKind, ResourceType, UsageUnit, classify_adjustment, normalize_receipt_category,
+    },
     bson_compat::js_number as bson_number,
     credit_policy::JsDate,
     js_date::{parse_date, parse_date_utf16},
@@ -56,16 +58,7 @@ fn enum_text(value: Option<JsonView<'_>>, allowed: &[&'static str]) -> Option<&'
         .find(|allowed| value.as_str() == Some(*allowed))
 }
 fn category(value: Option<JsonView<'_>>) -> &'static str {
-    match text(value).as_ref().and_then(JsString::as_str) {
-        Some("tts") => "tts",
-        Some("ai_chat") => "ai_chat",
-        Some("ai_agent") => "ai_agent",
-        Some("memory") => "memory",
-        Some("clip_recommendation") => "clip_recommendation",
-        Some("credit_adjustment") => "credit_adjustment",
-        Some("other") => "other",
-        _ => "uncategorized",
-    }
+    normalize_receipt_category(text(value).as_ref().and_then(JsString::as_str))
 }
 
 // Retain the existing policy's entire decision tree. Only adapt its input: the

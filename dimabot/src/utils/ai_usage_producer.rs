@@ -11,7 +11,7 @@ use std::{
 };
 
 use super::{
-    ai_usage::{AiUsageContext, EntryKind, classify_adjustment},
+    ai_usage::{AiUsageContext, EntryKind, classify_adjustment, normalize_receipt_category},
     credit_policy::{InvalidDate, JsDate},
     js_string::{JsString, write_json_utf8},
     lossless_json::JsonValue,
@@ -321,22 +321,7 @@ fn build(
         JsonValue::String(x) => x.as_str(),
         _ => None,
     });
-    put(
-        "category",
-        s(match category {
-            Some(
-                v @ ("tts"
-                | "ai_chat"
-                | "ai_agent"
-                | "memory"
-                | "clip_recommendation"
-                | "credit_adjustment"
-                | "other"
-                | "uncategorized"),
-            ) => v,
-            _ => "uncategorized",
-        }),
-    );
+    put("category", s(normalize_receipt_category(category)));
     for key in ["operation", "source"] {
         if let Some(v) = context.get(key) {
             put(key, v.into_owned());

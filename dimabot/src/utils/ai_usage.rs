@@ -34,6 +34,9 @@ macro_rules! string_enum {
         pub enum $name { $(#[serde(rename = $text)] $variant),+ }
         impl $name {
             pub const fn as_str(self) -> &'static str { match self { $(Self::$variant => $text),+ } }
+            pub fn parse_token(value: &str) -> Option<Self> {
+                match value { $($text => Some(Self::$variant),)+ _ => None }
+            }
         }
     };
 }
@@ -44,6 +47,14 @@ string_enum!(Category {
 });
 string_enum!(UsageUnit { Characters => "characters", Tokens => "tokens", Minutes => "minutes" });
 string_enum!(ResourceType { Speech => "speech", VoicePreview => "voice_preview", LlmGeneration => "llm_generation", VodAnalysis => "vod_analysis" });
+
+/// Strict receipt category selection; invalid or absent values use the fallback.
+pub fn normalize_receipt_category(value: Option<&str>) -> &'static str {
+    value
+        .and_then(Category::parse_token)
+        .map(Category::as_str)
+        .unwrap_or("uncategorized")
+}
 
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]

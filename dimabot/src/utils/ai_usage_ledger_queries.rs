@@ -8,7 +8,7 @@
 //! compatibility helpers, rather than introducing another JS interpreter.
 
 use super::{
-    ai_usage::classify_adjustment,
+    ai_usage::{classify_adjustment, normalize_receipt_category},
     ai_usage_ledger_reads::{
         AiUsageLedgerReadError, AiUsageLedgerState, AiUsageLedgerStateInput, LedgerField,
         MongoAiUsageLedgerReads, array_coercion_value, date_method, ordinary_json, version_number,
@@ -328,16 +328,7 @@ fn primitive_string(value: &LedgerField) -> Option<&str> {
 }
 
 fn safe_category(value: &LedgerField) -> &'static str {
-    match primitive_string(value) {
-        Some("tts") => "tts",
-        Some("ai_chat") => "ai_chat",
-        Some("ai_agent") => "ai_agent",
-        Some("memory") => "memory",
-        Some("clip_recommendation") => "clip_recommendation",
-        Some("credit_adjustment") => "credit_adjustment",
-        Some("other") => "other",
-        _ => "uncategorized",
-    }
+    normalize_receipt_category(primitive_string(value))
 }
 
 fn adjustment(document: &Document) -> Result<LedgerField, AiUsageLedgerReadError> {
