@@ -1,0 +1,64 @@
+{
+  "buildReceipt": "compiler-1793293726581063050-receipt.json",
+  "toolchainImage": "sha256:557a94c82b485a14b569120e00867267108c734efe33f10cc31ca0cd5dd1eca9",
+  "sourceTreeSha256": "3c1fcbfbff8dcd4a95a4446ab379174125afbf303626cd9a1e826d03f5f52175",
+  "sourceInputs": 1291,
+  "binaries": [
+    {
+      "name": "ai_usage_daily_reducer_benchmark",
+      "cargoExecutable": "/target-cache/release/deps/ai_usage_daily_reducer_benchmark-a434b19444809ff9",
+      "artifactPath": "ledger-reducer-benchmark/attempt1/bin/ai_usage_daily_reducer_benchmark",
+      "sha256": "89d41f9ad3ab70dbaa6ca40d21074c60aa8dfe68c566e34bdfe76a54175e24ca",
+      "bytes": 2090360,
+      "elfMachine": "x86-64",
+      "staticNoInterpreterOrNeededLibraries": true,
+      "programHeaderTypes": [
+        1,
+        1,
+        1,
+        1,
+        2,
+        4,
+        7,
+        1685382480,
+        1685382481,
+        1685382482
+      ],
+      "profile": {
+        "opt_level": "3",
+        "debuginfo": 0,
+        "debug_assertions": false,
+        "overflow_checks": false,
+        "test": true
+      }
+    },
+    {
+      "name": "ai_usage_ledger_persistence",
+      "cargoExecutable": "/target-cache/release/deps/ai_usage_ledger_persistence-5b813ff261873f46",
+      "artifactPath": "ledger-reducer-benchmark/attempt1/bin/ai_usage_ledger_persistence",
+      "sha256": "b8ed18e766acad4bf3d9e63256fdcf97b0178fc613c9448a617e331dd080fb6a",
+      "bytes": 15819384,
+      "elfMachine": "x86-64",
+      "staticNoInterpreterOrNeededLibraries": true,
+      "programHeaderTypes": [
+        1,
+        1,
+        1,
+        1,
+        2,
+        4,
+        7,
+        1685382480,
+        1685382481,
+        1685382482
+      ],
+      "profile": {
+        "opt_level": "3",
+        "debuginfo": 0,
+        "debug_assertions": false,
+        "overflow_checks": false,
+        "test": true
+      }
+    }
+  ]
+}

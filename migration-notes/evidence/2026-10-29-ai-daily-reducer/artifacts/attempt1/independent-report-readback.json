@@ -1,0 +1,95 @@
+{
+  "scope": "Prepared finite-number ASCII daily reduction only; no DB, lock, transport, parsing or schema-construction timings.",
+  "reportSha256": "aff7cb1a9066509c13e0ff8cc64007802b6c4ca02b28f8cf9c9c8fa8a57be5db",
+  "inputSha256": "a65715ff6e119fe68be6f89a096e397e20018ea022ea4f9f035816a530ae71c5",
+  "nativeSourceSha256": "a6fa37f0daf49a449b913e20e4f6c17e85a178e609c99e0cf387a79697966074",
+  "nodeExecutableSha256": "569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108",
+  "all35SamplesCountsChecksumsAndRecomputedNsPerOpVerified": true,
+  "workloads": [
+    {
+      "days": 1,
+      "groups": 4,
+      "timedOpsPerTrial": 1000,
+      "warmupOps": 10000,
+      "trials": 7,
+      "node": {
+        "medianNsPerOp": 1197.383,
+        "minNsPerOp": 1061.177,
+        "maxNsPerOp": 1485.553
+      },
+      "rust": {
+        "medianNsPerOp": 7058.24,
+        "minNsPerOp": 6656.268,
+        "maxNsPerOp": 7291.157
+      }
+    },
+    {
+      "days": 30,
+      "groups": 120,
+      "timedOpsPerTrial": 417,
+      "warmupOps": 834,
+      "trials": 7,
+      "node": {
+        "medianNsPerOp": 46880.95443645084,
+        "minNsPerOp": 37554.37170263789,
+        "maxNsPerOp": 57314.96163069544
+      },
+      "rust": {
+        "medianNsPerOp": 243148.85131894486,
+        "minNsPerOp": 229588.26858513188,
+        "maxNsPerOp": 264718.19664268586
+      }
+    },
+    {
+      "days": 90,
+      "groups": 360,
+      "timedOpsPerTrial": 139,
+      "warmupOps": 278,
+      "trials": 7,
+      "node": {
+        "medianNsPerOp": 108134.05755395684,
+        "minNsPerOp": 72537.02158273381,
+        "maxNsPerOp": 152836.57553956835
+      },
+      "rust": {
+        "medianNsPerOp": 903076.8057553957,
+        "minNsPerOp": 882446.9568345323,
+        "maxNsPerOp": 926073.5539568345
+      }
+    },
+    {
+      "days": 366,
+      "groups": 1464,
+      "timedOpsPerTrial": 35,
+      "warmupOps": 69,
+      "trials": 7,
+      "node": {
+        "medianNsPerOp": 483469.8857142857,
+        "minNsPerOp": 412330.6,
+        "maxNsPerOp": 599257.3428571429
+      },
+      "rust": {
+        "medianNsPerOp": 6407437.571428572,
+        "minNsPerOp": 5667428.314285714,
+        "maxNsPerOp": 6897162.057142857
+      }
+    },
+    {
+      "days": 3660,
+      "groups": 14640,
+      "timedOpsPerTrial": 4,
+      "warmupOps": 7,
+      "trials": 7,
+      "node": {
+        "medianNsPerOp": 4529699.75,
+        "minNsPerOp": 3483231.75,
+        "maxNsPerOp": 4992146.0
+      },
+      "rust": {
+        "medianNsPerOp": 291209120.25,
+        "minNsPerOp": 285559087.0,
+        "maxNsPerOp": 303952950.75
+      }
+    }
+  ]
+}

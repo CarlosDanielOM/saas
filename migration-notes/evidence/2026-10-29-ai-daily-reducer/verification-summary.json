@@ -1,0 +1,393 @@
+{
+  "status": "Prepared reducer remains slower than TypeScript across all five workloads in all three rounds; full migration incomplete.",
+  "codeCommit": "a87d9ee7c0bedb686110b3f8b55b44fab14b127c",
+  "sourceTreeSha256": "1001d651b1396c2bf99d4491bfbd9c95a61cc822c20e68296e6561b9ea9c6836",
+  "sourceInputs": 1291,
+  "acceptedFinalRuns": [
+    "compiler-1793297040655785471",
+    "node-1793297958690919782",
+    "node-fixtures-1793298262170959463"
+  ],
+  "ordinaryCases": 11,
+  "actualSourceCases": 204,
+  "privateProtocolSuites": 1,
+  "pairedSamplesPerRound": 35,
+  "rounds": [
+    {
+      "scope": "Prepared finite-number ASCII daily reduction only; no DB, lock, transport, parsing or schema-construction timings.",
+      "reportSha256": "aff7cb1a9066509c13e0ff8cc64007802b6c4ca02b28f8cf9c9c8fa8a57be5db",
+      "inputSha256": "a65715ff6e119fe68be6f89a096e397e20018ea022ea4f9f035816a530ae71c5",
+      "nativeSourceSha256": "a6fa37f0daf49a449b913e20e4f6c17e85a178e609c99e0cf387a79697966074",
+      "nodeExecutableSha256": "569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108",
+      "all35SamplesCountsChecksumsAndRecomputedNsPerOpVerified": true,
+      "workloads": [
+        {
+          "days": 1,
+          "groups": 4,
+          "timedOpsPerTrial": 1000,
+          "warmupOps": 10000,
+          "trials": 7,
+          "node": {
+            "medianNsPerOp": 1197.383,
+            "minNsPerOp": 1061.177,
+            "maxNsPerOp": 1485.553
+          },
+          "rust": {
+            "medianNsPerOp": 7058.24,
+            "minNsPerOp": 6656.268,
+            "maxNsPerOp": 7291.157
+          }
+        },
+        {
+          "days": 30,
+          "groups": 120,
+          "timedOpsPerTrial": 417,
+          "warmupOps": 834,
+          "trials": 7,
+          "node": {
+            "medianNsPerOp": 46880.95443645084,
+            "minNsPerOp": 37554.37170263789,
+            "maxNsPerOp": 57314.96163069544
+          },
+          "rust": {
+            "medianNsPerOp": 243148.85131894486,
+            "minNsPerOp": 229588.26858513188,
+            "maxNsPerOp": 264718.19664268586
+          }
+        },
+        {
+          "days": 90,
+          "groups": 360,
+          "timedOpsPerTrial": 139,
+          "warmupOps": 278,
+          "trials": 7,
+          "node": {
+            "medianNsPerOp": 108134.05755395684,
+            "minNsPerOp": 72537.02158273381,
+            "maxNsPerOp": 152836.57553956835
+          },
+          "rust": {
+            "medianNsPerOp": 903076.8057553957,
+            "minNsPerOp": 882446.9568345323,
+            "maxNsPerOp": 926073.5539568345
+          }
+        },
+        {
+          "days": 366,
+          "groups": 1464,
+          "timedOpsPerTrial": 35,
+          "warmupOps": 69,
+          "trials": 7,
+          "node": {
+            "medianNsPerOp": 483469.8857142857,
+            "minNsPerOp": 412330.6,
+            "maxNsPerOp": 599257.3428571429
+          },
+          "rust": {
+            "medianNsPerOp": 6407437.571428572,
+            "minNsPerOp": 5667428.314285714,
+            "maxNsPerOp": 6897162.057142857
+          }
+        },
+        {
+          "days": 3660,
+          "groups": 14640,
+          "timedOpsPerTrial": 4,
+          "warmupOps": 7,
+          "trials": 7,
+          "node": {
+            "medianNsPerOp": 4529699.75,
+            "minNsPerOp": 3483231.75,
+            "maxNsPerOp": 4992146.0
+          },
+          "rust": {
+            "medianNsPerOp": 291209120.25,
+            "minNsPerOp": 285559087.0,
+            "maxNsPerOp": 303952950.75
+          }
+        }
+      ]
+    },
+    {
+      "scope": "Prepared finite-number ASCII daily reduction only; no DB, lock, transport, parsing or schema-construction timings.",
+      "reportSha256": "0188432527c972fb48349ac500b12287e624a296ba2bb6393f9bf706856175a7",
+      "inputSha256": "a65715ff6e119fe68be6f89a096e397e20018ea022ea4f9f035816a530ae71c5",
+      "nativeSourceSha256": "91cc3509f360a160e91dfd2d842ba7b3d8f5a49ab9a7dd7cfb3ce44c2f71b507",
+      "nodeExecutableSha256": "569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108",
+      "all35SamplesCountsChecksumsAndRecomputedNsPerOpVerified": true,
+      "workloads": [
+        {
+          "days": 1,
+          "groups": 4,
+          "timedOpsPerTrial": 1000,
+          "warmupOps": 10000,
+          "trials": 7,
+          "node": {
+            "medianNsPerOp": 948.868,
+            "minNsPerOp": 813.624,
+            "maxNsPerOp": 1324.722
+          },
+          "rust": {
+            "medianNsPerOp": 2207.997,
+            "minNsPerOp": 2155.878,
+            "maxNsPerOp": 2331.157
+          }
+        },
+        {
+          "days": 30,
+          "groups": 120,
+          "timedOpsPerTrial": 417,
+          "warmupOps": 834,
+          "trials": 7,
+          "node": {
+            "medianNsPerOp": 38298.23501199041,
+            "minNsPerOp": 24117.429256594725,
+            "maxNsPerOp": 54186.89448441247
+          },
+          "rust": {
+            "medianNsPerOp": 68321.64268585132,
+            "minNsPerOp": 63056.57793764988,
+            "maxNsPerOp": 93676.97841726619
+          }
+        },
+        {
+          "days": 90,
+          "groups": 360,
+          "timedOpsPerTrial": 139,
+          "warmupOps": 278,
+          "trials": 7,
+          "node": {
+            "medianNsPerOp": 77172.10071942446,
+            "minNsPerOp": 72978.41726618705,
+            "maxNsPerOp": 138373.5035971223
+          },
+          "rust": {
+            "medianNsPerOp": 191489.69064748203,
+            "minNsPerOp": 181800.3165467626,
+            "maxNsPerOp": 263519.56115107914
+          }
+        },
+        {
+          "days": 366,
+          "groups": 1464,
+          "timedOpsPerTrial": 35,
+          "warmupOps": 69,
+          "trials": 7,
+          "node": {
+            "medianNsPerOp": 487493.97142857144,
+            "minNsPerOp": 320236.97142857144,
+            "maxNsPerOp": 676087.8
+          },
+          "rust": {
+            "medianNsPerOp": 853247.3714285714,
+            "minNsPerOp": 839096.8857142857,
+            "maxNsPerOp": 994184.2
+          }
+        },
+        {
+          "days": 3660,
+          "groups": 14640,
+          "timedOpsPerTrial": 4,
+          "warmupOps": 7,
+          "trials": 7,
+          "node": {
+            "medianNsPerOp": 4048438.25,
+            "minNsPerOp": 3738427.5,
+            "maxNsPerOp": 4643562.5
+          },
+          "rust": {
+            "medianNsPerOp": 11353173.25,
+            "minNsPerOp": 10788090.0,
+            "maxNsPerOp": 11934083.75
+          }
+        }
+      ]
+    },
+    {
+      "scope": "Prepared finite-number ASCII daily reduction only; no DB, lock, transport, parsing or schema-construction timings.",
+      "reportSha256": "9925e9fc18ca2556a5ad7657c570b75b2041edfac8c92b825748eecd6167d00b",
+      "inputSha256": "a65715ff6e119fe68be6f89a096e397e20018ea022ea4f9f035816a530ae71c5",
+      "nativeSourceSha256": "874c8c0a47b311a31db958f12ecc6c98d64b21aca7633f36a6b96bb6bba5ee8c",
+      "nodeExecutableSha256": "569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108",
+      "all35SamplesCountsChecksumsAndRecomputedNsPerOpVerified": true,
+      "workloads": [
+        {
+          "days": 1,
+          "groups": 4,
+          "timedOpsPerTrial": 1000,
+          "warmupOps": 10000,
+          "trials": 7,
+          "node": {
+            "medianNsPerOp": 862.065,
+            "minNsPerOp": 832.27,
+            "maxNsPerOp": 1149.834
+          },
+          "rust": {
+            "medianNsPerOp": 2483.752,
+            "minNsPerOp": 2075.638,
+            "maxNsPerOp": 3032.32
+          }
+        },
+        {
+          "days": 30,
+          "groups": 120,
+          "timedOpsPerTrial": 417,
+          "warmupOps": 834,
+          "trials": 7,
+          "node": {
+            "medianNsPerOp": 34537.28057553957,
+            "minNsPerOp": 29356.54676258993,
+            "maxNsPerOp": 44013.56834532374
+          },
+          "rust": {
+            "medianNsPerOp": 53850.34052757794,
+            "minNsPerOp": 48167.561151079135,
+            "maxNsPerOp": 63718.91846522782
+          }
+        },
+        {
+          "days": 90,
+          "groups": 360,
+          "timedOpsPerTrial": 139,
+          "warmupOps": 278,
+          "trials": 7,
+          "node": {
+            "medianNsPerOp": 80926.03597122303,
+            "minNsPerOp": 76225.5107913669,
+            "maxNsPerOp": 108221.3381294964
+          },
+          "rust": {
+            "medianNsPerOp": 143120.5251798561,
+            "minNsPerOp": 132461.27338129497,
+            "maxNsPerOp": 182832.3165467626
+          }
+        },
+        {
+          "days": 366,
+          "groups": 1464,
+          "timedOpsPerTrial": 35,
+          "warmupOps": 69,
+          "trials": 7,
+          "node": {
+            "medianNsPerOp": 411921.85714285716,
+            "minNsPerOp": 388251.22857142857,
+            "maxNsPerOp": 479241.34285714285
+          },
+          "rust": {
+            "medianNsPerOp": 732731.0571428571,
+            "minNsPerOp": 633363.1714285715,
+            "maxNsPerOp": 981843.6571428571
+          }
+        },
+        {
+          "days": 3660,
+          "groups": 14640,
+          "timedOpsPerTrial": 4,
+          "warmupOps": 7,
+          "trials": 7,
+          "node": {
+            "medianNsPerOp": 4196257.5,
+            "minNsPerOp": 4076700.75,
+            "maxNsPerOp": 5306770.0
+          },
+          "rust": {
+            "medianNsPerOp": 11087823.5,
+            "minNsPerOp": 9708675.25,
+            "maxNsPerOp": 13689426.75
+          }
+        }
+      ]
+    }
+  ],
+  "scope": "Prepared finite-number ASCII daily reduction only; no DB, lock, transport, parsing or schema-construction timings.",
+  "laterBsonMaterializationExcluded": true,
+  "productionUnchangedRecords": 19,
+  "noRetirementAdoptionDeploymentPush": true,
+  "runs": [
+    {
+      "run": "compiler-1793293223779765125",
+      "success": false,
+      "sourceTreeSha256": "4875c650196875bb25e7480548beeac60d1e7f1b4539351fd98489c54ee11af0",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-1793293586217392509",
+      "success": false,
+      "sourceTreeSha256": "9d96006e301a9635e3510e9bc2f2665e2e2750539fd05a76757da46300078ca2",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-1793293726581063050",
+      "success": true,
+      "sourceTreeSha256": "3c1fcbfbff8dcd4a95a4446ab379174125afbf303626cd9a1e826d03f5f52175",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-1793295514911526936",
+      "success": true,
+      "sourceTreeSha256": "7cb2f7a3f31127d46be1eb420525c32984bdf6773c46f81a0df208ee09a7360f",
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-1793297040655785471",
+      "success": true,
+      "sourceTreeSha256": "1001d651b1396c2bf99d4491bfbd9c95a61cc822c20e68296e6561b9ea9c6836",
+      "productionUnchanged": true
+    },
+    {
+      "run": "format-1793293036272972066",
+      "success": true,
+      "sourceTreeSha256": "306a3cee070ca74e5ccff1770004930733052488f317377cbff874843a4e36c8",
+      "productionUnchanged": true
+    },
+    {
+      "run": "format-1793295365670124593",
+      "success": true,
+      "sourceTreeSha256": "8e079932b3168c2bd39b490d6b4e9406344589052fb69e6f28acef7c432753f4",
+      "productionUnchanged": true
+    },
+    {
+      "run": "format-1793296544643344954",
+      "success": true,
+      "sourceTreeSha256": "1001d651b1396c2bf99d4491bfbd9c95a61cc822c20e68296e6561b9ea9c6836",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793293223782384361",
+      "success": true,
+      "sourceTreeSha256": "4875c650196875bb25e7480548beeac60d1e7f1b4539351fd98489c54ee11af0",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793294524719023838",
+      "success": true,
+      "sourceTreeSha256": "3c1fcbfbff8dcd4a95a4446ab379174125afbf303626cd9a1e826d03f5f52175",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793295826467531841",
+      "success": true,
+      "sourceTreeSha256": "7cb2f7a3f31127d46be1eb420525c32984bdf6773c46f81a0df208ee09a7360f",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793297812780734880",
+      "success": false,
+      "sourceTreeSha256": "1001d651b1396c2bf99d4491bfbd9c95a61cc822c20e68296e6561b9ea9c6836",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793297958690919782",
+      "success": true,
+      "sourceTreeSha256": "1001d651b1396c2bf99d4491bfbd9c95a61cc822c20e68296e6561b9ea9c6836",
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-fixtures-1793298262170959463",
+      "success": true,
+      "sourceTreeSha256": "1001d651b1396c2bf99d4491bfbd9c95a61cc822c20e68296e6561b9ea9c6836",
+      "productionUnchanged": true
+    }
+  ],
+  "binaryPolicy": "Exact static musl ELFs executed only in pinned capped Node image; public Node/SDK binaries and compiled native artifacts are hash-bound, regenerable, and not vendored."
+}

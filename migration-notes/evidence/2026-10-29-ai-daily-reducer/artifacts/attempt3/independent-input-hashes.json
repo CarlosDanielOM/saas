@@ -1,0 +1,10 @@
+{
+  "commonInputSha256": "a65715ff6e119fe68be6f89a096e397e20018ea022ea4f9f035816a530ae71c5",
+  "pinnedNodeSha256": "569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108",
+  "preparedArtifacts": {
+    "expected.json": "a54da2bcbbc462b66520356e819135278d43b12f21b883abf87dba56daf5cad0",
+    "inputs.json": "a65715ff6e119fe68be6f89a096e397e20018ea022ea4f9f035816a530ae71c5",
+    "source.json": "950afd2eceb9550348c8d8ef12384e94d16ef5bf2637f1246f21662026727776"
+  },
+  "scope": "Independent host read-only hashes before any timed Rust/Node benchmark."
+}
