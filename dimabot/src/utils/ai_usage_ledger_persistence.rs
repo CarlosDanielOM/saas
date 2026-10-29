@@ -482,6 +482,24 @@ impl Sum {
             }
         }
     }
+    fn add_bson(&mut self, value: Option<&Bson>) -> PersistenceResult<()> {
+        if let Self::Number(sum) = self {
+            match value {
+                Some(Bson::Int32(value)) => {
+                    *sum += f64::from(*value);
+                    return Ok(());
+                }
+                Some(Bson::Double(value)) => {
+                    *sum += *value;
+                    return Ok(());
+                }
+                _ => {}
+            }
+        }
+        let right = Self::primitive(value)?;
+        *self = self.clone().add(right);
+        Ok(())
+    }
     fn number(&self) -> f64 {
         match self {
             Self::Number(v) => *v,
@@ -627,6 +645,36 @@ impl DailyCategory {
     }
 }
 
+// Reading the plain BSON document has no user hooks. Collect the fields once,
+// then perform all validation and coercion in the original source order.
+#[derive(Default)]
+struct GroupFields<'a> {
+    id: Option<&'a Bson>,
+    spent: Option<&'a Bson>,
+    granted: Option<&'a Bson>,
+    debited: Option<&'a Bson>,
+    count: Option<&'a Bson>,
+    expires: Option<&'a Bson>,
+}
+
+impl<'a> GroupFields<'a> {
+    fn read(group: &'a Document) -> Self {
+        let mut fields = Self::default();
+        for (key, value) in group {
+            match key.as_str() {
+                "_id" => fields.id = Some(value),
+                "spent" => fields.spent = Some(value),
+                "granted" => fields.granted = Some(value),
+                "debited" => fields.debited = Some(value),
+                "count" => fields.count = Some(value),
+                "expiresAt" => fields.expires = Some(value),
+                _ => {}
+            }
+        }
+        fields
+    }
+}
+
 /// Preserve group encounter order, Map insertion order and normalized-category
 /// overwrite. A Decimal/Long count is an object and is truthy even when zero.
 pub fn reduce_daily_groups(groups: &[Document]) -> PersistenceResult<DailyRows> {
@@ -634,11 +682,21 @@ pub fn reduce_daily_groups(groups: &[Document]) -> PersistenceResult<DailyRows> 
     // Borrow keys from the input; rows remain the authority for encounter order.
     let mut date_indices: HashMap<Option<&str>, usize> = HashMap::new();
     for group in groups {
-        let id = group
-            .get_document("_id")
-            .map_err(|_| AiUsagePersistenceError::GroupType { path: "_id" })?;
+        let fields = GroupFields::read(group);
+        let Some(Bson::Document(id)) = fields.id else {
+            return Err(AiUsagePersistenceError::GroupType { path: "_id" });
+        };
+        let mut date = None;
+        let mut category = None;
+        for (key, value) in id {
+            match key.as_str() {
+                "date" => date = Some(value),
+                "category" => category = Some(value),
+                _ => {}
+            }
+        }
         // $dateToString yields only string or null under this exact pipeline.
-        let day = match id.get("date") {
+        let day = match date {
             Some(Bson::String(value)) => Some(value.as_str()),
             None | Some(Bson::Null) => None,
             _ => return Err(AiUsagePersistenceError::GroupType { path: "_id.date" }),
@@ -655,7 +713,7 @@ pub fn reduce_daily_groups(groups: &[Document]) -> PersistenceResult<DailyRows> 
                         debited: Sum::Number(0.0),
                         count: Sum::Number(0.0),
                         categories: Vec::new(),
-                        expires: group.get("expiresAt").cloned(),
+                        expires: fields.expires.cloned(),
                     },
                 ));
                 date_indices.insert(day, i);
@@ -663,29 +721,23 @@ pub fn reduce_daily_groups(groups: &[Document]) -> PersistenceResult<DailyRows> 
             }
         };
         let row = &mut rows[index].1;
-        row.spent = row.spent.clone().add(Sum::primitive(group.get("spent"))?);
-        row.granted = row
-            .granted
-            .clone()
-            .add(Sum::primitive(group.get("granted"))?);
-        row.debited = row
-            .debited
-            .clone()
-            .add(Sum::primitive(group.get("debited"))?);
-        row.count = row.count.clone().add(Sum::primitive(group.get("count"))?);
-        if relational_greater(group.get("expiresAt"), row.expires.as_ref())? {
-            row.expires = group.get("expiresAt").cloned();
+        row.spent.add_bson(fields.spent)?;
+        row.granted.add_bson(fields.granted)?;
+        row.debited.add_bson(fields.debited)?;
+        row.count.add_bson(fields.count)?;
+        if relational_greater(fields.expires, row.expires.as_ref())? {
+            row.expires = fields.expires.cloned();
         }
-        if bson_truthy(group.get("count")) {
-            let cat = match id.get("category") {
+        if bson_truthy(fields.count) {
+            let cat = match category {
                 Some(Bson::String(v)) => normalize_receipt_category(Some(v.as_str())),
                 _ => "uncategorized",
             };
             // Mixed categories retain BSON wrapper values; they are NOT cast
             // to daily Number paths. Node default promotions happen on read.
             let entry = DailyCategory {
-                credits: group.get("spent").cloned(),
-                count: group.get("count").cloned(),
+                credits: fields.spent.cloned(),
+                count: fields.count.cloned(),
             };
             if let Some((_, previous)) = row.categories.iter_mut().find(|(key, _)| *key == cat) {
                 *previous = entry;

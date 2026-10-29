@@ -364,6 +364,47 @@ fn category_replacement_retains_order_presence_and_bson_wrappers() {
 }
 
 #[test]
+fn numeric_accumulation_keeps_later_string_coercion_and_error_priority() {
+    let mut reordered = Document::new();
+    reordered.insert("count", 1);
+    reordered.insert("expiresAt", DateTime::from_millis(NOW + 30 * DAY));
+    reordered.insert("debited", 0);
+    reordered.insert("granted", 0);
+    reordered.insert("spent", 2);
+    reordered.insert("_id", doc! {"category":"tts", "date":"2026-10-29"});
+    let rows = policy::reduce_daily_groups(&[
+        reordered,
+        group(
+            "2026-10-29",
+            "tts",
+            Bson::Decimal128("1.5".parse().unwrap()),
+            1.into(),
+        ),
+        group("2026-10-29", "tts", Bson::Double(3.0), 1.into()),
+    ])
+    .unwrap();
+    let docs = policy::prepare_daily_inserts(
+        &"c".into(),
+        &"u".into(),
+        RetentionTier::Free,
+        &rows,
+        &FixedReceiptClock(date(NOW)),
+    );
+    assert_eq!(docs.len(), 1);
+    assert_eq!(numeric(&docs[0], "spentCredits"), 21.53);
+
+    let mut invalid = group("2026-10-29", "tts", doc! {"toString": 1}.into(), 1.into());
+    invalid.insert(
+        "expiresAt",
+        Bson::Array(vec![Bson::DateTime(DateTime::from_millis(NOW))]),
+    );
+    assert!(matches!(
+        policy::reduce_daily_groups(&[invalid]),
+        Err(AiUsagePersistenceError::GroupType { path: "sum" })
+    ));
+}
+
+#[test]
 fn unordered_insert_prevalidation_skips_invalid_rows_and_minimizes_categories() {
     let rows = policy::reduce_daily_groups(&[
         group("bad", "tts", 1.into(), 1.into()),
