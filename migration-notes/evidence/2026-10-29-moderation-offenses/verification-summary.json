@@ -1,0 +1,114 @@
+{
+  "acceptedRuns": [
+    "node-1793313351977708271",
+    "compiler-1793313351980481556",
+    "compiler-fixtures-1793313608426251022"
+  ],
+  "runs": [
+    {
+      "run": "compiler-1793313351980481556",
+      "sourceTreeSha256": "3f82f243caaa2bf492931cc3612a0f7ec3b2e361974fbea6d99b172ca1030fba",
+      "classification": "accepted final",
+      "success": true,
+      "productionUnchanged": true
+    },
+    {
+      "run": "compiler-fixtures-1793313608426251022",
+      "sourceTreeSha256": "3f82f243caaa2bf492931cc3612a0f7ec3b2e361974fbea6d99b172ca1030fba",
+      "classification": "accepted final",
+      "success": true,
+      "productionUnchanged": true
+    },
+    {
+      "run": "format-1793313283457666223",
+      "sourceTreeSha256": "fdaea912f13b1733a9d6cfcacf36b5d84be9f90e1d2b4a91044c9e4160bc2606",
+      "classification": "successful preformat nonfinal",
+      "success": true,
+      "productionUnchanged": true
+    },
+    {
+      "run": "node-1793313351977708271",
+      "sourceTreeSha256": "3f82f243caaa2bf492931cc3612a0f7ec3b2e361974fbea6d99b172ca1030fba",
+      "classification": "accepted final",
+      "success": true,
+      "productionUnchanged": true
+    }
+  ],
+  "fixtureSha256": "b7bf7bb80d0d7169be41f8aa47e90ec9436ac216621ab6cf6cba95dbe3ee809c",
+  "sourceInputs": 1347,
+  "sourceCases": {
+    "keys": 192,
+    "steps": 12,
+    "commandCases": 105,
+    "abandonedPromiseContinuation": {
+      "beforeRelease": [
+        "connect",
+        "incr"
+      ],
+      "afterRelease": [
+        "connect",
+        "incr",
+        "expire"
+      ],
+      "secondsText": "60"
+    }
+  },
+  "canonicalAstDigest": {
+    "sha256": "42b45b38f41f0370f5bba6ecf09678465a644b4f422bb976684f5ba710a0be2c",
+    "verification": "recomputed by pinned Node oracle --check; not a file hash"
+  },
+  "headroomRefusal": {
+    "timeUtc": "2026-10-29T22:38:18.521459+00:00",
+    "action": "Start capped compiler with private Dragonfly fixture",
+    "outcome": "Refused before resource creation",
+    "error": "Rust build stopped: insufficient production memory headroom",
+    "availableBytesAfterRefusal": 6425903104,
+    "requiredStartupBytes": 8589934592,
+    "compilerMemoryBytes": 4294967296,
+    "inFlightFloorBytes": 4294967296,
+    "productionMutation": false
+  },
+  "acceptedFixtureReceipt": {
+    "steps": [
+      {
+        "name": "bootstrap",
+        "seconds": 4.329,
+        "exit_code": 0
+      },
+      {
+        "name": "locked-fetch",
+        "seconds": 2.239,
+        "exit_code": 0
+      },
+      {
+        "name": "compiler-fixtures",
+        "seconds": 130.683,
+        "exit_code": 0
+      }
+    ],
+    "elapsedSeconds": 143.224,
+    "headroomStart": {
+      "mem_available_bytes": 9641693184,
+      "load_1m": 1.8369140625
+    },
+    "minimumAvailableBytes": 7884697600,
+    "peakCacheBytes": 5030543360,
+    "limits": {
+      "cpus": 6,
+      "memory": 4294967296,
+      "memory_swap": 4294967296,
+      "pids": 256,
+      "cargo_jobs": 2
+    }
+  },
+  "productionUnchangedRecords": 19,
+  "remainingOwnedResources": {
+    "containers": [],
+    "networks": [],
+    "volumes": []
+  },
+  "coverage": "Partial: source bootstrap global metrics and connection-event logging adapters remain missing; no TypeScript retirement or caller adoption.",
+  "benchmarkMeasured": false,
+  "deployed": false,
+  "pushed": false
+}

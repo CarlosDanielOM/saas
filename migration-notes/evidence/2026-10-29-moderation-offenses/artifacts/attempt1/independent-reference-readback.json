@@ -1,0 +1,23 @@
+{
+  "fixtureSha256": "b7bf7bb80d0d7169be41f8aa47e90ec9436ac216621ab6cf6cba95dbe3ee809c",
+  "keys": 192,
+  "steps": 12,
+  "cases": 105,
+  "abandonedPromiseCase": {
+    "beforeRelease": [
+      "connect",
+      "incr"
+    ],
+    "afterRelease": [
+      "connect",
+      "incr",
+      "expire"
+    ],
+    "secondsText": "60"
+  },
+  "allSourceNativeSdkFileHashesChecked": true,
+  "canonicalAstDigest": {
+    "sha256": "42b45b38f41f0370f5bba6ecf09678465a644b4f422bb976684f5ba710a0be2c",
+    "verification": "recomputed by pinned Node oracle --check; not a file hash"
+  }
+}

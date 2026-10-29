@@ -1,0 +1,11 @@
+{
+  "timeUtc": "2026-10-29T22:38:18.521459+00:00",
+  "action": "Start capped compiler with private Dragonfly fixture",
+  "outcome": "Refused before resource creation",
+  "error": "Rust build stopped: insufficient production memory headroom",
+  "availableBytesAfterRefusal": 6425903104,
+  "requiredStartupBytes": 8589934592,
+  "compilerMemoryBytes": 4294967296,
+  "inFlightFloorBytes": 4294967296,
+  "productionMutation": false
+}

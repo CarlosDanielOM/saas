@@ -87074,33 +87074,65 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-bounded-partial-offense-source-and-native-store; global telemetry/process metrics, connection-event logging, and TypeScript caller adoption remain open",
+      "localRustEvidence": [
+        "dimabot/src/utils/moderation/offenses.rs: typed offense keys and window formatting, borrowed escalation ladder, OffenseStore with exact Lua and separate INCR/EXPIRE paths, concrete shared connection acquisition, and cancellation/context-preserving operation",
+        "dimabot/src/utils/databases/dragonfly.database.rs: concrete shared Redis/Dragonfly ConnectionManager used by the native default acquisition path",
+        "dimabot/src/utils/observability/mod.rs: explicit native Telemetry used only when supplied to OffenseStore::with_telemetry",
+        "migration-notes/moderation-offenses-2026-10-29.md: source contract, private Dragonfly behavior, startup guard, accepted validation, and dependency gaps",
+        "migration-notes/evidence/2026-10-29-moderation-offenses/README.md: source-bound accepted Node/compiler/fixture runs, private Dragonfly evidence, production identity, and resource cleanup"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The native API is typed around JsString and f64. JsString preserves UTF-16 units through key construction and converts to UTF-8 with Node-compatible replacement at the Redis boundary; arbitrary JavaScript casts and coercion hooks are outside this contract.",
+        "The typed offense ladder borrows the three selected fields and preserves the source comparison branches, including fractional values and NaN, returning the selected field by identity. It can use the existing Arc<Mutex<_>> fields without importing Mongo runtime behavior.",
+        "For nonempty decision IDs, native code runs the exact source Lua script with a global one-day receipt; otherwise it issues separate INCR and EXPIRE commands and expires only when the decoded JavaScript-number count equals one. An empty decision ID uses the no-receipt path. Window formatting follows floor then a 60-second minimum.",
+        "The native path adds no automatic mutation retry. Redis/script errors can happen after earlier mutations; a lost INCR reply can leave an increment without expiry. Once polled, the operation continues after caller cancellation and preserves telemetry context; default connection acquisition may be cancelled before the operation is spawned.",
+        "The source wrapper starts global telemetry/process instrumentation and logs connection/error events with per-caller suppression. The native default does not bootstrap global telemetry/process metrics or connection-event logging; explicit telemetry covers EVAL only, while source INCR/EXPIRE are not wrapped. Native Redis errors do not claim source JavaScript error-object parity."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "src/handlers/moderation.handler.ts: still imports recordOffense and resolveOffenseStep; records the offense decision and selects the consequence step"
+        ],
+        "runtimeStatus": "Unadopted. The moderation handler continues to call the live TypeScript module; no Rust application caller or wrapper integration is present."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "src/utils/moderation/offenses.ts",
+          "tests/fixtures/moderation_offenses_reference.cjs",
+          "migration-notes/evidence/2026-10-29-moderation-offenses/README.md"
+        ],
+        "rustBehaviorEvidence": [
+          "tests/moderation_offenses.rs",
+          "tests/moderation_offenses_redis.rs",
+          "migration-notes/moderation-offenses-2026-10-29.md",
+          "migration-notes/evidence/2026-10-29-moderation-offenses/README.md"
+        ],
+        "status": "Accepted source oracle matched 192 key, 12 borrowed-step, and 105 command cases plus abandoned-Promise continuation; the offense ordinary replay and library context test passed, and the combined permit/offense fixture run passed one permit ordinary test and all three library regression tests. The isolated private Dragonfly suite passed for fixed TTL/no refresh, duplicate and distinct decisions/global receipt identity, malformed receipts and wrong types, partial command/script errors, caller cancellation after applied INCR through EXPIRE, reply loss without automatic retry, and telemetry context. Strict formatting, feature/profile, and Clippy checks passed. Initial fixture startup was refused by the memory guard before resource creation; the same candidate later passed under the capped fixture run. No benchmark was measured."
       },
       "exports": [
         {
           "name": "offenseKey",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "offense_key(&JsString, &JsString, &JsString), preserving UTF-16 key units until the Redis UTF-8 boundary",
+          "evidence": [
+            "dimabot/src/utils/moderation/offenses.rs",
+            "tests/moderation_offenses.rs"
+          ]
         },
         {
           "name": "recordOffense",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "record_offense and OffenseStore::record_offense; default acquisition uses the concrete shared Redis/Dragonfly ConnectionManager",
+          "evidence": [
+            "dimabot/src/utils/moderation/offenses.rs",
+            "tests/moderation_offenses_redis.rs"
+          ]
         },
         {
           "name": "resolveOffenseStep",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "resolve_offense_step over borrowed OffenseLadder fields, preserving source selection and reference identity",
+          "evidence": [
+            "dimabot/src/utils/moderation/offenses.rs",
+            "tests/moderation_offenses.rs"
+          ]
         }
       ],
       "imports": [
@@ -87117,12 +87149,12 @@
           "baselineSourceTargets": [
             "src/schemas/channel_moderation_settings.schema.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named type-only import: IModerationOffenseStep and IModerationRule",
+          "runtimeOrTypeDependency": "Type-only contract; no JavaScript runtime schema import.",
+          "defaultSideEffectBarrelDetails": "No runtime import or side effect. OffenseLadder<T> borrows the three selected fields; the existing Arc<Mutex<IModerationOffenseStep>> values are accepted without adding Mongo model/runtime dependencies.",
+          "directDependencyReview": "Reviewed type-only contract. Native borrowed ladder and generic resolution cover the fields used by this source.",
+          "transitiveDependencyReview": "No schema runtime dependency is imported by this utility. The separately modeled schema/persistence path is not pulled into the offense implementation.",
+          "rustReplacementOrGap": "Equivalent native generic borrowed view and typed JsString/f64 inputs cover the declared source contract; arbitrary dynamic JavaScript values are outside this typed mapping."
         },
         {
           "ordinal": 1,
@@ -87137,15 +87169,15 @@
           "baselineSourceTargets": [
             "src/utils/databases/dragonfly.database.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named runtime import of getDragonflyClient",
+          "runtimeOrTypeDependency": "Runtime Redis client, telemetry, metrics, and connection/error logging dependency.",
+          "defaultSideEffectBarrelDetails": "getDragonflyClient owns shared client initialization, starts global telemetry after connection, wraps selected commands, observes GET/HGET outcomes, and installs caller-specific connect/error event logging with suppression. In this source, EVAL is wrapped; INCR and EXPIRE are not.",
+          "directDependencyReview": "Reviewed partial. Native OffenseStore::connect acquires the concrete shared Redis/Dragonfly ConnectionManager through get_redis_client; no mock or trait is used as the default adapter.",
+          "transitiveDependencyReview": "Partial/open. Explicit with_telemetry instruments EVAL; native default acquisition does not reproduce global telemetry/process metrics or the source connection/error event logging and suppression.",
+          "rustReplacementOrGap": "Concrete native Redis/Dragonfly commands and opt-in EVAL telemetry are present. Default global telemetry/process metrics and connection-event logging remain missing; no Rust application caller is integrated."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "partial-local-offense-source-and-concrete-native-redis-adapter-verified; global-telemetry/process-metrics/connection-event-logging and TypeScript-caller-adoption remain open"
     },
     {
       "source": "src/utils/moderation/permit_offenses.test.ts",

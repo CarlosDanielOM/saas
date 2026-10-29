@@ -1,0 +1,19 @@
+# Moderation offenses handoff
+
+## Accepted bounded mapping (2026-10-29)
+
+The accepted native source tree is commit `26accd02`, SHA-256 `3f82f243caaa2bf492931cc3612a0f7ec3b2e361974fbea6d99b172ca1030fba`, across 1,347 inputs. The final Node, compiler, and fixture receipts all passed. The implementation is behind the opt-in `moderation-offenses` feature. It maps the three source exports—`offenseKey`, `recordOffense`, and `resolveOffenseStep`—to typed Rust APIs and the existing concrete Redis/Dragonfly connection manager. This is a verified local mapping, not a complete application dependency migration.
+
+`OffenseLadder<'a, T>` is a borrowed three-field view of the source `Pick` contract and can use the channel settings model's existing shared `Arc<Mutex<_>>` fields without importing Mongo model/runtime behavior. Resolution preserves selected-field identity and source comparisons for ordinary numbers, fractional counts, and NaN. `JsString` retains UTF-16 code units for key construction; conversion at the Redis byte boundary applies Node-compatible replacement for unpaired surrogates. The typed `f64` window path implements `floor`, a 60-second minimum, and shared JavaScript number formatting.
+
+The concrete `OffenseStore` accepts a shared `ConnectionManager` or obtains one through `get_redis_client`. With a nonempty decision ID it runs the source's exact 336-byte Lua script, which uses a global receipt key with its own 86,400-second expiry, returns a previous receipt when present, and otherwise increments the counter, sets expiry only for the first count, and writes the receipt. A malformed existing receipt that yields Lua nil maps to zero, matching source `Number(null)`. Without a decision ID, it sends separate INCR and EXPIRE commands and expires only when the returned JavaScript-number count equals one. An empty decision ID follows this no-receipt branch. The native path adds no automatic mutation retry; Redis errors can follow earlier applied mutations, and a lost INCR reply can leave the increment without expiry.
+
+Once a store operation is polled, its owned task continues after caller cancellation, carries the parent telemetry context, and completes the pending second command. Source-oracle continuation cases and a controlled private Dragonfly proxy test verified this behavior. The default connection acquisition itself can still be cancelled before a store operation is spawned.
+
+## Dependency boundary and remaining work
+
+The source imports `getDragonflyClient` at runtime; the moderation rule and offense-step imports are type-only. The native default connection is concrete, not a trait or mock. However, the TypeScript wrapper also starts global telemetry and provides process metrics, connection/error event logging, and caller-specific suppression. The native default path does not reproduce those application-wide bootstrap and connection-event behaviors. `with_telemetry` provides explicit EVAL-span telemetry; source instrumentation does not wrap its separate INCR/EXPIRE methods. This missing transitive runtime behavior keeps the source row **partial**.
+
+The TypeScript moderation handler still imports and calls the TypeScript functions. There is no Rust caller adoption or application wrapper integration. Typed Rust APIs do not claim arbitrary JavaScript casts/coercion hooks or exact JavaScript error-object shapes; network failures use native Redis errors. The TypeScript source remains live and has not been archived or retired. No performance measurement, deployment, or push is claimed, and overall migration completion remains unscored/null.
+
+See the [dated verification record](moderation-offenses-2026-10-29.md) and [indexed evidence package](evidence/2026-10-29-moderation-offenses/README.md) for source cases, isolated Dragonfly checks, receipt IDs, resource limits, and final readback.

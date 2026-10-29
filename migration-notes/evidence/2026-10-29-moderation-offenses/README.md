@@ -1,0 +1,7 @@
+# Moderation offenses evidence
+
+The final accepted Node, compiler and fixture runs bind to commit `26accd02` and 1,347 inputs, including ten previously verified SDK references. The retained source oracle readback records 192 keys, 12 steps, 105 command cases and abandoned-promise continuation. Its canonical declarations digest is a derived TypeScript printer hash, not a file hash; the pinned Node `--check` independently recomputed it.
+
+The isolated runtime checks cover the exact 336-byte Lua script, fixed-window expiry without refresh, concurrent deduplication and distinct decisions, wrong types and malformed receipts, partial-write errors, continued INCR/EXPIRE after caller cancellation, reply loss without mutation retry, and opt-in evaluation telemetry context. The initial fixture launch was refused before resources were created because available memory was 6,425,903,104 bytes, below the 8 GiB startup threshold. This was a resource guard, not a test failure. The accepted fixture run started at 9,641,693,184 bytes available, completed its fixture phase in 130.683 seconds and the full run in 143.224 seconds. Final readback records 19 unchanged production records and no remaining owned resources.
+
+Coverage remains partial because application-specific global metrics and connection-event logging adapters are missing. Caller adoption and TypeScript retirement remain open. No benchmark, deployment or push is claimed.
