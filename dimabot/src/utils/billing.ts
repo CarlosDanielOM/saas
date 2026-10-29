@@ -35,6 +35,8 @@ interface PolarSubscription {
     product_id?: string;
     ended_at?: string | null;
     canceled_at?: string | null;
+    trial_start?: string | null;
+    trial_end?: string | null;
     current_period_end?: string | null;
     ends_at?: string | null;
 }
@@ -53,11 +55,14 @@ interface BillingContext {
     planTier: PlanTier;
     hasActiveSubscription: boolean;
     hasAnySubscriptionHistory: boolean;
+    hasPaidSubscriptionHistory: boolean;
+    hasUsedTrial: boolean;
     inactivityMonths: number;
     isWinbackEligible: boolean;
     scenario: BillingScenario;
     activeSubscriptionId?: string;
     activeProductId?: string;
+    recoverySubscriptionId?: string;
     targetProductId?: string;
     isReferralEligible: boolean;
 }
@@ -793,6 +798,8 @@ export async function getBillingContext(
             planTier: user.plan_tier,
             hasActiveSubscription: false,
             hasAnySubscriptionHistory: false,
+            hasPaidSubscriptionHistory: false,
+            hasUsedTrial: false,
             inactivityMonths,
             isWinbackEligible,
             scenario: inferScenario({
@@ -813,15 +820,27 @@ export async function getBillingContext(
         listSubscriptions(customerId)
     ]);
 
-    const activeSubscription = getPaidSubscriptionFromSubscriptions(activeSubscriptions)?.subscription
+    const activePaidSubscription = getPaidSubscriptionFromSubscriptions(activeSubscriptions)?.subscription;
+    const activeSubscription = activePaidSubscription
         ?? activeSubscriptions.find(subscription => subscription.product_id === PRODUCT_IDS.FREE);
+    // Polar still treats an unended past-due subscription as billable; recover it
+    // in the portal without treating it as an active entitlement.
+    const recoverableSubscriptions = allSubscriptions.filter(
+        subscription => subscription.status === 'past_due' && !subscription.ended_at
+    );
+    const recoverySubscription = !activePaidSubscription
+        ? getPaidSubscriptionFromSubscriptions(recoverableSubscriptions)?.subscription
+            ?? recoverableSubscriptions.find(subscription => subscription.product_id === PRODUCT_IDS.FREE)
+        : undefined;
     const hasActiveSubscription = Boolean(activeSubscription);
     const hasAnySubscriptionHistory = allSubscriptions.length > 0;
+    const hasPaidSubscriptionHistory = Boolean(getPaidSubscriptionFromSubscriptions(allSubscriptions));
+    const hasUsedTrial = allSubscriptions.some(subscription => Boolean(subscription.trial_start || subscription.trial_end));
     const hasReferralDiscountEligibility = Boolean(user.referralCodeUsed) && !hasAnySubscriptionHistory;
     const activeProductId = activeSubscription?.product_id;
     const currentPlan = getCurrentPlanFromActiveSubscription(user.plan_tier, activeProductId);
 
-    const scenario = inferScenario({
+    const scenario = recoverySubscription ? 'reactivate' : inferScenario({
         requestedAction,
         hasActiveSubscription,
         targetPlan: targetPlan || 'premium',
@@ -834,11 +853,14 @@ export async function getBillingContext(
         planTier: currentPlan,
         hasActiveSubscription,
         hasAnySubscriptionHistory,
+        hasPaidSubscriptionHistory,
+        hasUsedTrial,
         inactivityMonths,
         isWinbackEligible,
         scenario,
         activeSubscriptionId: activeSubscription?.id,
         activeProductId,
+        recoverySubscriptionId: recoverySubscription?.id,
         targetProductId: targetPlan ? PLAN_PRODUCT_MAP[targetPlan] : undefined,
         isReferralEligible: hasReferralDiscountEligibility
     };
@@ -997,12 +1019,9 @@ export async function createBillingCheckout(request: CheckoutCreateRequest): Pro
     const action = request.action || 'auto';
     const context = await getBillingContext(request.user, request.targetPlan, action);
 
-    if (context.scenario === 'active_no_change') {
-        throw new Error('You are already subscribed to this plan.');
-    }
-
-    if (context.activeProductId === PRODUCT_IDS.PREMIUM || context.activeProductId === PRODUCT_IDS.PRO) {
-        // Paid-to-paid changes require Polar's subscription change confirmation.
+    if (context.recoverySubscriptionId || (context.scenario !== 'active_no_change'
+        && (context.activeProductId === PRODUCT_IDS.PREMIUM || context.activeProductId === PRODUCT_IDS.PRO))) {
+        // Recover payment or confirm paid-to-paid changes in Polar's portal.
         // Checkout subscription_id only supports upgrading a free-priced subscription.
         // Never fall back to a new purchase if creating this portal session fails.
         const session = await createCustomerPortalSession({ user: request.user, returnUrl: request.returnUrl });
@@ -1017,6 +1036,10 @@ export async function createBillingCheckout(request: CheckoutCreateRequest): Pro
             checkoutUrl: session.url,
             allowDiscountCodes: false
         };
+    }
+
+    if (context.scenario === 'active_no_change') {
+        throw new Error('You are already subscribed to this plan.');
     }
 
     const discountCandidates: Array<{ reason: CheckoutDecision['selectedDiscountReason']; discount: DiscountLike }> = [];
@@ -1096,6 +1119,8 @@ export async function createBillingCheckout(request: CheckoutCreateRequest): Pro
         discount_id: bestDiscount?.discount.id,
         metadata
     };
+
+    if (context.hasPaidSubscriptionHistory || context.hasUsedTrial) checkoutPayload.allow_trial = false;
 
     if (successUrl) checkoutPayload.success_url = successUrl;
     if (returnUrl) checkoutPayload.return_url = returnUrl;

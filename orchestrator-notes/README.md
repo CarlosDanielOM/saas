@@ -51,6 +51,8 @@ The user-provided ascending tier above remains the baseline and working tier; th
 
 ## Routing observations
 
+Bounded billing recovery backend fix: [2026-10-29 observation](2026-10-29-billing-recovery.md). Supports Terra's existing provisional bounded-coding route only; no tier change.
+
 Global Rust utility consolidation routing and verification are recorded in [2026-10-22-global-utils.md](2026-10-22-global-utils.md).
 
 User workflow feedback on future cron verification scope is recorded in [2026-10-22-worker-verification-scope.md](2026-10-22-worker-verification-scope.md). It does not change the model-routing tier.
