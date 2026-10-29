@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "acknowledgedAtUtc": "2026-10-29T02:26:58.569584+00:00",
+  "userAcknowledgement": "Yes, it was a small api change to the pet.talk tts parser",
+  "release": "api-bc6455f1979f",
+  "changedService": "/dima-server",
+  "previousFingerprintSha256": "7eaaaad042c277d84cf49c184f2d7cf5806a641c687772acd8ca69cfc2403c53",
+  "currentFingerprintSha256": "50903c6a12f924a8fa842db591bb68472fe98c522309d790a03743714add3536",
+  "previousContainerId": "7973adbd1f9cc075bfe512af6ca9c736de4c2d7d31ba266b80183d81228512f4",
+  "currentContainerId": "32ae309244d32648368da780c622de8b9da3debe5315785ebd711aa373ae1f66",
+  "currentImage": "sha256:238e5649913650303a287b4550bc1bcb3929b4fe443ceabdc088c0e3511b714d",
+  "currentStartedAt": "2026-10-29T02:11:45.979275752Z",
+  "remainingProductionRecordsUnchanged": 18,
+  "originalSnapshotPreserved": "/root/.local/state/rust-full-migration-20261028-lu443ytp/production-baselines/before-api-bc6455f1979f.json",
+  "acknowledgedSnapshot": "/root/.local/state/rust-full-migration-20261028-lu443ytp/production-baselines/api-bc6455f1979f-user-acknowledged.json",
+  "migrationActions": "read-only inspection; active validation baseline update only; no production mutation",
+  "migrationDeltaToReconcile": "User reports pet.talk TTS parser API change; cross-check release source before migrating/finalizing pet.talk path"
+}

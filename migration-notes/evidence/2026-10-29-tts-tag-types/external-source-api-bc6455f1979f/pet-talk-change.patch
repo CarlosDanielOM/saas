@@ -1,0 +1,82 @@
+diff --git a/dimabot/src/pets/runtime.ts b/dimabot/src/pets/runtime.ts
+index 21385246..3f8f1e21 100644
+--- a/dimabot/src/pets/runtime.ts
++++ b/dimabot/src/pets/runtime.ts
+@@ -25,6 +25,9 @@ import { subscribePetWakeups } from './wakeups.js';
+ import { issueAudioTicket } from './tokens.js';
+ import { claimQueued, nextIndependentQueued } from './queue.js';
+ import { registerPetLaneBridge, type PetLaneItem, type PetLaneStart } from './tts_lane.js';
++import { getChannelTtsSettings } from '../schemas/channel_tts_settings.schema.js';
++import { getTtsEmoteNames } from '../utils/tts/emote_names.util.js';
++import { filterPetTalkText } from './speech_text.js';
+ 
+ const tasks = new Map<string, { controller: AbortController; requestId: string; generation: number }>();
+ const MAX_ACTIVE_PROVIDERS = 4;
+@@ -120,12 +123,23 @@ async function generate(request: PetRequestRecord, signal: AbortSignal) {
+         }
+         signal.throwIfAborted();
+         ({ configuration } = await current(request));
+-        request = await phase(request, 'synthesizing', text);
+         const cache = await getDragonflyClient('pet-credits');
+         let creditStatus: AiCreditStatus = 'unavailable';
+         try { creditStatus = await isAiCreditsExhausted(request.channelId, cache) ? 'exhausted' : (await getAiCredits(streamer, request.channelId, { requireVerified: true, signal })).status; }
+         catch { /* Existing unavailable-credit rule falls back to Piper. */ }
+         const tts = resolveTtsForCreditStatus({ mode: 'speak' as const, text, ...configuration.settings.tts }, creditStatus, streamer.plan_tier);
++        if (request.operation === 'talk') {
++            const settings = await getChannelTtsSettings(request.channelId);
++            const emoteNames = settings.filters.skipEmotes ? await getTtsEmoteNames(request.channelId) : [];
++            signal.throwIfAborted();
++            await current(request);
++            const normalized = filterPetTalkText(text, tts.provider, settings.filters, emoteNames);
++            if (normalized.error) throw new PetError('no_speakable_text');
++            tts.text = normalized.text;
++        }
++        signal.throwIfAborted();
++        await current(request);
++        request = await phase(request, 'synthesizing', tts.text);
+         directory = await mkdtemp(path.join(tmpdir(), 'dima-pet-'));
+         await PetRequest.updateOne({ _id: request._id, status: 'synthesizing' }, { $set: { privateDir: directory } });
+         const audioPath = path.join(directory, tts.provider === 'piper' ? 'speech.wav' : 'speech.mp3');
+diff --git a/dimabot/src/pets/speech_text.test.ts b/dimabot/src/pets/speech_text.test.ts
+new file mode 100644
+index 00000000..af8cd6c8
+--- /dev/null
++++ b/dimabot/src/pets/speech_text.test.ts
+@@ -0,0 +1,24 @@
++import { test } from 'node:test';
++import assert from 'node:assert/strict';
++import { normalizeExpressiveTtsTags } from '../utils/tts/expressive_tts_tags.util.js';
++import { filterPetTalkText } from './speech_text.js';
++import { resolveTtsForCreditStatus } from '../utils/tts/tts_credit_fallback.util.js';
++
++const filters = { skipEmotes: true, stripLinks: true, normalizeWhitespace: true, maxLength: 30,
++    expressiveTags: normalizeExpressiveTtsTags({ happy: true, sad: false }) };
++test('pet talk applies emote, link, whitespace, length and tag filters in order', () => {
++    assert.equal(filterPetTalkText(' Kappa  [happy] Hi example.com [sad]  there ', 'fish', filters, ['Kappa']).text, '[happy] Hi [link] there');
++    assert.equal(filterPetTalkText('Kappa example.com [happy]', 'piper', filters, ['Kappa']).text, '[link]');
++    assert.equal(filterPetTalkText('abcdefghijklmnopqrstuvwxyz 123456789', 'piper', filters, []).text, 'abcdefghijklmnopqrstuvwxyz 123');
++});
++test('filter toggles preserve emotes, links and whitespace and reject empty speech', () => {
++    const disabled = { ...filters, skipEmotes: false, stripLinks: false, normalizeWhitespace: false, maxLength: 500 };
++    assert.equal(filterPetTalkText('Kappa\nexample.com', 'piper', disabled, ['Kappa']).text, 'Kappa\nexample.com');
++    assert.equal(filterPetTalkText('Kappa [sad]', 'fish', filters, ['Kappa']).error, true);
++});
++test('credit fallback uses its effective provider before replacing links', () => {
++    const raw = '[happy] visit example.com';
++    const resolved = resolveTtsForCreditStatus({ mode: 'speak', provider: 'fish', text: raw, language: 'en', voice: 'test' }, 'unavailable');
++    assert.equal(resolved.provider, 'piper');
++    assert.equal(filterPetTalkText(raw, resolved.provider, filters, []).text, 'visit [link]');
++});
+diff --git a/dimabot/src/pets/speech_text.ts b/dimabot/src/pets/speech_text.ts
+new file mode 100644
+index 00000000..bd33b264
+--- /dev/null
++++ b/dimabot/src/pets/speech_text.ts
+@@ -0,0 +1,7 @@
++import type { ChannelTtsSettingsData, TtsProvider } from '../schemas/channel_tts_settings.schema.js';
++import { filterExpressiveTtsTags, normalizeTtsMessage } from '../utils/tts/normalize_tts_message.util.js';
++
++export function filterPetTalkText(text: string, provider: TtsProvider, filters: ChannelTtsSettingsData['filters'], emoteNames: string[]) {
++    const filtered = filterExpressiveTtsTags(text, { provider, enabledTags: filters.expressiveTags });
++    return normalizeTtsMessage(filtered, { ...filters, emoteNames });
++}

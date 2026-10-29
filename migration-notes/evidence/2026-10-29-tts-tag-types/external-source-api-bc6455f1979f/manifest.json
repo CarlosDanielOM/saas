@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "release": "api-bc6455f1979f",
+  "sourceCommit": "9d35bd1ece3304627bdadee637e899d51cc6d7ad",
+  "scope": "user-confirmed accepted pet.talk TTS filter improvement; no production mutation by migration",
+  "behavior": "apply channel emote/link/whitespace/length/expressive filters at pet talk synthesis boundary after credit fallback provider selection; retain pet voice, raw admission and pet.ask behavior; persist/bill final spoken text",
+  "files": [
+    {
+      "source": "dimabot/src/pets/runtime.ts",
+      "sha256": "533a2d71e10b303ce1f8e7113f83c2c9a704bcce42a355d80fe39ec7811067ba",
+      "status": "pending native port/reconciliation; external production source reference, not completed archive"
+    },
+    {
+      "source": "dimabot/src/pets/speech_text.ts",
+      "sha256": "9a5c1923ef1ceb3e1c454dab4803a589289c04cf1eb954aa3720ca2c163a6561",
+      "status": "pending native port/reconciliation; external production source reference, not completed archive"
+    },
+    {
+      "source": "dimabot/src/pets/speech_text.test.ts",
+      "sha256": "b23b754c5bd65f9066ab09d2f81509692c984ac736f720b195f44cefe0c1cb96",
+      "status": "pending native port/reconciliation; external production source reference, not completed archive"
+    }
+  ],
+  "baselineInventoryDelta": "two added TS references (one app helper, one test) beyond original 806-file snapshot; runtime.ts behavior changed",
+  "migrationStatus": "open; reconcile when native pet runtime and helpers are migrated"
+}

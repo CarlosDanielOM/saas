@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "sourceCommit": "3b74f7b3fd639acc2052945f15dcbf8334577c7a",
+  "sourceTreeSha256": "58d448c24c85b0e2ddcf8d9a1490f24883107ec9bf565c30c50ce4390359f073",
+  "node": "node-1793240971993488017",
+  "compiler": "compiler-1793241065037267404",
+  "ordinaryExecutions": 17,
+  "ordinaryBreakdown": {
+    "library": 3,
+    "expressiveLossless": 5,
+    "expressiveTagTypes": 3,
+    "jsString": 1,
+    "creditFallback": 2,
+    "ttsUtilities": 3
+  },
+  "explicitFixtureExecutions": 1,
+  "sourceCases": 1932,
+  "sourceCaseBreakdown": {
+    "filter": 1229,
+    "reinforce": 185,
+    "normalize": 314,
+    "voice": 204
+  },
+  "orderedRecordJsonWiresCompared": 314,
+  "publicTypes": [
+    "ExpressiveTtsTag: private checked catalog index, canonical parsing, iteration",
+    "ExpressiveTtsTagSettings: private catalog-sized boolean array, total typed access, normalization and ordered JSON"
+  ],
+  "typeContractGapClosed": true,
+  "exportAudit": "local type mapping and runtime metadata covered; source-retirement audit/caller inventory remains next",
+  "checks": [
+    "fmt",
+    "tts-utilities all-target check and Clippy -D warnings",
+    "all-features all-target check and Clippy -D warnings",
+    "no-default-features all-target check"
+  ],
+  "newBenchmark": false,
+  "manifestLockDependencyDefaultWorkerProfileChanged": false,
+  "sourceFixtureHashesUnchanged": true,
+  "sourceArchiveCount": 17,
+  "checkoutTypeScriptRemaining": 789,
+  "originalBaselineTypeScript": 806,
+  "externalProductionDelta": {
+    "commit": "9d35bd1ece3304627bdadee637e899d51cc6d7ad",
+    "newSourceObligations": 2,
+    "changedSource": "dimabot/src/pets/runtime.ts",
+    "status": "pending native pet.talk reconciliation; preserved source reference is not a completed archive"
+  },
+  "callerAdoption": "new typed data APIs source-tested; existing runtime caller APIs unchanged",
+  "wholeMigrationComplete": false,
+  "deployedByMigrationSession": false,
+  "pushed": false
+}

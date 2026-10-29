@@ -1,0 +1,53 @@
+{
+  "beforeCount": 19,
+  "afterCount": 19,
+  "differences": [
+    {
+      "name": "/dima-server",
+      "change": "changed",
+      "changedFields": [
+        "compose",
+        "config_image",
+        "id",
+        "image",
+        "started"
+      ],
+      "before": {
+        "id": "7973adbd1f9cc075bfe512af6ca9c736de4c2d7d31ba266b80183d81228512f4",
+        "image": "sha256:606b292ba9e145e2d3e8d5ac5e2b8cde81488f75c51d00f10d5b42667c265346",
+        "started": "2026-10-26T03:37:28.676138864Z",
+        "compose": {
+          "com.docker.compose.config-hash": "439cb87017782092932105412b2c448d0fccb27a566e9b3deb16eb2afeb7f522",
+          "com.docker.compose.container-number": "1",
+          "com.docker.compose.depends_on": "",
+          "com.docker.compose.image": "sha256:667d071662cb2b67a6059b70c980ff8a58df77a1485de47c50b2701ef22aa51a",
+          "com.docker.compose.oneoff": "False",
+          "com.docker.compose.project": "dimabot",
+          "com.docker.compose.project.config_files": "/root/.local/state/saas-ops/649a957c15888e53/api-bb37c1ac1a2c/deploy.json",
+          "com.docker.compose.project.working_dir": "/root/saas/dimabot",
+          "com.docker.compose.replace": "dima-server",
+          "com.docker.compose.service": "api-server",
+          "com.docker.compose.version": "5.5.1"
+        }
+      },
+      "after": {
+        "id": "32ae309244d32648368da780c622de8b9da3debe5315785ebd711aa373ae1f66",
+        "image": "sha256:238e5649913650303a287b4550bc1bcb3929b4fe443ceabdc088c0e3511b714d",
+        "started": "2026-10-29T02:11:45.979275752Z",
+        "compose": {
+          "com.docker.compose.config-hash": "91581b82230f9178a7d21b842966242109528b75a90f9cb3e891c06c942f4b5e",
+          "com.docker.compose.container-number": "1",
+          "com.docker.compose.depends_on": "",
+          "com.docker.compose.image": "sha256:aa364069fd03d8c21526140f7167c50b71d5a7945e3d1d876dcda3d3ef1b9824",
+          "com.docker.compose.oneoff": "False",
+          "com.docker.compose.project": "dimabot",
+          "com.docker.compose.project.config_files": "/root/.local/state/saas-ops/649a957c15888e53/api-bc6455f1979f/deploy.json",
+          "com.docker.compose.project.working_dir": "/root/saas/dimabot",
+          "com.docker.compose.replace": "dima-server",
+          "com.docker.compose.service": "api-server",
+          "com.docker.compose.version": "5.5.1"
+        }
+      }
+    }
+  ]
+}

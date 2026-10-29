@@ -12,6 +12,8 @@ The source oracle added 301 normalization cases to the prior expressive TTS sour
 
 The native normalizer returns `BTreeMap<String, bool>` while the source contract is a closed 75-tag union and a complete boolean record. The catalog and string map carry the runtime values, but exact exported type/alias parity still needs a source/export audit before any TypeScript retirement. Both TypeScript utility modules remain import-free and active; no TypeScript source count changed, and the 17-file archive is unchanged. Native application caller adoption is separate from these local adapters.
 
+The [typed expressive-tag follow-up](tts-tag-types-2026-10-29.md) adds the closed native tag and fixed-size settings record, including source-catalog ordering for typed JSON serialization. It closes the local type/record/wire/runtime-metadata gap described above; the broader source-retirement audit and application caller inventory remain open.
+
 The native settings and persistence implementation was already present. This change closes the value-conversion gap in that path, not application bootstrap or module-layout selection. Queue behavior, preview, billing/usage, emote behavior, routes, and broader application wiring remain open. No whole-migration completion or deployment claim follows from this slice.
 
 ## Verification state
