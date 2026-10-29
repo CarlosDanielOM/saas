@@ -78,6 +78,59 @@ fn backtracking_and_non_url_parser_behavior() {
 }
 
 #[test]
+fn short_ascii_and_general_path_agree_at_boundary() {
+    let allowlists = [
+        vec![],
+        vec![JsString::from("K.COM"), JsString::from("")],
+        vec![JsString::from("K.COM"), JsString::from(".com")],
+        vec![JsString::from_units(vec![0xd800, 46, 99])],
+    ];
+    let mut examples = vec![
+        "".to_owned(),
+        "www.K.com/path a.ab-c x.y.z http://a./!".to_owned(),
+        "https:// USER:PASS@EXAMPLE.COM www. http://a.b?q".to_owned(),
+        format!("{}a.ab", "x ".repeat(126)),
+    ];
+    for byte in 0..=127 {
+        examples.push(format!(
+            "a{}b.com http://x.y/a{}a.ab-c.xy",
+            char::from(byte),
+            char::from(byte)
+        ));
+    }
+    for text in examples {
+        assert!(text.is_ascii() && text.len() <= 256);
+        let short = JsString::from(text.as_str());
+        let long = JsString::from(format!("{text}{}", " ".repeat(257)));
+        for domains in &allowlists {
+            let short_result = evaluate_links_rule(
+                LinksRule {
+                    allowlist_domains: Some(domains),
+                },
+                LinksEvaluationInput { text: Some(&short) },
+            );
+            let long_result = evaluate_links_rule(
+                LinksRule {
+                    allowlist_domains: Some(domains),
+                },
+                LinksEvaluationInput { text: Some(&long) },
+            );
+            assert_eq!(short_result, long_result, "{text:?}");
+        }
+    }
+    let text = JsString::from("K.COM");
+    let domains = [JsString::from("K.com")];
+    let result = evaluate_links_rule(
+        LinksRule {
+            allowlist_domains: Some(&domains),
+        },
+        LinksEvaluationInput { text: Some(&text) },
+    );
+    assert_eq!(result.urls, vec![JsString::from("k.com")]);
+    assert!(!result.triggered);
+}
+
+#[test]
 #[ignore = "external pinned actual-source corpus required"]
 fn replay_actual_source() {
     use serde_json::Value;

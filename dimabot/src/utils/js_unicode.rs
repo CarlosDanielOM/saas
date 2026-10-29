@@ -5,7 +5,7 @@
 //! are pinned to the Node runtime described in the migration handoff.
 use std::borrow::Cow;
 
-use unicode_normalization::UnicodeNormalization;
+use unicode_normalization::char::decompose_canonical;
 
 use super::js_string::JsString;
 use super::js_unicode_data::{
@@ -17,13 +17,39 @@ fn contains(ranges: &[(u32, u32)], cp: u32) -> bool {
     index != 0 && cp <= ranges[index - 1].1
 }
 
-fn code_points(value: &JsString) -> Vec<u32> {
-    char::decode_utf16(value.code_units())
+fn code_points(units: impl Iterator<Item = u16>) -> Vec<u32> {
+    char::decode_utf16(units)
         .map(|item| match item {
             Ok(c) => c as u32,
             Err(error) => u32::from(error.unpaired_surrogate()),
         })
         .collect()
+}
+
+fn push_lower(out: &mut Vec<u16>, cp: u32) {
+    if cp < 0x80 {
+        let byte = cp as u8;
+        out.push(u16::from(byte.to_ascii_lowercase()));
+    } else if let Ok(index) = LOWERCASE_MAPPINGS.binary_search_by_key(&cp, |row| row.0) {
+        for &mapped in LOWERCASE_MAPPINGS[index].1 {
+            push_point(out, mapped);
+        }
+    } else {
+        push_point(out, cp);
+    }
+}
+
+// Without capital sigma, default case conversion has no contextual mapping.
+fn lower_without_sigma(units: impl Iterator<Item = u16>) -> Vec<u16> {
+    let mut out = Vec::with_capacity(units.size_hint().0);
+    for item in char::decode_utf16(units) {
+        let cp = match item {
+            Ok(c) => c as u32,
+            Err(error) => u32::from(error.unpaired_surrogate()),
+        };
+        push_lower(&mut out, cp);
+    }
+    out
 }
 
 fn push_point(out: &mut Vec<u16>, cp: u32) {
@@ -56,12 +82,8 @@ fn lower_points(points: &[u32]) -> Vec<u16> {
     for (index, &cp) in points.iter().enumerate() {
         if cp == 0x03a3 && preceded_by_cased && !followed_by_cased[index] {
             push_point(&mut out, 0x03c2);
-        } else if let Ok(index) = LOWERCASE_MAPPINGS.binary_search_by_key(&cp, |row| row.0) {
-            for &mapped in LOWERCASE_MAPPINGS[index].1 {
-                push_point(&mut out, mapped);
-            }
         } else {
-            push_point(&mut out, cp);
+            push_lower(&mut out, cp);
         }
         if !contains(CASE_IGNORABLE_RANGES, cp) {
             preceded_by_cased = contains(CASED_RANGES, cp);
@@ -95,7 +117,11 @@ pub fn lowercase(value: &JsString) -> Cow<'_, JsString> {
     if let Some(ascii) = ascii_lower(value) {
         return ascii;
     }
-    result(value, lower_points(&code_points(value)))
+    if value.code_units().any(|unit| unit == 0x03a3) {
+        result(value, lower_points(&code_points(value.code_units())))
+    } else {
+        result(value, lower_without_sigma(value.code_units()))
+    }
 }
 
 /// `normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()` on a string.
@@ -104,31 +130,31 @@ pub fn fold_text(value: &JsString) -> Cow<'_, JsString> {
     if let Some(ascii) = ascii_lower(value) {
         return ascii;
     }
-    let mut normalized = Vec::new();
-    let mut run = String::new();
-    let flush = |run: &mut String, out: &mut Vec<u32>| {
-        out.extend(
-            run.nfd()
-                .map(|c| c as u32)
-                .filter(|&cp| !contains(MARK_RANGES, cp)),
-        );
-        run.clear();
-    };
-    for cp in code_points(value) {
-        if let Some(c) = char::from_u32(cp).filter(|_| contains(ASSIGNED_RANGES, cp)) {
-            run.push(c);
-        } else {
-            flush(&mut run, &mut normalized);
-            normalized.push(cp);
+    // The exhaustive property test checks that every nonzero combining-class
+    // decomposition of a Unicode 17-assigned scalar is a Unicode 17 Mark.
+    // Canonical ordering only permutes those nonstarters; all are removed, so
+    // the retained class-zero characters have the same order without sorting.
+    // Unicode 17-unassigned scalars and lone surrogates remain barriers.
+    let mut units = Vec::with_capacity(value.len());
+    for item in char::decode_utf16(value.code_units()) {
+        match item {
+            Ok(c) if c.is_ascii() => units.push(c as u16),
+            Ok(c) if contains(ASSIGNED_RANGES, c as u32) => {
+                decompose_canonical(c, |part| {
+                    if part.is_ascii() || !contains(MARK_RANGES, part as u32) {
+                        push_point(&mut units, part as u32);
+                    }
+                });
+            }
+            Ok(c) => push_point(&mut units, c as u32),
+            Err(error) => units.push(error.unpaired_surrogate()),
         }
     }
-    flush(&mut run, &mut normalized);
     // Removing a mark can bring two previously unpaired surrogates together.
     // JavaScript lowercases the resulting UTF-16 string, so decode it again.
-    let mut units = Vec::new();
-    for cp in normalized {
-        push_point(&mut units, cp);
+    if units.contains(&0x03a3) {
+        result(value, lower_points(&code_points(units.iter().copied())))
+    } else {
+        result(value, lower_without_sigma(units.into_iter()))
     }
-    let stripped = JsString::from_units(units);
-    result(value, lower_points(&code_points(&stripped)))
 }

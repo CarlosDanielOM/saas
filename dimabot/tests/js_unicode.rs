@@ -6,6 +6,119 @@ use dima_rust::utils::{
 };
 use serde_json::Value;
 use std::{borrow::Cow, collections::HashMap, path::PathBuf};
+use unicode_normalization::{
+    UnicodeNormalization,
+    char::{canonical_combining_class, decompose_canonical},
+};
+
+#[allow(dead_code)]
+#[rustfmt::skip]
+#[path = "../src/utils/js_unicode_data.rs"]
+mod unicode17_data;
+
+fn property_contains(ranges: &[(u32, u32)], cp: u32) -> bool {
+    let i = ranges.partition_point(|&(first, _)| first <= cp);
+    i != 0 && cp <= ranges[i - 1].1
+}
+
+#[test]
+fn every_assigned_decomposition_nonstarter_is_removed() {
+    assert_eq!(unicode_normalization::UNICODE_VERSION, (18, 0, 0));
+    let mut assigned = 0usize;
+    let mut nonstarters = 0usize;
+    for cp in 0..=0x10ffff {
+        let Some(c) = char::from_u32(cp) else {
+            continue;
+        };
+        if !property_contains(unicode17_data::ASSIGNED_RANGES, cp) {
+            continue;
+        }
+        assigned += 1;
+        decompose_canonical(c, |part| {
+            if canonical_combining_class(part) != 0 {
+                nonstarters += 1;
+                assert!(
+                    property_contains(unicode17_data::MARK_RANGES, part as u32),
+                    "U+{cp:04X} decomposes to retained nonstarter U+{:04X}",
+                    part as u32
+                );
+            }
+        });
+    }
+    assert!(assigned > 250_000 && nonstarters > 1_000);
+}
+
+// Independently retain the original segmented NFD ordering path for sequence
+// checks; lowercasing itself has separate exhaustive Node reference coverage.
+fn ordered_nfd_fold(value: &JsString) -> JsString {
+    fn flush(run: &mut String, units: &mut Vec<u16>) {
+        for c in run
+            .nfd()
+            .filter(|c| !property_contains(unicode17_data::MARK_RANGES, *c as u32))
+        {
+            let mut buf = [0; 2];
+            units.extend_from_slice(c.encode_utf16(&mut buf));
+        }
+        run.clear();
+    }
+    let mut run = String::new();
+    let mut units = Vec::new();
+    for item in char::decode_utf16(value.code_units()) {
+        match item {
+            Ok(c) if property_contains(unicode17_data::ASSIGNED_RANGES, c as u32) => run.push(c),
+            Ok(c) => {
+                flush(&mut run, &mut units);
+                let mut buf = [0; 2];
+                units.extend_from_slice(c.encode_utf16(&mut buf));
+            }
+            Err(e) => {
+                flush(&mut run, &mut units);
+                units.push(e.unpaired_surrogate());
+            }
+        }
+    }
+    flush(&mut run, &mut units);
+    let stripped = JsString::from_units(units);
+    lowercase(&stripped).into_owned()
+}
+
+#[test]
+fn sequences_match_ordered_nfd_and_utf16_barriers() {
+    let fragments: &[&[u16]] = &[
+        &[0x0041],
+        &[0x03a3],
+        &[0x0345],
+        &[0x0301],
+        &[0x0327],
+        &[0x0903],
+        &[0x00c5],
+        &[0x0130],
+        &[0xac01],
+        &[0x1ade],
+        &[0x1adf],
+        &[0xd801],
+        &[0xdc00],
+        &[0xd83d, 0xde00],
+        &[0x0021],
+    ];
+    for first in fragments {
+        for second in fragments {
+            for third in fragments {
+                let units = [*first, *second, *third].concat();
+                let input = JsString::from_units(units.clone());
+                assert_eq!(
+                    fold_text(&input).as_ref(),
+                    &ordered_nfd_fold(&input),
+                    "UTF-16 input {units:04x?}"
+                );
+            }
+        }
+    }
+    let input = JsString::from_units(vec![0xd801, 0x0301, 0xdc00]);
+    assert_eq!(fold_text(&input).units(), vec![0xd801, 0xdc28]);
+    let unchanged = JsString::from_static("lower 中文 😀");
+    assert!(matches!(fold_text(&unchanged), Cow::Borrowed(_)));
+}
 
 // Same independent raw-byte SHA-256 helper used by ast_evaluator_bench.rs.
 pub fn sha256_hex(bytes: &[u8]) -> String {

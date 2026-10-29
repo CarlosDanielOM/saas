@@ -132,18 +132,169 @@ fn hostname(raw: &[u16]) -> Option<JsString> {
     }
 }
 
+// Short ASCII messages use bounded stack tables and borrowed byte slices. The
+// same greedy recurrence as the UTF-16 scanner is retained; a length cap keeps
+// the stack bounded and leaves long-input behavior on the existing path.
+const ASCII_STACK_LIMIT: usize = 256;
+
+fn ascii_word(byte: u8) -> bool {
+    byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-')
+}
+fn ascii_space(byte: u8) -> bool {
+    matches!(byte, b'\t'..=b'\r' | b' ')
+}
+fn ascii_starts(value: &[u8], prefix: &[u8]) -> bool {
+    value
+        .get(..prefix.len())
+        .is_some_and(|head| head.eq_ignore_ascii_case(prefix))
+}
+
+fn ascii_allowed(host: &[u8], domains: &[JsString]) -> bool {
+    domains.iter().any(|domain| {
+        // Non-ASCII case mappings (for example Kelvin sign) may produce ASCII.
+        // Use the shared lowercasing table for these and for lone surrogates.
+        let lowered;
+        let bytes = match domain.as_str() {
+            Some(s) if s.is_ascii() => s.as_bytes(),
+            _ => {
+                lowered = js_unicode::lowercase(domain);
+                match lowered.as_str() {
+                    Some(s) => s.as_bytes(),
+                    None => return false,
+                }
+            }
+        };
+        host.eq_ignore_ascii_case(bytes)
+            || (host.len() > bytes.len()
+                && host[host.len() - bytes.len() - 1] == b'.'
+                && host[host.len() - bytes.len()..].eq_ignore_ascii_case(bytes))
+    })
+}
+
+fn evaluate_ascii(text: &str, domains: &[JsString]) -> LinksEvaluationResult {
+    let bytes = text.as_bytes();
+    let n = bytes.len();
+    debug_assert!(text.is_ascii() && n <= ASCII_STACK_LIMIT);
+    // Zero means no candidate: a valid match always ends beyond its start.
+    let mut terminal = [0usize; ASCII_STACK_LIMIT + 1];
+    let mut best = [0usize; ASCII_STACK_LIMIT + 1];
+    let mut word_end = n;
+    let mut letter_end = n;
+    let mut next_space = n;
+    for i in (0..n).rev() {
+        let byte = bytes[i];
+        if ascii_space(byte) {
+            next_space = i;
+        }
+        if byte == b'.' && letter_end.saturating_sub(i + 1) >= 2 {
+            terminal[i] = if letter_end < n && bytes[letter_end] == b'/' {
+                next_space
+            } else {
+                letter_end
+            };
+        }
+        if !byte.is_ascii_alphabetic() {
+            letter_end = i;
+        }
+        if !ascii_word(byte) {
+            word_end = i;
+        } else if word_end < n && bytes[word_end] == b'.' {
+            let continued = best[word_end + 1];
+            best[i] = if continued != 0 {
+                continued
+            } else {
+                terminal[word_end]
+            };
+        }
+    }
+    let mut urls = Vec::new();
+    let mut blocked_url = None;
+    let mut i = 0;
+    while i < n {
+        let rest = &bytes[i..];
+        let prefix = if ascii_starts(rest, b"https://") {
+            8
+        } else if ascii_starts(rest, b"http://") {
+            7
+        } else if ascii_starts(rest, b"www.") {
+            4
+        } else {
+            0
+        };
+        let prefixed = if prefix != 0 && i + prefix < n && !ascii_space(bytes[i + prefix]) {
+            let start = i + prefix;
+            Some(
+                bytes[start..]
+                    .iter()
+                    .position(|&b| ascii_space(b))
+                    .map_or(n, |offset| start + offset),
+            )
+        } else {
+            None
+        };
+        let end = prefixed.or_else(|| (best[i] != 0).then_some(best[i]));
+        if let Some(end) = end {
+            let raw = &bytes[i..end];
+            let mut start = if ascii_starts(raw, b"https://") {
+                8
+            } else if ascii_starts(raw, b"http://") {
+                7
+            } else {
+                0
+            };
+            if ascii_starts(&raw[start..], b"www.") {
+                start += 4;
+            }
+            let host_end = raw[start..]
+                .iter()
+                .position(|b| matches!(*b, b'/' | b'?' | b'#' | b':'))
+                .map_or(raw.len(), |offset| start + offset);
+            let host = &raw[start..host_end];
+            if !host.is_empty() && host.contains(&b'.') {
+                let blocked = blocked_url.is_none() && !ascii_allowed(host, domains);
+                // Matching cannot cross an ASCII/non-ASCII boundary on this
+                // path, so the host's ASCII lowercase equals whole-match JS lowercase.
+                let host = JsString::from(
+                    std::str::from_utf8(host)
+                        .expect("ASCII")
+                        .to_ascii_lowercase(),
+                );
+                if blocked {
+                    blocked_url = Some(host.clone());
+                }
+                urls.push(host);
+            }
+            i = end;
+        } else {
+            i += 1;
+        }
+    }
+    LinksEvaluationResult {
+        triggered: blocked_url.is_some(),
+        urls,
+        blocked_url,
+    }
+}
+
 pub fn evaluate_links_rule(
     rule: LinksRule<'_>,
     input: LinksEvaluationInput<'_>,
 ) -> LinksEvaluationResult {
+    let empty = JsString::from_static("");
+    let text = input.text.unwrap_or(&empty);
+    if let Some(ascii) = text
+        .as_str()
+        .filter(|s| s.len() <= ASCII_STACK_LIMIT && s.is_ascii())
+    {
+        return evaluate_ascii(ascii, rule.allowlist_domains.unwrap_or_default());
+    }
     let allowlist: Vec<Vec<u16>> = rule
         .allowlist_domains
         .unwrap_or_default()
         .iter()
         .map(|s| js_unicode::lowercase(s).units())
         .collect();
-    let empty = JsString::from_static("");
-    let text = input.text.unwrap_or(&empty).units();
+    let text = text.units();
     let mut urls = Vec::new();
     let mut blocked_url = None;
     for (start, end) in matches(&text) {
