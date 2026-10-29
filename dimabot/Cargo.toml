@@ -66,6 +66,7 @@ ai-usage-ledger-reads = ["application-schemas", "credit-policy", "tts-utilities"
 ai-usage-ledger-queries = ["ai-usage-ledger-reads", "ai-usage-receipt-parser"]
 ai-usage-retention = ["application-schemas", "ai-usage-receipt-parser"]
 ai-usage-ledger-persistence = ["ai-usage-lock", "ai-usage-producer", "ai-usage-receipt-parser", "ai-usage-ledger-reads", "application-schemas"]
+ai-usage-ledger-backfill = ["ai-usage-ledger-persistence"]
 # Borrowed receipt parsing and analytics stay outside deployed worker graphs.
 lossless-json-view = ["tts-utilities"]
 ai-usage-receipt-parser = ["ai-usage", "credit-policy", "lossless-json-view", "js-date", "mongo"]
