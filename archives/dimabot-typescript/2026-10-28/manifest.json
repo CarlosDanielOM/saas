@@ -180,6 +180,14 @@
     {
       "source": "src/schemas/chat_logs.schema.ts",
       "sha256": "732abc7b27b820fa6ded0d62b1dc3bf3aed8539c7fd636a47f47d98f70b63433"
+    },
+    {
+      "source": "src/schemas/channel_fish_voice_favorites.schema.ts",
+      "sha256": "30b6361cdcc62f66716183d19bcf9a2bb3269507f2c705ea059cb19de44e60e2"
+    },
+    {
+      "source": "src/schemas/channel_fish_voice_favorites.schema.test.ts",
+      "sha256": "4fb11013883efd0d99ba9125711c18d78517f87e401b5193722b6c79d616d02f"
     }
   ]
 }

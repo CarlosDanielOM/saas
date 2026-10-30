@@ -1,6 +1,7 @@
 // Actual source with controlled Mongoose and settings boundaries. No live resources.
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),vm=require('node:vm'),ts=require('typescript'),mongoose=require('mongoose');
 const {pathToFileURL}=require('node:url'),{createRequire}=require('node:module');
+const {resolveSource}=require('./schema_source_resolver.cjs');
 const mongoRequire=createRequire(require.resolve('mongoose'));
 const mongo=mongoRequire('mongodb'), bson=mongo.BSON;
 const mongoEntry=mongoRequire.resolve('mongodb'),bsonEntry=createRequire(mongoEntry).resolve('bson');
@@ -12,12 +13,11 @@ const versions={node:process.versions.node,v8:process.versions.v8,icu:process.ve
 const nodeSha=sha(process.execPath);
 if(mongoose.version!=='8.24.2')throw Error('wrong Mongoose');
 if(JSON.stringify(versions)!==JSON.stringify({node:'24.22.1',v8:'13.6.233.17-node.58',icu:'78.3',unicode:'17.0',typescript:'5.9.3'})||nodeSha!=='569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108')throw Error('toolchain mismatch');
-const files=['src/schemas/channel_fish_voice_favorites.schema.ts','src/schemas/channel_fish_voice_favorites.schema.test.ts','src/schemas/channel_tts_settings.schema.ts','src/server/services/tts/fish_tts.service.ts','src/schemas/channel_fish_voice_favorites.schema.rs','src/schemas/channel_tts_settings.schema.rs','src/schemas/schema.rs','src/server/services/tts/fish_tts.rs','src/utils/js_string.rs','src/utils/js_unicode.rs','src/utils/js_unicode_data.rs','src/utils/lossless_json.rs','tests/channel_fish_voice_favorites.rs','tests/fixtures/channel_fish_voice_favorites_reference.cjs','Cargo.toml','Cargo.lock','rust-toolchain.toml','package.json','package-lock.json'];
+const files=['src/schemas/channel_fish_voice_favorites.schema.ts','src/schemas/channel_fish_voice_favorites.schema.test.ts','src/schemas/channel_tts_settings.schema.ts','src/server/services/tts/fish_tts.service.ts','src/schemas/channel_fish_voice_favorites.schema.rs','src/schemas/channel_tts_settings.schema.rs','src/schemas/schema.rs','src/server/services/tts/fish_tts.rs','src/utils/js_string.rs','src/utils/js_unicode.rs','src/utils/js_unicode_data.rs','src/utils/lossless_json.rs','tests/channel_fish_voice_favorites.rs','tests/support/schema_source.rs','tests/fixtures/schema_source_resolver.cjs','tests/fixtures/channel_fish_voice_favorites_reference.cjs','Cargo.toml','Cargo.lock','rust-toolchain.toml','package.json','package-lock.json'];
 const settingsLogical='src/schemas/channel_tts_settings.schema.ts';
-const settingsPaths=[path.join(root,settingsLogical),path.resolve(root,'../archives/dimabot-typescript/2026-10-28',settingsLogical)];
-const present=settingsPaths.filter(p=>fs.existsSync(p));
-if(present.length!==1)throw Error('channel TTS settings schema must exist at exactly one source or archive path');
-const resolved=Object.fromEntries(files.map(f=>[f,f===settingsLogical?present[0]:path.join(root,f)]));
+const archivedLogicals=new Set([files[0],files[1],settingsLogical]);
+const archived=Object.fromEntries([...archivedLogicals].map(f=>[f,resolveSource(root,f)]));
+const resolved=Object.fromEntries(files.map(f=>[f,archived[f]?.path??path.join(root,f)]));
 const sourcePaths=Object.fromEntries(files.map(f=>[f,path.relative(root,resolved[f])]));
 const source=fs.readFileSync(resolved[files[0]],'utf8');
 const sourceAst=ts.createSourceFile('favorites.ts',source,ts.ScriptTarget.Latest,true);

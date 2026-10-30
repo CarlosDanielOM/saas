@@ -43,6 +43,34 @@ fn nfkd_preserves_utf16_barriers_and_canonical_order() {
 }
 
 #[test]
+fn nfkd_utf8_fast_path_respects_borrowing_and_unassigned_barriers() {
+    for text in ["ascii", "漢字😀", "a\u{0315}\u{0378}\u{0300}"] {
+        let input = JsString::from(text);
+        assert!(
+            matches!(normalize_nfkd(&input), Cow::Borrowed(_)),
+            "{text:?}"
+        );
+    }
+    for (text, expected) in [
+        ("ﬃ K", "ffi K"),
+        (
+            "a\u{0315}\u{0300}\u{0378}b\u{0315}\u{0300}",
+            "a\u{0300}\u{0315}\u{0378}b\u{0300}\u{0315}",
+        ),
+        ("é\u{0378}é", "e\u{0301}\u{0378}e\u{0301}"),
+    ] {
+        let input = JsString::from(text);
+        assert!(matches!(normalize_nfkd(&input), Cow::Owned(_)), "{text:?}");
+        assert_eq!(normalize_nfkd(&input).as_str(), Some(expected));
+    }
+    let input = JsString::from_units(vec![0xd800, 0xfb03, 0xdc00]);
+    assert_eq!(
+        normalize_nfkd(&input).units(),
+        vec![0xd800, 102, 102, 105, 0xdc00]
+    );
+}
+
+#[test]
 #[ignore = "requires independently generated external pinned Node NFKD oracle"]
 fn pinned_node_all_scalar_and_mixed_nfkd() {
     use std::{

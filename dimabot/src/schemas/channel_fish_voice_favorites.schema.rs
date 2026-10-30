@@ -1,12 +1,12 @@
 //! Fish favorites: explicit Mongo ownership and a plain-string BSON boundary.
 use super::{Field, FieldDefault as D, FieldType as T, SchemaDefinition, SchemaIndex};
 use crate::tts_services::fish_tts::FISH_VOICES;
-use crate::utils::{js_string::JsString, js_unicode, lossless_json::JsonValue};
+use crate::utils::{js_compat, js_string::JsString, js_unicode, lossless_json::JsonValue};
 use mongodb::{
     Database,
     bson::{Bson, DateTime, Document, doc},
 };
-use std::{collections::HashSet, fmt, sync::OnceLock};
+use std::{collections::HashSet, fmt, fmt::Write as _, sync::OnceLock};
 
 pub const MAX_FISH_VOICE_FAVORITES: usize = 20;
 const INVALID: &str =
@@ -126,13 +126,15 @@ pub fn normalize_favorite_alias(value: &JsonValue) -> Result<String, FavoriteAli
     let JsonValue::String(value) = value else {
         return Err(alias_error(400, "invalid_alias", INVALID));
     };
-    let lower = js_unicode::lowercase(&value.trim()).into_owned();
-    let Some(alias) = lower.as_str() else {
-        return Err(alias_error(400, "invalid_alias", INVALID));
-    };
+    // An unpaired UTF-16 unit cannot be removed by trimming or lowercasing,
+    // so it cannot become a valid ASCII alias.
+    let text = value
+        .as_str()
+        .ok_or_else(|| alias_error(400, "invalid_alias", INVALID))?;
+    let alias = js_unicode::lowercase_ascii_bounded(js_compat::trim(text), 40)
+        .ok_or_else(|| alias_error(400, "invalid_alias", INVALID))?;
     let bytes = alias.as_bytes();
     if bytes.is_empty()
-        || bytes.len() > 40
         || !bytes[0].is_ascii_lowercase()
         || !bytes[1..]
             .iter()
@@ -140,17 +142,24 @@ pub fn normalize_favorite_alias(value: &JsonValue) -> Result<String, FavoriteAli
     {
         return Err(alias_error(400, "invalid_alias", INVALID));
     }
-    if reserved(alias) {
+    if reserved(&alias) {
         return Err(alias_error(
             409,
             "alias_taken",
             "That nickname is reserved for a built-in voice.",
         ));
     }
-    Ok(alias.to_owned())
+    Ok(alias)
 }
 
 pub fn make_favorite_alias(name: &JsString, used: &[JsString]) -> String {
+    make_favorite_alias_iter(name, used.iter())
+}
+
+fn make_favorite_alias_iter<'a>(
+    name: &JsString,
+    used: impl IntoIterator<Item = &'a JsString>,
+) -> String {
     let normalized = js_unicode::normalize_nfkd(name);
     let filtered = if normalized
         .code_units()
@@ -183,18 +192,19 @@ pub fn make_favorite_alias(name: &JsString, used: &[JsString]) -> String {
     if base.is_empty() {
         base.push_str("voice");
     }
-    let used: HashSet<JsString> = used
-        .iter()
-        .cloned()
-        .chain(FISH_VOICES.iter().map(|(name, _)| JsString::from(*name)))
-        .collect();
-    let mut alias = base.clone();
+    // Generated aliases are ASCII, so invalid UTF-16 used names cannot match.
+    let iter = used.into_iter();
+    let mut used = HashSet::with_capacity(iter.size_hint().0.saturating_add(FISH_VOICES.len()));
+    used.extend(iter.filter_map(JsString::as_str));
+    used.extend(FISH_VOICES.iter().map(|(name, _)| *name));
+    let base_len = base.len();
     let mut suffix = 2usize;
-    while used.contains(&JsString::from(alias.as_str())) {
-        alias = format!("{base}_{suffix}");
+    while used.contains(base.as_str()) {
+        base.truncate(base_len);
+        write!(&mut base, "_{suffix}").expect("writing to a String cannot fail");
         suffix += 1;
     }
-    alias
+    base
 }
 
 fn parse_favorites(document: Option<Document>) -> Result<Vec<Favorite>, FavoritesError> {
@@ -349,20 +359,14 @@ pub async fn add_with<R: FavoritesRepository>(
     })
     .await?;
     for _ in 0..=MAX_FISH_VOICE_FAVORITES {
-        let favorites = get_with(repo, channel).await?;
-        if let Some(existing) = favorites.iter().find(|v| v.id == *id) {
-            return Ok(existing.clone());
+        let mut favorites = get_with(repo, channel).await?;
+        if let Some(index) = favorites.iter().position(|v| v.id == *id) {
+            return Ok(favorites.swap_remove(index));
         }
         if favorites.len() >= MAX_FISH_VOICE_FAVORITES {
             return Err(FavoritesError::Full);
         }
-        let alias = make_favorite_alias(
-            name,
-            &favorites
-                .iter()
-                .map(|v| v.alias.clone())
-                .collect::<Vec<_>>(),
-        );
+        let alias = make_favorite_alias_iter(name, favorites.iter().map(|v| &v.alias));
         let favorite = Favorite {
             id: id.clone(),
             name: name.clone(),

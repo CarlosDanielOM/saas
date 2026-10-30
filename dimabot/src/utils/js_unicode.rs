@@ -5,7 +5,7 @@
 //! are pinned to the Node runtime described in the migration handoff.
 use std::borrow::Cow;
 
-use unicode_normalization::{UnicodeNormalization, char::decompose_canonical, is_nfc};
+use unicode_normalization::{UnicodeNormalization, char::decompose_canonical, is_nfc, is_nfkd};
 
 use super::js_string::JsString;
 use super::js_unicode_data::{
@@ -112,6 +112,40 @@ fn ascii_lower(value: &JsString) -> Option<Cow<'_, JsString>> {
     }
 }
 
+/// Project pinned ECMAScript default lowercase into ASCII, rejecting any
+/// non-ASCII output or output longer than `max_len`. Valid UTF-8 input is
+/// required; callers retain any separate unpaired-UTF-16 boundary.
+/// Final sigma's contextual outputs are both non-ASCII, so either form is
+/// rejected without needing the contextual scan used by `lowercase`.
+pub fn lowercase_ascii_bounded(text: &str, max_len: usize) -> Option<String> {
+    if text.is_ascii() {
+        return (text.len() <= max_len).then(|| text.to_ascii_lowercase());
+    }
+    let mut out = String::with_capacity(text.len().min(max_len));
+    for ch in text.chars() {
+        if ch.is_ascii() {
+            if out.len() == max_len {
+                return None;
+            }
+            out.push(ch.to_ascii_lowercase());
+        } else {
+            let index = LOWERCASE_MAPPINGS
+                .binary_search_by_key(&(ch as u32), |row| row.0)
+                .ok()?;
+            let mapped = LOWERCASE_MAPPINGS[index].1;
+            if mapped.len() > max_len.saturating_sub(out.len())
+                || mapped.iter().any(|cp| *cp >= 128)
+            {
+                return None;
+            }
+            for &cp in mapped {
+                out.push(char::from_u32(cp).expect("ASCII lowercase mapping"));
+            }
+        }
+    }
+    Some(out)
+}
+
 // The pinned normalization crate has newer tables than Node. Assigned Unicode
 // 17 runs normalize together; unassigned points and lone surrogates are barriers.
 fn flush_normalization_run(run: &mut String, out: &mut Vec<u16>, compatibility: bool) {
@@ -193,8 +227,36 @@ pub fn normalize_nfc(value: &JsString) -> Cow<'_, JsString> {
 /// ECMAScript NFKD using the same Unicode 17 assignment barriers as NFC.
 /// Unchanged text, including ASCII and unpaired-surrogate inputs, is borrowed.
 pub fn normalize_nfkd(value: &JsString) -> Cow<'_, JsString> {
-    if value.as_str().is_some_and(str::is_ascii) {
-        return Cow::Borrowed(value);
+    if let Some(text) = value.as_str() {
+        if text.is_ascii() {
+            return Cow::Borrowed(value);
+        }
+        let all_assigned = text
+            .chars()
+            .all(|c| c.is_ascii() || contains(ASSIGNED_RANGES, c as u32));
+        if all_assigned {
+            if is_nfkd(text) {
+                return Cow::Borrowed(value);
+            }
+            let mut out = String::with_capacity(text.len());
+            out.extend(text.nfkd());
+            return Cow::Owned(JsString::from(out));
+        }
+        let mut out = String::with_capacity(text.len());
+        let mut start = 0;
+        for (index, c) in text.char_indices() {
+            if !c.is_ascii() && !contains(ASSIGNED_RANGES, c as u32) {
+                out.extend(text[start..index].nfkd());
+                out.push(c);
+                start = index + c.len_utf8();
+            }
+        }
+        out.extend(text[start..].nfkd());
+        return if out == text {
+            Cow::Borrowed(value)
+        } else {
+            Cow::Owned(JsString::from(out))
+        };
     }
     let mut out = Vec::with_capacity(value.len());
     let mut run = String::new();

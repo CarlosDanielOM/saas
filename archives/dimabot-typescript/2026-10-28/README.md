@@ -1,6 +1,6 @@
 # Archived dimabot TypeScript source snapshots — 2026-10-28
 
-These forty-five files are exact source snapshots preserved with SHA-256 hashes in [`manifest.json`](manifest.json). They cover a bounded set of pure helpers, AST exports, credential/activation exports, TTS session/playback and credit fallback helpers, the channel TTS settings schema, TTS normalization and its source test, and the caps and emote-spam rules with the caps source test mapped to native implementation. The archive supports source and behavior review; it does not mean the surrounding TypeScript callers, service adapters, or the full `dimabot/` migration are complete.
+These forty-seven files are exact source snapshots preserved with SHA-256 hashes in [`manifest.json`](manifest.json). They cover a bounded set of pure helpers, AST exports, credential/activation exports, TTS session/playback and credit fallback helpers, the channel TTS settings and Fish favorites schemas and the Fish favorites source test, TTS normalization and its source test, and the caps and emote-spam rules with the caps source test mapped to native implementation. The archive supports source and behavior review; it does not mean the surrounding TypeScript callers, service adapters, or the full `dimabot/` migration are complete.
 
 | Archived source | Native implementation area |
 |---|---|
@@ -20,6 +20,7 @@ These forty-five files are exact source snapshots preserved with SHA-256 hashes 
 | `src/utils/tts/tts_playback_timeout.util.ts` | [`dimabot/src/utils/tts/playback_timeout.rs`](../../../dimabot/src/utils/tts/playback_timeout.rs) |
 | `src/utils/tts/tts_credit_fallback.util.ts` | [`dimabot/src/utils/tts/credit_fallback.rs`](../../../dimabot/src/utils/tts/credit_fallback.rs) |
 | `src/schemas/channel_tts_settings.schema.ts` | [`dimabot/src/schemas/channel_tts_settings.schema.rs`](../../../dimabot/src/schemas/channel_tts_settings.schema.rs) and [`dimabot/src/utils/tts/settings.rs`](../../../dimabot/src/utils/tts/settings.rs) |
+| `src/schemas/channel_fish_voice_favorites.schema.ts` and `src/schemas/channel_fish_voice_favorites.schema.test.ts` | [`dimabot/src/schemas/channel_fish_voice_favorites.schema.rs`](../../../dimabot/src/schemas/channel_fish_voice_favorites.schema.rs), [`dimabot/tests/channel_fish_voice_favorites.rs`](../../../dimabot/tests/channel_fish_voice_favorites.rs) and [retirement handoff](../../../migration-notes/channel-fish-voice-favorites-handoff.md) |
 | `src/utils/tts/expressive_tts_tags.util.ts` | [`dimabot/src/utils/tts/mod.rs`](../../../dimabot/src/utils/tts/mod.rs) and [`tag_types.rs`](../../../dimabot/src/utils/tts/tag_types.rs) |
 | `src/utils/tts/kokoro_voices.util.ts` | [`dimabot/src/utils/tts/mod.rs`](../../../dimabot/src/utils/tts/mod.rs) |
 | `src/utils/tts/normalize_tts_message.util.ts` | [`dimabot/src/utils/tts/mod.rs`](../../../dimabot/src/utils/tts/mod.rs); [export mapping](../../../dimabot/src/pets/speech_text.md) |
@@ -48,3 +49,5 @@ Five persistence model sources (four OAuth models and moderation action log) are
 Four named-schema source files (admin, accounts, credit gift and credit transaction) are archived byte-for-byte. Their native descriptors and named contracts were previously verified; post-retirement source replay remains pending. See the [named-types handoff](../../../migration-notes/schema-named-types-handoff.md). TypeScript caller adoption remains open.
 
 Five timer and chat model sources are preserved byte-for-byte; their named contracts and descriptors were verified before retirement. Post-retirement validation and TypeScript caller adoption remain pending; see the [handoff](../../../migration-notes/timer-chat-schema-types-handoff.md).
+
+The Fish favorites schema and source test are archived byte-for-byte from accepted native commit `5cf74ba0`, increasing the archive from 45 to 47 entries. Their frozen pre-retirement source and concrete Mongo verification passed; post-retirement source resolution and replay are pending. Active TypeScript callers remain unadopted; no deployment follows from this local retirement. The native contract covers declared typed records and ordinary BSON; malformed or extra stored fields and platform-specific error stacks remain documented boundaries. See the [handoff](../../../migration-notes/channel-fish-voice-favorites-handoff.md).

@@ -4,6 +4,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const pins = Object.freeze({
+  'src/schemas/channel_fish_voice_favorites.schema.ts': '30b6361cdcc62f66716183d19bcf9a2bb3269507f2c705ea059cb19de44e60e2',
+  'src/schemas/channel_fish_voice_favorites.schema.test.ts': '4fb11013883efd0d99ba9125711c18d78517f87e401b5193722b6c79d616d02f',
+  'src/schemas/channel_tts_settings.schema.ts': '5e943f59906bdf4f63dbb52497ccc8607c6fb069cf8b9af0521a4652245c64c2',
   'src/schemas/oauth_client.schema.ts': '48e796d493fbbc16466e50c2e6dd9f2c46558c76854b900c8b1d585f20b71dc8',
   'src/schemas/oauth_grant.schema.ts': 'b82f455eeb977def6100a19e3d190acfed616d6fa9ad7501cc3c1f3523c00df1',
   'src/schemas/oauth_refresh_token.schema.ts': '21568d96d49bc49ee0bc94e0c1b6715cc626368ed736522eeb3ce04152ae54ae',

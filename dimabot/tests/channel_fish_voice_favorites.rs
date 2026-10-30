@@ -48,6 +48,64 @@ fn alias_rules_and_utf16_boundaries() {
 }
 
 #[test]
+fn alias_ascii_fast_path_and_borrowed_collision_set() {
+    let alias = |s: &str| favorites::normalize_favorite_alias(&JsonValue::String(s.into()));
+    assert_eq!(alias("\t AbC_09\r").unwrap(), "abc_09");
+    assert_eq!(
+        alias("\u{000b}GOJO\u{000c}").unwrap_err().code.as_str(),
+        Some("alias_taken")
+    );
+    assert_eq!(alias("\u{feff}KEY\u{2028}").unwrap(), "key");
+    assert_eq!(
+        alias("A-B").unwrap_err().code.as_str(),
+        Some("invalid_alias")
+    );
+    assert_eq!(alias(&"K".repeat(40)).unwrap(), "k".repeat(40));
+    assert_eq!(
+        alias(&"K".repeat(41)).unwrap_err().code.as_str(),
+        Some("invalid_alias")
+    );
+    for text in ["İ", "Σ", "abc\0", "0abc", "😀"] {
+        assert_eq!(
+            alias(text).unwrap_err().code.as_str(),
+            Some("invalid_alias")
+        );
+    }
+    let malformed = JsonValue::String(JsString::from_units(vec![0xfeff, 0xd800, 0x20]));
+    assert_eq!(
+        favorites::normalize_favorite_alias(&malformed)
+            .unwrap_err()
+            .code
+            .as_str(),
+        Some("invalid_alias")
+    );
+    let mut used: Vec<JsString> = (2..=12)
+        .map(|n| JsString::from(format!("voice_{n}")))
+        .collect();
+    used.push(JsString::from("voice"));
+    used.push(JsString::from_units(vec![0xd800]));
+    assert_eq!(
+        favorites::make_favorite_alias(&JsString::from("Voice"), &used),
+        "voice_13"
+    );
+    assert_eq!(
+        favorites::make_favorite_alias(
+            &JsString::from("gojo"),
+            &[JsString::from_units(vec![0xd800]), JsString::from("gojo_2")]
+        ),
+        "gojo_3"
+    );
+    let long = "a".repeat(40);
+    assert_eq!(
+        favorites::make_favorite_alias(
+            &JsString::from(long.as_str()),
+            &[JsString::from(long.as_str())]
+        ),
+        format!("{long}_2")
+    );
+}
+
+#[test]
 fn alias_error_constructor_preserves_number_bits_and_utf16() {
     let code = JsString::from_units(vec![0xd800, 65]);
     let message = JsString::from_units(vec![0xdc00, 66]);
@@ -194,8 +252,8 @@ fn wire_result(result: Result<serde_json::Value, FavoritesError>) -> serde_json:
     }
 }
 
-#[path = "support/sha256.rs"]
-mod digest;
+#[path = "support/schema_source.rs"]
+mod schema_source;
 #[tokio::test]
 #[ignore = "requires separately generated external source oracle"]
 async fn source_oracle_pure_and_protocol() {
@@ -210,7 +268,7 @@ async fn source_oracle_pure_and_protocol() {
     );
     let bytes = std::fs::read(path).unwrap();
     assert_eq!(
-        digest::sha256_hex(&bytes),
+        schema_source::sha256(&bytes),
         std::env::var("FISH_FAVORITES_ORACLE_SHA256").unwrap()
     );
     let fixture: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
@@ -237,6 +295,8 @@ async fn source_oracle_pure_and_protocol() {
         "src/utils/js_unicode_data.rs",
         "src/utils/lossless_json.rs",
         "tests/channel_fish_voice_favorites.rs",
+        "tests/support/schema_source.rs",
+        "tests/fixtures/schema_source_resolver.cjs",
         "tests/fixtures/channel_fish_voice_favorites_reference.cjs",
         "Cargo.toml",
         "Cargo.lock",
@@ -245,38 +305,37 @@ async fn source_oracle_pure_and_protocol() {
         "package-lock.json",
     ];
     assert_eq!(fixture["hashes"].as_object().unwrap().len(), files.len());
-    let logical_settings = "src/schemas/channel_tts_settings.schema.ts";
-    let active = root.join(logical_settings);
-    let archived = root
-        .parent()
-        .unwrap()
-        .join("archives/dimabot-typescript/2026-10-28")
-        .join(logical_settings);
-    assert_ne!(
-        active.is_file(),
-        archived.is_file(),
-        "exactly one settings source or archive must exist"
-    );
+    let archived_sources = [
+        "src/schemas/channel_fish_voice_favorites.schema.ts",
+        "src/schemas/channel_fish_voice_favorites.schema.test.ts",
+        "src/schemas/channel_tts_settings.schema.ts",
+    ];
     assert_eq!(
         fixture["sourcePaths"].as_object().unwrap().len(),
         files.len()
     );
     for file in files {
-        let resolved = if file == logical_settings && archived.is_file() {
-            format!("../archives/dimabot-typescript/2026-10-28/{logical_settings}")
+        let archived = archived_sources.contains(&file);
+        let resolved = if archived {
+            format!("../{}", schema_source::provenance(file))
         } else {
             file.to_owned()
+        };
+        let bytes = if archived {
+            schema_source::archived(&root, file)
+        } else {
+            std::fs::read(root.join(&resolved)).unwrap()
         };
         assert_eq!(fixture["sourcePaths"][file], resolved);
         assert_eq!(
             fixture["hashes"][file].as_str().unwrap(),
-            digest::sha256_hex(&std::fs::read(root.join(resolved)).unwrap())
+            schema_source::sha256(&bytes)
         );
     }
     assert_eq!(fixture["mongoose"], "8.24.2");
     assert_eq!(
         fixture["sdkHashes"]["settingsReference"].as_str().unwrap(),
-        digest::sha256_hex(
+        schema_source::sha256(
             &std::fs::read(root.join("tests/fixtures/channel_tts_settings_reference.mjs")).unwrap()
         )
     );
