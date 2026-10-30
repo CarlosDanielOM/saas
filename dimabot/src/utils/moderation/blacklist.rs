@@ -142,10 +142,9 @@ impl BlacklistPattern {
         if let (Some(regex), Some(input)) = (&self.ascii_regex, text.as_str())
             && input.is_ascii()
         {
-            // Long misses can skip boundary matching when no term occurs at
-            // all. Short inputs avoid a second search.
-            if input.len() >= 512
-                && let Some(prefilter) = &regex.prefilter
+            // A missing term cannot satisfy the boundary expression. Reject
+            // it without asking the engine to compute capture positions.
+            if let Some(prefilter) = &regex.prefilter
                 && !prefilter.is_match(input.as_bytes())
             {
                 return None;
