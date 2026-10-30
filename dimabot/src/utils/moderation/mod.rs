@@ -15,6 +15,9 @@ pub mod variations;
 #[cfg(feature = "moderation-variations-provider")]
 pub mod variations_provider;
 
+#[cfg(feature = "moderation-variation-jobs")]
+pub mod variation_jobs;
+
 #[cfg(feature = "moderation-emote-spam")]
 pub mod emote_spam;
 
