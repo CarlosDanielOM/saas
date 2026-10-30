@@ -63,6 +63,10 @@
 pub mod utils;
 pub mod workers;
 
+#[cfg(feature = "moderation-settings-store")]
+#[path = "handlers/moderation_settings_store.rs"]
+pub mod moderation_settings_store;
+
 #[cfg(feature = "tts-utilities")]
 #[path = "pets/speech_text.rs"]
 pub mod pet_speech_text;
