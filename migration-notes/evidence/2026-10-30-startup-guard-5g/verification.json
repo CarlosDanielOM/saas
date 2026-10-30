@@ -1,0 +1,28 @@
+{
+  "guardCodeCommit": "40561131f5051bdbb00614346b6c0c94b8660763",
+  "guardInputHashes": {
+    "ops/saas_ops.py": "b6e5824340f73c99be25563d8156fa6d55383a43be2b53cac9065a740776ae30",
+    "ops/tests/test_ops.py": "b7d2c068138b02001e44ee818f739d7a1d00524c173448b7fd0cc6686c026384"
+  },
+  "tests": 3,
+  "run": "compiler-1793322221706941276",
+  "scope": "Python resource guard unit tests in a capped disposable container; not Rust feature compilation",
+  "receiptManifestScope": "Receipt source_hashes refer to the separate migration snapshot. Guard tests import the separately retained inputs/ops snapshot and hashes above.",
+  "limits": {
+    "cpus": 6,
+    "memoryBytes": 4294967296,
+    "memorySwapBytes": 4294967296,
+    "pids": 256,
+    "cargoJobs": 2
+  },
+  "thresholdsGiB": {
+    "startupWith4GiBCap": 5,
+    "startupWith6GiBCap": 10,
+    "inFlight": 4
+  },
+  "productionBaselineAcknowledged": {
+    "piperRemovedBy": "user",
+    "remainingUnchanged": 18
+  },
+  "assistantProductionMutation": false
+}

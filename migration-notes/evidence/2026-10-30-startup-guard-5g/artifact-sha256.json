@@ -1,0 +1,12 @@
+{
+  "README.md": "e28a9e62a38e5fbc919e06b8fc0b9ef1a74e404e35deb7d4219695e14f3a8837",
+  "baseline/acknowledgement.json": "1541dddcf34df73e6762017199a80c13b61648bb1de602b2999b4b5789d5b9bf",
+  "baseline/after.json": "34f990d75dc0fc757f79f114a2eeffcb4d980d8e108837829ed3a26fe73247ac",
+  "baseline/before.json": "045867835645cf8a5c8913f6a7d2dcd895e61661c716fb689b601c67bd36a954",
+  "inputs/ops/saas_ops.py": "b6e5824340f73c99be25563d8156fa6d55383a43be2b53cac9065a740776ae30",
+  "inputs/ops/tests/test_ops.py": "b7d2c068138b02001e44ee818f739d7a1d00524c173448b7fd0cc6686c026384",
+  "run/compiler-1793322221706941276-receipt.json.gz": "32f58bf55401996889738b2d5983ea39a0fc6daaa8d1996ba85b7d6ee2f55a9d",
+  "run/compiler-1793322221706941276.log.gz": "da5ee0493caf0a3e08aab6c132e5527f9e6664414e7d1a7e70228788b02c83e0",
+  "test-command.sh": "30665143da1c401bf396ee1d8ad42e7bff8ba31ddc31b0fdb4f1911714dd8c41",
+  "verification.json": "30ad8b592a78efbf82fb394db4a5a21e167ebfdd61f6d55c0d9bdd973812a34c"
+}

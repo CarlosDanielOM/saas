@@ -1,0 +1,4 @@
+set -eu
+cd /artifacts/startup-guard-5g/attempt1/source
+export PYTHONDONTWRITEBYTECODE=1
+python3 -m unittest   ops.tests.test_ops.OpsTests.test_rust_headroom_requires_10_gib_at_start_and_4_gib_while_running   ops.tests.test_ops.OpsTests.test_lower_memory_rust_headroom_requires_5_gib_at_start_and_4_gib_while_running   ops.tests.test_ops.OpsTests.test_rust_headroom_refuses_host_load_and_disk_pressure
