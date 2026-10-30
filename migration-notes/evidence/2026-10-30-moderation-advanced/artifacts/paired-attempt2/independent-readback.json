@@ -1,0 +1,35 @@
+{
+  "status": "passed",
+  "samples": 70,
+  "operationsPerSample": 8000,
+  "sourceTreeSha256": "8a1e6a666a72d948f8d6459a62cf70722e46445bdbffca0b72e5dc81651e98ec",
+  "binarySha256": "ba8a36a3b4a2b8dcc7aecfd193bad23667693b294f5898a8f44b81b6b0fc24a5",
+  "beforeAfterHashesEqual": true,
+  "medianNsPerOperation": {
+    "ascii": {
+      "node": 12583.771375,
+      "rust": 1470.04225,
+      "rustReductionPercent": 88.31795169991318
+    },
+    "long": {
+      "node": 107164.998875,
+      "rust": 33176.764125,
+      "rustReductionPercent": 69.04141793189564
+    },
+    "unicode": {
+      "node": 20432.9065,
+      "rust": 3505.389875,
+      "rustReductionPercent": 82.84438939217972
+    },
+    "regex_only": {
+      "node": 11898.85725,
+      "rust": 979.48975,
+      "rustReductionPercent": 91.7682032028748
+    },
+    "many": {
+      "node": 51513.320375,
+      "rust": 4098.377,
+      "rustReductionPercent": 92.04404420028612
+    }
+  }
+}

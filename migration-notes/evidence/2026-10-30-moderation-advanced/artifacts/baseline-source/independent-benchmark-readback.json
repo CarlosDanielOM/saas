@@ -1,0 +1,30 @@
+{
+  "status": "passed",
+  "samples": 70,
+  "rounds": 250,
+  "operationsPerSample": 8000,
+  "sourceTreeSha256": "8003cb735a0a5f4574b4856a1a13dcb0559070897de2606c47af149f23aa4923",
+  "medianNsPerOperation": {
+    "ascii": {
+      "node": 12239.10425,
+      "rust": 654760.406875
+    },
+    "long": {
+      "node": 101261.443125,
+      "rust": 663447.54275
+    },
+    "unicode": {
+      "node": 18387.00025,
+      "rust": 7914.43
+    },
+    "regex_only": {
+      "node": 11855.4105,
+      "rust": 3078.572875
+    },
+    "many": {
+      "node": 48535.7805,
+      "rust": 778648.555375
+    }
+  },
+  "beforeAfterHashesEqual": true
+}

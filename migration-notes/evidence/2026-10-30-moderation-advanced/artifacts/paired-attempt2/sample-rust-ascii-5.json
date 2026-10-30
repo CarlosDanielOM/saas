@@ -1,0 +1,12 @@
+{
+  "actor": "rust",
+  "checksum": 803755461,
+  "format": 1,
+  "inputSha256": "665986bd6417320ab0710609aa3f3fc83381c461f95ddebb71e5451154da310b",
+  "nanoseconds": "17614515",
+  "operations": 8000,
+  "rounds": 250,
+  "warmupOperations": 24000,
+  "warmups": 3,
+  "workload": "ascii"
+}

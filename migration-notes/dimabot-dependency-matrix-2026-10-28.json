@@ -86555,83 +86555,168 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-bounded-partial-local-advanced-moderation; native parsing, matching, policy values, and typed contracts verified; RE2 diagnostic parity and bounded grammar/resource compatibility remain open; callers unadopted",
+      "localRustEvidence": [
+        "dimabot/src/utils/moderation/advanced.rs: typed pattern/rule/match values, parser, matcher, and native RE2 adapter",
+        "dimabot/src/utils/moderation/advanced_policy.rs: semantic policy type/parser, paid-tier helper, and six policy constants",
+        "dimabot/src/utils/re2_native.rs: native regex implementation and bounded compatibility boundary",
+        "dimabot/src/utils/moderation/blacklist.rs: existing literal blacklist compiler reused by advanced matching",
+        "dimabot/src/utils/moderation/normalize.rs, dimabot/src/utils/js_string.rs, and pinned Unicode support: text folding and UTF-16/string boundary dependencies",
+        "dimabot/tests/moderation_advanced.rs and dimabot/tests/moderation_advanced_policy.rs: native parser, matcher, and policy behavior coverage",
+        "migration-notes/moderation-advanced.md: reviewed source contract, limits, and verification record",
+        "migration-notes/evidence/2026-10-30-moderation-advanced/index.json, verification-summary.json, and source-bindings.json: indexed source-bound evidence and exact verification records",
+        "Evidence: 464 application source cases plus 233 view cross-checks; 84 semantic source cases plus 83 semantic view cross-checks; 4,364 syntax cases plus 740 SDK cases; 14 paid-tier cases and six constant checks; scoped and all-feature Clippy/profile checks.",
+        "Matched warm benchmark: two rounds of 70 actors, including the negative baseline; prepared helper scope only, with no production throughput claim."
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "Invalid regexes return a native compile error; node-re2 SyntaxError class and exact diagnostic wording are not reproduced.",
+        "Compatibility is bounded by the reviewed regex grammar/corpus and native resource limits; compiled-size/nesting behavior and mixed byte/rune boundaries may differ.",
+        "The Rust helper accepts typed native pattern values and does not require TypeScript at runtime. Its required literal compiler is implemented natively; the broader blacklist evaluator interface accepting arbitrary JavaScript RegExp values is outside this helper dependency surface.",
+        "Caller adoption is unadopted and is tracked separately from local feature/dependency completion. N-API is not required for native feature completion.",
+        "Warm benchmark covers matched prepared matching workloads only; it does not establish application or production latency, CPU, or memory behavior."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/src/handlers/moderation.handler.ts",
+          "dimabot/src/utils/moderation/semantic_worker.ts",
+          "dimabot/src/utils/moderation/spam.ts",
+          "dimabot/src/utils/moderation/variation_jobs.ts",
+          "dimabot/src/utils/moderation/decisions.ts",
+          "dimabot/src/utils/moderation/variations.ts",
+          "dimabot/src/schemas/moderation_decision.schema.ts"
+        ],
+        "runtimeStatus": "unadopted; TypeScript callers remain active"
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/src/utils/moderation/advanced.test.ts",
+          "migration-notes/evidence/2026-10-30-moderation-advanced/source-bindings.json"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/moderation_advanced.rs",
+          "dimabot/tests/moderation_advanced_policy.rs",
+          "migration-notes/evidence/2026-10-30-moderation-advanced/verification-summary.json",
+          "migration-notes/evidence/2026-10-30-moderation-advanced/index.json"
+        ],
+        "status": "source-bound native values and semantic behavior verified within documented limits; scoped/all-feature Clippy/profile checks recorded in evidence"
       },
       "exports": [
         {
           "name": "ALLOW_THRESHOLD",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::moderation::advanced_policy::ALLOW_THRESHOLD",
+          "evidence": [
+            "dimabot/src/utils/moderation/advanced.rs",
+            "dimabot/src/utils/moderation/advanced_policy.rs",
+            "migration-notes/evidence/2026-10-30-moderation-advanced/verification-summary.json"
+          ]
         },
         {
           "name": "DECISION_POLICY_VERSION",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::moderation::advanced_policy::DECISION_POLICY_VERSION",
+          "evidence": [
+            "dimabot/src/utils/moderation/advanced.rs",
+            "dimabot/src/utils/moderation/advanced_policy.rs",
+            "migration-notes/evidence/2026-10-30-moderation-advanced/verification-summary.json"
+          ]
         },
         {
           "name": "MODERATION_RETENTION_DAYS",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::moderation::advanced_policy::MODERATION_RETENTION_DAYS",
+          "evidence": [
+            "dimabot/src/utils/moderation/advanced.rs",
+            "dimabot/src/utils/moderation/advanced_policy.rs",
+            "migration-notes/evidence/2026-10-30-moderation-advanced/verification-summary.json"
+          ]
         },
         {
           "name": "MODERATION_VISIBLE_DAYS",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::moderation::advanced_policy::MODERATION_VISIBLE_DAYS",
+          "evidence": [
+            "dimabot/src/utils/moderation/advanced.rs",
+            "dimabot/src/utils/moderation/advanced_policy.rs",
+            "migration-notes/evidence/2026-10-30-moderation-advanced/verification-summary.json"
+          ]
         },
         {
           "name": "ModerationMatch",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::moderation::advanced::ModerationMatch (typed JsString/UTF-16 offsets)",
+          "evidence": [
+            "dimabot/src/utils/moderation/advanced.rs",
+            "dimabot/src/utils/moderation/advanced_policy.rs",
+            "migration-notes/evidence/2026-10-30-moderation-advanced/verification-summary.json"
+          ]
         },
         {
           "name": "ModerationPattern",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::moderation::advanced::ModerationPattern (typed Boundary, JsString, and ignore_case)",
+          "evidence": [
+            "dimabot/src/utils/moderation/advanced.rs",
+            "dimabot/src/utils/moderation/advanced_policy.rs",
+            "migration-notes/evidence/2026-10-30-moderation-advanced/verification-summary.json"
+          ]
         },
         {
           "name": "SEMANTIC_DEADLINE_MS",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::moderation::advanced_policy::SEMANTIC_DEADLINE_MS",
+          "evidence": [
+            "dimabot/src/utils/moderation/advanced.rs",
+            "dimabot/src/utils/moderation/advanced_policy.rs",
+            "migration-notes/evidence/2026-10-30-moderation-advanced/verification-summary.json"
+          ]
         },
         {
           "name": "SEMANTIC_MODEL",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::moderation::advanced_policy::SEMANTIC_MODEL",
+          "evidence": [
+            "dimabot/src/utils/moderation/advanced.rs",
+            "dimabot/src/utils/moderation/advanced_policy.rs",
+            "migration-notes/evidence/2026-10-30-moderation-advanced/verification-summary.json"
+          ]
         },
         {
           "name": "SemanticPolicy",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::moderation::advanced_policy::SemanticPolicy (typed native policy/example enums and SpamCategory)",
+          "evidence": [
+            "dimabot/src/utils/moderation/advanced.rs",
+            "dimabot/src/utils/moderation/advanced_policy.rs",
+            "migration-notes/evidence/2026-10-30-moderation-advanced/verification-summary.json"
+          ]
         },
         {
           "name": "emptySemanticPolicy",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::moderation::advanced_policy::empty_semantic_policy",
+          "evidence": [
+            "dimabot/src/utils/moderation/advanced.rs",
+            "dimabot/src/utils/moderation/advanced_policy.rs",
+            "migration-notes/evidence/2026-10-30-moderation-advanced/verification-summary.json"
+          ]
         },
         {
           "name": "findBlacklistMatches",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::moderation::advanced::find_blacklist_matches; reuses native fold_text, compiled literal blacklist, and Re2Native",
+          "evidence": [
+            "dimabot/src/utils/moderation/advanced.rs",
+            "dimabot/src/utils/moderation/advanced_policy.rs",
+            "migration-notes/evidence/2026-10-30-moderation-advanced/verification-summary.json"
+          ]
         },
         {
           "name": "paidModeration",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::moderation::advanced_policy::paid_moderation and paid_moderation_owned",
+          "evidence": [
+            "dimabot/src/utils/moderation/advanced.rs",
+            "dimabot/src/utils/moderation/advanced_policy.rs",
+            "migration-notes/evidence/2026-10-30-moderation-advanced/verification-summary.json"
+          ]
         },
         {
           "name": "parseAdvancedRule",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::moderation::advanced::parse_advanced_rule and parse_advanced_rule_owned; UUIDv4 via uuid::Uuid::new_v4",
+          "evidence": [
+            "dimabot/src/utils/moderation/advanced.rs",
+            "dimabot/src/utils/moderation/advanced_policy.rs",
+            "migration-notes/evidence/2026-10-30-moderation-advanced/verification-summary.json"
+          ]
         }
       ],
       "imports": [
@@ -86648,12 +86733,12 @@
           "baselineSourceTargets": [
             "src/utils/moderation/normalize.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime named import foldText",
+          "runtimeOrTypeDependency": "runtime native Unicode text-fold dependency",
+          "defaultSideEffectBarrelDetails": "not applicable; direct named/type-only/default imports as specified above",
+          "directDependencyReview": "reviewed",
+          "transitiveDependencyReview": "reviewed for the bounded native helper: existing JsString/lossless JSON value adapters, Unicode folding/string-boundary support, SpamCategory type, blacklist compiler, RE2-native implementation, and uuid crate",
+          "rustReplacementOrGap": "reviewed-native-replacement: moderation::normalize::fold_text with pinned Unicode and JS-compatible UTF-16/string-boundary helpers"
         },
         {
           "ordinal": 1,
@@ -86668,12 +86753,12 @@
           "baselineSourceTargets": [
             "src/utils/moderation/rules/blacklist.rule.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime named import compileBlacklistPattern",
+          "runtimeOrTypeDependency": "runtime native literal-term compiler dependency",
+          "defaultSideEffectBarrelDetails": "not applicable; direct named/type-only/default imports as specified above",
+          "directDependencyReview": "reviewed",
+          "transitiveDependencyReview": "reviewed for the bounded native helper: existing JsString/lossless JSON value adapters, Unicode folding/string-boundary support, SpamCategory type, blacklist compiler, RE2-native implementation, and uuid crate",
+          "rustReplacementOrGap": "reviewed-native-replacement: moderation::blacklist::compile_blacklist_pattern; arbitrary externally constructed JavaScript RegExp contract remains open"
         },
         {
           "ordinal": 2,
@@ -86688,12 +86773,12 @@
           "baselineSourceTargets": [
             "src/utils/moderation/spam_categories.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "type-only named import SpamCategory",
+          "runtimeOrTypeDependency": "type-only contract dependency",
+          "defaultSideEffectBarrelDetails": "not applicable; direct named/type-only/default imports as specified above",
+          "directDependencyReview": "reviewed",
+          "transitiveDependencyReview": "reviewed for the bounded native helper: existing JsString/lossless JSON value adapters, Unicode folding/string-boundary support, SpamCategory type, blacklist compiler, RE2-native implementation, and uuid crate",
+          "rustReplacementOrGap": "reviewed-native-equivalent: moderation::spam_categories::SpamCategory enum; no runtime TypeScript dependency"
         },
         {
           "ordinal": 3,
@@ -86701,12 +86786,12 @@
           "specifierCategory": "node-builtin-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime named import randomUUID",
+          "runtimeOrTypeDependency": "runtime UUID generation dependency",
+          "defaultSideEffectBarrelDetails": "not applicable; direct named/type-only/default imports as specified above",
+          "directDependencyReview": "reviewed",
+          "transitiveDependencyReview": "reviewed for the bounded native helper: existing JsString/lossless JSON value adapters, Unicode folding/string-boundary support, SpamCategory type, blacklist compiler, RE2-native implementation, and uuid crate",
+          "rustReplacementOrGap": "native uuid::Uuid::new_v4; no Node runtime needed"
         },
         {
           "ordinal": 4,
@@ -86714,15 +86799,15 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime default import RE2",
+          "runtimeOrTypeDependency": "runtime regex compile/match dependency",
+          "defaultSideEffectBarrelDetails": "not applicable; direct named/type-only/default imports as specified above",
+          "directDependencyReview": "reviewed-bounded",
+          "transitiveDependencyReview": "reviewed for the bounded native helper: existing JsString/lossless JSON value adapters, Unicode folding/string-boundary support, SpamCategory type, blacklist compiler, RE2-native implementation, and uuid crate",
+          "rustReplacementOrGap": "Re2Native; invalid-regex diagnostic class/wording, bounded grammar/resource compatibility and mixed byte/rune behavior remain"
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "partial-local advanced parser/matcher/policy values and typed dependencies verified; native invalid-regex diagnostics differ from node-re2; bounded regex/resource compatibility remain open; TypeScript callers unadopted"
     },
     {
       "source": "src/utils/moderation/decisions.ts",
@@ -92557,7 +92642,7 @@
       "behaviorDifferencesOrAcceptedChanges": [
         "All six exports have local Rust payload/lifecycle counterparts and concrete SDK/lossless adapters. Verification covers 1,042 source wrapper records, 20 native HTTP transport tests and 18 installed-SDK lifecycle scenarios; see the dated migration note and evidence summary.",
         "Native lossless transport has explicit event preflight (256 KiB), depth (64), response-body (64 KiB) and queued-byte (16 MiB) bounds; redirects/proxies are disabled and shutdown is permanent. These behavior differences, UUIDv4 versus SDK UUIDv7 event metadata, and differing SDK/library metadata prevent a strict source-equivalence claim.",
-        "The initial payload benchmark and its four small-payload regressions (command, TTS, AI usage, AI operation) remain preserved as baseline history. A verified follow-up measured all six current Rust synthetic payload medians 9.5%–86.0% below the retained TypeScript medians, closing those four measured regressions in this bounded comparison; the command sample ranges overlap, so no statistical-significance claim is made. The two Unicode/large TTS pools also remain faster by median. Timing covers prepared payload builders, ordered JSON and UTF-8 checksum only; it is not an HTTP, queue, application or production-latency result."
+        "The initial payload benchmark and its four small-payload regressions (command, TTS, AI usage, AI operation) remain preserved as baseline history. A verified follow-up measured all six current Rust synthetic payload medians 9.5%\u201386.0% below the retained TypeScript medians, closing those four measured regressions in this bounded comparison; the command sample ranges overlap, so no statistical-significance claim is made. The two Unicode/large TTS pools also remain faster by median. Timing covers prepared payload builders, ordered JSON and UTF-8 checksum only; it is not an HTTP, queue, application or production-latency result."
       ],
       "callers": {
         "sourceEvidence": [
