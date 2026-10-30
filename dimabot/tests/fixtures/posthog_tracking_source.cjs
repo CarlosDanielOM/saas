@@ -1,4 +1,5 @@
 'use strict';
+const {sourcePath: fixturePath, resolveSource} = require('./ai_usage_source_resolver.cjs');
 // Compiles the actual source once into this process's normal CommonJS realm.
 const fs = require('node:fs');
 const path = require('node:path');
@@ -9,7 +10,7 @@ assert.equal(process.version, 'v24.22.1');
 assert.equal(process.versions.v8, '13.6.233.17-node.58');
 assert.equal(ts.version, '5.9.3');
 function compile(relative, imports) {
-  const file = path.join(root, relative);
+  const file = fixturePath(root, relative);
   const source = fs.readFileSync(file, 'utf8');
   const sf = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
   const declarations = sf.statements.filter(ts.isImportDeclaration).map(x => x.moduleSpecifier.text);

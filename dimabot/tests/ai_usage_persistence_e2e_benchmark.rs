@@ -1,7 +1,12 @@
 #![cfg(feature = "ai-usage-ledger-persistence")]
+
 //! AUTHOR-ONLY DRAFT: execution and integration belong to the parent. Build
 //! --no-run in the capped compiler; run the resulting static release ELF in
 //! the separate capped Node runtime against fresh private fixture servers.
+#[allow(dead_code)]
+#[path = "support/ai_usage_source.rs"]
+mod ai_usage_source;
+
 use dima_rust::utils::{
     ai_usage_ledger_persistence::{MongoAiUsageLedgerPersistence, PersistAiUsageReceiptOutcome},
     ai_usage_lock,
@@ -72,7 +77,7 @@ fn verify_hashes(root: &Path, hashes: &Value) {
         safe_relative(file);
         assert_eq!(
             digest,
-            &json!(hash(fs::read(root.join(file)).unwrap())),
+            &json!(hash(fs::read(ai_usage_source::path(root, file)).unwrap())),
             "source/dependency drift {file}"
         );
     }
@@ -527,7 +532,7 @@ async fn real_persistence_helpers_matched_trials() {
     for declaration in metadata["declarations"].as_array().unwrap() {
         let file = declaration["file"].as_str().unwrap();
         safe_relative(file);
-        let source = fs::read(root.join(file)).unwrap();
+        let source = fs::read(ai_usage_source::path(&root, file)).unwrap();
         let start = declaration["startByte"].as_u64().unwrap() as usize;
         let end = declaration["endByte"].as_u64().unwrap() as usize;
         let mut text = source[start..end].to_vec();

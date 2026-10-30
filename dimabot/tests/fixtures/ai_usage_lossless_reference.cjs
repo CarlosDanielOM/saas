@@ -1,4 +1,5 @@
 'use strict';
+const {sourcePath: fixturePath, resolveSource} = require('./ai_usage_source_resolver.cjs');
 // Actual source only. Parent runs --write DIR and --check DIR in the pinned snapshot.
 const fs = require('node:fs');
 const path = require('node:path');
@@ -7,7 +8,7 @@ const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const ts = require('typescript');
 const root = path.resolve(__dirname, '../..');
-const read = p => fs.readFileSync(path.join(root, p));
+const read = p => fs.readFileSync(fixturePath(root, p));
 const sha = b => crypto.createHash('sha256').update(b).digest('hex');
 const pins = {
   'src/utils/ai_usage_event.ts':'87ff158c166652ea1eb64199ea4c9c6250b35db90399cb658ef6c3086628de60',
@@ -49,8 +50,8 @@ assert.deepEqual(runtimeExports.map(name => declaration(name).type.getText(ast))
 const options = {target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS,strict:true,noEmit:true,skipLibCheck:true,types:[],lib:['lib.es2022.d.ts']};
 const virtual = path.join(root, '__ai_usage_lossless_node.d.ts');
 const host = ts.createCompilerHost(options), readFile = host.readFile.bind(host), exists = host.fileExists.bind(host);
-host.readFile = f => f === virtual ? "declare module 'node:crypto' { export function randomUUID(): string; }" : readFile(f);
-host.fileExists = f => f === virtual || exists(f);
+host.readFile = f => f === sourcePath ? source : f === virtual ? "declare module 'node:crypto' { export function randomUUID(): string; }" : readFile(f);
+host.fileExists = f => f === sourcePath || f === virtual || exists(f);
 const program = ts.createProgram([sourcePath, virtual], options, host);
 assert.deepEqual(ts.getPreEmitDiagnostics(program).map(d=>ts.flattenDiagnosticMessageText(d.messageText,'\n')), []);
 const compiled = ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS},reportDiagnostics:true});
@@ -88,7 +89,7 @@ for (const [id,raw,accounting] of [
 }
 const nativeFiles=['src/utils/ai_usage_lossless.rs','src/utils/ai_usage.rs','src/utils/js_string.rs','src/utils/lossless_json.rs','src/utils/json_number.rs','src/utils/tts/settings.rs','tests/ai_usage_lossless.rs','tests/fixtures/ai_usage_lossless_reference.cjs','Cargo.toml','Cargo.lock','rust-toolchain.toml'];
 const nativeHashes=Object.fromEntries(nativeFiles.map(p=>[p,sha(read(p))]));
-const output=JSON.stringify({metadata:{format:1,node:process.version,v8:process.versions.v8,typescript:ts.version,hashes,nativeHashes,evidence,typeEvidence,members,compiledSha256:sha(compiled.outputText),caseCount:cases.length,metadataCaseCount:metadataCases.length},cases,metadataCases},null,2)+'\n';
+const output=JSON.stringify({metadata:{format:1,node:process.version,v8:process.versions.v8,typescript:ts.version,sourceProvenance:resolveSource(root, 'src/utils/ai_usage_event.ts').provenance,hashes,nativeHashes,evidence,typeEvidence,members,compiledSha256:sha(compiled.outputText),caseCount:cases.length,metadataCaseCount:metadataCases.length},cases,metadataCases},null,2)+'\n';
 const [mode,dir,...extra]=process.argv.slice(2);
 assert(['--write','--check'].includes(mode) && dir && !extra.length,'usage: --write DIR | --check DIR');
 const real=fs.realpathSync(dir), repo=fs.realpathSync(root);

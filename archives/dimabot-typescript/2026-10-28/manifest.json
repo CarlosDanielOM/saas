@@ -104,6 +104,14 @@
     {
       "source": "src/utils/moderation/defaults.test.ts",
       "sha256": "5c40dce38b888f0076a3d64480087527e9cc7e986fec243ea70fedc6918be9fb"
+    },
+    {
+      "source": "src/utils/ai_usage_event.ts",
+      "sha256": "87ff158c166652ea1eb64199ea4c9c6250b35db90399cb658ef6c3086628de60"
+    },
+    {
+      "source": "src/utils/ai_usage_event.test.ts",
+      "sha256": "d882a40637225a6454c5d6dde78741fc4f15732a37f48fc2027bc85f5a8e2619"
     }
   ]
 }

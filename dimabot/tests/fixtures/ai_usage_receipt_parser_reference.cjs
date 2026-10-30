@@ -1,4 +1,5 @@
 'use strict';
+const {sourcePath: fixturePath, resolveSource} = require('./ai_usage_source_resolver.cjs');
 // Parent-only execution: pinned, offline, disposable, capped toolchain. Public
 // modes are exactly --write DIR (exclusive) and --check DIR (byte-exact).
 const fs = require('node:fs');
@@ -18,7 +19,7 @@ assert(fs.statSync(dir).isDirectory(), 'existing parent-owned fixture directory 
 const zones = ['UTC', 'America/New_York', 'Europe/Berlin', 'Australia/Lord_Howe', 'Pacific/Apia'];
 const root = path.resolve(__dirname, '../..');
 const sha = value => crypto.createHash('sha256').update(value).digest('hex');
-const read = file => fs.readFileSync(path.join(root, file), 'utf8');
+const read = file => fs.readFileSync(fixturePath(root, file), 'utf8');
 const bits = n => { const b = Buffer.alloc(8); b.writeDoubleBE(n); return b.toString('hex'); };
 
 // Install before importing Mongoose or evaluating ANY application declaration.
@@ -336,7 +337,7 @@ const sourceFiles = [
   'tests/fixtures/ai_usage_receipt_parser_reference.cjs',
 ];
 function provenance() {
-  const hashes = Object.fromEntries(sourceFiles.map(file=>[file,sha(fs.readFileSync(path.join(root,file)))]));
+  const hashes = Object.fromEntries(sourceFiles.map(file=>[file,sha(fs.readFileSync(fixturePath(root,file)))]));
   const dependencies = {};
   // Hash exact installed code, packages, lock and reader, rather than claiming
   // package versions alone identify a Mongoose/BSON implementation.

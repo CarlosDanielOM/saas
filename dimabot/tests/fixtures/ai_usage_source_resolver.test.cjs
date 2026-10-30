@@ -1,0 +1,45 @@
+'use strict';
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const {resolveSource, pins} = require('./ai_usage_source_resolver.cjs');
+const logical = 'src/utils/ai_usage_event.ts';
+// Copy only into a private temporary root; never modify repository sources.
+const originalRoot = path.resolve(__dirname, '../..');
+const original = resolveSource(originalRoot, logical);
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-usage-resolver-'));
+try {
+  const root = path.join(temp, 'dimabot'), live = path.join(root, logical);
+  const archiveRoot = path.join(temp, 'archives/dimabot-typescript/2026-10-28');
+  const archived = path.join(archiveRoot, logical), manifest = path.join(archiveRoot, 'manifest.json');
+  fs.mkdirSync(path.dirname(live), {recursive:true});
+  fs.mkdirSync(path.dirname(archived), {recursive:true});
+  const bytes = fs.readFileSync(original.path);
+  const writeManifest = entries => fs.writeFileSync(manifest, JSON.stringify({files:entries}));
+  const entry = {source:logical, sha256:pins[logical]};
+  assert.throws(() => resolveSource(root, logical));
+  assert.throws(() => resolveSource(root, '../anything.ts'));
+  assert.throws(() => resolveSource(root, logical, 'wrong'));
+  fs.writeFileSync(live, bytes);
+  assert.equal(resolveSource(root, logical).provenance, 'live');
+  fs.writeFileSync(archived, bytes);
+  assert.throws(() => resolveSource(root, logical));
+  fs.unlinkSync(live);
+  assert.throws(() => resolveSource(root, logical));
+  writeManifest([entry]);
+  assert.equal(resolveSource(root, logical).path, archived);
+  writeManifest([entry,entry]); assert.throws(() => resolveSource(root, logical));
+  writeManifest([{...entry, sha256:'bad'}]); assert.throws(() => resolveSource(root, logical));
+  writeManifest([{...entry, source:'src/utils/unrelated.ts'}]); assert.throws(() => resolveSource(root, logical));
+  writeManifest([entry]); fs.writeFileSync(archived, 'tampered'); assert.throws(() => resolveSource(root, logical));
+  fs.unlinkSync(archived); fs.writeFileSync(live, bytes); assert.throws(() => resolveSource(root, logical)); fs.unlinkSync(live);
+  fs.symlinkSync(original.path, archived); assert.throws(() => resolveSource(root, logical));
+  const testId = 'src/utils/ai_usage_event.test.ts';
+  const testOriginal = resolveSource(originalRoot, testId);
+  const testArchive = path.join(archiveRoot, testId);
+  fs.writeFileSync(testArchive, fs.readFileSync(testOriginal.path));
+  writeManifest([entry, {source:testId, sha256:pins[testId]}]);
+  assert.equal(resolveSource(root, testId).path, testArchive);
+  fs.writeFileSync(testArchive, 'tampered'); assert.throws(() => resolveSource(root, testId));
+} finally { fs.rmSync(temp, {recursive:true, force:true}); }

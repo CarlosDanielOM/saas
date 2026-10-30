@@ -1,4 +1,5 @@
 'use strict';
+const {sourcePath: fixturePath, resolveSource} = require('./ai_usage_source_resolver.cjs');
 // Author-only fixture. The parent runs this using the pinned isolated toolchain.
 const fs=require('node:fs'), path=require('node:path'), crypto=require('node:crypto'), vm=require('node:vm'), assert=require('node:assert/strict'), ts=require('typescript');
 assert.equal(process.version,'v24.22.1'); assert.equal(process.versions.v8,'13.6.233.17-node.58'); assert.equal(ts.version,'5.9.3');
@@ -8,7 +9,7 @@ assert(fs.statSync(dir).isDirectory());
 const namespace=process.env.KEYWORD_FIXTURE_NAMESPACE;
 assert.match(namespace??'',/^keyword-fixture-[a-f0-9]{12}:$/);
 const root=path.resolve(__dirname,'../..');
-const file='src/utils/polarsh.ts', source=fs.readFileSync(path.join(root,file),'utf8');
+const file='src/utils/polarsh.ts', source=fs.readFileSync(fixturePath(root,file),'utf8');
 const hash=x=>crypto.createHash('sha256').update(x).digest('hex');
 const runtimeHashes={node:hash(fs.readFileSync(process.execPath)),typescript:hash(fs.readFileSync(require.resolve('typescript'))),typescriptPackage:hash(fs.readFileSync(require.resolve('typescript/package.json')))};
 assert.equal(runtimeHashes.node,'569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108');
@@ -96,7 +97,7 @@ const cases=[
  }
  assert.equal(byId('queue-failure').calls.filter(c=>c[0]==='rPush'&&c[1].endsWith(':ai:polarshevent')).length,1);
  assert(!byId('queue-failure').calls.some(c=>c[0]==='project'));
- const payload=JSON.stringify({version:1,namespace,node:process.version,v8:process.versions.v8,typescript:ts.version,sourceHash:hash(source),declarations,types,runtimeHashes,dependencyHashes:Object.fromEntries(['src/utils/ai_usage_event.ts','src/utils/ai_usage_classification.ts','src/utils/ai_usage_ledger.ts','tests/fixtures/ai_usage_producer_source.cjs','tests/fixtures/polar_cache_usage_reference.cjs','package.json','package-lock.json','Cargo.toml','Cargo.lock'].map(name=>[name,hash(fs.readFileSync(path.join(root,name)))])),cases:outputs},null,2)+'\n';
+ const payload=JSON.stringify({version:1,namespace,node:process.version,v8:process.versions.v8,typescript:ts.version,sourceHash:hash(source),declarations,types,runtimeHashes,dependencyHashes:Object.fromEntries(['src/utils/ai_usage_event.ts','src/utils/ai_usage_classification.ts','src/utils/ai_usage_ledger.ts','tests/fixtures/ai_usage_producer_source.cjs','tests/fixtures/polar_cache_usage_reference.cjs','package.json','package-lock.json','Cargo.toml','Cargo.lock'].map(name=>[name,hash(fs.readFileSync(fixturePath(root,name)))])),cases:outputs},null,2)+'\n';
  const out=path.join(dir,'polar-cache-usage.json');
  if(mode==='--write')fs.writeFileSync(out,payload,{flag:'wx'});else assert.equal(fs.readFileSync(out,'utf8'),payload);
 })().catch(e=>{console.error(e);process.exitCode=1;});

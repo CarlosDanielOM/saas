@@ -1,5 +1,10 @@
 #![cfg(feature = "ai-usage-ledger-backfill")]
+
 //! Author-only draft. Run only through the parent's capped isolated workflow.
+#[allow(dead_code)]
+#[path = "support/ai_usage_source.rs"]
+mod ai_usage_source;
+
 use dima_rust::utils::{
     ai_usage_ledger_backfill::{
         self as backfill, AiUsageBackfillError, AiUsageLedgerBackfillInput,
@@ -171,7 +176,7 @@ fn fixture() -> Value {
         let p = if file.starts_with("node_modules/") {
             dep.join(file)
         } else {
-            base.join(file)
+            ai_usage_source::path(&base, file)
         };
         assert_eq!(
             *digest,
@@ -201,7 +206,9 @@ fn fixture() -> Value {
     let declarations = m["declarations"].as_array().unwrap();
     assert!(declarations.len() > 15);
     for d in declarations {
-        let source = std::fs::read_to_string(base.join(d["file"].as_str().unwrap())).unwrap();
+        let source =
+            std::fs::read_to_string(ai_usage_source::path(&base, d["file"].as_str().unwrap()))
+                .unwrap();
         let a = d["startByte"].as_u64().unwrap() as usize;
         let b = d["endByte"].as_u64().unwrap() as usize;
         let text = format!("{}\n", &source[a..b]);

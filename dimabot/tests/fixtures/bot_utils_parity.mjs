@@ -5,17 +5,22 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import vm from 'node:vm';
 import ts from '../../node_modules/typescript/lib/typescript.js';
+import { createRequire } from 'node:module';
+import { pathToFileURL, fileURLToPath } from 'node:url';
+const {resolveSource} = createRequire(import.meta.url)('./ai_usage_source_resolver.cjs');
+const fixtureRoot = fileURLToPath(new URL('../..', import.meta.url));
+const usageSource = () => resolveSource(fixtureRoot, 'src/utils/ai_usage_event.ts').path;
 
 const sourceRoot = new URL('../../src/utils/', import.meta.url);
 const sources = new Map();
 async function source(name) {
-  const text = await readFile(new URL(`${name}.ts`, sourceRoot), 'utf8');
+  const text = await readFile(name === 'ai_usage_event' ? usageSource() : new URL(`${name}.ts`, sourceRoot), 'utf8');
   sources.set(`${name}.ts`, createHash('sha256').update(text).digest('hex'));
   return text;
 }
 async function pureModule(name) {
   await source(name);
-  return import(new URL(`${name}.ts`, sourceRoot));
+  return import(name === 'ai_usage_event' ? pathToFileURL(usageSource()) : new URL(`${name}.ts`, sourceRoot));
 }
 async function functionsFrom(name, names) {
   const input = await source(name);

@@ -1,4 +1,5 @@
 'use strict';
+const {sourcePath: fixturePath, resolveSource} = require('./ai_usage_source_resolver.cjs');
 // AUTHOR ONLY until the parent runs this in the capped isolated environment.
 // Actual AST-selected TS bodies and actual installed Mongoose schema/query
 // casting run offline. Only collection cursor replies are replaced. This is
@@ -21,7 +22,7 @@ assert.equal(process.version,'v24.22.1');
 assert.equal(process.versions.v8,'13.6.233.17-node.58');
 assert.equal(ts.version,'5.9.3');
 const sha = value => crypto.createHash('sha256').update(value).digest('hex');
-const read = file => fs.readFileSync(path.join(root,file),'utf8');
+const read = file => fs.readFileSync(fixturePath(root,file),'utf8');
 const pins = {
   'src/utils/ai_usage_ledger.ts':'3519b440d3d03a9415323f75f113f81627c6b07369ef43903a7b07116df5d4f5',
   'src/utils/ai_usage_classification.ts':'00fcd076d0f3460ecea46588904242252a32b9500e43217c67a1a07e1cbe4b36',
@@ -356,7 +357,7 @@ function provenance() {
     'src/utils/js_compat.rs','src/utils/tts/settings.rs','src/utils/tts/usage.rs',
     'tests/ai_usage_ledger_queries.rs','tests/fixtures/ai_usage_ledger_queries_reference.cjs'];
   const hashes=Object.fromEntries([...new Set([...Object.keys(pins),...native])]
-    .map(file=>[file,sha(fs.readFileSync(path.join(root,file)))]));
+    .map(file=>[file,sha(fs.readFileSync(fixturePath(root,file)))]));
   const dependencies=Object.fromEntries(Object.keys(require.cache).filter(f=>f.includes('/node_modules/')).sort()
     .map(file=>[path.relative(root,file),sha(fs.readFileSync(file))]));
   const mongooseRequire=createRequire(require.resolve('mongoose'));

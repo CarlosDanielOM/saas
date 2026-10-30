@@ -1,4 +1,5 @@
 'use strict';
+const {sourcePath: fixturePath, resolveSource} = require('./ai_usage_source_resolver.cjs');
 const fs=require('node:fs');
 const path=require('node:path');
 const crypto=require('node:crypto');
@@ -12,7 +13,7 @@ function loadSource(realm) {
   assert(['vm','commonjs'].includes(realm));
 const root = path.resolve(__dirname, '../..');
 const sha = x => crypto.createHash('sha256').update(x).digest('hex');
-const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
+const read = relative => fs.readFileSync(fixturePath(root, relative), 'utf8');
 const ledgerFile = 'src/utils/ai_usage_ledger.ts';
 const ledger = read(ledgerFile);
 const ast = ts.createSourceFile(ledgerFile, ledger, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);

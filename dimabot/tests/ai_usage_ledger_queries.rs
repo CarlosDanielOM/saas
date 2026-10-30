@@ -1,6 +1,11 @@
 #![cfg(feature = "ai-usage-ledger-queries")]
+
 //! AUTHOR ONLY until parent isolated execution. Ordinary tests need no server;
 //! ignored checks require a freshly generated source oracle / owned Mongo.
+#[allow(dead_code)]
+#[path = "support/ai_usage_source.rs"]
+mod ai_usage_source;
+
 use dima_rust::utils::{
     ai_usage_ledger_queries::{
         self as queries, AiUsageLedgerTransactionsInput, AiUsagePacingHistoryInput,
@@ -658,7 +663,7 @@ fn source_fixture() -> Value {
         let path = if file.starts_with("node_modules/") {
             dependency.join(file)
         } else {
-            base.join(file)
+            ai_usage_source::path(&base, file)
         };
         assert_eq!(
             *digest,
@@ -693,8 +698,11 @@ fn source_fixture() -> Value {
     let declarations = metadata["declarations"].as_array().unwrap();
     assert_eq!(declarations.len(), 22);
     for declaration in declarations {
-        let source =
-            std::fs::read_to_string(base.join(declaration["file"].as_str().unwrap())).unwrap();
+        let source = std::fs::read_to_string(ai_usage_source::path(
+            &base,
+            declaration["file"].as_str().unwrap(),
+        ))
+        .unwrap();
         let from = declaration["startByte"].as_u64().unwrap() as usize;
         let to = declaration["endByte"].as_u64().unwrap() as usize;
         let text = format!("{}\n", &source[from..to]);

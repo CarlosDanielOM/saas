@@ -1,5 +1,9 @@
 #![cfg(feature = "ai-usage-lossless")]
 
+#[allow(dead_code)]
+#[path = "support/ai_usage_source.rs"]
+mod ai_usage_source;
+
 use dima_rust::utils::{
     ai_usage_lossless::{
         AiUsageLosslessError, create_ai_usage_context_json, create_ai_usage_context_json_with_id,
@@ -59,7 +63,9 @@ fn replay_every_actual_source_case_and_exact_wires() {
     }
     let source = format!(
         "{:x}",
-        Sha256::digest(std::fs::read(root.join("src/utils/ai_usage_event.ts")).unwrap())
+        Sha256::digest(
+            std::fs::read(ai_usage_source::path(root, ai_usage_source::LOGICAL)).unwrap()
+        )
     );
     assert_eq!(
         source,
@@ -72,6 +78,10 @@ fn replay_every_actual_source_case_and_exact_wires() {
         )
         .as_str(),
         Some(source.as_str())
+    );
+    assert_eq!(
+        string(metadata, "sourceProvenance").as_str(),
+        Some(ai_usage_source::PROVENANCE)
     );
     let JsonValue::Array(cases) = fixture.get("cases").expect("cases") else {
         panic!("cases")

@@ -1,5 +1,9 @@
 #![cfg(feature = "posthog-tracking")]
 
+#[allow(dead_code)]
+#[path = "support/ai_usage_source.rs"]
+mod ai_usage_source;
+
 use dima_rust::utils::{
     ai_usage::{
         AiUsageContext, AiUsageContextInput, Category, EntryKind, ResourceType, UsageUnit,
@@ -934,7 +938,16 @@ fn fixture() -> JsonValue {
         };
     }
     source!("src/utils/posthog_events.ts");
-    source!("src/utils/ai_usage_event.ts");
+    let usage_source = std::fs::read_to_string(ai_usage_source::path(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")),
+        ai_usage_source::LOGICAL,
+    ))
+    .unwrap();
+    assert_eq!(string(get(sources, ai_usage_source::LOGICAL)), usage_source);
+    assert_eq!(
+        string(get(get(metadata, "hashes"), ai_usage_source::LOGICAL)),
+        ai_usage_source::SHA256
+    );
     source!("src/utils/posthog_events.rs");
     source!("src/utils/ai_usage.rs");
     source!("src/utils/js_string.rs");

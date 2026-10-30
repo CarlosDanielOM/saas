@@ -1,17 +1,18 @@
 'use strict';
+const {sourcePath: fixturePath, resolveSource} = require('./ai_usage_source_resolver.cjs');
 // Prepared builder + wire encoding benchmark. No application services are loaded.
-// --write requires an empty task-owned directory; --check never measures time.
+// --write and --prepare require an empty task-owned directory; checks never measure time.
 const fs=require('node:fs');
 const path=require('node:path');
 const assert=require('node:assert/strict');
 const {loadSource}=require('./ai_usage_producer_source.cjs');
 const [mode,dir,...rest]=process.argv.slice(2);
-assert(['--write','--check'].includes(mode) && dir && !rest.length,'usage: --write DIR | --check DIR');
+assert(['--write','--check','--prepare','--check-input'].includes(mode) && dir && !rest.length,'usage: --write DIR | --check DIR | --prepare DIR | --check-input DIR');
 assert(fs.statSync(dir).isDirectory());
 const vm=loadSource('vm'), normal=loadSource('commonjs');
 const {root,sha}=normal;
-const files=['src/utils/ai_usage_ledger.ts','src/utils/ai_usage_classification.ts','src/utils/ai_usage_event.ts','src/utils/ai_usage_receipts.ts','src/schemas/ai_usage_receipt.schema.ts','src/utils/ai_usage_producer.rs','src/utils/ai_usage.rs','src/utils/credit_policy.rs','src/utils/js_string.rs','src/utils/lossless_json.rs','src/utils/json_number.rs','src/utils/js_compat.rs','src/utils/ai_usage_receipts/values.rs','src/utils/ai_usage_receipts/queue.rs','src/utils/ai_usage_receipts.rs','tests/fixtures/ai_usage_producer_source.cjs','tests/fixtures/ai_usage_producer_reference.cjs','tests/fixtures/ai_usage_producer_benchmark.cjs','tests/ai_usage_producer_benchmark.rs','package.json','package-lock.json'];
-const hashes=Object.fromEntries(files.map(f=>[f,sha(fs.readFileSync(path.join(root,f)))]));
+const files=['src/utils/ai_usage_ledger.ts','src/utils/ai_usage_classification.ts','src/utils/ai_usage_event.ts','src/utils/ai_usage_receipts.ts','src/schemas/ai_usage_receipt.schema.ts','src/utils/ai_usage_producer.rs','src/utils/ai_usage.rs','src/utils/credit_policy.rs','src/utils/js_string.rs','src/utils/lossless_json.rs','src/utils/json_number.rs','src/utils/js_compat.rs','src/utils/ai_usage_receipts/values.rs','src/utils/ai_usage_receipts/queue.rs','src/utils/ai_usage_receipts.rs','tests/fixtures/ai_usage_source_resolver.cjs','tests/fixtures/ai_usage_producer_source.cjs','tests/fixtures/ai_usage_producer_reference.cjs','tests/fixtures/ai_usage_producer_benchmark.cjs','tests/ai_usage_producer_benchmark.rs','package.json','package-lock.json'];
+const hashes=Object.fromEntries(files.map(f=>[f,sha(fs.readFileSync(fixturePath(root,f)))]));
 hashes.node=sha(fs.readFileSync(process.execPath));
 hashes.typescript=sha(fs.readFileSync(require.resolve('typescript')));
 hashes.typescriptPackage=sha(fs.readFileSync(require.resolve('typescript/package.json')));
@@ -45,9 +46,11 @@ function validate(report,runtime) {
   assert.equal(report.workloads.length,workloads.length);
   report.workloads.forEach((r,i)=>{ const w=workloads[i]; assert.equal(r.name,w.name); assert.equal(r.iterations,w.iterations); assert.equal(r.warmup,w.warmup); assert.equal(r.checksum,expected(w)); assert.equal(r.samples.length,7); assert.deepEqual(r.sampleChecksums,Array(7).fill(expected(w))); for(const n of r.samples) assert(Number.isSafeInteger(n)&&n>0); const sorted=[...r.samples].sort((a,b)=>a-b); assert.equal(r.medianNs,sorted[3]); });
 }
-if(mode==='--write') {
+if(mode==='--write' || mode==='--prepare') {
   assert.equal(fs.readdirSync(dir).length,0,'directory must be empty');
   fs.writeFileSync(inputPath,inputBytes,{flag:'wx'});
+}
+if(mode==='--write') {
   const results=workloads.map(w=>{
     const pool=w.pool.map(p=>({channelID:p.channelID,customerId:p.customerId,occurredAt:new Date(p.occurredAtMs),context:JSON.parse(p.contextJson),credits:p.credits}));
     function run(count) { let sum=0; for(let i=0;i<count;i++) { const receipt=normal.producer.buildQueuedAiUsageReceipt(pool[i%32]); const bytes=Buffer.from(JSON.stringify(receipt),'utf8'); for(const b of bytes) sum=(sum+b)>>>0; } return sum; }
@@ -58,7 +61,10 @@ if(mode==='--write') {
   });
   const report={format:1,label:input.label,runtime:'node-commonjs',inputSha256,workloads:results}; validate(report,'node-commonjs');
   fs.writeFileSync(nodePath,JSON.stringify(report,null,2)+'\n',{flag:'wx'});
-} else {
+} else if(mode==='--check-input') {
+  assert.deepEqual(fs.readdirSync(dir),[path.basename(inputPath)]);
+  assert.equal(fs.readFileSync(inputPath,'utf8'),inputBytes,'inputs/provenance differ');
+} else if(mode==='--check') {
   assert.equal(fs.readFileSync(inputPath,'utf8'),inputBytes,'inputs/provenance differ');
   validate(JSON.parse(fs.readFileSync(nodePath,'utf8')),'node-commonjs');
   validate(JSON.parse(fs.readFileSync(rustPath,'utf8')),'rust-release');

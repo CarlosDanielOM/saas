@@ -1,6 +1,11 @@
 #![cfg(feature = "ai-usage-receipt-parser")]
+
 //! Author-only: parent must wire the opt-in modules/features before compiling.
 //! No fixture/test/oracle ran in this task.
+#[allow(dead_code)]
+#[path = "support/ai_usage_source.rs"]
+mod ai_usage_source;
+
 use dima_rust::utils::{
     ai_usage::EntryKind,
     ai_usage_receipt_parser::{ParsedAiUsageReceipt, RetentionTier, parse_queued_ai_usage_receipt},
@@ -532,7 +537,7 @@ fn hash_file(root: &Path, relative: &str, expected: &JsonValue) {
     valid_sha(expected);
     assert_eq!(
         hash(
-            &std::fs::read(root.join(relative))
+            &std::fs::read(ai_usage_source::path(root, relative))
                 .unwrap_or_else(|e| panic!("provenance {relative}: {e}"))
         ),
         text(expected),
@@ -666,7 +671,7 @@ fn verify_provenance(fixture: &JsonValue) {
     assert!(declarations.len() >= 30);
     for declaration in declarations {
         let file = text(field(declaration, "file"));
-        let source = std::fs::read_to_string(root.join(file)).unwrap();
+        let source = std::fs::read_to_string(ai_usage_source::path(root, file)).unwrap();
         let snippet = text(field(declaration, "text"));
         assert!(
             !snippet.is_empty() && source.contains(snippet),

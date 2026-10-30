@@ -1,4 +1,5 @@
 'use strict';
+const {sourcePath: fixturePath, resolveSource} = require('./ai_usage_source_resolver.cjs');
 // AUTHOR ONLY here: parent executes in its pinned isolated Node toolchain.
 // --write DIR requires an EXISTING parent-owned directory, and uses exclusive
 // creation. --check DIR is read-only and compares every byte, provenance included.
@@ -128,7 +129,7 @@ async function main() {
   assert.equal(cases.filter(c=>c.integrationRole).length,9);
   assert.equal(new Set(cases.filter(c=>c.integrationRole).map(c=>JSON.parse(c.input.contextJson).entryId)).size,9);
   const sources=[ledgerFile,'src/utils/ai_usage_classification.ts','src/utils/ai_usage_event.ts','src/utils/ai_usage_receipts.ts','src/schemas/ai_usage_receipt.schema.ts','src/utils/ai_usage.rs','src/utils/credit_policy.rs','src/utils/js_string.rs','src/utils/lossless_json.rs','src/utils/json_number.rs','src/utils/js_compat.rs','src/utils/ai_usage_receipts/values.rs','src/utils/ai_usage_receipts/queue.rs','src/utils/ai_usage_receipts.rs','package.json','package-lock.json','tests/ai_usage_producer.rs','tests/ai_usage_producer_redis.rs','tests/support/ai_usage_producer.rs','src/utils/ai_usage_producer.rs'];
-  const hashes=Object.fromEntries(sources.map(f=>[f,sha(fs.readFileSync(path.join(root,f)))]));
+  const hashes=Object.fromEntries(sources.map(f=>[f,sha(fs.readFileSync(fixturePath(root,f)))]));
   hashes.reader=sha(fs.readFileSync(__filename));
   hashes.loader=sha(fs.readFileSync(path.join(__dirname,'ai_usage_producer_source.cjs')));
   hashes.node=sha(fs.readFileSync(process.execPath));

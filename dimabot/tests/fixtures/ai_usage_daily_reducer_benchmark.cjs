@@ -1,4 +1,5 @@
 'use strict';
+const {sourcePath: fixturePath, resolveSource} = require('./ai_usage_source_resolver.cjs');
 // Offline, prepared-operation benchmark. The Rust driver interleaves trials.
 const fs = require('node:fs');
 const path = require('node:path');
@@ -44,7 +45,7 @@ for (const [file, names] of [
  ['src/utils/ai_usage_event.ts', ['AiUsageEntryKind', 'AiUsageCategory', 'AiUsageUnit', 'AiUsageResourceType']],
  ['src/utils/ai_usage_receipts.ts', ['AiUsageReceiptCategory', 'AiUsageTransaction']]
 ]) {
- const text = fs.readFileSync(path.join(root, file), 'utf8');
+ const text = fs.readFileSync(fixturePath(root, file), 'utf8');
  const tree = ts.createSourceFile(file, text, ts.ScriptTarget.ES2022, true);
  assert.deepEqual(tree.parseDiagnostics, []);
  const declarations = names.map(name => {

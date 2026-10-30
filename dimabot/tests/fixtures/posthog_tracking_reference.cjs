@@ -1,4 +1,5 @@
 'use strict';
+const {sourcePath: fixturePath, resolveSource} = require('./ai_usage_source_resolver.cjs');
 // Run ONLY in the parent's pinned, isolated snapshot. No external SDK capture.
 const fs = require('node:fs');
 const path = require('node:path');
@@ -16,9 +17,9 @@ else assert(fs.statSync(dir).isDirectory());
 const root = path.resolve(__dirname, '../..');
 const sdk = process.env.POSTHOG_RS_SOURCE || '/root/.local/state/rust-full-migration-20261028-lu443ytp/cargo/registry/src/index.crates.io-1949cf8c6b5b557f/posthog-rs-0.27.0';
 const sha = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
-const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
+const read = relative => fs.readFileSync(fixturePath(root, relative), 'utf8');
 const sourcePath = path.join(root, 'src/utils/posthog_events.ts');
-const usagePath = path.join(root, 'src/utils/ai_usage_event.ts');
+const usagePath = fixturePath(root, 'src/utils/ai_usage_event.ts');
 const runtimeImports = [];
 const expectedExports = ['identifyStreamer', 'trackCommand', 'trackTts', 'trackAiUsageRecorded', 'trackAiOperation', 'shutdownPosthog'];
 function ast(file) {
@@ -41,11 +42,19 @@ assert.equal(sourceAst.imports.length, 2);
 assert(sourceAst.imports[1].bindings.some(b => b.name === 'AiUsageContext' && b.typeOnly));
 // Full strict checking of the real two source files against the installed pinned
 // packages. No source substitutions or ambient any declarations are accepted.
-const program = ts.createProgram([sourcePath, usagePath], {
+const typeOptions = {
   module: ts.ModuleKind.NodeNext, moduleResolution: ts.ModuleResolutionKind.NodeNext,
   target: ts.ScriptTarget.ES2022, strict: true, noEmit: true, skipLibCheck: true,
   esModuleInterop: true, types: ['node'],
-});
+};
+// Retain the original logical module for resolution; compile the exact
+// archive bytes validated by the shared resolver without changing the source.
+const logicalUsagePath = path.join(root, 'src/utils/ai_usage_event.ts');
+const host = ts.createCompilerHost(typeOptions);
+const hostRead = host.readFile.bind(host), hostExists = host.fileExists.bind(host);
+host.readFile = file => file === logicalUsagePath ? fs.readFileSync(usagePath, 'utf8') : hostRead(file);
+host.fileExists = file => file === logicalUsagePath || hostExists(file);
+const program = ts.createProgram([sourcePath, logicalUsagePath], typeOptions, host);
 const diagnostics = ts.getPreEmitDiagnostics(program);
 assert.equal(diagnostics.length, 0, ts.formatDiagnosticsWithColorAndContext(diagnostics, {
   getCanonicalFileName: p => p, getCurrentDirectory: () => root, getNewLine: () => '\n',
@@ -57,7 +66,7 @@ function load(file, imports) {
   assert.equal(result.diagnostics.length, 0);
   const module = {exports: {}};
   new Function('require', 'module', 'exports', result.outputText)(name => {
-    runtimeImports.push({file: path.relative(root, file), module: name});
+    runtimeImports.push({file: file === usagePath ? 'src/utils/ai_usage_event.ts' : path.relative(root, file), module: name});
     if (Object.hasOwn(imports, name)) return imports[name];
     if (name === 'node:crypto') return require(name); // Real context implementation.
     throw Error(`unexpected runtime import ${name}`);
@@ -256,7 +265,8 @@ const variants = [undefined, null, '', 'text', '😀', '\ud800', '\udc00', 'x\ud
   ]);
   const output = JSON.stringify({metadata: {
     format: 2, node: process.version, v8: process.versions.v8, typescript: ts.version,
-    sourceAst, usageAst: ast(usagePath), callers, runtimeImports: imports, strict: {diagnostics: 0, skipLibCheck: true}, packagePins,
+    sourceAst, usageAst: ast(usagePath), usageSourceProvenance: resolveSource(root, 'src/utils/ai_usage_event.ts').provenance,
+    callers, runtimeImports: imports, strict: {diagnostics: 0, skipLibCheck: true}, packagePins,
     hashes: Object.fromEntries(Object.entries(sources).map(([p, s]) => [p, sha(s)])), sdkPins,
     recordCount: records.length,
     contracts: 'plain-json preserves JSON casts; required absence and nonstring distinct/template IDs rejected natively; source calls still recorded. Native contexts reuse real createAiUsageContext; supplied IDs avoid nondeterministic UUIDs. SDK boundary only mocked.',

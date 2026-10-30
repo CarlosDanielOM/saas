@@ -1,3 +1,7 @@
+#[allow(dead_code)]
+#[path = "ai_usage_source.rs"]
+mod ai_usage_source;
+
 use dima_rust::utils::{
     ai_usage_producer::*,
     credit_policy::JsDate,
@@ -89,6 +93,14 @@ pub fn fixture() -> JsonValue {
     ] {
         assert!(hex64(field(hashes, name)), "strict SHA256 for {name}");
     }
+    assert_eq!(
+        text(field(hashes, ai_usage_source::LOGICAL)),
+        ai_usage_source::SHA256
+    );
+    let _ = ai_usage_source::path(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")),
+        ai_usage_source::LOGICAL,
+    );
     assert!(hex64(field(meta, "extractedSha256")));
     let ast = field(meta, "ast");
     let declarations = array(field(ast, "declarations"));

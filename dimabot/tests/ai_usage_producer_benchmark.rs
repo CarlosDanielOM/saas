@@ -1,8 +1,13 @@
 #![cfg(feature = "ai-usage-producer")]
+
 //! Parent-owned isolated release benchmark. The parent independently hashes the
 //! input before and after this run and supplies that SHA256 in the environment.
 //! Rust strings already contain UTF-8; unlike Node's Buffer.from, no separate
 //! encoding allocation is needed. Both paths sum every resulting wire byte.
+#[allow(dead_code)]
+#[path = "support/ai_usage_source.rs"]
+mod ai_usage_source;
+
 use dima_rust::utils::{
     ai_usage::AiUsageContext,
     ai_usage_producer::{build_queued_ai_usage_receipt, build_queued_ai_usage_receipt_at},
@@ -99,6 +104,14 @@ fn matched_prepared_receipts() {
     assert_eq!(text(&input["typescript"]), "5.9.3");
     assert!(digest(text(&input["extractedSha256"])));
     let hashes = input["hashes"].as_object().expect("hashes");
+    assert_eq!(
+        text(&input["hashes"][ai_usage_source::LOGICAL]),
+        ai_usage_source::SHA256
+    );
+    let _ = ai_usage_source::path(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")),
+        ai_usage_source::LOGICAL,
+    );
     for key in [
         "src/utils/ai_usage_ledger.ts",
         "src/utils/ai_usage_classification.ts",

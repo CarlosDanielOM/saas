@@ -1,4 +1,5 @@
 'use strict';
+const {sourcePath: fixturePath, resolveSource} = require('./ai_usage_source_resolver.cjs');
 // AUTHOR ONLY. Execute actual source declarations plus installed Mongoose
 // middleware offline. Only collection calls and the separately proven lock
 // boundary are substituted. Never use this host double as runtime completion.
@@ -15,7 +16,7 @@ if(mode==='--write') assert.deepEqual(fs.readdirSync(output),[],'exclusive empty
 assert.equal(process.version,'v24.22.1');assert.equal(process.versions.v8,'13.6.233.17-node.58');
 assert.equal(ts.version,'5.9.3');
 const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
-const read=f=>fs.readFileSync(path.join(root,f),'utf8');
+const read=f=>fs.readFileSync(fixturePath(root,f),'utf8');
 const pins={
  'src/utils/ai_usage_ledger.ts':'3519b440d3d03a9415323f75f113f81627c6b07369ef43903a7b07116df5d4f5',
  'src/utils/ai_usage_lock.ts':'c66763fc7ddc9ab1ab51f3d895c4ab20ef8b37ae62e59d799e960da972eda510',
@@ -227,7 +228,7 @@ function metadata(){
  const native=['Cargo.toml','Cargo.lock','rust-toolchain.toml','src/lib.rs','src/utils/mod.rs','src/schemas/mod.rs','src/schemas/schema.rs',...Object.values(schemas).map(f=>f.replace(/\.ts$/,'.rs')),
   'src/utils/ai_usage_ledger_persistence.rs','src/utils/ai_usage_ledger_backfill.rs','src/utils/ai_usage_aggregate_policy.rs','src/utils/ai_usage_producer.rs','src/utils/ai_usage_receipt_parser.rs','src/utils/ai_usage_ledger_reads.rs','src/utils/ai_usage_lock.rs','src/utils/ai_usage.rs','src/utils/bson_compat.rs','src/utils/credit_policy.rs','src/utils/mongoose_date.rs','src/utils/js_date/mod.rs','src/utils/js_date/parser.rs','src/utils/js_date/local_time.rs','src/utils/js_string.rs','src/utils/json_number.rs','src/utils/js_compat.rs','src/utils/lossless_json.rs','src/utils/tts/settings.rs','tests/ai_usage_ledger_backfill.rs','tests/fixtures/ai_usage_ledger_backfill_reference.cjs',
   'tests/fixtures/ai_usage_lock_reference.cjs','tests/ai_usage_lock.rs'];
- const hashes=Object.fromEntries([...new Set([...Object.keys(pins),...native])].map(f=>[f,sha(fs.readFileSync(path.join(root,f)))]));
+ const hashes=Object.fromEntries([...new Set([...Object.keys(pins),...native])].map(f=>[f,sha(fs.readFileSync(fixturePath(root,f)))]));
  const dependencies=Object.fromEntries(Object.keys(require.cache).filter(f=>f.includes('/node_modules/')).sort().map(f=>[path.relative(root,f),sha(fs.readFileSync(f))]));
  const mr=createRequire(require.resolve('mongoose')),br=createRequire(mr.resolve('mongodb')),lock=JSON.parse(read('package-lock.json')),packages={};
  for(const [name,resolver]of [['typescript',require],['mongoose',require],['mongodb',mr],['bson',br]]){

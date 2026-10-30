@@ -1,4 +1,5 @@
 'use strict';
+const {sourcePath: fixturePath, resolveSource} = require('./ai_usage_source_resolver.cjs');
 // AUTHOR-ONLY DRAFT. --write/--check are offline. Only --serve connects, and
 // only to the exact disposable aliases below. No application bootstrap/env load.
 const fs = require('node:fs');
@@ -19,7 +20,7 @@ const out = fs.realpathSync(directory);
 assert(fs.statSync(out).isDirectory() && out !== repo && !out.startsWith(repo + path.sep), 'external directory required');
 if (mode === '--write') assert.deepEqual(fs.readdirSync(out), [], 'existing empty directory required');
 const sha = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
-const read = file => fs.readFileSync(path.join(root, file), 'utf8');
+const read = file => fs.readFileSync(fixturePath(root, file), 'utf8');
 const nativeDate = Date;
 const OWNER = 'dimabot-migration';
 const MONGO = 'mongodb://ai-usage-persistence-bench-mongo-fixture:27017';
@@ -225,8 +226,8 @@ const packages = Object.fromEntries([['typescript', require], ['mongoose', requi
 assert.equal(packages.mongodb.version, '6.20.0'); assert.equal(packages.bson.version, '6.10.4');
 assert.equal(packages.redis.version, '5.12.1'); assert.equal(packages['@redis/client'].version, '5.12.1');
 const nativeFiles = ['Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', ...walk('src', '.rs'), 'tests/ai_usage_persistence_e2e_benchmark.rs'];
-const nativeHashes = Object.fromEntries(nativeFiles.sort().map(file => [file, sha(fs.readFileSync(path.join(root, file)))]));
-const sourceHashes = Object.fromEntries([...new Set([...Object.keys(pins), 'package.json', 'package-lock.json', 'tests/fixtures/ai_usage_persistence_e2e_benchmark.cjs'])].sort().map(file => [file, sha(fs.readFileSync(path.join(root, file)))]));
+const nativeHashes = Object.fromEntries(nativeFiles.sort().map(file => [file, sha(fs.readFileSync(fixturePath(root, file)))]));
+const sourceHashes = Object.fromEntries([...new Set([...Object.keys(pins), 'package.json', 'package-lock.json', 'tests/fixtures/ai_usage_persistence_e2e_benchmark.cjs'])].sort().map(file => [file, sha(fs.readFileSync(fixturePath(root, file)))]));
 const metadata = {format: 1, scope: 'prebuilt receipt DTO -> real account lease -> dirty dashboard -> receipt upsert -> real aggregate -> daily replacement; inserts and duplicate repair',
  excluded: ['producer/classification invocation before supplied DTO', 'queue/worker/app bootstrap', 'client/model/index initialization', 'reset/seed', 'IPC', 'readback/checksum', 'contention/error/provider paths', 'application connection telemetry wrappers'],
  node: process.version, v8: process.versions.v8, typescript: ts.version, platform: process.platform, arch: process.arch,
@@ -278,7 +279,7 @@ function verifyReport(report) {
   }
  }
  for (const [file, digest] of Object.entries(report.nodeFinish.loadedDependencies)) {
-  safeRelative(file); assert(file.startsWith('node_modules/')); assert.equal(sha(fs.readFileSync(path.join(root, file))), digest, file);
+  safeRelative(file); assert(file.startsWith('node_modules/')); assert.equal(sha(fs.readFileSync(fixturePath(root, file))), digest, file);
  }
  assert.equal(report.cleanup.databaseDropped, true); assert.equal(report.cleanup.redisMarkerDeleted, true);
 }
