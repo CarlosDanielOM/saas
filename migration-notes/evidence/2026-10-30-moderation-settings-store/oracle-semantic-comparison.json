@@ -1,0 +1,64 @@
+{
+  "allPassed": true,
+  "cases": 22,
+  "versionSequences": 9,
+  "loneRuleId": true,
+  "comparisonExcludesOnly": "metadata",
+  "fixtures": [
+    {
+      "attempt": 1,
+      "sha256": "9b32582fc3e041a4ea15713c9b6c942f44792868db11519abbf82b05f0b93d92",
+      "sourceFieldsEqual": [
+        "cases",
+        "channel",
+        "key",
+        "lonePattern",
+        "patterns"
+      ]
+    },
+    {
+      "attempt": 2,
+      "sha256": "9604c7d106ce30d07751ab175c4bd1e885945d06080780bc51f09f34e2eb1e97",
+      "sourceFieldsEqual": [
+        "cases",
+        "channel",
+        "key",
+        "lonePattern",
+        "patterns"
+      ]
+    },
+    {
+      "attempt": 3,
+      "sha256": "cb130a8c8ac8d0bf4cb2334b2df2e8758f3d68933085e3fa98e98aae506f3941",
+      "sourceFieldsEqual": [
+        "cases",
+        "channel",
+        "key",
+        "lonePattern",
+        "patterns"
+      ]
+    },
+    {
+      "attempt": 4,
+      "sha256": "e1634a2008f1fb26795d3e7ffc0c2fda00f0b35fb369d8459ac188d749391573",
+      "sourceFieldsEqual": [
+        "cases",
+        "channel",
+        "key",
+        "lonePattern",
+        "patterns"
+      ]
+    },
+    {
+      "attempt": 5,
+      "sha256": "069d08939f4676c2e9e814b1327f584884959444abcc6aae33dde0b39005e3d9",
+      "sourceFieldsEqual": [
+        "cases",
+        "channel",
+        "key",
+        "lonePattern",
+        "patterns"
+      ]
+    }
+  ]
+}

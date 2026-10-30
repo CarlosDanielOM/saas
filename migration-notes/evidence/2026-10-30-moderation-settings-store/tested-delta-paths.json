@@ -1,0 +1,8 @@
+[
+  "dimabot/Cargo.toml",
+  "dimabot/src/lib.rs",
+  "dimabot/src/handlers/moderation_settings_store.rs",
+  "dimabot/tests/moderation_settings_store.rs",
+  "dimabot/tests/support/moderation_settings_store_protocol.rs",
+  "dimabot/tests/fixtures/moderation_settings_store_reference.cjs"
+]

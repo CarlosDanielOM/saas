@@ -1,0 +1,1067 @@
+{
+  "metadata": {
+    "pins": {
+      "src/handlers/moderation.handler.ts": "2b57bbd962c25bd1f552a52c9d1d215bc052886ca0b1f0c88109383f988c8e52",
+      "src/utils/moderation/spam.ts": "eaa35698ebd7f7e2351e522ca4ece5a3d96b58a96acc41b162b6f22eb2adaaa8",
+      "src/schemas/channel_moderation_settings.schema.ts": "e7ab82dd1eb02eaaddc5cfc93f41a4b8ff09b14ce0b488a870cbf5c727a23653",
+      "src/utils/moderation/rules/blacklist.rule.ts": "8feb8779f829b72e6fc1f6907a7a8e3b3284dd92b04dcc08980b25120f9144ff",
+      "src/utils/moderation/normalize.ts": "07822ff6efe5d707173b6b9e9415b16edfb0eb055c3a03416bf4b4c0c11740ab",
+      "src/utils/moderation/spam_categories.ts": "29dd0951ea0b89567c55b5dce4d2795a74c78e6064b32cbd26a3ecafaa435088",
+      "node_modules/typescript/lib/typescript.js": "3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675"
+    },
+    "nodeSha": "569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108",
+    "versions": {
+      "node": "24.22.1",
+      "v8": "13.6.233.17-node.58",
+      "icu": "78.3",
+      "unicode": "17.0",
+      "typescript": "5.9.3",
+      "mongoose": "8.24.2"
+    },
+    "dependencies": [
+      [
+        "../utils/moderation/spam_categories.js",
+        "DEFAULT_SPAM_THRESHOLD"
+      ],
+      [
+        "../utils/databases/dragonfly.database.js",
+        "getDragonflyClient"
+      ],
+      [
+        "../schemas/channel_moderation_settings.schema.js",
+        "ChannelModerationSettingsSchema"
+      ],
+      [
+        "../utils/moderation/rules/blacklist.rule.js",
+        "compileBlacklistPattern"
+      ],
+      [
+        "../utils/moderation/spam.js",
+        "defaultSpamModerationSettings"
+      ]
+    ],
+    "evidence": {
+      "src/handlers/moderation.handler.ts": [
+        {
+          "name": "SETTINGS_CACHE_TTL_SECONDS",
+          "kind": "FirstStatement",
+          "exported": false,
+          "signature": "const SETTINGS_CACHE_TTL_SECONDS = 300;"
+        },
+        {
+          "name": "NO_SETTINGS_SENTINEL",
+          "kind": "FirstStatement",
+          "exported": true,
+          "signature": "export const NO_SETTINGS_SENTINEL = '{\"none\":true}';"
+        },
+        {
+          "name": "compiledBlacklistPatterns",
+          "kind": "FirstStatement",
+          "exported": false,
+          "signature": "const compiledBlacklistPatterns = new Map<string, { version: number; patterns: Map<string, RegExp | null> }>();"
+        },
+        {
+          "name": "moderationSettingsCacheKey",
+          "kind": "FunctionDeclaration",
+          "exported": true,
+          "signature": "export function moderationSettingsCacheKey(channelID: string): string"
+        },
+        {
+          "name": "invalidateModerationSettingsCache",
+          "kind": "FunctionDeclaration",
+          "exported": true,
+          "signature": "export async function invalidateModerationSettingsCache(channelID: string): Promise<void>"
+        },
+        {
+          "name": "primeModerationSettingsCache",
+          "kind": "FunctionDeclaration",
+          "exported": true,
+          "signature": "export async function primeModerationSettingsCache(channelID: string, settings: IChannelModerationSettings): Promise<void>"
+        },
+        {
+          "name": "loadSettings",
+          "kind": "FunctionDeclaration",
+          "exported": false,
+          "signature": "async function loadSettings(channelID: string): Promise<IChannelModerationSettings>"
+        },
+        {
+          "name": "getBlacklistPattern",
+          "kind": "FunctionDeclaration",
+          "exported": false,
+          "signature": "function getBlacklistPattern(channelID: string, settings: IChannelModerationSettings, rule: IModerationRule): RegExp | null"
+        }
+      ],
+      "src/utils/moderation/spam.ts": [
+        {
+          "name": "spamProtectionSettings",
+          "kind": "FunctionDeclaration",
+          "exported": true,
+          "signature": "export function spamProtectionSettings(settings: Pick<IChannelModerationSettings, 'spamProtection'>)"
+        },
+        {
+          "name": "defaultSpamModerationSettings",
+          "kind": "FunctionDeclaration",
+          "exported": true,
+          "signature": "export function defaultSpamModerationSettings(channelID: string): IChannelModerationSettings"
+        }
+      ],
+      "src/schemas/channel_moderation_settings.schema.ts": [
+        {
+          "name": "MODERATION_SETTINGS_DEFAULTS",
+          "kind": "FirstStatement",
+          "exported": true,
+          "signature": "export const MODERATION_SETTINGS_DEFAULTS = {\n    enabled: false,\n    offenseWindowSeconds: 3600,\n    settingsVersion: 1\n};"
+        }
+      ]
+    },
+    "compiledSha": "01de05fedf292431a2005126b010ab7ddb57f6adda6ce0c42052df0493477111",
+    "bsonSha": "64e5de269bbcdee96f2bebb57cc9729b72aaebde02d832005872b7e575899284",
+    "driverSha": "1880a069aa02d09798a3a082d77198aafa4a2d6a1c0315691f25820b58c025ea",
+    "nativeHashes": {
+      "src/handlers/moderation_settings_store.rs": "4aa91f0836c4b732d3310da9ef762f908057888d80a2a5e12735f9bcdc4dd2fb",
+      "src/utils/bson_js_json.rs": "365f6cf9d43c2f0ae1db846a7aac008d308dc9cad911d5d0cadcdb7bcea9ab7e",
+      "src/utils/lossless_json.rs": "9dc7dcef87ce874239df6effa4130c0b2f2da6a1c1e73f24f4f7560595525c2e",
+      "src/utils/js_string.rs": "17b3e6a6bcd0d92210851eca25da44bbcdb2c2d9e196feb5dab58d06b75d4aed",
+      "src/utils/moderation/blacklist.rs": "0837e1a05c59da89d115aca67d2b8eb8eaeb7bdbdd5d05caf32466031c4be795",
+      "src/utils/moderation/spam.rs": "8979c9bae469f6a997c2019ff268fd0cdcf69042d31e5b8da3986109f47e599a",
+      "tests/support/moderation_settings_store_protocol.rs": "bbfa02362512e22af6774ac86e60af8aefc445007b56e523f84ee38bd438e7f8",
+      "tests/moderation_settings_store.rs": "015d64e09bddaec43ce1adf76405fe5f795de9291118809517414dccfce9e480",
+      "tests/fixtures/moderation_settings_store_reference.cjs": "b65826d0db232e82d4aaa9e2cb4b5740bac3000babd69be3a6881dc421d98e90",
+      "tests/support/moderation_leaf_source.rs": "a31ad35e001de36ad67008fab5913daf522dc04d9ca3e4f345374b6b2d5b7245",
+      "tests/support/sha256.rs": "be1fbeade9ca428358081d30b47d0241734db05c94d343634b7e04520c42cf6a",
+      "Cargo.toml": "94136417560c5638ef03e0fe4bfea90bb6eb4bb747a7d921ea2d812fa09a329a",
+      "Cargo.lock": "787333fa269752a606040d7393767040ef749ce1e01c2512386bf305bcd7a2c3",
+      "rust-toolchain.toml": "b9c8d2d59f6f46474c0cfa0b8b77bea21d94fc73a30ad93d5bf6385c422197d2"
+    },
+    "provenance": {
+      "src/utils/moderation/normalize.ts": "archives/dimabot-typescript/2026-10-28/src/utils/moderation/normalize.ts",
+      "src/utils/moderation/spam_categories.ts": "archives/dimabot-typescript/2026-10-28/src/utils/moderation/spam_categories.ts"
+    }
+  },
+  "channel": "keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é",
+  "key": "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings",
+  "cases": [
+    {
+      "name": "missing",
+      "initial": {},
+      "operation": "load",
+      "result": {
+        "enabled": false,
+        "offenseWindowSeconds": 3600,
+        "settingsVersion": 0,
+        "channelID": "keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é",
+        "channel": "",
+        "rules": [],
+        "spamProtection": {
+          "enabled": true,
+          "reviewAllMessages": false,
+          "categories": [
+            "spam",
+            "ads",
+            "self_promotion"
+          ],
+          "thresholdPercent": 85,
+          "exemptTags": [
+            "mod",
+            "editor",
+            "admin"
+          ]
+        },
+        "createdAt": "1970-01-01T00:00:00.000Z",
+        "updatedAt": "1970-01-01T00:00:00.000Z"
+      },
+      "error": null,
+      "retained": null,
+      "ioLog": [
+        [
+          "get",
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings"
+        ],
+        [
+          "findOne",
+          {
+            "channelID": "keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é"
+          }
+        ],
+        [
+          "set",
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings",
+          "{\"none\":true}",
+          {
+            "EX": 300,
+            "NX": true
+          }
+        ]
+      ],
+      "cache": "{\"none\":true}"
+    },
+    {
+      "name": "sentinel",
+      "initial": {
+        "cache": {
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings": "{\"none\":true}"
+        }
+      },
+      "operation": "load",
+      "result": {
+        "enabled": false,
+        "offenseWindowSeconds": 3600,
+        "settingsVersion": 0,
+        "channelID": "keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é",
+        "channel": "",
+        "rules": [],
+        "spamProtection": {
+          "enabled": true,
+          "reviewAllMessages": false,
+          "categories": [
+            "spam",
+            "ads",
+            "self_promotion"
+          ],
+          "thresholdPercent": 85,
+          "exemptTags": [
+            "mod",
+            "editor",
+            "admin"
+          ]
+        },
+        "createdAt": "1970-01-01T00:00:00.000Z",
+        "updatedAt": "1970-01-01T00:00:00.000Z"
+      },
+      "error": null,
+      "retained": null,
+      "ioLog": [
+        [
+          "get",
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings"
+        ]
+      ],
+      "cache": "{\"none\":true}"
+    },
+    {
+      "name": "empty",
+      "initial": {
+        "cache": {
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings": ""
+        }
+      },
+      "operation": "load",
+      "result": {
+        "enabled": false,
+        "offenseWindowSeconds": 3600,
+        "settingsVersion": 0,
+        "channelID": "keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é",
+        "channel": "",
+        "rules": [],
+        "spamProtection": {
+          "enabled": true,
+          "reviewAllMessages": false,
+          "categories": [
+            "spam",
+            "ads",
+            "self_promotion"
+          ],
+          "thresholdPercent": 85,
+          "exemptTags": [
+            "mod",
+            "editor",
+            "admin"
+          ]
+        },
+        "createdAt": "1970-01-01T00:00:00.000Z",
+        "updatedAt": "1970-01-01T00:00:00.000Z"
+      },
+      "error": null,
+      "retained": null,
+      "ioLog": [
+        [
+          "get",
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings"
+        ],
+        [
+          "findOne",
+          {
+            "channelID": "keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é"
+          }
+        ],
+        [
+          "set",
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings",
+          "{\"none\":true}",
+          {
+            "EX": 300,
+            "NX": true
+          }
+        ],
+        [
+          "get",
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings"
+        ]
+      ],
+      "cache": ""
+    },
+    {
+      "name": "malformed",
+      "initial": {
+        "cache": {
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings": "{"
+        }
+      },
+      "operation": "load",
+      "result": {
+        "enabled": false,
+        "offenseWindowSeconds": 3600,
+        "settingsVersion": 0,
+        "channelID": "keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é",
+        "channel": "",
+        "rules": [],
+        "spamProtection": {
+          "enabled": true,
+          "reviewAllMessages": false,
+          "categories": [
+            "spam",
+            "ads",
+            "self_promotion"
+          ],
+          "thresholdPercent": 85,
+          "exemptTags": [
+            "mod",
+            "editor",
+            "admin"
+          ]
+        },
+        "createdAt": "1970-01-01T00:00:00.000Z",
+        "updatedAt": "1970-01-01T00:00:00.000Z"
+      },
+      "error": null,
+      "retained": null,
+      "ioLog": [
+        [
+          "get",
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings"
+        ],
+        [
+          "findOne",
+          {
+            "channelID": "keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é"
+          }
+        ],
+        [
+          "set",
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings",
+          "{\"none\":true}",
+          {
+            "EX": 300,
+            "NX": true
+          }
+        ],
+        [
+          "get",
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings"
+        ]
+      ],
+      "cache": "{"
+    },
+    {
+      "name": "hit",
+      "initial": {
+        "cache": {
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings": "{\"enabled\":true,\"settingsVersion\":\"1\"}"
+        }
+      },
+      "operation": "load",
+      "result": {
+        "enabled": true,
+        "settingsVersion": "1"
+      },
+      "error": null,
+      "retained": null,
+      "ioLog": [
+        [
+          "get",
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings"
+        ]
+      ],
+      "cache": "{\"enabled\":true,\"settingsVersion\":\"1\"}"
+    },
+    {
+      "name": "null",
+      "initial": {
+        "cache": {
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings": "null"
+        }
+      },
+      "operation": "load",
+      "result": null,
+      "error": null,
+      "retained": null,
+      "ioLog": [
+        [
+          "get",
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings"
+        ]
+      ],
+      "cache": "null"
+    },
+    {
+      "name": "zero",
+      "initial": {
+        "cache": {
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings": "0"
+        }
+      },
+      "operation": "load",
+      "result": 0,
+      "error": null,
+      "retained": null,
+      "ioLog": [
+        [
+          "get",
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings"
+        ]
+      ],
+      "cache": "0"
+    },
+    {
+      "name": "db",
+      "initial": {
+        "docs": {
+          "keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é": {
+            "_id": "fixed-source-id",
+            "channelID": "keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é",
+            "settingsVersion": 7,
+            "createdAt": "1970-01-01T00:00:00.000Z",
+            "extra": 42
+          }
+        }
+      },
+      "operation": "load",
+      "result": {
+        "_id": "fixed-source-id",
+        "channelID": "keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é",
+        "settingsVersion": 7,
+        "createdAt": "1970-01-01T00:00:00.000Z",
+        "extra": 42
+      },
+      "error": null,
+      "retained": null,
+      "ioLog": [
+        [
+          "get",
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings"
+        ],
+        [
+          "findOne",
+          {
+            "channelID": "keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é"
+          }
+        ],
+        [
+          "set",
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings",
+          "{\"_id\":\"fixed-source-id\",\"channelID\":\"keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é\",\"settingsVersion\":7,\"createdAt\":\"1970-01-01T00:00:00.000Z\",\"extra\":42}",
+          {
+            "EX": 300
+          }
+        ]
+      ],
+      "cache": "{\"_id\":\"fixed-source-id\",\"channelID\":\"keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é\",\"settingsVersion\":7,\"createdAt\":\"1970-01-01T00:00:00.000Z\",\"extra\":42}"
+    },
+    {
+      "name": "db-bson",
+      "initial": {
+        "docs": {
+          "keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é": {
+            "_id": "00112233445566778899aabb",
+            "channelID": "keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é",
+            "settingsVersion": 7,
+            "createdAt": "1970-01-01T00:00:00.000Z",
+            "safe": 42,
+            "large": {
+              "low": 1,
+              "high": 2097152,
+              "unsigned": false
+            }
+          }
+        }
+      },
+      "operation": "load",
+      "result": {
+        "_id": "00112233445566778899aabb",
+        "channelID": "keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é",
+        "settingsVersion": 7,
+        "createdAt": "1970-01-01T00:00:00.000Z",
+        "safe": 42,
+        "large": {
+          "low": 1,
+          "high": 2097152,
+          "unsigned": false
+        }
+      },
+      "error": null,
+      "retained": null,
+      "ioLog": [
+        [
+          "get",
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings"
+        ],
+        [
+          "findOne",
+          {
+            "channelID": "keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é"
+          }
+        ],
+        [
+          "set",
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings",
+          "{\"_id\":\"00112233445566778899aabb\",\"channelID\":\"keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é\",\"settingsVersion\":7,\"createdAt\":\"1970-01-01T00:00:00.000Z\",\"safe\":42,\"large\":{\"low\":1,\"high\":2097152,\"unsigned\":false}}",
+          {
+            "EX": 300
+          }
+        ]
+      ],
+      "cache": "{\"_id\":\"00112233445566778899aabb\",\"channelID\":\"keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é\",\"settingsVersion\":7,\"createdAt\":\"1970-01-01T00:00:00.000Z\",\"safe\":42,\"large\":{\"low\":1,\"high\":2097152,\"unsigned\":false}}"
+    },
+    {
+      "name": "malformed-db",
+      "initial": {
+        "cache": {
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings": "{"
+        },
+        "docs": {
+          "keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é": {
+            "_id": "fixed-source-id",
+            "channelID": "keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é",
+            "settingsVersion": 7,
+            "createdAt": "1970-01-01T00:00:00.000Z",
+            "extra": 42
+          }
+        }
+      },
+      "operation": "load",
+      "result": {
+        "_id": "fixed-source-id",
+        "channelID": "keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é",
+        "settingsVersion": 7,
+        "createdAt": "1970-01-01T00:00:00.000Z",
+        "extra": 42
+      },
+      "error": null,
+      "retained": null,
+      "ioLog": [
+        [
+          "get",
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings"
+        ],
+        [
+          "findOne",
+          {
+            "channelID": "keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é"
+          }
+        ],
+        [
+          "set",
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings",
+          "{\"_id\":\"fixed-source-id\",\"channelID\":\"keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é\",\"settingsVersion\":7,\"createdAt\":\"1970-01-01T00:00:00.000Z\",\"extra\":42}",
+          {
+            "EX": 300
+          }
+        ]
+      ],
+      "cache": "{\"_id\":\"fixed-source-id\",\"channelID\":\"keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é\",\"settingsVersion\":7,\"createdAt\":\"1970-01-01T00:00:00.000Z\",\"extra\":42}"
+    },
+    {
+      "name": "nx-winner",
+      "initial": {
+        "race": "{\"settingsVersion\":9,\"enabled\":true}"
+      },
+      "operation": "load",
+      "result": {
+        "settingsVersion": 9,
+        "enabled": true
+      },
+      "error": null,
+      "retained": null,
+      "ioLog": [
+        [
+          "get",
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings"
+        ],
+        [
+          "findOne",
+          {
+            "channelID": "keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é"
+          }
+        ],
+        [
+          "set",
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings",
+          "{\"none\":true}",
+          {
+            "EX": 300,
+            "NX": true
+          }
+        ],
+        [
+          "get",
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings"
+        ]
+      ],
+      "cache": "{\"settingsVersion\":9,\"enabled\":true}"
+    },
+    {
+      "name": "nx-malformed",
+      "initial": {
+        "race": "{"
+      },
+      "operation": "load",
+      "result": {
+        "enabled": false,
+        "offenseWindowSeconds": 3600,
+        "settingsVersion": 0,
+        "channelID": "keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é",
+        "channel": "",
+        "rules": [],
+        "spamProtection": {
+          "enabled": true,
+          "reviewAllMessages": false,
+          "categories": [
+            "spam",
+            "ads",
+            "self_promotion"
+          ],
+          "thresholdPercent": 85,
+          "exemptTags": [
+            "mod",
+            "editor",
+            "admin"
+          ]
+        },
+        "createdAt": "1970-01-01T00:00:00.000Z",
+        "updatedAt": "1970-01-01T00:00:00.000Z"
+      },
+      "error": null,
+      "retained": null,
+      "ioLog": [
+        [
+          "get",
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings"
+        ],
+        [
+          "findOne",
+          {
+            "channelID": "keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é"
+          }
+        ],
+        [
+          "set",
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings",
+          "{\"none\":true}",
+          {
+            "EX": 300,
+            "NX": true
+          }
+        ],
+        [
+          "get",
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings"
+        ]
+      ],
+      "cache": "{"
+    },
+    {
+      "name": "nx-missing",
+      "initial": {
+        "race": "{\"settingsVersion\":9}",
+        "removeWinner": true
+      },
+      "operation": "load",
+      "result": {
+        "enabled": false,
+        "offenseWindowSeconds": 3600,
+        "settingsVersion": 0,
+        "channelID": "keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é",
+        "channel": "",
+        "rules": [],
+        "spamProtection": {
+          "enabled": true,
+          "reviewAllMessages": false,
+          "categories": [
+            "spam",
+            "ads",
+            "self_promotion"
+          ],
+          "thresholdPercent": 85,
+          "exemptTags": [
+            "mod",
+            "editor",
+            "admin"
+          ]
+        },
+        "createdAt": "1970-01-01T00:00:00.000Z",
+        "updatedAt": "1970-01-01T00:00:00.000Z"
+      },
+      "error": null,
+      "retained": null,
+      "ioLog": [
+        [
+          "get",
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings"
+        ],
+        [
+          "findOne",
+          {
+            "channelID": "keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é"
+          }
+        ],
+        [
+          "set",
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings",
+          "{\"none\":true}",
+          {
+            "EX": 300,
+            "NX": true
+          }
+        ],
+        [
+          "get",
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings"
+        ]
+      ],
+      "cache": null
+    },
+    {
+      "name": "nx-sentinel",
+      "initial": {
+        "race": "{\"none\":true}"
+      },
+      "operation": "load",
+      "result": {
+        "enabled": false,
+        "offenseWindowSeconds": 3600,
+        "settingsVersion": 0,
+        "channelID": "keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é",
+        "channel": "",
+        "rules": [],
+        "spamProtection": {
+          "enabled": true,
+          "reviewAllMessages": false,
+          "categories": [
+            "spam",
+            "ads",
+            "self_promotion"
+          ],
+          "thresholdPercent": 85,
+          "exemptTags": [
+            "mod",
+            "editor",
+            "admin"
+          ]
+        },
+        "createdAt": "1970-01-01T00:00:00.000Z",
+        "updatedAt": "1970-01-01T00:00:00.000Z"
+      },
+      "error": null,
+      "retained": null,
+      "ioLog": [
+        [
+          "get",
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings"
+        ],
+        [
+          "findOne",
+          {
+            "channelID": "keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é"
+          }
+        ],
+        [
+          "set",
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings",
+          "{\"none\":true}",
+          {
+            "EX": 300,
+            "NX": true
+          }
+        ],
+        [
+          "get",
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings"
+        ]
+      ],
+      "cache": "{\"none\":true}"
+    },
+    {
+      "name": "get-error",
+      "initial": {
+        "errors": {
+          "get": true
+        }
+      },
+      "operation": "load",
+      "result": null,
+      "error": "injected:get",
+      "retained": null,
+      "ioLog": [
+        [
+          "get",
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings"
+        ]
+      ],
+      "cache": null
+    },
+    {
+      "name": "mongo-error",
+      "initial": {
+        "errors": {
+          "findOne": true
+        }
+      },
+      "operation": "load",
+      "result": null,
+      "error": "injected:findOne",
+      "retained": null,
+      "ioLog": [
+        [
+          "get",
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings"
+        ],
+        [
+          "findOne",
+          {
+            "channelID": "keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é"
+          }
+        ]
+      ],
+      "cache": null
+    },
+    {
+      "name": "set-error",
+      "initial": {
+        "errors": {
+          "set": true
+        }
+      },
+      "operation": "load",
+      "result": null,
+      "error": "injected:set",
+      "retained": null,
+      "ioLog": [
+        [
+          "get",
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings"
+        ],
+        [
+          "findOne",
+          {
+            "channelID": "keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é"
+          }
+        ],
+        [
+          "set",
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings",
+          "{\"none\":true}",
+          {
+            "EX": 300,
+            "NX": true
+          }
+        ]
+      ],
+      "cache": null
+    },
+    {
+      "name": "db-set-error",
+      "initial": {
+        "errors": {
+          "set": true
+        },
+        "docs": {
+          "keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é": {
+            "_id": "fixed-source-id",
+            "channelID": "keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é",
+            "settingsVersion": 7,
+            "createdAt": "1970-01-01T00:00:00.000Z",
+            "extra": 42
+          }
+        }
+      },
+      "operation": "load",
+      "result": null,
+      "error": "injected:set",
+      "retained": null,
+      "ioLog": [
+        [
+          "get",
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings"
+        ],
+        [
+          "findOne",
+          {
+            "channelID": "keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é"
+          }
+        ],
+        [
+          "set",
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings",
+          "{\"_id\":\"fixed-source-id\",\"channelID\":\"keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é\",\"settingsVersion\":7,\"createdAt\":\"1970-01-01T00:00:00.000Z\",\"extra\":42}",
+          {
+            "EX": 300
+          }
+        ]
+      ],
+      "cache": null
+    },
+    {
+      "name": "prime",
+      "initial": {},
+      "operation": "prime",
+      "result": null,
+      "error": null,
+      "retained": false,
+      "ioLog": [
+        [
+          "set",
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings",
+          "{\"channelID\":\"keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é\",\"settingsVersion\":2}",
+          {
+            "EX": 300
+          }
+        ]
+      ],
+      "cache": "{\"channelID\":\"keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é\",\"settingsVersion\":2}"
+    },
+    {
+      "name": "prime-error",
+      "initial": {
+        "errors": {
+          "set": true
+        }
+      },
+      "operation": "prime",
+      "result": null,
+      "error": "injected:set",
+      "retained": false,
+      "ioLog": [
+        [
+          "set",
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings",
+          "{\"channelID\":\"keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é\",\"settingsVersion\":2}",
+          {
+            "EX": 300
+          }
+        ]
+      ],
+      "cache": null
+    },
+    {
+      "name": "invalidate",
+      "initial": {
+        "cache": {
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings": "old"
+        }
+      },
+      "operation": "invalidate",
+      "result": null,
+      "error": null,
+      "retained": false,
+      "ioLog": [
+        [
+          "del",
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings"
+        ]
+      ],
+      "cache": null
+    },
+    {
+      "name": "invalidate-error",
+      "initial": {
+        "cache": {
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings": "old"
+        },
+        "errors": {
+          "del": true
+        }
+      },
+      "operation": "invalidate",
+      "result": null,
+      "error": "injected:del",
+      "retained": true,
+      "ioLog": [
+        [
+          "del",
+          "moderation:keyword-fixture-fca01b6f57a8:settings-store-20261030-😀-é:settings"
+        ]
+      ],
+      "cache": "old"
+    }
+  ],
+  "patterns": [
+    {
+      "first": "(?<![\\p{L}\\p{N}])(?:one)(?![\\p{L}\\p{N}])",
+      "second": "(?<![\\p{L}\\p{N}])(?:one)(?![\\p{L}\\p{N}])",
+      "same": true,
+      "empty": null,
+      "still": null
+    },
+    {
+      "first": "(?<![\\p{L}\\p{N}])(?:one)(?![\\p{L}\\p{N}])",
+      "second": "(?<![\\p{L}\\p{N}])(?:one)(?![\\p{L}\\p{N}])",
+      "same": true,
+      "empty": null,
+      "still": null
+    },
+    {
+      "first": "(?<![\\p{L}\\p{N}])(?:one)(?![\\p{L}\\p{N}])",
+      "second": "(?<![\\p{L}\\p{N}])(?:one)(?![\\p{L}\\p{N}])",
+      "same": true,
+      "empty": null,
+      "still": null
+    },
+    {
+      "first": "(?<![\\p{L}\\p{N}])(?:one)(?![\\p{L}\\p{N}])",
+      "second": "(?<![\\p{L}\\p{N}])(?:one)(?![\\p{L}\\p{N}])",
+      "same": true,
+      "empty": null,
+      "still": null
+    },
+    {
+      "first": "(?<![\\p{L}\\p{N}])(?:one)(?![\\p{L}\\p{N}])",
+      "second": "(?<![\\p{L}\\p{N}])(?:one)(?![\\p{L}\\p{N}])",
+      "same": true,
+      "empty": null,
+      "still": null
+    },
+    {
+      "first": "(?<![\\p{L}\\p{N}])(?:one)(?![\\p{L}\\p{N}])",
+      "second": "(?<![\\p{L}\\p{N}])(?:one)(?![\\p{L}\\p{N}])",
+      "same": true,
+      "empty": null,
+      "still": null
+    },
+    {
+      "first": "(?<![\\p{L}\\p{N}])(?:one)(?![\\p{L}\\p{N}])",
+      "second": "(?<![\\p{L}\\p{N}])(?:one)(?![\\p{L}\\p{N}])",
+      "same": true,
+      "empty": null,
+      "still": null
+    },
+    {
+      "first": "(?<![\\p{L}\\p{N}])(?:one)(?![\\p{L}\\p{N}])",
+      "second": "(?<![\\p{L}\\p{N}])(?:one)(?![\\p{L}\\p{N}])",
+      "same": true,
+      "empty": null,
+      "still": null
+    },
+    {
+      "first": "(?<![\\p{L}\\p{N}])(?:one)(?![\\p{L}\\p{N}])",
+      "second": "(?<![\\p{L}\\p{N}])(?:one)(?![\\p{L}\\p{N}])",
+      "same": true,
+      "empty": null,
+      "still": null
+    }
+  ],
+  "lonePattern": {
+    "first": "(?<![\\p{L}\\p{N}])(?:one)(?![\\p{L}\\p{N}])",
+    "second": "(?<![\\p{L}\\p{N}])(?:one)(?![\\p{L}\\p{N}])",
+    "same": true
+  }
+}

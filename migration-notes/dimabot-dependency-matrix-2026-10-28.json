@@ -22666,17 +22666,36 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "partial-native-settings-cache-and-compiled-blacklist-dependency-reviewed",
+      "localRustEvidence": [
+        "dimabot/src/handlers/moderation_settings_store.rs",
+        "dimabot/tests/moderation_settings_store.rs",
+        "dimabot/tests/support/moderation_settings_store_protocol.rs",
+        "dimabot/tests/fixtures/moderation_settings_store_reference.cjs",
+        "migration-notes/moderation-settings-store.md",
+        "23e7916d; source tree 06fdce358d609287739c40f9fe96b89c3e3133ff026fded611c8c06bd2d1c133"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "Explicit absolute command deadline and cancellation; uncertain remote mutations are never retried by the adapter. Supplied native clients retain caller connection policy.",
+        "JSON projection is lossless for UTF-16 values within the existing 128-level owned parser limit. Typed channel IDs use UTF-8; compiled rule IDs retain UTF-16. Original BSON is retained on Mongo hits; defaults date-wire projection and raw/cached value distinctions remain a caller integration boundary.",
+        "Compiled cache preserves same-version first-pattern and cached-null behavior, including scalar equality and composite identity. The map remains unbounded as in TypeScript; explicit clear/remove lifecycle methods are provided."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "moderation.handler.ts loadSettings/getBlacklistPattern and its exported invalidate/prime/key helpers",
+          "moderation/defaults.ts primes and route save paths invalidate the cache"
+        ],
+        "runtimeStatus": "Opt-in concrete Redis/Mongo adapter only; full moderation handler, startup acquisition and application caller adoption remain open. No source retirement or deployment."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "Actual AST-extracted handler functions and native dependency hashes; 22 source scenarios, nine version sequences and a lone-surrogate rule ID."
+        ],
+        "rustBehaviorEvidence": [
+          "One ordinary cache test and three explicit ignored tests passed: all source scenarios through private Mongo/Redis, source cache replay, lost/applied write reply, abort/deadline and shared socket/24 concurrent reads.",
+          "compiler-fixtures-1793360144874064512 and node-1793360095403551702; final formatting, scoped strict Clippy, no-default and all-feature/all-target checks passed."
+        ],
+        "status": "Settings/cache slice locally verified. Promotional moderation, permission resolution, history/users, decision/consequence orchestration and moderation execution remain outside this adapter."
       },
       "exports": [
         {
@@ -22686,23 +22705,35 @@
         },
         {
           "name": "NO_SETTINGS_SENTINEL",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "moderation_settings_store::NO_SETTINGS_SENTINEL",
+          "evidence": [
+            "dimabot/src/handlers/moderation_settings_store.rs",
+            "migration-notes/moderation-settings-store.md"
+          ]
         },
         {
           "name": "invalidateModerationSettingsCache",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "ModerationSettingsStore::invalidate",
+          "evidence": [
+            "dimabot/src/handlers/moderation_settings_store.rs",
+            "migration-notes/moderation-settings-store.md"
+          ]
         },
         {
           "name": "moderationSettingsCacheKey",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "moderation_settings_cache_key",
+          "evidence": [
+            "dimabot/src/handlers/moderation_settings_store.rs",
+            "migration-notes/moderation-settings-store.md"
+          ]
         },
         {
           "name": "primeModerationSettingsCache",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "ModerationSettingsStore::prime",
+          "evidence": [
+            "dimabot/src/handlers/moderation_settings_store.rs",
+            "migration-notes/moderation-settings-store.md"
+          ]
         },
         {
           "name": "runChatModeration",
@@ -22787,9 +22818,9 @@
           "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
           "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "directDependencyReview": "reviewed for settings/cache slice only",
+          "transitiveDependencyReview": "concrete native dependencies reused; full handler closure unreviewed",
+          "rustReplacementOrGap": "Existing native schema and direct native Mongo find; shared BSON JSON projection."
         },
         {
           "ordinal": 4,
@@ -22847,9 +22878,9 @@
           "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
           "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "directDependencyReview": "reviewed for settings/cache slice only",
+          "transitiveDependencyReview": "concrete native dependencies reused; full handler closure unreviewed",
+          "rustReplacementOrGap": "Concrete supplied ConnectionManager; global acquisition remains application bootstrap work."
         },
         {
           "ordinal": 7,
@@ -22987,9 +23018,9 @@
           "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
           "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "directDependencyReview": "reviewed for settings/cache slice only",
+          "transitiveDependencyReview": "concrete native dependencies reused; full handler closure unreviewed",
+          "rustReplacementOrGap": "Existing native compile_blacklist_pattern and shared compiled cache."
         },
         {
           "ordinal": 14,
@@ -23027,9 +23058,9 @@
           "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
           "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
           "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "directDependencyReview": "reviewed for settings/cache slice only",
+          "transitiveDependencyReview": "concrete native dependencies reused; full handler closure unreviewed",
+          "rustReplacementOrGap": "Existing native default_spam_moderation_settings and normalization policy."
         },
         {
           "ordinal": 16,
@@ -23092,7 +23123,7 @@
           "rustReplacementOrGap": "unreviewed"
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "partial-local-settings-cache-concrete-redis-mongo-and-compiled-pattern-cache-verified;full-moderation-handler-open"
     },
     {
       "source": "src/handlers/prediction_status_contract.test.ts",
