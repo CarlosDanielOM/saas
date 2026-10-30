@@ -3,6 +3,7 @@
 // 24 RE2 SDK and loads the real advanced implementation and its dependencies.
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),Module=require('node:module');
 const lib=require('./moderation_advanced_source.cjs');
+const sourceLoader=require('./moderation_variations_source.cjs');
 assert.equal(process.env.DIMA_ADVANCED_RE2_FIXTURE_BINARY_SHA256,'94064b17d6110cd5e36fb0bee49fa267144155300e03160758478b3917e5ffbb');
 assert.equal(process.env.DIMA_ADVANCED_RE2_FIXTURE_MANIFEST_SHA256,'e33073a155ce1180ee2cc52dc8ae548d3a0d24d5c81c2fbd8082834638c15664');
 assert.equal(process.env.DIMA_ADVANCED_RE2_FIXTURE_PROVENANCE_SHA256,'4efad596bf97c83c92a825c0bb2452b182051066174951eb2644e8a6bda9ad4c');
@@ -15,13 +16,13 @@ const pins={
  'src/utils/ai/openrouter/app_attribution.util.ts':'0073e0b48172fc7ccc449fb6c47e1bcd4ffe39549d6641d32b1d0718a6e01c0c',
  'tests/fixtures/moderation_advanced_source.cjs':'1205ade8280a3cfebb806e336570ab650a92e178db306f33aa760315fafbee50',
 };
-for(const [file,hash] of Object.entries(pins))assert.equal(lib.sha(lib.read(file)),hash,file);
+for(const [file,hash] of Object.entries(pins))assert.equal(lib.sha(sourceLoader.readSource(file)),hash,file);
 const local=Module.createRequire(path.join(lib.root,'package.json')),ts=local('typescript');
 const files=['src/utils/moderation/normalize.ts','src/utils/ai/openrouter/app_attribution.util.ts','src/utils/moderation/variations.ts'];
 const imports=[[],[],[['node:crypto',false],['../ai/openrouter/app_attribution.util.js',false],['re2',false],['./normalize.js',false],['./advanced.js',false]]];
 const outputs={},compiled={},evidence={};
 for(const [i,file] of files.entries()){
- const source=lib.read(file).toString('utf8'),ast=ts.createSourceFile(file,source,ts.ScriptTarget.ES2022,true);
+ const source=sourceLoader.readSource(file).toString('utf8'),ast=ts.createSourceFile(file,source,ts.ScriptTarget.ES2022,true);
  assert.deepEqual(ast.parseDiagnostics,[]);
  assert.deepEqual(ast.statements.filter(ts.isImportDeclaration).map(s=>[s.moduleSpecifier.text,!!s.importClause?.isTypeOnly]),imports[i]);
  evidence[file]={imports:imports[i],exports:ast.statements.filter(s=>s.modifiers?.some(m=>m.kind===ts.SyntaxKind.ExportKeyword)).map(s=>({kind:ts.SyntaxKind[s.kind],text:s.getText(ast).split('\n')[0]}))};
@@ -118,7 +119,7 @@ async function transport(){
  return observations;
 }
 (async()=>{
- const reference={metadata:{format:1,sourceProvenance:lib.sourceProvenance,versions:{node:process.versions.node,v8:process.versions.v8,icu:process.versions.icu,unicode:process.versions.unicode,typescript:ts.version,re2:'1.27.0'},nodeSha:lib.nodeSha,pins:{...lib.pins,...pins},readerSha256:lib.sha(fs.readFileSync(__filename)),re2Runtime:lib.re2Runtime,compiled:{...lib.compiled,...compiled},evidence:{...lib.evidence,...evidence},runtimeExports:Object.keys(api).sort(),typeExports:typeNames,caseCount:cases.length,boundary:'Own enumerable JSON-like values with tagged UTF-16, undefined, array holes and IEEE-754 bits; no accessors, proxies, symbols, functions, BigInt or cycles. Only HTTP, API key and abort are test seams; no provider calls.'},constants:enc({VARIATION_VERSION:api.VARIATION_VERSION,VARIATION_MODEL:api.VARIATION_MODEL}),cases,cache:cacheEvidence(),transport:await transport()};
+ const reference={metadata:{format:1,sourceProvenance:sourceLoader.sourceProvenance,attribution:sourceLoader.attribution,versions:{node:process.versions.node,v8:process.versions.v8,icu:process.versions.icu,unicode:process.versions.unicode,typescript:ts.version,re2:'1.27.0'},nodeSha:lib.nodeSha,pins:{...lib.pins,...pins},readerSha256:lib.sha(fs.readFileSync(__filename)),re2Runtime:lib.re2Runtime,compiled:{...lib.compiled,...compiled},evidence:{...lib.evidence,...evidence},runtimeExports:Object.keys(api).sort(),typeExports:typeNames,caseCount:cases.length,boundary:'Own enumerable JSON-like values with tagged UTF-16, undefined, array holes and IEEE-754 bits; no accessors, proxies, symbols, functions, BigInt or cycles. Only HTTP, API key and abort are test seams; no provider calls.'},constants:enc({VARIATION_VERSION:api.VARIATION_VERSION,VARIATION_MODEL:api.VARIATION_MODEL}),cases,cache:cacheEvidence(),transport:await transport()};
  const [mode,dir,...extra]=process.argv.slice(2);assert(['--write','--check'].includes(mode)&&dir&&path.isAbsolute(dir)&&extra.length===0,'usage: --write|--check ABSOLUTE_EXTERNAL_DIR');
  const real=fs.realpathSync(dir),workspace=fs.realpathSync(path.join(lib.root,'..'));assert(real!==workspace&&!real.startsWith(workspace+path.sep),'output must be outside workspace');
  const file=path.join(real,'moderation-variations-reference.json');assert.deepEqual(fs.readdirSync(real),mode==='--write'?[]:[path.basename(file)]);

@@ -15,6 +15,8 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const require = createRequire(path.join(root, 'package.json'));
 const ts = require('typescript');
 const {resolveTtsSource} = require('./tests/fixtures/tts_source_resolver.cjs');
+// Retired OpenRouter app-attribution helper: one allowlisted archive reader.
+const attribution = require('./tests/fixtures/openrouter_attribution_source.cjs').resolveSource(root);
 const [mode, dirArg, ...extra] = process.argv.slice(2);
 if (!['--write', '--check'].includes(mode) || !dirArg || extra.length) throw new Error('usage: --write|--check DIR');
 const dir = path.resolve(dirArg);
@@ -32,12 +34,12 @@ const files = {
   interface: 'src/server/services/tts/tts_provider.interface.ts',
 };
 const sha = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
-const resolvedPaths = Object.fromEntries(Object.entries(files).map(([k, p]) => [k, /src\/utils\/tts\/(expressive_tts_tags|kokoro_voices)\.util\.ts$/.test(p) ? resolveTtsSource(root, p) : path.join(root, p)]));
+const resolvedPaths = Object.fromEntries(Object.entries(files).map(([k, p]) => [k, /src\/utils\/tts\/(expressive_tts_tags|kokoro_voices)\.util\.ts$/.test(p) ? resolveTtsSource(root, p) : p === attribution.logical ? attribution.path : path.join(root, p)]));
 const sourcePaths = Object.fromEntries(Object.entries(files).map(([k, p]) => [p, path.relative(root, resolvedPaths[k])]));
 const sources = Object.fromEntries(await Promise.all(Object.entries(resolvedPaths).map(async ([k, p]) => [k, await fs.readFile(p, 'utf8')])));
 const sourceHashes = Object.fromEntries(Object.entries(files).map(([k, p]) => [p, sha(sources[k])]));
 sourceHashes['tests/fixtures/piper_kokoro_reference.mjs'] = sha(await fs.readFile(fileURLToPath(import.meta.url)));
-for (const p of ['tests/fixtures/tts_source_resolver.cjs', 'package.json', 'package-lock.json', 'node_modules/typescript/package.json']) sourceHashes[p] = sha(await fs.readFile(path.join(root, p)));
+for (const p of ['tests/fixtures/tts_source_resolver.cjs', 'tests/fixtures/openrouter_attribution_source.cjs', 'package.json', 'package-lock.json', 'node_modules/typescript/package.json']) sourceHashes[p] = sha(await fs.readFile(path.join(root, p)));
 const synthetic = entries => new vm.SyntheticModule(Object.keys(entries), function () { for (const [k, v] of Object.entries(entries)) this.setExport(k, v); });
 const modules = {};
 for (const [k, source] of Object.entries(sources)) modules[k] = new vm.SourceTextModule(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ES2022, target: ts.ScriptTarget.ES2022 } }).outputText, { identifier: files[k], initializeImportMeta(meta) { meta.url = 'file:///fixture/source.js'; } });
@@ -172,7 +174,7 @@ try {
     try { return { ...input, result: modules.piper.namespace.buildPublicPath(channel, speech) }; }
     catch (error) { return { ...input, error: { name: error.name, message: error.message } }; }
   });
-  const doc = JSON.stringify({ schema: 1, provenance: { node: process.version, versions: process.versions, sourceHashes, sourcePaths, injection: 'same-realm transpiled source; controlled fetch and spawn; fixture-only paths and keys' }, cases, publicPathCases }, null, 2) + '\n';
+  const doc = JSON.stringify({ schema: 1, provenance: { node: process.version, versions: process.versions, sourceHashes, sourcePaths, attribution: { logical: attribution.logical, sha256: attribution.sha256, provenance: attribution.provenance }, injection: 'same-realm transpiled source; controlled fetch and spawn; fixture-only paths and keys' }, cases, publicPathCases }, null, 2) + '\n';
   const target = path.join(dir, 'piper-kokoro-reference.json');
   if (mode === '--write') { await fs.mkdir(dir, { recursive: true }); await fs.writeFile(target, doc); }
   else if (await fs.readFile(target, 'utf8') !== doc) throw new Error('application fixture differs');

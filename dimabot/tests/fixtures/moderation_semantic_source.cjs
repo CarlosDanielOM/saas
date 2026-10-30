@@ -3,12 +3,20 @@
 // Loading creates disconnected Mongoose models through the audited Spam loader.
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),Module=require('node:module'),vm=require('node:vm');
 const spam=require('./moderation_spam_source.cjs'),advanced=require('./moderation_advanced_source.cjs');
+// The OpenRouter app-attribution helper is retired into the shared archive; this
+// single allowlisted resolver keeps the logical ID and original hash.
+const attribution=require('./openrouter_attribution_source.cjs');
+const attributionLogical=attribution.logical;
+const attributionSource=attribution.resolveSource(spam.root);
+const readSource=file=>file===attributionLogical?attributionSource.bytes:spam.read(file);
+const attributionBinding={logical:attributionSource.logical,sha256:attributionSource.sha256,provenance:attributionSource.provenance,resolvedPath:path.relative(path.join(spam.root,'..'),attributionSource.path),manifestSha256:attributionSource.manifestSha256,archiveEntries:attributionSource.archiveEntries};
+const sourceProvenance={...spam.sourceProvenance,[attributionLogical]:attributionSource.provenance};
 const pins={
  'src/utils/moderation/semantic.ts':'8e14987048727194d8e55b48f5c0890a0984c3fd1fa4634488c8758d1a835e25',
  'src/utils/ai/openrouter/app_attribution.util.ts':'0073e0b48172fc7ccc449fb6c47e1bcd4ffe39549d6641d32b1d0718a6e01c0c',
- 'tests/fixtures/moderation_spam_source.cjs':'19d6dd590e9f816a0d04bb36cd46fb658fb371875b0db166298aaab7543efb0c'
+ 'tests/fixtures/moderation_spam_source.cjs':'b5cf1d8d5c0f7105e8042ce47dd323486ff000e5a7b4695716db76f010dc6558'
 };
-for(const [file,hash] of Object.entries(pins))assert.equal(spam.sha(spam.read(file)),hash,file);
+for(const [file,hash] of Object.entries(pins))assert.equal(spam.sha(readSource(file)),hash,file);
 spam.independent('DIMA_SEMANTIC_LOADER_SHA256',__filename);
 const ts=Module.createRequire(path.join(spam.root,'package.json'))('typescript');
 const files=['src/utils/ai/openrouter/app_attribution.util.ts','src/utils/moderation/semantic.ts'];
@@ -18,7 +26,7 @@ const expectedImports=[[],[
 const runtimeExports=['SEMANTIC_USD_PER_MILLION_INPUT_TOKENS','SEMANTIC_PRICING_VERSION','FREE_MODERATION_MODEL','semanticPrice','moderationModelForAccount','fallbackResult','parseSemanticResponse','parseSpamResponse','semanticRequest','evaluateSemanticDecision'].sort();
 const outputs={},compiled={},evidence={};
 for(const [i,file] of files.entries()){
- const source=spam.read(file).toString('utf8'),ast=ts.createSourceFile(file,source,ts.ScriptTarget.ES2022,true);assert.deepEqual(ast.parseDiagnostics,[]);
+ const source=readSource(file).toString('utf8'),ast=ts.createSourceFile(file,source,ts.ScriptTarget.ES2022,true);assert.deepEqual(ast.parseDiagnostics,[]);
  const imports=ast.statements.filter(ts.isImportDeclaration).map(s=>[s.moduleSpecifier.text,!!s.importClause?.isTypeOnly]);assert.deepEqual(imports,expectedImports[i],file);
  const declarations=ast.statements.filter(s=>ts.isTypeAliasDeclaration(s)||ts.isInterfaceDeclaration(s));
  evidence[file]={imports:ast.statements.filter(ts.isImportDeclaration).map(s=>({module:s.moduleSpecifier.text,typeOnly:!!s.importClause?.isTypeOnly,bindings:s.importClause?.getText(ast),named:s.importClause?.namedBindings?.elements?.map(e=>({name:e.name.text,typeOnly:!!e.isTypeOnly}))||[]})),exports:ast.statements.filter(s=>s.modifiers?.some(m=>m.kind===ts.SyntaxKind.ExportKeyword)).map(s=>({kind:ts.SyntaxKind[s.kind],text:s.getText(ast)})),typeDeclarations:declarations.map(s=>({name:s.name.text,exported:!!s.modifiers?.some(m=>m.kind===ts.SyntaxKind.ExportKeyword),text:s.getText(ast)}))};
@@ -53,4 +61,4 @@ function realm({kind='cjs',hooks={}}={}){
  assert.equal(spamRealm.instance.connection.readyState,0);
  return {api:mods[files[1]],categories:mods[categoryFile],attribution:mods[files[0]],spam:spamRealm.api};
 }
-module.exports={...spam,realm,pins:{...spam.pins,...pins},compiled:{...spam.compiled,...compiled},evidence:{...spam.evidence,...evidence},runtimeExports,typeExports:['SemanticResult'],privateTypes:['SemanticState']};
+module.exports={...spam,readSource,attribution:attributionBinding,sourceProvenance,realm,pins:{...spam.pins,...pins},compiled:{...spam.compiled,...compiled},evidence:{...spam.evidence,...evidence},runtimeExports,typeExports:['SemanticResult'],privateTypes:['SemanticState']};

@@ -108,6 +108,49 @@ pub fn documents(value: &Bson) -> Vec<Document> {
 pub fn digest(bytes: &[u8]) -> String {
     format!("{:x}", Sha256::digest(bytes))
 }
+/// Reads one pinned source from the frozen provenance root. The retired
+/// OpenRouter app-attribution helper is absent from the live tree, so a missing
+/// file resolves to its canonical archive entry instead. A present live file is
+/// never shadowed, the archive entry must be unique, and the exact pin still has
+/// to match the archived bytes.
+fn pinned_source_bytes(root: &std::path::Path, source: &str) -> Vec<u8> {
+    match std::fs::read(root.join(source)) {
+        Ok(bytes) => bytes,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            let repo = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .unwrap();
+            let archive = repo.join("archives/dimabot-typescript/2026-10-28");
+            let manifest: Value =
+                serde_json::from_slice(&std::fs::read(archive.join("manifest.json")).unwrap())
+                    .unwrap();
+            let entries = manifest["files"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter(|entry| entry.get("source").and_then(Value::as_str) == Some(source))
+                .collect::<Vec<_>>();
+            assert_eq!(entries.len(), 1, "archive manifest entry for {source}");
+            let archived = archive.join(source);
+            assert!(
+                std::fs::symlink_metadata(&archived)
+                    .unwrap()
+                    .file_type()
+                    .is_file(),
+                "archived source must be a regular file: {source}"
+            );
+            let bytes = std::fs::read(&archived).unwrap();
+            assert_eq!(
+                entries[0]["sha256"].as_str().unwrap(),
+                digest(&bytes),
+                "archive manifest hash for {source}"
+            );
+            bytes
+        }
+        Err(error) => panic!("unreadable pinned source {source}: {error}"),
+    }
+}
+
 pub fn pinned_reference() -> Value {
     let path =
         std::env::var("DIMA_VARIATION_JOBS_REFERENCE").expect("independent source-reference path");
@@ -148,7 +191,7 @@ pub fn pinned_reference() -> Value {
     for (source, pin) in reference["provenance"]["pins"].as_object().unwrap() {
         assert_eq!(
             pin.as_str().unwrap(),
-            digest(&std::fs::read(root.join(source)).unwrap()),
+            digest(&pinned_source_bytes(root, source)),
             "stale source pin {source}"
         );
     }

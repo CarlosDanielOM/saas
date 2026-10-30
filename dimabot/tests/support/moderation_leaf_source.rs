@@ -1,4 +1,4 @@
-// Test-only verification of the three frozen moderation leaf sources.
+// Test-only verification of frozen moderation leaves and their retired helpers.
 use std::path::{Path, PathBuf};
 #[path = "sha256.rs"]
 pub mod digest;
@@ -13,6 +13,12 @@ pub fn path(root: &Path, logical: &str) -> PathBuf {
         }
         "src/utils/moderation/spam_categories.ts" => {
             "29dd0951ea0b89567c55b5dce4d2795a74c78e6064b32cbd26a3ecafaa435088"
+        }
+        "src/schemas/moderation_chatter.schema.ts" => {
+            "71ec2e9e8047a6d6a8da561c596d1cbacf2dc13ac93ca6ad2878ef95dec9632e"
+        }
+        "src/utils/ai/openrouter/app_attribution.util.ts" => {
+            "0073e0b48172fc7ccc449fb6c47e1bcd4ffe39549d6641d32b1d0718a6e01c0c"
         }
         _ => return root.join(logical),
     };

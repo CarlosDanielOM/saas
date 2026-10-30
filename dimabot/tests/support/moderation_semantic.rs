@@ -190,7 +190,7 @@ pub fn reference() -> Value {
         ),
         (
             "tests/fixtures/moderation_spam_source.cjs",
-            "19d6dd590e9f816a0d04bb36cd46fb658fb371875b0db166298aaab7543efb0c",
+            "b5cf1d8d5c0f7105e8042ce47dd323486ff000e5a7b4695716db76f010dc6558",
         ),
     ] {
         assert_eq!(m["pins"][k], v);

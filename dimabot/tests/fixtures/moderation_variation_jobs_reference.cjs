@@ -2,8 +2,8 @@
 // Actual-source oracle. All I/O is scripted; never sends a real request.
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),Module=require('node:module');
 const lib=require('./moderation_variations_source.cjs');
-assert.equal(lib.sha(lib.read('tests/fixtures/moderation_variations_source.cjs')),'4b86ff3446a7ed9961d14c5d747c077c20fa82dd9ad14d1032459957c8f3faf4');
-assert.equal(process.env.DIMA_VARIATIONS_BENCH_LOADER_SHA256,'4b86ff3446a7ed9961d14c5d747c077c20fa82dd9ad14d1032459957c8f3faf4');
+assert.equal(lib.sha(lib.read('tests/fixtures/moderation_variations_source.cjs')),'8f90d3498fd103c85e6269f6dc0f6712598ddeda676d74bb185a613e24e2861f');
+assert.equal(process.env.DIMA_VARIATIONS_BENCH_LOADER_SHA256,'8f90d3498fd103c85e6269f6dc0f6712598ddeda676d74bb185a613e24e2861f');
 const pin=process.env.DIMA_VARIATION_JOBS_READER_SHA256;
 assert(/^[0-9a-f]{64}$/.test(pin||''));assert.equal(lib.sha(fs.readFileSync(__filename)),pin,'reader');
 const file='src/utils/moderation/variation_jobs.ts';
