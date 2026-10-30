@@ -1,0 +1,184 @@
+{
+  "allPassed": true,
+  "comparisons": [
+    {
+      "candidate": "moderation-leaf-retirement/attempt4/moderation_normalize_reference/moderation-normalize-reference.json",
+      "candidateSha256": "1e66d9a46d68739c72aea55228d67e7d8090f2f6e84fa5a707838dbc43a9af0e",
+      "prior": "moderation-text/attempt2/normalize-reference/moderation-normalize-reference.json",
+      "priorSha256": "d83ed5947d5cb2bf17d7c2bd0eedebe986c07cec592041804310667e87fedc0e",
+      "equalFields": [
+        "cases",
+        "nullish"
+      ],
+      "counts": {
+        "cases": 228,
+        "nullish": 2
+      }
+    },
+    {
+      "candidate": "moderation-leaf-retirement/attempt4/moderation_links_reference/moderation_links_reference.json",
+      "candidateSha256": "4cd1eb688ce26b3024fecd64277b6dbf60e6e41e9e64fc2fa5d5a6df2d9b9a40",
+      "prior": "moderation-text/attempt2/links-reference/moderation_links_reference.json",
+      "priorSha256": "1922c61e5b8154de414aea06ec23198c21bb1d71b4c857578f4401b1f56903df",
+      "equalFields": [
+        "cases"
+      ],
+      "counts": {
+        "cases": 45057
+      }
+    },
+    {
+      "candidate": "moderation-leaf-retirement/attempt4/moderation_spam_categories_reference/moderation_spam_categories_reference.json",
+      "candidateSha256": "045119d2cd041e3056d4cd09fd2b307af7747d20bebfab5d0c49f2f641b6b89b",
+      "prior": "moderation-spam-categories/attempt2/reference/moderation_spam_categories_reference.json",
+      "priorSha256": "0bd81f594ae68ac7427fdc1817c2dd9baa83860960199478e3d422f65a4afd84",
+      "equalFields": [
+        "cases"
+      ],
+      "counts": {
+        "cases": 752
+      }
+    },
+    {
+      "candidate": "moderation-leaf-retirement/attempt4/moderation_text_benchmark/moderation-text-benchmark-input.json",
+      "candidateSha256": "bcfd184a994d0e4b645d74f50976da8ffd5b52c795522ed6b900b479260869ae",
+      "prior": "moderation-text-benchmark/attempt2/prepared/moderation-text-benchmark-input.json",
+      "priorSha256": "13b2aae63bb128f59ba7e40e612c9635b6de0c0454811053448a025256e23270",
+      "equalFields": [
+        "pools"
+      ],
+      "counts": {
+        "pools": 4
+      }
+    },
+    {
+      "candidate": "moderation-leaf-retirement/attempt4/moderation_advanced_reference/moderation-advanced-reference.json",
+      "candidateSha256": "cf7e63b3ca33641673b0eaf8878f08938fd299ad05fd651f3933727987f460f7",
+      "prior": "moderation-advanced/attempt1/reference/moderation-advanced-reference.json",
+      "priorSha256": "dbdc74c2127fdbe434de83bb4153521d4cc22b639bb7c08c10db375da2e0c78a",
+      "equalFields": [
+        "cache",
+        "cases",
+        "constants",
+        "cryptoProbe",
+        "emptyIndependence",
+        "paid",
+        "re2Cases",
+        "regexBehaviorCases",
+        "wrapperCases"
+      ],
+      "counts": {
+        "cache": 2,
+        "cases": 464,
+        "constants": 2,
+        "cryptoProbe": 3,
+        "emptyIndependence": 2,
+        "paid": 14,
+        "re2Cases": 91,
+        "regexBehaviorCases": 604,
+        "wrapperCases": 45
+      }
+    },
+    {
+      "candidate": "moderation-leaf-retirement/attempt4/moderation_variations_reference/moderation-variations-reference.json",
+      "candidateSha256": "9b1165922e08862ba371b7d288fd514456cd7a668bec3fc4bf5dbb97dd478ad2",
+      "prior": "moderation-variations/attempt1/reference/moderation-variations-reference.json",
+      "priorSha256": "1d3ab58bd78a0d34b60e139b24901920fe32d1e32de3e96bd6db486b14e39c54",
+      "equalFields": [
+        "cache",
+        "cases",
+        "constants",
+        "transport"
+      ],
+      "counts": {
+        "cache": 2,
+        "cases": 175,
+        "constants": 2,
+        "transport": 15
+      }
+    },
+    {
+      "candidate": "moderation-leaf-retirement/attempt4/moderation_variation_jobs_reference/moderation-variation-jobs-reference.json",
+      "candidateSha256": "f310422b0d819e693927cb4dca9a666aea2e6d512a75624d8dc5bf676a9db56f",
+      "prior": "moderation-variation-jobs/attempt1/reference/moderation-variation-jobs-reference.json",
+      "priorSha256": "4bc9a8afee384bd554514eea3cf26ca9ea120c739348818e3a5d6ee7e9587e1b",
+      "equalFields": [
+        "cases",
+        "schema"
+      ],
+      "counts": {
+        "cases": 38
+      }
+    },
+    {
+      "candidate": "moderation-leaf-retirement/attempt4/moderation_spam_reference/moderation-spam-reference.json",
+      "candidateSha256": "9c2a9712491afc651fba912206f9856202b9ad7a83ea6aafdf8983f24d00d47c",
+      "prior": "moderation-spam/attempt4/reference/moderation-spam-reference.json",
+      "priorSha256": "f6f59d6c0a021ce609ac507ed88af22960eb2cf683c31d19ec3c146a2aebc222",
+      "equalFields": [
+        "cases",
+        "claims",
+        "constants",
+        "identity",
+        "schemaEvidence"
+      ],
+      "counts": {
+        "cases": 1636,
+        "claims": 37,
+        "constants": 2,
+        "identity": 14,
+        "schemaEvidence": 7
+      }
+    },
+    {
+      "candidate": "moderation-leaf-retirement/attempt4/moderation_semantic_reference/moderation-semantic-reference.json",
+      "candidateSha256": "235cf656267d3dcacdbc76cfff6f29cd3586b2a8daec49f34126d61231190989",
+      "prior": "moderation-semantic/attempt4/reference/moderation-semantic-reference.json",
+      "priorSha256": "8980dda8ebd881b38fe85da52bf4ac92a5771f510bc768290099171e1260dfc8",
+      "equalFields": [
+        "abortContract",
+        "abortNormal",
+        "abortOverflow",
+        "cases",
+        "constants",
+        "evaluate"
+      ],
+      "counts": {
+        "abortContract": 6,
+        "abortNormal": 5,
+        "abortOverflow": 3,
+        "cases": 1071,
+        "constants": 2,
+        "evaluate": 65
+      }
+    },
+    {
+      "candidate": "moderation-leaf-retirement/attempt4/moderation_semantic_worker_reference/moderation-semantic-worker-reference.json",
+      "candidateSha256": "58df099835b57070cc783da1f3c2764bcfd4c15e4a46c78733adf76376b9843e",
+      "prior": "moderation-semantic-worker/attempt1/reference/moderation-semantic-worker-reference.json",
+      "priorSha256": "bb23cdda5a0c412c6707556e8bd53758882aac6e3f306aafd8b164fdc9288bd8",
+      "equalFields": [
+        "records"
+      ],
+      "counts": {
+        "records": 41
+      }
+    },
+    {
+      "candidate": "moderation-leaf-retirement/attempt4/moderation_decisions_reference/moderation-decisions-reference.json",
+      "candidateSha256": "a36006be171f7d8ce78d9a2408a0545408743a8abe21dce6ccfa0d7c91b47560",
+      "prior": "moderation-decisions/attempt2/reference/moderation-decisions-reference.json",
+      "priorSha256": "ade6b18d2fb680e2b1a74e30d508d83cde891439fe14b2429d2487f154231b9f",
+      "equalFields": [
+        "cases",
+        "queryProbe",
+        "schema"
+      ],
+      "counts": {
+        "cases": 41,
+        "queryProbe": 2
+      }
+    }
+  ],
+  "unicodeGeneratedRustUnchanged": true
+}

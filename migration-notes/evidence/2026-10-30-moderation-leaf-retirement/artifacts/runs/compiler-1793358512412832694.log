@@ -1,0 +1,353 @@
+( 1/24) Installing libmagic (5.47-r2)
+( 2/24) Installing file (5.47-r2)
+( 3/24) Installing libstdc++-dev (15.2.0-r5)
+( 4/24) Installing g++ (15.2.0-r5)
+( 5/24) Installing make (4.4.1-r4)
+( 6/24) Installing fortify-headers (3.0.1-r2)
+( 7/24) Installing patch (2.8-r0)
+( 8/24) Installing build-base (0.5-r4)
+( 9/24) Installing libexpat (2.9.0-r0)
+(10/24) Installing libbz2 (1.0.8-r6)
+(11/24) Installing libffi (3.5.2-r1)
+(12/24) Installing gdbm (1.26-r0)
+(13/24) Installing xz-libs (5.8.4-r0)
+(14/24) Installing mpdecimal (4.0.1-r0)
+(15/24) Installing ncurses-terminfo-base (6.6_p20260516-r0)
+(16/24) Installing libncursesw (6.6_p20260516-r0)
+(17/24) Installing libpanelw (6.6_p20260516-r0)
+(18/24) Installing readline (8.3.3-r1)
+(19/24) Installing sqlite-libs (3.53.4-r0)
+(20/24) Installing python3 (3.14.10-r1)
+(21/24) Installing python3-pycache-pyc0 (3.14.10-r1)
+(22/24) Installing pyc (3.14.10-r1)
+(23/24) Installing python3-pyc (3.14.10-r1)
+(24/24) Installing tzdata (2026e-r0)
+Executing busybox-1.37.0-r31.trigger
+OK: 312.8 MiB in 55 packages
+/usr/share/zoneinfo/Etc/UTC is owned by tzdata-2026e-r0
+8b85846791ab2c8a5463c83a5be3c043e2570d7448434d41398969ed47e3e6f2  /usr/share/zoneinfo/Etc/UTC
+e9ed07d7bee0c76a9d442d091ef1f01668fee7c4f26014c0a868b19fe6c18a95  /usr/share/zoneinfo/America/New_York
+5ee475f71a0fc1a32faeb849f8c39c6e7aa66d6d41ec742b97b3a7436b3b0701  /usr/share/zoneinfo/Europe/Berlin
+a323c5433991a963eb497b7da4d1d09848bf3ef5f5d64d9c9649f388e4bab9df  /usr/share/zoneinfo/Australia/Lord_Howe
+33740ab29ef943b1f55f769e13ff59a90962f5a12434209072d650e6c10abb4d  /usr/share/zoneinfo/Pacific/Apia
+info: downloading 2 components
+rustc 1.99.1 (58cf8f9c3 2026-10-13)
+binary: rustc
+commit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67
+commit-date: 2026-10-13
+host: x86_64-unknown-linux-musl
+release: 1.99.1
+LLVM version: 23.1.1
+   Compiling dima-rust v0.1.0 (/source/dimabot)
+    Finished `test` profile [unoptimized] target(s) in 25.14s
+     Running tests/channel_moderation_settings_benchmark.rs (/target-cache/debug/deps/channel_moderation_settings_benchmark-5b19feaf09e0a2d3)
+
+running 1 test
+test prepared_moderation_schema_server ... ignored, external prepared paired benchmark coordinator required
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/channel_moderation_settings_schema.rs (/target-cache/debug/deps/channel_moderation_settings_schema-d3f2ebbebda8a1f1)
+
+running 4 tests
+test replay_actual_mongoose_schema ... ignored, requires pinned actual Mongoose reference
+test public_default_constants ... ok
+test builder_follows_source_order_ids_and_shared_base ... ok
+test schema_defaults_validators_and_independent_documents ... ok
+
+test result: ok. 3 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/js_unicode.rs (/target-cache/debug/deps/js_unicode-50c3153d9595a132)
+
+running 4 tests
+test replay_node_unicode17_and_actual_source ... ignored, requires pinned external Node-generated reference artifacts
+test borrowed_ascii_and_lossless_context ... ok
+test sequences_match_ordered_nfd_and_utf16_barriers ... ok
+test every_assigned_decomposition_nonstarter_is_removed ... ok
+
+test result: ok. 3 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.22s
+
+     Running tests/moderation_blacklist.rs (/target-cache/debug/deps/moderation_blacklist-d04fc7228f998426)
+
+running 8 tests
+test replay_actual_blacklist_exports ... ignored, requires hash-pinned external fixture from actual TypeScript exports
+test source_escape_and_whitespace ... ok
+test ascii_whitespace_runs_and_unicode_fallback ... ok
+test unicode_cases_boundaries_and_utf16 ... ok
+test alternation_priority_and_boundary_fallback ... ok
+test long_ascii_prefilter_preserves_boundaries_and_priority ... ok
+test ascii_boundaries_priority_and_case_are_preserved ... ok
+test original_blacklist_groups ... ok
+
+test result: ok. 7 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/moderation_decision_schema.rs (/target-cache/debug/deps/moderation_decision_schema-a6adcb36861e9181)
+
+running 3 tests
+test mongo_crud_and_indexes ... ignored, requires explicitly task-owned disposable MongoDB
+test replay_actual_source ... ignored, requires pinned external Mongoose oracle
+test constructor_defaults_validation_and_indexes ... ok
+
+test result: ok. 1 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/moderation_links.rs (/target-cache/debug/deps/moderation_links-bb3100b22ddaf322)
+
+running 5 tests
+test replay_actual_source ... ignored, external pinned actual-source corpus required
+test duplicates_order_and_allowlist ... ok
+test backtracking_and_non_url_parser_behavior ... ok
+test prefix_hosts_nullish_and_surrogates ... ok
+test short_ascii_and_general_path_agree_at_boundary ... ok
+
+test result: ok. 4 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests/moderation_normalize.rs (/target-cache/debug/deps/moderation_normalize-15003cd8d79ed31e)
+
+running 2 tests
+test replay_actual_normalize_exports ... ignored, requires pinned actual-TypeScript external fixture
+test typed_boundary_borrows_and_preserves_utf16 ... ok
+
+test result: ok. 1 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/moderation_rule_dispatcher.rs (/target-cache/debug/deps/moderation_rule_dispatcher-474aa09a05d9caa6)
+
+running 2 tests
+test replay_actual_dispatcher ... ignored, requires independently hash-pinned actual TypeScript fixture
+test native_branches_and_utf16_detail ... ok
+
+test result: ok. 1 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/moderation_seed_plan.rs (/target-cache/debug/deps/moderation_seed_plan-9a7c35559b79d5c4)
+
+running 2 tests
+test replay_actual_seed_plan ... ignored, requires pinned disconnected actual-source fixture
+test plans_and_ordered_views_cover_boundaries ... ok
+
+test result: ok. 1 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/moderation_spam_categories.rs (/target-cache/debug/deps/moderation_spam_categories-a24796eeb9724284)
+
+running 3 tests
+test replay_reference_full_wire ... ignored, requires externally generated pinned TypeScript oracle
+test closed_types_defaults_and_independent_copies ... ok
+test duplicate_order_and_invitation ... ok
+
+test result: ok. 2 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/moderation_text_benchmark.rs (/target-cache/debug/deps/moderation_text_benchmark-91e4a9845130df12)
+
+running 1 test
+test prepared_moderation_text_server ... ignored, external prepared paired benchmark coordinator required
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/schema_composite_defaults.rs (/target-cache/debug/deps/schema_composite_defaults-78dd9c641465a41c)
+
+running 4 tests
+test replay_mongoose_composite_defaults ... ignored, requires pinned disconnected Mongoose external fixture
+test mixed_minimization_is_opt_in_and_preserves_array_children_and_nulls ... ok
+test array_element_cast_and_validation_are_per_path_and_cast_first ... ok
+test value_defaults_are_cloned_cast_and_keep_explicit_null ... ok
+
+test result: ok. 3 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+    Finished `test` profile [unoptimized] target(s) in 0.24s
+     Running tests/js_unicode.rs (/target-cache/debug/deps/js_unicode-50c3153d9595a132)
+
+running 1 test
+test replay_node_unicode17_and_actual_source ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 5.00s
+
+    Finished `test` profile [unoptimized] target(s) in 0.26s
+     Running tests/moderation_normalize.rs (/target-cache/debug/deps/moderation_normalize-15003cd8d79ed31e)
+
+running 1 test
+test replay_actual_normalize_exports ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.16s
+
+    Finished `test` profile [unoptimized] target(s) in 0.25s
+     Running tests/moderation_links.rs (/target-cache/debug/deps/moderation_links-bb3100b22ddaf322)
+
+running 1 test
+test replay_actual_source ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 1.34s
+
+    Finished `test` profile [unoptimized] target(s) in 0.25s
+     Running tests/moderation_spam_categories.rs (/target-cache/debug/deps/moderation_spam_categories-a24796eeb9724284)
+
+running 1 test
+test replay_reference_full_wire ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.12s
+
+    Finished `test` profile [unoptimized] target(s) in 0.30s
+     Running tests/moderation_blacklist.rs (/target-cache/debug/deps/moderation_blacklist-d04fc7228f998426)
+
+running 1 test
+test replay_actual_blacklist_exports ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 3.21s
+
+    Finished `test` profile [unoptimized] target(s) in 0.24s
+     Running tests/moderation_rule_dispatcher.rs (/target-cache/debug/deps/moderation_rule_dispatcher-474aa09a05d9caa6)
+
+running 1 test
+test replay_actual_dispatcher ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.02s
+
+    Finished `test` profile [unoptimized] target(s) in 0.25s
+     Running tests/moderation_seed_plan.rs (/target-cache/debug/deps/moderation_seed_plan-9a7c35559b79d5c4)
+
+running 1 test
+test replay_actual_seed_plan ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.06s
+
+    Finished `test` profile [unoptimized] target(s) in 0.23s
+     Running tests/channel_moderation_settings_schema.rs (/target-cache/debug/deps/channel_moderation_settings_schema-d3f2ebbebda8a1f1)
+
+running 1 test
+test replay_actual_mongoose_schema ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.05s
+
+    Finished `test` profile [unoptimized] target(s) in 0.23s
+     Running tests/moderation_decision_schema.rs (/target-cache/debug/deps/moderation_decision_schema-a6adcb36861e9181)
+
+running 1 test
+test replay_actual_source ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.02s
+
+    Finished `test` profile [unoptimized] target(s) in 0.27s
+     Running tests/schema_composite_defaults.rs (/target-cache/debug/deps/schema_composite_defaults-78dd9c641465a41c)
+
+running 1 test
+test replay_mongoose_composite_defaults ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.06s
+
+   Compiling dima-rust v0.1.0 (/source/dimabot)
+    Finished `test` profile [unoptimized] target(s) in 48.71s
+     Running tests/moderation_advanced.rs (/target-cache/debug/deps/moderation_advanced-3ca1408cf478960f)
+
+running 6 tests
+test fixture::replay_all_464_source_cases ... ignored, requires external source oracle fixture; run explicitly
+test native_values_preserve_number_classification_and_null_error ... ok
+test literal_paths_preserve_original_text_and_regex_only_matches ... ok
+test literal_and_patterns_keep_source_order_and_utf16_spans ... ok
+test cache_is_bounded_and_shared_across_threads ... ok
+test parser_order_ids_and_utf16_lengths ... ok
+
+test result: ok. 5 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.15s
+
+     Running tests/moderation_decisions.rs (/target-cache/debug/deps/moderation_decisions-0c1dc8b93b3f48c6)
+
+running 10 tests
+test disposable_applied_timeout_write_lost_reply_has_no_application_replay ... ignored, requires task-owned keyword-mongo and bounded loopback write-reply proxy
+test disposable_failure_order_and_no_application_retries ... ignored, requires task-owned keyword-mongo with enableTestCommands=1 and private failpoints
+test disposable_read_crossing_deadline_returns_ready_or_fences_pending ... ignored, requires task-owned keyword-mongo with enableTestCommands=1
+test disposable_ready_backlog_deadline_fences_and_cancellation ... ignored, requires task-owned keyword-mongo and a unique private namespace
+test disposable_worker_result_racing_timeout_is_fenced ... ignored, requires task-owned keyword-mongo with enableTestCommands=1
+test source_mongoose_query_probe_compares_cast_insert_wire_shape ... ignored, requires independently hashed actual-source and Mongoose SDK fixture
+test source_reference_await_results_against_disposable_mongo ... ignored, requires independently hashed source reference and task-owned keyword-mongo with failpoints
+test source_reference_hash_and_pre_cast_creation_replay ... ignored, requires independently hashed actual-source fixture
+test identifier_uses_javascript_json_utf16_and_unambiguous_array_encoding ... ok
+test generated_undefined_uses_node_storage_policy_without_touching_unchanged_mixed_values ... ok
+
+test result: ok. 2 passed; 0 failed; 8 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/moderation_semantic.rs (/target-cache/debug/deps/moderation_semantic-aa5e9572b97fbc6b)
+
+running 3 tests
+test pricing_model_and_response_edges ... ok
+test spam_safe_veto_ties_and_utf16_truncation ... ok
+test request_preserves_context_examples_and_empty_category_branch ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/moderation_semantic_source.rs (/target-cache/debug/deps/moderation_semantic_source-f3b6d59d25d2897f)
+
+running 3 tests
+test all_pure_source_records ... ignored, independently hashed actual-source fixture
+test every_evaluate_record_through_concrete_provider ... ignored, independently hashed source fixture; real private HTTP loopback
+test independent_client_timeout_resamples_wall_clock ... ok
+
+test result: ok. 1 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.28s
+
+     Running tests/moderation_semantic_worker.rs (/target-cache/debug/deps/moderation_semantic_worker-9aa5d7f4032e252b)
+
+running 4 tests
+test atomic_claim_expiry_and_ready_backlog ... ignored, private task-owned Mongo and Redis only; no production resources
+test audit_every_source_record ... ignored, independently hashed actual-source worker fixture
+test concrete_mongo_failures_respect_catch_boundaries ... ignored, serial private Mongo with enableTestCommands=1, app-scoped failpoints
+test paid_fences_recovery_and_bounded_charge_pass ... ignored, private task-owned Mongo, Redis and loopback HTTP only
+
+test result: ok. 0 passed; 0 failed; 4 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/moderation_spam.rs (/target-cache/debug/deps/moderation_spam-d9b3a7ea5b75090c)
+
+running 8 tests
+test budget_lua_matches_exact_source ... ok
+test borrowed_views_reuse_template_and_base_fields ... ok
+test strict_boolean_and_nullish_settings ... ok
+test version_and_default_review_policy ... ok
+test read_views_borrow_input_arrays_and_shared_template ... ok
+test ordinary_json_context_coercion_and_short_circuit ... ok
+test invitation_boundaries_and_javascript_whitespace ... ok
+test template_value_uses_typed_base_and_context_overrides_only ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/moderation_spam_source.rs (/target-cache/debug/deps/moderation_spam_source-c82e6316b149f39a)
+
+running 2 tests
+test all_async_source_records_through_private_protocols ... ignored, fresh private Mongo enableTestCommands and source fixture
+test all_pure_source_records ... ignored, independently hashed actual-source fixture
+
+test result: ok. 0 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/moderation_variations.rs (/target-cache/debug/deps/moderation_variations-ef5dc3a7bad230ab)
+
+running 7 tests
+test external_source_fixture_replays_native_value_calls ... ignored, requires independently hashed actual-source fixture
+test terms_preserve_nfc_whitespace_utf16_and_source_validation_order ... ok
+test rule_patterns_preserves_override_order_and_compiled_sources ... ok
+test value_rule_spreads_unknown_fields_and_shares_cached_identity ... ok
+test concurrent_cache_hits_share_one_compilation ... ok
+test compiler_spacing_and_matching ... ok
+test overrides_check_membership_before_regex_and_cache_is_bounded ... ok
+
+test result: ok. 6 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/re2_native_syntax.rs (/target-cache/debug/deps/re2_native_syntax-549d0977fc8e14da)
+
+running 1 test
+test replay_native_syntax_oracle ... ignored, requires externally generated pinned Node 24 source-built RE2 fixture
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+    Finished `test` profile [unoptimized] target(s) in 0.28s
+     Running tests/moderation_advanced.rs (/target-cache/debug/deps/moderation_advanced-3ca1408cf478960f)
+
+running 1 test
+
+thread 'fixture::replay_all_464_source_cases' (834) panicked at tests/moderation_advanced.rs:454:9:
+assertion `left == right` failed
+  left: "cf7e63b3ca33641673b0eaf8878f08938fd299ad05fd651f3933727987f460f7"
+ right: "dbdc74c2127fdbe434de83bb4153521d4cc22b639bb7c08c10db375da2e0c78a"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test fixture::replay_all_464_source_cases ... FAILED
+
+failures:
+
+failures:
+    fixture::replay_all_464_source_cases
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `--test moderation_advanced`

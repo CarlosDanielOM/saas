@@ -1,0 +1,2865 @@
+{
+  "metadata": {
+    "format": 1,
+    "sourceProvenance": {
+      "src/utils/moderation/spam_categories.ts": "archives/dimabot-typescript/2026-10-28/src/utils/moderation/spam_categories.ts"
+    },
+    "nodeSha": "569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108",
+    "versions": {
+      "node": "24.22.1",
+      "v8": "13.6.233.17-node.58",
+      "icu": "78.3",
+      "unicode": "17.0",
+      "typescript": "5.9.3",
+      "mongoose": "8.24.2"
+    },
+    "pins": {
+      "src/schemas/channel_moderation_settings.schema.ts": "e7ab82dd1eb02eaaddc5cfc93f41a4b8ff09b14ce0b488a870cbf5c727a23653",
+      "src/utils/moderation/spam_categories.ts": "29dd0951ea0b89567c55b5dce4d2795a74c78e6064b32cbd26a3ecafaa435088",
+      "src/utils/moderation/variations.ts": "f7a21881289f63a50de733df232570c00f851333d5762ef39e1258915287580e",
+      "src/utils/moderation/advanced.ts": "e88c52a8662a1531bdca981129e91f9cfe3b84c2543f11d38584652aede8a4d7",
+      "src/utils/permissions/expression.ts": "34a3d2900bbad64bde838504e16a73f361bf7d317ef4089dcbf58fe0b1e79ab2",
+      "src/utils/permissions/roles.ts": "9469ce3029c6aedce85cc7a6ad3c180adf097051ef6d5c1aa0cac68b7396df20",
+      "package.json": "cc4939f6416a91d4bfaa5bcdd3d448d2f74103a88bb269e0a8e393615cf32cef",
+      "package-lock.json": "abdf5aa71a8272423ebb9358d7aaa87edd7e65f6605c325fe231a4bcef70eeb7",
+      "rust-toolchain.toml": "b9c8d2d59f6f46474c0cfa0b8b77bea21d94fc73a30ad93d5bf6385c422197d2",
+      "node_modules/typescript/lib/typescript.js": "3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675",
+      "node_modules/typescript/package.json": "822ef7ca6452205657b6288b066481ecf508bfbf43455d715cf7d3ec457561e6",
+      "node_modules/mongoose/package.json": "5136d95bcd0624a94096110ea21ac101b73f1839bc40726eab85649389c17dba",
+      "node_modules/mongoose/index.js": "59e21822580047abc5468d740b720d1383fa3569aa2da3ac70325265fbb0e25b"
+    },
+    "nativeHashes": {
+      "src/schemas/channel_moderation_settings.schema.rs": "6508759e680f0e07b148dc86efc3e4d96130122a85d7c877ccea7dac8df90f64",
+      "src/schemas/schema.rs": "60a84d33368cc1d1732422c6aea71c89bdedb1ba10a05b7500ca5ff3d6d82bbb",
+      "src/utils/moderation/spam_categories.rs": "89b030f5ba97de962c698b3f80417da1160de88fa21b0a645c7dba1c79792766",
+      "src/utils/moderation/caps.rs": "b88b7ad207e0117d47228e417e85a2ef6e5983a286a7c2712dc1bd56ea9b5e2a",
+      "src/utils/bson_compat.rs": "bd6772ef74ec73708d3828d59496c8d2a9156d2325864b63c7f40544300802e4",
+      "src/utils/json_number.rs": "f463c65a55bcd611ed9bad2444e50acff697969bb910b7b4c17371d0af21f419",
+      "src/utils/js_compat.rs": "798538b33fa38b7a07935c22430ce12e3d93abc1afb4f605492299bbf27a64bc",
+      "src/utils/mongoose_date.rs": "d64fc10dfce3513d02598c9408bd3b6b5cccb7ed3c2e6fbad589f61e20087573",
+      "src/utils/js_date/mod.rs": "0f8aafce154dcfa6da2b3a7fd07f942f4defba175b22d6a19abe33145a39b4ca",
+      "src/utils/js_date/parser.rs": "5fe7f3e0621a51383068a71c5f715d917d3ce19d0b597fbcdb4ef17809085ff8",
+      "src/utils/js_date/local_time.rs": "c5542f691807d711e846291131d477dd6a1774a1fa2f7f792d8c6045a0a8162c",
+      "src/utils/js_string.rs": "17b3e6a6bcd0d92210851eca25da44bbcdb2c2d9e196feb5dab58d06b75d4aed",
+      "src/utils/moderation/caps_unicode_data.rs": "f47a1f1595777a04f8f97a688a7ca663b949936a1c92758a83b6860abdd4c344",
+      "tests/channel_moderation_settings_schema.rs": "081e41cbb97c6d92f12691f5c8ee4098283e8d198c1fdbb59d17b1560a8cada9",
+      "tests/channel_moderation_settings_store.rs": "ea3eb1a57d207cebdcea3fe1d21f2471459ade62953a402c6af06e212d437102",
+      "tests/fixtures/channel_moderation_settings_reference.cjs": "364e0667e4b6506b4766fe86254529292e8b459fc7df2e68e2eedb135e89e48b",
+      "tests/channel_moderation_settings_benchmark.rs": "0e334da6a05133eaf5a1a1acacd1c89e4ba0a2a9448c3f7f1f6e91c76476152f",
+      "tests/fixtures/channel_moderation_settings_benchmark.cjs": "82673bc9602786cc5216fd04385c076de46e2cd2affdda72561dd4d448f9702d",
+      "Cargo.toml": "4882343e9af14f7d0369fad879863c19ce5d379d72a577c914481b36b0f6225d",
+      "Cargo.lock": "787333fa269752a606040d7393767040ef749ce1e01c2512386bf305bcd7a2c3"
+    },
+    "compiled": {
+      "src/utils/moderation/spam_categories.ts": "eb7181785b42e999439838dd382ab8903adcd814c0fd33593b8f2aa882223f11",
+      "src/schemas/channel_moderation_settings.schema.ts": "68af0a5c53dab394f96d2666531ebcc30b14327aab2270abd9f4dd839235851e"
+    },
+    "oracleSha": "364e0667e4b6506b4766fe86254529292e8b459fc7df2e68e2eedb135e89e48b",
+    "objectId": "507f1f77bcf86cd799439011",
+    "realm": "commonjs-real-mongoose"
+  },
+  "pools": {
+    "defaults": [
+      {
+        "id": "defaults-0",
+        "input": {
+          "channelID": "alpha"
+        },
+        "expected": {
+          "ok": true,
+          "document": {
+            "_id": {
+              "$oid": "507f1f77bcf86cd799439011"
+            },
+            "channel": "",
+            "channelID": "alpha",
+            "enabled": false,
+            "offenseWindowSeconds": 3600,
+            "rules": [],
+            "settingsVersion": 1,
+            "spamProtection": {
+              "categories": [
+                "spam",
+                "ads",
+                "self_promotion"
+              ],
+              "enabled": true,
+              "exemptTags": [
+                "mod",
+                "editor",
+                "admin"
+              ],
+              "reviewAllMessages": false,
+              "thresholdPercent": 85
+            }
+          }
+        },
+        "wire": "{\"document\":{\"_id\":{\"$oid\":\"507f1f77bcf86cd799439011\"},\"channel\":\"\",\"channelID\":\"alpha\",\"enabled\":false,\"offenseWindowSeconds\":3600,\"rules\":[],\"settingsVersion\":1,\"spamProtection\":{\"categories\":[\"spam\",\"ads\",\"self_promotion\"],\"enabled\":true,\"exemptTags\":[\"mod\",\"editor\",\"admin\"],\"reviewAllMessages\":false,\"thresholdPercent\":85}},\"ok\":true}",
+        "checksum": 593967652
+      },
+      {
+        "id": "defaults-1",
+        "input": {
+          "channelID": "beta",
+          "channel": "Streamer"
+        },
+        "expected": {
+          "ok": true,
+          "document": {
+            "_id": {
+              "$oid": "507f1f77bcf86cd799439011"
+            },
+            "channel": "Streamer",
+            "channelID": "beta",
+            "enabled": false,
+            "offenseWindowSeconds": 3600,
+            "rules": [],
+            "settingsVersion": 1,
+            "spamProtection": {
+              "categories": [
+                "spam",
+                "ads",
+                "self_promotion"
+              ],
+              "enabled": true,
+              "exemptTags": [
+                "mod",
+                "editor",
+                "admin"
+              ],
+              "reviewAllMessages": false,
+              "thresholdPercent": 85
+            }
+          }
+        },
+        "wire": "{\"document\":{\"_id\":{\"$oid\":\"507f1f77bcf86cd799439011\"},\"channel\":\"Streamer\",\"channelID\":\"beta\",\"enabled\":false,\"offenseWindowSeconds\":3600,\"rules\":[],\"settingsVersion\":1,\"spamProtection\":{\"categories\":[\"spam\",\"ads\",\"self_promotion\"],\"enabled\":true,\"exemptTags\":[\"mod\",\"editor\",\"admin\"],\"reviewAllMessages\":false,\"thresholdPercent\":85}},\"ok\":true}",
+        "checksum": 3413706737
+      },
+      {
+        "id": "defaults-2",
+        "input": {
+          "channelID": "gamma",
+          "enabled": true
+        },
+        "expected": {
+          "ok": true,
+          "document": {
+            "_id": {
+              "$oid": "507f1f77bcf86cd799439011"
+            },
+            "channel": "",
+            "channelID": "gamma",
+            "enabled": true,
+            "offenseWindowSeconds": 3600,
+            "rules": [],
+            "settingsVersion": 1,
+            "spamProtection": {
+              "categories": [
+                "spam",
+                "ads",
+                "self_promotion"
+              ],
+              "enabled": true,
+              "exemptTags": [
+                "mod",
+                "editor",
+                "admin"
+              ],
+              "reviewAllMessages": false,
+              "thresholdPercent": 85
+            }
+          }
+        },
+        "wire": "{\"document\":{\"_id\":{\"$oid\":\"507f1f77bcf86cd799439011\"},\"channel\":\"\",\"channelID\":\"gamma\",\"enabled\":true,\"offenseWindowSeconds\":3600,\"rules\":[],\"settingsVersion\":1,\"spamProtection\":{\"categories\":[\"spam\",\"ads\",\"self_promotion\"],\"enabled\":true,\"exemptTags\":[\"mod\",\"editor\",\"admin\"],\"reviewAllMessages\":false,\"thresholdPercent\":85}},\"ok\":true}",
+        "checksum": 4019952698
+      },
+      {
+        "id": "defaults-3",
+        "input": {
+          "channelID": "delta",
+          "spamProtection": null
+        },
+        "expected": {
+          "ok": true,
+          "document": {
+            "_id": {
+              "$oid": "507f1f77bcf86cd799439011"
+            },
+            "channel": "",
+            "channelID": "delta",
+            "enabled": false,
+            "offenseWindowSeconds": 3600,
+            "rules": [],
+            "settingsVersion": 1,
+            "spamProtection": null
+          }
+        },
+        "wire": "{\"document\":{\"_id\":{\"$oid\":\"507f1f77bcf86cd799439011\"},\"channel\":\"\",\"channelID\":\"delta\",\"enabled\":false,\"offenseWindowSeconds\":3600,\"rules\":[],\"settingsVersion\":1,\"spamProtection\":null},\"ok\":true}",
+        "checksum": 1509903120
+      },
+      {
+        "id": "defaults-4",
+        "input": {
+          "channelID": "echo",
+          "offenseWindowSeconds": 120
+        },
+        "expected": {
+          "ok": true,
+          "document": {
+            "_id": {
+              "$oid": "507f1f77bcf86cd799439011"
+            },
+            "channel": "",
+            "channelID": "echo",
+            "enabled": false,
+            "offenseWindowSeconds": 120,
+            "rules": [],
+            "settingsVersion": 1,
+            "spamProtection": {
+              "categories": [
+                "spam",
+                "ads",
+                "self_promotion"
+              ],
+              "enabled": true,
+              "exemptTags": [
+                "mod",
+                "editor",
+                "admin"
+              ],
+              "reviewAllMessages": false,
+              "thresholdPercent": 85
+            }
+          }
+        },
+        "wire": "{\"document\":{\"_id\":{\"$oid\":\"507f1f77bcf86cd799439011\"},\"channel\":\"\",\"channelID\":\"echo\",\"enabled\":false,\"offenseWindowSeconds\":120,\"rules\":[],\"settingsVersion\":1,\"spamProtection\":{\"categories\":[\"spam\",\"ads\",\"self_promotion\"],\"enabled\":true,\"exemptTags\":[\"mod\",\"editor\",\"admin\"],\"reviewAllMessages\":false,\"thresholdPercent\":85}},\"ok\":true}",
+        "checksum": 4077971429
+      },
+      {
+        "id": "defaults-5",
+        "input": {
+          "channelID": "foxtrot",
+          "settingsVersion": 2
+        },
+        "expected": {
+          "ok": true,
+          "document": {
+            "_id": {
+              "$oid": "507f1f77bcf86cd799439011"
+            },
+            "channel": "",
+            "channelID": "foxtrot",
+            "enabled": false,
+            "offenseWindowSeconds": 3600,
+            "rules": [],
+            "settingsVersion": 2,
+            "spamProtection": {
+              "categories": [
+                "spam",
+                "ads",
+                "self_promotion"
+              ],
+              "enabled": true,
+              "exemptTags": [
+                "mod",
+                "editor",
+                "admin"
+              ],
+              "reviewAllMessages": false,
+              "thresholdPercent": 85
+            }
+          }
+        },
+        "wire": "{\"document\":{\"_id\":{\"$oid\":\"507f1f77bcf86cd799439011\"},\"channel\":\"\",\"channelID\":\"foxtrot\",\"enabled\":false,\"offenseWindowSeconds\":3600,\"rules\":[],\"settingsVersion\":2,\"spamProtection\":{\"categories\":[\"spam\",\"ads\",\"self_promotion\"],\"enabled\":true,\"exemptTags\":[\"mod\",\"editor\",\"admin\"],\"reviewAllMessages\":false,\"thresholdPercent\":85}},\"ok\":true}",
+        "checksum": 4157752829
+      },
+      {
+        "id": "defaults-6",
+        "input": {
+          "channelID": "golf",
+          "channel": "Árbol 東京 😀"
+        },
+        "expected": {
+          "ok": true,
+          "document": {
+            "_id": {
+              "$oid": "507f1f77bcf86cd799439011"
+            },
+            "channel": "Árbol 東京 😀",
+            "channelID": "golf",
+            "enabled": false,
+            "offenseWindowSeconds": 3600,
+            "rules": [],
+            "settingsVersion": 1,
+            "spamProtection": {
+              "categories": [
+                "spam",
+                "ads",
+                "self_promotion"
+              ],
+              "enabled": true,
+              "exemptTags": [
+                "mod",
+                "editor",
+                "admin"
+              ],
+              "reviewAllMessages": false,
+              "thresholdPercent": 85
+            }
+          }
+        },
+        "wire": "{\"document\":{\"_id\":{\"$oid\":\"507f1f77bcf86cd799439011\"},\"channel\":\"Árbol 東京 😀\",\"channelID\":\"golf\",\"enabled\":false,\"offenseWindowSeconds\":3600,\"rules\":[],\"settingsVersion\":1,\"spamProtection\":{\"categories\":[\"spam\",\"ads\",\"self_promotion\"],\"enabled\":true,\"exemptTags\":[\"mod\",\"editor\",\"admin\"],\"reviewAllMessages\":false,\"thresholdPercent\":85}},\"ok\":true}",
+        "checksum": 3292961706
+      },
+      {
+        "id": "defaults-7",
+        "input": {
+          "channelID": "hotel",
+          "spamProtection": {
+            "enabled": false
+          }
+        },
+        "expected": {
+          "ok": true,
+          "document": {
+            "_id": {
+              "$oid": "507f1f77bcf86cd799439011"
+            },
+            "channel": "",
+            "channelID": "hotel",
+            "enabled": false,
+            "offenseWindowSeconds": 3600,
+            "rules": [],
+            "settingsVersion": 1,
+            "spamProtection": {
+              "categories": [
+                "spam",
+                "ads",
+                "self_promotion"
+              ],
+              "enabled": false,
+              "exemptTags": [
+                "mod",
+                "editor",
+                "admin"
+              ],
+              "reviewAllMessages": false,
+              "thresholdPercent": 85
+            }
+          }
+        },
+        "wire": "{\"document\":{\"_id\":{\"$oid\":\"507f1f77bcf86cd799439011\"},\"channel\":\"\",\"channelID\":\"hotel\",\"enabled\":false,\"offenseWindowSeconds\":3600,\"rules\":[],\"settingsVersion\":1,\"spamProtection\":{\"categories\":[\"spam\",\"ads\",\"self_promotion\"],\"enabled\":false,\"exemptTags\":[\"mod\",\"editor\",\"admin\"],\"reviewAllMessages\":false,\"thresholdPercent\":85}},\"ok\":true}",
+        "checksum": 2390843395
+      }
+    ],
+    "four-rules": [
+      {
+        "id": "four-rules-0",
+        "input": {
+          "channelID": "channel-0",
+          "channel": "Streamer",
+          "enabled": false,
+          "rules": [
+            {
+              "id": "caps",
+              "type": "caps",
+              "minCapsCount": 8,
+              "exemptExpression": {
+                "role": "vip",
+                "nested": {},
+                "items": [
+                  {},
+                  {
+                    "value": 0
+                  }
+                ]
+              }
+            },
+            {
+              "id": "links",
+              "type": "links",
+              "allowlistDomains": [
+                "example.com",
+                "twitch.tv"
+              ],
+              "reason": "Links Ω"
+            },
+            {
+              "id": "emote_spam",
+              "type": "emote_spam",
+              "maxEmoteCount": 10
+            },
+            {
+              "id": "blacklist",
+              "type": "blacklist",
+              "enabled": false,
+              "terms": [
+                "café",
+                "東京"
+              ],
+              "variations": {
+                "mode": "off",
+                "entries": [
+                  {},
+                  {
+                    "label": "á"
+                  }
+                ]
+              },
+              "patterns": [
+                {
+                  "id": "p",
+                  "source": "x",
+                  "boundary": "anywhere",
+                  "ignoreCase": true
+                }
+              ],
+              "semantic": {
+                "policy": "moderation",
+                "examples": [
+                  {
+                    "message": "hello",
+                    "label": "allow"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "expected": {
+          "ok": true,
+          "document": {
+            "_id": {
+              "$oid": "507f1f77bcf86cd799439011"
+            },
+            "channel": "Streamer",
+            "channelID": "channel-0",
+            "enabled": false,
+            "offenseWindowSeconds": 3600,
+            "rules": [
+              {
+                "allowlistDomains": [],
+                "capsThresholdMode": "count",
+                "enabled": true,
+                "exemptExpression": {
+                  "items": [
+                    {},
+                    {
+                      "value": 0
+                    }
+                  ],
+                  "role": "vip"
+                },
+                "exemptUserLevel": 7,
+                "firstOffense": {
+                  "action": "warn",
+                  "timeoutSeconds": 60
+                },
+                "id": "caps",
+                "maxCapsPercentage": 70,
+                "maxEmoteCount": 10,
+                "minCapsCount": 8,
+                "minMessageLength": 10,
+                "patterns": [],
+                "reason": "Message blocked by channel moderation",
+                "secondOffense": {
+                  "action": "delete",
+                  "timeoutSeconds": 60
+                },
+                "semantic": {
+                  "enabled": false,
+                  "examples": [],
+                  "onUncertain": "allow_and_log",
+                  "policy": "",
+                  "thresholdPercent": 85
+                },
+                "terms": [],
+                "thirdOffense": {
+                  "action": "timeout",
+                  "timeoutSeconds": 60
+                },
+                "type": "caps",
+                "variations": {
+                  "entries": [],
+                  "mode": "off"
+                }
+              },
+              {
+                "allowlistDomains": [
+                  "example.com",
+                  "twitch.tv"
+                ],
+                "capsThresholdMode": "count",
+                "enabled": true,
+                "exemptExpression": null,
+                "exemptUserLevel": 7,
+                "firstOffense": {
+                  "action": "warn",
+                  "timeoutSeconds": 60
+                },
+                "id": "links",
+                "maxCapsPercentage": 70,
+                "maxEmoteCount": 10,
+                "minCapsCount": 8,
+                "minMessageLength": 10,
+                "patterns": [],
+                "reason": "Links Ω",
+                "secondOffense": {
+                  "action": "delete",
+                  "timeoutSeconds": 60
+                },
+                "semantic": {
+                  "enabled": false,
+                  "examples": [],
+                  "onUncertain": "allow_and_log",
+                  "policy": "",
+                  "thresholdPercent": 85
+                },
+                "terms": [],
+                "thirdOffense": {
+                  "action": "timeout",
+                  "timeoutSeconds": 60
+                },
+                "type": "links",
+                "variations": {
+                  "entries": [],
+                  "mode": "off"
+                }
+              },
+              {
+                "allowlistDomains": [],
+                "capsThresholdMode": "count",
+                "enabled": true,
+                "exemptExpression": null,
+                "exemptUserLevel": 7,
+                "firstOffense": {
+                  "action": "warn",
+                  "timeoutSeconds": 60
+                },
+                "id": "emote_spam",
+                "maxCapsPercentage": 70,
+                "maxEmoteCount": 10,
+                "minCapsCount": 8,
+                "minMessageLength": 10,
+                "patterns": [],
+                "reason": "Message blocked by channel moderation",
+                "secondOffense": {
+                  "action": "delete",
+                  "timeoutSeconds": 60
+                },
+                "semantic": {
+                  "enabled": false,
+                  "examples": [],
+                  "onUncertain": "allow_and_log",
+                  "policy": "",
+                  "thresholdPercent": 85
+                },
+                "terms": [],
+                "thirdOffense": {
+                  "action": "timeout",
+                  "timeoutSeconds": 60
+                },
+                "type": "emote_spam",
+                "variations": {
+                  "entries": [],
+                  "mode": "off"
+                }
+              },
+              {
+                "allowlistDomains": [],
+                "capsThresholdMode": "count",
+                "enabled": false,
+                "exemptExpression": null,
+                "exemptUserLevel": 7,
+                "firstOffense": {
+                  "action": "warn",
+                  "timeoutSeconds": 60
+                },
+                "id": "blacklist",
+                "maxCapsPercentage": 70,
+                "maxEmoteCount": 10,
+                "minCapsCount": 8,
+                "minMessageLength": 10,
+                "patterns": [
+                  {
+                    "boundary": "anywhere",
+                    "id": "p",
+                    "ignoreCase": true,
+                    "source": "x"
+                  }
+                ],
+                "reason": "Message blocked by channel moderation",
+                "secondOffense": {
+                  "action": "delete",
+                  "timeoutSeconds": 60
+                },
+                "semantic": {
+                  "enabled": false,
+                  "examples": [
+                    {
+                      "label": "allow",
+                      "message": "hello"
+                    }
+                  ],
+                  "onUncertain": "allow_and_log",
+                  "policy": "moderation",
+                  "thresholdPercent": 85
+                },
+                "terms": [
+                  "café",
+                  "東京"
+                ],
+                "thirdOffense": {
+                  "action": "timeout",
+                  "timeoutSeconds": 60
+                },
+                "type": "blacklist",
+                "variations": {
+                  "entries": [
+                    {},
+                    {
+                      "label": "á"
+                    }
+                  ],
+                  "mode": "off"
+                }
+              }
+            ],
+            "settingsVersion": 1,
+            "spamProtection": {
+              "categories": [
+                "spam",
+                "ads",
+                "self_promotion"
+              ],
+              "enabled": true,
+              "exemptTags": [
+                "mod",
+                "editor",
+                "admin"
+              ],
+              "reviewAllMessages": false,
+              "thresholdPercent": 85
+            }
+          }
+        },
+        "wire": "{\"document\":{\"_id\":{\"$oid\":\"507f1f77bcf86cd799439011\"},\"channel\":\"Streamer\",\"channelID\":\"channel-0\",\"enabled\":false,\"offenseWindowSeconds\":3600,\"rules\":[{\"allowlistDomains\":[],\"capsThresholdMode\":\"count\",\"enabled\":true,\"exemptExpression\":{\"items\":[{},{\"value\":0}],\"role\":\"vip\"},\"exemptUserLevel\":7,\"firstOffense\":{\"action\":\"warn\",\"timeoutSeconds\":60},\"id\":\"caps\",\"maxCapsPercentage\":70,\"maxEmoteCount\":10,\"minCapsCount\":8,\"minMessageLength\":10,\"patterns\":[],\"reason\":\"Message blocked by channel moderation\",\"secondOffense\":{\"action\":\"delete\",\"timeoutSeconds\":60},\"semantic\":{\"enabled\":false,\"examples\":[],\"onUncertain\":\"allow_and_log\",\"policy\":\"\",\"thresholdPercent\":85},\"terms\":[],\"thirdOffense\":{\"action\":\"timeout\",\"timeoutSeconds\":60},\"type\":\"caps\",\"variations\":{\"entries\":[],\"mode\":\"off\"}},{\"allowlistDomains\":[\"example.com\",\"twitch.tv\"],\"capsThresholdMode\":\"count\",\"enabled\":true,\"exemptExpression\":null,\"exemptUserLevel\":7,\"firstOffense\":{\"action\":\"warn\",\"timeoutSeconds\":60},\"id\":\"links\",\"maxCapsPercentage\":70,\"maxEmoteCount\":10,\"minCapsCount\":8,\"minMessageLength\":10,\"patterns\":[],\"reason\":\"Links Ω\",\"secondOffense\":{\"action\":\"delete\",\"timeoutSeconds\":60},\"semantic\":{\"enabled\":false,\"examples\":[],\"onUncertain\":\"allow_and_log\",\"policy\":\"\",\"thresholdPercent\":85},\"terms\":[],\"thirdOffense\":{\"action\":\"timeout\",\"timeoutSeconds\":60},\"type\":\"links\",\"variations\":{\"entries\":[],\"mode\":\"off\"}},{\"allowlistDomains\":[],\"capsThresholdMode\":\"count\",\"enabled\":true,\"exemptExpression\":null,\"exemptUserLevel\":7,\"firstOffense\":{\"action\":\"warn\",\"timeoutSeconds\":60},\"id\":\"emote_spam\",\"maxCapsPercentage\":70,\"maxEmoteCount\":10,\"minCapsCount\":8,\"minMessageLength\":10,\"patterns\":[],\"reason\":\"Message blocked by channel moderation\",\"secondOffense\":{\"action\":\"delete\",\"timeoutSeconds\":60},\"semantic\":{\"enabled\":false,\"examples\":[],\"onUncertain\":\"allow_and_log\",\"policy\":\"\",\"thresholdPercent\":85},\"terms\":[],\"thirdOffense\":{\"action\":\"timeout\",\"timeoutSeconds\":60},\"type\":\"emote_spam\",\"variations\":{\"entries\":[],\"mode\":\"off\"}},{\"allowlistDomains\":[],\"capsThresholdMode\":\"count\",\"enabled\":false,\"exemptExpression\":null,\"exemptUserLevel\":7,\"firstOffense\":{\"action\":\"warn\",\"timeoutSeconds\":60},\"id\":\"blacklist\",\"maxCapsPercentage\":70,\"maxEmoteCount\":10,\"minCapsCount\":8,\"minMessageLength\":10,\"patterns\":[{\"boundary\":\"anywhere\",\"id\":\"p\",\"ignoreCase\":true,\"source\":\"x\"}],\"reason\":\"Message blocked by channel moderation\",\"secondOffense\":{\"action\":\"delete\",\"timeoutSeconds\":60},\"semantic\":{\"enabled\":false,\"examples\":[{\"label\":\"allow\",\"message\":\"hello\"}],\"onUncertain\":\"allow_and_log\",\"policy\":\"moderation\",\"thresholdPercent\":85},\"terms\":[\"café\",\"東京\"],\"thirdOffense\":{\"action\":\"timeout\",\"timeoutSeconds\":60},\"type\":\"blacklist\",\"variations\":{\"entries\":[{},{\"label\":\"á\"}],\"mode\":\"off\"}}],\"settingsVersion\":1,\"spamProtection\":{\"categories\":[\"spam\",\"ads\",\"self_promotion\"],\"enabled\":true,\"exemptTags\":[\"mod\",\"editor\",\"admin\"],\"reviewAllMessages\":false,\"thresholdPercent\":85}},\"ok\":true}",
+        "checksum": 4266160669
+      },
+      {
+        "id": "four-rules-1",
+        "input": {
+          "channelID": "channel-1",
+          "channel": "Canal Ω",
+          "enabled": true,
+          "rules": [
+            {
+              "id": "caps",
+              "type": "caps",
+              "minCapsCount": 9,
+              "exemptExpression": {
+                "role": "vip",
+                "nested": {},
+                "items": [
+                  {},
+                  {
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            {
+              "id": "links",
+              "type": "links",
+              "allowlistDomains": [
+                "example.com",
+                "twitch.tv"
+              ],
+              "reason": "Links Ω"
+            },
+            {
+              "id": "emote_spam",
+              "type": "emote_spam",
+              "maxEmoteCount": 11
+            },
+            {
+              "id": "blacklist",
+              "type": "blacklist",
+              "enabled": false,
+              "terms": [
+                "café",
+                "東京"
+              ],
+              "variations": {
+                "mode": "off",
+                "entries": [
+                  {},
+                  {
+                    "label": "á"
+                  }
+                ]
+              },
+              "patterns": [
+                {
+                  "id": "p",
+                  "source": "x",
+                  "boundary": "anywhere",
+                  "ignoreCase": true
+                }
+              ],
+              "semantic": {
+                "policy": "moderation",
+                "examples": [
+                  {
+                    "message": "hello",
+                    "label": "allow"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "expected": {
+          "ok": true,
+          "document": {
+            "_id": {
+              "$oid": "507f1f77bcf86cd799439011"
+            },
+            "channel": "Canal Ω",
+            "channelID": "channel-1",
+            "enabled": true,
+            "offenseWindowSeconds": 3600,
+            "rules": [
+              {
+                "allowlistDomains": [],
+                "capsThresholdMode": "count",
+                "enabled": true,
+                "exemptExpression": {
+                  "items": [
+                    {},
+                    {
+                      "value": 1
+                    }
+                  ],
+                  "role": "vip"
+                },
+                "exemptUserLevel": 7,
+                "firstOffense": {
+                  "action": "warn",
+                  "timeoutSeconds": 60
+                },
+                "id": "caps",
+                "maxCapsPercentage": 70,
+                "maxEmoteCount": 10,
+                "minCapsCount": 9,
+                "minMessageLength": 10,
+                "patterns": [],
+                "reason": "Message blocked by channel moderation",
+                "secondOffense": {
+                  "action": "delete",
+                  "timeoutSeconds": 60
+                },
+                "semantic": {
+                  "enabled": false,
+                  "examples": [],
+                  "onUncertain": "allow_and_log",
+                  "policy": "",
+                  "thresholdPercent": 85
+                },
+                "terms": [],
+                "thirdOffense": {
+                  "action": "timeout",
+                  "timeoutSeconds": 60
+                },
+                "type": "caps",
+                "variations": {
+                  "entries": [],
+                  "mode": "off"
+                }
+              },
+              {
+                "allowlistDomains": [
+                  "example.com",
+                  "twitch.tv"
+                ],
+                "capsThresholdMode": "count",
+                "enabled": true,
+                "exemptExpression": null,
+                "exemptUserLevel": 7,
+                "firstOffense": {
+                  "action": "warn",
+                  "timeoutSeconds": 60
+                },
+                "id": "links",
+                "maxCapsPercentage": 70,
+                "maxEmoteCount": 10,
+                "minCapsCount": 8,
+                "minMessageLength": 10,
+                "patterns": [],
+                "reason": "Links Ω",
+                "secondOffense": {
+                  "action": "delete",
+                  "timeoutSeconds": 60
+                },
+                "semantic": {
+                  "enabled": false,
+                  "examples": [],
+                  "onUncertain": "allow_and_log",
+                  "policy": "",
+                  "thresholdPercent": 85
+                },
+                "terms": [],
+                "thirdOffense": {
+                  "action": "timeout",
+                  "timeoutSeconds": 60
+                },
+                "type": "links",
+                "variations": {
+                  "entries": [],
+                  "mode": "off"
+                }
+              },
+              {
+                "allowlistDomains": [],
+                "capsThresholdMode": "count",
+                "enabled": true,
+                "exemptExpression": null,
+                "exemptUserLevel": 7,
+                "firstOffense": {
+                  "action": "warn",
+                  "timeoutSeconds": 60
+                },
+                "id": "emote_spam",
+                "maxCapsPercentage": 70,
+                "maxEmoteCount": 11,
+                "minCapsCount": 8,
+                "minMessageLength": 10,
+                "patterns": [],
+                "reason": "Message blocked by channel moderation",
+                "secondOffense": {
+                  "action": "delete",
+                  "timeoutSeconds": 60
+                },
+                "semantic": {
+                  "enabled": false,
+                  "examples": [],
+                  "onUncertain": "allow_and_log",
+                  "policy": "",
+                  "thresholdPercent": 85
+                },
+                "terms": [],
+                "thirdOffense": {
+                  "action": "timeout",
+                  "timeoutSeconds": 60
+                },
+                "type": "emote_spam",
+                "variations": {
+                  "entries": [],
+                  "mode": "off"
+                }
+              },
+              {
+                "allowlistDomains": [],
+                "capsThresholdMode": "count",
+                "enabled": false,
+                "exemptExpression": null,
+                "exemptUserLevel": 7,
+                "firstOffense": {
+                  "action": "warn",
+                  "timeoutSeconds": 60
+                },
+                "id": "blacklist",
+                "maxCapsPercentage": 70,
+                "maxEmoteCount": 10,
+                "minCapsCount": 8,
+                "minMessageLength": 10,
+                "patterns": [
+                  {
+                    "boundary": "anywhere",
+                    "id": "p",
+                    "ignoreCase": true,
+                    "source": "x"
+                  }
+                ],
+                "reason": "Message blocked by channel moderation",
+                "secondOffense": {
+                  "action": "delete",
+                  "timeoutSeconds": 60
+                },
+                "semantic": {
+                  "enabled": false,
+                  "examples": [
+                    {
+                      "label": "allow",
+                      "message": "hello"
+                    }
+                  ],
+                  "onUncertain": "allow_and_log",
+                  "policy": "moderation",
+                  "thresholdPercent": 85
+                },
+                "terms": [
+                  "café",
+                  "東京"
+                ],
+                "thirdOffense": {
+                  "action": "timeout",
+                  "timeoutSeconds": 60
+                },
+                "type": "blacklist",
+                "variations": {
+                  "entries": [
+                    {},
+                    {
+                      "label": "á"
+                    }
+                  ],
+                  "mode": "off"
+                }
+              }
+            ],
+            "settingsVersion": 1,
+            "spamProtection": {
+              "categories": [
+                "spam",
+                "ads",
+                "self_promotion"
+              ],
+              "enabled": true,
+              "exemptTags": [
+                "mod",
+                "editor",
+                "admin"
+              ],
+              "reviewAllMessages": false,
+              "thresholdPercent": 85
+            }
+          }
+        },
+        "wire": "{\"document\":{\"_id\":{\"$oid\":\"507f1f77bcf86cd799439011\"},\"channel\":\"Canal Ω\",\"channelID\":\"channel-1\",\"enabled\":true,\"offenseWindowSeconds\":3600,\"rules\":[{\"allowlistDomains\":[],\"capsThresholdMode\":\"count\",\"enabled\":true,\"exemptExpression\":{\"items\":[{},{\"value\":1}],\"role\":\"vip\"},\"exemptUserLevel\":7,\"firstOffense\":{\"action\":\"warn\",\"timeoutSeconds\":60},\"id\":\"caps\",\"maxCapsPercentage\":70,\"maxEmoteCount\":10,\"minCapsCount\":9,\"minMessageLength\":10,\"patterns\":[],\"reason\":\"Message blocked by channel moderation\",\"secondOffense\":{\"action\":\"delete\",\"timeoutSeconds\":60},\"semantic\":{\"enabled\":false,\"examples\":[],\"onUncertain\":\"allow_and_log\",\"policy\":\"\",\"thresholdPercent\":85},\"terms\":[],\"thirdOffense\":{\"action\":\"timeout\",\"timeoutSeconds\":60},\"type\":\"caps\",\"variations\":{\"entries\":[],\"mode\":\"off\"}},{\"allowlistDomains\":[\"example.com\",\"twitch.tv\"],\"capsThresholdMode\":\"count\",\"enabled\":true,\"exemptExpression\":null,\"exemptUserLevel\":7,\"firstOffense\":{\"action\":\"warn\",\"timeoutSeconds\":60},\"id\":\"links\",\"maxCapsPercentage\":70,\"maxEmoteCount\":10,\"minCapsCount\":8,\"minMessageLength\":10,\"patterns\":[],\"reason\":\"Links Ω\",\"secondOffense\":{\"action\":\"delete\",\"timeoutSeconds\":60},\"semantic\":{\"enabled\":false,\"examples\":[],\"onUncertain\":\"allow_and_log\",\"policy\":\"\",\"thresholdPercent\":85},\"terms\":[],\"thirdOffense\":{\"action\":\"timeout\",\"timeoutSeconds\":60},\"type\":\"links\",\"variations\":{\"entries\":[],\"mode\":\"off\"}},{\"allowlistDomains\":[],\"capsThresholdMode\":\"count\",\"enabled\":true,\"exemptExpression\":null,\"exemptUserLevel\":7,\"firstOffense\":{\"action\":\"warn\",\"timeoutSeconds\":60},\"id\":\"emote_spam\",\"maxCapsPercentage\":70,\"maxEmoteCount\":11,\"minCapsCount\":8,\"minMessageLength\":10,\"patterns\":[],\"reason\":\"Message blocked by channel moderation\",\"secondOffense\":{\"action\":\"delete\",\"timeoutSeconds\":60},\"semantic\":{\"enabled\":false,\"examples\":[],\"onUncertain\":\"allow_and_log\",\"policy\":\"\",\"thresholdPercent\":85},\"terms\":[],\"thirdOffense\":{\"action\":\"timeout\",\"timeoutSeconds\":60},\"type\":\"emote_spam\",\"variations\":{\"entries\":[],\"mode\":\"off\"}},{\"allowlistDomains\":[],\"capsThresholdMode\":\"count\",\"enabled\":false,\"exemptExpression\":null,\"exemptUserLevel\":7,\"firstOffense\":{\"action\":\"warn\",\"timeoutSeconds\":60},\"id\":\"blacklist\",\"maxCapsPercentage\":70,\"maxEmoteCount\":10,\"minCapsCount\":8,\"minMessageLength\":10,\"patterns\":[{\"boundary\":\"anywhere\",\"id\":\"p\",\"ignoreCase\":true,\"source\":\"x\"}],\"reason\":\"Message blocked by channel moderation\",\"secondOffense\":{\"action\":\"delete\",\"timeoutSeconds\":60},\"semantic\":{\"enabled\":false,\"examples\":[{\"label\":\"allow\",\"message\":\"hello\"}],\"onUncertain\":\"allow_and_log\",\"policy\":\"moderation\",\"thresholdPercent\":85},\"terms\":[\"café\",\"東京\"],\"thirdOffense\":{\"action\":\"timeout\",\"timeoutSeconds\":60},\"type\":\"blacklist\",\"variations\":{\"entries\":[{},{\"label\":\"á\"}],\"mode\":\"off\"}}],\"settingsVersion\":1,\"spamProtection\":{\"categories\":[\"spam\",\"ads\",\"self_promotion\"],\"enabled\":true,\"exemptTags\":[\"mod\",\"editor\",\"admin\"],\"reviewAllMessages\":false,\"thresholdPercent\":85}},\"ok\":true}",
+        "checksum": 1640371165
+      },
+      {
+        "id": "four-rules-2",
+        "input": {
+          "channelID": "channel-2",
+          "channel": "Streamer",
+          "enabled": false,
+          "rules": [
+            {
+              "id": "caps",
+              "type": "caps",
+              "minCapsCount": 10,
+              "exemptExpression": {
+                "role": "vip",
+                "nested": {},
+                "items": [
+                  {},
+                  {
+                    "value": 2
+                  }
+                ]
+              }
+            },
+            {
+              "id": "links",
+              "type": "links",
+              "allowlistDomains": [
+                "example.com",
+                "twitch.tv"
+              ],
+              "reason": "Links Ω"
+            },
+            {
+              "id": "emote_spam",
+              "type": "emote_spam",
+              "maxEmoteCount": 12
+            },
+            {
+              "id": "blacklist",
+              "type": "blacklist",
+              "enabled": false,
+              "terms": [
+                "café",
+                "東京"
+              ],
+              "variations": {
+                "mode": "off",
+                "entries": [
+                  {},
+                  {
+                    "label": "á"
+                  }
+                ]
+              },
+              "patterns": [
+                {
+                  "id": "p",
+                  "source": "x",
+                  "boundary": "anywhere",
+                  "ignoreCase": true
+                }
+              ],
+              "semantic": {
+                "policy": "moderation",
+                "examples": [
+                  {
+                    "message": "hello",
+                    "label": "allow"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "expected": {
+          "ok": true,
+          "document": {
+            "_id": {
+              "$oid": "507f1f77bcf86cd799439011"
+            },
+            "channel": "Streamer",
+            "channelID": "channel-2",
+            "enabled": false,
+            "offenseWindowSeconds": 3600,
+            "rules": [
+              {
+                "allowlistDomains": [],
+                "capsThresholdMode": "count",
+                "enabled": true,
+                "exemptExpression": {
+                  "items": [
+                    {},
+                    {
+                      "value": 2
+                    }
+                  ],
+                  "role": "vip"
+                },
+                "exemptUserLevel": 7,
+                "firstOffense": {
+                  "action": "warn",
+                  "timeoutSeconds": 60
+                },
+                "id": "caps",
+                "maxCapsPercentage": 70,
+                "maxEmoteCount": 10,
+                "minCapsCount": 10,
+                "minMessageLength": 10,
+                "patterns": [],
+                "reason": "Message blocked by channel moderation",
+                "secondOffense": {
+                  "action": "delete",
+                  "timeoutSeconds": 60
+                },
+                "semantic": {
+                  "enabled": false,
+                  "examples": [],
+                  "onUncertain": "allow_and_log",
+                  "policy": "",
+                  "thresholdPercent": 85
+                },
+                "terms": [],
+                "thirdOffense": {
+                  "action": "timeout",
+                  "timeoutSeconds": 60
+                },
+                "type": "caps",
+                "variations": {
+                  "entries": [],
+                  "mode": "off"
+                }
+              },
+              {
+                "allowlistDomains": [
+                  "example.com",
+                  "twitch.tv"
+                ],
+                "capsThresholdMode": "count",
+                "enabled": true,
+                "exemptExpression": null,
+                "exemptUserLevel": 7,
+                "firstOffense": {
+                  "action": "warn",
+                  "timeoutSeconds": 60
+                },
+                "id": "links",
+                "maxCapsPercentage": 70,
+                "maxEmoteCount": 10,
+                "minCapsCount": 8,
+                "minMessageLength": 10,
+                "patterns": [],
+                "reason": "Links Ω",
+                "secondOffense": {
+                  "action": "delete",
+                  "timeoutSeconds": 60
+                },
+                "semantic": {
+                  "enabled": false,
+                  "examples": [],
+                  "onUncertain": "allow_and_log",
+                  "policy": "",
+                  "thresholdPercent": 85
+                },
+                "terms": [],
+                "thirdOffense": {
+                  "action": "timeout",
+                  "timeoutSeconds": 60
+                },
+                "type": "links",
+                "variations": {
+                  "entries": [],
+                  "mode": "off"
+                }
+              },
+              {
+                "allowlistDomains": [],
+                "capsThresholdMode": "count",
+                "enabled": true,
+                "exemptExpression": null,
+                "exemptUserLevel": 7,
+                "firstOffense": {
+                  "action": "warn",
+                  "timeoutSeconds": 60
+                },
+                "id": "emote_spam",
+                "maxCapsPercentage": 70,
+                "maxEmoteCount": 12,
+                "minCapsCount": 8,
+                "minMessageLength": 10,
+                "patterns": [],
+                "reason": "Message blocked by channel moderation",
+                "secondOffense": {
+                  "action": "delete",
+                  "timeoutSeconds": 60
+                },
+                "semantic": {
+                  "enabled": false,
+                  "examples": [],
+                  "onUncertain": "allow_and_log",
+                  "policy": "",
+                  "thresholdPercent": 85
+                },
+                "terms": [],
+                "thirdOffense": {
+                  "action": "timeout",
+                  "timeoutSeconds": 60
+                },
+                "type": "emote_spam",
+                "variations": {
+                  "entries": [],
+                  "mode": "off"
+                }
+              },
+              {
+                "allowlistDomains": [],
+                "capsThresholdMode": "count",
+                "enabled": false,
+                "exemptExpression": null,
+                "exemptUserLevel": 7,
+                "firstOffense": {
+                  "action": "warn",
+                  "timeoutSeconds": 60
+                },
+                "id": "blacklist",
+                "maxCapsPercentage": 70,
+                "maxEmoteCount": 10,
+                "minCapsCount": 8,
+                "minMessageLength": 10,
+                "patterns": [
+                  {
+                    "boundary": "anywhere",
+                    "id": "p",
+                    "ignoreCase": true,
+                    "source": "x"
+                  }
+                ],
+                "reason": "Message blocked by channel moderation",
+                "secondOffense": {
+                  "action": "delete",
+                  "timeoutSeconds": 60
+                },
+                "semantic": {
+                  "enabled": false,
+                  "examples": [
+                    {
+                      "label": "allow",
+                      "message": "hello"
+                    }
+                  ],
+                  "onUncertain": "allow_and_log",
+                  "policy": "moderation",
+                  "thresholdPercent": 85
+                },
+                "terms": [
+                  "café",
+                  "東京"
+                ],
+                "thirdOffense": {
+                  "action": "timeout",
+                  "timeoutSeconds": 60
+                },
+                "type": "blacklist",
+                "variations": {
+                  "entries": [
+                    {},
+                    {
+                      "label": "á"
+                    }
+                  ],
+                  "mode": "off"
+                }
+              }
+            ],
+            "settingsVersion": 1,
+            "spamProtection": {
+              "categories": [
+                "spam",
+                "ads",
+                "self_promotion"
+              ],
+              "enabled": true,
+              "exemptTags": [
+                "mod",
+                "editor",
+                "admin"
+              ],
+              "reviewAllMessages": false,
+              "thresholdPercent": 85
+            }
+          }
+        },
+        "wire": "{\"document\":{\"_id\":{\"$oid\":\"507f1f77bcf86cd799439011\"},\"channel\":\"Streamer\",\"channelID\":\"channel-2\",\"enabled\":false,\"offenseWindowSeconds\":3600,\"rules\":[{\"allowlistDomains\":[],\"capsThresholdMode\":\"count\",\"enabled\":true,\"exemptExpression\":{\"items\":[{},{\"value\":2}],\"role\":\"vip\"},\"exemptUserLevel\":7,\"firstOffense\":{\"action\":\"warn\",\"timeoutSeconds\":60},\"id\":\"caps\",\"maxCapsPercentage\":70,\"maxEmoteCount\":10,\"minCapsCount\":10,\"minMessageLength\":10,\"patterns\":[],\"reason\":\"Message blocked by channel moderation\",\"secondOffense\":{\"action\":\"delete\",\"timeoutSeconds\":60},\"semantic\":{\"enabled\":false,\"examples\":[],\"onUncertain\":\"allow_and_log\",\"policy\":\"\",\"thresholdPercent\":85},\"terms\":[],\"thirdOffense\":{\"action\":\"timeout\",\"timeoutSeconds\":60},\"type\":\"caps\",\"variations\":{\"entries\":[],\"mode\":\"off\"}},{\"allowlistDomains\":[\"example.com\",\"twitch.tv\"],\"capsThresholdMode\":\"count\",\"enabled\":true,\"exemptExpression\":null,\"exemptUserLevel\":7,\"firstOffense\":{\"action\":\"warn\",\"timeoutSeconds\":60},\"id\":\"links\",\"maxCapsPercentage\":70,\"maxEmoteCount\":10,\"minCapsCount\":8,\"minMessageLength\":10,\"patterns\":[],\"reason\":\"Links Ω\",\"secondOffense\":{\"action\":\"delete\",\"timeoutSeconds\":60},\"semantic\":{\"enabled\":false,\"examples\":[],\"onUncertain\":\"allow_and_log\",\"policy\":\"\",\"thresholdPercent\":85},\"terms\":[],\"thirdOffense\":{\"action\":\"timeout\",\"timeoutSeconds\":60},\"type\":\"links\",\"variations\":{\"entries\":[],\"mode\":\"off\"}},{\"allowlistDomains\":[],\"capsThresholdMode\":\"count\",\"enabled\":true,\"exemptExpression\":null,\"exemptUserLevel\":7,\"firstOffense\":{\"action\":\"warn\",\"timeoutSeconds\":60},\"id\":\"emote_spam\",\"maxCapsPercentage\":70,\"maxEmoteCount\":12,\"minCapsCount\":8,\"minMessageLength\":10,\"patterns\":[],\"reason\":\"Message blocked by channel moderation\",\"secondOffense\":{\"action\":\"delete\",\"timeoutSeconds\":60},\"semantic\":{\"enabled\":false,\"examples\":[],\"onUncertain\":\"allow_and_log\",\"policy\":\"\",\"thresholdPercent\":85},\"terms\":[],\"thirdOffense\":{\"action\":\"timeout\",\"timeoutSeconds\":60},\"type\":\"emote_spam\",\"variations\":{\"entries\":[],\"mode\":\"off\"}},{\"allowlistDomains\":[],\"capsThresholdMode\":\"count\",\"enabled\":false,\"exemptExpression\":null,\"exemptUserLevel\":7,\"firstOffense\":{\"action\":\"warn\",\"timeoutSeconds\":60},\"id\":\"blacklist\",\"maxCapsPercentage\":70,\"maxEmoteCount\":10,\"minCapsCount\":8,\"minMessageLength\":10,\"patterns\":[{\"boundary\":\"anywhere\",\"id\":\"p\",\"ignoreCase\":true,\"source\":\"x\"}],\"reason\":\"Message blocked by channel moderation\",\"secondOffense\":{\"action\":\"delete\",\"timeoutSeconds\":60},\"semantic\":{\"enabled\":false,\"examples\":[{\"label\":\"allow\",\"message\":\"hello\"}],\"onUncertain\":\"allow_and_log\",\"policy\":\"moderation\",\"thresholdPercent\":85},\"terms\":[\"café\",\"東京\"],\"thirdOffense\":{\"action\":\"timeout\",\"timeoutSeconds\":60},\"type\":\"blacklist\",\"variations\":{\"entries\":[{},{\"label\":\"á\"}],\"mode\":\"off\"}}],\"settingsVersion\":1,\"spamProtection\":{\"categories\":[\"spam\",\"ads\",\"self_promotion\"],\"enabled\":true,\"exemptTags\":[\"mod\",\"editor\",\"admin\"],\"reviewAllMessages\":false,\"thresholdPercent\":85}},\"ok\":true}",
+        "checksum": 3904273084
+      },
+      {
+        "id": "four-rules-3",
+        "input": {
+          "channelID": "channel-3",
+          "channel": "Canal Ω",
+          "enabled": true,
+          "rules": [
+            {
+              "id": "caps",
+              "type": "caps",
+              "minCapsCount": 11,
+              "exemptExpression": {
+                "role": "vip",
+                "nested": {},
+                "items": [
+                  {},
+                  {
+                    "value": 3
+                  }
+                ]
+              }
+            },
+            {
+              "id": "links",
+              "type": "links",
+              "allowlistDomains": [
+                "example.com",
+                "twitch.tv"
+              ],
+              "reason": "Links Ω"
+            },
+            {
+              "id": "emote_spam",
+              "type": "emote_spam",
+              "maxEmoteCount": 13
+            },
+            {
+              "id": "blacklist",
+              "type": "blacklist",
+              "enabled": false,
+              "terms": [
+                "café",
+                "東京"
+              ],
+              "variations": {
+                "mode": "off",
+                "entries": [
+                  {},
+                  {
+                    "label": "á"
+                  }
+                ]
+              },
+              "patterns": [
+                {
+                  "id": "p",
+                  "source": "x",
+                  "boundary": "anywhere",
+                  "ignoreCase": true
+                }
+              ],
+              "semantic": {
+                "policy": "moderation",
+                "examples": [
+                  {
+                    "message": "hello",
+                    "label": "allow"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "expected": {
+          "ok": true,
+          "document": {
+            "_id": {
+              "$oid": "507f1f77bcf86cd799439011"
+            },
+            "channel": "Canal Ω",
+            "channelID": "channel-3",
+            "enabled": true,
+            "offenseWindowSeconds": 3600,
+            "rules": [
+              {
+                "allowlistDomains": [],
+                "capsThresholdMode": "count",
+                "enabled": true,
+                "exemptExpression": {
+                  "items": [
+                    {},
+                    {
+                      "value": 3
+                    }
+                  ],
+                  "role": "vip"
+                },
+                "exemptUserLevel": 7,
+                "firstOffense": {
+                  "action": "warn",
+                  "timeoutSeconds": 60
+                },
+                "id": "caps",
+                "maxCapsPercentage": 70,
+                "maxEmoteCount": 10,
+                "minCapsCount": 11,
+                "minMessageLength": 10,
+                "patterns": [],
+                "reason": "Message blocked by channel moderation",
+                "secondOffense": {
+                  "action": "delete",
+                  "timeoutSeconds": 60
+                },
+                "semantic": {
+                  "enabled": false,
+                  "examples": [],
+                  "onUncertain": "allow_and_log",
+                  "policy": "",
+                  "thresholdPercent": 85
+                },
+                "terms": [],
+                "thirdOffense": {
+                  "action": "timeout",
+                  "timeoutSeconds": 60
+                },
+                "type": "caps",
+                "variations": {
+                  "entries": [],
+                  "mode": "off"
+                }
+              },
+              {
+                "allowlistDomains": [
+                  "example.com",
+                  "twitch.tv"
+                ],
+                "capsThresholdMode": "count",
+                "enabled": true,
+                "exemptExpression": null,
+                "exemptUserLevel": 7,
+                "firstOffense": {
+                  "action": "warn",
+                  "timeoutSeconds": 60
+                },
+                "id": "links",
+                "maxCapsPercentage": 70,
+                "maxEmoteCount": 10,
+                "minCapsCount": 8,
+                "minMessageLength": 10,
+                "patterns": [],
+                "reason": "Links Ω",
+                "secondOffense": {
+                  "action": "delete",
+                  "timeoutSeconds": 60
+                },
+                "semantic": {
+                  "enabled": false,
+                  "examples": [],
+                  "onUncertain": "allow_and_log",
+                  "policy": "",
+                  "thresholdPercent": 85
+                },
+                "terms": [],
+                "thirdOffense": {
+                  "action": "timeout",
+                  "timeoutSeconds": 60
+                },
+                "type": "links",
+                "variations": {
+                  "entries": [],
+                  "mode": "off"
+                }
+              },
+              {
+                "allowlistDomains": [],
+                "capsThresholdMode": "count",
+                "enabled": true,
+                "exemptExpression": null,
+                "exemptUserLevel": 7,
+                "firstOffense": {
+                  "action": "warn",
+                  "timeoutSeconds": 60
+                },
+                "id": "emote_spam",
+                "maxCapsPercentage": 70,
+                "maxEmoteCount": 13,
+                "minCapsCount": 8,
+                "minMessageLength": 10,
+                "patterns": [],
+                "reason": "Message blocked by channel moderation",
+                "secondOffense": {
+                  "action": "delete",
+                  "timeoutSeconds": 60
+                },
+                "semantic": {
+                  "enabled": false,
+                  "examples": [],
+                  "onUncertain": "allow_and_log",
+                  "policy": "",
+                  "thresholdPercent": 85
+                },
+                "terms": [],
+                "thirdOffense": {
+                  "action": "timeout",
+                  "timeoutSeconds": 60
+                },
+                "type": "emote_spam",
+                "variations": {
+                  "entries": [],
+                  "mode": "off"
+                }
+              },
+              {
+                "allowlistDomains": [],
+                "capsThresholdMode": "count",
+                "enabled": false,
+                "exemptExpression": null,
+                "exemptUserLevel": 7,
+                "firstOffense": {
+                  "action": "warn",
+                  "timeoutSeconds": 60
+                },
+                "id": "blacklist",
+                "maxCapsPercentage": 70,
+                "maxEmoteCount": 10,
+                "minCapsCount": 8,
+                "minMessageLength": 10,
+                "patterns": [
+                  {
+                    "boundary": "anywhere",
+                    "id": "p",
+                    "ignoreCase": true,
+                    "source": "x"
+                  }
+                ],
+                "reason": "Message blocked by channel moderation",
+                "secondOffense": {
+                  "action": "delete",
+                  "timeoutSeconds": 60
+                },
+                "semantic": {
+                  "enabled": false,
+                  "examples": [
+                    {
+                      "label": "allow",
+                      "message": "hello"
+                    }
+                  ],
+                  "onUncertain": "allow_and_log",
+                  "policy": "moderation",
+                  "thresholdPercent": 85
+                },
+                "terms": [
+                  "café",
+                  "東京"
+                ],
+                "thirdOffense": {
+                  "action": "timeout",
+                  "timeoutSeconds": 60
+                },
+                "type": "blacklist",
+                "variations": {
+                  "entries": [
+                    {},
+                    {
+                      "label": "á"
+                    }
+                  ],
+                  "mode": "off"
+                }
+              }
+            ],
+            "settingsVersion": 1,
+            "spamProtection": {
+              "categories": [
+                "spam",
+                "ads",
+                "self_promotion"
+              ],
+              "enabled": true,
+              "exemptTags": [
+                "mod",
+                "editor",
+                "admin"
+              ],
+              "reviewAllMessages": false,
+              "thresholdPercent": 85
+            }
+          }
+        },
+        "wire": "{\"document\":{\"_id\":{\"$oid\":\"507f1f77bcf86cd799439011\"},\"channel\":\"Canal Ω\",\"channelID\":\"channel-3\",\"enabled\":true,\"offenseWindowSeconds\":3600,\"rules\":[{\"allowlistDomains\":[],\"capsThresholdMode\":\"count\",\"enabled\":true,\"exemptExpression\":{\"items\":[{},{\"value\":3}],\"role\":\"vip\"},\"exemptUserLevel\":7,\"firstOffense\":{\"action\":\"warn\",\"timeoutSeconds\":60},\"id\":\"caps\",\"maxCapsPercentage\":70,\"maxEmoteCount\":10,\"minCapsCount\":11,\"minMessageLength\":10,\"patterns\":[],\"reason\":\"Message blocked by channel moderation\",\"secondOffense\":{\"action\":\"delete\",\"timeoutSeconds\":60},\"semantic\":{\"enabled\":false,\"examples\":[],\"onUncertain\":\"allow_and_log\",\"policy\":\"\",\"thresholdPercent\":85},\"terms\":[],\"thirdOffense\":{\"action\":\"timeout\",\"timeoutSeconds\":60},\"type\":\"caps\",\"variations\":{\"entries\":[],\"mode\":\"off\"}},{\"allowlistDomains\":[\"example.com\",\"twitch.tv\"],\"capsThresholdMode\":\"count\",\"enabled\":true,\"exemptExpression\":null,\"exemptUserLevel\":7,\"firstOffense\":{\"action\":\"warn\",\"timeoutSeconds\":60},\"id\":\"links\",\"maxCapsPercentage\":70,\"maxEmoteCount\":10,\"minCapsCount\":8,\"minMessageLength\":10,\"patterns\":[],\"reason\":\"Links Ω\",\"secondOffense\":{\"action\":\"delete\",\"timeoutSeconds\":60},\"semantic\":{\"enabled\":false,\"examples\":[],\"onUncertain\":\"allow_and_log\",\"policy\":\"\",\"thresholdPercent\":85},\"terms\":[],\"thirdOffense\":{\"action\":\"timeout\",\"timeoutSeconds\":60},\"type\":\"links\",\"variations\":{\"entries\":[],\"mode\":\"off\"}},{\"allowlistDomains\":[],\"capsThresholdMode\":\"count\",\"enabled\":true,\"exemptExpression\":null,\"exemptUserLevel\":7,\"firstOffense\":{\"action\":\"warn\",\"timeoutSeconds\":60},\"id\":\"emote_spam\",\"maxCapsPercentage\":70,\"maxEmoteCount\":13,\"minCapsCount\":8,\"minMessageLength\":10,\"patterns\":[],\"reason\":\"Message blocked by channel moderation\",\"secondOffense\":{\"action\":\"delete\",\"timeoutSeconds\":60},\"semantic\":{\"enabled\":false,\"examples\":[],\"onUncertain\":\"allow_and_log\",\"policy\":\"\",\"thresholdPercent\":85},\"terms\":[],\"thirdOffense\":{\"action\":\"timeout\",\"timeoutSeconds\":60},\"type\":\"emote_spam\",\"variations\":{\"entries\":[],\"mode\":\"off\"}},{\"allowlistDomains\":[],\"capsThresholdMode\":\"count\",\"enabled\":false,\"exemptExpression\":null,\"exemptUserLevel\":7,\"firstOffense\":{\"action\":\"warn\",\"timeoutSeconds\":60},\"id\":\"blacklist\",\"maxCapsPercentage\":70,\"maxEmoteCount\":10,\"minCapsCount\":8,\"minMessageLength\":10,\"patterns\":[{\"boundary\":\"anywhere\",\"id\":\"p\",\"ignoreCase\":true,\"source\":\"x\"}],\"reason\":\"Message blocked by channel moderation\",\"secondOffense\":{\"action\":\"delete\",\"timeoutSeconds\":60},\"semantic\":{\"enabled\":false,\"examples\":[{\"label\":\"allow\",\"message\":\"hello\"}],\"onUncertain\":\"allow_and_log\",\"policy\":\"moderation\",\"thresholdPercent\":85},\"terms\":[\"café\",\"東京\"],\"thirdOffense\":{\"action\":\"timeout\",\"timeoutSeconds\":60},\"type\":\"blacklist\",\"variations\":{\"entries\":[{},{\"label\":\"á\"}],\"mode\":\"off\"}}],\"settingsVersion\":1,\"spamProtection\":{\"categories\":[\"spam\",\"ads\",\"self_promotion\"],\"enabled\":true,\"exemptTags\":[\"mod\",\"editor\",\"admin\"],\"reviewAllMessages\":false,\"thresholdPercent\":85}},\"ok\":true}",
+        "checksum": 1082660512
+      },
+      {
+        "id": "four-rules-4",
+        "input": {
+          "channelID": "channel-4",
+          "channel": "Streamer",
+          "enabled": false,
+          "rules": [
+            {
+              "id": "caps",
+              "type": "caps",
+              "minCapsCount": 12,
+              "exemptExpression": {
+                "role": "vip",
+                "nested": {},
+                "items": [
+                  {},
+                  {
+                    "value": 4
+                  }
+                ]
+              }
+            },
+            {
+              "id": "links",
+              "type": "links",
+              "allowlistDomains": [
+                "example.com",
+                "twitch.tv"
+              ],
+              "reason": "Links Ω"
+            },
+            {
+              "id": "emote_spam",
+              "type": "emote_spam",
+              "maxEmoteCount": 14
+            },
+            {
+              "id": "blacklist",
+              "type": "blacklist",
+              "enabled": false,
+              "terms": [
+                "café",
+                "東京"
+              ],
+              "variations": {
+                "mode": "off",
+                "entries": [
+                  {},
+                  {
+                    "label": "á"
+                  }
+                ]
+              },
+              "patterns": [
+                {
+                  "id": "p",
+                  "source": "x",
+                  "boundary": "anywhere",
+                  "ignoreCase": true
+                }
+              ],
+              "semantic": {
+                "policy": "moderation",
+                "examples": [
+                  {
+                    "message": "hello",
+                    "label": "allow"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "expected": {
+          "ok": true,
+          "document": {
+            "_id": {
+              "$oid": "507f1f77bcf86cd799439011"
+            },
+            "channel": "Streamer",
+            "channelID": "channel-4",
+            "enabled": false,
+            "offenseWindowSeconds": 3600,
+            "rules": [
+              {
+                "allowlistDomains": [],
+                "capsThresholdMode": "count",
+                "enabled": true,
+                "exemptExpression": {
+                  "items": [
+                    {},
+                    {
+                      "value": 4
+                    }
+                  ],
+                  "role": "vip"
+                },
+                "exemptUserLevel": 7,
+                "firstOffense": {
+                  "action": "warn",
+                  "timeoutSeconds": 60
+                },
+                "id": "caps",
+                "maxCapsPercentage": 70,
+                "maxEmoteCount": 10,
+                "minCapsCount": 12,
+                "minMessageLength": 10,
+                "patterns": [],
+                "reason": "Message blocked by channel moderation",
+                "secondOffense": {
+                  "action": "delete",
+                  "timeoutSeconds": 60
+                },
+                "semantic": {
+                  "enabled": false,
+                  "examples": [],
+                  "onUncertain": "allow_and_log",
+                  "policy": "",
+                  "thresholdPercent": 85
+                },
+                "terms": [],
+                "thirdOffense": {
+                  "action": "timeout",
+                  "timeoutSeconds": 60
+                },
+                "type": "caps",
+                "variations": {
+                  "entries": [],
+                  "mode": "off"
+                }
+              },
+              {
+                "allowlistDomains": [
+                  "example.com",
+                  "twitch.tv"
+                ],
+                "capsThresholdMode": "count",
+                "enabled": true,
+                "exemptExpression": null,
+                "exemptUserLevel": 7,
+                "firstOffense": {
+                  "action": "warn",
+                  "timeoutSeconds": 60
+                },
+                "id": "links",
+                "maxCapsPercentage": 70,
+                "maxEmoteCount": 10,
+                "minCapsCount": 8,
+                "minMessageLength": 10,
+                "patterns": [],
+                "reason": "Links Ω",
+                "secondOffense": {
+                  "action": "delete",
+                  "timeoutSeconds": 60
+                },
+                "semantic": {
+                  "enabled": false,
+                  "examples": [],
+                  "onUncertain": "allow_and_log",
+                  "policy": "",
+                  "thresholdPercent": 85
+                },
+                "terms": [],
+                "thirdOffense": {
+                  "action": "timeout",
+                  "timeoutSeconds": 60
+                },
+                "type": "links",
+                "variations": {
+                  "entries": [],
+                  "mode": "off"
+                }
+              },
+              {
+                "allowlistDomains": [],
+                "capsThresholdMode": "count",
+                "enabled": true,
+                "exemptExpression": null,
+                "exemptUserLevel": 7,
+                "firstOffense": {
+                  "action": "warn",
+                  "timeoutSeconds": 60
+                },
+                "id": "emote_spam",
+                "maxCapsPercentage": 70,
+                "maxEmoteCount": 14,
+                "minCapsCount": 8,
+                "minMessageLength": 10,
+                "patterns": [],
+                "reason": "Message blocked by channel moderation",
+                "secondOffense": {
+                  "action": "delete",
+                  "timeoutSeconds": 60
+                },
+                "semantic": {
+                  "enabled": false,
+                  "examples": [],
+                  "onUncertain": "allow_and_log",
+                  "policy": "",
+                  "thresholdPercent": 85
+                },
+                "terms": [],
+                "thirdOffense": {
+                  "action": "timeout",
+                  "timeoutSeconds": 60
+                },
+                "type": "emote_spam",
+                "variations": {
+                  "entries": [],
+                  "mode": "off"
+                }
+              },
+              {
+                "allowlistDomains": [],
+                "capsThresholdMode": "count",
+                "enabled": false,
+                "exemptExpression": null,
+                "exemptUserLevel": 7,
+                "firstOffense": {
+                  "action": "warn",
+                  "timeoutSeconds": 60
+                },
+                "id": "blacklist",
+                "maxCapsPercentage": 70,
+                "maxEmoteCount": 10,
+                "minCapsCount": 8,
+                "minMessageLength": 10,
+                "patterns": [
+                  {
+                    "boundary": "anywhere",
+                    "id": "p",
+                    "ignoreCase": true,
+                    "source": "x"
+                  }
+                ],
+                "reason": "Message blocked by channel moderation",
+                "secondOffense": {
+                  "action": "delete",
+                  "timeoutSeconds": 60
+                },
+                "semantic": {
+                  "enabled": false,
+                  "examples": [
+                    {
+                      "label": "allow",
+                      "message": "hello"
+                    }
+                  ],
+                  "onUncertain": "allow_and_log",
+                  "policy": "moderation",
+                  "thresholdPercent": 85
+                },
+                "terms": [
+                  "café",
+                  "東京"
+                ],
+                "thirdOffense": {
+                  "action": "timeout",
+                  "timeoutSeconds": 60
+                },
+                "type": "blacklist",
+                "variations": {
+                  "entries": [
+                    {},
+                    {
+                      "label": "á"
+                    }
+                  ],
+                  "mode": "off"
+                }
+              }
+            ],
+            "settingsVersion": 1,
+            "spamProtection": {
+              "categories": [
+                "spam",
+                "ads",
+                "self_promotion"
+              ],
+              "enabled": true,
+              "exemptTags": [
+                "mod",
+                "editor",
+                "admin"
+              ],
+              "reviewAllMessages": false,
+              "thresholdPercent": 85
+            }
+          }
+        },
+        "wire": "{\"document\":{\"_id\":{\"$oid\":\"507f1f77bcf86cd799439011\"},\"channel\":\"Streamer\",\"channelID\":\"channel-4\",\"enabled\":false,\"offenseWindowSeconds\":3600,\"rules\":[{\"allowlistDomains\":[],\"capsThresholdMode\":\"count\",\"enabled\":true,\"exemptExpression\":{\"items\":[{},{\"value\":4}],\"role\":\"vip\"},\"exemptUserLevel\":7,\"firstOffense\":{\"action\":\"warn\",\"timeoutSeconds\":60},\"id\":\"caps\",\"maxCapsPercentage\":70,\"maxEmoteCount\":10,\"minCapsCount\":12,\"minMessageLength\":10,\"patterns\":[],\"reason\":\"Message blocked by channel moderation\",\"secondOffense\":{\"action\":\"delete\",\"timeoutSeconds\":60},\"semantic\":{\"enabled\":false,\"examples\":[],\"onUncertain\":\"allow_and_log\",\"policy\":\"\",\"thresholdPercent\":85},\"terms\":[],\"thirdOffense\":{\"action\":\"timeout\",\"timeoutSeconds\":60},\"type\":\"caps\",\"variations\":{\"entries\":[],\"mode\":\"off\"}},{\"allowlistDomains\":[\"example.com\",\"twitch.tv\"],\"capsThresholdMode\":\"count\",\"enabled\":true,\"exemptExpression\":null,\"exemptUserLevel\":7,\"firstOffense\":{\"action\":\"warn\",\"timeoutSeconds\":60},\"id\":\"links\",\"maxCapsPercentage\":70,\"maxEmoteCount\":10,\"minCapsCount\":8,\"minMessageLength\":10,\"patterns\":[],\"reason\":\"Links Ω\",\"secondOffense\":{\"action\":\"delete\",\"timeoutSeconds\":60},\"semantic\":{\"enabled\":false,\"examples\":[],\"onUncertain\":\"allow_and_log\",\"policy\":\"\",\"thresholdPercent\":85},\"terms\":[],\"thirdOffense\":{\"action\":\"timeout\",\"timeoutSeconds\":60},\"type\":\"links\",\"variations\":{\"entries\":[],\"mode\":\"off\"}},{\"allowlistDomains\":[],\"capsThresholdMode\":\"count\",\"enabled\":true,\"exemptExpression\":null,\"exemptUserLevel\":7,\"firstOffense\":{\"action\":\"warn\",\"timeoutSeconds\":60},\"id\":\"emote_spam\",\"maxCapsPercentage\":70,\"maxEmoteCount\":14,\"minCapsCount\":8,\"minMessageLength\":10,\"patterns\":[],\"reason\":\"Message blocked by channel moderation\",\"secondOffense\":{\"action\":\"delete\",\"timeoutSeconds\":60},\"semantic\":{\"enabled\":false,\"examples\":[],\"onUncertain\":\"allow_and_log\",\"policy\":\"\",\"thresholdPercent\":85},\"terms\":[],\"thirdOffense\":{\"action\":\"timeout\",\"timeoutSeconds\":60},\"type\":\"emote_spam\",\"variations\":{\"entries\":[],\"mode\":\"off\"}},{\"allowlistDomains\":[],\"capsThresholdMode\":\"count\",\"enabled\":false,\"exemptExpression\":null,\"exemptUserLevel\":7,\"firstOffense\":{\"action\":\"warn\",\"timeoutSeconds\":60},\"id\":\"blacklist\",\"maxCapsPercentage\":70,\"maxEmoteCount\":10,\"minCapsCount\":8,\"minMessageLength\":10,\"patterns\":[{\"boundary\":\"anywhere\",\"id\":\"p\",\"ignoreCase\":true,\"source\":\"x\"}],\"reason\":\"Message blocked by channel moderation\",\"secondOffense\":{\"action\":\"delete\",\"timeoutSeconds\":60},\"semantic\":{\"enabled\":false,\"examples\":[{\"label\":\"allow\",\"message\":\"hello\"}],\"onUncertain\":\"allow_and_log\",\"policy\":\"moderation\",\"thresholdPercent\":85},\"terms\":[\"café\",\"東京\"],\"thirdOffense\":{\"action\":\"timeout\",\"timeoutSeconds\":60},\"type\":\"blacklist\",\"variations\":{\"entries\":[{},{\"label\":\"á\"}],\"mode\":\"off\"}}],\"settingsVersion\":1,\"spamProtection\":{\"categories\":[\"spam\",\"ads\",\"self_promotion\"],\"enabled\":true,\"exemptTags\":[\"mod\",\"editor\",\"admin\"],\"reviewAllMessages\":false,\"thresholdPercent\":85}},\"ok\":true}",
+        "checksum": 3625596224
+      },
+      {
+        "id": "four-rules-5",
+        "input": {
+          "channelID": "channel-5",
+          "channel": "Canal Ω",
+          "enabled": true,
+          "rules": [
+            {
+              "id": "caps",
+              "type": "caps",
+              "minCapsCount": 13,
+              "exemptExpression": {
+                "role": "vip",
+                "nested": {},
+                "items": [
+                  {},
+                  {
+                    "value": 5
+                  }
+                ]
+              }
+            },
+            {
+              "id": "links",
+              "type": "links",
+              "allowlistDomains": [
+                "example.com",
+                "twitch.tv"
+              ],
+              "reason": "Links Ω"
+            },
+            {
+              "id": "emote_spam",
+              "type": "emote_spam",
+              "maxEmoteCount": 15
+            },
+            {
+              "id": "blacklist",
+              "type": "blacklist",
+              "enabled": false,
+              "terms": [
+                "café",
+                "東京"
+              ],
+              "variations": {
+                "mode": "off",
+                "entries": [
+                  {},
+                  {
+                    "label": "á"
+                  }
+                ]
+              },
+              "patterns": [
+                {
+                  "id": "p",
+                  "source": "x",
+                  "boundary": "anywhere",
+                  "ignoreCase": true
+                }
+              ],
+              "semantic": {
+                "policy": "moderation",
+                "examples": [
+                  {
+                    "message": "hello",
+                    "label": "allow"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "expected": {
+          "ok": true,
+          "document": {
+            "_id": {
+              "$oid": "507f1f77bcf86cd799439011"
+            },
+            "channel": "Canal Ω",
+            "channelID": "channel-5",
+            "enabled": true,
+            "offenseWindowSeconds": 3600,
+            "rules": [
+              {
+                "allowlistDomains": [],
+                "capsThresholdMode": "count",
+                "enabled": true,
+                "exemptExpression": {
+                  "items": [
+                    {},
+                    {
+                      "value": 5
+                    }
+                  ],
+                  "role": "vip"
+                },
+                "exemptUserLevel": 7,
+                "firstOffense": {
+                  "action": "warn",
+                  "timeoutSeconds": 60
+                },
+                "id": "caps",
+                "maxCapsPercentage": 70,
+                "maxEmoteCount": 10,
+                "minCapsCount": 13,
+                "minMessageLength": 10,
+                "patterns": [],
+                "reason": "Message blocked by channel moderation",
+                "secondOffense": {
+                  "action": "delete",
+                  "timeoutSeconds": 60
+                },
+                "semantic": {
+                  "enabled": false,
+                  "examples": [],
+                  "onUncertain": "allow_and_log",
+                  "policy": "",
+                  "thresholdPercent": 85
+                },
+                "terms": [],
+                "thirdOffense": {
+                  "action": "timeout",
+                  "timeoutSeconds": 60
+                },
+                "type": "caps",
+                "variations": {
+                  "entries": [],
+                  "mode": "off"
+                }
+              },
+              {
+                "allowlistDomains": [
+                  "example.com",
+                  "twitch.tv"
+                ],
+                "capsThresholdMode": "count",
+                "enabled": true,
+                "exemptExpression": null,
+                "exemptUserLevel": 7,
+                "firstOffense": {
+                  "action": "warn",
+                  "timeoutSeconds": 60
+                },
+                "id": "links",
+                "maxCapsPercentage": 70,
+                "maxEmoteCount": 10,
+                "minCapsCount": 8,
+                "minMessageLength": 10,
+                "patterns": [],
+                "reason": "Links Ω",
+                "secondOffense": {
+                  "action": "delete",
+                  "timeoutSeconds": 60
+                },
+                "semantic": {
+                  "enabled": false,
+                  "examples": [],
+                  "onUncertain": "allow_and_log",
+                  "policy": "",
+                  "thresholdPercent": 85
+                },
+                "terms": [],
+                "thirdOffense": {
+                  "action": "timeout",
+                  "timeoutSeconds": 60
+                },
+                "type": "links",
+                "variations": {
+                  "entries": [],
+                  "mode": "off"
+                }
+              },
+              {
+                "allowlistDomains": [],
+                "capsThresholdMode": "count",
+                "enabled": true,
+                "exemptExpression": null,
+                "exemptUserLevel": 7,
+                "firstOffense": {
+                  "action": "warn",
+                  "timeoutSeconds": 60
+                },
+                "id": "emote_spam",
+                "maxCapsPercentage": 70,
+                "maxEmoteCount": 15,
+                "minCapsCount": 8,
+                "minMessageLength": 10,
+                "patterns": [],
+                "reason": "Message blocked by channel moderation",
+                "secondOffense": {
+                  "action": "delete",
+                  "timeoutSeconds": 60
+                },
+                "semantic": {
+                  "enabled": false,
+                  "examples": [],
+                  "onUncertain": "allow_and_log",
+                  "policy": "",
+                  "thresholdPercent": 85
+                },
+                "terms": [],
+                "thirdOffense": {
+                  "action": "timeout",
+                  "timeoutSeconds": 60
+                },
+                "type": "emote_spam",
+                "variations": {
+                  "entries": [],
+                  "mode": "off"
+                }
+              },
+              {
+                "allowlistDomains": [],
+                "capsThresholdMode": "count",
+                "enabled": false,
+                "exemptExpression": null,
+                "exemptUserLevel": 7,
+                "firstOffense": {
+                  "action": "warn",
+                  "timeoutSeconds": 60
+                },
+                "id": "blacklist",
+                "maxCapsPercentage": 70,
+                "maxEmoteCount": 10,
+                "minCapsCount": 8,
+                "minMessageLength": 10,
+                "patterns": [
+                  {
+                    "boundary": "anywhere",
+                    "id": "p",
+                    "ignoreCase": true,
+                    "source": "x"
+                  }
+                ],
+                "reason": "Message blocked by channel moderation",
+                "secondOffense": {
+                  "action": "delete",
+                  "timeoutSeconds": 60
+                },
+                "semantic": {
+                  "enabled": false,
+                  "examples": [
+                    {
+                      "label": "allow",
+                      "message": "hello"
+                    }
+                  ],
+                  "onUncertain": "allow_and_log",
+                  "policy": "moderation",
+                  "thresholdPercent": 85
+                },
+                "terms": [
+                  "café",
+                  "東京"
+                ],
+                "thirdOffense": {
+                  "action": "timeout",
+                  "timeoutSeconds": 60
+                },
+                "type": "blacklist",
+                "variations": {
+                  "entries": [
+                    {},
+                    {
+                      "label": "á"
+                    }
+                  ],
+                  "mode": "off"
+                }
+              }
+            ],
+            "settingsVersion": 1,
+            "spamProtection": {
+              "categories": [
+                "spam",
+                "ads",
+                "self_promotion"
+              ],
+              "enabled": true,
+              "exemptTags": [
+                "mod",
+                "editor",
+                "admin"
+              ],
+              "reviewAllMessages": false,
+              "thresholdPercent": 85
+            }
+          }
+        },
+        "wire": "{\"document\":{\"_id\":{\"$oid\":\"507f1f77bcf86cd799439011\"},\"channel\":\"Canal Ω\",\"channelID\":\"channel-5\",\"enabled\":true,\"offenseWindowSeconds\":3600,\"rules\":[{\"allowlistDomains\":[],\"capsThresholdMode\":\"count\",\"enabled\":true,\"exemptExpression\":{\"items\":[{},{\"value\":5}],\"role\":\"vip\"},\"exemptUserLevel\":7,\"firstOffense\":{\"action\":\"warn\",\"timeoutSeconds\":60},\"id\":\"caps\",\"maxCapsPercentage\":70,\"maxEmoteCount\":10,\"minCapsCount\":13,\"minMessageLength\":10,\"patterns\":[],\"reason\":\"Message blocked by channel moderation\",\"secondOffense\":{\"action\":\"delete\",\"timeoutSeconds\":60},\"semantic\":{\"enabled\":false,\"examples\":[],\"onUncertain\":\"allow_and_log\",\"policy\":\"\",\"thresholdPercent\":85},\"terms\":[],\"thirdOffense\":{\"action\":\"timeout\",\"timeoutSeconds\":60},\"type\":\"caps\",\"variations\":{\"entries\":[],\"mode\":\"off\"}},{\"allowlistDomains\":[\"example.com\",\"twitch.tv\"],\"capsThresholdMode\":\"count\",\"enabled\":true,\"exemptExpression\":null,\"exemptUserLevel\":7,\"firstOffense\":{\"action\":\"warn\",\"timeoutSeconds\":60},\"id\":\"links\",\"maxCapsPercentage\":70,\"maxEmoteCount\":10,\"minCapsCount\":8,\"minMessageLength\":10,\"patterns\":[],\"reason\":\"Links Ω\",\"secondOffense\":{\"action\":\"delete\",\"timeoutSeconds\":60},\"semantic\":{\"enabled\":false,\"examples\":[],\"onUncertain\":\"allow_and_log\",\"policy\":\"\",\"thresholdPercent\":85},\"terms\":[],\"thirdOffense\":{\"action\":\"timeout\",\"timeoutSeconds\":60},\"type\":\"links\",\"variations\":{\"entries\":[],\"mode\":\"off\"}},{\"allowlistDomains\":[],\"capsThresholdMode\":\"count\",\"enabled\":true,\"exemptExpression\":null,\"exemptUserLevel\":7,\"firstOffense\":{\"action\":\"warn\",\"timeoutSeconds\":60},\"id\":\"emote_spam\",\"maxCapsPercentage\":70,\"maxEmoteCount\":15,\"minCapsCount\":8,\"minMessageLength\":10,\"patterns\":[],\"reason\":\"Message blocked by channel moderation\",\"secondOffense\":{\"action\":\"delete\",\"timeoutSeconds\":60},\"semantic\":{\"enabled\":false,\"examples\":[],\"onUncertain\":\"allow_and_log\",\"policy\":\"\",\"thresholdPercent\":85},\"terms\":[],\"thirdOffense\":{\"action\":\"timeout\",\"timeoutSeconds\":60},\"type\":\"emote_spam\",\"variations\":{\"entries\":[],\"mode\":\"off\"}},{\"allowlistDomains\":[],\"capsThresholdMode\":\"count\",\"enabled\":false,\"exemptExpression\":null,\"exemptUserLevel\":7,\"firstOffense\":{\"action\":\"warn\",\"timeoutSeconds\":60},\"id\":\"blacklist\",\"maxCapsPercentage\":70,\"maxEmoteCount\":10,\"minCapsCount\":8,\"minMessageLength\":10,\"patterns\":[{\"boundary\":\"anywhere\",\"id\":\"p\",\"ignoreCase\":true,\"source\":\"x\"}],\"reason\":\"Message blocked by channel moderation\",\"secondOffense\":{\"action\":\"delete\",\"timeoutSeconds\":60},\"semantic\":{\"enabled\":false,\"examples\":[{\"label\":\"allow\",\"message\":\"hello\"}],\"onUncertain\":\"allow_and_log\",\"policy\":\"moderation\",\"thresholdPercent\":85},\"terms\":[\"café\",\"東京\"],\"thirdOffense\":{\"action\":\"timeout\",\"timeoutSeconds\":60},\"type\":\"blacklist\",\"variations\":{\"entries\":[{},{\"label\":\"á\"}],\"mode\":\"off\"}}],\"settingsVersion\":1,\"spamProtection\":{\"categories\":[\"spam\",\"ads\",\"self_promotion\"],\"enabled\":true,\"exemptTags\":[\"mod\",\"editor\",\"admin\"],\"reviewAllMessages\":false,\"thresholdPercent\":85}},\"ok\":true}",
+        "checksum": 69940820
+      },
+      {
+        "id": "four-rules-6",
+        "input": {
+          "channelID": "channel-6",
+          "channel": "Streamer",
+          "enabled": false,
+          "rules": [
+            {
+              "id": "caps",
+              "type": "caps",
+              "minCapsCount": 14,
+              "exemptExpression": {
+                "role": "vip",
+                "nested": {},
+                "items": [
+                  {},
+                  {
+                    "value": 6
+                  }
+                ]
+              }
+            },
+            {
+              "id": "links",
+              "type": "links",
+              "allowlistDomains": [
+                "example.com",
+                "twitch.tv"
+              ],
+              "reason": "Links Ω"
+            },
+            {
+              "id": "emote_spam",
+              "type": "emote_spam",
+              "maxEmoteCount": 16
+            },
+            {
+              "id": "blacklist",
+              "type": "blacklist",
+              "enabled": false,
+              "terms": [
+                "café",
+                "東京"
+              ],
+              "variations": {
+                "mode": "off",
+                "entries": [
+                  {},
+                  {
+                    "label": "á"
+                  }
+                ]
+              },
+              "patterns": [
+                {
+                  "id": "p",
+                  "source": "x",
+                  "boundary": "anywhere",
+                  "ignoreCase": true
+                }
+              ],
+              "semantic": {
+                "policy": "moderation",
+                "examples": [
+                  {
+                    "message": "hello",
+                    "label": "allow"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "expected": {
+          "ok": true,
+          "document": {
+            "_id": {
+              "$oid": "507f1f77bcf86cd799439011"
+            },
+            "channel": "Streamer",
+            "channelID": "channel-6",
+            "enabled": false,
+            "offenseWindowSeconds": 3600,
+            "rules": [
+              {
+                "allowlistDomains": [],
+                "capsThresholdMode": "count",
+                "enabled": true,
+                "exemptExpression": {
+                  "items": [
+                    {},
+                    {
+                      "value": 6
+                    }
+                  ],
+                  "role": "vip"
+                },
+                "exemptUserLevel": 7,
+                "firstOffense": {
+                  "action": "warn",
+                  "timeoutSeconds": 60
+                },
+                "id": "caps",
+                "maxCapsPercentage": 70,
+                "maxEmoteCount": 10,
+                "minCapsCount": 14,
+                "minMessageLength": 10,
+                "patterns": [],
+                "reason": "Message blocked by channel moderation",
+                "secondOffense": {
+                  "action": "delete",
+                  "timeoutSeconds": 60
+                },
+                "semantic": {
+                  "enabled": false,
+                  "examples": [],
+                  "onUncertain": "allow_and_log",
+                  "policy": "",
+                  "thresholdPercent": 85
+                },
+                "terms": [],
+                "thirdOffense": {
+                  "action": "timeout",
+                  "timeoutSeconds": 60
+                },
+                "type": "caps",
+                "variations": {
+                  "entries": [],
+                  "mode": "off"
+                }
+              },
+              {
+                "allowlistDomains": [
+                  "example.com",
+                  "twitch.tv"
+                ],
+                "capsThresholdMode": "count",
+                "enabled": true,
+                "exemptExpression": null,
+                "exemptUserLevel": 7,
+                "firstOffense": {
+                  "action": "warn",
+                  "timeoutSeconds": 60
+                },
+                "id": "links",
+                "maxCapsPercentage": 70,
+                "maxEmoteCount": 10,
+                "minCapsCount": 8,
+                "minMessageLength": 10,
+                "patterns": [],
+                "reason": "Links Ω",
+                "secondOffense": {
+                  "action": "delete",
+                  "timeoutSeconds": 60
+                },
+                "semantic": {
+                  "enabled": false,
+                  "examples": [],
+                  "onUncertain": "allow_and_log",
+                  "policy": "",
+                  "thresholdPercent": 85
+                },
+                "terms": [],
+                "thirdOffense": {
+                  "action": "timeout",
+                  "timeoutSeconds": 60
+                },
+                "type": "links",
+                "variations": {
+                  "entries": [],
+                  "mode": "off"
+                }
+              },
+              {
+                "allowlistDomains": [],
+                "capsThresholdMode": "count",
+                "enabled": true,
+                "exemptExpression": null,
+                "exemptUserLevel": 7,
+                "firstOffense": {
+                  "action": "warn",
+                  "timeoutSeconds": 60
+                },
+                "id": "emote_spam",
+                "maxCapsPercentage": 70,
+                "maxEmoteCount": 16,
+                "minCapsCount": 8,
+                "minMessageLength": 10,
+                "patterns": [],
+                "reason": "Message blocked by channel moderation",
+                "secondOffense": {
+                  "action": "delete",
+                  "timeoutSeconds": 60
+                },
+                "semantic": {
+                  "enabled": false,
+                  "examples": [],
+                  "onUncertain": "allow_and_log",
+                  "policy": "",
+                  "thresholdPercent": 85
+                },
+                "terms": [],
+                "thirdOffense": {
+                  "action": "timeout",
+                  "timeoutSeconds": 60
+                },
+                "type": "emote_spam",
+                "variations": {
+                  "entries": [],
+                  "mode": "off"
+                }
+              },
+              {
+                "allowlistDomains": [],
+                "capsThresholdMode": "count",
+                "enabled": false,
+                "exemptExpression": null,
+                "exemptUserLevel": 7,
+                "firstOffense": {
+                  "action": "warn",
+                  "timeoutSeconds": 60
+                },
+                "id": "blacklist",
+                "maxCapsPercentage": 70,
+                "maxEmoteCount": 10,
+                "minCapsCount": 8,
+                "minMessageLength": 10,
+                "patterns": [
+                  {
+                    "boundary": "anywhere",
+                    "id": "p",
+                    "ignoreCase": true,
+                    "source": "x"
+                  }
+                ],
+                "reason": "Message blocked by channel moderation",
+                "secondOffense": {
+                  "action": "delete",
+                  "timeoutSeconds": 60
+                },
+                "semantic": {
+                  "enabled": false,
+                  "examples": [
+                    {
+                      "label": "allow",
+                      "message": "hello"
+                    }
+                  ],
+                  "onUncertain": "allow_and_log",
+                  "policy": "moderation",
+                  "thresholdPercent": 85
+                },
+                "terms": [
+                  "café",
+                  "東京"
+                ],
+                "thirdOffense": {
+                  "action": "timeout",
+                  "timeoutSeconds": 60
+                },
+                "type": "blacklist",
+                "variations": {
+                  "entries": [
+                    {},
+                    {
+                      "label": "á"
+                    }
+                  ],
+                  "mode": "off"
+                }
+              }
+            ],
+            "settingsVersion": 1,
+            "spamProtection": {
+              "categories": [
+                "spam",
+                "ads",
+                "self_promotion"
+              ],
+              "enabled": true,
+              "exemptTags": [
+                "mod",
+                "editor",
+                "admin"
+              ],
+              "reviewAllMessages": false,
+              "thresholdPercent": 85
+            }
+          }
+        },
+        "wire": "{\"document\":{\"_id\":{\"$oid\":\"507f1f77bcf86cd799439011\"},\"channel\":\"Streamer\",\"channelID\":\"channel-6\",\"enabled\":false,\"offenseWindowSeconds\":3600,\"rules\":[{\"allowlistDomains\":[],\"capsThresholdMode\":\"count\",\"enabled\":true,\"exemptExpression\":{\"items\":[{},{\"value\":6}],\"role\":\"vip\"},\"exemptUserLevel\":7,\"firstOffense\":{\"action\":\"warn\",\"timeoutSeconds\":60},\"id\":\"caps\",\"maxCapsPercentage\":70,\"maxEmoteCount\":10,\"minCapsCount\":14,\"minMessageLength\":10,\"patterns\":[],\"reason\":\"Message blocked by channel moderation\",\"secondOffense\":{\"action\":\"delete\",\"timeoutSeconds\":60},\"semantic\":{\"enabled\":false,\"examples\":[],\"onUncertain\":\"allow_and_log\",\"policy\":\"\",\"thresholdPercent\":85},\"terms\":[],\"thirdOffense\":{\"action\":\"timeout\",\"timeoutSeconds\":60},\"type\":\"caps\",\"variations\":{\"entries\":[],\"mode\":\"off\"}},{\"allowlistDomains\":[\"example.com\",\"twitch.tv\"],\"capsThresholdMode\":\"count\",\"enabled\":true,\"exemptExpression\":null,\"exemptUserLevel\":7,\"firstOffense\":{\"action\":\"warn\",\"timeoutSeconds\":60},\"id\":\"links\",\"maxCapsPercentage\":70,\"maxEmoteCount\":10,\"minCapsCount\":8,\"minMessageLength\":10,\"patterns\":[],\"reason\":\"Links Ω\",\"secondOffense\":{\"action\":\"delete\",\"timeoutSeconds\":60},\"semantic\":{\"enabled\":false,\"examples\":[],\"onUncertain\":\"allow_and_log\",\"policy\":\"\",\"thresholdPercent\":85},\"terms\":[],\"thirdOffense\":{\"action\":\"timeout\",\"timeoutSeconds\":60},\"type\":\"links\",\"variations\":{\"entries\":[],\"mode\":\"off\"}},{\"allowlistDomains\":[],\"capsThresholdMode\":\"count\",\"enabled\":true,\"exemptExpression\":null,\"exemptUserLevel\":7,\"firstOffense\":{\"action\":\"warn\",\"timeoutSeconds\":60},\"id\":\"emote_spam\",\"maxCapsPercentage\":70,\"maxEmoteCount\":16,\"minCapsCount\":8,\"minMessageLength\":10,\"patterns\":[],\"reason\":\"Message blocked by channel moderation\",\"secondOffense\":{\"action\":\"delete\",\"timeoutSeconds\":60},\"semantic\":{\"enabled\":false,\"examples\":[],\"onUncertain\":\"allow_and_log\",\"policy\":\"\",\"thresholdPercent\":85},\"terms\":[],\"thirdOffense\":{\"action\":\"timeout\",\"timeoutSeconds\":60},\"type\":\"emote_spam\",\"variations\":{\"entries\":[],\"mode\":\"off\"}},{\"allowlistDomains\":[],\"capsThresholdMode\":\"count\",\"enabled\":false,\"exemptExpression\":null,\"exemptUserLevel\":7,\"firstOffense\":{\"action\":\"warn\",\"timeoutSeconds\":60},\"id\":\"blacklist\",\"maxCapsPercentage\":70,\"maxEmoteCount\":10,\"minCapsCount\":8,\"minMessageLength\":10,\"patterns\":[{\"boundary\":\"anywhere\",\"id\":\"p\",\"ignoreCase\":true,\"source\":\"x\"}],\"reason\":\"Message blocked by channel moderation\",\"secondOffense\":{\"action\":\"delete\",\"timeoutSeconds\":60},\"semantic\":{\"enabled\":false,\"examples\":[{\"label\":\"allow\",\"message\":\"hello\"}],\"onUncertain\":\"allow_and_log\",\"policy\":\"moderation\",\"thresholdPercent\":85},\"terms\":[\"café\",\"東京\"],\"thirdOffense\":{\"action\":\"timeout\",\"timeoutSeconds\":60},\"type\":\"blacklist\",\"variations\":{\"entries\":[{},{\"label\":\"á\"}],\"mode\":\"off\"}}],\"settingsVersion\":1,\"spamProtection\":{\"categories\":[\"spam\",\"ads\",\"self_promotion\"],\"enabled\":true,\"exemptTags\":[\"mod\",\"editor\",\"admin\"],\"reviewAllMessages\":false,\"thresholdPercent\":85}},\"ok\":true}",
+        "checksum": 3138731908
+      },
+      {
+        "id": "four-rules-7",
+        "input": {
+          "channelID": "channel-7",
+          "channel": "Canal Ω",
+          "enabled": true,
+          "rules": [
+            {
+              "id": "caps",
+              "type": "caps",
+              "minCapsCount": 15,
+              "exemptExpression": {
+                "role": "vip",
+                "nested": {},
+                "items": [
+                  {},
+                  {
+                    "value": 7
+                  }
+                ]
+              }
+            },
+            {
+              "id": "links",
+              "type": "links",
+              "allowlistDomains": [
+                "example.com",
+                "twitch.tv"
+              ],
+              "reason": "Links Ω"
+            },
+            {
+              "id": "emote_spam",
+              "type": "emote_spam",
+              "maxEmoteCount": 17
+            },
+            {
+              "id": "blacklist",
+              "type": "blacklist",
+              "enabled": false,
+              "terms": [
+                "café",
+                "東京"
+              ],
+              "variations": {
+                "mode": "off",
+                "entries": [
+                  {},
+                  {
+                    "label": "á"
+                  }
+                ]
+              },
+              "patterns": [
+                {
+                  "id": "p",
+                  "source": "x",
+                  "boundary": "anywhere",
+                  "ignoreCase": true
+                }
+              ],
+              "semantic": {
+                "policy": "moderation",
+                "examples": [
+                  {
+                    "message": "hello",
+                    "label": "allow"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "expected": {
+          "ok": true,
+          "document": {
+            "_id": {
+              "$oid": "507f1f77bcf86cd799439011"
+            },
+            "channel": "Canal Ω",
+            "channelID": "channel-7",
+            "enabled": true,
+            "offenseWindowSeconds": 3600,
+            "rules": [
+              {
+                "allowlistDomains": [],
+                "capsThresholdMode": "count",
+                "enabled": true,
+                "exemptExpression": {
+                  "items": [
+                    {},
+                    {
+                      "value": 7
+                    }
+                  ],
+                  "role": "vip"
+                },
+                "exemptUserLevel": 7,
+                "firstOffense": {
+                  "action": "warn",
+                  "timeoutSeconds": 60
+                },
+                "id": "caps",
+                "maxCapsPercentage": 70,
+                "maxEmoteCount": 10,
+                "minCapsCount": 15,
+                "minMessageLength": 10,
+                "patterns": [],
+                "reason": "Message blocked by channel moderation",
+                "secondOffense": {
+                  "action": "delete",
+                  "timeoutSeconds": 60
+                },
+                "semantic": {
+                  "enabled": false,
+                  "examples": [],
+                  "onUncertain": "allow_and_log",
+                  "policy": "",
+                  "thresholdPercent": 85
+                },
+                "terms": [],
+                "thirdOffense": {
+                  "action": "timeout",
+                  "timeoutSeconds": 60
+                },
+                "type": "caps",
+                "variations": {
+                  "entries": [],
+                  "mode": "off"
+                }
+              },
+              {
+                "allowlistDomains": [
+                  "example.com",
+                  "twitch.tv"
+                ],
+                "capsThresholdMode": "count",
+                "enabled": true,
+                "exemptExpression": null,
+                "exemptUserLevel": 7,
+                "firstOffense": {
+                  "action": "warn",
+                  "timeoutSeconds": 60
+                },
+                "id": "links",
+                "maxCapsPercentage": 70,
+                "maxEmoteCount": 10,
+                "minCapsCount": 8,
+                "minMessageLength": 10,
+                "patterns": [],
+                "reason": "Links Ω",
+                "secondOffense": {
+                  "action": "delete",
+                  "timeoutSeconds": 60
+                },
+                "semantic": {
+                  "enabled": false,
+                  "examples": [],
+                  "onUncertain": "allow_and_log",
+                  "policy": "",
+                  "thresholdPercent": 85
+                },
+                "terms": [],
+                "thirdOffense": {
+                  "action": "timeout",
+                  "timeoutSeconds": 60
+                },
+                "type": "links",
+                "variations": {
+                  "entries": [],
+                  "mode": "off"
+                }
+              },
+              {
+                "allowlistDomains": [],
+                "capsThresholdMode": "count",
+                "enabled": true,
+                "exemptExpression": null,
+                "exemptUserLevel": 7,
+                "firstOffense": {
+                  "action": "warn",
+                  "timeoutSeconds": 60
+                },
+                "id": "emote_spam",
+                "maxCapsPercentage": 70,
+                "maxEmoteCount": 17,
+                "minCapsCount": 8,
+                "minMessageLength": 10,
+                "patterns": [],
+                "reason": "Message blocked by channel moderation",
+                "secondOffense": {
+                  "action": "delete",
+                  "timeoutSeconds": 60
+                },
+                "semantic": {
+                  "enabled": false,
+                  "examples": [],
+                  "onUncertain": "allow_and_log",
+                  "policy": "",
+                  "thresholdPercent": 85
+                },
+                "terms": [],
+                "thirdOffense": {
+                  "action": "timeout",
+                  "timeoutSeconds": 60
+                },
+                "type": "emote_spam",
+                "variations": {
+                  "entries": [],
+                  "mode": "off"
+                }
+              },
+              {
+                "allowlistDomains": [],
+                "capsThresholdMode": "count",
+                "enabled": false,
+                "exemptExpression": null,
+                "exemptUserLevel": 7,
+                "firstOffense": {
+                  "action": "warn",
+                  "timeoutSeconds": 60
+                },
+                "id": "blacklist",
+                "maxCapsPercentage": 70,
+                "maxEmoteCount": 10,
+                "minCapsCount": 8,
+                "minMessageLength": 10,
+                "patterns": [
+                  {
+                    "boundary": "anywhere",
+                    "id": "p",
+                    "ignoreCase": true,
+                    "source": "x"
+                  }
+                ],
+                "reason": "Message blocked by channel moderation",
+                "secondOffense": {
+                  "action": "delete",
+                  "timeoutSeconds": 60
+                },
+                "semantic": {
+                  "enabled": false,
+                  "examples": [
+                    {
+                      "label": "allow",
+                      "message": "hello"
+                    }
+                  ],
+                  "onUncertain": "allow_and_log",
+                  "policy": "moderation",
+                  "thresholdPercent": 85
+                },
+                "terms": [
+                  "café",
+                  "東京"
+                ],
+                "thirdOffense": {
+                  "action": "timeout",
+                  "timeoutSeconds": 60
+                },
+                "type": "blacklist",
+                "variations": {
+                  "entries": [
+                    {},
+                    {
+                      "label": "á"
+                    }
+                  ],
+                  "mode": "off"
+                }
+              }
+            ],
+            "settingsVersion": 1,
+            "spamProtection": {
+              "categories": [
+                "spam",
+                "ads",
+                "self_promotion"
+              ],
+              "enabled": true,
+              "exemptTags": [
+                "mod",
+                "editor",
+                "admin"
+              ],
+              "reviewAllMessages": false,
+              "thresholdPercent": 85
+            }
+          }
+        },
+        "wire": "{\"document\":{\"_id\":{\"$oid\":\"507f1f77bcf86cd799439011\"},\"channel\":\"Canal Ω\",\"channelID\":\"channel-7\",\"enabled\":true,\"offenseWindowSeconds\":3600,\"rules\":[{\"allowlistDomains\":[],\"capsThresholdMode\":\"count\",\"enabled\":true,\"exemptExpression\":{\"items\":[{},{\"value\":7}],\"role\":\"vip\"},\"exemptUserLevel\":7,\"firstOffense\":{\"action\":\"warn\",\"timeoutSeconds\":60},\"id\":\"caps\",\"maxCapsPercentage\":70,\"maxEmoteCount\":10,\"minCapsCount\":15,\"minMessageLength\":10,\"patterns\":[],\"reason\":\"Message blocked by channel moderation\",\"secondOffense\":{\"action\":\"delete\",\"timeoutSeconds\":60},\"semantic\":{\"enabled\":false,\"examples\":[],\"onUncertain\":\"allow_and_log\",\"policy\":\"\",\"thresholdPercent\":85},\"terms\":[],\"thirdOffense\":{\"action\":\"timeout\",\"timeoutSeconds\":60},\"type\":\"caps\",\"variations\":{\"entries\":[],\"mode\":\"off\"}},{\"allowlistDomains\":[\"example.com\",\"twitch.tv\"],\"capsThresholdMode\":\"count\",\"enabled\":true,\"exemptExpression\":null,\"exemptUserLevel\":7,\"firstOffense\":{\"action\":\"warn\",\"timeoutSeconds\":60},\"id\":\"links\",\"maxCapsPercentage\":70,\"maxEmoteCount\":10,\"minCapsCount\":8,\"minMessageLength\":10,\"patterns\":[],\"reason\":\"Links Ω\",\"secondOffense\":{\"action\":\"delete\",\"timeoutSeconds\":60},\"semantic\":{\"enabled\":false,\"examples\":[],\"onUncertain\":\"allow_and_log\",\"policy\":\"\",\"thresholdPercent\":85},\"terms\":[],\"thirdOffense\":{\"action\":\"timeout\",\"timeoutSeconds\":60},\"type\":\"links\",\"variations\":{\"entries\":[],\"mode\":\"off\"}},{\"allowlistDomains\":[],\"capsThresholdMode\":\"count\",\"enabled\":true,\"exemptExpression\":null,\"exemptUserLevel\":7,\"firstOffense\":{\"action\":\"warn\",\"timeoutSeconds\":60},\"id\":\"emote_spam\",\"maxCapsPercentage\":70,\"maxEmoteCount\":17,\"minCapsCount\":8,\"minMessageLength\":10,\"patterns\":[],\"reason\":\"Message blocked by channel moderation\",\"secondOffense\":{\"action\":\"delete\",\"timeoutSeconds\":60},\"semantic\":{\"enabled\":false,\"examples\":[],\"onUncertain\":\"allow_and_log\",\"policy\":\"\",\"thresholdPercent\":85},\"terms\":[],\"thirdOffense\":{\"action\":\"timeout\",\"timeoutSeconds\":60},\"type\":\"emote_spam\",\"variations\":{\"entries\":[],\"mode\":\"off\"}},{\"allowlistDomains\":[],\"capsThresholdMode\":\"count\",\"enabled\":false,\"exemptExpression\":null,\"exemptUserLevel\":7,\"firstOffense\":{\"action\":\"warn\",\"timeoutSeconds\":60},\"id\":\"blacklist\",\"maxCapsPercentage\":70,\"maxEmoteCount\":10,\"minCapsCount\":8,\"minMessageLength\":10,\"patterns\":[{\"boundary\":\"anywhere\",\"id\":\"p\",\"ignoreCase\":true,\"source\":\"x\"}],\"reason\":\"Message blocked by channel moderation\",\"secondOffense\":{\"action\":\"delete\",\"timeoutSeconds\":60},\"semantic\":{\"enabled\":false,\"examples\":[{\"label\":\"allow\",\"message\":\"hello\"}],\"onUncertain\":\"allow_and_log\",\"policy\":\"moderation\",\"thresholdPercent\":85},\"terms\":[\"café\",\"東京\"],\"thirdOffense\":{\"action\":\"timeout\",\"timeoutSeconds\":60},\"type\":\"blacklist\",\"variations\":{\"entries\":[{},{\"label\":\"á\"}],\"mode\":\"off\"}}],\"settingsVersion\":1,\"spamProtection\":{\"categories\":[\"spam\",\"ads\",\"self_promotion\"],\"enabled\":true,\"exemptTags\":[\"mod\",\"editor\",\"admin\"],\"reviewAllMessages\":false,\"thresholdPercent\":85}},\"ok\":true}",
+        "checksum": 4292366960
+      }
+    ],
+    "invalid": [
+      {
+        "id": "invalid-0",
+        "input": {},
+        "expected": {
+          "ok": false,
+          "errors": [
+            {
+              "path": "channelID",
+              "kind": "required"
+            }
+          ]
+        },
+        "wire": "{\"errors\":[{\"kind\":\"required\",\"path\":\"channelID\"}],\"ok\":false}",
+        "checksum": 2429819834
+      },
+      {
+        "id": "invalid-1",
+        "input": {
+          "channelID": ""
+        },
+        "expected": {
+          "ok": false,
+          "errors": [
+            {
+              "path": "channelID",
+              "kind": "required"
+            }
+          ]
+        },
+        "wire": "{\"errors\":[{\"kind\":\"required\",\"path\":\"channelID\"}],\"ok\":false}",
+        "checksum": 2429819834
+      },
+      {
+        "id": "invalid-2",
+        "input": {
+          "channelID": "a",
+          "offenseWindowSeconds": 59
+        },
+        "expected": {
+          "ok": false,
+          "errors": [
+            {
+              "path": "offenseWindowSeconds",
+              "kind": "min"
+            }
+          ]
+        },
+        "wire": "{\"errors\":[{\"kind\":\"min\",\"path\":\"offenseWindowSeconds\"}],\"ok\":false}",
+        "checksum": 470375930
+      },
+      {
+        "id": "invalid-3",
+        "input": {
+          "channelID": "b",
+          "offenseWindowSeconds": 86401
+        },
+        "expected": {
+          "ok": false,
+          "errors": [
+            {
+              "path": "offenseWindowSeconds",
+              "kind": "max"
+            }
+          ]
+        },
+        "wire": "{\"errors\":[{\"kind\":\"max\",\"path\":\"offenseWindowSeconds\"}],\"ok\":false}",
+        "checksum": 2036062496
+      },
+      {
+        "id": "invalid-4",
+        "input": {
+          "channelID": "c",
+          "rules": [
+            {
+              "id": "r",
+              "type": "caps",
+              "minCapsCount": 0
+            }
+          ]
+        },
+        "expected": {
+          "ok": false,
+          "errors": [
+            {
+              "path": "rules.0.minCapsCount",
+              "kind": "min"
+            }
+          ]
+        },
+        "wire": "{\"errors\":[{\"kind\":\"min\",\"path\":\"rules.0.minCapsCount\"}],\"ok\":false}",
+        "checksum": 3230704684
+      },
+      {
+        "id": "invalid-5",
+        "input": {
+          "channelID": "d",
+          "rules": [
+            {
+              "id": "r",
+              "type": "caps",
+              "maxEmoteCount": 101
+            }
+          ]
+        },
+        "expected": {
+          "ok": false,
+          "errors": [
+            {
+              "path": "rules.0.maxEmoteCount",
+              "kind": "max"
+            }
+          ]
+        },
+        "wire": "{\"errors\":[{\"kind\":\"max\",\"path\":\"rules.0.maxEmoteCount\"}],\"ok\":false}",
+        "checksum": 899037581
+      },
+      {
+        "id": "invalid-6",
+        "input": {
+          "channelID": "e",
+          "rules": [
+            {
+              "id": "r",
+              "type": "invalid"
+            }
+          ]
+        },
+        "expected": {
+          "ok": false,
+          "errors": [
+            {
+              "path": "rules.0.type",
+              "kind": "enum"
+            }
+          ]
+        },
+        "wire": "{\"errors\":[{\"kind\":\"enum\",\"path\":\"rules.0.type\"}],\"ok\":false}",
+        "checksum": 757115423
+      },
+      {
+        "id": "invalid-7",
+        "input": {
+          "channelID": "f",
+          "spamProtection": {
+            "categories": [
+              "invalid"
+            ]
+          }
+        },
+        "expected": {
+          "ok": false,
+          "errors": [
+            {
+              "path": "spamProtection.categories.0",
+              "kind": "enum"
+            }
+          ]
+        },
+        "wire": "{\"errors\":[{\"kind\":\"enum\",\"path\":\"spamProtection.categories.0\"}],\"ok\":false}",
+        "checksum": 1925320498
+      }
+    ]
+  }
+}

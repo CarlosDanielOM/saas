@@ -1,0 +1,74 @@
+v24.22.1
+✔ frozen moderation sources require exact unique manifest and bytes (10.787988ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 123.775521
+moderation-normalize-reference.json sha256=1e66d9a46d68739c72aea55228d67e7d8090f2f6e84fa5a707838dbc43a9af0e stringCases=228 nullishCases=2
+moderation-normalize-reference.json sha256=1e66d9a46d68739c72aea55228d67e7d8090f2f6e84fa5a707838dbc43a9af0e stringCases=228 nullishCases=2
+{"mode":"--write","sha256":"68e362c8c24fdb95c108215aa8f0eba8d1b9c3ff8b2c5a5691449f27f760d100","cases":1816}
+{"mode":"--check","sha256":"68e362c8c24fdb95c108215aa8f0eba8d1b9c3ff8b2c5a5691449f27f760d100","cases":1816}
+{"mode":"--write","sha256":"6a39fc1c8207d2c6a3d6be624cc395536bb2932364de854b9afdd6bc3453a70d","cases":22}
+{"mode":"--check","sha256":"6a39fc1c8207d2c6a3d6be624cc395536bb2932364de854b9afdd6bc3453a70d","cases":22}
+{"mode":"--write","sha256":"e85f8f25094f51782d2ef1460b8aab5549218041f6c37874509c9b9a89dcf055","cases":110,"views":5}
+{"mode":"--check","sha256":"e85f8f25094f51782d2ef1460b8aab5549218041f6c37874509c9b9a89dcf055","cases":110,"views":5}
+{"mode":"--write","sha256":"12cbbd8fe329d83c58ab632826248dc16f581422fa8595e058d5500512a7ce48","cases":56}
+{"mode":"--check","sha256":"12cbbd8fe329d83c58ab632826248dc16f581422fa8595e058d5500512a7ce48","cases":56}
+moderation-decision-schema-reference.json sha256=0478de543e378980dabf2978acf35c64209c703f757e41e388301ad4c03b46dd cases=18
+moderation-decision-schema-reference.json sha256=0478de543e378980dabf2978acf35c64209c703f757e41e388301ad4c03b46dd cases=18
+schema-composite-defaults-reference.json sha256=26f6ae2fce8199c490e6c86e7ebde57e4c090eeb48f49229b20aa96b2f9af914 cases=97 actualCases=4
+schema-composite-defaults-reference.json sha256=26f6ae2fce8199c490e6c86e7ebde57e4c090eeb48f49229b20aa96b2f9af914 cases=97 actualCases=4
+js-unicode-source-reference.json sha256=60a2fa331a01c582b6f3d1b01343004f6c9aaf5d6e65e503a56342514ea1d090 scalarFolds=16842 cases=20
+js-unicode-source-reference.json sha256=60a2fa331a01c582b6f3d1b01343004f6c9aaf5d6e65e503a56342514ea1d090 scalarFolds=16842 cases=20
+js_unicode_data.rs sha256=6c9529a54bd192de38852f31421383d3295dc9010ca463037b6383e361040aeb
+unicode17-reference.json sha256=07f5dec8895f155a91f2bc7807a028dca7af308638091cc60bd5edd85f16c0a5
+{"cased":4632,"caseIgnorable":2794,"mark":2543,"assigned":299382,"lowercaseMappings":1488,"nfdMappings":13253,"casedIgnorableOverlap":268,"contextualGoldens":6432,"ranges":{"cased":158,"caseIgnorable":464,"mark":327,"assigned":735}}
+js_unicode_data.rs sha256=6c9529a54bd192de38852f31421383d3295dc9010ca463037b6383e361040aeb
+unicode17-reference.json sha256=07f5dec8895f155a91f2bc7807a028dca7af308638091cc60bd5edd85f16c0a5
+{"cased":4632,"caseIgnorable":2794,"mark":2543,"assigned":299382,"lowercaseMappings":1488,"nfdMappings":13253,"casedIgnorableOverlap":268,"contextualGoldens":6432,"ranges":{"cased":158,"caseIgnorable":464,"mark":327,"assigned":735}}
+{"mode":"--write","sha256":"cf7e63b3ca33641673b0eaf8878f08938fd299ad05fd651f3933727987f460f7","cases":464,"re2Cases":91,"regexBehaviorCases":604,"wrapperCases":45}
+{"mode":"--check","sha256":"cf7e63b3ca33641673b0eaf8878f08938fd299ad05fd651f3933727987f460f7","cases":464,"re2Cases":91,"regexBehaviorCases":604,"wrapperCases":45}
+{"file":"/artifacts/moderation-leaf-retirement/attempt4/re2_native_reference/re2-native-syntax.json","sha256":"61b35595303c226d66534610a9565f585a40ded68c04bfb2ff3eaae9f3469aa1","bytes":733550,"total":4364,"counts":{"literals-escapes":1196,"case-folds":384,"classes":896,"properties":396,"inline-flags":304,"anchors-boundaries":198,"groups-alternation":276,"quantifiers":270,"malformed":156,"surrogates":288}}
+{"file":"/artifacts/moderation-leaf-retirement/attempt4/re2_native_reference/re2-native-syntax.json","sha256":"61b35595303c226d66534610a9565f585a40ded68c04bfb2ff3eaae9f3469aa1","bytes":733550,"total":4364,"counts":{"literals-escapes":1196,"case-folds":384,"classes":896,"properties":396,"inline-flags":304,"anchors-boundaries":198,"groups-alternation":276,"quantifiers":270,"malformed":156,"surrogates":288}}
+{"mode":"--write","sha256":"9b1165922e08862ba371b7d288fd514456cd7a668bec3fc4bf5dbb97dd478ad2","cases":175,"transport":15}
+{"mode":"--check","sha256":"9b1165922e08862ba371b7d288fd514456cd7a668bec3fc4bf5dbb97dd478ad2","cases":175,"transport":15}
+{"mode":"--write","sha256":"f310422b0d819e693927cb4dca9a666aea2e6d512a75624d8dc5bf676a9db56f","cases":38}
+{"mode":"--check","sha256":"f310422b0d819e693927cb4dca9a666aea2e6d512a75624d8dc5bf676a9db56f","cases":38}
+{"mode":"--write","sha256":"9c2a9712491afc651fba912206f9856202b9ad7a83ea6aafdf8983f24d00d47c","cases":1636,"claims":37}
+{"mode":"--check","sha256":"9c2a9712491afc651fba912206f9856202b9ad7a83ea6aafdf8983f24d00d47c","cases":1636,"claims":37}
+(node:312) TimeoutOverflowWarning: 2147483648 does not fit into a 32-bit signed integer.
+Timeout duration was set to 1.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:312) TimeoutOverflowWarning: 4294967295 does not fit into a 32-bit signed integer.
+Timeout duration was set to 1.
+(node:312) TimeoutOverflowWarning: 2147483648 does not fit into a 32-bit signed integer.
+Timeout duration was set to 1.
+{"mode":"--write","sha256":"235cf656267d3dcacdbc76cfff6f29cd3586b2a8daec49f34126d61231190989","cases":1071,"evaluate":65}
+(node:320) TimeoutOverflowWarning: 2147483648 does not fit into a 32-bit signed integer.
+Timeout duration was set to 1.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:320) TimeoutOverflowWarning: 4294967295 does not fit into a 32-bit signed integer.
+Timeout duration was set to 1.
+(node:320) TimeoutOverflowWarning: 2147483648 does not fit into a 32-bit signed integer.
+Timeout duration was set to 1.
+{"mode":"--check","sha256":"235cf656267d3dcacdbc76cfff6f29cd3586b2a8daec49f34126d61231190989","cases":1071,"evaluate":65}
+{"mode":"--write","sha256":"58df099835b57070cc783da1f3c2764bcfd4c15e4a46c78733adf76376b9843e","records":41}
+{"mode":"--check","sha256":"58df099835b57070cc783da1f3c2764bcfd4c15e4a46c78733adf76376b9843e","records":41}
+{"mode":"--write","sha256":"a36006be171f7d8ce78d9a2408a0545408743a8abe21dce6ccfa0d7c91b47560","cases":41}
+{"mode":"--check","sha256":"a36006be171f7d8ce78d9a2408a0545408743a8abe21dce6ccfa0d7c91b47560","cases":41}
+{"inputSha256":"665986bd6417320ab0710609aa3f3fc83381c461f95ddebb71e5451154da310b"}
+{"inputSha256":"665986bd6417320ab0710609aa3f3fc83381c461f95ddebb71e5451154da310b","checked":true}
+{"inputSha256":"9f54153d86b2f91417733343c744d4f8e17d0a1a6bf744df1779ea3bcad6086b"}
+{"checked":true,"inputSha256":"9f54153d86b2f91417733343c744d4f8e17d0a1a6bf744df1779ea3bcad6086b"}
+{"inputSha256":"07b8192f942ef9c3246720aa75926939260f3e07250d83b7973197ca6ac65d2e"}
+{"inputSha256":"07b8192f942ef9c3246720aa75926939260f3e07250d83b7973197ca6ac65d2e","checked":true}
+{"sha256":"21414b376066cbd415c32344e2c6843a864f91c4fff753445aedf3a2fce7cc3a"}
+{"sha256":"21414b376066cbd415c32344e2c6843a864f91c4fff753445aedf3a2fce7cc3a"}
+{"mode":"--write","inputSha":"bcfd184a994d0e4b645d74f50976da8ffd5b52c795522ed6b900b479260869ae","compiledSha":{"links":"df609ac6054ce9158e3b8c5cc60de469073f6022179d755d39a78dff126aeecd","normalize":"c34c1c4d6297c5ec7a3a6ebf035a8887b773c781f0507e35aa6a3cb7413b35b2"},"nativeHashes":{"src/utils/moderation/links_rule.rs":"276dc421952c30973fe9ecd51512a43e907567f6f254a4686adab632896addb4","src/utils/moderation/normalize.rs":"6e5a950edc7eb31dd6e5acea96db90f4323d5f3a913d578cbf62beba1c8d5dda","src/utils/js_unicode.rs":"f4d9f9ca009c2f994745de4c057a0fb4da0554301f6a3c3ba9b283235b5a8cc3","src/utils/js_unicode_data.rs":"6c9529a54bd192de38852f31421383d3295dc9010ca463037b6383e361040aeb","src/utils/js_string.rs":"17b3e6a6bcd0d92210851eca25da44bbcdb2c2d9e196feb5dab58d06b75d4aed","src/utils/js_compat.rs":"798538b33fa38b7a07935c22430ce12e3d93abc1afb4f605492299bbf27a64bc","Cargo.toml":"4882343e9af14f7d0369fad879863c19ce5d379d72a577c914481b36b0f6225d","Cargo.lock":"787333fa269752a606040d7393767040ef749ce1e01c2512386bf305bcd7a2c3","tests/moderation_text_benchmark.rs":"72de35838871054799ce22868e8c976fc289f4331a595a138af5ea591f248454","tests/fixtures/moderation_text_benchmark.cjs":"8db601830a2c2f22b72b333c422c4efd8759b20aff96ae6e936a38ea9a3dd3af"}}
+{"mode":"--write","inputSha":"d006bbaff7a9eb8f2df02cff51d606764de2fcb7b2da28254aecc9e39b3093e1"}
+{"mode":"--check","inputSha":"bcfd184a994d0e4b645d74f50976da8ffd5b52c795522ed6b900b479260869ae","compiledSha":{"links":"df609ac6054ce9158e3b8c5cc60de469073f6022179d755d39a78dff126aeecd","normalize":"c34c1c4d6297c5ec7a3a6ebf035a8887b773c781f0507e35aa6a3cb7413b35b2"},"nativeHashes":{"src/utils/moderation/links_rule.rs":"276dc421952c30973fe9ecd51512a43e907567f6f254a4686adab632896addb4","src/utils/moderation/normalize.rs":"6e5a950edc7eb31dd6e5acea96db90f4323d5f3a913d578cbf62beba1c8d5dda","src/utils/js_unicode.rs":"f4d9f9ca009c2f994745de4c057a0fb4da0554301f6a3c3ba9b283235b5a8cc3","src/utils/js_unicode_data.rs":"6c9529a54bd192de38852f31421383d3295dc9010ca463037b6383e361040aeb","src/utils/js_string.rs":"17b3e6a6bcd0d92210851eca25da44bbcdb2c2d9e196feb5dab58d06b75d4aed","src/utils/js_compat.rs":"798538b33fa38b7a07935c22430ce12e3d93abc1afb4f605492299bbf27a64bc","Cargo.toml":"4882343e9af14f7d0369fad879863c19ce5d379d72a577c914481b36b0f6225d","Cargo.lock":"787333fa269752a606040d7393767040ef749ce1e01c2512386bf305bcd7a2c3","tests/moderation_text_benchmark.rs":"72de35838871054799ce22868e8c976fc289f4331a595a138af5ea591f248454","tests/fixtures/moderation_text_benchmark.cjs":"8db601830a2c2f22b72b333c422c4efd8759b20aff96ae6e936a38ea9a3dd3af"}}
+{"mode":"--check","inputSha":"d006bbaff7a9eb8f2df02cff51d606764de2fcb7b2da28254aecc9e39b3093e1"}

@@ -1,0 +1,943 @@
+{
+  "status": "complete; final source and receipts bound",
+  "indexExcludes": "this artifact-index.json file",
+  "payloads": [
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/README.md",
+      "bytes": 4233,
+      "sha256": "ac731e53c679ebd87a163476ebe63fe55a26b307eda271a2505028d9176061bf"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/cache-maintenance.json",
+      "bytes": 597,
+      "sha256": "f471bd5d3df26aa2fce82bad50441d3f67569cfc6b540f5c4490c50733ea6a53"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/final-semantic-comparison.json",
+      "bytes": 6798,
+      "sha256": "3f6969d4f0043c3d15e4bdf736e7efe83e7ef9a73b6a84fb446b9ffef623d184"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/frozen-snapshot.json",
+      "bytes": 175462,
+      "sha256": "211daba8002fba289005e25e4ff6958286ec5dcd2a45c987b4c4e2d05f69be9c"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt1/moderation_blacklist_reference/moderation-blacklist-reference.json.gz",
+      "bytes": 72170,
+      "sha256": "aa95fc69cc5bdc86a2bb0364f69ec0ecedb6e5b5d07ab486680eecd74c824b8d",
+      "encoding": "gzip; deterministic header",
+      "rawSha256": "f4591e1d6ce8ba161437f3dd1e038bcfda412569f380f3cbe8baf8ede3e9c346",
+      "rawBytes": 6242984,
+      "originalArtifactPath": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-leaf-retirement/attempt1/moderation_blacklist_reference/moderation-blacklist-reference.json"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt1/moderation_links_reference/moderation_links_reference.json.gz",
+      "bytes": 532098,
+      "sha256": "b900f2eda76ad60b191017dbc9b725e520ffd60f48af800b6ba98da77e7d9c46",
+      "encoding": "gzip; deterministic header",
+      "rawSha256": "3616fdb20e4b9ea0f52cd7263f001d0a92f22fc453ab7d8fb53436507e7b1d88",
+      "rawBytes": 23473616,
+      "originalArtifactPath": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-leaf-retirement/attempt1/moderation_links_reference/moderation_links_reference.json"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt1/moderation_normalize_reference/moderation-normalize-reference.json",
+      "bytes": 1046837,
+      "sha256": "4c98ef1a9559d6e4211661f65363af57c7579ce5c0ac1977fe0ad9bf70496853"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt1/moderation_spam_categories_reference/moderation_spam_categories_reference.json.gz",
+      "bytes": 53053,
+      "sha256": "095f18a9f0fb5f50927549068df0dd1321dcbe5bfa1c2d536bcb2818c25ce09a",
+      "encoding": "gzip; deterministic header",
+      "rawSha256": "1c78d8ee25876bc547d418e4dfda412ecdb0dc1d0ef39599a3c98ce300dd0166",
+      "rawBytes": 4088620,
+      "originalArtifactPath": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-leaf-retirement/attempt1/moderation_spam_categories_reference/moderation_spam_categories_reference.json"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt2/channel_moderation_settings_reference/channel-moderation-settings-reference.json",
+      "bytes": 135278,
+      "sha256": "12cbbd8fe329d83c58ab632826248dc16f581422fa8595e058d5500512a7ce48"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt2/moderation_blacklist_reference/moderation-blacklist-reference.json.gz",
+      "bytes": 72170,
+      "sha256": "aa95fc69cc5bdc86a2bb0364f69ec0ecedb6e5b5d07ab486680eecd74c824b8d",
+      "encoding": "gzip; deterministic header",
+      "rawSha256": "f4591e1d6ce8ba161437f3dd1e038bcfda412569f380f3cbe8baf8ede3e9c346",
+      "rawBytes": 6242984,
+      "originalArtifactPath": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-leaf-retirement/attempt2/moderation_blacklist_reference/moderation-blacklist-reference.json"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt2/moderation_links_reference/moderation_links_reference.json.gz",
+      "bytes": 532098,
+      "sha256": "b900f2eda76ad60b191017dbc9b725e520ffd60f48af800b6ba98da77e7d9c46",
+      "encoding": "gzip; deterministic header",
+      "rawSha256": "3616fdb20e4b9ea0f52cd7263f001d0a92f22fc453ab7d8fb53436507e7b1d88",
+      "rawBytes": 23473616,
+      "originalArtifactPath": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-leaf-retirement/attempt2/moderation_links_reference/moderation_links_reference.json"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt2/moderation_normalize_reference/moderation-normalize-reference.json",
+      "bytes": 1046837,
+      "sha256": "4c98ef1a9559d6e4211661f65363af57c7579ce5c0ac1977fe0ad9bf70496853"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt2/moderation_rule_dispatcher_reference/moderation-rule-dispatcher-reference.json",
+      "bytes": 31423,
+      "sha256": "26039026f3433c6d12c7b464b6261257f9d9716765ee8bc1a4933f1bdaee81b8"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt2/moderation_seed_plan_reference/moderation-seed-plan-reference.json",
+      "bytes": 25960,
+      "sha256": "7c7652ce9b3df5262c2c1e1c0ae2157e1d2f63d6d90a330b35ba8093ad0e1b0f"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt2/moderation_spam_categories_reference/moderation_spam_categories_reference.json.gz",
+      "bytes": 53053,
+      "sha256": "095f18a9f0fb5f50927549068df0dd1321dcbe5bfa1c2d536bcb2818c25ce09a",
+      "encoding": "gzip; deterministic header",
+      "rawSha256": "1c78d8ee25876bc547d418e4dfda412ecdb0dc1d0ef39599a3c98ce300dd0166",
+      "rawBytes": 4088620,
+      "originalArtifactPath": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-leaf-retirement/attempt2/moderation_spam_categories_reference/moderation_spam_categories_reference.json"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt3/channel_moderation_settings_benchmark/channel-moderation-settings-benchmark-input.json",
+      "bytes": 116671,
+      "sha256": "863b023bf600ceedd1d9812424441a435a61655480483ffa36583645c7e7e5a3"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt3/channel_moderation_settings_reference/channel-moderation-settings-reference.json",
+      "bytes": 135278,
+      "sha256": "12cbbd8fe329d83c58ab632826248dc16f581422fa8595e058d5500512a7ce48"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt3/js_unicode17_prepare/js_unicode_data.rs",
+      "bytes": 74798,
+      "sha256": "6c9529a54bd192de38852f31421383d3295dc9010ca463037b6383e361040aeb"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt3/js_unicode17_prepare/unicode17-reference.json.gz",
+      "bytes": 170617,
+      "sha256": "68479713875ada81ae8e6df4d5eb7651cba349e3dde88bee72a34e31cf6e1df5",
+      "encoding": "gzip; deterministic header",
+      "rawSha256": "07f5dec8895f155a91f2bc7807a028dca7af308638091cc60bd5edd85f16c0a5",
+      "rawBytes": 3302396,
+      "originalArtifactPath": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-leaf-retirement/attempt3/js_unicode17_prepare/unicode17-reference.json"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt3/js_unicode_reference/js-unicode-source-reference.json.gz",
+      "bytes": 108536,
+      "sha256": "c15bfcf3287ce582aac6fcc7fbeefe95591e274abea7f78522dbc7c2673cdc41",
+      "encoding": "gzip; deterministic header",
+      "rawSha256": "60a2fa331a01c582b6f3d1b01343004f6c9aaf5d6e65e503a56342514ea1d090",
+      "rawBytes": 3533453,
+      "originalArtifactPath": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-leaf-retirement/attempt3/js_unicode_reference/js-unicode-source-reference.json"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt3/moderation_advanced_benchmark/input.json",
+      "bytes": 692613,
+      "sha256": "665986bd6417320ab0710609aa3f3fc83381c461f95ddebb71e5451154da310b"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt3/moderation_advanced_benchmark/source-report.json",
+      "bytes": 161763,
+      "sha256": "75d05c31f13f23fd3eacea8a3bf2bdeb724ff6fe475cfdfab787587f877aca0f"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt3/moderation_advanced_reference/moderation-advanced-reference.json.gz",
+      "bytes": 173106,
+      "sha256": "2ed3eb40056211df0edca0dd9ee9d672ac2f68e1811e857cec7b8baa1ea8be51",
+      "encoding": "gzip; deterministic header",
+      "rawSha256": "cf7e63b3ca33641673b0eaf8878f08938fd299ad05fd651f3933727987f460f7",
+      "rawBytes": 6187558,
+      "originalArtifactPath": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-leaf-retirement/attempt3/moderation_advanced_reference/moderation-advanced-reference.json"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt3/moderation_blacklist_benchmark/moderation-blacklist-benchmark.json",
+      "bytes": 316478,
+      "sha256": "21414b376066cbd415c32344e2c6843a864f91c4fff753445aedf3a2fce7cc3a"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt3/moderation_blacklist_reference/moderation-blacklist-reference.json.gz",
+      "bytes": 72170,
+      "sha256": "aa95fc69cc5bdc86a2bb0364f69ec0ecedb6e5b5d07ab486680eecd74c824b8d",
+      "encoding": "gzip; deterministic header",
+      "rawSha256": "f4591e1d6ce8ba161437f3dd1e038bcfda412569f380f3cbe8baf8ede3e9c346",
+      "rawBytes": 6242984,
+      "originalArtifactPath": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-leaf-retirement/attempt3/moderation_blacklist_reference/moderation-blacklist-reference.json"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt3/moderation_decision_schema_reference/moderation-decision-schema-reference.json",
+      "bytes": 17598,
+      "sha256": "2e827b8519d65ef7cb1a30d7c2aa37eed2de221d3525ce4d00c3924be6dfcbf7"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt3/moderation_decisions_reference/moderation-decisions-reference.json.gz",
+      "bytes": 179095,
+      "sha256": "fe29566343f762c9025c83ac4edfb24eaf0ef49c0064a745d7f4bb660dee8b59",
+      "encoding": "gzip; deterministic header",
+      "rawSha256": "a36006be171f7d8ce78d9a2408a0545408743a8abe21dce6ccfa0d7c91b47560",
+      "rawBytes": 1324746,
+      "originalArtifactPath": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-leaf-retirement/attempt3/moderation_decisions_reference/moderation-decisions-reference.json"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt3/moderation_links_reference/moderation_links_reference.json.gz",
+      "bytes": 532098,
+      "sha256": "b900f2eda76ad60b191017dbc9b725e520ffd60f48af800b6ba98da77e7d9c46",
+      "encoding": "gzip; deterministic header",
+      "rawSha256": "3616fdb20e4b9ea0f52cd7263f001d0a92f22fc453ab7d8fb53436507e7b1d88",
+      "rawBytes": 23473616,
+      "originalArtifactPath": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-leaf-retirement/attempt3/moderation_links_reference/moderation_links_reference.json"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt3/moderation_normalize_reference/moderation-normalize-reference.json",
+      "bytes": 1046837,
+      "sha256": "4c98ef1a9559d6e4211661f65363af57c7579ce5c0ac1977fe0ad9bf70496853"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt3/moderation_rule_dispatcher_reference/moderation-rule-dispatcher-reference.json",
+      "bytes": 31423,
+      "sha256": "26039026f3433c6d12c7b464b6261257f9d9716765ee8bc1a4933f1bdaee81b8"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt3/moderation_seed_plan_reference/moderation-seed-plan-reference.json",
+      "bytes": 25960,
+      "sha256": "7c7652ce9b3df5262c2c1e1c0ae2157e1d2f63d6d90a330b35ba8093ad0e1b0f"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt3/moderation_semantic_reference/moderation-semantic-reference.json.gz",
+      "bytes": 1020700,
+      "sha256": "251cdc8d57c74378b6834a1a4c08cc2cbe37801dd40a0c903bec22d6317fa360",
+      "encoding": "gzip; deterministic header",
+      "rawSha256": "235cf656267d3dcacdbc76cfff6f29cd3586b2a8daec49f34126d61231190989",
+      "rawBytes": 29485910,
+      "originalArtifactPath": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-leaf-retirement/attempt3/moderation_semantic_reference/moderation-semantic-reference.json"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt3/moderation_semantic_worker_reference/moderation-semantic-worker-reference.json.gz",
+      "bytes": 95866,
+      "sha256": "dd9ec136a484775e6c9965e4b8a98ba37352fcf687d4b80c9de041966601af96",
+      "encoding": "gzip; deterministic header",
+      "rawSha256": "58df099835b57070cc783da1f3c2764bcfd4c15e4a46c78733adf76376b9843e",
+      "rawBytes": 2648958,
+      "originalArtifactPath": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-leaf-retirement/attempt3/moderation_semantic_worker_reference/moderation-semantic-worker-reference.json"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt3/moderation_spam_benchmark/input.json.gz",
+      "bytes": 134959,
+      "sha256": "9f4e48cc3b49bdd20f0e99e29a518ec451abdf4520c7790800680f1ed4d126bd",
+      "encoding": "gzip; deterministic header",
+      "rawSha256": "9f54153d86b2f91417733343c744d4f8e17d0a1a6bf744df1779ea3bcad6086b",
+      "rawBytes": 4175373,
+      "originalArtifactPath": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-leaf-retirement/attempt3/moderation_spam_benchmark/input.json"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt3/moderation_spam_benchmark/source-report.json",
+      "bytes": 162578,
+      "sha256": "c471f3b82dc2ceaf827ae144e2e1988861a20f6c65d4938ac818900ae4010bc6"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt3/moderation_spam_categories_reference/moderation_spam_categories_reference.json.gz",
+      "bytes": 53053,
+      "sha256": "095f18a9f0fb5f50927549068df0dd1321dcbe5bfa1c2d536bcb2818c25ce09a",
+      "encoding": "gzip; deterministic header",
+      "rawSha256": "1c78d8ee25876bc547d418e4dfda412ecdb0dc1d0ef39599a3c98ce300dd0166",
+      "rawBytes": 4088620,
+      "originalArtifactPath": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-leaf-retirement/attempt3/moderation_spam_categories_reference/moderation_spam_categories_reference.json"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt3/moderation_spam_reference/moderation-spam-reference.json.gz",
+      "bytes": 341291,
+      "sha256": "7896adf5b686c3edf7de4dc728dd1869ee66b63840f1488a1d619f04708895e5",
+      "encoding": "gzip; deterministic header",
+      "rawSha256": "9c2a9712491afc651fba912206f9856202b9ad7a83ea6aafdf8983f24d00d47c",
+      "rawBytes": 8636744,
+      "originalArtifactPath": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-leaf-retirement/attempt3/moderation_spam_reference/moderation-spam-reference.json"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt3/moderation_text_benchmark/moderation-text-benchmark-input.json",
+      "bytes": 176881,
+      "sha256": "705077a8cea91145dc40bc7a4b18c93141c76e2165c54dd65cf965a76e49b787"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt3/moderation_variation_jobs_reference/moderation-variation-jobs-reference.json.gz",
+      "bytes": 149537,
+      "sha256": "58d752c5a2d7bbd3d1f6510902932e96ea6118f801498a8e3f39833da1e8d5e9",
+      "encoding": "gzip; deterministic header",
+      "rawSha256": "f310422b0d819e693927cb4dca9a666aea2e6d512a75624d8dc5bf676a9db56f",
+      "rawBytes": 2349634,
+      "originalArtifactPath": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-leaf-retirement/attempt3/moderation_variation_jobs_reference/moderation-variation-jobs-reference.json"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt3/moderation_variations_benchmark/input.json",
+      "bytes": 500213,
+      "sha256": "07b8192f942ef9c3246720aa75926939260f3e07250d83b7973197ca6ac65d2e"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt3/moderation_variations_benchmark/source-report.json",
+      "bytes": 161676,
+      "sha256": "871818beb4c11d97219a53ee38bdfac3349f7ad6da1151add4453b2e371654bd"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt3/moderation_variations_reference/moderation-variations-reference.json.gz",
+      "bytes": 185184,
+      "sha256": "ae8c7d5a24b6b7c41eb9150583d8f41443017953166f56faefec2c275ccc5c04",
+      "encoding": "gzip; deterministic header",
+      "rawSha256": "9b1165922e08862ba371b7d288fd514456cd7a668bec3fc4bf5dbb97dd478ad2",
+      "rawBytes": 7911180,
+      "originalArtifactPath": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-leaf-retirement/attempt3/moderation_variations_reference/moderation-variations-reference.json"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt3/re2_native_reference/re2-native-syntax.json",
+      "bytes": 733550,
+      "sha256": "61b35595303c226d66534610a9565f585a40ded68c04bfb2ff3eaae9f3469aa1"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt3/schema_composite_defaults_reference/schema-composite-defaults-reference.json",
+      "bytes": 56359,
+      "sha256": "5fd393fcd7966d3e4f5a429546a9eae3922a99f11cacdb66df5d3ecd942c5e8a"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt4/channel_moderation_settings_benchmark/channel-moderation-settings-benchmark-input.json",
+      "bytes": 116671,
+      "sha256": "d006bbaff7a9eb8f2df02cff51d606764de2fcb7b2da28254aecc9e39b3093e1"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt4/channel_moderation_settings_reference/channel-moderation-settings-reference.json",
+      "bytes": 135278,
+      "sha256": "12cbbd8fe329d83c58ab632826248dc16f581422fa8595e058d5500512a7ce48"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt4/js_unicode17_prepare/js_unicode_data.rs",
+      "bytes": 74798,
+      "sha256": "6c9529a54bd192de38852f31421383d3295dc9010ca463037b6383e361040aeb"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt4/js_unicode17_prepare/unicode17-reference.json.gz",
+      "bytes": 170617,
+      "sha256": "68479713875ada81ae8e6df4d5eb7651cba349e3dde88bee72a34e31cf6e1df5",
+      "encoding": "gzip; deterministic header",
+      "rawSha256": "07f5dec8895f155a91f2bc7807a028dca7af308638091cc60bd5edd85f16c0a5",
+      "rawBytes": 3302396,
+      "originalArtifactPath": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-leaf-retirement/attempt4/js_unicode17_prepare/unicode17-reference.json"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt4/js_unicode_reference/js-unicode-source-reference.json.gz",
+      "bytes": 108536,
+      "sha256": "c15bfcf3287ce582aac6fcc7fbeefe95591e274abea7f78522dbc7c2673cdc41",
+      "encoding": "gzip; deterministic header",
+      "rawSha256": "60a2fa331a01c582b6f3d1b01343004f6c9aaf5d6e65e503a56342514ea1d090",
+      "rawBytes": 3533453,
+      "originalArtifactPath": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-leaf-retirement/attempt4/js_unicode_reference/js-unicode-source-reference.json"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt4/moderation_advanced_benchmark/input.json",
+      "bytes": 692613,
+      "sha256": "665986bd6417320ab0710609aa3f3fc83381c461f95ddebb71e5451154da310b"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt4/moderation_advanced_benchmark/source-report.json",
+      "bytes": 161763,
+      "sha256": "75d05c31f13f23fd3eacea8a3bf2bdeb724ff6fe475cfdfab787587f877aca0f"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt4/moderation_advanced_reference/moderation-advanced-reference.json.gz",
+      "bytes": 173106,
+      "sha256": "2ed3eb40056211df0edca0dd9ee9d672ac2f68e1811e857cec7b8baa1ea8be51",
+      "encoding": "gzip; deterministic header",
+      "rawSha256": "cf7e63b3ca33641673b0eaf8878f08938fd299ad05fd651f3933727987f460f7",
+      "rawBytes": 6187558,
+      "originalArtifactPath": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-leaf-retirement/attempt4/moderation_advanced_reference/moderation-advanced-reference.json"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt4/moderation_blacklist_benchmark/moderation-blacklist-benchmark.json",
+      "bytes": 316478,
+      "sha256": "21414b376066cbd415c32344e2c6843a864f91c4fff753445aedf3a2fce7cc3a"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt4/moderation_blacklist_reference/moderation-blacklist-reference.json.gz",
+      "bytes": 72170,
+      "sha256": "8ba0f6f3abb570101fc418e480d5f9e242bde1736af731d4432a7183b7116810",
+      "encoding": "gzip; deterministic header",
+      "rawSha256": "68e362c8c24fdb95c108215aa8f0eba8d1b9c3ff8b2c5a5691449f27f760d100",
+      "rawBytes": 6242984,
+      "originalArtifactPath": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-leaf-retirement/attempt4/moderation_blacklist_reference/moderation-blacklist-reference.json"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt4/moderation_decision_schema_reference/moderation-decision-schema-reference.json",
+      "bytes": 17598,
+      "sha256": "0478de543e378980dabf2978acf35c64209c703f757e41e388301ad4c03b46dd"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt4/moderation_decisions_reference/moderation-decisions-reference.json.gz",
+      "bytes": 179095,
+      "sha256": "fe29566343f762c9025c83ac4edfb24eaf0ef49c0064a745d7f4bb660dee8b59",
+      "encoding": "gzip; deterministic header",
+      "rawSha256": "a36006be171f7d8ce78d9a2408a0545408743a8abe21dce6ccfa0d7c91b47560",
+      "rawBytes": 1324746,
+      "originalArtifactPath": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-leaf-retirement/attempt4/moderation_decisions_reference/moderation-decisions-reference.json"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt4/moderation_links_reference/moderation_links_reference.json.gz",
+      "bytes": 532097,
+      "sha256": "d0fc134b845921dcb232b25c74b19df86b200764f69a71b932cf0ab832ca844e",
+      "encoding": "gzip; deterministic header",
+      "rawSha256": "4cd1eb688ce26b3024fecd64277b6dbf60e6e41e9e64fc2fa5d5a6df2d9b9a40",
+      "rawBytes": 23473616,
+      "originalArtifactPath": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-leaf-retirement/attempt4/moderation_links_reference/moderation_links_reference.json"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt4/moderation_normalize_reference/moderation-normalize-reference.json",
+      "bytes": 1046837,
+      "sha256": "1e66d9a46d68739c72aea55228d67e7d8090f2f6e84fa5a707838dbc43a9af0e"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt4/moderation_rule_dispatcher_reference/moderation-rule-dispatcher-reference.json",
+      "bytes": 31423,
+      "sha256": "6a39fc1c8207d2c6a3d6be624cc395536bb2932364de854b9afdd6bc3453a70d"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt4/moderation_seed_plan_reference/moderation-seed-plan-reference.json",
+      "bytes": 25960,
+      "sha256": "e85f8f25094f51782d2ef1460b8aab5549218041f6c37874509c9b9a89dcf055"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt4/moderation_semantic_reference/moderation-semantic-reference.json.gz",
+      "bytes": 1020700,
+      "sha256": "251cdc8d57c74378b6834a1a4c08cc2cbe37801dd40a0c903bec22d6317fa360",
+      "encoding": "gzip; deterministic header",
+      "rawSha256": "235cf656267d3dcacdbc76cfff6f29cd3586b2a8daec49f34126d61231190989",
+      "rawBytes": 29485910,
+      "originalArtifactPath": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-leaf-retirement/attempt4/moderation_semantic_reference/moderation-semantic-reference.json"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt4/moderation_semantic_worker_reference/moderation-semantic-worker-reference.json.gz",
+      "bytes": 95866,
+      "sha256": "dd9ec136a484775e6c9965e4b8a98ba37352fcf687d4b80c9de041966601af96",
+      "encoding": "gzip; deterministic header",
+      "rawSha256": "58df099835b57070cc783da1f3c2764bcfd4c15e4a46c78733adf76376b9843e",
+      "rawBytes": 2648958,
+      "originalArtifactPath": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-leaf-retirement/attempt4/moderation_semantic_worker_reference/moderation-semantic-worker-reference.json"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt4/moderation_spam_benchmark/input.json.gz",
+      "bytes": 134959,
+      "sha256": "9f4e48cc3b49bdd20f0e99e29a518ec451abdf4520c7790800680f1ed4d126bd",
+      "encoding": "gzip; deterministic header",
+      "rawSha256": "9f54153d86b2f91417733343c744d4f8e17d0a1a6bf744df1779ea3bcad6086b",
+      "rawBytes": 4175373,
+      "originalArtifactPath": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-leaf-retirement/attempt4/moderation_spam_benchmark/input.json"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt4/moderation_spam_benchmark/source-report.json",
+      "bytes": 162578,
+      "sha256": "c471f3b82dc2ceaf827ae144e2e1988861a20f6c65d4938ac818900ae4010bc6"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt4/moderation_spam_categories_reference/moderation_spam_categories_reference.json.gz",
+      "bytes": 53059,
+      "sha256": "bfe05493c19a96f13f1066884e295e1733e2d60fc01d657c3430616b4ddacb4e",
+      "encoding": "gzip; deterministic header",
+      "rawSha256": "045119d2cd041e3056d4cd09fd2b307af7747d20bebfab5d0c49f2f641b6b89b",
+      "rawBytes": 4088620,
+      "originalArtifactPath": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-leaf-retirement/attempt4/moderation_spam_categories_reference/moderation_spam_categories_reference.json"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt4/moderation_spam_reference/moderation-spam-reference.json.gz",
+      "bytes": 341291,
+      "sha256": "7896adf5b686c3edf7de4dc728dd1869ee66b63840f1488a1d619f04708895e5",
+      "encoding": "gzip; deterministic header",
+      "rawSha256": "9c2a9712491afc651fba912206f9856202b9ad7a83ea6aafdf8983f24d00d47c",
+      "rawBytes": 8636744,
+      "originalArtifactPath": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-leaf-retirement/attempt4/moderation_spam_reference/moderation-spam-reference.json"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt4/moderation_text_benchmark/moderation-text-benchmark-input.json",
+      "bytes": 176881,
+      "sha256": "bcfd184a994d0e4b645d74f50976da8ffd5b52c795522ed6b900b479260869ae"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt4/moderation_variation_jobs_reference/moderation-variation-jobs-reference.json.gz",
+      "bytes": 149537,
+      "sha256": "58d752c5a2d7bbd3d1f6510902932e96ea6118f801498a8e3f39833da1e8d5e9",
+      "encoding": "gzip; deterministic header",
+      "rawSha256": "f310422b0d819e693927cb4dca9a666aea2e6d512a75624d8dc5bf676a9db56f",
+      "rawBytes": 2349634,
+      "originalArtifactPath": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-leaf-retirement/attempt4/moderation_variation_jobs_reference/moderation-variation-jobs-reference.json"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt4/moderation_variations_benchmark/input.json",
+      "bytes": 500213,
+      "sha256": "07b8192f942ef9c3246720aa75926939260f3e07250d83b7973197ca6ac65d2e"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt4/moderation_variations_benchmark/source-report.json",
+      "bytes": 161676,
+      "sha256": "871818beb4c11d97219a53ee38bdfac3349f7ad6da1151add4453b2e371654bd"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt4/moderation_variations_reference/moderation-variations-reference.json.gz",
+      "bytes": 185184,
+      "sha256": "ae8c7d5a24b6b7c41eb9150583d8f41443017953166f56faefec2c275ccc5c04",
+      "encoding": "gzip; deterministic header",
+      "rawSha256": "9b1165922e08862ba371b7d288fd514456cd7a668bec3fc4bf5dbb97dd478ad2",
+      "rawBytes": 7911180,
+      "originalArtifactPath": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-leaf-retirement/attempt4/moderation_variations_reference/moderation-variations-reference.json"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt4/re2_native_reference/re2-native-syntax.json",
+      "bytes": 733550,
+      "sha256": "61b35595303c226d66534610a9565f585a40ded68c04bfb2ff3eaae9f3469aa1"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt4/schema_composite_defaults_reference/schema-composite-defaults-reference.json",
+      "bytes": 56359,
+      "sha256": "26f6ae2fce8199c490e6c86e7ebde57e4c090eeb48f49229b20aa96b2f9af914"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt5/moderation_blacklist_reference/moderation-blacklist-reference.json.gz",
+      "bytes": 72169,
+      "sha256": "ec7975975125bf3293f24068936ab9b5548efe5ef5d08d0a4b7d9ab6b8b34c29",
+      "encoding": "gzip; deterministic header",
+      "rawSha256": "edb15eb4a4da5faa35f9415fa33f43e14ba7d5c611674f2ea7863f6c6c8c539f",
+      "rawBytes": 6242984,
+      "originalArtifactPath": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-leaf-retirement/attempt5/moderation_blacklist_reference/moderation-blacklist-reference.json"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt5/moderation_rule_dispatcher_reference/moderation-rule-dispatcher-reference.json",
+      "bytes": 31423,
+      "sha256": "7ef35f5063a58cff837d201aae637523e3f523d7e9058f8fd97382433ab66f58"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/moderation-leaf-retirement/attempt6/moderation_blacklist_reference/moderation-blacklist-reference.json.gz",
+      "bytes": 72168,
+      "sha256": "29913a918ddc7e1547cbf5ff1ea22654f6c147b12e4b089cfc4a1b2065506b1c",
+      "encoding": "gzip; deterministic header",
+      "rawSha256": "6e355171aa7fea91bc76ad17b678646390388c90c148c830d2777dc528d8203a",
+      "rawBytes": 6242984,
+      "originalArtifactPath": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-leaf-retirement/attempt6/moderation_blacklist_reference/moderation-blacklist-reference.json"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/pre-final-snapshot-after-import-sort.json",
+      "bytes": 175462,
+      "sha256": "1d8999ce1820a629c2c4629f59222739ceba3066428b486e9c8739d1b101e290"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/production-after-final.json",
+      "bytes": 27004,
+      "sha256": "f2ca9666f572dabcd0a01214be66f91767927c5d0487c7dda4f0a5cae9f641a4"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/runs/compiler-1793358512412832694.log",
+      "bytes": 17581,
+      "sha256": "7ae64815975f474e9ce0d4f53679ca1f4b5df876f0df8d34690d4269f7a17478"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/runs/compiler-1793358670406985942.log.gz",
+      "bytes": 3445,
+      "sha256": "20b93aa77bd512a119f0bc54d30c4e2db32b11027b3099d89fbf954e2d32de29",
+      "rawBytes": 11721,
+      "rawSha256": "9dc208753288a583d9bef0d223341419714dbdacf7ce863bd18eb712e5c9d8b2",
+      "encoding": "gzip; original log bytes preserved exactly"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/runs/compiler-1793358788903312520.log",
+      "bytes": 2423,
+      "sha256": "8d3d236328a41fb61c70ba41d62f4b42ac59ba69aed401788ba6dcd25d688f65"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/runs/compiler-1793358939977688040-receipt.json",
+      "bytes": 179368,
+      "sha256": "9ca9ae52b8962ad6287694be97fd2dc206d0977d9aced08ab039fe4dc698e6be"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/runs/compiler-1793358939977688040.log.gz",
+      "bytes": 4919,
+      "sha256": "12dbf13e071be54262342cdaac861b5cc47339fc4f3c084b5b04e2dd86314008",
+      "rawBytes": 20924,
+      "rawSha256": "b4c5219adb3fb3c375d60f8ad809a43090b71e388a49637dfb8c2d91785797b6",
+      "encoding": "gzip; original log bytes preserved exactly"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/runs/compiler-1793359068803754251-receipt.json",
+      "bytes": 179321,
+      "sha256": "8ac26ac01facf3b5da465ab6c8229b7b00257432a4ba17a3bcf48f6e161e044f"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/runs/compiler-1793359068803754251.log",
+      "bytes": 20842,
+      "sha256": "442162d5579610b75693cadbc212dc07102ea8495424d5845ecb2ce3ff72be3d"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/runs/format-1793358759896983369-receipt.json",
+      "bytes": 179311,
+      "sha256": "5d20746c127540210a1ddcedb688b39ac39e378418b57ab05d3a71ace9d76844"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/runs/format-1793358759896983369.log",
+      "bytes": 1833,
+      "sha256": "d8df33ba72c691319594a6938a8cc1f756798afbe8a2dc8dedcec22abade739d"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/runs/node-1793358389790735079.log",
+      "bytes": 9743,
+      "sha256": "ddaf9ab62d98fdcd718b82a1e9f55fd3016b5bd04d0302127c4eda337e27bac6"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/runs/node-1793358512414815770.log",
+      "bytes": 4997,
+      "sha256": "581ccab47be76d1d0893754c9a37a347266d7e6eb56e66bf4b0cbb9f0237ed03"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/runs/node-1793358670409521011.log",
+      "bytes": 4997,
+      "sha256": "6fb29746419a1c6aad0d4ed91b96acf147c84c69722cb77bdeeb3de8886f3e61"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/runs/node-1793358781966582318.log",
+      "bytes": 9743,
+      "sha256": "0d809e638e774180a312dd5d5d3c7b8c9be887ac13eadb2c1b4344bb0178d728"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/runs/node-1793358898102697897-receipt.json",
+      "bytes": 179193,
+      "sha256": "96cf079ccd88095e63f54528789360b63c38537dbbb3c0d6e871b44a0ac3dd76"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/runs/node-1793358898102697897.log",
+      "bytes": 5210,
+      "sha256": "e28299cf05e565c92e6af60720e14d5cce5faf9f5a07708173e8834e49abfbac"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/runs/node-1793359025969874012-receipt.json",
+      "bytes": 179188,
+      "sha256": "2abc2f053003ce92912617f2247eb8dcc37a2a722970dff8113ff657201387a3"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/runs/node-1793359025969874012.log",
+      "bytes": 5105,
+      "sha256": "f10167da2b2f178cc872fc79c88b1ff791d9950227f4b29736dd6430ddd34ca9"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/source-final.json",
+      "bytes": 175462,
+      "sha256": "1d8999ce1820a629c2c4629f59222739ceba3066428b486e9c8739d1b101e290"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/tested-delta-paths.json",
+      "bytes": 2986,
+      "sha256": "7e6aeccf9d6d429d42c0f8507e44a0b98ac978e9bf29cd22266049f04a850ec1"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/artifacts/transitive-semantic-comparison.json",
+      "bytes": 4470,
+      "sha256": "11e04a0093012d311c6056601c9cd92676f36ef9f5d9baf891b0cc5524799565"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/reproduction-tools/leaf_retirement_native6.sh",
+      "bytes": 6484,
+      "sha256": "96b5b5ed3070dd02ec70b0226fa536cb5a38b555704a5559071fd38307e7c4ae"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/reproduction-tools/leaf_retirement_native7.sh",
+      "bytes": 6484,
+      "sha256": "0ad738517c10b32a3ef68d2a858250b1be985ab00e5baf293bbed9aeea7ca579"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/reproduction-tools/leaf_retirement_node5.sh",
+      "bytes": 4103,
+      "sha256": "203468bec4b8489519f0c16f4fa9a02076ead18cf8b333db28c16126662691dd"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/reproduction-tools/leaf_retirement_node6.sh",
+      "bytes": 4165,
+      "sha256": "ddfe37714399c91d50aac1bf60ec386d12ab366d5d290f1d90852d390cc29cba"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/reproduction-tools/leaf_retirement_payload1.py",
+      "bytes": 1517,
+      "sha256": "1ed93811845d299ead70faf28b33de2a6ba54f5f56f9da5d6c2db9dbcaab8f51"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/reproduction-tools/leaf_retirement_quality1.sh",
+      "bytes": 366,
+      "sha256": "a80ebcc4b615a81493b6b8c5e6a3a32b8446a4176100019cbec89d3f9ace91cf"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/reproduction-tools/trim_leaf_retirement_cache.py",
+      "bytes": 1711,
+      "sha256": "9607b38d250c2c00a7bbd357dbde1b2663467778afe7ef326dcb03581461938f"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-bindings.json",
+      "bytes": 181209,
+      "sha256": "3fd4c9bd817d44a58aadbd3811b8e641eb4281b4054ec87a2193924de3bbee89"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/archives/dimabot-typescript/2026-10-28/README.md",
+      "bytes": 9284,
+      "sha256": "0f7e74759259d78236548e75098cfb81968ca5e2b81d68ae7a8b652bb9eed437"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/archives/dimabot-typescript/2026-10-28/manifest.json",
+      "bytes": 4977,
+      "sha256": "e10cc703b0d4c52e1ae72338457baa5a64270cf8edbba1a053f6b3afce2200ec"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/archives/dimabot-typescript/2026-10-28/src/utils/moderation/normalize.ts",
+      "bytes": 429,
+      "sha256": "07822ff6efe5d707173b6b9e9415b16edfb0eb055c3a03416bf4b4c0c11740ab"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/archives/dimabot-typescript/2026-10-28/src/utils/moderation/rules/links.rule.ts",
+      "bytes": 1943,
+      "sha256": "802150266d30c163a4069dd434b723e0320aed50ed34bc2f5674ac267aa41ad0"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/archives/dimabot-typescript/2026-10-28/src/utils/moderation/spam_categories.ts",
+      "bytes": 4498,
+      "sha256": "29dd0951ea0b89567c55b5dce4d2795a74c78e6064b32cbd26a3ecafaa435088"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/channel_moderation_settings_benchmark.rs",
+      "bytes": 15225,
+      "sha256": "0e334da6a05133eaf5a1a1acacd1c89e4ba0a2a9448c3f7f1f6e91c76476152f"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/fixtures/channel_moderation_settings_benchmark.cjs",
+      "bytes": 14434,
+      "sha256": "82673bc9602786cc5216fd04385c076de46e2cd2affdda72561dd4d448f9702d"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/fixtures/channel_moderation_settings_reference.cjs",
+      "bytes": 13695,
+      "sha256": "364e0667e4b6506b4766fe86254529292e8b459fc7df2e68e2eedb135e89e48b"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/fixtures/js_unicode17_prepare.cjs",
+      "bytes": 10999,
+      "sha256": "dd5625f1979cdcef8baa453867eec22bf78860853ec0b091cab7da2a195b46c9"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/fixtures/js_unicode_reference.cjs",
+      "bytes": 5625,
+      "sha256": "45bbbf93e63bc6dff382609ad61c988a9ffb574e7d5c78cff2587a8919f5ba17"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/fixtures/moderation_advanced_benchmark.cjs",
+      "bytes": 7192,
+      "sha256": "c6b184a090be5faa54d0c3b23a819d50d961a6c838a6cd7555ad5ab34d5d7b0c"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/fixtures/moderation_advanced_reference.cjs",
+      "bytes": 16278,
+      "sha256": "a25023ea74f34d3d701f037adf743667fe0f6a15e29c5067f3b9d74dd8ae92b1"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/fixtures/moderation_advanced_source.cjs",
+      "bytes": 11640,
+      "sha256": "1205ade8280a3cfebb806e336570ab650a92e178db306f33aa760315fafbee50"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/fixtures/moderation_blacklist_reference.cjs",
+      "bytes": 9380,
+      "sha256": "b68145e6d96f21431db965e8e40b427362ccced35081f5ceb682e89241e55b86"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/fixtures/moderation_decision_schema_reference.cjs",
+      "bytes": 8490,
+      "sha256": "f621900aae44a6d9f0d985bc6ea44562297bbe0f66b6cef84ecb056ee73c9219"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/fixtures/moderation_decisions_reference.cjs",
+      "bytes": 11002,
+      "sha256": "0b7837d2b16d5e6fcdfffb687f0a2c7b2023289f2b7351dbb2faf1dcb1cf503b"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/fixtures/moderation_decisions_source.cjs",
+      "bytes": 7690,
+      "sha256": "cfc4c598dd11f2c696bda4bac9e89da998a682ab1635d62da27d80d6e4ad72e9"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/fixtures/moderation_leaf_source_resolver.cjs",
+      "bytes": 3214,
+      "sha256": "9394389352ed0cfb48aa38f6f1c13aa1ba6b0cc9320d877731f2224fad937e86"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/fixtures/moderation_leaf_source_resolver.test.cjs",
+      "bytes": 2516,
+      "sha256": "925551db4c3a86b2f5d02cbb1cb26be3b5a920064f25be524e06f2f93ef1e5a4"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/fixtures/moderation_links_reference.cjs",
+      "bytes": 9707,
+      "sha256": "4e23301e4f9073d03de921f05b7bd7f4b4bf481451cb00fb9b22e3e29f190df8"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/fixtures/moderation_normalize_reference.cjs",
+      "bytes": 6285,
+      "sha256": "7a9afa384da2ed23a2abde486a58a36debf5963d3a112effeb0315245607e7d7"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/fixtures/moderation_rule_dispatcher_reference.cjs",
+      "bytes": 9910,
+      "sha256": "e01bea66b234d0fe1d1887c65f09dbff5e8d76e93849e89ecfebafaf5aeab199"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/fixtures/moderation_seed_plan_reference.cjs",
+      "bytes": 11657,
+      "sha256": "a2c6ce544765db4a4d21f333cb73826ec10345d249cd52a19ed3376163a8fb36"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/fixtures/moderation_semantic_reference.cjs",
+      "bytes": 16057,
+      "sha256": "8f968ed480ef07491cc0bf4174b365911d888e19074e0df4603ea1b3ebe00f4a"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/fixtures/moderation_semantic_source.cjs",
+      "bytes": 5534,
+      "sha256": "bb0846e5f0331a8cf272b721bbed18471861e8a7bad4fb17f828d46074083dc0"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/fixtures/moderation_semantic_worker_reference.cjs",
+      "bytes": 9047,
+      "sha256": "b1eaab7a015af47e493464174a3dab2f7e72061b9d72c6debdeb285980eef740"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/fixtures/moderation_spam_benchmark.cjs",
+      "bytes": 7124,
+      "sha256": "2ddc4748c9c51a90630f681361f711706b695e04c050f26be2bacf6d6092b704"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/fixtures/moderation_spam_categories_reference.cjs",
+      "bytes": 7037,
+      "sha256": "83d308479833216b3e461012c3c43c548ff5a8137ffb5a6c51fb577818769b7f"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/fixtures/moderation_spam_reference.cjs",
+      "bytes": 13329,
+      "sha256": "85d5e0f0a962e47dd1201e5fd9609c5b9ed50839cbab250d37c5b0ead36875f0"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/fixtures/moderation_spam_source.cjs",
+      "bytes": 11100,
+      "sha256": "19d6dd590e9f816a0d04bb36cd46fb658fb371875b0db166298aaab7543efb0c"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/fixtures/moderation_text_benchmark.cjs",
+      "bytes": 11284,
+      "sha256": "8db601830a2c2f22b72b333c422c4efd8759b20aff96ae6e936a38ea9a3dd3af"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/fixtures/moderation_variation_jobs_reference.cjs",
+      "bytes": 14864,
+      "sha256": "d3755358c016725b2ddee0e61861a232c38b2fd3a836bf45fdc23901be7e7c39"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/fixtures/moderation_variations_benchmark.cjs",
+      "bytes": 5791,
+      "sha256": "3be8044f795a4ed07a6e0e6bf6cbb8f8bc2820e62b9126f40b4f6a60a03eefbf"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/fixtures/moderation_variations_reference.cjs",
+      "bytes": 13414,
+      "sha256": "3b89d8b2f638fb4da4f7dcb945f79f06a766bdb1cb737f9b5d9698d7a772fbeb"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/fixtures/moderation_variations_source.cjs",
+      "bytes": 4192,
+      "sha256": "4b86ff3446a7ed9961d14c5d747c077c20fa82dd9ad14d1032459957c8f3faf4"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/fixtures/schema_composite_defaults_reference.cjs",
+      "bytes": 12421,
+      "sha256": "3e7431720d43590a157a355bc923338a1f28f0d94ab38ccec959678d08d357c6"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/js_unicode.rs",
+      "bytes": 13571,
+      "sha256": "5ea1aba143d2e1f21fa7faa4eb6d7a0fb844495db82fc737f889c5fa2c998f2d"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/moderation_advanced.rs",
+      "bytes": 21486,
+      "sha256": "6e7d79aba6155dfa359acb7240756ff1bb5eac44d82dd300ed6538e96b40a49b"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/moderation_blacklist.rs",
+      "bytes": 13185,
+      "sha256": "cd01924e12ee9a8e883dafa50595aae9b1a3385f30f5b9ad8dc9466ae37f5aeb"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/moderation_decision_schema.rs",
+      "bytes": 9507,
+      "sha256": "b3b798f25e1d02179125c7149261cb55140c6268c3411d5e8617a324f6f5c9e7"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/moderation_links.rs",
+      "bytes": 7842,
+      "sha256": "1095f4a0de583ce7acc5ab5b8dff3bb850d6228c8aa3fcec7a954d2ecaa95dee"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/moderation_normalize.rs",
+      "bytes": 9039,
+      "sha256": "b106622f272d84d1cfb960f0748c63fd9f0ce842f66568be47e490bcae21f5b3"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/moderation_rule_dispatcher.rs",
+      "bytes": 10828,
+      "sha256": "610e78e9cd57ad94e2766bbfce7c50d367a90682845a896e0f6b2a70975616e7"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/moderation_seed_plan.rs",
+      "bytes": 12096,
+      "sha256": "b5015b465306c8356e227e77e943c4e857ac0b5cfd55a058bb8a53079d9758ba"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/moderation_spam_categories.rs",
+      "bytes": 4057,
+      "sha256": "1564603b62e0a0f21392c1bf0451d9445824d954d0f7ad5f8917333dbbfd8bff"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/moderation_text_benchmark.rs",
+      "bytes": 13230,
+      "sha256": "72de35838871054799ce22868e8c976fc289f4331a595a138af5ea591f248454"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/re2_native_syntax.rs",
+      "bytes": 6292,
+      "sha256": "0f0468fcadeafac895f92f062deffb0478c46c3a8ea331d530713e980fda44bb"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/schema_composite_defaults.rs",
+      "bytes": 17086,
+      "sha256": "2c223dbc7f8377be301e7b4bedaf90dd253a986677db09f02b0eaf0e7c4a7b81"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/support/moderation_decisions.rs",
+      "bytes": 18347,
+      "sha256": "a6224357d3d0ef764f8bd04c6af63f3bac41060c4cfa21fb900a4d5aa89e3814"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/support/moderation_leaf_source.rs",
+      "bytes": 2033,
+      "sha256": "a31ad35e001de36ad67008fab5913daf522dc04d9ca3e4f345374b6b2d5b7245"
+    },
+    {
+      "path": "migration-notes/evidence/2026-10-30-moderation-leaf-retirement/source-snapshot/dimabot/tests/support/moderation_semantic.rs",
+      "bytes": 8202,
+      "sha256": "843f62a398c8b378a6c71882191035de8595067fedf7a65474d94fd61200959f"
+    },
+    {
+      "path": "migration-notes/moderation-leaf-retirement-handoff.md",
+      "bytes": 5571,
+      "sha256": "5d71f7f2ed54e7f590b6c8a615383a0e3677c875a0c2939d964fc241b06b934e"
+    },
+    {
+      "path": "migration-notes/moderation-leaf-retirement.md",
+      "bytes": 5173,
+      "sha256": "ea00dfe798cbca0a5c62831db1b55d01ccff838bb010ccdc1c5f7ee7599e83d2"
+    }
+  ]
+}

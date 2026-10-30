@@ -87368,15 +87368,21 @@
         "role": "application"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "reviewed-local-feature-and-dependency-closure",
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/utils/moderation/normalize.ts",
+        "sha256": "07822ff6efe5d707173b6b9e9415b16edfb0eb055c3a03416bf4b4c0c11740ab",
+        "nativeAreaReference": "migration-notes/moderation-leaf-retirement.md"
+      },
+      "featureReview": "reviewed-local-feature-and-dependency-closure; post-retirement verified",
       "localRustEvidence": [
         "dimabot/src/utils/moderation/normalize.rs: typed fold_text and escape_reg_exp exports",
         "dimabot/src/utils/js_unicode.rs and dimabot/src/utils/js_unicode_data.rs: verified Unicode 17 folding/NFD implementation and generated properties",
         "dimabot/src/utils/js_string.rs and dimabot/src/utils/js_compat.rs: lossless UTF-16 strings and JavaScript string compatibility",
         "migration-notes/moderation-text-2026-10-29.md: exact source contract, verification receipts, and caller boundary",
-        "migration-notes/evidence/2026-10-29-moderation-text/README.md: indexed source-bound evidence package"
+        "migration-notes/evidence/2026-10-29-moderation-text/README.md: indexed source-bound evidence package",
+        "migration-notes/moderation-leaf-retirement.md",
+        "2280c62d; final source-tree SHA-256 3b74658dcbacf895501e4476cfc67e14ce73fcf8d7f43a602a93e9f1ea8d09ee"
       ],
       "behaviorDifferencesOrAcceptedChanges": [
         "fold_text accepts an optional typed JsString: None represents the source foldText nullish fallback for null or undefined; Some delegates to the verified Unicode 17 fold core.",
@@ -87390,7 +87396,7 @@
           "src/utils/moderation/advanced.ts",
           "src/utils/moderation/variations.ts"
         ],
-        "runtimeStatus": "Unadopted; TypeScript blacklist rules, advanced literal matching, and variations still import these helpers. No application caller was switched."
+        "runtimeStatus": "TypeScript application consumers remain unadopted. Native local helper dependency closure is verified and source is archived byte-for-byte in the migration checkout; no deployment."
       },
       "testEvidence": {
         "sourceEvidence": [
@@ -87399,9 +87405,11 @@
         "rustBehaviorEvidence": [
           "tests/moderation_normalize.rs",
           "migration-notes/moderation-text-2026-10-29.md",
-          "migration-notes/evidence/2026-10-29-moderation-text/README.md"
+          "migration-notes/evidence/2026-10-29-moderation-text/README.md",
+          "compiler-1793359068803754251: final same-source native source replays, ordinary tests, formatting and strict scoped/minimal/all-feature profiles passed.",
+          "node-1793359025969874012: all affected actual-source fixture checks passed; source workloads retain prior semantics."
         ],
-        "status": "Actual TypeScript oracle write/check passed for 228 string cases and two nullish fold cases; native replay, ordinary and strict compiler/profile checks passed. No performance benchmark was run."
+        "status": "Post-retirement local typed helper and native dependency mapping verified; application adoption remains open."
       },
       "exports": [
         {
@@ -87424,7 +87432,7 @@
         }
       ],
       "imports": [],
-      "rowAssessment": "local-typed-exports-and-native-value-dependencies-verified;source-live;caller-adoption-open"
+      "rowAssessment": "local-typed-exports-and-native-value-dependencies-verified;source-retired;caller-adoption-open"
     },
     {
       "source": "src/utils/moderation/offenses.ts",
@@ -88580,14 +88588,20 @@
         "role": "application"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "reviewed-local-feature-and-dependency-closure",
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/utils/moderation/rules/links.rule.ts",
+        "sha256": "802150266d30c163a4069dd434b723e0320aed50ed34bc2f5674ac267aa41ad0",
+        "nativeAreaReference": "migration-notes/moderation-leaf-retirement.md"
+      },
+      "featureReview": "reviewed-local-feature-and-dependency-closure; post-retirement verified",
       "localRustEvidence": [
         "dimabot/src/utils/moderation/links_rule.rs: source-compatible permissive global link scanner and allowlist evaluation",
         "dimabot/src/utils/js_string.rs, dimabot/src/utils/js_compat.rs, and dimabot/src/utils/js_unicode.rs: UTF-16, ECMAScript whitespace, and Unicode 17 lowercase dependencies",
         "migration-notes/moderation-text-2026-10-29.md: source contract, scanner behavior, exact replay and migration boundary",
-        "migration-notes/evidence/2026-10-29-moderation-text/README.md: indexed source-bound evidence package"
+        "migration-notes/evidence/2026-10-29-moderation-text/README.md: indexed source-bound evidence package",
+        "migration-notes/moderation-leaf-retirement.md",
+        "2280c62d; final source-tree SHA-256 3b74658dcbacf895501e4476cfc67e14ce73fcf8d7f43a602a93e9f1ea8d09ee"
       ],
       "behaviorDifferencesOrAcceptedChanges": [
         "The required type-only Pick field allowlistDomains:string[] has an equivalent native representation; Option models the explicit nullish fallback. No Mongoose runtime schema or service adapter is part of this function dependency.",
@@ -88600,7 +88614,7 @@
           "src/utils/moderation/rules/index.ts",
           "src/handlers/moderation.handler.ts"
         ],
-        "runtimeStatus": "Unadopted; the TypeScript rule registry and moderation handler still call evaluateLinksRule. Settings, dispatch and enforcement remain in the TypeScript application path."
+        "runtimeStatus": "TypeScript application consumers remain unadopted. Native local helper dependency closure is verified and source is archived byte-for-byte in the migration checkout; no deployment."
       },
       "testEvidence": {
         "sourceEvidence": [
@@ -88609,9 +88623,11 @@
         "rustBehaviorEvidence": [
           "tests/moderation_links.rs",
           "migration-notes/moderation-text-2026-10-29.md",
-          "migration-notes/evidence/2026-10-29-moderation-text/README.md"
+          "migration-notes/evidence/2026-10-29-moderation-text/README.md",
+          "compiler-1793359068803754251: final same-source native source replays, ordinary tests, formatting and strict scoped/minimal/all-feature profiles passed.",
+          "node-1793359025969874012: all affected actual-source fixture checks passed; source workloads retain prior semantics."
         ],
-        "status": "Pinned actual-source oracle and 45,057-case native replay passed with ordinary, strict feature/profile and Clippy checks. No performance benchmark was run."
+        "status": "Post-retirement local typed helper and native dependency mapping verified; application adoption remains open."
       },
       "exports": [
         {
@@ -88654,7 +88670,7 @@
           "rustReplacementOrGap": "Equivalent native type covers the selected field. Wider moderation settings, registry, handler and enforcement dependencies remain unmigrated."
         }
       ],
-      "rowAssessment": "local-typed-exports-and-native-value-dependencies-verified;source-live;caller-adoption-open"
+      "rowAssessment": "local-typed-exports-and-native-value-dependencies-verified;source-retired;caller-adoption-open"
     },
     {
       "source": "src/utils/moderation/seed_plan.ts",
@@ -89292,14 +89308,20 @@
         "role": "application"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "reviewed-local-feature-and-dependency-closure",
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/utils/moderation/spam_categories.ts",
+        "sha256": "29dd0951ea0b89567c55b5dce4d2795a74c78e6064b32cbd26a3ecafaa435088",
+        "nativeAreaReference": "migration-notes/moderation-leaf-retirement.md"
+      },
+      "featureReview": "reviewed-local-feature-and-dependency-closure; post-retirement verified",
       "localRustEvidence": [
         "dimabot/src/utils/moderation/spam_categories.rs: typed category/exempt enums, constants, policy strings, settings type and ordered question builder",
         "dimabot/src/utils/js_string.rs: shared ordered JSON string writer used by the question builder",
         "migration-notes/moderation-spam-categories-2026-10-29.md: source contract, boundary, verification receipts and remaining work",
-        "migration-notes/evidence/2026-10-29-moderation-spam-categories/README.md: indexed source-bound evidence package"
+        "migration-notes/evidence/2026-10-29-moderation-spam-categories/README.md: indexed source-bound evidence package",
+        "migration-notes/moderation-leaf-retirement.md",
+        "2280c62d; final source-tree SHA-256 3b74658dcbacf895501e4476cfc67e14ce73fcf8d7f43a602a93e9f1ea8d09ee"
       ],
       "behaviorDifferencesOrAcceptedChanges": [
         "The typed native mapping covers the fixed category catalog. TypeScript exports mutable default arrays; observed callers copy defaults or read policy values, and Rust callers own copied vectors. Runtime mutation of exported JavaScript module objects is not modeled generically.",
@@ -89313,7 +89335,7 @@
           "src/utils/moderation/spam.ts",
           "src/utils/moderation/semantic.ts"
         ],
-        "runtimeStatus": "Unadopted; TypeScript schema and moderation callers remain live. Traced callers copy default arrays or read policy values; no caller was switched to the native module."
+        "runtimeStatus": "TypeScript application consumers remain unadopted. Native local helper dependency closure is verified and source is archived byte-for-byte in the migration checkout; no deployment."
       },
       "testEvidence": {
         "sourceEvidence": [
@@ -89322,9 +89344,11 @@
         "rustBehaviorEvidence": [
           "tests/moderation_spam_categories.rs",
           "migration-notes/moderation-spam-categories-2026-10-29.md",
-          "migration-notes/evidence/2026-10-29-moderation-spam-categories/README.md"
+          "migration-notes/evidence/2026-10-29-moderation-spam-categories/README.md",
+          "compiler-1793359068803754251: final same-source native source replays, ordinary tests, formatting and strict scoped/minimal/all-feature profiles passed.",
+          "node-1793359025969874012: all affected actual-source fixture checks passed; source workloads retain prior semantics."
         ],
-        "status": "Pinned actual-source oracle write/check and all 752 full ordered JSON cases passed; two ordinary tests, ignored full replay, formatting, strict feature/profile checks and Clippy passed. No performance benchmark was run."
+        "status": "Post-retirement local typed helper and native dependency mapping verified; application adoption remains open."
       },
       "exports": [
         {
@@ -89417,7 +89441,7 @@
         }
       ],
       "imports": [],
-      "rowAssessment": "local-typed-exports-and-native-value-dependencies-verified;source-live;caller-adoption-open"
+      "rowAssessment": "local-typed-exports-and-native-value-dependencies-verified;source-retired;caller-adoption-open"
     },
     {
       "source": "src/utils/moderation/spam.test.ts",

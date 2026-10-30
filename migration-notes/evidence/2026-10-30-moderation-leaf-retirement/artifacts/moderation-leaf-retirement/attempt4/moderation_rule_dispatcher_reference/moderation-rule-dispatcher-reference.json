@@ -1,0 +1,1420 @@
+{
+  "metadata": {
+    "format": 1,
+    "sourceProvenance": {
+      "src/utils/moderation/normalize.ts": "archives/dimabot-typescript/2026-10-28/src/utils/moderation/normalize.ts",
+      "src/utils/moderation/rules/links.rule.ts": "archives/dimabot-typescript/2026-10-28/src/utils/moderation/rules/links.rule.ts"
+    },
+    "pins": {
+      "dimabot/src/utils/moderation/rules/index.ts": "39e93288c898eaa68826ec2f011d2ea3fc326d5993293815c3df588552a65d08",
+      "dimabot/src/utils/moderation/rules/links.rule.ts": "802150266d30c163a4069dd434b723e0320aed50ed34bc2f5674ac267aa41ad0",
+      "dimabot/src/utils/moderation/rules/blacklist.rule.ts": "8feb8779f829b72e6fc1f6907a7a8e3b3284dd92b04dcc08980b25120f9144ff",
+      "dimabot/src/utils/moderation/normalize.ts": "07822ff6efe5d707173b6b9e9415b16edfb0eb055c3a03416bf4b4c0c11740ab",
+      "dimabot/src/schemas/channel_moderation_settings.schema.ts": "e7ab82dd1eb02eaaddc5cfc93f41a4b8ff09b14ce0b488a870cbf5c727a23653",
+      "archives/dimabot-typescript/2026-10-28/src/utils/moderation/rules/caps.rule.ts": "62f7fe37760cbf5640544cab646a639d06b42883532657634a00e25488888797",
+      "archives/dimabot-typescript/2026-10-28/src/utils/moderation/rules/emote_spam.rule.ts": "24e7c603569d1063642575372de1066e4f5d5d5de46c88e15e450a549c17f12f",
+      "dimabot/node_modules/typescript/lib/typescript.js": "3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675"
+    },
+    "compiled": {
+      "dimabot/src/utils/moderation/normalize.ts": "c34c1c4d6297c5ec7a3a6ebf035a8887b773c781f0507e35aa6a3cb7413b35b2",
+      "archives/dimabot-typescript/2026-10-28/src/utils/moderation/rules/caps.rule.ts": "79019d513792dafebf29963d5e0649cfd2e6bcd1a69fb00dedceb41b9e019694",
+      "dimabot/src/utils/moderation/rules/links.rule.ts": "df609ac6054ce9158e3b8c5cc60de469073f6022179d755d39a78dff126aeecd",
+      "archives/dimabot-typescript/2026-10-28/src/utils/moderation/rules/emote_spam.rule.ts": "0389deda2cc89dae88870d240df7dc66312aff059bd0011d635b2bbc96e8f7de",
+      "dimabot/src/utils/moderation/rules/blacklist.rule.ts": "bcef48327a13b442e4a770896336f7f7eaf77543e797a15c8e0c305014f71ad1",
+      "dimabot/src/utils/moderation/rules/index.ts": "2d4f8829075e2bab811b35612130bc0bee262e6db72d6cb58b26b5ae666f20f8"
+    },
+    "evidence": {
+      "dimabot/src/utils/moderation/normalize.ts": {
+        "imports": [],
+        "declarations": [
+          {
+            "kind": "FunctionDeclaration",
+            "name": "foldText",
+            "signature": "export function foldText(text: string): string"
+          },
+          {
+            "kind": "FunctionDeclaration",
+            "name": "escapeRegExp",
+            "signature": "export function escapeRegExp(text: string): string"
+          }
+        ]
+      },
+      "archives/dimabot-typescript/2026-10-28/src/utils/moderation/rules/caps.rule.ts": {
+        "imports": [
+          {
+            "path": "../../../schemas/channel_moderation_settings.schema.js",
+            "typeOnly": true,
+            "text": "import type { IModerationRule } from '../../../schemas/channel_moderation_settings.schema.js';"
+          }
+        ],
+        "declarations": [
+          {
+            "kind": "InterfaceDeclaration",
+            "name": "CapsEvaluationInput",
+            "signature": "export interface CapsEvaluationInput {\n    text: string;\n    emoteTexts?: string[];\n}"
+          },
+          {
+            "kind": "InterfaceDeclaration",
+            "name": "CapsEvaluationResult",
+            "signature": "export interface CapsEvaluationResult {\n    triggered: boolean;\n    capsCount: number;\n    letterCount: number;\n    capsPercentage: number;\n}"
+          },
+          {
+            "kind": "FunctionDeclaration",
+            "name": "stripEmoteTexts",
+            "signature": "export function stripEmoteTexts(text: string, emoteTexts: string[] | undefined): string"
+          },
+          {
+            "kind": "FunctionDeclaration",
+            "name": "evaluateCapsRule",
+            "signature": "export function evaluateCapsRule(\n    rule: Pick<IModerationRule, 'capsThresholdMode' | 'minCapsCount' | 'maxCapsPercentage' | 'minMessageLength'>,\n    input: CapsEvaluationInput\n): CapsEvaluationResult"
+          }
+        ]
+      },
+      "dimabot/src/utils/moderation/rules/links.rule.ts": {
+        "imports": [
+          {
+            "path": "../../../schemas/channel_moderation_settings.schema.js",
+            "typeOnly": true,
+            "text": "import type { IModerationRule } from '../../../schemas/channel_moderation_settings.schema.js';"
+          }
+        ],
+        "declarations": [
+          {
+            "kind": "InterfaceDeclaration",
+            "name": "LinksEvaluationResult",
+            "signature": "export interface LinksEvaluationResult {\n    triggered: boolean;\n    urls: string[];\n    blockedUrl: string | null;\n}"
+          },
+          {
+            "kind": "FunctionDeclaration",
+            "name": "evaluateLinksRule",
+            "signature": "export function evaluateLinksRule(\n    rule: Pick<IModerationRule, 'allowlistDomains'>,\n    input: { text: string }\n): LinksEvaluationResult"
+          }
+        ]
+      },
+      "archives/dimabot-typescript/2026-10-28/src/utils/moderation/rules/emote_spam.rule.ts": {
+        "imports": [
+          {
+            "path": "../../../schemas/channel_moderation_settings.schema.js",
+            "typeOnly": true,
+            "text": "import type { IModerationRule } from '../../../schemas/channel_moderation_settings.schema.js';"
+          }
+        ],
+        "declarations": [
+          {
+            "kind": "InterfaceDeclaration",
+            "name": "EmoteSpamEvaluationResult",
+            "signature": "export interface EmoteSpamEvaluationResult {\n    triggered: boolean;\n    emoteCount: number;\n}"
+          },
+          {
+            "kind": "FunctionDeclaration",
+            "name": "evaluateEmoteSpamRule",
+            "signature": "export function evaluateEmoteSpamRule(\n    rule: Pick<IModerationRule, 'maxEmoteCount'>,\n    input: { emoteCount: number }\n): EmoteSpamEvaluationResult"
+          }
+        ]
+      },
+      "dimabot/src/utils/moderation/rules/blacklist.rule.ts": {
+        "imports": [
+          {
+            "path": "../../../schemas/channel_moderation_settings.schema.js",
+            "typeOnly": true,
+            "text": "import type { IModerationRule } from '../../../schemas/channel_moderation_settings.schema.js';"
+          },
+          {
+            "path": "../normalize.js",
+            "typeOnly": false,
+            "text": "import { escapeRegExp, foldText } from '../normalize.js';"
+          }
+        ],
+        "declarations": [
+          {
+            "kind": "InterfaceDeclaration",
+            "name": "BlacklistEvaluationResult",
+            "signature": "export interface BlacklistEvaluationResult {\n    triggered: boolean;\n    matchedText: string | null;\n}"
+          },
+          {
+            "kind": "FunctionDeclaration",
+            "name": "compileBlacklistPattern",
+            "signature": "export function compileBlacklistPattern(terms: string[] | undefined): RegExp | null"
+          },
+          {
+            "kind": "FunctionDeclaration",
+            "name": "evaluateBlacklistRule",
+            "signature": "export function evaluateBlacklistRule(\n    _rule: Pick<IModerationRule, 'terms'>,\n    input: { text: string },\n    pattern: RegExp | null\n): BlacklistEvaluationResult"
+          }
+        ]
+      },
+      "dimabot/src/utils/moderation/rules/index.ts": {
+        "imports": [
+          {
+            "path": "../../../schemas/channel_moderation_settings.schema.js",
+            "typeOnly": true,
+            "text": "import type { IModerationRule } from '../../../schemas/channel_moderation_settings.schema.js';"
+          },
+          {
+            "path": "./caps.rule.js",
+            "typeOnly": false,
+            "text": "import { evaluateCapsRule } from './caps.rule.js';"
+          },
+          {
+            "path": "./links.rule.js",
+            "typeOnly": false,
+            "text": "import { evaluateLinksRule } from './links.rule.js';"
+          },
+          {
+            "path": "./emote_spam.rule.js",
+            "typeOnly": false,
+            "text": "import { evaluateEmoteSpamRule } from './emote_spam.rule.js';"
+          },
+          {
+            "path": "./blacklist.rule.js",
+            "typeOnly": false,
+            "text": "import { evaluateBlacklistRule } from './blacklist.rule.js';"
+          }
+        ],
+        "declarations": [
+          {
+            "kind": "InterfaceDeclaration",
+            "name": "ModerationRuleInput",
+            "signature": "export interface ModerationRuleInput {\n    text: string;\n    emoteCount: number;\n    emoteTexts: string[];\n}"
+          },
+          {
+            "kind": "InterfaceDeclaration",
+            "name": "ModerationRuleResult",
+            "signature": "export interface ModerationRuleResult {\n    triggered: boolean;\n    detail: string;\n}"
+          },
+          {
+            "kind": "FunctionDeclaration",
+            "name": "evaluateRule",
+            "signature": "export function evaluateRule(\n    rule: IModerationRule,\n    input: ModerationRuleInput,\n    blacklistPattern?: RegExp | null\n): ModerationRuleResult"
+          }
+        ]
+      },
+      "dimabot/src/schemas/channel_moderation_settings.schema.ts": {
+        "interface": "export interface IModerationRule {\n    id: string;\n    type: ModerationRuleType;\n    enabled: boolean;\n    firstOffense: IModerationOffenseStep;\n    secondOffense: IModerationOffenseStep;\n    thirdOffense: IModerationOffenseStep;\n    reason: string;\n    exemptUserLevel: number;\n    /**\n     * Tag-mode exemption expression. `null`/absent keeps the numeric\n     * exemptUserLevel gate; a valid expression exempts matching tags; a\n     * present invalid value grants no exemption (fail closed). Mixed value —\n     * reads must pass through inspectExpression.\n     */\n    exemptExpression?: PermissionExpression | null;\n    capsThresholdMode: CapsThresholdMode;\n    minCapsCount: number;\n    maxCapsPercentage: number;\n    minMessageLength: number;\n    allowlistDomains: string[];\n    maxEmoteCount: number;\n    terms: string[];\n    patterns?: ModerationPattern[];\n    semantic?: SemanticPolicy;\n    variations?: ModerationVariations;\n}",
+        "aliases": [
+          "export type ModerationRuleType = 'caps' | 'links' | 'emote_spam' | 'blacklist';",
+          "export type CapsThresholdMode = 'count' | 'percentage';"
+        ]
+      }
+    },
+    "nodeSha": "569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108",
+    "versions": {
+      "node": "24.22.1",
+      "v8": "13.6.233.17-node.58",
+      "icu": "78.3",
+      "unicode": "17.0",
+      "typescript": "5.9.3"
+    },
+    "hashes": {
+      "dimabot/src/utils/moderation/rule_dispatcher.rs": "3b2c392195472c7feac8c1fc46439a46ea7d1293d89dadbd7de29d8bf062f803",
+      "dimabot/src/utils/moderation/caps.rs": "b88b7ad207e0117d47228e417e85a2ef6e5983a286a7c2712dc1bd56ea9b5e2a",
+      "dimabot/src/utils/moderation/links_rule.rs": "276dc421952c30973fe9ecd51512a43e907567f6f254a4686adab632896addb4",
+      "dimabot/src/utils/moderation/emote_spam.rs": "84a7dace99cd228e4cce19891f21f605dd4e5ec4cf060b3bbe13b7fa9847999c",
+      "dimabot/src/utils/moderation/blacklist.rs": "0837e1a05c59da89d115aca67d2b8eb8eaeb7bdbdd5d05caf32466031c4be795",
+      "dimabot/src/utils/moderation/normalize.rs": "6e5a950edc7eb31dd6e5acea96db90f4323d5f3a913d578cbf62beba1c8d5dda",
+      "dimabot/src/utils/json_number.rs": "f463c65a55bcd611ed9bad2444e50acff697969bb910b7b4c17371d0af21f419",
+      "dimabot/src/utils/js_string.rs": "17b3e6a6bcd0d92210851eca25da44bbcdb2c2d9e196feb5dab58d06b75d4aed",
+      "dimabot/tests/moderation_rule_dispatcher.rs": "bea1cf94e4e3da0beff01b9a642a0ea75a96a73860b3048e6cb8e8c6ec4bfb59",
+      "dimabot/tests/fixtures/moderation_rule_dispatcher_reference.cjs": "e01bea66b234d0fe1d1887c65f09dbff5e8d76e93849e89ecfebafaf5aeab199"
+    }
+  },
+  "cases": [
+    {
+      "name": "caps-trigger",
+      "type": "caps",
+      "text": [
+        65,
+        65,
+        97
+      ],
+      "emotes": [],
+      "count": "0000000000000000",
+      "mode": "count",
+      "minCaps": "4000000000000000",
+      "maxCaps": "4049000000000000",
+      "minLength": "3ff0000000000000",
+      "allowlist": [],
+      "maxEmotes": "4008000000000000",
+      "terms": [
+        [
+          98,
+          97,
+          100
+        ]
+      ],
+      "pattern": "missing",
+      "triggered": true,
+      "detail": [
+        99,
+        97,
+        112,
+        115,
+        61,
+        50,
+        47,
+        51,
+        32,
+        40,
+        54,
+        55,
+        37,
+        41
+      ]
+    },
+    {
+      "name": "caps-no",
+      "type": "caps",
+      "text": [
+        97,
+        97,
+        97
+      ],
+      "emotes": [],
+      "count": "0000000000000000",
+      "mode": "count",
+      "minCaps": "4000000000000000",
+      "maxCaps": "4049000000000000",
+      "minLength": "3ff0000000000000",
+      "allowlist": [],
+      "maxEmotes": "4008000000000000",
+      "terms": [
+        [
+          98,
+          97,
+          100
+        ]
+      ],
+      "pattern": "missing",
+      "triggered": false,
+      "detail": [
+        99,
+        97,
+        112,
+        115,
+        61,
+        48,
+        47,
+        51,
+        32,
+        40,
+        48,
+        37,
+        41
+      ]
+    },
+    {
+      "name": "caps-half",
+      "type": "caps",
+      "text": [
+        65,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97,
+        97
+      ],
+      "emotes": [],
+      "count": "0000000000000000",
+      "mode": "percentage",
+      "minCaps": "4000000000000000",
+      "maxCaps": "4049000000000000",
+      "minLength": "3ff0000000000000",
+      "allowlist": [],
+      "maxEmotes": "4008000000000000",
+      "terms": [
+        [
+          98,
+          97,
+          100
+        ]
+      ],
+      "pattern": "missing",
+      "triggered": false,
+      "detail": [
+        99,
+        97,
+        112,
+        115,
+        61,
+        49,
+        47,
+        50,
+        48,
+        48,
+        32,
+        40,
+        49,
+        37,
+        41
+      ]
+    },
+    {
+      "name": "caps-emotes",
+      "type": "caps",
+      "text": [
+        75,
+        65,
+        80,
+        80,
+        65,
+        32,
+        65,
+        65,
+        97
+      ],
+      "emotes": [
+        [
+          75,
+          65,
+          80,
+          80,
+          65
+        ]
+      ],
+      "count": "0000000000000000",
+      "mode": "count",
+      "minCaps": "4000000000000000",
+      "maxCaps": "4049000000000000",
+      "minLength": "3ff0000000000000",
+      "allowlist": [],
+      "maxEmotes": "4008000000000000",
+      "terms": [
+        [
+          98,
+          97,
+          100
+        ]
+      ],
+      "pattern": "missing",
+      "triggered": true,
+      "detail": [
+        99,
+        97,
+        112,
+        115,
+        61,
+        50,
+        47,
+        51,
+        32,
+        40,
+        54,
+        55,
+        37,
+        41
+      ]
+    },
+    {
+      "name": "caps-unicode",
+      "type": "caps",
+      "text": [
+        55297,
+        56320,
+        97,
+        55296
+      ],
+      "emotes": [],
+      "count": "0000000000000000",
+      "mode": "count",
+      "minCaps": "4000000000000000",
+      "maxCaps": "4049000000000000",
+      "minLength": "3ff0000000000000",
+      "allowlist": [],
+      "maxEmotes": "4008000000000000",
+      "terms": [
+        [
+          98,
+          97,
+          100
+        ]
+      ],
+      "pattern": "missing",
+      "triggered": false,
+      "detail": [
+        99,
+        97,
+        112,
+        115,
+        61,
+        49,
+        47,
+        50,
+        32,
+        40,
+        53,
+        48,
+        37,
+        41
+      ]
+    },
+    {
+      "name": "links-trigger",
+      "type": "links",
+      "text": [
+        72,
+        84,
+        84,
+        80,
+        83,
+        58,
+        47,
+        47,
+        931,
+        55296,
+        46,
+        69,
+        120,
+        97,
+        109,
+        112,
+        108,
+        101,
+        47,
+        112,
+        97,
+        116,
+        104
+      ],
+      "emotes": [],
+      "count": "0000000000000000",
+      "mode": "count",
+      "minCaps": "4000000000000000",
+      "maxCaps": "4049000000000000",
+      "minLength": "3ff0000000000000",
+      "allowlist": [],
+      "maxEmotes": "4008000000000000",
+      "terms": [
+        [
+          98,
+          97,
+          100
+        ]
+      ],
+      "pattern": "missing",
+      "triggered": true,
+      "detail": [
+        98,
+        108,
+        111,
+        99,
+        107,
+        101,
+        100,
+        32,
+        117,
+        114,
+        108,
+        58,
+        32,
+        963,
+        55296,
+        46,
+        101,
+        120,
+        97,
+        109,
+        112,
+        108,
+        101
+      ]
+    },
+    {
+      "name": "links-allowed",
+      "type": "links",
+      "text": [
+        104,
+        116,
+        116,
+        112,
+        115,
+        58,
+        47,
+        47,
+        99,
+        108,
+        105,
+        112,
+        115,
+        46,
+        116,
+        119,
+        105,
+        116,
+        99,
+        104,
+        46,
+        116,
+        118,
+        47,
+        120
+      ],
+      "emotes": [],
+      "count": "0000000000000000",
+      "mode": "count",
+      "minCaps": "4000000000000000",
+      "maxCaps": "4049000000000000",
+      "minLength": "3ff0000000000000",
+      "allowlist": [
+        [
+          116,
+          119,
+          105,
+          116,
+          99,
+          104,
+          46,
+          116,
+          118
+        ]
+      ],
+      "maxEmotes": "4008000000000000",
+      "terms": [
+        [
+          98,
+          97,
+          100
+        ]
+      ],
+      "pattern": "missing",
+      "triggered": false,
+      "detail": [
+        110,
+        111,
+        32,
+        98,
+        108,
+        111,
+        99,
+        107,
+        101,
+        100,
+        32,
+        117,
+        114,
+        108,
+        115
+      ]
+    },
+    {
+      "name": "links-empty",
+      "type": "links",
+      "text": [
+        104,
+        101,
+        108,
+        108,
+        111
+      ],
+      "emotes": [],
+      "count": "0000000000000000",
+      "mode": "count",
+      "minCaps": "4000000000000000",
+      "maxCaps": "4049000000000000",
+      "minLength": "3ff0000000000000",
+      "allowlist": [],
+      "maxEmotes": "4008000000000000",
+      "terms": [
+        [
+          98,
+          97,
+          100
+        ]
+      ],
+      "pattern": "missing",
+      "triggered": false,
+      "detail": [
+        110,
+        111,
+        32,
+        98,
+        108,
+        111,
+        99,
+        107,
+        101,
+        100,
+        32,
+        117,
+        114,
+        108,
+        115
+      ]
+    },
+    {
+      "name": "emote-above",
+      "type": "emote_spam",
+      "text": [],
+      "emotes": [],
+      "count": "4010000000000000",
+      "mode": "count",
+      "minCaps": "4000000000000000",
+      "maxCaps": "4049000000000000",
+      "minLength": "3ff0000000000000",
+      "allowlist": [],
+      "maxEmotes": "4008000000000000",
+      "terms": [
+        [
+          98,
+          97,
+          100
+        ]
+      ],
+      "pattern": "missing",
+      "triggered": true,
+      "detail": [
+        101,
+        109,
+        111,
+        116,
+        101,
+        115,
+        61,
+        52,
+        47,
+        51
+      ]
+    },
+    {
+      "name": "emote-equal",
+      "type": "emote_spam",
+      "text": [],
+      "emotes": [],
+      "count": "4008000000000000",
+      "mode": "count",
+      "minCaps": "4000000000000000",
+      "maxCaps": "4049000000000000",
+      "minLength": "3ff0000000000000",
+      "allowlist": [],
+      "maxEmotes": "4008000000000000",
+      "terms": [
+        [
+          98,
+          97,
+          100
+        ]
+      ],
+      "pattern": "missing",
+      "triggered": false,
+      "detail": [
+        101,
+        109,
+        111,
+        116,
+        101,
+        115,
+        61,
+        51,
+        47,
+        51
+      ]
+    },
+    {
+      "name": "emote-nan",
+      "type": "emote_spam",
+      "text": [],
+      "emotes": [],
+      "count": "7ff8000000000000",
+      "mode": "count",
+      "minCaps": "4000000000000000",
+      "maxCaps": "4049000000000000",
+      "minLength": "3ff0000000000000",
+      "allowlist": [],
+      "maxEmotes": "4008000000000000",
+      "terms": [
+        [
+          98,
+          97,
+          100
+        ]
+      ],
+      "pattern": "missing",
+      "triggered": false,
+      "detail": [
+        101,
+        109,
+        111,
+        116,
+        101,
+        115,
+        61,
+        78,
+        97,
+        78,
+        47,
+        51
+      ]
+    },
+    {
+      "name": "emote-infinity",
+      "type": "emote_spam",
+      "text": [],
+      "emotes": [],
+      "count": "7ff0000000000000",
+      "mode": "count",
+      "minCaps": "4000000000000000",
+      "maxCaps": "4049000000000000",
+      "minLength": "3ff0000000000000",
+      "allowlist": [],
+      "maxEmotes": "4008000000000000",
+      "terms": [
+        [
+          98,
+          97,
+          100
+        ]
+      ],
+      "pattern": "missing",
+      "triggered": true,
+      "detail": [
+        101,
+        109,
+        111,
+        116,
+        101,
+        115,
+        61,
+        73,
+        110,
+        102,
+        105,
+        110,
+        105,
+        116,
+        121,
+        47,
+        51
+      ]
+    },
+    {
+      "name": "emote-negative-infinity",
+      "type": "emote_spam",
+      "text": [],
+      "emotes": [],
+      "count": "fff0000000000000",
+      "mode": "count",
+      "minCaps": "4000000000000000",
+      "maxCaps": "4049000000000000",
+      "minLength": "3ff0000000000000",
+      "allowlist": [],
+      "maxEmotes": "7ff0000000000000",
+      "terms": [
+        [
+          98,
+          97,
+          100
+        ]
+      ],
+      "pattern": "missing",
+      "triggered": false,
+      "detail": [
+        101,
+        109,
+        111,
+        116,
+        101,
+        115,
+        61,
+        45,
+        73,
+        110,
+        102,
+        105,
+        110,
+        105,
+        116,
+        121,
+        47,
+        73,
+        110,
+        102,
+        105,
+        110,
+        105,
+        116,
+        121
+      ]
+    },
+    {
+      "name": "emote-negative-zero",
+      "type": "emote_spam",
+      "text": [],
+      "emotes": [],
+      "count": "8000000000000000",
+      "mode": "count",
+      "minCaps": "4000000000000000",
+      "maxCaps": "4049000000000000",
+      "minLength": "3ff0000000000000",
+      "allowlist": [],
+      "maxEmotes": "8000000000000000",
+      "terms": [
+        [
+          98,
+          97,
+          100
+        ]
+      ],
+      "pattern": "missing",
+      "triggered": false,
+      "detail": [
+        101,
+        109,
+        111,
+        116,
+        101,
+        115,
+        61,
+        48,
+        47,
+        48
+      ]
+    },
+    {
+      "name": "emote-large",
+      "type": "emote_spam",
+      "text": [],
+      "emotes": [],
+      "count": "444b1ae4d6e2ef50",
+      "mode": "count",
+      "minCaps": "4000000000000000",
+      "maxCaps": "4049000000000000",
+      "minLength": "3ff0000000000000",
+      "allowlist": [],
+      "maxEmotes": "43abc16d674ec801",
+      "terms": [
+        [
+          98,
+          97,
+          100
+        ]
+      ],
+      "pattern": "missing",
+      "triggered": true,
+      "detail": [
+        101,
+        109,
+        111,
+        116,
+        101,
+        115,
+        61,
+        49,
+        101,
+        43,
+        50,
+        49,
+        47,
+        49,
+        48,
+        48,
+        48,
+        48,
+        48,
+        48,
+        48,
+        48,
+        48,
+        48,
+        48,
+        48,
+        48,
+        48,
+        48,
+        49,
+        48,
+        48
+      ]
+    },
+    {
+      "name": "emote-tiny",
+      "type": "emote_spam",
+      "text": [],
+      "emotes": [],
+      "count": "3e7ad7f29abcaf48",
+      "mode": "count",
+      "minCaps": "4000000000000000",
+      "maxCaps": "4049000000000000",
+      "minLength": "3ff0000000000000",
+      "allowlist": [],
+      "maxEmotes": "0000000000000000",
+      "terms": [
+        [
+          98,
+          97,
+          100
+        ]
+      ],
+      "pattern": "missing",
+      "triggered": true,
+      "detail": [
+        101,
+        109,
+        111,
+        116,
+        101,
+        115,
+        61,
+        49,
+        101,
+        45,
+        55,
+        47,
+        48
+      ]
+    },
+    {
+      "name": "blacklist-match",
+      "type": "blacklist",
+      "text": [
+        33,
+        67,
+        65,
+        70,
+        201,
+        33
+      ],
+      "emotes": [],
+      "count": "0000000000000000",
+      "mode": "count",
+      "minCaps": "4000000000000000",
+      "maxCaps": "4049000000000000",
+      "minLength": "3ff0000000000000",
+      "allowlist": [],
+      "maxEmotes": "4008000000000000",
+      "terms": [
+        [
+          99,
+          97,
+          102,
+          101
+        ]
+      ],
+      "pattern": "compiled",
+      "triggered": true,
+      "detail": [
+        109,
+        97,
+        116,
+        99,
+        104,
+        101,
+        100,
+        32,
+        98,
+        108,
+        97,
+        99,
+        107,
+        108,
+        105,
+        115,
+        116,
+        101,
+        100,
+        32,
+        116,
+        101,
+        114,
+        109
+      ]
+    },
+    {
+      "name": "blacklist-no",
+      "type": "blacklist",
+      "text": [
+        99,
+        108,
+        101,
+        97,
+        110
+      ],
+      "emotes": [],
+      "count": "0000000000000000",
+      "mode": "count",
+      "minCaps": "4000000000000000",
+      "maxCaps": "4049000000000000",
+      "minLength": "3ff0000000000000",
+      "allowlist": [],
+      "maxEmotes": "4008000000000000",
+      "terms": [
+        [
+          98,
+          97,
+          100
+        ]
+      ],
+      "pattern": "compiled",
+      "triggered": false,
+      "detail": [
+        110,
+        111,
+        32,
+        109,
+        97,
+        116,
+        99,
+        104
+      ]
+    },
+    {
+      "name": "blacklist-lone",
+      "type": "blacklist",
+      "text": [
+        33,
+        55296,
+        33
+      ],
+      "emotes": [],
+      "count": "0000000000000000",
+      "mode": "count",
+      "minCaps": "4000000000000000",
+      "maxCaps": "4049000000000000",
+      "minLength": "3ff0000000000000",
+      "allowlist": [],
+      "maxEmotes": "4008000000000000",
+      "terms": [
+        [
+          55296
+        ]
+      ],
+      "pattern": "compiled",
+      "triggered": true,
+      "detail": [
+        109,
+        97,
+        116,
+        99,
+        104,
+        101,
+        100,
+        32,
+        98,
+        108,
+        97,
+        99,
+        107,
+        108,
+        105,
+        115,
+        116,
+        101,
+        100,
+        32,
+        116,
+        101,
+        114,
+        109
+      ]
+    },
+    {
+      "name": "blacklist-missing",
+      "type": "blacklist",
+      "text": [
+        98,
+        97,
+        100
+      ],
+      "emotes": [],
+      "count": "0000000000000000",
+      "mode": "count",
+      "minCaps": "4000000000000000",
+      "maxCaps": "4049000000000000",
+      "minLength": "3ff0000000000000",
+      "allowlist": [],
+      "maxEmotes": "4008000000000000",
+      "terms": [
+        [
+          98,
+          97,
+          100
+        ]
+      ],
+      "pattern": "missing",
+      "triggered": false,
+      "detail": [
+        110,
+        111,
+        32,
+        109,
+        97,
+        116,
+        99,
+        104
+      ]
+    },
+    {
+      "name": "blacklist-null",
+      "type": "blacklist",
+      "text": [
+        98,
+        97,
+        100
+      ],
+      "emotes": [],
+      "count": "0000000000000000",
+      "mode": "count",
+      "minCaps": "4000000000000000",
+      "maxCaps": "4049000000000000",
+      "minLength": "3ff0000000000000",
+      "allowlist": [],
+      "maxEmotes": "4008000000000000",
+      "terms": [
+        [
+          98,
+          97,
+          100
+        ]
+      ],
+      "pattern": "null",
+      "triggered": false,
+      "detail": [
+        110,
+        111,
+        32,
+        109,
+        97,
+        116,
+        99,
+        104
+      ]
+    },
+    {
+      "name": "unknown",
+      "type": "future",
+      "text": [
+        98,
+        97,
+        100
+      ],
+      "emotes": [],
+      "count": "0000000000000000",
+      "mode": "count",
+      "minCaps": "4000000000000000",
+      "maxCaps": "4049000000000000",
+      "minLength": "3ff0000000000000",
+      "allowlist": [],
+      "maxEmotes": "4008000000000000",
+      "terms": [
+        [
+          98,
+          97,
+          100
+        ]
+      ],
+      "pattern": "missing",
+      "triggered": false,
+      "detail": [
+        117,
+        110,
+        107,
+        110,
+        111,
+        119,
+        110,
+        32,
+        114,
+        117,
+        108,
+        101,
+        32,
+        116,
+        121,
+        112,
+        101
+      ]
+    }
+  ]
+}
