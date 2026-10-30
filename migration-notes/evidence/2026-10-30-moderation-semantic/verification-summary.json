@@ -1,0 +1,991 @@
+{
+  "acceptedRuns": [
+    "node-1793342383176037556",
+    "compiler-1793342466130881764"
+  ],
+  "benchmark": "not required; no semantic performance claim",
+  "finalFacts": {
+    "acceptedRuns": [
+      "node-1793342383176037556",
+      "compiler-1793342466130881764"
+    ],
+    "actualSourceCounts": {
+      "evaluate": 65,
+      "evaluatorSeamAdaptations": 10,
+      "explicitPureBoundaries": 3,
+      "normalSemanticTests": 7,
+      "pure": 1071,
+      "spamRegressionPureRecords": 1636,
+      "spamRegressionUnits": 8
+    },
+    "benchmark": {
+      "status": "not-required"
+    },
+    "codeCommit": "1375d89066b3a135268584fb9f6ac5beadd22a3b",
+    "finalVerification": "passed",
+    "firstRun": 1793341490060640373,
+    "gitInputs": 1421,
+    "interpretation": "All source records visited; two unchecked category records prove native enum rejection, one sparse-context record replays matching defined elements, and ten evaluator seam adaptations are reported explicitly. Native typed/ordinary JSON policy and concrete HTTP verified; no unrestricted JS identity, arbitrary prototype, or production performance claim.",
+    "lastRun": 1793342466130881764,
+    "minimumAvailableBytes": 8993722368,
+    "peakCacheBytes": 7639011328,
+    "referenceArtifact": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/moderation-semantic/attempt4/reference/moderation-semantic-reference.json",
+    "referenceSha256": "8980dda8ebd881b38fe85da52bf4ac92a5771f510bc768290099171e1260dfc8",
+    "reusedSdkBindings": {
+      "verification/posthog-rs/Cargo.toml": "7c2898b66160da1b4d971d1ab62921c05817d9d7cb45c9366312a917728a7da7",
+      "verification/posthog-rs/LICENSE": "e4fb4a928821c09b949054b39874b46443db532a307a121dbcf2e515006561a3",
+      "verification/posthog-rs/src/client/async_client.rs": "0c2bb5560eff1a281dd4b1986a40256a3fbb0c3eea3847751a06d6a3c00fbd72",
+      "verification/posthog-rs/src/client/common.rs": "26b934e180e51f3b12b7ca6693feccee12edeceaa9f916934f6e875b71fb068d",
+      "verification/posthog-rs/src/client/mod.rs": "e2dd52f1e691fb9cd1451fac307cc4a54e5c4632a621892283dedb91ec07a577",
+      "verification/posthog-rs/src/client/retry.rs": "563cbf0a7979dcf9879af89bf2e2642eef6c543fcb5d506615c6a227c20802f0",
+      "verification/posthog-rs/src/client/transport.rs": "2f1cbce6b0ac5bd33c76cfc43957f22651640ff626224c9e1753603a4caf059b",
+      "verification/posthog-rs/src/client/v0_capture.rs": "c4442aef3a7b67d790ec828c2c368d21fba0fe9fe4749d8f987b642ecfa7e5b4",
+      "verification/posthog-rs/src/event.rs": "5a4112ea152b483a2dc25195bd56901ece4e6da363dd0904babe48776ceae312",
+      "verification/posthog-rs/src/lib.rs": "bdd3347d2600557fbb05f15a06647f5495a54eba3f8f9579aefa084ff9883242"
+    },
+    "runtimeSeconds": 149.384,
+    "sourceInputs": 1431,
+    "sourceTreeSha256": "181f1e43ed91244e637428d10be65f34e709bef74f46486d5ef5a981cb72c282",
+    "testAccounting": [
+      {
+        "explicitBoundaries": [
+          {
+            "id": "unknown-category-parse",
+            "reason": "unknown is not a SpamCategory literal; source accepts unchecked string, native enum rejects it; no valid category fabricated"
+          },
+          {
+            "id": "unknown-category-request",
+            "reason": "unknown is not a SpamCategory literal; source accepts unchecked string, native enum rejects it; no valid category fabricated"
+          },
+          {
+            "id": "request-context-holes",
+            "reason": "ordinary JSON has no sparse holes; source map preserves holes rather than mapping null. Removed the same tagged hole slots from source input/output and replayed every defined context element; full original hole evidence retained"
+          }
+        ],
+        "pureRecordsVisited": 1071,
+        "typeErrorAdapter": "native RequestError carries source construction TypeError semantics; engine-specific English message is retained only as evidence"
+      },
+      {
+        "concretePipeline": "SemanticProvider + reqwest + private TCP HTTP fixture; URL origin replaced with loopback while path/headers/body compare exactly",
+        "dateAdapter": "tagged actual-source Date becomes explicit binary64 deadline milliseconds; undefined object properties are omitted as in JSON.stringify",
+        "evaluateRecordsVisited": 65,
+        "seamAdaptations": [
+          {
+            "adaptation": "synthetic thrown JS value reproduced as concrete HTTP disconnect before response; fallback compared with source under the same clock sequence; source Error identity retained as evidence",
+            "id": "eval-throw-0"
+          },
+          {
+            "adaptation": "source synthetic TimeoutError reproduced with actual private delayed HTTP; 2000ms source budget shortened to 50ms; exact request body unaffected",
+            "id": "eval-throw-1"
+          },
+          {
+            "adaptation": "synthetic thrown JS value reproduced as concrete HTTP disconnect before response; fallback compared with source under the same clock sequence; source Error identity retained as evidence",
+            "id": "eval-throw-2"
+          },
+          {
+            "adaptation": "synthetic thrown JS value reproduced as concrete HTTP disconnect before response; fallback compared with source under the same clock sequence; source Error identity retained as evidence",
+            "id": "eval-throw-3"
+          },
+          {
+            "adaptation": "synthetic thrown JS value reproduced as concrete HTTP disconnect before response; fallback compared with source under the same clock sequence; source Error identity retained as evidence",
+            "id": "eval-error-after-deadline"
+          },
+          {
+            "adaptation": "synthetic thrown JS value reproduced as concrete HTTP disconnect before response; fallback compared with source under the same clock sequence; source Error identity retained as evidence",
+            "id": "eval-error-wallclock-backwards"
+          },
+          {
+            "adaptation": "synthetic thrown JS value reproduced as concrete HTTP disconnect before response; fallback compared with source under the same clock sequence; source Error identity retained as evidence",
+            "id": "eval-error-forward-beforedeadline"
+          },
+          {
+            "adaptation": "source synthetic TimeoutError reproduced with actual private delayed HTTP; 2000ms source budget shortened to 50ms; exact request body unaffected",
+            "id": "eval-timeouterror-wallclock-backwards"
+          },
+          {
+            "adaptation": "synthetic null process.env entry is outside real Node string-or-absent environment; mapped to absent credentials with identical preflight result",
+            "id": "eval-key-2"
+          },
+          {
+            "adaptation": "source synchronous fetch mock completes within 1ms without network scheduling; concrete loopback success uses 2000ms budget while comparing identical wire request; real expiry is exercised by TimeoutError case",
+            "id": "eval-deadline-2"
+          }
+        ]
+      }
+    ],
+    "verificationReadback": {
+      "acknowledgedBaseline": "production-before.json",
+      "piperRemovalAcknowledgedByUser": true,
+      "productionRecords": 18,
+      "productionRecordsAfter": {
+        "/NPM": {
+          "command": null,
+          "compose": {
+            "com.docker.compose.config-hash": "89d7761d9378cc51095a7af700e3ec73d8db5651694632587dc81eef98f0a4ab",
+            "com.docker.compose.container-number": "1",
+            "com.docker.compose.depends_on": "",
+            "com.docker.compose.image": "sha256:99a885f56ca2203a2eb352a5f9e2cd5c1e25786508debd725ad48ebe955d114f",
+            "com.docker.compose.oneoff": "False",
+            "com.docker.compose.project": "network",
+            "com.docker.compose.project.config_files": "/root/network/docker-compose.yaml",
+            "com.docker.compose.project.working_dir": "/root/network",
+            "com.docker.compose.replace": "NPM",
+            "com.docker.compose.service": "app",
+            "com.docker.compose.version": "5.5.1"
+          },
+          "config_image": "jc21/nginx-proxy-manager:latest",
+          "entrypoint": [
+            "/init"
+          ],
+          "id": "997f422ddf6b20e2b4b6cbbf13beb639a931b0e5a90cf608f1af80272198582a",
+          "image": "sha256:52b2c59994f3d36acfcf70a1626f29734df0ed8c71bacc0269f78b6f939858bb",
+          "mounts": [
+            {
+              "Destination": "/data",
+              "Mode": "rw",
+              "Propagation": "rprivate",
+              "RW": true,
+              "Source": "/root/network/data",
+              "Type": "bind"
+            },
+            {
+              "Destination": "/etc/letsencrypt",
+              "Mode": "rw",
+              "Propagation": "rprivate",
+              "RW": true,
+              "Source": "/root/network/letsencrypt",
+              "Type": "bind"
+            }
+          ],
+          "started": "2026-09-10T06:35:49.758534931Z"
+        },
+        "/database-private-access": {
+          "command": [
+            "haproxy",
+            "-f",
+            "/usr/local/etc/haproxy/haproxy.cfg"
+          ],
+          "compose": {
+            "com.docker.compose.config-hash": "3644b283d5d4ad8496cea969663654cc17c0718e370a77ccf104895678aa1b05",
+            "com.docker.compose.container-number": "1",
+            "com.docker.compose.depends_on": "",
+            "com.docker.compose.image": "sha256:3c2931ee7070f321b0bde9cbf5c27227d72b43f5862b9f028516fbeff4644fbf",
+            "com.docker.compose.oneoff": "False",
+            "com.docker.compose.project": "database-private-access",
+            "com.docker.compose.project.config_files": "/root/databases/private-access/docker-compose.yaml",
+            "com.docker.compose.project.working_dir": "/root/databases/private-access",
+            "com.docker.compose.service": "database-private-access",
+            "com.docker.compose.version": "5.5.1"
+          },
+          "config_image": "haproxy:3.2-alpine@sha256:4e4d428de823155c52f1957fd3208f2b99b1dcc92dc36321752cb4edb8366301",
+          "entrypoint": [
+            "docker-entrypoint.sh"
+          ],
+          "id": "856d387a074ddf64c0068316f950d46235a612ae064bb75478aebf4dbb12b4c5",
+          "image": "sha256:4e4d428de823155c52f1957fd3208f2b99b1dcc92dc36321752cb4edb8366301",
+          "mounts": [
+            {
+              "Destination": "/usr/local/etc/haproxy/haproxy.cfg",
+              "Mode": "ro",
+              "Propagation": "rprivate",
+              "RW": false,
+              "Source": "/root/databases/private-access/haproxy.cfg",
+              "Type": "bind"
+            }
+          ],
+          "started": "2026-10-22T04:32:50.982464917Z"
+        },
+        "/dima-admin": {
+          "command": [
+            "nginx",
+            "-g",
+            "daemon off;"
+          ],
+          "compose": {
+            "com.docker.compose.config-hash": "11fb4e26b5b1f7cc75fe392be5e3d970db35496d8def46aba88e28883ad7afe0",
+            "com.docker.compose.container-number": "1",
+            "com.docker.compose.depends_on": "",
+            "com.docker.compose.image": "sha256:bd43d3d8fdbbe597c36fea489886796466a9ea5b662e8c50897d53e190c88a3d",
+            "com.docker.compose.oneoff": "False",
+            "com.docker.compose.project": "admin",
+            "com.docker.compose.project.config_files": "/root/saas/admin/docker-compose.yaml",
+            "com.docker.compose.project.working_dir": "/root/saas/admin",
+            "com.docker.compose.service": "dima-admin",
+            "com.docker.compose.version": "5.5.1"
+          },
+          "config_image": "nginx:alpine",
+          "entrypoint": [
+            "/docker-entrypoint.sh"
+          ],
+          "id": "10c81992149a253ec9f7f447957271252bdf2a354412b21dc78a8aefbc0e0e52",
+          "image": "sha256:72ba65eb42c10344912a84ff42408db7d34f2feb642204570ab8fc5ffd29f1d3",
+          "mounts": [
+            {
+              "Destination": "/etc/nginx/conf.d/default.conf",
+              "Mode": "ro",
+              "Propagation": "rprivate",
+              "RW": false,
+              "Source": "/root/saas/admin/nginx.conf",
+              "Type": "bind"
+            },
+            {
+              "Destination": "/usr/share/nginx/html",
+              "Mode": "ro",
+              "Propagation": "rprivate",
+              "RW": false,
+              "Source": "/root/saas/admin/dist/admin/browser",
+              "Type": "bind"
+            }
+          ],
+          "started": "2026-09-10T08:10:05.221059264Z"
+        },
+        "/dima-analytics": {
+          "command": [
+            "node",
+            "src/index.mjs"
+          ],
+          "compose": {
+            "com.docker.compose.config-hash": "2e6dbaab8cc52b804d82fb5759f8563f7fcff726ef69f435f7fc9a43ee6c1cff",
+            "com.docker.compose.container-number": "1",
+            "com.docker.compose.depends_on": "",
+            "com.docker.compose.image": "sha256:56c300ed504fc1dc006631aba60aec823682963ddd0330187096167ef1cd8487",
+            "com.docker.compose.oneoff": "False",
+            "com.docker.compose.project": "dima-analytics",
+            "com.docker.compose.project.config_files": "/root/.local/state/saas-ops/649a957c15888e53/analytics-0e3efd31198f/deploy.json",
+            "com.docker.compose.project.working_dir": "/root/saas/dima-analytics",
+            "com.docker.compose.replace": "dima-analytics",
+            "com.docker.compose.service": "analytics",
+            "com.docker.compose.version": "5.5.1"
+          },
+          "config_image": "sha256:b8aeea3bc04cb31cb5dcb0bc32089d896cd7704da93a809ca9869aea53ccddd3",
+          "entrypoint": [
+            "docker-entrypoint.sh"
+          ],
+          "id": "a9c435a553b65b6ef635a44a25f76e3e9aaf5ef1077acf63d3fe9ae46ec23b0d",
+          "image": "sha256:b8aeea3bc04cb31cb5dcb0bc32089d896cd7704da93a809ca9869aea53ccddd3",
+          "mounts": [],
+          "started": "2026-10-22T01:19:02.571220201Z"
+        },
+        "/dima-bot": {
+          "command": [
+            "node",
+            "dist/bot/index.js"
+          ],
+          "compose": {
+            "com.docker.compose.config-hash": "520e1da4db1bea6ebc219c53cacf491e5d85e5e530275f3335145496f83e8bc8",
+            "com.docker.compose.container-number": "1",
+            "com.docker.compose.depends_on": "",
+            "com.docker.compose.image": "sha256:00b194770fa45c83284326645ee238b384dedb8f7cb77099b94e4cc6981c3e12",
+            "com.docker.compose.oneoff": "False",
+            "com.docker.compose.project": "dimabot",
+            "com.docker.compose.project.config_files": "/root/.local/state/saas-ops/649a957c15888e53/bot-ac2b4594424b/deploy.json",
+            "com.docker.compose.project.working_dir": "/root/saas/dimabot",
+            "com.docker.compose.replace": "dima-bot",
+            "com.docker.compose.service": "chat-bot",
+            "com.docker.compose.version": "5.5.1"
+          },
+          "config_image": "sha256:a001f865dc47694124ef59a1f71cdf80e6214f64613f4e5b4d891088f71dca82",
+          "entrypoint": [
+            "docker-entrypoint.sh"
+          ],
+          "id": "c6f7527416ceb0d2d8c00f823a1c39f602ee084ea1939c4219cd13c866518ead",
+          "image": "sha256:a001f865dc47694124ef59a1f71cdf80e6214f64613f4e5b4d891088f71dca82",
+          "mounts": [],
+          "started": "2026-10-26T03:38:04.11742159Z"
+        },
+        "/dima-cron": {
+          "command": [
+            "node",
+            "dist/workers/cron.index.js"
+          ],
+          "compose": {
+            "com.docker.compose.config-hash": "4504d9279ddc2db5faa77a322534a54e9e5dc7b74bbc7dd734dd2b25c51709e2",
+            "com.docker.compose.container-number": "1",
+            "com.docker.compose.depends_on": "",
+            "com.docker.compose.image": "sha256:6587f07120084a0e40aebd5dbaebee46838b272d9cb2514e5fb40323e04ed7e1",
+            "com.docker.compose.oneoff": "False",
+            "com.docker.compose.project": "dimabot",
+            "com.docker.compose.project.config_files": "/root/.local/state/saas-ops/649a957c15888e53/cron-67c85cf5cb26/deploy.json",
+            "com.docker.compose.project.working_dir": "/root/saas/dimabot",
+            "com.docker.compose.replace": "dima-cron",
+            "com.docker.compose.service": "dima-cron",
+            "com.docker.compose.version": "5.5.1"
+          },
+          "config_image": "sha256:e74d867c94aa80bc5032e2726caa6b85ce5329d1af4d6c75686002429415ddf0",
+          "entrypoint": [
+            "docker-entrypoint.sh"
+          ],
+          "id": "bc91724ab3f197284e9a8f77945e167b260772e7c97efdfa0aaf7f1fb9d633cd",
+          "image": "sha256:e74d867c94aa80bc5032e2726caa6b85ce5329d1af4d6c75686002429415ddf0",
+          "mounts": [],
+          "started": "2026-10-26T03:39:18.901826946Z"
+        },
+        "/dima-hoststats": {
+          "command": [
+            "node",
+            "src/index.mjs"
+          ],
+          "compose": {
+            "com.docker.compose.config-hash": "59ddceabfdba7476641b86d9e80c99a25f5bbb1b8fa9cc5b7b1d31f215e5dd36",
+            "com.docker.compose.container-number": "1",
+            "com.docker.compose.depends_on": "",
+            "com.docker.compose.image": "sha256:ba26980862774446eada4a6bb15bdff10098bf0caade5f66e4557f6e34436a91",
+            "com.docker.compose.oneoff": "False",
+            "com.docker.compose.project": "dima-hoststats",
+            "com.docker.compose.project.config_files": "/root/saas/dima-hoststats/docker-compose.yaml",
+            "com.docker.compose.project.working_dir": "/root/saas/dima-hoststats",
+            "com.docker.compose.service": "hoststats",
+            "com.docker.compose.version": "5.5.1"
+          },
+          "config_image": "dima-hoststats:latest",
+          "entrypoint": [
+            "docker-entrypoint.sh"
+          ],
+          "id": "31b5ae12bee7c77895907316dc0e9c81e8f8b13fbbb69cfbe3e7f085bc86e261",
+          "image": "sha256:d004bbeb6bad3795a9d282e9582bac109fc7c0a9416c14973e3ae0659d3158b9",
+          "mounts": [
+            {
+              "Destination": "/host/net_dev",
+              "Mode": "ro",
+              "Propagation": "rprivate",
+              "RW": false,
+              "Source": "/proc/1/net/dev",
+              "Type": "bind"
+            },
+            {
+              "Destination": "/var/run/docker.sock",
+              "Mode": "ro",
+              "Propagation": "rprivate",
+              "RW": false,
+              "Source": "/var/run/docker.sock",
+              "Type": "bind"
+            }
+          ],
+          "started": "2026-10-22T01:18:23.061525678Z"
+        },
+        "/dima-server": {
+          "command": [
+            "node",
+            "dist/server/index.js"
+          ],
+          "compose": {
+            "com.docker.compose.config-hash": "60d024f59865ea177eee4747d595accbc7caff31a39d6abb82911d7d49ac74e3",
+            "com.docker.compose.container-number": "1",
+            "com.docker.compose.depends_on": "",
+            "com.docker.compose.image": "sha256:69f26bdae9f4bce445b778595f340dc53a4fefe25fc5e6a4a2be084a05ac15b1",
+            "com.docker.compose.oneoff": "False",
+            "com.docker.compose.project": "dimabot",
+            "com.docker.compose.project.config_files": "/root/.local/state/saas-ops/649a957c15888e53/api-ee0635765a02/deploy.json",
+            "com.docker.compose.project.working_dir": "/root/saas/dimabot",
+            "com.docker.compose.replace": "dima-server",
+            "com.docker.compose.service": "api-server",
+            "com.docker.compose.version": "5.5.1"
+          },
+          "config_image": "sha256:22091c1adbd9a0891cefe2496bf5c2df8967aa6a10fdf0ca33945cd9cef16030",
+          "entrypoint": [
+            "docker-entrypoint.sh"
+          ],
+          "id": "34b055fd16739f2f15ba97181868929a0fc3232e3327ad5340bb5b99de25bf6d",
+          "image": "sha256:22091c1adbd9a0891cefe2496bf5c2df8967aa6a10fdf0ca33945cd9cef16030",
+          "mounts": [],
+          "started": "2026-10-29T15:33:53.769763795Z"
+        },
+        "/dimabot-site": {
+          "command": [
+            "nginx",
+            "-g",
+            "daemon off;"
+          ],
+          "compose": {
+            "com.docker.compose.config-hash": "3af3b97479d09f8cf68372d82e93d7b4d408f930065941690a7cf27de0a9711b",
+            "com.docker.compose.container-number": "1",
+            "com.docker.compose.depends_on": "",
+            "com.docker.compose.image": "sha256:bd43d3d8fdbbe597c36fea489886796466a9ea5b662e8c50897d53e190c88a3d",
+            "com.docker.compose.oneoff": "False",
+            "com.docker.compose.project": "dimasite",
+            "com.docker.compose.project.config_files": "/root/saas/dimasite/docker-compose.yaml",
+            "com.docker.compose.project.working_dir": "/root/saas/dimasite",
+            "com.docker.compose.service": "dimabot-site",
+            "com.docker.compose.version": "5.5.1"
+          },
+          "config_image": "nginx:alpine",
+          "entrypoint": [
+            "/docker-entrypoint.sh"
+          ],
+          "id": "94de7bc4274530683d7c21bdedd28c706f6e483195f7992e2cd3ac510457a597",
+          "image": "sha256:72ba65eb42c10344912a84ff42408db7d34f2feb642204570ab8fc5ffd29f1d3",
+          "mounts": [
+            {
+              "Destination": "/etc/nginx/conf.d/default.conf",
+              "Mode": "ro",
+              "Propagation": "rprivate",
+              "RW": false,
+              "Source": "/root/saas/dimasite/nginx.conf",
+              "Type": "bind"
+            },
+            {
+              "Destination": "/usr/share/nginx/html",
+              "Mode": "ro",
+              "Propagation": "rprivate",
+              "RW": false,
+              "Source": "/root/saas/dimasite/dist/dimasite/browser",
+              "Type": "bind"
+            }
+          ],
+          "started": "2026-09-10T08:10:04.891128899Z"
+        },
+        "/dimadb": {
+          "command": [
+            "node",
+            "server/index.mjs"
+          ],
+          "compose": {
+            "com.docker.compose.config-hash": "723fd02cc0a39274647b140717b89d21753f80fda440d295e1bbd8d4a3802274",
+            "com.docker.compose.container-number": "1",
+            "com.docker.compose.depends_on": "",
+            "com.docker.compose.image": "sha256:bf3edf0e6e498bc3266c241287eff8958a1c0575cea10d26106eff35e8abc9a3",
+            "com.docker.compose.oneoff": "False",
+            "com.docker.compose.project": "dimadb",
+            "com.docker.compose.project.config_files": "/root/saas/dimadb/docker-compose.yaml",
+            "com.docker.compose.project.working_dir": "/root/saas/dimadb",
+            "com.docker.compose.service": "dimadb",
+            "com.docker.compose.version": "5.5.1"
+          },
+          "config_image": "dimadb:latest",
+          "entrypoint": [
+            "docker-entrypoint.sh"
+          ],
+          "id": "92f1fa7cfb6fbcf76a42a84a86b91b8919490ae10f413dfc8947ea3a6fe2ffcd",
+          "image": "sha256:2dcbaf3882acb6c091e702e0b2adc303a47b980a98f18552b62fc1df751f4d50",
+          "mounts": [
+            {
+              "Destination": "/data",
+              "Mode": "rw",
+              "Propagation": "rprivate",
+              "RW": true,
+              "Source": "/root/saas/dimadb/data",
+              "Type": "bind"
+            }
+          ],
+          "started": "2026-09-10T08:05:16.602698792Z"
+        },
+        "/dimadocs": {
+          "command": [
+            "nginx",
+            "-g",
+            "daemon off;"
+          ],
+          "compose": {
+            "com.docker.compose.config-hash": "dd16c4fd59154566d1cd01bfc37097653c0e1c31bb8fbb0a8dda46982c4d7c44",
+            "com.docker.compose.container-number": "1",
+            "com.docker.compose.depends_on": "",
+            "com.docker.compose.image": "sha256:bd43d3d8fdbbe597c36fea489886796466a9ea5b662e8c50897d53e190c88a3d",
+            "com.docker.compose.oneoff": "False",
+            "com.docker.compose.project": "dimadocs",
+            "com.docker.compose.project.config_files": "/root/saas/dimadocs/docker-compose.yml",
+            "com.docker.compose.project.working_dir": "/root/saas/dimadocs",
+            "com.docker.compose.service": "dimadocs",
+            "com.docker.compose.version": "5.5.1"
+          },
+          "config_image": "nginx:alpine",
+          "entrypoint": [
+            "/docker-entrypoint.sh"
+          ],
+          "id": "868d041cd30eaac0c4e6cf12b9829f8c5e3507aa06e4aec458de1279f3e66301",
+          "image": "sha256:72ba65eb42c10344912a84ff42408db7d34f2feb642204570ab8fc5ffd29f1d3",
+          "mounts": [
+            {
+              "Destination": "/etc/nginx/conf.d/default.conf",
+              "Mode": "ro",
+              "Propagation": "rprivate",
+              "RW": false,
+              "Source": "/root/saas/dimadocs/nginx.conf",
+              "Type": "bind"
+            },
+            {
+              "Destination": "/usr/share/nginx/html",
+              "Mode": "ro",
+              "Propagation": "rprivate",
+              "RW": false,
+              "Source": "/root/saas/dimadocs/dist",
+              "Type": "bind"
+            }
+          ],
+          "started": "2026-09-10T08:10:05.566704246Z"
+        },
+        "/dimafx": {
+          "command": [
+            "nginx",
+            "-g",
+            "daemon off;"
+          ],
+          "compose": {
+            "com.docker.compose.config-hash": "ef17b58b971f2366098cf551f70c74c0b170ed78868ee225b8e2d2eed4cadc81",
+            "com.docker.compose.container-number": "1",
+            "com.docker.compose.depends_on": "",
+            "com.docker.compose.image": "sha256:bd43d3d8fdbbe597c36fea489886796466a9ea5b662e8c50897d53e190c88a3d",
+            "com.docker.compose.oneoff": "False",
+            "com.docker.compose.project": "dimafx",
+            "com.docker.compose.project.config_files": "/root/saas/dimafx/docker-compose.yml",
+            "com.docker.compose.project.working_dir": "/root/saas/dimafx",
+            "com.docker.compose.service": "dimafx",
+            "com.docker.compose.version": "5.5.1"
+          },
+          "config_image": "nginx:alpine",
+          "entrypoint": [
+            "/docker-entrypoint.sh"
+          ],
+          "id": "677fa5ef7919ed52bc58ac1c57af00f2a6129f65de350e1a6e4b2682d42e146f",
+          "image": "sha256:72ba65eb42c10344912a84ff42408db7d34f2feb642204570ab8fc5ffd29f1d3",
+          "mounts": [
+            {
+              "Destination": "/etc/nginx/conf.d/default.conf",
+              "Mode": "ro",
+              "Propagation": "rprivate",
+              "RW": false,
+              "Source": "/root/saas/dimafx/nginx.conf",
+              "Type": "bind"
+            },
+            {
+              "Destination": "/usr/share/nginx/html",
+              "Mode": "ro",
+              "Propagation": "rprivate",
+              "RW": false,
+              "Source": "/root/saas/dimafx",
+              "Type": "bind"
+            }
+          ],
+          "started": "2026-09-10T08:10:05.911316806Z"
+        },
+        "/dimafx-server": {
+          "command": [
+            "npm",
+            "run",
+            "start"
+          ],
+          "compose": {
+            "com.docker.compose.config-hash": "2eb0236a38a3b350869a7d7e66df247ebb13280164691060e5b60c8a155c605d",
+            "com.docker.compose.container-number": "1",
+            "com.docker.compose.depends_on": "",
+            "com.docker.compose.image": "sha256:30ce200762db996542693639582702c90f7eb8346161ba62a02a66d80e59acb9",
+            "com.docker.compose.oneoff": "False",
+            "com.docker.compose.project": "dimafx",
+            "com.docker.compose.project.config_files": "/root/.local/state/saas-ops/649a957c15888e53/dimafx-server-7a307acbb322/deploy.json",
+            "com.docker.compose.project.working_dir": "/root/saas/dimafx",
+            "com.docker.compose.replace": "dimafx-server",
+            "com.docker.compose.service": "dimafx-server",
+            "com.docker.compose.version": "5.5.1"
+          },
+          "config_image": "sha256:88f53d552961ada3f9096d0106fc9dcc98dc050e91dd2f4445c664dbb3782ab4",
+          "entrypoint": [
+            "docker-entrypoint.sh"
+          ],
+          "id": "27851ab18d36593e1ebfa705c5bed565d7f87f696951429874510985dfd9269f",
+          "image": "sha256:88f53d552961ada3f9096d0106fc9dcc98dc050e91dd2f4445c664dbb3782ab4",
+          "mounts": [],
+          "started": "2026-09-30T21:58:14.005074985Z"
+        },
+        "/dragonfly": {
+          "command": [
+            "--proactor_threads=4",
+            "--force_epoll=true",
+            "--cache_mode=true",
+            "--version_check=false"
+          ],
+          "compose": {
+            "com.docker.compose.config-hash": "7d20b0861c7ef4a1b76fb24b0346bfc59637fc7f9891a29b2a12bf89846ed8fd",
+            "com.docker.compose.container-number": "1",
+            "com.docker.compose.depends_on": "",
+            "com.docker.compose.image": "sha256:950b4c5518fd806d144689bda413490dc4a0889836dde7395790c49562808920",
+            "com.docker.compose.oneoff": "False",
+            "com.docker.compose.project": "databases",
+            "com.docker.compose.project.config_files": "/root/databases/docker-compose.yaml",
+            "com.docker.compose.project.working_dir": "/root/databases",
+            "com.docker.compose.service": "dragonfly",
+            "com.docker.compose.version": "5.5.1"
+          },
+          "config_image": "ghcr.io/dragonflydb/dragonfly:latest",
+          "entrypoint": [
+            "/usr/bin/tini",
+            "--",
+            "entrypoint.sh"
+          ],
+          "id": "434a101486c8ad36cb1b65dbc16bdc11d1ef232ca16e206cc2f38a2eda9aae33",
+          "image": "sha256:18afa43e911f1dff18c7d1eb452361876d9702bb1cdff5c5d75c69617a4065c9",
+          "mounts": [
+            {
+              "Destination": "/data",
+              "Mode": "rw",
+              "Propagation": "rprivate",
+              "RW": true,
+              "Source": "/root/databases/dragonfly_data",
+              "Type": "bind"
+            }
+          ],
+          "started": "2026-09-10T07:36:46.536352651Z"
+        },
+        "/lfm2.5-embeddings": {
+          "command": [
+            "/usr/local/bin/run-lfm2-embeddings.sh"
+          ],
+          "compose": {
+            "com.docker.compose.config-hash": "9b299c013d72769f39178886c2350206de3350e7ff7b92f0125a55692661fce2",
+            "com.docker.compose.container-number": "1",
+            "com.docker.compose.depends_on": "",
+            "com.docker.compose.image": "sha256:89cfb63d625c94ce34fb429391d468a5786d37b873727084594810574b099f31",
+            "com.docker.compose.oneoff": "False",
+            "com.docker.compose.project": "dimabot",
+            "com.docker.compose.project.config_files": "/root/saas/dimabot/docker-compose.yaml",
+            "com.docker.compose.project.working_dir": "/root/saas/dimabot",
+            "com.docker.compose.service": "lfm2.5-embeddings",
+            "com.docker.compose.version": "5.5.1"
+          },
+          "config_image": "dimabot/lfm2-embeddings:latest",
+          "entrypoint": null,
+          "id": "49c5aac8a37b4af3a0d63850d1e51f93ef9ea63d568d8b26eaca363dc46435ab",
+          "image": "sha256:a9a68f29ed4578f27b3b2faddb5d4ca6717b4554c8ed151fbd15e5a302126e27",
+          "mounts": [
+            {
+              "Destination": "/data",
+              "Driver": "local",
+              "Mode": "rw",
+              "Name": "dimabot_lfm2-embeddings-data",
+              "Propagation": "",
+              "RW": true,
+              "Source": "/var/lib/docker/volumes/dimabot_lfm2-embeddings-data/_data",
+              "Type": "volume"
+            }
+          ],
+          "started": "2026-10-19T00:51:05.771228434Z"
+        },
+        "/mongodb": {
+          "command": [
+            "mongod"
+          ],
+          "compose": {
+            "com.docker.compose.config-hash": "a57272170c90aaf9146e171ea792f418efd20a59baeece865d8ae308e71111ba",
+            "com.docker.compose.container-number": "1",
+            "com.docker.compose.depends_on": "",
+            "com.docker.compose.image": "sha256:9c97228da610a4a1a407e34fe790dcdf5a4273c1e84d1c74cd2231b72881ffca",
+            "com.docker.compose.oneoff": "False",
+            "com.docker.compose.project": "databases",
+            "com.docker.compose.project.config_files": "/root/databases/docker-compose.yaml",
+            "com.docker.compose.project.working_dir": "/root/databases",
+            "com.docker.compose.service": "mongodb",
+            "com.docker.compose.version": "5.5.1"
+          },
+          "config_image": "mongo:8.2.6",
+          "entrypoint": [
+            "docker-entrypoint.sh"
+          ],
+          "id": "6059ed94f90354857102dcd33790c83ecb837be018a3ba03f99c06f6d6ef428a",
+          "image": "sha256:9690b268c50317b2988a7f84f514a2cdcf4de6836e12c295b48f3a203731fce1",
+          "mounts": [
+            {
+              "Destination": "/dima_mongo",
+              "Mode": "rw",
+              "Propagation": "rprivate",
+              "RW": true,
+              "Source": "/root/databases/dima_mongo",
+              "Type": "bind"
+            },
+            {
+              "Destination": "/data/configdb",
+              "Driver": "local",
+              "Mode": "",
+              "Name": "d17510b3023285fbb7afefae185e4b93495ca91c211b029364165207fffa11ea",
+              "Propagation": "",
+              "RW": true,
+              "Source": "/var/lib/docker/volumes/d17510b3023285fbb7afefae185e4b93495ca91c211b029364165207fffa11ea/_data",
+              "Type": "volume"
+            },
+            {
+              "Destination": "/data/db",
+              "Mode": "rw",
+              "Propagation": "rprivate",
+              "RW": true,
+              "Source": "/root/databases/mongo_data",
+              "Type": "bind"
+            }
+          ],
+          "started": "2026-09-10T07:36:46.410337361Z"
+        },
+        "/postgres": {
+          "command": [
+            "postgres"
+          ],
+          "compose": {
+            "com.docker.compose.config-hash": "cdb766044b12c4f65e65d962380eb505a6e69c0b9efba2d1b18b2531f85aeafb",
+            "com.docker.compose.container-number": "1",
+            "com.docker.compose.depends_on": "",
+            "com.docker.compose.image": "sha256:99a149d3c84cfb0f32d8da7d72737e4643468787220af2223418730f8e9e9cdc",
+            "com.docker.compose.oneoff": "False",
+            "com.docker.compose.project": "databases",
+            "com.docker.compose.project.config_files": "/root/databases/docker-compose.yaml",
+            "com.docker.compose.project.working_dir": "/root/databases",
+            "com.docker.compose.service": "postgres",
+            "com.docker.compose.version": "5.5.1"
+          },
+          "config_image": "pgvector/pgvector:0.8.1-pg17",
+          "entrypoint": [
+            "docker-entrypoint.sh"
+          ],
+          "id": "281dc111cd6e7ddf5b28b47b600fa7527bdd4eb59790af8b39dc1ffbb85f1ac3",
+          "image": "sha256:3e8b3adfd27b5707128f60956f62a793c3c9326ea8cfaf0eab7adccb5d700b21",
+          "mounts": [
+            {
+              "Destination": "/var/lib/postgresql/data",
+              "Mode": "rw",
+              "Propagation": "rprivate",
+              "RW": true,
+              "Source": "/root/databases/postgres_data",
+              "Type": "bind"
+            }
+          ],
+          "started": "2026-09-10T07:36:46.171669217Z"
+        },
+        "/qdrant": {
+          "command": [
+            "./entrypoint.sh"
+          ],
+          "compose": {
+            "com.docker.compose.config-hash": "c3ffb63206ff08a6601b09da1df2f036cd6e12175b2eb01c89fd486604ee754b",
+            "com.docker.compose.container-number": "1",
+            "com.docker.compose.depends_on": "",
+            "com.docker.compose.image": "sha256:31b0f28f395e46f9adc3b2c8d5b42ad9d7aa151ba212026b98a3691722460104",
+            "com.docker.compose.oneoff": "False",
+            "com.docker.compose.project": "databases",
+            "com.docker.compose.project.config_files": "/root/databases/docker-compose.yaml",
+            "com.docker.compose.project.working_dir": "/root/databases",
+            "com.docker.compose.service": "qdrant",
+            "com.docker.compose.version": "5.5.1"
+          },
+          "config_image": "qdrant/qdrant:v1.17.0",
+          "entrypoint": null,
+          "id": "bb1b1f9b1c6ed70fa6157f2e493fc5ef2fc06824a5757d7fff6729a6d581bf27",
+          "image": "sha256:f1c7272cdac52b38c1a0e89313922d940ba50afd90d593a1605dbbc214e66ffb",
+          "mounts": [
+            {
+              "Destination": "/qdrant/storage",
+              "Mode": "rw",
+              "Propagation": "rprivate",
+              "RW": true,
+              "Source": "/root/databases/qdrant_data",
+              "Type": "bind"
+            }
+          ],
+          "started": "2026-09-10T07:36:46.291816039Z"
+        }
+      },
+      "productionUnchanged": true,
+      "remainingOwnedResources": {
+        "containers": [],
+        "networks": [],
+        "volumes": []
+      }
+    },
+    "verificationTiming": {
+      "exit_code": 0,
+      "name": "compiler",
+      "seconds": 138.56
+    }
+  },
+  "referenceArtifacts": {
+    "attempt1-moderation-semantic-reference.json.gz": {
+      "gzipBytes": 933235,
+      "gzipSha256": "cc0db4fcd7fe359422609747a38e24de83b777a302612bdc3661d27142e8977e",
+      "rawBytes": 29485628,
+      "rawSha256": "73e6550df576843e481ec73d1b1a6dad50b33160148701306b6c740be9b28052"
+    },
+    "attempt2-moderation-semantic-reference.json.gz": {
+      "gzipBytes": 933239,
+      "gzipSha256": "93e42a52cc7f4bf9c48f73a7e2a1e2371064e8c52cf79ae2b5f5f1b2f805ed7a",
+      "rawBytes": 29485628,
+      "rawSha256": "a7570c80dcf5c28ebcc5c3230ad3c1202bc69e39a04d4d308865ab513f74a61d"
+    },
+    "attempt3-moderation-semantic-reference.json.gz": {
+      "gzipBytes": 933239,
+      "gzipSha256": "c699fd5cbd5d784af7bd3e8cc0dee5295fed240353979e163409e908b2e3396c",
+      "rawBytes": 29485628,
+      "rawSha256": "8dfa5ea7abaebf8b5cd52bce83a563d1fc0573f89da3bbac84898ec6b108b986"
+    },
+    "attempt4-moderation-semantic-reference.json.gz": {
+      "gzipBytes": 933241,
+      "gzipSha256": "c0e0034b7ab9f24d032cdf1d48509f6a5857c2f4ebd4b942e8cbf42bf3eae64e",
+      "rawBytes": 29485628,
+      "rawSha256": "8980dda8ebd881b38fe85da52bf4ac92a5771f510bc768290099171e1260dfc8"
+    }
+  },
+  "retainedRuns": [
+    {
+      "logBytes": 3153,
+      "logGzipBytes": 1446,
+      "logGzipSha256": "5537486ec013780a27d901900b214d2b227a9d99036266100db965671115b5dd",
+      "logSha256": "df003228a2af70bee96147660c1a3cb51836b640a0ff5a078bed10307bbf26bd",
+      "phase": "compiler",
+      "run": "compiler-1793341532905463327",
+      "sourceTreeSha256": "a2f364aced4d2330a93c5a5d1b1c0e10fcd77eed26934c042ee5437f77b72784",
+      "success": false
+    },
+    {
+      "logBytes": 3255,
+      "logGzipBytes": 1492,
+      "logGzipSha256": "9fe8176a60ff35019b274898347f341261b6bf4a70372f136c83e95bd163d7e3",
+      "logSha256": "09cdb5581111269392ad0ebc6eaedb8c6702d3481284bf45bdf73664349930dd",
+      "phase": "compiler",
+      "run": "compiler-1793341598374804144",
+      "sourceTreeSha256": "52d0fb86e77ce8e58f7a74ddb97006f659af79bbd5543d725df61542ba5895fb",
+      "success": false
+    },
+    {
+      "logBytes": 2721,
+      "logGzipBytes": 1327,
+      "logGzipSha256": "e6072eb1be0b38fb4fe7ac8386ca7d8bc92647679bfb5321120284545fb4f846",
+      "logSha256": "b418045b4ad5a9921f7266e31edad9532b7fcee3079a7cf9ee8ed345929d65cd",
+      "phase": "compiler",
+      "run": "compiler-1793341710465498469",
+      "sourceTreeSha256": "cb09f2b9cad92d6347a7ea05ebf874036282b360f90096496c5e8675160ade19",
+      "success": false
+    },
+    {
+      "logBytes": 2911,
+      "logGzipBytes": 1448,
+      "logGzipSha256": "1f39167863839f63edaade1bad9af22c02984d4acfe40605dbd653b2ccbc4716",
+      "logSha256": "2aacd10a4f9b8491a38cb7423ea5e0e587b7df3c1065ba86585b68ebe5995c7b",
+      "phase": "compiler",
+      "run": "compiler-1793341770756616975",
+      "sourceTreeSha256": "9237d944add04b7e680730c21349f7efaf20ab17e2378215d170a6d51a82fa82",
+      "success": false
+    },
+    {
+      "logBytes": 2619,
+      "logGzipBytes": 1276,
+      "logGzipSha256": "e132550276c16e759a09bbe93e394213e731658cebc7005839eedc4913007637",
+      "logSha256": "93eb4a702cd2b92b2ede0f12f0e09c3697cb6e650f3217bf3feca439b09baa55",
+      "phase": "compiler",
+      "run": "compiler-1793341863870217302",
+      "sourceTreeSha256": "bb5b5a2469dbe57a41cba98603ab4e28a99a00a051255e2ee26dbeea20cde317",
+      "success": false
+    },
+    {
+      "logBytes": 6685,
+      "logGzipBytes": 2253,
+      "logGzipSha256": "fa7bdcb94b3d37820d2674af28a191de2da3aab21c91819b952e2c8d610eaead",
+      "logSha256": "231e22d277dcb34889dfe3833d82343b8cd69927195876d71c3d70a31956a2f7",
+      "phase": "compiler",
+      "run": "compiler-1793341911840308264",
+      "sourceTreeSha256": "c654d6529e4acf79ec967ae5d24553406c652c35ecfca6eb09cfd32b57df7998",
+      "success": false
+    },
+    {
+      "logBytes": 3347,
+      "logGzipBytes": 1450,
+      "logGzipSha256": "738461c55e66087bebb149faa7efb4ed51b6b70a11cf4a4281ac22ef6d1677e7",
+      "logSha256": "6e736799783b5f1a012ff72918cfded20ad68a55349c93c270d64351e48b26e1",
+      "phase": "compiler",
+      "run": "compiler-1793342146054013340",
+      "sourceTreeSha256": "6db91380f870d7a79480da7bc8d2496016fca33145246df480b2c7d15e879b4a",
+      "success": true
+    },
+    {
+      "logBytes": 7924,
+      "logGzipBytes": 2714,
+      "logGzipSha256": "a09ed0b5c1ae5d8d44227e4d566b852fbf25dee8130906a401aabbe22c295309",
+      "logSha256": "f5253eda272522d331680ec5625779fbfc73aa9efc3453ba8d08ded0d5dfd22b",
+      "phase": "compiler",
+      "run": "compiler-1793342236327034110",
+      "sourceTreeSha256": "6db91380f870d7a79480da7bc8d2496016fca33145246df480b2c7d15e879b4a",
+      "success": true
+    },
+    {
+      "logBytes": 8284,
+      "logGzipBytes": 2720,
+      "logGzipSha256": "0b08035c92bd23f5ffe9335a82e1e808a58e4d0f733fa3b08d763f78d9fb5340",
+      "logSha256": "c67b186fa0503f7c45615d9d8f6413d188a1ce16d9b46c8280426525b414eeea",
+      "phase": "compiler",
+      "run": "compiler-1793342466130881764",
+      "sourceTreeSha256": "181f1e43ed91244e637428d10be65f34e709bef74f46486d5ef5a981cb72c282",
+      "success": true
+    },
+    {
+      "logBytes": 1833,
+      "logGzipBytes": 873,
+      "logGzipSha256": "ae106fa54c0a55d82e88ba77f61cbd2a4cfcc810fedf8a20aee6dce4105586ef",
+      "logSha256": "d8df33ba72c691319594a6938a8cc1f756798afbe8a2dc8dedcec22abade739d",
+      "phase": "format",
+      "run": "format-1793341490060640373",
+      "sourceTreeSha256": "6eb38c58a3fb801bcd28977f6438c0798eda5e7eb78ee877d229a77198a09ae1",
+      "success": true
+    },
+    {
+      "logBytes": 1833,
+      "logGzipBytes": 873,
+      "logGzipSha256": "ae106fa54c0a55d82e88ba77f61cbd2a4cfcc810fedf8a20aee6dce4105586ef",
+      "logSha256": "d8df33ba72c691319594a6938a8cc1f756798afbe8a2dc8dedcec22abade739d",
+      "phase": "format",
+      "run": "format-1793341807826160110",
+      "sourceTreeSha256": "d3b159a061c2b5c25bc1f787edf558f7e65eb13a13378424ed5aea28ab9e003f",
+      "success": true
+    },
+    {
+      "logBytes": 1833,
+      "logGzipBytes": 873,
+      "logGzipSha256": "ae106fa54c0a55d82e88ba77f61cbd2a4cfcc810fedf8a20aee6dce4105586ef",
+      "logSha256": "d8df33ba72c691319594a6938a8cc1f756798afbe8a2dc8dedcec22abade739d",
+      "phase": "format",
+      "run": "format-1793341982795059424",
+      "sourceTreeSha256": "1c3b3ee685441fbb7f675f3db46350f8ef12f0a200c60652badbc1cc0464a947",
+      "success": true
+    },
+    {
+      "logBytes": 1833,
+      "logGzipBytes": 873,
+      "logGzipSha256": "ae106fa54c0a55d82e88ba77f61cbd2a4cfcc810fedf8a20aee6dce4105586ef",
+      "logSha256": "d8df33ba72c691319594a6938a8cc1f756798afbe8a2dc8dedcec22abade739d",
+      "phase": "format",
+      "run": "format-1793342077256673322",
+      "sourceTreeSha256": "4394416b328a67c2e18c275555cbcdce8f8cb50b350a3c359ef757a1513b8242",
+      "success": true
+    },
+    {
+      "logBytes": 1111,
+      "logGzipBytes": 303,
+      "logGzipSha256": "eb74c0d089f7c4d6f57049fd517d520da170c512f69ca86e0f08e12472b6ae1c",
+      "logSha256": "d664e047ab85527ad34397cb3011acfd1bd885a795d72c2ec6e566e4d1d5e0b8",
+      "phase": "node",
+      "run": "node-1793341532920558402",
+      "sourceTreeSha256": "a2f364aced4d2330a93c5a5d1b1c0e10fcd77eed26934c042ee5437f77b72784",
+      "success": true
+    },
+    {
+      "logBytes": 1111,
+      "logGzipBytes": 303,
+      "logGzipSha256": "48c2763d0bd5190a44c9dbedaf507d70928296b1a995ed1eefe355ef13d10a22",
+      "logSha256": "0dd5de573b8d41b2f599363d9d9d382e96e974f57ef18f52f2a8876724ab3e9a",
+      "phase": "node",
+      "run": "node-1793341598405861390",
+      "sourceTreeSha256": "52d0fb86e77ce8e58f7a74ddb97006f659af79bbd5543d725df61542ba5895fb",
+      "success": true
+    },
+    {
+      "logBytes": 1111,
+      "logGzipBytes": 304,
+      "logGzipSha256": "4727312edc0dd788adf48b315f25d9419222d0166ff30edef1a42f963ae7e3cf",
+      "logSha256": "2621074a9ee2660deec6f37fe5179034395426e15a4500db1722e8c359fea573",
+      "phase": "node",
+      "run": "node-1793342146058107600",
+      "sourceTreeSha256": "6db91380f870d7a79480da7bc8d2496016fca33145246df480b2c7d15e879b4a",
+      "success": true
+    },
+    {
+      "logBytes": 1111,
+      "logGzipBytes": 305,
+      "logGzipSha256": "005637ed7a33ec0f68ccc692e9e07ea203c23bc83aa61f0f03e7a1fa3e94b5f6",
+      "logSha256": "5d0fcb0c82a90d9e936031d70e401a79adc52f9c70a6666dce6a55455f5a38df",
+      "phase": "node",
+      "run": "node-1793342383176037556",
+      "sourceTreeSha256": "181f1e43ed91244e637428d10be65f34e709bef74f46486d5ef5a981cb72c282",
+      "success": true
+    }
+  ]
+}

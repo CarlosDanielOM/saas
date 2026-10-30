@@ -1,0 +1,573 @@
+use std::sync::{Arc, Mutex};
+
+use crate::endpoints::{EndpointManager, DEFAULT_HOST};
+#[cfg(feature = "error-tracking")]
+use crate::error_tracking::ErrorTrackingOptions;
+use crate::event::Event;
+use derive_builder::Builder;
+use tracing::warn;
+
+mod common;
+#[cfg(test)]
+mod local_payload_test_support;
+#[cfg(test)]
+mod minimal_gate_test_support;
+mod on_error;
+mod summary;
+
+pub(crate) use common::apply_on_error_hooks;
+pub(crate) use on_error::OnErrorHook;
+pub use on_error::{CaptureFailure, FlagsFailure, LocalEvaluationFailure, PostHogError};
+pub use summary::CaptureSummary;
+
+/// Request-body compression algorithm for the capture pipelines.
+///
+/// When set on [`ClientOptions`], capture requests are compressed and the
+/// matching `Content-Encoding` header is sent. The variant string matches the
+/// HTTP `Content-Encoding` token the server expects. The V0 pipeline supports
+/// `Gzip` only; V1 supports all variants.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CaptureCompression {
+    Gzip,
+    Deflate,
+    Br,
+    Zstd,
+}
+
+impl CaptureCompression {
+    /// The HTTP `Content-Encoding` token for this algorithm.
+    pub(crate) fn content_encoding(self) -> &'static str {
+        match self {
+            CaptureCompression::Gzip => "gzip",
+            CaptureCompression::Deflate => "deflate",
+            CaptureCompression::Br => "br",
+            CaptureCompression::Zstd => "zstd",
+        }
+    }
+}
+
+#[cfg(not(feature = "async-client"))]
+mod blocking;
+mod retry;
+mod transport;
+#[cfg(not(feature = "capture-v1"))]
+mod v0_capture;
+#[cfg(feature = "capture-v1")]
+mod v1_capture;
+#[cfg(not(feature = "async-client"))]
+pub use blocking::client;
+#[cfg(not(feature = "async-client"))]
+pub use blocking::Client;
+
+#[cfg(feature = "async-client")]
+mod async_client;
+#[cfg(feature = "async-client")]
+pub use async_client::client;
+#[cfg(feature = "async-client")]
+pub use async_client::Client;
+
+type BeforeSendFn = dyn FnMut(Event) -> Option<Event> + Send + 'static;
+type SharedBeforeSendHook = Arc<Mutex<Box<BeforeSendFn>>>;
+
+/// Hook that can modify or discard events before they are sent.
+///
+/// Hooks run before serialization. Return `Some(event)` to continue sending the
+/// event, or `None` to drop it.
+///
+/// Hook panics are caught and cause the current event to be dropped. If a hook
+/// keeps mutable state, a panic can leave that state partially updated; the SDK
+/// recovers the hook mutex and subsequent events continue through the same hook.
+#[derive(Clone)]
+pub struct BeforeSendHook(SharedBeforeSendHook);
+
+impl BeforeSendHook {
+    /// Create a new before-send hook.
+    pub fn new<F>(hook: F) -> Self
+    where
+        F: FnMut(Event) -> Option<Event> + Send + 'static,
+    {
+        Self(Arc::new(Mutex::new(Box::new(hook))))
+    }
+
+    pub(crate) fn apply(&self, event: Event) -> Option<Event> {
+        let mut hook = self
+            .0
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        (hook)(event)
+    }
+}
+
+pub(crate) const CRATE_VERSION: &str = env!("CARGO_PKG_VERSION");
+const SDK_USERAGENT_NAME: &str = "posthog-rs";
+
+pub(crate) fn get_default_user_agent() -> String {
+    format!("{}/{}", SDK_USERAGENT_NAME, CRATE_VERSION)
+}
+
+/// Configuration options for the PostHog client.
+///
+/// Use [`ClientOptionsBuilder`] to construct options with custom settings, or
+/// create options directly from a project API key with
+/// `ClientOptions::from("your-api-key")`.
+///
+/// # Example
+///
+/// ```ignore
+/// use posthog_rs::ClientOptionsBuilder;
+///
+/// let options = ClientOptionsBuilder::default()
+///     .api_key("your-project-api-key".to_string())
+///     .host("https://eu.posthog.com")
+///     .build()
+///     .unwrap();
+/// ```
+#[derive(Builder, Clone)]
+#[builder(build_fn(name = "build_unchecked", private))]
+pub struct ClientOptions {
+    /// Host URL for the PostHog API. Defaults to the US ingestion endpoint.
+    /// App hosts such as `https://eu.posthog.com` are normalized to ingestion
+    /// hosts before requests are sent.
+    #[builder(setter(into, strip_option), default)]
+    host: Option<String>,
+
+    /// PostHog project API key (project token). If missing or blank, the client
+    /// is disabled.
+    #[builder(default)]
+    api_key: String,
+
+    /// Optional async HTTP client for immediate capture, flags, and local evaluation.
+    /// Defaults to an SDK-created client. Clones share the supplied connection pool.
+    /// The SDK still applies `request_timeout_seconds` to capture and local
+    /// evaluation, and `feature_flags_request_timeout_seconds` to remote flags.
+    /// These options replace the supplied client's request timeout, even when the
+    /// client's timeout is shorter. Background capture uses `blocking_http_client`;
+    /// see its documentation for the limits of `shutdown_timeout_ms`.
+    ///
+    /// Only supply clients whose default headers and cookies are safe to send to
+    /// PostHog. Do not share clients carrying credentials for unrelated services;
+    /// the SDK cannot inspect or filter those defaults.
+    #[cfg(feature = "async-client")]
+    #[builder(default, setter(strip_option))]
+    http_client: Option<reqwest::Client>,
+
+    /// Optional blocking HTTP client for blocking requests and background capture.
+    /// Defaults to SDK-created clients. Clones share the supplied connection pool.
+    /// The SDK still applies `request_timeout_seconds` to capture and local
+    /// evaluation, and `feature_flags_request_timeout_seconds` to remote flags.
+    /// These options replace the supplied client's request timeout, even when the
+    /// client's timeout is shorter.
+    ///
+    /// `shutdown_timeout_ms` bounds shutdown draining and caps requests started
+    /// during that drain at the remaining deadline. It does not interrupt work
+    /// already underway. An in-flight request can delay `shutdown()` or `Drop`
+    /// until `request_timeout_seconds` expires; an automatic multi-batch flush
+    /// already underway can delay teardown by several request timeouts.
+    /// It is not a hard limit on the total time spent waiting for the worker.
+    ///
+    /// Only supply clients whose default headers and cookies are safe to send to
+    /// PostHog. Do not share clients carrying credentials for unrelated services;
+    /// the SDK cannot inspect or filter those defaults.
+    ///
+    /// Create and finally drop application-owned blocking clients, including handles
+    /// held in options and builders, outside async runtimes. SDK shutdown does not
+    /// invalidate application-held clones. Both setters require a compatible reqwest
+    /// version (currently 0.13).
+    #[builder(default, setter(strip_option))]
+    blocking_http_client: Option<reqwest::blocking::Client>,
+
+    /// Per-request timeout in seconds for capture, batch, and local evaluation
+    /// definition requests. Defaults to `30`.
+    /// Also applies to custom HTTP clients, replacing their request timeout even
+    /// when that timeout is shorter. Remote flags use `feature_flags_request_timeout_seconds`.
+    #[builder(default = "30")]
+    request_timeout_seconds: u64,
+
+    /// Secret key used for local feature flag evaluation and remote config.
+    ///
+    /// Accepts either a Personal API Key (`phx_...`) or a Project Secret API
+    /// Key (`phs_...`). Required when `enable_local_evaluation` is `true`.
+    #[builder(setter(into, strip_option), default)]
+    secret_key: Option<String>,
+
+    /// Enable local evaluation of feature flags using a background definitions
+    /// poller.
+    #[builder(default = "false")]
+    enable_local_evaluation: bool,
+
+    /// Interval for polling flag definitions, in seconds. Defaults to `30`.
+    #[builder(default = "30")]
+    poll_interval_seconds: u64,
+
+    /// Disable tracking and remote flag requests. Useful for development and
+    /// tests.
+    #[builder(default = "false")]
+    disabled: bool,
+
+    /// Disable automatic GeoIP enrichment for capture and flag requests.
+    #[builder(default = "false")]
+    disable_geoip: bool,
+
+    /// Whether events originate from a server-side runtime. Defaults to `true`,
+    /// which stamps `$is_server: true` so PostHog won't attribute the host OS to
+    /// the user. Set `false` for client/CLI use (the property is then omitted).
+    #[builder(default = "true")]
+    is_server: bool,
+
+    /// Per-request timeout in seconds for remote `/flags` requests. Defaults to `3`.
+    /// Also applies to custom HTTP clients, replacing their request timeout even
+    /// when that timeout is shorter. Capture and local-evaluation polling use
+    /// `request_timeout_seconds`.
+    #[builder(default = "3")]
+    feature_flags_request_timeout_seconds: u64,
+
+    /// Maximum number of retries after a transient remote `/flags` failure
+    /// (transport error or HTTP 502/504). Defaults to `1`. Set to `0` to
+    /// disable retries.
+    #[builder(default = "1")]
+    pub(crate) feature_flags_request_max_retries: u32,
+
+    /// Error tracking stacktrace and frame classification options
+    #[cfg(feature = "error-tracking")]
+    #[builder(default)]
+    error_tracking: ErrorTrackingOptions,
+
+    /// When true, never fall back to the remote API for flag evaluation. If local
+    /// evaluation is inconclusive (flag not cached or missing properties), the SDK
+    /// returns `Ok(None)` instead of making a network call. Only meaningful when
+    /// `enable_local_evaluation` is also true.
+    #[builder(default = "false")]
+    local_evaluation_only: bool,
+
+    /// Maximum number of attempts for V1 capture requests (default: 3).
+    /// Includes the initial attempt, so `3` means 1 initial + 2 retries.
+    #[builder(default = "3")]
+    #[cfg_attr(not(feature = "capture-v1"), allow(dead_code))]
+    pub(crate) max_capture_attempts: u32,
+
+    /// Initial retry backoff duration in milliseconds (default: 200)
+    #[builder(default = "200")]
+    #[cfg_attr(not(feature = "capture-v1"), allow(dead_code))]
+    pub(crate) retry_initial_backoff_ms: u64,
+
+    /// Maximum retry backoff duration in milliseconds (default: 30000)
+    #[builder(default = "30000")]
+    #[cfg_attr(not(feature = "capture-v1"), allow(dead_code))]
+    pub(crate) retry_max_backoff_ms: u64,
+
+    /// Number of buffered events that triggers an automatic flush (default: 100).
+    #[builder(default = "100")]
+    pub(crate) flush_at: usize,
+
+    /// Maximum number of events sent in a single batch request (default: 100).
+    /// A flush of more than this many events is split into multiple requests.
+    #[builder(default = "100")]
+    pub(crate) max_batch_size: usize,
+
+    /// Interval between automatic time-based flushes, in milliseconds
+    /// (default: 5000).
+    #[builder(default = "5000")]
+    pub(crate) flush_interval_ms: u64,
+
+    /// Maximum number of events buffered before new events are dropped
+    /// (default: 10000). A single warning is logged while the queue is full.
+    #[builder(default = "10000")]
+    pub(crate) max_queue_size: usize,
+
+    /// Maximum time `shutdown()` and `Drop` spend draining buffered and
+    /// retrying events before abandoning the rest, in milliseconds (default:
+    /// 30000). This bounds the drain itself, including any delivery the drain
+    /// starts. It does not bound work already underway: the single background
+    /// worker performs one blocking send at a time, so an automatic flush or
+    /// drain in progress when shutdown is requested runs to completion first —
+    /// up to `request_timeout_seconds` per in-flight batch, including with a custom
+    /// blocking client, so a large auto-drain can delay teardown by several
+    /// request timeouts. `flush()` is
+    /// unaffected.
+    #[builder(default = "30000")]
+    pub(crate) shutdown_timeout_ms: u64,
+
+    /// Optional request-body compression. When `None` (default), bodies are
+    /// sent uncompressed. The V0 pipeline supports `Gzip` only; V1 supports all
+    /// variants.
+    #[builder(default, setter(strip_option))]
+    pub(crate) capture_compression: Option<CaptureCompression>,
+
+    /// Hooks to modify, filter, or sample events before they are sent.
+    #[builder(default, setter(custom))]
+    pub(crate) before_send: Vec<BeforeSendHook>,
+
+    /// Hooks invoked once per terminal failure on a network surface (capture
+    /// batch delivery, remote `/flags` requests, the local-evaluation poller).
+    /// Observability only; registering at least one also silences the default
+    /// WARN logged for terminal capture batch rejects/exhaustion (the caller now
+    /// owns that signal).
+    #[builder(default, setter(custom))]
+    pub(crate) on_error: Vec<OnErrorHook>,
+
+    /// Extra HTTP headers injected into every outbound capture request.
+    /// Used by the SDK test harness adapter to attach `X-Test-Id` for
+    /// parallel test isolation.
+    #[cfg(feature = "test-harness")]
+    #[builder(default, setter(strip_option))]
+    #[allow(dead_code)]
+    pub(crate) extra_capture_headers: Option<std::collections::HashMap<String, String>>,
+
+    #[builder(setter(skip))]
+    #[builder(default = "EndpointManager::new(DEFAULT_HOST.to_string())")]
+    endpoint_manager: EndpointManager,
+}
+
+/// Resolved client-level default properties for capture requests.
+///
+/// Built once from [`ClientOptions`] and threaded through all event-producing
+/// paths (V0 capture, V0 flag-called host, V1 capture) so each default is
+/// applied in exactly one place with caller-wins (`entry().or_insert`)
+/// semantics.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct CaptureDefaults {
+    pub(crate) disable_geoip: bool,
+    pub(crate) is_server: bool,
+}
+
+impl ClientOptions {
+    /// Build the resolved capture defaults for this client configuration.
+    pub(crate) fn capture_defaults(&self) -> CaptureDefaults {
+        CaptureDefaults {
+            disable_geoip: self.disable_geoip,
+            is_server: self.is_server,
+        }
+    }
+
+    /// Get the endpoint manager
+    pub(crate) fn endpoints(&self) -> &EndpointManager {
+        &self.endpoint_manager
+    }
+
+    /// Get error tracking options.
+    #[cfg(feature = "error-tracking")]
+    pub(crate) fn error_tracking(&self) -> &ErrorTrackingOptions {
+        &self.error_tracking
+    }
+
+    /// Check whether the client is disabled.
+    ///
+    /// A client is disabled when configured with `disabled(true)` or when the
+    /// project API key is missing or blank after trimming.
+    pub fn is_disabled(&self) -> bool {
+        self.disabled
+    }
+
+    fn sanitize(mut self) -> Self {
+        self.api_key = self.api_key.trim().to_string();
+        if self.api_key.is_empty() {
+            warn!("api_key is empty after trimming whitespace; disabling PostHog client");
+            self.disabled = true;
+        }
+        self.host = Some(match self.host {
+            Some(host) => {
+                let normalized = host.trim().to_string();
+                if normalized.is_empty() {
+                    DEFAULT_HOST.to_string()
+                } else {
+                    normalized
+                }
+            }
+            None => DEFAULT_HOST.to_string(),
+        });
+        self.secret_key = self.secret_key.and_then(|secret_key| {
+            let normalized = secret_key.trim().to_string();
+            if normalized.is_empty() {
+                None
+            } else {
+                Some(normalized)
+            }
+        });
+        self.endpoint_manager = EndpointManager::new(
+            self.host
+                .clone()
+                .expect("host is always normalized in sanitize"),
+        );
+        self
+    }
+}
+
+impl ClientOptionsBuilder {
+    /// Add a hook that can modify or discard events before they are sent.
+    ///
+    /// Hooks should avoid panicking. Panics are caught and drop the current event,
+    /// but any mutable state captured by the hook may be left partially updated
+    /// and will be reused on subsequent calls.
+    pub fn before_send<F>(&mut self, hook: F) -> &mut Self
+    where
+        F: FnMut(Event) -> Option<Event> + Send + 'static,
+    {
+        self.before_send
+            .get_or_insert_with(Vec::new)
+            .push(BeforeSendHook::new(hook));
+        self
+    }
+
+    /// Add a hook invoked once per terminal failure on an SDK network surface.
+    ///
+    /// The hook receives a [`PostHogError`] for a capture batch the SDK gave up
+    /// delivering, a failed remote `/flags` request, or a failed
+    /// local-evaluation poll. Multiple hooks fire in registration order.
+    ///
+    /// # Observability only — never emit from the hook
+    ///
+    /// The hook MUST NOT call back into the SDK (`capture`/`capture_batch`/
+    /// `capture_exception`, `flush`, or `shutdown`): emitting an event while
+    /// handling a capture failure forms an amplification loop. The hook is
+    /// `Fn + Send + Sync` and invoked without holding any SDK lock, so it may
+    /// run concurrently on multiple threads and must be internally thread-safe.
+    /// Keep it cheap and non-blocking; the capture hook runs on the background
+    /// transport thread. Panics are caught and ignored.
+    ///
+    /// Registering a hook silences the default WARN for terminal capture
+    /// reject/exhaustion and serialization failures (the caller now owns that
+    /// signal). Shutdown-timeout, queue-full, and `before_send` drops keep their
+    /// WARN logs and do **not** fire the hook — they are not delivery failures.
+    /// The existing `/flags` and poller WARN logs are unaffected.
+    pub fn on_error<F>(&mut self, hook: F) -> &mut Self
+    where
+        F: Fn(&PostHogError<'_>) + Send + Sync + 'static,
+    {
+        self.on_error
+            .get_or_insert_with(Vec::new)
+            .push(OnErrorHook::new(hook));
+        self
+    }
+
+    /// Build sanitized [`ClientOptions`].
+    ///
+    /// Missing or whitespace-only API keys are allowed and disable the client so
+    /// SDK initialization remains infallible while avoiding requests with an
+    /// empty API key.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ClientOptionsBuilderError`] if a required builder value is
+    /// invalid according to the generated builder.
+    pub fn build(&self) -> Result<ClientOptions, ClientOptionsBuilderError> {
+        Ok(self.build_unchecked()?.sanitize())
+    }
+
+    /// Deprecated alias for [`secret_key`](Self::secret_key).
+    ///
+    /// Kept for backwards compatibility; forwards to `secret_key`. The last
+    /// builder call wins if both are set.
+    #[deprecated(
+        note = "use `secret_key` instead; it accepts a Personal API Key or a Project Secret API Key"
+    )]
+    pub fn personal_api_key<VALUE: Into<String>>(&mut self, value: VALUE) -> &mut Self {
+        self.secret_key = Some(Some(value.into()));
+        self
+    }
+}
+
+impl From<&str> for ClientOptions {
+    /// Create options from a PostHog project API key.
+    fn from(api_key: &str) -> Self {
+        ClientOptionsBuilder::default()
+            .api_key(api_key.to_string())
+            .build()
+            .expect("We always set the API key, so this is infallible")
+    }
+}
+
+impl From<(&str, &str)> for ClientOptions {
+    /// Create options from a PostHog project API key and host URL.
+    fn from((api_key, host): (&str, &str)) -> Self {
+        ClientOptionsBuilder::default()
+            .api_key(api_key.to_string())
+            .host(host.to_string())
+            .build()
+            .expect("We always set the API key, so this is infallible")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ClientOptionsBuilder;
+    use crate::endpoints::{EU_INGESTION_ENDPOINT, US_INGESTION_ENDPOINT};
+
+    #[test]
+    fn trims_whitespace_sensitive_options() {
+        let options = ClientOptionsBuilder::default()
+            .api_key(" \n test-api-key\t ".to_string())
+            .host(" \nhttps://eu.posthog.com/\t ")
+            .secret_key(" \n\t ")
+            .build()
+            .unwrap();
+
+        assert_eq!(options.api_key, "test-api-key");
+        assert_eq!(options.host.as_deref(), Some("https://eu.posthog.com/"));
+        assert_eq!(options.secret_key, None);
+        assert_eq!(options.endpoints().api_host(), EU_INGESTION_ENDPOINT);
+    }
+
+    #[test]
+    #[allow(deprecated)]
+    fn personal_api_key_forwards_to_secret_key_last_call_wins() {
+        let resolve = |calls: &[(&str, &str)]| {
+            let mut builder = ClientOptionsBuilder::default();
+            builder.api_key("test-api-key".to_string());
+            for (which, val) in calls {
+                match *which {
+                    "secret" => builder.secret_key(*val),
+                    _ => builder.personal_api_key(*val),
+                };
+            }
+            builder.build().unwrap().secret_key
+        };
+
+        assert_eq!(
+            resolve(&[("secret", "phs_secret")]).as_deref(),
+            Some("phs_secret")
+        );
+        assert_eq!(
+            resolve(&[("personal", "phx_personal")]).as_deref(),
+            Some("phx_personal")
+        );
+        assert_eq!(
+            resolve(&[("personal", "phx_personal"), ("secret", "phs_secret")]).as_deref(),
+            Some("phs_secret")
+        );
+        assert_eq!(
+            resolve(&[("secret", "phs_secret"), ("personal", "phx_personal")]).as_deref(),
+            Some("phx_personal")
+        );
+    }
+
+    #[test]
+    fn defaults_blank_host_after_trimming_whitespace() {
+        let options = ClientOptionsBuilder::default()
+            .api_key("test-api-key".to_string())
+            .host(" \n\t ")
+            .build()
+            .unwrap();
+
+        assert_eq!(options.host.as_deref(), Some(US_INGESTION_ENDPOINT));
+        assert_eq!(options.endpoints().api_host(), US_INGESTION_ENDPOINT);
+    }
+
+    #[test]
+    fn builder_allows_missing_api_key_and_disables_client() {
+        let options = ClientOptionsBuilder::default().build().unwrap();
+
+        assert_eq!(options.api_key, "");
+        assert!(options.is_disabled());
+    }
+
+    #[test]
+    fn builder_disables_client_for_trim_empty_api_key() {
+        let options = ClientOptionsBuilder::default()
+            .api_key(" \n\t ".to_string())
+            .build()
+            .unwrap();
+
+        assert_eq!(options.api_key, "");
+        assert!(options.is_disabled());
+    }
+}

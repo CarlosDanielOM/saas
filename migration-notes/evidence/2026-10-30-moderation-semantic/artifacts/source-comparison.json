@@ -1,0 +1,7 @@
+{
+  "sourcePureRecordsUnchanged": 1071,
+  "sourceEvaluateRecordsUnchanged": 65,
+  "priorFixtureSha256": "8dfa5ea7abaebf8b5cd52bce83a563d1fc0573f89da3bbac84898ec6b108b986",
+  "currentFixtureSha256": "8980dda8ebd881b38fe85da52bf4ac92a5771f510bc768290099171e1260dfc8",
+  "reason": "native replay provenance updated after correcting diagnostic text; source expected results unchanged"
+}

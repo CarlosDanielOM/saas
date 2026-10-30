@@ -88807,73 +88807,145 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-bounded-partial-local-semantic-decision-helper-and-concrete-openrouter-transport; actual-source replay and strict profiles passed within the typed/ordinary-JSON contract; JavaScript object-boundary differences and caller adoption remain open",
+      "localRustEvidence": [
+        "dimabot/src/utils/moderation/semantic.rs: typed semantic policy/results, raw ordinary-JSON adapters, pooled OpenRouter provider and injected clock path",
+        "dimabot/tests/moderation_semantic.rs and dimabot/tests/moderation_semantic_provider.rs: semantic decisions and concrete loopback HTTP behavior",
+        "dimabot/tests/moderation_semantic_source.rs and dimabot/tests/support/moderation_semantic.rs: actual-source replay and explicit boundary accounting",
+        "migration-notes/moderation-semantic.md: source contract, verified scope and remaining dependencies",
+        "migration-notes/evidence/2026-10-30-moderation-semantic/README.md: indexed accepted receipts, full attempt history and reproduction tools"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The native declared SpamCategory enum accepts exactly spam, ads, self_promotion, profanity, and insults. Two unchecked source records with an unknown category are explicitly recorded as native enum rejections, not valid typed passes.",
+        "Ordinary JSON does not represent undefined identity, sparse holes, getters, prototypes, proxies, symbols, functions, BigInt, or cycles. The source sparse-context case removes matching hole slots and replays every defined element; it is an explicit adapter.",
+        "The raw evaluator takes explicit deadline milliseconds in place of a Date object. Source synthetic fetch exceptions and environment-only values use the ten documented concrete HTTP/credential/clock seam adaptations; those are not unrestricted JavaScript parity.",
+        "The parser uses the existing lossless JSON boundary and inherits its nesting limit. Native request errors and reqwest diagnostics are not claimed to reproduce engine-specific English error text or independent SDK timeout identity.",
+        "No semantic performance benchmark was run. The helper-level correctness and loopback transport evidence does not measure production traffic or establish end-to-end latency.",
+        "The semantic moderation worker, persistence/queue orchestration, billing/Polar integration, moderation consequences, and live TypeScript callers remain separate and unadopted."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "src/utils/moderation/semantic_worker.ts imports evaluateSemanticDecision, fallbackResult, semanticPrice, and moderationModelForAccount.",
+          "src/workers/semantic_moderation.worker.ts invokes the TypeScript semantic_moderation worker path.",
+          "src/handlers/moderation.handler.ts builds and dispatches semantic moderation decisions.",
+          "src/server/routes/moderation.route.ts reads and updates semantic rule settings."
+        ],
+        "runtimeStatus": "The native helper/provider are verified locally, but the TypeScript moderation handler, route, semantic worker, persistence, billing adapter and runtime callers remain live and have not adopted Rust."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "tests/fixtures/moderation_semantic_source.cjs and tests/fixtures/moderation_semantic_reference.cjs: pinned actual semantic.ts, attribution, spam/advanced sources and complete actual-source reference.",
+          "Final source replay visited 1,071 pure and 65 evaluator records; three pure boundary cases and ten evaluator seam adaptations are explicitly counted."
+        ],
+        "rustBehaviorEvidence": [
+          "tests/moderation_semantic.rs: seven ordinary tests passed.",
+          "tests/moderation_semantic_provider.rs: concrete SemanticProvider + reqwest + private loopback HTTP behavior, including held-header/body cancellation and peer EOF/reset.",
+          "tests/moderation_semantic_source.rs and tests/support/moderation_semantic.rs: final exact-source replay and independent clock timeout test passed.",
+          "Final regression: eight spam unit tests and 1,636 spam source records passed after the shared SPAM_RULE_ID move.",
+          "Formatting, scoped, minimal, Mongo/Redis and all-feature strict checks passed in compiler-1793342466130881764.",
+          "migration-notes/evidence/2026-10-30-moderation-semantic/verification-summary.json"
+        ],
+        "status": "Final Node run node-1793342383176037556 and compiler run compiler-1793342466130881764 passed on commit 1375d89066b3a135268584fb9f6ac5beadd22a3b, tree 181f1e43ed91244e637428d10be65f34e709bef74f46486d5ef5a981cb72c282 (1,421 Git and ten reused SDK inputs). Compiler phase took 138.56 seconds (149.384 seconds total), minimum available memory 8,993,722,368 bytes, peak cache 7,639,011,328 bytes. Production readback found 18 records unchanged and zero remaining task-owned resources. Earlier failures remain indexed. No performance benchmark was run."
       },
       "exports": [
         {
           "name": "FREE_MODERATION_MODEL",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "FREE_MODERATION_MODEL native string constant",
+          "evidence": [
+            "dimabot/src/utils/moderation/semantic.rs",
+            "dimabot/tests/moderation_semantic_source.rs",
+            "actual-source export audit and final replay"
+          ]
         },
         {
           "name": "SEMANTIC_PRICING_VERSION",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "SEMANTIC_PRICING_VERSION native string constant",
+          "evidence": [
+            "dimabot/src/utils/moderation/semantic.rs",
+            "dimabot/tests/moderation_semantic_source.rs",
+            "actual-source export audit and final replay"
+          ]
         },
         {
           "name": "SEMANTIC_USD_PER_MILLION_INPUT_TOKENS",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "SEMANTIC_USD_PER_MILLION_INPUT_TOKENS f64 constant",
+          "evidence": [
+            "dimabot/src/utils/moderation/semantic.rs",
+            "dimabot/tests/moderation_semantic_source.rs",
+            "actual-source export audit and final replay"
+          ]
         },
         {
           "name": "SemanticResult",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "TypedSemanticResult; typed verdict/status, lossless scores, model/provider IDs, token count and cost",
+          "evidence": [
+            "dimabot/src/utils/moderation/semantic.rs",
+            "dimabot/tests/moderation_semantic_source.rs",
+            "actual-source export audit and final replay"
+          ]
         },
         {
           "name": "evaluateSemanticDecision",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "SemanticProvider::{evaluate, evaluate_value, evaluate_at, evaluate_with_clock, evaluate_value_at, evaluate_value_with_clock}; concrete pooled reqwest transport",
+          "evidence": [
+            "dimabot/src/utils/moderation/semantic.rs",
+            "dimabot/tests/moderation_semantic_source.rs",
+            "actual-source export audit and final replay"
+          ]
         },
         {
           "name": "fallbackResult",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "fallback_result with shared JsString result fields",
+          "evidence": [
+            "dimabot/src/utils/moderation/semantic.rs",
+            "dimabot/tests/moderation_semantic_source.rs",
+            "actual-source export audit and final replay"
+          ]
         },
         {
           "name": "moderationModelForAccount",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "moderation_model_for_account reusing native paid moderation and spam model policy",
+          "evidence": [
+            "dimabot/src/utils/moderation/semantic.rs",
+            "dimabot/tests/moderation_semantic_source.rs",
+            "actual-source export audit and final replay"
+          ]
         },
         {
           "name": "parseSemanticResponse",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "parse_semantic_response over lossless JsonValue",
+          "evidence": [
+            "dimabot/src/utils/moderation/semantic.rs",
+            "dimabot/tests/moderation_semantic_source.rs",
+            "actual-source export audit and final replay"
+          ]
         },
         {
           "name": "parseSpamResponse",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "parse_spam_response with declared SpamCategory values and native category policy",
+          "evidence": [
+            "dimabot/src/utils/moderation/semantic.rs",
+            "dimabot/tests/moderation_semantic_source.rs",
+            "actual-source export audit and final replay"
+          ]
         },
         {
           "name": "semanticPrice",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "semantic_price reusing shared JS-compatible rounding/credit policy",
+          "evidence": [
+            "dimabot/src/utils/moderation/semantic.rs",
+            "dimabot/tests/moderation_semantic_source.rs",
+            "actual-source export audit and final replay"
+          ]
         },
         {
           "name": "semanticRequest",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "semantic_request plus semantic_request_value/semantic_request_ref",
+          "evidence": [
+            "dimabot/src/utils/moderation/semantic.rs",
+            "dimabot/tests/moderation_semantic_source.rs",
+            "actual-source export audit and final replay"
+          ]
         }
       ],
       "imports": [
@@ -88890,12 +88962,12 @@
           "baselineSourceTargets": [
             "src/schemas/moderation_decision.schema.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "type-only IModerationDecision",
+          "runtimeOrTypeDependency": "Type-only decision contract; native SemanticDecision and lossless raw-value adapters supply the Rust boundary.",
+          "defaultSideEffectBarrelDetails": "No default, barrel, or side-effect import.",
+          "directDependencyReview": "Reviewed and mapped to the existing native module/provider boundary.",
+          "transitiveDependencyReview": "Type-only import has no Mongoose runtime dependency.",
+          "rustReplacementOrGap": "Equivalent native borrowed/raw views cover the selected fields; no Mongoose object identity is claimed."
         },
         {
           "ordinal": 1,
@@ -88910,12 +88982,12 @@
           "baselineSourceTargets": [
             "src/utils/ai/openrouter/app_attribution.util.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime OPENROUTER_APP_HEADERS",
+          "runtimeOrTypeDependency": "Application attribution headers for the OpenRouter request.",
+          "defaultSideEffectBarrelDetails": "No default, barrel, or side-effect import.",
+          "directDependencyReview": "Reviewed and mapped to the existing native module/provider boundary.",
+          "transitiveDependencyReview": "Shared native OpenRouter attribution is enabled through the existing feature-gated utility.",
+          "rustReplacementOrGap": "Existing native attribution constants reused; no parallel header implementation."
         },
         {
           "ordinal": 2,
@@ -88930,12 +89002,12 @@
           "baselineSourceTargets": [
             "src/utils/moderation/advanced.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime ALLOW_THRESHOLD, SEMANTIC_MODEL, paidModeration",
+          "runtimeOrTypeDependency": "Allow confidence, default model and paid-tier predicate.",
+          "defaultSideEffectBarrelDetails": "No default, barrel, or side-effect import.",
+          "directDependencyReview": "Reviewed and mapped to the existing native module/provider boundary.",
+          "transitiveDependencyReview": "Actual source oracle and existing advanced moderation implementation are reused.",
+          "rustReplacementOrGap": "Existing native advanced moderation policy/model implementation reused."
         },
         {
           "ordinal": 3,
@@ -88950,12 +89022,12 @@
           "baselineSourceTargets": [
             "src/utils/moderation/spam.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime SPAM_RULE_ID",
+          "runtimeOrTypeDependency": "Spam-specific request and policy dispatch identifier.",
+          "defaultSideEffectBarrelDetails": "No default, barrel, or side-effect import.",
+          "directDependencyReview": "Reviewed and mapped to the existing native module/provider boundary.",
+          "transitiveDependencyReview": "SPAM_RULE_ID is held in the shared moderation types and re-exported for existing native users.",
+          "rustReplacementOrGap": "Shared native moderation::types::SPAM_RULE_ID reused; no duplicate constant."
         },
         {
           "ordinal": 4,
@@ -88970,15 +89042,15 @@
           "baselineSourceTargets": [
             "src/utils/moderation/spam_categories.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "runtime DEFAULT_SPAM_THRESHOLD, SPAM_CLASSIFIER_MODEL, categoryQuestions; type-only SpamCategory",
+          "runtimeOrTypeDependency": "Default threshold/model, ordered category question policy, and declared category type.",
+          "defaultSideEffectBarrelDetails": "No default, barrel, or side-effect import.",
+          "directDependencyReview": "Reviewed and mapped to the existing native module/provider boundary.",
+          "transitiveDependencyReview": "Actual pinned source loader and native module reuse the reviewed spam category catalog.",
+          "rustReplacementOrGap": "Existing native moderation::spam_categories module and SpamCategory enum reused."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "partial-local-semantic-policy-parsing-request-and-concrete-http-provider-verified; JavaScript object-shape identity, surrounding worker/billing/persistence dependencies, and TypeScript caller adoption remain open"
     },
     {
       "source": "src/utils/moderation/spam_categories.ts",

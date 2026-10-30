@@ -1,0 +1,26 @@
+{
+  "attempt1-moderation-semantic-reference.json.gz": {
+    "gzipBytes": 933235,
+    "gzipSha256": "cc0db4fcd7fe359422609747a38e24de83b777a302612bdc3661d27142e8977e",
+    "rawBytes": 29485628,
+    "rawSha256": "73e6550df576843e481ec73d1b1a6dad50b33160148701306b6c740be9b28052"
+  },
+  "attempt2-moderation-semantic-reference.json.gz": {
+    "gzipBytes": 933239,
+    "gzipSha256": "93e42a52cc7f4bf9c48f73a7e2a1e2371064e8c52cf79ae2b5f5f1b2f805ed7a",
+    "rawBytes": 29485628,
+    "rawSha256": "a7570c80dcf5c28ebcc5c3230ad3c1202bc69e39a04d4d308865ab513f74a61d"
+  },
+  "attempt3-moderation-semantic-reference.json.gz": {
+    "gzipBytes": 933239,
+    "gzipSha256": "c699fd5cbd5d784af7bd3e8cc0dee5295fed240353979e163409e908b2e3396c",
+    "rawBytes": 29485628,
+    "rawSha256": "8dfa5ea7abaebf8b5cd52bce83a563d1fc0573f89da3bbac84898ec6b108b986"
+  },
+  "attempt4-moderation-semantic-reference.json.gz": {
+    "gzipBytes": 933241,
+    "gzipSha256": "c0e0034b7ab9f24d032cdf1d48509f6a5857c2f4ebd4b942e8cbf42bf3eae64e",
+    "rawBytes": 29485628,
+    "rawSha256": "8980dda8ebd881b38fe85da52bf4ac92a5771f510bc768290099171e1260dfc8"
+  }
+}

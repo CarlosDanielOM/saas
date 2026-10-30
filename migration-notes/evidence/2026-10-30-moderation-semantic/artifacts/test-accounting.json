@@ -1,0 +1,67 @@
+[
+  {
+    "explicitBoundaries": [
+      {
+        "id": "unknown-category-parse",
+        "reason": "unknown is not a SpamCategory literal; source accepts unchecked string, native enum rejects it; no valid category fabricated"
+      },
+      {
+        "id": "unknown-category-request",
+        "reason": "unknown is not a SpamCategory literal; source accepts unchecked string, native enum rejects it; no valid category fabricated"
+      },
+      {
+        "id": "request-context-holes",
+        "reason": "ordinary JSON has no sparse holes; source map preserves holes rather than mapping null. Removed the same tagged hole slots from source input/output and replayed every defined context element; full original hole evidence retained"
+      }
+    ],
+    "pureRecordsVisited": 1071,
+    "typeErrorAdapter": "native RequestError carries source construction TypeError semantics; engine-specific English message is retained only as evidence"
+  },
+  {
+    "concretePipeline": "SemanticProvider + reqwest + private TCP HTTP fixture; URL origin replaced with loopback while path/headers/body compare exactly",
+    "dateAdapter": "tagged actual-source Date becomes explicit binary64 deadline milliseconds; undefined object properties are omitted as in JSON.stringify",
+    "evaluateRecordsVisited": 65,
+    "seamAdaptations": [
+      {
+        "adaptation": "synthetic thrown JS value reproduced as concrete HTTP disconnect before response; fallback compared with source under the same clock sequence; source Error identity retained as evidence",
+        "id": "eval-throw-0"
+      },
+      {
+        "adaptation": "source synthetic TimeoutError reproduced with actual private delayed HTTP; 2000ms source budget shortened to 50ms; exact request body unaffected",
+        "id": "eval-throw-1"
+      },
+      {
+        "adaptation": "synthetic thrown JS value reproduced as concrete HTTP disconnect before response; fallback compared with source under the same clock sequence; source Error identity retained as evidence",
+        "id": "eval-throw-2"
+      },
+      {
+        "adaptation": "synthetic thrown JS value reproduced as concrete HTTP disconnect before response; fallback compared with source under the same clock sequence; source Error identity retained as evidence",
+        "id": "eval-throw-3"
+      },
+      {
+        "adaptation": "synthetic thrown JS value reproduced as concrete HTTP disconnect before response; fallback compared with source under the same clock sequence; source Error identity retained as evidence",
+        "id": "eval-error-after-deadline"
+      },
+      {
+        "adaptation": "synthetic thrown JS value reproduced as concrete HTTP disconnect before response; fallback compared with source under the same clock sequence; source Error identity retained as evidence",
+        "id": "eval-error-wallclock-backwards"
+      },
+      {
+        "adaptation": "synthetic thrown JS value reproduced as concrete HTTP disconnect before response; fallback compared with source under the same clock sequence; source Error identity retained as evidence",
+        "id": "eval-error-forward-beforedeadline"
+      },
+      {
+        "adaptation": "source synthetic TimeoutError reproduced with actual private delayed HTTP; 2000ms source budget shortened to 50ms; exact request body unaffected",
+        "id": "eval-timeouterror-wallclock-backwards"
+      },
+      {
+        "adaptation": "synthetic null process.env entry is outside real Node string-or-absent environment; mapped to absent credentials with identical preflight result",
+        "id": "eval-key-2"
+      },
+      {
+        "adaptation": "source synchronous fetch mock completes within 1ms without network scheduling; concrete loopback success uses 2000ms budget while comparing identical wire request; real expiry is exercised by TimeoutError case",
+        "id": "eval-deadline-2"
+      }
+    ]
+  }
+]
