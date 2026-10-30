@@ -2,6 +2,9 @@
 //! No import-time connection, index creation, environment read or application
 //! startup occurs. Call install_indexes explicitly on an isolated or approved
 //! application database; constructors are pure except fresh ObjectId entropy.
+#[cfg(feature = "channel-fish-voice-favorites")]
+#[path = "channel_fish_voice_favorites.schema.rs"]
+pub mod channel_fish_voice_favorites;
 #[cfg(feature = "channel-moderation-settings")]
 #[path = "channel_moderation_settings.schema.rs"]
 pub mod channel_moderation_settings;

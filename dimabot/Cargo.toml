@@ -65,6 +65,7 @@ reward-body = ["dep:serde_json", "serde_json/float_roundtrip"]
 application-schemas = ["mongo", "js-date", "js-strings"]
 # Opt-in channel TTS schema; does not alter deployed profiles.
 channel-tts-settings = ["application-schemas", "tts-utilities"]
+channel-fish-voice-favorites = ["channel-tts-settings", "tts-services", "js-unicode17"]
 # Opt-in moderation model; native policy and caller-owned MongoDB persistence.
 channel-moderation-settings = ["application-schemas", "moderation-spam-categories", "moderation-caps", "moderation-types", "dep:uuid"]
 moderation-decision-schema = ["channel-moderation-settings", "dep:sha2"]
