@@ -101,6 +101,10 @@ pub mod channel_permissions;
 #[path = "middleware/workspace-owner.middleware.rs"]
 pub mod workspace_owner;
 
+#[cfg(feature = "api-observability-route")]
+#[path = "server/routes/observability.route.rs"]
+pub mod observability_route;
+
 #[cfg(feature = "domain-event-runtime")]
 #[path = "domain_events/runtime/mod.rs"]
 pub mod domain_event_runtime;
