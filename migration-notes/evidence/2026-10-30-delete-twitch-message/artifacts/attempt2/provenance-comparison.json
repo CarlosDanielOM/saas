@@ -1,0 +1,8 @@
+{
+  "fixture_sha256": "2fac788ac49c2a9bf14a179d4560abc5d1d3090fa4db7b6713fd8100c8598bd1",
+  "source_cases": 113,
+  "explicit_parser_depth_boundary_cases": 2,
+  "source_only_logger_throw_cases": 1,
+  "reused_toolchain_capture": "/artifacts/posthog-receipt/attempt1/node-provenance",
+  "binary_and_typescript_capture_equal_pinned_container": true
+}

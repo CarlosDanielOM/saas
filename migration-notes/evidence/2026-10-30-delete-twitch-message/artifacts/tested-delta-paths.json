@@ -1,0 +1,8 @@
+[
+  "dimabot/Cargo.toml",
+  "dimabot/src/functions/mod.rs",
+  "dimabot/src/functions/chats/mod.rs",
+  "dimabot/src/functions/chats/delete_message.chat.rs",
+  "dimabot/tests/delete_twitch_message.rs",
+  "dimabot/tests/fixtures/delete_twitch_message_reference.cjs"
+]

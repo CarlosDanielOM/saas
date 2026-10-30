@@ -12753,23 +12753,57 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-partial-local-delete-message-adapter; source-bound request/response/auth/logger behavior checked; parser-depth and diagnostic boundaries remain open",
+      "localRustEvidence": [
+        "dimabot/src/functions/chats/delete_message.chat.rs: native delete_message API, bot-owned request, status/body parsing and error report handling",
+        "dimabot/src/functions/chats/mod.rs and dimabot/src/functions/mod.rs: native chats module wiring and TwitchFunctions adapter context",
+        "dimabot/src/utils/twitch.rs and dimabot/src/utils/links.rs: pooled Twitch client, single-attempt transport, endpoint and ordered query support",
+        "dimabot/src/utils/lossless_json.rs and dimabot/src/utils/js_string.rs: shared truthiness/JSON values and lossless UTF-16 handling",
+        "dimabot/src/utils/logger.rs: concrete report-returning logger; source logger-throw parity is explicitly bounded",
+        "migration-notes/evidence/2026-10-30-delete-twitch-message/artifacts/source-bindings.json: 1,486 inputs; verified source commit df3223f28769060202a216b1c8baf68a6cdadf31 and source tree a6593f95a349e58ccc0c9e44915b3e77f46bf9bc6c2351b71b1c4e3c15f74390",
+        "migration-notes/delete-twitch-message.md"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "Source and native requests use bot credentials and TWITCH_BOT_ACCOUNT_ID as moderator identity; requester mod_id is attribution only. The request is one DELETE, no body, no cache, and one attempt.",
+        "The 113 oracle records comprise 110 matched DTO/source/client cases, two explicit parser-depth divergences at 129 and 256, and one source-only mocked logger throw. These are not 113 native parity matches.",
+        "The reused native JSON parser rejects nesting deeper than 128, unlike source JSON.parse; this blocks full parity until the separately scoped parser work is independently completed.",
+        "Native FunctionFailure/request diagnostics are generic and Rust stack text differs from JavaScript. Concrete logger failures return a report rather than throw, and header/token error mapping differs at the source catch boundary.",
+        "The client disables redirects and validates URLs/headers, so parity is scoped to the normal Twitch ID/request contract; behavior outside it is not claimed."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/src/functions/moderation/execute_action.moderation.ts: deleteMessage(messageID, channelID, TWITCH_BOT_ACCOUNT_ID)"
+        ],
+        "runtimeStatus": "The TypeScript caller remains active and has not adopted the native adapter. Source remains live; no caller cutover, retirement, deployment or push occurred."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/delete_twitch_message_reference.cjs",
+          "dimabot/src/functions/chats/delete_message.chat.ts",
+          "dimabot/src/utils/header.ts",
+          "dimabot/src/utils/links.ts",
+          "dimabot/src/utils/logger.ts"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/delete_twitch_message.rs",
+          "dimabot/tests/twitch_functions.rs",
+          "migration-notes/evidence/2026-10-30-delete-twitch-message/runs/final/compiler-1793363673351846309-receipt.json.gz",
+          "migration-notes/evidence/2026-10-30-delete-twitch-message/artifacts/oracle-semantic-comparison.json",
+          "migration-notes/evidence/2026-10-30-delete-twitch-message/artifacts/cache-maintenance.json",
+          "migration-notes/evidence/2026-10-30-delete-twitch-message/artifacts/production-after-final.json"
+        ],
+        "status": "Final post-source-binding Node and capped compiler validations passed. Seven ordinary delete tests, two existing Twitch-function regression tests and the ignored source replay passed, along with format, scoped Clippy, minimal, Mongo+Redis and all-feature strict checks. Source oracle parity is explicitly bounded to 110 matches; two depth cases and one source-only logger-throw case remain known limits. No database CRUD is part of this feature."
       },
       "exports": [
         {
           "name": "deleteMessage",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "TwitchFunctions::delete_message(message_id, channel_id, mod_id) -> Result<DeleteMessageResponse, DeleteMessageFailure>, with public delete_message_body(status, bytes) parser and response types in chats::delete_message.",
+          "evidence": [
+            "dimabot/src/functions/chats/delete_message.chat.rs",
+            "dimabot/tests/delete_twitch_message.rs",
+            "migration-notes/evidence/2026-10-30-delete-twitch-message/artifacts/oracle-semantic-comparison.json",
+            "migration-notes/delete-twitch-message.md"
+          ]
         }
       ],
       "imports": [
@@ -12786,12 +12820,12 @@
           "baselineSourceTargets": [
             "src/utils/header.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named runtime import",
+          "runtimeOrTypeDependency": "Runtime getTwitchModeratorHeader and TWITCH_BOT_ACCOUNT_ID provide moderator credentials/identity; the native function uses NativeFunctionAuth with the bot account and shared token/streamer adapters.",
+          "defaultSideEffectBarrelDetails": "Direct helper import; no side-effect or barrel dependency. Requester mod_id is attribution and never replaces bot moderator identity.",
+          "directDependencyReview": "Reviewed: concrete bot-token acquisition and moderator identity are connected through existing NativeFunctionAuth, TwitchTokenStorage and TwitchStreamers adapters.",
+          "transitiveDependencyReview": "The native denial path is concrete. Difference remains when source header acquisition throws: native token acquisition failures map to denial while the source catch path logs an internal error.",
+          "rustReplacementOrGap": "Native bot-auth adapter and moderator identity cover normal Twitch requests; thrown-header/token mapping is a documented parity gap."
         },
         {
           "ordinal": 1,
@@ -12806,12 +12840,12 @@
           "baselineSourceTargets": [
             "src/utils/links.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named runtime import",
+          "runtimeOrTypeDependency": "Runtime getTwitchHelixUrl constructs the moderation/chat endpoint; Rust reuses TwitchEndpoints and existing query formatting support.",
+          "defaultSideEffectBarrelDetails": "Direct endpoint helper import, with no side-effect or barrel behavior.",
+          "directDependencyReview": "Reviewed: endpoint selection and ordered/pre-encoded query construction are represented by the existing native endpoint and link helpers.",
+          "transitiveDependencyReview": "No additional application adapter is missing for the normal Twitch ID endpoint contract.",
+          "rustReplacementOrGap": "Mapped for expected Twitch ID inputs; native URL and header validation/redirect behavior can differ outside that request domain."
         },
         {
           "ordinal": 2,
@@ -12826,15 +12860,15 @@
           "baselineSourceTargets": [
             "src/utils/logger.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named runtime import",
+          "runtimeOrTypeDependency": "Runtime logger.error reports failures with function and request attribution; native function reuses the existing Logger and emits a generic internal failure.",
+          "defaultSideEffectBarrelDetails": "Direct logger helper import; no side-effect or barrel import.",
+          "directDependencyReview": "Reviewed: concrete native Logger is integrated and a failed returned report is handled like an ignored ordinary source report.",
+          "transitiveDependencyReview": "Concrete native logger API returns a report and cannot express the mocked source logger throw. Generic error/backtrace wording differs from JavaScript.",
+          "rustReplacementOrGap": "Logger path is locally connected; source-only throw behavior, exact diagnostics/stack and no-logger production fallback remain outside verified parity."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "partial-local-delete-message-adapter-verified;shared-parser-depth-and-logging/header-boundaries-remain-open;source-live;caller-adoption-open"
     },
     {
       "source": "src/functions/chats/get_chatters.chat.ts",

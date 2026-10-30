@@ -1,0 +1,14 @@
+[
+  {
+    "attempt": 1,
+    "node": "1793363208494138234",
+    "compiler": "1793363247635540434",
+    "outcome": "functional tests and replay passed; Clippy collapsible_if in native body handling"
+  },
+  {
+    "attempt": 2,
+    "node": "1793363403386552448",
+    "compiler": "1793363432102471050",
+    "outcome": "functional tests and replay passed; Clippy await_holding_lock in test guard lexical scope"
+  }
+]

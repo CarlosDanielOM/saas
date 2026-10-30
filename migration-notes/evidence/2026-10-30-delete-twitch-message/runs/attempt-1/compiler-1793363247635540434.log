@@ -1,0 +1,106 @@
+( 1/24) Installing libmagic (5.47-r2)
+( 2/24) Installing file (5.47-r2)
+( 3/24) Installing libstdc++-dev (15.2.0-r5)
+( 4/24) Installing g++ (15.2.0-r5)
+( 5/24) Installing make (4.4.1-r4)
+( 6/24) Installing fortify-headers (3.0.1-r2)
+( 7/24) Installing patch (2.8-r0)
+( 8/24) Installing build-base (0.5-r4)
+( 9/24) Installing libexpat (2.9.0-r0)
+(10/24) Installing libbz2 (1.0.8-r6)
+(11/24) Installing libffi (3.5.2-r1)
+(12/24) Installing gdbm (1.26-r0)
+(13/24) Installing xz-libs (5.8.4-r0)
+(14/24) Installing mpdecimal (4.0.1-r0)
+(15/24) Installing ncurses-terminfo-base (6.6_p20260516-r0)
+(16/24) Installing libncursesw (6.6_p20260516-r0)
+(17/24) Installing libpanelw (6.6_p20260516-r0)
+(18/24) Installing readline (8.3.3-r1)
+(19/24) Installing sqlite-libs (3.53.4-r0)
+(20/24) Installing python3 (3.14.10-r1)
+(21/24) Installing python3-pycache-pyc0 (3.14.10-r1)
+(22/24) Installing pyc (3.14.10-r1)
+(23/24) Installing python3-pyc (3.14.10-r1)
+(24/24) Installing tzdata (2026e-r0)
+Executing busybox-1.37.0-r31.trigger
+OK: 312.8 MiB in 55 packages
+/usr/share/zoneinfo/Etc/UTC is owned by tzdata-2026e-r0
+8b85846791ab2c8a5463c83a5be3c043e2570d7448434d41398969ed47e3e6f2  /usr/share/zoneinfo/Etc/UTC
+e9ed07d7bee0c76a9d442d091ef1f01668fee7c4f26014c0a868b19fe6c18a95  /usr/share/zoneinfo/America/New_York
+5ee475f71a0fc1a32faeb849f8c39c6e7aa66d6d41ec742b97b3a7436b3b0701  /usr/share/zoneinfo/Europe/Berlin
+a323c5433991a963eb497b7da4d1d09848bf3ef5f5d64d9c9649f388e4bab9df  /usr/share/zoneinfo/Australia/Lord_Howe
+33740ab29ef943b1f55f769e13ff59a90962f5a12434209072d650e6c10abb4d  /usr/share/zoneinfo/Pacific/Apia
+info: downloading 2 components
+rustc 1.99.1 (58cf8f9c3 2026-10-13)
+binary: rustc
+commit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67
+commit-date: 2026-10-13
+host: x86_64-unknown-linux-musl
+release: 1.99.1
+LLVM version: 23.1.1
+   Compiling inout v0.1.4
+   Compiling cipher v0.4.4
+   Compiling aes v0.8.4
+   Compiling ctr v0.9.2
+   Compiling dima-rust v0.1.0 (/source/dimabot)
+    Finished `test` profile [unoptimized] target(s) in 29.18s
+     Running tests/delete_twitch_message.rs (/target-cache/debug/deps/delete_twitch_message-728da53a7f0280fc)
+
+running 8 tests
+test actual_source_fixture_replay_and_source_hash ... ignored, requires an independently generated external oracle fixture and pinned toolchain files
+test known_shared_parser_depth_boundary ... ok
+test denial_has_source_shape_and_sends_no_request ... ok
+test request_is_bot_owned_single_attempt_without_body_or_cache ... ok
+test no_content_fast_path_and_malformed_body_failure ... ok
+test internal_failure_logs_attribution_and_ignores_failed_report ... ok
+test client_deadline_covers_a_held_response_body ... ok
+test mutation_is_not_retried_and_drained_response_reuses_connection ... ok
+
+test result: ok. 7 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.33s
+
+     Running tests/twitch_functions.rs (/target-cache/debug/deps/twitch_functions-271f939d529215be)
+
+running 3 tests
+test native_moderation_logging_and_notice_throttle_use_real_isolated_stores ... ignored, explicit task-owned MongoDB and Redis fixtures only
+test requester_identity_never_replaces_the_bot_moderator ... ok
+test all_native_functions_match_actual_typescript_requests_results_and_cache_effects ... ok
+
+test result: ok. 2 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 2.27s
+
+    Finished `test` profile [unoptimized] target(s) in 0.30s
+     Running tests/delete_twitch_message.rs (/target-cache/debug/deps/delete_twitch_message-728da53a7f0280fc)
+
+running 1 test
+test actual_source_fixture_replay_and_source_hash ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 11.79s
+
+    Checking inout v0.1.4
+    Checking cipher v0.4.4
+    Checking aes v0.8.4
+    Checking ctr v0.9.2
+    Checking dima-rust v0.1.0 (/source/dimabot)
+error: this `if` statement can be collapsed
+  --> src/functions/chats/delete_message.chat.rs:65:13
+   |
+65 | /             if let Some((_, value)) = fields
+66 | |                 .into_iter()
+67 | |                 .find(|(key, _)| key.as_str() == Some("error"))
+...  |
+72 | |             }
+   | |_____________^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#collapsible_if
+   = note: `-D clippy::collapsible-if` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::collapsible_if)]`
+help: collapse nested if block
+   |
+67 ~                 .find(|(key, _)| key.as_str() == Some("error"))
+68 ~                 && truthy(&value) {
+69 |                     return Ok(response(true, value, Some(status), None));
+70 ~                 }
+   |
+
+error: could not compile `dima-rust` (lib) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `dima-rust` (lib test) due to 1 previous error

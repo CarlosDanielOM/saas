@@ -1,0 +1,86 @@
+{
+  "scope": "completed task-owned private debug test executables only; no shared caches, source, release artifacts or production resources",
+  "cacheBefore": 8490323968,
+  "removed": [
+    {
+      "path": "target/debug/deps/application_schemas-7f3ae279cd30960b",
+      "bytes": 30744968,
+      "allocatedBytes": 30748672,
+      "sha256": "d3294d097f8e69ae5d128afe74e60252c7b1f1d4106172c8285a08059b19e4c1",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/application_schemas-38261c0e0ea4d31c",
+      "bytes": 30593088,
+      "allocatedBytes": 30597120,
+      "sha256": "67b3ea1d8c3e6fd23717af2c8d106b5a49d0aaede783edf830bfe93c7ba71de4",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/application_schemas-95de5ddddc63a77c",
+      "bytes": 30742312,
+      "allocatedBytes": 30744576,
+      "sha256": "94ef6da1b4263c5cb286a9c4620630bc4c06fb4dd4765cb3b7cea0e51e7d6b43",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/application_schemas-91dee5bec1096668",
+      "bytes": 30745128,
+      "allocatedBytes": 30752768,
+      "sha256": "1f8500ea9b490cf3b5803c05e8e9a3d565abd9f5368586de250df9ddb599e6ed",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/application_schemas-7ac89be385273cd2",
+      "bytes": 30593104,
+      "allocatedBytes": 30597120,
+      "sha256": "746a981db39e505bee8ad4ab0f8e9a33db0209001f9c8d9aec9e7d6004ab0653",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/application_schemas-cd60831d72aa70c9",
+      "bytes": 30717448,
+      "allocatedBytes": 30724096,
+      "sha256": "93b3b45b4afbf62b870186389cf1dbaaece062b2215059612f0700f1c7b8dd7c",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/schema_named_types-470502182ffbb454",
+      "bytes": 6043712,
+      "allocatedBytes": 6045696,
+      "sha256": "f6b3f3ef4f4eb0f3f0e236bfb7e3ef850325b33830f3032ac2d0e048d07d2599",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/application_schemas-f06a092248772653",
+      "bytes": 30877480,
+      "allocatedBytes": 30879744,
+      "sha256": "0636a0eb81cb522591f744d9b851b994b3ba2c1e8322af69a9a7becf86cc580a",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/moderation_action_log_schema-a8447063c2997e37",
+      "bytes": 31461824,
+      "allocatedBytes": 31465472,
+      "sha256": "46cd7ea9ee684272cf8cda5493dbf9ce8575d7a2e8fd4cf4dff6483d1526068f",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/schema_named_types-d40de2a091964ece",
+      "bytes": 5879768,
+      "allocatedBytes": 5885952,
+      "sha256": "9331e8d7e93ae5dbaac5b02fab47708476f007afe317775c4ec01bf8068c4b52",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/mongoose_date-a7e86413bbe78670",
+      "bytes": 30012160,
+      "allocatedBytes": 30019584,
+      "sha256": "4995c2759485d6b992374e3ec6024bd62eb405d6eeb187fec1ade7cc80e63c8f",
+      "removed": true
+    }
+  ],
+  "status": "complete",
+  "freedAllocatedBytes": 288460800,
+  "cacheAfter": 8201863168
+}
