@@ -13,7 +13,8 @@ use crate::utils::{
     js_string::JsString,
     lossless_json_view::JsonView,
     moderation::{
-        advanced_policy::parse_semantic_policy, blacklist::compile_blacklist_pattern,
+        advanced_policy::parse_semantic_policy,
+        blacklist::{BlacklistPattern, compile_blacklist_pattern},
         normalize::fold_text,
     },
     re2_native::{CompileError, Re2Native},
@@ -46,12 +47,15 @@ pub struct ModerationMatch {
 
 const INVALID_REGEX: &str = "Invalid or unsupported regex. Use RE2 syntax without lookaround/backreferences or empty matches; select whole-word boundaries separately.";
 const CACHE_LIMIT: usize = 1000;
+const LITERAL_CACHE_LIMIT: usize = 128;
+type LiteralEntries = HashMap<Vec<JsString>, Option<Arc<BlacklistPattern>>>;
 
 /// Shared cache; its typed key intentionally omits properties that are not in
 /// the public pattern type. Construct independent caches for isolated callers.
 #[derive(Default)]
 pub struct PatternCache {
     entries: Mutex<HashMap<ModerationPattern, Arc<Re2Native>>>,
+    literals: Mutex<LiteralEntries>,
 }
 impl PatternCache {
     pub fn new() -> Self {
@@ -68,6 +72,28 @@ impl PatternCache {
             .lock()
             .unwrap_or_else(|e| e.into_inner())
             .clear();
+        self.literals
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clear();
+    }
+    // Internal performance policy: cache raw typed terms, including filtered-out
+    // sets, with an independent clear-all bound. Compilation is pure and the
+    // mutex serializes misses; matching happens after the guard is released.
+    fn compile_literal(&self, terms: &[JsString]) -> Option<Arc<BlacklistPattern>> {
+        if terms.is_empty() {
+            return None;
+        }
+        let mut entries = self.literals.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(found) = entries.get(terms) {
+            return found.clone();
+        }
+        let compiled = compile_blacklist_pattern(Some(terms)).map(Arc::new);
+        if entries.len() >= LITERAL_CACHE_LIMIT {
+            entries.clear();
+        }
+        entries.insert(terms.to_vec(), compiled.clone());
+        compiled
     }
     fn compile(&self, pattern: &ModerationPattern) -> Result<Arc<Re2Native>, CompileError> {
         let mut entries = self.entries.lock().unwrap_or_else(|e| e.into_inner());
@@ -208,42 +234,10 @@ pub fn find_blacklist_matches_with_cache(
     cache: &PatternCache,
 ) -> Result<Vec<ModerationMatch>, CompileError> {
     let mut matches = Vec::new();
-    let units = text.units();
-    let mut folded = Vec::new();
-    let mut offsets = Vec::new();
-    let mut position = 0;
-    while position < units.len() {
-        let width = if (0xd800..=0xdbff).contains(&units[position])
-            && position + 1 < units.len()
-            && (0xdc00..=0xdfff).contains(&units[position + 1])
-        {
-            2
-        } else {
-            1
-        };
-        let character = JsString::from_units(units[position..position + width].to_vec());
-        let normalized = fold_text(Some(&character));
-        for unit in normalized.code_units() {
-            folded.push(unit);
-            offsets.push((position, position + width));
-        }
-        position += width;
-    }
-    if let Some(literal) =
-        compile_blacklist_pattern(Some(terms)).and_then(|p| p.exec(&JsString::from_units(folded)))
+    if let Some(pattern) = cache.compile_literal(terms)
+        && let Some(literal) = find_literal_match(text, &pattern)
     {
-        let start = offsets.get(literal.start).map_or(0, |o| o.0);
-        let end = literal
-            .end
-            .checked_sub(1)
-            .and_then(|i| offsets.get(i))
-            .map_or(start, |o| o.1);
-        matches.push(ModerationMatch {
-            matcher_id: JsString::from_static("literal"),
-            text: text.slice(start as i64, end as i64),
-            start,
-            end,
-        });
+        matches.push(literal);
     }
     for pattern in patterns {
         let Some(found) = cache.compile(pattern)?.exec(text) else {
@@ -278,4 +272,123 @@ pub fn find_blacklist_matches_with_cache(
         });
     }
     Ok(matches)
+}
+
+fn find_literal_match(text: &JsString, pattern: &BlacklistPattern) -> Option<ModerationMatch> {
+    if text.as_str().is_some_and(str::is_ascii) {
+        let folded = fold_text(Some(text));
+        let found = pattern.exec(&folded)?;
+        return Some(ModerationMatch {
+            matcher_id: JsString::from_static("literal"),
+            text: text.slice(found.start as i64, found.end as i64),
+            start: found.start,
+            end: found.end,
+        });
+    }
+    let units = text.units();
+    let mut folded = Vec::with_capacity(units.len());
+    let mut offsets = Vec::with_capacity(units.len());
+    let mut position = 0;
+    while position < units.len() {
+        let width = if (0xd800..=0xdbff).contains(&units[position])
+            && position + 1 < units.len()
+            && (0xdc00..=0xdfff).contains(&units[position + 1])
+        {
+            2
+        } else {
+            1
+        };
+        if units[position] <= 0x7f {
+            let unit = units[position];
+            folded.push(if (0x41..=0x5a).contains(&unit) {
+                unit + 32
+            } else {
+                unit
+            });
+            offsets.push((position, position + width));
+        } else {
+            let character = JsString::from_units(units[position..position + width].to_vec());
+            let normalized = fold_text(Some(&character));
+            for unit in normalized.code_units() {
+                folded.push(unit);
+                offsets.push((position, position + width));
+            }
+        }
+        position += width;
+    }
+    let literal = pattern.exec(&JsString::from_units(folded))?;
+    let start = offsets.get(literal.start).map_or(0, |o| o.0);
+    let end = literal
+        .end
+        .checked_sub(1)
+        .and_then(|i| offsets.get(i))
+        .map_or(start, |o| o.1);
+    Some(ModerationMatch {
+        matcher_id: JsString::from_static("literal"),
+        text: text.slice(start as i64, end as i64),
+        start,
+        end,
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn literal_cache_owns_keys_caches_empty_results_and_clears_independently() {
+        let cache = PatternCache::new();
+        let mut terms = vec![JsString::from("cat")];
+        let first = cache.compile_literal(&terms).unwrap();
+        terms[0] = "dog".into();
+        let again = cache.compile_literal(&["cat".into()]).unwrap();
+        assert!(Arc::ptr_eq(&first, &again));
+        assert!(cache.compile_literal(&[]).is_none());
+        assert!(cache.compile_literal(&["  ".into()]).is_none());
+        assert_eq!(cache.literals.lock().unwrap().len(), 2);
+        assert!(cache.compile_literal(&["  ".into()]).is_none());
+        assert_eq!(cache.literals.lock().unwrap().len(), 2);
+        assert_eq!(cache.len(), 0);
+
+        let regex = ModerationPattern {
+            id: "id".into(),
+            source: "cat".into(),
+            boundary: Boundary::Anywhere,
+            ignore_case: false,
+        };
+        cache.compile(&regex).unwrap();
+        for i in 0..LITERAL_CACHE_LIMIT - 2 {
+            cache.compile_literal(&[format!("term{i}").into()]);
+        }
+        assert_eq!(cache.literals.lock().unwrap().len(), LITERAL_CACHE_LIMIT);
+        cache.compile_literal(&["overflow".into()]);
+        assert_eq!(cache.literals.lock().unwrap().len(), 1);
+        assert_eq!(cache.len(), 1);
+        assert!(!Arc::ptr_eq(
+            &first,
+            &cache.compile_literal(&["cat".into()]).unwrap()
+        ));
+        cache.clear();
+        assert_eq!(cache.len(), 0);
+        assert!(cache.literals.lock().unwrap().is_empty());
+    }
+
+    #[test]
+    fn literal_cache_shares_compilation_across_threads() {
+        let cache = Arc::new(PatternCache::new());
+        let results = std::thread::scope(|scope| {
+            let handles: Vec<_> = (0..4)
+                .map(|_| {
+                    let cache = cache.clone();
+                    scope.spawn(move || cache.compile_literal(&["cat".into()]).unwrap())
+                })
+                .collect();
+            handles
+                .into_iter()
+                .map(|h| h.join().unwrap())
+                .collect::<Vec<_>>()
+        });
+        assert!(results.iter().all(|p| Arc::ptr_eq(&results[0], p)));
+        assert_eq!(cache.literals.lock().unwrap().len(), 1);
+    }
 }

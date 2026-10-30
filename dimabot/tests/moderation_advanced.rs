@@ -65,6 +65,61 @@ fn literal_and_patterns_keep_source_order_and_utf16_spans() {
 }
 
 #[test]
+fn literal_paths_preserve_original_text_and_regex_only_matches() {
+    let cache = PatternCache::new();
+    let rule = parse(
+        r#"{"type":"blacklist","patterns":[{"id":"dog","source":"dog","boundary":"anywhere"}]}"#,
+    )
+    .unwrap();
+    for terms in [vec![], vec![" \t".into()]] {
+        // The pinned SDK loses the final scalar for this malformed input.
+        assert!(
+            find_blacklist_matches_with_cache(
+                &JsString::from_units(vec![0xd800, b'd' as u16, b'o' as u16, b'g' as u16]),
+                &terms,
+                &rule.patterns,
+                &cache,
+            )
+            .unwrap()
+            .is_empty()
+        );
+        let matches = find_blacklist_matches_with_cache(
+            &JsString::from_units(vec![
+                0xd800,
+                b'd' as u16,
+                b'o' as u16,
+                b'g' as u16,
+                b'!' as u16,
+            ]),
+            &terms,
+            &rule.patterns,
+            &cache,
+        )
+        .unwrap();
+        assert_eq!(matches.len(), 1);
+        assert_eq!((matches[0].start, matches[0].end), (1, 4));
+        assert_eq!(matches[0].matcher_id, JsString::from("dog"));
+    }
+    for (text, expected_start, expected_end) in [
+        (JsString::from("\0 CAT!"), 2, 5),
+        (JsString::from("😀 CÁT!"), 3, 6),
+        (JsString::from_units(vec![0xd800, 32, 67, 65, 84]), 2, 5),
+    ] {
+        let matches =
+            find_blacklist_matches_with_cache(&text, &["cat".into()], &[], &cache).unwrap();
+        assert_eq!(matches.len(), 1);
+        assert_eq!(
+            (matches[0].start, matches[0].end),
+            (expected_start, expected_end)
+        );
+        assert_eq!(
+            matches[0].text,
+            text.slice(expected_start as i64, expected_end as i64)
+        );
+    }
+}
+
+#[test]
 fn cache_is_bounded_and_shared_across_threads() {
     let cache = std::sync::Arc::new(PatternCache::new());
     let p = ModerationPattern {
