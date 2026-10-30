@@ -1,7 +1,7 @@
 # BSON to JavaScript JSON prepared-operation baseline
 
 **Date:** 2026-10-30
-**Status:** Exploratory baseline, verified inputs and checksums, mixed performance results. A follow-up optimization is in progress and has not yet been accepted or measured.
+**Status:** Exploratory baseline, verified inputs and checksums, mixed performance results. This record preserves the initial measurements; the [borrowed serialization follow-up](bson-js-json-borrowed.md) is now verified separately.
 
 This note records the owned benchmark baseline at code commit `65d600dc5b6b27ee62d4747caa80b7ea9e1d93b7` (tree `1b1ec2dee8d17ebd6e104c09003e2f7a4dceea0d`). It measures a prepared BSON-to-JSON operation, not application latency or production throughput. The [evidence bundle index](evidence/2026-10-30-bson-json-owned-baseline/README.md) documents the frozen source and run records.
 

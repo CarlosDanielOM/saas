@@ -1,0 +1,285 @@
+{
+  "status": "borrowed BSON wire serializer verified; two descriptive repeated-process rounds",
+  "sourceTreeSha256": "1eb7124e14ac30149213b98485793be3e50985f60782f2643e1723ba39e788b5",
+  "inputCount": 1464,
+  "sourceCases": 54,
+  "normalTests": 5,
+  "ignoredReplayPassed": 1,
+  "sourceFixtureSha256": "b7a88bd77c3d2f78cd4787962d32e7b1264f9ccd06ccca66c6f3410ad74e5aac",
+  "benchmarkInputSha256BeforeAfterBothRounds": "b719d74652c2104c1a2126b4757d70d3f5df094ba34ac07595bca01871dae89c",
+  "rounds": [
+    {
+      "folder": "benchmark2",
+      "rows": [
+        {
+          "name": "ordinary-numeric",
+          "medianNsPerOp": {
+            "node": 2136.755630493164,
+            "rustOwned": 2619.9273986816406,
+            "rustBorrowed": 2094.907516479492
+          },
+          "rangesNsPerOp": {
+            "node": [
+              2064.759475708008,
+              2196.8515625
+            ],
+            "rustOwned": [
+              2435.0333251953125,
+              2684.523956298828
+            ],
+            "rustBorrowed": [
+              1732.0961151123047,
+              2154.088836669922
+            ]
+          },
+          "borrowedPercentLowerThanNodeMedian": 1.9584885335724334,
+          "borrowedPercentLowerThanOwnedMedian": 20.03948210421177,
+          "nodeBorrowedSampleRangesOverlap": true
+        },
+        {
+          "name": "nested-mixed",
+          "medianNsPerOp": {
+            "node": 5037.681488037109,
+            "rustOwned": 3191.343795776367,
+            "rustBorrowed": 1884.0150756835938
+          },
+          "rangesNsPerOp": {
+            "node": [
+              4484.328994750977,
+              6171.085189819336
+            ],
+            "rustOwned": [
+              3058.9739685058594,
+              4221.663345336914
+            ],
+            "rustBorrowed": [
+              1740.3884887695312,
+              2158.2144317626953
+            ]
+          },
+          "borrowedPercentLowerThanNodeMedian": 62.60154437795382,
+          "borrowedPercentLowerThanOwnedMedian": 40.96483499593424,
+          "nodeBorrowedSampleRangesOverlap": false
+        },
+        {
+          "name": "bson-specials",
+          "medianNsPerOp": {
+            "node": 9882.246704101562,
+            "rustOwned": 6211.010147094727,
+            "rustBorrowed": 5182.315963745117
+          },
+          "rangesNsPerOp": {
+            "node": [
+              9228.028991699219,
+              10689.838073730469
+            ],
+            "rustOwned": [
+              5985.422470092773,
+              6943.197540283203
+            ],
+            "rustBorrowed": [
+              4994.181121826172,
+              5937.923843383789
+            ]
+          },
+          "borrowedPercentLowerThanNodeMedian": 47.55933423930582,
+          "borrowedPercentLowerThanOwnedMedian": 16.562429604639973,
+          "nodeBorrowedSampleRangesOverlap": false
+        },
+        {
+          "name": "large-context-arrays",
+          "medianNsPerOp": {
+            "node": 62177.89697265625,
+            "rustOwned": 118110.935546875,
+            "rustBorrowed": 34263.9521484375
+          },
+          "rangesNsPerOp": {
+            "node": [
+              60088.74755859375,
+              65911.31420898438
+            ],
+            "rustOwned": [
+              107828.16357421875,
+              144170.7119140625
+            ],
+            "rustBorrowed": [
+              32579.5595703125,
+              36059.3759765625
+            ]
+          },
+          "borrowedPercentLowerThanNodeMedian": 44.89367795198086,
+          "borrowedPercentLowerThanOwnedMedian": 70.99002561465693,
+          "nodeBorrowedSampleRangesOverlap": false
+        }
+      ]
+    },
+    {
+      "folder": "benchmark3",
+      "rows": [
+        {
+          "name": "ordinary-numeric",
+          "medianNsPerOp": {
+            "node": 2208.4613037109375,
+            "rustOwned": 2528.0724334716797,
+            "rustBorrowed": 2140.7366333007812
+          },
+          "rangesNsPerOp": {
+            "node": [
+              2106.8020782470703,
+              2385.1221618652344
+            ],
+            "rustOwned": [
+              2388.0394744873047,
+              2724.3843688964844
+            ],
+            "rustBorrowed": [
+              1743.9833068847656,
+              2280.719451904297
+            ]
+          },
+          "borrowedPercentLowerThanNodeMedian": 3.066599822073257,
+          "borrowedPercentLowerThanOwnedMedian": 15.321388542613434,
+          "nodeBorrowedSampleRangesOverlap": true
+        },
+        {
+          "name": "nested-mixed",
+          "medianNsPerOp": {
+            "node": 5395.485931396484,
+            "rustOwned": 3152.372344970703,
+            "rustBorrowed": 1806.072738647461
+          },
+          "rangesNsPerOp": {
+            "node": [
+              4949.450103759766,
+              7879.311828613281
+            ],
+            "rustOwned": [
+              3016.917037963867,
+              3305.923812866211
+            ],
+            "rustBorrowed": [
+              1754.7747039794922,
+              2049.8189392089844
+            ]
+          },
+          "borrowedPercentLowerThanNodeMedian": 66.52622652321503,
+          "borrowedPercentLowerThanOwnedMedian": 42.707505935050136,
+          "nodeBorrowedSampleRangesOverlap": false
+        },
+        {
+          "name": "bson-specials",
+          "medianNsPerOp": {
+            "node": 10776.027969360352,
+            "rustOwned": 5760.214096069336,
+            "rustBorrowed": 5055.401443481445
+          },
+          "rangesNsPerOp": {
+            "node": [
+              10170.305191040039,
+              12698.93733215332
+            ],
+            "rustOwned": [
+              5533.858688354492,
+              6353.013977050781
+            ],
+            "rustBorrowed": [
+              4849.232467651367,
+              5550.345275878906
+            ]
+          },
+          "borrowedPercentLowerThanNodeMedian": 53.08659686244739,
+          "borrowedPercentLowerThanOwnedMedian": 12.23587597323582,
+          "nodeBorrowedSampleRangesOverlap": false
+        },
+        {
+          "name": "large-context-arrays",
+          "medianNsPerOp": {
+            "node": 74215.47265625,
+            "rustOwned": 117851.30859375,
+            "rustBorrowed": 32513.05078125
+          },
+          "rangesNsPerOp": {
+            "node": [
+              60986.860595703125,
+              78124.01928710938
+            ],
+            "rustOwned": [
+              111398.94165039062,
+              122319.22143554688
+            ],
+            "rustBorrowed": [
+              32004.962890625,
+              35509.6376953125
+            ]
+          },
+          "borrowedPercentLowerThanNodeMedian": 56.1910075923879,
+          "borrowedPercentLowerThanOwnedMedian": 72.41180333998068,
+          "nodeBorrowedSampleRangesOverlap": false
+        }
+      ]
+    }
+  ],
+  "runs": {
+    "format": "format-1793354597395156983",
+    "nodeRound1": "node-1793354782214257150",
+    "compilerQualityAndRound1": "compiler-1793354853734987168",
+    "nodeIntermediateCheck": "node-1793355106222674223",
+    "nodeRound2": "node-1793355171538637514",
+    "compilerRound2": "compiler-1793355240844334800",
+    "finalNodeChecks": "node-1793355306882075343"
+  },
+  "benchmarkExecutable": {
+    "path": "bson-js-json/borrowed-final/benchmark-executable",
+    "bytes": 1787456,
+    "sha256": "cf2df4d402c9f0ce0947dbbe56579171a6677534801c2e58063cd369591d3e5b",
+    "scope": "test benchmark, not application binary"
+  },
+  "compilerMetrics": {
+    "phase": "compiler",
+    "success": true,
+    "steps": [
+      {
+        "name": "bootstrap",
+        "seconds": 4.071,
+        "exit_code": 0
+      },
+      {
+        "name": "locked-fetch",
+        "seconds": 3.284,
+        "exit_code": 0
+      },
+      {
+        "name": "compiler",
+        "seconds": 242.326,
+        "exit_code": 0
+      }
+    ],
+    "limits": {
+      "cpus": 6,
+      "memory": 4294967296,
+      "memory_swap": 4294967296,
+      "pids": 256,
+      "cargo_jobs": 2
+    },
+    "source_tree_sha256": "1eb7124e14ac30149213b98485793be3e50985f60782f2643e1723ba39e788b5",
+    "toolchain_image": "sha256:557a94c82b485a14b569120e00867267108c734efe33f10cc31ca0cd5dd1eca9",
+    "headroom_start": {
+      "mem_available_bytes": 10825089024,
+      "load_1m": 0.75048828125
+    },
+    "minimum_available_bytes": 9039851520,
+    "peak_cache_bytes": 7754387456,
+    "limits_verified": true,
+    "production_unchanged": true,
+    "elapsed_seconds": 252.016
+  },
+  "method": "4workloads32predecodedrealSDKdocs/7sequential samples1fullwarmup peractor;2Node/Rustprocessblockrounds;128wireoutputs/checksums prevalidated BOTHnativeAPIs;128pools identical to ownedbaseline; decode/setup/parse/I/O excluded;owned/borrowedRust measuredsequentiallywithinprocess;allreportchecks no retiming",
+  "improvement": "Ordinary BSON streams directly using borroweddata; DBRef and specialrepresentations reuse verified ownedprojector; appendrollsback on error",
+  "limits": [
+    "Node regex validation/eagernestedreader errors remain explicitdecoderboundaries",
+    "ordinaryrecord Node/borrowed ranges overlap, no clear repeatable speedup claim",
+    "syntheticserialization/checksum timings only; no production/endtoend/RSS/CPUclaim",
+    "semanticworker still usesownedAPI; no calleradoption claimed"
+  ],
+  "retirementNote": "Full snapshot precedes concurrent AIusage TS retirement authoring; only five optimization files will be committed from exact green snapshot."
+}
