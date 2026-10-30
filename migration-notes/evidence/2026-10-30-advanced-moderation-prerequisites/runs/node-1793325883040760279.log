@@ -1,0 +1,3 @@
+v24.22.1
+{"mode":"--write","sha256":"dbdc74c2127fdbe434de83bb4153521d4cc22b639bb7c08c10db375da2e0c78a","cases":464,"re2Cases":91,"regexBehaviorCases":604,"wrapperCases":45}
+{"mode":"--check","sha256":"dbdc74c2127fdbe434de83bb4153521d4cc22b639bb7c08c10db375da2e0c78a","cases":464,"re2Cases":91,"regexBehaviorCases":604,"wrapperCases":45}

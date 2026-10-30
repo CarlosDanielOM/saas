@@ -1,0 +1,23 @@
+v24.22.1
+node:fs:621
+  return binding.open(
+                 ^
+
+Error: ENOENT: no such file or directory, open '/source/dimabot/tsconfig.json'
+    at Object.openSync (node:fs:621:18)
+    at Object.readFileSync (node:fs:487:35)
+    at read (/source/dimabot/tests/fixtures/moderation_advanced_source.cjs:6:22)
+    at Object.<anonymous> (/source/dimabot/tests/fixtures/moderation_advanced_source.cjs:28:60)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object..js (node:internal/modules/cjs/loader:2060:10)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12) {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/source/dimabot/tsconfig.json'
+}
+
+Node.js v24.22.1

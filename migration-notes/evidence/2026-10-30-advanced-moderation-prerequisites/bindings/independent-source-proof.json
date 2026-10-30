@@ -1,0 +1,32 @@
+{
+  "codeCommit": "25b0a81dc5914c8f1159dcfa04e873ad1f915479",
+  "attributionAndBindingCommit": "287ca11bebd30569d06832ba7d63c2ebfdc150aa",
+  "sourceTreeSha256": "de3cefbb0abf7ee90d8d00c1348500ed96ebf78decef6c40bd1221b53fe6cc9b",
+  "frozenInputs": 1384,
+  "gitInputsVerified": 1374,
+  "externalPosthogSdkInputs": {
+    "verification/posthog-rs/Cargo.toml": "7c2898b66160da1b4d971d1ab62921c05817d9d7cb45c9366312a917728a7da7",
+    "verification/posthog-rs/LICENSE": "e4fb4a928821c09b949054b39874b46443db532a307a121dbcf2e515006561a3",
+    "verification/posthog-rs/src/client/async_client.rs": "0c2bb5560eff1a281dd4b1986a40256a3fbb0c3eea3847751a06d6a3c00fbd72",
+    "verification/posthog-rs/src/client/common.rs": "26b934e180e51f3b12b7ca6693feccee12edeceaa9f916934f6e875b71fb068d",
+    "verification/posthog-rs/src/client/mod.rs": "e2dd52f1e691fb9cd1451fac307cc4a54e5c4632a621892283dedb91ec07a577",
+    "verification/posthog-rs/src/client/retry.rs": "563cbf0a7979dcf9879af89bf2e2642eef6c543fcb5d506615c6a227c20802f0",
+    "verification/posthog-rs/src/client/transport.rs": "2f1cbce6b0ac5bd33c76cfc43957f22651640ff626224c9e1753603a4caf059b",
+    "verification/posthog-rs/src/client/v0_capture.rs": "c4442aef3a7b67d790ec828c2c368d21fba0fe9fe4749d8f987b642ecfa7e5b4",
+    "verification/posthog-rs/src/event.rs": "5a4112ea152b483a2dc25195bd56901ece4e6da363dd0904babe48776ceae312",
+    "verification/posthog-rs/src/lib.rs": "bdd3347d2600557fbb05f15a06647f5495a54eba3f8f9579aefa084ff9883242"
+  },
+  "posthogArchiveChecksumVerified": "e4bf3024d46115813aba6c8ca1aa95bb850a26cb7a36f6e03ca0c12c449c5925",
+  "helperReplayReceipt": "compiler-1793327977148929056",
+  "helperReplayPhaseOverallSuccess": false,
+  "laterFailure": "test-only clippy useless_vec in moderation_advanced_policy.rs",
+  "finalReceipt": "compiler-1793328028591160708",
+  "changedSinceHelperReplays": [
+    "dimabot/tests/moderation_advanced_policy.rs"
+  ],
+  "excludedUnverifiedFiles": [
+    "dimabot/src/utils/re2_native.rs",
+    "dimabot/tests/re2_native.rs"
+  ],
+  "scope": "Prerequisites only; no advanced-rule compiler/matcher completion, release build, benchmark, source retirement, caller adoption, deployment or push."
+}

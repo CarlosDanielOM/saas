@@ -1,0 +1,24 @@
+v24.22.1
+node:internal/modules/cjs/loader:2087
+  return process.dlopen(module, path.toNamespacedPath(filename));
+                 ^
+
+Error: The module '/source/dimabot/node_modules/re2/build/Release/re2.node'
+was compiled against a different Node.js version using
+NODE_MODULE_VERSION 147. This version of Node.js requires
+NODE_MODULE_VERSION 137. Please try re-compiling or re-installing
+the module (for instance, using `npm rebuild` or `npm install`).
+    at Object..node (node:internal/modules/cjs/loader:2087:18)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1674:12)
+    at require (node:internal/modules/helpers:157:16)
+    at Object.<anonymous> (/source/dimabot/node_modules/re2/re2.js:4:13)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object..js (node:internal/modules/cjs/loader:2060:10)
+    at Module.load (node:internal/modules/cjs/loader:1651:32) {
+  code: 'ERR_DLOPEN_FAILED'
+}
+
+Node.js v24.22.1

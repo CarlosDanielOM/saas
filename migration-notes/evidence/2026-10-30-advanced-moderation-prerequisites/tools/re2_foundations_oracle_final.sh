@@ -1,0 +1,14 @@
+set -eu
+export DIMA_ADVANCED_SOURCE_ROOT=/source/dimabot
+export DIMA_ADVANCED_RE2_FIXTURE_ROOT=/artifacts/moderation-advanced/re2-node24/re2
+export DIMA_ADVANCED_RE2_FIXTURE_BINARY_SHA256=94064b17d6110cd5e36fb0bee49fa267144155300e03160758478b3917e5ffbb
+export DIMA_ADVANCED_RE2_FIXTURE_MANIFEST_SHA256=e33073a155ce1180ee2cc52dc8ae548d3a0d24d5c81c2fbd8082834638c15664
+export DIMA_ADVANCED_RE2_FIXTURE_PROVENANCE_SHA256=4efad596bf97c83c92a825c0bb2452b182051066174951eb2644e8a6bda9ad4c
+node tests/fixtures/re2_unicode_prepare.cjs --check /artifacts/moderation-advanced/unicode-attempt2
+node tests/fixtures/moderation_advanced_reference.cjs --check /artifacts/moderation-advanced/attempt1/reference
+set -eu
+export DIMA_RE2_CODEC_PROBE_BINARY=/artifacts/moderation-advanced/codec-probe/re2_codec_probe.node
+export DIMA_RE2_CODEC_PROBE_SHA256=4270949a101973cea8bd4768ce26c738e95d7c94c26bb2da0cee29befb8f0846
+export DIMA_RE2_CODEC_RE2_ROOT=/artifacts/moderation-advanced/re2-node24/re2
+export DIMA_RE2_CODEC_RE2_SHA256=94064b17d6110cd5e36fb0bee49fa267144155300e03160758478b3917e5ffbb
+node /task-tools/re2_codec_probe.cjs --check /artifacts/moderation-advanced/codec-probe/reference

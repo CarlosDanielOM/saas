@@ -1,0 +1,19 @@
+# RE2 codec probe handoff
+
+Parent verification subsequently built and ran the probe in capped isolation. All 1,472 observations were reproduced, and the bounded Rust boundary replay passed. The [verified prerequisite report](moderation-advanced-prerequisites.md) and its evidence index supersede the original author-only status below; no general malformed-byte decoder or complete RE2 adapter is established.
+
+This is a proposed observational probe, not a completed Rust codec or a diagnosis of an SDK or engine bug. The reported SDK observations (a lone high surrogate versus one followed by another character) motivate measuring the bytes at each boundary; no replacement strategy is assumed. No probe has been compiled or executed by its author.
+
+The independently written source files live at `/tmp/dimabot-full-migration-tools/re2_codec_probe.cc` and `re2_codec_probe.cjs`. The C++ addon calls public Node/V8 APIs: `node::Buffer::New` on a string, and `Utf8LengthV2` followed by default `WriteUtf8V2` into a zero-initialized length-plus-one buffer. It returns exactly the length bytes, excluding the extra capacity. These correspond to the SDK input and pattern serialization calls respectively; the receipt reports actual bytes, without predicting them. The standalone initialization and storage do not duplicate all SDK implementation details. If the two outputs differ, follow the actual SDK path and inspect length, capacity and downstream handling before inferring a cause.
+
+The script pins the Node executable, Node/V8/ABI/ICU/Unicode versions, selected RE2 1.27.0 source hashes, and the previously rebuilt SDK binary. It requires an independently supplied SHA-256 for the separately built probe binary. It records both probe source hashes and the binary hash; the operator must independently retain build provenance to establish the binary was built from that C++ source. The SDK is loaded only from the explicit private root after checking the expected ABI and binary hash. Strings are constructed from raw UTF-16 units, and the receipt records `Buffer.from`, native `Buffer::New`, native default `WriteUtf8V2`, lengths, and SDK match captures and indices for `.`, U+FFFD and `\\C` with `du` flags. Exceptions are observations too. Exhaustive lengths zero through three over eleven units yield 1,464 cases, plus eight longer sequences.
+
+The parent may compile and run under the existing isolated, capped, globally locked Node-image workflow, preserving the production safeguards and no-swap 6 CPU / 4 GiB / two-job limits. In that environment, a representative compile command is:
+
+```sh
+g++ -shared -fPIC -I/usr/local/include/node -std=c++20 /task-tools/re2_codec_probe.cc -o /task-owned/re2_codec_probe.node
+```
+
+Record compiler/image/header and source hashes and compute the resulting binary SHA-256 independently. Mount the two probe sources read-only together at `/task-tools`, the previously verified SDK at a read-only explicit path, and an empty task-owned output directory. Supply `DIMA_RE2_CODEC_PROBE_BINARY`, `DIMA_RE2_CODEC_PROBE_SHA256`, `DIMA_RE2_CODEC_RE2_ROOT`, and `DIMA_RE2_CODEC_RE2_SHA256` to the script, then run it with `--write OUTPUT_DIRECTORY`. Run `--check OUTPUT_DIRECTORY` with the same sources, pins and binary to regenerate and compare exact bytes; missing or extra files, changed runtime/source/binary pins, or altered observations fail. Output does not include timestamps or filesystem paths. A check reproduces the receipt under the pinned runtime; it does not prove binary provenance on its own.
+
+Review the raw arrays and SDK results before implementing any adapter. The selected source hashes do not by themselves prove all 1,762 SDK source files; retain the parent's separate full-manifest verification with the measurement evidence. No deployment, production data access, or application source changes are part of this probe.

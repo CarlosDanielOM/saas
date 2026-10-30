@@ -1,0 +1,206 @@
+v24.22.1
+gyp info it worked if it ends with ok
+gyp info using node-gyp@13.0.2
+gyp info using node@24.22.1 | linux | x64
+gyp info find Python using Python version 3.14.8 found at "/usr/bin/python3"
+gyp info spawn /usr/bin/python3
+gyp info spawn args [
+gyp info spawn args '/source/dimabot/node_modules/node-gyp/gyp/gyp_main.py',
+gyp info spawn args 'binding.gyp',
+gyp info spawn args '-f',
+gyp info spawn args 'make',
+gyp info spawn args '-I',
+gyp info spawn args '/artifacts/moderation-advanced/re2-node24/re2/build/config.gypi',
+gyp info spawn args '-I',
+gyp info spawn args '/source/dimabot/node_modules/node-gyp/addon.gypi',
+gyp info spawn args '-I',
+gyp info spawn args '/usr/local/include/node/common.gypi',
+gyp info spawn args '-Dlibrary=shared_library',
+gyp info spawn args '-Dvisibility=default',
+gyp info spawn args '-Dnode_root_dir=/usr/local',
+gyp info spawn args '-Dnode_gyp_dir=/source/dimabot/node_modules/node-gyp',
+gyp info spawn args '-Dnode_lib_file=/usr/local/$(Configuration)/node.lib',
+gyp info spawn args '-Dmodule_root_dir=/artifacts/moderation-advanced/re2-node24/re2',
+gyp info spawn args '-Dnode_engine=v8',
+gyp info spawn args '--depth=.',
+gyp info spawn args '--no-parallel',
+gyp info spawn args '--generator-output',
+gyp info spawn args 'build',
+gyp info spawn args '-Goutput_dir=.'
+gyp info spawn args ]
+gyp info spawn make
+gyp info spawn args [ 'BUILDTYPE=Release', '-C', 'build', '--jobs', 2 ]
+make: Entering directory '/artifacts/moderation-advanced/re2-node24/re2/build'
+  CXX(target) Release/obj.target/re2/lib/addon.o
+  CXX(target) Release/obj.target/re2/lib/accessors.o
+  CXX(target) Release/obj.target/re2/lib/pattern.o
+  CXX(target) Release/obj.target/re2/lib/util.o
+  CXX(target) Release/obj.target/re2/lib/new.o
+  CXX(target) Release/obj.target/re2/lib/exec.o
+  CXX(target) Release/obj.target/re2/lib/test.o
+  CXX(target) Release/obj.target/re2/lib/match.o
+  CXX(target) Release/obj.target/re2/lib/replace.o
+  CXX(target) Release/obj.target/re2/lib/search.o
+  CXX(target) Release/obj.target/re2/lib/split.o
+  CXX(target) Release/obj.target/re2/lib/to_string.o
+  CXX(target) Release/obj.target/re2/lib/set.o
+  CXX(target) Release/obj.target/re2/vendor/re2/re2/bitmap256.o
+  CXX(target) Release/obj.target/re2/vendor/re2/re2/bitstate.o
+  CXX(target) Release/obj.target/re2/vendor/re2/re2/compile.o
+  CXX(target) Release/obj.target/re2/vendor/re2/re2/dfa.o
+../vendor/re2/re2/dfa.cc: In member function 're2::DFA::State* re2::DFA::RunStateOnByteUnlocked(State*, int)':
+../vendor/re2/re2/dfa.cc:1018:28: warning: 'absl::lts_20260817::MutexLock::MutexLock(absl::lts_20260817::Mutex*)' is deprecated: Use the constructor that takes a reference instead [-Wdeprecated-declarations]
+ 1018 |   absl::MutexLock l(&mutex_);
+      |                            ^
+In file included from ../vendor/abseil-cpp/absl/strings/internal/cordz_info.h:31,
+                 from ../vendor/abseil-cpp/absl/strings/cord.h:94,
+                 from ../vendor/abseil-cpp/absl/container/internal/hash_function_defaults.h:59,
+                 from ../vendor/abseil-cpp/absl/container/hash_container_defaults.h:19,
+                 from ../vendor/abseil-cpp/absl/container/flat_hash_map.h:43,
+                 from ../vendor/re2/re2/dfa.cc:39:
+../vendor/abseil-cpp/absl/synchronization/mutex.h:635:12: note: declared here
+  635 |   explicit MutexLock(Mutex* absl_nonnull mu) ABSL_EXCLUSIVE_LOCK_FUNCTION(mu)
+      |            ^~~~~~~~~
+../vendor/re2/re2/dfa.cc: In constructor 're2::DFA::RWLocker::RWLocker(re2::DFA::CacheMutex*)':
+../vendor/re2/re2/dfa.cc:1155:18: warning: 'void absl::lts_20260817::Mutex::ReaderLock()' is deprecated [-Wdeprecated-declarations]
+ 1155 |   mu_->ReaderLock();
+      |   ~~~~~~~~~~~~~~~^~
+../vendor/abseil-cpp/absl/synchronization/mutex.h:269:8: note: declared here
+  269 |   void ReaderLock() ABSL_SHARED_LOCK_FUNCTION() { lock_shared(); }
+      |        ^~~~~~~~~~
+../vendor/re2/re2/dfa.cc: In member function 'void re2::DFA::RWLocker::LockForWriting()':
+../vendor/re2/re2/dfa.cc:1162:22: warning: 'void absl::lts_20260817::Mutex::ReaderUnlock()' is deprecated [-Wdeprecated-declarations]
+ 1162 |     mu_->ReaderUnlock();
+      |     ~~~~~~~~~~~~~~~~~^~
+../vendor/abseil-cpp/absl/synchronization/mutex.h:279:8: note: declared here
+  279 |   void ReaderUnlock() ABSL_UNLOCK_FUNCTION() { unlock_shared(); }
+      |        ^~~~~~~~~~~~
+../vendor/re2/re2/dfa.cc:1163:20: warning: 'void absl::lts_20260817::Mutex::WriterLock()' is deprecated [-Wdeprecated-declarations]
+ 1163 |     mu_->WriterLock();
+      |     ~~~~~~~~~~~~~~~^~
+../vendor/abseil-cpp/absl/synchronization/mutex.h:314:8: note: declared here
+  314 |   void WriterLock() ABSL_EXCLUSIVE_LOCK_FUNCTION() { lock(); }
+      |        ^~~~~~~~~~
+../vendor/re2/re2/dfa.cc: In destructor 're2::DFA::RWLocker::~RWLocker()':
+../vendor/re2/re2/dfa.cc:1170:22: warning: 'void absl::lts_20260817::Mutex::ReaderUnlock()' is deprecated [-Wdeprecated-declarations]
+ 1170 |     mu_->ReaderUnlock();
+      |     ~~~~~~~~~~~~~~~~~^~
+../vendor/abseil-cpp/absl/synchronization/mutex.h:279:8: note: declared here
+  279 |   void ReaderUnlock() ABSL_UNLOCK_FUNCTION() { unlock_shared(); }
+      |        ^~~~~~~~~~~~
+../vendor/re2/re2/dfa.cc:1172:22: warning: 'void absl::lts_20260817::Mutex::WriterUnlock()' is deprecated [-Wdeprecated-declarations]
+ 1172 |     mu_->WriterUnlock();
+      |     ~~~~~~~~~~~~~~~~~^~
+../vendor/abseil-cpp/absl/synchronization/mutex.h:317:8: note: declared here
+  317 |   void WriterUnlock() ABSL_UNLOCK_FUNCTION() { unlock(); }
+      |        ^~~~~~~~~~~~
+../vendor/re2/re2/dfa.cc: In member function 're2::DFA::State* re2::DFA::StateSaver::Restore()':
+../vendor/re2/re2/dfa.cc:1270:34: warning: 'absl::lts_20260817::MutexLock::MutexLock(absl::lts_20260817::Mutex*)' is deprecated: Use the constructor that takes a reference instead [-Wdeprecated-declarations]
+ 1270 |   absl::MutexLock l(&dfa_->mutex_);
+      |                                  ^
+../vendor/abseil-cpp/absl/synchronization/mutex.h:635:12: note: declared here
+  635 |   explicit MutexLock(Mutex* absl_nonnull mu) ABSL_EXCLUSIVE_LOCK_FUNCTION(mu)
+      |            ^~~~~~~~~
+../vendor/re2/re2/dfa.cc: In member function 'bool re2::DFA::AnalyzeSearchHelper(SearchParams*, StartInfo*, uint32_t)':
+../vendor/re2/re2/dfa.cc:1733:28: warning: 'absl::lts_20260817::MutexLock::MutexLock(absl::lts_20260817::Mutex*)' is deprecated: Use the constructor that takes a reference instead [-Wdeprecated-declarations]
+ 1733 |   absl::MutexLock l(&mutex_);
+      |                            ^
+../vendor/abseil-cpp/absl/synchronization/mutex.h:635:12: note: declared here
+  635 |   explicit MutexLock(Mutex* absl_nonnull mu) ABSL_EXCLUSIVE_LOCK_FUNCTION(mu)
+      |            ^~~~~~~~~
+../vendor/re2/re2/dfa.cc: In member function 'bool re2::DFA::PossibleMatchRange(std::string*, std::string*, int)':
+../vendor/re2/re2/dfa.cc:2053:31: warning: 'absl::lts_20260817::MutexLock::MutexLock(absl::lts_20260817::Mutex*)' is deprecated: Use the constructor that takes a reference instead [-Wdeprecated-declarations]
+ 2053 |   absl::MutexLock lock(&mutex_);
+      |                               ^
+../vendor/abseil-cpp/absl/synchronization/mutex.h:635:12: note: declared here
+  635 |   explicit MutexLock(Mutex* absl_nonnull mu) ABSL_EXCLUSIVE_LOCK_FUNCTION(mu)
+      |            ^~~~~~~~~
+  CXX(target) Release/obj.target/re2/vendor/re2/re2/filtered_re2.o
+  CXX(target) Release/obj.target/re2/vendor/re2/re2/mimics_pcre.o
+  CXX(target) Release/obj.target/re2/vendor/re2/re2/nfa.o
+  CXX(target) Release/obj.target/re2/vendor/re2/re2/onepass.o
+  CXX(target) Release/obj.target/re2/vendor/re2/re2/parse.o
+  CXX(target) Release/obj.target/re2/vendor/re2/re2/perl_groups.o
+  CXX(target) Release/obj.target/re2/vendor/re2/re2/prefilter.o
+  CXX(target) Release/obj.target/re2/vendor/re2/re2/prefilter_tree.o
+  CXX(target) Release/obj.target/re2/vendor/re2/re2/prog.o
+  CXX(target) Release/obj.target/re2/vendor/re2/re2/re2.o
+  CXX(target) Release/obj.target/re2/vendor/re2/re2/regexp.o
+../vendor/re2/re2/regexp.cc: In member function 'int re2::Regexp::Ref()':
+../vendor/re2/re2/regexp.cc:98:32: warning: 'absl::lts_20260817::MutexLock::MutexLock(absl::lts_20260817::Mutex*)' is deprecated: Use the constructor that takes a reference instead [-Wdeprecated-declarations]
+   98 |   absl::MutexLock l(ref_mutex());
+      |                                ^
+In file included from ../vendor/abseil-cpp/absl/strings/internal/cordz_info.h:31,
+                 from ../vendor/abseil-cpp/absl/strings/cord.h:94,
+                 from ../vendor/abseil-cpp/absl/container/internal/hash_function_defaults.h:59,
+                 from ../vendor/abseil-cpp/absl/container/hash_container_defaults.h:19,
+                 from ../vendor/abseil-cpp/absl/container/flat_hash_map.h:43,
+                 from ../vendor/re2/re2/regexp.cc:21:
+../vendor/abseil-cpp/absl/synchronization/mutex.h:635:12: note: declared here
+  635 |   explicit MutexLock(Mutex* absl_nonnull mu) ABSL_EXCLUSIVE_LOCK_FUNCTION(mu)
+      |            ^~~~~~~~~
+../vendor/re2/re2/regexp.cc: In member function 're2::Regexp* re2::Regexp::Incref()':
+../vendor/re2/re2/regexp.cc:111:34: warning: 'absl::lts_20260817::MutexLock::MutexLock(absl::lts_20260817::Mutex*)' is deprecated: Use the constructor that takes a reference instead [-Wdeprecated-declarations]
+  111 |     absl::MutexLock l(ref_mutex());
+      |                                  ^
+../vendor/abseil-cpp/absl/synchronization/mutex.h:635:12: note: declared here
+  635 |   explicit MutexLock(Mutex* absl_nonnull mu) ABSL_EXCLUSIVE_LOCK_FUNCTION(mu)
+      |            ^~~~~~~~~
+../vendor/re2/re2/regexp.cc: In member function 'void re2::Regexp::Decref()':
+../vendor/re2/re2/regexp.cc:131:34: warning: 'absl::lts_20260817::MutexLock::MutexLock(absl::lts_20260817::Mutex*)' is deprecated: Use the constructor that takes a reference instead [-Wdeprecated-declarations]
+  131 |     absl::MutexLock l(ref_mutex());
+      |                                  ^
+../vendor/abseil-cpp/absl/synchronization/mutex.h:635:12: note: declared here
+  635 |   explicit MutexLock(Mutex* absl_nonnull mu) ABSL_EXCLUSIVE_LOCK_FUNCTION(mu)
+      |            ^~~~~~~~~
+  CXX(target) Release/obj.target/re2/vendor/re2/re2/set.o
+  CXX(target) Release/obj.target/re2/vendor/re2/re2/simplify.o
+  CXX(target) Release/obj.target/re2/vendor/re2/re2/tostring.o
+  CXX(target) Release/obj.target/re2/vendor/re2/re2/unicode_casefold.o
+  CXX(target) Release/obj.target/re2/vendor/re2/re2/unicode_groups.o
+  CXX(target) Release/obj.target/re2/vendor/re2/util/pcre.o
+  CXX(target) Release/obj.target/re2/vendor/re2/util/rune.o
+  CXX(target) Release/obj.target/re2/vendor/re2/util/strutil.o
+  CXX(target) Release/obj.target/re2/vendor/abseil-cpp/absl/base/internal/cycleclock.o
+  CXX(target) Release/obj.target/re2/vendor/abseil-cpp/absl/base/internal/low_level_alloc.o
+In file included from ../vendor/abseil-cpp/absl/base/internal/low_level_alloc.cc:29:
+../vendor/abseil-cpp/absl/base/internal/direct_mmap.h:36:10: fatal error: linux/unistd.h: No such file or directory
+   36 | #include <linux/unistd.h>
+      |          ^~~~~~~~~~~~~~~~
+compilation terminated.
+make: *** [re2.target.mk:252: Release/obj.target/re2/vendor/abseil-cpp/absl/base/internal/low_level_alloc.o] Error 1
+make: *** Waiting for unfinished jobs....
+make: Leaving directory '/artifacts/moderation-advanced/re2-node24/re2/build'
+gyp ERR! build error 
+gyp ERR! stack Error: `make` failed with exit code: 2
+gyp ERR! stack at ChildProcess.<anonymous> (/source/dimabot/node_modules/node-gyp/lib/build.js:231:23)
+gyp ERR! System Linux 7.0.0-30-generic
+gyp ERR! command "/usr/local/bin/node" "/source/dimabot/node_modules/node-gyp/bin/node-gyp.js" "rebuild" "--nodedir=/usr/local" "--jobs=2"
+gyp ERR! cwd /artifacts/moderation-advanced/re2-node24/re2
+gyp ERR! node -v v24.22.1
+gyp ERR! node-gyp -v v13.0.2
+gyp ERR! not ok 
+node:child_process:982
+    throw err;
+    ^
+
+Error: Command failed: nice -n 10 /usr/local/bin/node /source/dimabot/node_modules/node-gyp/bin/node-gyp.js rebuild --nodedir=/usr/local --jobs=2
+    at genericNodeError (node:internal/errors:986:15)
+    at wrappedFn (node:internal/errors:540:14)
+    at checkExecSyncError (node:child_process:943:11)
+    at Object.execFileSync (node:child_process:979:15)
+    at Object.<anonymous> (/task-tools/re2_fixture_build.cjs:16:4)
+    at Module._compile (node:internal/modules/cjs/loader:1929:14)
+    at Object..js (node:internal/modules/cjs/loader:2060:10)
+    at Module.load (node:internal/modules/cjs/loader:1651:32)
+    at Module._load (node:internal/modules/cjs/loader:1443:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19) {
+  status: 1,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 29,
+  stdout: null,
+  stderr: null
+}
+
+Node.js v24.22.1

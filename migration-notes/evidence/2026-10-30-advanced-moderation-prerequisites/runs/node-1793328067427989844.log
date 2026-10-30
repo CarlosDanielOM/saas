@@ -1,0 +1,4 @@
+v24.22.1
+{"mode":"--check","artifacts":{"re2-unicode-reference.json":{"bytes":4809052,"sha256":"eac8a1d8ca6767065407a5835f6aeb724911d9007ab36dfd09592972c459e443"},"re2_unicode_data.rs":{"bytes":484768,"sha256":"d22fab3f04e2433d8f5cd27cbf278414dee433ed83ec0014c8ae7e697d7e2ade"}},"foldSdkChecks":5864,"edgeSdkChecks":785370,"exhaustiveSdkChecks":3336192}
+{"mode":"--check","sha256":"dbdc74c2127fdbe434de83bb4153521d4cc22b639bb7c08c10db375da2e0c78a","cases":464,"re2Cases":91,"regexBehaviorCases":604,"wrapperCases":45}
+{"mode":"--check","cases":1472,"sha256":"a5a92da501dfaa4e78098ee0b8a5e97367cbe7bd1d6dd5dcf0a281c2ed077f31"}

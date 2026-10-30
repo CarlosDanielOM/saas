@@ -1,0 +1,3 @@
+v24.22.1
+{"mode":"--write","artifacts":{"re2-unicode-reference.json":{"bytes":4809052,"sha256":"eac8a1d8ca6767065407a5835f6aeb724911d9007ab36dfd09592972c459e443"},"re2_unicode_data.rs":{"bytes":484768,"sha256":"d22fab3f04e2433d8f5cd27cbf278414dee433ed83ec0014c8ae7e697d7e2ade"}},"foldSdkChecks":5864,"edgeSdkChecks":785370,"exhaustiveSdkChecks":3336192}
+{"mode":"--check","artifacts":{"re2-unicode-reference.json":{"bytes":4809052,"sha256":"eac8a1d8ca6767065407a5835f6aeb724911d9007ab36dfd09592972c459e443"},"re2_unicode_data.rs":{"bytes":484768,"sha256":"d22fab3f04e2433d8f5cd27cbf278414dee433ed83ec0014c8ae7e697d7e2ade"}},"foldSdkChecks":5864,"edgeSdkChecks":785370,"exhaustiveSdkChecks":3336192}

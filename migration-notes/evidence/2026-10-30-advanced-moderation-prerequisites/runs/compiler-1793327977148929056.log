@@ -1,0 +1,104 @@
+( 1/24) Installing libmagic (5.47-r2)
+( 2/24) Installing file (5.47-r2)
+( 3/24) Installing libstdc++-dev (15.2.0-r5)
+( 4/24) Installing g++ (15.2.0-r5)
+( 5/24) Installing make (4.4.1-r4)
+( 6/24) Installing fortify-headers (3.0.1-r2)
+( 7/24) Installing patch (2.8-r0)
+( 8/24) Installing build-base (0.5-r4)
+( 9/24) Installing libexpat (2.9.0-r0)
+(10/24) Installing libbz2 (1.0.8-r6)
+(11/24) Installing libffi (3.5.2-r1)
+(12/24) Installing gdbm (1.26-r0)
+(13/24) Installing xz-libs (5.8.4-r0)
+(14/24) Installing mpdecimal (4.0.1-r0)
+(15/24) Installing ncurses-terminfo-base (6.6_p20260516-r0)
+(16/24) Installing libncursesw (6.6_p20260516-r0)
+(17/24) Installing libpanelw (6.6_p20260516-r0)
+(18/24) Installing readline (8.3.3-r1)
+(19/24) Installing sqlite-libs (3.53.4-r0)
+(20/24) Installing python3 (3.14.10-r1)
+(21/24) Installing python3-pycache-pyc0 (3.14.10-r1)
+(22/24) Installing pyc (3.14.10-r1)
+(23/24) Installing python3-pyc (3.14.10-r1)
+(24/24) Installing tzdata (2026e-r0)
+Executing busybox-1.37.0-r31.trigger
+OK: 312.8 MiB in 55 packages
+/usr/share/zoneinfo/Etc/UTC is owned by tzdata-2026e-r0
+8b85846791ab2c8a5463c83a5be3c043e2570d7448434d41398969ed47e3e6f2  /usr/share/zoneinfo/Etc/UTC
+e9ed07d7bee0c76a9d442d091ef1f01668fee7c4f26014c0a868b19fe6c18a95  /usr/share/zoneinfo/America/New_York
+5ee475f71a0fc1a32faeb849f8c39c6e7aa66d6d41ec742b97b3a7436b3b0701  /usr/share/zoneinfo/Europe/Berlin
+a323c5433991a963eb497b7da4d1d09848bf3ef5f5d64d9c9649f388e4bab9df  /usr/share/zoneinfo/Australia/Lord_Howe
+33740ab29ef943b1f55f769e13ff59a90962f5a12434209072d650e6c10abb4d  /usr/share/zoneinfo/Pacific/Apia
+info: downloading 2 components
+rustc 1.99.1 (58cf8f9c3 2026-10-13)
+binary: rustc
+commit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67
+commit-date: 2026-10-13
+host: x86_64-unknown-linux-musl
+release: 1.99.1
+LLVM version: 23.1.1
+    Checking dima-rust v0.1.0 (/source/dimabot)
+    Finished `dev` profile [unoptimized] target(s) in 4.78s
+   Compiling dima-rust v0.1.0 (/source/dimabot)
+    Finished `test` profile [unoptimized] target(s) in 1.87s
+     Running tests/re2_string.rs (/target-cache/debug/deps/re2_string-df2fb5c4a81ed696)
+
+running 2 tests
+test replay_pinned_node24_codec_probe ... ignored, requires pinned external codec receipt
+test recorded_examples_cover_unpaired_surrogates_and_partial_byte_indices ... ok
+
+test result: ok. 1 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/re2_unicode.rs (/target-cache/debug/deps/re2_unicode-f129eccfb7b4a75a)
+
+running 2 tests
+test external_cpp_facts_and_sdk_checks_replay ... ignored, requires independently hashed external actual-SDK reference
+test namespaces_and_native_cycles ... ok
+
+test result: ok. 1 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Compiling dima-rust v0.1.0 (/source/dimabot)
+    Finished `test` profile [unoptimized] target(s) in 1.06s
+     Running tests/re2_string.rs (/target-cache/debug/deps/re2_string-d8912fcc1d79add6)
+
+running 1 test
+test replay_pinned_node24_codec_probe ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.20s
+
+   Compiling dima-rust v0.1.0 (/source/dimabot)
+    Finished `test` profile [unoptimized] target(s) in 1.66s
+     Running tests/re2_unicode.rs (/target-cache/debug/deps/re2_unicode-1b8a22014c289991)
+
+running 1 test
+test external_cpp_facts_and_sdk_checks_replay ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 1.03s
+
+   Compiling dima-rust v0.1.0 (/source/dimabot)
+    Finished `test` profile [unoptimized] target(s) in 0.78s
+     Running unittests src/lib.rs (/target-cache/debug/deps/dima_rust-d35e6c42a243b0de)
+
+running 5 tests
+test utils::js_compat::tests::javascript_whitespace_differs_from_rust ... ok
+test utils::js_string::tests::json_literals_append_and_escape_without_losing_unicode ... ok
+test utils::js_string::tests::slicing_and_encoding_boundaries ... ok
+test utils::js_string::tests::static_and_owned_strings_share_content_equality_and_hashing ... ok
+test utils::js_string::tests::static_strings_keep_utf16_slicing_trim_and_json_boundaries ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+    Checking dima-rust v0.1.0 (/source/dimabot)
+error: useless use of `vec!`
+   --> tests/moderation_advanced_policy.rs:115:9
+    |
+115 |         vec!["null"; 11].join(",")
+    |         ^^^^^^^^^^^^^^^^ help: you can use an array directly: `["null"; 11]`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.99.0/index.html#useless_vec
+    = note: `-D clippy::useless-vec` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::useless_vec)]`
+
+error: could not compile `dima-rust` (test "moderation_advanced_policy") due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
