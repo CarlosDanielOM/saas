@@ -71,6 +71,7 @@ application-schemas = ["mongo", "js-date", "js-strings"]
 ordinary-application-schemas = ["application-schemas"]
 follow-defense-schemas = ["application-schemas"]
 media-extension-schemas = ["application-schemas"]
+command-reward-schemas = ["application-schemas", "permissions", "ast-blocks", "keywords", "dep:uuid"]
 # Opt-in channel TTS schema; does not alter deployed profiles.
 channel-tts-settings = ["application-schemas", "tts-utilities"]
 channel-fish-voice-favorites = ["channel-tts-settings", "tts-services", "js-unicode17"]

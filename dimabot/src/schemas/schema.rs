@@ -288,6 +288,98 @@ impl fmt::Display for UpsertError {
 impl std::error::Error for UpsertError {}
 
 impl SchemaDefinition {
+    /// Cast a known update path without running schema validators. Unknown
+    /// paths return `None`, so callers can apply Mongoose's strict update rule.
+    #[cfg(feature = "command-reward-schemas")]
+    pub(crate) fn cast_update_path(
+        &self,
+        path: &str,
+        value: Bson,
+        now: DateTime,
+    ) -> Result<Option<Bson>, ValidationErrors> {
+        fn unvalidated(field: &Field) -> Field {
+            let mut copy = field.clone();
+            copy.required = false;
+            copy.required_when = None;
+            copy.required_unless = None;
+            copy.enum_values = &[];
+            copy.min = None;
+            copy.max = None;
+            copy.max_utf16 = None;
+            copy.integer = false;
+            fn kind(value: &FieldType) -> FieldType {
+                match value {
+                    FieldType::Object(fields) => {
+                        FieldType::Object(fields.iter().map(unvalidated).collect())
+                    }
+                    FieldType::Subdocument {
+                        fields,
+                        generate_id,
+                    } => FieldType::Subdocument {
+                        fields: fields.iter().map(unvalidated).collect(),
+                        generate_id: *generate_id,
+                    },
+                    FieldType::Array(inner) => FieldType::Array(Box::new(kind(inner))),
+                    FieldType::ArrayElement(inner) => {
+                        FieldType::ArrayElement(Box::new(unvalidated(inner)))
+                    }
+                    FieldType::Map(inner) => FieldType::Map(Box::new(kind(inner))),
+                    other => other.clone(),
+                }
+            }
+            copy.kind = kind(&field.kind);
+            copy
+        }
+        let mut parts = path.split('.');
+        let first = parts.next().unwrap_or_default();
+        let implicit = match first {
+            "_id" => Some(Field::new(
+                "_id",
+                if self.string_id {
+                    FieldType::String
+                } else {
+                    FieldType::ObjectId
+                },
+            )),
+            "__v" if self.version_key => Some(Field::new("__v", FieldType::Number)),
+            _ => None,
+        };
+        let Some(field) = self
+            .fields
+            .iter()
+            .find(|field| field.name == first)
+            .or(implicit.as_ref())
+        else {
+            return Ok(None);
+        };
+        if field.immutable {
+            return Ok(None);
+        }
+        let mut target = unvalidated(field);
+        for part in parts {
+            target = match &target.kind {
+                FieldType::Object(fields) | FieldType::Subdocument { fields, .. } => {
+                    match fields.iter().find(|field| field.name == part) {
+                        Some(field) => field.clone(),
+                        None => return Ok(None),
+                    }
+                }
+                FieldType::Map(element) => Field::new("", (**element).clone()),
+                FieldType::Mixed => Field::new("", FieldType::Mixed),
+                FieldType::Array(element) if part.parse::<usize>().is_ok() => {
+                    Field::new("", (**element).clone())
+                }
+                _ => return Ok(None),
+            };
+        }
+        let mut errors = Vec::new();
+        let output = cast_field(&target, value, now, path, &mut errors);
+        if errors.is_empty() {
+            Ok(output)
+        } else {
+            Err(ValidationErrors(errors))
+        }
+    }
     /// Prepare the normal top-level equality upsert used by inventory and queue.
     /// Only `$set` and `$setOnInsert` are supported; callers supply complete,
     /// typed top-level values. Dotted paths, operators and conflicting paths are

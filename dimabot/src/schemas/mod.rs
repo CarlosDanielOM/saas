@@ -11,6 +11,12 @@ pub mod channel_moderation_settings;
 #[cfg(feature = "channel-tts-settings")]
 #[path = "channel_tts_settings.schema.rs"]
 pub mod channel_tts_settings;
+#[cfg(feature = "command-reward-schemas")]
+#[path = "command_schema_values.rs"]
+pub mod command_schema_values;
+#[cfg(feature = "command-reward-schemas")]
+#[path = "commands.schema.rs"]
+pub mod commands;
 #[cfg(feature = "ordinary-application-schemas")]
 #[path = "eventsub.schema.rs"]
 pub mod eventsub;
@@ -40,6 +46,9 @@ pub mod moderation_decision;
 pub mod moderation_variation;
 #[path = "ordinary_model_values.rs"]
 pub mod ordinary_model_values;
+#[cfg(feature = "command-reward-schemas")]
+#[path = "redemption_reward.schema.rs"]
+pub mod redemption_reward;
 mod schema;
 #[cfg(feature = "ordinary-application-schemas")]
 #[path = "site_analytics.schema.rs"]
