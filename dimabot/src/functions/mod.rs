@@ -13,8 +13,8 @@ pub mod predictions;
 use crate::utils::{
     logger::{Level, LogOptions, Logger},
     twitch::{
-        AccessToken, HelixRequest, HelixRetryPolicy, TokenFuture, TokenSource, TwitchAuth,
-        TwitchClient,
+        AccessToken, HelixRequest, HelixRetryPolicy, TWITCH_BOT_ACCOUNT_ID, TokenFuture,
+        TokenSource, TwitchAuth, TwitchClient, TwitchError,
     },
     twitch_streamers::{CallerContext, DirectoryError, Platform, TwitchStreamers},
     twitch_tokens::TwitchTokenStorage,
@@ -31,6 +31,15 @@ pub type FunctionFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 pub enum FunctionFailure {
     Denied(String),
     Internal,
+}
+
+/// Redacted request failures preserve the transport category for callers that
+/// need diagnostics. The compatibility wrapper below retains its old contract.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DetailedRequestFailure {
+    Auth(FunctionFailure),
+    Cancelled,
+    Twitch(TwitchError),
 }
 
 /// Test seams retain a concrete production implementation below; supplying
@@ -81,36 +90,73 @@ impl FunctionAuth for NativeFunctionAuth {
     ) -> FunctionFuture<'a, Result<AccessToken, FunctionFailure>> {
         Box::pin(async move {
             match auth {
-                TwitchAuth::Streamer(id)=>{
-                    let account=match self.directory.account_by_id(id).await {
-                        Ok(account)=>account,
-                        Err(DirectoryError::Missing)=>{
+                TwitchAuth::Streamer(id) => {
+                    let account = match self.directory.account_by_id(id).await {
+                        Ok(account) => account,
+                        Err(DirectoryError::Missing) => {
                             self.debug(id,json!({"function":"getTwitchStreamerHeaderById","streamerId":id,"error":"Streamer not found"})).await;
-                            return Err(FunctionFailure::Denied(format!("[⚠️] Streamer not found for ID: {id} [/⚠️]")));
-                        },
-                        Err(_)=>return Err(FunctionFailure::Internal),
+                            return Err(FunctionFailure::Denied(format!(
+                                "[⚠️] Streamer not found for ID: {id} [/⚠️]"
+                            )));
+                        }
+                        Err(_) => return Err(FunctionFailure::Internal),
                     };
-                    if account.has_permissions!="true" {
+                    if account.has_permissions != "true" {
                         self.debug(id,json!({"function":"getTwitchStreamerHeaderById","streamerId":id,"error":"No permissions","has_permissions":account.has_permissions})).await;
                         return Err(FunctionFailure::Denied("[⚠️] Streamer does not have valid permissions to access this feature, please reauthorize streamer again in https://domdimabot.com [/⚠️]".into()));
                     }
-                    match self.directory.account_token(id,Platform::Twitch,&CallerContext::new("getTwitchStreamerHeaderById")).await {
-                        Ok(token)=>{
+                    match self
+                        .directory
+                        .account_token(
+                            id,
+                            Platform::Twitch,
+                            &CallerContext::new("getTwitchStreamerHeaderById"),
+                        )
+                        .await
+                    {
+                        Ok(token) => {
                             self.debug(id,json!({"function":"getTwitchStreamerHeaderById","streamerId":id,"success":true,"tokenLength":token.expose_secret().len()})).await;
                             Ok(token)
-                        },
-                        Err(_)=>{
+                        }
+                        Err(_) => {
                             self.debug(id,json!({"function":"getTwitchStreamerHeaderById","streamerId":id,"error":"Failed to get access token (refresh may have failed)"})).await;
                             Err(FunctionFailure::Denied("[⚠️] Streamer does not have valid permissions token to access this feature, please reauthorize streamer again in https://domdimabot.com [/⚠️]".into()))
                         }
                     }
-                },
-                TwitchAuth::Bot=>self.tokens.acquire_token(auth).await.map_err(|_|{
+                }
+                TwitchAuth::Bot => {
+                    let account = self
+                        .directory
+                        .account_token(
+                            TWITCH_BOT_ACCOUNT_ID,
+                            Platform::Twitch,
+                            &CallerContext::new("getBotToken"),
+                        )
+                        .await;
+                    let result = match account {
+                        Ok(token) => match self.tokens.publish_bot_token(&token).await {
+                            Ok(()) => Ok(token),
+                            Err(error) => {
+                                let _ = self.logger.log(Level::Error, json!({"function":"getBotToken","userId":TWITCH_BOT_ACCOUNT_ID,"action":"bot_token_exception","reason":error.to_string()}), LogOptions {channel_id:Some(TWITCH_BOT_ACCOUNT_ID.into()), destination:crate::utils::logger::Destination::Both, ..Default::default()}).await;
+                                Err(())
+                            }
+                        },
+                        Err(_) => {
+                            let _ = self.logger.log(Level::Error, json!({"function":"getBotToken","userId":TWITCH_BOT_ACCOUNT_ID,"action":"bot_token_unavailable","reason":"getAccountTokenById returned null for the bot account; bot-executed features (moderation, clips, shoutouts) will fail until the bot reauthorizes"}), LogOptions {channel_id:Some(TWITCH_BOT_ACCOUNT_ID.into()), destination:crate::utils::logger::Destination::Both, ..Default::default()}).await;
+                            Err(())
+                        }
+                    };
+                    result.map_err(|_|{
                     // notifications.ts intentionally only emits this console diagnostic.
                     eprintln!("[DEV NOTIFICATION - ERROR]: Bot does not have valid authentication. Please authorize the bot account.");
                     FunctionFailure::Denied("Bot's account does not have the permissions required".into())
-                }),
-                TwitchAuth::App=>self.tokens.acquire_token(auth).await.map_err(|_|FunctionFailure::Internal),
+                    })
+                }
+                TwitchAuth::App => self
+                    .tokens
+                    .acquire_token(auth)
+                    .await
+                    .map_err(|_| FunctionFailure::Internal),
             }
         })
     }
@@ -372,11 +418,29 @@ impl TwitchFunctions {
         body: Option<&Value>,
         cancel: Option<&RequestCancellation>,
     ) -> Result<Response, FunctionFailure> {
+        self.request_detailed(auth, method, endpoint, params, body, cancel)
+            .await
+            .map_err(|error| match error {
+                DetailedRequestFailure::Auth(error) => error,
+                DetailedRequestFailure::Cancelled | DetailedRequestFailure::Twitch(_) => {
+                    FunctionFailure::Internal
+                }
+            })
+    }
+    pub async fn request_detailed(
+        &self,
+        auth: TwitchAuth,
+        method: Method,
+        endpoint: &str,
+        params: Option<&str>,
+        body: Option<&Value>,
+        cancel: Option<&RequestCancellation>,
+    ) -> Result<Response, DetailedRequestFailure> {
         let acquired = self.auth.acquire(&auth).await;
         if cancel.is_some_and(RequestCancellation::is_cancelled) {
-            return Err(FunctionFailure::Internal);
+            return Err(DetailedRequestFailure::Cancelled);
         }
-        let token = acquired?;
+        let token = acquired.map_err(DetailedRequestFailure::Auth)?;
         let source = FixedTokenSource(token);
         let policy = HelixRetryPolicy::single_attempt();
         let request = self.client.request(
@@ -391,13 +455,13 @@ impl TwitchFunctions {
             &policy,
         );
         let response = if let Some(cancel) = cancel {
-            tokio::select! {biased;_ = cancel.cancelled()=>return Err(FunctionFailure::Internal),result=request=>result}
+            tokio::select! {biased;_ = cancel.cancelled()=>return Err(DetailedRequestFailure::Cancelled),result=request=>result}
         } else {
             request.await
         };
         response
             .map(|result| result.response)
-            .map_err(|_| FunctionFailure::Internal)
+            .map_err(DetailedRequestFailure::Twitch)
     }
     async fn diagnose(&self, operation: &str, channel: &str) {
         let data = json!({"function":operation,"channelID":channel,"error":"Native Twitch operation failed"});

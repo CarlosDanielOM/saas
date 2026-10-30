@@ -391,6 +391,14 @@ impl TwitchTokenStorage {
         self.account_token(id, false).await
     }
 
+    /// Publish an already acquired bot credential without repeating acquisition.
+    /// The cache adapter retains its compare-before-publish protection.
+    pub async fn publish_bot_token(&self, token: &AccessToken) -> Result<(), TokenStorageError> {
+        super::twitch::build_headers("identity-check", token, &TwitchAuth::Bot)
+            .map_err(|_| TokenStorageError::IdentityMismatch)?;
+        self.cache.put_bot(token.expose_secret()).await
+    }
+
     pub async fn acquire_token(&self, auth: &TwitchAuth) -> Result<AccessToken, TokenStorageError> {
         if *auth == TwitchAuth::App {
             return self.app_token().await;
@@ -399,7 +407,7 @@ impl TwitchTokenStorage {
         let gate_permissions = matches!(auth, TwitchAuth::Streamer(_));
         let token = self.account_token(id, gate_permissions).await?;
         if matches!(auth, TwitchAuth::Bot) {
-            self.cache.put_bot(token.expose_secret()).await?;
+            self.publish_bot_token(&token).await?;
         }
         Ok(token)
     }

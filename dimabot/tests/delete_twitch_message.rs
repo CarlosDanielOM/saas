@@ -5,8 +5,7 @@ mod test_http;
 use dima_rust::{
     functions::{
         CacheCommand, CacheValue, FunctionAuth, FunctionCache, FunctionFailure, FunctionFuture,
-        TwitchFunctions,
-        chats::delete_message::{DeleteMessageResponse, delete_message_body},
+        TwitchFunctions, chats::delete_message::delete_message_body,
     },
     utils::{
         logger::{
@@ -99,19 +98,6 @@ fn b64(s: &str) -> Vec<u8> {
     }
     out
 }
-fn result_json(r: DeleteMessageResponse) -> JsonValue {
-    let mut fields = vec![
-        ("error".into(), JsonValue::Bool(r.error)),
-        ("message".into(), r.message),
-    ];
-    if let Some(n) = r.status {
-        fields.push(("status".into(), JsonValue::Number(n.into())))
-    }
-    if let Some(k) = r.kind {
-        fields.push(("type".into(), JsonValue::String(k.into())))
-    }
-    JsonValue::Object(fields)
-}
 
 struct SpecificFailure(FunctionFailure);
 impl FunctionAuth for SpecificFailure {
@@ -195,6 +181,7 @@ async fn actual_source_fixture_replay_and_source_hash() {
         ("auth", "src/functions/mod.rs"),
         ("transport", "src/utils/twitch.rs"),
         ("parser", "src/utils/lossless_json.rs"),
+        ("document", "src/utils/lossless_json_document.rs"),
         ("jsString", "src/utils/js_string.rs"),
         ("nativeLogger", "src/utils/logger.rs"),
         ("nativeLinks", "src/utils/links.rs"),
@@ -230,29 +217,14 @@ async fn actual_source_fixture_replay_and_source_hash() {
         if let Some(status) = obj(spec, "status") {
             let status = num(status);
             let bytes = b64(string(obj(spec, "body").unwrap()));
-            if obj(spec, "nativeDepthLimit").is_some() {
-                let expected = format!(
-                    "{{\"error\":true,\"message\":{},\"status\":400}}",
-                    std::str::from_utf8(&bytes)
-                        .unwrap()
-                        .strip_prefix("{\"error\":")
-                        .unwrap()
-                        .strip_suffix('}')
-                        .unwrap()
-                );
-                assert_eq!(
-                    b64(string(obj(outcome, "returnedJsonBase64").unwrap())),
-                    expected.as_bytes(),
-                    "{id}: source result"
-                );
-                assert!(
-                    delete_message_body(status, &bytes).is_err(),
-                    "{id}: known parser depth boundary"
-                );
-                continue;
-            }
-            let actual=match delete_message_body(status,&bytes) {Ok(r)=>result_json(r),Err(_)=>parse_json(r#"{"error":true,"message":"Internal server error","status":500,"type":"error"}"#).unwrap()};
-            assert_eq!(&actual, obj(outcome, "returned").unwrap(), "{id}");
+            let expected =
+                String::from_utf8(b64(string(obj(outcome, "returnedJsonBase64").unwrap())))
+                    .unwrap();
+            let actual = match delete_message_body(status, &bytes) {
+                Ok(response) => response.to_json_string(),
+                Err(_) => r#"{"error":true,"message":"Internal server error","status":500,"type":"error"}"#.to_owned(),
+            };
+            assert_eq!(actual, expected, "{id}");
             let recorder = Recorder::start(move |_| CannedResponse {
                 status,
                 headers: vec![],
@@ -268,11 +240,7 @@ async fn actual_source_fixture_replay_and_source_hash() {
                 .delete_message("message", "channel", "requester")
                 .await
                 .unwrap();
-            assert_eq!(
-                &result_json(actual),
-                obj(outcome, "returned").unwrap(),
-                "{id}"
-            );
+            assert_eq!(actual.to_json_string(), expected, "{id}");
             let request = recorder.next(Duration::from_secs(2));
             assert_eq!(
                 request.path,
@@ -309,8 +277,9 @@ async fn actual_source_fixture_replay_and_source_hash() {
                 );
             } else {
                 assert_eq!(
-                    &result_json(result.unwrap()),
-                    obj(outcome, "returned").unwrap(),
+                    result.unwrap().to_json_string(),
+                    String::from_utf8(b64(string(obj(outcome, "returnedJsonBase64").unwrap())))
+                        .unwrap(),
                     "{id}"
                 )
             };
@@ -334,7 +303,10 @@ async fn request_is_bot_owned_single_attempt_without_body_or_cache() {
     );
     let response = service.delete_message("m", "c", "requester").await.unwrap();
     assert_eq!(response.status, Some(401));
-    assert_eq!(response.message, JsonValue::String("no".into()));
+    assert_eq!(
+        response.message.root().as_string().unwrap().as_str(),
+        Some("no")
+    );
     let request = recorder.next(Duration::from_secs(2));
     assert_eq!(request.method, "DELETE");
     assert_eq!(
@@ -365,8 +337,8 @@ async fn denial_has_source_shape_and_sends_no_request() {
         TwitchFunctions::with_adapters(client, Arc::new(Denied), Arc::new(NoCache), None, None);
     let response = service.delete_message("m", "c", "r").await.unwrap();
     assert_eq!(
-        result_json(response),
-        parse_json(r#"{"error":true,"message":"denied","status":403,"type":"error"}"#).unwrap()
+        response.to_json_string(),
+        r#"{"error":true,"message":"denied","status":403,"type":"error"}"#
     );
 }
 #[tokio::test]
@@ -552,12 +524,14 @@ async fn internal_failure_logs_attribution_and_ignores_failed_report() {
 }
 
 #[test]
-fn known_shared_parser_depth_boundary() {
-    for depth in [129, 256] {
-        let body = format!("{{\"error\":{}0{}}}", "[".repeat(depth), "]".repeat(depth));
-        assert!(
-            delete_message_body(400, body.as_bytes()).is_err(),
-            "depth {depth} is currently rejected by the shared parser"
-        );
-    }
+fn deep_response_is_stack_safe() {
+    let depth = 4096;
+    let body = format!("{{\"error\":{}0{}}}", "[".repeat(depth), "]".repeat(depth));
+    let response = delete_message_body(400, body.as_bytes()).unwrap();
+    let expected = format!(
+        "{{\"error\":true,\"message\":{}0{},\"status\":400}}",
+        "[".repeat(depth),
+        "]".repeat(depth)
+    );
+    assert_eq!(response.to_json_string(), expected);
 }
