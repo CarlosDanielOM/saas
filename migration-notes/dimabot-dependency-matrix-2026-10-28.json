@@ -58336,19 +58336,34 @@
         "role": "test"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/utils/ai_usage_event.test.ts",
+        "sha256": "d882a40637225a6454c5d6dde78741fc4f15732a37f48fc2027bc85f5a8e2619",
+        "nativeAreaReference": "migration-notes/ai-usage-source-retirement.md; migration-notes/ai-usage-lossless.md"
+      },
+      "featureReview": "reviewed-local-feature-and-helper-dependencies; post-retirement verified",
+      "localRustEvidence": [
+        "migration-notes/ai-usage-source-retirement.md",
+        "ccdb3e65; post-retirement final source tree 9059d7cbd73538d3526ed002734405a7fc39bbd73e0b6aea474117cd8638f5e1",
+        "dimabot/src/utils/ai_usage.rs",
+        "dimabot/tests/ai_usage_lossless.rs"
+      ],
       "behaviorDifferencesOrAcceptedChanges": [],
       "callers": {
         "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "runtimeStatus": "Native helper dependency closure is verified; TypeScript application consumers remain unadopted. Source retirement in the migration checkout only; no deployment."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "Archived source has two groups: canonical TTS/accounting metadata preservation and harness_tools classification/privacy."
+        ],
+        "rustBehaviorEvidence": [
+          "compiler-1793356821591017099: helper, 132 lossless, 338 producer, five-timezone parser and 1042 PostHog source replays passed before the later ledger reader failure.",
+          "compiler-1793357843952147425: repaired three ledger AST source readers; three source-sensitive ledger replays, ordinary ledger tests, formatting and strict minimal/all-feature profiles passed.",
+          "utils::ai_usage ordinary unit tests and full 132-case exact-wire lossless replay."
+        ],
+        "status": "Post-retirement local source/helper mapping verified; source-test obligations mapped to native tests; application adoption remains open."
       },
       "exports": [],
       "imports": [
@@ -58365,12 +58380,12 @@
           "baselineSourceTargets": [
             "src/utils/ai_usage_event.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named runtime test import",
+          "runtimeOrTypeDependency": "runtime-test-only",
+          "defaultSideEffectBarrelDetails": "No side-effect or barrel imports.",
+          "directDependencyReview": "Mapped to native helper behavior tests.",
+          "transitiveDependencyReview": "Native helper dependency closure and Rust test assertions.",
+          "rustReplacementOrGap": "Rust tests and source fixture replay; no missing local helper dependency."
         },
         {
           "ordinal": 1,
@@ -58378,12 +58393,12 @@
           "specifierCategory": "node-builtin-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "default runtime test builtin import",
+          "runtimeOrTypeDependency": "runtime-test-only",
+          "defaultSideEffectBarrelDetails": "No side-effect or barrel imports.",
+          "directDependencyReview": "Mapped to native helper behavior tests.",
+          "transitiveDependencyReview": "Native helper dependency closure and Rust test assertions.",
+          "rustReplacementOrGap": "Rust tests and source fixture replay; no missing local helper dependency."
         },
         {
           "ordinal": 2,
@@ -58391,17 +58406,17 @@
           "specifierCategory": "node-builtin-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "default runtime test builtin import",
+          "runtimeOrTypeDependency": "runtime-test-only",
+          "defaultSideEffectBarrelDetails": "No side-effect or barrel imports.",
+          "directDependencyReview": "Mapped to native helper behavior tests.",
+          "transitiveDependencyReview": "Native helper dependency closure and Rust test assertions.",
+          "rustReplacementOrGap": "Rust tests and source fixture replay; no missing local helper dependency."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "archived-test-obligation-mapped-to-native-helper-tests;not-an-independent-feature-completion"
     },
-        {
+    {
       "source": "src/utils/ai_usage_event.ts",
       "baseline": {
         "sha256": "87ff158c166652ea1eb64199ea4c9c6250b35db90399cb658ef6c3086628de60",
@@ -58409,9 +58424,13 @@
         "role": "application"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "reviewed-bounded-pure-context-and-metadata-helper; matrix status remains partial pending parent completion/retirement decision",
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/utils/ai_usage_event.ts",
+        "sha256": "87ff158c166652ea1eb64199ea4c9c6250b35db90399cb658ef6c3086628de60",
+        "nativeAreaReference": "migration-notes/ai-usage-source-retirement.md; migration-notes/ai-usage-lossless.md"
+      },
+      "featureReview": "reviewed-local-feature-and-helper-dependencies; post-retirement verified",
       "localRustEvidence": [
         "dimabot/src/utils/ai_usage.rs",
         "dimabot/src/utils/ai_usage_lossless.rs",
@@ -58424,7 +58443,9 @@
         "migration-notes/ai-usage-lossless.md",
         "migration-notes/evidence/2026-10-30-ai-usage-lossless/README.md",
         "migration-notes/evidence/2026-10-30-ai-usage-lossless/verification-summary.json",
-        "08ab85ddb3f1277a934699f8ea3d0b4d31d41ff2; final source-tree SHA-256 628038fa15652be3c11e3b301bb9c519421c6fd872eeb2b21c59c0cae7e81ef4"
+        "08ab85ddb3f1277a934699f8ea3d0b4d31d41ff2; final source-tree SHA-256 628038fa15652be3c11e3b301bb9c519421c6fd872eeb2b21c59c0cae7e81ef4",
+        "migration-notes/ai-usage-source-retirement.md",
+        "ccdb3e65; post-retirement final source tree 9059d7cbd73538d3526ed002734405a7fc39bbd73e0b6aea474117cd8638f5e1"
       ],
       "behaviorDifferencesOrAcceptedChanges": [
         "The native lossless counterpart is scoped to ordinary own-property JSON data: getters, executable hooks, custom prototypes, symbols, and sparse arrays are outside the contract. Omitted optional fields retain the source absent/undefined read behavior; null remains present and distinct.",
@@ -58437,7 +58458,7 @@
           "dimabot/src/utils/posthog_events.ts: runtime AI_USAGE_SCHEMA_VERSION and type-only AiUsageContext imports",
           "dimabot/src/utils/ai_usage_ledger.ts, dimabot/src/utils/ai_usage_receipts.ts, dimabot/src/utils/tts_usage.ts: type-only context/category/resource imports"
         ],
-        "runtimeStatus": "The local pure helper mapping is verified. These TypeScript consumers and their Polar/PostHog/ledger/receipt/TTS application paths have not adopted this helper through Rust; caller adoption is separate from pure-helper dependency completeness. No deployment or source retirement."
+        "runtimeStatus": "Native helper dependency closure is verified; TypeScript application consumers remain unadopted. Source retirement in the migration checkout only; no deployment."
       },
       "testEvidence": {
         "sourceEvidence": [
@@ -58449,9 +58470,11 @@
           "dimabot/src/utils/ai_usage.rs tests cover all legacy classifications, context defaults/overrides/omission, metadata spread, finite quantities, and UUID fallback.",
           "dimabot/tests/ai_usage_lossless.rs: focused UTF-16/collision, quantity, malformed-object, and required-context cases plus ignored exact-wire source replay.",
           "compiler-1793347937036016292: two ordinary lossless tests and one ignored full replay passed; scoped strict Clippy, no-default all-target check, mongo/redis all-target check, and all-feature all-target strict Clippy passed.",
-          "migration-notes/evidence/2026-10-30-ai-usage-lossless/verification-summary.json"
+          "migration-notes/evidence/2026-10-30-ai-usage-lossless/verification-summary.json",
+          "compiler-1793356821591017099: helper, 132 lossless, 338 producer, five-timezone parser and 1042 PostHog source replays passed before the later ledger reader failure.",
+          "compiler-1793357843952147425: repaired three ledger AST source readers; three source-sensitive ledger replays, ordinary ledger tests, formatting and strict minimal/all-feature profiles passed."
         ],
-        "status": "Declared pure-helper behavior is locally mapped and source-replayed. This row is deliberately retained as partial pending the parent inventory decision; broader AI usage application paths are outside this helper row."
+        "status": "Post-retirement local source/helper mapping verified; source-test obligations mapped to native tests; application adoption remains open."
       },
       "exports": [
         {
@@ -58560,7 +58583,24 @@
           "rustReplacementOrGap": "uuid::Uuid::new_v4 in the typed constructor; lossless JSON constructors reuse existing JsonValue, JsString, js_compat, json_number, and classification helpers."
         }
       ],
-      "rowAssessment": "partial-bounded-pure-helper-source-and-dependency-closure-reviewed; local mapping verified; parent completion/retirement decision pending"
+      "rowAssessment": "local-helper-feature-and-native-dependencies-verified;source-retired;application-caller-adoption-open",
+      "dependencyClosure": {
+        "scope": "pure AI usage context and metadata helper",
+        "status": "direct and transitive native helper dependencies verified",
+        "typescriptRuntime": [
+          "node:crypto.randomUUID"
+        ],
+        "nativeReplacement": [
+          "existing uuid v4",
+          "shared Rust JavaScript string/number/JSON coercion and ordering",
+          "existing classification policy"
+        ],
+        "missingPrimitiveDependency": null,
+        "applicationDependenciesOutsidePrimitive": [
+          "Polar/billing orchestration, telemetry and application caller adoption remain open"
+        ],
+        "boundary": "typed values and ordinary own-property JSON including lossless UTF-16; no executable hooks, symbols or custom prototypes"
+      }
     },
     {
       "source": "src/utils/ai_usage_ledger.test.ts",
@@ -93225,7 +93265,7 @@
       "behaviorDifferencesOrAcceptedChanges": [
         "All six exports have local Rust payload/lifecycle counterparts and concrete SDK/lossless adapters. Verification covers 1,042 source wrapper records, 20 native HTTP transport tests and 18 installed-SDK lifecycle scenarios; see the dated migration note and evidence summary.",
         "Native lossless transport has explicit event preflight (256 KiB), depth (64), response-body (64 KiB) and queued-byte (16 MiB) bounds; redirects/proxies are disabled and shutdown is permanent. These behavior differences, UUIDv4 versus SDK UUIDv7 event metadata, and differing SDK/library metadata prevent a strict source-equivalence claim.",
-        "The initial payload benchmark and its four small-payload regressions (command, TTS, AI usage, AI operation) remain preserved as baseline history. A verified follow-up measured all six current Rust synthetic payload medians 9.5%–86.0% below the retained TypeScript medians, closing those four measured regressions in this bounded comparison; the command sample ranges overlap, so no statistical-significance claim is made. The two Unicode/large TTS pools also remain faster by median. Timing covers prepared payload builders, ordered JSON and UTF-8 checksum only; it is not an HTTP, queue, application or production-latency result."
+        "The initial payload benchmark and its four small-payload regressions (command, TTS, AI usage, AI operation) remain preserved as baseline history. A verified follow-up measured all six current Rust synthetic payload medians 9.5%\u201386.0% below the retained TypeScript medians, closing those four measured regressions in this bounded comparison; the command sample ranges overlap, so no statistical-significance claim is made. The two Unicode/large TTS pools also remain faster by median. Timing covers prepared payload builders, ordered JSON and UTF-8 checksum only; it is not an HTTP, queue, application or production-latency result."
       ],
       "callers": {
         "sourceEvidence": [

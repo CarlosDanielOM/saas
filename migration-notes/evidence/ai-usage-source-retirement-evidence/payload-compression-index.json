@@ -1,0 +1,116 @@
+{
+  "algorithm": "gzip level 9, mtime=0, empty embedded filename",
+  "payload_count": 11,
+  "payloads": [
+    {
+      "original_path": "attempt5/backfill/ai_usage_ledger_backfill_reference.json",
+      "stored_path": "attempt5/backfill/ai_usage_ledger_backfill_reference.json.gz",
+      "raw_size_bytes": 28976253,
+      "raw_sha256": "24c16c934ecfb8404d8d2fe9b435c4da16d299af15e3bea887f62ae4b190a2a5",
+      "stored_size_bytes": 397093,
+      "stored_sha256": "78dbaa3a47f85ccdfbb01acfeaa1089468c6f952e86c69fb95c19dc73d7c4480",
+      "state_original_path": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/ai-usage-retirement/attempt5/backfill/ai_usage_ledger_backfill_reference.json",
+      "state_original_sha256": "24c16c934ecfb8404d8d2fe9b435c4da16d299af15e3bea887f62ae4b190a2a5"
+    },
+    {
+      "original_path": "attempt5/daily/expected.json",
+      "stored_path": "attempt5/daily/expected.json.gz",
+      "raw_size_bytes": 1174628,
+      "raw_sha256": "a54da2bcbbc462b66520356e819135278d43b12f21b883abf87dba56daf5cad0",
+      "stored_size_bytes": 25053,
+      "stored_sha256": "328886e48ad8709b8d2ad538e0d878e843ac8cf773ccaa5bf62867dfa3185cd5",
+      "state_original_path": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/ai-usage-retirement/attempt5/daily/expected.json",
+      "state_original_sha256": "a54da2bcbbc462b66520356e819135278d43b12f21b883abf87dba56daf5cad0"
+    },
+    {
+      "original_path": "attempt5/daily/inputs.json",
+      "stored_path": "attempt5/daily/inputs.json.gz",
+      "raw_size_bytes": 2994172,
+      "raw_sha256": "a65715ff6e119fe68be6f89a096e397e20018ea022ea4f9f035816a530ae71c5",
+      "stored_size_bytes": 98722,
+      "stored_sha256": "ccc9239432f28c7d898cd4f17a0094a6915d317cdc539c636fc1f78b73a68a5d",
+      "state_original_path": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/ai-usage-retirement/attempt5/daily/inputs.json",
+      "state_original_sha256": "a65715ff6e119fe68be6f89a096e397e20018ea022ea4f9f035816a530ae71c5"
+    },
+    {
+      "original_path": "attempt5/lock/ai_usage_lock_reference.json",
+      "stored_path": "attempt5/lock/ai_usage_lock_reference.json.gz",
+      "raw_size_bytes": 4788471,
+      "raw_sha256": "d6388f3d638b0c6a085e5b1003a1523b9670096099ca4ca52cb1565e272a404a",
+      "stored_size_bytes": 100816,
+      "stored_sha256": "06e322cd5913156d5e721d644007357df809c1e7a56969f39df2d21a35b57e03",
+      "state_original_path": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/ai-usage-retirement/attempt5/lock/ai_usage_lock_reference.json",
+      "state_original_sha256": "d6388f3d638b0c6a085e5b1003a1523b9670096099ca4ca52cb1565e272a404a"
+    },
+    {
+      "original_path": "attempt5/parser/ai_usage_receipt_parser_reference.json",
+      "stored_path": "attempt5/parser/ai_usage_receipt_parser_reference.json.gz",
+      "raw_size_bytes": 189945843,
+      "raw_sha256": "44e064220bbdcdf89c413f3649a516b5aea5b0cd5551548810cefba2819ceb00",
+      "stored_size_bytes": 3943623,
+      "stored_sha256": "36fed37a7554cc97b4a5af824a6fd3d6e35f70d59f29525bb42487179cf4221c",
+      "state_original_path": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/ai-usage-retirement/attempt5/parser/ai_usage_receipt_parser_reference.json",
+      "state_original_sha256": "44e064220bbdcdf89c413f3649a516b5aea5b0cd5551548810cefba2819ceb00"
+    },
+    {
+      "original_path": "attempt5/persistence/ai_usage_ledger_persistence_reference.json",
+      "stored_path": "attempt5/persistence/ai_usage_ledger_persistence_reference.json.gz",
+      "raw_size_bytes": 1737680,
+      "raw_sha256": "a4f5eba08869ef296d228bb108eb8ed4bd43233e01409cd6d8d5dc117e90c02c",
+      "stored_size_bytes": 57935,
+      "stored_sha256": "49925781744e6867ae28b2746f08a041cb7b58bbca4e8d44c95c321ded630609",
+      "state_original_path": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/ai-usage-retirement/attempt5/persistence/ai_usage_ledger_persistence_reference.json",
+      "state_original_sha256": "a4f5eba08869ef296d228bb108eb8ed4bd43233e01409cd6d8d5dc117e90c02c"
+    },
+    {
+      "original_path": "attempt5/queries/ai_usage_ledger_queries_reference.json",
+      "stored_path": "attempt5/queries/ai_usage_ledger_queries_reference.json.gz",
+      "raw_size_bytes": 2011946,
+      "raw_sha256": "8e017faa7d6e6640bb0b6568850788003614445bfbdf6d96d07ae8f7f0a6dffc",
+      "stored_size_bytes": 64157,
+      "stored_sha256": "2cce16ceb217074e8f5e7edd3168c339182a1f2dfdfb5a4e6fb786ebec71da09",
+      "state_original_path": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/ai-usage-retirement/attempt5/queries/ai_usage_ledger_queries_reference.json",
+      "state_original_sha256": "8e017faa7d6e6640bb0b6568850788003614445bfbdf6d96d07ae8f7f0a6dffc"
+    },
+    {
+      "original_path": "attempt5/tracking/posthog_tracking.json",
+      "stored_path": "attempt5/tracking/posthog_tracking.json.gz",
+      "raw_size_bytes": 3121787,
+      "raw_sha256": "8216660b12e0d480692051e43e0b4cb1732b1888ee903f827236f1e8b213c14c",
+      "stored_size_bytes": 195430,
+      "stored_sha256": "cdb23c0d385a11250c5a2b5aa06cf1f7f810d62977dcb8a4be000cc765ba43e2",
+      "state_original_path": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/ai-usage-retirement/attempt5/tracking/posthog_tracking.json",
+      "state_original_sha256": "8216660b12e0d480692051e43e0b4cb1732b1888ee903f827236f1e8b213c14c"
+    },
+    {
+      "original_path": "attempt6/backfill/ai_usage_ledger_backfill_reference.json",
+      "stored_path": "attempt6/backfill/ai_usage_ledger_backfill_reference.json.gz",
+      "raw_size_bytes": 28976253,
+      "raw_sha256": "239673fde6d0090cd1edcf36505f21ebbff3754f480a22a10cab661624f70dfe",
+      "stored_size_bytes": 397095,
+      "stored_sha256": "7202ace433ccc96998e8561559590e5d5e1ef1476ded4d1bbe7de60e51edb87b",
+      "state_original_path": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/ai-usage-retirement/attempt6/backfill/ai_usage_ledger_backfill_reference.json",
+      "state_original_sha256": "239673fde6d0090cd1edcf36505f21ebbff3754f480a22a10cab661624f70dfe"
+    },
+    {
+      "original_path": "attempt6/persistence/ai_usage_ledger_persistence_reference.json",
+      "stored_path": "attempt6/persistence/ai_usage_ledger_persistence_reference.json.gz",
+      "raw_size_bytes": 1737680,
+      "raw_sha256": "7cb4487de3283ade60b55311df32ce9e438d4c9ed29bf2f821078a18d604a8c0",
+      "stored_size_bytes": 57936,
+      "stored_sha256": "edf367aeaa30e86244fd4caab0e2d009a0cdaff14696e29f3f3c33387fa5a4ff",
+      "state_original_path": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/ai-usage-retirement/attempt6/persistence/ai_usage_ledger_persistence_reference.json",
+      "state_original_sha256": "7cb4487de3283ade60b55311df32ce9e438d4c9ed29bf2f821078a18d604a8c0"
+    },
+    {
+      "original_path": "attempt6/queries/ai_usage_ledger_queries_reference.json",
+      "stored_path": "attempt6/queries/ai_usage_ledger_queries_reference.json.gz",
+      "raw_size_bytes": 2011946,
+      "raw_sha256": "8f4448e5cc59da99bc2e3fc85d24a86923a7525c051301341ad826deeaa1f05e",
+      "stored_size_bytes": 64155,
+      "stored_sha256": "00d56387be9baeab607efdf139e220ae84345dce2994de2d0f3d131c684265e5",
+      "state_original_path": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/ai-usage-retirement/attempt6/queries/ai_usage_ledger_queries_reference.json",
+      "state_original_sha256": "8f4448e5cc59da99bc2e3fc85d24a86923a7525c051301341ad826deeaa1f05e"
+    }
+  ]
+}

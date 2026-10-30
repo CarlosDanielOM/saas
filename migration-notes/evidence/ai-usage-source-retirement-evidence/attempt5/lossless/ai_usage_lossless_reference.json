@@ -1,0 +1,1621 @@
+{
+  "metadata": {
+    "format": 1,
+    "node": "v24.22.1",
+    "v8": "13.6.233.17-node.58",
+    "typescript": "5.9.3",
+    "sourceProvenance": "archives/dimabot-typescript/2026-10-28/src/utils/ai_usage_event.ts",
+    "hashes": {
+      "src/utils/ai_usage_event.ts": "87ff158c166652ea1eb64199ea4c9c6250b35db90399cb658ef6c3086628de60",
+      "package.json": "cc4939f6416a91d4bfaa5bcdd3d448d2f74103a88bb269e0a8e393615cf32cef",
+      "package-lock.json": "abdf5aa71a8272423ebb9358d7aaa87edd7e65f6605c325fe231a4bcef70eeb7",
+      "typescript": "3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675",
+      "typescript/package.json": "822ef7ca6452205657b6288b066481ecf508bfbf43455d715cf7d3ec457561e6",
+      "node": "569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108"
+    },
+    "nativeHashes": {
+      "src/utils/ai_usage_lossless.rs": "3830aa957644fafb908f4fd0613c397b30716198ecfc93b11e5c8433cdea86c7",
+      "src/utils/ai_usage.rs": "a4d9b103569b5bce80150091ff028dbe09f90bdada0b7572525705e46a0431b5",
+      "src/utils/js_string.rs": "17b3e6a6bcd0d92210851eca25da44bbcdb2c2d9e196feb5dab58d06b75d4aed",
+      "src/utils/lossless_json.rs": "9dc7dcef87ce874239df6effa4130c0b2f2da6a1c1e73f24f4f7560595525c2e",
+      "src/utils/json_number.rs": "f463c65a55bcd611ed9bad2444e50acff697969bb910b7b4c17371d0af21f419",
+      "src/utils/tts/settings.rs": "e49542fb02eadaedfd28099c829f6b0bd43302af72d725147e3112b188f34fa9",
+      "tests/ai_usage_lossless.rs": "d84601a43ef14a3721ef056b1eb6a541a07800ad100a550328d3edb95f406478",
+      "tests/fixtures/ai_usage_lossless_reference.cjs": "e7a483229f24026e97b0ca390e26c6e1f2f32e7ea71276b2b33af231c6c04df4",
+      "Cargo.toml": "4882343e9af14f7d0369fad879863c19ce5d379d72a577c914481b36b0f6225d",
+      "Cargo.lock": "787333fa269752a606040d7393767040ef749ce1e01c2512386bf305bcd7a2c3",
+      "rust-toolchain.toml": "b9c8d2d59f6f46474c0cfa0b8b77bea21d94fc73a30ad93d5bf6385c422197d2"
+    },
+    "evidence": [
+      {
+        "name": "AiUsageContextInput",
+        "kind": "InterfaceDeclaration",
+        "exported": true,
+        "declaration": "export interface AiUsageContextInput {\n    entryId?: string;\n    requestId?: string;\n    parentRequestId?: string;\n    entryKind?: AiUsageEntryKind;\n    category?: AiUsageCategory;\n    operation?: string;\n    source?: string;\n    provider?: string;\n    model?: string;\n    channelID?: string;\n    quantity?: number;\n    unit?: AiUsageUnit;\n    resourceType?: AiUsageResourceType;\n    resourceId?: string;\n}",
+        "sha256": "3e36827069ccdf31366b4bf4baa9009b2e53bbe2f8dc753d1dd34d03af373370"
+      },
+      {
+        "name": "createAiUsageContext",
+        "kind": "FunctionDeclaration",
+        "exported": true,
+        "declaration": "export function createAiUsageContext(reason: string, input: AiUsageContextInput = {}): AiUsageContext {\n    const classified = classifyLegacyReason(reason);\n    const entryId = optionalText(input.entryId) || `aiu_${randomUUID()}`;\n\n    return {\n        schemaVersion: AI_USAGE_SCHEMA_VERSION,\n        pricingVersion: AI_USAGE_PRICING_VERSION,\n        entryId,\n        requestId: optionalText(input.requestId) || entryId,\n        ...(optionalText(input.parentRequestId) ? { parentRequestId: optionalText(input.parentRequestId) } : {}),\n        entryKind: input.entryKind || classified.entryKind,\n        category: input.category || classified.category,\n        operation: optionalText(input.operation) || classified.operation,\n        source: optionalText(input.source) || classified.source,\n        provider: optionalText(input.provider) || classified.provider,\n        ...(optionalText(input.model) ? { model: optionalText(input.model) } : {}),\n        ...(optionalText(input.channelID) ? { channelID: optionalText(input.channelID) } : {}),\n        ...(optionalFinite(input.quantity) !== undefined ? { quantity: optionalFinite(input.quantity) } : {}),\n        ...(input.unit ? { unit: input.unit } : {}),\n        ...(input.resourceType ? { resourceType: input.resourceType } : {}),\n        ...(optionalText(input.resourceId) ? { resourceId: optionalText(input.resourceId) } : {})\n    };\n}",
+        "sha256": "68165476a77af8df9e6e7fa788b7ad974cd1957dbb45272e2141989a6348d107"
+      },
+      {
+        "name": "toPolarUsageMetadata",
+        "kind": "FunctionDeclaration",
+        "exported": true,
+        "declaration": "export function toPolarUsageMetadata(context: AiUsageContext): PolarUsageMetadataShape {\n    return {\n        schema_version: context.schemaVersion,\n        pricing_version: context.pricingVersion,\n        entry_id: context.entryId,\n        request_id: context.requestId,\n        ...(context.parentRequestId ? { parent_request_id: context.parentRequestId } : {}),\n        entry_kind: context.entryKind,\n        category: context.category,\n        operation: context.operation,\n        usage_source: context.source,\n        provider: context.provider,\n        ...(context.model ? { model: context.model } : {}),\n        ...(context.channelID ? { channel_id: context.channelID } : {}),\n        ...(context.quantity !== undefined ? { quantity: context.quantity } : {}),\n        ...(context.unit ? { unit: context.unit } : {}),\n        ...(context.resourceType ? { resource_type: context.resourceType } : {}),\n        ...(context.resourceId ? { resource_id: context.resourceId } : {})\n    };\n}",
+        "sha256": "104bc53432f69f17744af07d6e7e982b2778458549b8895c7bd33c7653358ae9"
+      },
+      {
+        "name": "enrichPolarUsageMetadata",
+        "kind": "FunctionDeclaration",
+        "exported": true,
+        "declaration": "export function enrichPolarUsageMetadata<T extends object>(\n    accountingMetadata: T,\n    context: AiUsageContext\n): T & PolarUsageMetadataShape {\n    return {\n        ...accountingMetadata,\n        ...toPolarUsageMetadata(context)\n    };\n}",
+        "sha256": "fc117cc7c4103be42afce9291a9b57568f68ec3b008f623792f5b597b9ab51df"
+      }
+    ],
+    "typeEvidence": [
+      {
+        "name": "AiUsageEntryKind",
+        "kind": "TypeAliasDeclaration",
+        "declaration": "export type AiUsageEntryKind = 'usage' | 'adjustment';",
+        "sha256": "3d147ea09ce95d27ad1135547b1d3b5c0ea2ab424f62a0b6391bae4ac311bbb2"
+      },
+      {
+        "name": "AiUsageCategory",
+        "kind": "TypeAliasDeclaration",
+        "declaration": "export type AiUsageCategory =\n    | 'tts'\n    | 'ai_chat'\n    | 'ai_agent'\n    | 'memory'\n    | 'clip_recommendation'\n    | 'credit_adjustment'\n    | 'other';",
+        "sha256": "5bf8049a8fcdf1db9b93d212462745fdf778ebeb89430bcecaebe73ac485799e"
+      },
+      {
+        "name": "AiUsageUnit",
+        "kind": "TypeAliasDeclaration",
+        "declaration": "export type AiUsageUnit = 'characters' | 'tokens' | 'minutes';",
+        "sha256": "ae0d0394ca9784a94147d4c91b9285b682d76c55baa3126f2fecfc4448132871"
+      },
+      {
+        "name": "AiUsageResourceType",
+        "kind": "TypeAliasDeclaration",
+        "declaration": "export type AiUsageResourceType = 'speech' | 'voice_preview' | 'llm_generation' | 'vod_analysis';",
+        "sha256": "502dedfcfce54ecb45256203fcf9a63367a7951b88869386de8ee431404cdf0a"
+      },
+      {
+        "name": "AiUsageContext",
+        "kind": "InterfaceDeclaration",
+        "declaration": "export interface AiUsageContext {\n    schemaVersion: typeof AI_USAGE_SCHEMA_VERSION;\n    pricingVersion: typeof AI_USAGE_PRICING_VERSION;\n    entryId: string;\n    requestId: string;\n    parentRequestId?: string;\n    entryKind: AiUsageEntryKind;\n    category: AiUsageCategory;\n    operation: string;\n    source: string;\n    provider: string;\n    model?: string;\n    channelID?: string;\n    quantity?: number;\n    unit?: AiUsageUnit;\n    resourceType?: AiUsageResourceType;\n    resourceId?: string;\n}",
+        "sha256": "d91b7d60b3843970c0d683cf46936bc022402350457187dbfa51b300488aa01e"
+      },
+      {
+        "name": "PolarUsageMetadataShape",
+        "kind": "InterfaceDeclaration",
+        "declaration": "export interface PolarUsageMetadataShape {\n    schema_version: number;\n    pricing_version: string;\n    entry_id: string;\n    request_id: string;\n    parent_request_id?: string;\n    entry_kind: AiUsageEntryKind;\n    category: AiUsageCategory;\n    operation: string;\n    usage_source: string;\n    provider: string;\n    model?: string;\n    channel_id?: string;\n    quantity?: number;\n    unit?: AiUsageUnit;\n    resource_type?: AiUsageResourceType;\n    resource_id?: string;\n}",
+        "sha256": "d2315b9e58dd23faf9484ca8ecd650ede06318b72d8df4156e5b7c036e4d0877"
+      }
+    ],
+    "members": [
+      [
+        "entryId",
+        true,
+        "string"
+      ],
+      [
+        "requestId",
+        true,
+        "string"
+      ],
+      [
+        "parentRequestId",
+        true,
+        "string"
+      ],
+      [
+        "entryKind",
+        true,
+        "AiUsageEntryKind"
+      ],
+      [
+        "category",
+        true,
+        "AiUsageCategory"
+      ],
+      [
+        "operation",
+        true,
+        "string"
+      ],
+      [
+        "source",
+        true,
+        "string"
+      ],
+      [
+        "provider",
+        true,
+        "string"
+      ],
+      [
+        "model",
+        true,
+        "string"
+      ],
+      [
+        "channelID",
+        true,
+        "string"
+      ],
+      [
+        "quantity",
+        true,
+        "number"
+      ],
+      [
+        "unit",
+        true,
+        "AiUsageUnit"
+      ],
+      [
+        "resourceType",
+        true,
+        "AiUsageResourceType"
+      ],
+      [
+        "resourceId",
+        true,
+        "string"
+      ]
+    ],
+    "compiledSha256": "f61a22534750ec517bb08249dd48bd10153a262922ae3b4b836db766a5731053",
+    "caseCount": 130,
+    "metadataCaseCount": 2
+  },
+  "cases": [
+    {
+      "id": "reason-0",
+      "reason": "tts_fish",
+      "raw": "{}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"tts\",\"operation\":\"synthesize\",\"source\":\"tts_queue\",\"provider\":\"fish\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"tts\",\"operation\":\"synthesize\",\"usage_source\":\"tts_queue\",\"provider\":\"fish\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"tts\",\"operation\":\"synthesize\",\"usage_source\":\"tts_queue\",\"provider\":\"fish\"}"
+    },
+    {
+      "id": "reason-1",
+      "reason": "tts_kokoro",
+      "raw": "{}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"tts\",\"operation\":\"synthesize\",\"source\":\"tts_queue\",\"provider\":\"kokoro\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"tts\",\"operation\":\"synthesize\",\"usage_source\":\"tts_queue\",\"provider\":\"kokoro\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"tts\",\"operation\":\"synthesize\",\"usage_source\":\"tts_queue\",\"provider\":\"kokoro\"}"
+    },
+    {
+      "id": "reason-2",
+      "reason": "tts_piper",
+      "raw": "{}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"tts\",\"operation\":\"synthesize\",\"source\":\"tts_queue\",\"provider\":\"piper\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"tts\",\"operation\":\"synthesize\",\"usage_source\":\"tts_queue\",\"provider\":\"piper\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"tts\",\"operation\":\"synthesize\",\"usage_source\":\"tts_queue\",\"provider\":\"piper\"}"
+    },
+    {
+      "id": "reason-3",
+      "reason": "messages",
+      "raw": "{}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"source\":\"chat\",\"provider\":\"openrouter\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}"
+    },
+    {
+      "id": "reason-4",
+      "reason": "harness_tools",
+      "raw": "{}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"tool_reasoning\",\"source\":\"chat\",\"provider\":\"openrouter\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"tool_reasoning\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"tool_reasoning\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}"
+    },
+    {
+      "id": "reason-5",
+      "reason": "harness_end",
+      "raw": "{}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"final_response\",\"source\":\"chat\",\"provider\":\"openrouter\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"final_response\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"final_response\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}"
+    },
+    {
+      "id": "reason-6",
+      "reason": "planner",
+      "raw": "{}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"ai_agent\",\"operation\":\"plan\",\"source\":\"code_execution\",\"provider\":\"openrouter\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_agent\",\"operation\":\"plan\",\"usage_source\":\"code_execution\",\"provider\":\"openrouter\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_agent\",\"operation\":\"plan\",\"usage_source\":\"code_execution\",\"provider\":\"openrouter\"}"
+    },
+    {
+      "id": "reason-7",
+      "reason": "coding_agent",
+      "raw": "{}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"ai_agent\",\"operation\":\"generate_code\",\"source\":\"code_execution\",\"provider\":\"openrouter\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_agent\",\"operation\":\"generate_code\",\"usage_source\":\"code_execution\",\"provider\":\"openrouter\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_agent\",\"operation\":\"generate_code\",\"usage_source\":\"code_execution\",\"provider\":\"openrouter\"}"
+    },
+    {
+      "id": "reason-8",
+      "reason": "stream_summary",
+      "raw": "{}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"memory\",\"operation\":\"stream_summary\",\"source\":\"stream_offline\",\"provider\":\"openrouter\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"memory\",\"operation\":\"stream_summary\",\"usage_source\":\"stream_offline\",\"provider\":\"openrouter\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"memory\",\"operation\":\"stream_summary\",\"usage_source\":\"stream_offline\",\"provider\":\"openrouter\"}"
+    },
+    {
+      "id": "reason-9",
+      "reason": "weekly_summary",
+      "raw": "{}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"memory\",\"operation\":\"weekly_summary\",\"source\":\"weekly_maintenance\",\"provider\":\"openrouter\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"memory\",\"operation\":\"weekly_summary\",\"usage_source\":\"weekly_maintenance\",\"provider\":\"openrouter\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"memory\",\"operation\":\"weekly_summary\",\"usage_source\":\"weekly_maintenance\",\"provider\":\"openrouter\"}"
+    },
+    {
+      "id": "reason-10",
+      "reason": "monthly_summary",
+      "raw": "{}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"memory\",\"operation\":\"monthly_summary\",\"source\":\"monthly_maintenance\",\"provider\":\"openrouter\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"memory\",\"operation\":\"monthly_summary\",\"usage_source\":\"monthly_maintenance\",\"provider\":\"openrouter\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"memory\",\"operation\":\"monthly_summary\",\"usage_source\":\"monthly_maintenance\",\"provider\":\"openrouter\"}"
+    },
+    {
+      "id": "reason-11",
+      "reason": "vod_clip_recommendation",
+      "raw": "{}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"clip_recommendation\",\"operation\":\"analyze_vod\",\"source\":\"clip_recommendation\",\"provider\":\"openrouter\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"clip_recommendation\",\"operation\":\"analyze_vod\",\"usage_source\":\"clip_recommendation\",\"provider\":\"openrouter\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"clip_recommendation\",\"operation\":\"analyze_vod\",\"usage_source\":\"clip_recommendation\",\"provider\":\"openrouter\"}"
+    },
+    {
+      "id": "reason-12",
+      "reason": "Free benefits",
+      "raw": "{}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"adjustment\",\"category\":\"credit_adjustment\",\"operation\":\"grant\",\"source\":\"activation\",\"provider\":\"polar\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"adjustment\",\"category\":\"credit_adjustment\",\"operation\":\"grant\",\"usage_source\":\"activation\",\"provider\":\"polar\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"adjustment\",\"category\":\"credit_adjustment\",\"operation\":\"grant\",\"usage_source\":\"activation\",\"provider\":\"polar\"}"
+    },
+    {
+      "id": "reason-13",
+      "reason": "unknown",
+      "raw": "{}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "reason-14",
+      "reason": "",
+      "raw": "{}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"usage\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"usage\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"usage\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "reason-15",
+      "reason": "  ",
+      "raw": "{}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"  \",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"  \",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"  \",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "reason-16",
+      "reason": "\ud800",
+      "raw": "{}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"\\ud800\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"\\ud800\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"\\ud800\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "reason-17",
+      "reason": "😀",
+      "raw": "{}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"😀\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"😀\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"😀\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "reason-18",
+      "reason": "\udfff",
+      "raw": "{}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"\\udfff\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"\\udfff\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"\\udfff\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "entryId-19",
+      "reason": "unknown",
+      "raw": "{\"entryId\":\"\"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "entryId-20",
+      "reason": "unknown",
+      "raw": "{\"entryId\":\" \\t﻿  \"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "entryId-21",
+      "reason": "unknown",
+      "raw": "{\"entryId\":\"﻿ 😀𐏿\\ud800  \"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 0,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"😀𐏿\\ud800\",\"requestId\":\"😀𐏿\\ud800\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"😀𐏿\\ud800\",\"request_id\":\"😀𐏿\\ud800\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"😀𐏿\\ud800\",\"request_id\":\"😀𐏿\\ud800\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "entryId-22",
+      "reason": "unknown",
+      "raw": "{\"entryId\":\"\"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 0,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"\",\"requestId\":\"\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"\",\"request_id\":\"\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"\",\"request_id\":\"\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "entryId-23",
+      "reason": "unknown",
+      "raw": "{\"entryId\":\"abc\"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 0,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"abc\",\"requestId\":\"abc\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"abc\",\"request_id\":\"abc\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"abc\",\"request_id\":\"abc\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "entryId-24",
+      "reason": "unknown",
+      "raw": "{\"entryId\":null}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "entryId-25",
+      "reason": "unknown",
+      "raw": "{\"entryId\":false}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "entryId-26",
+      "reason": "unknown",
+      "raw": "{\"entryId\":0}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "requestId-27",
+      "reason": "unknown",
+      "raw": "{\"requestId\":\"\"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "requestId-28",
+      "reason": "unknown",
+      "raw": "{\"requestId\":\" \\t﻿  \"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "requestId-29",
+      "reason": "unknown",
+      "raw": "{\"requestId\":\"﻿ 😀𐏿\\ud800  \"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"😀𐏿\\ud800\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"😀𐏿\\ud800\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"😀𐏿\\ud800\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "requestId-30",
+      "reason": "unknown",
+      "raw": "{\"requestId\":\"\"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "requestId-31",
+      "reason": "unknown",
+      "raw": "{\"requestId\":\"abc\"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"abc\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"abc\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"abc\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "requestId-32",
+      "reason": "unknown",
+      "raw": "{\"requestId\":null}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "requestId-33",
+      "reason": "unknown",
+      "raw": "{\"requestId\":false}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "requestId-34",
+      "reason": "unknown",
+      "raw": "{\"requestId\":0}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "parentRequestId-35",
+      "reason": "unknown",
+      "raw": "{\"parentRequestId\":\"\"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "parentRequestId-36",
+      "reason": "unknown",
+      "raw": "{\"parentRequestId\":\" \\t﻿  \"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "parentRequestId-37",
+      "reason": "unknown",
+      "raw": "{\"parentRequestId\":\"﻿ 😀𐏿\\ud800  \"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"parentRequestId\":\"😀𐏿\\ud800\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"parent_request_id\":\"😀𐏿\\ud800\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"parent_request_id\":\"😀𐏿\\ud800\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "parentRequestId-38",
+      "reason": "unknown",
+      "raw": "{\"parentRequestId\":\"\"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"parentRequestId\":\"\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"parent_request_id\":\"\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"parent_request_id\":\"\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "parentRequestId-39",
+      "reason": "unknown",
+      "raw": "{\"parentRequestId\":\"abc\"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"parentRequestId\":\"abc\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"parent_request_id\":\"abc\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"parent_request_id\":\"abc\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "parentRequestId-40",
+      "reason": "unknown",
+      "raw": "{\"parentRequestId\":null}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "parentRequestId-41",
+      "reason": "unknown",
+      "raw": "{\"parentRequestId\":false}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "parentRequestId-42",
+      "reason": "unknown",
+      "raw": "{\"parentRequestId\":0}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "operation-43",
+      "reason": "unknown",
+      "raw": "{\"operation\":\"\"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "operation-44",
+      "reason": "unknown",
+      "raw": "{\"operation\":\" \\t﻿  \"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "operation-45",
+      "reason": "unknown",
+      "raw": "{\"operation\":\"﻿ 😀𐏿\\ud800  \"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"😀𐏿\\ud800\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"😀𐏿\\ud800\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"😀𐏿\\ud800\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "operation-46",
+      "reason": "unknown",
+      "raw": "{\"operation\":\"\"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "operation-47",
+      "reason": "unknown",
+      "raw": "{\"operation\":\"abc\"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"abc\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"abc\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"abc\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "operation-48",
+      "reason": "unknown",
+      "raw": "{\"operation\":null}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "operation-49",
+      "reason": "unknown",
+      "raw": "{\"operation\":false}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "operation-50",
+      "reason": "unknown",
+      "raw": "{\"operation\":0}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "source-51",
+      "reason": "unknown",
+      "raw": "{\"source\":\"\"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "source-52",
+      "reason": "unknown",
+      "raw": "{\"source\":\" \\t﻿  \"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "source-53",
+      "reason": "unknown",
+      "raw": "{\"source\":\"﻿ 😀𐏿\\ud800  \"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"😀𐏿\\ud800\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"😀𐏿\\ud800\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"😀𐏿\\ud800\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "source-54",
+      "reason": "unknown",
+      "raw": "{\"source\":\"\"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "source-55",
+      "reason": "unknown",
+      "raw": "{\"source\":\"abc\"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"abc\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"abc\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"abc\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "source-56",
+      "reason": "unknown",
+      "raw": "{\"source\":null}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "source-57",
+      "reason": "unknown",
+      "raw": "{\"source\":false}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "source-58",
+      "reason": "unknown",
+      "raw": "{\"source\":0}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "provider-59",
+      "reason": "unknown",
+      "raw": "{\"provider\":\"\"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "provider-60",
+      "reason": "unknown",
+      "raw": "{\"provider\":\" \\t﻿  \"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "provider-61",
+      "reason": "unknown",
+      "raw": "{\"provider\":\"﻿ 😀𐏿\\ud800  \"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"😀𐏿\\ud800\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"😀𐏿\\ud800\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"😀𐏿\\ud800\"}"
+    },
+    {
+      "id": "provider-62",
+      "reason": "unknown",
+      "raw": "{\"provider\":\"\"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"\"}"
+    },
+    {
+      "id": "provider-63",
+      "reason": "unknown",
+      "raw": "{\"provider\":\"abc\"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"abc\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"abc\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"abc\"}"
+    },
+    {
+      "id": "provider-64",
+      "reason": "unknown",
+      "raw": "{\"provider\":null}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "provider-65",
+      "reason": "unknown",
+      "raw": "{\"provider\":false}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "provider-66",
+      "reason": "unknown",
+      "raw": "{\"provider\":0}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "model-67",
+      "reason": "unknown",
+      "raw": "{\"model\":\"\"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "model-68",
+      "reason": "unknown",
+      "raw": "{\"model\":\" \\t﻿  \"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "model-69",
+      "reason": "unknown",
+      "raw": "{\"model\":\"﻿ 😀𐏿\\ud800  \"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\",\"model\":\"😀𐏿\\ud800\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\",\"model\":\"😀𐏿\\ud800\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\",\"model\":\"😀𐏿\\ud800\"}"
+    },
+    {
+      "id": "model-70",
+      "reason": "unknown",
+      "raw": "{\"model\":\"\"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\",\"model\":\"\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\",\"model\":\"\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\",\"model\":\"\"}"
+    },
+    {
+      "id": "model-71",
+      "reason": "unknown",
+      "raw": "{\"model\":\"abc\"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\",\"model\":\"abc\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\",\"model\":\"abc\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\",\"model\":\"abc\"}"
+    },
+    {
+      "id": "model-72",
+      "reason": "unknown",
+      "raw": "{\"model\":null}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "model-73",
+      "reason": "unknown",
+      "raw": "{\"model\":false}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "model-74",
+      "reason": "unknown",
+      "raw": "{\"model\":0}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "channelID-75",
+      "reason": "unknown",
+      "raw": "{\"channelID\":\"\"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "channelID-76",
+      "reason": "unknown",
+      "raw": "{\"channelID\":\" \\t﻿  \"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "channelID-77",
+      "reason": "unknown",
+      "raw": "{\"channelID\":\"﻿ 😀𐏿\\ud800  \"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\",\"channelID\":\"😀𐏿\\ud800\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\",\"channel_id\":\"😀𐏿\\ud800\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\",\"channel_id\":\"😀𐏿\\ud800\"}"
+    },
+    {
+      "id": "channelID-78",
+      "reason": "unknown",
+      "raw": "{\"channelID\":\"\"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\",\"channelID\":\"\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\",\"channel_id\":\"\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\",\"channel_id\":\"\"}"
+    },
+    {
+      "id": "channelID-79",
+      "reason": "unknown",
+      "raw": "{\"channelID\":\"abc\"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\",\"channelID\":\"abc\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\",\"channel_id\":\"abc\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\",\"channel_id\":\"abc\"}"
+    },
+    {
+      "id": "channelID-80",
+      "reason": "unknown",
+      "raw": "{\"channelID\":null}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "channelID-81",
+      "reason": "unknown",
+      "raw": "{\"channelID\":false}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "channelID-82",
+      "reason": "unknown",
+      "raw": "{\"channelID\":0}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "resourceId-83",
+      "reason": "unknown",
+      "raw": "{\"resourceId\":\"\"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "resourceId-84",
+      "reason": "unknown",
+      "raw": "{\"resourceId\":\" \\t﻿  \"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "resourceId-85",
+      "reason": "unknown",
+      "raw": "{\"resourceId\":\"﻿ 😀𐏿\\ud800  \"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\",\"resourceId\":\"😀𐏿\\ud800\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\",\"resource_id\":\"😀𐏿\\ud800\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\",\"resource_id\":\"😀𐏿\\ud800\"}"
+    },
+    {
+      "id": "resourceId-86",
+      "reason": "unknown",
+      "raw": "{\"resourceId\":\"\"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\",\"resourceId\":\"\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\",\"resource_id\":\"\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\",\"resource_id\":\"\"}"
+    },
+    {
+      "id": "resourceId-87",
+      "reason": "unknown",
+      "raw": "{\"resourceId\":\"abc\"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\",\"resourceId\":\"abc\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\",\"resource_id\":\"abc\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\",\"resource_id\":\"abc\"}"
+    },
+    {
+      "id": "resourceId-88",
+      "reason": "unknown",
+      "raw": "{\"resourceId\":null}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "resourceId-89",
+      "reason": "unknown",
+      "raw": "{\"resourceId\":false}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "resourceId-90",
+      "reason": "unknown",
+      "raw": "{\"resourceId\":0}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"source\":\"backend\",\"provider\":\"unknown\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"unknown\",\"usage_source\":\"backend\",\"provider\":\"unknown\"}"
+    },
+    {
+      "id": "entryKind-91",
+      "reason": "messages",
+      "raw": "{\"entryKind\":null}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"source\":\"chat\",\"provider\":\"openrouter\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}"
+    },
+    {
+      "id": "entryKind-92",
+      "reason": "messages",
+      "raw": "{\"entryKind\":\"\"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"source\":\"chat\",\"provider\":\"openrouter\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}"
+    },
+    {
+      "id": "entryKind-93",
+      "reason": "messages",
+      "raw": "{\"entryKind\":false}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"source\":\"chat\",\"provider\":\"openrouter\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}"
+    },
+    {
+      "id": "entryKind-94",
+      "reason": "messages",
+      "raw": "{\"entryKind\":0}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"source\":\"chat\",\"provider\":\"openrouter\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}"
+    },
+    {
+      "id": "entryKind-95",
+      "reason": "messages",
+      "raw": "{\"entryKind\":\"\\ud800\"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"\\ud800\",\"category\":\"ai_chat\",\"operation\":\"message\",\"source\":\"chat\",\"provider\":\"openrouter\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"\\ud800\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"\\ud800\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}"
+    },
+    {
+      "id": "entryKind-96",
+      "reason": "messages",
+      "raw": "{\"entryKind\":\"adjustment\"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"adjustment\",\"category\":\"ai_chat\",\"operation\":\"message\",\"source\":\"chat\",\"provider\":\"openrouter\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"adjustment\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"adjustment\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}"
+    },
+    {
+      "id": "category-97",
+      "reason": "messages",
+      "raw": "{\"category\":null}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"source\":\"chat\",\"provider\":\"openrouter\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}"
+    },
+    {
+      "id": "category-98",
+      "reason": "messages",
+      "raw": "{\"category\":\"\"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"source\":\"chat\",\"provider\":\"openrouter\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}"
+    },
+    {
+      "id": "category-99",
+      "reason": "messages",
+      "raw": "{\"category\":false}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"source\":\"chat\",\"provider\":\"openrouter\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}"
+    },
+    {
+      "id": "category-100",
+      "reason": "messages",
+      "raw": "{\"category\":0}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"source\":\"chat\",\"provider\":\"openrouter\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}"
+    },
+    {
+      "id": "category-101",
+      "reason": "messages",
+      "raw": "{\"category\":\"\\ud800\"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"\\ud800\",\"operation\":\"message\",\"source\":\"chat\",\"provider\":\"openrouter\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"\\ud800\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"\\ud800\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}"
+    },
+    {
+      "id": "category-102",
+      "reason": "messages",
+      "raw": "{\"category\":\"tts\"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"tts\",\"operation\":\"message\",\"source\":\"chat\",\"provider\":\"openrouter\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"tts\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"tts\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}"
+    },
+    {
+      "id": "unit-103",
+      "reason": "messages",
+      "raw": "{\"unit\":null}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"source\":\"chat\",\"provider\":\"openrouter\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}"
+    },
+    {
+      "id": "unit-104",
+      "reason": "messages",
+      "raw": "{\"unit\":\"\"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"source\":\"chat\",\"provider\":\"openrouter\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}"
+    },
+    {
+      "id": "unit-105",
+      "reason": "messages",
+      "raw": "{\"unit\":false}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"source\":\"chat\",\"provider\":\"openrouter\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}"
+    },
+    {
+      "id": "unit-106",
+      "reason": "messages",
+      "raw": "{\"unit\":0}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"source\":\"chat\",\"provider\":\"openrouter\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}"
+    },
+    {
+      "id": "unit-107",
+      "reason": "messages",
+      "raw": "{\"unit\":\"\\ud800\"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"source\":\"chat\",\"provider\":\"openrouter\",\"unit\":\"\\ud800\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\",\"unit\":\"\\ud800\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\",\"unit\":\"\\ud800\"}"
+    },
+    {
+      "id": "unit-108",
+      "reason": "messages",
+      "raw": "{\"unit\":\"tokens\"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"source\":\"chat\",\"provider\":\"openrouter\",\"unit\":\"tokens\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\",\"unit\":\"tokens\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\",\"unit\":\"tokens\"}"
+    },
+    {
+      "id": "resourceType-109",
+      "reason": "messages",
+      "raw": "{\"resourceType\":null}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"source\":\"chat\",\"provider\":\"openrouter\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}"
+    },
+    {
+      "id": "resourceType-110",
+      "reason": "messages",
+      "raw": "{\"resourceType\":\"\"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"source\":\"chat\",\"provider\":\"openrouter\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}"
+    },
+    {
+      "id": "resourceType-111",
+      "reason": "messages",
+      "raw": "{\"resourceType\":false}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"source\":\"chat\",\"provider\":\"openrouter\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}"
+    },
+    {
+      "id": "resourceType-112",
+      "reason": "messages",
+      "raw": "{\"resourceType\":0}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"source\":\"chat\",\"provider\":\"openrouter\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}"
+    },
+    {
+      "id": "resourceType-113",
+      "reason": "messages",
+      "raw": "{\"resourceType\":\"\\ud800\"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"source\":\"chat\",\"provider\":\"openrouter\",\"resourceType\":\"\\ud800\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\",\"resource_type\":\"\\ud800\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\",\"resource_type\":\"\\ud800\"}"
+    },
+    {
+      "id": "resourceType-114",
+      "reason": "messages",
+      "raw": "{\"resourceType\":\"speech\"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"source\":\"chat\",\"provider\":\"openrouter\",\"resourceType\":\"speech\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\",\"resource_type\":\"speech\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\",\"resource_type\":\"speech\"}"
+    },
+    {
+      "id": "quantity-115",
+      "reason": "messages",
+      "raw": "{}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"source\":\"chat\",\"provider\":\"openrouter\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}"
+    },
+    {
+      "id": "quantity-116",
+      "reason": "messages",
+      "raw": "{\"quantity\":0}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"source\":\"chat\",\"provider\":\"openrouter\",\"quantity\":0}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\",\"quantity\":0}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\",\"quantity\":0}"
+    },
+    {
+      "id": "quantity-117",
+      "reason": "messages",
+      "raw": "{\"quantity\":-0}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"source\":\"chat\",\"provider\":\"openrouter\",\"quantity\":0}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\",\"quantity\":0}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\",\"quantity\":0}"
+    },
+    {
+      "id": "quantity-118",
+      "reason": "messages",
+      "raw": "{\"quantity\":-1}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"source\":\"chat\",\"provider\":\"openrouter\",\"quantity\":-1}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\",\"quantity\":-1}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\",\"quantity\":-1}"
+    },
+    {
+      "id": "quantity-119",
+      "reason": "messages",
+      "raw": "{\"quantity\":5e-324}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"source\":\"chat\",\"provider\":\"openrouter\",\"quantity\":5e-324}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\",\"quantity\":5e-324}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\",\"quantity\":5e-324}"
+    },
+    {
+      "id": "quantity-120",
+      "reason": "messages",
+      "raw": "{\"quantity\":1.7976931348623157e308}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"source\":\"chat\",\"provider\":\"openrouter\",\"quantity\":1.7976931348623157e+308}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\",\"quantity\":1.7976931348623157e+308}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\",\"quantity\":1.7976931348623157e+308}"
+    },
+    {
+      "id": "quantity-121",
+      "reason": "messages",
+      "raw": "{\"quantity\":9007199254740991}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"source\":\"chat\",\"provider\":\"openrouter\",\"quantity\":9007199254740991}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\",\"quantity\":9007199254740991}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\",\"quantity\":9007199254740991}"
+    },
+    {
+      "id": "quantity-122",
+      "reason": "messages",
+      "raw": "{\"quantity\":9007199254740992}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"source\":\"chat\",\"provider\":\"openrouter\",\"quantity\":9007199254740992}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\",\"quantity\":9007199254740992}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\",\"quantity\":9007199254740992}"
+    },
+    {
+      "id": "quantity-123",
+      "reason": "messages",
+      "raw": "{\"quantity\":null}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"source\":\"chat\",\"provider\":\"openrouter\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}"
+    },
+    {
+      "id": "quantity-124",
+      "reason": "messages",
+      "raw": "{\"quantity\":\"3\"}",
+      "accounting": "{}",
+      "quantityTag": null,
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"source\":\"chat\",\"provider\":\"openrouter\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}"
+    },
+    {
+      "id": "tag-nan",
+      "reason": "messages",
+      "raw": "{}",
+      "accounting": "{}",
+      "quantityTag": "nan",
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"source\":\"chat\",\"provider\":\"openrouter\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}"
+    },
+    {
+      "id": "tag-positiveInfinity",
+      "reason": "messages",
+      "raw": "{}",
+      "accounting": "{}",
+      "quantityTag": "positiveInfinity",
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"source\":\"chat\",\"provider\":\"openrouter\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}"
+    },
+    {
+      "id": "tag-negativeInfinity",
+      "reason": "messages",
+      "raw": "{}",
+      "accounting": "{}",
+      "quantityTag": "negativeInfinity",
+      "uuidCalls": 1,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"requestId\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entryKind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"source\":\"chat\",\"provider\":\"openrouter\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}",
+      "enrichedWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"request_id\":\"aiu_00000000-0000-4000-8000-000000000001\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\"}"
+    },
+    {
+      "id": "all-fields",
+      "reason": "planner",
+      "raw": "{\"entryId\":\" id \",\"requestId\":\" req \",\"parentRequestId\":\" parent \",\"entryKind\":\"adjustment\",\"category\":\"memory\",\"operation\":\" op \",\"source\":\" src \",\"provider\":\" p \",\"model\":\" m \",\"channelID\":\" c \",\"quantity\":-0.25,\"unit\":\"minutes\",\"resourceType\":\"speech\",\"resourceId\":\" r \"}",
+      "accounting": "{\"9\":\"number-key\",\"z\":1,\"entry_id\":\"old\",\"category\":\"old\",\"request_id\":\"old\",\"x\":{\"\\ud800\":\"\\udfff\"},\"entry_id\":\"new\",\"2\":\"index\"}",
+      "quantityTag": null,
+      "uuidCalls": 0,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"id\",\"requestId\":\"req\",\"parentRequestId\":\"parent\",\"entryKind\":\"adjustment\",\"category\":\"memory\",\"operation\":\"op\",\"source\":\"src\",\"provider\":\"p\",\"model\":\"m\",\"channelID\":\"c\",\"quantity\":-0.25,\"unit\":\"minutes\",\"resourceType\":\"speech\",\"resourceId\":\"r\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"id\",\"request_id\":\"req\",\"parent_request_id\":\"parent\",\"entry_kind\":\"adjustment\",\"category\":\"memory\",\"operation\":\"op\",\"usage_source\":\"src\",\"provider\":\"p\",\"model\":\"m\",\"channel_id\":\"c\",\"quantity\":-0.25,\"unit\":\"minutes\",\"resource_type\":\"speech\",\"resource_id\":\"r\"}",
+      "enrichedWire": "{\"2\":\"index\",\"9\":\"number-key\",\"z\":1,\"entry_id\":\"id\",\"category\":\"memory\",\"request_id\":\"req\",\"x\":{\"\\ud800\":\"\\udfff\"},\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"parent_request_id\":\"parent\",\"entry_kind\":\"adjustment\",\"operation\":\"op\",\"usage_source\":\"src\",\"provider\":\"p\",\"model\":\"m\",\"channel_id\":\"c\",\"quantity\":-0.25,\"unit\":\"minutes\",\"resource_type\":\"speech\",\"resource_id\":\"r\"}"
+    },
+    {
+      "id": "duplicates",
+      "reason": "messages",
+      "raw": "{\"entryId\":\"first\",\"entryId\":\" last \",\"model\":\"first\",\"model\":\" last \"}",
+      "accounting": "{\"z\":1,\"operation\":\"old\",\"z\":2,\"entry_id\":\"old\",\"operation\":\"new\"}",
+      "quantityTag": null,
+      "uuidCalls": 0,
+      "contextWire": "{\"schemaVersion\":1,\"pricingVersion\":\"legacy-polar-math-v1\",\"entryId\":\"last\",\"requestId\":\"last\",\"entryKind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"source\":\"chat\",\"provider\":\"openrouter\",\"model\":\"last\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"last\",\"request_id\":\"last\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"operation\":\"message\",\"usage_source\":\"chat\",\"provider\":\"openrouter\",\"model\":\"last\"}",
+      "enrichedWire": "{\"z\":2,\"operation\":\"message\",\"entry_id\":\"last\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"request_id\":\"last\",\"entry_kind\":\"usage\",\"category\":\"ai_chat\",\"usage_source\":\"chat\",\"provider\":\"openrouter\",\"model\":\"last\"}"
+    }
+  ],
+  "metadataCases": [
+    {
+      "id": "null-quantity",
+      "raw": "{\"schemaVersion\":1,\"pricingVersion\":\"p\",\"entryId\":\"id\",\"requestId\":\"r\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"o\",\"source\":\"s\",\"provider\":\"p\",\"parentRequestId\":\"\",\"model\":null,\"channelID\":false,\"quantity\":null,\"unit\":\"\",\"resourceType\":null,\"resourceId\":\"\"}",
+      "accounting": "{\"quantity\":12,\"model\":\"old\",\"entry_id\":\"prior\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"p\",\"entry_id\":\"id\",\"request_id\":\"r\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"o\",\"usage_source\":\"s\",\"provider\":\"p\",\"quantity\":null}",
+      "enrichedWire": "{\"quantity\":null,\"model\":\"old\",\"entry_id\":\"id\",\"schema_version\":1,\"pricing_version\":\"p\",\"request_id\":\"r\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"o\",\"usage_source\":\"s\",\"provider\":\"p\"}"
+    },
+    {
+      "id": "truthy-options",
+      "raw": "{\"schemaVersion\":1,\"pricingVersion\":\"p\",\"entryId\":\"id\",\"requestId\":\"r\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"o\",\"source\":\"s\",\"provider\":\"p\",\"parentRequestId\":\"\\ud800\",\"model\":\"\\udfff\",\"channelID\":\"😀\",\"quantity\":0,\"unit\":\"tokens\",\"resourceType\":\"speech\",\"resourceId\":\"\\ud800\"}",
+      "accounting": "{\"9\":1,\"entry_id\":\"old\",\"operation\":\"old\",\"2\":1,\"entry_id\":\"new\"}",
+      "metadataWire": "{\"schema_version\":1,\"pricing_version\":\"p\",\"entry_id\":\"id\",\"request_id\":\"r\",\"parent_request_id\":\"\\ud800\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"o\",\"usage_source\":\"s\",\"provider\":\"p\",\"model\":\"\\udfff\",\"channel_id\":\"😀\",\"quantity\":0,\"unit\":\"tokens\",\"resource_type\":\"speech\",\"resource_id\":\"\\ud800\"}",
+      "enrichedWire": "{\"2\":1,\"9\":1,\"entry_id\":\"id\",\"operation\":\"o\",\"schema_version\":1,\"pricing_version\":\"p\",\"request_id\":\"r\",\"parent_request_id\":\"\\ud800\",\"entry_kind\":\"usage\",\"category\":\"other\",\"usage_source\":\"s\",\"provider\":\"p\",\"model\":\"\\udfff\",\"channel_id\":\"😀\",\"quantity\":0,\"unit\":\"tokens\",\"resource_type\":\"speech\",\"resource_id\":\"\\ud800\"}"
+    }
+  ]
+}

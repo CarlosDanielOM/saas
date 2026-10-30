@@ -1,0 +1,119 @@
+( 1/24) Installing libmagic (5.47-r2)
+( 2/24) Installing file (5.47-r2)
+( 3/24) Installing libstdc++-dev (15.2.0-r5)
+( 4/24) Installing g++ (15.2.0-r5)
+( 5/24) Installing make (4.4.1-r4)
+( 6/24) Installing fortify-headers (3.0.1-r2)
+( 7/24) Installing patch (2.8-r0)
+( 8/24) Installing build-base (0.5-r4)
+( 9/24) Installing libexpat (2.9.0-r0)
+(10/24) Installing libbz2 (1.0.8-r6)
+(11/24) Installing libffi (3.5.2-r1)
+(12/24) Installing gdbm (1.26-r0)
+(13/24) Installing xz-libs (5.8.4-r0)
+(14/24) Installing mpdecimal (4.0.1-r0)
+(15/24) Installing ncurses-terminfo-base (6.6_p20260516-r0)
+(16/24) Installing libncursesw (6.6_p20260516-r0)
+(17/24) Installing libpanelw (6.6_p20260516-r0)
+(18/24) Installing readline (8.3.3-r1)
+(19/24) Installing sqlite-libs (3.53.4-r0)
+(20/24) Installing python3 (3.14.10-r1)
+(21/24) Installing python3-pycache-pyc0 (3.14.10-r1)
+(22/24) Installing pyc (3.14.10-r1)
+(23/24) Installing python3-pyc (3.14.10-r1)
+(24/24) Installing tzdata (2026e-r0)
+Executing busybox-1.37.0-r31.trigger
+OK: 312.8 MiB in 55 packages
+/usr/share/zoneinfo/Etc/UTC is owned by tzdata-2026e-r0
+8b85846791ab2c8a5463c83a5be3c043e2570d7448434d41398969ed47e3e6f2  /usr/share/zoneinfo/Etc/UTC
+e9ed07d7bee0c76a9d442d091ef1f01668fee7c4f26014c0a868b19fe6c18a95  /usr/share/zoneinfo/America/New_York
+5ee475f71a0fc1a32faeb849f8c39c6e7aa66d6d41ec742b97b3a7436b3b0701  /usr/share/zoneinfo/Europe/Berlin
+a323c5433991a963eb497b7da4d1d09848bf3ef5f5d64d9c9649f388e4bab9df  /usr/share/zoneinfo/Australia/Lord_Howe
+33740ab29ef943b1f55f769e13ff59a90962f5a12434209072d650e6c10abb4d  /usr/share/zoneinfo/Pacific/Apia
+info: downloading 2 components
+rustc 1.99.1 (58cf8f9c3 2026-10-13)
+binary: rustc
+commit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67
+commit-date: 2026-10-13
+host: x86_64-unknown-linux-musl
+release: 1.99.1
+LLVM version: 23.1.1
+   Compiling dima-rust v0.1.0 (/source/dimabot)
+    Finished `test` profile [unoptimized] target(s) in 36.17s
+     Running tests/ai_usage_ledger_backfill.rs (/target-cache/debug/deps/ai_usage_ledger_backfill-92ac67fbdb625c23)
+
+running 8 tests
+test all_invalid_bulk_resolves_locally_and_state_keeps_min_coverage_and_version_three ... ok
+test batches_bound_work_without_sleeping_and_invalid_ops_consume_their_clock ... ok
+test bulk_defaults_and_duplicate_mutable_fields_differ_from_single_receipt_updates ... ok
+test complete_actual_source_replay ... ignored, complete pinned external actual-source corpus required; never execute Node from Rust tests
+test direct_producer_nan_is_omitted_by_bulk_without_a_lossy_json_roundtrip ... ok
+test floor_is_inclusive_and_account_overrides_stay_lossless_until_bson ... ok
+test malformed_scalars_use_query_casting_and_required_enum_validators_do_not_run ... ok
+test private_mongo_redis_backfill_protocol_partial_failures_and_cancellation ... ignored, fresh owned Mongo8+ enableTestCommands=1 and Redis only; exact aliases, unique namespace and marker required
+
+test result: ok. 6 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/ai_usage_ledger_persistence.rs (/target-cache/debug/deps/ai_usage_ledger_persistence-85817b62fbaf5593)
+
+running 13 tests
+test category_replacement_retains_order_presence_and_bson_wrappers ... ok
+test complete_actual_source_replay ... ignored, complete pinned external actual-source fixture required; never execute Node from Rust tests
+test date_index_keeps_missing_and_null_together_and_preserves_error_order ... ok
+test direct_producer_nan_is_not_normalized_by_a_queue_roundtrip ... ok
+test expiry_guard_preserves_supported_dates_arrays_and_object_string_semantics ... ok
+test group_order_collision_and_wrapper_addition_survive_daily_schema_casting ... ok
+test lock_identity_stays_utf16_while_bson_collision_matches_source ... ok
+test numeric_accumulation_keeps_later_string_coercion_and_error_priority ... ok
+test private_mongo_and_real_redis_persistence_protocol ... ignored, fresh owned Mongo enableTestCommands=1 + Dragonfly only; exact aliases and marker required
+test source_sliced_day_differs_from_offset_date_floor_and_extended_iso_years ... ok
+test unordered_insert_prevalidation_skips_invalid_rows_and_minimizes_categories ... ok
+test unsupported_expiry_strings_fail_during_reduction_before_insert_preparation ... ok
+test update_has_timestamps_defaults_and_no_save_validators_or_id_default ... ok
+
+test result: ok. 11 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/ai_usage_ledger_queries.rs (/target-cache/debug/deps/ai_usage_ledger_queries-21582fd6a41088f4)
+
+running 10 tests
+test actual_source_complete_replay ... ignored, requires complete external actual-source oracle and pinned read-only Node dependency hashes
+test aggregate_number_fallback_nan_signed_zero_and_legacy_promotion ... ok
+test classification_short_circuits_and_uses_existing_policy_with_bson_coercion ... ok
+test pacing_state_short_circuits_and_date_errors_follow_source_order ... ok
+test pipeline_uses_daily_schema_identity_inclusive_dates_and_strict_expiry ... ok
+test private_mongo_adapters_data_pool_errors_and_cancellation ... ignored, requires fresh privately owned Mongo with enableTestCommands=1; never production or a shared server
+test retention_floor_account_age_fractional_days_and_optional_fields ... ok
+test transaction_iso_and_mapping_order_preserve_first_failure ... ok
+test transaction_mapping_keeps_sixteen_own_fields_and_raw_legacy_values ... ok
+test transaction_query_is_original_sort_and_half_open_window ... ok
+
+test result: ok. 8 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+    Finished `test` profile [unoptimized] target(s) in 0.28s
+     Running tests/ai_usage_ledger_backfill.rs (/target-cache/debug/deps/ai_usage_ledger_backfill-92ac67fbdb625c23)
+
+running 1 test
+test complete_actual_source_replay ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 8.10s
+
+    Finished `test` profile [unoptimized] target(s) in 0.32s
+     Running tests/ai_usage_ledger_persistence.rs (/target-cache/debug/deps/ai_usage_ledger_persistence-85817b62fbaf5593)
+
+running 1 test
+test complete_actual_source_replay ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 12 filtered out; finished in 5.73s
+
+    Finished `test` profile [unoptimized] target(s) in 0.29s
+     Running tests/ai_usage_ledger_queries.rs (/target-cache/debug/deps/ai_usage_ledger_queries-21582fd6a41088f4)
+
+running 1 test
+test actual_source_complete_replay ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 5.41s
+
+    Checking dima-rust v0.1.0 (/source/dimabot)
+    Finished `dev` profile [unoptimized] target(s) in 6.21s
+    Checking dima-rust v0.1.0 (/source/dimabot)
+    Finished `dev` profile [unoptimized] target(s) in 1m 06s

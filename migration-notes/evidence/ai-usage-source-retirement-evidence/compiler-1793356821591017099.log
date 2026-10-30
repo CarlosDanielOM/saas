@@ -1,0 +1,168 @@
+( 1/24) Installing libmagic (5.47-r2)
+( 2/24) Installing file (5.47-r2)
+( 3/24) Installing libstdc++-dev (15.2.0-r5)
+( 4/24) Installing g++ (15.2.0-r5)
+( 5/24) Installing make (4.4.1-r4)
+( 6/24) Installing fortify-headers (3.0.1-r2)
+( 7/24) Installing patch (2.8-r0)
+( 8/24) Installing build-base (0.5-r4)
+( 9/24) Installing libexpat (2.9.0-r0)
+(10/24) Installing libbz2 (1.0.8-r6)
+(11/24) Installing libffi (3.5.2-r1)
+(12/24) Installing gdbm (1.26-r0)
+(13/24) Installing xz-libs (5.8.4-r0)
+(14/24) Installing mpdecimal (4.0.1-r0)
+(15/24) Installing ncurses-terminfo-base (6.6_p20260516-r0)
+(16/24) Installing libncursesw (6.6_p20260516-r0)
+(17/24) Installing libpanelw (6.6_p20260516-r0)
+(18/24) Installing readline (8.3.3-r1)
+(19/24) Installing sqlite-libs (3.53.4-r0)
+(20/24) Installing python3 (3.14.10-r1)
+(21/24) Installing python3-pycache-pyc0 (3.14.10-r1)
+(22/24) Installing pyc (3.14.10-r1)
+(23/24) Installing python3-pyc (3.14.10-r1)
+(24/24) Installing tzdata (2026e-r0)
+Executing busybox-1.37.0-r31.trigger
+OK: 312.8 MiB in 55 packages
+/usr/share/zoneinfo/Etc/UTC is owned by tzdata-2026e-r0
+8b85846791ab2c8a5463c83a5be3c043e2570d7448434d41398969ed47e3e6f2  /usr/share/zoneinfo/Etc/UTC
+e9ed07d7bee0c76a9d442d091ef1f01668fee7c4f26014c0a868b19fe6c18a95  /usr/share/zoneinfo/America/New_York
+5ee475f71a0fc1a32faeb849f8c39c6e7aa66d6d41ec742b97b3a7436b3b0701  /usr/share/zoneinfo/Europe/Berlin
+a323c5433991a963eb497b7da4d1d09848bf3ef5f5d64d9c9649f388e4bab9df  /usr/share/zoneinfo/Australia/Lord_Howe
+33740ab29ef943b1f55f769e13ff59a90962f5a12434209072d650e6c10abb4d  /usr/share/zoneinfo/Pacific/Apia
+info: downloading 2 components
+rustc 1.99.1 (58cf8f9c3 2026-10-13)
+binary: rustc
+commit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67
+commit-date: 2026-10-13
+host: x86_64-unknown-linux-musl
+release: 1.99.1
+LLVM version: 23.1.1
+   Compiling dima-rust v0.1.0 (/source/dimabot)
+    Finished `test` profile [unoptimized] target(s) in 17.48s
+     Running unittests src/lib.rs (/target-cache/debug/deps/dima_rust-45d81a3399b83fb9)
+
+running 3 tests
+test utils::ai_usage::tests::every_source_classification_and_fallback ... ok
+test utils::ai_usage::tests::context_overrides_omission_and_metadata_spread ... ok
+test utils::ai_usage::tests::adjustment_precedence_unknown_fields_and_explicit_types ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 110 filtered out; finished in 0.00s
+
+   Compiling dima-rust v0.1.0 (/source/dimabot)
+    Finished `test` profile [unoptimized] target(s) in 29.92s
+     Running tests/ai_usage_lossless.rs (/target-cache/debug/deps/ai_usage_lossless-b194fcfd14376f93)
+
+running 3 tests
+test finite_quantity_and_object_errors ... ok
+test lossless_trim_and_collision_positions ... ok
+test replay_every_actual_source_case_and_exact_wires ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests/ai_usage_producer.rs (/target-cache/debug/deps/ai_usage_producer-c28432a0959876ad)
+
+running 5 tests
+test clock_default_only_when_absent_and_invalid_inputs ... ok
+test downstream_surrogate_gap_is_explicit ... ok
+test receipt_order_nullish_and_lossless_strings ... ok
+test replay_actual_source_fixture ... ok
+test system_default_clock_is_bounded ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.23s
+
+   Compiling dima-rust v0.1.0 (/source/dimabot)
+    Finished `test` profile [unoptimized] target(s) in 3.24s
+     Running tests/ai_usage_receipt_parser.rs (/target-cache/debug/deps/ai_usage_receipt_parser-636bfeca8febb18d)
+
+running 10 tests
+test binary64_truthiness_missing_null_and_bson_number_boundaries ... ok
+test borrowed_json_fields_reuse_number_string_and_nested_value_policies ... ok
+test borrowed_receipt_wire_and_owned_apis_share_all_eighteen_fields ... ok
+test borrowed_receipt_wire_keeps_lone_units_and_each_utf16_slice_boundary ... ok
+test borrowed_static_field_names_keep_stable_ecmascript_index_order ... ok
+test date_adapter_uses_timeclip_and_source_field_order ... ok
+test deep_input_is_borrowed_while_coerced_arrays_remain_lossless_and_strict ... ok
+test own_noncallable_to_string_and_classifier_short_circuit ... ok
+test replay_actual_source_parser_and_bson ... ignored, requires exact pinned source+Mongoose+BSON oracle and read-only Node snapshot
+test utf16_is_retained_through_trim_slice_and_wire_until_bson ... ok
+
+test result: ok. 9 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+    Finished `test` profile [unoptimized] target(s) in 0.28s
+     Running tests/ai_usage_receipt_parser.rs (/target-cache/debug/deps/ai_usage_receipt_parser-636bfeca8febb18d)
+
+running 1 test
+test replay_actual_source_parser_and_bson ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 57.90s
+
+    Finished `test` profile [unoptimized] target(s) in 0.30s
+     Running tests/ai_usage_receipt_parser.rs (/target-cache/debug/deps/ai_usage_receipt_parser-636bfeca8febb18d)
+
+running 1 test
+test replay_actual_source_parser_and_bson ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 57.65s
+
+    Finished `test` profile [unoptimized] target(s) in 0.29s
+     Running tests/ai_usage_receipt_parser.rs (/target-cache/debug/deps/ai_usage_receipt_parser-636bfeca8febb18d)
+
+running 1 test
+test replay_actual_source_parser_and_bson ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 59.46s
+
+    Finished `test` profile [unoptimized] target(s) in 0.30s
+     Running tests/ai_usage_receipt_parser.rs (/target-cache/debug/deps/ai_usage_receipt_parser-636bfeca8febb18d)
+
+running 1 test
+test replay_actual_source_parser_and_bson has been running for over 60 seconds
+test replay_actual_source_parser_and_bson ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 60.08s
+
+    Finished `test` profile [unoptimized] target(s) in 0.29s
+     Running tests/ai_usage_receipt_parser.rs (/target-cache/debug/deps/ai_usage_receipt_parser-636bfeca8febb18d)
+
+running 1 test
+test replay_actual_source_parser_and_bson ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 58.14s
+
+   Compiling dima-rust v0.1.0 (/source/dimabot)
+    Finished `test` profile [unoptimized] target(s) in 4.45s
+     Running tests/posthog_tracking.rs (/target-cache/debug/deps/posthog_tracking-b01294e5c03264de)
+
+running 9 tests
+test concrete_lossless_lazy_factory_utf16_identity_native_context_and_shutdown ... ok
+test direct_conversion_preserves_bits_and_defaults_without_acquiring_production_runtime ... ok
+test native_and_plain_usage_keep_every_field_order_bits_and_absence ... ok
+test plain_usage_keeps_falsy_channel_casts_utf16_and_required_error_order ... ok
+test real_sdk_all_payloads_identity_clone_rename_and_separate_instances ... ok
+test real_sdk_failure_attempts_and_shutdown_waits_for_delivery_response ... ok
+test real_sdk_threshold_flush_shutdown_drain_and_closed_client ... ok
+test replays_every_source_record_and_metadata ... ok
+test source_replay_through_concrete_lossless_factory_and_shared_clones ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.30s
+
+   Compiling dima-rust v0.1.0 (/source/dimabot)
+    Finished `test` profile [unoptimized] target(s) in 5.91s
+     Running tests/ai_usage_ledger_backfill.rs (/target-cache/debug/deps/ai_usage_ledger_backfill-92ac67fbdb625c23)
+
+running 1 test
+
+thread 'complete_actual_source_replay' (487) panicked at tests/ai_usage_ledger_backfill.rs:209:86:
+called `Result::unwrap()` on an `Err` value: Os { code: 2, kind: NotFound, message: "No such file or directory" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test complete_actual_source_replay ... FAILED
+
+failures:
+
+failures:
+    complete_actual_source_replay
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 7 filtered out; finished in 5.90s
+
+error: test failed, to rerun pass `--test ai_usage_ledger_backfill`

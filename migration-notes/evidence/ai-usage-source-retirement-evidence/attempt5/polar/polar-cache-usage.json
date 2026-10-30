@@ -1,0 +1,3418 @@
+{
+  "version": 1,
+  "namespace": "keyword-fixture-fca01b6f57a8:",
+  "node": "v24.22.1",
+  "v8": "13.6.233.17-node.58",
+  "typescript": "5.9.3",
+  "sourceHash": "5164452aea1747b72a410098bb8cd54c2cc0a4312f52e40728936c9c2f6e9fec",
+  "declarations": [
+    {
+      "name": "INGEST_LOCK_PREFIX",
+      "kind": "FirstStatement",
+      "text": "const INGEST_LOCK_PREFIX = \"locks:polar-ingest:\";",
+      "sha256": "0ccd425b3cd191f575cca2cf22568ee8d191dc54b48e72044445effa63d78513"
+    },
+    {
+      "name": "INGEST_LOCK_TTL_MS",
+      "kind": "FirstStatement",
+      "text": "const INGEST_LOCK_TTL_MS = 8000;",
+      "sha256": "ae5597a53462222bd0914bea45a34b224079b19b669b08fee2c796616459f995"
+    },
+    {
+      "name": "INGEST_LOCK_MAX_WAIT_MS",
+      "kind": "FirstStatement",
+      "text": "const INGEST_LOCK_MAX_WAIT_MS = 2500;",
+      "sha256": "cc4b695d8c4a18bf9b07470fb6fe7831153ea203a55095fd1e54d5ce0c984835"
+    },
+    {
+      "name": "INGEST_LOCK_RETRY_MS",
+      "kind": "FirstStatement",
+      "text": "const INGEST_LOCK_RETRY_MS = 350;",
+      "sha256": "627cb21b0381f29b21722a4710634b60756bbac814565ea37ec702260b8a6745"
+    },
+    {
+      "name": "sleep",
+      "kind": "FirstStatement",
+      "text": "const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));",
+      "sha256": "7bcc1f462d5e52a55dd03e1713132d18d5a04c858c567b7a7c4f9d92714aca84"
+    },
+    {
+      "name": "trackAcceptedUsage",
+      "kind": "FunctionDeclaration",
+      "text": "function trackAcceptedUsage(eventData: EventData, context: AiUsageContext): void {\n  try {\n    trackAiUsageRecorded({\n      context,\n      credits: eventData.metadata.credits,\n      reason: eventData.metadata.reason,\n      polarCostAmount: eventData.metadata._cost?.amount,\n      inputTokens: eventData.metadata._llm?.inputTokens,\n      outputTokens: eventData.metadata._llm?.outputTokens,\n      totalTokens: eventData.metadata._llm?.totalTokens,\n    });\n  } catch {\n    // Analytics must never interrupt billing or durable queueing.\n  }\n}",
+      "sha256": "b20c85e940096b092a63ca332c844b6a184c5e240cff8739f491cfb285a8c375"
+    },
+    {
+      "name": "projectAcceptedUsage",
+      "kind": "FunctionDeclaration",
+      "text": "async function projectAcceptedUsage(\n  cache: DragonflyClient,\n  eventData: EventData,\n  context: AiUsageContext,\n  channelID?: string,\n): Promise<void> {\n  await recordAiCreditUsage(channelID || \"\", eventData.metadata.credits, eventData.externalId, cache);\n  if (channelID) {\n    try {\n      await enqueueAiUsageReceipt(cache, buildQueuedAiUsageReceipt({\n        channelID,\n        customerId: eventData.customerId,\n        context,\n        credits: eventData.metadata.credits,\n      }));\n    } catch (err) {\n      await error({\n        function: \"projectAcceptedUsage\",\n        error: err instanceof Error ? err.message : String(err),\n      }, { channelId: channelID, destination: \"both\" });\n    }\n  }\n  trackAcceptedUsage(eventData, context);\n}",
+      "sha256": "412d8e867c0e3389ab098fe675ac747d8dcf83fdce477ff7aa6b6c9ab272f37e"
+    },
+    {
+      "name": "acquireIngestLock",
+      "kind": "FunctionDeclaration",
+      "text": "async function acquireIngestLock(cache: DragonflyClient, lockKey: string): Promise<string | null> {\n  const lockValue = randomUUID();\n  const deadline = Date.now() + INGEST_LOCK_MAX_WAIT_MS;\n\n  do {\n    const result = await cache.set(lockKey, lockValue, { NX: true, PX: INGEST_LOCK_TTL_MS });\n    if (result === \"OK\") return lockValue;\n    await sleep(INGEST_LOCK_RETRY_MS);\n  } while (Date.now() < deadline);\n\n  return null;\n}",
+      "sha256": "ea21576375e69b2d07213127a7435a7f9d38d2921846c81f853809ca7900756d"
+    },
+    {
+      "name": "releaseIngestLock",
+      "kind": "FunctionDeclaration",
+      "text": "async function releaseIngestLock(cache: DragonflyClient, lockKey: string, lockValue: string): Promise<void> {\n  try {\n    const current = await cache.get(lockKey);\n    if (current === lockValue) {\n      await cache.del(lockKey);\n    }\n  } catch {\n    // Lock expires on its own (PX TTL); nothing else to do.\n  }\n}",
+      "sha256": "e59f6f5bd70f254fff357493eedba9793d43db6d2261a66001c6f90a14bd468e"
+    },
+    {
+      "name": "migrateLegacyQueueIfNeeded",
+      "kind": "FunctionDeclaration",
+      "text": "async function migrateLegacyQueueIfNeeded(cache: DragonflyClient, cacheKey: string): Promise<void> {\n  const keyType = await cache.type(cacheKey);\n  if (keyType !== \"string\") return;\n\n  const stored = await cache.get(cacheKey);\n  let legacy: EventData[] = [];\n  try {\n    legacy = stored ? (JSON.parse(stored) as EventData[]) : [];\n  } catch {\n    legacy = [];\n  }\n\n  await cache.del(cacheKey);\n  if (legacy.length > 0) {\n    await cache.rPush(cacheKey, legacy.map((event) => JSON.stringify(event)));\n  }\n}",
+      "sha256": "aec246f7d5cc917677a9629242c59e5aa339a10c0c2634cc20df263702fbe6b8"
+    },
+    {
+      "name": "queueEvent",
+      "kind": "FunctionDeclaration",
+      "text": "async function queueEvent(cache: DragonflyClient, cacheKey: string, eventData: EventData): Promise<void> {\n  await migrateLegacyQueueIfNeeded(cache, cacheKey);\n  await cache.rPush(cacheKey, JSON.stringify(eventData));\n}",
+      "sha256": "137d76b6d531c72999614dd39f5b0970e729f6a08b93e6148fc5969f08ed6c9c"
+    },
+    {
+      "name": "ingestPolarSHEvent",
+      "kind": "FunctionDeclaration",
+      "text": "export async function ingestPolarSHEvent(\n  options: IngestPolarSHEventOptions,\n): Promise<IngestPolarSHEventResponse> {\n  const {\n    customerId,\n    channelID,\n    externalId,\n    cost,\n    reason,\n    llm,\n    _cost,\n    characters,\n    mode = \"batch\",\n    usage,\n  } = options;\n\n  if (!customerId) {\n    return { error: true, message: \"customerId is required\" };\n  }\n\n  if ((mode === \"batch\" || mode === \"cache\") && !channelID) {\n    return {\n      error: true,\n      message: \"channelID is required for batch/cache modes\",\n    };\n  }\n\n  try {\n    const cacheClient = await getDragonflyClient(\"PolarSH\");\n    const cacheKey = `twitch:${channelID}:ai:polarshevent`;\n\n    const usageContext = createAiUsageContext(reason, {\n      ...usage,\n      entryId: externalId || usage?.entryId,\n      channelID: usage?.channelID || channelID,\n      model: usage?.model || llm?.model,\n      quantity: usage?.quantity ?? characters ?? llm?.usage?.total_tokens,\n      unit: usage?.unit ?? (characters !== undefined ? \"characters\" : llm ? \"tokens\" : undefined),\n    });\n    const resolvedExternalId = usageContext.entryId;\n\n    let accountingMetadata: AccountingMetadata = {\n      cost: cost,\n      currency: \"usd\",\n      credits: Math.ceil(cost * 1000),\n      reason: reason,\n    };\n\n    const eventData: EventData = {\n      name: \"ai_usage\",\n      customerId: customerId,\n      externalId: resolvedExternalId,\n      metadata: enrichPolarUsageMetadata(accountingMetadata, usageContext),\n    };\n\n    if (llm) {\n      let amountValue = Math.round(cost * 100 * 1e10) / 1e10;\n      let amountStr = amountValue.toString();\n      if (amountStr.length > 17) {\n        amountStr = amountStr.substring(0, 17);\n        amountValue = parseFloat(amountStr);\n      }\n\n      let costValue = Math.round(cost * 100 * 1e8) / 1e8;\n      let costStr = costValue.toString();\n      if (costStr.length > 12) {\n        costStr = costStr.substring(0, 12);\n        costValue = parseFloat(costStr);\n      }\n\n      let vendor = \"unknown\";\n      let modelName = llm.model || \"unknown\";\n      if (llm.model) {\n        const parts = llm.model.split(\"/\");\n        vendor = parts[0] || \"unknown\";\n        const actualModel = parts[1] || llm.model;\n        modelName = actualModel.split(\":\")[0];\n      }\n\n      accountingMetadata = {\n        _cost: {\n          amount: amountValue,\n          currency: \"usd\",\n        },\n        _llm: {\n          vendor: vendor,\n          model: modelName,\n          inputTokens: llm.usage?.prompt_tokens || 0,\n          outputTokens: llm.usage?.completion_tokens || 0,\n          totalTokens: llm.usage?.total_tokens || 0,\n        },\n        cost: costValue,\n        credits: Math.ceil(costValue * 1000),\n        currency: \"usd\",\n        reason: reason,\n      };\n    } else if (_cost !== undefined) {\n      // For TTS/audio services that don't use LLM\n      accountingMetadata = {\n        _cost: {\n          amount: _cost,\n          currency: \"usd\",\n        },\n        cost: cost,\n        credits: Math.ceil(_cost * 1000),\n        currency: \"usd\",\n        reason: reason,\n        characters: characters,\n      };\n    }\n\n    eventData.metadata = enrichPolarUsageMetadata(accountingMetadata, usageContext);\n\n    if (mode === \"immediate\") {\n      const polarshClientInstance = await getPolarShClient(\n        \"ingestPolarSHEvent immediate mode\",\n      );\n      const ingestResult = (await polarshClientInstance.events.ingest({\n        events: [eventData],\n      })) as any;\n\n      if (!isIngestComplete(ingestResult, 1)) {\n        return {\n          error: true,\n          message: \"PolarSH ingest incomplete\",\n          details: ingestResult,\n        };\n      }\n\n      await projectAcceptedUsage(cacheClient, eventData, usageContext, channelID);\n\n      return { error: false };\n    }\n\n    // Serialize queue mutations + flush per channel. Only one process/container\n    // flushes a channel's queue at a time; concurrent callers just queue their\n    // event durably and let the next flush carry it.\n    const lockKey = `${INGEST_LOCK_PREFIX}${channelID}`;\n    const lockValue = await acquireIngestLock(cacheClient, lockKey);\n\n    if (!lockValue) {\n      try {\n        await queueEvent(cacheClient, cacheKey, eventData);\n        await projectAcceptedUsage(cacheClient, eventData, usageContext, channelID);\n      } catch (queueErr) {\n        await error(\n          {\n            function: \"ingestPolarSHEvent\",\n            error: \"Failed to queue AI event while flush in progress\",\n            err: queueErr instanceof Error ? queueErr.message : String(queueErr),\n          },\n          { channelId: channelID, destination: \"both\" },\n        );\n        return { error: true, message: \"Failed to queue AI event\" };\n      }\n      return { error: false, message: \"queued (flush in progress)\" };\n    }\n\n    try {\n      // Durably queue the event BEFORE any network call — a failed or\n      // interrupted ingest must never lose it.\n      await queueEvent(cacheClient, cacheKey, eventData);\n      await projectAcceptedUsage(cacheClient, eventData, usageContext, channelID);\n\n      if (mode === \"cache\") {\n        return { error: false };\n      }\n\n      const pendingRaw = await cacheClient.lRange(cacheKey, 0, -1);\n      if (pendingRaw.length === 0) {\n        return { error: false };\n      }\n\n      const events: EventData[] = [];\n      for (const raw of pendingRaw) {\n        try {\n          events.push(JSON.parse(raw) as EventData);\n        } catch {\n          // Skip malformed queue entries; they are removed by the trim below.\n        }\n      }\n\n      if (events.length === 0) {\n        await cacheClient.del(cacheKey);\n        return { error: false };\n      }\n\n      const polarshClientInstance = await getPolarShClient(\n        \"ingestPolarSHEvent batch/cache mode\",\n      );\n\n      const ingestResult = (await polarshClientInstance.events.ingest({\n        events,\n      })) as any;\n\n      if (!isIngestComplete(ingestResult, events.length)) {\n        // Queue is left intact so a later event re-sends everything.\n        await error(\n          {\n            function: \"ingestPolarSHEvent\",\n            error: \"PolarSH ingest incomplete\",\n            expected: events.length,\n            ingestResult,\n          },\n          { channelId: channelID, destination: \"both\" },\n        );\n        return {\n          error: true,\n          message: \"PolarSH ingest incomplete\",\n          details: ingestResult,\n        };\n      }\n\n      // Remove exactly the events we sent; events queued during the ingest survive.\n      await cacheClient.lTrim(cacheKey, pendingRaw.length, -1);\n      return { error: false };\n    } finally {\n      await releaseIngestLock(cacheClient, lockKey, lockValue);\n    }\n  } catch (err) {\n    await error(\n      {\n        function: \"ingestPolarSHEvent\",\n        error: err instanceof Error ? err.message : String(err),\n      },\n      { channelId: channelID, destination: \"both\" },\n    );\n    return {\n      error: true,\n      message: err instanceof Error ? err.message : String(err),\n    };\n  }\n}",
+      "sha256": "d9c5cf3c3ff8faff1b6bc6eab103a9d1ccb7344aee23c19dc6477f0022feb485"
+    }
+  ],
+  "types": [
+    {
+      "name": "LLMMetadata",
+      "text": "interface LLMMetadata {\n  model: string;\n  usage: {\n    prompt_tokens: number;\n    completion_tokens: number;\n    total_tokens: number;\n  };\n}",
+      "members": [
+        {
+          "name": "model",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "usage",
+          "type": "{\n    prompt_tokens: number;\n    completion_tokens: number;\n    total_tokens: number;\n  }",
+          "optional": false
+        }
+      ],
+      "sha256": "271df4e23bdcef121f99e9c70b14950eab63a45f65e51c5bc0124365f95aa3a2"
+    },
+    {
+      "name": "IngestPolarSHEventOptions",
+      "text": "interface IngestPolarSHEventOptions {\n  customerId: string;\n  channelID?: string;\n  /** Stable caller-provided ID used by Polar to deduplicate retries. */\n  externalId?: string;\n  cost: number;\n  reason: string;\n  llm?: LLMMetadata;\n  /** For TTS/audio services - Polar.sh _cost field (1 = 1 cent) */\n  _cost?: number;\n  /** For TTS/audio services - number of characters processed */\n  characters?: number;\n  mode?: \"immediate\" | \"batch\" | \"cache\";\n  /** Descriptive receipt metadata. It does not affect pricing or credits. */\n  usage?: AiUsageContextInput;\n}",
+      "members": [
+        {
+          "name": "customerId",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "channelID",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "externalId",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "cost",
+          "type": "number",
+          "optional": false
+        },
+        {
+          "name": "reason",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "llm",
+          "type": "LLMMetadata",
+          "optional": true
+        },
+        {
+          "name": "_cost",
+          "type": "number",
+          "optional": true
+        },
+        {
+          "name": "characters",
+          "type": "number",
+          "optional": true
+        },
+        {
+          "name": "mode",
+          "type": "\"immediate\" | \"batch\" | \"cache\"",
+          "optional": true
+        },
+        {
+          "name": "usage",
+          "type": "AiUsageContextInput",
+          "optional": true
+        }
+      ],
+      "sha256": "632d9498fe0b63ec30f82c9e07e32475600a42d78af7c9e33649be3069e67f1b"
+    },
+    {
+      "name": "IngestPolarSHEventResponse",
+      "text": "interface IngestPolarSHEventResponse {\n  error: boolean;\n  message?: string;\n  details?: any;\n}",
+      "members": [
+        {
+          "name": "error",
+          "type": "boolean",
+          "optional": false
+        },
+        {
+          "name": "message",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "details",
+          "type": "any",
+          "optional": true
+        }
+      ],
+      "sha256": "27a970678b94308133005ab06816a6033b71d40e0aef32fa3b6fd8c0a302e1e0"
+    },
+    {
+      "name": "AccountingMetadata",
+      "text": "interface AccountingMetadata extends Record<string, any> {\n  cost: number;\n  currency: string;\n  credits: number;\n  reason: string;\n  characters?: number;\n  _cost?: {\n    amount: number;\n    currency: string;\n  };\n  _llm?: {\n    vendor: string;\n    model: string;\n    inputTokens: number;\n    outputTokens: number;\n    totalTokens: number;\n  };\n}",
+      "members": [
+        {
+          "name": "cost",
+          "type": "number",
+          "optional": false
+        },
+        {
+          "name": "currency",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "credits",
+          "type": "number",
+          "optional": false
+        },
+        {
+          "name": "reason",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "characters",
+          "type": "number",
+          "optional": true
+        },
+        {
+          "name": "_cost",
+          "type": "{\n    amount: number;\n    currency: string;\n  }",
+          "optional": true
+        },
+        {
+          "name": "_llm",
+          "type": "{\n    vendor: string;\n    model: string;\n    inputTokens: number;\n    outputTokens: number;\n    totalTokens: number;\n  }",
+          "optional": true
+        }
+      ],
+      "sha256": "68bc91d935dd0cb51fe51caef3e71aab79bbeaba99d5861f1fa7205d1c2adb55"
+    },
+    {
+      "name": "EventData",
+      "text": "interface EventData {\n  name: string;\n  customerId: string;\n  externalId: string;\n  metadata: AccountingMetadata & PolarUsageMetadataShape;\n}",
+      "members": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "customerId",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "externalId",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "metadata",
+          "type": "AccountingMetadata & PolarUsageMetadataShape",
+          "optional": false
+        }
+      ],
+      "sha256": "991d175b7e70274f5314c5a759c62e3bd747d79ca4e3b2679aefc05808e781de"
+    }
+  ],
+  "runtimeHashes": {
+    "node": "569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108",
+    "typescript": "3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675",
+    "typescriptPackage": "822ef7ca6452205657b6288b066481ecf508bfbf43455d715cf7d3ec457561e6"
+  },
+  "dependencyHashes": {
+    "src/utils/ai_usage_event.ts": "87ff158c166652ea1eb64199ea4c9c6250b35db90399cb658ef6c3086628de60",
+    "src/utils/ai_usage_classification.ts": "00fcd076d0f3460ecea46588904242252a32b9500e43217c67a1a07e1cbe4b36",
+    "src/utils/ai_usage_ledger.ts": "3519b440d3d03a9415323f75f113f81627c6b07369ef43903a7b07116df5d4f5",
+    "tests/fixtures/ai_usage_producer_source.cjs": "bb9bea4af8e0922223b9e0871366a84516fcd6d51791751433db74349e8d0ebd",
+    "tests/fixtures/polar_cache_usage_reference.cjs": "5d4ab3111b917775087a8d7651ded77ccad37bcd2ffb9a4b00db58f3b4433c42",
+    "package.json": "cc4939f6416a91d4bfaa5bcdd3d448d2f74103a88bb269e0a8e393615cf32cef",
+    "package-lock.json": "abdf5aa71a8272423ebb9358d7aaa87edd7e65f6605c325fe231a4bcef70eeb7",
+    "Cargo.toml": "4882343e9af14f7d0369fad879863c19ce5d379d72a577c914481b36b0f6225d",
+    "Cargo.lock": "787333fa269752a606040d7393767040ef749ce1e01c2512386bf305bcd7a2c3"
+  },
+  "cases": [
+    {
+      "id": "semantic",
+      "input": {
+        "customerId": "customer",
+        "channelID": "keyword-fixture-fca01b6f57a8:channel",
+        "externalId": "moderation:decision",
+        "cost": 0.000123456789,
+        "reason": "contextual_moderation",
+        "mode": "cache",
+        "llm": {
+          "model": "openai/model:variant",
+          "usage": {
+            "prompt_tokens": 123,
+            "completion_tokens": 0,
+            "total_tokens": 123
+          }
+        },
+        "usage": {
+          "requestId": "decision",
+          "operation": "contextual_moderation",
+          "category": "other",
+          "source": "moderation",
+          "provider": "openrouter",
+          "resourceType": "llm_generation",
+          "resourceId": "message"
+        }
+      },
+      "legacy": null,
+      "contended": false,
+      "result": {
+        "error": false
+      },
+      "calls": [
+        [
+          "set",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel",
+          "fixture-lock-uuid",
+          {
+            "NX": true,
+            "PX": 8000
+          }
+        ],
+        [
+          "type",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent"
+        ],
+        [
+          "rPush",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent",
+          "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"_cost\":{\"amount\":0.0123456789,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"openai\",\"model\":\"model\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":0.01234568,\"credits\":13,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+        ],
+        [
+          "project",
+          "keyword-fixture-fca01b6f57a8:channel",
+          13,
+          "moderation:decision"
+        ],
+        [
+          "rPush",
+          "cron:ai-usage-receipts:queue",
+          "{\"channelID\":\"keyword-fixture-fca01b6f57a8:channel\",\"customerId\":\"customer\",\"id\":\"moderation:decision\",\"requestId\":\"decision\",\"occurredAt\":\"2026-10-29T00:00:00.123Z\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"source\":\"moderation\",\"adjustmentType\":null,\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"quantity\":123,\"unit\":\"tokens\",\"credits\":13,\"resourceType\":\"llm_generation\",\"resourceId\":\"message\",\"itemized\":true,\"enqueuedAt\":\"2026-10-29T00:00:00.123Z\"}"
+        ],
+        [
+          "track",
+          {
+            "context": {
+              "schemaVersion": 1,
+              "pricingVersion": "legacy-polar-math-v1",
+              "entryId": "moderation:decision",
+              "requestId": "decision",
+              "entryKind": "usage",
+              "category": "other",
+              "operation": "contextual_moderation",
+              "source": "moderation",
+              "provider": "openrouter",
+              "model": "openai/model:variant",
+              "channelID": "keyword-fixture-fca01b6f57a8:channel",
+              "quantity": 123,
+              "unit": "tokens",
+              "resourceType": "llm_generation",
+              "resourceId": "message"
+            },
+            "credits": 13,
+            "reason": "contextual_moderation",
+            "polarCostAmount": 0.0123456789,
+            "inputTokens": 123,
+            "outputTokens": 0,
+            "totalTokens": 123
+          }
+        ],
+        [
+          "get",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ],
+        [
+          "del",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ]
+      ],
+      "list": [
+        "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"_cost\":{\"amount\":0.0123456789,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"openai\",\"model\":\"model\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":0.01234568,\"credits\":13,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+      ],
+      "finalLock": null
+    },
+    {
+      "id": "missing-customer",
+      "input": {
+        "customerId": "",
+        "channelID": "keyword-fixture-fca01b6f57a8:channel",
+        "externalId": "moderation:decision",
+        "cost": 0.000123456789,
+        "reason": "contextual_moderation",
+        "mode": "cache",
+        "llm": {
+          "model": "openai/model:variant",
+          "usage": {
+            "prompt_tokens": 123,
+            "completion_tokens": 0,
+            "total_tokens": 123
+          }
+        },
+        "usage": {
+          "requestId": "decision",
+          "operation": "contextual_moderation",
+          "category": "other",
+          "source": "moderation",
+          "provider": "openrouter",
+          "resourceType": "llm_generation",
+          "resourceId": "message"
+        }
+      },
+      "legacy": null,
+      "contended": false,
+      "result": {
+        "error": true,
+        "message": "customerId is required"
+      },
+      "calls": [],
+      "list": [],
+      "finalLock": null
+    },
+    {
+      "id": "missing-channel",
+      "input": {
+        "customerId": "customer",
+        "channelID": "",
+        "externalId": "moderation:decision",
+        "cost": 0.000123456789,
+        "reason": "contextual_moderation",
+        "mode": "cache",
+        "llm": {
+          "model": "openai/model:variant",
+          "usage": {
+            "prompt_tokens": 123,
+            "completion_tokens": 0,
+            "total_tokens": 123
+          }
+        },
+        "usage": {
+          "requestId": "decision",
+          "operation": "contextual_moderation",
+          "category": "other",
+          "source": "moderation",
+          "provider": "openrouter",
+          "resourceType": "llm_generation",
+          "resourceId": "message"
+        }
+      },
+      "legacy": null,
+      "contended": false,
+      "result": {
+        "error": true,
+        "message": "channelID is required for batch/cache modes"
+      },
+      "calls": [],
+      "list": [],
+      "finalLock": null
+    },
+    {
+      "id": "cost-0",
+      "input": {
+        "customerId": "customer",
+        "channelID": "keyword-fixture-fca01b6f57a8:channel",
+        "externalId": "moderation:decision",
+        "cost": 0,
+        "reason": "contextual_moderation",
+        "mode": "cache",
+        "llm": {
+          "model": "openai/model:variant",
+          "usage": {
+            "prompt_tokens": 123,
+            "completion_tokens": 0,
+            "total_tokens": 123
+          }
+        },
+        "usage": {
+          "requestId": "decision",
+          "operation": "contextual_moderation",
+          "category": "other",
+          "source": "moderation",
+          "provider": "openrouter",
+          "resourceType": "llm_generation",
+          "resourceId": "message"
+        }
+      },
+      "legacy": null,
+      "contended": false,
+      "result": {
+        "error": false
+      },
+      "calls": [
+        [
+          "set",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel",
+          "fixture-lock-uuid",
+          {
+            "NX": true,
+            "PX": 8000
+          }
+        ],
+        [
+          "type",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent"
+        ],
+        [
+          "rPush",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent",
+          "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"_cost\":{\"amount\":0,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"openai\",\"model\":\"model\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":0,\"credits\":0,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+        ],
+        [
+          "project",
+          "keyword-fixture-fca01b6f57a8:channel",
+          0,
+          "moderation:decision"
+        ],
+        [
+          "rPush",
+          "cron:ai-usage-receipts:queue",
+          "{\"channelID\":\"keyword-fixture-fca01b6f57a8:channel\",\"customerId\":\"customer\",\"id\":\"moderation:decision\",\"requestId\":\"decision\",\"occurredAt\":\"2026-10-29T00:00:00.123Z\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"source\":\"moderation\",\"adjustmentType\":null,\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"quantity\":123,\"unit\":\"tokens\",\"credits\":0,\"resourceType\":\"llm_generation\",\"resourceId\":\"message\",\"itemized\":true,\"enqueuedAt\":\"2026-10-29T00:00:00.123Z\"}"
+        ],
+        [
+          "track",
+          {
+            "context": {
+              "schemaVersion": 1,
+              "pricingVersion": "legacy-polar-math-v1",
+              "entryId": "moderation:decision",
+              "requestId": "decision",
+              "entryKind": "usage",
+              "category": "other",
+              "operation": "contextual_moderation",
+              "source": "moderation",
+              "provider": "openrouter",
+              "model": "openai/model:variant",
+              "channelID": "keyword-fixture-fca01b6f57a8:channel",
+              "quantity": 123,
+              "unit": "tokens",
+              "resourceType": "llm_generation",
+              "resourceId": "message"
+            },
+            "credits": 0,
+            "reason": "contextual_moderation",
+            "polarCostAmount": 0,
+            "inputTokens": 123,
+            "outputTokens": 0,
+            "totalTokens": 123
+          }
+        ],
+        [
+          "get",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ],
+        [
+          "del",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ]
+      ],
+      "list": [
+        "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"_cost\":{\"amount\":0,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"openai\",\"model\":\"model\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":0,\"credits\":0,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+      ],
+      "finalLock": null
+    },
+    {
+      "id": "cost-1",
+      "input": {
+        "customerId": "customer",
+        "channelID": "keyword-fixture-fca01b6f57a8:channel",
+        "externalId": "moderation:decision",
+        "cost": 1e-12,
+        "reason": "contextual_moderation",
+        "mode": "cache",
+        "llm": {
+          "model": "openai/model:variant",
+          "usage": {
+            "prompt_tokens": 123,
+            "completion_tokens": 0,
+            "total_tokens": 123
+          }
+        },
+        "usage": {
+          "requestId": "decision",
+          "operation": "contextual_moderation",
+          "category": "other",
+          "source": "moderation",
+          "provider": "openrouter",
+          "resourceType": "llm_generation",
+          "resourceId": "message"
+        }
+      },
+      "legacy": null,
+      "contended": false,
+      "result": {
+        "error": false
+      },
+      "calls": [
+        [
+          "set",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel",
+          "fixture-lock-uuid",
+          {
+            "NX": true,
+            "PX": 8000
+          }
+        ],
+        [
+          "type",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent"
+        ],
+        [
+          "rPush",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent",
+          "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"_cost\":{\"amount\":1e-10,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"openai\",\"model\":\"model\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":0,\"credits\":0,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+        ],
+        [
+          "project",
+          "keyword-fixture-fca01b6f57a8:channel",
+          0,
+          "moderation:decision"
+        ],
+        [
+          "rPush",
+          "cron:ai-usage-receipts:queue",
+          "{\"channelID\":\"keyword-fixture-fca01b6f57a8:channel\",\"customerId\":\"customer\",\"id\":\"moderation:decision\",\"requestId\":\"decision\",\"occurredAt\":\"2026-10-29T00:00:00.123Z\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"source\":\"moderation\",\"adjustmentType\":null,\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"quantity\":123,\"unit\":\"tokens\",\"credits\":0,\"resourceType\":\"llm_generation\",\"resourceId\":\"message\",\"itemized\":true,\"enqueuedAt\":\"2026-10-29T00:00:00.123Z\"}"
+        ],
+        [
+          "track",
+          {
+            "context": {
+              "schemaVersion": 1,
+              "pricingVersion": "legacy-polar-math-v1",
+              "entryId": "moderation:decision",
+              "requestId": "decision",
+              "entryKind": "usage",
+              "category": "other",
+              "operation": "contextual_moderation",
+              "source": "moderation",
+              "provider": "openrouter",
+              "model": "openai/model:variant",
+              "channelID": "keyword-fixture-fca01b6f57a8:channel",
+              "quantity": 123,
+              "unit": "tokens",
+              "resourceType": "llm_generation",
+              "resourceId": "message"
+            },
+            "credits": 0,
+            "reason": "contextual_moderation",
+            "polarCostAmount": 1e-10,
+            "inputTokens": 123,
+            "outputTokens": 0,
+            "totalTokens": 123
+          }
+        ],
+        [
+          "get",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ],
+        [
+          "del",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ]
+      ],
+      "list": [
+        "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"_cost\":{\"amount\":1e-10,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"openai\",\"model\":\"model\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":0,\"credits\":0,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+      ],
+      "finalLock": null
+    },
+    {
+      "id": "cost-2",
+      "input": {
+        "customerId": "customer",
+        "channelID": "keyword-fixture-fca01b6f57a8:channel",
+        "externalId": "moderation:decision",
+        "cost": 0.000123456789,
+        "reason": "contextual_moderation",
+        "mode": "cache",
+        "llm": {
+          "model": "openai/model:variant",
+          "usage": {
+            "prompt_tokens": 123,
+            "completion_tokens": 0,
+            "total_tokens": 123
+          }
+        },
+        "usage": {
+          "requestId": "decision",
+          "operation": "contextual_moderation",
+          "category": "other",
+          "source": "moderation",
+          "provider": "openrouter",
+          "resourceType": "llm_generation",
+          "resourceId": "message"
+        }
+      },
+      "legacy": null,
+      "contended": false,
+      "result": {
+        "error": false
+      },
+      "calls": [
+        [
+          "set",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel",
+          "fixture-lock-uuid",
+          {
+            "NX": true,
+            "PX": 8000
+          }
+        ],
+        [
+          "type",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent"
+        ],
+        [
+          "rPush",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent",
+          "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"_cost\":{\"amount\":0.0123456789,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"openai\",\"model\":\"model\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":0.01234568,\"credits\":13,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+        ],
+        [
+          "project",
+          "keyword-fixture-fca01b6f57a8:channel",
+          13,
+          "moderation:decision"
+        ],
+        [
+          "rPush",
+          "cron:ai-usage-receipts:queue",
+          "{\"channelID\":\"keyword-fixture-fca01b6f57a8:channel\",\"customerId\":\"customer\",\"id\":\"moderation:decision\",\"requestId\":\"decision\",\"occurredAt\":\"2026-10-29T00:00:00.123Z\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"source\":\"moderation\",\"adjustmentType\":null,\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"quantity\":123,\"unit\":\"tokens\",\"credits\":13,\"resourceType\":\"llm_generation\",\"resourceId\":\"message\",\"itemized\":true,\"enqueuedAt\":\"2026-10-29T00:00:00.123Z\"}"
+        ],
+        [
+          "track",
+          {
+            "context": {
+              "schemaVersion": 1,
+              "pricingVersion": "legacy-polar-math-v1",
+              "entryId": "moderation:decision",
+              "requestId": "decision",
+              "entryKind": "usage",
+              "category": "other",
+              "operation": "contextual_moderation",
+              "source": "moderation",
+              "provider": "openrouter",
+              "model": "openai/model:variant",
+              "channelID": "keyword-fixture-fca01b6f57a8:channel",
+              "quantity": 123,
+              "unit": "tokens",
+              "resourceType": "llm_generation",
+              "resourceId": "message"
+            },
+            "credits": 13,
+            "reason": "contextual_moderation",
+            "polarCostAmount": 0.0123456789,
+            "inputTokens": 123,
+            "outputTokens": 0,
+            "totalTokens": 123
+          }
+        ],
+        [
+          "get",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ],
+        [
+          "del",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ]
+      ],
+      "list": [
+        "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"_cost\":{\"amount\":0.0123456789,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"openai\",\"model\":\"model\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":0.01234568,\"credits\":13,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+      ],
+      "finalLock": null
+    },
+    {
+      "id": "cost-3",
+      "input": {
+        "customerId": "customer",
+        "channelID": "keyword-fixture-fca01b6f57a8:channel",
+        "externalId": "moderation:decision",
+        "cost": 1.23456789012345,
+        "reason": "contextual_moderation",
+        "mode": "cache",
+        "llm": {
+          "model": "openai/model:variant",
+          "usage": {
+            "prompt_tokens": 123,
+            "completion_tokens": 0,
+            "total_tokens": 123
+          }
+        },
+        "usage": {
+          "requestId": "decision",
+          "operation": "contextual_moderation",
+          "category": "other",
+          "source": "moderation",
+          "provider": "openrouter",
+          "resourceType": "llm_generation",
+          "resourceId": "message"
+        }
+      },
+      "legacy": null,
+      "contended": false,
+      "result": {
+        "error": false
+      },
+      "calls": [
+        [
+          "set",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel",
+          "fixture-lock-uuid",
+          {
+            "NX": true,
+            "PX": 8000
+          }
+        ],
+        [
+          "type",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent"
+        ],
+        [
+          "rPush",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent",
+          "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"_cost\":{\"amount\":123.4567890123,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"openai\",\"model\":\"model\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":123.45678901,\"credits\":123457,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+        ],
+        [
+          "project",
+          "keyword-fixture-fca01b6f57a8:channel",
+          123457,
+          "moderation:decision"
+        ],
+        [
+          "rPush",
+          "cron:ai-usage-receipts:queue",
+          "{\"channelID\":\"keyword-fixture-fca01b6f57a8:channel\",\"customerId\":\"customer\",\"id\":\"moderation:decision\",\"requestId\":\"decision\",\"occurredAt\":\"2026-10-29T00:00:00.123Z\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"source\":\"moderation\",\"adjustmentType\":null,\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"quantity\":123,\"unit\":\"tokens\",\"credits\":123457,\"resourceType\":\"llm_generation\",\"resourceId\":\"message\",\"itemized\":true,\"enqueuedAt\":\"2026-10-29T00:00:00.123Z\"}"
+        ],
+        [
+          "track",
+          {
+            "context": {
+              "schemaVersion": 1,
+              "pricingVersion": "legacy-polar-math-v1",
+              "entryId": "moderation:decision",
+              "requestId": "decision",
+              "entryKind": "usage",
+              "category": "other",
+              "operation": "contextual_moderation",
+              "source": "moderation",
+              "provider": "openrouter",
+              "model": "openai/model:variant",
+              "channelID": "keyword-fixture-fca01b6f57a8:channel",
+              "quantity": 123,
+              "unit": "tokens",
+              "resourceType": "llm_generation",
+              "resourceId": "message"
+            },
+            "credits": 123457,
+            "reason": "contextual_moderation",
+            "polarCostAmount": 123.4567890123,
+            "inputTokens": 123,
+            "outputTokens": 0,
+            "totalTokens": 123
+          }
+        ],
+        [
+          "get",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ],
+        [
+          "del",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ]
+      ],
+      "list": [
+        "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"_cost\":{\"amount\":123.4567890123,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"openai\",\"model\":\"model\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":123.45678901,\"credits\":123457,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+      ],
+      "finalLock": null
+    },
+    {
+      "id": "cost-4",
+      "input": {
+        "customerId": "customer",
+        "channelID": "keyword-fixture-fca01b6f57a8:channel",
+        "externalId": "moderation:decision",
+        "cost": -0.000123456789,
+        "reason": "contextual_moderation",
+        "mode": "cache",
+        "llm": {
+          "model": "openai/model:variant",
+          "usage": {
+            "prompt_tokens": 123,
+            "completion_tokens": 0,
+            "total_tokens": 123
+          }
+        },
+        "usage": {
+          "requestId": "decision",
+          "operation": "contextual_moderation",
+          "category": "other",
+          "source": "moderation",
+          "provider": "openrouter",
+          "resourceType": "llm_generation",
+          "resourceId": "message"
+        }
+      },
+      "legacy": null,
+      "contended": false,
+      "result": {
+        "error": false
+      },
+      "calls": [
+        [
+          "set",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel",
+          "fixture-lock-uuid",
+          {
+            "NX": true,
+            "PX": 8000
+          }
+        ],
+        [
+          "type",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent"
+        ],
+        [
+          "rPush",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent",
+          "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"_cost\":{\"amount\":-0.0123456789,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"openai\",\"model\":\"model\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":-0.01234568,\"credits\":-12,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+        ],
+        [
+          "project",
+          "keyword-fixture-fca01b6f57a8:channel",
+          -12,
+          "moderation:decision"
+        ],
+        [
+          "rPush",
+          "cron:ai-usage-receipts:queue",
+          "{\"channelID\":\"keyword-fixture-fca01b6f57a8:channel\",\"customerId\":\"customer\",\"id\":\"moderation:decision\",\"requestId\":\"decision\",\"occurredAt\":\"2026-10-29T00:00:00.123Z\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"source\":\"moderation\",\"adjustmentType\":null,\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"quantity\":123,\"unit\":\"tokens\",\"credits\":-12,\"resourceType\":\"llm_generation\",\"resourceId\":\"message\",\"itemized\":true,\"enqueuedAt\":\"2026-10-29T00:00:00.123Z\"}"
+        ],
+        [
+          "track",
+          {
+            "context": {
+              "schemaVersion": 1,
+              "pricingVersion": "legacy-polar-math-v1",
+              "entryId": "moderation:decision",
+              "requestId": "decision",
+              "entryKind": "usage",
+              "category": "other",
+              "operation": "contextual_moderation",
+              "source": "moderation",
+              "provider": "openrouter",
+              "model": "openai/model:variant",
+              "channelID": "keyword-fixture-fca01b6f57a8:channel",
+              "quantity": 123,
+              "unit": "tokens",
+              "resourceType": "llm_generation",
+              "resourceId": "message"
+            },
+            "credits": -12,
+            "reason": "contextual_moderation",
+            "polarCostAmount": -0.0123456789,
+            "inputTokens": 123,
+            "outputTokens": 0,
+            "totalTokens": 123
+          }
+        ],
+        [
+          "get",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ],
+        [
+          "del",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ]
+      ],
+      "list": [
+        "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"_cost\":{\"amount\":-0.0123456789,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"openai\",\"model\":\"model\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":-0.01234568,\"credits\":-12,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+      ],
+      "finalLock": null
+    },
+    {
+      "id": "cost-5",
+      "input": {
+        "customerId": "customer",
+        "channelID": "keyword-fixture-fca01b6f57a8:channel",
+        "externalId": "moderation:decision",
+        "cost": 100000000000000000000,
+        "reason": "contextual_moderation",
+        "mode": "cache",
+        "llm": {
+          "model": "openai/model:variant",
+          "usage": {
+            "prompt_tokens": 123,
+            "completion_tokens": 0,
+            "total_tokens": 123
+          }
+        },
+        "usage": {
+          "requestId": "decision",
+          "operation": "contextual_moderation",
+          "category": "other",
+          "source": "moderation",
+          "provider": "openrouter",
+          "resourceType": "llm_generation",
+          "resourceId": "message"
+        }
+      },
+      "legacy": null,
+      "contended": false,
+      "result": {
+        "error": false
+      },
+      "calls": [
+        [
+          "set",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel",
+          "fixture-lock-uuid",
+          {
+            "NX": true,
+            "PX": 8000
+          }
+        ],
+        [
+          "type",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent"
+        ],
+        [
+          "rPush",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent",
+          "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"_cost\":{\"amount\":1e+22,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"openai\",\"model\":\"model\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":1e+22,\"credits\":1e+25,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+        ],
+        [
+          "project",
+          "keyword-fixture-fca01b6f57a8:channel",
+          1e+25,
+          "moderation:decision"
+        ],
+        [
+          "rPush",
+          "cron:ai-usage-receipts:queue",
+          "{\"channelID\":\"keyword-fixture-fca01b6f57a8:channel\",\"customerId\":\"customer\",\"id\":\"moderation:decision\",\"requestId\":\"decision\",\"occurredAt\":\"2026-10-29T00:00:00.123Z\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"source\":\"moderation\",\"adjustmentType\":null,\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"quantity\":123,\"unit\":\"tokens\",\"credits\":1e+25,\"resourceType\":\"llm_generation\",\"resourceId\":\"message\",\"itemized\":true,\"enqueuedAt\":\"2026-10-29T00:00:00.123Z\"}"
+        ],
+        [
+          "track",
+          {
+            "context": {
+              "schemaVersion": 1,
+              "pricingVersion": "legacy-polar-math-v1",
+              "entryId": "moderation:decision",
+              "requestId": "decision",
+              "entryKind": "usage",
+              "category": "other",
+              "operation": "contextual_moderation",
+              "source": "moderation",
+              "provider": "openrouter",
+              "model": "openai/model:variant",
+              "channelID": "keyword-fixture-fca01b6f57a8:channel",
+              "quantity": 123,
+              "unit": "tokens",
+              "resourceType": "llm_generation",
+              "resourceId": "message"
+            },
+            "credits": 1e+25,
+            "reason": "contextual_moderation",
+            "polarCostAmount": 1e+22,
+            "inputTokens": 123,
+            "outputTokens": 0,
+            "totalTokens": 123
+          }
+        ],
+        [
+          "get",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ],
+        [
+          "del",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ]
+      ],
+      "list": [
+        "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"_cost\":{\"amount\":1e+22,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"openai\",\"model\":\"model\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":1e+22,\"credits\":1e+25,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+      ],
+      "finalLock": null
+    },
+    {
+      "id": "model-0",
+      "input": {
+        "customerId": "customer",
+        "channelID": "keyword-fixture-fca01b6f57a8:channel",
+        "externalId": "moderation:decision",
+        "cost": 0.000123456789,
+        "reason": "contextual_moderation",
+        "mode": "cache",
+        "llm": {
+          "model": "",
+          "usage": {
+            "prompt_tokens": 123,
+            "completion_tokens": 0,
+            "total_tokens": 123
+          }
+        },
+        "usage": {
+          "requestId": "decision",
+          "operation": "contextual_moderation",
+          "category": "other",
+          "source": "moderation",
+          "provider": "openrouter",
+          "resourceType": "llm_generation",
+          "resourceId": "message"
+        }
+      },
+      "legacy": null,
+      "contended": false,
+      "result": {
+        "error": false
+      },
+      "calls": [
+        [
+          "set",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel",
+          "fixture-lock-uuid",
+          {
+            "NX": true,
+            "PX": 8000
+          }
+        ],
+        [
+          "type",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent"
+        ],
+        [
+          "rPush",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent",
+          "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"_cost\":{\"amount\":0.0123456789,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"unknown\",\"model\":\"unknown\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":0.01234568,\"credits\":13,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+        ],
+        [
+          "project",
+          "keyword-fixture-fca01b6f57a8:channel",
+          13,
+          "moderation:decision"
+        ],
+        [
+          "rPush",
+          "cron:ai-usage-receipts:queue",
+          "{\"channelID\":\"keyword-fixture-fca01b6f57a8:channel\",\"customerId\":\"customer\",\"id\":\"moderation:decision\",\"requestId\":\"decision\",\"occurredAt\":\"2026-10-29T00:00:00.123Z\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"source\":\"moderation\",\"adjustmentType\":null,\"provider\":\"openrouter\",\"model\":null,\"quantity\":123,\"unit\":\"tokens\",\"credits\":13,\"resourceType\":\"llm_generation\",\"resourceId\":\"message\",\"itemized\":true,\"enqueuedAt\":\"2026-10-29T00:00:00.123Z\"}"
+        ],
+        [
+          "track",
+          {
+            "context": {
+              "schemaVersion": 1,
+              "pricingVersion": "legacy-polar-math-v1",
+              "entryId": "moderation:decision",
+              "requestId": "decision",
+              "entryKind": "usage",
+              "category": "other",
+              "operation": "contextual_moderation",
+              "source": "moderation",
+              "provider": "openrouter",
+              "channelID": "keyword-fixture-fca01b6f57a8:channel",
+              "quantity": 123,
+              "unit": "tokens",
+              "resourceType": "llm_generation",
+              "resourceId": "message"
+            },
+            "credits": 13,
+            "reason": "contextual_moderation",
+            "polarCostAmount": 0.0123456789,
+            "inputTokens": 123,
+            "outputTokens": 0,
+            "totalTokens": 123
+          }
+        ],
+        [
+          "get",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ],
+        [
+          "del",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ]
+      ],
+      "list": [
+        "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"_cost\":{\"amount\":0.0123456789,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"unknown\",\"model\":\"unknown\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":0.01234568,\"credits\":13,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+      ],
+      "finalLock": null
+    },
+    {
+      "id": "model-1",
+      "input": {
+        "customerId": "customer",
+        "channelID": "keyword-fixture-fca01b6f57a8:channel",
+        "externalId": "moderation:decision",
+        "cost": 0.000123456789,
+        "reason": "contextual_moderation",
+        "mode": "cache",
+        "llm": {
+          "model": "vendor",
+          "usage": {
+            "prompt_tokens": 123,
+            "completion_tokens": 0,
+            "total_tokens": 123
+          }
+        },
+        "usage": {
+          "requestId": "decision",
+          "operation": "contextual_moderation",
+          "category": "other",
+          "source": "moderation",
+          "provider": "openrouter",
+          "resourceType": "llm_generation",
+          "resourceId": "message"
+        }
+      },
+      "legacy": null,
+      "contended": false,
+      "result": {
+        "error": false
+      },
+      "calls": [
+        [
+          "set",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel",
+          "fixture-lock-uuid",
+          {
+            "NX": true,
+            "PX": 8000
+          }
+        ],
+        [
+          "type",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent"
+        ],
+        [
+          "rPush",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent",
+          "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"_cost\":{\"amount\":0.0123456789,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"vendor\",\"model\":\"vendor\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":0.01234568,\"credits\":13,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"model\":\"vendor\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+        ],
+        [
+          "project",
+          "keyword-fixture-fca01b6f57a8:channel",
+          13,
+          "moderation:decision"
+        ],
+        [
+          "rPush",
+          "cron:ai-usage-receipts:queue",
+          "{\"channelID\":\"keyword-fixture-fca01b6f57a8:channel\",\"customerId\":\"customer\",\"id\":\"moderation:decision\",\"requestId\":\"decision\",\"occurredAt\":\"2026-10-29T00:00:00.123Z\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"source\":\"moderation\",\"adjustmentType\":null,\"provider\":\"openrouter\",\"model\":\"vendor\",\"quantity\":123,\"unit\":\"tokens\",\"credits\":13,\"resourceType\":\"llm_generation\",\"resourceId\":\"message\",\"itemized\":true,\"enqueuedAt\":\"2026-10-29T00:00:00.123Z\"}"
+        ],
+        [
+          "track",
+          {
+            "context": {
+              "schemaVersion": 1,
+              "pricingVersion": "legacy-polar-math-v1",
+              "entryId": "moderation:decision",
+              "requestId": "decision",
+              "entryKind": "usage",
+              "category": "other",
+              "operation": "contextual_moderation",
+              "source": "moderation",
+              "provider": "openrouter",
+              "model": "vendor",
+              "channelID": "keyword-fixture-fca01b6f57a8:channel",
+              "quantity": 123,
+              "unit": "tokens",
+              "resourceType": "llm_generation",
+              "resourceId": "message"
+            },
+            "credits": 13,
+            "reason": "contextual_moderation",
+            "polarCostAmount": 0.0123456789,
+            "inputTokens": 123,
+            "outputTokens": 0,
+            "totalTokens": 123
+          }
+        ],
+        [
+          "get",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ],
+        [
+          "del",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ]
+      ],
+      "list": [
+        "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"_cost\":{\"amount\":0.0123456789,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"vendor\",\"model\":\"vendor\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":0.01234568,\"credits\":13,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"model\":\"vendor\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+      ],
+      "finalLock": null
+    },
+    {
+      "id": "model-2",
+      "input": {
+        "customerId": "customer",
+        "channelID": "keyword-fixture-fca01b6f57a8:channel",
+        "externalId": "moderation:decision",
+        "cost": 0.000123456789,
+        "reason": "contextual_moderation",
+        "mode": "cache",
+        "llm": {
+          "model": "/model:extra",
+          "usage": {
+            "prompt_tokens": 123,
+            "completion_tokens": 0,
+            "total_tokens": 123
+          }
+        },
+        "usage": {
+          "requestId": "decision",
+          "operation": "contextual_moderation",
+          "category": "other",
+          "source": "moderation",
+          "provider": "openrouter",
+          "resourceType": "llm_generation",
+          "resourceId": "message"
+        }
+      },
+      "legacy": null,
+      "contended": false,
+      "result": {
+        "error": false
+      },
+      "calls": [
+        [
+          "set",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel",
+          "fixture-lock-uuid",
+          {
+            "NX": true,
+            "PX": 8000
+          }
+        ],
+        [
+          "type",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent"
+        ],
+        [
+          "rPush",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent",
+          "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"_cost\":{\"amount\":0.0123456789,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"unknown\",\"model\":\"model\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":0.01234568,\"credits\":13,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"model\":\"/model:extra\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+        ],
+        [
+          "project",
+          "keyword-fixture-fca01b6f57a8:channel",
+          13,
+          "moderation:decision"
+        ],
+        [
+          "rPush",
+          "cron:ai-usage-receipts:queue",
+          "{\"channelID\":\"keyword-fixture-fca01b6f57a8:channel\",\"customerId\":\"customer\",\"id\":\"moderation:decision\",\"requestId\":\"decision\",\"occurredAt\":\"2026-10-29T00:00:00.123Z\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"source\":\"moderation\",\"adjustmentType\":null,\"provider\":\"openrouter\",\"model\":\"/model:extra\",\"quantity\":123,\"unit\":\"tokens\",\"credits\":13,\"resourceType\":\"llm_generation\",\"resourceId\":\"message\",\"itemized\":true,\"enqueuedAt\":\"2026-10-29T00:00:00.123Z\"}"
+        ],
+        [
+          "track",
+          {
+            "context": {
+              "schemaVersion": 1,
+              "pricingVersion": "legacy-polar-math-v1",
+              "entryId": "moderation:decision",
+              "requestId": "decision",
+              "entryKind": "usage",
+              "category": "other",
+              "operation": "contextual_moderation",
+              "source": "moderation",
+              "provider": "openrouter",
+              "model": "/model:extra",
+              "channelID": "keyword-fixture-fca01b6f57a8:channel",
+              "quantity": 123,
+              "unit": "tokens",
+              "resourceType": "llm_generation",
+              "resourceId": "message"
+            },
+            "credits": 13,
+            "reason": "contextual_moderation",
+            "polarCostAmount": 0.0123456789,
+            "inputTokens": 123,
+            "outputTokens": 0,
+            "totalTokens": 123
+          }
+        ],
+        [
+          "get",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ],
+        [
+          "del",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ]
+      ],
+      "list": [
+        "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"_cost\":{\"amount\":0.0123456789,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"unknown\",\"model\":\"model\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":0.01234568,\"credits\":13,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"model\":\"/model:extra\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+      ],
+      "finalLock": null
+    },
+    {
+      "id": "model-3",
+      "input": {
+        "customerId": "customer",
+        "channelID": "keyword-fixture-fca01b6f57a8:channel",
+        "externalId": "moderation:decision",
+        "cost": 0.000123456789,
+        "reason": "contextual_moderation",
+        "mode": "cache",
+        "llm": {
+          "model": "vendor/model/other:foo",
+          "usage": {
+            "prompt_tokens": 123,
+            "completion_tokens": 0,
+            "total_tokens": 123
+          }
+        },
+        "usage": {
+          "requestId": "decision",
+          "operation": "contextual_moderation",
+          "category": "other",
+          "source": "moderation",
+          "provider": "openrouter",
+          "resourceType": "llm_generation",
+          "resourceId": "message"
+        }
+      },
+      "legacy": null,
+      "contended": false,
+      "result": {
+        "error": false
+      },
+      "calls": [
+        [
+          "set",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel",
+          "fixture-lock-uuid",
+          {
+            "NX": true,
+            "PX": 8000
+          }
+        ],
+        [
+          "type",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent"
+        ],
+        [
+          "rPush",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent",
+          "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"_cost\":{\"amount\":0.0123456789,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"vendor\",\"model\":\"model\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":0.01234568,\"credits\":13,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"model\":\"vendor/model/other:foo\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+        ],
+        [
+          "project",
+          "keyword-fixture-fca01b6f57a8:channel",
+          13,
+          "moderation:decision"
+        ],
+        [
+          "rPush",
+          "cron:ai-usage-receipts:queue",
+          "{\"channelID\":\"keyword-fixture-fca01b6f57a8:channel\",\"customerId\":\"customer\",\"id\":\"moderation:decision\",\"requestId\":\"decision\",\"occurredAt\":\"2026-10-29T00:00:00.123Z\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"source\":\"moderation\",\"adjustmentType\":null,\"provider\":\"openrouter\",\"model\":\"vendor/model/other:foo\",\"quantity\":123,\"unit\":\"tokens\",\"credits\":13,\"resourceType\":\"llm_generation\",\"resourceId\":\"message\",\"itemized\":true,\"enqueuedAt\":\"2026-10-29T00:00:00.123Z\"}"
+        ],
+        [
+          "track",
+          {
+            "context": {
+              "schemaVersion": 1,
+              "pricingVersion": "legacy-polar-math-v1",
+              "entryId": "moderation:decision",
+              "requestId": "decision",
+              "entryKind": "usage",
+              "category": "other",
+              "operation": "contextual_moderation",
+              "source": "moderation",
+              "provider": "openrouter",
+              "model": "vendor/model/other:foo",
+              "channelID": "keyword-fixture-fca01b6f57a8:channel",
+              "quantity": 123,
+              "unit": "tokens",
+              "resourceType": "llm_generation",
+              "resourceId": "message"
+            },
+            "credits": 13,
+            "reason": "contextual_moderation",
+            "polarCostAmount": 0.0123456789,
+            "inputTokens": 123,
+            "outputTokens": 0,
+            "totalTokens": 123
+          }
+        ],
+        [
+          "get",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ],
+        [
+          "del",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ]
+      ],
+      "list": [
+        "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"_cost\":{\"amount\":0.0123456789,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"vendor\",\"model\":\"model\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":0.01234568,\"credits\":13,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"model\":\"vendor/model/other:foo\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+      ],
+      "finalLock": null
+    },
+    {
+      "id": "plain",
+      "input": {
+        "customerId": "customer",
+        "channelID": "keyword-fixture-fca01b6f57a8:channel",
+        "externalId": "moderation:decision",
+        "cost": 0.000123456789,
+        "reason": "contextual_moderation",
+        "mode": "cache",
+        "usage": {
+          "requestId": "decision",
+          "operation": "contextual_moderation",
+          "category": "other",
+          "source": "moderation",
+          "provider": "openrouter",
+          "resourceType": "llm_generation",
+          "resourceId": "message"
+        }
+      },
+      "legacy": null,
+      "contended": false,
+      "result": {
+        "error": false
+      },
+      "calls": [
+        [
+          "set",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel",
+          "fixture-lock-uuid",
+          {
+            "NX": true,
+            "PX": 8000
+          }
+        ],
+        [
+          "type",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent"
+        ],
+        [
+          "rPush",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent",
+          "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"cost\":0.000123456789,\"currency\":\"usd\",\"credits\":1,\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+        ],
+        [
+          "project",
+          "keyword-fixture-fca01b6f57a8:channel",
+          1,
+          "moderation:decision"
+        ],
+        [
+          "rPush",
+          "cron:ai-usage-receipts:queue",
+          "{\"channelID\":\"keyword-fixture-fca01b6f57a8:channel\",\"customerId\":\"customer\",\"id\":\"moderation:decision\",\"requestId\":\"decision\",\"occurredAt\":\"2026-10-29T00:00:00.123Z\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"source\":\"moderation\",\"adjustmentType\":null,\"provider\":\"openrouter\",\"model\":null,\"quantity\":null,\"unit\":null,\"credits\":1,\"resourceType\":\"llm_generation\",\"resourceId\":\"message\",\"itemized\":true,\"enqueuedAt\":\"2026-10-29T00:00:00.123Z\"}"
+        ],
+        [
+          "track",
+          {
+            "context": {
+              "schemaVersion": 1,
+              "pricingVersion": "legacy-polar-math-v1",
+              "entryId": "moderation:decision",
+              "requestId": "decision",
+              "entryKind": "usage",
+              "category": "other",
+              "operation": "contextual_moderation",
+              "source": "moderation",
+              "provider": "openrouter",
+              "channelID": "keyword-fixture-fca01b6f57a8:channel",
+              "resourceType": "llm_generation",
+              "resourceId": "message"
+            },
+            "credits": 1,
+            "reason": "contextual_moderation"
+          }
+        ],
+        [
+          "get",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ],
+        [
+          "del",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ]
+      ],
+      "list": [
+        "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"cost\":0.000123456789,\"currency\":\"usd\",\"credits\":1,\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+      ],
+      "finalLock": null
+    },
+    {
+      "id": "audio",
+      "input": {
+        "customerId": "customer",
+        "channelID": "keyword-fixture-fca01b6f57a8:channel",
+        "externalId": "moderation:decision",
+        "cost": 0.000123456789,
+        "reason": "contextual_moderation",
+        "mode": "cache",
+        "usage": {
+          "requestId": "decision",
+          "operation": "contextual_moderation",
+          "category": "other",
+          "source": "moderation",
+          "provider": "openrouter",
+          "resourceType": "llm_generation",
+          "resourceId": "message"
+        },
+        "_cost": 0.25,
+        "characters": 7
+      },
+      "legacy": null,
+      "contended": false,
+      "result": {
+        "error": false
+      },
+      "calls": [
+        [
+          "set",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel",
+          "fixture-lock-uuid",
+          {
+            "NX": true,
+            "PX": 8000
+          }
+        ],
+        [
+          "type",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent"
+        ],
+        [
+          "rPush",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent",
+          "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"_cost\":{\"amount\":0.25,\"currency\":\"usd\"},\"cost\":0.000123456789,\"credits\":250,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"characters\":7,\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":7,\"unit\":\"characters\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+        ],
+        [
+          "project",
+          "keyword-fixture-fca01b6f57a8:channel",
+          250,
+          "moderation:decision"
+        ],
+        [
+          "rPush",
+          "cron:ai-usage-receipts:queue",
+          "{\"channelID\":\"keyword-fixture-fca01b6f57a8:channel\",\"customerId\":\"customer\",\"id\":\"moderation:decision\",\"requestId\":\"decision\",\"occurredAt\":\"2026-10-29T00:00:00.123Z\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"source\":\"moderation\",\"adjustmentType\":null,\"provider\":\"openrouter\",\"model\":null,\"quantity\":7,\"unit\":\"characters\",\"credits\":250,\"resourceType\":\"llm_generation\",\"resourceId\":\"message\",\"itemized\":true,\"enqueuedAt\":\"2026-10-29T00:00:00.123Z\"}"
+        ],
+        [
+          "track",
+          {
+            "context": {
+              "schemaVersion": 1,
+              "pricingVersion": "legacy-polar-math-v1",
+              "entryId": "moderation:decision",
+              "requestId": "decision",
+              "entryKind": "usage",
+              "category": "other",
+              "operation": "contextual_moderation",
+              "source": "moderation",
+              "provider": "openrouter",
+              "channelID": "keyword-fixture-fca01b6f57a8:channel",
+              "quantity": 7,
+              "unit": "characters",
+              "resourceType": "llm_generation",
+              "resourceId": "message"
+            },
+            "credits": 250,
+            "reason": "contextual_moderation",
+            "polarCostAmount": 0.25
+          }
+        ],
+        [
+          "get",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ],
+        [
+          "del",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ]
+      ],
+      "list": [
+        "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"_cost\":{\"amount\":0.25,\"currency\":\"usd\"},\"cost\":0.000123456789,\"credits\":250,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"characters\":7,\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":7,\"unit\":\"characters\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+      ],
+      "finalLock": null
+    },
+    {
+      "id": "context-override",
+      "input": {
+        "customerId": "customer",
+        "channelID": "keyword-fixture-fca01b6f57a8:channel",
+        "externalId": "moderation:decision",
+        "cost": 0.000123456789,
+        "reason": "contextual_moderation",
+        "mode": "cache",
+        "llm": {
+          "model": "openai/model:variant",
+          "usage": {
+            "prompt_tokens": 123,
+            "completion_tokens": 0,
+            "total_tokens": 123
+          }
+        },
+        "usage": {
+          "requestId": "decision",
+          "operation": "contextual_moderation",
+          "category": "other",
+          "source": "moderation",
+          "provider": "openrouter",
+          "resourceType": "llm_generation",
+          "resourceId": "message",
+          "entryId": "ignored",
+          "channelID": " alternate ",
+          "model": " custom ",
+          "quantity": 0,
+          "unit": "minutes"
+        }
+      },
+      "legacy": null,
+      "contended": false,
+      "result": {
+        "error": false
+      },
+      "calls": [
+        [
+          "set",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel",
+          "fixture-lock-uuid",
+          {
+            "NX": true,
+            "PX": 8000
+          }
+        ],
+        [
+          "type",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent"
+        ],
+        [
+          "rPush",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent",
+          "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"_cost\":{\"amount\":0.0123456789,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"openai\",\"model\":\"model\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":0.01234568,\"credits\":13,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"model\":\"custom\",\"channel_id\":\"alternate\",\"quantity\":0,\"unit\":\"minutes\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+        ],
+        [
+          "project",
+          "keyword-fixture-fca01b6f57a8:channel",
+          13,
+          "moderation:decision"
+        ],
+        [
+          "rPush",
+          "cron:ai-usage-receipts:queue",
+          "{\"channelID\":\"keyword-fixture-fca01b6f57a8:channel\",\"customerId\":\"customer\",\"id\":\"moderation:decision\",\"requestId\":\"decision\",\"occurredAt\":\"2026-10-29T00:00:00.123Z\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"source\":\"moderation\",\"adjustmentType\":null,\"provider\":\"openrouter\",\"model\":\"custom\",\"quantity\":0,\"unit\":\"minutes\",\"credits\":13,\"resourceType\":\"llm_generation\",\"resourceId\":\"message\",\"itemized\":true,\"enqueuedAt\":\"2026-10-29T00:00:00.123Z\"}"
+        ],
+        [
+          "track",
+          {
+            "context": {
+              "schemaVersion": 1,
+              "pricingVersion": "legacy-polar-math-v1",
+              "entryId": "moderation:decision",
+              "requestId": "decision",
+              "entryKind": "usage",
+              "category": "other",
+              "operation": "contextual_moderation",
+              "source": "moderation",
+              "provider": "openrouter",
+              "model": "custom",
+              "channelID": "alternate",
+              "quantity": 0,
+              "unit": "minutes",
+              "resourceType": "llm_generation",
+              "resourceId": "message"
+            },
+            "credits": 13,
+            "reason": "contextual_moderation",
+            "polarCostAmount": 0.0123456789,
+            "inputTokens": 123,
+            "outputTokens": 0,
+            "totalTokens": 123
+          }
+        ],
+        [
+          "get",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ],
+        [
+          "del",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ]
+      ],
+      "list": [
+        "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"_cost\":{\"amount\":0.0123456789,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"openai\",\"model\":\"model\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":0.01234568,\"credits\":13,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"model\":\"custom\",\"channel_id\":\"alternate\",\"quantity\":0,\"unit\":\"minutes\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+      ],
+      "finalLock": null
+    },
+    {
+      "id": "id-fallback",
+      "input": {
+        "customerId": "customer",
+        "channelID": "keyword-fixture-fca01b6f57a8:channel",
+        "externalId": "",
+        "cost": 0.000123456789,
+        "reason": "contextual_moderation",
+        "mode": "cache",
+        "llm": {
+          "model": "openai/model:variant",
+          "usage": {
+            "prompt_tokens": 123,
+            "completion_tokens": 0,
+            "total_tokens": 123
+          }
+        },
+        "usage": {
+          "requestId": "",
+          "operation": "contextual_moderation",
+          "category": "other",
+          "source": "moderation",
+          "provider": "openrouter",
+          "resourceType": "llm_generation",
+          "resourceId": "message",
+          "entryId": "  own-id  "
+        }
+      },
+      "legacy": null,
+      "contended": false,
+      "result": {
+        "error": false
+      },
+      "calls": [
+        [
+          "set",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel",
+          "fixture-lock-uuid",
+          {
+            "NX": true,
+            "PX": 8000
+          }
+        ],
+        [
+          "type",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent"
+        ],
+        [
+          "rPush",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent",
+          "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"own-id\",\"metadata\":{\"_cost\":{\"amount\":0.0123456789,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"openai\",\"model\":\"model\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":0.01234568,\"credits\":13,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"own-id\",\"request_id\":\"own-id\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+        ],
+        [
+          "project",
+          "keyword-fixture-fca01b6f57a8:channel",
+          13,
+          "own-id"
+        ],
+        [
+          "rPush",
+          "cron:ai-usage-receipts:queue",
+          "{\"channelID\":\"keyword-fixture-fca01b6f57a8:channel\",\"customerId\":\"customer\",\"id\":\"own-id\",\"requestId\":\"own-id\",\"occurredAt\":\"2026-10-29T00:00:00.123Z\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"source\":\"moderation\",\"adjustmentType\":null,\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"quantity\":123,\"unit\":\"tokens\",\"credits\":13,\"resourceType\":\"llm_generation\",\"resourceId\":\"message\",\"itemized\":true,\"enqueuedAt\":\"2026-10-29T00:00:00.123Z\"}"
+        ],
+        [
+          "track",
+          {
+            "context": {
+              "schemaVersion": 1,
+              "pricingVersion": "legacy-polar-math-v1",
+              "entryId": "own-id",
+              "requestId": "own-id",
+              "entryKind": "usage",
+              "category": "other",
+              "operation": "contextual_moderation",
+              "source": "moderation",
+              "provider": "openrouter",
+              "model": "openai/model:variant",
+              "channelID": "keyword-fixture-fca01b6f57a8:channel",
+              "quantity": 123,
+              "unit": "tokens",
+              "resourceType": "llm_generation",
+              "resourceId": "message"
+            },
+            "credits": 13,
+            "reason": "contextual_moderation",
+            "polarCostAmount": 0.0123456789,
+            "inputTokens": 123,
+            "outputTokens": 0,
+            "totalTokens": 123
+          }
+        ],
+        [
+          "get",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ],
+        [
+          "del",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ]
+      ],
+      "list": [
+        "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"own-id\",\"metadata\":{\"_cost\":{\"amount\":0.0123456789,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"openai\",\"model\":\"model\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":0.01234568,\"credits\":13,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"own-id\",\"request_id\":\"own-id\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+      ],
+      "finalLock": null
+    },
+    {
+      "id": "id-trimming",
+      "input": {
+        "customerId": "customer",
+        "channelID": "keyword-fixture-fca01b6f57a8:channel",
+        "externalId": "  moderation:trimmed  ",
+        "cost": 0.000123456789,
+        "reason": "contextual_moderation",
+        "mode": "cache",
+        "llm": {
+          "model": "openai/model:variant",
+          "usage": {
+            "prompt_tokens": 123,
+            "completion_tokens": 0,
+            "total_tokens": 123
+          }
+        },
+        "usage": {
+          "requestId": "decision",
+          "operation": "contextual_moderation",
+          "category": "other",
+          "source": "moderation",
+          "provider": "openrouter",
+          "resourceType": "llm_generation",
+          "resourceId": "message",
+          "channelID": "   ",
+          "model": "   "
+        }
+      },
+      "legacy": null,
+      "contended": false,
+      "result": {
+        "error": false
+      },
+      "calls": [
+        [
+          "set",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel",
+          "fixture-lock-uuid",
+          {
+            "NX": true,
+            "PX": 8000
+          }
+        ],
+        [
+          "type",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent"
+        ],
+        [
+          "rPush",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent",
+          "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:trimmed\",\"metadata\":{\"_cost\":{\"amount\":0.0123456789,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"openai\",\"model\":\"model\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":0.01234568,\"credits\":13,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:trimmed\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+        ],
+        [
+          "project",
+          "keyword-fixture-fca01b6f57a8:channel",
+          13,
+          "moderation:trimmed"
+        ],
+        [
+          "rPush",
+          "cron:ai-usage-receipts:queue",
+          "{\"channelID\":\"keyword-fixture-fca01b6f57a8:channel\",\"customerId\":\"customer\",\"id\":\"moderation:trimmed\",\"requestId\":\"decision\",\"occurredAt\":\"2026-10-29T00:00:00.123Z\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"source\":\"moderation\",\"adjustmentType\":null,\"provider\":\"openrouter\",\"model\":null,\"quantity\":123,\"unit\":\"tokens\",\"credits\":13,\"resourceType\":\"llm_generation\",\"resourceId\":\"message\",\"itemized\":true,\"enqueuedAt\":\"2026-10-29T00:00:00.123Z\"}"
+        ],
+        [
+          "track",
+          {
+            "context": {
+              "schemaVersion": 1,
+              "pricingVersion": "legacy-polar-math-v1",
+              "entryId": "moderation:trimmed",
+              "requestId": "decision",
+              "entryKind": "usage",
+              "category": "other",
+              "operation": "contextual_moderation",
+              "source": "moderation",
+              "provider": "openrouter",
+              "quantity": 123,
+              "unit": "tokens",
+              "resourceType": "llm_generation",
+              "resourceId": "message"
+            },
+            "credits": 13,
+            "reason": "contextual_moderation",
+            "polarCostAmount": 0.0123456789,
+            "inputTokens": 123,
+            "outputTokens": 0,
+            "totalTokens": 123
+          }
+        ],
+        [
+          "get",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ],
+        [
+          "del",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ]
+      ],
+      "list": [
+        "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:trimmed\",\"metadata\":{\"_cost\":{\"amount\":0.0123456789,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"openai\",\"model\":\"model\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":0.01234568,\"credits\":13,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:trimmed\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+      ],
+      "finalLock": null
+    },
+    {
+      "id": "utf16",
+      "input": {
+        "customerId": "c\ud800",
+        "channelID": "keyword-fixture-fca01b6f57a8:channel",
+        "externalId": "id\udfff",
+        "cost": 0.000123456789,
+        "reason": "r\ud800",
+        "mode": "cache",
+        "llm": {
+          "model": "vendor/m\ud800:tag",
+          "usage": {
+            "prompt_tokens": 123,
+            "completion_tokens": 0,
+            "total_tokens": 123
+          }
+        },
+        "usage": {
+          "requestId": "request\ud800",
+          "operation": "contextual_moderation",
+          "category": "other",
+          "source": "moderation",
+          "provider": "openrouter",
+          "resourceType": "llm_generation",
+          "resourceId": "message\udfff"
+        }
+      },
+      "legacy": null,
+      "contended": false,
+      "result": {
+        "error": false
+      },
+      "calls": [
+        [
+          "set",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel",
+          "fixture-lock-uuid",
+          {
+            "NX": true,
+            "PX": 8000
+          }
+        ],
+        [
+          "type",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent"
+        ],
+        [
+          "rPush",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent",
+          "{\"name\":\"ai_usage\",\"customerId\":\"c\\ud800\",\"externalId\":\"id\\udfff\",\"metadata\":{\"_cost\":{\"amount\":0.0123456789,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"vendor\",\"model\":\"m\\ud800\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":0.01234568,\"credits\":13,\"currency\":\"usd\",\"reason\":\"r\\ud800\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"id\\udfff\",\"request_id\":\"request\\ud800\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"model\":\"vendor/m\\ud800:tag\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\\udfff\"}}"
+        ],
+        [
+          "project",
+          "keyword-fixture-fca01b6f57a8:channel",
+          13,
+          "id\udfff"
+        ],
+        [
+          "rPush",
+          "cron:ai-usage-receipts:queue",
+          "{\"channelID\":\"keyword-fixture-fca01b6f57a8:channel\",\"customerId\":\"c\\ud800\",\"id\":\"id\\udfff\",\"requestId\":\"request\\ud800\",\"occurredAt\":\"2026-10-29T00:00:00.123Z\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"source\":\"moderation\",\"adjustmentType\":null,\"provider\":\"openrouter\",\"model\":\"vendor/m\\ud800:tag\",\"quantity\":123,\"unit\":\"tokens\",\"credits\":13,\"resourceType\":\"llm_generation\",\"resourceId\":\"message\\udfff\",\"itemized\":true,\"enqueuedAt\":\"2026-10-29T00:00:00.123Z\"}"
+        ],
+        [
+          "track",
+          {
+            "context": {
+              "schemaVersion": 1,
+              "pricingVersion": "legacy-polar-math-v1",
+              "entryId": "id\udfff",
+              "requestId": "request\ud800",
+              "entryKind": "usage",
+              "category": "other",
+              "operation": "contextual_moderation",
+              "source": "moderation",
+              "provider": "openrouter",
+              "model": "vendor/m\ud800:tag",
+              "channelID": "keyword-fixture-fca01b6f57a8:channel",
+              "quantity": 123,
+              "unit": "tokens",
+              "resourceType": "llm_generation",
+              "resourceId": "message\udfff"
+            },
+            "credits": 13,
+            "reason": "r\ud800",
+            "polarCostAmount": 0.0123456789,
+            "inputTokens": 123,
+            "outputTokens": 0,
+            "totalTokens": 123
+          }
+        ],
+        [
+          "get",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ],
+        [
+          "del",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ]
+      ],
+      "list": [
+        "{\"name\":\"ai_usage\",\"customerId\":\"c\\ud800\",\"externalId\":\"id\\udfff\",\"metadata\":{\"_cost\":{\"amount\":0.0123456789,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"vendor\",\"model\":\"m\\ud800\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":0.01234568,\"credits\":13,\"currency\":\"usd\",\"reason\":\"r\\ud800\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"id\\udfff\",\"request_id\":\"request\\ud800\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"model\":\"vendor/m\\ud800:tag\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\\udfff\"}}"
+      ],
+      "finalLock": null
+    },
+    {
+      "id": "legacy",
+      "input": {
+        "customerId": "customer",
+        "channelID": "keyword-fixture-fca01b6f57a8:channel",
+        "externalId": "moderation:decision",
+        "cost": 0.000123456789,
+        "reason": "contextual_moderation",
+        "mode": "cache",
+        "llm": {
+          "model": "openai/model:variant",
+          "usage": {
+            "prompt_tokens": 123,
+            "completion_tokens": 0,
+            "total_tokens": 123
+          }
+        },
+        "usage": {
+          "requestId": "decision",
+          "operation": "contextual_moderation",
+          "category": "other",
+          "source": "moderation",
+          "provider": "openrouter",
+          "resourceType": "llm_generation",
+          "resourceId": "message"
+        }
+      },
+      "legacy": "[{\"old\":1},\"x\",null]",
+      "contended": false,
+      "result": {
+        "error": false
+      },
+      "calls": [
+        [
+          "set",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel",
+          "fixture-lock-uuid",
+          {
+            "NX": true,
+            "PX": 8000
+          }
+        ],
+        [
+          "type",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent"
+        ],
+        [
+          "get",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent"
+        ],
+        [
+          "del",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent"
+        ],
+        [
+          "rPush",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent",
+          [
+            "{\"old\":1}",
+            "\"x\"",
+            "null"
+          ]
+        ],
+        [
+          "rPush",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent",
+          "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"_cost\":{\"amount\":0.0123456789,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"openai\",\"model\":\"model\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":0.01234568,\"credits\":13,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+        ],
+        [
+          "project",
+          "keyword-fixture-fca01b6f57a8:channel",
+          13,
+          "moderation:decision"
+        ],
+        [
+          "rPush",
+          "cron:ai-usage-receipts:queue",
+          "{\"channelID\":\"keyword-fixture-fca01b6f57a8:channel\",\"customerId\":\"customer\",\"id\":\"moderation:decision\",\"requestId\":\"decision\",\"occurredAt\":\"2026-10-29T00:00:00.123Z\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"source\":\"moderation\",\"adjustmentType\":null,\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"quantity\":123,\"unit\":\"tokens\",\"credits\":13,\"resourceType\":\"llm_generation\",\"resourceId\":\"message\",\"itemized\":true,\"enqueuedAt\":\"2026-10-29T00:00:00.123Z\"}"
+        ],
+        [
+          "track",
+          {
+            "context": {
+              "schemaVersion": 1,
+              "pricingVersion": "legacy-polar-math-v1",
+              "entryId": "moderation:decision",
+              "requestId": "decision",
+              "entryKind": "usage",
+              "category": "other",
+              "operation": "contextual_moderation",
+              "source": "moderation",
+              "provider": "openrouter",
+              "model": "openai/model:variant",
+              "channelID": "keyword-fixture-fca01b6f57a8:channel",
+              "quantity": 123,
+              "unit": "tokens",
+              "resourceType": "llm_generation",
+              "resourceId": "message"
+            },
+            "credits": 13,
+            "reason": "contextual_moderation",
+            "polarCostAmount": 0.0123456789,
+            "inputTokens": 123,
+            "outputTokens": 0,
+            "totalTokens": 123
+          }
+        ],
+        [
+          "get",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ],
+        [
+          "del",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ]
+      ],
+      "list": [
+        "{\"old\":1}",
+        "\"x\"",
+        "null",
+        "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"_cost\":{\"amount\":0.0123456789,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"openai\",\"model\":\"model\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":0.01234568,\"credits\":13,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+      ],
+      "finalLock": null
+    },
+    {
+      "id": "legacy-malformed",
+      "input": {
+        "customerId": "customer",
+        "channelID": "keyword-fixture-fca01b6f57a8:channel",
+        "externalId": "moderation:decision",
+        "cost": 0.000123456789,
+        "reason": "contextual_moderation",
+        "mode": "cache",
+        "llm": {
+          "model": "openai/model:variant",
+          "usage": {
+            "prompt_tokens": 123,
+            "completion_tokens": 0,
+            "total_tokens": 123
+          }
+        },
+        "usage": {
+          "requestId": "decision",
+          "operation": "contextual_moderation",
+          "category": "other",
+          "source": "moderation",
+          "provider": "openrouter",
+          "resourceType": "llm_generation",
+          "resourceId": "message"
+        }
+      },
+      "legacy": "[",
+      "contended": false,
+      "result": {
+        "error": false
+      },
+      "calls": [
+        [
+          "set",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel",
+          "fixture-lock-uuid",
+          {
+            "NX": true,
+            "PX": 8000
+          }
+        ],
+        [
+          "type",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent"
+        ],
+        [
+          "get",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent"
+        ],
+        [
+          "del",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent"
+        ],
+        [
+          "rPush",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent",
+          "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"_cost\":{\"amount\":0.0123456789,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"openai\",\"model\":\"model\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":0.01234568,\"credits\":13,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+        ],
+        [
+          "project",
+          "keyword-fixture-fca01b6f57a8:channel",
+          13,
+          "moderation:decision"
+        ],
+        [
+          "rPush",
+          "cron:ai-usage-receipts:queue",
+          "{\"channelID\":\"keyword-fixture-fca01b6f57a8:channel\",\"customerId\":\"customer\",\"id\":\"moderation:decision\",\"requestId\":\"decision\",\"occurredAt\":\"2026-10-29T00:00:00.123Z\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"source\":\"moderation\",\"adjustmentType\":null,\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"quantity\":123,\"unit\":\"tokens\",\"credits\":13,\"resourceType\":\"llm_generation\",\"resourceId\":\"message\",\"itemized\":true,\"enqueuedAt\":\"2026-10-29T00:00:00.123Z\"}"
+        ],
+        [
+          "track",
+          {
+            "context": {
+              "schemaVersion": 1,
+              "pricingVersion": "legacy-polar-math-v1",
+              "entryId": "moderation:decision",
+              "requestId": "decision",
+              "entryKind": "usage",
+              "category": "other",
+              "operation": "contextual_moderation",
+              "source": "moderation",
+              "provider": "openrouter",
+              "model": "openai/model:variant",
+              "channelID": "keyword-fixture-fca01b6f57a8:channel",
+              "quantity": 123,
+              "unit": "tokens",
+              "resourceType": "llm_generation",
+              "resourceId": "message"
+            },
+            "credits": 13,
+            "reason": "contextual_moderation",
+            "polarCostAmount": 0.0123456789,
+            "inputTokens": 123,
+            "outputTokens": 0,
+            "totalTokens": 123
+          }
+        ],
+        [
+          "get",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ],
+        [
+          "del",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ]
+      ],
+      "list": [
+        "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"_cost\":{\"amount\":0.0123456789,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"openai\",\"model\":\"model\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":0.01234568,\"credits\":13,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+      ],
+      "finalLock": null
+    },
+    {
+      "id": "legacy-null",
+      "input": {
+        "customerId": "customer",
+        "channelID": "keyword-fixture-fca01b6f57a8:channel",
+        "externalId": "moderation:decision",
+        "cost": 0.000123456789,
+        "reason": "contextual_moderation",
+        "mode": "cache",
+        "llm": {
+          "model": "openai/model:variant",
+          "usage": {
+            "prompt_tokens": 123,
+            "completion_tokens": 0,
+            "total_tokens": 123
+          }
+        },
+        "usage": {
+          "requestId": "decision",
+          "operation": "contextual_moderation",
+          "category": "other",
+          "source": "moderation",
+          "provider": "openrouter",
+          "resourceType": "llm_generation",
+          "resourceId": "message"
+        }
+      },
+      "legacy": "null",
+      "contended": false,
+      "result": {
+        "error": true,
+        "message": "Cannot read properties of null (reading 'length')"
+      },
+      "calls": [
+        [
+          "set",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel",
+          "fixture-lock-uuid",
+          {
+            "NX": true,
+            "PX": 8000
+          }
+        ],
+        [
+          "type",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent"
+        ],
+        [
+          "get",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent"
+        ],
+        [
+          "del",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent"
+        ],
+        [
+          "get",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ],
+        [
+          "del",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ],
+        [
+          "error",
+          {
+            "function": "ingestPolarSHEvent",
+            "error": "Cannot read properties of null (reading 'length')"
+          },
+          {
+            "channelId": "keyword-fixture-fca01b6f57a8:channel",
+            "destination": "both"
+          }
+        ]
+      ],
+      "list": [],
+      "finalLock": null
+    },
+    {
+      "id": "legacy-string",
+      "input": {
+        "customerId": "customer",
+        "channelID": "keyword-fixture-fca01b6f57a8:channel",
+        "externalId": "moderation:decision",
+        "cost": 0.000123456789,
+        "reason": "contextual_moderation",
+        "mode": "cache",
+        "llm": {
+          "model": "openai/model:variant",
+          "usage": {
+            "prompt_tokens": 123,
+            "completion_tokens": 0,
+            "total_tokens": 123
+          }
+        },
+        "usage": {
+          "requestId": "decision",
+          "operation": "contextual_moderation",
+          "category": "other",
+          "source": "moderation",
+          "provider": "openrouter",
+          "resourceType": "llm_generation",
+          "resourceId": "message"
+        }
+      },
+      "legacy": "\"abc\"",
+      "contended": false,
+      "result": {
+        "error": true,
+        "message": "legacy.map is not a function"
+      },
+      "calls": [
+        [
+          "set",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel",
+          "fixture-lock-uuid",
+          {
+            "NX": true,
+            "PX": 8000
+          }
+        ],
+        [
+          "type",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent"
+        ],
+        [
+          "get",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent"
+        ],
+        [
+          "del",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent"
+        ],
+        [
+          "get",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ],
+        [
+          "del",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ],
+        [
+          "error",
+          {
+            "function": "ingestPolarSHEvent",
+            "error": "legacy.map is not a function"
+          },
+          {
+            "channelId": "keyword-fixture-fca01b6f57a8:channel",
+            "destination": "both"
+          }
+        ]
+      ],
+      "list": [],
+      "finalLock": null
+    },
+    {
+      "id": "legacy-arraylike-string",
+      "input": {
+        "customerId": "customer",
+        "channelID": "keyword-fixture-fca01b6f57a8:channel",
+        "externalId": "moderation:decision",
+        "cost": 0.000123456789,
+        "reason": "contextual_moderation",
+        "mode": "cache",
+        "llm": {
+          "model": "openai/model:variant",
+          "usage": {
+            "prompt_tokens": 123,
+            "completion_tokens": 0,
+            "total_tokens": 123
+          }
+        },
+        "usage": {
+          "requestId": "decision",
+          "operation": "contextual_moderation",
+          "category": "other",
+          "source": "moderation",
+          "provider": "openrouter",
+          "resourceType": "llm_generation",
+          "resourceId": "message"
+        }
+      },
+      "legacy": "{\"length\":\"2\"}",
+      "contended": false,
+      "result": {
+        "error": true,
+        "message": "legacy.map is not a function"
+      },
+      "calls": [
+        [
+          "set",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel",
+          "fixture-lock-uuid",
+          {
+            "NX": true,
+            "PX": 8000
+          }
+        ],
+        [
+          "type",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent"
+        ],
+        [
+          "get",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent"
+        ],
+        [
+          "del",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent"
+        ],
+        [
+          "get",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ],
+        [
+          "del",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ],
+        [
+          "error",
+          {
+            "function": "ingestPolarSHEvent",
+            "error": "legacy.map is not a function"
+          },
+          {
+            "channelId": "keyword-fixture-fca01b6f57a8:channel",
+            "destination": "both"
+          }
+        ]
+      ],
+      "list": [],
+      "finalLock": null
+    },
+    {
+      "id": "legacy-arraylike-zero",
+      "input": {
+        "customerId": "customer",
+        "channelID": "keyword-fixture-fca01b6f57a8:channel",
+        "externalId": "moderation:decision",
+        "cost": 0.000123456789,
+        "reason": "contextual_moderation",
+        "mode": "cache",
+        "llm": {
+          "model": "openai/model:variant",
+          "usage": {
+            "prompt_tokens": 123,
+            "completion_tokens": 0,
+            "total_tokens": 123
+          }
+        },
+        "usage": {
+          "requestId": "decision",
+          "operation": "contextual_moderation",
+          "category": "other",
+          "source": "moderation",
+          "provider": "openrouter",
+          "resourceType": "llm_generation",
+          "resourceId": "message"
+        }
+      },
+      "legacy": "{\"length\":0}",
+      "contended": false,
+      "result": {
+        "error": false
+      },
+      "calls": [
+        [
+          "set",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel",
+          "fixture-lock-uuid",
+          {
+            "NX": true,
+            "PX": 8000
+          }
+        ],
+        [
+          "type",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent"
+        ],
+        [
+          "get",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent"
+        ],
+        [
+          "del",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent"
+        ],
+        [
+          "rPush",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent",
+          "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"_cost\":{\"amount\":0.0123456789,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"openai\",\"model\":\"model\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":0.01234568,\"credits\":13,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+        ],
+        [
+          "project",
+          "keyword-fixture-fca01b6f57a8:channel",
+          13,
+          "moderation:decision"
+        ],
+        [
+          "rPush",
+          "cron:ai-usage-receipts:queue",
+          "{\"channelID\":\"keyword-fixture-fca01b6f57a8:channel\",\"customerId\":\"customer\",\"id\":\"moderation:decision\",\"requestId\":\"decision\",\"occurredAt\":\"2026-10-29T00:00:00.123Z\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"source\":\"moderation\",\"adjustmentType\":null,\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"quantity\":123,\"unit\":\"tokens\",\"credits\":13,\"resourceType\":\"llm_generation\",\"resourceId\":\"message\",\"itemized\":true,\"enqueuedAt\":\"2026-10-29T00:00:00.123Z\"}"
+        ],
+        [
+          "track",
+          {
+            "context": {
+              "schemaVersion": 1,
+              "pricingVersion": "legacy-polar-math-v1",
+              "entryId": "moderation:decision",
+              "requestId": "decision",
+              "entryKind": "usage",
+              "category": "other",
+              "operation": "contextual_moderation",
+              "source": "moderation",
+              "provider": "openrouter",
+              "model": "openai/model:variant",
+              "channelID": "keyword-fixture-fca01b6f57a8:channel",
+              "quantity": 123,
+              "unit": "tokens",
+              "resourceType": "llm_generation",
+              "resourceId": "message"
+            },
+            "credits": 13,
+            "reason": "contextual_moderation",
+            "polarCostAmount": 0.0123456789,
+            "inputTokens": 123,
+            "outputTokens": 0,
+            "totalTokens": 123
+          }
+        ],
+        [
+          "get",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ],
+        [
+          "del",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ]
+      ],
+      "list": [
+        "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"_cost\":{\"amount\":0.0123456789,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"openai\",\"model\":\"model\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":0.01234568,\"credits\":13,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+      ],
+      "finalLock": null
+    },
+    {
+      "id": "legacy-push-failure",
+      "input": {
+        "customerId": "customer",
+        "channelID": "keyword-fixture-fca01b6f57a8:channel",
+        "externalId": "moderation:decision",
+        "cost": 0.000123456789,
+        "reason": "contextual_moderation",
+        "mode": "cache",
+        "llm": {
+          "model": "openai/model:variant",
+          "usage": {
+            "prompt_tokens": 123,
+            "completion_tokens": 0,
+            "total_tokens": 123
+          }
+        },
+        "usage": {
+          "requestId": "decision",
+          "operation": "contextual_moderation",
+          "category": "other",
+          "source": "moderation",
+          "provider": "openrouter",
+          "resourceType": "llm_generation",
+          "resourceId": "message"
+        }
+      },
+      "legacy": "[{\"old\":1}]",
+      "contended": false,
+      "result": {
+        "error": true,
+        "message": "Error: fixture-rpush-failure"
+      },
+      "calls": [
+        [
+          "set",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel",
+          "fixture-lock-uuid",
+          {
+            "NX": true,
+            "PX": 8000
+          }
+        ],
+        [
+          "type",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent"
+        ],
+        [
+          "get",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent"
+        ],
+        [
+          "del",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent"
+        ],
+        [
+          "rPush",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent",
+          [
+            "{\"old\":1}"
+          ]
+        ],
+        [
+          "get",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ],
+        [
+          "del",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ],
+        [
+          "error",
+          {
+            "function": "ingestPolarSHEvent",
+            "error": "Error: fixture-rpush-failure"
+          },
+          {
+            "channelId": "keyword-fixture-fca01b6f57a8:channel",
+            "destination": "both"
+          }
+        ]
+      ],
+      "list": [],
+      "finalLock": null
+    },
+    {
+      "id": "contended",
+      "input": {
+        "customerId": "customer",
+        "channelID": "keyword-fixture-fca01b6f57a8:channel",
+        "externalId": "moderation:decision",
+        "cost": 0.000123456789,
+        "reason": "contextual_moderation",
+        "mode": "cache",
+        "llm": {
+          "model": "openai/model:variant",
+          "usage": {
+            "prompt_tokens": 123,
+            "completion_tokens": 0,
+            "total_tokens": 123
+          }
+        },
+        "usage": {
+          "requestId": "decision",
+          "operation": "contextual_moderation",
+          "category": "other",
+          "source": "moderation",
+          "provider": "openrouter",
+          "resourceType": "llm_generation",
+          "resourceId": "message"
+        }
+      },
+      "legacy": null,
+      "contended": true,
+      "result": {
+        "error": false,
+        "message": "queued (flush in progress)"
+      },
+      "calls": [
+        [
+          "set",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel",
+          "fixture-lock-uuid",
+          {
+            "NX": true,
+            "PX": 8000
+          }
+        ],
+        [
+          "set",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel",
+          "fixture-lock-uuid",
+          {
+            "NX": true,
+            "PX": 8000
+          }
+        ],
+        [
+          "set",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel",
+          "fixture-lock-uuid",
+          {
+            "NX": true,
+            "PX": 8000
+          }
+        ],
+        [
+          "set",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel",
+          "fixture-lock-uuid",
+          {
+            "NX": true,
+            "PX": 8000
+          }
+        ],
+        [
+          "set",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel",
+          "fixture-lock-uuid",
+          {
+            "NX": true,
+            "PX": 8000
+          }
+        ],
+        [
+          "set",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel",
+          "fixture-lock-uuid",
+          {
+            "NX": true,
+            "PX": 8000
+          }
+        ],
+        [
+          "set",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel",
+          "fixture-lock-uuid",
+          {
+            "NX": true,
+            "PX": 8000
+          }
+        ],
+        [
+          "set",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel",
+          "fixture-lock-uuid",
+          {
+            "NX": true,
+            "PX": 8000
+          }
+        ],
+        [
+          "type",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent"
+        ],
+        [
+          "rPush",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent",
+          "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"_cost\":{\"amount\":0.0123456789,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"openai\",\"model\":\"model\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":0.01234568,\"credits\":13,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+        ],
+        [
+          "project",
+          "keyword-fixture-fca01b6f57a8:channel",
+          13,
+          "moderation:decision"
+        ],
+        [
+          "rPush",
+          "cron:ai-usage-receipts:queue",
+          "{\"channelID\":\"keyword-fixture-fca01b6f57a8:channel\",\"customerId\":\"customer\",\"id\":\"moderation:decision\",\"requestId\":\"decision\",\"occurredAt\":\"2026-10-29T00:00:00.123Z\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"source\":\"moderation\",\"adjustmentType\":null,\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"quantity\":123,\"unit\":\"tokens\",\"credits\":13,\"resourceType\":\"llm_generation\",\"resourceId\":\"message\",\"itemized\":true,\"enqueuedAt\":\"2026-10-29T00:00:00.123Z\"}"
+        ],
+        [
+          "track",
+          {
+            "context": {
+              "schemaVersion": 1,
+              "pricingVersion": "legacy-polar-math-v1",
+              "entryId": "moderation:decision",
+              "requestId": "decision",
+              "entryKind": "usage",
+              "category": "other",
+              "operation": "contextual_moderation",
+              "source": "moderation",
+              "provider": "openrouter",
+              "model": "openai/model:variant",
+              "channelID": "keyword-fixture-fca01b6f57a8:channel",
+              "quantity": 123,
+              "unit": "tokens",
+              "resourceType": "llm_generation",
+              "resourceId": "message"
+            },
+            "credits": 13,
+            "reason": "contextual_moderation",
+            "polarCostAmount": 0.0123456789,
+            "inputTokens": 123,
+            "outputTokens": 0,
+            "totalTokens": 123
+          }
+        ]
+      ],
+      "list": [
+        "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"_cost\":{\"amount\":0.0123456789,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"openai\",\"model\":\"model\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":0.01234568,\"credits\":13,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+      ],
+      "finalLock": "other"
+    },
+    {
+      "id": "changed-lock-owner",
+      "input": {
+        "customerId": "customer",
+        "channelID": "keyword-fixture-fca01b6f57a8:channel",
+        "externalId": "moderation:decision",
+        "cost": 0.000123456789,
+        "reason": "contextual_moderation",
+        "mode": "cache",
+        "llm": {
+          "model": "openai/model:variant",
+          "usage": {
+            "prompt_tokens": 123,
+            "completion_tokens": 0,
+            "total_tokens": 123
+          }
+        },
+        "usage": {
+          "requestId": "decision",
+          "operation": "contextual_moderation",
+          "category": "other",
+          "source": "moderation",
+          "provider": "openrouter",
+          "resourceType": "llm_generation",
+          "resourceId": "message"
+        }
+      },
+      "legacy": null,
+      "contended": false,
+      "result": {
+        "error": false
+      },
+      "calls": [
+        [
+          "set",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel",
+          "fixture-lock-uuid",
+          {
+            "NX": true,
+            "PX": 8000
+          }
+        ],
+        [
+          "type",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent"
+        ],
+        [
+          "rPush",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent",
+          "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"_cost\":{\"amount\":0.0123456789,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"openai\",\"model\":\"model\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":0.01234568,\"credits\":13,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+        ],
+        [
+          "project",
+          "keyword-fixture-fca01b6f57a8:channel",
+          13,
+          "moderation:decision"
+        ],
+        [
+          "rPush",
+          "cron:ai-usage-receipts:queue",
+          "{\"channelID\":\"keyword-fixture-fca01b6f57a8:channel\",\"customerId\":\"customer\",\"id\":\"moderation:decision\",\"requestId\":\"decision\",\"occurredAt\":\"2026-10-29T00:00:00.123Z\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"source\":\"moderation\",\"adjustmentType\":null,\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"quantity\":123,\"unit\":\"tokens\",\"credits\":13,\"resourceType\":\"llm_generation\",\"resourceId\":\"message\",\"itemized\":true,\"enqueuedAt\":\"2026-10-29T00:00:00.123Z\"}"
+        ],
+        [
+          "track",
+          {
+            "context": {
+              "schemaVersion": 1,
+              "pricingVersion": "legacy-polar-math-v1",
+              "entryId": "moderation:decision",
+              "requestId": "decision",
+              "entryKind": "usage",
+              "category": "other",
+              "operation": "contextual_moderation",
+              "source": "moderation",
+              "provider": "openrouter",
+              "model": "openai/model:variant",
+              "channelID": "keyword-fixture-fca01b6f57a8:channel",
+              "quantity": 123,
+              "unit": "tokens",
+              "resourceType": "llm_generation",
+              "resourceId": "message"
+            },
+            "credits": 13,
+            "reason": "contextual_moderation",
+            "polarCostAmount": 0.0123456789,
+            "inputTokens": 123,
+            "outputTokens": 0,
+            "totalTokens": 123
+          }
+        ],
+        [
+          "get",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ]
+      ],
+      "list": [
+        "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"_cost\":{\"amount\":0.0123456789,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"openai\",\"model\":\"model\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":0.01234568,\"credits\":13,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+      ],
+      "finalLock": "new-owner"
+    },
+    {
+      "id": "projection-failure",
+      "input": {
+        "customerId": "customer",
+        "channelID": "keyword-fixture-fca01b6f57a8:channel",
+        "externalId": "moderation:decision",
+        "cost": 0.000123456789,
+        "reason": "contextual_moderation",
+        "mode": "cache",
+        "llm": {
+          "model": "openai/model:variant",
+          "usage": {
+            "prompt_tokens": 123,
+            "completion_tokens": 0,
+            "total_tokens": 123
+          }
+        },
+        "usage": {
+          "requestId": "decision",
+          "operation": "contextual_moderation",
+          "category": "other",
+          "source": "moderation",
+          "provider": "openrouter",
+          "resourceType": "llm_generation",
+          "resourceId": "message"
+        }
+      },
+      "legacy": null,
+      "contended": false,
+      "result": {
+        "error": false
+      },
+      "calls": [
+        [
+          "set",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel",
+          "fixture-lock-uuid",
+          {
+            "NX": true,
+            "PX": 8000
+          }
+        ],
+        [
+          "type",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent"
+        ],
+        [
+          "rPush",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent",
+          "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"_cost\":{\"amount\":0.0123456789,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"openai\",\"model\":\"model\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":0.01234568,\"credits\":13,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+        ],
+        [
+          "project",
+          "keyword-fixture-fca01b6f57a8:channel",
+          13,
+          "moderation:decision"
+        ],
+        [
+          "projection-error",
+          "fixture-projection-failure"
+        ],
+        [
+          "rPush",
+          "cron:ai-usage-receipts:queue",
+          "{\"channelID\":\"keyword-fixture-fca01b6f57a8:channel\",\"customerId\":\"customer\",\"id\":\"moderation:decision\",\"requestId\":\"decision\",\"occurredAt\":\"2026-10-29T00:00:00.123Z\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"source\":\"moderation\",\"adjustmentType\":null,\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"quantity\":123,\"unit\":\"tokens\",\"credits\":13,\"resourceType\":\"llm_generation\",\"resourceId\":\"message\",\"itemized\":true,\"enqueuedAt\":\"2026-10-29T00:00:00.123Z\"}"
+        ],
+        [
+          "track",
+          {
+            "context": {
+              "schemaVersion": 1,
+              "pricingVersion": "legacy-polar-math-v1",
+              "entryId": "moderation:decision",
+              "requestId": "decision",
+              "entryKind": "usage",
+              "category": "other",
+              "operation": "contextual_moderation",
+              "source": "moderation",
+              "provider": "openrouter",
+              "model": "openai/model:variant",
+              "channelID": "keyword-fixture-fca01b6f57a8:channel",
+              "quantity": 123,
+              "unit": "tokens",
+              "resourceType": "llm_generation",
+              "resourceId": "message"
+            },
+            "credits": 13,
+            "reason": "contextual_moderation",
+            "polarCostAmount": 0.0123456789,
+            "inputTokens": 123,
+            "outputTokens": 0,
+            "totalTokens": 123
+          }
+        ],
+        [
+          "get",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ],
+        [
+          "del",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ]
+      ],
+      "list": [
+        "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"_cost\":{\"amount\":0.0123456789,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"openai\",\"model\":\"model\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":0.01234568,\"credits\":13,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+      ],
+      "finalLock": null
+    },
+    {
+      "id": "receipt-failure",
+      "input": {
+        "customerId": "customer",
+        "channelID": "keyword-fixture-fca01b6f57a8:channel",
+        "externalId": "moderation:decision",
+        "cost": 0.000123456789,
+        "reason": "contextual_moderation",
+        "mode": "cache",
+        "llm": {
+          "model": "openai/model:variant",
+          "usage": {
+            "prompt_tokens": 123,
+            "completion_tokens": 0,
+            "total_tokens": 123
+          }
+        },
+        "usage": {
+          "requestId": "decision",
+          "operation": "contextual_moderation",
+          "category": "other",
+          "source": "moderation",
+          "provider": "openrouter",
+          "resourceType": "llm_generation",
+          "resourceId": "message"
+        }
+      },
+      "legacy": null,
+      "contended": false,
+      "result": {
+        "error": false
+      },
+      "calls": [
+        [
+          "set",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel",
+          "fixture-lock-uuid",
+          {
+            "NX": true,
+            "PX": 8000
+          }
+        ],
+        [
+          "type",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent"
+        ],
+        [
+          "rPush",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent",
+          "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"_cost\":{\"amount\":0.0123456789,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"openai\",\"model\":\"model\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":0.01234568,\"credits\":13,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+        ],
+        [
+          "project",
+          "keyword-fixture-fca01b6f57a8:channel",
+          13,
+          "moderation:decision"
+        ],
+        [
+          "rPush",
+          "cron:ai-usage-receipts:queue",
+          "{\"channelID\":\"keyword-fixture-fca01b6f57a8:channel\",\"customerId\":\"customer\",\"id\":\"moderation:decision\",\"requestId\":\"decision\",\"occurredAt\":\"2026-10-29T00:00:00.123Z\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"source\":\"moderation\",\"adjustmentType\":null,\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"quantity\":123,\"unit\":\"tokens\",\"credits\":13,\"resourceType\":\"llm_generation\",\"resourceId\":\"message\",\"itemized\":true,\"enqueuedAt\":\"2026-10-29T00:00:00.123Z\"}"
+        ],
+        [
+          "error",
+          {
+            "function": "projectAcceptedUsage",
+            "error": "Error: fixture-receipt-failure"
+          },
+          {
+            "channelId": "keyword-fixture-fca01b6f57a8:channel",
+            "destination": "both"
+          }
+        ],
+        [
+          "track",
+          {
+            "context": {
+              "schemaVersion": 1,
+              "pricingVersion": "legacy-polar-math-v1",
+              "entryId": "moderation:decision",
+              "requestId": "decision",
+              "entryKind": "usage",
+              "category": "other",
+              "operation": "contextual_moderation",
+              "source": "moderation",
+              "provider": "openrouter",
+              "model": "openai/model:variant",
+              "channelID": "keyword-fixture-fca01b6f57a8:channel",
+              "quantity": 123,
+              "unit": "tokens",
+              "resourceType": "llm_generation",
+              "resourceId": "message"
+            },
+            "credits": 13,
+            "reason": "contextual_moderation",
+            "polarCostAmount": 0.0123456789,
+            "inputTokens": 123,
+            "outputTokens": 0,
+            "totalTokens": 123
+          }
+        ],
+        [
+          "get",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ],
+        [
+          "del",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ]
+      ],
+      "list": [
+        "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"_cost\":{\"amount\":0.0123456789,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"openai\",\"model\":\"model\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":0.01234568,\"credits\":13,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+      ],
+      "finalLock": null
+    },
+    {
+      "id": "track-failure",
+      "input": {
+        "customerId": "customer",
+        "channelID": "keyword-fixture-fca01b6f57a8:channel",
+        "externalId": "moderation:decision",
+        "cost": 0.000123456789,
+        "reason": "contextual_moderation",
+        "mode": "cache",
+        "llm": {
+          "model": "openai/model:variant",
+          "usage": {
+            "prompt_tokens": 123,
+            "completion_tokens": 0,
+            "total_tokens": 123
+          }
+        },
+        "usage": {
+          "requestId": "decision",
+          "operation": "contextual_moderation",
+          "category": "other",
+          "source": "moderation",
+          "provider": "openrouter",
+          "resourceType": "llm_generation",
+          "resourceId": "message"
+        }
+      },
+      "legacy": null,
+      "contended": false,
+      "result": {
+        "error": false
+      },
+      "calls": [
+        [
+          "set",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel",
+          "fixture-lock-uuid",
+          {
+            "NX": true,
+            "PX": 8000
+          }
+        ],
+        [
+          "type",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent"
+        ],
+        [
+          "rPush",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent",
+          "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"_cost\":{\"amount\":0.0123456789,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"openai\",\"model\":\"model\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":0.01234568,\"credits\":13,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+        ],
+        [
+          "project",
+          "keyword-fixture-fca01b6f57a8:channel",
+          13,
+          "moderation:decision"
+        ],
+        [
+          "rPush",
+          "cron:ai-usage-receipts:queue",
+          "{\"channelID\":\"keyword-fixture-fca01b6f57a8:channel\",\"customerId\":\"customer\",\"id\":\"moderation:decision\",\"requestId\":\"decision\",\"occurredAt\":\"2026-10-29T00:00:00.123Z\",\"entryKind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"source\":\"moderation\",\"adjustmentType\":null,\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"quantity\":123,\"unit\":\"tokens\",\"credits\":13,\"resourceType\":\"llm_generation\",\"resourceId\":\"message\",\"itemized\":true,\"enqueuedAt\":\"2026-10-29T00:00:00.123Z\"}"
+        ],
+        [
+          "track",
+          {
+            "context": {
+              "schemaVersion": 1,
+              "pricingVersion": "legacy-polar-math-v1",
+              "entryId": "moderation:decision",
+              "requestId": "decision",
+              "entryKind": "usage",
+              "category": "other",
+              "operation": "contextual_moderation",
+              "source": "moderation",
+              "provider": "openrouter",
+              "model": "openai/model:variant",
+              "channelID": "keyword-fixture-fca01b6f57a8:channel",
+              "quantity": 123,
+              "unit": "tokens",
+              "resourceType": "llm_generation",
+              "resourceId": "message"
+            },
+            "credits": 13,
+            "reason": "contextual_moderation",
+            "polarCostAmount": 0.0123456789,
+            "inputTokens": 123,
+            "outputTokens": 0,
+            "totalTokens": 123
+          }
+        ],
+        [
+          "get",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ],
+        [
+          "del",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ]
+      ],
+      "list": [
+        "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"_cost\":{\"amount\":0.0123456789,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"openai\",\"model\":\"model\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":0.01234568,\"credits\":13,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+      ],
+      "finalLock": null
+    },
+    {
+      "id": "queue-failure",
+      "input": {
+        "customerId": "customer",
+        "channelID": "keyword-fixture-fca01b6f57a8:channel",
+        "externalId": "moderation:decision",
+        "cost": 0.000123456789,
+        "reason": "contextual_moderation",
+        "mode": "cache",
+        "llm": {
+          "model": "openai/model:variant",
+          "usage": {
+            "prompt_tokens": 123,
+            "completion_tokens": 0,
+            "total_tokens": 123
+          }
+        },
+        "usage": {
+          "requestId": "decision",
+          "operation": "contextual_moderation",
+          "category": "other",
+          "source": "moderation",
+          "provider": "openrouter",
+          "resourceType": "llm_generation",
+          "resourceId": "message"
+        }
+      },
+      "legacy": null,
+      "contended": false,
+      "result": {
+        "error": true,
+        "message": "Error: fixture-rpush-failure"
+      },
+      "calls": [
+        [
+          "set",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel",
+          "fixture-lock-uuid",
+          {
+            "NX": true,
+            "PX": 8000
+          }
+        ],
+        [
+          "type",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent"
+        ],
+        [
+          "rPush",
+          "twitch:keyword-fixture-fca01b6f57a8:channel:ai:polarshevent",
+          "{\"name\":\"ai_usage\",\"customerId\":\"customer\",\"externalId\":\"moderation:decision\",\"metadata\":{\"_cost\":{\"amount\":0.0123456789,\"currency\":\"usd\"},\"_llm\":{\"vendor\":\"openai\",\"model\":\"model\",\"inputTokens\":123,\"outputTokens\":0,\"totalTokens\":123},\"cost\":0.01234568,\"credits\":13,\"currency\":\"usd\",\"reason\":\"contextual_moderation\",\"schema_version\":1,\"pricing_version\":\"legacy-polar-math-v1\",\"entry_id\":\"moderation:decision\",\"request_id\":\"decision\",\"entry_kind\":\"usage\",\"category\":\"other\",\"operation\":\"contextual_moderation\",\"usage_source\":\"moderation\",\"provider\":\"openrouter\",\"model\":\"openai/model:variant\",\"channel_id\":\"keyword-fixture-fca01b6f57a8:channel\",\"quantity\":123,\"unit\":\"tokens\",\"resource_type\":\"llm_generation\",\"resource_id\":\"message\"}}"
+        ],
+        [
+          "get",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ],
+        [
+          "del",
+          "locks:polar-ingest:keyword-fixture-fca01b6f57a8:channel"
+        ],
+        [
+          "error",
+          {
+            "function": "ingestPolarSHEvent",
+            "error": "Error: fixture-rpush-failure"
+          },
+          {
+            "channelId": "keyword-fixture-fca01b6f57a8:channel",
+            "destination": "both"
+          }
+        ]
+      ],
+      "list": [],
+      "finalLock": null
+    }
+  ]
+}

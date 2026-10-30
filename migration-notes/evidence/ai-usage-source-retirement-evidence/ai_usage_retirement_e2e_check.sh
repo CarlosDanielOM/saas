@@ -1,0 +1,11 @@
+set -eu
+export TZ=UTC
+export DIMA_RUST_TEST_RESOURCE_OWNER=dimabot-migration
+export DIMA_TEST_MONGO_URI=mongodb://ai-usage-persistence-bench-mongo-fixture:27017
+export DIMA_TEST_REDIS_URI=redis://ai-usage-persistence-bench-redis-fixture:6379/
+export DIMA_AI_PERSISTENCE_BENCH_TOKEN=retire20261030ab
+export DIMA_AI_PERSISTENCE_BENCH_DATABASE=ai_usage_persistence_bench_retire20261030ab
+export DIMA_AI_PERSISTENCE_BENCH_NODE_SHA256=569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108
+export DIMA_AI_PERSISTENCE_BENCH_INPUT_SHA256=8b42647bd26d12f990aec771a88d29e2a9faa09ccd29cd2e28f926a26e830a82
+export DIMA_AI_PERSISTENCE_BENCH_SOURCE_SHA256=99ed128fe34a2e21252502f6bdd3edead4516a1e3f34eefef6fd21ced9136abe
+node tests/fixtures/ai_usage_persistence_e2e_benchmark.cjs --check /artifacts/ai-usage-retirement/attempt5/e2e

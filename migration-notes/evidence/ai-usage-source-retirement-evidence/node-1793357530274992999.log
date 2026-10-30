@@ -1,0 +1,7 @@
+v24.22.1
+{"file":"/artifacts/ai-usage-retirement/attempt5/producer/ai_usage_producer_reference.json","caseCount":338,"tierCount":20,"assertionCount":3325,"sha256":"2e2638547f9f5e5df44ec151a846160c687b58c561b0d37743e1e0b559fabe50"}
+{"file":"/artifacts/ai-usage-retirement/attempt5/parser/ai_usage_receipt_parser_reference.json","sha256":"44e064220bbdcdf89c413f3649a516b5aea5b0cd5551548810cefba2819ceb00","caseCount":1362,"zones":5}
+--check 291 source cases
+--write: 333 actual-source ledger query scenarios
+--check: 333 actual-source ledger query scenarios
+{"inputSha256":"c84b387f791d198051f729011d967b29174405196cc546bbfb4f1e9642d36fb3","mode":"--check-input"}

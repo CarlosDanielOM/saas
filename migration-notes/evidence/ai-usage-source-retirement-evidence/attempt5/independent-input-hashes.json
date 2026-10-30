@@ -1,0 +1,18 @@
+{
+  "backfill/ai_usage_ledger_backfill_reference.json": "24c16c934ecfb8404d8d2fe9b435c4da16d299af15e3bea887f62ae4b190a2a5",
+  "daily/expected.json": "a54da2bcbbc462b66520356e819135278d43b12f21b883abf87dba56daf5cad0",
+  "daily/inputs.json": "a65715ff6e119fe68be6f89a096e397e20018ea022ea4f9f035816a530ae71c5",
+  "daily/source.json": "950afd2eceb9550348c8d8ef12384e94d16ef5bf2637f1246f21662026727776",
+  "e2e/inputs.json": "8b42647bd26d12f990aec771a88d29e2a9faa09ccd29cd2e28f926a26e830a82",
+  "e2e/source.json": "99ed128fe34a2e21252502f6bdd3edead4516a1e3f34eefef6fd21ced9136abe",
+  "lock/ai_usage_lock_reference.json": "d6388f3d638b0c6a085e5b1003a1523b9670096099ca4ca52cb1565e272a404a",
+  "lossless/ai_usage_lossless_reference.json": "9fc868d8ad5781fefe5d0dba7b7626f862ebc0112dd06b8338c0412db691be1a",
+  "parser/ai_usage_receipt_parser_reference.json": "44e064220bbdcdf89c413f3649a516b5aea5b0cd5551548810cefba2819ceb00",
+  "persistence/ai_usage_ledger_persistence_reference.json": "a4f5eba08869ef296d228bb108eb8ed4bd43233e01409cd6d8d5dc117e90c02c",
+  "polar/polar-cache-usage.json": "614fc80a7ec3b6b260712873f465c5b8dee5179b4622319931cb4b22510f4d00",
+  "producer/ai_usage_producer_reference.json": "2e2638547f9f5e5df44ec151a846160c687b58c561b0d37743e1e0b559fabe50",
+  "producer-benchmark/ai-usage-producer-benchmark-input.json": "c84b387f791d198051f729011d967b29174405196cc546bbfb4f1e9642d36fb3",
+  "queries/ai_usage_ledger_queries_reference.json": "8e017faa7d6e6640bb0b6568850788003614445bfbdf6d96d07ae8f7f0a6dffc",
+  "tracking/posthog_tracking.json": "8216660b12e0d480692051e43e0b4cb1732b1888ee903f827236f1e8b213c14c",
+  "tracking-benchmark/input.json": "24c57a9802d20bfe55d8750fc14c00f6b7e0aa2bd61c2c1d55beee6457a36377"
+}
