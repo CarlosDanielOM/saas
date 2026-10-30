@@ -3,15 +3,18 @@
 //!
 //! Ordinary tests use the native `SchemaDefinition` contract only. The ignored
 //! replay reads an externally generated, independently hashed oracle produced
-//! from the complete actual TypeScript module and disconnected Mongoose. The
-//! ignored Mongo test uses an ownership-guarded disposable database and the
-//! production `SpamService::claim_first_observed_message` primitive with only
-//! its external cache endpoint replaced by a loopback RESP fixture.
+//! from the complete actual archived TypeScript module and disconnected
+//! Mongoose. The ignored Mongo test uses an ownership-guarded disposable
+//! database and the production `SpamService::claim_first_observed_message`
+//! primitive with only its external cache endpoint replaced by a loopback RESP
+//! fixture.
 //!
 //! Authoring status: this file was not executed by its author. The parent owns
 //! isolated runtime verification under the repository production policies.
 #[path = "ai_credit_projection_support/mod.rs"]
 mod resp;
+#[path = "support/schema_source.rs"]
+mod schema_source;
 
 use dima_rust::schemas::moderation_chatter::{get_moderation_chatter_model, schema};
 use dima_rust::schemas::{FieldDefault, FieldType, FlatInsertError, PersistenceError};
@@ -24,6 +27,7 @@ use serde_json::{Value, json};
 const FIXTURE_NAME: &str = "moderation-chatter-schema-reference.json";
 const NODE_SHA256: &str = "569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108";
 const SOURCE: &str = "src/schemas/moderation_chatter.schema.ts";
+const SOURCE_PIN: &str = "71ec2e9e8047a6d6a8da561c596d1cbacf2dc13ac93ca6ad2878ef95dec9632e";
 
 fn normalize(value: &Bson) -> Value {
     match value {
@@ -260,11 +264,11 @@ fn replay_actual_mongoose_source() {
     );
     assert!(dir.is_absolute());
     assert_eq!(dir.canonicalize().unwrap(), dir);
-    let manifest = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+    let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .canonicalize()
         .unwrap();
-    assert!(!dir.starts_with(&manifest));
-    assert!(!dir.starts_with(manifest.parent().unwrap()));
+    assert!(!dir.starts_with(&root));
+    assert!(!dir.starts_with(root.parent().unwrap()));
     let bytes = std::fs::read(dir.join(FIXTURE_NAME)).unwrap();
     assert_eq!(
         format!("{:x}", Sha256::digest(&bytes)),
@@ -287,14 +291,43 @@ fn replay_actual_mongoose_source() {
         assert_eq!(corpus["metadata"]["versions"][key], expected);
     }
     assert_eq!(corpus["metadata"]["source"]["logical"], SOURCE);
-    assert_eq!(corpus["metadata"]["source"]["provenance"], "live");
     assert_eq!(
-        corpus["metadata"]["source"]["sha256"],
-        format!(
-            "{:x}",
-            Sha256::digest(
-                include_bytes!("../src/schemas/moderation_chatter.schema.ts").as_slice()
+        corpus["metadata"]["source"]["provenance"],
+        schema_source::provenance(SOURCE)
+    );
+    assert_eq!(
+        corpus["metadata"]["source"]["resolvedPath"],
+        schema_source::provenance(SOURCE)
+    );
+    assert!(
+        corpus["metadata"]["source"]["virtualPath"]
+            .as_str()
+            .unwrap()
+            .ends_with(SOURCE)
+    );
+    assert_eq!(corpus["metadata"]["source"]["sha256"], SOURCE_PIN);
+    assert_eq!(
+        corpus["metadata"]["source"]["resolver"]["path"],
+        "dimabot/tests/fixtures/schema_source_resolver.cjs"
+    );
+    assert_eq!(corpus["metadata"]["source"]["resolver"]["pin"], SOURCE_PIN);
+    assert_eq!(
+        corpus["metadata"]["source"]["resolver"]["sha256"],
+        schema_source::sha256(include_bytes!("fixtures/schema_source_resolver.cjs").as_slice())
+    );
+    assert_eq!(
+        corpus["metadata"]["source"]["manifest"]["path"],
+        "archives/dimabot-typescript/2026-10-28/manifest.json"
+    );
+    assert_eq!(
+        corpus["metadata"]["source"]["manifest"]["sha256"],
+        schema_source::sha256(
+            &std::fs::read(
+                root.parent()
+                    .unwrap()
+                    .join("archives/dimabot-typescript/2026-10-28/manifest.json")
             )
+            .unwrap()
         )
     );
     assert_eq!(
@@ -302,11 +335,10 @@ fn replay_actual_mongoose_source() {
         corpus["cases"].as_array().unwrap().len()
     );
 
+    let archived_source = schema_source::archived(&root, SOURCE);
+    assert_eq!(schema_source::sha256(&archived_source), SOURCE_PIN);
     for (key, bytes) in [
-        (
-            "src/schemas/moderation_chatter.schema.ts",
-            include_bytes!("../src/schemas/moderation_chatter.schema.ts").as_slice(),
-        ),
+        (SOURCE, archived_source.as_slice()),
         (
             "src/schemas/moderation_chatter.schema.rs",
             include_bytes!("../src/schemas/moderation_chatter.schema.rs").as_slice(),
@@ -350,6 +382,10 @@ fn replay_actual_mongoose_source() {
         (
             "oracle-script",
             include_bytes!("fixtures/moderation_chatter_schema_reference.cjs").as_slice(),
+        ),
+        (
+            "tests/fixtures/schema_source_resolver.cjs",
+            include_bytes!("fixtures/schema_source_resolver.cjs").as_slice(),
         ),
         ("Cargo.toml", include_bytes!("../Cargo.toml").as_slice()),
         ("Cargo.lock", include_bytes!("../Cargo.lock").as_slice()),
@@ -681,8 +717,10 @@ async fn mongo_crud_and_atomic_first_seen() {
         let sealed = *stored.get_datetime("firstSeenAt").unwrap();
         assert!((before..=after).contains(&sealed.timestamp_millis()));
 
-        // A second process with an empty cache but the same database must lose
-        // the atomic primary-key insert and must not overwrite firstSeenAt.
+        // A fresh service and cache instance with an empty cache but the same
+        // database must lose the atomic primary-key insert and must not
+        // overwrite firstSeenAt. This is a new in-process instance, not a
+        // second OS process.
         let second_endpoint = loopback_cache();
         let second_service = SpamService::new(db.clone(), second_endpoint.manager().await);
         assert!(

@@ -17,7 +17,17 @@ const pins={
  'node_modules/mongoose/lib/mongoose.js':'141800e92c653c91489ab109a31e9b914dbb788ca4b20696d6a5781f12c5abb3',
  'tests/fixtures/moderation_advanced_source.cjs':'1205ade8280a3cfebb806e336570ab650a92e178db306f33aa760315fafbee50',
 };
-for(const [file,hash] of Object.entries(pins))assert.equal(base.sha(base.read(file)),hash,file);
+// Chatter is retired into the shared schema archive; every other module and SDK
+// input keeps the advanced loader's live-file reader.
+const schemaResolver=require('./schema_source_resolver.cjs');
+const chatterLogical='src/schemas/moderation_chatter.schema.ts';
+const chatterSource=schemaResolver.resolveSource(base.root,chatterLogical);
+const read=file=>file===chatterLogical?chatterSource.bytes:base.read(file);
+const resolverFile=path.join(__dirname,'schema_source_resolver.cjs');
+const schemaResolverBinding={path:path.relative(path.join(base.root,'..'),resolverFile),sha256:base.sha(fs.readFileSync(resolverFile)),pin:chatterSource.sha256,logical:chatterLogical,provenance:chatterSource.provenance,resolvedPath:path.relative(path.join(base.root,'..'),chatterSource.path)};
+const chatterBinding={logical:chatterLogical,provenance:chatterSource.provenance,resolvedPath:schemaResolverBinding.resolvedPath,sha256:chatterSource.sha256};
+const sourceProvenance={...base.sourceProvenance,[chatterLogical]:chatterSource.provenance};
+for(const [file,hash] of Object.entries(pins))assert.equal(base.sha(read(file)),hash,file);
 function independent(name,file){const pin=process.env[name];assert(/^[0-9a-f]{64}$/.test(pin||''),`${name} must be supplied independently`);assert.equal(base.sha(fs.readFileSync(file)),pin,name);return pin;}
 independent('DIMA_SPAM_LOADER_SHA256',__filename);
 const local=Module.createRequire(path.join(base.root,'package.json')),ts=local('typescript'),mongoose=local('mongoose');
@@ -32,7 +42,7 @@ const files=['src/utils/moderation/spam_categories.ts','src/schemas/channel_mode
 const imports=[[],[['../utils/moderation/spam_categories.js',false],['../utils/moderation/variations.js',true],['crypto',false],['mongoose',false],['../utils/permissions/expression.js',true],['../utils/moderation/advanced.js',true]],[['mongoose',false]],[['./spam_categories.js',false],['node:crypto',false],['../../schemas/moderation_chatter.schema.js',false],['../../schemas/channel_moderation_settings.schema.js',false],['../permissions/index.js',true],['../../schemas/moderation_decision.schema.js',true],['../databases/dragonfly.database.js',false],['./advanced.js',false]]];
 const outputs={},compiled={},evidence={};
 for(const [i,file] of files.entries()){
- const source=base.read(file).toString('utf8'),ast=ts.createSourceFile(file,source,ts.ScriptTarget.ES2022,true);assert.deepEqual(ast.parseDiagnostics,[]);
+ const source=read(file).toString('utf8'),ast=ts.createSourceFile(file,source,ts.ScriptTarget.ES2022,true);assert.deepEqual(ast.parseDiagnostics,[]);
  const actual=ast.statements.filter(ts.isImportDeclaration).map(s=>[s.moduleSpecifier.text,!!s.importClause?.isTypeOnly]);assert.deepEqual(actual,imports[i],file);
  evidence[file]={imports:ast.statements.filter(ts.isImportDeclaration).map(s=>({module:s.moduleSpecifier.text,typeOnly:!!s.importClause?.isTypeOnly,bindings:s.importClause?.getText(ast)})),exports:ast.statements.filter(s=>s.modifiers?.some(m=>m.kind===ts.SyntaxKind.ExportKeyword)).map(s=>({kind:ts.SyntaxKind[s.kind],text:s.getText(ast)}))};
  const out=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS,esModuleInterop:true},reportDiagnostics:true});assert.deepEqual(out.diagnostics,[]);outputs[file]=out.outputText;compiled[file]=base.sha(out.outputText);
@@ -84,4 +94,4 @@ function capture(fn){try{return {ok:true,value:encode(fn())};}catch(e){return {o
 async function captureAsync(fn){try{return {ok:true,value:encode(await fn())};}catch(e){return {ok:false,name:units(e?.name||'Error'),message:units(e?.message||String(e))};}}
 function external(dir){assert(dir&&path.isAbsolute(dir));const real=fs.realpathSync(dir),workspace=fs.realpathSync(path.join(base.root,'..'));assert(!real.startsWith(workspace+path.sep)&&real!==workspace);return real;}
 function sdk(){return Object.fromEntries(Object.keys(require.cache).filter(p=>p.startsWith(path.join(base.root,'node_modules')+path.sep)&&!p.includes('/re2/build/')).sort().map(p=>[path.relative(base.root,p),base.sha(fs.readFileSync(p))]));}
-module.exports={...base,realm,pins:{...base.pins,...pins},compiled:{...base.compiled,...compiled},evidence:{...base.evidence,...evidence},exportsExpected,FIXED_MS,encode,decode,capture,captureAsync,external,independent,sdk,mongooseFiles:orderedMongoose};
+module.exports={...base,read,sourceProvenance,schemaResolver:schemaResolverBinding,chatterSource:chatterBinding,realm,pins:{...base.pins,...pins},compiled:{...base.compiled,...compiled},evidence:{...base.evidence,...evidence},exportsExpected,FIXED_MS,encode,decode,capture,captureAsync,external,independent,sdk,mongooseFiles:orderedMongoose};

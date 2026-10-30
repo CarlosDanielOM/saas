@@ -6,8 +6,10 @@ use dima_rust::{
 };
 use serde_json::{Value, json};
 use std::{env, fs, path::Path};
-#[path = "sha256.rs"]
-mod digest;
+#[path = "schema_source.rs"]
+mod schema_source;
+pub const CHATTER_SOURCE: &str = "src/schemas/moderation_chatter.schema.ts";
+pub const CHATTER_PIN: &str = "71ec2e9e8047a6d6a8da561c596d1cbacf2dc13ac93ca6ad2878ef95dec9632e";
 pub fn string(v: &Value) -> JsString {
     JsString::from_units(
         v["utf16"]
@@ -225,7 +227,7 @@ pub fn external_bytes(path: &str, pin: &str) -> Vec<u8> {
                 .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
     );
     let bytes = fs::read(real).unwrap();
-    assert_eq!(digest::sha256_hex(&bytes), pin);
+    assert_eq!(schema_source::sha256(&bytes), pin);
     bytes
 }
 pub fn reference() -> Value {
@@ -254,6 +256,57 @@ pub fn reference() -> Value {
         m["pins"]["src/utils/moderation/spam.ts"],
         "eaa35698ebd7f7e2351e522ca4ece5a3d96b58a96acc41b162b6f22eb2adaaa8"
     );
+    assert_eq!(m["pins"][CHATTER_SOURCE], CHATTER_PIN);
+    // The shared schema resolver must resolve the retired chatter source from
+    // the archive: exact bytes, unique manifest entry, no live shadow, and the
+    // recorded resolver/reader binding must match the workspace fixture.
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let archived = schema_source::archived(root, CHATTER_SOURCE);
+    assert_eq!(schema_source::sha256(&archived), CHATTER_PIN);
+    assert_eq!(m["chatterSource"]["logical"], CHATTER_SOURCE);
+    assert_eq!(m["chatterSource"]["sha256"], CHATTER_PIN);
+    assert_eq!(
+        m["chatterSource"]["provenance"],
+        schema_source::provenance(CHATTER_SOURCE)
+    );
+    assert_eq!(
+        m["chatterSource"]["resolvedPath"],
+        schema_source::provenance(CHATTER_SOURCE)
+    );
+    assert_eq!(
+        m["sourceProvenance"][CHATTER_SOURCE],
+        schema_source::provenance(CHATTER_SOURCE)
+    );
+    assert_eq!(m["resolver"]["logical"], CHATTER_SOURCE);
+    assert_eq!(m["resolver"]["pin"], CHATTER_PIN);
+    assert_eq!(
+        m["resolver"]["provenance"],
+        schema_source::provenance(CHATTER_SOURCE)
+    );
+    assert_eq!(
+        m["resolver"]["resolvedPath"],
+        schema_source::provenance(CHATTER_SOURCE)
+    );
+    assert_eq!(
+        m["resolver"]["path"],
+        "dimabot/tests/fixtures/schema_source_resolver.cjs"
+    );
+    assert_eq!(
+        m["resolver"]["sha256"],
+        schema_source::sha256(
+            &fs::read(root.join("tests/fixtures/schema_source_resolver.cjs")).unwrap()
+        )
+    );
+    for logical in [
+        "src/utils/moderation/normalize.ts",
+        "src/utils/moderation/spam_categories.ts",
+    ] {
+        assert_eq!(
+            m["sourceProvenance"][logical],
+            schema_source::provenance(logical),
+            "{logical}"
+        );
+    }
     assert_eq!(
         m["readerSha256"],
         env::var("DIMA_SPAM_READER_SHA256").unwrap()
@@ -264,7 +317,7 @@ pub fn reference() -> Value {
     );
     assert_eq!(m["mongooseFiles"].as_object().unwrap().len(), 707);
     assert_eq!(
-        digest::sha256_hex(&serde_json::to_vec(&m["mongooseFiles"]).unwrap()),
+        schema_source::sha256(&serde_json::to_vec(&m["mongooseFiles"]).unwrap()),
         "63200fe45fbe04c23f601aaa191eb08934ea6795a4442d22ca5a5ba9b679b722"
     );
     assert_eq!(

@@ -1,5 +1,5 @@
 {
-  "scope": "Completed native leaf helpers, AST exports, credential/JWT exports, TTS session/playback and credit fallback helpers, and channel TTS settings schema; no runtime cutover or deployment. Performance regressions remain tracked separately.",
+  "scope": "Completed native leaf helpers, AST exports, credential/JWT exports, TTS session/playback and credit fallback helpers, the channel TTS settings schema and the moderation chatter schema; no runtime cutover or deployment. Performance regressions remain tracked separately.",
   "files": [
     {
       "source": "src/utils/shared_chat_origin.ts",
@@ -196,6 +196,10 @@
     {
       "source": "src/utils/permissions/error_rate_limit.test.ts",
       "sha256": "95bee599c425783a84f093c637624eb1ceed5713669c21da596557e95981f0fa"
+    },
+    {
+      "source": "src/schemas/moderation_chatter.schema.ts",
+      "sha256": "71ec2e9e8047a6d6a8da561c596d1cbacf2dc13ac93ca6ad2878ef95dec9632e"
     }
   ]
 }

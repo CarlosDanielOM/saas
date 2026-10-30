@@ -1,11 +1,13 @@
 'use strict';
 // Focused oracle for the complete actual moderation_chatter schema module.
-// It compiles the live TypeScript source with pinned TypeScript, executes it in
-// a restricted CommonJS boundary against a disconnected pinned Mongoose
-// instance, and records real Mongoose cast/validation/document behavior.
+// It resolves the single frozen source through the shared schema archive
+// resolver, compiles it with pinned TypeScript, executes it in a restricted
+// CommonJS boundary against a disconnected pinned Mongoose instance, and
+// records real Mongoose cast/validation/document behavior.
 // Nothing here connects to MongoDB or any production service.
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),vm=require('node:vm');
 const assert=require('node:assert/strict'),{createRequire}=require('node:module');
+const {resolveSource,overlaySource}=require('./schema_source_resolver.cjs');
 const digest=b=>crypto.createHash('sha256').update(b).digest('hex');
 const nodeSha256='569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108';
 assert.equal(process.env.DIMA_SCHEMA_NODE_SHA256,nodeSha256);
@@ -40,22 +42,36 @@ assert.equal(bsonVersion,'6.10.4');
 assert.equal(fs.realpathSync(req.resolve('typescript')),fs.realpathSync(path.join(root,'node_modules/typescript/lib/typescript.js')));
 assert.equal(fs.realpathSync(req.resolve('mongoose')),fs.realpathSync(path.join(root,'node_modules/mongoose/index.js')));
 
-// Live source is resolved strictly: exactly one regular file at the live path.
+// The single frozen source resolves through the shared schema archive resolver:
+// exactly one canonical regular live-or-archived file, pinned bytes, and a
+// unique matching manifest entry. A retired source must not be shadowed.
 const file='src/schemas/moderation_chatter.schema.ts';
 const sourceSha256Pin='71ec2e9e8047a6d6a8da561c596d1cbacf2dc13ac93ca6ad2878ef95dec9632e';
-const live=path.join(root,file);
-const liveStat=fs.lstatSync(live);
-assert(liveStat.isFile(),'live schema source must be a regular file');
-const archived=path.join(root,'..','archives/dimabot-typescript/2026-10-28',file);
-let archivedStat=null;
-try{archivedStat=fs.lstatSync(archived);}catch(error){if(error.code!=='ENOENT')throw error;}
-assert.equal(archivedStat,null,'live source must not be shadowed by an archive copy');
-const sourceBytes=read(file);
+const source=resolveSource(root,file);
+assert.equal(source.logical,file);
+assert.equal(source.sha256,sourceSha256Pin);
+const live=source.virtualPath;
+const sourceBytes=source.bytes;
 assert.equal(digest(sourceBytes),sourceSha256Pin);
-const source=sourceBytes.toString('utf8');
+const sourceText=sourceBytes.toString('utf8');
+const resolverFile=path.join(__dirname,'schema_source_resolver.cjs');
+const resolverSha256=digest(fs.readFileSync(resolverFile));
+const archiveManifest=path.join(root,'..','archives/dimabot-typescript/2026-10-28','manifest.json');
+const resolvedPath=path.relative(path.dirname(root),source.path);
+assert.equal(resolvedPath,source.provenance);
+assert(fs.lstatSync(archiveManifest).isFile());
+const sourceBinding={
+  logical:file,
+  virtualPath:live,
+  resolvedPath,
+  provenance:source.provenance,
+  sha256:source.sha256,
+  manifest:{path:path.relative(path.dirname(root),archiveManifest),sha256:digest(fs.readFileSync(archiveManifest))},
+  resolver:{path:path.relative(path.dirname(root),resolverFile),sha256:resolverSha256,pin:sourceSha256Pin},
+};
 
 // Source/type/import/export metadata from the actual TypeScript AST.
-const tree=ts.createSourceFile(file,source,ts.ScriptTarget.ES2022,true);
+const tree=ts.createSourceFile(file,sourceText,ts.ScriptTarget.ES2022,true);
 assert.deepEqual(tree.parseDiagnostics,[]);
 const imports=tree.statements.filter(ts.isImportDeclaration).map(s=>({module:s.moduleSpecifier.text,typeOnly:!!s.importClause?.isTypeOnly,bindings:s.importClause?.getText(tree)}));
 assert.deepEqual(imports,[{module:'mongoose',typeOnly:false,bindings:'{ Schema, model }'}]);
@@ -81,14 +97,17 @@ assert.deepEqual(schemaInit.arguments.map(argument=>normalized(argument.getText(
   '{ versionKey: false }',
 ]);
 
-// Full type check of the complete module against the pinned Mongoose types.
+// Full type check of the complete module against the pinned Mongoose types. The
+// archived bytes are overlaid on the virtual original path so the original
+// module graph and resolution remain exact without a live file on disk.
 const compilerOptions={target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.NodeNext,moduleResolution:ts.ModuleResolutionKind.NodeNext,strict:true,noEmit:true,skipLibCheck:true,esModuleInterop:true,types:['node']};
-const diagnostics=ts.getPreEmitDiagnostics(ts.createProgram([live],compilerOptions));
+const host=overlaySource(ts.createCompilerHost(compilerOptions),ts,source);
+const diagnostics=ts.getPreEmitDiagnostics(ts.createProgram([live],compilerOptions,host));
 assert.deepEqual(diagnostics.map(d=>ts.flattenDiagnosticMessageText(d.messageText,'\n')),[]);
 
 // Compile and execute the full module in a restricted boundary. Only the
 // `mongoose` import is provided, from a disconnected instance.
-const compiled=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022},reportDiagnostics:true});
+const compiled=ts.transpileModule(sourceText,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022},reportDiagnostics:true});
 assert.deepEqual(compiled.diagnostics,[]);
 const instance=new mongoose.Mongoose();
 instance.set('autoCreate',false);
@@ -193,6 +212,7 @@ const files=[
   'src/utils/js_string.rs',
   'src/utils/moderation/spam.rs',
   'tests/moderation_chatter_schema.rs',
+  'tests/fixtures/schema_source_resolver.cjs',
   'Cargo.toml',
   'Cargo.lock',
   'rust-toolchain.toml',
@@ -215,8 +235,8 @@ const reference={
     format:1,
     nodeExecutableSha256:nodeSha256,
     versions:{node:process.versions.node,v8:process.versions.v8,icu:process.versions.icu,unicode:process.versions.unicode,typescript:ts.version,mongoose:mongoose.version,bson:bsonVersion},
-    source:{logical:file,virtualPath:live,provenance:'live',sha256:sourceSha256Pin},
-    boundary:'Complete actual live TypeScript module compiled with pinned TypeScript and executed in a restricted CommonJS boundary with only the disconnected pinned Mongoose import. Ordinary JSON-like inputs; no accessors, symbols, proxies, functions, BigInt or cycles. Only Mongoose validation and document construction are exercised; no connection, index creation, query, or write occurs.',
+    source:sourceBinding,
+    boundary:'Complete actual archived TypeScript module resolved through the shared schema archive resolver, compiled with pinned TypeScript and executed in a restricted CommonJS boundary with only the disconnected pinned Mongoose import. Ordinary JSON-like inputs; no accessors, symbols, proxies, functions, BigInt or cycles. Only Mongoose validation and document construction are exercised; no connection, index creation, query, or write occurs.',
     caseCount:cases.length,
   },
   sourceMetadata:{

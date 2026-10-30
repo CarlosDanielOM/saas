@@ -21,6 +21,7 @@ const pins = Object.freeze({
   'src/schemas/countdown_timer_config.schema.ts': 'b4cf0d5f8cfe85dc1e04f11970aac8bbab48a27c86fc9fab43d935cdbb1ada8a',
   'src/schemas/custom_timer.schema.ts': '6c59b38b43615325f87c870dcbd5dfe2cd0b50e91822dbe884d3c32dd45f387f',
   'src/schemas/chat_logs.schema.ts': '732abc7b27b820fa6ded0d62b1dc3bf3aed8539c7fd636a47f47d98f70b63433',
+  'src/schemas/moderation_chatter.schema.ts': '71ec2e9e8047a6d6a8da561c596d1cbacf2dc13ac93ca6ad2878ef95dec9632e',
 });
 const archiveRelative = 'archives/dimabot-typescript/2026-10-28';
 function stat(file) {

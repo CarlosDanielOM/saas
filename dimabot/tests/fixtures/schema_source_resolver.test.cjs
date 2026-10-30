@@ -2,7 +2,7 @@
 const assert = require('node:assert/strict'), fs = require('node:fs'), os = require('node:os'), path = require('node:path');
 const {pins, resolveSource} = require('./schema_source_resolver.cjs');
 const originalRoot = path.resolve(__dirname, '../..');
-assert.equal(Object.keys(pins).length, 17);
+assert.equal(Object.keys(pins).length, 18);
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'schema-source-resolver-'));
 try {
   for (const logical of Object.keys(pins)) {
