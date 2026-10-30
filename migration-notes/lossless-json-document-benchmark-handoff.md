@@ -1,0 +1,9 @@
+# Flat JSON document matched benchmark handoff
+
+The baseline `JsonDocument` parse/select/serialize benchmark is **source-bound and verified**. See the [baseline report](lossless-json-document-benchmark.md) and [indexed evidence package](evidence/2026-10-30-json-document-benchmark/README.md). A separate optimization is being authored; it is not part of these source hashes, timings, or conclusions.
+
+The tested source is commit `ac54f24a5def1db0c928e7a06e32def38cbd42a2`, tree SHA-256 `5fcf0145e5a67b8b0d7942016923e824e5ddc2e8b7a5d7dfbdbf6e95f8c5032d`, with 1,495 inputs (1,485 Git plus ten reused SDK inputs). Benchmark input and provenance hashes were independently pinned, Node and Rust reports checked, then a Node checker revalidated all four artifact hashes and both reports without retiming.
+
+The benchmark covers five 32-case pools, 20 full warmup passes, and seven samples with 500 passes per sample (100 for the large payload). It measures parsing, root own `error` lookup, truthiness, and selected canonical JSON output. It excludes Arc-owned copy and network costs. The measured medians are mixed: Node was lower on small strings, wide objects, large ignored payload, and escaped strings; Rust was lower on deep-selected values. See the report for all medians, ranges, and Node/Rust median ratios. This is not formal statistical evidence or a whole-application/memory/production claim.
+
+Formatting, scoped strict Clippy, release build, Node preparation, Node benchmark, Rust benchmark, and final no-retiming check passed. Two earlier compiler attempts failed on the constant release assertion and then its formatting; both attempt logs and their source maps are preserved. Final readback found 18 production records unchanged and zero task-owned resources. No benchmark or test was rerun as part of this documentation task.
