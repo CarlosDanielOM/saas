@@ -1,0 +1,14 @@
+{
+  "candidateCommit": "08ab85ddb3f1277a934699f8ea3d0b4d31d41ff2",
+  "candidateTreeSha256": "628038fa15652be3c11e3b301bb9c519421c6fd872eeb2b21c59c0cae7e81ef4",
+  "runReceipt": "runs/node-1793347937036370605-receipt.json",
+  "sourceHashCount": 1452,
+  "gitBoundInputCount": 1442,
+  "reusedSdkInputCount": 10,
+  "reusedSdkBindingSource": "../2026-10-30-moderation-variations/source-bindings.json",
+  "reusedSdkBindingSection": "cache-and-types.archiveVerifiedSdkInputs",
+  "reusedSdkBindingSha256": "88472a9d56816bcca64e95b000d2bd456248ec28286ef9ee9f66007f28635683",
+  "sdkArchiveCommit": "9b3803b42d542fee234db64e0a5deff8b38d6337",
+  "contract": "The final run receipt carries all 1,452 frozen input hashes. The ten verification/posthog-rs files match the existing archived-SDK binding; the other 1,442 inputs are Git-bound to the candidate commit.",
+  "sourceCloneCopied": false
+}

@@ -58401,7 +58401,7 @@
       ],
       "rowAssessment": "unreviewed-no-feature-completion-inferred"
     },
-    {
+        {
       "source": "src/utils/ai_usage_event.ts",
       "baseline": {
         "sha256": "87ff158c166652ea1eb64199ea4c9c6250b35db90399cb658ef6c3086628de60",
@@ -58411,96 +58411,156 @@
       "scope": "in-scope",
       "inventoryDisposition": "baseline-source-row",
       "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "featureReview": "reviewed-bounded-pure-context-and-metadata-helper; matrix status remains partial pending parent completion/retirement decision",
+      "localRustEvidence": [
+        "dimabot/src/utils/ai_usage.rs",
+        "dimabot/src/utils/ai_usage_lossless.rs",
+        "dimabot/src/utils/js_compat.rs",
+        "dimabot/src/utils/js_string.rs",
+        "dimabot/src/utils/lossless_json.rs",
+        "dimabot/src/utils/json_number.rs",
+        "dimabot/tests/ai_usage_lossless.rs",
+        "dimabot/tests/fixtures/ai_usage_lossless_reference.cjs",
+        "migration-notes/ai-usage-lossless.md",
+        "migration-notes/evidence/2026-10-30-ai-usage-lossless/README.md",
+        "migration-notes/evidence/2026-10-30-ai-usage-lossless/verification-summary.json",
+        "08ab85ddb3f1277a934699f8ea3d0b4d31d41ff2; final source-tree SHA-256 628038fa15652be3c11e3b301bb9c519421c6fd872eeb2b21c59c0cae7e81ef4"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The native lossless counterpart is scoped to ordinary own-property JSON data: getters, executable hooks, custom prototypes, symbols, and sparse arrays are outside the contract. Omitted optional fields retain the source absent/undefined read behavior; null remains present and distinct.",
+        "Lossless metadata conversion requires declared required context fields and object-shaped accounting metadata. Finite context quantities are retained and non-finite context quantities omitted; metadata conversion preserves a present quantity including null or non-finite JsonNumber. These boundaries are documented and covered by the source replay.",
+        "The existing typed Serde context API is unchanged. No local helper dependency gap was found; application call paths and TypeScript caller adoption are tracked separately."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/src/utils/polarsh.ts: runtime createAiUsageContext and enrichPolarUsageMetadata imports",
+          "dimabot/src/utils/posthog_events.ts: runtime AI_USAGE_SCHEMA_VERSION and type-only AiUsageContext imports",
+          "dimabot/src/utils/ai_usage_ledger.ts, dimabot/src/utils/ai_usage_receipts.ts, dimabot/src/utils/tts_usage.ts: type-only context/category/resource imports"
+        ],
+        "runtimeStatus": "The local pure helper mapping is verified. These TypeScript consumers and their Polar/PostHog/ledger/receipt/TTS application paths have not adopted this helper through Rust; caller adoption is separate from pure-helper dependency completeness. No deployment or source retirement."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/src/utils/ai_usage_event.test.ts: two existing source test groups cover additive canonical metadata/accounting preservation and legacy classification/privacy fields.",
+          "dimabot/tests/fixtures/ai_usage_lossless_reference.cjs: actual source typecheck/execution, declaration inventory, deterministic UUID fixture, and exact source wires.",
+          "Final Node source run node-1793347937036370605: 130 context and two metadata records; 1,452 bound inputs (1,442 Git, ten prior archive-verified SDK inputs)."
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/src/utils/ai_usage.rs tests cover all legacy classifications, context defaults/overrides/omission, metadata spread, finite quantities, and UUID fallback.",
+          "dimabot/tests/ai_usage_lossless.rs: focused UTF-16/collision, quantity, malformed-object, and required-context cases plus ignored exact-wire source replay.",
+          "compiler-1793347937036016292: two ordinary lossless tests and one ignored full replay passed; scoped strict Clippy, no-default all-target check, mongo/redis all-target check, and all-feature all-target strict Clippy passed.",
+          "migration-notes/evidence/2026-10-30-ai-usage-lossless/verification-summary.json"
+        ],
+        "status": "Declared pure-helper behavior is locally mapped and source-replayed. This row is deliberately retained as partial pending the parent inventory decision; broader AI usage application paths are outside this helper row."
       },
       "exports": [
         {
           "name": "AI_USAGE_PRICING_VERSION",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::ai_usage::AI_USAGE_PRICING_VERSION",
+          "evidence": [
+            "dimabot/src/utils/ai_usage.rs"
+          ]
         },
         {
           "name": "AI_USAGE_SCHEMA_VERSION",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::ai_usage::AI_USAGE_SCHEMA_VERSION",
+          "evidence": [
+            "dimabot/src/utils/ai_usage.rs"
+          ]
         },
         {
           "name": "AiUsageCategory",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::ai_usage::Category",
+          "evidence": [
+            "dimabot/src/utils/ai_usage.rs"
+          ]
         },
         {
           "name": "AiUsageContext",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::ai_usage::AiUsageContext; lossless APIs expose the same context as JSON value",
+          "evidence": [
+            "dimabot/src/utils/ai_usage.rs",
+            "dimabot/src/utils/ai_usage_lossless.rs"
+          ]
         },
         {
           "name": "AiUsageContextInput",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::ai_usage::AiUsageContextInput",
+          "evidence": [
+            "dimabot/src/utils/ai_usage.rs"
+          ]
         },
         {
           "name": "AiUsageEntryKind",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::ai_usage::EntryKind",
+          "evidence": [
+            "dimabot/src/utils/ai_usage.rs"
+          ]
         },
         {
           "name": "AiUsageResourceType",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::ai_usage::ResourceType",
+          "evidence": [
+            "dimabot/src/utils/ai_usage.rs"
+          ]
         },
         {
           "name": "AiUsageUnit",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "dima_rust::utils::ai_usage::UsageUnit",
+          "evidence": [
+            "dimabot/src/utils/ai_usage.rs"
+          ]
         },
         {
           "name": "PolarUsageMetadataShape",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "Canonical `Map<String, Value>` or lossless `JsonValue` metadata object with the source snake_case field contract; no extra Rust record type is required.",
+          "evidence": [
+            "dimabot/src/utils/ai_usage.rs",
+            "dimabot/src/utils/ai_usage_lossless.rs"
+          ]
         },
         {
           "name": "createAiUsageContext",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "create_ai_usage_context (UUID v4) plus create_ai_usage_context_json and create_ai_usage_context_json_with_id for lossless JSON data",
+          "evidence": [
+            "dimabot/src/utils/ai_usage.rs",
+            "dimabot/src/utils/ai_usage_lossless.rs",
+            "dimabot/tests/ai_usage_lossless.rs"
+          ]
         },
         {
           "name": "enrichPolarUsageMetadata",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "enrich_polar_usage_metadata plus enrich_polar_usage_metadata_json; canonical fields win while unrelated accounting fields are preserved",
+          "evidence": [
+            "dimabot/src/utils/ai_usage.rs",
+            "dimabot/src/utils/ai_usage_lossless.rs"
+          ]
         },
         {
           "name": "toPolarUsageMetadata",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "to_polar_usage_metadata plus to_polar_usage_metadata_json",
+          "evidence": [
+            "dimabot/src/utils/ai_usage.rs",
+            "dimabot/src/utils/ai_usage_lossless.rs"
+          ]
         }
       ],
       "imports": [
         {
           "ordinal": 0,
           "specifier": "node:crypto",
-          "specifierCategory": "node-builtin-candidate",
+          "specifierCategory": "node-builtin",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named runtime import: randomUUID",
+          "runtimeOrTypeDependency": "runtime UUID v4 generation only when entryId is absent after source normalization",
+          "defaultSideEffectBarrelDetails": "No relative imports, barrels, or side-effect imports.",
+          "directDependencyReview": "Mapped to the existing uuid dependency; deterministic _with_id API is available for fixtures and adapters.",
+          "transitiveDependencyReview": "Source string trimming, classification, JSON coercion, UTF-16 strings, numeric formatting, and object key order reuse concrete native crate helpers. No npm package internals or application-specific runtime adapter are required for this helper.",
+          "rustReplacementOrGap": "uuid::Uuid::new_v4 in the typed constructor; lossless JSON constructors reuse existing JsonValue, JsString, js_compat, json_number, and classification helpers."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "partial-bounded-pure-helper-source-and-dependency-closure-reviewed; local mapping verified; parent completion/retirement decision pending"
     },
     {
       "source": "src/utils/ai_usage_ledger.test.ts",

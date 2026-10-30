@@ -1,0 +1,61 @@
+{
+  "codeCommit": "08ab85ddb3f1277a934699f8ea3d0b4d31d41ff2",
+  "acceptedRuns": [
+    "node-1793347937036370605",
+    "compiler-1793347937036016292"
+  ],
+  "sourceTreeSha256": "628038fa15652be3c11e3b301bb9c519421c6fd872eeb2b21c59c0cae7e81ef4",
+  "frozenInputs": 1452,
+  "gitInputs": 1442,
+  "reusedSdkInputs": 10,
+  "contextCases": 130,
+  "metadataCases": 2,
+  "normalTests": 2,
+  "ignoredReplayPassed": 1,
+  "fixtureSha256": "442013548f86179ab01de38d2c609d4fddc47f187f029281d035898574e8b598",
+  "firstRun": 1793347708507063984,
+  "finalRun": 1793347937036370605,
+  "compilerMetrics": {
+    "steps": [
+      {
+        "name": "bootstrap",
+        "seconds": 3.934,
+        "exit_code": 0
+      },
+      {
+        "name": "locked-fetch",
+        "seconds": 2.79,
+        "exit_code": 0
+      },
+      {
+        "name": "compiler",
+        "seconds": 95.994,
+        "exit_code": 0
+      }
+    ],
+    "elapsed_seconds": 105.093,
+    "minimum_available_bytes": 8783933440,
+    "peak_cache_bytes": 8329900032,
+    "limits": {
+      "cpus": 6,
+      "memory": 4294967296,
+      "memory_swap": 4294967296,
+      "pids": 256,
+      "cargo_jobs": 2
+    },
+    "production_unchanged": true
+  },
+  "correctionHistory": [
+    "Parent renamedCJS exports localbinding toavoidCommonJSparameterredeclaration beforefirstNode",
+    "ParentaddedindependentfixtureSHA,source/nativeprovenancechecksandignoredexternalreplay",
+    "Parentremovedunwiredaccountingtestsupportfromfinalsnapshottokeepfeaturecoherent",
+    "Parentinitialverbalcount129correctedtoactual130; all130+2recordsvisited"
+  ],
+  "contract": [
+    "Plain own-property JSONobjects; no executablehooks/customprototypes; absentJSONfields representoptionalundefined behavior",
+    "LosslessUTF16 strings; finitecontextquantity; metadataquantitypresence preserved inclnull/nonfiniteJsonNumber",
+    "Requiredcontextfields enforced; accountingobjectshaped; numericpropertyorder delegatedsharedJsonValue",
+    "TypedserdeAPI unchanged; no accountingcalleradoption orwholeAIusage/applicationcompletion established"
+  ],
+  "status": "bounded purecompatibilityextension verified; no retirement/deploy/push; dependency completeness stillunestablished overall"
+}

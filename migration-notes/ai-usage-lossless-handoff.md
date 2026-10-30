@@ -1,0 +1,9 @@
+# AI usage context lossless handoff
+
+2026-10-30 verified bounded helper handoff. `dimabot/src/utils/ai_usage_lossless.rs` provides ordinary-own-property-JSON counterparts for `createAiUsageContext`, `toPolarUsageMetadata`, and `enrichPolarUsageMetadata`, alongside the existing typed context API in `ai_usage.rs`. The implementation reuses local classification/version constants, UUID support, ECMAScript trimming, UTF-16 strings, JSON coercion/truthiness, and numeric/object ordering helpers. It does not alter the typed Serde API, producers, billing, persistence, or runtime callers.
+
+The accepted source commit is `08ab85ddb3f1277a934699f8ea3d0b4d31d41ff2`, with source tree SHA-256 `628038fa15652be3c11e3b301bb9c519421c6fd872eeb2b21c59c0cae7e81ef4`. The final actual-source corpus contains 130 context cases and two metadata cases; both Node oracle outputs are byte-identical and the ignored Rust replay plus two ordinary tests passed. The final compiler checks and strict feature profiles are recorded in [`evidence/2026-10-30-ai-usage-lossless/README.md`](evidence/2026-10-30-ai-usage-lossless/README.md).
+
+The input boundary and source-only dependencies are described in [`ai-usage-lossless.md`](ai-usage-lossless.md). Local helper dependency closure was reviewed without finding a missing application-specific adapter. The dependency matrix row is intentionally partial pending the parent’s completion/retirement decision. Caller adoption, deployment, broader application migration, and total migration completion are not claimed. No source retirement, commit, deploy, or push was performed as part of this handoff.
+
+Before any later retirement of `ai_usage_event.ts`, follow [`ai-usage-source-retirement-plan.md`](ai-usage-source-retirement-plan.md) and rerun the source readers against the exact archived bytes.

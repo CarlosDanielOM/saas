@@ -1,0 +1,50 @@
+{
+  "scope": "pure AI usage context and Polar metadata helper compatibility",
+  "codeCommit": "08ab85ddb3f1277a934699f8ea3d0b4d31d41ff2",
+  "sourceTreeSha256": "628038fa15652be3c11e3b301bb9c519421c6fd872eeb2b21c59c0cae7e81ef4",
+  "acceptedRuns": [
+    "node-1793347937036370605",
+    "compiler-1793347937036016292"
+  ],
+  "frozenInputCounts": {
+    "total": 1452,
+    "gitBound": 1442,
+    "reusedSdk": 10
+  },
+  "sourceCorpus": {
+    "contextCases": 130,
+    "metadataCases": 2,
+    "totalRecords": 132,
+    "sha256": "442013548f86179ab01de38d2c609d4fddc47f187f029281d035898574e8b598",
+    "attemptsByteIdentical": true
+  },
+  "node": {
+    "version": "v24.22.1",
+    "v8": "13.6.233.17-node.58",
+    "typescript": "5.9.3"
+  },
+  "nativeChecks": {
+    "ordinaryTestsPassed": 2,
+    "ignoredFullReplayPassed": 1,
+    "scopedStrictClippy": "passed",
+    "noDefaultAllTargetsCheck": "passed",
+    "mongoRedisAllTargetsCheck": "passed",
+    "allFeaturesAllTargetsStrictClippy": "passed"
+  },
+  "compilerLimits": {
+    "cpus": 6,
+    "memoryBytes": 4294967296,
+    "memorySwapBytes": 4294967296,
+    "pids": 256,
+    "cargoJobs": 2
+  },
+  "compilerSeconds": 95.994,
+  "elapsedSeconds": 105.093,
+  "productionUnchanged": true,
+  "remainingTaskOwnedResources": 0,
+  "callerAdoption": "not established",
+  "retirement": "not performed",
+  "deployment": "not performed",
+  "runtimePerformanceClaim": false,
+  "totalMigrationCompletion": null
+}
