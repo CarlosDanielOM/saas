@@ -1,0 +1,413 @@
+{
+  "schema": "evidence-payload-index/v1",
+  "source_wave": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/lossless-json-document",
+  "payload_count": 45,
+  "hash_policy": "SHA-256 over original raw bytes and stored bytes; gzip payloads are losslessly compressed with mtime=0",
+  "payloads": [
+    {
+      "path": "artifacts/attempt1/compiler-preflight-source-final.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/lossless-json-document/attempt1/compiler-preflight-source-final.json",
+      "raw_bytes": 178320,
+      "raw_sha256": "eff1c4dc94284dca7cfee92a4c1a5dbec95c61aea748bfa769c7539ebdbce58c",
+      "stored_bytes": 71516,
+      "stored_sha256": "07fd454787b4fd686527183675fc661fb3bec9b97993ef36b224983b2772fbbb",
+      "compression": "gzip"
+    },
+    {
+      "path": "artifacts/attempt1/oracle/oracle-before-v8-resource-classification.cjs",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/lossless-json-document/attempt1/oracle-before-v8-resource-classification.cjs",
+      "raw_bytes": 4597,
+      "raw_sha256": "0e59bdb0dcbd1a3cd5f11910c151ef9a988fa1070c654ce118624a4206f74bc6",
+      "stored_bytes": 4597,
+      "stored_sha256": "0e59bdb0dcbd1a3cd5f11910c151ef9a988fa1070c654ce118624a4206f74bc6",
+      "compression": "none"
+    },
+    {
+      "path": "artifacts/attempt1/source-final.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/lossless-json-document/attempt1/source-final.json",
+      "raw_bytes": 178320,
+      "raw_sha256": "eff1c4dc94284dca7cfee92a4c1a5dbec95c61aea748bfa769c7539ebdbce58c",
+      "stored_bytes": 71516,
+      "stored_sha256": "07fd454787b4fd686527183675fc661fb3bec9b97993ef36b224983b2772fbbb",
+      "compression": "gzip"
+    },
+    {
+      "path": "artifacts/attempt2/document-before-style-fix.rs",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/lossless-json-document/attempt2/document-before-style-fix.rs",
+      "raw_bytes": 12550,
+      "raw_sha256": "d9f24a172e3807b3edff2329532e1ac2c8777a9ec3df8e653db967a646ce3dea",
+      "stored_bytes": 12550,
+      "stored_sha256": "d9f24a172e3807b3edff2329532e1ac2c8777a9ec3df8e653db967a646ce3dea",
+      "compression": "none"
+    },
+    {
+      "path": "artifacts/attempt2/document/lossless-json-document-reference.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/lossless-json-document/attempt2/document/lossless-json-document-reference.json",
+      "raw_bytes": 104779,
+      "raw_sha256": "7157e173e0a0a84dd039ad16c7488d0ed79cacc5ec80d93702623e2e2fd02423",
+      "stored_bytes": 2184,
+      "stored_sha256": "31e0cca4bf993baa27980bd028f3bf0e659ccc47982ab546283abc8e25a4d54c",
+      "compression": "gzip"
+    },
+    {
+      "path": "artifacts/attempt2/parser-provenance/manifest.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/lossless-json-document/attempt2/parser-provenance/manifest.json",
+      "raw_bytes": 60338,
+      "raw_sha256": "18fba03da7a013926331217beaf2097bb073ca032256aeece76f233d0f859394",
+      "stored_bytes": 60338,
+      "stored_sha256": "18fba03da7a013926331217beaf2097bb073ca032256aeece76f233d0f859394",
+      "compression": "none"
+    },
+    {
+      "path": "artifacts/attempt2/queries-provenance/manifest.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/lossless-json-document/attempt2/queries-provenance/manifest.json",
+      "raw_bytes": 60338,
+      "raw_sha256": "18fba03da7a013926331217beaf2097bb073ca032256aeece76f233d0f859394",
+      "stored_bytes": 60338,
+      "stored_sha256": "18fba03da7a013926331217beaf2097bb073ca032256aeece76f233d0f859394",
+      "compression": "none"
+    },
+    {
+      "path": "artifacts/attempt3/document/lossless-json-document-reference.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/lossless-json-document/attempt3/document/lossless-json-document-reference.json",
+      "raw_bytes": 104779,
+      "raw_sha256": "53b76098859b1c6422aaeb558313a71d442d8f382b61fb1951e29b708f30fda8",
+      "stored_bytes": 2185,
+      "stored_sha256": "a6e4cdfec534043c20459e6c4f4a836eb552dfecb689543fae3536a77ae7ec7d",
+      "compression": "gzip"
+    },
+    {
+      "path": "artifacts/attempt3/parser-provenance/manifest.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/lossless-json-document/attempt3/parser-provenance/manifest.json",
+      "raw_bytes": 60338,
+      "raw_sha256": "18fba03da7a013926331217beaf2097bb073ca032256aeece76f233d0f859394",
+      "stored_bytes": 60338,
+      "stored_sha256": "18fba03da7a013926331217beaf2097bb073ca032256aeece76f233d0f859394",
+      "compression": "none"
+    },
+    {
+      "path": "artifacts/attempt3/queries-provenance/manifest.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/lossless-json-document/attempt3/queries-provenance/manifest.json",
+      "raw_bytes": 60338,
+      "raw_sha256": "18fba03da7a013926331217beaf2097bb073ca032256aeece76f233d0f859394",
+      "stored_bytes": 60338,
+      "stored_sha256": "18fba03da7a013926331217beaf2097bb073ca032256aeece76f233d0f859394",
+      "compression": "none"
+    },
+    {
+      "path": "artifacts/cache-maintenance.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/lossless-json-document/cache-maintenance.json",
+      "raw_bytes": 3778,
+      "raw_sha256": "8cc4909e067d162087dd0f1b2bad41a4c188f34ba9204699d7c6cb256fdb6740",
+      "stored_bytes": 3778,
+      "stored_sha256": "8cc4909e067d162087dd0f1b2bad41a4c188f34ba9204699d7c6cb256fdb6740",
+      "compression": "none"
+    },
+    {
+      "path": "artifacts/oracle-semantic-comparison.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/lossless-json-document/oracle-semantic-comparison.json",
+      "raw_bytes": 209,
+      "raw_sha256": "42acc2d3171b988a52d6297cf1befa4d41dca064042f5064fdc77d450d9cc231",
+      "stored_bytes": 209,
+      "stored_sha256": "42acc2d3171b988a52d6297cf1befa4d41dca064042f5064fdc77d450d9cc231",
+      "compression": "none"
+    },
+    {
+      "path": "artifacts/production-after-final.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/lossless-json-document/production-after-final.json",
+      "raw_bytes": 27004,
+      "raw_sha256": "f2ca9666f572dabcd0a01214be66f91767927c5d0487c7dda4f0a5cae9f641a4",
+      "stored_bytes": 27004,
+      "stored_sha256": "f2ca9666f572dabcd0a01214be66f91767927c5d0487c7dda4f0a5cae9f641a4",
+      "compression": "none"
+    },
+    {
+      "path": "artifacts/snapshot-isolation.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/lossless-json-document/snapshot-isolation.json",
+      "raw_bytes": 117,
+      "raw_sha256": "9492c5de36f5bbc62b6a1e4a9eb4e155c8bf9d7519aba5a07176cf5196c23c26",
+      "stored_bytes": 117,
+      "stored_sha256": "9492c5de36f5bbc62b6a1e4a9eb4e155c8bf9d7519aba5a07176cf5196c23c26",
+      "compression": "none"
+    },
+    {
+      "path": "artifacts/source-bindings.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/lossless-json-document/source-bindings.json",
+      "raw_bytes": 399,
+      "raw_sha256": "20bf98a975522933ec516095ee6d241732b8221c9805e704011e103394b61b3a",
+      "stored_bytes": 399,
+      "stored_sha256": "20bf98a975522933ec516095ee6d241732b8221c9805e704011e103394b61b3a",
+      "compression": "none"
+    },
+    {
+      "path": "artifacts/source-final.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/lossless-json-document/source-final.json",
+      "raw_bytes": 178320,
+      "raw_sha256": "bd03605c4845a38a3fee850eca73e5eacbcf5efc5ef1440766ed8186e58777f4",
+      "stored_bytes": 71522,
+      "stored_sha256": "25b87b74ffc2419d39437ae8f9e30ae1666e9182a7832d705fbeb8615c36d4a4",
+      "compression": "gzip"
+    },
+    {
+      "path": "artifacts/tested-delta-paths.json",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/lossless-json-document/tested-delta-paths.json",
+      "raw_bytes": 415,
+      "raw_sha256": "70196e1072937ce2ad344c1653bbeac0dfbc173ec3e30dc8949021fc20261fad",
+      "stored_bytes": 415,
+      "stored_sha256": "70196e1072937ce2ad344c1653bbeac0dfbc173ec3e30dc8949021fc20261fad",
+      "compression": "none"
+    },
+    {
+      "path": "reproduction-tools/copy_json_document_dependencies.cjs",
+      "origin": "/tmp/dimabot-full-migration-tools/copy_json_document_dependencies.cjs",
+      "raw_bytes": 1799,
+      "raw_sha256": "159b4c2e593edbe82e0b9fcb3bbc5e834b71a2fae34719a3bd3defc79f48ad20",
+      "stored_bytes": 1799,
+      "stored_sha256": "159b4c2e593edbe82e0b9fcb3bbc5e834b71a2fae34719a3bd3defc79f48ad20",
+      "compression": "none"
+    },
+    {
+      "path": "reproduction-tools/final_readback.py",
+      "origin": "/tmp/dimabot-full-migration-tools/final_readback.py",
+      "raw_bytes": 1324,
+      "raw_sha256": "3a155b75c91670db92df884bd110daeba0cfc3c364f652c1affe02e5e4936c14",
+      "stored_bytes": 1324,
+      "stored_sha256": "3a155b75c91670db92df884bd110daeba0cfc3c364f652c1affe02e5e4936c14",
+      "compression": "none"
+    },
+    {
+      "path": "reproduction-tools/lossless_json_document_node1.sh",
+      "origin": "/tmp/dimabot-full-migration-tools/lossless_json_document_node1.sh",
+      "raw_bytes": 914,
+      "raw_sha256": "6b2810493fda7c53ec093ce3611a6d972b37b87116e6d54f5533e62b7598c64c",
+      "stored_bytes": 914,
+      "stored_sha256": "6b2810493fda7c53ec093ce3611a6d972b37b87116e6d54f5533e62b7598c64c",
+      "compression": "none"
+    },
+    {
+      "path": "reproduction-tools/lossless_json_document_node2.sh",
+      "origin": "/tmp/dimabot-full-migration-tools/lossless_json_document_node2.sh",
+      "raw_bytes": 914,
+      "raw_sha256": "c017f63d765cbbaa059aec21b753498a70b7bbb7fe6379e18bc950fad5cf4958",
+      "stored_bytes": 914,
+      "stored_sha256": "c017f63d765cbbaa059aec21b753498a70b7bbb7fe6379e18bc950fad5cf4958",
+      "compression": "none"
+    },
+    {
+      "path": "reproduction-tools/lossless_json_document_node3.sh",
+      "origin": "/tmp/dimabot-full-migration-tools/lossless_json_document_node3.sh",
+      "raw_bytes": 914,
+      "raw_sha256": "a3ca0a2c45f885ec49a4869c8982b64122647a3b239a18685541bda755336e91",
+      "stored_bytes": 914,
+      "stored_sha256": "a3ca0a2c45f885ec49a4869c8982b64122647a3b239a18685541bda755336e91",
+      "compression": "none"
+    },
+    {
+      "path": "reproduction-tools/lossless_json_document_quality1.sh",
+      "origin": "/tmp/dimabot-full-migration-tools/lossless_json_document_quality1.sh",
+      "raw_bytes": 2174,
+      "raw_sha256": "338e2a79b3ad80965dfd01de547ccd6a20e1f21a0c5e7de34eebe4b7ad2fc195",
+      "stored_bytes": 2174,
+      "stored_sha256": "338e2a79b3ad80965dfd01de547ccd6a20e1f21a0c5e7de34eebe4b7ad2fc195",
+      "compression": "none"
+    },
+    {
+      "path": "reproduction-tools/lossless_json_document_quality2.sh",
+      "origin": "/tmp/dimabot-full-migration-tools/lossless_json_document_quality2.sh",
+      "raw_bytes": 2174,
+      "raw_sha256": "6169eb93f365e1e98ef801be7e3351a274ce6570757703fff47e4927d6e2bb73",
+      "stored_bytes": 2174,
+      "stored_sha256": "6169eb93f365e1e98ef801be7e3351a274ce6570757703fff47e4927d6e2bb73",
+      "compression": "none"
+    },
+    {
+      "path": "reproduction-tools/lossless_json_document_quality3.sh",
+      "origin": "/tmp/dimabot-full-migration-tools/lossless_json_document_quality3.sh",
+      "raw_bytes": 2020,
+      "raw_sha256": "1f633455d39ac1199ce40c04fdeba6e1c49f517294aa4fdc954215742489e0a4",
+      "stored_bytes": 2020,
+      "stored_sha256": "1f633455d39ac1199ce40c04fdeba6e1c49f517294aa4fdc954215742489e0a4",
+      "compression": "none"
+    },
+    {
+      "path": "reproduction-tools/trim_json_document_cache.py",
+      "origin": "/tmp/dimabot-full-migration-tools/trim_json_document_cache.py",
+      "raw_bytes": 2145,
+      "raw_sha256": "8cd0197bb4f83bc2dbe8c4ae06b77d5ecef6a28a88e336ac22e01c704814e830",
+      "stored_bytes": 2145,
+      "stored_sha256": "8cd0197bb4f83bc2dbe8c4ae06b77d5ecef6a28a88e336ac22e01c704814e830",
+      "compression": "none"
+    },
+    {
+      "path": "reproduction-tools/validate.py",
+      "origin": "/tmp/dimabot-full-migration-tools/validate.py",
+      "raw_bytes": 12955,
+      "raw_sha256": "12039de7b3fb152783d1446ce409a7ab0272b1f773624b207cf12763e645e7be",
+      "stored_bytes": 12955,
+      "stored_sha256": "12039de7b3fb152783d1446ce409a7ab0272b1f773624b207cf12763e645e7be",
+      "compression": "none"
+    },
+    {
+      "path": "runs/attempt1/compiler-1793364758157952589-receipt.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/compiler-1793364758157952589-receipt.json",
+      "raw_bytes": 182220,
+      "raw_sha256": "eda9b81f45e64ce2a770b4424e911c8634fc8daaa17e9bb2b4d87aea4ed3d42f",
+      "stored_bytes": 72084,
+      "stored_sha256": "3b7a8a050f1d5d341c28f903171a4760d104641735dba065c9023fef3c788085",
+      "compression": "gzip"
+    },
+    {
+      "path": "runs/attempt1/compiler-1793364758157952589.log.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/compiler-1793364758157952589.log",
+      "raw_bytes": 4992,
+      "raw_sha256": "1adcd55e9308e328edcd16f55f6a8de3b7f6d429792a2b8f89ba234dd9183610",
+      "stored_bytes": 2129,
+      "stored_sha256": "18e5148203754858753033887039455907343324e2066bda90641e3e043a7c3c",
+      "compression": "gzip"
+    },
+    {
+      "path": "runs/attempt1/format-1793364461384436580-receipt.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/format-1793364461384436580-receipt.json",
+      "raw_bytes": 182211,
+      "raw_sha256": "8fe363b4f44f77cf1d786c2430bbf6708ad62757afa1f765140d2be168fc43e0",
+      "stored_bytes": 72076,
+      "stored_sha256": "ee2d58975972db4a87e86f2b77d1eafdcf67fa2a755b0df76d152702c4bb936d",
+      "compression": "gzip"
+    },
+    {
+      "path": "runs/attempt1/format-1793364461384436580.log.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/format-1793364461384436580.log",
+      "raw_bytes": 1833,
+      "raw_sha256": "d8df33ba72c691319594a6938a8cc1f756798afbe8a2dc8dedcec22abade739d",
+      "stored_bytes": 873,
+      "stored_sha256": "ae106fa54c0a55d82e88ba77f61cbd2a4cfcc810fedf8a20aee6dce4105586ef",
+      "compression": "gzip"
+    },
+    {
+      "path": "runs/attempt1/node-1793364591190997086-receipt.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/node-1793364591190997086-receipt.json",
+      "raw_bytes": 182139,
+      "raw_sha256": "9b9c1421e1f8e0e216fe70ab50634273b5b2c6fbec6def33d3cbeb528248d5e8",
+      "stored_bytes": 72106,
+      "stored_sha256": "9579b2f78d0cb825fa86b6b63405cd06d8ae6864446b2f0522794244e9222c4e",
+      "compression": "gzip"
+    },
+    {
+      "path": "runs/attempt1/node-1793364591190997086.log.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/node-1793364591190997086.log",
+      "raw_bytes": 917,
+      "raw_sha256": "e51920f2d045c254b786d2789523a23f615c5340325f6bcebf4a06a8329fc698",
+      "stored_bytes": 379,
+      "stored_sha256": "813bae12b795b56abf25628e5066cae404b37e7390eebef5d2172a2f7dfd3c52",
+      "compression": "gzip"
+    },
+    {
+      "path": "runs/attempt2/compiler-1793365040870937927-receipt.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/compiler-1793365040870937927-receipt.json",
+      "raw_bytes": 182271,
+      "raw_sha256": "cc8c02cb223b456b6c95d66c2083138a7853071b06301003e8ab44accbcb16f1",
+      "stored_bytes": 72165,
+      "stored_sha256": "0bf6b59d4f95bd435f2714ef68895fcd860eb17e520a6ceed517276b28416a05",
+      "compression": "gzip"
+    },
+    {
+      "path": "runs/attempt2/compiler-1793365040870937927.log.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/compiler-1793365040870937927.log",
+      "raw_bytes": 9738,
+      "raw_sha256": "68edf0071558bb627c919e16e64d07f5a226d7dea1c529de158b2ad595323a8a",
+      "stored_bytes": 3086,
+      "stored_sha256": "8bd653fd487da0547955f7bfbb67953c5448ad891f530d27ba7ed87a3d8df8a6",
+      "compression": "gzip"
+    },
+    {
+      "path": "runs/attempt2/format-1793364916218202675-receipt.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/format-1793364916218202675-receipt.json",
+      "raw_bytes": 182215,
+      "raw_sha256": "200bd47f6c1dd5b0516f409ef4f6ea79c42e86ff6a5990b53f30fae7f18cc684",
+      "stored_bytes": 72083,
+      "stored_sha256": "d15e923513fd9608b416a6c32528dd29a02da11caa23e172fc25310a0f2e14cb",
+      "compression": "gzip"
+    },
+    {
+      "path": "runs/attempt2/format-1793364916218202675.log.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/format-1793364916218202675.log",
+      "raw_bytes": 1833,
+      "raw_sha256": "d8df33ba72c691319594a6938a8cc1f756798afbe8a2dc8dedcec22abade739d",
+      "stored_bytes": 873,
+      "stored_sha256": "ae106fa54c0a55d82e88ba77f61cbd2a4cfcc810fedf8a20aee6dce4105586ef",
+      "compression": "gzip"
+    },
+    {
+      "path": "runs/attempt2/node-1793364969187625245-receipt.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/node-1793364969187625245-receipt.json",
+      "raw_bytes": 182092,
+      "raw_sha256": "5be308e19b9c76d4337c55a8f9752179b0deb1d74c33563a7aa157a6091881a4",
+      "stored_bytes": 72051,
+      "stored_sha256": "be7f60b2963487f19421ed66216a43f34dd79a00b6a7e8f1f58c30975e670014",
+      "compression": "gzip"
+    },
+    {
+      "path": "runs/attempt2/node-1793364969187625245.log.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/node-1793364969187625245.log",
+      "raw_bytes": 867,
+      "raw_sha256": "a3f4c90329c9d80a1c3c25fdc3b97c1b2dc5f41597bf35f857fa1e40a2234db3",
+      "stored_bytes": 360,
+      "stored_sha256": "f77800d49174d14adb7264c2e75b0ab3a132de602b9bdad73eeb3d90b63639f0",
+      "compression": "gzip"
+    },
+    {
+      "path": "runs/final/compiler-1793366116696093196-receipt.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/compiler-1793366116696093196-receipt.json",
+      "raw_bytes": 182221,
+      "raw_sha256": "9ff754e995fdfc7bf8a3b256493e39099b5d196844f052911084fc6d12bc443b",
+      "stored_bytes": 72090,
+      "stored_sha256": "5325d1efb18378b6e3e268e3840ef09870a28ffe6142e8f089b855371483206e",
+      "compression": "gzip"
+    },
+    {
+      "path": "runs/final/compiler-1793366116696093196.log.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/compiler-1793366116696093196.log",
+      "raw_bytes": 8872,
+      "raw_sha256": "68d46f4abd5b4c5fe4f00e0727cec8a58cec6c2c7269a3c572f81a929dfabd6a",
+      "stored_bytes": 2766,
+      "stored_sha256": "821f9e6c23a291737590618c08d2c43401832337a81694b8f3d86f8c5cad87d9",
+      "compression": "gzip"
+    },
+    {
+      "path": "runs/final/node-1793365976700379925-receipt.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/node-1793365976700379925-receipt.json",
+      "raw_bytes": 182092,
+      "raw_sha256": "938d9ed69a6c9989e9f49833ff14ca4d244c0d6a1cefdd838e151201430beab6",
+      "stored_bytes": 72055,
+      "stored_sha256": "1c9352a541d07f65a4d89d93c785ed58355846abf6c1309937666021b7e41cc6",
+      "compression": "gzip"
+    },
+    {
+      "path": "runs/final/node-1793365976700379925.log.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/node-1793365976700379925.log",
+      "raw_bytes": 867,
+      "raw_sha256": "5a525a1b04b8c41c08ef85f11024dcac348f63a0ed8add2471fd2b40827ffa8b",
+      "stored_bytes": 361,
+      "stored_sha256": "0d2f16fb0cc84dee17665b9a6520e6276fbeb28bda6438c958362276edc8d62a",
+      "compression": "gzip"
+    },
+    {
+      "path": "runs/quality/compiler-1793365694436831877-receipt.json.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/compiler-1793365694436831877-receipt.json",
+      "raw_bytes": 182217,
+      "raw_sha256": "55c2cf9d2ad63465226fd5031e50aab5dc99b490e016aecabc5fa34e58b67804",
+      "stored_bytes": 72086,
+      "stored_sha256": "2b94528aa60ec7f5a5a2104e680d0c76833576692fd0fd9715c4cf1bca028885",
+      "compression": "gzip"
+    },
+    {
+      "path": "runs/quality/compiler-1793365694436831877.log.gz",
+      "origin": "/root/.local/state/rust-full-migration-20261028-lu443ytp/artifacts/compiler-1793365694436831877.log",
+      "raw_bytes": 2050,
+      "raw_sha256": "ba50d6a5168eb7806292eca31ed8cf24c15ecd6d5878544629f559f8b208ec8b",
+      "stored_bytes": 959,
+      "stored_sha256": "02108b76d713fdf394cec417749852dc4a77991f542e32b0dc86c833ef24fd22",
+      "compression": "gzip"
+    }
+  ]
+}

@@ -1,0 +1,107 @@
+{
+  "scope": "completed task-owned private debug test executables only; no shared caches, source, release artifacts or production resources",
+  "cacheBefore": 8515395584,
+  "removed": [
+    {
+      "path": "target/debug/deps/additional_schemas-c83c3421315c7c1f",
+      "bytes": 31005032,
+      "allocatedBytes": 31006720,
+      "sha256": "ae4903752e1bc0eb014fbf8ffe9444701dfca0f629563bdd02c175af36ad8cff",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/additional_schemas-38c7a3f5cf8f0dab",
+      "bytes": 30845208,
+      "allocatedBytes": 30846976,
+      "sha256": "ad3be65f180f28ae30ac1a70714e67c43339b9be7fd2fcac91615c2b456af13a",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/additional_schemas-8d2315c50d77997e",
+      "bytes": 31005192,
+      "allocatedBytes": 31006720,
+      "sha256": "359c3a191602693539406e37befbf0e2b5ecf134f84a5a5b7a3f156892b9ad08",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/additional_schemas-8685730f1f7362bb",
+      "bytes": 30845264,
+      "allocatedBytes": 30846976,
+      "sha256": "aa5ec69349318fd0add61f3603b5858862388b2e1d7170fb40abd4744d4938d5",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/twitch_functions-271f939d529215be",
+      "bytes": 38687608,
+      "allocatedBytes": 38694912,
+      "sha256": "eb61df11094eb171cc066fedf8f9f0e8f0886ba46b07a0a0e480ef04f34549ac",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/delete_twitch_message-728da53a7f0280fc",
+      "bytes": 22335248,
+      "allocatedBytes": 22335488,
+      "sha256": "2ae1ff8c7d4d462aa438b9f66b9c25f98bc28853e05cdcac43ac0eedccda0fe5",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/timer_chat_schema_types-5c7517969b8f5caf",
+      "bytes": 4703488,
+      "allocatedBytes": 4710400,
+      "sha256": "dc860de63e6b5e103218de516132fd310b186a5e15cef284445470186225e0a3",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/additional_schemas-ac20b73ac4969217",
+      "bytes": 30845248,
+      "allocatedBytes": 30851072,
+      "sha256": "9666cbfff0f5fb0acec705c4e7342d4a487092bed4e6d10e73132ca68f9428a9",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/ai_usage_receipt_parser-5b1d651504e6444d",
+      "bytes": 4325408,
+      "allocatedBytes": 4329472,
+      "sha256": "7bfff70f44e8c8adffd2e695cd5e73ac5071398bc566670d2f65bbd5b63f8584",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/lossless_json_view-e1ae70286411ab20",
+      "bytes": 2178280,
+      "allocatedBytes": 2179072,
+      "sha256": "20a63e0fa6ec41918151d418accc49990039bd7063543a81a909c69c7ccf14f3",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/lossless_json_document-2433369f728a01b3",
+      "bytes": 2251768,
+      "allocatedBytes": 2252800,
+      "sha256": "20680c148eab529013cff2fbf8a88e185a6b36182c1f72f72a9e2d69810ad3a0",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/ai_usage_ledger_queries-14e9c1f8fbb27c35",
+      "bytes": 32352704,
+      "allocatedBytes": 32358400,
+      "sha256": "0c14b9891d8f0651c5e14b4ea50f0a060c5fad8103928311c1b974786c1f9518",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/ai_usage_receipt_parser-118e87609d3cb4ad",
+      "bytes": 4325928,
+      "allocatedBytes": 4333568,
+      "sha256": "575179cd68bd5a1f8173cb2a140bc5f9e0c3b7dd13000c6d5cdcefbc7e501079",
+      "removed": true
+    },
+    {
+      "path": "target/debug/deps/lossless_json_view-20367d9a6909d511",
+      "bytes": 2182600,
+      "allocatedBytes": 2183168,
+      "sha256": "e2a260f9c0454bc6df398c93b53de11dd2e453c4d1c829949c6aebeceacf3863",
+      "removed": true
+    }
+  ],
+  "status": "complete",
+  "freedAllocatedBytes": 267935744,
+  "cacheAfter": 8247459840
+}

@@ -1,0 +1,10 @@
+[
+  "dimabot/src/utils/mod.rs",
+  "dimabot/src/utils/lossless_json_document.rs",
+  "dimabot/src/utils/lossless_json_view.rs",
+  "dimabot/tests/lossless_json_document.rs",
+  "dimabot/tests/fixtures/lossless_json_document_reference.cjs",
+  "dimabot/tests/ai_usage_receipt_parser.rs",
+  "dimabot/tests/fixtures/ai_usage_receipt_parser_reference.cjs",
+  "dimabot/tests/fixtures/ai_usage_ledger_queries_reference.cjs"
+]

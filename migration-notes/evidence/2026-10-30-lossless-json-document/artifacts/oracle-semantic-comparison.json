@@ -1,0 +1,15 @@
+{
+  "document": {
+    "cases": true,
+    "count": true,
+    "valid": true,
+    "invalid": true,
+    "resourceLimited": true
+  },
+  "parser": {
+    "results": true
+  },
+  "queries": {
+    "records": true
+  }
+}
