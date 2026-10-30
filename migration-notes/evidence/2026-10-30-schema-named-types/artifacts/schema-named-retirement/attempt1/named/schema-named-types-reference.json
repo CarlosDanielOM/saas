@@ -1,0 +1,1045 @@
+{
+  "format": 1,
+  "bsonStrings": [
+    {
+      "units": [
+        97
+      ],
+      "bsonHex": "120000000276616c75650002000000610000",
+      "outputUnits": [
+        97
+      ]
+    },
+    {
+      "units": [
+        55296
+      ],
+      "bsonHex": "140000000276616c75650004000000efbfbd0000",
+      "outputUnits": [
+        65533
+      ]
+    },
+    {
+      "units": [
+        56320
+      ],
+      "bsonHex": "140000000276616c75650004000000efbfbd0000",
+      "outputUnits": [
+        65533
+      ]
+    },
+    {
+      "units": [
+        55296,
+        97,
+        56320
+      ],
+      "bsonHex": "180000000276616c75650008000000efbfbd61efbfbd0000",
+      "outputUnits": [
+        65533,
+        97,
+        65533
+      ]
+    },
+    {
+      "units": [
+        55357,
+        56832
+      ],
+      "bsonHex": "150000000276616c75650005000000f09f98800000",
+      "outputUnits": [
+        55357,
+        56832
+      ]
+    },
+    {
+      "units": [
+        21517,
+        0,
+        937
+      ],
+      "bsonHex": "170000000276616c75650007000000e5908d00cea90000",
+      "outputUnits": [
+        21517,
+        0,
+        937
+      ]
+    }
+  ],
+  "bsonNumbers": [
+    {
+      "name": "nan",
+      "bsonHex": "140000000176616c756500000000000000f87f00"
+    },
+    {
+      "name": "positiveInfinity",
+      "bsonHex": "140000000176616c756500000000000000f07f00"
+    },
+    {
+      "name": "negativeInfinity",
+      "bsonHex": "140000000176616c756500000000000000f0ff00"
+    },
+    {
+      "name": "negativeZero",
+      "bsonHex": "140000000176616c756500000000000000008000"
+    },
+    {
+      "name": "fraction",
+      "bsonHex": "140000000176616c756500000000000000f83f00"
+    }
+  ],
+  "versions": {
+    "node": "v24.22.1",
+    "v8": "13.6.233.17-node.58",
+    "typescript": "5.9.3"
+  },
+  "nodePin": "569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108",
+  "pins": {
+    "src/schemas/admin.schema.ts": "b45fef05b1b176cac11283df5ec7d1d09b1fc327bae98e4e7ca4447f43baa2e0",
+    "src/schemas/accounts.schema.ts": "7eab86b048cb05d44e9b17c7498c18b713e4c722b71f58f545158fde040431f1",
+    "src/schemas/credit_gift.schema.ts": "f76f4472354751b42587baa1271214c198aac40b86b5fcb85fd046e4de9c0607",
+    "src/schemas/credit_transaction.schema.ts": "14017b20e83ec2eebf7a10475b5ade495554cc9043685af3dd5045350a9e985f",
+    "package.json": "cc4939f6416a91d4bfaa5bcdd3d448d2f74103a88bb269e0a8e393615cf32cef",
+    "package-lock.json": "abdf5aa71a8272423ebb9358d7aaa87edd7e65f6605c325fe231a4bcef70eeb7",
+    "node_modules/typescript/lib/typescript.js": "3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675",
+    "node_modules/bson/package.json": "ded0e42e4e1cd876a11c9f799e0692f83ee73ebc9fb7796a5bca05039b4b3e23",
+    "node_modules/bson/lib/bson.cjs": "64e5de269bbcdee96f2bebb57cc9729b72aaebde02d832005872b7e575899284",
+    "node_modules/typescript/package.json": "822ef7ca6452205657b6288b066481ecf508bfbf43455d715cf7d3ec457561e6"
+  },
+  "sources": {
+    "src/schemas/admin.schema.ts": "b45fef05b1b176cac11283df5ec7d1d09b1fc327bae98e4e7ca4447f43baa2e0",
+    "src/schemas/accounts.schema.ts": "7eab86b048cb05d44e9b17c7498c18b713e4c722b71f58f545158fde040431f1",
+    "src/schemas/credit_gift.schema.ts": "f76f4472354751b42587baa1271214c198aac40b86b5fcb85fd046e4de9c0607",
+    "src/schemas/credit_transaction.schema.ts": "14017b20e83ec2eebf7a10475b5ade495554cc9043685af3dd5045350a9e985f"
+  },
+  "provenance": {
+    "src/schemas/admin.schema.ts": "archives/dimabot-typescript/2026-10-28/src/schemas/admin.schema.ts",
+    "src/schemas/accounts.schema.ts": "archives/dimabot-typescript/2026-10-28/src/schemas/accounts.schema.ts",
+    "src/schemas/credit_gift.schema.ts": "archives/dimabot-typescript/2026-10-28/src/schemas/credit_gift.schema.ts",
+    "src/schemas/credit_transaction.schema.ts": "archives/dimabot-typescript/2026-10-28/src/schemas/credit_transaction.schema.ts"
+  },
+  "imports": {
+    "admin": [
+      "mongoose"
+    ],
+    "accounts": [
+      "mongoose"
+    ],
+    "credit_gift": [
+      "mongoose"
+    ],
+    "credit_transaction": [
+      "mongoose"
+    ]
+  },
+  "declarations": {
+    "IAdmin": {
+      "file": "src/schemas/admin.schema.ts",
+      "kind": "InterfaceDeclaration",
+      "text": "export interface IAdmin {\n    _id: Types.ObjectId;\n    adminName: string;\n    adminID: string;\n    channelName: string;\n    channelID: string;\n    role?: 'creator' | 'super' | 'support' | 'billing' | 'channel';\n    actived: boolean;\n    permissions: string[];\n    createdAt: Date;\n    updatedAt: Date;\n}",
+      "sha256": "fcd70a61b979586a451d05bcff2a1f9fea92b3a8f7a7666f13e0d6a106d11f35",
+      "members": [
+        {
+          "name": "_id",
+          "type": "Types.ObjectId",
+          "optional": false
+        },
+        {
+          "name": "adminName",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "adminID",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "channelName",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "channelID",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "role",
+          "type": "'creator' | 'super' | 'support' | 'billing' | 'channel'",
+          "optional": true
+        },
+        {
+          "name": "actived",
+          "type": "boolean",
+          "optional": false
+        },
+        {
+          "name": "permissions",
+          "type": "string[]",
+          "optional": false
+        },
+        {
+          "name": "createdAt",
+          "type": "Date",
+          "optional": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "Date",
+          "optional": false
+        }
+      ]
+    },
+    "AdminSchema": {
+      "file": "src/schemas/admin.schema.ts",
+      "kind": "FirstStatement",
+      "text": "export const AdminSchema = model<IAdmin>('Admin', adminSchema);",
+      "sha256": "5e9b953fa0d48cc05325b27f3d774ee37b97bacfc898ca94f752094191b19d30",
+      "members": null
+    },
+    "IAccounts": {
+      "file": "src/schemas/accounts.schema.ts",
+      "kind": "InterfaceDeclaration",
+      "text": "export interface IAccounts {\n    _id: Types.ObjectId;\n    user_id: string;\n    user_login: string;\n    user_email: string;\n    channelID: string;\n    channelName: string;\n    user_type: string;\n    user_token: { iv: string; content: string };\n    user_refresh_token: { iv: string; content: string };\n    createdAt: Date;\n}",
+      "sha256": "7418e047270fcecf61f92233beb5f34aada4d076348fa56445c7e33784f9ae75",
+      "members": [
+        {
+          "name": "_id",
+          "type": "Types.ObjectId",
+          "optional": false
+        },
+        {
+          "name": "user_id",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "user_login",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "user_email",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "channelID",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "channelName",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "user_type",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "user_token",
+          "type": "{ iv: string; content: string }",
+          "optional": false
+        },
+        {
+          "name": "user_refresh_token",
+          "type": "{ iv: string; content: string }",
+          "optional": false
+        },
+        {
+          "name": "createdAt",
+          "type": "Date",
+          "optional": false
+        }
+      ]
+    },
+    "AccountsSchema": {
+      "file": "src/schemas/accounts.schema.ts",
+      "kind": "FirstStatement",
+      "text": "export const AccountsSchema = model<IAccounts>('Account', accountsSchema);",
+      "sha256": "e5562e509373e60ca8811b44439962ac64133c797f954d1114858ddbec2a6a70",
+      "members": null
+    },
+    "CreditGiftStatus": {
+      "file": "src/schemas/credit_gift.schema.ts",
+      "kind": "TypeAliasDeclaration",
+      "text": "export type CreditGiftStatus = 'awaiting_payment' | 'payment_received' | 'delivering' | 'delivered' | 'needs_support';",
+      "sha256": "95d478b9988f670d2d9a84ade3ec3e8e51510ed1f1263e24c23f7bc492255a16",
+      "members": null
+    },
+    "ICreditGift": {
+      "file": "src/schemas/credit_gift.schema.ts",
+      "kind": "InterfaceDeclaration",
+      "text": "export interface ICreditGift {\n    _id: string;\n    buyerId: Types.ObjectId;\n    recipientId: Types.ObjectId;\n    buyerLogin: string;\n    recipientLogin: string;\n    recipientName: string;\n    recipientChannelId: string;\n    productId: string;\n    fulfillmentProductId: string;\n    benefitId: string;\n    credits: number;\n    priceAmount: number;\n    priceCurrency: string;\n    status: CreditGiftStatus;\n    noRefundsAcknowledgedAt: Date;\n    purchaseCreateStartedAt?: Date;\n    checkoutId?: string;\n    checkoutUrl?: string;\n    paidOrderId?: string;\n    buyerCustomerId?: string;\n    paidAt?: Date;\n    fulfillmentCreateStartedAt?: Date;\n    fulfillmentCheckoutId?: string;\n    fulfillmentOrderId?: string;\n    recipientCustomerId?: string;\n    grantId?: string;\n    deliveredAt?: Date;\n    announcedAt?: Date;\n    announcementMessageId?: string;\n    announcementStoppedAt?: Date;\n    announcementAttempts: number;\n    attempts: number;\n    nextAttemptAt: Date;\n    lastError?: string;\n    leaseToken?: string;\n    leaseUntil?: Date;\n    createdAt: Date;\n    updatedAt: Date;\n}",
+      "sha256": "9608b29e9fcc551ccf67c262eb6c00ef9bc05455f9a9ac481ccba4380d9b98d9",
+      "members": [
+        {
+          "name": "_id",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "buyerId",
+          "type": "Types.ObjectId",
+          "optional": false
+        },
+        {
+          "name": "recipientId",
+          "type": "Types.ObjectId",
+          "optional": false
+        },
+        {
+          "name": "buyerLogin",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "recipientLogin",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "recipientName",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "recipientChannelId",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "productId",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "fulfillmentProductId",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "benefitId",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "credits",
+          "type": "number",
+          "optional": false
+        },
+        {
+          "name": "priceAmount",
+          "type": "number",
+          "optional": false
+        },
+        {
+          "name": "priceCurrency",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "status",
+          "type": "CreditGiftStatus",
+          "optional": false
+        },
+        {
+          "name": "noRefundsAcknowledgedAt",
+          "type": "Date",
+          "optional": false
+        },
+        {
+          "name": "purchaseCreateStartedAt",
+          "type": "Date",
+          "optional": true
+        },
+        {
+          "name": "checkoutId",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "checkoutUrl",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "paidOrderId",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "buyerCustomerId",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "paidAt",
+          "type": "Date",
+          "optional": true
+        },
+        {
+          "name": "fulfillmentCreateStartedAt",
+          "type": "Date",
+          "optional": true
+        },
+        {
+          "name": "fulfillmentCheckoutId",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "fulfillmentOrderId",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "recipientCustomerId",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "grantId",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "deliveredAt",
+          "type": "Date",
+          "optional": true
+        },
+        {
+          "name": "announcedAt",
+          "type": "Date",
+          "optional": true
+        },
+        {
+          "name": "announcementMessageId",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "announcementStoppedAt",
+          "type": "Date",
+          "optional": true
+        },
+        {
+          "name": "announcementAttempts",
+          "type": "number",
+          "optional": false
+        },
+        {
+          "name": "attempts",
+          "type": "number",
+          "optional": false
+        },
+        {
+          "name": "nextAttemptAt",
+          "type": "Date",
+          "optional": false
+        },
+        {
+          "name": "lastError",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "leaseToken",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "leaseUntil",
+          "type": "Date",
+          "optional": true
+        },
+        {
+          "name": "createdAt",
+          "type": "Date",
+          "optional": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "Date",
+          "optional": false
+        }
+      ]
+    },
+    "CreditGiftSchema": {
+      "file": "src/schemas/credit_gift.schema.ts",
+      "kind": "FirstStatement",
+      "text": "export const CreditGiftSchema = model<ICreditGift>('CreditGift', schema);",
+      "sha256": "4f0d0d4fc764300783133d4332708cf2b61c6cb351f81029d8624a3164e62653",
+      "members": null
+    },
+    "TRANSACTION_TYPES": {
+      "file": "src/schemas/credit_transaction.schema.ts",
+      "kind": "FirstStatement",
+      "text": "export const TRANSACTION_TYPES = {\n    REFERRAL_BONUS: 'referral_bonus',\n    REFERRAL_PAYOUT: 'referral_payout',\n    SUBSCRIPTION_REWARD: 'subscription_reward',\n    MANUAL_CREDIT: 'manual_credit',\n    MANUAL_DEBIT: 'manual_debit',\n} as const;",
+      "sha256": "0bf3fbf980f0059431e0f30bb318b07816d76c9ac9f1146b42d33a99798f7686",
+      "members": null
+    },
+    "TransactionType": {
+      "file": "src/schemas/credit_transaction.schema.ts",
+      "kind": "TypeAliasDeclaration",
+      "text": "export type TransactionType = (typeof TRANSACTION_TYPES)[keyof typeof TRANSACTION_TYPES];",
+      "sha256": "59c46cedee8324edf0559b97bd00ebad467c98d3e724ce899a46acdb63143459",
+      "members": null
+    },
+    "ICreditTransactionMetadata": {
+      "file": "src/schemas/credit_transaction.schema.ts",
+      "kind": "InterfaceDeclaration",
+      "text": "export interface ICreditTransactionMetadata {\n    referralCodeUsed?: string;\n    referredUserId?: Types.ObjectId;\n    subscriptionId?: string;\n    planId?: string;\n    description?: string;\n    externalReference?: string;\n    rewardTargetType?: 'bot' | 'referrer';\n}",
+      "sha256": "25cb5f4e7225f0a7cfd0bea9263c35eab64ddfb2e0a20ec92444d931caaa6734",
+      "members": [
+        {
+          "name": "referralCodeUsed",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "referredUserId",
+          "type": "Types.ObjectId",
+          "optional": true
+        },
+        {
+          "name": "subscriptionId",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "planId",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "externalReference",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "rewardTargetType",
+          "type": "'bot' | 'referrer'",
+          "optional": true
+        }
+      ]
+    },
+    "ICreditTransaction": {
+      "file": "src/schemas/credit_transaction.schema.ts",
+      "kind": "InterfaceDeclaration",
+      "text": "export interface ICreditTransaction {\n    _id: Types.ObjectId;\n    user: Types.ObjectId;\n    type: TransactionType;\n    amount: number;\n    idempotencyKey?: string;\n    appliedAt?: Date;\n    balanceAfter?: number;\n    metadata: ICreditTransactionMetadata;\n    createdAt: Date;\n    updatedAt: Date;\n}",
+      "sha256": "0e79b90150816bf66af010e396e962fc5ec3330cda10f571ca8485a87f7764e4",
+      "members": [
+        {
+          "name": "_id",
+          "type": "Types.ObjectId",
+          "optional": false
+        },
+        {
+          "name": "user",
+          "type": "Types.ObjectId",
+          "optional": false
+        },
+        {
+          "name": "type",
+          "type": "TransactionType",
+          "optional": false
+        },
+        {
+          "name": "amount",
+          "type": "number",
+          "optional": false
+        },
+        {
+          "name": "idempotencyKey",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "appliedAt",
+          "type": "Date",
+          "optional": true
+        },
+        {
+          "name": "balanceAfter",
+          "type": "number",
+          "optional": true
+        },
+        {
+          "name": "metadata",
+          "type": "ICreditTransactionMetadata",
+          "optional": false
+        },
+        {
+          "name": "createdAt",
+          "type": "Date",
+          "optional": false
+        },
+        {
+          "name": "updatedAt",
+          "type": "Date",
+          "optional": false
+        }
+      ]
+    },
+    "CreditTransactionSchema": {
+      "file": "src/schemas/credit_transaction.schema.ts",
+      "kind": "FirstStatement",
+      "text": "export const CreditTransactionSchema = model<ICreditTransaction>('CreditTransaction', creditTransactionSchema);",
+      "sha256": "f42c0cdc96b25c0752e5baad4cf06774e7b02d550930b97f024775e5a2a422bd",
+      "members": null
+    }
+  },
+  "signatures": {
+    "IAdmin": [
+      {
+        "name": "_id",
+        "type": "ObjectId",
+        "optional": false
+      },
+      {
+        "name": "adminName",
+        "type": "string",
+        "optional": false
+      },
+      {
+        "name": "adminID",
+        "type": "string",
+        "optional": false
+      },
+      {
+        "name": "channelName",
+        "type": "string",
+        "optional": false
+      },
+      {
+        "name": "channelID",
+        "type": "string",
+        "optional": false
+      },
+      {
+        "name": "role",
+        "type": "\"creator\" | \"super\" | \"support\" | \"billing\" | \"channel\" | undefined",
+        "optional": true
+      },
+      {
+        "name": "actived",
+        "type": "boolean",
+        "optional": false
+      },
+      {
+        "name": "permissions",
+        "type": "string[]",
+        "optional": false
+      },
+      {
+        "name": "createdAt",
+        "type": "Date",
+        "optional": false
+      },
+      {
+        "name": "updatedAt",
+        "type": "Date",
+        "optional": false
+      }
+    ],
+    "IAccounts": [
+      {
+        "name": "_id",
+        "type": "ObjectId",
+        "optional": false
+      },
+      {
+        "name": "user_id",
+        "type": "string",
+        "optional": false
+      },
+      {
+        "name": "user_login",
+        "type": "string",
+        "optional": false
+      },
+      {
+        "name": "user_email",
+        "type": "string",
+        "optional": false
+      },
+      {
+        "name": "channelID",
+        "type": "string",
+        "optional": false
+      },
+      {
+        "name": "channelName",
+        "type": "string",
+        "optional": false
+      },
+      {
+        "name": "user_type",
+        "type": "string",
+        "optional": false
+      },
+      {
+        "name": "user_token",
+        "type": "{ iv: string; content: string; }",
+        "optional": false
+      },
+      {
+        "name": "user_refresh_token",
+        "type": "{ iv: string; content: string; }",
+        "optional": false
+      },
+      {
+        "name": "createdAt",
+        "type": "Date",
+        "optional": false
+      }
+    ],
+    "CreditGiftStatus": "CreditGiftStatus",
+    "ICreditGift": [
+      {
+        "name": "_id",
+        "type": "string",
+        "optional": false
+      },
+      {
+        "name": "buyerId",
+        "type": "ObjectId",
+        "optional": false
+      },
+      {
+        "name": "recipientId",
+        "type": "ObjectId",
+        "optional": false
+      },
+      {
+        "name": "buyerLogin",
+        "type": "string",
+        "optional": false
+      },
+      {
+        "name": "recipientLogin",
+        "type": "string",
+        "optional": false
+      },
+      {
+        "name": "recipientName",
+        "type": "string",
+        "optional": false
+      },
+      {
+        "name": "recipientChannelId",
+        "type": "string",
+        "optional": false
+      },
+      {
+        "name": "productId",
+        "type": "string",
+        "optional": false
+      },
+      {
+        "name": "fulfillmentProductId",
+        "type": "string",
+        "optional": false
+      },
+      {
+        "name": "benefitId",
+        "type": "string",
+        "optional": false
+      },
+      {
+        "name": "credits",
+        "type": "number",
+        "optional": false
+      },
+      {
+        "name": "priceAmount",
+        "type": "number",
+        "optional": false
+      },
+      {
+        "name": "priceCurrency",
+        "type": "string",
+        "optional": false
+      },
+      {
+        "name": "status",
+        "type": "CreditGiftStatus",
+        "optional": false
+      },
+      {
+        "name": "noRefundsAcknowledgedAt",
+        "type": "Date",
+        "optional": false
+      },
+      {
+        "name": "purchaseCreateStartedAt",
+        "type": "Date | undefined",
+        "optional": true
+      },
+      {
+        "name": "checkoutId",
+        "type": "string | undefined",
+        "optional": true
+      },
+      {
+        "name": "checkoutUrl",
+        "type": "string | undefined",
+        "optional": true
+      },
+      {
+        "name": "paidOrderId",
+        "type": "string | undefined",
+        "optional": true
+      },
+      {
+        "name": "buyerCustomerId",
+        "type": "string | undefined",
+        "optional": true
+      },
+      {
+        "name": "paidAt",
+        "type": "Date | undefined",
+        "optional": true
+      },
+      {
+        "name": "fulfillmentCreateStartedAt",
+        "type": "Date | undefined",
+        "optional": true
+      },
+      {
+        "name": "fulfillmentCheckoutId",
+        "type": "string | undefined",
+        "optional": true
+      },
+      {
+        "name": "fulfillmentOrderId",
+        "type": "string | undefined",
+        "optional": true
+      },
+      {
+        "name": "recipientCustomerId",
+        "type": "string | undefined",
+        "optional": true
+      },
+      {
+        "name": "grantId",
+        "type": "string | undefined",
+        "optional": true
+      },
+      {
+        "name": "deliveredAt",
+        "type": "Date | undefined",
+        "optional": true
+      },
+      {
+        "name": "announcedAt",
+        "type": "Date | undefined",
+        "optional": true
+      },
+      {
+        "name": "announcementMessageId",
+        "type": "string | undefined",
+        "optional": true
+      },
+      {
+        "name": "announcementStoppedAt",
+        "type": "Date | undefined",
+        "optional": true
+      },
+      {
+        "name": "announcementAttempts",
+        "type": "number",
+        "optional": false
+      },
+      {
+        "name": "attempts",
+        "type": "number",
+        "optional": false
+      },
+      {
+        "name": "nextAttemptAt",
+        "type": "Date",
+        "optional": false
+      },
+      {
+        "name": "lastError",
+        "type": "string | undefined",
+        "optional": true
+      },
+      {
+        "name": "leaseToken",
+        "type": "string | undefined",
+        "optional": true
+      },
+      {
+        "name": "leaseUntil",
+        "type": "Date | undefined",
+        "optional": true
+      },
+      {
+        "name": "createdAt",
+        "type": "Date",
+        "optional": false
+      },
+      {
+        "name": "updatedAt",
+        "type": "Date",
+        "optional": false
+      }
+    ],
+    "TransactionType": "TransactionType",
+    "ICreditTransactionMetadata": [
+      {
+        "name": "referralCodeUsed",
+        "type": "string | undefined",
+        "optional": true
+      },
+      {
+        "name": "referredUserId",
+        "type": "ObjectId | undefined",
+        "optional": true
+      },
+      {
+        "name": "subscriptionId",
+        "type": "string | undefined",
+        "optional": true
+      },
+      {
+        "name": "planId",
+        "type": "string | undefined",
+        "optional": true
+      },
+      {
+        "name": "description",
+        "type": "string | undefined",
+        "optional": true
+      },
+      {
+        "name": "externalReference",
+        "type": "string | undefined",
+        "optional": true
+      },
+      {
+        "name": "rewardTargetType",
+        "type": "\"bot\" | \"referrer\" | undefined",
+        "optional": true
+      }
+    ],
+    "ICreditTransaction": [
+      {
+        "name": "_id",
+        "type": "ObjectId",
+        "optional": false
+      },
+      {
+        "name": "user",
+        "type": "ObjectId",
+        "optional": false
+      },
+      {
+        "name": "type",
+        "type": "TransactionType",
+        "optional": false
+      },
+      {
+        "name": "amount",
+        "type": "number",
+        "optional": false
+      },
+      {
+        "name": "idempotencyKey",
+        "type": "string | undefined",
+        "optional": true
+      },
+      {
+        "name": "appliedAt",
+        "type": "Date | undefined",
+        "optional": true
+      },
+      {
+        "name": "balanceAfter",
+        "type": "number | undefined",
+        "optional": true
+      },
+      {
+        "name": "metadata",
+        "type": "ICreditTransactionMetadata",
+        "optional": false
+      },
+      {
+        "name": "createdAt",
+        "type": "Date",
+        "optional": false
+      },
+      {
+        "name": "updatedAt",
+        "type": "Date",
+        "optional": false
+      }
+    ]
+  },
+  "catalogs": {
+    "adminRoles": [
+      "creator",
+      "super",
+      "support",
+      "billing",
+      "channel"
+    ],
+    "giftStatuses": [
+      "awaiting_payment",
+      "payment_received",
+      "delivering",
+      "delivered",
+      "needs_support"
+    ],
+    "transactionTypes": [
+      {
+        "key": "REFERRAL_BONUS",
+        "value": "referral_bonus"
+      },
+      {
+        "key": "REFERRAL_PAYOUT",
+        "value": "referral_payout"
+      },
+      {
+        "key": "SUBSCRIPTION_REWARD",
+        "value": "subscription_reward"
+      },
+      {
+        "key": "MANUAL_CREDIT",
+        "value": "manual_credit"
+      },
+      {
+        "key": "MANUAL_DEBIT",
+        "value": "manual_debit"
+      }
+    ],
+    "rewardTargets": [
+      "bot",
+      "referrer"
+    ]
+  },
+  "hashes": {
+    "src/schemas/admin.schema.rs": "df4025750cc302da5443cb3a4e19ab07399608960c2d5e42e47cd8e64b8dc7e2",
+    "src/schemas/accounts.schema.rs": "0b765a6d0ddeae47a418f0effe4e80e1ac3da5293affde5e5bd4b0d5f665a5b8",
+    "src/schemas/credit_gift.schema.rs": "86e54181f2037820b8df2abb6f76d607c6f9511687d1aab6650c7c35b51d2e4a",
+    "src/schemas/credit_transaction.schema.rs": "317e0e52aedb6754c2df5c730f936e42d99c252738b91fce323922f843c20ff1",
+    "src/schemas/schema.rs": "60a84d33368cc1d1732422c6aea71c89bdedb1ba10a05b7500ca5ff3d6d82bbb",
+    "src/utils/js_string.rs": "17b3e6a6bcd0d92210851eca25da44bbcdb2c2d9e196feb5dab58d06b75d4aed",
+    "tests/fixtures/schema_named_types_reference.cjs": "452a64a90df194778fa63d5facaa545e2f5338a6a1c209282d832acf5dcfd6fb",
+    "tests/fixtures/schema_source_resolver.cjs": "ae40970d318cb742766929fb253c99bc9173c72197dae8c143caf28a19e2dd3a",
+    "tests/schema_named_types.rs": "c5510afee13c64b873c520367ac89849db06815bce57ffd336a4b4dcbd61c8db",
+    "tests/support/schema_source.rs": "5de262e6dcae5f81720a33fd8f4df1bc8a239fadb5f778c8ff68b6528bc208b6",
+    "tests/support/sha256.rs": "be1fbeade9ca428358081d30b47d0241734db05c94d343634b7e04520c42cf6a"
+  }
+}

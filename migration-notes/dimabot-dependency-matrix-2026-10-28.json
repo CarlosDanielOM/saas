@@ -34342,30 +34342,67 @@
         "role": "application"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/schemas/accounts.schema.ts",
+        "sha256": "7eab86b048cb05d44e9b17c7498c18b713e4c722b71f58f545158fde040431f1",
+        "nativeAreaReference": "dimabot/src/schemas/accounts.schema.rs; migration-notes/schema-named-types.md and the indexed post-retirement source evidence"
+      },
+      "featureReview": "reviewed-local-feature-and-dependency-closure; post-retirement verified",
+      "localRustEvidence": [
+        "dimabot/src/schemas/accounts.schema.rs: native named types and existing accounts SchemaDefinition descriptor; source Mongoose model contract retained",
+        "dimabot/src/schemas/schema.rs and dimabot/src/utils/bson_compat.rs: shared schema repository and BSON serialization boundary",
+        "dimabot/src/utils/js_string.rs: lossless UTF-16 value representation through the native typed layer",
+        "migration-notes/evidence/2026-10-30-schema-named-types/artifacts/schema-named-types/source-bindings.json: commit 425b662cec154d4337f2bcc591c76b8b0f2a7335 and source tree 3c2937e2042719071e2ba02033de15ea23003c279ae276c1e9e1a64d371743aa",
+        "migration-notes/evidence/2026-10-30-schema-named-types/artifacts/schema-named-retirement/source-bindings.json: commit dec14f0afd4176816ab347493b4a9c443ed2a8be and source tree 71ca4cf0d80a38f86f19ebe7291d52af4f852b09bdd93c4bde9abf03a3394997",
+        "migration-notes/schema-named-types.md"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The source and native typed layer preserve declared optional-versus-null behavior; Mongoose stored defaults are represented in separate stored-document projections where needed.",
+        "JsString retains arbitrary UTF-16 units until BSON conversion; explicit BSON serialization replaces lone surrogates exactly as the pinned Node BSON oracle does. Six string and five numeric BSON cases are source-bound.",
+        "Native ObjectId/date values and existing Rust schema descriptors replace Mongoose runtime types and model exports within the bounded model/type contract; broad application workflows and arbitrary Mongoose APIs are outside this row."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "No direct import of accounts.schema.ts was identified in the reviewed application source; the embedded users.accounts array is a distinct model and is not treated as this schema caller."
+        ],
+        "runtimeStatus": "No caller adoption or native cutover was verified. Current TypeScript model paths remain in the application source where consumed; production deployment and total migration completion are separate and remain open."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/schema_named_types_reference.cjs",
+          "dimabot/tests/fixtures/application_schemas_reference.mjs",
+          "dimabot/tests/fixtures/mongoose_date_reference.mjs",
+          "dimabot/tests/fixtures/schema_source_resolver.cjs",
+          "dimabot/tests/fixtures/schema_source_resolver.test.cjs"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/schema_named_types.rs",
+          "dimabot/tests/application_schemas.rs",
+          "migration-notes/evidence/2026-10-30-schema-named-types/runs/final-retirement/compiler-1793362925365685891-receipt.json.gz",
+          "migration-notes/evidence/2026-10-30-schema-named-types/artifacts/schema-named-retirement/oracle-semantic-comparison.json",
+          "migration-notes/schema-named-types.md"
+        ],
+        "status": "Post-retirement compiler run passed three named-type tests, three application-schema tests, source replays, five-zone Mongoose date replay, formatting, scoped/minimal/all-feature strict profiles. No fresh Mongo CRUD was run for these four models. Caller adoption remains open."
       },
       "exports": [
         {
           "name": "AccountsSchema",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "AccountsSchema maps to the native accounts schema module and its typed Rust value where applicable.",
+          "evidence": [
+            "dimabot/src/schemas/accounts.schema.rs",
+            "migration-notes/evidence/2026-10-30-schema-named-types/artifacts/schema-named-retirement/oracle-semantic-comparison.json",
+            "migration-notes/schema-named-types.md"
+          ]
         },
         {
           "name": "IAccounts",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "IAccounts maps to the native accounts schema module and its typed Rust value where applicable.",
+          "evidence": [
+            "dimabot/src/schemas/accounts.schema.rs",
+            "migration-notes/evidence/2026-10-30-schema-named-types/artifacts/schema-named-retirement/oracle-semantic-comparison.json",
+            "migration-notes/schema-named-types.md"
+          ]
         }
       ],
       "imports": [
@@ -34375,15 +34412,15 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named runtime import",
+          "runtimeOrTypeDependency": "Each source imports Mongoose Schema and model as runtime values; source exports the corresponding model and named interfaces/catalog values.",
+          "defaultSideEffectBarrelDetails": "No side-effect or barrel import is involved. The Mongoose schema/model behavior is represented by the native descriptor and common schema boundary.",
+          "directDependencyReview": "Reviewed: Mongoose Schema/model runtime dependency is covered by the MongoDB Rust crate, typed native values and existing SchemaDefinition implementation.",
+          "transitiveDependencyReview": "Reviewed: native BSON, date, ObjectId and UTF-16 foundations are reused; there is no missing application-specific adapter for these schema/type contracts.",
+          "rustReplacementOrGap": "Local schema/type dependency closure and post-retirement source comparisons passed. Mongoose npm internals are not a required port; caller adoption and broader application workflows remain outside this row."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-typed-exports-and-native-value-dependencies-verified;source-retired;caller-adoption-open"
     },
     {
       "source": "src/schemas/admin.schema.ts",
@@ -34393,30 +34430,71 @@
         "role": "application"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/schemas/admin.schema.ts",
+        "sha256": "b45fef05b1b176cac11283df5ec7d1d09b1fc327bae98e4e7ca4447f43baa2e0",
+        "nativeAreaReference": "dimabot/src/schemas/admin.schema.rs; migration-notes/schema-named-types.md and the indexed post-retirement source evidence"
+      },
+      "featureReview": "reviewed-local-feature-and-dependency-closure; post-retirement verified",
+      "localRustEvidence": [
+        "dimabot/src/schemas/admin.schema.rs: native named types and existing admin SchemaDefinition descriptor; source Mongoose model contract retained",
+        "dimabot/src/schemas/schema.rs and dimabot/src/utils/bson_compat.rs: shared schema repository and BSON serialization boundary",
+        "dimabot/src/utils/js_string.rs: lossless UTF-16 value representation through the native typed layer",
+        "migration-notes/evidence/2026-10-30-schema-named-types/artifacts/schema-named-types/source-bindings.json: commit 425b662cec154d4337f2bcc591c76b8b0f2a7335 and source tree 3c2937e2042719071e2ba02033de15ea23003c279ae276c1e9e1a64d371743aa",
+        "migration-notes/evidence/2026-10-30-schema-named-types/artifacts/schema-named-retirement/source-bindings.json: commit dec14f0afd4176816ab347493b4a9c443ed2a8be and source tree 71ca4cf0d80a38f86f19ebe7291d52af4f852b09bdd93c4bde9abf03a3394997",
+        "migration-notes/schema-named-types.md"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The source and native typed layer preserve declared optional-versus-null behavior; Mongoose stored defaults are represented in separate stored-document projections where needed.",
+        "JsString retains arbitrary UTF-16 units until BSON conversion; explicit BSON serialization replaces lone surrogates exactly as the pinned Node BSON oracle does. Six string and five numeric BSON cases are source-bound.",
+        "Native ObjectId/date values and existing Rust schema descriptors replace Mongoose runtime types and model exports within the bounded model/type contract; broad application workflows and arbitrary Mongoose APIs are outside this row."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/src/middleware/admin.middleware.ts",
+          "dimabot/src/server/routes/auth.route.ts",
+          "dimabot/src/server/routes/admin.route.ts",
+          "dimabot/src/utils/cache.ts",
+          "dimabot/src/utils/eventsub_access.ts"
+        ],
+        "runtimeStatus": "No caller adoption or native cutover was verified. Current TypeScript model paths remain in the application source where consumed; production deployment and total migration completion are separate and remain open."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/schema_named_types_reference.cjs",
+          "dimabot/tests/fixtures/application_schemas_reference.mjs",
+          "dimabot/tests/fixtures/mongoose_date_reference.mjs",
+          "dimabot/tests/fixtures/schema_source_resolver.cjs",
+          "dimabot/tests/fixtures/schema_source_resolver.test.cjs"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/schema_named_types.rs",
+          "dimabot/tests/application_schemas.rs",
+          "migration-notes/evidence/2026-10-30-schema-named-types/runs/final-retirement/compiler-1793362925365685891-receipt.json.gz",
+          "migration-notes/evidence/2026-10-30-schema-named-types/artifacts/schema-named-retirement/oracle-semantic-comparison.json",
+          "migration-notes/schema-named-types.md"
+        ],
+        "status": "Post-retirement compiler run passed three named-type tests, three application-schema tests, source replays, five-zone Mongoose date replay, formatting, scoped/minimal/all-feature strict profiles. No fresh Mongo CRUD was run for these four models. Caller adoption remains open."
       },
       "exports": [
         {
           "name": "AdminSchema",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "AdminSchema maps to the native admin schema module and its typed Rust value where applicable.",
+          "evidence": [
+            "dimabot/src/schemas/admin.schema.rs",
+            "migration-notes/evidence/2026-10-30-schema-named-types/artifacts/schema-named-retirement/oracle-semantic-comparison.json",
+            "migration-notes/schema-named-types.md"
+          ]
         },
         {
           "name": "IAdmin",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "IAdmin maps to the native admin schema module and its typed Rust value where applicable.",
+          "evidence": [
+            "dimabot/src/schemas/admin.schema.rs",
+            "migration-notes/evidence/2026-10-30-schema-named-types/artifacts/schema-named-retirement/oracle-semantic-comparison.json",
+            "migration-notes/schema-named-types.md"
+          ]
         }
       ],
       "imports": [
@@ -34426,15 +34504,15 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named runtime import",
+          "runtimeOrTypeDependency": "Each source imports Mongoose Schema and model as runtime values; source exports the corresponding model and named interfaces/catalog values.",
+          "defaultSideEffectBarrelDetails": "No side-effect or barrel import is involved. The Mongoose schema/model behavior is represented by the native descriptor and common schema boundary.",
+          "directDependencyReview": "Reviewed: Mongoose Schema/model runtime dependency is covered by the MongoDB Rust crate, typed native values and existing SchemaDefinition implementation.",
+          "transitiveDependencyReview": "Reviewed: native BSON, date, ObjectId and UTF-16 foundations are reused; there is no missing application-specific adapter for these schema/type contracts.",
+          "rustReplacementOrGap": "Local schema/type dependency closure and post-retirement source comparisons passed. Mongoose npm internals are not a required port; caller adoption and broader application workflows remain outside this row."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-typed-exports-and-native-value-dependencies-verified;source-retired;caller-adoption-open"
     },
     {
       "source": "src/schemas/ai_usage_daily.schema.ts",
@@ -36436,35 +36514,76 @@
         "role": "application"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/schemas/credit_gift.schema.ts",
+        "sha256": "f76f4472354751b42587baa1271214c198aac40b86b5fcb85fd046e4de9c0607",
+        "nativeAreaReference": "dimabot/src/schemas/credit_gift.schema.rs; migration-notes/schema-named-types.md and the indexed post-retirement source evidence"
+      },
+      "featureReview": "reviewed-local-feature-and-dependency-closure; post-retirement verified",
+      "localRustEvidence": [
+        "dimabot/src/schemas/credit_gift.schema.rs: native named types and existing credit_gift SchemaDefinition descriptor; source Mongoose model contract retained",
+        "dimabot/src/schemas/schema.rs and dimabot/src/utils/bson_compat.rs: shared schema repository and BSON serialization boundary",
+        "dimabot/src/utils/js_string.rs: lossless UTF-16 value representation through the native typed layer",
+        "migration-notes/evidence/2026-10-30-schema-named-types/artifacts/schema-named-types/source-bindings.json: commit 425b662cec154d4337f2bcc591c76b8b0f2a7335 and source tree 3c2937e2042719071e2ba02033de15ea23003c279ae276c1e9e1a64d371743aa",
+        "migration-notes/evidence/2026-10-30-schema-named-types/artifacts/schema-named-retirement/source-bindings.json: commit dec14f0afd4176816ab347493b4a9c443ed2a8be and source tree 71ca4cf0d80a38f86f19ebe7291d52af4f852b09bdd93c4bde9abf03a3394997",
+        "migration-notes/schema-named-types.md"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The source and native typed layer preserve declared optional-versus-null behavior; Mongoose stored defaults are represented in separate stored-document projections where needed.",
+        "JsString retains arbitrary UTF-16 units until BSON conversion; explicit BSON serialization replaces lone surrogates exactly as the pinned Node BSON oracle does. Six string and five numeric BSON cases are source-bound.",
+        "Native ObjectId/date values and existing Rust schema descriptors replace Mongoose runtime types and model exports within the bounded model/type contract; broad application workflows and arbitrary Mongoose APIs are outside this row."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/src/utils/credit_gifts.ts"
+        ],
+        "runtimeStatus": "No caller adoption or native cutover was verified. Current TypeScript model paths remain in the application source where consumed; production deployment and total migration completion are separate and remain open."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/schema_named_types_reference.cjs",
+          "dimabot/tests/fixtures/application_schemas_reference.mjs",
+          "dimabot/tests/fixtures/mongoose_date_reference.mjs",
+          "dimabot/tests/fixtures/schema_source_resolver.cjs",
+          "dimabot/tests/fixtures/schema_source_resolver.test.cjs"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/schema_named_types.rs",
+          "dimabot/tests/application_schemas.rs",
+          "migration-notes/evidence/2026-10-30-schema-named-types/runs/final-retirement/compiler-1793362925365685891-receipt.json.gz",
+          "migration-notes/evidence/2026-10-30-schema-named-types/artifacts/schema-named-retirement/oracle-semantic-comparison.json",
+          "migration-notes/schema-named-types.md"
+        ],
+        "status": "Post-retirement compiler run passed three named-type tests, three application-schema tests, source replays, five-zone Mongoose date replay, formatting, scoped/minimal/all-feature strict profiles. No fresh Mongo CRUD was run for these four models. Caller adoption remains open."
       },
       "exports": [
         {
           "name": "CreditGiftSchema",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "CreditGiftSchema maps to the native credit_gift schema module and its typed Rust value where applicable.",
+          "evidence": [
+            "dimabot/src/schemas/credit_gift.schema.rs",
+            "migration-notes/evidence/2026-10-30-schema-named-types/artifacts/schema-named-retirement/oracle-semantic-comparison.json",
+            "migration-notes/schema-named-types.md"
+          ]
         },
         {
           "name": "CreditGiftStatus",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "CreditGiftStatus maps to the native credit_gift schema module and its typed Rust value where applicable.",
+          "evidence": [
+            "dimabot/src/schemas/credit_gift.schema.rs",
+            "migration-notes/evidence/2026-10-30-schema-named-types/artifacts/schema-named-retirement/oracle-semantic-comparison.json",
+            "migration-notes/schema-named-types.md"
+          ]
         },
         {
           "name": "ICreditGift",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "ICreditGift maps to the native credit_gift schema module and its typed Rust value where applicable.",
+          "evidence": [
+            "dimabot/src/schemas/credit_gift.schema.rs",
+            "migration-notes/evidence/2026-10-30-schema-named-types/artifacts/schema-named-retirement/oracle-semantic-comparison.json",
+            "migration-notes/schema-named-types.md"
+          ]
         }
       ],
       "imports": [
@@ -36474,15 +36593,15 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named runtime import",
+          "runtimeOrTypeDependency": "Each source imports Mongoose Schema and model as runtime values; source exports the corresponding model and named interfaces/catalog values.",
+          "defaultSideEffectBarrelDetails": "No side-effect or barrel import is involved. The Mongoose schema/model behavior is represented by the native descriptor and common schema boundary.",
+          "directDependencyReview": "Reviewed: Mongoose Schema/model runtime dependency is covered by the MongoDB Rust crate, typed native values and existing SchemaDefinition implementation.",
+          "transitiveDependencyReview": "Reviewed: native BSON, date, ObjectId and UTF-16 foundations are reused; there is no missing application-specific adapter for these schema/type contracts.",
+          "rustReplacementOrGap": "Local schema/type dependency closure and post-retirement source comparisons passed. Mongoose npm internals are not a required port; caller adoption and broader application workflows remain outside this row."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-typed-exports-and-native-value-dependencies-verified;source-retired;caller-adoption-open"
     },
     {
       "source": "src/schemas/credit_transaction.schema.ts",
@@ -36492,45 +36611,96 @@
         "role": "application"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/schemas/credit_transaction.schema.ts",
+        "sha256": "14017b20e83ec2eebf7a10475b5ade495554cc9043685af3dd5045350a9e985f",
+        "nativeAreaReference": "dimabot/src/schemas/credit_transaction.schema.rs; migration-notes/schema-named-types.md and the indexed post-retirement source evidence"
+      },
+      "featureReview": "reviewed-local-feature-and-dependency-closure; post-retirement verified",
+      "localRustEvidence": [
+        "dimabot/src/schemas/credit_transaction.schema.rs: native named types and existing credit_transaction SchemaDefinition descriptor; source Mongoose model contract retained",
+        "dimabot/src/schemas/schema.rs and dimabot/src/utils/bson_compat.rs: shared schema repository and BSON serialization boundary",
+        "dimabot/src/utils/js_string.rs: lossless UTF-16 value representation through the native typed layer",
+        "migration-notes/evidence/2026-10-30-schema-named-types/artifacts/schema-named-types/source-bindings.json: commit 425b662cec154d4337f2bcc591c76b8b0f2a7335 and source tree 3c2937e2042719071e2ba02033de15ea23003c279ae276c1e9e1a64d371743aa",
+        "migration-notes/evidence/2026-10-30-schema-named-types/artifacts/schema-named-retirement/source-bindings.json: commit dec14f0afd4176816ab347493b4a9c443ed2a8be and source tree 71ca4cf0d80a38f86f19ebe7291d52af4f852b09bdd93c4bde9abf03a3394997",
+        "migration-notes/schema-named-types.md"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The source and native typed layer preserve declared optional-versus-null behavior; Mongoose stored defaults are represented in separate stored-document projections where needed.",
+        "JsString retains arbitrary UTF-16 units until BSON conversion; explicit BSON serialization replaces lone surrogates exactly as the pinned Node BSON oracle does. Six string and five numeric BSON cases are source-bound.",
+        "Native ObjectId/date values and existing Rust schema descriptors replace Mongoose runtime types and model exports within the bounded model/type contract; broad application workflows and arbitrary Mongoose APIs are outside this row."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/src/utils/referral.ts",
+          "dimabot/src/utils/referral_ledger.ts",
+          "dimabot/src/utils/paid_order_reward.ts"
+        ],
+        "runtimeStatus": "No caller adoption or native cutover was verified. Current TypeScript model paths remain in the application source where consumed; production deployment and total migration completion are separate and remain open."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "dimabot/tests/fixtures/schema_named_types_reference.cjs",
+          "dimabot/tests/fixtures/application_schemas_reference.mjs",
+          "dimabot/tests/fixtures/mongoose_date_reference.mjs",
+          "dimabot/tests/fixtures/schema_source_resolver.cjs",
+          "dimabot/tests/fixtures/schema_source_resolver.test.cjs"
+        ],
+        "rustBehaviorEvidence": [
+          "dimabot/tests/schema_named_types.rs",
+          "dimabot/tests/application_schemas.rs",
+          "migration-notes/evidence/2026-10-30-schema-named-types/runs/final-retirement/compiler-1793362925365685891-receipt.json.gz",
+          "migration-notes/evidence/2026-10-30-schema-named-types/artifacts/schema-named-retirement/oracle-semantic-comparison.json",
+          "migration-notes/schema-named-types.md"
+        ],
+        "status": "Post-retirement compiler run passed three named-type tests, three application-schema tests, source replays, five-zone Mongoose date replay, formatting, scoped/minimal/all-feature strict profiles. No fresh Mongo CRUD was run for these four models. Caller adoption remains open."
       },
       "exports": [
         {
           "name": "CreditTransactionSchema",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "CreditTransactionSchema maps to the native credit_transaction schema module and its typed Rust value where applicable.",
+          "evidence": [
+            "dimabot/src/schemas/credit_transaction.schema.rs",
+            "migration-notes/evidence/2026-10-30-schema-named-types/artifacts/schema-named-retirement/oracle-semantic-comparison.json",
+            "migration-notes/schema-named-types.md"
+          ]
         },
         {
           "name": "ICreditTransaction",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "ICreditTransaction maps to the native credit_transaction schema module and its typed Rust value where applicable.",
+          "evidence": [
+            "dimabot/src/schemas/credit_transaction.schema.rs",
+            "migration-notes/evidence/2026-10-30-schema-named-types/artifacts/schema-named-retirement/oracle-semantic-comparison.json",
+            "migration-notes/schema-named-types.md"
+          ]
         },
         {
           "name": "ICreditTransactionMetadata",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "ICreditTransactionMetadata maps to the native credit_transaction schema module and its typed Rust value where applicable.",
+          "evidence": [
+            "dimabot/src/schemas/credit_transaction.schema.rs",
+            "migration-notes/evidence/2026-10-30-schema-named-types/artifacts/schema-named-retirement/oracle-semantic-comparison.json",
+            "migration-notes/schema-named-types.md"
+          ]
         },
         {
           "name": "TRANSACTION_TYPES",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "Existing TRANSACTION_TYPES and named transaction constants reuse the Rust schema catalog.",
+          "evidence": [
+            "dimabot/src/schemas/credit_transaction.schema.rs",
+            "migration-notes/evidence/2026-10-30-schema-named-types/artifacts/schema-named-retirement/oracle-semantic-comparison.json",
+            "migration-notes/schema-named-types.md"
+          ]
         },
         {
           "name": "TransactionType",
-          "nativeMapping": "unreviewed",
-          "evidence": []
+          "nativeMapping": "TransactionType maps to the Rust transaction-kind enum and corresponding schema catalog.",
+          "evidence": [
+            "dimabot/src/schemas/credit_transaction.schema.rs",
+            "migration-notes/evidence/2026-10-30-schema-named-types/artifacts/schema-named-retirement/oracle-semantic-comparison.json",
+            "migration-notes/schema-named-types.md"
+          ]
         }
       ],
       "imports": [
@@ -36540,15 +36710,15 @@
           "specifierCategory": "bare-package-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named runtime import",
+          "runtimeOrTypeDependency": "Each source imports Mongoose Schema and model as runtime values; source exports the corresponding model and named interfaces/catalog values.",
+          "defaultSideEffectBarrelDetails": "No side-effect or barrel import is involved. The Mongoose schema/model behavior is represented by the native descriptor and common schema boundary.",
+          "directDependencyReview": "Reviewed: Mongoose Schema/model runtime dependency is covered by the MongoDB Rust crate, typed native values and existing SchemaDefinition implementation.",
+          "transitiveDependencyReview": "Reviewed: native BSON, date, ObjectId and UTF-16 foundations are reused; there is no missing application-specific adapter for these schema/type contracts.",
+          "rustReplacementOrGap": "Local schema/type dependency closure and post-retirement source comparisons passed. Mongoose npm internals are not a required port; caller adoption and broader application workflows remain outside this row."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "local-typed-exports-and-native-value-dependencies-verified;source-retired;caller-adoption-open"
     },
     {
       "source": "src/schemas/custom_timer.schema.ts",

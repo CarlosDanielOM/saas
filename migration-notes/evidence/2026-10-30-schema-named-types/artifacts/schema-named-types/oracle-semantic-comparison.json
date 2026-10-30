@@ -1,0 +1,13 @@
+{
+  "format": true,
+  "bsonStrings": true,
+  "bsonNumbers": true,
+  "versions": true,
+  "nodePin": true,
+  "pins": true,
+  "sources": true,
+  "imports": true,
+  "declarations": true,
+  "signatures": true,
+  "catalogs": true
+}

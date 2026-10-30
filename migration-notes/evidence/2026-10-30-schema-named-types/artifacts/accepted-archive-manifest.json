@@ -1,0 +1,165 @@
+{
+  "scope": "Completed native leaf helpers, AST exports, credential/JWT exports, TTS session/playback and credit fallback helpers, and channel TTS settings schema; no runtime cutover or deployment. Performance regressions remain tracked separately.",
+  "files": [
+    {
+      "source": "src/utils/shared_chat_origin.ts",
+      "sha256": "da3f36a056c7af696c81f27e676f68a1966f12f4cb2bb10745986a64800b620f"
+    },
+    {
+      "source": "src/utils/raid_direction.ts",
+      "sha256": "4dd1222da4f496fcd3f047537be318be4681bb5515849392ee2c628045d0e2c8"
+    },
+    {
+      "source": "src/utils/twitch_reward_body.util.ts",
+      "sha256": "4981de2ad92fb7cdbfbc3c82a595dd2613dd948c1fde2396a7ee3e4dbbb86694"
+    },
+    {
+      "source": "src/utils/eventsub_condition.ts",
+      "sha256": "9cc168f1d91143e8da3e74f06271845247f6ac460618d9134fb433b3925d8d03"
+    },
+    {
+      "source": "src/utils/eventsub_bits_config.ts",
+      "sha256": "9d3d64942102c1826bf0b6fbe7b92cc0c4d5cb34d31cc200c6f73a7d6104218c"
+    },
+    {
+      "source": "src/utils/eventsub_reconciliation_policy.ts",
+      "sha256": "01f9711b9be29933b031fe794ed5613ce200ddc515b82f094db87ac7c1edf7fe"
+    },
+    {
+      "source": "src/utils/links.ts",
+      "sha256": "145c49f639eda2b36bff73d30d8f2b4558f51eab7f56ee7804d88aef8834756a"
+    },
+    {
+      "source": "src/utils/ast_blocks/from_ast.ts",
+      "sha256": "313acea721830325002db9fbe573d27a8f78f2cc16182ce474feb3310439836d"
+    },
+    {
+      "source": "src/utils/ast_blocks/normalize.ts",
+      "sha256": "d07a2c26e1696361ab096e58f6d2fec440959289a4d359643d93918e32f678af"
+    },
+    {
+      "source": "src/utils/ast_blocks/to_source.ts",
+      "sha256": "04a0e5a69b1f2359e7fcba076fc88e2a8478ab0da80ffd001afda29b228fb706"
+    },
+    {
+      "source": "src/utils/crypto.ts",
+      "sha256": "6d2cd4ed54d87a3d0daf0ad7548d02dda07990eb5b3279e613aa260b4d3b2f71"
+    },
+    {
+      "source": "src/utils/email/email-activation-token.ts",
+      "sha256": "73ea7d089c1b8c205c9e11973a7f8fbb47d887a3e08f68e7d76685b41f98836a"
+    },
+    {
+      "source": "src/utils/tts/tts_session.util.ts",
+      "sha256": "78044a8de50631bd6287b9e969ddb6130a7dbf9f319d2668c7e08c6e26e703f7"
+    },
+    {
+      "source": "src/utils/tts/tts_playback_timeout.util.ts",
+      "sha256": "4a93d87b78e79025db05eed4c21e1f76acc2c5cdfa1efeb7dd46e4956276c259"
+    },
+    {
+      "source": "src/utils/tts/tts_credit_fallback.util.ts",
+      "sha256": "1e67d7b9368ed7835339e6df2e33a2d1a94e590d288a034532a18915f8c0f2de"
+    },
+    {
+      "source": "src/schemas/channel_tts_settings.schema.ts",
+      "sha256": "5e943f59906bdf4f63dbb52497ccc8607c6fb069cf8b9af0521a4652245c64c2"
+    },
+    {
+      "source": "src/handlers/tts_credit_fallback.test.ts",
+      "sha256": "ebae79d15263f866cf69661a9f964cb41645a1ca383b53dd8ebb0f0a48885669"
+    },
+    {
+      "source": "src/utils/tts/expressive_tts_tags.util.ts",
+      "sha256": "03523ebc5bb2f8c99b528e1c61d90126f655716945f100098c6a53b9f731699e"
+    },
+    {
+      "source": "src/utils/tts/kokoro_voices.util.ts",
+      "sha256": "6d06216a94959645a4ed75e82a2b68a39b329c01373f63644f7a3794afc5466b"
+    },
+    {
+      "source": "src/utils/tts/normalize_tts_message.util.ts",
+      "sha256": "6e8030f033e9e32c357c669d8b0d09cbc91a30c814cd5ea3c6a0109ccdb88adc"
+    },
+    {
+      "source": "src/utils/tts/normalize_tts_message.util.test.ts",
+      "sha256": "5f36c7346ecd23130ff9b035b8c3f8561dd094fba6a7b16a696e30ccaefe1d39"
+    },
+    {
+      "source": "src/utils/moderation/rules/caps.rule.ts",
+      "sha256": "62f7fe37760cbf5640544cab646a639d06b42883532657634a00e25488888797"
+    },
+    {
+      "source": "src/utils/moderation/rules/caps.rule.test.ts",
+      "sha256": "e5c57c81e142ade8079a77bc5dc9c345a0dde2c8f695e4a5fca45064738887ce"
+    },
+    {
+      "source": "src/utils/moderation/rules/emote_spam.rule.ts",
+      "sha256": "24e7c603569d1063642575372de1066e4f5d5d5de46c88e15e450a549c17f12f"
+    },
+    {
+      "source": "src/utils/moderation/seed_plan.ts",
+      "sha256": "529f7a4e395c2a4181c05be81f73082b7a5b52ef6ee18ea4036f9f66ac86b541"
+    },
+    {
+      "source": "src/utils/moderation/defaults.test.ts",
+      "sha256": "5c40dce38b888f0076a3d64480087527e9cc7e986fec243ea70fedc6918be9fb"
+    },
+    {
+      "source": "src/utils/ai_usage_event.ts",
+      "sha256": "87ff158c166652ea1eb64199ea4c9c6250b35db90399cb658ef6c3086628de60"
+    },
+    {
+      "source": "src/utils/ai_usage_event.test.ts",
+      "sha256": "d882a40637225a6454c5d6dde78741fc4f15732a37f48fc2027bc85f5a8e2619"
+    },
+    {
+      "source": "src/utils/moderation/normalize.ts",
+      "sha256": "07822ff6efe5d707173b6b9e9415b16edfb0eb055c3a03416bf4b4c0c11740ab"
+    },
+    {
+      "source": "src/utils/moderation/rules/links.rule.ts",
+      "sha256": "802150266d30c163a4069dd434b723e0320aed50ed34bc2f5674ac267aa41ad0"
+    },
+    {
+      "source": "src/utils/moderation/spam_categories.ts",
+      "sha256": "29dd0951ea0b89567c55b5dce4d2795a74c78e6064b32cbd26a3ecafaa435088"
+    },
+    {
+      "source": "src/schemas/oauth_client.schema.ts",
+      "sha256": "48e796d493fbbc16466e50c2e6dd9f2c46558c76854b900c8b1d585f20b71dc8"
+    },
+    {
+      "source": "src/schemas/oauth_grant.schema.ts",
+      "sha256": "b82f455eeb977def6100a19e3d190acfed616d6fa9ad7501cc3c1f3523c00df1"
+    },
+    {
+      "source": "src/schemas/oauth_refresh_token.schema.ts",
+      "sha256": "21568d96d49bc49ee0bc94e0c1b6715cc626368ed736522eeb3ce04152ae54ae"
+    },
+    {
+      "source": "src/schemas/oauth_session.schema.ts",
+      "sha256": "d383f6bb4c900cfa8323c32719f1b04c8aec0f468d6cfb0fedae7416d6251556"
+    },
+    {
+      "source": "src/schemas/moderation_action_log.schema.ts",
+      "sha256": "637955d22fc1c7e0ba953ec410a15a2bb324b0340062bd17bc08c13cd975e28b"
+    },
+    {
+      "source": "src/schemas/admin.schema.ts",
+      "sha256": "b45fef05b1b176cac11283df5ec7d1d09b1fc327bae98e4e7ca4447f43baa2e0"
+    },
+    {
+      "source": "src/schemas/accounts.schema.ts",
+      "sha256": "7eab86b048cb05d44e9b17c7498c18b713e4c722b71f58f545158fde040431f1"
+    },
+    {
+      "source": "src/schemas/credit_gift.schema.ts",
+      "sha256": "f76f4472354751b42587baa1271214c198aac40b86b5fcb85fd046e4de9c0607"
+    },
+    {
+      "source": "src/schemas/credit_transaction.schema.ts",
+      "sha256": "14017b20e83ec2eebf7a10475b5ade495554cc9043685af3dd5045350a9e985f"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+[
+  "dimabot/Cargo.toml",
+  "dimabot/src/schemas/admin.schema.rs",
+  "dimabot/src/schemas/accounts.schema.rs",
+  "dimabot/src/schemas/credit_gift.schema.rs",
+  "dimabot/src/schemas/credit_transaction.schema.rs",
+  "dimabot/tests/schema_named_types.rs",
+  "dimabot/tests/fixtures/schema_named_types_reference.cjs"
+]

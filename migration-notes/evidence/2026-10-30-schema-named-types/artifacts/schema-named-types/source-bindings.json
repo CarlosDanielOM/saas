@@ -1,0 +1,9 @@
+{
+  "source_commit": "425b662cec154d4337f2bcc591c76b8b0f2a7335",
+  "source_tree_sha256": "3c2937e2042719071e2ba02033de15ea23003c279ae276c1e9e1a64d371743aa",
+  "input_count": 1482,
+  "git_input_count": 1472,
+  "reused_sdk_input_count": 10,
+  "reused_sdk_capture_root": "migration-notes/evidence/2026-10-30-moderation-semantic/reproduction-tools/reused-sdk-inputs",
+  "all_input_hashes_match": true
+}

@@ -1,0 +1,7 @@
+{
+  "excluded_unverified_files": [
+    "dimabot/src/functions/chats/delete_message.chat.rs",
+    "dimabot/tests/support/delete_twitch_message_draft.rs",
+    "dimabot/tests/fixtures/delete_twitch_message_reference.cjs"
+  ]
+}

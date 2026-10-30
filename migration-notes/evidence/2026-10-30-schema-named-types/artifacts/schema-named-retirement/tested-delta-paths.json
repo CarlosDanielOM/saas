@@ -1,0 +1,19 @@
+[
+  "archives/dimabot-typescript/2026-10-28/README.md",
+  "archives/dimabot-typescript/2026-10-28/manifest.json",
+  "dimabot/tests/application_schemas.rs",
+  "dimabot/tests/schema_named_types.rs",
+  "dimabot/tests/support/schema_source.rs",
+  "dimabot/tests/fixtures/schema_source_resolver.cjs",
+  "dimabot/tests/fixtures/schema_source_resolver.test.cjs",
+  "dimabot/tests/fixtures/schema_named_types_reference.cjs",
+  "dimabot/tests/fixtures/mongoose_date_reference.mjs",
+  "dimabot/src/schemas/admin.schema.ts",
+  "archives/dimabot-typescript/2026-10-28/src/schemas/admin.schema.ts",
+  "dimabot/src/schemas/accounts.schema.ts",
+  "archives/dimabot-typescript/2026-10-28/src/schemas/accounts.schema.ts",
+  "dimabot/src/schemas/credit_gift.schema.ts",
+  "archives/dimabot-typescript/2026-10-28/src/schemas/credit_gift.schema.ts",
+  "dimabot/src/schemas/credit_transaction.schema.ts",
+  "archives/dimabot-typescript/2026-10-28/src/schemas/credit_transaction.schema.ts"
+]

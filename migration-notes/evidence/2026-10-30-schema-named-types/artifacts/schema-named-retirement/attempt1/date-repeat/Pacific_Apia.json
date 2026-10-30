@@ -1,0 +1,1568 @@
+{
+  "metadata": {
+    "node": "v24.22.1",
+    "versions": {
+      "node": "24.22.1",
+      "acorn": "8.18.0",
+      "ada": "4.0.0",
+      "amaro": "1.1.11",
+      "ares": "1.34.9",
+      "brotli": "1.2.0",
+      "cldr": "48.0",
+      "icu": "78.3",
+      "llhttp": "9.4.3",
+      "merve": "1.2.2",
+      "modules": "137",
+      "napi": "10",
+      "nbytes": "0.1.4",
+      "ncrypto": "0.0.1",
+      "nghttp2": "1.70.0",
+      "nghttp3": "",
+      "ngtcp2": "",
+      "openssl": "3.5.9",
+      "simdjson": "4.6.11",
+      "simdutf": "6.4.0",
+      "sqlite": "3.53.4",
+      "tz": "2026e",
+      "undici": "7.30.1",
+      "unicode": "17.0",
+      "uv": "1.52.1",
+      "uvwasi": "0.0.23",
+      "v8": "13.6.233.17-node.58",
+      "zlib": "1.3.2.1-motley-285e94b",
+      "zstd": "1.5.7"
+    },
+    "mongoose": "8.24.2",
+    "zone": "Pacific/Apia",
+    "hashes": {
+      "oracle": "75f99c97694299a97ffbfd3fea11a9a6a4bbdbb2b2b4639dd205df580e033308",
+      "adminSource": "b45fef05b1b176cac11283df5ec7d1d09b1fc327bae98e4e7ca4447f43baa2e0",
+      "caster": "bed12f8a0fe654c188b666f59b0149a204cad4099e49d6f2a2bc64a978d0bd92",
+      "schemaDate": "1bffe2a1868e648c7b5c28da2b51d362e9d6d441f8dc85e2a240018995323e3c",
+      "schemaType": "ea76d4fd915c2bde521dfdb46257852464d0ffda4165c8af330e0b30c869e7f0",
+      "castError": "68f0326dfbb314c81602ee19906b20b7475bd8c4b9746939a0d1931975c0f91e"
+    }
+  },
+  "cases": [
+    {
+      "input": {
+        "kind": "json",
+        "value": null
+      },
+      "expected": {
+        "value": null
+      },
+      "schema": {
+        "value": null
+      },
+      "admin": {
+        "value": null
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": true
+      },
+      "expected": {
+        "error": "cast"
+      },
+      "schema": {
+        "errors": [
+          {
+            "path": "d",
+            "kind": "cast"
+          }
+        ]
+      },
+      "admin": {
+        "errors": [
+          {
+            "path": "createdAt",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": false
+      },
+      "expected": {
+        "error": "cast"
+      },
+      "schema": {
+        "errors": [
+          {
+            "path": "d",
+            "kind": "cast"
+          }
+        ]
+      },
+      "admin": {
+        "errors": [
+          {
+            "path": "createdAt",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": ""
+      },
+      "expected": {
+        "value": null
+      },
+      "schema": {
+        "value": null
+      },
+      "admin": {
+        "value": null
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": " "
+      },
+      "expected": {
+        "error": "cast"
+      },
+      "schema": {
+        "errors": [
+          {
+            "path": "d",
+            "kind": "cast"
+          }
+        ]
+      },
+      "admin": {
+        "errors": [
+          {
+            "path": "createdAt",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": "\t"
+      },
+      "expected": {
+        "error": "cast"
+      },
+      "schema": {
+        "errors": [
+          {
+            "path": "d",
+            "kind": "cast"
+          }
+        ]
+      },
+      "admin": {
+        "errors": [
+          {
+            "path": "createdAt",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": "0"
+      },
+      "expected": {
+        "value": 946724400000
+      },
+      "schema": {
+        "value": 946724400000
+      },
+      "admin": {
+        "value": 946724400000
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": "1"
+      },
+      "expected": {
+        "value": 978346800000
+      },
+      "schema": {
+        "value": 978346800000
+      },
+      "admin": {
+        "value": 978346800000
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": "12"
+      },
+      "expected": {
+        "value": 1007204400000
+      },
+      "schema": {
+        "value": 1007204400000
+      },
+      "admin": {
+        "value": 1007204400000
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": "13"
+      },
+      "expected": {
+        "error": "cast"
+      },
+      "schema": {
+        "errors": [
+          {
+            "path": "d",
+            "kind": "cast"
+          }
+        ]
+      },
+      "admin": {
+        "errors": [
+          {
+            "path": "createdAt",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": "49"
+      },
+      "expected": {
+        "value": 2493025200000
+      },
+      "schema": {
+        "value": 2493025200000
+      },
+      "admin": {
+        "value": 2493025200000
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": "50"
+      },
+      "expected": {
+        "value": -631110600000
+      },
+      "schema": {
+        "value": -631110600000
+      },
+      "admin": {
+        "value": -631110600000
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": "99"
+      },
+      "expected": {
+        "value": 915188400000
+      },
+      "schema": {
+        "value": 915188400000
+      },
+      "admin": {
+        "value": 915188400000
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": "100"
+      },
+      "expected": {
+        "value": -59011504384000
+      },
+      "schema": {
+        "value": -59011504384000
+      },
+      "admin": {
+        "value": -59011504384000
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": "2000"
+      },
+      "expected": {
+        "value": 946684800000
+      },
+      "schema": {
+        "value": 946684800000
+      },
+      "admin": {
+        "value": 946684800000
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": "275760"
+      },
+      "expected": {
+        "value": 8639977834800000
+      },
+      "schema": {
+        "value": 8639977834800000
+      },
+      "admin": {
+        "value": 8639977834800000
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": "275761"
+      },
+      "expected": {
+        "value": 275761
+      },
+      "schema": {
+        "value": 275761
+      },
+      "admin": {
+        "value": 275761
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": "-271820"
+      },
+      "expected": {
+        "value": -8639977881600000
+      },
+      "schema": {
+        "value": -8639977881600000
+      },
+      "admin": {
+        "value": -8639977881600000
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": "-271821"
+      },
+      "expected": {
+        "value": -271821
+      },
+      "schema": {
+        "value": -271821
+      },
+      "admin": {
+        "value": -271821
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": "275760.9"
+      },
+      "expected": {
+        "value": 8639998916400000
+      },
+      "schema": {
+        "value": 8639998916400000
+      },
+      "admin": {
+        "value": 8639998916400000
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": "-271820.1"
+      },
+      "expected": {
+        "value": -271820
+      },
+      "schema": {
+        "value": -271820
+      },
+      "admin": {
+        "value": -271820
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": "1e6"
+      },
+      "expected": {
+        "value": 1000000
+      },
+      "schema": {
+        "value": 1000000
+      },
+      "admin": {
+        "value": 1000000
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": "0x43531"
+      },
+      "expected": {
+        "value": 275761
+      },
+      "schema": {
+        "value": 275761
+      },
+      "admin": {
+        "value": 275761
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": "0b100"
+      },
+      "expected": {
+        "error": "cast"
+      },
+      "schema": {
+        "errors": [
+          {
+            "path": "d",
+            "kind": "cast"
+          }
+        ]
+      },
+      "admin": {
+        "errors": [
+          {
+            "path": "createdAt",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": "0o77"
+      },
+      "expected": {
+        "error": "cast"
+      },
+      "schema": {
+        "errors": [
+          {
+            "path": "d",
+            "kind": "cast"
+          }
+        ]
+      },
+      "admin": {
+        "errors": [
+          {
+            "path": "createdAt",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": "Infinity"
+      },
+      "expected": {
+        "error": "cast"
+      },
+      "schema": {
+        "errors": [
+          {
+            "path": "d",
+            "kind": "cast"
+          }
+        ]
+      },
+      "admin": {
+        "errors": [
+          {
+            "path": "createdAt",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": "-Infinity"
+      },
+      "expected": {
+        "error": "cast"
+      },
+      "schema": {
+        "errors": [
+          {
+            "path": "d",
+            "kind": "cast"
+          }
+        ]
+      },
+      "admin": {
+        "errors": [
+          {
+            "path": "createdAt",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": "-0"
+      },
+      "expected": {
+        "value": 946724400000
+      },
+      "schema": {
+        "value": 946724400000
+      },
+      "admin": {
+        "value": 946724400000
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": "+275761"
+      },
+      "expected": {
+        "value": 275761
+      },
+      "schema": {
+        "value": 275761
+      },
+      "admin": {
+        "value": 275761
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": " 275761 "
+      },
+      "expected": {
+        "value": 275761
+      },
+      "schema": {
+        "value": 275761
+      },
+      "admin": {
+        "value": 275761
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": "8640000000000000"
+      },
+      "expected": {
+        "value": 8640000000000000
+      },
+      "schema": {
+        "value": 8640000000000000
+      },
+      "admin": {
+        "value": 8640000000000000
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": "8640000000000001"
+      },
+      "expected": {
+        "error": "cast"
+      },
+      "schema": {
+        "errors": [
+          {
+            "path": "d",
+            "kind": "cast"
+          }
+        ]
+      },
+      "admin": {
+        "errors": [
+          {
+            "path": "createdAt",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": "-8640000000000000"
+      },
+      "expected": {
+        "value": -8640000000000000
+      },
+      "schema": {
+        "value": -8640000000000000
+      },
+      "admin": {
+        "value": -8640000000000000
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": "-8640000000000001"
+      },
+      "expected": {
+        "error": "cast"
+      },
+      "schema": {
+        "errors": [
+          {
+            "path": "d",
+            "kind": "cast"
+          }
+        ]
+      },
+      "admin": {
+        "errors": [
+          {
+            "path": "createdAt",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": "2000-02-30"
+      },
+      "expected": {
+        "value": 951868800000
+      },
+      "schema": {
+        "value": 951868800000
+      },
+      "admin": {
+        "value": 951868800000
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": "2024-03-10T02:30:00"
+      },
+      "expected": {
+        "value": 1709991000000
+      },
+      "schema": {
+        "value": 1709991000000
+      },
+      "admin": {
+        "value": 1709991000000
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": "2024-11-03T01:30:00"
+      },
+      "expected": {
+        "value": 1730550600000
+      },
+      "schema": {
+        "value": 1730550600000
+      },
+      "admin": {
+        "value": 1730550600000
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": "January 4, 2020 10:20:30"
+      },
+      "expected": {
+        "value": 1578082830000
+      },
+      "schema": {
+        "value": 1578082830000
+      },
+      "admin": {
+        "value": 1578082830000
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": "Thu, 01 Jan 1970 00:00:00 GMT"
+      },
+      "expected": {
+        "value": 0
+      },
+      "schema": {
+        "value": 0
+      },
+      "admin": {
+        "value": 0
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": "+275760-09-13T00:00:00.000Z"
+      },
+      "expected": {
+        "value": 8640000000000000
+      },
+      "schema": {
+        "value": 8640000000000000
+      },
+      "admin": {
+        "value": 8640000000000000
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": "-271821-04-20T00:00:00.000Z"
+      },
+      "expected": {
+        "value": -8640000000000000
+      },
+      "schema": {
+        "value": -8640000000000000
+      },
+      "admin": {
+        "value": -8640000000000000
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": "not a date"
+      },
+      "expected": {
+        "error": "cast"
+      },
+      "schema": {
+        "errors": [
+          {
+            "path": "d",
+            "kind": "cast"
+          }
+        ]
+      },
+      "admin": {
+        "errors": [
+          {
+            "path": "createdAt",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": 0
+      },
+      "expected": {
+        "value": 0
+      },
+      "schema": {
+        "value": 0
+      },
+      "admin": {
+        "value": 0
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": -1
+      },
+      "expected": {
+        "value": -1
+      },
+      "schema": {
+        "value": -1
+      },
+      "admin": {
+        "value": -1
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": 1.9
+      },
+      "expected": {
+        "value": 1
+      },
+      "schema": {
+        "value": 1
+      },
+      "admin": {
+        "value": 1
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": -1.9
+      },
+      "expected": {
+        "value": -1
+      },
+      "schema": {
+        "value": -1
+      },
+      "admin": {
+        "value": -1
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": 275761
+      },
+      "expected": {
+        "value": 275761
+      },
+      "schema": {
+        "value": 275761
+      },
+      "admin": {
+        "value": 275761
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": 8640000000000000
+      },
+      "expected": {
+        "value": 8640000000000000
+      },
+      "schema": {
+        "value": 8640000000000000
+      },
+      "admin": {
+        "value": 8640000000000000
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": 8640000000000001
+      },
+      "expected": {
+        "error": "cast"
+      },
+      "schema": {
+        "errors": [
+          {
+            "path": "d",
+            "kind": "cast"
+          }
+        ]
+      },
+      "admin": {
+        "errors": [
+          {
+            "path": "createdAt",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": -8640000000000000
+      },
+      "expected": {
+        "value": -8640000000000000
+      },
+      "schema": {
+        "value": -8640000000000000
+      },
+      "admin": {
+        "value": -8640000000000000
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": -8640000000000001
+      },
+      "expected": {
+        "error": "cast"
+      },
+      "schema": {
+        "errors": [
+          {
+            "path": "d",
+            "kind": "cast"
+          }
+        ]
+      },
+      "admin": {
+        "errors": [
+          {
+            "path": "createdAt",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": []
+      },
+      "expected": {
+        "error": "cast"
+      },
+      "schema": {
+        "errors": [
+          {
+            "path": "d",
+            "kind": "cast"
+          }
+        ]
+      },
+      "admin": {
+        "errors": [
+          {
+            "path": "createdAt",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": [
+          0
+        ]
+      },
+      "expected": {
+        "value": 946724400000
+      },
+      "schema": {
+        "value": 946724400000
+      },
+      "admin": {
+        "value": 946724400000
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": [
+          "2000-01-01"
+        ]
+      },
+      "expected": {
+        "value": 946684800000
+      },
+      "schema": {
+        "value": 946684800000
+      },
+      "admin": {
+        "value": 946684800000
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": [
+          null
+        ]
+      },
+      "expected": {
+        "error": "cast"
+      },
+      "schema": {
+        "errors": [
+          {
+            "path": "d",
+            "kind": "cast"
+          }
+        ]
+      },
+      "admin": {
+        "errors": [
+          {
+            "path": "createdAt",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": [
+          [
+            1
+          ]
+        ]
+      },
+      "expected": {
+        "value": 978346800000
+      },
+      "schema": {
+        "value": 978346800000
+      },
+      "admin": {
+        "value": 978346800000
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": [
+          1,
+          2
+        ]
+      },
+      "expected": {
+        "value": 978433200000
+      },
+      "schema": {
+        "value": 978433200000
+      },
+      "admin": {
+        "value": 978433200000
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": [
+          {}
+        ]
+      },
+      "expected": {
+        "error": "cast"
+      },
+      "schema": {
+        "errors": [
+          {
+            "path": "d",
+            "kind": "cast"
+          }
+        ]
+      },
+      "admin": {
+        "errors": [
+          {
+            "path": "createdAt",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": {}
+      },
+      "expected": {
+        "error": "cast"
+      },
+      "schema": {
+        "errors": [
+          {
+            "path": "d",
+            "kind": "cast"
+          }
+        ]
+      },
+      "admin": {
+        "errors": [
+          {
+            "path": "createdAt",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "kind": "json",
+        "value": {
+          "x": 1
+        }
+      },
+      "expected": {
+        "error": "cast"
+      },
+      "schema": {
+        "errors": [
+          {
+            "path": "d",
+            "kind": "cast"
+          }
+        ]
+      },
+      "admin": {
+        "errors": [
+          {
+            "path": "createdAt",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "kind": "number",
+        "value": "NaN"
+      },
+      "expected": {
+        "error": "cast"
+      },
+      "schema": {
+        "errors": [
+          {
+            "path": "d",
+            "kind": "cast"
+          }
+        ]
+      },
+      "admin": {
+        "errors": [
+          {
+            "path": "createdAt",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "kind": "boxed",
+        "value": "NaN"
+      },
+      "expected": {
+        "error": "cast"
+      },
+      "schema": {
+        "errors": [
+          {
+            "path": "d",
+            "kind": "cast"
+          }
+        ]
+      },
+      "admin": {
+        "errors": [
+          {
+            "path": "createdAt",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "kind": "number",
+        "value": "Infinity"
+      },
+      "expected": {
+        "error": "cast"
+      },
+      "schema": {
+        "errors": [
+          {
+            "path": "d",
+            "kind": "cast"
+          }
+        ]
+      },
+      "admin": {
+        "errors": [
+          {
+            "path": "createdAt",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "kind": "boxed",
+        "value": "Infinity"
+      },
+      "expected": {
+        "error": "cast"
+      },
+      "schema": {
+        "errors": [
+          {
+            "path": "d",
+            "kind": "cast"
+          }
+        ]
+      },
+      "admin": {
+        "errors": [
+          {
+            "path": "createdAt",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "kind": "number",
+        "value": "-Infinity"
+      },
+      "expected": {
+        "error": "cast"
+      },
+      "schema": {
+        "errors": [
+          {
+            "path": "d",
+            "kind": "cast"
+          }
+        ]
+      },
+      "admin": {
+        "errors": [
+          {
+            "path": "createdAt",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "kind": "boxed",
+        "value": "-Infinity"
+      },
+      "expected": {
+        "error": "cast"
+      },
+      "schema": {
+        "errors": [
+          {
+            "path": "d",
+            "kind": "cast"
+          }
+        ]
+      },
+      "admin": {
+        "errors": [
+          {
+            "path": "createdAt",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "kind": "number",
+        "value": "-0"
+      },
+      "expected": {
+        "value": 0
+      },
+      "schema": {
+        "value": 0
+      },
+      "admin": {
+        "value": 0
+      }
+    },
+    {
+      "input": {
+        "kind": "boxed",
+        "value": "-0"
+      },
+      "expected": {
+        "value": 0
+      },
+      "schema": {
+        "value": 0
+      },
+      "admin": {
+        "value": 0
+      }
+    },
+    {
+      "input": {
+        "kind": "boxed",
+        "value": "0"
+      },
+      "expected": {
+        "value": 0
+      },
+      "schema": {
+        "value": 0
+      },
+      "admin": {
+        "value": 0
+      }
+    },
+    {
+      "input": {
+        "kind": "boxed",
+        "value": "1.9"
+      },
+      "expected": {
+        "value": 1
+      },
+      "schema": {
+        "value": 1
+      },
+      "admin": {
+        "value": 1
+      }
+    },
+    {
+      "input": {
+        "kind": "boxed",
+        "value": "-1.9"
+      },
+      "expected": {
+        "value": -1
+      },
+      "schema": {
+        "value": -1
+      },
+      "admin": {
+        "value": -1
+      }
+    },
+    {
+      "input": {
+        "kind": "boxed",
+        "value": "8640000000000000"
+      },
+      "expected": {
+        "value": 8640000000000000
+      },
+      "schema": {
+        "value": 8640000000000000
+      },
+      "admin": {
+        "value": 8640000000000000
+      }
+    },
+    {
+      "input": {
+        "kind": "boxed",
+        "value": "8640000000000001"
+      },
+      "expected": {
+        "error": "cast"
+      },
+      "schema": {
+        "errors": [
+          {
+            "path": "d",
+            "kind": "cast"
+          }
+        ]
+      },
+      "admin": {
+        "errors": [
+          {
+            "path": "createdAt",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "kind": "date",
+        "value": "0"
+      },
+      "expected": {
+        "value": 0
+      },
+      "schema": {
+        "value": 0
+      },
+      "admin": {
+        "value": 0
+      }
+    },
+    {
+      "input": {
+        "kind": "date",
+        "value": "8640000000000000"
+      },
+      "expected": {
+        "value": 8640000000000000
+      },
+      "schema": {
+        "value": 8640000000000000
+      },
+      "admin": {
+        "value": 8640000000000000
+      }
+    },
+    {
+      "input": {
+        "kind": "date",
+        "value": "8640000000000001"
+      },
+      "expected": {
+        "error": "cast"
+      },
+      "schema": {
+        "errors": [
+          {
+            "path": "d",
+            "kind": "cast"
+          }
+        ]
+      },
+      "admin": {
+        "errors": [
+          {
+            "path": "createdAt",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "kind": "date",
+        "value": "-8640000000000001"
+      },
+      "expected": {
+        "error": "cast"
+      },
+      "schema": {
+        "errors": [
+          {
+            "path": "d",
+            "kind": "cast"
+          }
+        ]
+      },
+      "admin": {
+        "errors": [
+          {
+            "path": "createdAt",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "kind": "int64-number",
+        "value": "9007199254740993"
+      },
+      "expected": {
+        "error": "cast"
+      },
+      "schema": {
+        "errors": [
+          {
+            "path": "d",
+            "kind": "cast"
+          }
+        ]
+      },
+      "admin": {
+        "errors": [
+          {
+            "path": "createdAt",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "kind": "int64-number",
+        "value": "-9007199254740993"
+      },
+      "expected": {
+        "error": "cast"
+      },
+      "schema": {
+        "errors": [
+          {
+            "path": "d",
+            "kind": "cast"
+          }
+        ]
+      },
+      "admin": {
+        "errors": [
+          {
+            "path": "createdAt",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "kind": "int64-number",
+        "value": "1234567890123"
+      },
+      "expected": {
+        "value": 1234567890123
+      },
+      "schema": {
+        "value": 1234567890123
+      },
+      "admin": {
+        "value": 1234567890123
+      }
+    }
+  ],
+  "missing": {
+    "value": 123
+  }
+}

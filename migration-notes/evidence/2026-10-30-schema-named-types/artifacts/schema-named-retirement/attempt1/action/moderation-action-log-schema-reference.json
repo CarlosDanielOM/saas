@@ -1,0 +1,881 @@
+{
+  "versions": {
+    "node": "24.22.1",
+    "v8": "13.6.233.17-node.58",
+    "icu": "78.3",
+    "unicode": "17.0",
+    "typescript": "5.9.3",
+    "mongoose": "8.24.2",
+    "bson": "6.10.4"
+  },
+  "nodeExecutableSha256": "569128f3066ac7be59b10b9a0adef708def642ee37cbf9d560a9bdb68f872108",
+  "sourceProvenance": "archives/dimabot-typescript/2026-10-28/src/schemas/moderation_action_log.schema.ts",
+  "sourceSha256": {
+    "src/schemas/moderation_action_log.schema.ts": "637955d22fc1c7e0ba953ec410a15a2bb324b0340062bd17bc08c13cd975e28b",
+    "tests/moderation_action_log_schema.rs": "a84b35e79a9ab87694d958aefb1432b3a994ca666e4e91005edd091b8dd544f2",
+    "src/schemas/channel_moderation_settings.schema.rs": "6508759e680f0e07b148dc86efc3e4d96130122a85d7c877ccea7dac8df90f64",
+    "src/schemas/moderation_action_log.schema.rs": "a29fe16dcbc09c5bbe1f0c169e3bf1b54d087c62e31fad65461e42b53da0b61b",
+    "src/schemas/schema.rs": "60a84d33368cc1d1732422c6aea71c89bdedb1ba10a05b7500ca5ff3d6d82bbb",
+    "src/utils/bson_compat.rs": "bd6772ef74ec73708d3828d59496c8d2a9156d2325864b63c7f40544300802e4",
+    "src/utils/mongoose_date.rs": "d64fc10dfce3513d02598c9408bd3b6b5cccb7ed3c2e6fbad589f61e20087573",
+    "src/utils/js_string.rs": "17b3e6a6bcd0d92210851eca25da44bbcdb2c2d9e196feb5dab58d06b75d4aed",
+    "Cargo.toml": "bf712c491a9b53195957c21dafac009314293c1927296c1243fceb6d8abcc49f",
+    "Cargo.lock": "787333fa269752a606040d7393767040ef749ce1e01c2512386bf305bcd7a2c3",
+    "rust-toolchain.toml": "b9c8d2d59f6f46474c0cfa0b8b77bea21d94fc73a30ad93d5bf6385c422197d2",
+    "package.json": "cc4939f6416a91d4bfaa5bcdd3d448d2f74103a88bb269e0a8e393615cf32cef",
+    "package-lock.json": "abdf5aa71a8272423ebb9358d7aaa87edd7e65f6605c325fe231a4bcef70eeb7",
+    "source-resolver": "ae40970d318cb742766929fb253c99bc9173c72197dae8c143caf28a19e2dd3a",
+    "source-guard": "5de262e6dcae5f81720a33fd8f4df1bc8a239fadb5f778c8ff68b6528bc208b6",
+    "source-digest": "be1fbeade9ca428358081d30b47d0241734db05c94d343634b7e04520c42cf6a",
+    "oracle-script": "d2f3fc6cebd9704ad21f6d8474b9bcea34763583649ddfdc989b775e04fc27f3",
+    "bson-js": "64e5de269bbcdee96f2bebb57cc9729b72aaebde02d832005872b7e575899284",
+    "bson-package": "ded0e42e4e1cd876a11c9f799e0692f83ee73ebc9fb7796a5bca05039b4b3e23",
+    "typescript": "3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675",
+    "typescript/package.json": "822ef7ca6452205657b6288b066481ecf508bfbf43455d715cf7d3ec457561e6",
+    "mongoose": "59e21822580047abc5468d740b720d1383fa3569aa2da3ac70325265fbb0e25b",
+    "mongoose/package.json": "5136d95bcd0624a94096110ea21ac101b73f1839bc40726eab85649389c17dba"
+  },
+  "compiledSha256": "433d8cfecd93152c7456257a574f715bffd37c515a2315fb1d9db6110a166424",
+  "model": "moderation_action_log",
+  "collection": "moderation_action_logs",
+  "indexes": [
+    [
+      {
+        "channelID": 1
+      },
+      {
+        "background": true
+      }
+    ],
+    [
+      {
+        "createdAt": 1
+      },
+      {
+        "expireAfterSeconds": 2592000,
+        "background": true
+      }
+    ]
+  ],
+  "now": 1700000000000,
+  "cases": [
+    {
+      "input": {},
+      "expected": {
+        "errors": [
+          {
+            "path": "action",
+            "kind": "required"
+          },
+          {
+            "path": "channelID",
+            "kind": "required"
+          },
+          {
+            "path": "ruleID",
+            "kind": "required"
+          },
+          {
+            "path": "ruleType",
+            "kind": "required"
+          },
+          {
+            "path": "userID",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "_id": "0123456789abcdef01234567",
+        "channelID": "c",
+        "userID": "u",
+        "ruleID": "r",
+        "ruleType": "t",
+        "action": "warn"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "0123456789abcdef01234567"
+          },
+          "action": "warn",
+          "channelID": "c",
+          "createdAt": {
+            "$date": 1700000000000
+          },
+          "errorMessage": null,
+          "messageExcerpt": "",
+          "messageID": "",
+          "offenseNumber": 1,
+          "reason": "",
+          "ruleID": "r",
+          "ruleType": "t",
+          "success": false,
+          "userID": "u",
+          "username": ""
+        }
+      }
+    },
+    {
+      "input": {
+        "_id": "0123456789abcdef01234567",
+        "channelID": "c",
+        "userID": "u",
+        "ruleID": "r",
+        "ruleType": "t",
+        "action": "warn",
+        "unknown": 1
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "0123456789abcdef01234567"
+          },
+          "action": "warn",
+          "channelID": "c",
+          "createdAt": {
+            "$date": 1700000000000
+          },
+          "errorMessage": null,
+          "messageExcerpt": "",
+          "messageID": "",
+          "offenseNumber": 1,
+          "reason": "",
+          "ruleID": "r",
+          "ruleType": "t",
+          "success": false,
+          "userID": "u",
+          "username": ""
+        }
+      }
+    },
+    {
+      "input": {
+        "_id": "0123456789abcdef01234567",
+        "channelID": null,
+        "userID": "u",
+        "ruleID": "r",
+        "ruleType": "t",
+        "action": "warn"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "channelID",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "_id": "0123456789abcdef01234567",
+        "channelID": "",
+        "userID": "u",
+        "ruleID": "r",
+        "ruleType": "t",
+        "action": "warn"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "channelID",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "_id": "0123456789abcdef01234567",
+        "channelID": "c",
+        "userID": null,
+        "ruleID": "r",
+        "ruleType": "t",
+        "action": "warn"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "userID",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "_id": "0123456789abcdef01234567",
+        "channelID": "c",
+        "userID": "",
+        "ruleID": "r",
+        "ruleType": "t",
+        "action": "warn"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "userID",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "_id": "0123456789abcdef01234567",
+        "channelID": "c",
+        "userID": "u",
+        "ruleID": null,
+        "ruleType": "t",
+        "action": "warn"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "ruleID",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "_id": "0123456789abcdef01234567",
+        "channelID": "c",
+        "userID": "u",
+        "ruleID": "",
+        "ruleType": "t",
+        "action": "warn"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "ruleID",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "_id": "0123456789abcdef01234567",
+        "channelID": "c",
+        "userID": "u",
+        "ruleID": "r",
+        "ruleType": null,
+        "action": "warn"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "ruleType",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "_id": "0123456789abcdef01234567",
+        "channelID": "c",
+        "userID": "u",
+        "ruleID": "r",
+        "ruleType": "",
+        "action": "warn"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "ruleType",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "_id": "0123456789abcdef01234567",
+        "channelID": "c",
+        "userID": "u",
+        "ruleID": "r",
+        "ruleType": "t",
+        "action": null
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "action",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "_id": "0123456789abcdef01234567",
+        "channelID": "c",
+        "userID": "u",
+        "ruleID": "r",
+        "ruleType": "t",
+        "action": ""
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "action",
+            "kind": "required"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "_id": "0123456789abcdef01234567",
+        "channelID": "c",
+        "userID": "u",
+        "ruleID": "r",
+        "ruleType": "t",
+        "action": "off"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "0123456789abcdef01234567"
+          },
+          "action": "off",
+          "channelID": "c",
+          "createdAt": {
+            "$date": 1700000000000
+          },
+          "errorMessage": null,
+          "messageExcerpt": "",
+          "messageID": "",
+          "offenseNumber": 1,
+          "reason": "",
+          "ruleID": "r",
+          "ruleType": "t",
+          "success": false,
+          "userID": "u",
+          "username": ""
+        }
+      }
+    },
+    {
+      "input": {
+        "_id": "0123456789abcdef01234567",
+        "channelID": "c",
+        "userID": "u",
+        "ruleID": "r",
+        "ruleType": "t",
+        "action": "warn"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "0123456789abcdef01234567"
+          },
+          "action": "warn",
+          "channelID": "c",
+          "createdAt": {
+            "$date": 1700000000000
+          },
+          "errorMessage": null,
+          "messageExcerpt": "",
+          "messageID": "",
+          "offenseNumber": 1,
+          "reason": "",
+          "ruleID": "r",
+          "ruleType": "t",
+          "success": false,
+          "userID": "u",
+          "username": ""
+        }
+      }
+    },
+    {
+      "input": {
+        "_id": "0123456789abcdef01234567",
+        "channelID": "c",
+        "userID": "u",
+        "ruleID": "r",
+        "ruleType": "t",
+        "action": "delete"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "0123456789abcdef01234567"
+          },
+          "action": "delete",
+          "channelID": "c",
+          "createdAt": {
+            "$date": 1700000000000
+          },
+          "errorMessage": null,
+          "messageExcerpt": "",
+          "messageID": "",
+          "offenseNumber": 1,
+          "reason": "",
+          "ruleID": "r",
+          "ruleType": "t",
+          "success": false,
+          "userID": "u",
+          "username": ""
+        }
+      }
+    },
+    {
+      "input": {
+        "_id": "0123456789abcdef01234567",
+        "channelID": "c",
+        "userID": "u",
+        "ruleID": "r",
+        "ruleType": "t",
+        "action": "timeout"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "0123456789abcdef01234567"
+          },
+          "action": "timeout",
+          "channelID": "c",
+          "createdAt": {
+            "$date": 1700000000000
+          },
+          "errorMessage": null,
+          "messageExcerpt": "",
+          "messageID": "",
+          "offenseNumber": 1,
+          "reason": "",
+          "ruleID": "r",
+          "ruleType": "t",
+          "success": false,
+          "userID": "u",
+          "username": ""
+        }
+      }
+    },
+    {
+      "input": {
+        "_id": "0123456789abcdef01234567",
+        "channelID": "c",
+        "userID": "u",
+        "ruleID": "r",
+        "ruleType": "t",
+        "action": "ban"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "0123456789abcdef01234567"
+          },
+          "action": "ban",
+          "channelID": "c",
+          "createdAt": {
+            "$date": 1700000000000
+          },
+          "errorMessage": null,
+          "messageExcerpt": "",
+          "messageID": "",
+          "offenseNumber": 1,
+          "reason": "",
+          "ruleID": "r",
+          "ruleType": "t",
+          "success": false,
+          "userID": "u",
+          "username": ""
+        }
+      }
+    },
+    {
+      "input": {
+        "_id": "0123456789abcdef01234567",
+        "channelID": "c",
+        "userID": "u",
+        "ruleID": "r",
+        "ruleType": "t",
+        "action": "other"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "action",
+            "kind": "enum"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "_id": "0123456789abcdef01234567",
+        "channelID": 42,
+        "userID": true,
+        "ruleID": 9,
+        "ruleType": 2,
+        "action": "warn",
+        "offenseNumber": "2.5",
+        "success": "yes"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "0123456789abcdef01234567"
+          },
+          "action": "warn",
+          "channelID": "42",
+          "createdAt": {
+            "$date": 1700000000000
+          },
+          "errorMessage": null,
+          "messageExcerpt": "",
+          "messageID": "",
+          "offenseNumber": 2.5,
+          "reason": "",
+          "ruleID": "9",
+          "ruleType": "2",
+          "success": true,
+          "userID": "true",
+          "username": ""
+        }
+      }
+    },
+    {
+      "input": {
+        "_id": "0123456789abcdef01234567",
+        "channelID": "c",
+        "userID": "u",
+        "ruleID": "r",
+        "ruleType": "t",
+        "action": "warn",
+        "offenseNumber": "bad"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "offenseNumber",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "_id": "0123456789abcdef01234567",
+        "channelID": "c",
+        "userID": "u",
+        "ruleID": "r",
+        "ruleType": "t",
+        "action": "warn",
+        "offenseNumber": null,
+        "success": null,
+        "username": null,
+        "reason": null,
+        "messageID": null,
+        "messageExcerpt": null,
+        "errorMessage": null,
+        "createdAt": null
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "0123456789abcdef01234567"
+          },
+          "action": "warn",
+          "channelID": "c",
+          "createdAt": null,
+          "errorMessage": null,
+          "messageExcerpt": null,
+          "messageID": null,
+          "offenseNumber": null,
+          "reason": null,
+          "ruleID": "r",
+          "ruleType": "t",
+          "success": null,
+          "userID": "u",
+          "username": null
+        }
+      }
+    },
+    {
+      "input": {
+        "_id": "0123456789abcdef01234567",
+        "channelID": "c",
+        "userID": "u",
+        "ruleID": "r",
+        "ruleType": "t",
+        "action": "warn",
+        "success": "bad"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "success",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "_id": "0123456789abcdef01234567",
+        "channelID": "c",
+        "userID": "u",
+        "ruleID": "r",
+        "ruleType": "t",
+        "action": "warn",
+        "offenseNumber": -5
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "0123456789abcdef01234567"
+          },
+          "action": "warn",
+          "channelID": "c",
+          "createdAt": {
+            "$date": 1700000000000
+          },
+          "errorMessage": null,
+          "messageExcerpt": "",
+          "messageID": "",
+          "offenseNumber": -5,
+          "reason": "",
+          "ruleID": "r",
+          "ruleType": "t",
+          "success": false,
+          "userID": "u",
+          "username": ""
+        }
+      }
+    },
+    {
+      "input": {
+        "_id": "0123456789abcdef01234567",
+        "channelID": "c",
+        "userID": "u",
+        "ruleID": "r",
+        "ruleType": "t",
+        "action": "warn",
+        "createdAt": 0
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "0123456789abcdef01234567"
+          },
+          "action": "warn",
+          "channelID": "c",
+          "createdAt": {
+            "$date": 0
+          },
+          "errorMessage": null,
+          "messageExcerpt": "",
+          "messageID": "",
+          "offenseNumber": 1,
+          "reason": "",
+          "ruleID": "r",
+          "ruleType": "t",
+          "success": false,
+          "userID": "u",
+          "username": ""
+        }
+      }
+    },
+    {
+      "input": {
+        "_id": "0123456789abcdef01234567",
+        "channelID": "c",
+        "userID": "u",
+        "ruleID": "r",
+        "ruleType": "t",
+        "action": "warn",
+        "createdAt": "2025-01-01"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "0123456789abcdef01234567"
+          },
+          "action": "warn",
+          "channelID": "c",
+          "createdAt": {
+            "$date": 1735689600000
+          },
+          "errorMessage": null,
+          "messageExcerpt": "",
+          "messageID": "",
+          "offenseNumber": 1,
+          "reason": "",
+          "ruleID": "r",
+          "ruleType": "t",
+          "success": false,
+          "userID": "u",
+          "username": ""
+        }
+      }
+    },
+    {
+      "input": {
+        "_id": "0123456789abcdef01234567",
+        "channelID": "c",
+        "userID": "u",
+        "ruleID": "r",
+        "ruleType": "t",
+        "action": "warn",
+        "createdAt": "bad"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "createdAt",
+            "kind": "cast"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "_id": "0123456789abcdef01234567",
+        "channelID": "c",
+        "userID": "u",
+        "ruleID": "r",
+        "ruleType": "t",
+        "action": "warn",
+        "messageExcerpt": "éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "0123456789abcdef01234567"
+          },
+          "action": "warn",
+          "channelID": "c",
+          "createdAt": {
+            "$date": 1700000000000
+          },
+          "errorMessage": null,
+          "messageExcerpt": "éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé",
+          "messageID": "",
+          "offenseNumber": 1,
+          "reason": "",
+          "ruleID": "r",
+          "ruleType": "t",
+          "success": false,
+          "userID": "u",
+          "username": ""
+        }
+      }
+    },
+    {
+      "input": {
+        "_id": "0123456789abcdef01234567",
+        "channelID": "c",
+        "userID": "u",
+        "ruleID": "r",
+        "ruleType": "t",
+        "action": "warn",
+        "messageExcerpt": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀"
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "0123456789abcdef01234567"
+          },
+          "action": "warn",
+          "channelID": "c",
+          "createdAt": {
+            "$date": 1700000000000
+          },
+          "errorMessage": null,
+          "messageExcerpt": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+          "messageID": "",
+          "offenseNumber": 1,
+          "reason": "",
+          "ruleID": "r",
+          "ruleType": "t",
+          "success": false,
+          "userID": "u",
+          "username": ""
+        }
+      }
+    },
+    {
+      "input": {
+        "_id": "0123456789abcdef01234567",
+        "channelID": "c",
+        "userID": "u",
+        "ruleID": "r",
+        "ruleType": "t",
+        "action": "warn",
+        "messageExcerpt": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "messageExcerpt",
+            "kind": "maxlength"
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "_id": "0123456789abcdef01234567",
+        "channelID": "c",
+        "userID": "u",
+        "ruleID": "r",
+        "ruleType": "t",
+        "action": "warn",
+        "errorMessage": 42
+      },
+      "expected": {
+        "document": {
+          "_id": {
+            "$oid": "0123456789abcdef01234567"
+          },
+          "action": "warn",
+          "channelID": "c",
+          "createdAt": {
+            "$date": 1700000000000
+          },
+          "errorMessage": "42",
+          "messageExcerpt": "",
+          "messageID": "",
+          "offenseNumber": 1,
+          "reason": "",
+          "ruleID": "r",
+          "ruleType": "t",
+          "success": false,
+          "userID": "u",
+          "username": ""
+        }
+      }
+    },
+    {
+      "input": {
+        "_id": "bad",
+        "channelID": "c",
+        "userID": "u",
+        "ruleID": "r",
+        "ruleType": "t",
+        "action": "warn"
+      },
+      "expected": {
+        "errors": [
+          {
+            "path": "_id",
+            "kind": "cast"
+          }
+        ]
+      }
+    }
+  ],
+  "wire": {
+    "hex": "1700000002746578740008000000efbfbd78efbfbd0000",
+    "text": "�x�"
+  }
+}

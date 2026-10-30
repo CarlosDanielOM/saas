@@ -1,0 +1,10 @@
+[
+  {
+    "attempt": 1,
+    "node": "1793362449019157447",
+    "compiler": "1793362463134937029",
+    "functional_checks": "2 named type tests, 3 existing schema tests and exact source replay passed",
+    "failure": "strict scoped Clippy type_complexity at schema_named_types.rs expected interface table",
+    "correction": "two local type aliases; no behavior change"
+  }
+]

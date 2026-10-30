@@ -1,0 +1,6 @@
+v24.22.1
+{"mode":"--write","sha256":"1a7d91293c886c185196731612658dbcebd88c89bb0d7cb508fb87335e76027a"}
+{"mode":"--check","sha256":"1a7d91293c886c185196731612658dbcebd88c89bb0d7cb508fb87335e76027a"}
+Application schema oracle: 11 schemas, 70 cases
+application-schemas-reference.json sha256=e7c420be5063ca36087d4f83a3afba48ed8067b32afbca3bd882c9b047e84494 cases=70
+application-schemas-reference.json sha256=e7c420be5063ca36087d4f83a3afba48ed8067b32afbca3bd882c9b047e84494 cases=70

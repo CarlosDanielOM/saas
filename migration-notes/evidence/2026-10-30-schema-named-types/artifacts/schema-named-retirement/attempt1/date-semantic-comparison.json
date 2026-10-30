@@ -1,0 +1,27 @@
+{
+  "America_New_York.json": {
+    "cases": 80,
+    "all_cases_and_missing_equal_prior": true,
+    "repeat_generation_identical": true
+  },
+  "Australia_Lord_Howe.json": {
+    "cases": 80,
+    "all_cases_and_missing_equal_prior": true,
+    "repeat_generation_identical": true
+  },
+  "Europe_Berlin.json": {
+    "cases": 80,
+    "all_cases_and_missing_equal_prior": true,
+    "repeat_generation_identical": true
+  },
+  "Pacific_Apia.json": {
+    "cases": 80,
+    "all_cases_and_missing_equal_prior": true,
+    "repeat_generation_identical": true
+  },
+  "UTC.json": {
+    "cases": 80,
+    "all_cases_and_missing_equal_prior": true,
+    "repeat_generation_identical": true
+  }
+}
