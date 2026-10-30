@@ -1,0 +1,24 @@
+{
+  "candidate_base_commit": "97026cc4",
+  "source_tree_sha256": "2ceee1f1290b9f96fc7652e683c57904f227b64fd83140737c3646fd65643ef7",
+  "input_count": 1507,
+  "counts": {
+    "git": 1493,
+    "overrides": 4,
+    "sdk": 10
+  },
+  "candidate_overrides": {
+    "archives/dimabot-typescript/2026-10-28/manifest.json": "564306e55b76600273096e6bb927aeb0d47ccedc06307037793c4bea60554d86",
+    "archives/dimabot-typescript/2026-10-28/README.md": "cb6be9c269ea007c7cc56ca2eb3a7c1011eec0296118848d81b93060d4049d01",
+    "archives/dimabot-typescript/2026-10-28/src/utils/permissions/error_rate_limit.ts": "4e840093ef500738588ea7990f4303ea18f9368abd4d9e898557af73e08e8d56",
+    "archives/dimabot-typescript/2026-10-28/src/utils/permissions/error_rate_limit.test.ts": "95bee599c425783a84f093c637624eb1ceed5713669c21da596557e95981f0fa"
+  },
+  "deleted_sources": [
+    "dimabot/src/utils/permissions/error_rate_limit.ts",
+    "dimabot/src/utils/permissions/error_rate_limit.test.ts"
+  ],
+  "archive_manifest_entries": 49,
+  "old_47_unchanged": true,
+  "reused_sdk_capture_root": "migration-notes/evidence/2026-10-30-moderation-semantic/reproduction-tools/reused-sdk-inputs",
+  "all_inputs_independently_verified": true
+}

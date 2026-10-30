@@ -1,0 +1,17 @@
+{
+  "candidate_base_commit": "b0a42873a626defd2caaccc825b46d7326a2eec5",
+  "source_tree_sha256": "dc5a3310e807e17c79f107e1db615507ea125e4bc05ee8dcab710e9a587acf6f",
+  "input_count": 1507,
+  "counts": {
+    "git": 1494,
+    "overrides": 3,
+    "sdk": 10
+  },
+  "candidate_overrides": {
+    "dimabot/tests/fixtures/permission_error_rate_limit_reference.cjs": "010202a984cdc25a73aa9295ce0a26b381f45f9c3a93b2e8b5658cfbde11ce63",
+    "dimabot/tests/fixtures/permission_error_rate_limit_source_resolver.cjs": "e9a120a9542c7c7700bf91951314b9980fe5aea2f7f582d135b5c46337ade024",
+    "dimabot/tests/permission_error_rate_limit.rs": "cf7bb6bc89487b60b191f16a412b89c41d54e05749bc475f2d4a0fd4d0fb08c9"
+  },
+  "reused_sdk_capture_root": "migration-notes/evidence/2026-10-30-moderation-semantic/reproduction-tools/reused-sdk-inputs",
+  "all_inputs_independently_verified": true
+}

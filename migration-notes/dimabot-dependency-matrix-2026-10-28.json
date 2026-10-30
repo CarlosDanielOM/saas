@@ -22,12 +22,12 @@
   },
   "archiveManifest": "archives/dimabot-typescript/2026-10-28/manifest.json",
   "summary": {
-    "asOf": "2026-10-30 Fish favorites source retirement and final alias benchmark",
+    "asOf": "2026-10-30 Permission error limiter source and original test post-retirement verification",
     "inventoryRows": 806,
-    "locallyCompleteMappings": 34,
+    "locallyCompleteMappings": 35,
     "partialRows": 25,
-    "archivedSourceSnapshots": 47,
-    "liveBaselineTypeScriptFiles": 759,
+    "archivedSourceSnapshots": 49,
+    "liveBaselineTypeScriptFiles": 757,
     "excludedReactEmailTemplatesIncludedInLiveCount": 6,
     "totalCompletionPercentage": null,
     "totalMigrationCompletion": "not-established; full dependency closure audit remains incomplete"
@@ -92594,19 +92594,36 @@
         "role": "test"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "unreviewed",
-      "localRustEvidence": [],
-      "behaviorDifferencesOrAcceptedChanges": [],
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/utils/permissions/error_rate_limit.test.ts",
+        "sha256": "95bee599c425783a84f093c637624eb1ceed5713669c21da596557e95981f0fa",
+        "nativeAreaReference": "Archived two-group test obligation maps to dimabot/tests/permission_error_rate_limit.rs and its post-retirement actual-source replay; it is not an independent application feature."
+      },
+      "featureReview": "complete-local-source-test-obligation-mapping;source-retired-and-post-retirement-verified;not-an-independent-application-feature",
+      "localRustEvidence": [
+        "dimabot/tests/permission_error_rate_limit.rs: six tests including archive-resolved source replay",
+        "dimabot/tests/fixtures/permission_error_rate_limit_reference.cjs",
+        "migration-notes/evidence/2026-10-30-permission-retirement/README.md"
+      ],
+      "behaviorDifferencesOrAcceptedChanges": [
+        "The two Node assert/node:test groups are represented by native test assertions and source replay; the test file is not an independent application feature."
+      ],
       "callers": {
-        "sourceEvidence": [],
-        "runtimeStatus": "unreviewed"
+        "sourceEvidence": [
+          "Archived source test imports the limiter source, node:assert/strict and node:test."
+        ],
+        "runtimeStatus": "Test obligation is covered by native assertions and post-retirement source replay; no application runtime caller."
       },
       "testEvidence": {
-        "sourceEvidence": [],
-        "rustBehaviorEvidence": [],
-        "status": "unreviewed"
+        "sourceEvidence": [
+          "Original archived source test bytes and unique manifest entry verified by the post-retirement resolver."
+        ],
+        "rustBehaviorEvidence": [
+          "Six native tests plus replay of all 2,113 source operations and final ordered state passed; formatting and strict profiles passed.",
+          "migration-notes/evidence/2026-10-30-permission-retirement/README.md"
+        ],
+        "status": "original test behavior mapped to native tests/source replay; source retired and post-retirement verified"
       },
       "exports": [],
       "imports": [
@@ -92623,12 +92640,12 @@
           "baselineSourceTargets": [
             "src/utils/permissions/error_rate_limit.ts"
           ],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "named-import",
+          "runtimeOrTypeDependency": "Runtime value import of the limiter under test.",
+          "defaultSideEffectBarrelDetails": "Direct named import; no barrel or side-effect dependency.",
+          "directDependencyReview": "Resolved to the archived permission limiter source and its native contract.",
+          "transitiveDependencyReview": "The tested limiter state/time behavior maps to the standard-library native implementation and existing JsString compatibility type.",
+          "rustReplacementOrGap": "dimabot/tests/permission_error_rate_limit.rs and the archive-resolved source replay."
         },
         {
           "ordinal": 1,
@@ -92636,12 +92653,12 @@
           "specifierCategory": "node-builtin-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "default-import",
+          "runtimeOrTypeDependency": "Node test-only assertion library.",
+          "defaultSideEffectBarrelDetails": "Test assertion import only; not a runtime feature dependency.",
+          "directDependencyReview": "Test harness dependency; assertion obligations are represented in native Rust tests.",
+          "transitiveDependencyReview": "No application dependency closure is implied by this test-only package.",
+          "rustReplacementOrGap": "Rust test assertions in dimabot/tests/permission_error_rate_limit.rs."
         },
         {
           "ordinal": 2,
@@ -92649,15 +92666,15 @@
           "specifierCategory": "node-builtin-candidate",
           "relativeSourceCandidates": [],
           "baselineSourceTargets": [],
-          "importSyntaxKind": "unresolved-baseline-flattens-import-syntax",
-          "runtimeOrTypeDependency": "unresolved-inspect-source-import-declaration",
-          "defaultSideEffectBarrelDetails": "unresolved-inspect-source-import-declaration",
-          "directDependencyReview": "unreviewed",
-          "transitiveDependencyReview": "unreviewed",
-          "rustReplacementOrGap": "unreviewed"
+          "importSyntaxKind": "default-import",
+          "runtimeOrTypeDependency": "Node test-only test registration.",
+          "defaultSideEffectBarrelDetails": "Test runner import only; not an application runtime dependency.",
+          "directDependencyReview": "Test harness dependency; both original groups map to native test cases.",
+          "transitiveDependencyReview": "No application dependency closure is implied by this test-only package.",
+          "rustReplacementOrGap": "Rust test harness in dimabot/tests/permission_error_rate_limit.rs."
         }
       ],
-      "rowAssessment": "unreviewed-no-feature-completion-inferred"
+      "rowAssessment": "complete-local-permission-error-limiter-source-test-obligation;source-retired-post-retirement-verified;not-an-independent-application-feature"
     },
     {
       "source": "src/utils/permissions/error_rate_limit.ts",
@@ -92667,23 +92684,26 @@
         "role": "application"
       },
       "scope": "in-scope",
-      "inventoryDisposition": "baseline-source-row",
-      "archive": null,
-      "featureReview": "reviewed-local-feature-and-helper-dependencies",
+      "inventoryDisposition": "source-retired-and-preserved-in-2026-10-28-archive",
+      "archive": {
+        "archivedPath": "archives/dimabot-typescript/2026-10-28/src/utils/permissions/error_rate_limit.ts",
+        "sha256": "4e840093ef500738588ea7990f4303ea18f9368abd4d9e898557af73e08e8d56",
+        "nativeAreaReference": "dimabot/src/utils/permissions/error_rate_limit.rs; migration-notes/permission-error-rate-limit-handoff.md; post-retirement evidence in migration-notes/evidence/2026-10-30-permission-retirement/README.md"
+      },
+      "featureReview": "complete-local-permission-error-limiter-feature-and-native-dependency-closure;source-retired-and-post-retirement-verified;caller-adoption-open",
       "localRustEvidence": [
         "dimabot/src/utils/permissions/error_rate_limit.rs",
         "dimabot/src/utils/permissions/index.rs",
         "dimabot/src/utils/js_string.rs",
         "dimabot/tests/permission_error_rate_limit.rs",
         "dimabot/tests/fixtures/permission_error_rate_limit_reference.cjs",
-        "migration-notes/permission-error-rate-limit-2026-10-29.md",
-        "migration-notes/evidence/2026-10-29-permission-error-rate-limit/verification-summary.json"
+        "migration-notes/permission-error-rate-limit-retirement-2026-10-30.md",
+        "migration-notes/evidence/2026-10-30-permission-retirement/README.md"
       ],
       "behaviorDifferencesOrAcceptedChanges": [
-        "Fixed capacity 2000, least-recently-logged order, denied-call order preservation and binary64/default clock semantics match the source. The reusable core uses a bounded linked arena and standard HashMap; a mutex and OnceLock provide the concrete process-wide wrapper.",
-        "Keys preserve arbitrary UTF-16 through existing JsString. String keys and numeric/default timing inputs follow the source declaration; invalid JavaScript runtime casts are excluded.",
-        "No new Cargo crate, feature or lock change. Existing permissions feature reuses the independent string utility. No scheduler delay, polling loop or retry was introduced. Key-count boundedness is not a hard total-byte bound for arbitrarily long strings.",
-        "TypeScript source and callers remain live; no retirement/adoption/deployment/push or measured performance claim."
+        "Fixed capacity 2000, least-recently-logged order, denied-call order preservation and binary64/default clock semantics match the declared source contract. The reusable core uses a bounded linked arena and standard HashMap; a mutex and OnceLock provide the process-wide wrapper.",
+        "Keys preserve arbitrary UTF-16 through the existing JsString. String keys and numeric/default timing inputs follow the source declaration; invalid JavaScript runtime casts are excluded. Key-count boundedness is not a hard byte bound for arbitrarily long strings.",
+        "No new Cargo crate, feature or lock change. The accepted wrapper uses standard time/state and existing native string support. No benchmark, RSS, performance, deployment or push claim is made."
       ],
       "callers": {
         "sourceEvidence": [
@@ -92692,18 +92712,19 @@
           "dimabot/src/handlers/message.handler.ts",
           "dimabot/src/utils/permissions/index.ts"
         ],
-        "runtimeStatus": "Source callers/barrel remain TypeScript and have not adopted the native wrapper. Caller adoption is separate from this leaf helper dependency closure."
+        "runtimeStatus": "The helper source is archived; TypeScript roles, moderation/message handlers and barrel callers remain live and have not adopted the native wrapper."
       },
       "testEvidence": {
         "sourceEvidence": [
-          "Full actual-module AST/export/type/source/runtime checks;2113-operation source trace plus final2000-key ordered state; independent native/reader/Node hashes verified."
+          "Archived source and original two-group test were hash-checked; post-retirement canonical resolver verified the unique archive manifest entry.",
+          "Actual-TypeScript oracle retained 2,113 operations and final ordered 2,000-key state."
         ],
         "rustBehaviorEvidence": [
-          "Three new ordinary tests including32 concurrent callers and real default clock;19 existing permission/string library tests;2113-operation native replay with full final state comparison.",
-          "No-feature, Mongo/Redis worker-profile and all-feature/all-target checks and strict Clippy passed at source5bbd8f709ca352d0621c69e3fa5a5613deda9622eb82a5dacd74535c2753b756 (1301 inputs), codef3894821.",
-          "migration-notes/evidence/2026-10-29-permission-error-rate-limit/verification-summary.json"
+          "Six permission tests, including source replay and singleton/default/concurrent behavior; 2,113 operation results and final 2,000-key state matched.",
+          "Formatting, scoped Clippy, minimal and all-feature strict checks passed at the post-retirement source epoch.",
+          "migration-notes/evidence/2026-10-30-permission-retirement/README.md"
         ],
-        "status": "local helper export and all std/existing native dependencies verified; no external application adapter required; source live/callers unadopted"
+        "status": "local helper and native dependency closure complete; source retired and post-retirement verified; wider callers remain unadopted"
       },
       "exports": [
         {
@@ -92721,7 +92742,7 @@
         }
       ],
       "imports": [],
-      "rowAssessment": "local-helper-feature-and-native-dependencies-verified;source-live;application-caller-adoption-open"
+      "rowAssessment": "complete-local-permission-error-limiter-and-native-dependency-closure;source-retired-post-retirement-verified;application-callers-unadopted"
     },
     {
       "source": "src/utils/permissions/expression.test.ts",

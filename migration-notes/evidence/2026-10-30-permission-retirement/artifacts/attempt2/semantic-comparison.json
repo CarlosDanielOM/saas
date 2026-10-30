@@ -1,0 +1,11 @@
+{
+  "operations": 2113,
+  "final_keys": 2000,
+  "all_operations_results_state_identical": true,
+  "only_provenance_changes": [
+    "sourceBindings.location",
+    "manifestSha256"
+  ],
+  "pre_fixture_sha256": "89a854cd91ea8006ba08361d5b6189e2380facfb8614f15de23ad54f3bfd04dc",
+  "post_fixture_sha256": "3dfe38fdb78816861c438311defde8c738a28134898fdab388039c0a0750c130"
+}
