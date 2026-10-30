@@ -85,6 +85,10 @@ pub mod domain_event_contracts;
 #[cfg(feature = "application-schemas")]
 pub mod schemas;
 
+#[cfg(feature = "api-auth")]
+#[path = "middleware/auth.middleware.rs"]
+pub mod api_auth;
+
 #[cfg(feature = "domain-event-runtime")]
 #[path = "domain_events/runtime/mod.rs"]
 pub mod domain_event_runtime;

@@ -17,6 +17,7 @@ postgres = ["dep:sqlx", "dep:tokio"]
 http = ["dep:axum", "dep:tokio", "dep:tower-http"]
 # API capabilities are opt-in so existing cron worker graphs stay unchanged.
 ai-constants = []
+api-auth = ["http", "http-client", "redis", "application-schemas", "observability", "logger-redis"]
 # Native WebSockets use Axum's transport rather than a separate client crate.
 http-form = ["http", "axum/form"]
 http-multipart = ["http", "axum/multipart"]
