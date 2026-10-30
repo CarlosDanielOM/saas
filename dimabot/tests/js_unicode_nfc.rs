@@ -22,6 +22,14 @@ fn nfc_composition_reordering_hangul_and_borrowing() {
     assert!(matches!(normalize_nfc(&ascii), Cow::Borrowed(_)));
     let already = JsString::from_static("é각😀");
     assert!(matches!(normalize_nfc(&already), Cow::Borrowed(_)));
+    // The accent has NFC quick-check Maybe but cannot compose with q.
+    let already_with_mark = JsString::from_static("q\u{301}");
+    assert!(matches!(
+        normalize_nfc(&already_with_mark),
+        Cow::Borrowed(_)
+    ));
+    let decomposed = JsString::from_static("e\u{301}");
+    assert!(matches!(normalize_nfc(&decomposed), Cow::Owned(_)));
 }
 #[test]
 fn nfc_keeps_surrogate_and_unicode17_unassigned_barriers() {
@@ -36,7 +44,19 @@ fn nfc_keeps_surrogate_and_unicode17_unassigned_barriers() {
             normalize_nfc(&input).as_str(),
             Some(format!("Á{cp}\u{327}").as_str())
         );
+        let unchanged = JsString::from(format!("Á{cp}\u{327}"));
+        assert!(matches!(normalize_nfc(&unchanged), Cow::Borrowed(_)));
+        let both_sides = JsString::from(format!("A\u{301}{cp}C\u{301}"));
+        assert_eq!(
+            normalize_nfc(&both_sides).as_str(),
+            Some(format!("Á{cp}Ć").as_str())
+        );
     }
+    let adjacent = JsString::from("A\u{301}\u{1ade}\u{1adf}C\u{301}");
+    assert_eq!(
+        normalize_nfc(&adjacent).as_str(),
+        Some("Á\u{1ade}\u{1adf}Ć")
+    );
     let s = JsString::from_units(vec![0xd800, 0x0041, 0x0301, 0xdc00]);
     assert_eq!(normalize_nfc(&s).units(), vec![0xd800, 0x00c1, 0xdc00]);
     let s = JsString::from_units(vec![0xd800, 0x0301, 0xdc00]);

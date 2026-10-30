@@ -5,7 +5,7 @@
 //! are pinned to the Node runtime described in the migration handoff.
 use std::borrow::Cow;
 
-use unicode_normalization::{UnicodeNormalization, char::decompose_canonical};
+use unicode_normalization::{UnicodeNormalization, char::decompose_canonical, is_nfc};
 
 use super::js_string::JsString;
 use super::js_unicode_data::{
@@ -115,10 +115,46 @@ fn ascii_lower(value: &JsString) -> Option<Cow<'_, JsString>> {
 /// ECMAScript `String.prototype.normalize("NFC")` for Unicode 17 and
 /// arbitrary UTF-16, including lone surrogates. The dependency carries newer
 /// tables, so unassigned Unicode 17 scalars and surrogates form barriers.
-/// Unchanged input is borrowed, with an allocation-free ASCII fast path.
+/// Unchanged input is borrowed. ASCII needs no normalization, and already
+/// normalized UTF-8 containing only Unicode 17-assigned scalars needs no
+/// output buffer.
 pub fn normalize_nfc(value: &JsString) -> Cow<'_, JsString> {
-    if value.as_str().is_some_and(str::is_ascii) {
-        return Cow::Borrowed(value);
+    if let Some(text) = value.as_str() {
+        if text.is_ascii() {
+            return Cow::Borrowed(value);
+        }
+        // On an entirely assigned input the previous implementation applies
+        // the crate's NFC to this same whole string. Its authoritative check
+        // therefore decides whether that exact result equals the input. Never
+        // use it across an unassigned scalar: the newer tables may give that
+        // scalar a combining class even though Unicode 17 treats it as a barrier.
+        let all_assigned = text
+            .chars()
+            .all(|c| c.is_ascii() || contains(ASSIGNED_RANGES, c as u32));
+        if all_assigned {
+            if is_nfc(text) {
+                return Cow::Borrowed(value);
+            }
+            let mut out = String::with_capacity(text.len());
+            out.extend(text.nfc());
+            return Cow::Owned(JsString::from(out));
+        }
+
+        let mut out = String::with_capacity(text.len());
+        let mut start = 0;
+        for (index, c) in text.char_indices() {
+            if !c.is_ascii() && !contains(ASSIGNED_RANGES, c as u32) {
+                out.extend(text[start..index].nfc());
+                out.push(c);
+                start = index + c.len_utf8();
+            }
+        }
+        out.extend(text[start..].nfc());
+        return if out == text {
+            Cow::Borrowed(value)
+        } else {
+            Cow::Owned(JsString::from(out))
+        };
     }
     fn flush(run: &mut String, out: &mut Vec<u16>) {
         out.extend(run.nfc().flat_map(|c| {
