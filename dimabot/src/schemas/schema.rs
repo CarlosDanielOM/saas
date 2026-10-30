@@ -125,7 +125,7 @@ impl Field {
         self.integer = true;
         self
     }
-    /// Prune empty ordinary objects in a Mixed field when constructing output.
+    /// Prune empty ordinary objects in Mixed fields, including array elements.
     pub fn minimize(mut self) -> Self {
         self.minimize = true;
         self
@@ -577,7 +577,13 @@ fn construct_fields(
             continue;
         };
         validate_field(field, &value, required, &path, errors);
-        let value = if field.minimize && matches!(field.kind, FieldType::Mixed) {
+        let minimize = field.minimize
+            && match &field.kind {
+                FieldType::Mixed => true,
+                FieldType::Array(element) => matches!(element.as_ref(), FieldType::Mixed),
+                _ => false,
+            };
+        let value = if minimize {
             minimize_mixed(value, false)
         } else {
             Some(value)
@@ -762,8 +768,10 @@ fn cast(
             Bson::ObjectId(value) => Ok(value.to_hex().into()),
             Bson::Document(document) => document
                 .get_str("_id")
+                .ok()
+                .filter(|value| !value.is_empty())
                 .map(|value| Bson::String(value.into()))
-                .map_err(|_| ()),
+                .ok_or(()),
             value => number(&value)
                 .map(|value| Bson::String(js_number_string(value)))
                 .ok_or(()),

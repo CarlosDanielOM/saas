@@ -8,6 +8,9 @@ pub mod channel_moderation_settings;
 #[cfg(feature = "channel-tts-settings")]
 #[path = "channel_tts_settings.schema.rs"]
 pub mod channel_tts_settings;
+#[cfg(feature = "moderation-variation-storage")]
+#[path = "moderation_variation.schema.rs"]
+pub mod moderation_variation;
 mod schema;
 pub use schema::*;
 #[path = "accounts.schema.rs"]
