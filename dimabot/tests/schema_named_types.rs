@@ -2,12 +2,20 @@
 //! The oracle is generated separately and passed as SCHEMA_NAMED_TYPES_FIXTURE and
 //! SCHEMA_NAMED_TYPES_SHA256; this test never starts Node or accesses a database.
 #![cfg(feature = "application-schemas")]
-#[path = "support/sha256.rs"]
-mod digest;
+#[path = "support/schema_source.rs"]
+mod schema_source;
 use dima_rust::schemas::{accounts, admin, credit_gift, credit_transaction};
 use dima_rust::utils::js_string::JsString;
 use mongodb::bson::{self, DateTime, doc, oid::ObjectId};
 use std::{path::Path, str::FromStr};
+
+#[test]
+fn named_type_sources_are_archived_and_pinned() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    for (logical, _) in schema_source::PINS.iter().skip(5) {
+        schema_source::archived(root, logical);
+    }
+}
 
 #[test]
 #[ignore = "requires pinned external source fixture and SHA-256"]
@@ -26,20 +34,41 @@ fn source_oracle_and_catalogs() {
     );
     let bytes = std::fs::read(fixture).unwrap();
     assert_eq!(
-        digest::sha256_hex(&bytes),
+        schema_source::sha256(&bytes),
         std::env::var("SCHEMA_NAMED_TYPES_SHA256").unwrap()
     );
     let value: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
-    for (path, hash) in value["sources"]
-        .as_object()
-        .unwrap()
-        .iter()
-        .chain(value["hashes"].as_object().unwrap())
-    {
+    let sources = value["sources"].as_object().unwrap();
+    assert_eq!(sources.len(), 4);
+    for (logical, pin) in schema_source::PINS.iter().skip(5) {
+        let source = schema_source::archived(root, logical);
+        assert_eq!(sources[*logical], *pin);
+        assert_eq!(schema_source::sha256(&source), *pin);
         assert_eq!(
-            digest::sha256_hex(&std::fs::read(root.join(path)).unwrap()),
-            hash.as_str().unwrap(),
+            value["provenance"][*logical],
+            schema_source::provenance(logical)
+        );
+    }
+    let hashes = value["hashes"].as_object().unwrap();
+    let expected_hashes = [
+        "src/schemas/admin.schema.rs",
+        "src/schemas/accounts.schema.rs",
+        "src/schemas/credit_gift.schema.rs",
+        "src/schemas/credit_transaction.schema.rs",
+        "src/schemas/schema.rs",
+        "src/utils/js_string.rs",
+        "tests/fixtures/schema_named_types_reference.cjs",
+        "tests/fixtures/schema_source_resolver.cjs",
+        "tests/schema_named_types.rs",
+        "tests/support/schema_source.rs",
+        "tests/support/sha256.rs",
+    ];
+    assert_eq!(hashes.len(), expected_hashes.len());
+    for path in expected_hashes {
+        assert_eq!(
+            schema_source::sha256(&std::fs::read(root.join(path)).unwrap()),
+            hashes[path].as_str().unwrap(),
             "{path}"
         );
     }

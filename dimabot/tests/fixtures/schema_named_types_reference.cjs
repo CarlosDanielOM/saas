@@ -6,6 +6,7 @@ const crypto = require('node:crypto');
 const assert = require('node:assert/strict');
 const ts = require('typescript');
 const bson = require('bson');
+const {resolveSource} = require('./schema_source_resolver.cjs');
 const root = path.resolve(__dirname, '../..');
 const sha = b => crypto.createHash('sha256').update(b).digest('hex');
 const pins = {
@@ -26,18 +27,23 @@ assert.equal(process.versions.v8, '13.6.233.17-node.58');
 assert.equal(ts.version, '5.9.3');
 assert.equal(fs.realpathSync(require.resolve('bson')), fs.realpathSync(path.join(root,'node_modules/bson/lib/bson.cjs')));
 assert.equal(sha(fs.readFileSync(process.execPath)), nodePin);
-for (const [file, hash] of Object.entries(pins)) assert.equal(sha(fs.readFileSync(path.join(root,file))), hash, file);
+for (const [file, hash] of Object.entries(pins)) {
+  const bytes = file.startsWith('src/schemas/') ? resolveSource(root,file,hash).bytes : fs.readFileSync(path.join(root,file));
+  assert.equal(sha(bytes), hash, file);
+}
 const expected = {
   'admin':['IAdmin','AdminSchema'],
   'accounts':['IAccounts','AccountsSchema'],
   'credit_gift':['CreditGiftStatus','ICreditGift','CreditGiftSchema'],
   'credit_transaction':['TRANSACTION_TYPES','TransactionType','ICreditTransactionMetadata','ICreditTransaction','CreditTransactionSchema'],
 };
-const declarations = {}, imports = {}, sources = {}, catalogs = {};
+const declarations = {}, imports = {}, sources = {}, provenance = {}, catalogs = {};
 let extracted = 'declare namespace Types { class ObjectId { private _id: never; } }\n';
 for (const [file, names] of Object.entries(expected)) {
   const logical = `src/schemas/${file}.schema.ts`;
-  const source = fs.readFileSync(path.join(root,logical),'utf8');
+  const resolved = resolveSource(root,logical,pins[logical]);
+  const source = resolved.bytes.toString('utf8');
+  provenance[logical] = resolved.provenance;
   const ast = ts.createSourceFile(logical,source,ts.ScriptTarget.ES2022,true);
   assert.deepEqual(ast.parseDiagnostics, []);
   sources[logical] = sha(source);
@@ -80,7 +86,7 @@ for (const s of checked.statements) if (s.name && declarations[s.name.text]) {
     : checker.typeToString(checker.getTypeAtLocation(s.name),undefined,ts.TypeFormatFlags.NoTruncation);
 }
 const nativeFiles = Object.keys(expected).map(n=>`src/schemas/${n}.schema.rs`);
-const hashes = Object.fromEntries([...nativeFiles,'tests/fixtures/schema_named_types_reference.cjs','tests/schema_named_types.rs','tests/support/sha256.rs'].map(f=>[f,sha(fs.readFileSync(path.join(root,f)))]));
+const hashes = Object.fromEntries([...nativeFiles,'src/schemas/schema.rs','src/utils/js_string.rs','tests/fixtures/schema_named_types_reference.cjs','tests/fixtures/schema_source_resolver.cjs','tests/schema_named_types.rs','tests/support/schema_source.rs','tests/support/sha256.rs'].map(f=>[f,sha(fs.readFileSync(path.join(root,f)))]));
 const bsonStrings = [[0x0061], [0xd800], [0xdc00], [0xd800,0x0061,0xdc00], [0xd83d,0xde00], [0x540d,0x0000,0x03a9]].map(units => {
   const input=String.fromCharCode(...units), bytes=bson.serialize({value:input});
   const output=bson.deserialize(bytes).value;
@@ -91,7 +97,7 @@ const bsonNumbers = [["nan",NaN], ["positiveInfinity",Infinity], ["negativeInfin
   assert(Number.isNaN(value) ? Number.isNaN(output) : Object.is(output,value));
   return {name,bsonHex:bytes.toString('hex')};
 });
-const result = {format:1,bsonStrings,bsonNumbers,versions:{node:process.version,v8:process.versions.v8,typescript:ts.version},nodePin,pins,sources,imports,declarations,signatures,catalogs,hashes};
+const result = {format:1,bsonStrings,bsonNumbers,versions:{node:process.version,v8:process.versions.v8,typescript:ts.version},nodePin,pins,sources,provenance,imports,declarations,signatures,catalogs,hashes};
 const output=JSON.stringify(result,null,2)+'\n';
 const [mode,dir,...extra]=process.argv.slice(2);
 assert(['--write','--check'].includes(mode) && dir && path.isAbsolute(dir) && !extra.length);

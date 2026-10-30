@@ -2,6 +2,7 @@
 const assert = require('node:assert/strict'), fs = require('node:fs'), os = require('node:os'), path = require('node:path');
 const {pins, resolveSource} = require('./schema_source_resolver.cjs');
 const originalRoot = path.resolve(__dirname, '../..');
+assert.equal(Object.keys(pins).length, 9);
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'schema-source-resolver-'));
 try {
   for (const logical of Object.keys(pins)) {
@@ -13,6 +14,7 @@ try {
     const writeManifest = entries => fs.writeFileSync(manifest, JSON.stringify({files:entries}));
     assert.throws(() => resolveSource(root, logical));
     assert.throws(() => resolveSource(root, '../anything')); assert.throws(() => resolveSource(root, logical, 'wrong'));
+    fs.symlinkSync(original.path, live); assert.throws(() => resolveSource(root, logical)); fs.unlinkSync(live);
     fs.writeFileSync(live, bytes); assert.equal(resolveSource(root, logical).provenance, 'live');
     fs.writeFileSync(archived, bytes); assert.throws(() => resolveSource(root, logical)); fs.unlinkSync(live);
     assert.throws(() => resolveSource(root, logical)); writeManifest([entry]); assert.equal(resolveSource(root, logical).path, archived);

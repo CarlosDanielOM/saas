@@ -3,7 +3,7 @@ use std::path::Path;
 #[path = "sha256.rs"]
 mod digest;
 
-pub const PINS: [(&str, &str); 5] = [
+pub const PINS: [(&str, &str); 9] = [
     (
         "src/schemas/oauth_client.schema.ts",
         "48e796d493fbbc16466e50c2e6dd9f2c46558c76854b900c8b1d585f20b71dc8",
@@ -23,6 +23,22 @@ pub const PINS: [(&str, &str); 5] = [
     (
         "src/schemas/moderation_action_log.schema.ts",
         "637955d22fc1c7e0ba953ec410a15a2bb324b0340062bd17bc08c13cd975e28b",
+    ),
+    (
+        "src/schemas/admin.schema.ts",
+        "b45fef05b1b176cac11283df5ec7d1d09b1fc327bae98e4e7ca4447f43baa2e0",
+    ),
+    (
+        "src/schemas/accounts.schema.ts",
+        "7eab86b048cb05d44e9b17c7498c18b713e4c722b71f58f545158fde040431f1",
+    ),
+    (
+        "src/schemas/credit_gift.schema.ts",
+        "f76f4472354751b42587baa1271214c198aac40b86b5fcb85fd046e4de9c0607",
+    ),
+    (
+        "src/schemas/credit_transaction.schema.ts",
+        "14017b20e83ec2eebf7a10475b5ade495554cc9043685af3dd5045350a9e985f",
     ),
 ];
 pub fn sha256(bytes: &[u8]) -> String {

@@ -6,7 +6,11 @@ use serde_json::{Value, json};
 mod schema_source;
 fn fixture() -> Value {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
-    for (logical, _) in schema_source::PINS.iter().take(4) {
+    for (logical, _) in schema_source::PINS
+        .iter()
+        .take(4)
+        .chain(schema_source::PINS.iter().skip(5))
+    {
         schema_source::archived(root, logical);
     }
     if let Some(dir) = std::env::var_os("DIMA_APPLICATION_SCHEMAS_FIXTURE_DIR") {
@@ -42,7 +46,11 @@ fn fixture() -> Value {
         ] {
             assert_eq!(data["versions"][key], value);
         }
-        for (logical, pin) in schema_source::PINS.iter().take(4) {
+        for (logical, pin) in schema_source::PINS
+            .iter()
+            .take(4)
+            .chain(schema_source::PINS.iter().skip(5))
+        {
             let name = logical
                 .strip_prefix("src/schemas/")
                 .unwrap()
@@ -54,15 +62,7 @@ fn fixture() -> Value {
                 schema_source::provenance(logical)
             );
         }
-        for name in [
-            "users",
-            "accounts",
-            "admin",
-            "app_config",
-            "channel_config",
-            "credit_gift",
-            "credit_transaction",
-        ] {
+        for name in ["users", "app_config", "channel_config"] {
             let path = root.join(format!("src/schemas/{name}.schema.ts"));
             assert_eq!(
                 data["sources"][name],
